@@ -46,6 +46,36 @@ export interface CreatePaymentIntentArgs {
   receiptEmail?: string | null;
 }
 
+/**
+ * A charge to a MERCHANT for platform services (ad spend, BIA campaign fees).
+ * Money goes to the platform's own Stripe account: no destination, no application fee.
+ */
+export interface PlatformChargeArgs {
+  merchantId: string;
+  /** Merchant's Stripe customer; created (and returned) when absent. */
+  stripeCustomerId?: string | null;
+  /** Used when a customer has to be created. */
+  customerName?: string;
+  customerEmail?: string | null;
+  amountCents: number;
+  description: string;
+  /** Must include kind ("ad_campaign" | "bia_campaign" | ...) and id. */
+  metadata: Record<string, string>;
+  idempotencyKey: string;
+}
+
+export interface PlatformChargeResult {
+  /** PaymentIntent id. */
+  id: string;
+  clientSecret: string;
+  status: string;
+  /** The Stripe customer charged (store it on merchants.stripe_customer_id). */
+  customerId: string;
+}
+
+/** Marker added to platform-charge metadata so the webhook can route it. */
+export const PLATFORM_CHARGE_MARKER = "ll_platform_charge";
+
 export interface SubscriptionSnapshot {
   id: string;
   status: string;
@@ -85,6 +115,8 @@ export interface PaymentsProvider {
   // Payments
   createPaymentIntent(args: CreatePaymentIntentArgs): Promise<PaymentIntentInfo>;
   retrievePaymentIntent(id: string): Promise<PaymentIntentInfo>;
+  /** Charge a merchant for platform services (PaymentIntent on the platform account). */
+  createPlatformCharge(args: PlatformChargeArgs): Promise<PlatformChargeResult>;
   refund(args: { paymentIntentId: string; amountCents?: number; idempotencyKey: string; reason?: string }): Promise<{ id: string; status: string; amountCents: number }>;
   // Billing
   createCustomer(args: { merchantId: string; email?: string | null; name: string }): Promise<{ customerId: string }>;

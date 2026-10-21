@@ -16,8 +16,11 @@ import type {
   PaymentIntentInfo,
   PaymentsEvent,
   PaymentsProvider,
+  PlatformChargeArgs,
+  PlatformChargeResult,
   SubscriptionSnapshot,
 } from "./payments.js";
+import { PLATFORM_CHARGE_MARKER } from "./payments.js";
 
 export class StripePayments implements PaymentsProvider {
   readonly name = "stripe" as const;
@@ -72,6 +75,23 @@ export class StripePayments implements PaymentsProvider {
       { idempotencyKey: args.idempotencyKey },
     );
     return toInfo(pi);
+  }
+
+  async createPlatformCharge(args: PlatformChargeArgs): Promise<PlatformChargeResult> {
+    const customerId = args.stripeCustomerId ?? (await this.createCustomer({ merchantId: args.merchantId, email: args.customerEmail, name: args.customerName ?? args.merchantId })).customerId;
+    const pi = await this.stripe.paymentIntents.create(
+      {
+        amount: args.amountCents,
+        currency: "cad",
+        customer: customerId,
+        automatic_payment_methods: { enabled: true },
+        setup_future_usage: "off_session",
+        description: args.description,
+        metadata: { ...args.metadata, merchant_id: args.merchantId, [PLATFORM_CHARGE_MARKER]: "true" },
+      },
+      { idempotencyKey: args.idempotencyKey },
+    );
+    return { id: pi.id, clientSecret: pi.client_secret ?? "", status: pi.status, customerId };
   }
 
   async retrievePaymentIntent(id: string): Promise<PaymentIntentInfo> {

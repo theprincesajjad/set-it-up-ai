@@ -11,7 +11,7 @@ import { merchants, webhookEvents } from "@ll/db";
 import { PLATFORM_PAYMENT_FEE_BPS, type billingApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
-import { getPayments, type PaymentsEvent } from "../providers/payments.js";
+import { PLATFORM_CHARGE_MARKER, getPayments, type PaymentsEvent, type PlatformChargeResult } from "../providers/payments.js";
 import { onBillingInvoiceFailed, onCheckoutCompleted, onSubscriptionEvent } from "./billing.js";
 import { requireFeature } from "./features.js";
 import { onInvoicePayment } from "./invoices.js";
@@ -63,6 +63,53 @@ export async function connectStatus(ctx: AppContext, merchant: Merchant): Promis
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Obj = Record<string, any>;
 
+// ---------------------------------------------------------------------------
+// Platform charges (merchant pays the platform: ad spend, BIA campaign fees)
+// ---------------------------------------------------------------------------
+export interface PlatformChargeEvent {
+  /** metadata.kind ("ad_campaign" | "bia_campaign" | ...), metadata.id, merchant_id, plus anything the caller set. */
+  metadata: Record<string, string>;
+  paymentIntentId: string | null;
+  checkoutSessionId: string | null;
+  amountCents: number | null;
+  stripeEventId: string;
+}
+export type PlatformChargeHandler = (ctx: AppContext, event: PlatformChargeEvent) => Promise<void>;
+
+/**
+ * Handlers called once per successful platform charge (webhook is idempotent).
+ * Other areas push into this at module load, e.g. ads: mark the campaign paid
+ * when metadata.kind === "ad_campaign". Handlers must ignore kinds they don't own.
+ */
+export const platformChargeHandlers: PlatformChargeHandler[] = [];
+
+/**
+ * Charge a merchant on the platform's Stripe account. Reuses or creates the
+ * merchant's Stripe customer (saved to merchants.stripe_customer_id). Confirm
+ * `clientSecret` with Stripe.js; success arrives via platformChargeHandlers.
+ */
+export async function createPlatformCharge(
+  ctx: AppContext,
+  merchant: Pick<Merchant, "id" | "name" | "email" | "stripeCustomerId">,
+  args: { amountCents: number; description: string; metadata: Record<string, string> & { kind: string; id: string }; idempotencyKey: string },
+): Promise<PlatformChargeResult> {
+  const r = await getPayments(ctx).createPlatformCharge({
+    merchantId: merchant.id,
+    stripeCustomerId: merchant.stripeCustomerId,
+    customerName: merchant.name,
+    customerEmail: merchant.email,
+    ...args,
+  });
+  if (r.customerId !== merchant.stripeCustomerId) {
+    await ctx.db.update(merchants).set({ stripeCustomerId: r.customerId, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
+  }
+  return r;
+}
+
+async function runPlatformHandlers(ctx: AppContext, event: PlatformChargeEvent) {
+  for (const h of platformChargeHandlers) await h(ctx, event);
+}
+
 async function onAccountUpdated(ctx: AppContext, account: Obj) {
   await ctx.db
     .update(merchants)
@@ -75,7 +122,13 @@ async function onAccountUpdated(ctx: AppContext, account: Obj) {
     .where(eq(merchants.stripeAccountId, String(account.id)));
 }
 
-async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | "failed") {
+async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | "failed", eventId: string) {
+  if (pi.metadata?.[PLATFORM_CHARGE_MARKER] === "true") {
+    if (outcome === "succeeded") {
+      await runPlatformHandlers(ctx, { metadata: { ...pi.metadata }, paymentIntentId: String(pi.id), checkoutSessionId: null, amountCents: typeof pi.amount === "number" ? pi.amount : null, stripeEventId: eventId });
+    }
+    return;
+  }
   const kind = pi.metadata?.ll_kind as string | undefined;
   const id = pi.metadata?.ll_id as string | undefined;
   if (!kind || !id || !/^[0-9a-f-]{36}$/i.test(id)) return; // not ours
@@ -89,6 +142,15 @@ export async function applyPaymentsEvent(ctx: AppContext, event: PaymentsEvent):
   const obj = event.data.object;
   switch (event.type) {
     case "checkout.session.completed":
+      if (obj.mode === "payment" && obj.metadata?.[PLATFORM_CHARGE_MARKER] === "true") {
+        return runPlatformHandlers(ctx, {
+          metadata: { ...obj.metadata },
+          paymentIntentId: typeof obj.payment_intent === "string" ? obj.payment_intent : (obj.payment_intent?.id ?? null),
+          checkoutSessionId: String(obj.id),
+          amountCents: typeof obj.amount_total === "number" ? obj.amount_total : null,
+          stripeEventId: event.id,
+        });
+      }
       return onCheckoutCompleted(ctx, obj);
     case "customer.subscription.created":
     case "customer.subscription.updated":
@@ -97,9 +159,9 @@ export async function applyPaymentsEvent(ctx: AppContext, event: PaymentsEvent):
     case "invoice.payment_failed":
       return onBillingInvoiceFailed(ctx, obj);
     case "payment_intent.succeeded":
-      return onPaymentIntent(ctx, obj, "succeeded");
+      return onPaymentIntent(ctx, obj, "succeeded", event.id);
     case "payment_intent.payment_failed":
-      return onPaymentIntent(ctx, obj, "failed");
+      return onPaymentIntent(ctx, obj, "failed", event.id);
     case "account.updated":
       return onAccountUpdated(ctx, obj);
     default:

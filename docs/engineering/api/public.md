@@ -1,0 +1,49 @@
+# Public API (no login): menu, slots, quote approval, invoice pay
+
+Code: `apps/api/src/routes/public/`. Contracts: `commerceApi.PublicMenuResponse`, `commerceApi.SlotDto`,
+`serviceApi.PublicQuoteResponse`, `serviceApi.ApproveQuoteResponse`, `serviceApi.PublicInvoiceResponse`,
+`serviceApi.PayInvoiceResponse`.
+
+Tokens in links are 192-bit random (`quotes.approval_token`, `invoices.pay_token`); anyone holding the link can act,
+so the web pages should not be indexed (`noindex`). Paid features are still gated: a locked merchant returns
+`402 feature_locked`. Unknown tokens/slugs → `404`. Drafts are never public.
+
+Web routes the SMS links point to: `${PUBLIC_WEB_URL}/q/<approvalToken>` and `${PUBLIC_WEB_URL}/i/<payToken>`.
+
+## `GET /v1/public/shops/:slug/menu`
+`orders.order_ahead`. → `PublicMenuResponse`:
+`{ merchant { id, slug, name, logoUrl, brandColor, timezone }, locations[{ id, name, address, hours }], categories[{ id, name, earnEligible, discountEligible, items[] }], uncategorized[], tax { province, label ("HST 13%"), ratePpm }, payInApp, pickupSlots }`.
+Only `available && orderable` items; empty categories omitted. Order with `POST /v1/me/orders` (`commerce.md`).
+
+## `GET /v1/public/shops/:slug/slots`
+Query: `kind` (`pickup` default; `dropoff|appointment` need Pro), `locationId?`, `from?` (≥ now), `to?` (default from + 7 days).
+→ `{ items: Slot[] }` — only slots with `remaining > 0`. Book with `POST /v1/me/bookings`.
+
+## `GET /v1/public/quotes/:token`
+`service.quote_approval`. → `PublicQuoteResponse`:
+`{ merchant { name, slug, logoUrl, phone }, ticket { number, itemKind, itemDetails, issue, status }, quote: Quote, expired, canRespond, depositDue }`.
+`quote.status` reads `expired` once past `expiresAt`. No e-signature log fields.
+
+## `POST /v1/public/quotes/:token/approve`
+Body: `{ signatureName }` (typed full name, 2–120 chars). Records the **e-signature log**: name, IP (`X-Forwarded-For`
+aware), user agent, timestamp (`respondedAt`). Ticket → `approved`.
+→ `ApproveQuoteResponse { quote, ticketStatus, deposit: { paymentIntentId, clientSecret, amountCents } | null }`.
+`deposit` is present when the quote has a deposit and the shop takes in-app payments: confirm it with Stripe.
+Approving again returns the same deposit intent.
+Errors: `400` (signature), `402`, `404`, `409` (`quote_expired`, superseded by a newer quote, already declined).
+
+## `POST /v1/public/quotes/:token/decline`
+Body: `{ reason? }`. Ticket → `declined`. → `ApproveQuoteResponse` (`deposit: null`). Errors as above.
+
+## `POST /v1/public/quotes/:token/deposit`
+`service.deposits`. Resume an unpaid deposit after approval. → `{ deposit | null }` (`null` when paid or none due).
+
+## `GET /v1/public/invoices/:token`
+`service.invoices`. → `PublicInvoiceResponse { merchant, ticket { number, itemKind, itemDetails } | null, invoice: Invoice, canPay }`.
+`canPay` = open, balance ≥ $0.50 and in-app payments set up (otherwise show "pay at the counter").
+
+## `POST /v1/public/invoices/:token/pay`
+→ `PayInvoiceResponse { invoice, payment: { paymentIntentId, clientSecret, amountCents } | null }` (`null` if already paid).
+Amount = `amountDueCents` (deposit already applied). The invoice becomes `paid` and the customer earns points when
+the `payment_intent.succeeded` webhook arrives.
+Errors: `400` (balance too small), `402`, `404`, `409` (`payments_not_set_up`, void).

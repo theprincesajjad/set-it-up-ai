@@ -6,7 +6,7 @@ import { startJobs } from "./jobs/index.js";
 
 const config = loadConfig();
 const db = await connect(config.databaseUrl);
-const providers = createRealProviders(config);
+const providers = createRealProviders(config, { db });
 const ctx = { db, config, providers, now: () => new Date() };
 const app = await buildApp(ctx, { logger: config.env !== "test" });
 const stopJobs = startJobs(ctx);

@@ -3,8 +3,9 @@ import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchants, orders, subscriptions, webhookEvents } from "@ll/db";
 import { StripePayments, platformFeeCents } from "../src/providers/payments.js";
+import { createPlatformCharge, platformChargeHandlers, type PlatformChargeEvent } from "../src/services/payments.js";
 import { createMerchant, createTestEnv, type TestEnv } from "./helpers.js";
-import { PAID_FEATURES, call, customer, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
+import { PAID_FEATURES, call, customer, deliver, fake, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -18,6 +19,43 @@ describe("platform fee", () => {
     expect(platformFeeCents(1754)).toBe(13);
     expect(platformFeeCents(29380)).toBe(220);
     expect(platformFeeCents(0)).toBe(0);
+  });
+});
+
+describe("platform charges (merchant pays the platform)", () => {
+  it("charges on the platform account, saves the Stripe customer, and calls handlers once on success", async () => {
+    const { merchant } = await createMerchant(env);
+    const seen: PlatformChargeEvent[] = [];
+    const handler = async (_ctx: unknown, e: PlatformChargeEvent) => void seen.push(e);
+    platformChargeHandlers.push(handler);
+    try {
+      const r = await createPlatformCharge(env.ctx, merchant, { amountCents: 15000, description: "Sponsored listing", metadata: { kind: "ad_campaign", id: "11111111-1111-1111-1111-111111111111" }, idempotencyKey: "ad:1:charge" });
+      expect(r).toMatchObject({ status: "requires_payment_method", customerId: expect.stringMatching(/^cus_fake_/) });
+      expect(r.clientSecret).toContain(r.id);
+      const [row] = await env.db.select().from(merchants).where(eq(merchants.id, merchant.id));
+      expect(row!.stripeCustomerId).toBe(r.customerId);
+      const intent = fake(env).intents.get(r.id)!;
+      expect(intent).toMatchObject({ applicationFeeCents: 0, connectedAccountId: "" });
+      // Same key → same intent, same customer.
+      const again = await createPlatformCharge(env.ctx, row!, { amountCents: 15000, description: "Sponsored listing", metadata: { kind: "ad_campaign", id: "11111111-1111-1111-1111-111111111111" }, idempotencyKey: "ad:1:charge" });
+      expect(again).toMatchObject({ id: r.id, customerId: r.customerId });
+
+      const ev = fake(env).succeedPaymentIntent(r.id);
+      await deliver(env, ev);
+      await deliver(env, ev);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ paymentIntentId: r.id, amountCents: 15000, metadata: { kind: "ad_campaign", id: "11111111-1111-1111-1111-111111111111", merchant_id: merchant.id } });
+      // Failures don't call handlers.
+      const r2 = await createPlatformCharge(env.ctx, row!, { amountCents: 2500, description: "BIA fee", metadata: { kind: "bia_campaign", id: "x" }, idempotencyKey: "bia:1" });
+      await deliver(env, fake(env).failPaymentIntent(r2.id));
+      expect(seen).toHaveLength(1);
+      // A Checkout Session (mode=payment) carrying the marker is routed too.
+      const cs = { id: "evt_cs_platform", type: "checkout.session.completed", data: { object: { id: "cs_p1", mode: "payment", payment_intent: "pi_p1", amount_total: 3000, metadata: { ll_platform_charge: "true", kind: "bia_campaign", id: "c1", merchant_id: merchant.id } } } };
+      await deliver(env, cs);
+      expect(seen[1]).toMatchObject({ checkoutSessionId: "cs_p1", paymentIntentId: "pi_p1", metadata: { kind: "bia_campaign" } });
+    } finally {
+      platformChargeHandlers.splice(platformChargeHandlers.indexOf(handler), 1);
+    }
   });
 });
 

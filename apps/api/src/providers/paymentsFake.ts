@@ -17,8 +17,11 @@ import type {
   PaymentIntentInfo,
   PaymentsEvent,
   PaymentsProvider,
+  PlatformChargeArgs,
+  PlatformChargeResult,
   SubscriptionSnapshot,
 } from "./payments.js";
+import { PLATFORM_CHARGE_MARKER } from "./payments.js";
 
 export const FAKE_WEBHOOK_SECRET = "whsec_fake_local_dev";
 const TOLERANCE_SECONDS = 300;
@@ -114,6 +117,30 @@ export class FakePayments implements PaymentsProvider {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);
     return toInfo(i);
+  }
+
+  async createPlatformCharge(args: PlatformChargeArgs): Promise<PlatformChargeResult> {
+    if (!Number.isInteger(args.amountCents) || args.amountCents < 50) throw new Error("Amount must be at least 50 cents");
+    const customerId = args.stripeCustomerId ?? (await this.createCustomer({ merchantId: args.merchantId, email: args.customerEmail, name: args.customerName ?? args.merchantId })).customerId;
+    const existing = this.intentsByKey.get(args.idempotencyKey);
+    if (existing) {
+      const i = this.intents.get(existing)!;
+      return { id: i.id, clientSecret: i.clientSecret, status: i.status, customerId };
+    }
+    const id = this.nextId("pi");
+    const intent: FakeIntent = {
+      id,
+      clientSecret: `${id}_secret_${String(this.seq).padStart(6, "0")}`,
+      status: "requires_payment_method",
+      amountCents: args.amountCents,
+      applicationFeeCents: 0,
+      metadata: { ...args.metadata, merchant_id: args.merchantId, [PLATFORM_CHARGE_MARKER]: "true" },
+      connectedAccountId: "",
+      refundedCents: 0,
+    };
+    this.intents.set(id, intent);
+    this.intentsByKey.set(args.idempotencyKey, id);
+    return { id, clientSecret: intent.clientSecret, status: intent.status, customerId };
   }
 
   /** Simulate the customer paying. Returns the payment_intent.succeeded event. */
@@ -268,7 +295,7 @@ export class FakePayments implements PaymentsProvider {
       currency: "cad",
       status: i.status,
       metadata: i.metadata,
-      transfer_data: { destination: i.connectedAccountId },
+      transfer_data: i.connectedAccountId ? { destination: i.connectedAccountId } : null,
     };
   }
 

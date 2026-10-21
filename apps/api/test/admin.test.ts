@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, featureRollouts, merchants, users } from "@ll/db";
-import { FREE_FOREVER } from "@ll/shared";
+import { FEATURES, FREE_FOREVER } from "@ll/shared";
 import { requireFeature } from "../src/services/features.js";
 import { awardPurchase } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
@@ -51,7 +51,7 @@ describe("admin", () => {
     const { merchant, ownerToken } = await createMerchant(env);
     const list = (await get("/v1/admin/features")).json().items;
     const sms = list.find((f: { key: string }) => f.key === "marketing.sms");
-    expect(sms).toMatchObject({ stage: "hidden", minPlan: "plus", unlockAtMerchants: 150, activeMerchants: 1, readyToUnlock: false, freeForever: false });
+    expect(sms).toMatchObject({ stage: "hidden", minPlan: "plus", unlockAtMerchants: FEATURES["marketing.sms"].unlockAtMerchants, activeMerchants: 1, readyToUnlock: false, freeForever: false });
     expect(list.find((f: { key: string }) => f.key === "loyalty.points").freeForever).toBe(true);
 
     // Free-forever features can only be GA.
