@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { campaigns, discountCards, featureOverrides, locations, merchantMembers, merchants, networkPerks, promos } from "@ll/db";
+import { campaigns, discountCards, featureOverrides, locations, merchantMembers, merchants, neighbourhoods, networkPerks, promos } from "@ll/db";
 import type { networkApi } from "@ll/shared";
 import { awardPurchase } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
@@ -33,7 +33,8 @@ const ME = { lat: 43.6487, lng: -79.4495 };
 describe("neighbourhoods", () => {
   it("lists live neighbourhoods with shop counts and shows perks and live campaigns", async () => {
     const hood = await createNeighbourhood(env.db, "roncesvalles");
-    await createNeighbourhood(env.db, "scouting-only").then((n) => env.db.update(merchants).set({}).where(eq(merchants.id, n.id)));
+    const scouting = await createNeighbourhood(env.db, "scouting-only");
+    await env.db.update(neighbourhoods).set({ status: "scouting" }).where(eq(neighbourhoods.id, scouting.id));
     await shop("Cafe", 43.649, -79.45, { hood: hood.id });
     await shop("Paused", 43.649, -79.45, { hood: hood.id, status: "paused" });
     await env.db.insert(networkPerks).values({ neighbourhoodId: hood.id, name: "Strip explorer", threshold: 3, bonusPoints: 25 });
@@ -45,6 +46,7 @@ describe("neighbourhoods", () => {
     expect(list.statusCode).toBe(200);
     const items: networkApi.NeighbourhoodDto[] = list.json().items;
     expect(items.find((n) => n.slug === "roncesvalles")).toMatchObject({ shopCount: 1, status: "live" });
+    expect(items.find((n) => n.slug === "scouting-only")).toBeUndefined();
 
     const d = await call("GET", "/v1/network/neighbourhoods/roncesvalles");
     expect(d.json()).toMatchObject({
