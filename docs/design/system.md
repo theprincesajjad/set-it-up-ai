@@ -194,7 +194,7 @@ Canadian/US numbers only for MVP (NANP).
 - **Paste / autofill:** strip everything but digits; drop a leading `1` if 11 digits; accept
   `+1 416-555-0123`, `416.555.0123`, `14165550123`.
 - **Validate:** exactly 10 digits; area code and exchange don't start with 0 or 1. Error copy in
-  [ux-copy.md](./ux-copy.md#errors). Emit E.164 (`+14165550123`) via `onChangeE164`.
+  [ux-copy.md](./ux-copy.md#2-errors). Emit E.164 (`+14165550123`) via `onChangeE164`.
 - Show a "Use a different country" link only post-MVP.
 - Counter mode uses the `Keypad` instead of the system keyboard but the same formatter
   (export `formatNanp(digits)` / `toE164(digits)` from `apps/*/src/lib/phone.ts`; same algorithm both apps).
@@ -331,7 +331,7 @@ while retrying. Turns `success` for 2 s ("Back online. All 3 sent.") then collap
 
 Centred stack, max width 360: illustration or 48 px icon in a 96 px `brandSubtle` circle → `h3`
 title → `body fgMuted` description (1-2 lines) → one primary or tonal Button → optional ghost
-secondary. Copy per screen in [ux-copy.md](./ux-copy.md#empty-states). Never a dead end.
+secondary. Copy per screen in [ux-copy.md](./ux-copy.md#4-empty-states). Never a dead end.
 
 ### Skeleton
 

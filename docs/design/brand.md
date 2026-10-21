@@ -165,7 +165,7 @@ placeholder (`ShopTile` placeholder: vertical `tint` with the lucide icon in `ac
 
 Template `apps/web/public/brand/qr-stand-a6.svg`, A6 portrait (105 x 148 mm), prints on 4x6"
 cardstock with "fit to page". Generated per location by Locations & QR kit
-([merchant-dashboard.md](./screens/merchant-dashboard.md#locations--qr-kit)) and the rep console.
+([merchant-dashboard.md](./screens/merchant-dashboard.md#10-locations-and-qr-kit)) and the rep console.
 
 | Field (id) | Content | Rule |
 | --- | --- | --- |
@@ -181,7 +181,7 @@ Printing: 300 dpi, matte cardstock (glossy causes glare on QR under shop lights)
 gloss. QR must survive being scanned at 1 m on a 3-year-old phone: do not shrink below 40 mm.
 
 Kit also includes a window decal (round, 120 mm: mark + "Proud member of {Street} Local Loyalty")
-and a 2-line staff script card (see [ux-copy.md](./ux-copy.md#staff-script-card)).
+and a 2-line staff script card (see [ux-copy.md](./ux-copy.md#11-staff-script-card)).
 
 ## 8. Do and don't
 

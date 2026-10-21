@@ -82,7 +82,7 @@ Goal: signed-in member in under 30 s. Three inputs max: phone, code, first name.
   "Send me offers and news from shops I join, by text and email. I can unsubscribe anytime."
   Caption below: "Each shop is named in every message. You can turn this off for any shop in
   Settings." Second ConsentCheckbox: "Send me {BRAND.name} news and neighbourhood events."
-  Exact text in [ux-copy.md](../ux-copy.md#casl-consent). Consent is per shop at join time: this
+  Exact text in [ux-copy.md](../ux-copy.md#7-casl-consent). Consent is per shop at join time: this
   global choice pre-fills the per-shop consent when they join a shop in the app, and is recorded
   per merchant with the text version.
 - Primary "Done". Then: if the user came from a shop join, show the **Joined** success (shop logo,
