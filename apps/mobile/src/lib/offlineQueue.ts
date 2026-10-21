@@ -245,7 +245,7 @@ export class OfflineQueue {
             item.attempts += 1;
             item.nextAttemptAt = this.now() + backoffMs(item.attempts);
             result.retrying += 1;
-          } else if (r.status === "ok" || r.status === "duplicate") {
+          } else if (!("error" in r)) {
             sentIds.add(item.id);
             result.sent += 1;
           } else if (isRetryableSyncError(r.error.code)) {

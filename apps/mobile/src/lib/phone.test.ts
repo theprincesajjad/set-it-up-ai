@@ -59,7 +59,8 @@ describe("applyPhoneEdit (caret stays at the end; backspace over a format char d
   it("backspace over ') ' removes the previous digit", () => {
     // "(416) 5" → user deletes "5" → "(416) " ; then deletes " " → "(416)" which has the same digits
     expect(applyPhoneEdit("4165", "(416) ")).toBe("416");
-    expect(applyPhoneEdit("416", "(416)")).toBe("41");
+    // caret placed after ")" and backspace: digits unchanged, so the digit before it goes
+    expect(applyPhoneEdit("4165", "(416 5")).toBe("416");
   });
   it("backspace over '-' removes the previous digit", () => expect(applyPhoneEdit("4165550", "(416) 555-")).toBe("416555"));
   it("paste replaces", () => expect(applyPhoneEdit("", "+1 416-555-0123")).toBe("4165550123"));

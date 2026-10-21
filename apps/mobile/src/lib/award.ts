@@ -4,7 +4,7 @@
  * countdown, scan classification and the keypad → lookup → award → success
  * state machine. Pure TypeScript (no React Native) so it is unit tested.
  */
-import { calculateEarn, QR_PAYLOAD_PREFIX, type staffApi } from "@ll/shared";
+import { calculateEarn, staffApi } from "@ll/shared";
 import { formatNanp, sanitizePhoneInput, toE164, validateNanp } from "./phone";
 
 // ---------------------------------------------------------------------------
@@ -272,8 +272,9 @@ export type ScanResult =
 /** Classify a scanned barcode or typed code: member QR "LL:K7QX2M9P", app redeem code "7KQ2XM", or a phone. */
 export function classifyScan(raw: string): ScanResult {
   const s = raw.trim();
-  if (s.toUpperCase().startsWith(QR_PAYLOAD_PREFIX)) {
-    const code = s.slice(QR_PAYLOAD_PREFIX.length).trim().toUpperCase();
+  const prefix = staffApi.QR_PAYLOAD_PREFIX;
+  if (s.toUpperCase().startsWith(prefix)) {
+    const code = s.slice(prefix.length).trim().toUpperCase();
     return code.length >= 6 ? { kind: "member", memberCode: code } : { kind: "invalid" };
   }
   const upper = s.toUpperCase().replace(/[\s-]/g, "");
