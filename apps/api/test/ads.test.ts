@@ -334,3 +334,23 @@ describe("ads: nearby push", () => {
     expect(row).toMatchObject({ impressions: 1, spentCents: 4 });
   });
 });
+
+describe("ads: card payment", () => {
+  it("charges the merchant on the platform account and marks the campaign paid via webhook", async () => {
+    await enableAds();
+    const s = await setup();
+    const create = await env.app.inject({ method: "POST", url: `/v1/merchants/${s.shop.merchant.id}/ads`, headers: auth(s.shop.ownerToken), payload: adBody(s.hood.id) });
+    const ad = create.json() as adsApi.AdCampaign;
+    const pay = await env.app.inject({ method: "POST", url: `/v1/merchants/${s.shop.merchant.id}/ads/${ad.id}/pay`, headers: auth(s.shop.ownerToken) });
+    expect(pay.statusCode).toBe(200);
+    const { paymentIntentId, clientSecret, amountCents } = pay.json();
+    expect(clientSecret).toBeTruthy();
+    expect(amountCents).toBe(ad.budgetCents);
+    const sim = await env.app.inject({ method: "POST", url: `/v1/payments/fake/simulate`, payload: { action: "succeed_payment", id: paymentIntentId } });
+    expect(sim.statusCode).toBe(200);
+    const [row] = await env.db.select().from(adCampaigns).where(eq(adCampaigns.id, ad.id));
+    expect(row!.paymentStatus).toBe("paid");
+    const again = await env.app.inject({ method: "POST", url: `/v1/merchants/${s.shop.merchant.id}/ads/${ad.id}/pay`, headers: auth(s.shop.ownerToken) });
+    expect(again.statusCode).toBe(409);
+  });
+});

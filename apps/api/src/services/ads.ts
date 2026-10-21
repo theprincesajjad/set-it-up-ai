@@ -166,10 +166,8 @@ export async function createAdCampaign(ctx: AppContext, merchant: Merchant, body
       startsAt: body.startsAt,
       endsAt: body.endsAt,
       status: "pending_review",
-      // Ad spend is paid by the merchant to the platform. The payments provider
-      // only offers destination charges to a merchant's own Connect account, so
-      // ad spend is collected by invoice and confirmed by an admin
-      // (POST /v1/admin/ads/:id/mark-paid) until a platform-charge method exists.
+      // Paid by card via POST .../ads/:adId/pay (services/ads-payments.ts), or
+      // invoiced and confirmed by an admin (POST /v1/admin/ads/:id/mark-paid).
       paymentStatus: "pending",
     })
     .returning();

@@ -121,3 +121,12 @@ All admin endpoints: `401` signed out, `403` not admin, `404` unknown id. Review
   from `apps/api/src/services/sponsored.ts`. It returns organic items with sponsored items interleaved
   (max 1 per 5 organic, first at position 2, `sponsored: true`). For map pins, call `selectSponsored(ctx, { placement: "map_pin", ... })`.
 - **Jobs:** `ads.lifecycle` (5 min), `ads.nearby_push` (15 min), `campaigns.lifecycle` (5 min) in `jobs/ads.ts`.
+
+## POST /v1/merchants/:merchantId/ads/:adId/pay
+
+Owner only. Starts a card payment for the campaign's full budget on the
+platform's Stripe account (no Connect destination, no platform fee). Returns
+`{ paymentIntentId, clientSecret, amountCents }`; confirm `clientSecret` with
+Stripe.js. The Stripe webhook marks the campaign `paymentStatus: "paid"`.
+409 if the campaign is not `pending` payment, or is rejected/ended. Admins can
+still use `/v1/admin/ads/:id/mark-paid` for invoiced campaigns.

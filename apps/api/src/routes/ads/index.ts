@@ -22,6 +22,7 @@ import {
 } from "../../services/ads.js";
 // Registers the ad-attribution visit hook with the ledger (side-effect import).
 import "../../services/attribution.js";
+import { startAdPayment } from "../../services/ads-payments.js";
 import { selectSponsored } from "../../services/sponsored.js";
 import { notFound } from "../../lib/errors.js";
 import { adCampaigns, merchants } from "@ll/db";
@@ -86,6 +87,14 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const { merchant } = await requireStaff(ctx, req, merchantId, "manager");
     await requireAnyAdsFeature(ctx.db, merchant);
     return adReport(ctx.db, await getMerchantAd(ctx.db, merchant.id, adId), merchant.timezone);
+  });
+
+  /** Pay for the campaign by card; confirm the returned clientSecret with Stripe.js. */
+  app.post("/merchants/:merchantId/ads/:adId/pay", async (req) => {
+    const { merchantId, adId } = parse(merchantAdParams, req.params);
+    const { merchant } = await requireStaff(ctx, req, merchantId, "owner");
+    await requireAnyAdsFeature(ctx.db, merchant);
+    return startAdPayment(ctx, merchant, adId);
   });
 
   for (const action of ["pause", "resume", "cancel"] as const) {

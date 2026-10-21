@@ -23,7 +23,7 @@ async function main() {
     console.log("\nDemo credentials");
     console.log("────────────────");
     for (const c of r.credentials) console.log(`${c.role.padEnd(6)} ${c.email.padEnd(48)} ${c.password}${c.merchant ? `   (${c.merchant})` : ""}`);
-    console.log(`staff  staff+pinecone-coffee@example.com              ${DEMO_CREDENTIALS.ownerPassword}   (Pinecone Coffee Co., counter PIN ${DEMO_CREDENTIALS.staffPin})`);
+    console.log(`${"staff".padEnd(6)} ${"staff+pinecone-coffee@example.com".padEnd(48)} ${DEMO_CREDENTIALS.ownerPassword}   (Pinecone Coffee Co., counter PIN ${DEMO_CREDENTIALS.staffPin})`);
     console.log("Customers sign in by phone OTP, e.g. +16475551000 … (console SMS provider prints the code).");
   } finally {
     await db.$close();
