@@ -1,5 +1,13 @@
-.DS_Store
-.build/
+node_modules/
 dist/
-DerivedData/
-*.xcuserstate
+.next/
+.expo/
+.turbo/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.pglite/
+*.tsbuildinfo
