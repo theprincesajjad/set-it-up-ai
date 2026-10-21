@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { adCampaigns, adEvents, featureRollouts, locations, merchantStaff, promos } from "@ll/db";
+import { adCampaigns, adEvents, featureRollouts, locations, merchantMembers, merchantStaff, promos, pushTokens } from "@ll/db";
 import { adsApi } from "@ll/shared";
 import { runAdsLifecycle } from "../src/services/ads.js";
+import { deliverNearbyPushes } from "../src/services/adsPush.js";
 import { awardPurchase } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
 
@@ -276,5 +277,49 @@ describe("ads: budgets and jobs", () => {
     at(3 * DAY + 1000);
     await runAdsLifecycle(env.ctx);
     expect(await spent()).toMatchObject({ status: "ended", endedReason: "completed", spentCents: 2 * rate });
+  });
+});
+
+describe("ads: nearby push", () => {
+  it("only pushes to consenting, unmuted members, once per campaign, labelled and with opt-out", async () => {
+    const s = await setup();
+    const now = env.clock.now;
+    const [ad] = await env.db
+      .insert(adCampaigns)
+      .values({
+        merchantId: s.shop.merchant.id,
+        placement: "nearby_push",
+        neighbourhoodIds: [],
+        radiusMetres: 1000,
+        headline: "Fresh bagels until noon",
+        pricingModel: "cpm",
+        rateCents: 4000,
+        budgetCents: 10_000,
+        startsAt: new Date(now.getTime() - DAY),
+        endsAt: new Date(now.getTime() + DAY),
+        status: "active",
+      })
+      .returning();
+    const make = async (consent: boolean, muted: boolean) => {
+      const phone = nextPhone();
+      const r = await awardPurchase(env.ctx, { merchantId: s.shop.merchant.id, phone, source: "staff_app", amountCents: 500 });
+      await env.db.update(merchantMembers).set({ marketingConsentAt: consent ? now : null, muted }).where(eq(merchantMembers.id, r.member.id));
+      await env.db.insert(pushTokens).values({ userId: r.member.userId, token: `tok-${phone}`, platform: "ios" });
+      return phone;
+    };
+    const ok = await make(true, false);
+    await make(false, false);
+    await make(true, true);
+
+    expect((await deliverNearbyPushes(env.ctx)).sent).toBe(1);
+    expect(env.ctx.providers.outbox.push).toHaveLength(1);
+    const msg = env.ctx.providers.outbox.push[0]!;
+    expect(msg.token).toBe(`tok-${ok}`);
+    expect(msg.title).toContain("Test Shop");
+    expect(msg.title).toContain("Sponsored");
+    expect(msg.body).toContain("mute");
+    expect((await deliverNearbyPushes(env.ctx)).sent).toBe(0);
+    const [row] = await env.db.select().from(adCampaigns).where(eq(adCampaigns.id, ad!.id));
+    expect(row).toMatchObject({ impressions: 1, spentCents: 4 });
   });
 });

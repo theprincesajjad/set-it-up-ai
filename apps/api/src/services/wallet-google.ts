@@ -85,8 +85,12 @@ export async function googleSaveUrl(config: Config, userId: string, summary: wal
   return `https://pay.google.com/gp/v/save/${jwt}`;
 }
 
+const tokenCache = new Map<string, { token: string; exp: number }>();
+
 async function accessToken(config: Config, fetch: Fetch, now: Date): Promise<string> {
   const sa = parseServiceAccount(config.google.walletServiceAccountJson)!;
+  const cached = tokenCache.get(sa.client_email);
+  if (cached && cached.exp - 60_000 > now.getTime()) return cached.token;
   const key = await importPKCS8(sa.private_key, "RS256");
   const iat = Math.floor(now.getTime() / 1000);
   const assertion = await new SignJWT({ scope: "https://www.googleapis.com/auth/wallet_object.issuer" })
@@ -97,6 +101,7 @@ async function accessToken(config: Config, fetch: Fetch, now: Date): Promise<str
     .setExpirationTime(iat + 3600)
     .sign(key);
   const r = await requestJson(fetch, "https://oauth2.googleapis.com/token", { method: "POST", form: { grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion } });
+  tokenCache.set(sa.client_email, { token: r.access_token, exp: now.getTime() + Number(r.expires_in ?? 3600) * 1000 });
   return r.access_token as string;
 }
 

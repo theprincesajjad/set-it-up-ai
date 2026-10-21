@@ -6,7 +6,7 @@
  * (unique provider + external_id) and processed once. A failed event is left
  * unprocessed (500 to Stripe) so the retry runs it again.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { merchants, webhookEvents } from "@ll/db";
 import { PLATFORM_PAYMENT_FEE_BPS, type billingApi } from "@ll/shared";
 import type { z } from "zod";
@@ -119,8 +119,8 @@ export async function processWebhookEvent(ctx: AppContext, event: PaymentsEvent)
     .insert(webhookEvents)
     .values({ provider: "stripe", externalId: event.id, type: event.type, merchantId: merchantId && /^[0-9a-f-]{36}$/i.test(merchantId) ? merchantId : null, payload: event })
     .onConflictDoNothing();
-  const [row] = await ctx.db.select().from(webhookEvents).where(eq(webhookEvents.externalId, event.id)).limit(1);
-  if (row?.processedAt && row.provider === "stripe") return { duplicate: true, type: event.type };
+  const [row] = await ctx.db.select().from(webhookEvents).where(and(eq(webhookEvents.provider, "stripe"), eq(webhookEvents.externalId, event.id))).limit(1);
+  if (row?.processedAt) return { duplicate: true, type: event.type };
   try {
     await applyPaymentsEvent(ctx, event);
     await ctx.db.update(webhookEvents).set({ processedAt: ctx.now(), error: null, attempts: (row?.attempts ?? 0) + 1 }).where(eq(webhookEvents.id, row!.id));

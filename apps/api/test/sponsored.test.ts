@@ -149,3 +149,19 @@ describe("selectSponsored", () => {
     expect((await env.app.inject({ method: "GET", url: "/v1/ads/sponsored?placement=nope" })).statusCode).toBe(400);
   });
 });
+
+describe("network feed integration", () => {
+  it("GET /v1/network/feed interleaves a labelled sponsored item at position 2", async () => {
+    const hood = await createNeighbourhood(env.db);
+    const shops = [];
+    for (let i = 0; i < 6; i++) shops.push(await shopAt(hood.id, 43.65 + i * 0.001, -79.45));
+    for (const s of shops) await env.db.insert(promos).values({ merchantId: s.merchant.id, title: `Promo ${s.merchant.id.slice(0, 4)}`, startsAt: new Date("2026-11-01"), status: "live" });
+    await activeAd(shops[3]!.merchant.id, { neighbourhoodIds: [hood.id], headline: "Feed ad" });
+    const res = await env.app.inject({ method: "GET", url: `/v1/network/feed?neighbourhood=${hood.slug}` });
+    expect(res.statusCode).toBe(200);
+    const items = res.json().items as { sponsored?: boolean; headline?: string }[];
+    expect(items).toHaveLength(7);
+    expect(items.filter((i) => i.sponsored === true)).toHaveLength(1);
+    expect(items[1]).toMatchObject({ sponsored: true, label: "Sponsored", headline: "Feed ad" });
+  });
+});

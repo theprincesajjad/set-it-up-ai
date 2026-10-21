@@ -160,7 +160,7 @@ describe("campaigns: passport progress, bonuses and completion", () => {
     const pub = await env.app.inject({ method: "GET", url: `/v1/public/campaigns/${c.id}` });
     expect(pub.statusCode).toBe(200);
     expect(pub.json()).not.toHaveProperty("priceCents");
-    const draft = (await env.app.inject({ method: "POST", url: "/v1/campaigns", headers: t.admin, payload: campaignBody(s.hood.id, { name: "Draft one" }) })).json();
+    const draft = (await env.app.inject({ method: "POST", url: "/v1/campaigns", headers: (await s.tokens()).admin, payload: campaignBody(s.hood.id, { name: "Draft one" }) })).json();
     expect((await env.app.inject({ method: "GET", url: `/v1/public/campaigns/${draft.id}` })).statusCode).toBe(404);
 
     // Merchants can't leave once it has started.

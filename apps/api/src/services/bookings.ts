@@ -247,6 +247,21 @@ export async function listMerchantBookings(db: DbOrTx, merchant: Merchant, q: { 
   return rows.map((r) => bookingDto(r.b, r.s, merchant.name));
 }
 
+export async function getBookingDto(db: DbOrTx, where: { bookingId: string; userId?: string; merchantId?: string }) {
+  const conds = [eq(bookings.id, where.bookingId)];
+  if (where.userId) conds.push(eq(bookings.userId, where.userId));
+  if (where.merchantId) conds.push(eq(bookings.merchantId, where.merchantId));
+  const [r] = await db
+    .select({ b: bookings, s: bookingSlots, merchantName: merchants.name })
+    .from(bookings)
+    .innerJoin(bookingSlots, eq(bookingSlots.id, bookings.slotId))
+    .innerJoin(merchants, eq(merchants.id, bookings.merchantId))
+    .where(and(...conds))
+    .limit(1);
+  if (!r) throw notFound("Booking");
+  return bookingDto(r.b, r.s, r.merchantName);
+}
+
 export async function cancelBooking(db: DbOrTx, where: { bookingId: string; userId?: string; merchantId?: string }) {
   const conds = [eq(bookings.id, where.bookingId)];
   if (where.userId) conds.push(eq(bookings.userId, where.userId));

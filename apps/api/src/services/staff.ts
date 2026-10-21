@@ -30,6 +30,7 @@ import {
 import { normalizePhone, staffApi, type customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
+import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "../lib/errors.js";
 import { notMerged, requireUuid } from "./customer.js";
 import {
@@ -130,13 +131,13 @@ export async function lookup(ctx: AppContext, merchantId: string, qInput: string
     const code = parseMemberCode(q);
     return { matchedBy: "member_code", items: await summaries(ctx.db, merchantId, and(eq(users.memberCode, code), isNull(users.deletedAt)), 1), normalizedPhone: null };
   }
-  const digits = q.replace(/\D/g, "");
-  if (/^\d{4}$/.test(q.replace(/[\s-]/g, "")) && digits.length === 4) {
-    return { matchedBy: "last4", items: await summaries(ctx.db, merchantId, like(users.phone, `%${digits}`), 10), normalizedPhone: null };
+  if (/^\d{4}$/.test(q)) {
+    return { matchedBy: "last4", items: await summaries(ctx.db, merchantId, like(users.phone, `%${q}`), 10), normalizedPhone: null };
   }
   const phone = normalizePhone(q);
   if (!phone) throw badRequest("Enter a phone number, the last 4 digits, or scan the member's QR code");
-  return { matchedBy: "phone", items: await summaries(ctx.db, merchantId, eq(users.phone, phone), 1), normalizedPhone: phone };
+  const items = await summaries(ctx.db, merchantId, eq(users.phone, phone), 1);
+  return { matchedBy: "phone", items, normalizedPhone: items.length ? null : phone };
 }
 
 // ---------------------------------------------------------------------------
@@ -660,7 +661,7 @@ export async function kioskCheckIn(ctx: AppContext, staff: StaffContext, body: s
     const { result } = await doAward(
       ctx,
       staff,
-      { phone, locationId: body.locationId, consent: body.consent, idempotencyKey: body.idempotencyKey ? `kiosk:${body.idempotencyKey}` : `kiosk:${staff.user.id}:${phone}:${ctx.now().getTime()}` },
+      { phone, locationId: body.locationId, consent: body.consent, idempotencyKey: body.idempotencyKey ? `kiosk:${body.idempotencyKey}` : `kiosk:${randomToken(12)}` },
       { consentSource: "kiosk" },
     );
     memberId = result.member.id;

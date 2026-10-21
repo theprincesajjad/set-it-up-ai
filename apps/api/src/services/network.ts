@@ -33,6 +33,7 @@ import { startPhoneOtp } from "./auth.js";
 import { JOINABLE_STATUSES } from "./customer.js";
 import { promoAppliesAt } from "./ledger.js";
 import { cardsForMember, locationDto, merchantBrief, programSummary, promoDto, rewardDto, terminologyOf } from "./serializers.js";
+import { injectSponsored as injectSponsoredItems } from "./sponsored.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Location = typeof locations.$inferSelect;
@@ -258,15 +259,12 @@ export interface SponsoredOpts {
 
 /**
  * ===== EXTENSION POINT (owned by the ads team) =====
- * Sponsored-item injection for the network feed. Returns the organic items
- * unchanged today. The ads team implements this (see services/sponsored.ts →
- * injectSponsored, which has the same signature); sponsored entries must carry
+ * Sponsored-item injection for the network feed. Delegates to the ads team's
+ * services/sponsored.ts → injectSponsored (same signature); sponsored entries carry
  * `sponsored: true` and respect `excludeMerchantIds` (muted shops).
  */
 export async function injectSponsored<T>(items: T[], ctx: AppContext, opts: SponsoredOpts): Promise<(T | adsApi.SponsoredItem)[]> {
-  void ctx;
-  void opts;
-  return items;
+  return injectSponsoredItems(items, ctx, opts);
 }
 
 export async function feed(ctx: AppContext, q: networkApi.FeedQuery, userId: string | null): Promise<networkApi.FeedResponse> {

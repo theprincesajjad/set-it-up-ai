@@ -359,11 +359,13 @@ describe("loyalty program configuration", () => {
 
 describe("customers directory", () => {
   it("searches, filters, adjusts, reverses and exports", async () => {
-    const { merchant, ownerToken, reward } = await createMerchant(env);
-    const staff = await addStaff(merchant.id, "staff");
+    const { merchant, owner } = await createMerchant(env);
     const base = `/v1/merchants/${merchant.id}/customers`;
     const a = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: "+14165551234", customerName: "Alice Nguyen", source: "staff_app", amountCents: 6000 });
     env.clock.now = new Date(env.clock.now.getTime() + 40 * 86400000);
+    // Tokens are minted after the clock moves (access tokens last 1h).
+    const ownerToken = await tokenFor(env, owner);
+    const staff = await addStaff(merchant.id, "staff");
     const b = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: "+14165559876", customerName: "Bob Singh", source: "staff_app", amountCents: 1000 });
     await env.app.inject({ method: "PATCH", url: `${base}/${b.member.id}`, headers: auth(staff.token), payload: { tags: ["Regular"], notes: "Oat milk" } });
 
@@ -401,7 +403,6 @@ describe("customers directory", () => {
     expect(rev.json().balance).toBe(10);
     expect(await ledgerBalance(env.db, a.member.id)).toBe(10);
     expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/activity/${earnTx.id}/reverse`, headers: auth(ownerToken), payload: { reason: "Again" } })).statusCode).toBe(409);
-    void reward;
 
     // Activity feed + CSV exports.
     const act = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/activity?limit=2`, headers: auth(staff.token) })).json();
@@ -415,7 +416,7 @@ describe("customers directory", () => {
     expect(lines).toHaveLength(3);
     expect(csv.body).toContain("Oat milk");
     const txCsv = await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/activity/export.csv`, headers: auth(ownerToken) });
-    expect(txCsv.body.trim().split("\r\n")).toHaveLength(1 + 5); // 2 earns, adjust, reversal + header... checked below
+    expect(txCsv.body.trim().split("\r\n")).toHaveLength(1 + 4); // header + 2 earns, adjust, reversal
     expect(txCsv.body).toContain("reversal");
     const all = await env.db.select().from(ledgerEntries);
     expect(all.reduce((s, e) => s + e.amount, 0)).toBe(0);

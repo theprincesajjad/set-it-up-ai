@@ -1,0 +1,147 @@
+# DRAFT — have a lawyer review
+
+> **DRAFT — have a lawyer review.** Not legal advice. Bracketed items are placeholders. Merchants accept this as a click-through at setup, or the rep collects a signature on the tablet. A plain-language summary appears first on purpose: merchants should be able to read it in two minutes.
+
+# Local Loyalty — Merchant Agreement
+
+Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named in the sign-up form ("Merchant", "you"). Effective on the date you accept.
+
+## Plain-language summary
+
+1. **Free forever.** Everything on the Free plan stays free for as long as you use Local Loyalty:
+   - loyalty points, visits, stamps and items;
+   - the rewards catalog;
+   - promos;
+   - the digital discount card;
+   - the network listing;
+   - the wallet pass;
+   - the customer directory with CSV import and export;
+   - reports;
+   - unlimited staff and unlimited locations;
+   - POS auto-award;
+   - email to opted-in members.
+
+   **We charge no transaction fee on the Free plan.** A Free feature will never be moved to a paid plan.
+2. **You own your customer relationships.** You can export your members and their activity at your shop at any time, free, even if you leave.
+3. **Your points are your promise.** Points customers earn at your shop are issued by you, and you honour them at your shop. **Network bonuses are paid for by us**, never by you.
+4. Paid plans (Plus $39/mo, Pro $79/mo) are optional. They appear only when we launch them in your area, and you can cancel at any time.
+5. You follow the rules on consent, pharmacies, alcohol and fair promos, and we give you the tools to do it.
+
+## 1. The Service and plans
+
+1.1 **Free plan.** We provide the Free plan features listed in Schedule A at no charge, with no transaction fee, for as long as this Agreement is in force. We will not remove a Schedule A feature from the Free plan or make it paid. We may improve or replace a Free feature with an equivalent one.
+- Counsel: the scope of "equivalent"; and whether to commit to a minimum notice period if the whole Service is discontinued (see 11.3).
+
+1.2 **Paid plans.** Plus and Pro subscriptions add operations features such as order-ahead, pickup, SMS, service tickets, quotes, deposits and invoices. They are available only once we launch them for your area. Paid plans:
+- are billed monthly or annually in advance;
+- can be cancelled at any time, effective at the end of the current billing period;
+- have prices shown before purchase;
+- give at least **60 days' notice** of any price increase.
+
+Included SMS allowances are shown on the plan; overage, if any, is shown before you send.
+
+1.3 **In-app payments.** Payments are processed by Stripe under Stripe's own agreement with you. The fees are Stripe's processing fees plus our **0.75% platform fee** on payments processed in the app, and both are shown together. There is no platform fee on the Free plan, which has no payments. You are responsible for refunds, chargebacks and disputes on your sales.
+
+1.4 **Advertising and campaigns.** Sponsored listings, sponsored promos, map pins, nearby push boosts and neighbourhood campaigns are optional. They are prepaid at the rates shown and labelled "Sponsored".
+
+1.5 **Done-for-you setup.** Our rep may configure your program, print a QR counter kit and train your staff. You approve the earn and redeem rules before going live.
+
+## 2. Data and customer relationships
+
+2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions. As between us, **you own Merchant Customer Data.** You can export it at any time in CSV (Free plan). After termination you can export it for [90] days.
+
+2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer's relationship with Local Loyalty and those other shops. You will not see other merchants' data; we will not show your data to other merchants.
+
+2.3 **Our use.** We use Merchant Customer Data to provide the Service, prevent fraud, improve the Service, and create **aggregated, de-identified** statistics, for example street-level visit counts for a BIA report. Those statistics never identify you or any customer, and are reported only in groups of [10] or more. **We do not sell personal information.**
+
+2.4 **Your use and compliance.** When you use Merchant Customer Data, including exports and email or SMS campaigns, you are responsible for complying with privacy law (PIPEDA) and CASL. Only message customers who consented to receive messages from you; our consent and unsubscribe tools are built in, so don't bypass them.
+
+2.5 **Security.** We protect data with reasonable safeguards and host primary data in Canada where practical. We notify you without undue delay of any breach affecting your Merchant Customer Data. Each party is responsible for its own reporting obligations.
+
+2.6 **Processor terms.** Where we process personal information on your behalf, the Data Processing Schedule (Schedule B) applies.
+- Counsel: draft Schedule B; it allocates the controller-like roles.
+
+## 3. Points liability
+
+3.1 **Merchant points.** Points earned at your business are **issued by you**. You are responsible for honouring them at the reward values displayed in the app, according to the Rewards Terms. These include:
+- no expiry;
+- 30 days' notice and a 90-day grandfathering period for adverse changes;
+- honouring rewards shown as available.
+
+3.2 **Network-funded rewards.** Network Rewards are funded by Local Loyalty. Examples are welcome bonuses for visiting several shops on your street, and network perks. When a customer redeems a Network Reward at your shop, we reimburse you **[the retail value shown / the agreed reimbursement rate]** within **[30] days**, by [Stripe transfer or monthly credit].
+- Counsel: the reimbursement mechanics and tax treatment (HST on reimbursed rewards).
+
+3.3 **Campaign points.** Points from BIA or sponsor campaigns are funded by the sponsor under the campaign terms, and you are reimbursed as stated there.
+
+3.4 **Leaving.** If you leave Local Loyalty, you agree to keep honouring your outstanding points for at least **60 days** after we notify your members, which we do for you.
+
+## 4. Your obligations
+
+4.1 Give accurate business information. Keep staff logins secure, one login per staff member. Award points only for genuine purchases or visits.
+
+4.2 **Restricted categories:**
+- **Pharmacies.** Prescriptions, dispensing fees and pharmacy services are configured as no-earn and no-redeem, as required by Ontario pharmacy rules, and you must not override this. The pharmacist or owner confirms the setup in Schedule C.
+- **Alcohol.** Alcohol is no-earn by default at licensed venues. Alcohol promotions must comply with AGCO rules, and no supplier may fund your placements.
+- We do not onboard cannabis, tobacco or vape retailers.
+
+4.3 **Fair promos.** Promos must be truthful, show the material conditions, and be honoured. Contests need official rules; our template includes a skill-testing question and no-purchase entry. Repair quotes and invoices must comply with consumer protection rules on estimates.
+
+4.4 Display the counter kit and ask customers before adding them. No sign-ups without consent.
+
+## 5. Fees and taxes
+
+Free plan: **$0**. Paid plans and ads: as shown, plus applicable taxes (HST). Late paid-plan invoices may suspend *paid* features only, never Free features or your access to your data.
+
+## 6. Intellectual property
+
+We own the platform. You own your brand, logos and content, and you license them to us to display your listing, promos and network map. You may use our marks only in the counter kit and approved materials.
+
+## 7. Warranties and disclaimers
+
+We will provide the Service with reasonable skill and care. Otherwise, to the extent the law allows, the Service is provided "as is". We are not responsible for your products, services, pricing or staff.
+
+## 8. Limitation of liability
+
+To the extent the law allows, neither party is liable for indirect or consequential losses. Each party's total liability is limited to the greater of **$1,000** or the fees you paid us in the prior 12 months. The limit does not apply to:
+- your obligation to honour your points;
+- our obligation to reimburse Network Rewards;
+- breach of the data-protection sections (sections 2.4–2.6);
+- fraud or wilful misconduct.
+
+Counsel: check these caps.
+
+## 9. Indemnity
+
+You indemnify us for third-party claims arising from your products and services, your promos, your messages to customers, or your breach of the restricted-category rules. We indemnify you for third-party claims that the platform, used as permitted, infringes their intellectual property.
+
+## 10. Term and termination
+
+10.1 This Agreement continues until either party ends it. **You may leave at any time** in settings or by email.
+
+10.2 We may suspend or terminate for material breach after **[14] days'** notice and a chance to cure. Immediate suspension is allowed for fraud, illegal activity or risk to customers.
+
+10.3 On termination:
+- sections 2.1 (export window), 3.1, 3.4, 8 and 9 survive;
+- we notify your members and show your points' last redemption date.
+
+## 11. Changes
+
+11.1 We may update this Agreement with **30 days' notice**. Changes never remove Free plan features (section 1.1) or reduce your ownership of your data (section 2.1).
+
+11.2 If you object to a change, you can leave before it takes effect.
+
+11.3 If we discontinue the Service entirely, we give at least **90 days' notice** and keep the export available for that period.
+
+## 12. General
+
+Ontario law and the federal laws of Canada apply, with the courts of Toronto. This Agreement plus its Schedules is the entire agreement. Notices go by email to the addresses on file. Counsel: assignment; force majeure; French-language version for Quebec merchants.
+
+---
+
+**Schedule A — Free-forever features.** Source: `FREE_FOREVER` in `packages/shared/src/plans.ts`; keep the two in sync.
+
+Points per dollar; points per visit; stamp cards; points per item; rewards catalog; VIP levels; welcome bonus; birthday reward; referrals; manual adjustments; no-earn categories; digital discount cards; promos; bonus-point promos; network listing; network perks; Apple & Google Wallet pass; customer directory; CSV export; import & migrate; reports; unlimited staff; unlimited locations; POS auto-award; webhooks & API; email campaigns.
+
+**Schedule B — Data Processing Schedule.** [To draft with counsel.]
+
+**Schedule C — Pharmacy addendum.** No-earn and no-redeem on Rx and pharmacy services; pharmacist-owner confirmation; no health information entered into Local Loyalty. [To draft.]

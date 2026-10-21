@@ -15,6 +15,7 @@ import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { getPayments, platformFeeCents } from "../providers/payments.js";
 import { decodeCursor, encodeCursor, iso, itemLabel, loadMerchant, money, notifyCustomer, paymentsReady, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
+import { requireFeature } from "./features.js";
 import { awardPurchase } from "./ledger.js";
 import { approvedQuoteFor, lineItemDto, priceLineItems } from "./quotes.js";
 import { addTicketEvent, getMerchantTicket } from "./tickets.js";
@@ -150,6 +151,7 @@ export async function payInvoice(ctx: AppContext, inv: Invoice): Promise<service
   if (!merchant) throw notFound("Invoice");
   if (inv.status === "paid") return { invoice: invoiceDto(inv, ctx.config.publicWebUrl), payment: null };
   if (inv.status !== "open") throw conflict(`Invoice is ${inv.status}`);
+  await requireFeature(ctx.db, merchant, "service.invoices");
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   if (inv.amountDueCents < 50) throw badRequest("The balance is too small to pay by card; pay at the counter");
   const payments = getPayments(ctx);
