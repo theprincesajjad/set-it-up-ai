@@ -30,4 +30,6 @@ export interface Providers {
   email: EmailProvider;
   push: PushProvider;
   outbox: Outbox;
+  /** Payments (Stripe Connect + Billing). Optional: use getPayments(ctx) from ./payments.js, which falls back to FakePayments. */
+  payments?: import("./payments.js").PaymentsProvider;
 }

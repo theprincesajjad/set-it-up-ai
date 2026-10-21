@@ -242,6 +242,8 @@ export interface EnsureMemberArgs {
   consent?: ConsentInput | null;
   referredByMemberId?: string | null;
   source?: TxSource;
+  /** Don't post the welcome bonus (e.g. members migrated from another program via CSV import). */
+  skipWelcomeBonus?: boolean;
 }
 
 /** Join a customer to a merchant (idempotent). Applies the welcome bonus once. */
@@ -287,7 +289,7 @@ export async function ensureMember(ctx: AppContext, tx: Tx, args: EnsureMemberAr
   await memberAccount(tx, inserted);
   let member = inserted;
   const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, args.merchantId)).limit(1);
-  if (program?.active && program.welcomeBonus > 0) {
+  if (!args.skipWelcomeBonus && program?.active && program.welcomeBonus > 0) {
     const r = await postTransaction(tx, {
       merchantId: args.merchantId,
       memberId: inserted.id,

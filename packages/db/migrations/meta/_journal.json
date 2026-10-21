@@ -8,6 +8,27 @@
       "when": 1792623129652,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792623897442,
+      "tag": "0001_commerce_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792623925420,
+      "tag": "0002_network_monetization",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792623946210,
+      "tag": "0003_integrations_connectors",
+      "breakpoints": true
     }
   ]
 }

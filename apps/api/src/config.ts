@@ -16,10 +16,11 @@ export interface Config {
   push: { provider: "console" | "expo"; expoAccessToken?: string };
   stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string } };
   square: { appId?: string; appSecret?: string; webhookSignatureKey?: string; environment: "sandbox" | "production" };
-  clover: { appId?: string; appSecret?: string; environment: "sandbox" | "production" };
+  clover: { appId?: string; appSecret?: string; environment: "sandbox" | "production"; webhookAuthCode?: string };
   shopify: { apiKey?: string; apiSecret?: string };
   lightspeed: { clientId?: string; clientSecret?: string };
-  toast: { clientId?: string; clientSecret?: string };
+  toast: { clientId?: string; clientSecret?: string; webhookSecret?: string; apiHost: string };
+  mailchimp: { clientId?: string; clientSecret?: string };
   google: { walletIssuerId?: string; walletServiceAccountJson?: string; placesApiKey?: string };
   apple: { passTypeId?: string; teamId?: string; certPem?: string; keyPem?: string; wwdrPem?: string; keyPassphrase?: string };
 }
@@ -62,10 +63,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       },
     },
     square: { appId: env.SQUARE_APP_ID, appSecret: env.SQUARE_APP_SECRET, webhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY, environment: env.SQUARE_ENV === "production" ? "production" : "sandbox" },
-    clover: { appId: env.CLOVER_APP_ID, appSecret: env.CLOVER_APP_SECRET, environment: env.CLOVER_ENV === "production" ? "production" : "sandbox" },
+    clover: { appId: env.CLOVER_APP_ID, appSecret: env.CLOVER_APP_SECRET, environment: env.CLOVER_ENV === "production" ? "production" : "sandbox", webhookAuthCode: env.CLOVER_WEBHOOK_AUTH_CODE },
     shopify: { apiKey: env.SHOPIFY_API_KEY, apiSecret: env.SHOPIFY_API_SECRET },
     lightspeed: { clientId: env.LIGHTSPEED_CLIENT_ID, clientSecret: env.LIGHTSPEED_CLIENT_SECRET },
-    toast: { clientId: env.TOAST_CLIENT_ID, clientSecret: env.TOAST_CLIENT_SECRET },
+    toast: { clientId: env.TOAST_CLIENT_ID, clientSecret: env.TOAST_CLIENT_SECRET, webhookSecret: env.TOAST_WEBHOOK_SECRET, apiHost: env.TOAST_API_HOST ?? "https://ws-sandbox-api.eng.toasttab.com" },
+    mailchimp: { clientId: env.MAILCHIMP_CLIENT_ID, clientSecret: env.MAILCHIMP_CLIENT_SECRET },
     google: { walletIssuerId: env.GOOGLE_WALLET_ISSUER_ID, walletServiceAccountJson: env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON, placesApiKey: env.GOOGLE_PLACES_API_KEY },
     apple: {
       passTypeId: env.APPLE_PASS_TYPE_ID,

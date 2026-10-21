@@ -227,7 +227,13 @@ export const merchants = pgTable(
     onboardingStep: text("onboarding_step").notNull().default("profile"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeAccountId: text("stripe_account_id"), // Stripe Connect (payments, Plus/Pro)
+    /** Stripe Connect account state, synced from account.updated webhooks. */
+    stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
+    stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
+    stripeDetailsSubmitted: boolean("stripe_details_submitted").notNull().default(false),
     smsCreditsUsed: integer("sms_credits_used").notNull().default(0),
+    /** Send a transactional SMS receipt after each counter award (off by default; costs SMS). */
+    smsReceiptsEnabled: boolean("sms_receipts_enabled").notNull().default(false),
     /** Public API key hash for the merchant webhook/API integration. */
     apiKeyHash: text("api_key_hash"),
     createdAt: createdAt(),
@@ -613,9 +619,25 @@ export const campaigns = pgTable("campaigns", {
   prize: text("prize"),
   priceCents: integer("price_cents").notNull().default(0),
   paidAt: ts("paid_at"),
-  status: text("status").notNull().default("draft"), // draft | scheduled | live | ended
+  status: text("status").notNull().default("draft"), // draft | scheduled | live | ended | cancelled
+  createdBy: uuid("created_by").references(() => users.id),
+  /** Prize draw result (admin). Only masked contact details are ever returned by the API. */
+  winnerUserId: uuid("winner_user_id").references(() => users.id),
+  drawnAt: ts("drawn_at"),
   createdAt: createdAt(),
 });
+
+/** BIA managers: users who may run neighbourhood campaigns for one neighbourhood (platform admins can for all). */
+export const neighbourhoodManagers = pgTable(
+  "neighbourhood_managers",
+  {
+    neighbourhoodId: uuid("neighbourhood_id").notNull().references(() => neighbourhoods.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.neighbourhoodId, t.userId] }), index("neighbourhood_managers_user_idx").on(t.userId)],
+);
 
 export const campaignMerchants = pgTable(
   "campaign_merchants",
@@ -789,9 +811,47 @@ export const webhookEvents = pgTable(
     processedAt: ts("processed_at"),
     error: text("error"),
     attempts: integer("attempts").notNull().default(0),
+    /** received | processed | unmatched | claimed | refunded | ignored | duplicate | failed */
+    status: text("status").notNull().default("received"),
+    /** Provider purchase id (order/sale id) this event resolved to; several events can share one. */
+    purchaseRef: text("purchase_ref"),
+    /** Normalized PurchaseEvent (connectors) kept so unmatched purchases can be claimed later. */
+    purchase: jsonb("purchase").$type<Record<string, unknown>>(),
+    /** Receipt code a customer can enter to claim an unmatched purchase. */
+    claimCode: text("claim_code"),
+    locationId: uuid("location_id"),
+    memberId: uuid("member_id"),
+    transactionId: uuid("transaction_id"),
+    claimedAt: ts("claimed_at"),
+    nextAttemptAt: ts("next_attempt_at"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("webhook_events_uq").on(t.provider, t.externalId)],
+  (t) => [
+    uniqueIndex("webhook_events_uq").on(t.provider, t.externalId),
+    index("webhook_events_merchant_status_idx").on(t.merchantId, t.status),
+    index("webhook_events_claim_idx").on(t.merchantId, t.claimCode),
+  ],
+);
+
+/** Delivery queue for outbound merchant webhooks (signed, retried with backoff). */
+export const outboundWebhookDeliveries = pgTable(
+  "outbound_webhook_deliveries",
+  {
+    id: id(),
+    webhookId: uuid("webhook_id").notNull().references(() => outboundWebhooks.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    /** pending | delivered | failed */
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: ts("next_attempt_at").notNull().defaultNow(),
+    lastStatusCode: integer("last_status_code"),
+    lastError: text("last_error"),
+    deliveredAt: ts("delivered_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("outbound_deliveries_due_idx").on(t.status, t.nextAttemptAt), index("outbound_deliveries_webhook_idx").on(t.webhookId, t.createdAt)],
 );
 
 /** Outgoing webhooks the merchant registers (Zapier, Make, custom). */
@@ -802,6 +862,9 @@ export const outboundWebhooks = pgTable("outbound_webhooks", {
   secret: text("secret").notNull(),
   events: jsonb("events").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
+  /** Optional label (e.g. "Zapier: new member"), and who created it (dashboard | zapier | make | api). */
+  description: text("description"),
+  createdVia: text("created_via").notNull().default("dashboard"),
   createdAt: createdAt(),
 });
 
@@ -852,10 +915,21 @@ export const orders = pgTable(
     pointsEarned: integer("points_earned").notNull().default(0),
     readyAt: ts("ready_at"),
     pickedUpAt: ts("picked_up_at"),
+    /** in_app (Stripe PaymentIntent) | at_pickup (paid at the counter). */
+    paymentMethod: text("payment_method").notNull().default("at_pickup"),
+    /** Client retry key; unique per customer. */
+    idempotencyKey: text("idempotency_key"),
+    paidAt: ts("paid_at"),
+    cancelReason: text("cancel_reason"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("orders_merchant_idx").on(t.merchantId, t.createdAt), index("orders_user_idx").on(t.userId)],
+  (t) => [
+    index("orders_merchant_idx").on(t.merchantId, t.createdAt),
+    index("orders_user_idx").on(t.userId),
+    uniqueIndex("orders_user_idem_uq").on(t.userId, t.idempotencyKey),
+    uniqueIndex("orders_merchant_number_uq").on(t.merchantId, t.number),
+  ],
 );
 
 export const orderItems = pgTable("order_items", {
@@ -979,7 +1053,10 @@ export const bookingSlots = pgTable(
     capacity: integer("capacity").notNull().default(1),
     createdAt: createdAt(),
   },
-  (t) => [index("booking_slots_merchant_idx").on(t.merchantId, t.startsAt)],
+  (t) => [
+    index("booking_slots_merchant_idx").on(t.merchantId, t.startsAt),
+    uniqueIndex("booking_slots_uq").on(t.merchantId, t.locationId, t.kind, t.startsAt),
+  ],
 );
 
 export const bookings = pgTable(
@@ -1037,9 +1114,20 @@ export const adCampaigns = pgTable(
     clicks: integer("clicks").notNull().default(0),
     attributedVisits: integer("attributed_visits").notNull().default(0),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
+    /** pending | paid | invoiced | refunded | failed */
+    paymentStatus: text("payment_status").notNull().default("pending"),
+    paidAt: ts("paid_at"),
+    /** Admin review (approve / reject with reason). */
+    reviewNote: text("review_note"),
+    reviewedAt: ts("reviewed_at"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id),
+    /** Daily-rate campaigns: flight days already accrued (or skipped while paused). */
+    accruedDays: integer("accrued_days").notNull().default(0),
+    /** completed | budget_exhausted | cancelled */
+    endedReason: text("ended_reason"),
     createdAt: createdAt(),
   },
-  (t) => [index("ad_campaigns_status_idx").on(t.status, t.placement)],
+  (t) => [index("ad_campaigns_status_idx").on(t.status, t.placement), index("ad_campaigns_merchant_idx").on(t.merchantId, t.createdAt)],
 );
 
 export const adEvents = pgTable(
@@ -1049,9 +1137,14 @@ export const adEvents = pgTable(
     adCampaignId: uuid("ad_campaign_id").notNull().references(() => adCampaigns.id, { onDelete: "cascade" }),
     userId: uuid("user_id"),
     kind: text("kind").notNull(), // impression | click | visit
+    /** For kind=visit: the attributed visit. */
+    visitId: uuid("visit_id"),
     createdAt: createdAt(),
   },
-  (t) => [index("ad_events_campaign_idx").on(t.adCampaignId, t.createdAt)],
+  (t) => [
+    index("ad_events_campaign_idx").on(t.adCampaignId, t.createdAt),
+    index("ad_events_user_idx").on(t.userId, t.adCampaignId, t.createdAt),
+  ],
 );
 
 // ---------------------------------------------------------------------------

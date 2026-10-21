@@ -1,0 +1,107 @@
+key,value,unit,note
+start_month,2026-11,YYYY-MM,"Model month 1 = Nov 2026 (plan dated Oct 21, 2026)"
+months,36,months,Projection horizon (CSV + workbook)
+extended_months,60,months,Extended run used ONLY to find break-even if it falls after month 36; keeps launching at the last quarter's pace
+starting_cash,0,CAD,Founder starts at $0; peak cash need = money required to bootstrap
+strips_per_quarter,"[0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]",strips/quarter,"Assumption. One pilot strip, then gated growth (PRD: go/no-go gates)"
+launch_order_in_quarter,"[1, 2, 0]",month index,"Assumption: mid, last, first month of quarter"
+strip_potential_merchants,32,merchants/strip,Assumption: 80+ storefronts (PRD strip criterion) x ~55% repeat-visit verticals x ~70% eventually sign
+acquisition_ramp,"[0.25, 0.22, 0.15, 0.1, 0.06, 0.05, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]",share of potential,"Assumption: blitz in first 2 months (2-4 reps per strip, PRD), long tail; sums to 100%"
+activation_rate,0.6000,share of signed,PRD success metric: 60% of signed reach 25 active members
+free_merchant_churn,0.0150,per month,Assumption: business closures + drop-outs; free plan has no switching cost
+members_per_active_merchant,75,active members,PRD success metric (month 6 target)
+membership_fill_speed,0.3500,share of gap closed/month,Assumption: ~6 months to reach target
+shops_per_customer,1.40,shops per active customer,Assumption from PRD target: 30% of customers hold 2+ shops
+customer_churn,0.0400,per month,Assumption: active customers lapsing (drives re-acquisition SMS)
+app_user_share,0.3500,share of active customers,Assumption: most join via wallet pass/phone number and never open the app
+unlock_plus_active_merchants,150,active merchants,plans.ts unlockAtMerchants for Plus features
+plus_features_ready_month,10,model month,Assumption: Phase 2 build done Aug 2027 (PRD months 7-12)
+unlock_pro_active_merchants,150,active merchants,plans.ts unlockAtMerchants for Pro features
+pro_features_ready_month,10,model month,Assumption: Phase 2 build done Aug 2027 (PRD months 7-12)
+unlock_bia_active_merchants,100,active merchants,plans.ts campaigns.neighbourhood unlockAtMerchants
+unlock_ads_active_merchants,400,active merchants,plans.ts ads.* unlockAtMerchants
+ads_ready_month,18,model month,Assumption: ad tooling built by Apr 2028
+mix_food_bev,0.3500,share of merchants,Assumption: daily-visit anchors of a strip
+mix_retail,0.2500,share of merchants,Assumption
+mix_repair_auto,0.2000,share of merchants,Assumption: PRD says lead with repair/auto for revenue
+mix_personal_services,0.1200,share of merchants,Assumption
+mix_pharmacy,0.0800,share of merchants,Assumption
+conv12_food_bev,0.2000,12-month conversion,Assumption: order-ahead/pickup pain is moderate
+conv12_retail,0.1200,12-month conversion,Assumption: SMS + push promos only
+conv12_repair_auto,0.4000,12-month conversion,"Assumption: quote approval/deposits replace phone tag (validate with $100 pilot deposits, PRD)"
+conv12_personal_services,0.1500,12-month conversion,Assumption
+conv12_pharmacy,0.0500,12-month conversion,Assumption: limited by OCP inducement rules
+pro_share_food_bev,0.0500,share Pro,Assumption
+pro_share_retail,0.0500,share Pro,Assumption
+pro_share_repair_auto,0.8500,share Pro,"Assumption: service tickets, quotes, invoices are Pro"
+pro_share_personal_services,0.3000,share Pro,Assumption: drop-off scheduling/permissions
+pro_share_pharmacy,0.00,share Pro,Assumption
+conversion_multiplier,1.00,x,Scenario/sensitivity lever on all conversion rates
+paid_churn,0.0300,per month,PRD assumption (~33-month life); churned payers drop back to Free
+price_plus,39.00,CAD/month,plans.ts PLANS.plus.priceCents = 3900
+price_pro,79.00,CAD/month,plans.ts PLANS.pro.priceCents = 7900
+platform_fee,0.0075,of in-app GMV,plans.ts PLATFORM_PAYMENT_FEE_BPS = 75
+payments_adoption,0.6000,share of payers,Assumption: share of paying merchants using in-app payments
+gmv_plus,2500.00,CAD/month,Assumption: order-ahead volume per Plus merchant using payments
+gmv_pro,6000.00,CAD/month,"Assumption: deposits + invoices per Pro merchant (PRD used $4,000 blended)"
+avg_ticket,35.00,CAD,Assumption: average in-app payment (for merchant fee comparison only)
+stripe_pct,0.0290,of GMV,"Stripe CA domestic online card rate 2.9% (PRD, via Xero) — paid by merchant"
+stripe_fixed,0.3000,CAD/txn,Stripe CA C$0.30 per txn (PRD) — paid by merchant
+connect_pct,0.0025,of GMV,Assumption: Stripe Connect platform cost if we pick platform-paid pricing (US list 0.25% + payout fees); VERIFY CAD pricing
+connect_account_fee,2.00,CAD/active account/month,Assumption: Stripe Connect active-account fee; VERIFY
+billing_pct,0.0340,of subscription revenue,Assumption: 2.9% card + ~0.5% Stripe Billing; VERIFY
+billing_fixed,0.3000,CAD/invoice,Stripe CA C$0.30 per card txn (PRD)
+sms_rate,0.0220,CAD/segment,"Twilio CA outbound US$0.0079-0.0083/segment (twilio.com/en-us/sms/pricing/ca, Oct 2026) + carrier fees ~US$0.0064-0.0087 (third-party estimate) = ~US$0.016 x FX 1.38 (assumption); VERIFY before launch"
+sms_used_plus,300,SMS/month,Assumption: 60% of Plus allowance (plans.ts smsPerMonth = 500)
+sms_used_pro,900,SMS/month,Assumption: 60% of Pro allowance (plans.ts smsPerMonth = 1500)
+otp_sms_per_new_customer,1.50,SMS,Assumption: phone-number join verification + welcome
+txn_sms_per_customer,0.3000,SMS/month,Assumption: reward-ready / receipt texts on Free
+infra_per_merchant,1.00,CAD/month,"Assumption: DB, storage, wallet pass updates, email"
+infra_per_customer,0.0100,CAD/month,Assumption: per active customer hosting + push
+support_hourly,25.00,CAD/hr,"Assumption: blended support cost (founder time is free, see fixed costs)"
+support_min_free,5,min/merchant/month,Assumption
+support_min_paid,15,min/merchant/month,Assumption: extra support for ops features
+perk_qualify_rate,0.1500,of new customers,Assumption: share hitting 'visit 3 shops on the strip'
+perk_value,3.00,CAD,Assumption: platform-funded bonus value
+perk_redeem_rate,0.6000,share redeemed,Assumption (cost booked when earned x expected redemption)
+sessions_per_app_user,6,sessions/month,Assumption
+ad_slots_per_session,2,slots,Assumption: 1 feed slot + 1 search/map slot
+ad_fill_rate,0.2000,share of slots sold,"Assumption: small local inventory, self-serve"
+ad_cpm,12.00,"CAD per 1,000 impressions",Assumption: hyper-local intent; see unit-economics.md rate card
+pin_adoption,0.0300,share of active merchants,Assumption: featured map pin buyers each month
+pin_price_month,75.00,CAD/month,Assumption: ~$2.50/day rate card
+boost_adoption,0.0400,share of active merchants,Assumption: nearby push boost buyers each month
+boosts_per_buyer,2,boosts/month,Assumption
+boost_price,25.00,CAD/boost,Assumption
+ads_ramp_months,6,months,Assumption: linear ramp to full demand after ads unlock
+ads_ops_pct,0.1000,of ad revenue,"Assumption: creative help, moderation, ad serving"
+strip_maturity_months,6,months,Assumption: a strip can sell a campaign 6 months after launch
+bia_campaigns_per_strip_year,1.00,campaigns/mature strip/year,Assumption
+bia_price,2250.00,CAD/campaign,"Midpoint of founder's $1,500-3,000 range"
+bia_cost_pct,0.3000,of campaign revenue,"Assumption: prize basket, print, rep hours"
+rep_wage,17.95,CAD/hr,"Ontario general minimum wage from Oct 1, 2026 (Hicks Morley, cited in PRD)"
+wage_indexation,0.0250,per year (each Oct 1),Assumption: Ontario indexes min wage to CPI every Oct 1
+payroll_burden,0.1300,of wages,Assumption: 4% vacation pay + CPP ~5.95% + EI ~2.3% + WSIB ~1%; VERIFY
+rep_hours_per_signup,2.50,paid hours/signed merchant,PRD: ~3 activations per 6-hour shift (2h) + 0.5h prospecting and day-7/30 calls
+activation_bonus,25.00,CAD/activated merchant,PRD: bonus at 25 active members (paid on top of wage)
+kit_cost,15.00,CAD/signed merchant,PRD: QR counter stand + print
+strip_launch_cost,750.00,CAD/strip,"Assumption: passport week prizes, flyers, launch event"
+upsell_cost,50.00,CAD/conversion,PRD: upsell bonus / onboarding of paid features
+cac_multiplier,1.00,x,Scenario/sensitivity lever on all acquisition spend
+fixed_hosting_base,250.00,CAD/month,"Assumption: managed DB, hosting, monitoring (Canadian region)"
+fixed_saas_tools,250.00,CAD/month,"Assumption: email, design, CRM, Google Workspace"
+fixed_insurance,150.00,CAD/month,Assumption: CGL + cyber/privacy liability
+fixed_accounting,250.00,CAD/month,Assumption: bookkeeping + year-end
+fixed_app_stores,15.00,CAD/month,"Apple Developer US$99/yr + Google Play one-time US$25, amortised"
+fixed_phone_misc,100.00,CAD/month,Assumption
+fixed_marketing,300.00,CAD/month,"Assumption: baseline brand, social, local press"
+fixed_legal_reserve,150.00,CAD/month,Assumption: ongoing legal/compliance reserve
+dev_monthly_y1,4000.00,CAD/month,"PRD: part-time contract developer ~$4,000/mo"
+dev_monthly_y2,5000.00,CAD/month,Assumption: more hours for Phase 2 (ops features)
+dev_monthly_y3,6000.00,CAD/month,"Assumption: Phase 3 (ads, campaigns)"
+merchants_per_cs,1000,active merchants per account-manager hire,Assumption: founder covers it until then
+cs_monthly_cost,4200.00,CAD/month,"Assumption: one part-time account/BIA manager, loaded"
+founder_salary,0.00,CAD/month,Founder takes no salary initially (founder's model)
+founder_salary_start_month,999,model month,Never within horizon in base case
+founder_target_salary,5000.00,CAD/month,Assumption: 'ramen' salary used only for a reported metric
+one_time_costs,"{1: 3500.0, 2: 1500.0, 3: 3000.0}",CAD by month,Assumption: m1 incorporation + employment-lawyer call; m2 trademark/domain; m3 lawyer review of ToS/privacy/merchant agreement

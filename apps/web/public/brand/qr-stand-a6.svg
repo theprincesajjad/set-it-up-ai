@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="105mm" height="148mm" viewBox="0 0 105 148" role="img" aria-labelledby="title">
+  <title id="title">Counter QR stand: Scan to join</title>
+  <!--
+    Counter QR stand, A6 portrait (105 x 148 mm). Prints on 4x6" with "fit to page".
+    Units are millimetres. Template fields (replace text content, keep ids):
+      #shop-name     {{SHOP_NAME}}     <= 20 chars at font-size 8; 21-30 chars set font-size 6; longer: use the short name
+      #street-1      {{SHOP_NAME}} inside "earn points at ..." (max 28 chars, else use "here")
+      #street-2      {{STREET_NAME}}   e.g. "Roncesvalles", "the Danforth" (max 22 chars)
+      #join-url      {{JOIN_URL}}      short URL without https://, e.g. local.example/j/K7Q4
+      #qr-slot       replace the whole <g> with the QR as <path> or <image>, 50 x 50 mm,
+                     black on white, error correction M, >= 4 mm quiet zone (the white card gives 4 mm)
+    Keep every element inside the 6 mm safe margin. Background bands are full-bleed;
+    for a print shop add 3 mm bleed by extending the bands.
+  -->
+  <defs>
+    <clipPath id="awning">
+      <!-- 8 scallops of 13.125 mm across the top -->
+      <path d="M0 0h105v16a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0a6.5625 6.5625 0 0 1-13.125 0z"/>
+    </clipPath>
+  </defs>
+
+  <!-- paper -->
+  <rect width="105" height="148" fill="#FAF6EF"/>
+
+  <!-- awning across the top -->
+  <g clip-path="url(#awning)">
+    <rect width="105" height="24" fill="#F5A524"/>
+    <rect x="13.125" width="13.125" height="24" fill="#FDDA8E"/>
+    <rect x="39.375" width="13.125" height="24" fill="#FDDA8E"/>
+    <rect x="65.625" width="13.125" height="24" fill="#FDDA8E"/>
+    <rect x="91.875" width="13.125" height="24" fill="#FDDA8E"/>
+  </g>
+
+  <g font-family="Figtree, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" text-anchor="middle">
+    <!-- shop name -->
+    <text id="shop-name" x="52.5" y="35" font-size="8" font-weight="700" fill="#1F1B16">{{SHOP_NAME}}</text>
+
+    <!-- headline -->
+    <text x="52.5" y="48" font-size="11" font-weight="700" fill="#1F6A50" letter-spacing="-0.15">Scan to join</text>
+
+    <!-- sub copy -->
+    <text x="52.5" y="55" font-size="4.2" font-weight="500" fill="#1F1B16">earn points at <tspan id="street-1" font-weight="700">{{SHOP_NAME}}</tspan></text>
+    <text x="52.5" y="60.5" font-size="4.2" font-weight="500" fill="#1F1B16">and every shop on <tspan id="street-2" font-weight="700">{{STREET_NAME}}</tspan></text>
+  </g>
+
+  <!-- QR card: white, 58 mm, 4 mm quiet zone -->
+  <rect x="23.5" y="66" width="58" height="58" rx="3" fill="#FFFFFF" stroke="#E7DFD2" stroke-width="0.4"/>
+  <g id="qr-slot">
+    <rect x="27.5" y="70" width="50" height="50" fill="none" stroke="#857867" stroke-width="0.4" stroke-dasharray="2 1.5"/>
+    <text x="52.5" y="96.5" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="5" fill="#857867" text-anchor="middle">QR 50 x 50 mm</text>
+  </g>
+
+  <g font-family="Figtree, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" text-anchor="middle">
+    <text x="52.5" y="130.5" font-size="3.6" font-weight="600" fill="#1F1B16">No app needed · Free · Takes 30 seconds</text>
+    <text x="52.5" y="135.5" font-size="3.3" font-weight="500" fill="#655A4C">No phone camera? Just tell us your number.</text>
+  </g>
+
+  <!-- footer band -->
+  <rect y="139" width="105" height="9" fill="#1F6A50"/>
+  <!-- mini mark, 6 mm -->
+  <g transform="translate(8 140.5) scale(0.09375)">
+    <rect x="6" y="10" width="52" height="48" rx="12" fill="#FAF6EF"/>
+    <path d="M6 22a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v2a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0z" fill="#F5A524"/>
+    <path d="M24 58V44a8 8 0 0 1 16 0v14z" fill="#1F6A50"/>
+  </g>
+  <text x="15.5" y="144.8" font-family="Figtree, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="3.2" font-weight="700" fill="#FAF6EF">Local Loyalty</text>
+  <text id="join-url" x="97" y="144.8" font-family="Figtree, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="3.2" font-weight="500" fill="#FAF6EF" text-anchor="end">{{JOIN_URL}}</text>
+</svg>

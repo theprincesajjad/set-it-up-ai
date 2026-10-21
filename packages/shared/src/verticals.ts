@@ -73,7 +73,8 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
       { name: "Free appetizer", pointsCost: 250, rewardType: "free_item", value: 0 },
       { name: "$10 off", pointsCost: 500, rewardType: "amount_off", value: 1000 },
     ],
-    categories: [{ name: "Food", earnEligible: true, discountEligible: true }, { name: "Alcohol", earnEligible: true, discountEligible: false }],
+    // Ontario AGCO rules restrict alcohol inducements; keep alcohol off points and rewards.
+    categories: [{ name: "Food", earnEligible: true, discountEligible: true }, { name: "Alcohol", earnEligible: false, discountEligible: false }],
     upsellPlan: "plus",
   },
   bakery: {
@@ -112,7 +113,10 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     rewards: [{ name: "$5 off", pointsCost: 500, rewardType: "amount_off", value: 500 }],
     categories: [
       { name: "Groceries", earnEligible: true, discountEligible: true },
-      { name: "Tobacco & lottery", earnEligible: false, discountEligible: false },
+      { name: "Tobacco, vapes & lottery", earnEligible: false, discountEligible: false },
+      { name: "Alcohol", earnEligible: false, discountEligible: false },
+      { name: "Gift & prepaid cards", earnEligible: false, discountEligible: false },
+      { name: "Bill payments & transit", earnEligible: false, discountEligible: false },
     ],
     upsellPlan: "plus",
   },
