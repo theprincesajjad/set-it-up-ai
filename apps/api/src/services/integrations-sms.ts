@@ -2,15 +2,15 @@
  * Inbound SMS keywords (Twilio webhook). CASL/CTIA: STOP must stop all
  * promotional texts immediately; HELP must answer with who we are.
  *
- * The messaging team owns the full handler; until `handleInboundSms` exists
- * in services/messaging*.ts this local version is used: STOP sets muted=true
- * and clears marketing consent on every membership of that phone; START
- * un-mutes (consent must be given again before promos resume).
+ * `handleInboundSmsLocal` was written before the messaging team's
+ * `handleInboundSms` existed; it is still used for START (and kept as a
+ * self-contained reference implementation of STOP/HELP).
  */
 import { eq, inArray } from "drizzle-orm";
 import { merchantMembers, users } from "@ll/db";
 import { BRAND, normalizePhone } from "@ll/shared";
 import type { AppContext } from "../context.js";
+import { handleInboundSms } from "./messaging.js";
 
 export const STOP_WORDS = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "ARRET", "ARRÊT", "REVOKE", "OPTOUT"]);
 export const START_WORDS = new Set(["START", "UNSTOP", "YES", "SUBSCRIBE"]);
@@ -54,10 +54,14 @@ export async function handleInboundSmsLocal(ctx: AppContext, from: string, body:
 }
 
 /**
- * Route entry point. Uses the local handler until the messaging team's
- * `handleInboundSms` lands; then switch this one call.
+ * Route entry point. The messaging team's `handleInboundSms` (services/messaging.ts)
+ * owns STOP/HELP (consent withdrawal + audit log). START isn't handled there, so
+ * it falls through to the local handler (un-mute only; consent must be re-given).
  */
 export async function dispatchInboundSms(ctx: AppContext, from: string, body: string): Promise<{ reply: string | null }> {
-  const r = await handleInboundSmsLocal(ctx, from, body);
-  return { reply: r.reply };
+  const phone = normalizePhone(from) ?? from;
+  const r = await handleInboundSms(ctx, phone, body);
+  if (r.action !== "none") return { reply: r.reply };
+  const local = await handleInboundSmsLocal(ctx, phone, body);
+  return { reply: local.reply };
 }

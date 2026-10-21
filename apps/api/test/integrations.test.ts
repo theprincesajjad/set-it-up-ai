@@ -321,7 +321,7 @@ describe("POS webhook pipeline (Square)", () => {
     await connectSquare(m);
     let fail = true;
     const base = fakeFetch(squareRoutes({ phone: m.phone }));
-    setHttp(env.ctx, (async (input: RequestInfo | URL, init?: RequestInit) => {
+    setHttp(env.ctx, (async (input: string | URL | Request, init?: RequestInit) => {
       if (fail && String(input).includes("/v2/orders/")) return new Response("{}", { status: 503 });
       return base(input, init);
     }) as typeof fetch);
