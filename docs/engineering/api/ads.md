@@ -68,7 +68,7 @@ Body (`createAdCampaignBody`):
 | Field | Notes |
 | --- | --- |
 | `placement` | `feed_top`, `search_top`, `map_pin`, `promo_boost`, `nearby_push` |
-| `pricingModel` | `daily` (flat, rate × flight days) or `cpm`. `nearby_push` is CPM-only. |
+| `pricingModel` | `daily` (flat, rate × flight days) or `cpm`. `promo_boost` and `nearby_push` are CPM-only; `map_pin` is daily-only (`400` otherwise). |
 | `promoId?` | Boost one of your own live, network-audience promos. Required for `promo_boost`. Its title/body/image fill in missing creative. |
 | `headline?` `body?` `imageUrl?` | Headline 3–80 chars (required unless `promoId`), body ≤280. |
 | `neighbourhoodIds[]` / `radiusMetres?` | At least one. Radius (200–10,000 m) is measured from your locations and needs a location with coordinates. |
@@ -101,7 +101,8 @@ Query: `status` (default `pending_review`), `limit`, `cursor`. → `{ items: Adm
 → `AdminAdCampaign` / `AdReport`.
 
 ### `POST /v1/admin/ads/:id/approve`
-Body `{ note? }`. pending_review → active (serves from `startsAt`). Errors: `409` not pending / flight over.
+Body `{ note? }`. pending_review → active (serves from `startsAt`). Errors: `409` not pending / flight over /
+map pins sold out (max 3 live per neighbourhood over overlapping dates).
 
 ### `POST /v1/admin/ads/:id/reject`
 Body `{ reason }` (3–500 chars, shown to the merchant as `reviewNote`). pending_review → rejected.

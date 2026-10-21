@@ -12,30 +12,34 @@ sell attention on that network to the shops on it (sponsored placements) and to 
 All four feature keys ship `hidden`. An admin flips them (`hidden → beta → ga`) when the gates are met.
 Nothing is sold, shown or billed before that; merchant endpoints return `402 feature_locked`.
 
-| Feature key | Gate to `beta` (opted-in shops) | Gate to `ga` |
+| Feature key | Network gate (`unlockAtMerchants` in plans.ts) | Per-neighbourhood gate (ops check before selling on a strip) |
 | --- | --- | --- |
-| `campaigns.neighbourhood` | Pilot strip has ≥ 25 activated shops and ≥ 1,000 members holding a card at 2+ shops on the strip | 3 strips meeting the beta gate; one pilot campaign report shows positive visit lift |
-| `ads.sponsored_listing` (feed/search) | ≥ 400 active merchants network-wide (`unlockAtMerchants`) and ≥ 10,000 monthly active customers | ≥ 30 days of beta with organic engagement (feed opens per user) not down vs. the prior 30 days |
-| `ads.sponsored_promo` (promo boost, nearby push) | Same as sponsored listing | Same, plus push opt-out rate on sponsored pushes < 2% |
-| `ads.map_pin` | Same as sponsored listing | Same as sponsored listing |
+| `campaigns.neighbourhood` | 100 active merchants (finance recommends 0, gated per strip only) | Strip live ≥ 6 months, ≥ 20 active merchants, ≥ 1,500 active customers, ≥ 25% multi-shop customers |
+| `ads.sponsored_listing`, `ads.sponsored_promo`, `ads.map_pin` | 300 active merchants | ≥ 20,000 app sessions/month on the strip, ≥ 30% multi-shop customers, ≥ 25 active merchants |
 
-Per strip: we don't sell ads on a strip with fewer than 15 active shops, because a feed that's 20% ads with 10 shops
-reads as an ad wall. (Ops rule today; admins approve campaigns per strip in the review queue.)
+Source: `docs/finance/unit-economics.md` §4. Move `beta → ga` after 30 days of beta with organic engagement (feed opens
+per user) not down vs. the prior 30 days and a sponsored-push opt-out rate under 2%.
+
+The per-neighbourhood gates are an ops check today (admins approve every campaign in the review queue). Finance proposes
+an optional `unlockPerNeighbourhood` on `FeatureDef`; when it lands, `selectSponsored` and campaign creation should
+enforce it.
 
 Platform admins can run pilot BIA campaigns while `campaigns.neighbourhood` is hidden; pilot shops still need a
 per-merchant feature override to opt in themselves (or the admin adds them).
 
 ## 2. Sponsored placements
 
-| Placement | Where it shows | Feature | Daily flat | CPM |
-| --- | --- | --- | --- | --- |
-| `feed_top` | Neighbourhood feed (interleaved) | sponsored_listing | $15/day | $12 |
-| `search_top` | Search results (interleaved) | sponsored_listing | $10/day | $10 |
-| `map_pin` | Highlighted pin on the network map | map_pin | $8/day | $6 |
-| `promo_boost` | Boosts an existing network promo in the feed | sponsored_promo | $12/day | $10 |
-| `nearby_push` | One push to the shop's own consenting members nearby | sponsored_promo | CPM only | $40 |
+| Placement | Where it shows | Feature | Daily flat | CPM | Inventory |
+| --- | --- | --- | --- | --- | --- |
+| `feed_top` | Neighbourhood feed (interleaved) | sponsored_listing | $5/day per strip | $12 | 1 per 5 organic |
+| `search_top` | Search results (interleaved) | sponsored_listing | $5/day per strip | $12 | 1 per 5 organic |
+| `map_pin` | Highlighted pin on the network map | map_pin | $2.50/day | (daily only) | **max 3 live per neighbourhood** |
+| `promo_boost` | Boosts an existing network promo in the feed | sponsored_promo | (CPM only) | $15, $25 minimum | 1 per 5 organic |
+| `nearby_push` | Push to the shop's own consenting members nearby | sponsored_promo | (CPM only) | $25 per 1,000 = "$25 per boost" | 1 sponsored push per customer per 7 days |
 
-Source of truth: `AD_RATE_CARD` in `packages/shared/src/api/ads.ts`. All CAD, pre-tax.
+Prices follow `docs/finance/unit-economics.md` §6. Source of truth in code: `AD_RATE_CARD` / `AD_RULES` in
+`packages/shared/src/api/ads.ts`. All CAD, pre-tax. Finance's reality check applies: impression inventory is small at
+Toronto scale, so reps lead with map pins and push boosts (priced per merchant), not CPM.
 
 ### Pricing logic: flat rate now, auction later
 
@@ -62,9 +66,10 @@ Source of truth: `AD_RATE_CARD` in `packages/shared/src/api/ads.ts`. All CAD, pr
 6. **Even pacing.** CPM campaigns may only have spent `budget × (elapsed share of flight + 1 hour)` at any moment, so
    budget spreads across the flight instead of burning in the first morning.
 7. **Diversity.** One campaign per advertiser per response.
-8. **Boosted promos** stop serving when the promo ends.
-9. **Nearby push** (CASL): only to the advertiser's own members with marketing consent for that shop who haven't muted
-   it; at most one push per customer per campaign, ever, and one sponsored push per customer per 24 hours across all
+8. **Scarce pins.** An admin can't approve a 4th featured map pin overlapping the same dates in a neighbourhood.
+9. **Boosted promos** stop serving when the promo ends.
+10. **Nearby push** (CASL): only to the advertiser's own members with marketing consent for that shop who haven't muted
+   it; at most one push per customer per campaign, ever, and one sponsored push per customer per 7 days across all
    campaigns. The push names the shop, says "Sponsored", and tells the customer how to stop them.
 
 ### Review
@@ -99,14 +104,15 @@ A street-wide event run through the app, sold to the BIA (one invoice instead of
 Bonus points are funded by the network (`network_issued` ledger account), so shops never pay for the points they hand out.
 We price the campaign so the bonus liability is covered by the fee.
 
-| Package | Mechanic | Default length | Default goal | Price |
-| --- | --- | --- | --- | --- |
-| **Passport week** | Visit N different participating shops → entered in a prize draw (prize basket donated by shops). Optional bonus points per new shop. | 7 days | 5 shops | $1,500 |
-| **Points weekend** | Street-wide multiplier (e.g. double points) at every participating shop, plus optional per-shop bonus | 3 days | 3 shops | $2,000 |
-| **Street-wide multiplier** | Longer multiplier event (e.g. "triple points fortnight") | 14 days | 5 shops | $3,000 |
+| Package | Kind | Mechanic | Default length | Default goal | Price |
+| --- | --- | --- | --- | --- | --- |
+| **Bronze: points weekend** | `points_weekend` | Street-wide multiplier (e.g. double points) at every participating shop, optional per-shop bonus | 3 days | 3 shops | $1,500 |
+| **Silver: passport week** | `passport` | Visit 5 different participating shops → entered in a prize draw (basket donated by shops); optional per-shop bonus | 7 days | 5 shops | $2,250 |
+| **Gold: street multiplier** | `multiplier` | Two-week multiplier event (e.g. triple points) | 14 days | 5 shops | $3,000 |
 
-Source of truth: `CAMPAIGN_PACKAGES` in `packages/shared/src/api/campaigns.ts`. Admins can price custom campaigns
-($1,500–3,000 typical); BIA managers always get the package price.
+Prices follow `docs/finance/unit-economics.md` §6 (sell as a spring + holiday pair at 10% off; that discount is applied
+by an admin setting `priceCents`). Source of truth in code: `CAMPAIGN_PACKAGES` in `packages/shared/src/api/campaigns.ts`.
+BIA managers always get the package price; only admins set custom prices.
 
 ### Rules
 
@@ -117,7 +123,8 @@ Source of truth: `CAMPAIGN_PACKAGES` in `packages/shared/src/api/campaigns.ts`. 
   `base points × (multiplier − 1)` on every visit, after the shop's own promos. Both idempotent.
 - **No-earn categories never earn** (the multiplier applies to earned points only).
 - **Completion:** reaching the goal enters the customer in the prize draw.
-- **Prize draw:** after the campaign ends, an admin draws a uniformly random completed participant. The API returns only
+- **Prize draw:** run as a skill-testing contest (Canadian contest law): the winner must answer a skill-testing
+  question before the prize is released; we administer that offline. After the campaign ends, an admin draws a uniformly random completed participant. The API returns only
   first name and masked phone; we contact the winner, the BIA never gets the customer list.
 - **Payment:** BIA managers can't schedule a campaign until it's paid (admins can run unpaid pilots).
 
@@ -126,6 +133,9 @@ Source of truth: `CAMPAIGN_PACKAGES` in `packages/shared/src/api/campaigns.ts`. 
 Visits during the campaign vs. the same-length window immediately before it, at the same participating shops; unique
 customers; new members; per-shop breakdown; participants and completions; bonus points issued. Aggregates only: no names,
 phones or customer IDs leave the platform. This report is the renewal pitch for the next campaign.
+
+Finance's Silver package also mentions lift "versus the prior 4 weeks"; the report uses a same-length baseline (a 7-day
+campaign vs. the 7 days before it) so weekday mix matches. A 4-week weekly average is a candidate addition.
 
 ## 4. Roles
 

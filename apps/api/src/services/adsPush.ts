@@ -5,7 +5,7 @@
  * the advertiser's own members who gave that merchant marketing consent and
  * haven't muted it. On top of that, to keep it from feeling spammy:
  *  - each customer gets at most one push per campaign, ever;
- *  - each customer gets at most one sponsored push per 24 hours across all campaigns;
+ *  - each customer gets at most one sponsored push per AD_RULES.pushCooldownDays (7) days across all campaigns;
  *  - targeting: the customer's home neighbourhood must be one the campaign
  *    targets (radius-only campaigns reach the advertiser's consenting members);
  *  - every push names the merchant, is labelled "Sponsored" and says how to opt out.
@@ -13,6 +13,7 @@
  */
 import { and, eq, gte, inArray, isNotNull, lte, gt } from "drizzle-orm";
 import { adCampaigns, adEvents, merchantMembers, merchants, pushTokens, users } from "@ll/db";
+import { adsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { DAY_MS, isServing, pacedSpendLimit, trackImpression } from "./ads.js";
 
@@ -46,16 +47,16 @@ export async function deliverNearbyPushes(ctx: AppContext): Promise<{ sent: numb
     const alreadyThisCampaign = new Set(
       (await ctx.db.select({ userId: adEvents.userId }).from(adEvents).where(and(eq(adEvents.adCampaignId, ad.id), eq(adEvents.kind, "impression"), inArray(adEvents.userId, ids)))).map((r) => r.userId),
     );
-    const pushedToday = new Set(
+    const pushedRecently = new Set(
       (
         await ctx.db
           .select({ userId: adEvents.userId })
           .from(adEvents)
           .innerJoin(adCampaigns, eq(adCampaigns.id, adEvents.adCampaignId))
-          .where(and(eq(adCampaigns.placement, "nearby_push"), eq(adEvents.kind, "impression"), gte(adEvents.createdAt, new Date(now.getTime() - DAY_MS)), inArray(adEvents.userId, ids)))
+          .where(and(eq(adCampaigns.placement, "nearby_push"), eq(adEvents.kind, "impression"), gte(adEvents.createdAt, new Date(now.getTime() - adsApi.AD_RULES.pushCooldownDays * DAY_MS)), inArray(adEvents.userId, ids)))
       ).map((r) => r.userId),
     );
-    const eligible = ids.filter((id) => !alreadyThisCampaign.has(id) && !pushedToday.has(id));
+    const eligible = ids.filter((id) => !alreadyThisCampaign.has(id) && !pushedRecently.has(id));
     if (!eligible.length) continue;
     const tokens = await ctx.db.select({ userId: pushTokens.userId, token: pushTokens.token }).from(pushTokens).where(inArray(pushTokens.userId, eligible));
     const byUser = new Map<string, string[]>();

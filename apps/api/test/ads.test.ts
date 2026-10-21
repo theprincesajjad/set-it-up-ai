@@ -133,7 +133,7 @@ describe("ads: self-serve and review", () => {
       method: "POST",
       url: `/v1/merchants/${s.shop.merchant.id}/ads`,
       headers: auth(s.shop.ownerToken),
-      payload: adBody(s.hood.id, { placement: "promo_boost", promoId: promo!.id, headline: undefined }),
+      payload: adBody(s.hood.id, { placement: "promo_boost", pricingModel: "cpm", budgetCents: 2500, promoId: promo!.id, headline: undefined }),
     });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toMatchObject({ headline: "2-for-1 lattes", promoId: promo!.id });
@@ -144,9 +144,20 @@ describe("ads: self-serve and review", () => {
       method: "POST",
       url: `/v1/merchants/${s.shop.merchant.id}/ads`,
       headers: auth(s.shop.ownerToken),
-      payload: adBody(s.hood.id, { placement: "promo_boost", promoId: foreign!.id }),
+      payload: adBody(s.hood.id, { placement: "promo_boost", pricingModel: "cpm", budgetCents: 2500, promoId: foreign!.id }),
     });
     expect(bad.statusCode).toBe(404);
+  });
+
+  it("sells at most 3 featured map pins per neighbourhood at a time", async () => {
+    await enableAds();
+    const s = await setup();
+    const cpmPin = await env.app.inject({ method: "POST", url: `/v1/merchants/${s.shop.merchant.id}/ads`, headers: auth(s.shop.ownerToken), payload: adBody(s.hood.id, { placement: "map_pin", pricingModel: "cpm", budgetCents: 5000 }) });
+    expect(cpmPin.statusCode).toBe(400); // pins are sold by the day
+    for (let i = 0; i < 3; i++) expect((await createAndApprove(s, { placement: "map_pin" })).status).toBe("active");
+    const fourth = await env.app.inject({ method: "POST", url: `/v1/merchants/${s.shop.merchant.id}/ads`, headers: auth(s.shop.ownerToken), payload: adBody(s.hood.id, { placement: "map_pin" }) });
+    const blocked = await env.app.inject({ method: "POST", url: `/v1/admin/ads/${fourth.json().id}/approve`, headers: auth(s.adminToken), payload: {} });
+    expect(blocked.statusCode).toBe(409);
   });
 
   it("lets the merchant pause, resume and cancel", async () => {
@@ -198,8 +209,8 @@ describe("ads: tracking, attribution and reporting", () => {
     const r = rep.json() as adsApi.AdReport;
     expect(r).toMatchObject({ impressions: 3, clicks: 1, attributedVisits: 1, uniqueUsersReached: 1 });
     expect(r.ctr).toBeCloseTo(1 / 3, 3);
-    expect(r.spentCents).toBe(3 * 1500); // day 3 of the flight has begun
-    expect(r.costPerVisitCents).toBe(4500);
+    expect(r.spentCents).toBe(3 * ad.rateCents); // day 3 of the flight has begun
+    expect(r.costPerVisitCents).toBe(3 * ad.rateCents);
     expect(r.daily.reduce((n, d) => n + d.visits, 0)).toBe(1);
   });
 

@@ -54,7 +54,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
       }
     } else googleReason = "Google Wallet is not configured on this server";
     let downloadUrl: string | null = null;
-    if (!appleMissing.length) downloadUrl = `${ctx.config.publicApiUrl}/v1/wallet/apple/download/${signDownloadToken(ctx, u.id).token}`;
+    if (!appleMissing.length) downloadUrl = `${ctx.config.publicApiUrl}/v1/wallet/apple/download?token=${encodeURIComponent(signDownloadToken(ctx, u.id).token)}`;
     return {
       summary,
       apple: { available: !appleMissing.length, downloadUrl, reason: appleMissing.length ? `Apple Wallet is not configured (missing ${appleMissing.join(", ")})` : null },
@@ -74,7 +74,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
       throw new HttpError(503, "wallet_not_configured", `Apple Wallet passes aren't available on this server yet (missing ${missing.join(", ")}).`, { missing });
     }
     const { token, expiresAt } = signDownloadToken(ctx, u.id);
-    return { url: `${ctx.config.publicApiUrl}/v1/wallet/apple/download/${token}`, expiresAt: expiresAt.toISOString() };
+    return { url: `${ctx.config.publicApiUrl}/v1/wallet/apple/download?token=${encodeURIComponent(token)}`, expiresAt: expiresAt.toISOString() };
   });
 
   app.get("/me/wallet/google", async (req) => {
@@ -83,8 +83,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
 
   // Short-lived signed link: Safari opens it directly and offers "Add to Apple Wallet".
-  app.get("/wallet/apple/download/:token", async (req, reply) => {
-    const userId = verifyDownloadToken(ctx, (req.params as { token: string }).token);
+  app.get("/wallet/apple/download", async (req, reply) => {
+    const userId = verifyDownloadToken(ctx, String((req.query as { token?: string }).token ?? ""));
     if (!userId) throw new HttpError(401, "link_expired", "This wallet link expired. Open your card again to get a new one.");
     return sendPass(ctx, reply, userId);
   });

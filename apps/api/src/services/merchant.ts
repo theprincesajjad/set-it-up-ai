@@ -318,9 +318,11 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
         plan: "free",
         repUserId: args.repUserId ?? null,
         onboardingStep: "profile",
+        createdAt: ctx.now(),
+        updatedAt: ctx.now(),
       })
       .returning();
-    await tx.insert(merchantStaff).values({ merchantId: m!.id, userId: args.ownerUserId, role: "owner" });
+    await tx.insert(merchantStaff).values({ merchantId: m!.id, userId: args.ownerUserId, role: "owner", createdAt: ctx.now() });
     const [loc] = await tx
       .insert(locations)
       .values({
@@ -334,6 +336,7 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
         phone,
         hours: b.hours ?? null,
         qrCode: await uniqueQrCode(tx),
+        createdAt: ctx.now(),
       })
       .returning();
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);

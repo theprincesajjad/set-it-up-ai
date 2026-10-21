@@ -9,11 +9,11 @@ export type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
 export const CAMPAIGN_STATUSES = ["draft", "scheduled", "live", "ended", "cancelled"] as const;
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
 
-/** Suggested BIA packages (CAD cents). Price is set per campaign; these are the defaults sales quotes from. */
+/** BIA packages (CAD cents, docs/finance/unit-economics.md §6). Price is set per campaign; these are the defaults. */
 export const CAMPAIGN_PACKAGES = {
-  passport: { name: "Passport week", priceCents: 150_000, days: 7, goalVisits: 5 },
-  points_weekend: { name: "Points weekend", priceCents: 200_000, days: 3, goalVisits: 3 },
-  multiplier: { name: "Street-wide multiplier", priceCents: 300_000, days: 14, goalVisits: 5 },
+  points_weekend: { name: "Bronze: points weekend", priceCents: 150_000, days: 3, goalVisits: 3 },
+  passport: { name: "Silver: passport week", priceCents: 225_000, days: 7, goalVisits: 5 },
+  multiplier: { name: "Gold: two-week street multiplier", priceCents: 300_000, days: 14, goalVisits: 5 },
 } as const satisfies Record<CampaignKind, { name: string; priceCents: number; days: number; goalVisits: number }>;
 
 const campaignFields = {

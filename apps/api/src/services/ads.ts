@@ -5,7 +5,7 @@
  * Serving lives in ./sponsored.ts, visit attribution in ./attribution.ts.
  * Spec: docs/business/network-monetization.md
  */
-import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { adCampaigns, adEvents, auditLogs, locations, merchants, neighbourhoods, promos, type DbOrTx } from "@ll/db";
 import { adsApi } from "@ll/shared";
 import type { z } from "zod";
@@ -144,6 +144,7 @@ export async function createAdCampaign(ctx: AppContext, merchant: Merchant, body
     rateCents = card.dailyCents;
     budgetCents = rateCents * days;
   } else {
+    if (card.cpmCents === null) throw badRequest(`${body.placement} is sold by the day only`);
     rateCents = card.cpmCents;
     budgetCents = body.budgetCents!;
   }
@@ -240,6 +241,7 @@ export async function reviewAd(ctx: AppContext, adId: string, decision: { approv
     if (ad.status !== "pending_review") throw conflict("This campaign isn't waiting for review");
     const now = ctx.now();
     if (decision.approve && ad.endsAt <= now) throw conflict("This campaign's flight has already ended");
+    if (decision.approve && ad.placement === "map_pin") await assertMapPinInventory(tx, ad);
     const [row] = await tx
       .update(adCampaigns)
       .set(
@@ -259,6 +261,25 @@ export async function reviewAd(ctx: AppContext, adId: string, decision: { approv
     return row!;
   }
   return refund.row;
+}
+
+/** Featured pins are scarce: at most AD_RULES.maxMapPinsPerNeighbourhood live in any targeted neighbourhood over the flight. */
+async function assertMapPinInventory(tx: DbOrTx, ad: AdCampaignRow) {
+  const overlapping = await tx
+    .select({ id: adCampaigns.id, neighbourhoodIds: adCampaigns.neighbourhoodIds })
+    .from(adCampaigns)
+    .where(
+      and(
+        eq(adCampaigns.placement, "map_pin"),
+        inArray(adCampaigns.status, ["active", "paused"]),
+        lt(adCampaigns.startsAt, ad.endsAt),
+        gt(adCampaigns.endsAt, ad.startsAt),
+      ),
+    );
+  for (const hood of ad.neighbourhoodIds) {
+    const taken = overlapping.filter((o) => o.neighbourhoodIds.includes(hood)).length;
+    if (taken >= AD_RULES.maxMapPinsPerNeighbourhood) throw conflict("All featured map pins in this neighbourhood are booked for these dates");
+  }
 }
 
 export async function markAdPaid(ctx: AppContext, adId: string, paymentStatus: "paid" | "invoiced", adminUserId: string) {

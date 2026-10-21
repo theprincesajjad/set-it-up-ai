@@ -24,15 +24,16 @@ export const AD_PLACEMENT_FEATURE: Record<AdPlacement, FeatureKey> = {
 };
 
 /**
- * Rate card in CAD cents. The server sets the rate; merchants pick the model.
- * `daily: null` means the placement is CPM-only.
+ * Rate card in CAD cents (from docs/finance/unit-economics.md §6). The server
+ * sets the rate; merchants pick the model. `null` = not sold that way.
+ * nearby_push: $25 per boost of up to 1,000 opted-in customers = $25 CPM.
  */
-export const AD_RATE_CARD: Record<AdPlacement, { dailyCents: number | null; cpmCents: number }> = {
-  feed_top: { dailyCents: 1500, cpmCents: 1200 },
-  search_top: { dailyCents: 1000, cpmCents: 1000 },
-  map_pin: { dailyCents: 800, cpmCents: 600 },
-  promo_boost: { dailyCents: 1200, cpmCents: 1000 },
-  nearby_push: { dailyCents: null, cpmCents: 4000 },
+export const AD_RATE_CARD: Record<AdPlacement, { dailyCents: number | null; cpmCents: number | null }> = {
+  feed_top: { dailyCents: 500, cpmCents: 1200 },
+  search_top: { dailyCents: 500, cpmCents: 1200 },
+  map_pin: { dailyCents: 250, cpmCents: null },
+  promo_boost: { dailyCents: null, cpmCents: 1500 },
+  nearby_push: { dailyCents: null, cpmCents: 2500 },
 };
 
 /** Serving rules (see docs/business/network-monetization.md). */
@@ -47,6 +48,10 @@ export const AD_RULES = {
   attributionWindowDays: 7,
   minBudgetCents: 2500,
   maxFlightDays: 90,
+  /** Featured map pins are scarce: at most this many live per neighbourhood at once. */
+  maxMapPinsPerNeighbourhood: 3,
+  /** Sponsored pushes: at most one per customer per this many days, network-wide. */
+  pushCooldownDays: 7,
   defaultRadiusMetres: 1500,
   maxRadiusMetres: 10_000,
 } as const;

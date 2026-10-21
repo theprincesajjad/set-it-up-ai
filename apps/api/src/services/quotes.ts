@@ -98,6 +98,7 @@ export async function createQuote(ctx: AppContext, staff: StaffContext, ticketId
         status: "draft",
         approvalToken: randomToken(24),
         expiresAt: new Date(now.getTime() + body.expiresInDays * 86_400_000),
+        createdAt: now,
       })
       .returning();
     if (ticket.status === "intake") await setTicketStatusRaw(tx, now, ticket, "diagnosing", { note: body.diagnosis ? `Diagnosis: ${body.diagnosis}` : "Diagnosed", visibleToCustomer: true, actorUserId: staff.user.id });

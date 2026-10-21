@@ -250,6 +250,7 @@ async function deliver(ctx: AppContext, a: DeliverArgs): Promise<number> {
         status,
         providerId,
         error,
+        createdAt: ctx.now(),
       });
     }
   }
@@ -381,6 +382,7 @@ export async function createCampaign(ctx: AppContext, merchant: Merchant, actorU
       segment: body.segment,
       status: scheduledAt && !body.sendNow ? "scheduled" : "draft",
       scheduledAt: body.sendNow ? null : scheduledAt,
+      createdAt: ctx.now(),
     })
     .returning();
   await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "message.created", entity: "message", entityId: m!.id, data: { channel: body.channel, segment: body.segment } });
@@ -536,7 +538,7 @@ export async function upsertAutomation(ctx: AppContext, merchant: Merchant, acto
     status: body.enabled ? ("scheduled" as const) : ("draft" as const),
   };
   if (existing) await ctx.db.update(messages).set(values).where(eq(messages.id, existing.id));
-  else await ctx.db.insert(messages).values({ merchantId: merchant.id, automation: kind, ...values });
+  else await ctx.db.insert(messages).values({ merchantId: merchant.id, automation: kind, ...values, createdAt: ctx.now() });
   await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "automation.updated", entity: "automation", entityId: kind, data: { enabled: body.enabled, channel: body.channel } });
   return (await listAutomations(ctx, merchant)).find((a) => a.kind === kind)!;
 }

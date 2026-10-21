@@ -87,7 +87,7 @@ describe("campaigns: access and gating", () => {
     const res = await env.app.inject({ method: "POST", url: "/v1/campaigns", headers: t.manager, payload: campaignBody(s.hood.id, { priceCents: 0 }) });
     expect(res.statusCode).toBe(201);
     const c = res.json() as campaignsApi.Campaign;
-    expect(c.priceCents).toBe(150_000); // managers can't set their own price
+    expect(c.priceCents).toBe(225_000); // Silver package; managers can't set their own price
     expect(c.status).toBe("draft");
     expect((await env.app.inject({ method: "GET", url: `/v1/campaigns/${c.id}`, headers: t.otherManager })).statusCode).toBe(403);
     const list = await env.app.inject({ method: "GET", url: "/v1/campaigns", headers: t.manager });

@@ -23,7 +23,9 @@ export function fakeFetch(routes: [string, RegExp | string, Handler][]) {
     const route = routes.find(([m, p]) => m === method && (typeof p === "string" ? url === p || url.startsWith(p) : p.test(url)));
     if (!route) return new Response(JSON.stringify({ error: `no fake route for ${method} ${url}` }), { status: 599 });
     const r = await route[2](call);
-    return new Response(r.text ?? JSON.stringify(r.json ?? {}), { status: r.status ?? 200, headers: { "content-type": "application/json" } });
+    const status = r.status ?? 200;
+    const body = status === 204 || status === 304 ? null : (r.text ?? JSON.stringify(r.json ?? {}));
+    return new Response(body, { status, headers: { "content-type": "application/json" } });
   }) as typeof fetch;
   return Object.assign(f, { calls });
 }

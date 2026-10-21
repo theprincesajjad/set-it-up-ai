@@ -40,7 +40,9 @@ type Location = typeof locations.$inferSelect;
 type Promo = typeof promos.$inferSelect;
 type Point = { lat: number; lng: number };
 
-const listingNotDisabled = sql`not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = ${merchants.id} and fo.key = 'network.listing' and fo.enabled = false)`;
+// Correlated subqueries reference the outer table by its qualified name: drizzle omits the
+// qualifier on single-table selects, which would bind the column to the inner table.
+const listingNotDisabled = sql`not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = "merchants"."id" and fo.key = 'network.listing' and fo.enabled = false)`;
 
 function offsetCursor(cursor: string | undefined): number {
   if (!cursor) return 0;
@@ -117,7 +119,8 @@ async function hoodBySlug(db: DbOrTx, slug: string) {
 // ---------------------------------------------------------------------------
 // Neighbourhoods
 // ---------------------------------------------------------------------------
-const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = ${neighbourhoods.id} and m.status = 'active')`;
+const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = "neighbourhoods"."id" and m.status = 'active'
+  and not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = m.id and fo.key = 'network.listing' and fo.enabled = false))`;
 
 function hoodDto(n: typeof neighbourhoods.$inferSelect, shopCount: number): networkApi.NeighbourhoodDto {
   return {
@@ -411,7 +414,7 @@ export async function trackPromo(ctx: AppContext, promoId: string, kind: "view" 
       and(
         eq(promos.id, promoId),
         inArray(promos.status, ["live", "scheduled"]),
-        sql`exists (select 1 from ${merchants} m where m.id = ${promos.merchantId} and m.status in ('onboarding','active'))`,
+        sql`exists (select 1 from ${merchants} m where m.id = "promos"."merchant_id" and m.status in ('onboarding','active'))`,
       ),
     )
     .returning({ viewCount: promos.viewCount, claimCount: promos.claimCount });

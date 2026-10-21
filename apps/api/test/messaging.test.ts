@@ -14,8 +14,9 @@ import { messagingJobs } from "../src/jobs/messaging.js";
 import { createMerchant, createTestEnv, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
+// Real-time clock: members/visits get DB-default timestamps, so keep ctx.now() aligned with them.
 beforeEach(async () => {
-  env = await createTestEnv();
+  env = await createTestEnv({ now: new Date() });
 });
 afterEach(async () => env.close());
 
@@ -128,6 +129,7 @@ describe("email campaigns + CASL", () => {
 
 describe("SMS (Plus) and push", () => {
   it("is feature-gated, counts credits and stops at the allowance", async () => {
+    env.clock.now = new Date("2026-11-03T15:00:00Z");
     const s = await setup();
     const base = `/v1/merchants/${s.merchant.id}/messages`;
     const payload = { channel: "sms", body: "Fresh croissants today!", sendNow: true };
@@ -153,6 +155,7 @@ describe("SMS (Plus) and push", () => {
   });
 
   it("resets SMS credits once per month", async () => {
+    env.clock.now = new Date("2026-11-03T15:00:00Z");
     const s = await setup();
     await env.db.update(merchants).set({ smsCreditsUsed: 120 }).where(eq(merchants.id, s.merchant.id));
     expect(await resetSmsCreditsIfNewMonth(env.ctx)).toBe(true);
@@ -246,6 +249,7 @@ describe("automations (Plus) + birthday bonus (free)", () => {
   });
 
   it("awards the birthday bonus once per year via the ledger (free), message only with automation", async () => {
+    env.clock.now = new Date("2026-11-03T15:00:00Z");
     const s = await setup();
     await env.db.update(loyaltyPrograms).set({ birthdayBonus: 25 }).where(eq(loyaltyPrograms.merchantId, s.merchant.id));
     // Clock is 2026-11-03 10:00 Toronto.

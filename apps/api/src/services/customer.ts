@@ -341,10 +341,11 @@ export async function joinMerchant(ctx: AppContext, userId: string, body: custom
 
   const result = await ctx.db.transaction(async (tx) => {
     const [existing] = await tx
-      .select({ id: merchantMembers.id, consentAt: merchantMembers.marketingConsentAt })
+      .select({ id: merchantMembers.id, consentAt: merchantMembers.marketingConsentAt, tags: merchantMembers.tags })
       .from(merchantMembers)
       .where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, userId)))
       .limit(1);
+    if (existing?.tags.includes("merged")) throw conflict("Your membership here was merged into another account. Ask the shop to help.");
 
     let referral: ReferralOutcome | null = null;
     let ref: typeof referrals.$inferSelect | undefined;
