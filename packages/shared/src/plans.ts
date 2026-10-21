@@ -73,7 +73,10 @@ export interface FeatureDef {
    * ship "hidden" and are flipped by an admin once the network threshold is hit.
    */
   defaultStage: RolloutStage;
-  /** Suggested number of active network merchants before flipping to GA. */
+  /**
+   * Suggested number of active network merchants before flipping to GA
+   * (see docs/finance/unit-economics.md: Pro verticals unlock earliest).
+   */
   unlockAtMerchants: number;
   /** Which "phase" of the roadmap introduces it. */
   phase: 1 | 2 | 3;
@@ -176,23 +179,23 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "free", 1),
     f("integrations.webhooks", "Webhooks & API", "Connect anything with outgoing webhooks.", "free", 1),
     f("marketing.email", "Email campaigns", "Email opted-in members (CASL compliant).", "free", 1),
-    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 150),
-    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 150),
-    f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 150),
-    f("marketing.sms", "SMS campaigns", "Text opted-in members. Included SMS each month.", "plus", 2, 150),
-    f("marketing.automations", "Automations", "Win-back, we-miss-you and reward-ready messages.", "plus", 2, 150),
-    f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 150),
-    f("reports.advanced", "Advanced reports", "Cohorts, retention, network overlap.", "plus", 2, 150),
-    f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 150),
-    f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 150),
-    f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 150),
-    f("service.deposits", "Deposits", "Collect a deposit on approval.", "pro", 2, 150),
-    f("service.invoices", "Invoices", "Final invoices, paid in-app.", "pro", 2, 150),
-    f("booking.dropoff_scheduling", "Drop-off scheduling", "Slots and reminders for drop-offs.", "pro", 2, 150),
-    f("staff.permissions", "Staff permissions", "Granular roles per staff member.", "pro", 2, 150),
-    f("ads.sponsored_listing", "Sponsored listing", "Top of the neighbourhood feed and search.", "free", 3, 400),
-    f("ads.sponsored_promo", "Sponsored promo", "Boost a promo across the network.", "free", 3, 400),
-    f("ads.map_pin", "Featured map pin", "Highlighted pin on the network map.", "free", 3, 400),
+    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 100),
+    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
+    f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100),
+    f("marketing.sms", "SMS campaigns", "Text opted-in members. Included SMS each month.", "plus", 2, 100),
+    f("marketing.automations", "Automations", "Win-back, we-miss-you and reward-ready messages.", "plus", 2, 100),
+    f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
+    f("reports.advanced", "Advanced reports", "Cohorts, retention, network overlap.", "plus", 2, 100),
+    f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
+    f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
+    f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),
+    f("service.deposits", "Deposits", "Collect a deposit on approval.", "pro", 2, 40),
+    f("service.invoices", "Invoices", "Final invoices, paid in-app.", "pro", 2, 40),
+    f("booking.dropoff_scheduling", "Drop-off scheduling", "Slots and reminders for drop-offs.", "pro", 2, 40),
+    f("staff.permissions", "Staff permissions", "Granular roles per staff member.", "pro", 2, 40),
+    f("ads.sponsored_listing", "Sponsored listing", "Top of the neighbourhood feed and search.", "free", 3, 300),
+    f("ads.sponsored_promo", "Sponsored promo", "Boost a promo across the network.", "free", 3, 300),
+    f("ads.map_pin", "Featured map pin", "Highlighted pin on the network map.", "free", 3, 300),
     f("campaigns.neighbourhood", "Neighbourhood campaigns", "BIA-run street-wide points events.", "free", 3, 100),
   ].map((d) => [d.key, d]),
 ) as Record<FeatureKey, FeatureDef>;

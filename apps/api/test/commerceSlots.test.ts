@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { commerceJobs } from "../src/jobs/commerce.js";
 import { sendBookingReminders, zonedToUtc } from "../src/services/bookings.js";
-import { createTestEnv, type TestEnv } from "./helpers.js";
+import { createTestEnv, tokenFor, type TestEnv } from "./helpers.js";
 import { call, customer, paidMerchant } from "./commerce-fixtures.js";
 
 let env: TestEnv;
@@ -59,7 +59,9 @@ describe("pickup slots", () => {
     expect(await sendBookingReminders(env.ctx)).toBe(0);
     expect(commerceJobs.map((j) => j.name)).toContain("commerce.booking_reminders");
 
-    // Cancel frees the place.
+    // Cancel frees the place (fresh tokens: the clock moved past the 1h access TTL).
+    a.token = await tokenFor(env, a.user);
+    b.token = await tokenFor(env, b.user);
     const cancelled = await call(env, a.token, "POST", `/v1/me/bookings/${booked.body.id}/cancel`);
     expect(cancelled.body).toMatchObject({ status: "cancelled" });
     expect((await call(env, b.token, "POST", "/v1/me/bookings", { slotId: wed9.id })).status).toBe(201);

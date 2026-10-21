@@ -11,3 +11,4 @@ coverage/
 .DS_Store
 .pglite/
 *.tsbuildinfo
+__pycache__/
