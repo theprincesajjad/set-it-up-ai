@@ -25,7 +25,7 @@ export const STOP_KEYWORDS = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END",
 
 export const segmentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("all") }),
-  /** No visit in the last N days (members who visited at least once). */
+  /** No visit in the last N days (incl. members who never visited and joined more than N days ago). */
   z.object({ kind: z.literal("lapsed"), days: z.number().int().min(1).max(3650).default(30) }),
   /** Any VIP level, or one level. */
   z.object({ kind: z.literal("vip"), vipLevelId: uuidSchema.optional() }),
