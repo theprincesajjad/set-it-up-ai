@@ -1,17 +1,18 @@
 import type { customerApi } from "@ll/shared";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { FlatList, View } from "react-native";
-import { t } from "../../copy/en-CA";
-import { useCampaigns, useMembershipDetails, useWallet } from "../../features/customer/queries";
-import { RedeemConfirmSheet } from "../../features/customer/sheets";
-import { promoEnds } from "../../lib/format";
-import { useOnline } from "../../state/network";
-import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonList, Text, Trophy } from "../../ui";
+import { t } from "../copy/en-CA";
+import { useCampaigns, useMembershipDetails, useWallet } from "../features/customer/queries";
+import { RedeemConfirmSheet } from "../features/customer/sheets";
+import { promoEnds } from "../lib/format";
+import { useOnline } from "../state/network";
+import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonList, Text, Trophy } from "../ui";
 
 /** 6.1 Rewards: Ready / All shops / Passport. */
 export default function Rewards() {
-  const [tab, setTab] = useState<"ready" | "all" | "passport">("ready");
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<"ready" | "all" | "passport">(params.tab === "passport" ? "passport" : "ready");
   const online = useOnline();
   const wallet = useWallet();
   const memberships = wallet.data?.items ?? [];
@@ -22,7 +23,7 @@ export default function Rewards() {
   const ready = loaded.filter((d) => d.rewards.some((r) => r.affordable));
 
   return (
-    <Screen title="Rewards" largeTitle refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
+    <Screen back title="Rewards" refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
       <SegmentedControl
         options={[
           { value: "ready", label: "Ready" },

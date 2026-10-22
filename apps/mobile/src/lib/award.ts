@@ -44,6 +44,11 @@ export function termWord(terminology: string | null | undefined, n = 2): string 
   return n === 1 ? singular : `${singular}s`;
 }
 
+/** Locked rewards always say how far to go, in the shop's terminology: "You need 12 more points". */
+export function lockedRewardCopy(toGo: number, terminology: string | null | undefined): string {
+  return `You need ${formatNumber(toGo)} more ${termWord(terminology, toGo)}`;
+}
+
 /** POS-style entry: digits shift in from the right (typing 1180 shows $11.80). */
 export function posAmountPress(cents: number, key: string): number {
   if (key === "clear") return 0;

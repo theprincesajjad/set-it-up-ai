@@ -2,12 +2,13 @@ import type { adsApi, customerApi, networkApi } from "@ll/shared";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { t } from "../../copy/en-CA";
 import { useCampaigns, useMembershipDetails, usePhase2, useProfile, useWallet } from "../../features/customer/queries";
 import { useDeviceLocation } from "../../features/customer/location";
 import { JoinSheet, PushPrompt, RedeemConfirmSheet, SponsoredWhySheet } from "../../features/customer/sheets";
-import { firstName, termWord } from "../../lib/award";
+import { firstName, formatNumber, formatPts, termWord } from "../../lib/award";
+import { perkHeadline, perkProgress } from "../../lib/perks";
 import { capSponsored } from "../../lib/feed";
 import { promoEnds, relativeTime } from "../../lib/format";
 import { api } from "../../state/api";
@@ -24,6 +25,11 @@ import {
   EmptyState,
   ListRow,
   MapPin,
+  Gift,
+  PerkCard,
+  QrCodeIcon,
+  Trophy,
+  UserPlus,
   OfflineBanner,
   ProgressBar,
   PromoCard,
@@ -48,6 +54,15 @@ const FILTERS: { key: string; label: string; verticals: string[] | null }[] = [
   { key: "health", label: "Health", verticals: ["pharmacy", "fitness"] },
   { key: "shops", label: "Shops", verticals: ["retail", "bookstore", "florist", "pet", "other"] },
 ];
+
+/** One-line progress: "2 more for a free drink" / "130 pts to Free tire rotation" / reward ready. */
+function progressLine(m: customerApi.MembershipDto): string {
+  if (m.rewardsAvailableCount > 0) return "Reward ready";
+  if (!m.nextReward) return m.expiryDisclosure;
+  return m.program?.earnType === "stamps"
+    ? t("misc.stampsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name.toLowerCase() })
+    : t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name });
+}
 
 const seenPromos = new Set<string>();
 const seenAds = new Set<string>();
@@ -74,6 +89,12 @@ export default function Home() {
   const hoodName = hoods.data?.items.find((h) => h.slug === neighbourhoodSlug)?.name ?? profile.data?.homeNeighbourhood?.name ?? null;
   const campaigns = useCampaigns(loc.coords?.lat, loc.coords?.lng);
   const live = (campaigns.data?.items ?? []).filter((x) => x.status === "live");
+
+  const hoodDetail = useQuery({ queryKey: ["hood", neighbourhoodSlug ?? ""], queryFn: () => api.network.neighbourhood(neighbourhoodSlug!), enabled: !!neighbourhoodSlug, staleTime: 30 * 60_000 });
+  const perk = hoodDetail.data?.perks[0] ?? null;
+  const perkState = perk ? perkProgress(perk, memberships, hoodDetail.data?.neighbourhood.id ?? null) : null;
+  const total = memberships.reduce((sum, m) => sum + m.balance, 0);
+  const referralShop = memberships.find((m) => (m.program?.referralBonus ?? 0) > 0);
 
   const readyIds = memberships.filter((m) => m.rewardsAvailableCount > 0).map((m) => m.id);
   const details = useMembershipDetails(readyIds);
@@ -227,9 +248,39 @@ export default function Home() {
         </Section>
       ) : null}
 
-      <Section title="My shops">
+      {memberships.length > 0 ? (
+        <View style={styles.hero} accessible accessibilityLabel={`${formatNumber(total)} points and stamps across ${memberships.length} shops`}>
+          <Text variant="points" tabular center style={{ fontSize: 64, lineHeight: 68 }}>
+            {formatNumber(total)}
+          </Text>
+          <View style={[styles.pill, { backgroundColor: c.brandSubtle }]}>
+            <Text variant="label" rawColor={c.onBrandSubtle}>{`across ${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.shortcuts}>
+        {[
+          { label: "My card", icon: QrCodeIcon, go: () => router.push("/card") },
+          { label: "Rewards", icon: Gift, go: () => router.push("/rewards") },
+          { label: "Passport", icon: Trophy, go: () => (live[0] ? router.push(`/campaigns/${live[0].id}`) : router.push({ pathname: "/rewards", params: { tab: "passport" } })) },
+          { label: "Invite", icon: UserPlus, go: () => router.push(referralShop ? { pathname: "/referrals", params: { memberId: referralShop.id } } : "/referrals") },
+        ].map((x) => (
+          <Pressable key={x.label} accessibilityRole="button" accessibilityLabel={x.label} onPress={x.go} style={styles.shortcut}>
+            <View style={[styles.shortcutIcon, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <x.icon size={24} color={c.fgBrand} />
+            </View>
+            <Text variant="caption">{x.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Section
+        title="My shops"
+        action={sorted.length > 0 ? <Button variant="ghost" size="sm" onPress={() => setShowAll((v) => !v)}>{showAll ? "Show less" : `See all ${sorted.length}`}</Button> : undefined}
+      >
         {wallet.isLoading ? (
-          <SkeletonList rows={3} />
+          <SkeletonList rows={1} rowHeight={148} />
         ) : memberships.length === 0 ? (
           <EmptyState
             icon={Store}
@@ -240,32 +291,46 @@ export default function Home() {
             secondaryLabel="Find shops nearby"
             onSecondary={() => router.push("/map")}
           />
+        ) : showAll ? (
+          sorted.map((m) => (
+            <ShopTile
+              key={m.id}
+              variant="wallet"
+              shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl }}
+              balance={{ value: m.balance, terminology: m.terminology }}
+              subtitle={progressLine(m)}
+              rewardReady={m.rewardsAvailableCount > 0}
+              muted={m.muted}
+              onPress={() => router.push(`/shop/${m.merchant.slug}`)}
+            />
+          ))
         ) : (
-          <>
-            {(showAll ? sorted : sorted.slice(0, 6)).map((m) => (
-              <ShopTile
-                key={m.id}
-                variant="wallet"
-                shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl }}
-                balance={{ value: m.balance, terminology: m.terminology }}
-                subtitle={
-                  m.nextReward
-                    ? m.program?.earnType === "stamps"
-                      ? t("misc.stampsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name.toLowerCase() })
-                      : t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name })
-                    : m.expiryDisclosure
-                }
-                rewardReady={m.rewardsAvailableCount > 0}
-                muted={m.muted}
-                onPress={() => router.push(`/shop/${m.merchant.slug}`)}
-              />
-            ))}
-            {sorted.length > 6 && !showAll ? (
-              <Button variant="ghost" onPress={() => setShowAll(true)}>
-                {`See all ${sorted.length} shops`}
-              </Button>
-            ) : null}
-          </>
+          <FlatList
+            horizontal
+            data={sorted}
+            keyExtractor={(m) => m.id}
+            showsHorizontalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+            renderItem={({ item: m }) => (
+              <Card accentEdge={m.rewardsAvailableCount > 0} onPress={() => router.push(`/shop/${m.merchant.slug}`)} accessibilityLabel={`${m.merchant.name}. ${m.balance} ${m.terminology}. ${progressLine(m)}`} style={{ width: 220 }}>
+                <View style={{ gap: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <ShopLogo shop={m.merchant} size={40} />
+                    <Text variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
+                      {m.merchant.name}
+                    </Text>
+                  </View>
+                  <Text variant="h2" color="fgBrand" tabular>
+                    {formatPts(m.balance, m.terminology)}
+                  </Text>
+                  {m.nextReward ? <ProgressBar value={m.nextReward.pointsCost - m.nextReward.pointsNeeded} max={m.nextReward.pointsCost} tone="accent" /> : null}
+                  <Text variant="bodySm" color="fgMuted" numberOfLines={1}>
+                    {progressLine(m)}
+                  </Text>
+                </View>
+              </Card>
+            )}
+          />
         )}
       </Section>
 
@@ -284,7 +349,9 @@ export default function Home() {
         </Card>
       ) : null}
 
-      <Section title="Nearby">
+      {perk && perkState ? <PerkCard headline={perkHeadline(perk, hoodName)} {...perkState} /> : null}
+
+      <Section title="Nearby promos">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {FILTERS.map((f) => (
             <Chip key={f.key} label={f.label} selected={filter === f.key} onPress={() => setFilter(f.key)} />
@@ -355,3 +422,11 @@ export default function Home() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: { alignItems: "center", gap: 8, paddingVertical: 8 },
+  pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  shortcuts: { flexDirection: "row", justifyContent: "space-between" },
+  shortcut: { flex: 1, alignItems: "center", gap: 6, minHeight: 72 },
+  shortcutIcon: { width: 56, height: 56, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+});

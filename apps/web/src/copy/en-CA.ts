@@ -43,7 +43,7 @@ export const copy = {
   },
   ok: {
     joined: (firstName: string) => `You're in, ${firstName}.`,
-    joinedBonus: (bonus: string, shop: string) => `You're in. ${bonus} added at ${shop}.`,
+    joinedBonus: (bonus: string, shop: string) => `You're in. ${bonus} added at ${shop.replace(/\.$/, "")}.`,
     welcomeBack: (firstName: string) => `Welcome back, ${firstName}.`,
     consentOff: (shop: string) => `Done. ${shop} won't send you offers.`,
     consentOn: (shop: string) => `You'll get offers from ${shop}. Change this anytime.`,

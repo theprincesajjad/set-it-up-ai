@@ -12,6 +12,7 @@ import {
   formatPts,
   groupCode,
   initialCounterState,
+  lockedRewardCopy,
   normalizeRedeemInput,
   posAmountPress,
   shortName,
@@ -250,6 +251,10 @@ describe("formatting", () => {
     expect(formatPts(1250, "points")).toBe("1,250 pts");
     expect(formatPts(8, "stamps")).toBe("8 stamps");
     expect(formatPts(1, "stars")).toBe("1 star");
+  });
+  it("locked reward copy", () => {
+    expect(lockedRewardCopy(12, "points")).toBe("You need 12 more points");
+    expect(lockedRewardCopy(1, "stamps")).toBe("You need 1 more stamp");
   });
   it("short names", () => {
     expect(shortName("Alex Chen")).toBe("Alex C.");

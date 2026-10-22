@@ -373,7 +373,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
         </h1>
         {bonus && fname ? (
           <p className="text-body text-fg-muted">
-            {bonus} added at {info.merchant.name}.
+            {bonus} added at {info.merchant.name.replace(/\.$/, "")}.
           </p>
         ) : null}
         {program?.earnType === "stamps" ? (

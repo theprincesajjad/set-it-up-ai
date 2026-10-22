@@ -7,12 +7,18 @@ import { t } from "../../copy/en-CA";
 import { useMembershipDetail, useOrderAhead, usePhase2, useWallet } from "../../features/customer/queries";
 import { JoinSheet, RedeemConfirmSheet } from "../../features/customer/sheets";
 import { formatPts, termWord } from "../../lib/award";
-import { formatDayTime, hoursRows, openStatus } from "../../lib/format";
+import { formatDayTime, formatDistance, hoursRows, openStatus } from "../../lib/format";
+import { distanceMetres } from "@ll/shared";
+import { useDeviceLocation } from "../../features/customer/location";
+import { useSession } from "../../state/session";
+import { useTheme } from "../../theme";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import {
+  Badge,
   Banner,
+  SegmentedControl,
   BellOff,
   Button,
   Card,
@@ -55,6 +61,10 @@ export default function ShopDetail() {
   const [joining, setJoining] = useState(false);
   const [redeeming, setRedeeming] = useState<customerApi.MemberRewardDto | null>(null);
   const [muting, setMuting] = useState(false);
+  const [tab, setTab] = useState<"rewards" | "promos" | "about">("rewards");
+  const { vertical } = useTheme();
+  const { prefs } = useSession();
+  const locState = useDeviceLocation(prefs.locationPrompted);
 
   if (shop.isLoading) {
     return (
@@ -106,20 +116,40 @@ export default function ShopDetail() {
     : null;
   const noEarn = s.merchant.vertical === "pharmacy" ? " · Prescriptions don't earn points" : "";
 
+  const vis = vertical(s.merchant.vertical);
+  const dist = locState.coords && loc?.lat != null && loc.lng != null ? distanceMetres(locState.coords, { lat: loc.lat, lng: loc.lng }) : null;
+  const rewardsList = detail.data?.rewards ?? s.rewards.map((r) => ({ ...r, affordable: false, pointsNeeded: r.pointsCost }));
+  const discountCards = detail.data?.discountCards ?? s.discountCards;
+
   return (
-    <Screen back refreshing={shop.isRefetching} onRefresh={() => Promise.all([shop.refetch(), detail.refetch(), wallet.refetch()])} contentStyle={{ paddingHorizontal: 0 }}>
+    <Screen
+      back
+      refreshing={shop.isRefetching}
+      onRefresh={() => Promise.all([shop.refetch(), detail.refetch(), wallet.refetch()])}
+      contentStyle={{ paddingHorizontal: 0 }}
+      footer={
+        !m ? (
+          <Button size="lg" fullWidth onPress={() => setJoining(true)}>
+            Join — free
+          </Button>
+        ) : undefined
+      }
+    >
       <ShopTile variant="hero" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, coverUrl: s.merchant.coverUrl }} muted={m?.muted} />
-      <View style={{ paddingHorizontal: 16, gap: 24, marginTop: -16 }}>
-        <View style={{ gap: 4 }}>
+      <View style={{ paddingHorizontal: 16, gap: 20, marginTop: -16 }}>
+        <View style={{ gap: 8 }}>
           <Text variant="bodySm" color="fgMuted">
-            {[s.merchant.neighbourhood?.name, loc?.address].filter(Boolean).join(" · ")}
+            {[vis.label, loc?.address, dist != null ? formatDistance(dist) : null].filter(Boolean).join(" · ")}
           </Text>
-          {status ? <Text variant="bodySm" color={status.open ? "onSuccessSubtle" : "fgMuted"}>{status.label}</Text> : null}
-          <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 12 }}>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            {status ? <Badge tone={status.open ? "success" : "neutral"}>{status.label}</Badge> : null}
+            {s.merchant.neighbourhood ? <Badge tone="neutral">{s.merchant.neighbourhood.name}</Badge> : null}
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 4 }}>
             {s.merchant.phone || loc?.phone ? <IconButton icon={Phone} label="Call" showLabel onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} /> : null}
             {loc ? <IconButton icon={Navigation} label="Directions" showLabel onPress={directions} /> : null}
             {s.merchant.website ? <IconButton icon={Globe} label="Website" showLabel onPress={() => Linking.openURL(s.merchant.website!)} /> : null}
-            <IconButton icon={Share2} label="Share" showLabel onPress={() => Share.share({ message: `${s.merchant.name} on the local loyalty network: https://local.example/s/${s.merchant.slug}` })} />
+            <IconButton icon={Share2} label="Share" showLabel onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
             {m ? <IconButton icon={BellOff} label={m.muted ? "Unmute" : "Mute"} showLabel onPress={toggleMute} disabled={muting} /> : null}
           </View>
         </View>
@@ -127,16 +157,28 @@ export default function ShopDetail() {
         {paused ? <Banner variant="neutral">{`This shop has paused its program. Your ${formatPts(m!.balance, term)} are safe.`}</Banner> : null}
 
         {m ? (
-          <Card title="Your card here">
-            <View style={{ alignItems: "center", gap: 12 }}>
-              {program?.earnType === "stamps" ? (
-                <StampCard count={m.balance} goal={program.stampGoal || 10} vertical={s.merchant.vertical} rewardName={m.nextReward?.name ?? null} />
-              ) : (
-                <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? null} terminology={term} rewardName={m.nextReward?.name} size={120} />
-              )}
-              {m.nextReward && program?.earnType !== "stamps" ? <Text variant="bodySm">{t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name })}</Text> : null}
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text variant="overline" color="fgMuted">
+                  Your balance
+                </Text>
+                <Text variant="h1" color="fgBrand" tabular>
+                  {formatPts(m.balance, term)}
+                </Text>
+              </View>
+              {program?.earnType !== "stamps" ? <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? null} terminology={term} rewardName={m.nextReward?.name} size={64} /> : null}
             </View>
-            <Text variant="bodySm" color="fgMuted" style={{ marginTop: 12 }}>
+            {program?.earnType === "stamps" ? (
+              <View style={{ marginTop: 12 }}>
+                <StampCard count={m.balance} goal={program.stampGoal || 10} vertical={s.merchant.vertical} logoUrl={s.merchant.logoUrl} rewardName={m.nextReward?.name ?? null} />
+              </View>
+            ) : m.nextReward ? (
+              <Text variant="bodySm" style={{ marginTop: 8 }}>
+                {t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name })}
+              </Text>
+            ) : null}
+            <Text variant="bodySm" color="fgMuted" style={{ marginTop: 8 }}>
               {`How you earn here: ${earnLine ?? "Ask at the counter"}${noEarn}`}
             </Text>
             <Text variant="bodySm" color="fgMuted">
@@ -144,15 +186,13 @@ export default function ShopDetail() {
             </Text>
           </Card>
         ) : (
-          <Card title="Earn here">
+          <Card tone="sunken">
+            <Text variant="title">Earn here</Text>
             <Text>{earnLine ?? "Show your card at the counter to earn."}</Text>
             {program?.welcomeBonus ? <Text color="fgMuted">{`Get ${formatPts(program.welcomeBonus, term)} when you join.`}</Text> : null}
             <Text variant="bodySm" color="fgMuted">
               {program?.expiryDisclosure ?? t("misc.pointsNeverExpire", { terminology: termWord(term) })}
             </Text>
-            <Button fullWidth onPress={() => setJoining(true)} style={{ marginTop: 12 }}>
-              {t("action.join", { shop: s.merchant.name })}
-            </Button>
           </Card>
         )}
 
@@ -172,76 +212,114 @@ export default function ShopDetail() {
           </Banner>
         ))}
 
-        {(detail.data?.rewards ?? s.rewards).length > 0 ? (
-          <Section title="Rewards">
-            {(detail.data?.rewards ?? s.rewards.map((r) => ({ ...r, affordable: false, pointsNeeded: r.pointsCost }))).map((r) => (
-              <RewardCard
-                key={r.id}
-                reward={r}
-                balance={m?.balance ?? 0}
-                terminology={term}
-                state={m && r.affordable ? "available" : "locked"}
-                disabledReason={online ? null : t("err.redeem.offlineCustomer")}
-                onRedeem={() => setRedeeming(r)}
-              />
-            ))}
-          </Section>
+        <SegmentedControl
+          accessibilityLabel="Shop sections"
+          options={[
+            { value: "rewards", label: "Rewards" },
+            { value: "promos", label: "Promos" },
+            { value: "about", label: "About" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+
+        {tab === "rewards" ? (
+          <View style={{ gap: 12 }}>
+            {rewardsList.length === 0 ? <Text color="fgMuted">This shop hasn't added rewards yet.</Text> : null}
+            {[...rewardsList]
+              .sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)
+              .map((r) => (
+                <RewardCard
+                  key={r.id}
+                  reward={r}
+                  balance={m?.balance ?? 0}
+                  terminology={term}
+                  state={m && r.affordable ? "available" : "locked"}
+                  disabledReason={online ? null : t("err.redeem.offlineCustomer")}
+                  onRedeem={() => setRedeeming(r)}
+                />
+              ))}
+            {menu.data || myTickets.length > 0 ? (
+              <Section title="Order and services">
+                {menu.data ? (
+                  <Button iconStart={ShoppingBag} size="lg" fullWidth onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)}>
+                    Order ahead
+                  </Button>
+                ) : null}
+                {myTickets.length > 0 ? <ListRow leadingIcon={Ticket} title="My tickets here" subtitle={`${myTickets.length} repair${myTickets.length === 1 ? "" : "s"}`} chevron onPress={() => router.push("/orders")} /> : null}
+              </Section>
+            ) : null}
+            {m && (m.program?.referralBonus ?? 0) > 0 ? (
+              <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get ${formatPts(m.program!.referralBonus, term)}`} chevron onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
+            ) : null}
+            {detail.data && detail.data.history.items.length > 0 ? (
+              <Section title="Activity here" action={<Button variant="ghost" size="sm" onPress={() => router.push({ pathname: "/activity", params: { memberId: m!.id } })}>See all</Button>}>
+                {detail.data.history.items.slice(0, 3).map((tx) => (
+                  <ListRow
+                    key={tx.id}
+                    title={activityTitle(tx, term)}
+                    subtitle={formatDayTime(tx.createdAt)}
+                    trailing={<Text variant="bodyStrong" color={tx.points > 0 ? "onSuccessSubtle" : "fg"} tabular>{`${tx.points > 0 ? "+" : ""}${tx.points}`}</Text>}
+                  />
+                ))}
+              </Section>
+            ) : null}
+          </View>
         ) : null}
 
-        {s.promos.length > 0 || (detail.data?.discountCards ?? s.discountCards).length > 0 ? (
-          <Section title="Offers">
+        {tab === "promos" ? (
+          <View style={{ gap: 12 }}>
+            {s.promos.length === 0 && discountCards.length === 0 ? <Text color="fgMuted">No offers right now.</Text> : null}
             {s.promos.map((p) => (
               <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl }} />
             ))}
-            {(detail.data?.discountCards ?? s.discountCards).map((dc) => (
-              <Pressable key={dc.id} accessibilityRole="button" accessibilityLabel={`Open ${dc.name}`} onPress={() => router.push({ pathname: "/discount", params: { name: dc.name, percentOff: String(dc.percentOff), amountOffCents: String(dc.amountOffCents), terms: dc.terms ?? "", shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "" } })}>
+            {discountCards.map((dc) => (
+              <Pressable
+                key={dc.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${dc.name}`}
+                onPress={() => router.push({ pathname: "/discount", params: { name: dc.name, percentOff: String(dc.percentOff), amountOffCents: String(dc.amountOffCents), terms: dc.terms ?? "", shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "" } })}
+              >
                 <DiscountCard card={dc} shop={s.merchant} live={false} />
               </Pressable>
             ))}
-          </Section>
+          </View>
         ) : null}
 
-        {menu.data || myTickets.length > 0 ? (
-          <Section title="Order and services">
-            {menu.data ? (
-              <Button iconStart={ShoppingBag} size="lg" fullWidth onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)}>
-                Order ahead
-              </Button>
+        {tab === "about" ? (
+          <View style={{ gap: 16 }}>
+            {s.merchant.description ? <Text>{s.merchant.description}</Text> : null}
+            {loc ? (
+              <Section title="Hours">
+                {hoursRows(loc.hours).map((h) => (
+                  <View key={h.day} style={{ flexDirection: "row" }}>
+                    <Text variant={h.today ? "bodyStrong" : "body"} style={{ flex: 1 }}>
+                      {h.day}
+                    </Text>
+                    <Text variant={h.today ? "bodyStrong" : "body"}>{h.text}</Text>
+                  </View>
+                ))}
+                {!loc.hours ? <Text color="fgMuted">Hours not listed. Call ahead.</Text> : null}
+              </Section>
             ) : null}
-            {myTickets.length > 0 ? <ListRow leadingIcon={Ticket} title="My tickets here" subtitle={`${myTickets.length} repair${myTickets.length === 1 ? "" : "s"}`} chevron onPress={() => router.push("/orders")} /> : null}
-          </Section>
-        ) : null}
-
-        {m && (m.program?.referralBonus ?? 0) > 0 ? (
-          <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get ${formatPts(m.program!.referralBonus, term)}`} chevron onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
-        ) : null}
-
-        {loc ? (
-          <Section title="About">
-            {hoursRows(loc.hours).map((h) => (
-              <View key={h.day} style={{ flexDirection: "row" }}>
-                <Text variant={h.today ? "bodyStrong" : "body"} style={{ flex: 1 }}>
-                  {h.day}
-                </Text>
-                <Text variant={h.today ? "bodyStrong" : "body"}>{h.text}</Text>
-              </View>
-            ))}
-            <Text>{`${loc.address}, ${loc.city}${loc.postalCode ? ` ${loc.postalCode}` : ""}`}</Text>
-            {s.merchant.description ? <Text color="fgMuted">{s.merchant.description}</Text> : null}
-          </Section>
-        ) : null}
-
-        {detail.data && detail.data.history.items.length > 0 ? (
-          <Section title="Activity here" action={<Button variant="ghost" size="sm" onPress={() => router.push({ pathname: "/activity", params: { memberId: m!.id } })}>See all</Button>}>
-            {detail.data.history.items.slice(0, 3).map((tx) => (
-              <ListRow
-                key={tx.id}
-                title={activityTitle(tx, term)}
-                subtitle={formatDayTime(tx.createdAt)}
-                trailing={<Text variant="bodyStrong" color={tx.points > 0 ? "onSuccessSubtle" : "fg"} tabular>{`${tx.points > 0 ? "+" : ""}${tx.points}`}</Text>}
-              />
-            ))}
-          </Section>
+            {loc ? (
+              <Section title="Location">
+                <Card onPress={directions} accessibilityLabel={`${loc.address}. Get directions`}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: vis.tint, alignItems: "center", justifyContent: "center" }}>
+                      <Navigation size={22} color={vis.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyStrong">{loc.address}</Text>
+                      <Text variant="bodySm" color="fgMuted">{`${loc.city}${loc.postalCode ? ` ${loc.postalCode}` : ""}${dist != null ? ` · ${formatDistance(dist, true)}` : ""}`}</Text>
+                    </View>
+                  </View>
+                </Card>
+              </Section>
+            ) : null}
+            {s.merchant.instagram ? <ListRow title="Instagram" subtitle={s.merchant.instagram} chevron onPress={() => Linking.openURL(s.merchant.instagram!.startsWith("http") ? s.merchant.instagram! : `https://instagram.com/${s.merchant.instagram!.replace(/^@/, "")}`)} /> : null}
+            {s.merchant.phone ? <ListRow title="Phone" subtitle={s.merchant.phone} chevron onPress={() => Linking.openURL(`tel:${s.merchant.phone}`)} /> : null}
+          </View>
         ) : null}
       </View>
       {joining ? (

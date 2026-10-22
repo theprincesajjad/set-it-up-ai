@@ -91,6 +91,7 @@ import CircleHelp from "lucide-react-native/icons/circle-question-mark";
 import Mail from "lucide-react-native/icons/mail";
 import Pencil from "lucide-react-native/icons/pencil";
 import Trophy from "lucide-react-native/icons/trophy";
+import SlidersHorizontal from "lucide-react-native/icons/sliders-horizontal";
 import Flag from "lucide-react-native/icons/flag";
 import Timer from "lucide-react-native/icons/timer";
 
@@ -182,6 +183,7 @@ export {
   Mail,
   Pencil,
   Trophy,
+  SlidersHorizontal,
   Flag,
   Timer,
 };

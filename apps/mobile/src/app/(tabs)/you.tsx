@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   CircleHelp,
+  Gift,
   ConfirmDialog,
   History,
   Info,
@@ -40,7 +41,7 @@ export default function You() {
   const referralShop = (wallet.data?.items ?? []).find((m) => (m.program?.referralBonus ?? 0) > 0);
 
   return (
-    <Screen title="You" largeTitle>
+    <Screen title="Profile" largeTitle>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <Avatar name={name} id={user?.id} size={56} />
@@ -58,6 +59,7 @@ export default function You() {
         </View>
       </Card>
       <Card padded={false} style={{ paddingHorizontal: 16 }}>
+        <ListRow leadingIcon={Gift} title="Rewards" subtitle="Ready to redeem, all shops, passport" chevron onPress={() => router.push("/rewards")} />
         <ListRow leadingIcon={History} title="Activity" chevron onPress={() => router.push("/activity")} />
         {phase2.enabled ? <ListRow leadingIcon={Ticket} title="Orders & tickets" chevron onPress={() => router.push("/orders")} /> : null}
         <ListRow leadingIcon={Wallet} title="Wallet pass" chevron onPress={() => router.push("/card")} />

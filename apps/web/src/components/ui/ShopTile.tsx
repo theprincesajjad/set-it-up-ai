@@ -32,7 +32,7 @@ export function ShopLogo({ shop, size = 48, className }: { shop: Pick<ShopTileSh
   const px = { 24: "size-6 rounded-xs", 40: "size-10 rounded-md", 48: "size-12 rounded-md", 56: "size-14 rounded-md", 72: "size-[72px] rounded-lg" }[size];
   if (shop.logoUrl)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={shop.logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" className={cn("shrink-0 bg-surface object-cover", px, className)} />;
+    return <img src={shop.logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" className={cn("shrink-0 object-cover", px, className)} style={{ background: verticalVar(shop.vertical, "tint") }} />;
   return (
     <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center", px, className)} style={{ background: verticalVar(shop.vertical, "tint"), color: verticalVar(shop.vertical, "accent") }}>
       <VerticalGlyph vertical={shop.vertical} className={size <= 24 ? "size-4" : size >= 72 ? "size-9" : "size-6"} />
@@ -64,13 +64,14 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
             <VerticalGlyph vertical={shop.vertical} className="absolute end-6 top-1/2 size-32 -translate-y-1/2 opacity-30" style={{ color: verticalVar(shop.vertical, "accent") }} />
           )}
         </div>
-        <div className="-mt-9 flex items-end gap-3 ps-4">
+        {/* Logo overlaps the hero edge by half (references.md §5); name and meta sit below it. */}
+        <div className="relative z-[1] -mt-9 ps-4">
           <ShopLogo shop={shop} size={72} className="ring-4 ring-canvas" />
-          <div className="min-w-0 pb-1">
-            {sponsored ? <SponsoredBadge /> : null}
-            <h1 className="text-h2 text-fg">{shop.name}</h1>
-            {subtitle ? <p className="text-body-sm text-fg-muted">{subtitle}</p> : null}
-          </div>
+        </div>
+        <div className="mt-2 min-w-0">
+          {sponsored ? <SponsoredBadge /> : null}
+          <h1 className="text-h2 text-fg">{shop.name}</h1>
+          {subtitle ? <p className="text-body-sm text-fg-muted">{subtitle}</p> : null}
         </div>
       </div>
     );

@@ -37,3 +37,5 @@ export * from "./TextField";
 export * from "./Timeline";
 export * from "./Toast";
 export * from "./icons";
+export * from "./DetentSheet";
+export * from "./PerkCard";

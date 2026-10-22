@@ -3,13 +3,13 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
-import { t } from "../copy/en-CA";
-import { useWallet } from "../features/customer/queries";
-import { activityTitle, groupByDay } from "../lib/activity";
-import { formatMoney } from "../lib/award";
-import { formatDate, formatTime } from "../lib/format";
-import { api } from "../state/api";
-import { Button, Card, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonList, Text } from "../ui";
+import { t } from "../../copy/en-CA";
+import { useWallet } from "../../features/customer/queries";
+import { activityTitle, groupByDay } from "../../lib/activity";
+import { formatMoney } from "../../lib/award";
+import { formatDate, formatTime } from "../../lib/format";
+import { api } from "../../state/api";
+import { Button, Card, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonList, Text } from "../../ui";
 
 type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 
@@ -49,7 +49,7 @@ export default function Activity() {
   const groups = groupByDay(rows);
 
   return (
-    <Screen back title="Activity">
+    <Screen back={!!params.memberId} title="Activity" largeTitle={!params.memberId}>
       {memberships.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           <Chip label="All shops" selected={!shop} onPress={() => setShop(null)} />

@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import { formatPts } from "../lib/award";
+import { formatPts, lockedRewardCopy } from "../lib/award";
 import { formatShortDate } from "../lib/format";
 import { useTheme } from "../theme";
 import { Badge } from "./Badge";
@@ -47,7 +47,7 @@ export function RewardCard({ reward, balance, terminology, state, onRedeem, rede
       {state === "locked" ? (
         <View style={{ marginTop: 12, gap: 6 }}>
           <ProgressBar value={balance} max={reward.pointsCost} tone="accent" valueText={`${balance} of ${reward.pointsCost} ${terminology}`} />
-          <Text variant="bodySm" color="fgMuted">{`${formatPts(toGo, terminology)} to go`}</Text>
+          <Text variant="bodySm" color="fgMuted">{lockedRewardCopy(toGo, terminology)}</Text>
         </View>
       ) : null}
       {disabledReason && state === "available" ? (

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
+import { ShopTabs } from "@/components/pass/ShopTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscountCard } from "@/components/ui/DiscountCard";
@@ -100,16 +101,14 @@ export default async function ShopPage({ params, searchParams }: Props) {
       <ShopTile
         variant="hero"
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl }}
-        subtitle={[verticalLabel(m.vertical), m.neighbourhood?.name].filter(Boolean).join(" · ")}
+        subtitle={[verticalLabel(m.vertical), loc?.address, m.neighbourhood?.name].filter(Boolean).join(" · ")}
       />
       {status ? (
-        <p className={status.open ? "flex items-center gap-2 text-body-sm font-semibold text-success" : "flex items-center gap-2 text-body-sm text-fg-muted"}>
-          <Clock aria-hidden className="size-4" />
+        <p className={status.open ? "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-success-subtle px-3 text-caption font-semibold text-on-success-subtle" : "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle"}>
+          <Clock aria-hidden className="size-3.5" />
           {status.label}
         </p>
       ) : null}
-      {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
-
       <div className="grid grid-cols-3 gap-2">
         {m.phone || loc?.phone ? (
           <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${m.phone ?? loc?.phone}`}>
@@ -141,83 +140,91 @@ export default async function ShopPage({ params, searchParams }: Props) {
         </Card>
       ) : null}
 
-      {program ? (
-        <Card>
-          <h2 className="text-title text-fg">How you earn here</h2>
-          <p className="mt-1 text-body text-fg">{howYouEarn(program)}</p>
-          {program.welcomeBonus > 0 ? <p className="mt-1 text-body-sm text-fg-muted">Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.</p> : null}
-          <p className="mt-1 text-body-sm text-fg-muted">{program.expiryDisclosure}</p>
-          {m.vertical === "pharmacy" ? <p className="mt-2 text-body-sm text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
-        </Card>
-      ) : null}
-
-      {shop.rewards.length ? (
-        <section aria-labelledby="rewards" className="flex flex-col gap-3">
-          <h2 id="rewards" className="text-h3 text-fg">
-            Rewards
-          </h2>
-          {shop.rewards.map((r) => (
-            <RewardCard
-              key={r.id}
-              reward={r}
-              terminology={terminology}
-              balance={membership?.balance ?? 0}
-              state={membership ? (membership.balance >= r.pointsCost ? "available" : "locked") : "preview"}
-            />
-          ))}
-        </section>
-      ) : null}
-
-      {shop.promos.length ? (
-        <section aria-labelledby="promos" className="flex flex-col gap-3">
-          <h2 id="promos" className="text-h3 text-fg">
-            Offers
-          </h2>
-          {shop.promos.map((p) => (
-            <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl }} />
-          ))}
-        </section>
-      ) : null}
-
-      {shop.discountCards.length ? (
-        <section aria-labelledby="cards" className="flex flex-col gap-3">
-          <h2 id="cards" className="text-h3 text-fg">
-            Member discount cards
-          </h2>
-          {shop.discountCards.map((c) => (
-            <DiscountCard key={c.id} card={c} shop={m} live={false} />
-          ))}
-        </section>
-      ) : null}
-
-      {loc ? (
-        <Card>
-          <h2 className="flex items-center gap-2 text-title text-fg">
-            <MapPin aria-hidden className="size-5 text-fg-muted" />
-            {loc.address}
-          </h2>
-          <p className="text-body-sm text-fg-muted">
-            {loc.city}
-            {loc.postalCode ? ` ${loc.postalCode}` : ""}
-            {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
-          </p>
-          {loc.hours ? (
-            <table className="mt-3 w-full text-body-sm">
-              <caption className="sr-only">Opening hours</caption>
-              <tbody>
-                {weekRows(loc.hours).map((r) => (
-                  <tr key={r.day}>
-                    <th scope="row" className="py-0.5 text-start font-normal text-fg-muted">
-                      {r.day}
-                    </th>
-                    <td className="py-0.5 text-end tabular-nums text-fg">{r.text}</td>
-                  </tr>
+      <ShopTabs
+        panels={[
+          {
+            id: "rewards",
+            label: "Rewards",
+            count: shop.rewards.length,
+            content: (
+              <>
+                {program ? (
+                  <Card>
+                    <h2 className="text-title text-fg">How you earn here</h2>
+                    <p className="mt-1 text-body text-fg">{howYouEarn(program)}</p>
+                    {program.welcomeBonus > 0 ? <p className="mt-1 text-body-sm text-fg-muted">Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.</p> : null}
+                    <p className="mt-1 text-body-sm text-fg-muted">{program.expiryDisclosure}</p>
+                    {m.vertical === "pharmacy" ? <p className="mt-2 text-body-sm text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
+                  </Card>
+                ) : null}
+                {shop.rewards.map((r) => (
+                  <RewardCard key={r.id} reward={r} terminology={terminology} balance={membership?.balance ?? 0} state={membership ? (membership.balance >= r.pointsCost ? "available" : "locked") : "preview"} />
                 ))}
-              </tbody>
-            </table>
-          ) : null}
-        </Card>
-      ) : null}
+                {shop.discountCards.map((c) => (
+                  <DiscountCard key={c.id} card={c} shop={m} live={false} />
+                ))}
+              </>
+            ),
+          },
+          {
+            id: "promos",
+            label: "Promos",
+            count: shop.promos.length,
+            content: shop.promos.length ? (
+              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl }} />)
+            ) : (
+              <p className="text-body text-fg-muted">No offers right now. Members hear about new ones first.</p>
+            ),
+          },
+          {
+            id: "about",
+            label: "About",
+            content: (
+              <>
+                {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
+                {loc ? (
+                  <Card>
+                    <h2 className="flex items-center gap-2 text-title text-fg">
+                      <MapPin aria-hidden className="size-5 text-fg-muted" />
+                      {loc.address}
+                    </h2>
+                    <p className="text-body-sm text-fg-muted">
+                      {loc.city}
+                      {loc.postalCode ? ` ${loc.postalCode}` : ""}
+                      {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
+                    </p>
+                    {loc.hours ? (
+                      <table className="mt-3 w-full text-body-sm">
+                        <caption className="sr-only">Opening hours</caption>
+                        <tbody>
+                          {weekRows(loc.hours).map((r) => (
+                            <tr key={r.day}>
+                              <th scope="row" className="py-0.5 text-start font-normal text-fg-muted">
+                                {r.day}
+                              </th>
+                              <td className="py-0.5 text-end tabular-nums text-fg">{r.text}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button variant="secondary" size="sm" iconStart={Navigation} href={directionsUrl(loc)}>
+                        Directions
+                      </Button>
+                      {m.instagram ? (
+                        <Button variant="ghost" size="sm" href={m.instagram.startsWith("http") ? m.instagram : `https://instagram.com/${m.instagram.replace(/^@/, "")}`}>
+                          {`Instagram @${m.instagram.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}`}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </Card>
+                ) : null}
+              </>
+            ),
+          },
+        ]}
+      />
 
       {!membership && joinInfo ? (
         <section id="join" aria-label={`Join ${m.name}`} className="scroll-mt-4 rounded-xl bg-surface p-4 shadow-md">

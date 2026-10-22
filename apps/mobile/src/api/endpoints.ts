@@ -9,6 +9,7 @@ import type {
   campaignsApi,
   commerceApi,
   customerApi,
+  integrationsApi,
   merchantApi,
   networkApi,
   serviceApi,
@@ -59,6 +60,8 @@ export function createEndpoints(c: ApiClient) {
       removePushToken: (token: string) => c.del<void>(`/v1/me/push-tokens/${enc(token)}`),
       referral: (memberId: string) => c.get<customerApi.ReferralResponse>(`/v1/me/memberships/${enc(memberId)}/referral`),
       newReferral: (memberId: string) => c.post<customerApi.ReferralResponse>(`/v1/me/memberships/${enc(memberId)}/referral`),
+      /** "Forgot to scan?": claim a POS purchase by its receipt code (integrations.md). */
+      claimPurchase: (merchantId: string, code: string) => c.post<integrationsApi.ClaimResponse>("/v1/me/purchases/claim", { merchantId, code }),
       campaigns: (lat?: number, lng?: number) => c.get<{ items: campaignsApi.MyCampaign[] }>("/v1/me/campaigns", { query: { lat, lng } }),
     },
 

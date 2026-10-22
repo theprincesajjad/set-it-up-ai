@@ -3,7 +3,7 @@
  * Web pass (`/me`): my card, my shops, rewards with redeem → code, activity and
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
-import { Activity, CreditCard, Download, Gift, LogOut, Settings, Store, Trash2 } from "lucide-react";
+import { Activity, Download, QrCode, Gift, LogOut, Settings, Store, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { customerApi } from "@ll/shared";
@@ -11,7 +11,7 @@ import { copy } from "@/copy/en-CA";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
-import { formatDate, formatPoints, formatTime } from "@/lib/format";
+import { formatDate, formatPoints, formatTime, unitFor } from "@/lib/format";
 import { formatE164 } from "@/lib/phone";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
@@ -32,7 +32,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 
-type Tab = "card" | "shops" | "rewards" | "activity" | "settings";
+type Tab = "shops" | "rewards" | "activity" | "settings";
 
 export interface WalletProps {
   profile: customerApi.ProfileDto;
@@ -58,7 +58,8 @@ const TX_LABELS: Record<string, string> = {
 };
 
 export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
-  const [tab, setTab] = useState<Tab>("card");
+  const [tab, setTab] = useState<Tab>("shops");
+  const [cardOpen, setCardOpen] = useState(false);
   const [wallet, setWallet] = useState(initialWallet);
   const [details, setDetails] = useState<Details>({});
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -69,7 +70,8 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
     const h = window.location.hash.replace("#", "") as Tab;
     // Sync from the URL hash once on mount (deep links like /me#settings); the server can't see the hash.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (["card", "shops", "rewards", "activity", "settings"].includes(h)) setTab(h);
+    if (["shops", "rewards", "activity", "settings"].includes(h)) setTab(h);
+    else if ((h as string) === "card") setCardOpen(true);
   }, []);
 
   const selectTab = (t: string) => {
@@ -104,24 +106,43 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
     }
   }, []);
 
+  const totalBalance = wallet.items.reduce((n, m) => n + m.balance, 0);
+  const terms = Array.from(new Set(wallet.items.map((m) => m.terminology)));
+  const totalUnit = terms.length === 1 ? unitFor(terms[0], totalBalance, false) : terms.length ? "points and stamps" : "points";
+
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? m : x)) }));
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
+      {/* One big number (references.md §2), then the card button that opens the QR sheet (§4). */}
+      <section aria-labelledby="total" className="flex flex-col items-center gap-2 pt-2 text-center">
         <p className="text-body-sm text-fg-muted">{profile.name ? `Hi, ${profile.name.split(" ")[0]}` : "Your card"}</p>
-        <h1 className="text-h1 text-fg">My shops</h1>
-        <p className="text-body-sm text-fg-muted">
-          {wallet.totals.shops} {wallet.totals.shops === 1 ? "shop" : "shops"}
-          {wallet.totals.rewardsAvailable ? ` · ${wallet.totals.rewardsAvailable} ${wallet.totals.rewardsAvailable === 1 ? "reward" : "rewards"} ready` : ""}
-        </p>
-      </div>
+        <h1 id="total" className="sr-only">
+          My shops
+        </h1>
+        <p className="text-points tabular-nums text-fg">{totalBalance.toLocaleString("en-CA")}</p>
+        <p className="-mt-1 text-body-sm text-fg-muted">{totalUnit}</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <span className="inline-flex h-7 items-center rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle">
+            across {wallet.totals.shops} {wallet.totals.shops === 1 ? "shop" : "shops"}
+          </span>
+          {wallet.totals.rewardsAvailable ? (
+            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-accent-subtle px-3 text-caption font-semibold text-on-accent-subtle">
+              <Gift aria-hidden className="size-3.5" />
+              {wallet.totals.rewardsAvailable} {wallet.totals.rewardsAvailable === 1 ? "reward" : "rewards"} ready
+            </span>
+          ) : null}
+        </div>
+        <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} className="mt-2 w-full">
+          {copy.action.showCard}
+        </Button>
+      </section>
+      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} total={totalBalance} unit={totalUnit} />
       <Tabs
         label="Wallet"
         value={tab}
         onChange={selectTab}
         items={[
-          { id: "card", label: <span className="inline-flex items-center gap-1.5"><CreditCard aria-hidden className="size-4" />Card</span> },
           { id: "shops", label: <span className="inline-flex items-center gap-1.5"><Store aria-hidden className="size-4" />Shops</span> },
           { id: "rewards", label: <span className="inline-flex items-center gap-1.5"><Gift aria-hidden className="size-4" />Rewards</span> },
           { id: "activity", label: <span className="inline-flex items-center gap-1.5"><Activity aria-hidden className="size-4" />Activity</span> },
@@ -129,7 +150,6 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
         ]}
       />
 
-      {tab === "card" ? <CardTab card={card} profile={profile} /> : null}
       {tab === "shops" ? (
         <ShopsTab wallet={wallet} details={details} openShop={openShop} setOpenShop={setOpenShop} loadDetails={loadDetails} onChanged={refreshWallet} profile={profile} />
       ) : null}
@@ -140,7 +160,8 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
   );
 }
 
-function CardTab({ card, profile }: { card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
+/** My card as a sheet (references.md §4): pine card with total + name, white QR tile, big member code, wallet buttons. */
+function CardSheet({ open, onClose, card, profile, total, unit }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; total: number; unit: string }) {
   const [walletError, setWalletError] = useState<string | null>(null);
   async function google() {
     try {
@@ -160,8 +181,19 @@ function CardTab({ card, profile }: { card: customerApi.CardResponse | null; pro
     }
   }
   return (
+    <Modal open={open} onClose={onClose} title="My card" variant="sheet">
     <div className="flex flex-col items-center gap-4">
-      {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
+      <div className="flex w-full items-center justify-between rounded-xl bg-brand px-5 py-4 text-on-brand">
+        <div>
+          <p className="text-overline uppercase opacity-90">Scan before paying</p>
+          <p className="text-title">{profile.name ?? "Member"}</p>
+        </div>
+        <div className="text-end">
+          <p className="text-h2 tabular-nums">{total.toLocaleString("en-CA")}</p>
+          <p className="text-caption">{unit}</p>
+        </div>
+      </div>
+      {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
       <p className="text-center text-body-sm text-fg-muted">Works at every shop on the network. Turn your brightness up.</p>
       {walletError ? <Banner tone="neutral">{walletError}</Banner> : null}
       <div className="grid w-full gap-2">
@@ -173,6 +205,7 @@ function CardTab({ card, profile }: { card: customerApi.CardResponse | null; pro
         </Button>
       </div>
     </div>
+    </Modal>
   );
 }
 

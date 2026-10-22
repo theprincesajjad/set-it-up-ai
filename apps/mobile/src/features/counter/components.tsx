@@ -3,7 +3,7 @@ import { radii, touchTargets } from "@ll/design-tokens";
 import type { staffApi } from "@ll/shared";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { formatMoney, formatPts, shortName, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
+import { formatMoney, formatPts, lockedRewardCopy, shortName, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
 import { formatTime } from "../../lib/format";
 import type { QueueSnapshot } from "../../lib/offlineQueue";
 import type { ActiveStaff, RecentAward } from "../../state/counter";
@@ -365,7 +365,7 @@ export function RewardPicker({
                   {r.name}
                 </Text>
                 <Text variant="bodyStrong" color="fgMuted">
-                  {ok ? formatPts(r.pointsCost, member.terminology) : `${formatPts(r.pointsCost - member.balance, member.terminology)} to go`}
+                  {ok ? formatPts(r.pointsCost, member.terminology) : lockedRewardCopy(r.pointsCost - member.balance, member.terminology)}
                 </Text>
               </Pressable>
             );

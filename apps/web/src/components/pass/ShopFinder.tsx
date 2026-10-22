@@ -13,7 +13,9 @@ import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ShopTile } from "@/components/ui/ShopTile";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TextField } from "@/components/ui/TextField";
+import { ShopMap } from "./ShopMap";
 import { verticalIcon, verticalLabel } from "@/components/ui/VerticalIcon";
 
 export interface ShopFinderProps {
@@ -34,6 +36,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const first = useRef(true);
+  const [view, setView] = useState<"list" | "map">("list");
 
   useEffect(() => {
     if (first.current) {
@@ -76,7 +79,10 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-h1 text-fg">Shops near you</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-h1 text-fg">Shops near you</h1>
+        <SegmentedControl label="View" value={view} onChange={setView} options={[{ value: "list", label: "List" }, { value: "map", label: "Map" }]} />
+      </div>
       <div className="flex flex-col gap-3">
         <div className="relative">
           <TextField label="Search shops" hideLabel type="search" placeholder="Search coffee, books, repair..." value={q} onChange={(e) => setQ(e.target.value)} className="ps-10" />
@@ -112,8 +118,10 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
         ) : null}
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <div aria-live="polite" aria-busy={loading}>
-        {loading && !items.length ? (
+      <div id="list" aria-live="polite" aria-busy={loading}>
+        {view === "map" && items.length ? (
+          <ShopMap items={items} me={coords} />
+        ) : loading && !items.length ? (
           <div className="flex flex-col gap-3">
             <SkeletonCard />
             <SkeletonCard />

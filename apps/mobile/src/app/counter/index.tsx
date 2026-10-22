@@ -1,0 +1,532 @@
+import { layout } from "@ll/design-tokens";
+import type { staffApi } from "@ll/shared";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
+import { Redirect, router } from "expo-router";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { isApiError, type ApiError } from "../../api/client";
+import { t } from "../../copy/en-CA";
+import { AmountDisplay, CounterHeader, CustomerCard, EntryDisplay, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
+import { scanBus } from "../../features/scanBus";
+import {
+  activeMultiplier,
+  awardButtonLabel,
+  awardErrorMessage,
+  awardRef,
+  classifyScan,
+  cooldownWarning,
+  counterReducer,
+  entryDisplay,
+  estimatePoints,
+  firstName,
+  formatPts,
+  initialCounterState,
+  normalizeRedeemInput,
+  shortName,
+  shouldQueueAward,
+  successView,
+  type CounterCustomer,
+  type SuccessView,
+} from "../../lib/award";
+import { newIdempotencyKey } from "../../lib/ids";
+import { last4, toE164 } from "../../lib/phone";
+import { api } from "../../state/api";
+import { useCounter, type RecentAward } from "../../state/counter";
+import { qk } from "../../state/query";
+import { typo, useTheme } from "../../theme";
+import { Banner, Button, Camera, Chip, EmptyState, Keypad, ListRow, OfflineBanner, Plus, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
+
+type Panel = { kind: "redeemSuccess"; view: SuccessView; transactionId: string | null; startedAt: number } | null;
+
+/** Counter mode main screen: keypad / scan → customer → award in ≤ 2 taps → success + 10 s undo. */
+export default function Counter() {
+  const { c } = useTheme();
+  const { width } = useWindowDimensions();
+  const toast = useToast();
+  const ctx = useCounter();
+  const { config, merchant, program, programPaused, staff, online, queue, queueState, flush, recent, addRecent, markUndone, touch, cacheMembers, cachedMember } = ctx;
+  const merchantId = config.merchantId ?? "";
+  const [state, dispatch] = useReducer(counterReducer, initialCounterState);
+  const [panel, setPanel] = useState<Panel>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeemBusy, setRedeemBusy] = useState(false);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const rewards = useQuery({ queryKey: qk.counterRewards(merchantId), queryFn: () => api.merchant.rewards(merchantId), enabled: !!merchantId, staleTime: 5 * 60_000 });
+  const promos = useQuery({ queryKey: qk.counterPromos(merchantId), queryFn: () => api.merchant.promos(merchantId), enabled: !!merchantId, staleTime: 5 * 60_000 });
+  const categories = useQuery({ queryKey: qk.counterCategories(merchantId), queryFn: () => api.merchant.categories(merchantId), enabled: !!merchantId, staleTime: 30 * 60_000 });
+  const noEarnCategories = (categories.data?.items ?? []).filter((x) => !x.earnEligible);
+  const activeRewards = (rewards.data?.items ?? []).filter((r) => r.active).sort((a, b) => a.pointsCost - b.pointsCost);
+  const multiplier = activeMultiplier(promos.data?.items ?? [], new Date());
+  const vertical = merchant?.merchant.vertical ?? "other";
+
+  // Clear any pending auto-return when leaving success.
+  useEffect(() => () => void (returnTimer.current && clearTimeout(returnTimer.current)), []);
+
+  const scheduleReturn = useCallback(() => {
+    if (returnTimer.current) clearTimeout(returnTimer.current);
+    returnTimer.current = setTimeout(() => {
+      setPanel(null);
+      dispatch({ type: "reset" });
+    }, 4000);
+  }, []);
+
+  // ---------------------------------------------------------------- lookup
+  const lookup = useCallback(
+    async (query: string, digits: string) => {
+      const isPhone = /^\+1\d{10}$/.test(query);
+      if (!online) {
+        const cached = cachedMember(query);
+        if (cached) dispatch({ type: "pick", member: cached });
+        else if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `...${last4(query)}` });
+        else if (query.startsWith("LL:") || /^[A-Z0-9]{8}$/.test(query)) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
+        else dispatch({ type: "lookupError", message: "Last-4 search needs internet. Type the full number." });
+        return;
+      }
+      try {
+        const res = await api.counter.lookup(merchantId, query);
+        if (res.items.length) cacheMembers(query, res.items);
+        dispatch({ type: "lookupResult", res, digits });
+      } catch (e) {
+        const err = e as ApiError;
+        if (isApiError(err) && err.isRetryable) {
+          if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `...${last4(query)}` });
+          else if (query.startsWith("LL:")) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
+          else dispatch({ type: "lookupError", message: t("err.network") });
+        } else if (isApiError(err) && err.status === 404) {
+          dispatch({ type: "lookupError", message: t("err.qr.invalid") });
+        } else dispatch({ type: "lookupError", message: isApiError(err) ? err.message : t("err.server") });
+      }
+    },
+    [online, merchantId, cacheMembers, cachedMember],
+  );
+
+  useEffect(() => {
+    if (state.step === "lookingUp") void lookup(state.query, state.digits);
+  }, [state, lookup]);
+
+  // Full 10 digits auto-searches (no extra tap).
+  useEffect(() => {
+    if (state.step === "entry" && state.digits.length === 10 && toE164(state.digits)) dispatch({ type: "lookup" });
+  }, [state]);
+
+  // Scanned card / code from the camera screen.
+  const verifyCode = useCallback(
+    async (raw: string) => {
+      const value = normalizeRedeemInput(raw);
+      if (value.length < 4) return;
+      if (!online) {
+        setCodeError(t("err.redeem.offline"));
+        return;
+      }
+      setCodeBusy(true);
+      setCodeError(null);
+      try {
+        const res = await api.counter.verifyRedemption(merchantId, value);
+        setCodeOpen(false);
+        setCode("");
+        showRedeemSuccess(res);
+      } catch (e) {
+        if (isApiError(e) && e.status === 404) setCodeError("No reward code like that at this shop. Check the code, or ask them to tap Redeem again.");
+        else if (isApiError(e) && e.code === "already_used") setCodeError(e.message || "Already redeemed.");
+        else if (isApiError(e) && e.code === "void") setCodeError("This code was cancelled. Ask them to tap Redeem again.");
+        else setCodeError(isApiError(e) ? e.message : t("err.server"));
+        setCodeOpen(true);
+      } finally {
+        setCodeBusy(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [online, merchantId],
+  );
+
+  useEffect(
+    () =>
+      scanBus.subscribe((data) => {
+        touch();
+        const s = classifyScan(data);
+        if (s.kind === "member") dispatch({ type: "lookup", query: `LL:${s.memberCode}` });
+        else if (s.kind === "phone") {
+          dispatch({ type: "reset" });
+          const e164 = toE164(s.digits);
+          if (e164) dispatch({ type: "lookup", query: e164 });
+        } else if (s.kind === "redeem") {
+          setCode(s.code);
+          void verifyCode(s.code);
+        } else toast({ tone: "error", message: t("err.qr.invalid") });
+      }),
+    [toast, verifyCode, touch],
+  );
+
+  // ---------------------------------------------------------------- award
+  const customer = state.step === "customer" ? state.customer : null;
+  const member = customer?.kind === "member" ? customer.member : null;
+  const perDollar = program?.earnType === "per_dollar";
+  const noEarn = !!categoryId;
+  const estimate = program ? estimatePoints({ program, amountCents: state.step === "customer" ? state.amountCents : 0, noEarn, multiplier, vipMultiplierPct: member?.vip?.multiplierPct }) : 0;
+  const label = program ? awardButtonLabel(program, { points: estimate, noEarn, multiplier, newCustomer: customer?.kind === "new" }) : "Award";
+  const cooldown = member && program ? cooldownWarning(member, program, Date.now()) : null;
+
+  const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `...${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `...${cust.digits.slice(-4)}` : cust.label);
+
+  const award = async () => {
+    if (state.step !== "customer" || !program || !merchantId) return;
+    touch();
+    const cust = state.customer;
+    const key = newIdempotencyKey();
+    const amountCents = perDollar ? state.amountCents : undefined;
+    const body = {
+      ...awardRef(cust),
+      ...(categoryId ? { lines: [{ amountCents: state.amountCents, categoryId }] } : amountCents !== undefined ? { amountCents } : {}),
+      ...(config.locationId ? { locationId: config.locationId } : {}),
+      ...(cust.kind === "new" && newName.trim() ? { customerName: newName.trim() } : {}),
+      idempotencyKey: key,
+    };
+    const baseBalance = cust.kind === "member" ? cust.member.balance : null;
+    const optimistic = successView({
+      program,
+      pointsEarned: estimate,
+      balance: baseBalance === null ? null : baseBalance + estimate,
+      nextReward: cust.kind === "member" && cust.member.nextReward ? { name: cust.member.nextReward.name, pointsNeeded: Math.max(0, cust.member.nextReward.pointsNeeded - estimate) } : null,
+      firstName: cust.kind === "member" ? firstName(cust.member.name) : null,
+      offline: !online,
+    });
+    const display = { label, who: who(cust), name: cust.kind === "member" ? cust.member.name : null };
+    const enqueue = async () => {
+      await queue.enqueue(merchantId, { type: "award", occurredAt: new Date().toISOString(), ...body } as staffApi.SyncEvent, display);
+      addRecent({ key, transactionId: null, label, who: display.who, at: Date.now(), queued: true });
+    };
+
+    // Optimistic success in <= 150 ms; the server result replaces it.
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    dispatch({ type: "awarded", view: optimistic, customer: cust, transactionId: null, queuedKey: online ? null : key, at: Date.now() });
+    setCategoryId(null);
+    setNewName("");
+    if (!online) {
+      await enqueue();
+      AccessibilityInfo.announceForAccessibility(`${optimistic.title}. ${t("ok.counter.offlineSaved")}`);
+      scheduleReturn();
+      return;
+    }
+    try {
+      const res = await api.counter.award(merchantId, body);
+      const view = successView({ program, pointsEarned: res.pointsEarned + res.extraPoints, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: res.messages, firstName: firstName(res.member.name) });
+      dispatch({ type: "awarded", view, customer: { kind: "member", member: res.member }, transactionId: res.transactionId, queuedKey: null, at: Date.now() });
+      addRecent({ key, transactionId: res.transactionId, label: view.title, who: who({ kind: "member", member: res.member }), at: Date.now() });
+      cacheMembers(`code:${res.member.memberCode}`, [res.member]);
+      AccessibilityInfo.announceForAccessibility(view.announcement);
+      scheduleReturn();
+    } catch (e) {
+      if (shouldQueueAward(e)) {
+        await enqueue();
+        dispatch({ type: "awarded", view: { ...optimistic, offline: true, hero: optimistic.hero.startsWith("~") ? optimistic.hero : `~${optimistic.hero}` }, customer: cust, transactionId: null, queuedKey: key, at: Date.now() });
+        toast("Saved. We'll retry.");
+        scheduleReturn();
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+        dispatch({ type: "identified", customer: cust });
+        dispatch({ type: "awardError", message: awardErrorMessage(isApiError(e) ? e : {}, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology }) });
+      }
+    }
+  };
+
+  // ---------------------------------------------------------------- undo
+  const undo = async (target: { transactionId: string | null; queuedKey: string | null; key?: string }) => {
+    if (returnTimer.current) clearTimeout(returnTimer.current);
+    setUndoBusy(true);
+    try {
+      if (target.queuedKey && queue.has(target.queuedKey)) {
+        await queue.remove(target.queuedKey);
+        markUndone(target.queuedKey);
+        dispatch({ type: "notice", tone: "neutral", message: "Undone. Nothing was sent." });
+      } else if (target.transactionId) {
+        const res = await api.counter.undo(merchantId, target.transactionId);
+        if (target.key) markUndone(target.key);
+        dispatch({ type: "notice", tone: "neutral", message: t("ok.counter.undone", { firstName: firstName(res.member.name) ?? "They", pts: formatPts(res.member.balance, res.member.terminology) }) });
+      } else {
+        dispatch({ type: "notice", tone: "neutral", message: "Still sending. Undo it from Today once it's sent." });
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+    } catch (e) {
+      dispatch({ type: "notice", tone: "danger", message: isApiError(e) && e.status === 403 ? "Too late to undo here. Ask a manager to adjust it." : isApiError(e) ? e.message : t("err.network") });
+    } finally {
+      setUndoBusy(false);
+      setPanel(null);
+      scheduleReturn();
+    }
+  };
+  const undoRecent = (r: RecentAward) => undo({ transactionId: r.transactionId, queuedKey: r.queued ? r.key : null, key: r.key });
+
+  // ---------------------------------------------------------------- redeem
+  const showRedeemSuccess = (res: staffApi.CounterRedemptionResponse) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    const view: SuccessView = {
+      title: t("ok.counter.redeemed", { reward: res.redemption.reward.name }),
+      hero: program?.earnType === "stamps" && program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPts(res.member.balance, res.member.terminology),
+      next: `${shortName(res.member.name)} has ${formatPts(res.member.balance, res.member.terminology)} left`,
+      rewardReady: false,
+      offline: false,
+      messages: res.redemption.discountCents ? [`Discount ${(res.redemption.discountCents / 100).toFixed(2)}`] : [],
+      announcement: `${res.redemption.reward.name} redeemed. Hand it over.`,
+    };
+    AccessibilityInfo.announceForAccessibility(view.announcement);
+    setPanel({ kind: "redeemSuccess", view, transactionId: res.redemption.transactionId, startedAt: Date.now() });
+    addRecent({ key: res.redemption.id, transactionId: res.redemption.transactionId, label: `Redeemed ${res.redemption.reward.name}`, who: shortName(res.member.name), at: Date.now() });
+    scheduleReturn();
+  };
+
+  const redeemMember = state.step === "customer" && state.customer.kind === "member" ? state.customer.member : state.step === "success" && state.customer.kind === "member" ? state.customer.member : null;
+  const redeem = async (rewardId: string) => {
+    if (!redeemMember) return;
+    setRedeemBusy(true);
+    setRedeemError(null);
+    try {
+      const res = await api.counter.redeem(merchantId, { memberId: redeemMember.memberId, rewardId, locationId: config.locationId ?? undefined, idempotencyKey: newIdempotencyKey() });
+      setRedeemOpen(false);
+      showRedeemSuccess(res);
+    } catch (e) {
+      setRedeemError(isApiError(e) && e.code === "insufficient_points" ? "Not enough yet for that reward." : isApiError(e) ? e.message : t("err.network"));
+    } finally {
+      setRedeemBusy(false);
+    }
+  };
+
+  const onKey = (k: KeypadKey) => {
+    touch();
+    if (panel) setPanel(null);
+    if (returnTimer.current && state.step !== "customer") clearTimeout(returnTimer.current);
+    dispatch({ type: "key", key: k });
+  };
+
+  // ---------------------------------------------------------------- guards
+  const queuedForCount = useMemo(() => queueState.pendingCount, [queueState.pendingCount]);
+  if (!ctx.ready) return <View style={{ flex: 1, backgroundColor: c.canvas }} />;
+  if (!config.merchantId || !config.locationId) return <Redirect href="/counter/select" />;
+  if (config.sharedDevice && !staff) return <Redirect href="/counter/pin" />;
+  if (config.kiosk) return <Redirect href="/counter/kiosk" />;
+
+  const wide = width >= 768;
+  const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
+  const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
+
+  const entryPane = (
+    <View style={{ gap: 12 }}>
+      {state.step === "customer" && perDollar ? (
+        <AmountDisplay cents={state.amountCents} />
+      ) : (
+        <EntryDisplay text={entryDisplay(digits)} placeholder={t("counter.placeholder")} error={state.step === "entry" ? state.error : null} />
+      )}
+      {state.step !== "customer" ? (
+        <View style={styles.row}>
+          <Button variant="secondary" size="lg" iconStart={Camera} style={{ flex: 1 }} onPress={() => router.push("/counter/scan")}>
+            {t("counter.scanCard")}
+          </Button>
+          <Button variant="secondary" size="lg" iconStart={Ticket} style={{ flex: 1 }} onPress={() => setCodeOpen(true)}>
+            {t("counter.enterCode")}
+          </Button>
+        </View>
+      ) : null}
+      {state.step === "entry" && digits.length === 4 ? (
+        <View style={{ alignItems: "center" }}>
+          <Chip large icon={Search} label={t("counter.searchLast4")} onPress={() => dispatch({ type: "lookup", query: digits })} />
+        </View>
+      ) : null}
+      {showKeypad ? <Keypad onKey={onKey} /> : null}
+      {state.step === "entry" || state.step === "lookingUp" ? (
+        <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
+          {t("counter.findCustomer")}
+        </Button>
+      ) : null}
+    </View>
+  );
+
+  const customerPane = (() => {
+    if (panel?.kind === "redeemSuccess") {
+      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} />;
+    }
+    if (state.step === "success") {
+      return (
+        <SuccessCard
+          tone="success"
+          view={state.view}
+          startedAt={state.startedAt}
+          undoBusy={undoBusy}
+          onUndo={state.transactionId || state.queuedKey ? () => undo({ transactionId: state.transactionId, queuedKey: state.queuedKey, key: recent[0]?.key }) : undefined}
+          onRedeemNow={online && state.customer.kind === "member" ? () => { if (returnTimer.current) clearTimeout(returnTimer.current); setRedeemOpen(true); } : undefined}
+        />
+      );
+    }
+    if (state.step === "notice") {
+      return (
+        <View style={[styles.notice, { backgroundColor: state.tone === "danger" ? c.dangerSubtle : c.neutralSubtle }]}>
+          <Text variant="h3" rawColor={state.tone === "danger" ? c.onDangerSubtle : c.onNeutralSubtle} center>
+            {state.message}
+          </Text>
+          <Button variant="secondary" size="counter" onPress={() => dispatch({ type: "reset" })}>
+            Next customer
+          </Button>
+        </View>
+      );
+    }
+    if (state.step === "pick") {
+      return (
+        <View style={{ gap: 4 }}>
+          <Text variant="h3">{`Ends in ${state.digits}`}</Text>
+          {state.matches.map((m) => (
+            <ListRow
+              key={m.memberId}
+              leading={<Avatar name={m.name} id={m.memberId} size={40} />}
+              title={`${shortName(m.name)} · ${m.maskedPhone ?? ""}`}
+              subtitle={m.lastVisitAt ? `Visited ${new Date(m.lastVisitAt).toDateString().slice(0, 10)}` : "New here"}
+              minHeight={64}
+              onPress={() => dispatch({ type: "pick", member: m })}
+            />
+          ))}
+        </View>
+      );
+    }
+    if (state.step === "customer") {
+      return (
+        <View style={{ gap: 16 }}>
+          <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} />
+          {state.customer.kind === "new" ? (
+            <View style={[styles.nameField, { borderColor: c.borderStrong, backgroundColor: c.surface }]}>
+              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgMuted} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1 }]} />
+            </View>
+          ) : null}
+          {perDollar && noEarnCategories.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <Chip large label="Front store" selected={!categoryId} onPress={() => setCategoryId(null)} />
+              {noEarnCategories.map((cat) => (
+                <Chip key={cat.id} large label={cat.name} selected={categoryId === cat.id} onPress={() => setCategoryId(cat.id)} />
+              ))}
+            </ScrollView>
+          ) : null}
+          {categoryId ? <Banner variant="info">{`${noEarnCategories.find((x) => x.id === categoryId)?.name ?? "This category"} doesn't earn ${program?.terminology ?? "points"}.`}</Banner> : null}
+          {state.error ? <Banner variant="danger">{state.error}</Banner> : null}
+          <Button size="counter" iconStart={Plus} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={award}>
+            {label}
+          </Button>
+          <View style={styles.row}>
+            {member && activeRewards.length > 0 ? (
+              <Chip large label="Redeem" onPress={() => setRedeemOpen(true)} />
+            ) : null}
+            <View style={{ flex: 1 }} />
+            <Button variant="ghost" onPress={() => { setCategoryId(null); dispatch({ type: "reset" }); }}>
+              Cancel
+            </Button>
+          </View>
+        </View>
+      );
+    }
+    return wide ? <EmptyState icon={Search} title={t("empty.counter")} /> : null;
+  })();
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top", "bottom"]} onTouchStart={touch}>
+      <CounterHeader
+        title={config.locationName ?? config.merchantName ?? "Counter"}
+        staff={staff}
+        canSwitch={config.sharedDevice}
+        onStaff={() => router.push("/counter/pin")}
+        onMenu={() => setMenuOpen(true)}
+      />
+      <OfflineBanner mode="counter" online={online} pending={queuedForCount} sentJustNow={ctx.sentJustNow} stale={queueState.stale} retrying={queueState.flushing} onPress={() => setQueueOpen(true)} />
+      {queueState.failedCount > 0 ? (
+        <Banner variant="danger" onPress={() => setQueueOpen(true)}>{`${queueState.failedCount} ${queueState.failedCount === 1 ? "award needs" : "awards need"} attention. Tap to see.`}</Banner>
+      ) : null}
+      {programPaused ? <Banner variant="neutral">{t("err.award.programPaused")}</Banner> : null}
+
+      {wide ? (
+        <View style={[styles.wide]}>
+          <View style={{ flex: 4 }}>{entryPane}</View>
+          <View style={{ flex: 6, gap: 16 }}>
+            <View style={{ flex: 1 }}>{customerPane}</View>
+            <RecentStrip recent={recent} onUndo={undoRecent} />
+          </View>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: layout.gutterMobile, gap: 16, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          {state.step === "customer" ? customerPane : null}
+          {state.step === "success" || state.step === "notice" || panel ? customerPane : null}
+          {state.step === "pick" ? customerPane : null}
+          {!(state.step === "success" || state.step === "notice" || panel) ? entryPane : null}
+          {state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
+        </ScrollView>
+      )}
+
+      <QueueSheet visible={queueOpen} onClose={() => setQueueOpen(false)} state={queueState} online={online} onRetry={() => void flush(true)} onDismiss={(id) => void queue.remove(id)} />
+      <RewardPicker
+        visible={redeemOpen}
+        onClose={() => setRedeemOpen(false)}
+        member={redeemMember}
+        rewards={activeRewards}
+        onConfirm={redeem}
+        busy={redeemBusy}
+        error={redeemError}
+        online={online}
+      />
+      <Sheet
+        visible={codeOpen}
+        onClose={() => {
+          setCodeOpen(false);
+          setCodeError(null);
+        }}
+        title="Customer's reward code"
+        footer={
+          <Button variant="accent" size="counter" loading={codeBusy} disabled={normalizeRedeemInput(code).length < 4 || !online} onPress={() => verifyCode(code)}>
+            Confirm
+          </Button>
+        }
+      >
+        {!online ? <Banner variant="warning">{t("err.redeem.offline")}</Banner> : null}
+        <View style={[styles.codeField, { borderColor: codeError ? c.danger : c.borderStrong, backgroundColor: c.surface }]}>
+          <TextInput
+            value={code}
+            onChangeText={(v) => setCode(normalizeRedeemInput(v))}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            autoFocus
+            maxLength={8}
+            placeholder="K7Q2XM"
+            placeholderTextColor={c.fgMuted}
+            accessibilityLabel="Reward code"
+            onSubmitEditing={() => verifyCode(code)}
+            style={[typo("code"), { color: c.fg, textAlign: "center", flex: 1 }]}
+          />
+        </View>
+        {codeError ? <Banner variant="danger">{codeError}</Banner> : null}
+        <Button variant="ghost" iconStart={Camera} onPress={() => { setCodeOpen(false); router.push("/counter/scan"); }}>
+          Scan the code instead
+        </Button>
+      </Sheet>
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Counter">
+        <ListRow title="Today" subtitle="Visits, points and redemptions" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
+        <ListRow title="Waiting to send" subtitle={`${queueState.pendingCount} queued`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
+        <ListRow title="Counter settings" subtitle="Theme, kiosk, scanner" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
+        <ListRow title="Switch location" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
+        {config.sharedDevice ? <ListRow title="Lock (switch staff)" chevron minHeight={64} divider={false} onPress={() => { setMenuOpen(false); ctx.lockStaff(); router.replace("/counter/pin"); }} /> : null}
+      </Sheet>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  wide: { flex: 1, flexDirection: "row", gap: 24, padding: 24 },
+  notice: { borderRadius: 24, padding: 24, gap: 24, justifyContent: "center", minHeight: 280 },
+  nameField: { minHeight: 64, borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },
+  codeField: { minHeight: 72, borderRadius: 12, borderWidth: 2, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" },
+});
