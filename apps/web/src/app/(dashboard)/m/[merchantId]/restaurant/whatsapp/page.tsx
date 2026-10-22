@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { formatNumber } from "@/lib/format";
-import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
+import { useAction, useApi, useNow, type ApiState } from "@/lib/dashboard/useApi";
 import { Broadcast } from "./Broadcast";
 import { Setup } from "./Setup";
 
@@ -117,7 +117,7 @@ const LANGS = [
   { value: "pa", label: "ਪੰਜਾਬੀ (Punjabi)" },
 ];
 
-function Chats({ sessions, connected, onSetup }: { sessions: ReturnType<typeof useApi<{ items: whatsappApi.WhatsappSession[] }>>; connected: boolean; onSetup: () => void }) {
+function Chats({ sessions, connected, onSetup }: { sessions: ApiState<{ items: whatsappApi.WhatsappSession[] }>; connected: boolean; onSetup: () => void }) {
   const now = useNow();
   const cols: Column<whatsappApi.WhatsappSession>[] = [
     { key: "phone", header: "Customer", mobile: "title", cell: (r) => <span className="font-medium">{formatPhone(r.phone)}</span> },
