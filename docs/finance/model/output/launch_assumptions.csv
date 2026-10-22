@@ -26,6 +26,22 @@ price_elasticity_plus,0.00,elasticity of conversion,0 = conversion ignores price
 price_elasticity_pro,0.00,elasticity of conversion,0 = conversion ignores price (original). Launch plan: 0.5
 post_launch_signup_haircut,0.00,share,Fewer shops agree to join once most of the product is paywalled (applies to every signup from the paid launch on)
 launch_free_churn_shock,0.00,"share of network, once",Free shops that leave in the launch month
+remote_areas_per_month_m1_3,5,areas/month,Founder's plan: 5 areas (streets/communities with lots of stores) launched every month
+remote_areas_per_month_after,5,areas/month,Founder's plan: keep 5/month after month 3 (variants 3 and 8)
+remote_max_areas,120,areas,Assumption: Toronto saturation = 85+ BIAs (PRD) + ~35 non-BIA commercial streets/plazas; GTA expansion not modelled
+remote_area_storefronts,35,repeat-visit storefronts/area,Founder: ~30-40 storefronts per area
+remote_shops_per_area,27.00,shops that eventually sign/area,Solved so the network hits the month-3 target (remote_m3_target); 27 = founder's ~400
+remote_m3_target,,shops on network at month 3,"If set, remote_shops_per_area is solved to hit it"
+remote_ramp,"[0.7, 0.2, 0.1]",share of an area's signers by month since launch,Assumption: by phone most owners decide within the first month of calls; follow-ups catch the rest
+street_day_cost,220.00,"CAD/area, once",Assumption: one person visits all ~30 shops in one day to check the dashboard/counter: $200 day + ~$20 transit. $0 if the founder does it
+ai_tooling_monthly,0.00,CAD/month,Remote plan: $100/mo (range $50-150) AI agent + telephony tooling (assumption)
+ai_cost_per_shop,0.00,CAD/shop onboarded,Remote plan: $2 (range $1-3) LLM tokens + call minutes + SMS per shop onboarded (assumption)
+founder_support_hours,0.00,hours/month,Support hours the founder covers unpaid before $25/hr applies (0 = all support costed). Sensitivity: 40 h/month
+working_days_per_month,21.70,days,5 days/week
+call_reach_rate,0.3500,share of dials,"Assumption: dials that reach the owner/decision-maker (cold, small shops)"
+call_close_rate,0.2500,share of owner conversations,"Assumption: owner conversations that end in a signed shop (free product, no contract)"
+minutes_per_conversation,15,minutes,Assumption: pitch + start the AI setup wizard on the call
+minutes_per_missed_dial,2,minutes,"Assumption: dial, voicemail, log"
 bia_one_off,{},CAD by month,"Optional: one BIA campaign sold early, e.g. {5: 2250} ($1,500-3,000 range)"
 LAUNCH_BASE.unlock_pro_active_merchants,40,,override used by every launch-plan option
 LAUNCH_BASE.pro_features_ready_month,1,,override used by every launch-plan option

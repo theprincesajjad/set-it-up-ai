@@ -374,6 +374,31 @@ LAUNCH_ASSUMPTIONS = {
     "post_launch_signup_haircut": A(0.0, "share", "Fewer shops agree to join once most of the product is paywalled "
                                                   "(applies to every signup from the paid launch on)"),
     "launch_free_churn_shock": A(0.0, "share of network, once", "Free shops that leave in the launch month"),
+    # ---- Remote onboarding (founder on the phone + AI onboarding agents), Oct 22, 2026 ----
+    "remote_areas_per_month_m1_3": A(5, "areas/month", "Founder's plan: 5 areas (streets/communities with lots of stores) "
+                                                       "launched every month"),
+    "remote_areas_per_month_after": A(5, "areas/month", "Founder's plan: keep 5/month after month 3 (variants 3 and 8)"),
+    "remote_max_areas": A(120, "areas", "Assumption: Toronto saturation = 85+ BIAs (PRD) + ~35 non-BIA commercial "
+                                        "streets/plazas; GTA expansion not modelled"),
+    "remote_area_storefronts": A(35, "repeat-visit storefronts/area", "Founder: ~30-40 storefronts per area"),
+    "remote_shops_per_area": A(27.0, "shops that eventually sign/area",
+                               "Solved so the network hits the month-3 target (remote_m3_target); 27 = founder's ~400"),
+    "remote_m3_target": A(None, "shops on network at month 3", "If set, remote_shops_per_area is solved to hit it"),
+    "remote_ramp": A([0.70, 0.20, 0.10], "share of an area's signers by month since launch",
+                     "Assumption: by phone most owners decide within the first month of calls; follow-ups catch the rest"),
+    "street_day_cost": A(220.0, "CAD/area, once", "Assumption: one person visits all ~30 shops in one day to check the "
+                                                  "dashboard/counter: $200 day + ~$20 transit. $0 if the founder does it"),
+    "ai_tooling_monthly": A(0.0, "CAD/month", "Remote plan: $100/mo (range $50-150) AI agent + telephony tooling (assumption)"),
+    "ai_cost_per_shop": A(0.0, "CAD/shop onboarded", "Remote plan: $2 (range $1-3) LLM tokens + call minutes + SMS per "
+                                                     "shop onboarded (assumption)"),
+    "founder_support_hours": A(0.0, "hours/month", "Support hours the founder covers unpaid before $25/hr applies "
+                                                   "(0 = all support costed). Sensitivity: 40 h/month"),
+    "working_days_per_month": A(21.7, "days", "5 days/week"),
+    "call_reach_rate": A(0.35, "share of dials", "Assumption: dials that reach the owner/decision-maker (cold, small shops)"),
+    "call_close_rate": A(0.25, "share of owner conversations", "Assumption: owner conversations that end in a signed shop "
+                                                               "(free product, no contract)"),
+    "minutes_per_conversation": A(15, "minutes", "Assumption: pitch + start the AI setup wizard on the call"),
+    "minutes_per_missed_dial": A(2, "minutes", "Assumption: dial, voicemail, log"),
     # ---- One-off BIA campaign ------------------------------------------------------------
     "bia_one_off": A({}, "CAD by month", "Optional: one BIA campaign sold early, e.g. {5: 2250} ($1,500-3,000 range)"),
 }
@@ -410,6 +435,154 @@ LAUNCH_LABELS = {"m4": "Month 4", "m7": "Month 7", "gated": "Density gates (Plus
 PRICE_OPTIONS = [(29.0, 79.0), (39.0, 79.0), (49.0, 79.0), (29.0, 99.0), (39.0, 99.0), (49.0, 99.0)]
 CONVERSION_OPTIONS = {"low": 0.10, "base": 0.20, "high": 0.35}
 BIA_ADDON = {5: 2250.0}  # one Silver campaign in month 5 (midpoint of $1,500-3,000)
+
+
+def remote_launches(v):
+    """Areas launched per month: m1-3 pace, then the 'after' pace, capped by Toronto saturation."""
+    out, cum = [], 0.0
+    for i in range(v["months"]):
+        rate = v["remote_areas_per_month_m1_3"] if i < 3 else v["remote_areas_per_month_after"]
+        x = max(0.0, min(rate, v["remote_max_areas"] - cum))
+        out.append(x)
+        cum += x
+    return out
+
+
+# The founder's remote operating model: bootstrap cost base, no reps, AI onboarding agents.
+REMOTE_BASE = {
+    **{k: x for k, x in LAUNCH_BASE.items()},
+    "acquisition_mode": "remote",
+    "paid_launch_month": 4,
+    "strip_launch_cost": 220.0,      # = one street day per area (street_day_cost); 0 if the founder does it
+    "upsell_cost": 0.0,              # no rep upsell bonus: upgrades happen in-product / on the founder's calls
+    "ai_tooling_monthly": 100.0,
+    "ai_cost_per_shop": 2.0,
+    "remote_m3_target": 400,
+}
+REMOTE_PRICES = [(39.0, 79.0), (39.0, 99.0), (49.0, 79.0), (49.0, 99.0)]
+REMOTE_PACE = [3, 5, 8]
+REMOTE_TARGETS = [250, 400, 550]
+REMOTE_ACTIVATION = [0.45, 0.60, 0.70]
+
+
+def remote_values(pace=5, target=400, activation=0.60, plus=39.0, pro=79.0, conv="base", street_paid=True,
+                  support_paid=True, **extra):
+    o = dict(REMOTE_BASE)
+    o.update(remote_areas_per_month_after=pace, remote_m3_target=target, activation_rate=activation,
+             price_plus=plus, price_pro=pro, conv6_target=CONVERSION_OPTIONS.get(conv, conv),
+             strip_launch_cost=220.0 if street_paid else 0.0)
+    if not support_paid:
+        o["support_hourly"] = 0.0
+    o.update(extra)
+    v = values("base", **o)
+    if v.get("remote_m3_target"):
+        lo, hi = 0.0, 200.0
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if run(dict(v, remote_shops_per_area=mid), months=3)[-1]["network_merchants"] < v["remote_m3_target"]:
+                lo = mid
+            else:
+                hi = mid
+        v["remote_shops_per_area"] = (lo + hi) / 2
+    return v
+
+
+def remote_operating_targets(v, rows, founder_street_days=False):
+    """What the founder has to do each week in months 1-3 to deliver the modelled signups by phone."""
+    out = []
+    for r in rows[:3]:
+        signed_day = r["signups"] / v["working_days_per_month"]
+        street_wk = r["strips_launched"] / (v["working_days_per_month"] / 5)
+        phone_days_wk = 5 - (street_wk if founder_street_days else 0.0)
+        signed_phone_day = signed_day * 5 / phone_days_wk
+        convs = signed_phone_day / v["call_close_rate"]
+        dials = convs / v["call_reach_rate"]
+        hours = (convs * v["minutes_per_conversation"] + (dials - convs) * v["minutes_per_missed_dial"]) / 60
+        out.append({"month": r["month"], "signed_per_month": r["signups"], "signed_per_working_day": signed_day,
+                    "areas_per_week": street_wk, "street_days_per_week": street_wk, "phone_days_per_week": phone_days_wk,
+                    "signed_per_phone_day": signed_phone_day, "owner_conversations_per_day": convs,
+                    "dials_per_day": dials, "phone_hours_per_day": hours})
+    return out
+
+
+REMOTE_PLAN = dict(pace=5, target=400, activation=0.60, plus=39.0, pro=79.0, conv="base", street_paid=True, support_paid=True)
+REMOTE_KEY = {
+    "remote_founder_plan": REMOTE_PLAN,
+    "remote_plan_pro99": dict(REMOTE_PLAN, pro=99.0),
+    "remote_act45": dict(REMOTE_PLAN, activation=0.45),
+    "remote_target250": dict(REMOTE_PLAN, target=250),
+    "remote_pace3": dict(REMOTE_PLAN, pace=3),
+    "remote_pace8": dict(REMOTE_PLAN, pace=8),
+    # Founder's plan with lean operations: AI agents answer most support (1 human min per free
+    # shop/month, 5 per paid), a $5 printed QR stand/sticker instead of a $15 kit, network
+    # perks off until BIAs fund them, first account manager at 2,500 active shops.
+    "remote_lean_ops": dict(REMOTE_PLAN, support_min_free=1, support_min_paid=5, kit_cost=5.0,
+                            perk_value=0.0, merchants_per_cs=2500),
+    "remote_lean_ops_founder_street": dict(REMOTE_PLAN, street_paid=False, support_min_free=1, support_min_paid=5,
+                                           kit_cost=5.0, perk_value=0.0, merchants_per_cs=2500),
+}
+
+
+def remote_grid():
+    out = []
+    for pace in REMOTE_PACE:
+        for tg in REMOTE_TARGETS:
+            for act in REMOTE_ACTIVATION:
+                for cv in CONVERSION_OPTIONS:
+                    for plus, pro in REMOTE_PRICES:
+                        for sp in (True, False):
+                            for su in (True, False):
+                                v = remote_values(pace, tg, act, plus, pro, cv, sp, su)
+                                s, rows = launch_summary(v)
+                                out.append([pace, tg, act, cv, plus, pro, "paid $220" if sp else "founder $0",
+                                            "$25/hr" if su else "founder unpaid", v["remote_shops_per_area"],
+                                            v["remote_shops_per_area"] / v["remote_area_storefronts"], rows[3]["mrr_subscriptions"]]
+                                           + [s[k] if s[k] is not None else "none" for k in LAUNCH_GRID_METRICS])
+    return out
+
+
+def remote_sensitivity():
+    cases = [("founder's plan", {}), ("signups -10% after launch", {"post_launch_signup_haircut": 0.10}),
+             ("signups -20% after launch", {"post_launch_signup_haircut": 0.20}),
+             ("5% of free shops leave at launch", {"launch_free_churn_shock": 0.05}),
+             ("founder covers first 40 support h/month", {"founder_support_hours": 40.0}),
+             ("AI cost high ($150/mo + $3/shop)", {"ai_tooling_monthly": 150.0, "ai_cost_per_shop": 3.0}),
+             ("AI cost low ($50/mo + $1/shop)", {"ai_tooling_monthly": 50.0, "ai_cost_per_shop": 1.0})]
+    out = []
+    for name, ex in cases:
+        v = remote_values(**REMOTE_PLAN, **ex)
+        s, rows = launch_summary(v)
+        out.append([name, rows[3]["mrr_subscriptions"]] + [s[k] if s[k] is not None else "none" for k in LAUNCH_GRID_METRICS])
+    return out
+
+
+def write_remote_outputs(quiet=False):
+    REMOTE_MONTHLY_COLUMNS = MONTHLY_COLUMNS[:-3] + ["cac_ai_tooling", "cac_ai_per_shop"] + MONTHLY_COLUMNS[-3:]
+    for name, o in REMOTE_KEY.items():
+        v = remote_values(**o)
+        rows = run(v)
+        write_csv(os.path.join(OUT, f"monthly_{name}.csv"), REMOTE_MONTHLY_COLUMNS,
+                  [[r.get(c, 0.0) for c in REMOTE_MONTHLY_COLUMNS] for r in rows])
+    hdr = ["areas_per_month_after_m3", "m3_target", "activation", "conversion", "price_plus", "price_pro", "street_day",
+           "support", "shops_per_area_needed", "share_of_35_storefronts", "mrr_m4"] + LAUNCH_GRID_METRICS
+    write_csv(os.path.join(OUT, "remote_options.csv"), hdr, remote_grid())
+    write_csv(os.path.join(OUT, "remote_sensitivity.csv"), ["case", "mrr_m4"] + LAUNCH_GRID_METRICS, remote_sensitivity())
+    ops = []
+    for tg in REMOTE_TARGETS:
+        v = remote_values(**dict(REMOTE_PLAN, target=tg))
+        rows = run(v)
+        for fsd in (False, True):
+            for x in remote_operating_targets(v, rows, fsd):
+                ops.append([tg, "founder" if fsd else "someone else", v["remote_shops_per_area"]] + list(x.values()))
+    write_csv(os.path.join(OUT, "remote_operating_targets.csv"),
+              ["m3_target", "street_days_by", "shops_per_area_needed", "month", "signed_per_month", "signed_per_working_day",
+               "areas_per_week", "street_days_per_week", "phone_days_per_week", "signed_per_phone_day",
+               "owner_conversations_per_day", "dials_per_day", "phone_hours_per_day"], ops)
+    if not quiet:
+        s, _ = launch_summary(remote_values(**REMOTE_PLAN))
+        print(f"REMOTE PLAN: shops m3/m6/m12 {s['network_m3']:.0f}/{s['network_m6']:.0f}/{s['network_m12']:.0f}; MRR m12 "
+              f"${s['mrr_m12']:,.0f}; cash low ${s['cash_low_point']:,.0f} (month {s['cash_low_month']}); "
+              f"break-even month {s['breakeven_month']}")
 
 
 def launch_values(onboarding="reps2", launch="m4", plus=39.0, pro=79.0, conv="base", bia=False, **extra):
@@ -556,6 +729,10 @@ def run(v, months=None):
     p = dict(strips_cum=0.0, N=0.0, M=0.0, C=0.0, plus_unlocked=0, pro_unlocked=0, bia_unlocked=0, ads_unlocked=0,
              ads_months=0, paid_total=0.0, cum_cash=float(v["starting_cash"]), launched=False)
     blitz = v.get("acquisition_mode", "strips") == "blitz"
+    remote = v.get("acquisition_mode", "strips") == "remote"
+    if remote:
+        L = remote_launches(v)
+        ramp = v["remote_ramp"]
     bst = {"pool": 0.0, "haircut_applied": False}
     if blitz:
         L = []
@@ -579,7 +756,11 @@ def run(v, months=None):
         strips_cum_hist.append(r["strips_cum"])
         k = m - v["strip_maturity_months"]
         r["strips_mature"] = strips_cum_hist[k] if k >= 1 else 0.0
-        if not blitz:
+        if remote:
+            r["signups"] = v["remote_shops_per_area"] * sum(
+                L[i - j] * ramp[j] for j in range(len(ramp)) if i - j >= 0) * (
+                1 - (v["post_launch_signup_haircut"] if launched else 0.0))
+        elif not blitz:
             r["signups"] = v["strip_potential_merchants"] * sum(
                 L[i - j] * ramp[j] for j in range(len(ramp)) if i - j >= 0)
         shock = v.get("launch_free_churn_shock", 0.0) if launch_now else 0.0
@@ -638,6 +819,10 @@ def run(v, months=None):
         r["cost_free_merchants"] = r["network_merchants"] * (
             v["infra_per_merchant"] + v["support_min_free"] / 60 * v["support_hourly"])
         r["cost_paid_support"] = r["paid_total"] * v["support_min_paid"] / 60 * v["support_hourly"]
+        fh = v.get("founder_support_hours", 0.0)
+        if fh:  # founder covers the first fh support hours each month unpaid (credited against free-merchant cost)
+            hrs = (r["network_merchants"] * v["support_min_free"] + r["paid_total"] * v["support_min_paid"]) / 60
+            r["cost_free_merchants"] -= min(hrs, fh) * v["support_hourly"]
         r["cost_customer_infra"] = r["active_customers"] * v["infra_per_customer"]
         r["cost_sms"] = (plus * v["sms_used_plus"] + pro * v["sms_used_pro"]
                          + r["new_customers"] * v["otp_sms_per_new_customer"]
@@ -655,7 +840,13 @@ def run(v, months=None):
         # --- acquisition spend
         r["rep_wage"] = v["rep_wage"] * (1 + v["wage_indexation"]) ** math.floor(m / 12)
         cm = v["cac_multiplier"]
-        if blitz:
+        if remote:
+            # no reps: founder calls + AI onboarding agents. Real costs = AI tooling + per-shop LLM/telephony
+            r["cac_rep_wages"] = 0.0
+            r["cac_activation_bonus"] = 0.0
+            r["cac_ai_tooling"] = v["ai_tooling_monthly"] * cm
+            r["cac_ai_per_shop"] = r["signups"] * v["ai_cost_per_shop"] * cm
+        elif blitz:
             # reps paid by the shift (+ one-time paid training when hired); founder's own signups cost no wage
             hires = v["reps_blitz"] if m == 1 else max(0, v["reps_sustained"] - v["reps_blitz"]) if m == v["blitz_months"] + 1 else 0
             hours = r["rep_shifts"] * v["rep_shift_hours"] + hires * v["rep_training_hours"]
@@ -670,6 +861,8 @@ def run(v, months=None):
         r["cac_upsell"] = r["new_conversions"] * v["upsell_cost"] * cm
         r["cac_total"] = (r["cac_rep_wages"] + r["cac_activation_bonus"] + r["cac_kits"]
                           + r["cac_strip_launch"] + r["cac_upsell"])
+        if remote:
+            r["cac_total"] += r["cac_ai_tooling"] + r["cac_ai_per_shop"]
         # --- fixed opex
         r["opex_fixed_overhead"] = fixed_total
         r["opex_developer"] = v["dev_monthly_y1"] if m <= 12 else (v["dev_monthly_y2"] if m <= 24 else v["dev_monthly_y3"])
@@ -1063,6 +1256,7 @@ def main(quiet=False):
     if not quiet:
         print("\n".join(lines))
     write_launch_outputs(quiet)
+    write_remote_outputs(quiet)
     return results
 
 

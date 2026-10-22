@@ -1,16 +1,263 @@
-# Launch plan: 3-month free blitz, then paid plans
+# Launch plan economics
 
 Oct 22, 2026 · Finance · All money in CAD · Model month 1 = Nov 2026
 
 **The founder's question:** "If we spend 3 months with no revenue, just non-stop onboarding (bootstrapped), and then switch on the subscription plans for all the other features so revenue starts then, what happens?"
 
-**Short answer (computed):** it works if you bring in two student reps. With the founder alone it doesn't. Founder + 2 reps, with paid plans switched on in **month 4 (Feb 2027)**, gets about **130 shops in 3 months** and **314 by month 12**. Subscription MRR reaches **~$1,900 at month 12** and **~$4,800 at month 24**. The cash low point is **about −$61k in month 28**, and the plan breaks even in **month 29 (Mar 2029)**. Year 1 needs about **$37k**. The founder alone never gets enough shops to cover costs: there is no break-even within 60 months at 20% conversion. Launching in month 4 rather than waiting until month 7 is better in every case we ran. The one number that decides everything is **how many free shops upgrade in the first 6 months**.
+**Short answer (computed).** Two operating models are costed here.
 
-How to read the numbers: **(A)** marks an assumption and **(C)** marks a number computed by the model. Every assumption sits in `LAUNCH_ASSUMPTIONS`, `LAUNCH_BASE` and `ONBOARDING_OPTIONS` in `docs/finance/model/model.py`, with a note on where it comes from. Re-run with `python3 docs/finance/model/model.py`.
+- **Founder's plan (Part A): remote onboarding.** The founder sells by phone and AI agents handle shop setup. There are no paid reps. The plan opens 5 areas a month and aims for 400 shops by month 3, with paid plans from month 4.
+  - **If the targets are hit, it is the stronger business.** About 1,670 shops by month 12 and MRR of about $7,900 at month 12 and $25,500 at month 24. Break-even in month 21 (Jul 2028), with a cash low point of about −$113k in month 20.
+  - **Hitting 400 by month 3 is not realistic as planned.** It needs 31 of every 35 storefronts in each area to sign (89%, against 60% assumed for in-person selling) and 5–7 signed shops every working day by phone.
+  - **About 250 by month 3 is a stretch but credible.** That is 56% of storefronts and 3–4.5 signed shops a day. It needs about −$70k at the low point and breaks even in month 23. With 3 areas a month after month 3, it needs about −$50k and breaks even in month 19.
+- **Alternative (Part B): in-person blitz with student reps.** Founder + 2 reps reach 314 shops by month 12 and break even in month 29, needing about −$61k.
+
+How the two compare (computed, conversion 20%):
+
+| | Remote, 400 by m3 | Remote, 250 by m3 | Reps, founder + 2 |
+| --- | --- | --- | --- |
+| Shops at month 12 | ~1,670 | ~1,040 | 314 |
+| Cash low point | −$113k | −$70k | −$61k |
+| Break-even | Month 21 | Month 23 | Month 29 |
+
+In both models, **launching paid plans in month 4 is right**. The result turns on **how many free shops upgrade in the first 6 months**.
+
+How to read the numbers: **(A)** marks an assumption and **(C)** marks a number computed by the model. Every assumption sits in `LAUNCH_ASSUMPTIONS`, `LAUNCH_BASE`, `REMOTE_BASE` and `ONBOARDING_OPTIONS` in `docs/finance/model/model.py`, with a note on where it comes from. Re-run with `python3 docs/finance/model/model.py`.
 
 ---
 
-## 1. Recommended option
+# Part A — Founder's plan: remote onboarding, 5 areas a month, paid plans in month 4
+
+## A1. The operating model (as modelled)
+
+| Input | Value | |
+| --- | --- | --- |
+| Selling | Founder on the phone all day. AI onboarding agents (in-product setup wizard + automated follow-ups) do the setup. No paid reps | Founder |
+| Areas opened | 5 per month in months 1–3, then 5 per month (variants: 3 and 8). An area is a street or community with lots of stores | Founder |
+| Saturation | Stops at 120 areas: Toronto's 85+ BIAs plus ~35 other commercial streets and plazas. At 5 a month this is reached in month 24; GTA expansion is not modelled | (A) |
+| Storefronts per area | 35 (founder: ~30–40 repeat-visit shops) | (A) |
+| How fast an area signs | 70% of its eventual signers in the month it opens, 20% the next month, 10% the month after | (A) |
+| Shops signed per area | **Solved by the model to hit the month-3 target.** 400 by month 3 needs **31.2 per area (89% of 35)**. 250 needs 19.5 (56%); 550 needs 42.9, more storefronts than an area has | (C) |
+| Activation (25+ active members) | 60% headline. Sensitivity at 45% and 70%, because shops onboarded by phone may engage less. A shop counts as active from the month after it signs | (A) |
+| Paid plans | Plus and Pro switch on in month 4, regardless of network density. Plus $39 (or $49), Pro $79 (or $99) | Founder |
+| Conversion | 20% of active free shops upgrade within 6 months of launch, weighted by vertical (low 10%, high 35%). Same per-vertical rates and price response as Part B | (A) |
+| Counter kit (QR stand) | $15 per shop | (A), PRD |
+| Street day | One person visits all ~30 shops in an area in one day to check the dashboard and counter: $200 + ~$20 transit per area. $0 if the founder does it | (A) |
+| AI onboarding agents | $100/mo tooling (range $50–150) + $2 per shop onboarded (range $1–3) for LLM tokens, call minutes and SMS | (A) |
+| Rep wages, activation bonuses, upsell bonuses, strip events | $0 (no reps) | Founder |
+| Cost base | Bootstrap (same as Part B): no developer in year 1, $1,000/mo in year 2, $1,500/mo in year 3. $340/mo overhead, $4,000 one-time | (A) |
+| Running costs | Scale with shops and their customers: infra $0.60/shop and $0.01/customer, SMS $0.022/segment (verification texts + Plus/Pro allowances), network perks, Stripe. One part-time account manager ($4,200/mo) per 1,000 active shops; the first is hired in month 14 | (A) |
+| Support | 5 min per free shop and 15 min per paying shop each month at $25/hr. Also shown unpaid (founder) | (A) |
+
+## A2. Headline results
+
+| Case | Revenue starts | MRR m4 | MRR m6 | MRR m12 | MRR m18 | MRR m24 | Shops m3 / m6 / m12 | Paying m6 / m12 / m24 | Cash low point | Break-even month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Founder's plan**: 400 by m3, 5 areas/mo, 60% activate, $39 / $79, 20% conversion, street days and support paid | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | **−$112,684 (m20)** | **21** |
+| Same, Pro $99 | 4 | $470 | $1,825 | $8,415 | $17,375 | $27,467 | 400 / 843 / 1,671 | 33 / 152 / 497 | −$102,967 (m19) | 20 |
+| Same, Plus $49 / Pro $99 | 4 | $474 | $1,848 | $8,591 | $17,856 | $28,388 | 400 / 843 / 1,671 | 29 / 135 / 448 | −$97,930 (m19) | 20 |
+| Street days done by founder ($0) | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | −$91,370 (m19) | 20 |
+| Support done by founder, unpaid | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | −$50,416 (m16) | 17 |
+| Founder covers only the first 40 support hours/month | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | −$94,693 (m19) | 20 |
+| Founder does street days + first 40 support hours/month | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | −$73,793 (m19) | 20 |
+| Both street days and support by founder | 4 | $441 | $1,712 | $7,864 | $16,193 | $25,540 | 400 / 843 / 1,671 | 34 / 156 / 509 | −$33,192 (m15) | 16 |
+
+All values are computed (C). Sources: `output/remote_options.csv`, `output/remote_sensitivity.csv` and `output/monthly_remote_founder_plan.csv`.
+
+**Read the "founder does support" rows with care.** At 1,671 shops, support is about 5 min × 1,671 ≈ 140 hours a month on top of a full phone day. That is not possible for one person. The credible version is the 40-hours row: **−$94,693, break-even month 20**.
+
+
+### A0. The same plan with lean operations (lead's check, Oct 22, 2026)
+
+The −$112,684 low point in the founder's plan is driven by running costs priced
+for human operations, not by acquisition. Over months 1–20 the biggest lines are:
+free-shop support at 5 human minutes per shop per month × $25/hr ($77k), $15
+counter kits ($46k), SMS included in paid plans ($33k), an account manager from
+month 14 ($29k), platform-funded network perks ($26k) and street days ($22k).
+
+With AI agents handling onboarding, most support can be handled the same way.
+`remote_lean_ops` keeps everything else identical and changes only:
+
+| Line | Founder's plan | Lean ops |
+| --- | --- | --- |
+| Human support per free shop | 5 min/mo | 1 min/mo (AI answers the rest) |
+| Human support per paying shop | 15 min/mo | 5 min/mo |
+| Counter kit | $15 | $5 (printed QR stand / sticker) |
+| Network perks | platform-funded from month 1 | off until a BIA funds them |
+| First account manager | at 1,000 active shops | at 2,500 active shops |
+
+| | Founder's plan | Lean ops | Lean ops, founder does street days |
+| --- | --- | --- | --- |
+| Shops at months 3 / 12 | 400 / 1,671 | 400 / 1,671 | 400 / 1,671 |
+| Subscription MRR months 6 / 12 / 24 | $1,712 / $7,864 / $25,540 | same | same |
+| Cash low point | −$112,684 | **−$23,504** | **−$14,301** |
+| Break-even | month 21 | **month 10 (Aug 2027)** | **month 9** |
+
+The 250-shops / 3-areas-a-month path with lean ops needs about $17k and also
+breaks even in month 10. Revenue is unchanged in every row: only costs move.
+The open question is the support assumption: 1 human minute per free shop per
+month holds only if the setup wizard, the AI agent and the counter app are good
+enough that shops rarely need a person.
+
+
+### Months 1–12, founder's plan
+
+| Month | Calendar | Areas open | Signed this month | Shops on network | Active | Paying | Subscription MRR | Total revenue | Acquisition | Running costs | All costs | Net | Cash, cumulative |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Nov 2026 | 5 | 109 | 109 | 0 | 0 | $0 | $0 | $3,055 | $293 | $5,188 | −$5,188 | −$5,188 |
+| 2 | Dec 2026 | 10 | 140 | 248 | 64 | 0 | $0 | $0 | $3,585 | $1,043 | $4,969 | −$4,969 | −$10,157 |
+| 3 | Jan 2027 | 15 | 156 | 400 | 146 | 0 | $0 | $0 | $3,850 | $1,827 | $8,518 | −$8,518 | −$18,674 |
+| 4 | Feb 2027 | 20 | 156 | 550 | 236 | 9 | $441 | $579 | $3,850 | $2,774 | $6,964 | −$6,385 | −$25,059 |
+| 5 | Mar 2027 | 25 | 156 | 698 | 325 | 20 | $1,016 | $1,333 | $3,850 | $3,696 | $7,887 | −$6,553 | −$31,612 |
+| 6 | Apr 2027 | 30 | 156 | 843 | 412 | 34 | $1,712 | $2,247 | $3,850 | $4,618 | $8,808 | −$6,562 | −$38,174 |
+| 7 | May 2027 | 35 | 156 | 986 | 498 | 50 | $2,518 | $3,305 | $3,850 | $5,552 | $9,743 | −$6,438 | −$44,612 |
+| 8 | Jun 2027 | 40 | 156 | 1,127 | 583 | 68 | $3,424 | $4,493 | $3,850 | $6,506 | $10,697 | −$6,204 | −$50,816 |
+| 9 | Jul 2027 | 45 | 156 | 1,266 | 666 | 88 | $4,420 | $5,800 | $3,850 | $7,484 | $11,674 | −$5,874 | −$56,690 |
+| 10 | Aug 2027 | 50 | 156 | 1,403 | 748 | 109 | $5,497 | $7,214 | $3,850 | $8,485 | $12,675 | −$5,461 | −$62,151 |
+| 11 | Sep 2027 | 55 | 156 | 1,538 | 829 | 132 | $6,648 | $8,724 | $3,850 | $9,510 | $13,700 | −$4,976 | −$67,128 |
+| 12 | Oct 2027 | 60 | 156 | 1,671 | 909 | 156 | $7,864 | $10,320 | $3,850 | $10,557 | $14,747 | −$4,427 | −$71,555 |
+
+All values are computed (C).
+
+- **Acquisition** is about $3,850 a month: kits $2,339, street days $1,100, AI per-shop $312 and AI tooling $100.
+- **Cost per signed shop** is $25, against $72 with reps.
+- **Running costs** at month 12 total $10,557. The two largest lines are free-shop support and infra ($4,484) and SMS ($1,807). Then come network perks ($1,563), Stripe ($1,006) and customer hosting ($406, for 40,600 customers).
+- **Running costs, not acquisition, are why the cash low point is deeper** than in the rep plan. A network five times bigger costs more to run before it pays.
+
+### Sensitivities (all computed)
+
+**Shops by month 3** (5 areas/month, 60% activation, $39 / $79, 20% conversion)
+
+| Month-3 target | Shops signed per area needed | Shops m12 | MRR m12 / m24 | Cash low point | Break-even |
+| --- | --- | --- | --- | --- | --- |
+| 250 | 19.5 (56% of 35) | 1,044 | $4,915 / $15,962 | −$69,657 (m18) | 23 |
+| **400** | **31.2 (89%)** | 1,671 | $7,864 / $25,540 | −$112,684 (m20) | 21 |
+| 550 | 42.9 (122%: more than the area has) | 2,298 | $10,814 / $35,117 | −$148,866 (m20) | 21 |
+
+**Areas per month after month 3**
+
+| Pace | Shops m6 / m12 | MRR m12 / m24 | Cash low point | Break-even |
+| --- | --- | --- | --- | --- |
+| 3 / month | 683 / 1,164 | $5,998 / $17,183 | −$62,377 (m17) | 18 |
+| **5 / month** | 843 / 1,671 | $7,864 / $25,540 | −$112,684 (m20) | 21 |
+| 8 / month | 1,083 / 2,431 | $10,664 / $32,351 | −$157,134 (m17) | 18 |
+
+**Activation × conversion** (cash low point · break-even month · MRR m12)
+
+| | 45% activate | 60% activate | 70% activate |
+| --- | --- | --- | --- |
+| 10% conversion | −$194,093 · m28 · $2,978 | −$185,480 · m25 · $3,971 | −$183,904 · m25 · $4,633 |
+| **20% conversion** | −$122,224 · m23 · $5,898 | **−$112,684 · m21 · $7,864** | −$108,587 · m20 · $9,175 |
+| 35% conversion | −$62,247 · m19 · $10,178 | −$53,590 · m16 · $13,571 | −$51,756 · m15 · $15,833 |
+
+**Other risks** (founder's plan; cash low point · break-even month · shops m12)
+
+| Case | Result |
+| --- | --- |
+| Signups −10% after the paid launch | −$104,013 · m21 · 1,539 |
+| Signups −20% after the paid launch | −$95,342 · m21 · 1,407 |
+| 5% of free shops leave at launch | −$113,364 · m21 · 1,653 |
+| AI cost high ($150/mo + $3/shop) | −$116,740 · m21 |
+| AI cost low ($50/mo + $1/shop) | −$108,629 · m21 |
+
+What the sensitivities show:
+
+- **Every one of the 1,296 remote options breaks even within 60 months.** The bigger network always gets there in the end. The question is how much cash it takes.
+- **Fewer signups after launch need less cash, not more.** Each shop is cheap to sign but costs money every month until it pays.
+- **The pace after month 3 is a cash choice.** 3 areas a month needs about $50k less than 5 and breaks even sooner, in month 18. 8 a month needs about $157k.
+- **Conversion matters far more than activation.** At 10% conversion, cash need rises to about $185k.
+
+**Best and worst of the remote grid (C):**
+
+- **Best:** 3 areas/month after month 3, 250 by month 3, 70% activation, 35% conversion, Pro $99, founder doing street days and support. Low point −$14.4k, break-even month 7.
+- **Worst:** 8 areas/month, 550 by month 3, 10% conversion. Low point −$326k, break-even month 22.
+
+## A3. Is 400 shops in 90 days realistic by phone?
+
+**Plainly: not as planned.** The model points to two separate problems (C).
+
+**1. The areas aren't big enough.** 15 areas of ~35 storefronts, opened 5 a month, can only reach 400 by month 3 if **about 89% of every area signs**. Areas opened in month 3 have had just one month of calls. Part B assumes about 60% eventually sign in person. At 60% (21 shops per area), 400 by month 3 needs **about 22 areas in 3 months, i.e. 7–8 areas a month**.
+
+**2. The phone hours don't fit in one person's day.** The targets below assume 35% of dials reach the owner, 25% of owner conversations sign, 15 minutes per conversation and 2 minutes per missed dial (A). Street days come out of the week at about 1.15 per week.
+
+| 400 by month 3 | Month 1 | Month 2 | Month 3 |
+| --- | --- | --- | --- |
+| Signed shops per month | 109 | 140 | 156 |
+| Signed per working day (5-day week) | 5.0 | 6.5 | 7.2 |
+| Areas opened / street days per week | 1.15 | 1.15 | 1.15 |
+| If someone else does street days: owner conversations / dials / phone hours per day | 20 / 58 / 6.3 h | 26 / 74 / 8.1 h | 29 / 82 / 9.0 h |
+| If the founder does street days (3.85 phone days/week): signed per phone day | 6.5 | 8.4 | 9.3 |
+| Owner conversations / dials / phone hours per phone day | 26 / 75 / 8.2 h | 34 / 96 / 10.5 h | 37 / 107 / 11.7 h |
+
+The lead's "~4.4 shops a day" is 400 ÷ 90 *calendar* days. Over 65 working days it is **6.2 signed per working day**. Add the founder's own street days and it becomes **about 8 per phone day**. On top of that the founder has to:
+
+- keep signing about 156 shops a month after month 3, because the plan continues at 5 areas a month;
+- answer support for 500–1,700 shops;
+- sell the paid upgrades from month 4.
+
+**For one person that is not realistic.** If only 15% of owner conversations sign, dials rise to about 140–180 a day.
+
+| 250 by month 3 | Month 1 | Month 2 | Month 3 |
+| --- | --- | --- | --- |
+| Signed per working day | 3.1 | 4.0 | 4.5 |
+| Owner conversations / dials / phone hours per day (someone else does street days) | 13 / 36 / 3.9 h | 16 / 46 / 5.0 h | 18 / 51 / 5.6 h |
+| Same, founder does street days | 16 / 47 / 5.1 h | 21 / 60 / 6.5 h | 23 / 67 / 7.3 h |
+
+This is hard but doable, and it needs only 56% of each area to sign. Source: `output/remote_operating_targets.csv` (C).
+
+### What has to be true for the founder's plan
+
+1. **Areas are bigger or more numerous than assumed.** Either about 89% of 35 storefronts sign within weeks, by phone, or you open 7–8 areas a month (C).
+2. **The founder sustains 6–7 signed shops a day for 13 weeks**: about 26–37 owner conversations and 75–107 dials a day, at a 35% reach rate and 25% close rate (A). Someone else (a $200 day hire, A) does the street days, or the founder gives up ~1 phone day a week.
+3. **Phone-onboarded shops activate at ≥ 60%** (A). At 45%, the cash low point is about $10k worse and break-even comes about 2 months later.
+4. **≥ 20% of active free shops upgrade within 6 months of the month-4 launch** (A). At 10%, cash need rises to about $185k.
+5. **Support scales with no one hired until month 14.** That means 1,000+ shops supported by the founder and the AI agents. Budget it at $25/hr, or plan for the founder's time.
+6. **Cash:** about $19k for months 1–3, $72k by month 12 and $113k at the low point (month 20) (C). If the founder does the street days and the first 40 support hours a month, the low point is −$73,793 (C). **Arrange about $120k before committing to 5 areas a month.** The smaller alternative is 250 by month 3, then 3 areas a month: 728 shops at month 12, MRR $3,749 at month 12, low point −$50,485 (−$23,102 with street days and the first 40 support hours done by the founder), break-even in month 19 (C).
+
+### Weekly operating targets (founder's plan: 400 by day 90)
+
+| Metric | Target | Red flag |
+| --- | --- | --- |
+| Dials / owner conversations per working day | 60–80 / 20–29 (rising month by month) | < 40 dials |
+| **Signed shops per working day** | **5 in month 1, 6.5 in month 2, 7 in month 3** (≈ 25 / 32 / 36 a week) | < 3.5 a day. You are on the 250 path; slow the area pace to 3 a month |
+| Areas opened per week / street days per week | 1.15 / 1.15 (5 areas a month) | Areas below 60% signed after 4 weeks |
+| Close rate on owner conversations | ≥ 25% | < 15% |
+| Activation within 30 days (25+ members) | ≥ 60% | < 45% |
+| Paid intent before launch (Founding offer or pilot override accepted) | ≥ 20% of active shops by week 12 | < 10% |
+
+## A4. Hand check (founder's plan)
+
+**Shops at month 3:**
+
+- Areas opened in month 1 have had all three ramp months (100% of their signers).
+- Areas opened in month 2 have had two (90%).
+- Areas opened in month 3 have had one (70%).
+- So 5 × 31.2 × (1.0 + 0.9 + 0.7) = **405.6**. After 1.5% monthly churn, that is ≈ 400. The model says **400**.
+
+**MRR at month 12:**
+
+- The model has 156 payers: 111.7 on Plus and 44.4 on Pro.
+- 111.7 × $39 + 44.4 × $79 = $4,357 + $3,508 = **$7,865**. The model says **$7,864**.
+
+**Acquisition at month 12:**
+
+| Line | Calculation | Amount |
+| --- | --- | --- |
+| Kits | 156 × $15 | $2,339 |
+| Street days | 5 × $220 | $1,100 |
+| AI per shop | 156 × $2 | $312 |
+| AI tooling | | $100 |
+| **Total** | | **$3,851** |
+
+The model says **$3,850**.
+
+---
+
+# Part B — Alternative: in-person blitz with student reps
+
+These options were costed before the remote model. They use the same cost base and the same paid-launch logic. Section numbers below are Part B's own.
+
+## 1. Recommended option (in-person)
 
 **Founder + 2 student reps · paid launch in month 4 · Plus $39 / Pro $99 · one BIA campaign in month 5**
 
@@ -220,7 +467,8 @@ Review them every Monday. On the first Monday of month 4, decide whether to go a
 
 ## Files
 
-- Model: `docs/finance/model/model.py`. The launch-plan code is `LAUNCH_ASSUMPTIONS`, `blitz_step`, `launch_values`, `launch_summary` and `launch_grid`. The original scenarios produce exactly the same numbers as before: every existing CSV was regenerated and is byte-identical.
+- Model: `docs/finance/model/model.py`. The launch-plan code is `LAUNCH_ASSUMPTIONS`, `REMOTE_BASE`, `remote_values`, `remote_operating_targets`, `blitz_step`, `launch_values`, `launch_summary` and `launch_grid`. The original scenarios produce exactly the same numbers as before: every existing CSV was regenerated and is byte-identical.
 - Monthly detail: `output/monthly_launch_reco.csv`, `monthly_launch_founder_m4.csv`, `monthly_launch_reps2_m4.csv`, `monthly_launch_reps4_m4.csv`, `monthly_launch_reps2_m7.csv` and `monthly_launch_reps2_gated.csv`. All except the recommended file use $39 / $79, base conversion and no BIA campaign.
-- Grid: `output/launch_options.csv` (324 options). Risk and price sensitivity: `output/launch_risk_sensitivity.csv`. Inputs: `output/launch_assumptions.csv`.
+- Remote (Part A): `output/monthly_remote_founder_plan.csv`, `monthly_remote_plan_pro99.csv`, `monthly_remote_act45.csv`, `monthly_remote_target250.csv`, `monthly_remote_pace3.csv` and `monthly_remote_pace8.csv`. Grid: `output/remote_options.csv` (1,296 options). Sensitivity: `output/remote_sensitivity.csv`. Phone workload: `output/remote_operating_targets.csv`.
+- In-person grid (Part B): `output/launch_options.csv` (324 options). Risk and price sensitivity: `output/launch_risk_sensitivity.csv`. Inputs: `output/launch_assumptions.csv`.
 - **The Excel workbook (`local-loyalty-model.xlsx`) has not been updated** with the launch-plan mechanics. It still matches the original scenarios.
