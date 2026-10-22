@@ -1,0 +1,7 @@
+case,revenue_m12,revenue_m24,revenue_m36,first_month_rev_10k,first_month_rev_50k,first_month_rev_100k,cash_low,cash_low_month,breakeven_month,revenue_m60,shops_m60,ebitda_m60
+toronto_only_3.5,9594.41,23271.13,33966.41,13,none in 60,none in 60,-16162.26,7,8,31652.66,871.36,20606.17
+toronto_only_1.5_plus_49c,9433.48,22999.33,33612.78,13,none in 60,none in 60,-16320.11,7,8,31431.41,871.36,19980.53
+ontario_scale_3.5_team,9594.41,32456.43,61395.35,13,32,53,-185737.04,39,40,114164.25,4451.63,31157.09
+ontario_scale_1.5_plus_49c_team,9433.48,32047.20,60695.64,13,32,54,-224558.00,41,42,113073.87,4451.63,28073.78
+ontario_scale_rail_team,17063.40,52324.35,96533.94,10,24,37,-45144.86,19,27,171937.27,4451.63,61016.17
+ontario_scale_3.5_team_optimistic,17311.58,52081.06,94950.06,10,24,38,-14960.49,6,18,166454.01,4451.63,75866.56
