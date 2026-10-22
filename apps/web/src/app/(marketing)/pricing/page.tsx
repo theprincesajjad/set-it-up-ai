@@ -10,12 +10,13 @@ import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
+import { RestaurantPricing } from "./RestaurantPricing";
 
 export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free forever: your loyalty program and its reports, unlimited locations and staff, no transaction fees. Plus and Pro add marketing, automations, payments and repair tools, coming soon.",
+  description: "Free forever: your loyalty program and its reports, unlimited locations and staff, no transaction fees. Plus and Pro add marketing, automations, payments and repair tools, coming soon. Restaurants: Starter $99, Growth $199, Pro $349 a month with no commission on online orders.",
   alternates: { canonical: "/pricing" },
 };
 
@@ -257,6 +258,7 @@ export default async function PricingPage() {
           </div>
         </div>
       </section>
+      <RestaurantPricing />
       <MSection tone="subtle" className="md:py-24!">
         <h2 className="display text-mkt-md md:text-mkt-lg">compare plans.</h2>
         <div className="mt-8 rounded-sheet border border-line bg-bg px-5 pb-4 md:px-8">
@@ -268,10 +270,11 @@ export default async function PricingPage() {
           <h2 className="display text-mkt-md md:text-mkt-lg">pricing questions.</h2>
           <Faq
             items={[
-              { q: "Do you take a cut of my sales?", a: "No. Zero transaction fees on Free. The only fee anywhere is on payments you take in the app on Plus or Pro." },
+              { q: "Do you take a cut of my sales?", a: "No. Zero transaction fees on Free. The only fee anywhere is on payments you take in the app on Plus or Pro. Restaurant plans take no commission on online orders; deposits, invoices and tiffin billing carry a 1% fee." },
               { q: "Will my loyalty program ever cost money?", a: "No. Points, visits and stamps, rewards, the welcome bonus, your customer list and reports stay free. They will never move to a paid plan." },
               { q: "When do Plus and Pro launch?", a: "Once enough shops are on the network, so every paid feature launches with customers already using the app. Start on Free and we'll tell you." },
               { q: "Can I cancel a paid plan later?", a: "Yes, anytime. You go back to Free and keep all your loyalty data." },
+              { q: "Is the restaurant plan a different plan?", a: "It sits beside Free, Café & Retail and Service. Any restaurant plan includes everything in Café & Retail, so you never pay for both." },
               { q: "Is there a contract?", a: "No contract and no setup fee." },
             ]}
           />

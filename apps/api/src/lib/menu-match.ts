@@ -217,7 +217,6 @@ export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { 
   }
 
   // 2. Single distinctive words of a longer name ("biryani" for "Chicken Biryani"), unique or ambiguous.
-  const used = (h: Hit) => hits.some((o) => o !== h && o.score >= minScore && o.start < h.end && h.start < o.end);
   const partials: Hit[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i]!;
@@ -230,7 +229,6 @@ export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { 
       partials.push({ start: i, end: i + 1, item: list[0]!, score: 0.8, ambiguousWith: list.length > 1 ? list : undefined });
     }
   }
-  void used;
 
   // 3. Keep the best non-overlapping hits (longer, then higher score, first).
   const all = [...hits, ...partials].sort((a, b) => b.end - b.start - (a.end - a.start) || b.score - a.score || a.start - b.start);
@@ -284,8 +282,8 @@ export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { 
   for (let i = 0; i < tokens.length; i++) {
     if (numberUsed.has(i) || chosen.some((c) => c.start <= i && i < c.end)) continue;
     const n = wordNumber(tokens[i]!);
-    if (n === null || n === 0 || !/^\d/.test(tokens[i]!) && NUMBER_WORDS[tokens[i]!] === undefined) continue;
-    if (tokens[i] === "a" || tokens[i] === "an" || tokens[i] === "x") continue;
+    if (n === null || n === 0 || tokens[i] === "a" || tokens[i] === "an") continue;
+    if (!/^\d/.test(tokens[i]!) && NUMBER_WORDS[tokens[i]!] === undefined) continue;
     const phrase: string[] = [];
     for (let j = i + 1; j < tokens.length && phrase.length < 3; j++) {
       const w = tokens[j]!;

@@ -67,7 +67,7 @@ export function cateringDto(e: CateringEvent, publicWebUrl: string, forStaff: bo
     depositPaidAt: iso(e.depositPaidAt),
     invoiceId: e.invoiceId,
     hallBookingId: e.hallBookingId,
-    approvalUrl: e.quoteSentAt ? `${publicWebUrl}/c/${e.approvalToken}` : null,
+    approvalUrl: e.quoteSentAt ? `${publicWebUrl}/e/${e.approvalToken}` : null,
     createdAt: e.createdAt.toISOString(),
   };
 }
@@ -348,7 +348,7 @@ export async function sendQuote(ctx: AppContext, staff: StaffContext, eventId: s
   if (!e.lineItems.length) throw badRequest("Build the menu before sending a quote");
   const now = ctx.now();
   const [row] = await ctx.db.update(cateringEvents).set({ status: "quoted", quoteSentAt: now, updatedAt: now }).where(eq(cateringEvents.id, e.id)).returning();
-  const url = `${ctx.config.publicWebUrl}/c/${row!.approvalToken}`;
+  const url = `${ctx.config.publicWebUrl}/e/${row!.approvalToken}`;
   const dep = row!.depositCents > 0 ? ` (${money(row!.depositCents)} deposit to confirm)` : "";
   const text = `Your catering quote #${row!.number} for ${row!.headcount} guests on ${row!.eventDate} is ${money(row!.totalCents)}${dep}. Review and approve: ${url}`;
   await notifyCustomer(ctx, {

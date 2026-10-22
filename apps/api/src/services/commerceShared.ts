@@ -29,6 +29,14 @@ export interface NotifyArgs {
 }
 
 /**
+ * Extra channels (WhatsApp, ...) that hear about every transactional
+ * notification. Registered at import time by the module that owns the channel
+ * (see services/whatsapp.ts); a listener must handle its own consent and never throw.
+ */
+export type NotifyListener = (ctx: AppContext, args: NotifyArgs) => Promise<void>;
+export const notifyListeners: NotifyListener[] = [];
+
+/**
  * Send a transactional push (every registered device) and SMS (if the
  * customer has a phone). Never throws: a failed notification must not undo
  * the status change that triggered it. Each send is logged to message_deliveries.
@@ -68,6 +76,7 @@ export async function notifyCustomer(ctx: AppContext, args: NotifyArgs): Promise
       }
     }
     await n.finish({ ...out, tickets });
+    for (const l of notifyListeners) await l(ctx, args).catch(() => undefined);
   } catch (err) {
     if (ctx.config.env !== "test") console.error("[notifyCustomer]", err);
   }

@@ -4,7 +4,7 @@
  * order is picked up (idempotency key `order:<id>`).
  */
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
-import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
+import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orderSplits, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
 import { FEES, rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -461,7 +461,10 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     }
   }
   // Kitchen: pay-at-pickup orders and free orders are placed now; card orders fire when paid. Pre-orders fire on the day.
-  if (!isPreorder && (!inApp || total === 0)) await fireOrder(ctx, order.id);
+  if (!isPreorder && (!inApp || total === 0)) {
+    await fireOrder(ctx, order.id);
+    [order] = (await ctx.db.select().from(orders).where(eq(orders.id, order.id)).limit(1)) as [Order];
+  }
   return { order: await loadOrderDto(ctx.db, order), payment, duplicate: false };
 }
 
@@ -545,6 +548,12 @@ async function unwindPaymentAndRewards(ctx: AppContext, order: Order, reason: st
   } else if (order.paymentMethod === "at_pickup" && order.paymentStatus === "paid") {
     patch.paymentStatus = "refunded";
   }
+  // Split bills: every share already paid goes back to the guest who paid it.
+  const paidSplits = await ctx.db.select().from(orderSplits).where(and(eq(orderSplits.orderId, order.id), eq(orderSplits.status, "paid")));
+  for (const sp of paidSplits) {
+    if (sp.stripePaymentIntentId) await getPayments(ctx).refund({ paymentIntentId: sp.stripePaymentIntentId, idempotencyKey: `split:${sp.id}:refund`, reason });
+  }
+  if (paidSplits.length) patch.paymentStatus = "refunded";
   if (order.redemptionId) {
     const [red] = await ctx.db.select().from(redemptions).where(and(eq(redemptions.id, order.redemptionId), eq(redemptions.merchantId, order.merchantId))).limit(1);
     if (red?.transactionId && red.status !== "void") {

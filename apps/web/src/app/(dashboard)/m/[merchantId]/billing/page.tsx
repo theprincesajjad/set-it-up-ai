@@ -12,6 +12,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
+import { RestaurantBilling } from "./RestaurantBilling";
 import { cn } from "@/lib/cn";
 import { formatDateYear, formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
@@ -72,6 +73,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
           {b.plan === "free" ? ". Forever." : "."}
         </h2>
+        {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, Café &amp; Retail tools are included.</p> : null}
         <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {["No transaction fees", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-meta text-fg">
@@ -175,6 +177,8 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         })}
       </ul>
       <p className="text-meta text-fg-muted">{copy.soon.pricingPromise}</p>
+
+      <RestaurantBilling />
 
       {enabled("payments.in_app") ? (
         <Section title="Payments in the app">

@@ -42,6 +42,53 @@ Everything in Plus, plus:
 - Drop-off scheduling
 - Staff permissions
 
+## Restaurant pack: Starter $99, Growth $199, Pro $349 per month
+
+A separate ladder for restaurants, sweet shops and tiffin kitchens, sold beside Free, Café & Retail and Service. Any restaurant tier includes everything in Café & Retail (`effectivePlan`), so a restaurant never pays for both. Annual price is 10 months (Starter $990, Growth $1,990, Pro $3,490). Source of truth: `RESTAURANT_PLANS`, `ADD_ONS`, `FEES`, `FOUNDING_OFFER` in `packages/shared/src/plans.ts`. Restaurant features ship GA; they are reachable only by buying the pack.
+
+| Tier | Price | Adds | WhatsApp included |
+| --- | --- | --- | --- |
+| Starter | $99/mo | Commission-free ordering, branded ordering page, halal and dietary tags, multilingual menu, WhatsApp order updates, Google review requests | 0 |
+| Growth | $199/mo | Everything in Starter, plus tiffin subscriptions, catering and events, biryani pot (degh) pre-orders, festival campaigns, WhatsApp ordering and marketing | 1,000 a month |
+| Pro | $349/mo | Everything in Growth, plus banquet hall booking, kitchen display, multilingual staff screens, cash discount pricing (not in Quebec), split bills, phone ordering assistant, restaurant analytics | 3,000 a month |
+
+### Add-ons
+
+Add-ons are subscription items on the restaurant subscription (`merchant_add_ons`). They need a live restaurant plan, are prorated by Stripe, and can be removed any time. Annual restaurant plans pay 10 months of the add-on price.
+
+| Add-on | Price | What it does |
+| --- | --- | --- |
+| 1,000 WhatsApp messages | $49 per pack | Adds 1,000 to `merchants.whatsappCreditsExtra` when bought and on every paid renewal (12,000 up front on an annual plan) |
+| Extra restaurant location | $49/mo each | Quantity item for each additional restaurant |
+| Banquet module | $99/mo | Unlocks `restaurant.banquet` on Growth. Already in Pro, so it can't be added there. Needs Growth, not Starter |
+| Phone ordering assistant | $79/mo | Unlocks `restaurant.phone_ai` on Growth. Same rules as the banquet module |
+
+Moving to Starter or Pro drops the banquet and phone add-ons (Starter loses the feature, Pro includes it). WhatsApp packs and extra locations stay.
+
+### Founding offer
+
+The first 20 restaurants per corridor (`merchants.foundingOffer`) pay 50% off for 12 months, then 25% off for life. In Stripe this is a 50%-for-12-months coupon applied at Checkout, then a two-phase subscription schedule that moves the subscription to a 25%-forever coupon and releases it. Growth is $99.50 a month in year one, then $149.25.
+
+### Fees on payments
+
+Card processing (Stripe's standard rate) is passed through at cost on every payment. Our fee on top:
+
+| Payment | Platform fee |
+| --- | --- |
+| Online orders, restaurant tier or any paid plan | 0% (commission-free) |
+| Online orders, Free plan | 1.5% |
+| Optional customer service fee on orders | $0.49, only if the restaurant turns it on |
+| Deposits (catering, banquet, quotes) and invoices | 1% |
+| Tiffin subscription billing | 1% |
+
+One function computes all of these: `computeFees()` in `apps/api/src/services/fees.ts`. Delivery apps commonly keep 15 to 30% of an order; a Growth restaurant doing $5,000 a month in online orders pays $199 flat instead of roughly $750 to $1,500 in commission. The pricing page and the billing screen both show this table.
+
+Note: Café & Retail and Service shops that are not on a restaurant tier still pay the 0.75% in-app payment fee (`PLATFORM_PAYMENT_FEE_BPS`) on orders, quote deposits and invoices today. `computeFees()` follows the 0% / 1.5% order rule above; moving the existing order, deposit and invoice code onto it changes those shops' fees and needs a founder decision.
+
+### Charge mode
+
+`merchants.chargeMode` is `destination` (default: the payment is created on our Stripe account and the funds are transferred to the merchant, with `application_fee_amount`) or `direct` (the charge is created on the merchant's connected account, the merchant is the merchant of record, and the application fee is still taken). Direct charges are behind `STRIPE_DIRECT_CHARGES` (default off); while it is off every merchant uses destination charges. An admin switches a merchant with `PUT /v1/admin/merchants/:merchantId/charge-mode`. A direct-charge merchant needs a connected Stripe account.
+
 ## Not plan features
 
 - **Network perks** ("visit 3 shops on the strip" bonuses) are a platform/BIA lever. Admins configure them, the network funds them, and they run for every shop whatever its plan.

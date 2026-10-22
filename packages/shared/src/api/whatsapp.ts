@@ -215,7 +215,8 @@ export interface ReviewDto {
   rating: number | null;
   feedback: string | null;
   sentAt: string | null;
-  respondedAt: string | null;
+  /** True once the customer rated it. */
+  responded: boolean;
   clickedAt: string | null;
   createdAt: string;
 }

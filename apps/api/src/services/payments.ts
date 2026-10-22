@@ -20,6 +20,7 @@ import { onInvoicePayment } from "./invoices.js";
 import { onOrderPayment } from "./orders.js";
 import { onTiffinPayment } from "./tiffin.js";
 import { onDepositPayment } from "./quotes.js";
+import { onSplitPayment } from "./splits.js";
 import { onCateringDeposit } from "./catering.js";
 import { onHallDeposit } from "./banquet.js";
 
@@ -188,6 +189,7 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
   if (kind === "order") await onOrderPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "deposit") await onDepositPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "invoice") await onInvoicePayment(ctx, id, String(pi.id), outcome);
+  else if (kind === "split") await onSplitPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "tiffin") await onTiffinPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "catering_deposit") await onCateringDeposit(ctx, id, String(pi.id), outcome);
   else if (kind === "hall_deposit") await onHallDeposit(ctx, id, String(pi.id), outcome);

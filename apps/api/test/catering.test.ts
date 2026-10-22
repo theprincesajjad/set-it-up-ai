@@ -162,7 +162,7 @@ describe("quote → signature → deposit → invoice", () => {
     const sent = await api(staff.token, "POST", `${base}/send-quote`, {});
     expect(sent.body.status).toBe("quoted");
     const [row] = await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, id));
-    const url = `${env.ctx.config.publicWebUrl}/c/${row!.approvalToken}`;
+    const url = `${env.ctx.config.publicWebUrl}/e/${row!.approvalToken}`;
     expect(sent.body.approvalUrl).toBe(url);
     expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain(url);
     expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain("$1480.30");
@@ -241,11 +241,21 @@ describe("quote → signature → deposit → invoice", () => {
     const done = await api(null, "POST", `/v1/public/catering/${a.token}/approve`, { signatureName: "Ayesha Khan" });
     expect(done.body).toMatchObject({ event: { status: "confirmed" }, deposit: null });
 
-    // 30% deposit but the shop has no Stripe: no payment intent, staff records it.
+    // 30% deposit but the shop has no Stripe: no payment intent; staff records the deposit.
     const b = await mk();
-    await api(m.ownerToken, "PUT", `${m.base}/catering/${b.id}/menu`, menuBody(items)).catch(() => null);
-    const bTok = await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, b.id));
-    expect(bTok[0]!.status).toBe("quoted");
+    await api(m.ownerToken, "PUT", `${m.base}/catering/${b.id}/menu`, { ...menuBody(items), depositBps: 3000 });
+    await api(m.ownerToken, "POST", `${m.base}/catering/${b.id}/send-quote`, { channels: ["sms"] });
+    const approved = await api(null, "POST", `/v1/public/catering/${b.token}/approve`, { signatureName: "Ayesha Khan" });
+    expect(approved.body).toMatchObject({ event: { status: "quoted", depositCents: 44409 }, deposit: null });
+    const paid = await api(m.ownerToken, "POST", `${m.base}/catering/${b.id}/deposit/mark-paid`, { method: "etransfer" });
+    expect(paid.body).toMatchObject({ status: "confirmed", depositPaidAt: env.clock.now.toISOString(), balanceCents: 103621 });
+
+    // Invoicing then cancelling voids the open invoice.
+    const inv = await api(m.ownerToken, "POST", `${m.base}/catering/${b.id}/invoice`, { send: true });
+    expect(inv.body.invoice).toMatchObject({ amountDueCents: 103621, status: "open" });
+    await api(m.ownerToken, "POST", `${m.base}/catering/${b.id}/cancel`, {});
+    const [row] = await env.db.select().from(invoices).where(eq(invoices.id, inv.body.invoice.id));
+    expect(row!.status).toBe("void");
   });
 });
 

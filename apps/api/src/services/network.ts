@@ -13,6 +13,7 @@
 import { and, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import {
   campaigns,
+  catalogItems,
   discountCards,
   featureOverrides,
   locations,
@@ -31,7 +32,7 @@ import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { startPhoneOtp } from "./auth.js";
 import { JOINABLE_STATUSES, notMerged } from "./customer.js";
-import { customerFeaturesFor, enabledFeaturesByMerchantId, getRolloutStages, promoFeature } from "./features.js";
+import { customerFeaturesFor, enabledFeaturesByMerchantId, enabledFeaturesFor, getRolloutStages, promoFeature } from "./features.js";
 import { promoAppliesAt } from "./ledger.js";
 import { cardsForMember, locationDto, merchantBrief, programSummary, promoDto, rewardDto, terminologyOf } from "./serializers.js";
 import { injectSponsored as injectSponsoredItems } from "./sponsored.js";
@@ -225,6 +226,32 @@ export async function getNeighbourhood(ctx: AppContext, slug: string): Promise<n
 // ---------------------------------------------------------------------------
 // Shops (map / list)
 // ---------------------------------------------------------------------------
+/**
+ * Restaurant-pack shops with dietary tags on: "all" when every orderable item is tagged halal,
+ * "some" when at least one is. Halal is the shop's own claim. Other shops are not in the map.
+ */
+async function halalMenus(db: DbOrTx, shops: Merchant[]): Promise<Map<string, "all" | "some">> {
+  const out = new Map<string, "all" | "some">();
+  const eligible = shops.filter((m) => m.restaurantTier);
+  if (!eligible.length) return out;
+  const on = await enabledFeaturesFor(db, eligible, ["restaurant.dietary_tags"]);
+  const ids = eligible.filter((m) => on.get(m.id)?.has("restaurant.dietary_tags")).map((m) => m.id);
+  if (!ids.length) return out;
+  const items = await db
+    .select({ merchantId: catalogItems.merchantId, dietary: catalogItems.dietary })
+    .from(catalogItems)
+    .where(and(inArray(catalogItems.merchantId, ids), eq(catalogItems.available, true), eq(catalogItems.orderable, true)));
+  const tally = new Map<string, { total: number; halal: number }>();
+  for (const i of items) {
+    const t = tally.get(i.merchantId) ?? { total: 0, halal: 0 };
+    t.total++;
+    if (i.dietary.halal || i.dietary.zabihah) t.halal++;
+    tally.set(i.merchantId, t);
+  }
+  for (const [id, t] of tally) if (t.halal > 0) out.set(id, t.halal === t.total ? "all" : "some");
+  return out;
+}
+
 export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userId: string | null): Promise<networkApi.ShopsResponse> {
   const now = ctx.now();
   const point = q.lat !== undefined && q.lng !== undefined ? { lat: q.lat, lng: q.lng } : null;
@@ -244,11 +271,12 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       ),
     );
   const ids = rows.map((r) => r.m.id);
-  const [locs, ps, mine, counts] = await Promise.all([
+  const [locs, ps, mine, counts, halal] = await Promise.all([
     locationsByMerchant(ctx.db, ids),
     windowPromos(ctx.db, ids, now),
     membershipsFor(ctx.db, userId, ids),
     memberCountsFor(ctx.db, ids),
+    halalMenus(ctx.db, rows.map((r) => r.m)),
   ]);
   const promoBy = new Set(ps.filter((p) => p.audience === "network" && promoAppliesAt(p, now, rows.find((r) => r.m.id === p.merchantId)!.m.timezone)).map((p) => p.merchantId));
   let items: networkApi.ShopListItemDto[] = rows.map(({ m, program }) => {
@@ -268,8 +296,11 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       myBalance: membership ? membership.balance : null,
       isMember: !!membership,
       memberCount: counts.get(m.id) ?? null,
+      ...(halal.has(m.id) ? { halalMenu: halal.get(m.id)! } : {}),
     };
   });
+  if (q.halal === "1") items = items.filter((i) => i.halalMenu);
+  if (q.halal === "all") items = items.filter((i) => i.halalMenu === "all");
   if (q.radiusMetres) items = items.filter((i) => i.distanceMetres !== null && i.distanceMetres <= q.radiusMetres!);
   items.sort((a, b) =>
     point ? (a.distanceMetres ?? Infinity) - (b.distanceMetres ?? Infinity) || a.merchant.name.localeCompare(b.merchant.name) : a.merchant.name.localeCompare(b.merchant.name),

@@ -19,6 +19,12 @@ import ads from "./ads/index.js";
 import campaigns from "./campaigns/index.js";
 import publicRoutes from "./public/index.js";
 import notifications from "./notifications/index.js";
+import whatsapp from "./whatsapp/index.js";
+import reviews from "./reviews/index.js";
+import phone from "./phone/index.js";
+import festivals from "./festivals/index.js";
+import tiffin from "./tiffin/index.js";
+import kitchen from "./kitchen/index.js";
 import catering from "./catering/index.js";
 import banquet from "./banquet/index.js";
 
@@ -43,6 +49,12 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await campaigns(app, ctx);
   await publicRoutes(app, ctx);
   await notifications(app, ctx);
+  await whatsapp(app, ctx);
+  await reviews(app, ctx);
+  await phone(app, ctx);
+  await festivals(app, ctx);
+  await tiffin(app, ctx);
+  await kitchen(app, ctx);
   await catering(app, ctx);
   await banquet(app, ctx);
 }

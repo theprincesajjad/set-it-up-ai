@@ -28,6 +28,13 @@ export const TIFFIN_MEAL_HOUR = 8;
 // ---------------------------------------------------------------------------
 // Shared pieces
 // ---------------------------------------------------------------------------
+type Unwrapped<T> = T extends z.ZodDefault<infer I> ? I : T;
+/** Like .partial(), but a field that was not sent stays undefined instead of getting its create-time default. */
+function patchOf<S extends z.ZodRawShape>(schema: z.ZodObject<S>): z.ZodObject<{ [K in keyof S]: z.ZodOptional<Unwrapped<S[K]>> }> {
+  const shape = Object.fromEntries(Object.entries(schema.shape).map(([k, v]) => [k, (v instanceof z.ZodDefault ? v.removeDefault() : (v as z.ZodType)).optional()]));
+  return z.object(shape) as never;
+}
+
 export const dietarySchema = z.object({
   halal: z.boolean().optional(),
   zabihah: z.boolean().optional(),
@@ -77,7 +84,7 @@ export const createPlanBody = z.object({
   sortOrder: z.number().int().default(0),
 });
 export type CreatePlanBody = z.input<typeof createPlanBody>;
-export const updatePlanBody = createPlanBody.partial();
+export const updatePlanBody = patchOf(createPlanBody);
 export type UpdatePlanBody = z.input<typeof updatePlanBody>;
 
 export interface PlanDto {
@@ -153,7 +160,7 @@ export const createRouteBody = z.object({
   sortOrder: z.number().int().default(0),
 });
 export type CreateRouteBody = z.input<typeof createRouteBody>;
-export const updateRouteBody = createRouteBody.partial();
+export const updateRouteBody = patchOf(createRouteBody);
 export type UpdateRouteBody = z.input<typeof updateRouteBody>;
 /** Set the stop order: subscription ids in drive order (stopOrder = index + 1). */
 export const reorderStopsBody = z.object({ subscriptionIds: z.array(uuidSchema).min(1).max(500) });

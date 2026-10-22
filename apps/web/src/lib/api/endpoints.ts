@@ -315,6 +315,15 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       resume: () => c.post<{ subscription: billingApi.SubscriptionDto }>(`${b}/billing/resume`, {}),
       paymentsStatus: () => c.get<billingApi.ConnectStatusResponse>(`${b}/payments/status`),
       paymentsConnect: (body: { returnUrl?: string; refreshUrl?: string } = {}) => c.post<billingApi.ConnectResponse>(`${b}/payments/connect`, body),
+      // Restaurant pack subscriptions, add-ons, invoices
+      restaurant: () => c.get<billingApi.RestaurantBillingResponse>(`${b}/billing/restaurant`),
+      restaurantCheckout: (body: billingApi.RestaurantCheckoutBody) => c.post<billingApi.CheckoutResponse>(`${b}/billing/restaurant/checkout`, body),
+      restaurantChange: (tier: billingApi.RestaurantChangeBody["tier"]) => c.post<billingApi.RestaurantSubscriptionResponse>(`${b}/billing/restaurant/change`, { tier }),
+      restaurantCancel: (immediate = false) => c.post<billingApi.RestaurantSubscriptionResponse>(`${b}/billing/restaurant/cancel`, { immediate }),
+      restaurantResume: () => c.post<billingApi.RestaurantSubscriptionResponse>(`${b}/billing/restaurant/resume`, {}),
+      attachAddOn: (id: string, quantity = 1) => c.put<billingApi.AddOnResponse>(`${b}/billing/add-ons/${enc(id)}`, { quantity }),
+      detachAddOn: (id: string) => c.delete<billingApi.AddOnResponse>(`${b}/billing/add-ons/${enc(id)}`),
+      invoices: () => c.get<billingApi.InvoicesResponse>(`${b}/billing/invoices`),
     },
     // Phase 2: commerce (Plus) + service (Pro)
     catalog: () => c.get<commerceApi.CatalogResponse>(`${b}/catalog`),

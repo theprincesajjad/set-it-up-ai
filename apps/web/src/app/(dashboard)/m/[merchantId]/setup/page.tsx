@@ -49,7 +49,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
   return (
     <>
       {allDone ? <Banner tone="success" title="You're live.">Your first customer can join right now.</Banner> : null}
-      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div className="min-w-0">
           <div className="mb-3 flex items-baseline justify-between text-meta">
             <span className="text-fg">
@@ -58,7 +58,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
             <span className="tabular text-fg-muted">{Math.round((doneCount / steps.length) * 100)}%</span>
           </div>
           <Meter value={doneCount} max={steps.length} label="Setup progress" />
-          <ol className="mt-4 flex gap-1 overflow-x-auto lg:flex-col" aria-label="Setup steps">
+          <ol className="relative mt-4 flex gap-1 overflow-x-auto lg:flex-col" aria-label="Setup steps">
             {steps.map((s, n) => (
               <li key={s.key}>
                 <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-9 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle")}>
