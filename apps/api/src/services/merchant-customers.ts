@@ -3,7 +3,7 @@
  * reversals, CSV export and CSV import (migration from another program).
  * Points only change through ledger.ts.
  */
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   ledgerTransactions,
   merchantMembers,
@@ -14,7 +14,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import type { merchantApi } from "@ll/shared";
+import { maskPhone, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { parseCsvObjects, toCsv } from "./csv.js";
@@ -66,7 +66,8 @@ function toSummary(r: SummaryRow, minCost: number | null): merchantApi.CustomerS
     memberId: m.id,
     userId: m.userId,
     name: r.name,
-    phone: r.phone,
+    // Privacy: masked by default; managers reveal (audit-logged) with POST …/reveal-phone.
+    phone: r.phone ? maskPhone(r.phone) : null,
     email: r.email,
     memberCode: r.memberCode,
     balance: m.balance,
@@ -105,6 +106,12 @@ export function customerFilters(ctx: AppContext, merchantId: string, q: Partial<
   }
   if (q.rewardAvailable === "true") conds.push(minCost === null ? sql`false` : gte(merchantMembers.balance, minCost));
   if (q.rewardAvailable === "false" && minCost !== null) conds.push(lt(merchantMembers.balance, minCost));
+  if (q.joinedAfter) conds.push(gte(merchantMembers.createdAt, new Date(q.joinedAfter.length === 10 ? `${q.joinedAfter}T00:00:00Z` : q.joinedAfter)));
+  // Same rule as CustomerSummary.marketingConsent: consent recorded and not muted.
+  if (q.consent === "opted_in") conds.push(and(isNotNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, false)));
+  if (q.consent === "not") conds.push(or(isNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, true)));
+  if (q.muted === "true") conds.push(eq(merchantMembers.muted, true));
+  if (q.muted === "false") conds.push(eq(merchantMembers.muted, false));
   return and(...conds)!;
 }
 
@@ -119,17 +126,28 @@ export async function listCustomers(ctx: AppContext, merchantId: string, q: merc
     spend: [desc(merchantMembers.totalSpendCents)],
     name: [sql`${users.name} asc nulls last`],
   }[q.sort];
-  const rows = await ctx.db
-    .select(summarySelect)
-    .from(merchantMembers)
-    .innerJoin(users, eq(users.id, merchantMembers.userId))
-    .leftJoin(vipLevels, eq(vipLevels.id, merchantMembers.vipLevelId))
-    .where(customerFilters(ctx, merchantId, q, minCost))
-    .orderBy(...order, asc(merchantMembers.id))
-    .limit(q.limit + 1)
-    .offset(offset);
+  const where = customerFilters(ctx, merchantId, q, minCost);
+  const [rows, [totalRow]] = await Promise.all([
+    ctx.db
+      .select(summarySelect)
+      .from(merchantMembers)
+      .innerJoin(users, eq(users.id, merchantMembers.userId))
+      .leftJoin(vipLevels, eq(vipLevels.id, merchantMembers.vipLevelId))
+      .where(where)
+      .orderBy(...order, asc(merchantMembers.id))
+      .limit(q.limit + 1)
+      .offset(offset),
+    ctx.db.select({ n: count() }).from(merchantMembers).innerJoin(users, eq(users.id, merchantMembers.userId)).where(where),
+  ]);
   const items = rows.slice(0, q.limit).map((r) => toSummary(r, minCost));
-  return { items, nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null };
+  return { items, nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null, total: Number(totalRow?.n ?? 0) } satisfies merchantApi.ListCustomersResponse;
+}
+
+/** Full phone number for one member (manager+). Every reveal is written to audit_logs. */
+export async function revealCustomerPhone(ctx: AppContext, merchantId: string, actorUserId: string, memberId: string, ip?: string | null): Promise<merchantApi.RevealPhoneResponse> {
+  const r = await loadMember(ctx.db, merchantId, memberId);
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: "customer.phone_revealed", entity: "member", entityId: memberId, ip: ip ?? null });
+  return { memberId, phone: r.phone };
 }
 
 async function loadMember(db: DbOrTx, merchantId: string, memberId: string) {

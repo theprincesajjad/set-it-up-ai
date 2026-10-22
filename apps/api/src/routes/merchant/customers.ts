@@ -4,6 +4,7 @@ import { merchantApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
+import { writeAudit } from "../../services/admin-audit.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/merchant-customers.js";
 
@@ -23,6 +24,9 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
     await requireFeature(ctx.db, s.merchant, "customers.csv_export");
     const q = parse(merchantApi.listCustomersQuery, req.query);
     const csv = await svc.exportCustomersCsv(ctx, s.merchant.id, q);
+    // Full phones/emails leave the system: audit every export.
+    const { cursor: _c, limit: _l, ...filters } = q;
+    await writeAudit(ctx.db, { actorUserId: s.user.id, merchantId: s.merchant.id, action: "customers.exported", entity: "merchant", entityId: s.merchant.id, data: { filters }, ip: req.ip });
     return reply
       .header("content-type", "text/csv; charset=utf-8")
       .header("content-disposition", `attachment; filename="${csvName(s.merchant.slug, "customers", ctx.now())}"`)
@@ -39,6 +43,11 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
   app.get("/merchants/:merchantId/customers/:memberId", async (req: Req<{ memberId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
     return svc.getCustomerDetail(ctx, s.merchant.id, req.params.memberId);
+  });
+
+  app.post("/merchants/:merchantId/customers/:memberId/reveal-phone", async (req: Req<{ memberId: string }>) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    return svc.revealCustomerPhone(ctx, s.merchant.id, s.user.id, req.params.memberId, req.ip);
   });
 
   app.patch("/merchants/:merchantId/customers/:memberId", async (req: Req<{ memberId: string }>) => {
@@ -67,6 +76,8 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
     await requireFeature(ctx.db, s.merchant, "customers.csv_export");
     const q = parse(merchantApi.listActivityQuery, req.query);
     const csv = await svc.exportTransactionsCsv(ctx, s.merchant.id, q);
+    const { cursor: _c, limit: _l, ...filters } = q;
+    await writeAudit(ctx.db, { actorUserId: s.user.id, merchantId: s.merchant.id, action: "transactions.exported", entity: "merchant", entityId: s.merchant.id, data: { filters }, ip: req.ip });
     return reply
       .header("content-type", "text/csv; charset=utf-8")
       .header("content-disposition", `attachment; filename="${csvName(s.merchant.slug, "transactions", ctx.now())}"`)

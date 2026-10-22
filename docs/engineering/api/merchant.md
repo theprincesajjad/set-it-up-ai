@@ -181,11 +181,23 @@ Validation (`400`): multiplier needs `multiplierPct`, bonus_points needs `bonusP
 ### `GET /v1/merchants/:merchantId/customers` (staff)
 Query `listCustomersQuery`: `q` (name / email / ≥3 phone digits / member code), `phoneLast4`, `tag`, `vipLevelId`,
 `vip=true|false`, `lapsedDays` (no visit in N days, incl. never), `rewardAvailable=true|false`,
+`joinedAfter` (ISO date = 00:00 UTC, or datetime with offset; joined at or after), `consent=opted_in|not`
+(`opted_in` = consent recorded **and** not muted, i.e. who promos reach; `not` = everyone else), `muted=true|false`,
 `sort = recent|joined|balance|visits|spend|name`, `limit` (≤ 200), `cursor`.
-→ `{ items: CustomerSummary[], nextCursor }`. `marketingConsent` = consent given **and** not muted.
+→ `ListCustomersResponse { items: CustomerSummary[], nextCursor, total }`. `total` = members matching the filters
+(ignores `cursor`/`limit`). `marketingConsent` = consent given **and** not muted.
+
+**Privacy:** `phone` is **masked** (`(416) ***-1234`, via `maskPhone`) in the list and the detail. Search by phone
+digits / `phoneLast4` still matches the full number server-side.
 
 ### `GET …/customers/:memberId` (staff)
 → `CustomerDetail { customer (+ birthday, notes, marketingConsentAt, marketingConsentSource), transactions (last 100), visits (last 50), redemptions (last 50) }`.
+`customer.phone` is masked.
+
+### `POST …/customers/:memberId/reveal-phone` (manager)
+No body. → `RevealPhoneResponse { memberId, phone }` (full E.164, or `null`). Every call writes an `audit_logs` row
+`customer.phone_revealed` (entity `member`, actor, IP). Errors: `401`, `403` (staff role), `404` member of another shop.
+The counter lookup (`/staff/lookup`) only ever returns `maskedPhone`.
 
 ### `PATCH …/customers/:memberId` (staff)
 Body `{ notes?, tags? }` (tags lower-cased, de-duplicated). → `CustomerDetail`.
@@ -204,6 +216,9 @@ Body `{ reason }` → `{ transaction (the reversal), balance }`. `409` already r
 - `GET …/customers/export.csv` (same filters as the list) → `text/csv` attachment. Columns:
   `member_id,name,phone,email,member_code,balance,lifetime_points,visits,total_spend,last_visit_at,joined_at,joined_via,vip_level,tags,birthday,marketing_consent_at,muted,notes`
 - `GET …/activity/export.csv?from&to&type&memberId` → `transaction_id,created_at,member_id,customer_name,phone,type,source,points,amount,eligible_amount,description,location_id,staff_user_id,reverses_transaction_id,reversed_at,external_ref`
+
+Both exports contain full phone numbers and are audit-logged (`customers.exported` / `transactions.exported`,
+`data.filters` = the query used, actor, IP).
 
 Money columns are dollars with 2 decimals. Text cells starting with `= + - @` are prefixed with `'` (formula injection).
 
