@@ -5,8 +5,9 @@ Renders the app with react-native-web and drives it with Playwright (Chromium fr
 Rerun (from the repo root, fresh seed so the OTP limit of 5 codes per phone per hour starts at zero):
 
 ```bash
-DATABASE_URL=pglite://./.pglite-mobile-e2e PORT=4300 pnpm --filter @ll/api seed
-DATABASE_URL=pglite://./.pglite-mobile-e2e PORT=4300 pnpm --filter @ll/api start     # other terminal
+mkdir -p apps/api/.pglite && rm -rf apps/api/.pglite/mobile-e2e
+DATABASE_URL=pglite://./.pglite/mobile-e2e PORT=4300 pnpm --filter @ll/api seed
+DATABASE_URL=pglite://./.pglite/mobile-e2e PORT=4300 pnpm --filter @ll/api start     # other terminal
 cd apps/mobile && EXPO_PUBLIC_API_URL=http://localhost:4300 pnpm export:web && pnpm e2e:web   # or: node e2e/tour.mjs counter  (steps starting with "counter")
 ```
 

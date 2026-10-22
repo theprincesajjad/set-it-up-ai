@@ -161,6 +161,7 @@ export function serializeMerchant(m: Merchant, primary: LocationRow | null): mer
     activatedAt: iso(m.activatedAt),
     onboardingStep: m.onboardingStep,
     smsCreditsUsed: m.smsCreditsUsed,
+    smsReceiptsEnabled: m.smsReceiptsEnabled,
     hasApiKey: !!m.apiKeyHash,
     hours: (primary?.hours as merchantApi.Hours | null) ?? null,
     createdAt: m.createdAt.toISOString(),

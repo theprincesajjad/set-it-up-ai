@@ -60,6 +60,8 @@ export const updateProfileBody = z
     /** Applied to the primary (first) location. */
     hours: hoursSchema,
     neighbourhoodId: uuidSchema.nullable(),
+    /** Transactional SMS receipt after each award (muted members never get one). */
+    smsReceiptsEnabled: z.boolean(),
   })
   .partial();
 export type UpdateProfileBody = z.infer<typeof updateProfileBody>;
@@ -106,6 +108,8 @@ export interface MerchantProfile {
   activatedAt: string | null;
   onboardingStep: string;
   smsCreditsUsed: number;
+  /** Text a transactional receipt after each award. */
+  smsReceiptsEnabled: boolean;
   hasApiKey: boolean;
   /** Primary location hours (same as locations[0].hours). */
   hours: Hours | null;

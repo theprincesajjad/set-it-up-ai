@@ -16,6 +16,7 @@ Specs: `docs/design/screens/customer-mobile.md`, `docs/design/screens/staff-coun
 | Server state | TanStack Query, persisted to AsyncStorage so screens show cached data offline |
 | Tokens | `@ll/design-tokens` (colours, type, spacing, touch targets). Figtree + Fraunces via `@expo-google-fonts/*` |
 | Icons | `lucide-react-native`, imported one file per icon in `src/ui/icons.ts` |
+| Web (QA preview) | react-native-web + react-dom + @expo/metro-runtime (`web.output: "single"`); maplibre-gl map on web only |
 | Native modules | expo-secure-store, expo-camera, expo-brightness, expo-keep-awake, expo-notifications, expo-location, expo-haptics, expo-file-system, expo-sharing, react-native-maps, @react-native-community/netinfo, @react-native-async-storage/async-storage |
 
 ## Layout
@@ -103,6 +104,30 @@ EAS builds from the monorepo root with pnpm 10 (pinned in `eas.json`). Set `GOOG
 - `react-dom` is pinned to `19.3.0` in the app so pnpm doesn't auto-install a mismatched peer.
 - The app uses AsyncStorage rather than `expo-sqlite`. drizzle-orm (used by `apps/api` and `packages/db`) has an optional peer on `expo-sqlite`, and installing it would have pulled React Native into the API's dependency graph.
 
+## Expo web (QA preview and screenshots)
+
+The app also renders in a browser through react-native-web. This is a QA target for screenshots and design review, not a product: customers without the app use the web pass in `apps/web`.
+
+```bash
+cd apps/mobile && EXPO_PUBLIC_API_URL=http://localhost:4300 pnpm export:web   # → dist-web/ (gitignored)
+pnpm e2e:web                                                                  # Playwright tour → e2e/screenshots/
+```
+
+`e2e/README.md` has the full recipe (fresh PGlite seed on port 4300, the setup the tour does through the API, and how map tiles reach the sandboxed browser).
+
+Native-only modules have `.web` twins that Metro picks for web, so native bundles are unchanged:
+
+| Module | Web twin | Behaviour on web |
+| --- | --- | --- |
+| `state/secureStore.ts` (expo-secure-store) | `secureStore.web.ts` | Tokens in localStorage |
+| `features/customer/MapView.tsx` (react-native-maps) | `MapView.web.tsx` | maplibre-gl on OpenFreeMap Positron tiles (no key), recoloured to the muted palette; the same `<ShopPin>` views portalled into DOM markers; style load failure → list fallback |
+| `features/customer/brightness.ts` (expo-brightness, keep-awake) | `brightness.web.ts` | No-op |
+| `features/push.ts` (expo-notifications) | `push.web.ts` | `registerForPush()` → `"unavailable"`; deep links shared via `features/deepLinks.ts` |
+| `state/network.ts` (NetInfo) | `network.web.ts` | Browser `online` / `offline` events |
+| `theme/webStyles.ts` | `webStyles.web.ts` | Drops the browser focus outline that doubled our field focus border |
+
+expo-camera, expo-location, expo-haptics and AsyncStorage have their own web implementations. Differences from a phone: no safe-area insets or status bar, the card "sheet" (`formSheet`) is a full page, no Wallet buttons, no camera scan in headless Chromium, and the `Date` header is hidden from cross-origin fetches (the redeem countdown falls back to the code's `createdAt`).
+
 ## Architecture notes
 
 **API client** (`src/api/client.ts`)
@@ -119,14 +144,21 @@ EAS builds from the monorepo root with pnpm 10 (pinned in `eas.json`). Set `GOOG
 - The queue flushes when the device comes back online, when the app returns to the foreground, and on "Retry now". The banner shows "Offline · N waiting to send" and "Back online · N sent", and turns danger when items are more than 24 h old or more than 50 are waiting.
 
 **Award flow** (`src/lib/award.ts`)
-- A reducer drives keypad → lookup → customer panel → success. Ten digits auto-search, and four digits offer "Search last 4".
+- A reducer drives keypad → lookup → customer panel → success. Ten digits auto-search, and four digits offer "Search last 4". With one shop the location picker preselects it.
+- Stamp / visit programs show `+2` / `+3` chips next to the main button: one tap awards `quantity` items as one visit (`POST .../counter/award` and offline `sync` events carry `quantity`, 1–10). Per-dollar programs have none.
+- The success title is what staff added ("Added 2 stamps"); network / passport bonuses (`extraPoints`) are listed under it ("Plus 50 pts bonus"). Past a full stamp card the hero reads "14 stamps" instead of "14 / 10".
 - Per-dollar programs use POS-style cents entry. The button label updates live ("Award 24 pts (2x today)"). A no-earn category shows "Record visit (0 pts)".
 - Success appears immediately with the estimated balance and is replaced by the server's result. A 10-second Undo cancels a queued item or calls `/transactions/:id/undo`.
 
-**Feature flags (Phase 2).**
-- There is no customer feature-flag endpoint, so the app shows a Phase 2 entry point only when its API answers.
-  - "Order ahead" appears on a shop when `GET /v1/public/shops/:slug/menu` succeeds (a `402 feature_locked` hides it).
-  - "Orders & tickets" appears when `/v1/me/orders` or `/v1/me/tickets` returns items.
+**Feature flags (Phase 2).** `features { orderAhead, pickupSlots, serviceTickets, inAppPayments }` on `GET /v1/public/shops/:slug` and on each `GET /v1/me/memberships` item decide the entry points, with no probing for `402`s.
+- Shop detail shows "Order ahead" when `features.orderAhead`, and "My tickets here" when `features.serviceTickets` (or the member already has tickets there).
+- `usePhase2()` fetches `/v1/me/orders` / `/v1/me/tickets` only when one of my shops has the matching flag; "Orders & tickets" (Profile) and Home "In progress" follow it.
+
+**Shop logos.** Pilot shops have no logo (`logoUrl: null`). `ShopLogo` draws coloured initials ("PC", "CK" for The Copper Kettle Pub) on the merchant's `brandColor`, with white or ink text by contrast; without a brand colour it uses the vertical tint. The shop hero without a cover photo is a soft wash of the same colour.
+
+**Social proof.** `memberCount` (null below 10) shows as "39 neighbours are members" in the shop's About tab and in the "Earn here" card for non-members.
+
+**Redeem countdown.** The code screen counts down to `RedemptionDto.expiresAt` on the server's clock (`lib/serverClock.ts`: offset from each response's `Date` header, else from the just-issued code's `createdAt`). `expiresAt: null` = no countdown. When it hits zero the screen shows "This code expired. Your points weren't used." (the API's `redemptions.expire` job refunds).
 
 **Consent (CASL).** Consent checkboxes are never pre-checked. The per-shop text the API supplies (`consentText`, or `customerApi.marketingConsentText`) is shown and sent back unchanged.
 
@@ -138,17 +170,19 @@ EAS builds from the monorepo root with pnpm 10 (pinned in `eas.json`). Set `GOOG
 pnpm --filter @ll/mobile typecheck     # tsc --noEmit (also type-checks the @ll/shared and @ll/design-tokens sources the app imports)
 pnpm --filter @ll/mobile test          # vitest: API client, offline queue, phone formatting, award flow, explore/perks, cart, feed, activity
 cd apps/mobile && npx expo export --platform android   # JS bundle (also --platform ios)
-cd apps/mobile && npx expo-doctor
+cd apps/mobile && npx expo-doctor                       # @types/react-dom is excluded (pinned to 19.3.0 with react-dom)
 ```
 
-Unit tests cover the pure modules in `src/lib` and `src/api` and run in plain Node. There is no simulator and no jest-expo. Screens are verified by bundling and by hand on a simulator.
+Unit tests cover the pure modules in `src/lib` and `src/api` and run in plain Node. There is no simulator and no jest-expo. Screens are verified by the Expo web screenshot tour (`pnpm e2e:web`, see above) and by hand on a simulator.
 
 ## Known gaps
+
+- **Web preview only.** Expo web is for QA; native-only behaviour (brightness, push, camera scan, Wallet, safe areas, sheets) is checked on a simulator.
+- **Kiosk on a phone.** The kiosk is laid out for a landscape tablet; on a phone the keypad runs below the fold.
 
 - **In-app card payment.** Orders use "pay at pickup". Quote deposits and invoices open the web pay page (`approvalUrl` / `payUrl`). Native Stripe (`@stripe/stripe-react-native`) is not wired in yet.
 - **No API yet.** Platform news consent (stored on the device only), the notifications inbox, notification category preferences (stored on the device only), and phone-number change.
 - **Neighbourhood perk progress** is derived from the wallet (distinct shops visited inside the perk window), because the API exposes perk rules but not per-member progress.
-- **Counter quantity chips (+2/+3)** are not shown. `/award` awards one visit per call, and repeat calls hit the visit cooldown.
 - **Kiosk.** "Pending check-in → staff taps Add stamp" needs an API that doesn't exist yet, so per-dollar check-ins only enrol. The kiosk check-in body has no name field, so the kiosk doesn't ask for one.
 - **Member cache.** The last 200 members seen on a counter device are cached in AsyncStorage (names and masked phones only), not encrypted. They are cleared on sign-out.
 - **SMS autofill.** OTP autofill relies on iOS `oneTimeCode` and Android autofill. The Android SMS Retriever API is not integrated.

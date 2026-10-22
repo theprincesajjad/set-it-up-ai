@@ -46,11 +46,13 @@ Errors: `400` validation / invalid phone / unknown neighbourhood · `401` · `42
 Merchants the caller is staff at. → `{ items: MyMerchant[], nextCursor: null }`.
 
 ### `GET /v1/merchants/:merchantId` (staff)
-→ `MerchantDetail`. `merchant.hours` mirrors the primary (first) location. `merchant.hasApiKey` boolean.
+→ `MerchantDetail`. `merchant.hours` mirrors the primary (first) location. `merchant.hasApiKey`, `merchant.smsReceiptsEnabled` booleans.
 
 ### `PATCH /v1/merchants/:merchantId` (manager)
 Body `updateProfileBody` (all optional): `name, description, logoUrl, coverUrl, brandColor (#RRGGBB), email, phone,
-website, instagram (leading @ stripped), hours (applied to the primary location), neighbourhoodId`. → `MerchantDetail`.
+website, instagram (leading @ stripped), hours (applied to the primary location), neighbourhoodId, smsReceiptsEnabled`.
+→ `MerchantDetail`. `smsReceiptsEnabled` (boolean, owner/manager) turns on the transactional SMS receipt after each
+award (muted members never get one); `merchant.smsReceiptsEnabled` is returned on every `MerchantProfile`.
 
 ### `GET /v1/merchants/:merchantId/onboarding` (staff)
 → `OnboardingChecklist { steps[], currentStep, percentComplete, activeMembers, activationTarget, activatedAt }`.
