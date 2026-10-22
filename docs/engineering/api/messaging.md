@@ -63,6 +63,15 @@ Campaigns only (automations excluded), newest first → `{ items: Message[], nex
 ### `PATCH /v1/merchants/:merchantId/messages/:messageId`
 Draft/scheduled only (`409` otherwise). Body: any of `channel, subject, body, segment, scheduledAt` (`null` → back to draft). → `MessageDetail`.
 ### `POST …/messages/:messageId/send` → `MessageDetail` (`409` if already sending/sent/cancelled)
+### `POST …/messages/:messageId/test` (manager) → `TestSendResult { channel, sent, to[], smsCreditsUsed, testsRemainingToday }`
+"Send test to me". No body. Sends the rendered message (personalized with **your** name and balance at this shop,
+CASL footer included; subject prefixed `[Test]`) to the **requesting staff user's own** email / phone / push tokens
+only — never to members. Transactional: no consent check, no audience, logged in `message_deliveries` with
+`kind = "transactional"` and `messageId = null` (so it never shows in the campaign's `stats`). SMS uses exactly
+**1** credit. Works for any campaign status (draft included). Rate limit: **10 per user per shop per rolling 24 h**
+(counted from `audit_logs` `message.test_sent`). The email unsubscribe link points at your own membership (or a
+placeholder when you aren't a member). Errors: `400` your account has no email / phone / push device for that channel,
+`402` feature locked or `sms_credits_exhausted`, `404`, `429 rate_limited`.
 ### `POST …/messages/:messageId/cancel` → `MessageDetail` (draft/scheduled only)
 ### `DELETE …/messages/:messageId` → `204` (draft/cancelled only)
 ### `GET /v1/merchants/:merchantId/messages/sms-usage` → `SmsUsage { used, allowance, remaining, resetsOn }`

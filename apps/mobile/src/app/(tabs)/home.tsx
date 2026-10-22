@@ -8,6 +8,7 @@ import { useCampaigns, useMembershipDetails, usePhase2, useProfile, useWallet } 
 import { useDeviceLocation } from "../../features/customer/location";
 import { JoinSheet, PushPrompt, RedeemConfirmSheet, SponsoredWhySheet } from "../../features/customer/sheets";
 import { firstName, formatNumber, formatPts, termWord } from "../../lib/award";
+import { heroText, homeHero } from "../../lib/hero";
 import { perkHeadline, perkProgress } from "../../lib/perks";
 import { capSponsored } from "../../lib/feed";
 import { promoEnds, relativeTime } from "../../lib/format";
@@ -93,7 +94,8 @@ export default function Home() {
   const hoodDetail = useQuery({ queryKey: ["hood", neighbourhoodSlug ?? ""], queryFn: () => api.network.neighbourhood(neighbourhoodSlug!), enabled: !!neighbourhoodSlug, staleTime: 30 * 60_000 });
   const perk = hoodDetail.data?.perks[0] ?? null;
   const perkState = perk ? perkProgress(perk, memberships, hoodDetail.data?.neighbourhood.id ?? null) : null;
-  const total = memberships.reduce((sum, m) => sum + m.balance, 0);
+  const hero = homeHero(memberships);
+  const heroCopy = hero.kind === "empty" ? null : heroText(hero);
   const referralShop = memberships.find((m) => (m.program?.referralBonus ?? 0) > 0);
 
   const readyIds = memberships.filter((m) => m.rewardsAvailableCount > 0).map((m) => m.id);
@@ -203,15 +205,31 @@ export default function Home() {
         </Text>
       ) : null}
 
-      {memberships.length > 0 ? (
-        <View style={styles.hero} accessible accessibilityLabel={`${formatNumber(total)} points and stamps across ${memberships.length} shops`}>
+      {hero.kind !== "empty" && heroCopy ? (
+        <Pressable
+          style={styles.hero}
+          accessibilityRole="button"
+          accessibilityLabel={heroCopy.label}
+          disabled={hero.kind === "shops"}
+          onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
+        >
           <Text variant="points" tabular center style={{ fontSize: 64, lineHeight: 68 }}>
-            {formatNumber(total)}
+            {heroCopy.big}
           </Text>
-          <View style={[styles.pill, { backgroundColor: c.brandSubtle }]}>
-            <Text variant="label" rawColor={c.onBrandSubtle}>{`across ${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}</Text>
+          <Text variant="title" center numberOfLines={2}>
+            {heroCopy.line}
+          </Text>
+          {hero.kind === "progress" ? (
+            <View style={styles.heroBar}>
+              <ProgressBar value={hero.value} max={hero.max} tone="accent" />
+            </View>
+          ) : null}
+          <View style={[styles.pill, { backgroundColor: hero.kind === "ready" ? c.accentSubtle : c.brandSubtle }]}>
+            <Text variant="label" rawColor={hero.kind === "ready" ? c.onAccentSubtle : c.onBrandSubtle} numberOfLines={1}>
+              {heroCopy.chip}
+            </Text>
           </View>
-        </View>
+        </Pressable>
       ) : null}
 
       <View style={styles.shortcuts}>
@@ -431,6 +449,7 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: "center", gap: 8, paddingTop: 4, paddingBottom: 4 },
+  heroBar: { alignSelf: "stretch", marginHorizontal: 48, marginVertical: 4 },
   bleed: { marginHorizontal: -16 },
   bleedContent: { paddingHorizontal: 16 },
   pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },

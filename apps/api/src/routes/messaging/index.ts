@@ -58,6 +58,11 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     return svc.getCampaignDetail(ctx, s.merchant, req.params.messageId);
   });
 
+  app.post("/merchants/:merchantId/messages/:messageId/test", async (req: Req<{ messageId: string }>): Promise<messagingApi.TestSendResult> => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    return svc.sendTestToSelf(ctx, s.merchant, s.user.id, req.params.messageId);
+  });
+
   app.post("/merchants/:merchantId/messages/:messageId/cancel", async (req: Req<{ messageId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
     await svc.cancelCampaign(ctx, s.merchant.id, s.user.id, req.params.messageId);

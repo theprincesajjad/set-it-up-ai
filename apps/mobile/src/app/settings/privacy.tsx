@@ -7,7 +7,6 @@ import { Linking, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { usePhase2, useWallet } from "../../features/customer/queries";
-import { formatPts } from "../../lib/award";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { Banner, Button, Card, ConfirmDialog, Download, ListRow, Screen, Section, Text, TextField, Trash2, useToast } from "../../ui";
@@ -24,7 +23,6 @@ export default function Privacy() {
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const shops = wallet.data?.items ?? [];
-  const total = shops.reduce((s, m) => s + m.balance, 0);
   const openWork = phase2.tickets.some((x) => !["picked_up", "cancelled", "declined"].includes(x.status)) || phase2.orders.some((o) => ["pending", "accepted", "preparing", "ready"].includes(o.status));
   const openShop = phase2.tickets.find((x) => !["picked_up", "cancelled", "declined"].includes(x.status))?.merchantName ?? phase2.orders.find((o) => ["pending", "accepted", "preparing", "ready"].includes(o.status))?.merchantName;
 
@@ -69,7 +67,7 @@ export default function Privacy() {
       </Section>
       <Section title="Delete my account">
         <Card tone="sunken">
-          <Text>{`Your card stops working at every shop. Your points at ${shops.length} ${shops.length === 1 ? "shop" : "shops"} (${formatPts(total, "points")} total) will be lost. Shops keep records of past purchases as the law requires, without your name.`}</Text>
+          <Text>{`Your card stops working at every shop. Everything you've collected at ${shops.length === 1 ? "your shop" : `your ${shops.length} shops`} (points, stamps and rewards) will be lost. Shops keep records of past purchases as the law requires, without your name.`}</Text>
         </Card>
         {openWork ? <Banner variant="warning">{`Finish or cancel your open repair or order at ${openShop ?? "the shop"} first.`}</Banner> : null}
         <TextField label='Type "DELETE" to confirm' value={typed} onChangeText={setTyped} autoCapitalize="characters" />

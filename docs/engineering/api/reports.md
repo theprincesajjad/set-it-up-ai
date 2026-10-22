@@ -14,6 +14,18 @@ Ranges are half-open `[from, to)`. Money in cents. Ratios are 0–1 with 3 decim
 `pointsIssued` (earn-type, not reversed), `pointsRedeemed`, `redemptions`, `redemptionRate` (redeemers ÷ active),
 `revenueFromMembersCents` (purchase amounts on member visits), `avgSpendPerVisitCents`, `repeatRate` (active with 2+ visits ÷ active).
 
+`pointsLiability: PointsLiability { outstandingPoints, membersWithBalance, centsPerPoint, estimatedValueCents, basisReward }`
+— outstanding points **right now** (ignores `from`/`to`). Method:
+1. `outstandingPoints` = sum of every member's current balance at this shop (the ledger-maintained
+   `merchant_members.balance`); `membersWithBalance` = members with a balance > 0.
+2. Basis reward = the **cheapest active `amount_off` reward** (lowest `pointsCost`; ties → lowest value), with
+   `pointsCost > 0` and `value > 0`. `centsPerPoint = value ÷ pointsCost` (4 decimals).
+3. `estimatedValueCents = round(outstandingPoints × centsPerPoint)`.
+4. No such reward (only percent-off / free-item / custom) → `centsPerPoint`, `estimatedValueCents`, `basisReward` are `null`.
+
+It's an estimate of what the outstanding balance would cost if all of it were redeemed at that rate; it ignores
+breakage, partial balances below the reward threshold and stamps/free items. Points never expire by default.
+
 ### `GET …/reports/daily?from&to`
 → `DailyReport { range, timezone, series: [{ date (local YYYY-MM-DD), visits, newMembers, pointsIssued, pointsRedeemed, revenueCents }] }`,
 zero-filled for every local day in the range (chart-ready).

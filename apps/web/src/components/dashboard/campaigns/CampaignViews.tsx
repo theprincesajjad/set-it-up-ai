@@ -128,7 +128,8 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
   const c = useApi(() => browserApi.campaigns.get(id), [id]);
   const report = useApi(() => browserApi.campaigns.report(id), [id]);
   const hood = neighbourhoods.find((n) => n.id === c.data?.neighbourhoodId);
-  const shops = useApi(hood ? () => browserApi.network.shops({ neighbourhood: hood.slug, limit: 200 }) : null, [hood?.slug]);
+  const hoodId = c.data?.neighbourhoodId;
+  const shops = useApi(hoodId ? () => browserApi.campaigns.neighbourhoodMerchants(hoodId) : null, [hoodId]);
   const [add, setAdd] = useState("");
   const [edit, setEdit] = useState(false);
   const [cancel, setCancel] = useState(false);
@@ -141,7 +142,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
         const ended = new Date(x.endsAt).getTime() < now;
         const started = new Date(x.startsAt).getTime() <= now;
         const editable = x.status === "draft" || x.status === "scheduled";
-        const notIn = (shops.data?.items ?? []).filter((s) => !x.merchants.some((m) => m.id === s.merchant.id));
+        const notIn = (shops.data?.items ?? []).filter((s) => s.status !== "closed" && !x.merchants.some((m) => m.id === s.id));
         const r = report.data;
         return (
           <div className="flex flex-col gap-5">
@@ -204,7 +205,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
               </ul>
               {(editable || isAdmin) && notIn.length ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2 print:hidden">
-                  <div className="min-w-60 flex-1"><Select label="Add a shop" placeholder="Pick a shop on the strip" value={add} onChange={(e) => setAdd(e.target.value)} options={notIn.map((s) => ({ value: s.merchant.id, label: s.merchant.name }))} /></div>
+                  <div className="min-w-60 flex-1"><Select label="Add a shop" placeholder="Pick a shop on the strip" value={add} onChange={(e) => setAdd(e.target.value)} options={notIn.map((s) => ({ value: s.id, label: `${s.name}${s.status === "active" ? "" : ` (${s.status})`}${s.activated ? "" : " · not activated yet"}` }))} /></div>
                   <Button variant="secondary" disabled={!add} onClick={async () => { const n = await act.run(() => browserApi.campaigns.addMerchant(x.id, add)); if (n) { c.setData(n); setAdd(""); } }}>Add shop</Button>
                 </div>
               ) : null}

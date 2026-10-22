@@ -126,8 +126,7 @@ function HoursTab() {
 function CounterTab() {
   const { api, detail, setDetail, features, role, refresh } = useMerchant();
   const toast = useToast();
-  const m = detail.merchant as merchantApi.MerchantProfile & { smsReceiptsEnabled?: boolean };
-  const [receipts, setReceipts] = useState(!!m.smsReceiptsEnabled);
+  const [receipts, setReceipts] = useState(detail.merchant.smsReceiptsEnabled);
   const act = useAction();
   return (
     <div className="flex flex-col gap-4">
@@ -140,13 +139,12 @@ function CounterTab() {
           onChange={async (v) => {
             setReceipts(v);
             const r = await act.run(() => api.update({ smsReceiptsEnabled: v }));
-            const saved = (r?.merchant as typeof m | undefined)?.smsReceiptsEnabled;
-            if (r && saved === v) {
+            if (r) {
               setDetail(r);
-              toast({ message: v ? "SMS receipts on" : "SMS receipts off", tone: "success" });
+              setReceipts(r.merchant.smsReceiptsEnabled);
+              toast({ message: r.merchant.smsReceiptsEnabled ? "SMS receipts on" : "SMS receipts off", tone: "success" });
             } else {
               setReceipts(!v);
-              if (r) act.setError("SMS receipts can't be changed from the dashboard yet. Ask your rep to switch them on.");
             }
           }}
         />

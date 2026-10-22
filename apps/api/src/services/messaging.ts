@@ -24,7 +24,7 @@ import { FEATURES, PLANS, messagingApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
-import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { postTransaction } from "./ledger.js";
 import { writeAudit } from "./admin-audit.js";
@@ -364,6 +364,76 @@ export async function getCampaignDetail(ctx: AppContext, merchant: Merchant, id:
     ...serializeMessage(m),
     stats: { queued: by.queued ?? 0, sent: by.sent ?? 0, delivered: by.delivered ?? 0, failed: by.failed ?? 0 },
     preview: withFooter(ctx, m.channel, merchant.name, sample, "00000000-0000-0000-0000-000000000000"),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Send a test to myself
+// ---------------------------------------------------------------------------
+export const TEST_SENDS_PER_DAY = 10;
+
+/**
+ * Send the rendered message (personalization + CASL footer) to the requesting
+ * staff user's own email / phone / push tokens only. Transactional: no audience,
+ * no consent check, no delivery stats on the campaign. SMS uses exactly 1 credit.
+ * Limited to TEST_SENDS_PER_DAY per user per shop (rolling 24 h, counted in audit_logs).
+ */
+export async function sendTestToSelf(ctx: AppContext, merchant: Merchant, actorUserId: string, id: string): Promise<messagingApi.TestSendResult> {
+  const m = await getCampaign(ctx.db, merchant.id, id);
+  await requireChannel(ctx.db, merchant, m.channel);
+  const now = ctx.now();
+  const [used] = await ctx.db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.merchantId, merchant.id), eq(auditLogs.actorUserId, actorUserId), eq(auditLogs.action, "message.test_sent"), gte(auditLogs.createdAt, new Date(now.getTime() - 86_400_000))));
+  const usedToday = Number(used?.n ?? 0);
+  if (usedToday >= TEST_SENDS_PER_DAY) throw tooMany(`You can send ${TEST_SENDS_PER_DAY} tests a day. Try again tomorrow.`);
+
+  const [me] = await ctx.db.select({ name: users.name, email: users.email, phone: users.phone }).from(users).where(eq(users.id, actorUserId)).limit(1);
+  const [membership] = await ctx.db
+    .select({ id: merchantMembers.id, balance: merchantMembers.balance })
+    .from(merchantMembers)
+    .where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, actorUserId)))
+    .limit(1);
+  let to: string[] = [];
+  if (m.channel === "email") to = me?.email ? [me.email] : [];
+  else if (m.channel === "sms") to = me?.phone ? [me.phone] : [];
+  else to = (await ctx.db.select({ token: pushTokens.token }).from(pushTokens).where(eq(pushTokens.userId, actorUserId))).map((t) => t.token);
+  if (!to.length) {
+    const what = m.channel === "email" ? "an email address" : m.channel === "sms" ? "a phone number" : "the app signed in on a phone";
+    throw badRequest(`Your account needs ${what} to receive a ${m.channel === "push" ? "push" : m.channel === "sms" ? "text" : "email"} test`);
+  }
+  if (m.channel === "sms" && !(await reserveSmsCredits(ctx.db, merchant, 1))) throw smsCreditsExhausted(1, Math.max(0, smsAllowance(merchant) - merchant.smsCreditsUsed));
+
+  const terminology = await programTerminology(ctx.db, merchant.id);
+  const personal = { name: me?.name ?? null, balance: membership?.balance ?? 0 };
+  const text = withFooter(ctx, m.channel, merchant.name, personalize(m.body, personal, merchant.name, terminology), membership?.id ?? "00000000-0000-0000-0000-000000000000");
+  const subject = `[Test] ${m.subject ? personalize(m.subject, personal, merchant.name, terminology) : merchant.name}`;
+  let sent = 0;
+  for (const addr of to) {
+    let status = "sent";
+    let providerId: string | null = null;
+    let error: string | null = null;
+    try {
+      if (m.channel === "email") providerId = (await ctx.providers.email.send({ to: addr, subject, text })).id;
+      else if (m.channel === "sms") providerId = (await ctx.providers.sms.send(addr, `[Test] ${text}`)).id;
+      else if ((await ctx.providers.push.send([{ token: addr, title: subject, body: text, data: { merchantId: merchant.id, test: "1" } }])).failed) status = "failed";
+    } catch (err) {
+      status = "failed";
+      error = err instanceof Error ? err.message.slice(0, 500) : "send failed";
+    }
+    if (status === "sent") sent++;
+    // messageId stays null so tests never count in the campaign's delivery stats.
+    await ctx.db.insert(messageDeliveries).values({ messageId: null, userId: actorUserId, merchantId: merchant.id, channel: m.channel, to: addr, body: text, kind: "transactional", status, providerId, error, createdAt: now });
+  }
+  // createdAt from ctx.now() so the rolling 24 h window uses the same clock as the check above.
+  await ctx.db.insert(auditLogs).values({ actorUserId, merchantId: merchant.id, action: "message.test_sent", entity: "message", entityId: m.id, data: { channel: m.channel, addresses: to.length, sent }, createdAt: now });
+  return {
+    channel: m.channel,
+    sent,
+    to: m.channel === "push" ? to.map(() => "this device") : to,
+    smsCreditsUsed: m.channel === "sms" ? 1 : 0,
+    testsRemainingToday: TEST_SENDS_PER_DAY - usedToday - 1,
   };
 }
 

@@ -11,6 +11,8 @@ export interface KeypadProps {
   onKey: (key: KeypadKey) => void;
   /** 72 (counter, default) or 88 (kiosk). */
   size?: "counter" | "kiosk";
+  /** Overrides the key height (kiosk on a phone shrinks keys to fit). Never below the 72 px counter keypad minimum. */
+  keyHeight?: number;
   disabled?: boolean;
 }
 
@@ -22,9 +24,9 @@ const ROWS: KeypadKey[][] = [
 ];
 
 /** 3 x 4 keypad, 72 px keys (kiosk 88), haptic selection, long-press backspace = clear. */
-export function Keypad({ onKey, size = "counter", disabled }: KeypadProps) {
+export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadProps) {
   const { c } = useTheme();
-  const h = size === "kiosk" ? touchTargets.kiosk : touchTargets.keypad;
+  const h = Math.max(touchTargets.keypad, keyHeight ?? (size === "kiosk" ? touchTargets.kiosk : touchTargets.keypad));
   const press = (k: KeypadKey) => {
     if (disabled) return;
     Haptics.selectionAsync().catch(() => undefined);

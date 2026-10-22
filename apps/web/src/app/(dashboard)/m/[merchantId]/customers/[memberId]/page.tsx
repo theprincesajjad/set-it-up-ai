@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, Minus, Plus, SlidersHorizontal, Undo2 } from "lucide-react";
+import { ArrowLeft, Eye, Minus, Plus, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
@@ -20,6 +20,7 @@ import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { newIdempotencyKey } from "@/lib/api/client";
 import { formatDate, formatDateTime, formatDateYear, formatMoney, formatPoints } from "@/lib/format";
+import { formatE164 } from "@/lib/phone";
 import { CONSENT_LABEL, consentState, maskPhone } from "@/lib/dashboard/customers";
 import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
 import { sourceLabel } from "@/lib/dashboard/labels";
@@ -54,6 +55,8 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
   const [notes, setNotes] = useState(c.notes ?? "");
   const [tag, setTag] = useState("");
   const save = useAction();
+  const revealAct = useAction();
+  const [fullPhone, setFullPhone] = useState<string | null | undefined>(undefined);
   const s = consentState(c);
   const active = rewards.filter((r) => r.active).sort((a, b) => a.pointsCost - b.pointsCost);
   const next = active.find((r) => r.pointsCost > c.balance) ?? active[active.length - 1];
@@ -67,8 +70,28 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
         <div className="min-w-0 flex-1">
           <h1 className="text-h2 text-fg">{c.name ?? "No name"}</h1>
           <p className="text-body-sm text-fg-muted">
-            {maskPhone(c.phone)} · Joined {formatDateYear(c.joinedAt)} {c.joinedVia ? `via ${c.joinedVia.replace(/_/g, " ")}` : ""} · Member code {c.memberCode}
+            <span className="tabular-nums">{fullPhone !== undefined ? formatE164(fullPhone) || "No phone" : maskPhone(c.phone)}</span>
+            {manager && c.phone && fullPhone === undefined ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  disabled={revealAct.busy}
+                  onClick={async () => {
+                    // Audit-logged on the server (customer.phone_revealed).
+                    const r = await revealAct.run(() => api.revealPhone(c.memberId));
+                    if (r) setFullPhone(r.phone);
+                  }}
+                  className="inline-flex min-h-11 items-center gap-1 font-medium text-fg-link hover:underline disabled:opacity-60"
+                  aria-label={`Reveal phone for ${c.name ?? "member"}`}
+                >
+                  <Eye aria-hidden className="size-4" /> Reveal
+                </button>
+              </>
+            ) : null}{" "}
+            · Joined {formatDateYear(c.joinedAt)} {c.joinedVia ? `via ${c.joinedVia.replace(/_/g, " ")}` : ""} · Member code {c.memberCode}
           </p>
+          {revealAct.error ? <p className="text-caption text-danger">{revealAct.error}</p> : null}
           <div className="mt-2 flex flex-wrap gap-2">
             {c.vipLevel ? <Badge tone="brand">VIP {c.vipLevel.name}</Badge> : null}
             <Badge tone={s === "opted_in" ? "success" : "neutral"}>{CONSENT_LABEL[s]}</Badge>

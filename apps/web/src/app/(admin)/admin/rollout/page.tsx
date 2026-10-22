@@ -83,7 +83,7 @@ export default function RolloutPage() {
                               {f.overrides.enabled + f.overrides.disabled ? `${f.overrides.enabled} on${f.overrides.disabled ? ` · ${f.overrides.disabled} off` : ""}` : "Add"}
                             </Button>}
                           </td>
-                          <td className="px-4 py-3 text-fg-muted">{f.updatedAt ? `${f.updatedBy && !/^[0-9a-f-]{36}$/.test(f.updatedBy) ? f.updatedBy : "Admin"}, ${formatDate(f.updatedAt)}` : "Default"}{f.note ? <span className="block text-caption">{f.note}</span> : null}</td>
+                          <td className="px-4 py-3 text-fg-muted">{f.updatedAt ? `${f.updatedByName ?? "Admin"}, ${formatDate(f.updatedAt)}` : "Default"}{f.note ? <span className="block text-caption">{f.note}</span> : null}</td>
                         </tr>
                       ))}
                     </tbody>

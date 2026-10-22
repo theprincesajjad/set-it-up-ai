@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatTile } from "@/components/ui/StatTile";
 import { Switch } from "@/components/ui/Switch";
 import { Tabs } from "@/components/ui/Tabs";
-import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import type { reportsApi } from "@ll/shared";
+import { formatDate, formatMoney, formatNumber, formatPoints } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
 import { pctDelta, rangeFor, type RangeKey } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -24,7 +25,8 @@ type Tab = "overview" | "visits" | "members" | "rewards" | "promos" | "network" 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export default function ReportsPage() {
-  const { api, role, enabled } = useMerchant();
+  const { api, role, enabled, detail } = useMerchant();
+  const term = detail.program?.terminology ?? "points";
   const [tab, setTab] = useState<Tab>("overview");
   const [range, setRange] = useState<Exclude<RangeKey, "today">>("30d");
   const [compare, setCompare] = useState(false);
@@ -75,6 +77,7 @@ export default function ReportsPage() {
             <StatTile label="Spend by members" value={c ? formatMoney(c.revenueFromMembersCents) : null} loading={!c} caption={c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit` : undefined} />
             <StatTile label="Came back" value={c ? pct(c.repeatRate) : null} loading={!c} caption="Active members with 2+ visits" />
           </div>
+          {overview.data ? <LiabilityCard l={overview.data.pointsLiability} term={term} /> : null}
           <Switch label="Compare to previous period" checked={compare} onChange={setCompare} />
           {daily.data ? (
             <BarChart title="Visits per day" valueLabel="Visits" compareLabel={compare ? "Previous period" : undefined} data={series.map((s, i) => ({ label: formatDate(`${s.date}T12:00:00Z`), value: s.visits, compare: compare ? prev[i]?.visits : undefined }))} action={exportBtn("visits-per-day.csv", [["date", "visits", "new_members", "points_issued", "points_redeemed", "revenue"], ...series.map((s) => [s.date, s.visits, s.newMembers, s.pointsIssued, s.pointsRedeemed, (s.revenueCents / 100).toFixed(2)])])} />
@@ -211,5 +214,23 @@ export default function ReportsPage() {
         )
       ) : null}
     </div>
+  );
+}
+
+/** Outstanding points liability (method: docs/engineering/api/reports.md). */
+function LiabilityCard({ l, term }: { l: reportsApi.PointsLiability; term: string }) {
+  return (
+    <Card padding="lg">
+      <CardHeader title={`Unredeemed ${term}`} subtitle="What your members are holding right now, not just in this date range." />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatTile label="Outstanding" value={formatPoints(l.outstandingPoints, term)} caption={`${formatNumber(l.membersWithBalance)} ${l.membersWithBalance === 1 ? "member" : "members"} with a balance`} />
+        <StatTile
+          label="Estimated value"
+          value={l.estimatedValueCents != null ? formatMoney(l.estimatedValueCents) : "–"}
+          caption={l.basisReward && l.centsPerPoint != null ? `At ${l.centsPerPoint.toFixed(2).replace(/\.?0+$/, "")}¢ per ${term.replace(/s$/, "")} (${l.basisReward.name}: ${formatMoney(l.basisReward.valueCents)} for ${formatNumber(l.basisReward.pointsCost)})` : "Add a dollars-off reward to see a dollar estimate"}
+        />
+      </div>
+      <p className="mt-3 text-caption text-fg-muted">Estimate: every outstanding {term.replace(/s$/, "")} valued at your cheapest dollars-off reward. Not every balance gets redeemed, so the real cost is usually lower. {term[0]!.toUpperCase() + term.slice(1)} don&apos;t expire unless you turned expiry on.</p>
+    </Card>
   );
 }

@@ -54,6 +54,21 @@ export interface OverviewReport {
   previous: OverviewMetrics;
   /** Members with ≥1 visit in the last 30 days (fixed window, for the header tile). */
   activeMembers30d: number;
+  /** Outstanding points right now (not range-bound). */
+  pointsLiability: PointsLiability;
+}
+
+/**
+ * Points members hold but haven't redeemed. Dollar estimate = balance × cents-per-point of the
+ * cheapest (lowest points cost) active `amount_off` reward; null when the shop has none.
+ */
+export interface PointsLiability {
+  outstandingPoints: number;
+  membersWithBalance: number;
+  /** value ÷ pointsCost of `basisReward`, 4 decimals. */
+  centsPerPoint: number | null;
+  estimatedValueCents: number | null;
+  basisReward: { id: string; name: string; pointsCost: number; valueCents: number } | null;
 }
 
 export interface DailyPoint {

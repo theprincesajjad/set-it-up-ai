@@ -97,6 +97,18 @@ export interface MessageDetail extends Message {
   preview: string;
 }
 
+/** POST /v1/merchants/:id/messages/:messageId/test — sent to the requesting staff user only. */
+export interface TestSendResult {
+  channel: Channel;
+  /** Addresses that accepted the send. */
+  sent: number;
+  /** Where it went: your email / phone; push shows "this device" per signed-in device. */
+  to: string[];
+  /** 1 for an SMS test, else 0. */
+  smsCreditsUsed: number;
+  testsRemainingToday: number;
+}
+
 export interface SmsUsage {
   used: number;
   allowance: number;

@@ -55,7 +55,10 @@ export interface AdminFeature {
   /** Merchants that tapped "Notify me" on this feature (demand signal before flipping the gate). */
   interestCount: number;
   note: string | null;
+  /** User id of the admin who last changed the stage. */
   updatedBy: string | null;
+  /** That admin's name (email when no name); null when unknown / default. */
+  updatedByName: string | null;
   updatedAt: string | null;
 }
 export const setFeatureStageBody = z.object({

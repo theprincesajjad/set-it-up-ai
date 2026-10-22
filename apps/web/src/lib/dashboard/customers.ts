@@ -1,8 +1,12 @@
 import type { merchantApi } from "@ll/shared";
 
-/** "(416) •••-0123" — phones are masked in lists until revealed. */
+/**
+ * "(416) •••-0123". The API already masks customer phones ("(416) ***-0123"); a full number is only
+ * returned by the audit-logged reveal endpoint. Both render the same way here.
+ */
 export function maskPhone(e164: string | null | undefined): string {
   if (!e164) return "No phone";
+  if (e164.includes("*")) return e164.replace(/\*/g, "•");
   const d = e164.replace(/\D/g, "").slice(-10);
   if (d.length < 10) return "•••";
   return `(${d.slice(0, 3)}) •••-${d.slice(6)}`;
@@ -23,8 +27,8 @@ export const CONSENT_LABEL: Record<ConsentState, string> = { opted_in: "Opted in
 
 export type CustomerFilter = "all" | "reward" | "vip" | "new" | "at_risk" | "opted_in" | "muted";
 
-/** API query for a filter chip; `client` filters are applied to loaded rows (no server filter yet). */
-export function filterQuery(f: CustomerFilter): { query: Record<string, string | number>; client?: (c: merchantApi.CustomerSummary) => boolean } {
+/** API query for a filter chip (all filters run server-side, so `total` is exact). `now` is injectable for tests. */
+export function filterQuery(f: CustomerFilter, now: number = Date.now()): { query: Record<string, string | number> } {
   switch (f) {
     case "reward":
       return { query: { rewardAvailable: "true" } };
@@ -33,11 +37,11 @@ export function filterQuery(f: CustomerFilter): { query: Record<string, string |
     case "at_risk":
       return { query: { lapsedDays: 60 } };
     case "new":
-      return { query: { sort: "joined" }, client: (c) => Date.now() - new Date(c.joinedAt).getTime() < 30 * 86_400_000 };
+      return { query: { sort: "joined", joinedAfter: new Date(now - 30 * 86_400_000).toISOString() } };
     case "opted_in":
-      return { query: {}, client: (c) => consentState(c) === "opted_in" };
+      return { query: { consent: "opted_in" } };
     case "muted":
-      return { query: {}, client: (c) => c.muted };
+      return { query: { muted: "true" } };
     default:
       return { query: {} };
   }

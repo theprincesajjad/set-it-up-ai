@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, Send } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { messagingApi } from "@ll/shared";
@@ -45,6 +45,10 @@ export default function ComposePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  /** Set once "Send test to me" saved a draft; later saves update it instead of creating another. */
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
   const segment: messagingApi.Segment = seg === "lapsed" ? { kind: "lapsed", days: 30 } : seg === "new" ? { kind: "new", days: 14 } : seg === "tag" ? { kind: "tag", tag: tag || "x" } : seg === "vip" ? { kind: "vip" } : { kind: seg as "all" | "reward_ready" };
   const max = channel === "sms" ? messagingApi.SMS_MAX_BODY : channel === "push" ? messagingApi.PUSH_MAX_BODY : messagingApi.EMAIL_MAX_BODY;
   const loc = detail.locations[0];
@@ -68,13 +72,39 @@ export default function ComposePage() {
     setBusy(true);
     setError(null);
     try {
-      const m = await api.messages.create({ channel, subject: subject.trim() || undefined, body: body.trim(), segment, sendNow: mode === "send", scheduledAt: mode === "schedule" ? fromLocalInput(at) : undefined });
+      let m: messagingApi.MessageDetail;
+      if (draftId) {
+        m = await api.messages.update(draftId, { channel, subject: subject.trim() || null, body: body.trim(), segment, ...(mode === "schedule" ? { scheduledAt: fromLocalInput(at) } : {}) });
+        if (mode === "send") m = await api.messages.send(draftId);
+      } else {
+        m = await api.messages.create({ channel, subject: subject.trim() || undefined, body: body.trim(), segment, sendNow: mode === "send", scheduledAt: mode === "schedule" ? fromLocalInput(at) : undefined });
+      }
       toast({ message: mode === "send" ? `Sent to ${formatNumber(m.recipientCount)} people` : mode === "schedule" ? "Scheduled" : "Draft saved", tone: "success" });
       router.push(`${base}/messages/${m.id}`);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendTest() {
+    if (channel === "email" && !subject.trim()) return setError("Add a subject line.");
+    if (!body.trim()) return setError("Write your message.");
+    setTesting(true);
+    setError(null);
+    setTestNote(null);
+    try {
+      const content = { channel, subject: subject.trim() || null, body: body.trim(), segment };
+      const id = draftId ?? (await api.messages.create({ ...content, subject: content.subject ?? undefined, sendNow: false })).id;
+      if (draftId) await api.messages.update(draftId, content);
+      setDraftId(id);
+      const r = await api.messages.sendTest(id);
+      setTestNote(`Test sent to ${r.to.join(", ")}${r.smsCreditsUsed ? " (used 1 text)" : ""}. Saved as a draft. ${r.testsRemainingToday} tests left today.`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -105,6 +135,7 @@ export default function ComposePage() {
             <SegmentedControl label="When" value={when} onChange={setWhen} options={[{ value: "now", label: "Send now" }, { value: "later", label: "Schedule" }]} />
             {when === "later" ? <TextField type="datetime-local" label="Send at" hint="Toronto time" value={at} onChange={(e) => setAt(e.target.value)} /> : null}
             {error ? <Banner tone="danger">{error}</Banner> : null}
+            {testNote ? <Banner tone="success">{testNote}</Banner> : null}
             <div className="flex flex-wrap gap-2">
               {when === "now" ? (
                 <Button loading={busy} onClick={() => (count?.recipients ? setConfirm(true) : setError("No one in this audience can get it yet."))}>
@@ -117,6 +148,9 @@ export default function ComposePage() {
               )}
               <Button variant="secondary" disabled={busy} onClick={() => submit("draft")}>
                 Save draft
+              </Button>
+              <Button variant="ghost" iconStart={Send} loading={testing} disabled={busy} onClick={() => void sendTest()}>
+                Send test to me
               </Button>
             </div>
           </Card>

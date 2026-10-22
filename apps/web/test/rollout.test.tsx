@@ -8,7 +8,7 @@ import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
 
 const feat = (over: Partial<adminApi.AdminFeature>): adminApi.AdminFeature => ({
   key: "orders.order_ahead", name: "Order-ahead", description: "", minPlan: "plus", phase: 2, stage: "hidden", defaultStage: "hidden", freeForever: false,
-  unlockAtMerchants: 100, activeMerchants: 12, readyToUnlock: false, overrides: { enabled: 0, disabled: 0 }, interestCount: 3, note: null, updatedBy: null, updatedAt: null, ...over,
+  unlockAtMerchants: 100, activeMerchants: 12, readyToUnlock: false, overrides: { enabled: 0, disabled: 0 }, interestCount: 3, note: null, updatedBy: null, updatedByName: null, updatedAt: null, ...over,
 });
 
 describe("rollout control rules", () => {

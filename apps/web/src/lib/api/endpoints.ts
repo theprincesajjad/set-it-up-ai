@@ -155,6 +155,10 @@ export function llApi(c: ApiClient) {
     /** BIA campaigns (BIA managers: their neighbourhoods only; admins: all). */
     campaigns: {
       list: (q: Q = {}) => c.get<PageOf<campaignsApi.Campaign>>("/v1/campaigns", { query: q }),
+      /** Neighbourhoods I manage (admins: all). Empty = not a BIA manager. */
+      managedNeighbourhoods: () => c.get<Items<campaignsApi.ManagedNeighbourhood>>("/v1/me/neighbourhoods-managed"),
+      /** Every shop on a strip (admin or that neighbourhood's manager), for shop pickers. */
+      neighbourhoodMerchants: (neighbourhoodId: string) => c.get<Items<campaignsApi.NeighbourhoodMerchant>>(`/v1/admin/neighbourhoods/${enc(neighbourhoodId)}/merchants`),
       get: (id: string) => c.get<campaignsApi.Campaign>(`/v1/campaigns/${enc(id)}`),
       create: (body: Record<string, unknown>) => c.post<campaignsApi.Campaign>("/v1/campaigns", body),
       update: (id: string, body: Record<string, unknown>) => c.patch<campaignsApi.Campaign>(`/v1/campaigns/${enc(id)}`, body),
@@ -182,7 +186,7 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
   return {
     base: b,
     detail: () => c.get<merchantApi.MerchantDetail>(b),
-    update: (body: merchantApi.UpdateProfileBody & { smsReceiptsEnabled?: boolean }) => c.patch<merchantApi.MerchantDetail>(b, body),
+    update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
     completeStep: (step: "profile" | "program" | "rewards" | "staff" | "qr_kit") =>
       c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/complete`, { step }),
@@ -230,7 +234,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     setPromoStatus: (id: string, status: merchantApi.PromoStatus) => c.post<merchantApi.Promo>(`${b}/promos/${enc(id)}/status`, { status }),
     deletePromo: (id: string) => c.delete<void>(`${b}/promos/${enc(id)}`),
     // Customers
-    customers: (q: Q = {}) => c.get<PageOf<merchantApi.CustomerSummary>>(`${b}/customers`, { query: q }),
+    customers: (q: Q = {}) => c.get<merchantApi.ListCustomersResponse>(`${b}/customers`, { query: q }),
+    revealPhone: (memberId: string) => c.post<merchantApi.RevealPhoneResponse>(`${b}/customers/${enc(memberId)}/reveal-phone`, {}),
     customer: (memberId: string) => c.get<merchantApi.CustomerDetail>(`${b}/customers/${enc(memberId)}`),
     updateCustomer: (memberId: string, body: { notes?: string | null; tags?: string[] }) => c.patch<merchantApi.CustomerDetail>(`${b}/customers/${enc(memberId)}`, body),
     adjust: (memberId: string, body: { points: number; reason: string }, idempotencyKey: string) =>
@@ -271,6 +276,7 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       create: (body: Record<string, unknown>) => c.post<messagingApi.MessageDetail>(`${b}/messages`, body),
       update: (id: string, body: Record<string, unknown>) => c.patch<messagingApi.MessageDetail>(`${b}/messages/${enc(id)}`, body),
       send: (id: string) => c.post<messagingApi.MessageDetail>(`${b}/messages/${enc(id)}/send`, {}),
+      sendTest: (id: string) => c.post<messagingApi.TestSendResult>(`${b}/messages/${enc(id)}/test`, {}),
       cancel: (id: string) => c.post<messagingApi.MessageDetail>(`${b}/messages/${enc(id)}/cancel`, {}),
       remove: (id: string) => c.delete<void>(`${b}/messages/${enc(id)}`),
       smsUsage: () => c.get<messagingApi.SmsUsage>(`${b}/messages/sms-usage`),

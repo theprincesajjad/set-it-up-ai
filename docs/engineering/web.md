@@ -106,7 +106,14 @@ keep the proxy refreshing early (it does) so 401 races stay rare. `/api/ll` refu
 - `/map` is map-first: `components/pass/ShopMap.tsx` lazy-loads `NetworkMap.tsx` (maplibre-gl, client only, its CSS
   ships with that chunk). Pins (`MapPin.tsx`) are React portals into maplibre markers: round logo or coloured
   initials with a white ring, marigold balance badge on my shops, pine dot for live promos, selected pin enlarged;
-  labels show on the selected pin and at zoom ≥ 17. Floating category chips + peek card sit over the map.
+  labels show on the selected pin and at zoom ≥ 17. Floating category chips + peek card sit over the map; the peek
+  card's logo tile uses the same solid initials colour as the pin. The map opens on the densest strip at zoom 15.5–16
+  (padding for the chips/card). After every zoom a screen-space collision pass (`lib/mapCluster.ts`, unit-tested)
+  collapses overlapping pins: selected → my shops → live offer → others win; a group led by one of my shops keeps that
+  pin with a "+N" badge, any other group is a count bubble; tapping either zooms in on the group.
+- `/me` hero never sums points and stamps across shops (`lib/walletSummary.ts`): the big number is rewards ready now
+  ("3 rewards ready · across 4 shops"); with none ready it's the closest reward by progress ("2 stamps to a free drink
+  at Pinecone"). The card sheet shows the same headline; the join success screen shows one shop's balance only.
   No WebGL, a style/tile error or a 12 s timeout → `onFail` → the list with a notice. Keep it out of the join path.
 - `ShopLogo` always falls back to coloured initials (no logo, or `onError`); same in `ShopTile` hero/list and pins.
 - Marketing "Book a visit" / BIA forms post to `POST /v1/public/leads`; `/pricing` reads `GET /v1/public/plans`
@@ -129,7 +136,8 @@ Routes (all dynamic, `noindex`):
   renders `MerchantProvider` + `MerchantShell`. Staff of the shop get their role; platform admins and the shop's rep
   pass the API's `requireStaff` and see a sticky danger "Viewing as … Changes are logged." banner. Staff role sees only
   Today + Counter (`lib/dashboard/nav.ts` `canOpen`); billing is owner-only. Rep/admin layouts check `platformRole`;
-  BIA access is decided by `GET /v1/campaigns` (403 → "This area is for BIA managers").
+  BIA access is decided by `GET /v1/me/neighbourhoods-managed` (empty → "This area is for BIA managers"; the
+  campaigns probe still turns a hidden rollout into "coming soon").
 - **Feature gating.** Nav is built from `GET /features` (`buildMerchantNav`): locked features never appear. Phase 2/3
   pages wrap in `FeatureGate` (renders the `FeatureTeaser` card when locked). `FeatureTeaser` maps state → LockedFeature:
   hidden → Coming soon + Notify me (`POST /features/:key/notify`), beta → Try the beta (owner opt-in), plan → See plans.
@@ -154,10 +162,14 @@ Routes (all dynamic, `noindex`):
   editor, campaign views, admin StageDialog/OverridesSheet).
 - **Return URLs.** `next.config.ts` redirects the API's `/dashboard/integrations?merchantId=`, `/dashboard/billing?merchant=`
   and `/dashboard/payments?merchant=` to `/m/:id/...`. (`/bia` is now the BIA tool; the marketing page is `/for-bias`.)
-- **Known API gaps** (UI degrades gracefully): no way to set `smsReceiptsEnabled` from PATCH /merchants (toggle explains);
-  no "my neighbourhoods" for BIA managers (derived from visible campaigns); no customer-list total / joined-after /
-  consent filters (count from reports overview, New/Opted-in/Muted chips filter loaded rows); phone reveal isn't
-  audit-logged; no "send test to myself" for messages; `AdminFeature.updatedBy` is a user id, not a name.
+- **Customers privacy.** The API returns masked phones in the list and detail; "Reveal" (managers+) calls
+  `POST …/customers/:memberId/reveal-phone`, which is audit-logged, as are CSV exports. Filter chips (New / Opted in /
+  Muted / Reward ready / VIP / At risk) are server filters, and the header + "Showing N of M" use the list's `total`.
+- **Messages.** "Send test to me" (composer saves a draft first, and on the message page) calls `POST …/messages/:id/test`:
+  your own email / phone / devices only, 10 a day, an SMS test uses 1 credit.
+- **Reports.** The overview shows unredeemed points + an estimated dollar value (`pointsLiability`, method in api/reports.md).
+- **BIA.** `BiaGate` lists `GET /v1/me/neighbourhoods-managed`; campaign shop pickers use
+  `GET /v1/admin/neighbourhoods/:id/merchants` (every shop on the strip, closed ones hidden).
 
 ## Deploy
 

@@ -8,6 +8,7 @@ import { t } from "../copy/en-CA";
 import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { formatNumber, formatPts, groupMemberCode } from "../lib/award";
+import { rewardsReadyCount } from "../lib/hero";
 import { displayPhone, maskMiddle } from "../lib/phone";
 import { api } from "../state/api";
 import { useOnline } from "../state/network";
@@ -18,7 +19,7 @@ import { Banner, Button, Check, Chip, DiscountCard, QrCode, Receipt, SegmentedCo
 
 /**
  * My card — a sheet opened from the raised tab-bar button (references.md § 4).
- * Pine card with total points + name, QR in a white tile, big monospace member
+ * Pine card with name + rewards ready (never a points-plus-stamps total), QR in a white tile, big monospace member
  * code, brightness max, Wallet buttons, "Forgot to scan? Claim a purchase".
  * Renders from cache instantly and works offline.
  */
@@ -42,7 +43,7 @@ export default function CardSheet() {
   useBrightScreen("my-card");
 
   const memberships = wallet.data?.items ?? [];
-  const total = memberships.reduce((s, m) => s + m.balance, 0);
+  const readyCount = rewardsReadyCount(memberships);
   const pass = useQuery({ queryKey: qk.walletPass, queryFn: api.wallet.status, enabled: online, retry: false, staleTime: 10 * 60_000 });
   const details = useMembershipDetails(memberships.map((m) => m.id));
   const discountCards = details.flatMap((d) => (d.data ? d.data.discountCards.map((dc) => ({ dc, m: d.data!.membership })) : []));
@@ -120,12 +121,16 @@ export default function CardSheet() {
                   {card?.name ?? user?.name ?? "Member"}
                 </Text>
               </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text variant="h2" rawColor={c.onBrand} tabular>
-                  {formatNumber(total)}
-                </Text>
-                <Text variant="caption" rawColor={c.onBrand}>{`across ${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}</Text>
-              </View>
+              {memberships.length > 0 ? (
+                <View style={{ alignItems: "flex-end" }} accessible accessibilityLabel={readyCount > 0 ? `${readyCount} ${readyCount === 1 ? "reward" : "rewards"} ready` : `${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}>
+                  <Text variant="h2" rawColor={c.onBrand} tabular>
+                    {formatNumber(readyCount > 0 ? readyCount : memberships.length)}
+                  </Text>
+                  <Text variant="caption" rawColor={c.onBrand}>
+                    {readyCount > 0 ? (readyCount === 1 ? "reward ready" : "rewards ready") : memberships.length === 1 ? "shop" : "shops"}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Pressable
               accessibilityRole="button"

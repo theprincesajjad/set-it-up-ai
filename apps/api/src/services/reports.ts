@@ -104,7 +104,37 @@ export async function overview(ctx: AppContext, merchant: Merchant, q: reportsAp
       .from(visits)
       .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, new Date(now.getTime() - 30 * DAY)), lte(visits.createdAt, now))),
   ]);
-  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n) };
+  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n), pointsLiability: await pointsLiability(ctx.db, merchant.id) };
+}
+
+/**
+ * Outstanding points liability. Method (docs/engineering/api/reports.md): sum of every member's
+ * current balance; dollar estimate uses the cheapest active `amount_off` reward (lowest points
+ * cost, ties → lowest value) as the cents-per-point rate. Redeemed at that rate, every outstanding
+ * point is worth value ÷ cost cents. Percent-off / free-item rewards are ignored (no fixed value).
+ */
+export async function pointsLiability(db: DbOrTx, merchantId: string): Promise<reportsApi.PointsLiability> {
+  const [[totals], [basis]] = await Promise.all([
+    db
+      .select({ points: sql<number>`coalesce(sum(${merchantMembers.balance}), 0)::bigint`, holders: sql<number>`count(*) filter (where ${merchantMembers.balance} > 0)::int` })
+      .from(merchantMembers)
+      .where(eq(merchantMembers.merchantId, merchantId)),
+    db
+      .select({ id: rewards.id, name: rewards.name, pointsCost: rewards.pointsCost, value: rewards.value })
+      .from(rewards)
+      .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true), eq(rewards.rewardType, "amount_off"), sql`${rewards.pointsCost} > 0`, sql`${rewards.value} > 0`))
+      .orderBy(rewards.pointsCost, rewards.value)
+      .limit(1),
+  ]);
+  const outstandingPoints = num(totals?.points);
+  const cpp = basis ? basis.value / basis.pointsCost : null;
+  return {
+    outstandingPoints,
+    membersWithBalance: num(totals?.holders),
+    centsPerPoint: cpp === null ? null : Math.round(cpp * 10000) / 10000,
+    estimatedValueCents: cpp === null ? null : Math.round(outstandingPoints * cpp),
+    basisReward: basis ? { id: basis.id, name: basis.name, pointsCost: basis.pointsCost, valueCents: basis.value } : null,
+  };
 }
 
 // ---------------------------------------------------------------------------

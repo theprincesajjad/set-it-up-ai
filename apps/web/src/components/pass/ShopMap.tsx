@@ -43,7 +43,8 @@ export function ShopMap({ items, me, onFail }: { items: networkApi.ShopListItemD
         ) : null}
         {sel ? (
           <div aria-live="polite" className="pointer-events-auto flex items-center gap-3 rounded-lg bg-surface p-3 shadow-lg">
-            <ShopLogo shop={sel.merchant} size={56} />
+            {/* Same solid initials colour as the shop's map pin. */}
+            <ShopLogo shop={sel.merchant} size={56} tone="solid" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-title text-fg">{sel.merchant.name}</p>
               <p className="truncate text-body-sm text-fg-muted">{[verticalLabel(sel.merchant.vertical), sel.distanceMetres != null ? formatDistance(sel.distanceMetres) : sel.location?.address].filter(Boolean).join(" · ")}</p>

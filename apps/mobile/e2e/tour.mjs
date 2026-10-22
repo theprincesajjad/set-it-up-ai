@@ -92,6 +92,18 @@ await step("setup", async () => {
   const owner = await login("owner+pinecone-coffee@example.com");
   const { items } = await call("GET", "/v1/merchants", undefined, owner);
   pinecone = items[0];
+  // The customer redeems a free drink in the app ("redeem") and another at the counter ("counter-redeem").
+  // The seed is relative to today, so top the stamp card up to two free drinks when it is short.
+  // The 30-minute stamp cooldown would block the top-up and the later counter award, so the e2e copy turns it off.
+  await call("PATCH", `/v1/merchants/${pinecone.id}/program`, { visitCooldownMinutes: 0 }, owner);
+  const look = await call("GET", `/v1/merchants/${pinecone.id}/counter/lookup?q=${encodeURIComponent(CUSTOMER)}`, undefined, owner);
+  const card = look.items[0];
+  const cost = card?.nextReward?.pointsCost ?? card?.rewardsAffordable?.[0]?.pointsCost ?? 10;
+  for (let short = 2 * cost - (card?.balance ?? 0), i = 0; short > 0; i++) {
+    const quantity = Math.min(10, short);
+    await call("POST", `/v1/merchants/${pinecone.id}/counter/award`, { phone: CUSTOMER, quantity, idempotencyKey: `e2e-topup-${i}-${Date.now()}` }, owner);
+    short -= quantity;
+  }
   // Turn on order-ahead for the café so the shop page shows the entry point (features flag).
   const admin = await login("admin@localloyalty.example", "localloyalty-admin");
   await call("PUT", "/v1/admin/features/orders.order_ahead/overrides", { merchantId: pinecone.id, enabled: true, reason: "mobile e2e" }, admin).catch((e) => console.log(`  (override) ${e.message}`));
@@ -150,6 +162,28 @@ await step("home", async () => {
   }
   await shot(cp, "06-home", { settle: 1200 });
   await shot(cp, "06-home-full", { fullPage: true });
+});
+
+// Hero when nothing is ready yet: the closest reward in that shop's unit. Finds a seeded customer with
+// shops but no reward ready (one OTP per phone tried; the seed's customers start at +16475551000).
+await step("home-progress", async () => {
+  let phone = null;
+  for (let n = 1000; n < 1040 && !phone; n++) {
+    const p = `+1647555${n}`;
+    if (p === CUSTOMER) continue;
+    const token = await customerToken(p).catch(() => null);
+    if (!token) continue;
+    const { items } = await call("GET", "/v1/me/memberships", undefined, token);
+    if (items.length >= 2 && items.every((m) => m.rewardsAvailableCount === 0) && items.some((m) => m.nextReward)) phone = p;
+  }
+  if (!phone) throw new Error("no seeded customer without a reward ready");
+  const { context, page } = await newPhone();
+  await signInByPhone(page, phone);
+  await page.getByText("My shops").waitFor();
+  const notNow = page.getByText("Not now", { exact: true });
+  if (await notNow.isVisible().catch(() => false)) await notNow.click();
+  await shot(page, "06c-home-progress", { settle: 1200 });
+  await context.close();
 });
 
 await step("explore-map", async () => {

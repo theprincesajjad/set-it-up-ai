@@ -11,7 +11,8 @@ import { copy } from "@/copy/en-CA";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
-import { formatDate, formatPoints, formatTime, unitFor } from "@/lib/format";
+import { formatDate, formatPoints, formatTime } from "@/lib/format";
+import { walletHeadline, type WalletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
@@ -106,9 +107,8 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
     }
   }, []);
 
-  const totalBalance = wallet.items.reduce((n, m) => n + m.balance, 0);
-  const terms = Array.from(new Set(wallet.items.map((m) => m.terminology)));
-  const totalUnit = terms.length === 1 ? unitFor(terms[0], totalBalance, false) : terms.length ? "points and stamps" : "points";
+  // Never sum points and stamps across shops: rewards ready, else the closest reward.
+  const headline = useMemo(() => walletHeadline(wallet.items), [wallet.items]);
 
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
@@ -120,24 +120,19 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
         <h1 id="total" className="sr-only">
           My shops
         </h1>
-        <p className="text-points tabular-nums text-fg">{totalBalance.toLocaleString("en-CA")}</p>
-        <p className="-mt-1 text-body-sm text-fg-muted">{totalUnit}</p>
+        <p className="text-points tabular-nums text-fg">{headline.value.toLocaleString("en-CA")}</p>
+        <p className="-mt-1 max-w-xs text-body-sm text-fg-muted">{headline.label}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          <span className="inline-flex h-7 items-center rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle">
-            across {wallet.totals.shops} {wallet.totals.shops === 1 ? "shop" : "shops"}
+          <span className="inline-flex h-7 items-center gap-1 rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle">
+            {headline.kind === "ready" ? <Gift aria-hidden className="size-3.5" /> : null}
+            {headline.context}
           </span>
-          {wallet.totals.rewardsAvailable ? (
-            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-accent-subtle px-3 text-caption font-semibold text-on-accent-subtle">
-              <Gift aria-hidden className="size-3.5" />
-              {wallet.totals.rewardsAvailable} {wallet.totals.rewardsAvailable === 1 ? "reward" : "rewards"} ready
-            </span>
-          ) : null}
         </div>
         <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} className="mt-2 w-full">
           {copy.action.showCard}
         </Button>
       </section>
-      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} total={totalBalance} unit={totalUnit} />
+      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} headline={headline} />
       <Tabs
         label="Wallet"
         value={tab}
@@ -161,7 +156,7 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
 }
 
 /** My card as a sheet (references.md §4): pine card with total + name, white QR tile, big member code, wallet buttons. */
-function CardSheet({ open, onClose, card, profile, total, unit }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; total: number; unit: string }) {
+function CardSheet({ open, onClose, card, profile, headline }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; headline: WalletHeadline }) {
   const [walletError, setWalletError] = useState<string | null>(null);
   async function google() {
     try {
@@ -189,8 +184,8 @@ function CardSheet({ open, onClose, card, profile, total, unit }: { open: boolea
           <p className="text-title">{profile.name ?? "Member"}</p>
         </div>
         <div className="text-end">
-          <p className="text-h2 tabular-nums">{total.toLocaleString("en-CA")}</p>
-          <p className="text-caption">{unit}</p>
+          <p className="text-h2 tabular-nums">{headline.value.toLocaleString("en-CA")}</p>
+          <p className="max-w-40 text-caption">{headline.shortLabel}</p>
         </div>
       </div>
       {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}

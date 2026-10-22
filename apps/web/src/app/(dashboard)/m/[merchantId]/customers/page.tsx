@@ -18,7 +18,6 @@ import { formatDate, formatNumber, formatPoints } from "@/lib/format";
 import { formatE164 } from "@/lib/phone";
 import { CONSENT_LABEL, consentState, filterQuery, maskPhone, type CustomerFilter } from "@/lib/dashboard/customers";
 import { relativeTime } from "@/lib/dashboard/time";
-import { useApi } from "@/lib/dashboard/useApi";
 
 const FILTERS: { id: CustomerFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -41,8 +40,9 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
-  const total = useApi(role !== "staff" ? () => api.reports.overview() : null, [api]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [revealed, setRevealed] = useState<Map<string, string | null>>(new Map());
+  const [revealing, setRevealing] = useState<string | null>(null);
   const term = detail.program?.terminology ?? "points";
 
   useEffect(() => {
@@ -63,6 +63,7 @@ export default function CustomersPage() {
         if (!live) return;
         setRows(r.items);
         setCursor(r.nextCursor);
+        setTotal(r.total);
         setError(null);
       })
       .catch((e) => live && setError(errorMessage(e)))
@@ -72,7 +73,20 @@ export default function CustomersPage() {
     };
   }, [api, query]);
 
-  const shown = fq.client ? rows.filter(fq.client) : rows;
+  const shown = rows;
+  const canReveal = role !== "staff";
+  const reveal = async (c: merchantApi.CustomerSummary) => {
+    setRevealing(c.memberId);
+    try {
+      // Audit-logged on the server (customer.phone_revealed).
+      const r = await api.revealPhone(c.memberId);
+      setRevealed((m) => new Map(m).set(c.memberId, r.phone));
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setRevealing(null);
+    }
+  };
   const exportHref = `${BFF_BASE}${api.base}/customers/export.csv?${new URLSearchParams(Object.entries(query).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]) as [string, string][]).toString()}`;
 
   const columns: Column<merchantApi.CustomerSummary>[] = [
@@ -95,19 +109,25 @@ export default function CustomersPage() {
       mobile: "hidden",
       cell: (c) =>
         revealed.has(c.memberId) ? (
-          <span className="tabular-nums">{formatE164(c.phone)}</span>
+          <span className="tabular-nums">{formatE164(revealed.get(c.memberId) ?? null)}</span>
+        ) : !c.phone || !canReveal ? (
+          <span className="tabular-nums">{maskPhone(c.phone)}</span>
         ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setRevealed((s) => new Set(s).add(c.memberId));
-            }}
-            className="inline-flex min-h-11 items-center gap-1 tabular-nums text-fg hover:text-fg-link"
-            aria-label={`Show phone for ${c.name ?? "member"}`}
-          >
-            {maskPhone(c.phone)} <Eye aria-hidden className="size-4 text-fg-muted" />
-          </button>
+          <span className="inline-flex items-center gap-2">
+            <span className="tabular-nums">{maskPhone(c.phone)}</span>
+            <button
+              type="button"
+              disabled={revealing === c.memberId}
+              onClick={(e) => {
+                e.stopPropagation();
+                void reveal(c);
+              }}
+              className="inline-flex min-h-11 items-center gap-1 text-body-sm font-medium text-fg-link hover:underline disabled:opacity-60"
+              aria-label={`Reveal phone for ${c.name ?? "member"}`}
+            >
+              <Eye aria-hidden className="size-4" /> Reveal
+            </button>
+          </span>
         ),
     },
     { key: "balance", header: "Balance", align: "end", mobile: "trailing", sortValue: (c) => c.balance, cell: (c) => formatPoints(c.balance, term) },
@@ -126,12 +146,12 @@ export default function CustomersPage() {
     { key: "vip", header: "VIP", mobile: "hidden", cell: (c) => (c.vipLevel ? <Badge tone="brand">{c.vipLevel.name}</Badge> : <span className="text-fg-muted">–</span>) },
   ];
 
-  const count = total.data?.current.totalMembers;
+  const count = total;
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Customers"
-        description={count != null ? `${formatNumber(count)} members` : "Everyone in your program"}
+        description={count != null ? `${formatNumber(count)} ${filter === "all" && !debounced ? "members" : "matching"} · Reveals and exports are logged` : "Everyone in your program"}
         actions={
           role !== "staff" ? (
             <>
@@ -168,7 +188,7 @@ export default function CustomersPage() {
             setLoadingMore(false);
           }
         }}
-        summary={shown.length ? `Showing ${formatNumber(shown.length)}${count != null && filter === "all" && !debounced ? ` of ${formatNumber(count)}` : ""}` : undefined}
+        summary={shown.length ? `Showing ${formatNumber(shown.length)}${count != null ? ` of ${formatNumber(count)}` : ""}` : undefined}
         toolbar={
           <div className="flex flex-col gap-3">
             <TextField type="search" label="Search customers" hideLabel placeholder="Search name, last 4 of phone, email or member code" value={q} onChange={(e) => setQ(e.target.value)} />
