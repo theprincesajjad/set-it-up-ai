@@ -473,6 +473,11 @@ export const listCustomersQuery = z.object({
   lapsedDays: z.coerce.number().int().min(1).max(3650).optional(),
   /** Balance covers at least one active reward. */
   rewardAvailable: z.enum(["true", "false"]).optional(),
+  /** Joined at or after this instant (ISO date = midnight UTC, or datetime with offset). */
+  joinedAfter: z.union([z.iso.date(), z.iso.datetime({ offset: true })]).optional(),
+  /** opted_in = marketing consent and not muted (the only members promos reach); not = everyone else. */
+  consent: z.enum(["opted_in", "not"]).optional(),
+  muted: z.enum(["true", "false"]).optional(),
   sort: z.enum(["recent", "joined", "balance", "visits", "spend", "name"]).default("recent"),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().optional(),
@@ -483,6 +488,7 @@ export interface CustomerSummary {
   memberId: string;
   userId: string;
   name: string | null;
+  /** Masked ("(416) ***-1234") in list/detail; reveal with POST …/reveal-phone. */
   phone: string | null;
   email: string | null;
   memberCode: string;
@@ -498,6 +504,21 @@ export interface CustomerSummary {
   marketingConsent: boolean;
   muted: boolean;
   rewardAvailable: boolean;
+}
+
+/** GET /v1/merchants/:id/customers. `phone` on each item is masked ("(416) ***-1234"). */
+export interface ListCustomersResponse {
+  items: CustomerSummary[];
+  nextCursor: string | null;
+  /** Members matching the filters (ignores cursor/limit). */
+  total: number;
+}
+
+/** POST /v1/merchants/:id/customers/:memberId/reveal-phone (manager+, audit-logged). */
+export interface RevealPhoneResponse {
+  memberId: string;
+  /** Full E.164 number, or null when the member has none. */
+  phone: string | null;
 }
 
 export interface LedgerTransactionView {

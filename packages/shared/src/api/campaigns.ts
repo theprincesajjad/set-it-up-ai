@@ -2,6 +2,7 @@
 // BIA neighbourhood campaigns ("Passport week", "Points weekend", street-wide multipliers).
 // Docs: docs/engineering/api/campaigns.md · Product spec: docs/business/network-monetization.md
 import { z } from "zod";
+import type { NeighbourhoodDto } from "./network.js";
 
 export const CAMPAIGN_KINDS = ["passport", "points_weekend", "multiplier"] as const;
 export type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
@@ -192,4 +193,20 @@ export interface NeighbourhoodManager {
   userId: string;
   name: string | null;
   createdAt: string;
+}
+
+/** GET /v1/me/neighbourhoods-managed — same shape as the public neighbourhood list. */
+export type ManagedNeighbourhood = NeighbourhoodDto;
+
+/** GET /v1/admin/neighbourhoods/:id/merchants (admin or that neighbourhood's manager). */
+export interface NeighbourhoodMerchant {
+  id: string;
+  name: string;
+  slug: string;
+  vertical: string;
+  status: "onboarding" | "active" | "paused" | "closed";
+  /** Reached the activation threshold (activatedAt set). */
+  activated: boolean;
+  activatedAt: string | null;
+  logoUrl: string | null;
 }

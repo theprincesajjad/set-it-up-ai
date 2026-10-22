@@ -24,6 +24,18 @@ startsAt, endsAt, goalVisits, bonusPoints, multiplierPct, prize, priceCents, pai
 
 ## BIA manager / admin
 
+### `GET /v1/me/neighbourhoods-managed`
+Any signed-in user. → `{ items: ManagedNeighbourhood[], nextCursor: null }` — the neighbourhoods the caller manages
+through `neighbourhood_managers` (platform admins: every neighbourhood, any status), sorted by name.
+`ManagedNeighbourhood` has the same shape as `NeighbourhoodDto` (`id, slug, name, city, province, status, centerLat,
+centerLng, radiusMetres, biaName, shopCount`). Empty list = not a BIA manager. Not rollout-gated. Errors: `401`.
+
+### `GET /v1/admin/neighbourhoods/:id/merchants`
+Platform admin or a manager of that neighbourhood. Every shop with `neighbourhood_id = :id` (any status, listed on the
+map or not), sorted by name — for campaign shop pickers. → `{ items: NeighbourhoodMerchant[], nextCursor: null }`,
+`NeighbourhoodMerchant { id, name, slug, vertical, status (onboarding|active|paused|closed), activated, activatedAt, logoUrl }`.
+Errors: `400` malformed id, `401`, `403` (not that neighbourhood's manager), `404` neighbourhood.
+
 ### `GET /v1/campaigns`
 Query: `neighbourhoodId?`, `status?`, `limit`, `cursor`. → `{ items: Campaign[], nextCursor }`.
 Managers see only their neighbourhoods. Errors: `401`, `403` (not a manager / other neighbourhood).

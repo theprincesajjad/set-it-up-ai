@@ -136,10 +136,10 @@ async function hoodBySlug(db: DbOrTx, slug: string) {
 // ---------------------------------------------------------------------------
 // Neighbourhoods
 // ---------------------------------------------------------------------------
-const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = "neighbourhoods"."id" and m.status = 'active'
+export const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = "neighbourhoods"."id" and m.status = 'active'
   and not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = m.id and fo.key = 'network.listing' and fo.enabled = false))`;
 
-function hoodDto(n: typeof neighbourhoods.$inferSelect, shopCount: number): networkApi.NeighbourhoodDto {
+export function hoodDto(n: typeof neighbourhoods.$inferSelect, shopCount: number): networkApi.NeighbourhoodDto {
   return {
     id: n.id,
     slug: n.slug,

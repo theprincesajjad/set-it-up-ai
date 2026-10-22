@@ -26,7 +26,7 @@ import {
   type DbOrTx,
   type Tx,
 } from "@ll/db";
-import { calculateEarn, rewardDiscountCents, type ActiveBoost, type EarnResult, type PurchaseLine } from "@ll/shared";
+import { calculateEarn, networkBonusInShopUnits, rewardDiscountCents, type ActiveBoost, type EarnResult, type PurchaseLine } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
@@ -548,7 +548,7 @@ export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<A
       member = m!;
       member = await refreshVipLevel(tx, member);
 
-      const perk = await applyNetworkPerks(tx, merchant, member, now, args.source);
+      const perk = await applyNetworkPerks(tx, merchant, program, member, now, args.source);
       if (perk) {
         member = perk.member;
         extraPoints += perk.points;
@@ -597,7 +597,7 @@ export async function refreshVipLevel(tx: DbOrTx, member: Member): Promise<Membe
 }
 
 /** Network-funded bonus when a customer visits N distinct shops in the neighbourhood. */
-async function applyNetworkPerks(tx: Tx, merchant: Merchant, member: Member, now: Date, source: TxSource) {
+async function applyNetworkPerks(tx: Tx, merchant: Merchant, program: typeof loyaltyPrograms.$inferSelect, member: Member, now: Date, source: TxSource) {
   if (!merchant.neighbourhoodId) return null;
   const perks = await tx
     .select()
@@ -617,18 +617,20 @@ async function applyNetworkPerks(tx: Tx, merchant: Merchant, member: Member, now
       .from(visits)
       .where(and(eq(visits.userId, member.userId), eq(visits.neighbourhoodId, merchant.neighbourhoodId), gte(visits.createdAt, since)));
     if (Number(row?.n ?? 0) < perk.threshold) continue;
+    const bonus = networkBonusInShopUnits(program, perk.bonusPoints);
     const r = await postTransaction(tx, {
       merchantId: merchant.id,
       memberId: member.id,
       type: "network_bonus",
       source,
-      points: perk.bonusPoints,
+      points: bonus,
       description: perk.name,
       idempotencyKey: `perk:${perk.id}:${member.userId}`,
       at: now,
     });
     await tx.insert(networkPerkAwards).values({ perkId: perk.id, userId: member.userId, merchantId: merchant.id, transactionId: r.transaction.id }).onConflictDoNothing();
-    return { member: r.member, points: perk.bonusPoints, message: `${perk.name}: +${perk.bonusPoints} bonus points from the neighbourhood` };
+    const unit = program.earnType === "per_dollar" ? "points" : bonus === 1 ? program.terminology.replace(/s$/, "") : program.terminology;
+    return { member: r.member, points: bonus, message: `${perk.name}: +${bonus} bonus ${unit} from the neighbourhood` };
   }
   return null;
 }

@@ -16,6 +16,7 @@ import {
   campaignProgress,
   campaigns,
   ledgerTransactions,
+  loyaltyPrograms,
   merchantMembers,
   merchants,
   neighbourhoodManagers,
@@ -25,13 +26,14 @@ import {
   type DbOrTx,
   type Tx,
 } from "@ll/db";
-import { FEATURES, campaignsApi, distanceMetres, maskPhone } from "@ll/shared";
+import { FEATURES, campaignsApi, distanceMetres, maskPhone, networkBonusInShopUnits } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { AuthUser } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, featureLocked, forbidden, notFound } from "../lib/errors.js";
 import { getRolloutStages, requireFeature } from "./features.js";
 import { postTransaction, visitHooks, type VisitHook } from "./ledger.js";
+import { hoodDto, shopCountSql } from "./network.js";
 
 const { CAMPAIGN_PACKAGES } = campaignsApi;
 
@@ -247,6 +249,37 @@ export async function listCampaigns(ctx: AppContext, user: AuthUser, q: { neighb
   return { items: page.map((c) => toCampaign(c, ms.get(c.id) ?? [])), nextCursor: rows.length > q.limit ? page[page.length - 1]!.createdAt.toISOString() : null };
 }
 
+/** Neighbourhoods the caller manages (admins: every neighbourhood, any status). */
+export async function listManagedNeighbourhoods(ctx: AppContext, user: AuthUser): Promise<campaignsApi.ManagedNeighbourhood[]> {
+  const base = ctx.db.select({ n: neighbourhoods, shopCount: shopCountSql }).from(neighbourhoods);
+  const rows =
+    user.platformRole === "admin"
+      ? await base.orderBy(asc(neighbourhoods.name))
+      : await base
+          .innerJoin(neighbourhoodManagers, eq(neighbourhoodManagers.neighbourhoodId, neighbourhoods.id))
+          .where(eq(neighbourhoodManagers.userId, user.id))
+          .orderBy(asc(neighbourhoods.name));
+  return rows.map((r) => hoodDto(r.n, r.shopCount));
+}
+
+/** Every shop on a strip (any status, listed or not) for campaign shop pickers. Admin or that neighbourhood's manager. */
+export async function listNeighbourhoodMerchants(ctx: AppContext, user: AuthUser, neighbourhoodId: string): Promise<campaignsApi.NeighbourhoodMerchant[]> {
+  await requireNeighbourhoodManager(ctx.db, user, neighbourhoodId);
+  const [hood] = await ctx.db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.id, neighbourhoodId)).limit(1);
+  if (!hood) throw notFound("Neighbourhood");
+  const rows = await ctx.db.select().from(merchants).where(eq(merchants.neighbourhoodId, neighbourhoodId)).orderBy(asc(merchants.name), asc(merchants.id));
+  return rows.map((m) => ({
+    id: m.id,
+    name: m.name,
+    slug: m.slug,
+    vertical: m.vertical,
+    status: m.status,
+    activated: !!m.activatedAt,
+    activatedAt: m.activatedAt ? m.activatedAt.toISOString() : null,
+    logoUrl: m.logoUrl,
+  }));
+}
+
 function assertOpenForMerchants(c: CampaignRow) {
   if (c.status === "ended" || c.status === "cancelled") throw conflict("This campaign is closed");
 }
@@ -397,18 +430,20 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, member, v
     }
 
     if (firstAtShop && c.bonusPoints > 0) {
+      const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1);
+      const bonus = program ? networkBonusInShopUnits(program, c.bonusPoints) : c.bonusPoints;
       const r = await postTransaction(tx, {
         merchantId: merchant.id,
         memberId: member.id,
         type: "campaign_bonus",
         source,
-        points: c.bonusPoints,
+        points: bonus,
         description: `${c.name}: shop bonus`,
         campaignId: c.id,
         counterAccount: "network_issued",
         idempotencyKey: `campaign:${c.id}:${member.userId}:${merchant.id}`,
       });
-      if (!r.duplicate) pointsAwarded += c.bonusPoints;
+      if (!r.duplicate) pointsAwarded += bonus;
     }
 
     if (c.multiplierPct && c.multiplierPct > 100) {

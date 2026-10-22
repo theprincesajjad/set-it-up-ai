@@ -14,7 +14,9 @@ import {
   createCampaign,
   drawWinner,
   listCampaigns,
+  listManagedNeighbourhoods,
   listMerchantCampaigns,
+  listNeighbourhoodMerchants,
   listNeighbourhoodManagers,
   loadManagedCampaign,
   markCampaignPaid,
@@ -37,6 +39,17 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // -------------------------------------------------------------------------
   // BIA manager (neighbourhood-scoped) and platform admin
   // -------------------------------------------------------------------------
+  app.get("/me/neighbourhoods-managed", async (req): Promise<{ items: campaignsApi.ManagedNeighbourhood[]; nextCursor: null }> => {
+    const user = requireUser(req);
+    return { items: await listManagedNeighbourhoods(ctx, user), nextCursor: null };
+  });
+
+  app.get("/admin/neighbourhoods/:id/merchants", async (req): Promise<{ items: campaignsApi.NeighbourhoodMerchant[]; nextCursor: null }> => {
+    const user = requireUser(req);
+    const { id } = parse(idParams, req.params);
+    return { items: await listNeighbourhoodMerchants(ctx, user, id), nextCursor: null };
+  });
+
   app.get("/campaigns", async (req) => {
     const user = requireUser(req);
     return listCampaigns(ctx, user, parse(campaignsApi.listCampaignsQuery, req.query));

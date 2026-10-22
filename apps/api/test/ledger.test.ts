@@ -82,3 +82,17 @@ describe("ledger", () => {
     expect(members).toHaveLength(1);
   });
 });
+
+describe("network bonus units", () => {
+  it("gives stamp shops one bonus stamp instead of raw points", async () => {
+    const hood = await createNeighbourhood(env.db);
+    await env.db.insert(networkPerks).values({ neighbourhoodId: hood.id, name: "Strip explorer", threshold: 2, bonusPoints: 50 });
+    const a = await createMerchant(env, { neighbourhoodId: hood.id });
+    const b = await createMerchant(env, { neighbourhoodId: hood.id, earnType: "stamps" });
+    const phone = nextPhone();
+    await awardPurchase(env.ctx, { merchantId: a.merchant.id, phone, source: "staff_app", amountCents: 500 });
+    const r = await awardPurchase(env.ctx, { merchantId: b.merchant.id, phone, source: "staff_app" });
+    expect(r.extraPoints).toBe(1);
+    expect(r.member.balance).toBe(2);
+  });
+});

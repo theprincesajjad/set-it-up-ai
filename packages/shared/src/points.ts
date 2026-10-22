@@ -158,3 +158,15 @@ export function distanceMetres(a: { lat: number; lng: number }, b: { lat: number
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+
+/**
+ * Network- and campaign-funded bonuses are set in points (e.g. "+50 pts for
+ * visiting 3 shops"). Points-per-dollar shops get them as-is; at stamp and
+ * per-visit shops a raw 50 would mean 50 stamps, so they get one visit's worth
+ * (one bonus stamp) instead.
+ */
+export function networkBonusInShopUnits(rules: Pick<ProgramRules, "earnType" | "pointsPerVisit">, bonusPoints: number): number {
+  if (bonusPoints <= 0) return 0;
+  if (rules.earnType === "per_dollar") return Math.floor(bonusPoints);
+  return Math.max(1, rules.pointsPerVisit);
+}
