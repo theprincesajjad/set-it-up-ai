@@ -59,15 +59,18 @@ const ease = Easing.out(Easing.cubic);
  * A number that counts from its previous value to the new one (≤ 400 ms, ease-out). The first render shows
  * the value as-is (no count-up on screen load); only changes animate. Reduce Motion: no animation.
  */
-export function CountUp({ value, format = (n) => n.toLocaleString("en-CA"), duration = 380, ...text }: { value: number; format?: (n: number) => string; duration?: number } & Omit<TextProps, "children">) {
+export function CountUp({ value, from, format = (n) => n.toLocaleString("en-CA"), duration = 380, ...text }: { value: number; /** Count from this on mount (the balance before an award). */ from?: number; format?: (n: number) => string; duration?: number } & Omit<TextProps, "children">) {
   const reduce = useReducedMotion();
-  const [shown, setShown] = useState(value);
-  const from = useRef(value);
+  const [shown, setShown] = useState(from ?? value);
+  const last = useRef(from ?? value);
   const raf = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   useEffect(() => {
-    if (value === from.current) return;
-    const start = from.current;
-    from.current = value;
+    if (value === last.current) {
+      setShown(value);
+      return;
+    }
+    const start = last.current;
+    last.current = value;
     if (reduce || Math.abs(value - start) < 1) {
       setShown(value);
       return;

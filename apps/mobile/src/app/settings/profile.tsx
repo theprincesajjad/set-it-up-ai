@@ -8,7 +8,8 @@ import { displayPhone } from "../../lib/phone";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
-import { Banner, Button, Screen, Text, TextField, useToast } from "../../ui";
+import { View } from "react-native";
+import { Banner, Button, ListRow, Screen, Text, TextField, useToast } from "../../ui";
 
 /** 10.4 Edit profile. */
 export default function EditProfile() {
@@ -48,8 +49,11 @@ export default function EditProfile() {
       <TextField label="Name" value={name} onChangeText={setName} autoComplete="name" autoCapitalize="words" />
       <TextField label="Email" optionalLabel hint="For receipts and your data export." value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
       <TextField label="Postal code" optionalLabel value={postal} onChangeText={setPostal} autoCapitalize="characters" placeholder="M6R 2K3" />
-      {profile.data?.birthday ? <Text color="fgMuted">{`Birthday: ${formatBirthday(profile.data.birthday)}`}</Text> : null}
-      <Text color="fgMuted">{`Phone: ${displayPhone(profile.data?.phone)}. To change your number, contact support.`}</Text>
+      {/* Read-only facts as rows, not grey prose (polish-audit M35). */}
+      <View>
+        {profile.data?.birthday ? <ListRow title="Birthday" trailing={<Text color="fgMuted">{formatBirthday(profile.data.birthday)}</Text>} /> : null}
+        <ListRow title="Phone" subtitle="To change your number, contact support." trailing={<Text color="fgMuted" tabular>{displayPhone(profile.data?.phone)}</Text>} divider={false} />
+      </View>
       {error ? <Banner variant="danger">{error}</Banner> : null}
     </Screen>
   );

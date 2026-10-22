@@ -9,7 +9,7 @@ import { t } from "../../copy/en-CA";
 import { usePhase2, useWallet } from "../../features/customer/queries";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
-import { Banner, Button, Card, ConfirmDialog, Download, ListRow, Screen, Section, Text, TextField, Trash2, useToast } from "../../ui";
+import { Banner, Button, ConfirmDialog, Download, ListRow, Screen, Section, Text, TextField, Trash2, useToast } from "../../ui";
 
 /** 10.3 Privacy & data: export (PIPEDA access) and delete account. */
 export default function Privacy() {
@@ -59,16 +59,14 @@ export default function Privacy() {
 
   return (
     <Screen back title="Privacy & data">
-      <Section title="Download my data">
+      <Section title="Download my data" spaced>
         <Text color="fgMuted">A file with your profile, shops, points and messages. It downloads to this phone so you can save or send it.</Text>
         <Button variant="secondary" iconStart={Download} loading={exporting} onPress={exportData}>
           Request my data
         </Button>
       </Section>
-      <Section title="Delete my account">
-        <Card tone="sunken">
-          <Text>{`Your card stops working at every shop. Everything you've collected at ${shops.length === 1 ? "your shop" : `your ${shops.length} shops`} (points, stamps and rewards) will be lost. Shops keep records of past purchases as the law requires, without your name.`}</Text>
-        </Card>
+      <Section title="Delete my account" spaced>
+        <Text>{`Your card stops working at every shop. Everything you've collected at ${shops.length === 1 ? "your shop" : `your ${shops.length} shops`} (points, stamps and rewards) will be lost. Shops keep records of past purchases as the law requires, without your name.`}</Text>
         {openWork ? <Banner variant="warning">{`Finish or cancel your open repair or order at ${openShop ?? "the shop"} first.`}</Banner> : null}
         <TextField label='Type "DELETE" to confirm' value={typed} onChangeText={setTyped} autoCapitalize="characters" />
         {error ? <Banner variant="danger">{error}</Banner> : null}

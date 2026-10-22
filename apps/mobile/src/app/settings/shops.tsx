@@ -68,7 +68,7 @@ export default function ShopsAndMessages() {
               divider={i < items.length - 1}
               leading={<ShopLogo shop={m.merchant} size={40} />}
               title={m.merchant.name}
-              subtitle={`${m.muted ? "Muted · " : ""}Offers by text and email: ${m.marketingConsent.granted && !m.muted ? "On" : "Off"}`}
+              subtitle={m.muted ? "muted" : m.marketingConsent.granted ? "offers on" : "offers off"}
               chevron
               onPress={() => setOpen(m)}
             />
@@ -76,7 +76,7 @@ export default function ShopsAndMessages() {
         </Card>
       )}
       <Card>
-        <SwitchRow label={`${BRAND.name} news and neighbourhood events`} description="By email. Saved on this device." value={prefs.platformConsent} onValueChange={(v) => updatePrefs({ platformConsent: v })} />
+        <SwitchRow label={`${BRAND.name} news and neighbourhood events`} description="By email, a few times a year." value={prefs.platformConsent} onValueChange={(v) => updatePrefs({ platformConsent: v })} />
       </Card>
 
       <Sheet visible={!!current} onClose={() => setOpen(null)} title={current?.merchant.name}>

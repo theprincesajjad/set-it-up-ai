@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { usePhase2, useProfile, useWallet } from "../../features/customer/queries";
-import { maskPhone } from "@ll/shared";
+import { maskPhone } from "../../lib/phone";
 import { useSession } from "../../state/session";
 import {
   Avatar,
@@ -49,9 +49,7 @@ export default function You() {
             </Text>
           ) : null}
         </View>
-        <Text variant="metaStrong" color="fgMuted">
-          Edit
-        </Text>
+        <Text variant="bodyStrong">Edit</Text>
       </Pressable>
       <Section title="Your card">
         <ListRow leadingIcon={Gift} title="Rewards" subtitle="Ready to redeem, every shop, passport" chevron onPress={() => router.push("/rewards")} />

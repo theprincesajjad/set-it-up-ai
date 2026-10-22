@@ -42,7 +42,7 @@ describe("real providers", () => {
     ]);
     const push = expoPush({ onInvalidToken: (t) => void invalid.push(t) }, f);
     const msgs = Array.from({ length: 250 }, (_, i) => ({ token: i === 7 ? "bad" : `ExponentPushToken[${i}]`, title: "t", body: "b" }));
-    expect(await push.send(msgs)).toEqual({ ok: 249, failed: 1 });
+    expect(await push.send(msgs)).toMatchObject({ ok: 249, failed: 1 });
     expect(f.calls.map((c) => JSON.parse(c.body!).length)).toEqual([100, 100, 50]);
     expect(invalid).toEqual(["bad"]);
   });

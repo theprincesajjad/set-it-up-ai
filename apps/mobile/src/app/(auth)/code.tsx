@@ -99,11 +99,11 @@ export default function CodeStep() {
       <OtpField autoFocus value={code} onChange={setCode} onComplete={verify} error={!!error} />
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {resends >= 3 ? (
-        <Text color="fgMuted" center>
+        <Text color="fgMuted">
           {t("err.otp.tooMany")}
         </Text>
       ) : (
-        <Button variant="ghost" disabled={resendIn > 0} onPress={() => resend()} loading={verifying}>
+        <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start", marginLeft: -4 }} disabled={resendIn > 0} onPress={() => resend()} loading={verifying}>
           {resendIn > 0 ? t("action.resendIn", { time: formatCountdown(resendIn) }) : t("action.resend")}
         </Button>
       )}

@@ -8,7 +8,7 @@ import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, usePhase2, useWallet } from "../../features/customer/queries";
 import { JoinSheet, PushPrompt, SponsoredWhySheet } from "../../features/customer/sheets";
 import { capSponsored } from "../../lib/feed";
-import { promoEnds, relativeTime } from "../../lib/format";
+import { promoEnds, relativeTime, rewardInSentence } from "../../lib/format";
 import { heroText, homeHero } from "../../lib/hero";
 import { termWord } from "../../lib/award";
 import { api } from "../../state/api";
@@ -26,7 +26,7 @@ function progressLine(m: customerApi.MembershipDto): string {
   if (!m.nextReward) return m.expiryDisclosure;
   return m.program?.earnType === "stamps"
     ? t("misc.stampsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name.toLowerCase() })
-    : t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name });
+    : t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: rewardInSentence(m.nextReward.name) });
 }
 
 const seenPromos = new Set<string>();

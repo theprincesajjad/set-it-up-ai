@@ -4,6 +4,7 @@
  * countdown, scan classification and the keypad → lookup → award → success
  * state machine. Pure TypeScript (no React Native) so it is unit tested.
  */
+import { rewardInSentence } from "./format";
 import { calculateEarn, staffApi } from "@ll/shared";
 import { formatNanp, sanitizePhoneInput, toE164, validateNanp } from "./phone";
 
@@ -44,9 +45,9 @@ export function termWord(terminology: string | null | undefined, n = 2): string 
   return n === 1 ? singular : `${singular}s`;
 }
 
-/** Locked rewards always say how far to go, in the shop's terminology: "You need 12 more points". */
+/** Locked rewards say how far to go, in the shop's unit, the same phrase as the wallet: "12 pts to go". */
 export function lockedRewardCopy(toGo: number, terminology: string | null | undefined): string {
-  return `You need ${formatNumber(toGo)} more ${termWord(terminology, toGo)}`;
+  return `${formatPts(toGo, terminology)} to go`;
 }
 
 /** POS-style entry: digits shift in from the right (typing 1180 shows $11.80). */
@@ -192,6 +193,8 @@ export interface SuccessView {
   messages: string[];
   /** Screen-reader announcement. */
   announcement: string;
+  /** The hero's leading number and where it counts up from (the balance before this award). */
+  count?: { from: number; to: number };
 }
 
 export function successView(input: {
@@ -220,8 +223,9 @@ export function successView(input: {
   else hero = `${tilde}${formatPts(input.balance, term)}`;
   const ready = input.rewardsAvailable?.[0];
   let next: string | null = null;
-  if (input.offline && input.balance === null) next = "Balance updates when you're back online";
-  else if (ready) next = `Reward ready: ${ready.name}`;
+  // Offline with no known balance: the "saved" line under the hero says it all (polish-audit C16).
+  if (input.offline && input.balance === null) next = null;
+  else if (ready) next = `Reward ready: ${rewardInSentence(ready.name)}`;
   else if (input.nextReward) {
     next = stamps
       ? `${formatNumber(input.nextReward.pointsNeeded)} more for a ${input.nextReward.name.replace(/^free /i, "free ")}`
@@ -229,7 +233,8 @@ export function successView(input: {
   }
   const who = input.firstName ? `${input.firstName} now has ` : "Balance ";
   const announcement = [title, input.balance !== null ? `${who}${formatPts(input.balance, term)}.` : "", next ?? ""].filter(Boolean).join(". ");
-  return { title, hero, next, rewardReady: !!ready, offline: !!input.offline, messages: input.messages ?? [], announcement };
+  const count = input.balance === null ? { from: 0, to: input.pointsEarned } : { from: Math.max(0, input.balance - input.pointsEarned), to: input.balance };
+  return { title, hero, next, rewardReady: !!ready, offline: !!input.offline, messages: input.messages ?? [], announcement, count };
 }
 
 export const UNDO_SECONDS = 10;
@@ -248,7 +253,7 @@ export function cooldownWarning(member: { name: string | null; lastVisitAt: stri
   const mins = Math.max(1, Math.round(ago / 60_000));
   const who = firstName(member.name) ?? "This customer";
   const what = program.earnType === "stamps" ? `got a ${termWord(program.terminology, 1)}` : "earned";
-  return `${who} ${what} ${mins} min ago.`;
+  return `${who} ${what} ${mins} min ago. Add another only for a new visit.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,7 +345,9 @@ export function shouldQueueAward(error: unknown): boolean {
 export function awardErrorMessage(error: { code?: string; message?: string }, ctx: { last4?: string; terminology?: string }): string {
   switch (error.code) {
     case "cooldown":
-      return error.message ?? "Already added a moment ago.";
+      return "Already added for this visit. Wait a few minutes, or ask a manager to adjust it.";
+    case "insufficient_points":
+      return `Not enough ${termWord(ctx.terminology)} for that reward yet.`;
     case "conflict":
       return error.message?.toLowerCase().includes("pause") ? "Your program is paused. Ask the owner to resume it." : (error.message ?? "This can't be done right now.");
     case "forbidden":

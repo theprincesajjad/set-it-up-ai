@@ -5,7 +5,7 @@ import { useCampaigns } from "../../features/customer/queries";
 import { formatShortDate } from "../../lib/format";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
-import { Banner, Button, Check, ErrorState, Screen, Section, ShopLogo, ShopTile, SkeletonList, Text, Trophy } from "../../ui";
+import { Banner, Button, Check, ErrorState, Screen, Section, ShopLogo, ShopTile, SkeletonRows, SkeletonShop, Text } from "../../ui";
 
 /** 8. Campaign / passport detail: passport grid of participating shops + progress. */
 export default function CampaignDetail() {
@@ -22,7 +22,8 @@ export default function CampaignDetail() {
   if (mine.isLoading || pub.isLoading) {
     return (
       <Screen back>
-        <SkeletonList rows={3} />
+        <SkeletonShop />
+        <SkeletonRows rows={5} trailing={false} />
       </Screen>
     );
   }
@@ -45,11 +46,10 @@ export default function CampaignDetail() {
   return (
     <Screen back collapseTitle title={cmp.name} titleCase="as-is" contentStyle={{ paddingTop: 8 }}>
       <View style={{ gap: 6 }}>
-        <Trophy size={24} color={c.fg} strokeWidth={1.75} />
         <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {cmp.name}
         </Text>
-        <Text variant="placeSubtitle" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDate(cmp.startsAt)} – ${formatShortDate(cmp.endsAt)}`}</Text>
+        <Text variant="meta" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDate(cmp.startsAt)}–${formatShortDate(cmp.endsAt)}`}</Text>
         {cmp.prize ? (
           <Text variant="bodyStrong" style={{ marginTop: 6 }}>
             {cmp.prize}

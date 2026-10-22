@@ -57,11 +57,12 @@ export default function Welcome() {
       </View>
       <View style={styles.hero}>{shop ? <ShopLogo shop={shop} size={88} /> : <StreetStill width={stillW} />}</View>
       <View style={styles.body}>
-        <Text variant="largeTitle" accessibilityRole="header" style={{ fontSize: width < 360 ? 28 : 34, lineHeight: width < 360 ? 32 : 38 }}>
+        {/* On the type scale: 40 display (28 large title on narrow phones). */}
+        <Text variant="largeTitle" accessibilityRole="header" style={width < 360 ? null : { fontSize: 40, lineHeight: 46 }}>
           {shop ? `join ${shop.name.toLowerCase()}` : "one card for every shop on your street"}
         </Text>
         <Text variant="body" color="fgMuted">
-          {shop ? `Earn at ${shop.name} and the shops around it. Free, and your points never expire.` : "Earn at local shops. Free, and your points never expire."}
+          {shop ? `Earn at ${shop.name} and the shops around it. Free, and points never expire.` : "Earn at the shops on your block. Free, and points never expire."}
         </Text>
       </View>
       <View style={styles.actions}>
@@ -89,11 +90,11 @@ export default function Welcome() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 16 },
-  top: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12 },
-  hero: { alignItems: "center", paddingTop: 28, paddingBottom: 28 },
+  top: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 12, minHeight: 44 },
+  hero: { alignItems: "center", paddingTop: 24, paddingBottom: 24 },
   still: { borderRadius: 24, overflow: "hidden" },
   road: { position: "absolute", borderRadius: 2 },
   pin: { position: "absolute" },
-  body: { gap: 10, flex: 1 },
+  body: { gap: 12, flex: 1 },
   actions: { gap: 4, paddingBottom: 12 },
 });

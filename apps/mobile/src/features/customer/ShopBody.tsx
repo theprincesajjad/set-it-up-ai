@@ -16,7 +16,7 @@ import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
 import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
 import { placeKind } from "../../lib/explore";
-import { formatDayTime, formatDistance, hoursRows, openStatus, signed } from "../../lib/format";
+import { formatDayTime, formatDistance, hoursRows, openStatus, rewardInSentence, signed } from "../../lib/format";
 import { displayPhone } from "../../lib/phone";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
@@ -51,6 +51,7 @@ import {
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
+import { WalletPassButton } from "./WalletPassButton";
 
 export function useShopModel(slug: string | null | undefined) {
   const shop = useQuery({ queryKey: qk.shop(slug ?? ""), queryFn: () => api.network.shop(slug!), enabled: !!slug });
@@ -79,7 +80,6 @@ function Action({ icon: Icon, label, onPress }: { icon: LucideIcon; label: strin
 }
 
 export function ShopBody({ model, variant = "page", peek = false }: { model: ShopModel; variant?: "page" | "sheet"; /** Sheet at its low detent: header, status and balance only. */ peek?: boolean }) {
-  const { c } = useTheme();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();
@@ -156,7 +156,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
               tone="accent"
               value={m.nextReward.pointsCost - m.nextReward.pointsNeeded}
               max={m.nextReward.pointsCost}
-              label={t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name })}
+              label={t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: rewardInSentence(m.nextReward.name) })}
               valueText={`${m.balance} of ${m.nextReward.pointsCost}`}
             />
           ) : null}
@@ -165,6 +165,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
       <Text variant="meta" color="fgMuted">
         {`${earnLine ?? "Ask at the counter"}${noEarn} · ${m.expiryDisclosure.charAt(0).toLowerCase()}${m.expiryDisclosure.slice(1).replace(/\.$/, "")}`}
       </Text>
+      {/* Members on the shop page: the network pass carries this balance too. */}
+      {variant === "page" ? <WalletPassButton size="md" /> : null}
     </View>
   ) : (
     <View style={{ gap: 10 }}>

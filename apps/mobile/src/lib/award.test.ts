@@ -124,13 +124,15 @@ describe("success card copy", () => {
   it("reward ready wins over next reward", () => {
     const v = successView({ program: stamps, pointsEarned: 1, balance: 10, rewardsAvailable: [{ name: "Free drink" }], nextReward: null });
     expect(v.rewardReady).toBe(true);
-    expect(v.next).toBe("Reward ready: Free drink");
+    expect(v.next).toBe("Reward ready: free drink");
   });
   it("offline: '~9 / 10' and unknown balance", () => {
     expect(successView({ program: stamps, pointsEarned: 1, balance: 9, offline: true }).hero).toBe("~9 / 10");
     const unknown = successView({ program: stamps, pointsEarned: 1, balance: null, offline: true });
     expect(unknown.hero).toBe("+1");
-    expect(unknown.next).toBe("Balance updates when you're back online");
+    // The card's "Saved. Sends when you're back online." line covers it; no second sentence.
+    expect(unknown.next).toBeNull();
+    expect(unknown.count).toEqual({ from: 0, to: 1 });
   });
 });
 
@@ -144,7 +146,7 @@ describe("undo countdown and cooldown", () => {
   });
   it("warns when the same customer earned < 2 min ago", () => {
     const now = Date.parse("2026-10-21T15:00:00Z");
-    expect(cooldownWarning({ name: "Alex Chen", lastVisitAt: "2026-10-21T14:59:00Z" }, stamps, now)).toBe("Alex got a stamp 1 min ago.");
+    expect(cooldownWarning({ name: "Alex Chen", lastVisitAt: "2026-10-21T14:59:00Z" }, stamps, now)).toBe("Alex got a stamp 1 min ago. Add another only for a new visit.");
     expect(cooldownWarning({ name: "Alex Chen", lastVisitAt: "2026-10-21T14:50:00Z" }, stamps, now)).toBeNull();
   });
 });
@@ -255,8 +257,8 @@ describe("formatting", () => {
     expect(formatPts(1, "stars")).toBe("1 star");
   });
   it("locked reward copy", () => {
-    expect(lockedRewardCopy(12, "points")).toBe("You need 12 more points");
-    expect(lockedRewardCopy(1, "stamps")).toBe("You need 1 more stamp");
+    expect(lockedRewardCopy(12, "points")).toBe("12 pts to go");
+    expect(lockedRewardCopy(1, "stamps")).toBe("1 stamp to go");
   });
   it("short names", () => {
     expect(shortName("Alex Chen")).toBe("Alex C.");

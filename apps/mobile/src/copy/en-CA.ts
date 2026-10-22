@@ -89,7 +89,7 @@ export const enCA = {
 
   // Empty states
   "empty.wallet.title": "Your shops will live here",
-  "empty.wallet.body": "Show your card at any shop on the map to start earning.",
+  "empty.wallet.body": "Show your card at any shop on the map and your first points land here.",
   "empty.noNeighbourhood.title": "We're not on your street yet",
   "empty.noNeighbourhood.body": "We launch one neighbourhood at a time. Want us in yours?",
   "empty.rewardsReady.title": "No rewards yet",
@@ -123,6 +123,8 @@ export const enCA = {
   "consent.global.caption": "Each shop is named in every message. You can turn this off for any shop in Settings.",
   "consent.platform.v1": "Send me {brand} news and neighbourhood events by email. I can unsubscribe anytime.",
   "consent.merchant.caption.v1": "Messages come from {shop}, sent via {brand}. Reply STOP or tap unsubscribe in any message, or change it in Settings.",
+  /** When the consent sentence itself already explains STOP / unsubscribe (marketingConsentText), name the sender only. */
+  "consent.merchant.sender": "Messages come from {shop}, sent via {brand}.",
   "consent.push.title": "Know when you've earned a reward",
   "consent.push.body": "We'll only notify you about your points, rewards and orders. Offers are off unless you turn them on.",
   "consent.withdrawn": "Done. {shop} won't send you offers. Your {terminology} keep working.",

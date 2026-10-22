@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { radii } from "@ll/design-tokens";
 import { errorMessage } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { firstName, formatPts } from "../../lib/award";
@@ -12,9 +13,25 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Button, Card, Chip, ConsentCheckbox, Screen, Sheet, ShopLogo, StampCard, Text, TextField, useToast } from "../../ui";
+import { Banner, Button, Card, ChevronDown, Chip, ConsentCheckbox, Screen, Sheet, ShopLogo, StampCard, Text, TextField, useToast } from "../../ui";
 
 /** 1.4 Name and consent (+ Joined success when the user came from a shop QR). */
+function PickerField({ label, placeholder, a11y, onPress }: { label: string; placeholder: boolean; a11y: string; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} style={({ pressed }) => [pickerStyles.field, { borderColor: c.lineStrong, backgroundColor: pressed ? c.bgSubtle : c.bg }]}>
+      <Text color={placeholder ? "fgSubtle" : "fg"} style={{ flex: 1 }}>
+        {label}
+      </Text>
+      <ChevronDown size={18} color={c.fgMuted} strokeWidth={2} />
+    </Pressable>
+  );
+}
+
+const pickerStyles = StyleSheet.create({
+  field: { flex: 1, minHeight: 52, borderRadius: radii.input, borderWidth: 1, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 },
+});
+
 export default function NameStep() {
   const { join, returning } = useLocalSearchParams<{ join?: string; returning?: string }>();
   const { user, updatePrefs, refreshMe } = useSession();
@@ -99,6 +116,8 @@ export default function NameStep() {
   return (
     <Screen
       back={false}
+      // Same top as the phone and code steps (their 44 pt bar), so the title doesn't jump (polish-audit M6).
+      contentStyle={{ paddingTop: 52 }}
       footer={
         <Button size="lg" fullWidth loading={saving} onPress={finish}>
           {t("action.done")}
@@ -119,17 +138,10 @@ export default function NameStep() {
                 (optional)
               </Text>
             </Text>
+            {/* Picker fields look like inputs (radius 10, 52 tall), not capsules (polish-audit M7). */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Button variant="secondary" onPress={() => setPicker("month")} accessibilityLabel={`Birthday month: ${month ? MONTH_NAMES[month - 1] : "not set"}`}>
-                  {month ? (MONTH_NAMES[month - 1] ?? "Month") : "Month"}
-                </Button>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button variant="secondary" onPress={() => setPicker("day")} accessibilityLabel={`Birthday day: ${day ?? "not set"}`}>
-                  {day ? String(day) : "Day"}
-                </Button>
-              </View>
+              <PickerField label={month ? (MONTH_NAMES[month - 1] ?? "Month") : "Month"} placeholder={!month} a11y={`Birthday month: ${month ? MONTH_NAMES[month - 1] : "not set"}`} onPress={() => setPicker("month")} />
+              <PickerField label={day ? String(day) : "Day"} placeholder={!day} a11y={`Birthday day: ${day ?? "not set"}`} onPress={() => setPicker("day")} />
             </View>
             <Text variant="meta" color="fgMuted">
               For a birthday treat at shops that offer one. We never ask for the year.
@@ -143,7 +155,7 @@ export default function NameStep() {
       )}
 
       {shop ? (
-        <Card tone="sunken">
+        <Card>
           <View style={{ flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 8 }}>
             <ShopLogo shop={shop.merchant} size={40} />
             <Text variant="headline" style={{ flex: 1 }}>
@@ -154,7 +166,7 @@ export default function NameStep() {
           <ConsentCheckbox text={shop.consentText} checked={shopConsent} onChange={setShopConsent} caption={t("consent.merchant.caption.v1", { shop: shop.merchant.name })} />
         </Card>
       ) : !isReturning ? (
-        <Card tone="sunken">
+        <Card>
           <ConsentCheckbox text={t("consent.global.v1")} checked={globalConsent} onChange={setGlobalConsent} caption={t("consent.global.caption")} />
           <ConsentCheckbox text={t("consent.platform.v1", { brand: BRAND.name })} checked={platformConsent} onChange={setPlatformConsent} />
         </Card>

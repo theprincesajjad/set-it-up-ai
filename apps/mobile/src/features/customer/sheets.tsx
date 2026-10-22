@@ -13,7 +13,8 @@ import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Bell, Button, Card, ConsentCheckbox, haptic, Sheet, ShopLogo, Text, useToast } from "../../ui";
+import { Appear, Banner, Button, Card, ConsentCheckbox, haptic, Sheet, ShopLogo, SuccessCheck, Text, useToast } from "../../ui";
+import { WalletPassButton } from "./WalletPassButton";
 import { registerForPush } from "../push";
 import { observeServerTimestamp } from "../../lib/serverClock";
 
@@ -32,13 +33,14 @@ export function JoinSheet({
   terminology?: string;
   onJoined?: (res: customerApi.JoinResponse) => void;
 }) {
+  const { c } = useTheme();
   const { prefs } = useSession();
   const qc = useQueryClient();
-  const toast = useToast();
   // Pre-filled only from the member's own onboarding choice; never ticked by default.
   const [consent, setConsent] = useState(prefs.globalConsent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [joined, setJoined] = useState<customerApi.JoinResponse | null>(null);
   const text = shop.consentText ?? customerApi.marketingConsentText(shop.name);
   const join = async () => {
     setBusy(true);
@@ -47,18 +49,43 @@ export function JoinSheet({
       const res = await api.me.join({ merchantId: shop.id, ...(consent ? { consent: { text } } : {}) });
       await qc.invalidateQueries({ queryKey: qk.wallet });
       haptic.success();
-      toast({
-        tone: "success",
-        message: res.bonusPoints > 0 ? t("ok.joinedBonus", { bonus: formatPts(res.bonusPoints, res.membership.terminology), shop: shop.name }) : `You're in at ${shop.name}.`,
-      });
       onJoined?.(res);
-      onClose();
+      // A moment, not a toast: check, what they got, and the Wallet pass (polish-audit M24).
+      setJoined(res);
     } catch (e) {
       setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
     } finally {
       setBusy(false);
     }
   };
+  if (joined) {
+    const term = joined.membership.terminology;
+    return (
+      <Sheet
+        visible={visible}
+        onClose={onClose}
+        scroll={false}
+        footer={
+          <>
+            <WalletPassButton />
+            <Button variant="ghost" size="lg" fullWidth onPress={onClose}>
+              Done
+            </Button>
+          </>
+        }
+      >
+        <Appear style={{ gap: 12, alignItems: "flex-start", paddingTop: 8 }}>
+          <SuccessCheck size={44} color={c.positive} />
+          <Text variant="title" accessibilityRole="header">{`You're in at ${shop.name}.`}</Text>
+          <Text color="fgMuted">
+            {joined.bonusPoints > 0
+              ? `${formatPts(joined.bonusPoints, term)} added. Show your card next visit to keep earning.`
+              : "Show your card next visit and your first points land in your wallet."}
+          </Text>
+        </Appear>
+      </Sheet>
+    );
+  }
   return (
     <Sheet
       visible={visible}
@@ -71,13 +98,13 @@ export function JoinSheet({
       }
     >
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <ShopLogo shop={shop} size={48} />
+        <ShopLogo shop={shop} size={44} />
         <Text style={{ flex: 1 }} color="fgMuted">
           {welcomeBonus ? `Get ${formatPts(welcomeBonus, terminology)} when you join. ` : ""}
           {`Your ${termWord(terminology)} never expire unless the shop says otherwise.`}
         </Text>
       </View>
-      <ConsentCheckbox text={text} checked={consent} onChange={setConsent} caption={t("consent.merchant.caption.v1", { shop: shop.name })} />
+      <ConsentCheckbox text={text} checked={consent} onChange={setConsent} caption={t(shop.consentText ? "consent.merchant.caption.v1" : "consent.merchant.sender", { shop: shop.name })} />
       {error ? <Banner variant="danger">{error}</Banner> : null}
     </Sheet>
   );
@@ -200,7 +227,6 @@ export function SponsoredWhySheet({ visible, onClose, shopName, street, terminol
 
 /** 1.5 Notifications pre-prompt. Never the OS prompt cold. */
 export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { c } = useTheme();
   const { updatePrefs } = useSession();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -213,9 +239,11 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
       visible={visible}
       onClose={close}
       scroll={false}
+      title={t("consent.push.title")}
       footer={
         <>
           <Button
+            size="lg"
             fullWidth
             loading={busy}
             onPress={async () => {
@@ -229,19 +257,13 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
           >
             {t("action.turnOn")}
           </Button>
-          <Button variant="ghost" fullWidth onPress={close}>
+          <Button variant="ghost" size="lg" fullWidth onPress={close}>
             {t("action.notNow")}
           </Button>
         </>
       }
     >
-      <View style={{ gap: 10 }}>
-        <Bell size={26} color={c.fg} strokeWidth={1.75} />
-        <Text variant="mapLabel" style={{ fontSize: 20, lineHeight: 26, textTransform: "none" }}>
-          {t("consent.push.title")}
-        </Text>
-        <Text color="fgMuted">{t("consent.push.body")}</Text>
-      </View>
+      <Text color="fgMuted">{t("consent.push.body")}</Text>
     </Sheet>
   );
 }

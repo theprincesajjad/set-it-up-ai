@@ -14,7 +14,7 @@ import { secondsLeft } from "../lib/serverClock";
 import { api } from "../state/api";
 import { qk } from "../state/query";
 import { useTheme } from "../theme";
-import { Banner, Button, CircleCheck, ConfirmDialog, haptic, QrCode, ShopLogo, Text } from "../ui";
+import { Banner, Button, ConfirmDialog, haptic, IconButton, PulseDot, QrCode, ShopLogo, SuccessCheck, Text, X } from "../ui";
 
 /** Legacy fallback when the API didn't send expiresAt: app codes last 10 minutes from createdAt. */
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -84,7 +84,7 @@ export default function Redeem() {
     return (
       <SafeAreaView style={[styles.root, { backgroundColor: c.bg, justifyContent: "center" }]}>
         <View style={{ alignItems: "center", gap: 16 }} accessibilityLiveRegion="assertive">
-          <CircleCheck size={64} color={c.positive} strokeWidth={1.75} />
+          <SuccessCheck size={64} color={c.positive} />
           <Text variant="largeTitle" center style={{ textTransform: "none" }}>
             {t("ok.redeem.customer", { reward: p.rewardName })}
           </Text>
@@ -98,6 +98,10 @@ export default function Redeem() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
+      {/* Leaving keeps the code open (the shop page shows "a code is waiting"); Cancel code is the bottom action. */}
+      <View style={styles.top}>
+        <IconButton icon={X} label="Close. The code stays open" variant="secondary" size={36} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} />
+      </View>
       <View style={styles.body}>
         <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null, brandColor: p.brandColor || null }} size={56} />
         <View style={{ gap: 2 }}>
@@ -126,7 +130,8 @@ export default function Redeem() {
               </View>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={[styles.dot, { backgroundColor: c.accent }]} />
+              {/* Waiting is a status, not points: a neutral pulsing dot (polish-audit M30). */}
+              <PulseDot color={c.fgMuted} />
               <Text variant="meta" color="fgMuted" tabular accessibilityLiveRegion={left !== null && left <= 60 ? "polite" : "none"}>
                 {`Waiting for staff${left !== null ? ` · expires in ${formatCountdown(left)}` : ""}`}
               </Text>
@@ -162,5 +167,5 @@ const styles = StyleSheet.create({
   root: { flex: 1, padding: 16 },
   body: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   codeBox: { borderRadius: radii.sheet, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 28, paddingVertical: 20, gap: 16, minWidth: 240 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  top: { flexDirection: "row", minHeight: 44, alignItems: "center" },
 });

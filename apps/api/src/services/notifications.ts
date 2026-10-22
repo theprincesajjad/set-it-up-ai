@@ -133,6 +133,17 @@ async function tokensFor(ctx: AppContext, userId: string) {
   return (await ctx.db.select({ token: pushTokens.token }).from(pushTokens).where(eq(pushTokens.userId, userId))).map((t) => t.token);
 }
 
+/** The customer muted this shop: no texts from it (push and the inbox still work). */
+async function mutedShop(ctx: AppContext, userId: string, merchant: Merchant | null): Promise<boolean> {
+  if (!merchant) return false;
+  const [m] = await ctx.db
+    .select({ muted: merchantMembers.muted })
+    .from(merchantMembers)
+    .where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, userId)))
+    .limit(1);
+  return !!m?.muted;
+}
+
 async function paidSms(ctx: AppContext, merchant: Merchant | null): Promise<boolean> {
   if (!merchant) return false;
   return !!(await enabledFeaturesFor(ctx.db, [merchant], ["marketing.sms"])).get(merchant.id)?.has("marketing.sms");
@@ -261,8 +272,8 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
       if (args.passMessage) await addPassMessage(ctx, user.id, { id: `${args.type}_${id}`, header: args.title, body: args.body });
     }
 
-    // ---- SMS fallback: paid SMS shops only, no app push, not covered by a wallet pass ----
-    if (!res.push && !wallet && prefs[args.type].sms && user.phone && (await paidSms(ctx, merchant))) {
+    // ---- SMS fallback: paid SMS shops only, no app push, not covered by a wallet pass, shop not muted ----
+    if (!res.push && !wallet && prefs[args.type].sms && user.phone && (await paidSms(ctx, merchant)) && !(await mutedShop(ctx, user.id, merchant))) {
       const body = args.smsBody ?? `${args.title}: ${args.body}${info.kind === "marketing" ? " Reply STOP to opt out." : ""}`;
       try {
         const r = await ctx.providers.sms.send(user.phone, body);

@@ -78,9 +78,9 @@ const expiryLine = (x: walletApi.WalletShopBalance) =>
 
 export function buildPassJson(config: Config, p: { passTypeId: string; teamId: string }, input: ApplePassInput) {
   const s = input.summary;
-  const ready = s.rewardsReady;
+  const ready = s.rewardsReady ?? 0;
   const top = s.shops.slice(0, 2);
-  const readyShops = s.shops.filter((x) => x.rewardsReady > 0);
+  const readyShops = s.shops.filter((x) => (x.rewardsReady ?? 0) > 0);
 
   const primary =
     ready > 0

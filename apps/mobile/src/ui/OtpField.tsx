@@ -87,7 +87,8 @@ export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function Ot
 });
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 8, justifyContent: "center" },
-  box: { width: 48, height: 58, borderRadius: radii.input, alignItems: "center", justifyContent: "center" },
+  /** Full width on the left edge like every field (polish-audit M4): six equal boxes across the gutter. */
+  row: { flexDirection: "row", gap: 8, alignSelf: "stretch" },
+  box: { flex: 1, maxWidth: 64, height: 56, borderRadius: radii.input, alignItems: "center", justifyContent: "center" },
   hidden: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.011, color: "transparent" },
 });

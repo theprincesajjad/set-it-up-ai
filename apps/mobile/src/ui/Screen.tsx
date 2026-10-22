@@ -141,7 +141,7 @@ export function Screen({
  * A group with a lowercase grey header over a hairline ("rewards ready").
  * `rule={false}` drops the hairline (when the children draw their own box).
  */
-export function Section({ title, action, children, style, rule = true }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle>; rule?: boolean }) {
+export function Section({ title, action, children, style, rule = true, spaced }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle>; rule?: boolean; /** Prose / buttons under the rule: 12 above and between (rows bring their own padding). */ spaced?: boolean }) {
   const { c } = useTheme();
   return (
     <View style={[{ gap: rule ? 0 : 10 }, style]}>
@@ -153,7 +153,7 @@ export function Section({ title, action, children, style, rule = true }: { title
           {action}
         </View>
       ) : null}
-      {children}
+      {spaced ? <View style={{ gap: 12, paddingTop: rule ? 12 : 0 }}>{children}</View> : children}
     </View>
   );
 }

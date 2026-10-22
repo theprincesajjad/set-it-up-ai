@@ -1,21 +1,22 @@
 import { radii } from "@ll/design-tokens";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { errorMessage, isApiError } from "../api/client";
 import { t } from "../copy/en-CA";
 import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
+import { WalletPassButton } from "../features/customer/WalletPassButton";
 import { formatPts, groupMemberCode } from "../lib/award";
 import { rewardsReadyCount } from "../lib/hero";
-import { displayPhone, maskMiddle } from "../lib/phone";
+import { displayPhone, maskPhone } from "../lib/phone";
 import { api } from "../state/api";
 import { useOnline } from "../state/network";
 import { qk } from "../state/query";
 import { useSession } from "../state/session";
 import { useTheme } from "../theme";
-import { Banner, Button, Check, Chip, DiscountCard, IconButton, ListRow, Phone, QrCode, Receipt, SegmentedControl, Sheet, Skeleton, Text, TextField, Wallet, X, haptic, monoFamily, useToast } from "../ui";
+import { Banner, Button, Chip, DiscountCard, IconButton, ListRow, Phone, QrCode, Receipt, SegmentedControl, Sheet, Skeleton, Text, TextField, X, haptic, monoFamily, useToast } from "../ui";
 
 /**
  * My card (foundations § My card): a white sheet opened from the black card
@@ -26,7 +27,7 @@ import { Banner, Button, Check, Chip, DiscountCard, IconButton, ListRow, Phone, 
 export default function CardSheet() {
   const { c } = useTheme();
   const { width } = useWindowDimensions();
-  const { user, prefs, updatePrefs } = useSession();
+  const { user, prefs } = useSession();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();
@@ -34,7 +35,6 @@ export default function CardSheet() {
   const wallet = useWallet();
   const [tab, setTab] = useState<"card" | "discounts">("card");
   const [reveal, setReveal] = useState(false);
-  const [walletBusy, setWalletBusy] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimShop, setClaimShop] = useState<string | null>(null);
   const [claimCode, setClaimCode] = useState("");
@@ -44,27 +44,10 @@ export default function CardSheet() {
 
   const memberships = wallet.data?.items ?? [];
   const readyCount = rewardsReadyCount(memberships);
-  const pass = useQuery({ queryKey: qk.walletPass, queryFn: api.wallet.status, enabled: online, retry: false, staleTime: 10 * 60_000 });
   const details = useMembershipDetails(memberships.map((m) => m.id));
   const discountCards = details.flatMap((d) => (d.data ? d.data.discountCards.map((dc) => ({ dc, m: d.data!.membership })) : []));
-  const platformKey = Platform.OS === "ios" ? "apple" : "google";
-  const walletAvailable = pass.data ? pass.data[platformKey].available : true;
-  const inWallet = prefs.inWallet[platformKey];
   const phone = user?.phone ?? prefs.lastPhone;
   const qrSize = Math.min(280, Math.round(width * 0.68));
-
-  const addToWallet = async () => {
-    setWalletBusy(true);
-    try {
-      const url = Platform.OS === "ios" ? (pass.data?.apple.downloadUrl ?? (await api.wallet.appleLink()).url) : (pass.data?.google.saveUrl ?? (await api.wallet.google()).saveUrl);
-      await Linking.openURL(url);
-      updatePrefs({ inWallet: { ...prefs.inWallet, [platformKey]: true } });
-    } catch (e) {
-      toast({ tone: "error", message: errorMessage(e, { network: t("err.network"), server: "Wallet passes aren't available yet." }) });
-    } finally {
-      setWalletBusy(false);
-    }
-  };
 
   const claim = async () => {
     const shop = claimShop ?? memberships[0]?.merchant.id;
@@ -142,26 +125,13 @@ export default function CardSheet() {
             </Text>
           </View>
           {!card && isError ? <Banner variant="danger">{t("err.network")}</Banner> : null}
-          {walletAvailable ? (
-            inWallet ? (
-              <View style={styles.inWallet}>
-                <Check size={16} color={c.positive} />
-                <Text variant="meta" color="fgMuted">
-                  In your Wallet
-                </Text>
-              </View>
-            ) : (
-              <Button size="lg" fullWidth iconStart={Wallet} loading={walletBusy} disabled={!online} onPress={addToWallet}>
-                {(Platform.OS === "ios" ? t("action.addToAppleWallet") : t("action.addToGoogleWallet")).toLowerCase()}
-              </Button>
-            )
-          ) : null}
+          <WalletPassButton />
           <View>
             {memberships.length > 0 ? <ListRow leadingIcon={Receipt} title="Forgot to scan? Claim a purchase" chevron onPress={() => setClaimOpen(true)} divider={!!phone} /> : null}
             {phone ? (
               <ListRow
                 leadingIcon={Phone}
-                title={`Or give your number: ${reveal ? displayPhone(phone) : maskMiddle(phone)}`}
+                title={`Or give your number: ${reveal ? displayPhone(phone) : maskPhone(phone)}`}
                 accessibilityLabel={reveal ? `Or give your number: ${displayPhone(phone)}` : "Or give your number. Tap to reveal"}
                 onPress={() => setReveal((r) => !r)}
                 divider={false}
@@ -207,9 +177,8 @@ export default function CardSheet() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 20, paddingTop: 20, gap: 20, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 20, gap: 24, paddingBottom: 40 },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   qrTile: { alignSelf: "center", padding: 18, borderRadius: radii.sheet, borderWidth: StyleSheet.hairlineWidth * 2 },
   code: { fontFamily: monoFamily, fontSize: 28, lineHeight: 34, letterSpacing: 3, fontVariant: ["tabular-nums"] },
-  inWallet: { flexDirection: "row", gap: 6, justifyContent: "center", alignItems: "center" },
 });

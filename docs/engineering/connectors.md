@@ -157,22 +157,45 @@ Inbound requests are verified with `X-Twilio-Signature` against the exact public
 ## Resend (email) / Expo (push)
 
 `RESEND_API_KEY` (+ `EMAIL_FROM`, a verified domain) enables Resend. `EXPO_ACCESS_TOKEN` (or `EXPO_PUSH=1`) enables Expo push
-(`https://exp.host/--/api/v2/push/send`, 100 per request; `DeviceNotRegistered` tokens are pruned when the DB is passed to
-`createRealProviders`). Wired in `providers/real.ts`; anything unconfigured stays on the console provider.
+(`https://exp.host/--/api/v2/push/send`, 100 per request; `DeviceNotRegistered` tickets are pruned immediately when the DB is
+passed to `createRealProviders`, and the `notifications.receipts` job checks receipts ~15 min later
+(`/--/api/v2/push/getReceipts`) and deletes tokens whose receipt says `DeviceNotRegistered`). Wired in `providers/real.ts`;
+anything unconfigured stays on the console provider.
+
+Expo / app-store steps for push (customer app):
+1. expo.dev → project → **Credentials**: iOS push key (Apple Developer → Keys → "Apple Push Notifications service (APNs)",
+   upload the .p8 to Expo) and Android FCM V1 service-account key (Firebase console → Project settings → Service accounts).
+2. expo.dev → Account settings → **Access tokens** → create a token with push scope → `EXPO_ACCESS_TOKEN` (also enable
+   "Enhanced push security" on the project so only token-bearing requests are accepted).
+3. Mobile build needs `EAS_PROJECT_ID` (docs/engineering/mobile.md). Android channels `points`, `orders`, `offers` are created
+   by the app (`features/customer/notifications.ts`). Notification types and rules: `docs/engineering/api/notifications.md`.
 
 ## Apple Wallet
 
-1. Apple Developer → Identifiers → **Pass Type IDs** → create `pass.<your.domain>.loyalty`; create its certificate (CSR),
-   export cert + private key as PEM (`openssl pkcs12 -in pass.p12 -clcerts -nokeys` / `-nocerts`).
-2. Download the **Apple WWDR G4** intermediate certificate and convert to PEM.
-3. Env: `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_PASS_CERT_PEM`, `APPLE_PASS_KEY_PEM`, `APPLE_PASS_KEY_PASSPHRASE` (if encrypted),
-   `APPLE_WWDR_PEM` (`\n` escapes are accepted).
-4. `PUBLIC_API_URL` must be https in production (Wallet refuses http web services).
-Pass updates use APNs HTTP/2 with the same certificate (topic = pass type id). See `docs/engineering/api/wallet.md`.
+1. Apple Developer → Certificates, Identifiers & Profiles → Identifiers → **Pass Type IDs** → create
+   `pass.<your.domain>.loyalty`. Create its certificate (upload a CSR), download `pass.cer`, import into Keychain and export
+   `pass.p12`, then `openssl pkcs12 -in pass.p12 -clcerts -nokeys -legacy > cert.pem` / `-nocerts -nodes > key.pem`.
+2. Download the **Apple WWDR G4** intermediate certificate (apple.com/certificateauthority) and convert:
+   `openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem`.
+3. Env: `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` (10-char Team ID, top right of the developer portal), `APPLE_PASS_CERT_PEM`,
+   `APPLE_PASS_KEY_PEM`, `APPLE_PASS_KEY_PASSPHRASE` (if the key is encrypted), `APPLE_WWDR_PEM` (`\n` escapes are accepted).
+4. **APNs token auth (recommended)**: Apple Developer → **Keys** → "+" → enable *Apple Push Notifications service (APNs)* →
+   download `AuthKey_<KEYID>.p8` (once only). Env: `APPLE_APNS_KEY_ID` (the 10-char key id) and `APPLE_APNS_KEY_P8` (file
+   contents). The API signs an ES256 provider JWT (`iss` = `APPLE_TEAM_ID`, `kid` = key id, refreshed every 50 min). If APNs
+   rejects the token for the pass topic (403, e.g. `TopicDisallowed`), the push is retried with the pass certificate, so keep
+   `APPLE_PASS_CERT_PEM`/`APPLE_PASS_KEY_PEM` set as the fallback (certificate-only also works). Pass pushes always go to
+   production APNs (`api.push.apple.com`), topic = pass type id.
+5. `PUBLIC_API_URL` must be https with a valid certificate in production (Wallet refuses http web services); the PassKit web
+   service lives at `${PUBLIC_API_URL}/v1/wallet/apple/v1/...`. Pass artwork: `node apps/api/scripts/render-wallet-assets.cjs`.
+See `docs/engineering/api/wallet.md`.
 
 ## Google Wallet
 
-1. https://pay.google.com/business/console → Google Wallet API → get the **Issuer ID**.
-2. Google Cloud → enable "Google Wallet API" → service account → JSON key; add the service account email as a user in the
-   Wallet console.
-3. Env: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON` (raw JSON or base64). `PUBLIC_WEB_URL` is the JWT origin.
+1. https://pay.google.com/business/console → **Google Wallet API** → sign up as an issuer → copy the **Issuer ID**.
+2. Google Cloud console → enable **Google Wallet API** → IAM → Service accounts → create one → Keys → JSON key. In the Wallet
+   console → Users, invite the service account email (role: Developer or Admin).
+3. Wallet console → request **publishing access** (production) for the loyalty class `<issuer>.ll_network_loyalty`; until
+   approved only test accounts added in the console can save the pass. Upload nothing: the class is created by the first save JWT.
+4. Env: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON` (raw JSON or base64). `PUBLIC_WEB_URL` is the JWT origin
+   (the "Add to Google Wallet" button must be on that origin). The program logo is served from
+   `${PUBLIC_API_URL}/v1/wallet/assets/logo.png`, so `PUBLIC_API_URL` must be publicly reachable over https.

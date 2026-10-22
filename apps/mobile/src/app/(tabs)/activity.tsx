@@ -7,9 +7,9 @@ import { t } from "../../copy/en-CA";
 import { useWallet } from "../../features/customer/queries";
 import { activityTitle, groupByDay } from "../../lib/activity";
 import { formatMoney } from "../../lib/award";
-import { formatDate, formatTime } from "../../lib/format";
+import { formatDate, formatTime, signed } from "../../lib/format";
 import { api } from "../../state/api";
-import { Button, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonList, Text } from "../../ui";
+import { Button, Chip, EmptyState, ErrorState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../../ui";
 
 type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 
@@ -59,7 +59,9 @@ export default function Activity() {
         </ScrollView>
       ) : null}
       {q.isLoading || wallet.isLoading ? (
-        <SkeletonList rows={5} rowHeight={56} />
+        <SkeletonRows rows={6} />
+      ) : q.isError && rows.length === 0 ? (
+        <ErrorState message="Your activity didn't load." onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState icon={History} title={t("empty.activity.title")} body={t("empty.activity.body", { terminology: "points" })} actionLabel={t("empty.activity.action")} onAction={() => router.push("/map")} />
       ) : (
@@ -75,7 +77,7 @@ export default function Activity() {
                   subtitle={[tx.membership.merchant.name, formatTime(tx.createdAt), tx.amountCents ? formatMoney(tx.amountCents) : null].filter(Boolean).join(" · ")}
                   trailing={
                     <Text variant="headline" color={tx.reversed ? "fgSubtle" : tx.points > 0 ? "accentText" : "fgMuted"} tabular style={tx.reversed ? { textDecorationLine: "line-through" } : null}>
-                      {`${tx.points > 0 ? "+" : ""}${tx.points}`}
+                      {signed(tx.points)}
                     </Text>
                   }
                   onPress={() => setOpen(tx)}

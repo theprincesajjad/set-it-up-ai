@@ -51,9 +51,9 @@ export default function PhoneStep() {
       >
         <View style={{ gap: 8 }}>
           <Text variant="largeTitle" accessibilityRole="header">
-            What's your mobile number?
+            What's your number?
           </Text>
-          <Text color="fgMuted">We'll text you a code. This is also how shops find your card.</Text>
+          <Text color="fgMuted">We'll text you a code. Shops find your card by this number too.</Text>
         </View>
         <PhoneField autoFocus digits={digits} onChangeDigits={setDigits} error={showErr} hint="Standard message rates may apply." onSubmitEditing={send} />
       </Screen>

@@ -7,7 +7,7 @@ import { useCampaigns, useMembershipDetails, useWallet } from "../features/custo
 import { RedeemConfirmSheet } from "../features/customer/sheets";
 import { promoEnds } from "../lib/format";
 import { useOnline } from "../state/network";
-import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonList, Text, Trophy } from "../ui";
+import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Text, Trophy } from "../ui";
 
 /** 6.1 Rewards: Ready / All shops / Passport. */
 export default function Rewards() {
@@ -33,7 +33,7 @@ export default function Rewards() {
         value={tab}
         onChange={setTab}
       />
-      {wallet.isLoading ? <SkeletonList rows={3} /> : null}
+      {wallet.isLoading ? <SkeletonRows rows={4} /> : null}
 
       {tab === "ready" && !wallet.isLoading ? (
         ready.length === 0 ? (
@@ -106,10 +106,10 @@ export default function Rewards() {
                 <Badge tone={cmp.status === "live" ? "success" : "neutral"}>{cmp.status === "live" ? "live" : cmp.status === "scheduled" ? "starts soon" : "ended"}</Badge>
               </View>
               <Text variant="meta" color="fgMuted">
-                {[cmp.neighbourhood.name, promoEnds(cmp.endsAt)].filter(Boolean).join(" · ")}
+                {[cmp.neighbourhood.name.toLowerCase(), promoEnds(cmp.endsAt)].filter(Boolean).join(" · ")}
               </Text>
               <View style={{ marginTop: 8 }}>
-                <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} height={4} valueLabel={`${cmp.progress.visited} of ${cmp.progress.goal}`} />
+                <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} height={4} valueLabel={`${cmp.progress.visited} / ${cmp.progress.goal}`} />
               </View>
             </Card>
           ))

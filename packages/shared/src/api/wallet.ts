@@ -12,11 +12,12 @@ export interface WalletShopBalance {
   terminology: string;
   /** Null = points never expire. Otherwise months of inactivity before expiry (disclosed on the pass). */
   expiryMonths: number | null;
+  // Added with the v2 pass (always sent by the API; optional so older fixtures still type-check).
   /** Rewards this balance can redeem right now (shop's own units; never summed across shops on screen). */
-  rewardsReady: number;
+  rewardsReady?: number;
   /** Shop slug for deep links (ll://shop/<slug>). */
-  slug: string;
-  lastVisitAt: string | null;
+  slug?: string;
+  lastVisitAt?: string | null;
 }
 
 export interface WalletSummary {
@@ -29,8 +30,8 @@ export interface WalletSummary {
    * use `rewardsReady` (the v2 headline) and per-shop balances.
    */
   totalPoints: number;
-  /** Rewards ready across all shops (the pass headline). */
-  rewardsReady: number;
+  /** Rewards ready across all shops (the pass headline). Always sent by the API (optional for older fixtures). */
+  rewardsReady?: number;
   /** Ordered: shops with rewards ready first, then most recent visit. */
   shops: WalletShopBalance[];
 }

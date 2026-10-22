@@ -80,7 +80,7 @@ export function loyaltyObject(config: Config, issuerId: string, userId: string, 
     accountId: s.memberCode,
     accountName: s.name ?? "Member",
     hexBackgroundColor: PASS_COLORS.background,
-    loyaltyPoints: { label: "Rewards ready", balance: { int: s.rewardsReady } },
+    loyaltyPoints: { label: "Rewards ready", balance: { int: s.rewardsReady ?? 0 } },
     secondaryLoyaltyPoints: { label: "Shops", balance: { int: s.shopCount } },
     barcode: { type: "QR_CODE", value: s.qrValue, alternateText: s.memberCode },
     textModulesData: [

@@ -1,4 +1,4 @@
-import { dayGroupLabel } from "./format";
+import { dayGroupLabel, rewardInSentence } from "./format";
 import { formatPts, termWord } from "./award";
 
 /** Activity row titles by ledger type (customer-mobile.md § 7). */
@@ -8,7 +8,7 @@ export function activityTitle(tx: { type: string; points: number; description: s
     case "earn":
       return stamps ? (tx.points === 1 ? `Got a ${termWord(terminology, 1)}` : `Got ${formatPts(tx.points, terminology)}`) : `Earned ${formatPts(tx.points, terminology)}`;
     case "redeem":
-      return `Redeemed ${tx.description?.replace(/^Redeemed:?\s*/i, "") || "a reward"}`;
+      return `Redeemed ${rewardInSentence(tx.description?.replace(/^Redeemed:?\s*/i, "") || "a reward")}`;
     case "welcome_bonus":
       return "Welcome bonus";
     case "birthday_bonus":
