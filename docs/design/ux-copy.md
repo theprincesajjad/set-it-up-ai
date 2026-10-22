@@ -184,6 +184,12 @@ itself** (a message asking for consent counts as a commercial message). Store wi
 member, merchant (or platform), channel(s), timestamp, source (`qr`, `web`, `app`, `kiosk`,
 `staff`), IP/device, and `consentTextVersion`.
 
+**`consent.merchant.v2`** (web join from the counter QR, canvas `docs/design/canvas/Join.dc.html`; offered on the phone step, unticked):
+
+> Send me offers from **{shop}** by text or email. Optional. Unsubscribe any time.
+
+Once ticked, the sender line (`consent.merchant.caption.v1`) appears under it.
+
 **`consent.merchant.v1`** (per shop, join flows, kiosk, shop detail):
 
 > Send me offers and news from **{shop}** by text and email. I can unsubscribe anytime.

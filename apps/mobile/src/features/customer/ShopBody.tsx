@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { radii } from "@ll/design-tokens";
-import { Linking, Platform, Pressable, Share, StyleSheet, View } from "react-native";
+import { Linking, Platform, Pressable, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
 import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
@@ -23,36 +23,32 @@ import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
-import { useTheme } from "../../theme";
+import { disp, ui, useTheme } from "../../theme";
 import {
   Banner,
   BellOff,
   Button,
-  CountUp,
+  CallGlyph,
+  CardQrIcon,
+  DirectionsGlyph,
   DiscountCard,
-  Globe,
+  GiftGlyph,
+  hairline,
   ListRow,
-  Navigation,
-  Phone,
-  ProgressBar,
   PromoCard,
-  RewardCard,
   Section,
-  Share2,
+  ShareGlyph,
   ShoppingBag,
-  ShopTile,
-  StampCard,
-  StatusDot,
+  ShopLogo,
   Text,
   Ticket,
   UserPlus,
   useToast,
-  type LucideIcon,
+  WebsiteGlyph,
 } from "../../ui";
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
-import { WalletPassButton } from "./WalletPassButton";
 
 export function useShopModel(slug: string | null | undefined) {
   const shop = useQuery({ queryKey: qk.shop(slug ?? ""), queryFn: () => api.network.shop(slug!), enabled: !!slug });
@@ -69,20 +65,58 @@ export function useShopModel(slug: string | null | undefined) {
 }
 export type ShopModel = ReturnType<typeof useShopModel>;
 
-/** Quick action tile: icon over a short label, equal widths so four always fit (same as the web pass). */
-function Action({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+/** Quick action tile (canvas): grey 56 pt tile, 20 pt glyph over a lowercase 12 pt label; four always fit. */
+function Action({ icon: Icon, label, onPress, disabled }: { icon: (p: { size?: number; color: string }) => React.ReactElement; label: string; onPress: () => void; disabled?: boolean }) {
   const { c } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, transform: pressed ? [{ scale: 0.98 }] : undefined }]}>
-      <Icon size={20} color={c.fg} strokeWidth={1.75} />
-      <Text variant="metaStrong" numberOfLines={1}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label.charAt(0).toUpperCase() + label.slice(1)}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, opacity: disabled ? 0.45 : 1 }]}
+    >
+      <Icon size={20} color={c.fg} />
+      <Text style={ui(12, 500, 15)} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
   );
 }
 
-export function ShopBody({ model, variant = "page", peek = false }: { model: ShopModel; variant?: "page" | "sheet"; /** Sheet at its low detent: header, status and balance only. */ peek?: boolean }) {
+/** Stamp grid (canvas): up to 10 columns of 26 pt dots, accent when earned, the last slot the black gift. */
+export function StampGrid({ count, goal }: { count: number; goal: number }) {
+  const { c } = useTheme();
+  const { width } = useWindowDimensions();
+  const cols = Math.min(goal, 10);
+  const inner = Math.min(width, 480) - 40 - 34;
+  const slot = Math.max(18, Math.min(26, Math.floor((inner - (cols - 1) * 6) / cols)));
+  const colW = (inner - (cols - 1) * 6) / cols;
+  return (
+    <View style={styles.grid} accessible accessibilityLabel={`${count} of ${goal} stamps`}>
+      {Array.from({ length: goal }, (_, i) => {
+        const last = i === goal - 1;
+        const on = i < count;
+        return (
+          <View key={i} style={{ width: colW }}>
+            <View
+              style={[
+                { width: slot, height: slot, borderRadius: slot / 2, alignItems: "center", justifyContent: "center" },
+                last ? { backgroundColor: c.fg } : on ? { backgroundColor: c.accent } : { borderWidth: 1.5, borderColor: c.lineStrong },
+              ]}
+            >
+              {last ? <GiftGlyph size={13} color={c.bg} /> : null}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+export function ShopBody({ model, variant = "page", peek = false }: { model: ShopModel; variant?: "page" | "sheet"; /** Sheet at its low detent: everything down to the rewards (the rest scrolls in at full height). */ peek?: boolean }) {
+  const { c } = useTheme();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();
@@ -139,117 +173,157 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         : `${formatPts(program.pointsPerVisit, term)} per visit`
     : null;
   const noEarn = s.merchant.vertical === "pharmacy" ? " · Prescriptions don't earn points" : "";
-  const kind = [placeKind(s.merchant.vertical), s.merchant.neighbourhood?.name.toLowerCase()].filter(Boolean).join(" · ");
-  const statusLine = [status ? null : "hours not listed", dist != null ? formatDistance(dist) : null].filter(Boolean).join(" · ");
+  const kind = [placeKind(s.merchant.vertical), (loc?.address ?? s.merchant.neighbourhood?.name)?.toLowerCase()].filter(Boolean).join(" · ");
 
+  const ready = rewardsList.filter((r) => r.affordable);
+  const goal = program?.stampGoal || 10;
+  const filled = m ? Math.min(Math.max(0, m.balance), goal) : 0;
+  const carry = m && isStamps && m.balance > goal ? m.balance - goal : 0;
+  const nextName = m?.nextReward?.name ?? rewardsList.find((r) => !r.affordable)?.name ?? null;
+  const readyName = ready[0]?.name ?? null;
+
+  // Stamp card (canvas ShopSheet): "10 / 10 stamps" in accent, the reward state right, a 10-column stamp grid
+  // whose last slot is the black gift. Points programs: the balance in accent and a thin bar to the next reward.
   const balance = m ? (
-    <View style={{ gap: 12 }}>
+    <View style={[styles.stampCard, { borderColor: c.line }]}>
+      <View style={styles.stampHead}>
+        <Text style={disp(28, 800, 32, -0.01)} rawColor={c.accent} tabular>
+          {isStamps ? String(filled) : formatNumber(m.balance)}
+          <Text style={disp(15, 700, 18)} rawColor={c.fgMuted}>
+            {isStamps ? ` / ${goal} ${termWord(term, 2)}` : ` ${unitLabel(term, m.balance)}`}
+          </Text>
+        </Text>
+        <Text style={[ui(13, 600, 17), { flexShrink: 1, textAlign: "right" }]} rawColor={readyName ? c.accentText : c.fgMuted} numberOfLines={1}>
+          {readyName ? `${rewardInSentence(readyName)} ready` : m.nextReward ? `${m.nextReward.pointsNeeded} to ${rewardInSentence(m.nextReward.name)}` : ""}
+        </Text>
+      </View>
       {isStamps ? (
-        <StampCard count={m.balance} goal={program?.stampGoal || 10} rewardName={m.nextReward?.name ?? rewardsList.find((r) => r.affordable)?.name ?? null} />
-      ) : (
-        <View style={{ gap: 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
-            <CountUp value={m.balance} format={formatNumber} variant="displayNumber" color="accent" />
-            <Text variant="bodyStrong" color="fgMuted">
-              {unitLabel(term, m.balance)}
-            </Text>
-          </View>
-          {m.nextReward ? (
-            <ProgressBar
-              tone="accent"
-              value={m.nextReward.pointsCost - m.nextReward.pointsNeeded}
-              max={m.nextReward.pointsCost}
-              label={t("misc.ptsToGo", { n: m.nextReward.pointsNeeded, reward: rewardInSentence(m.nextReward.name) })}
-              valueText={`${m.balance} of ${m.nextReward.pointsCost}`}
-            />
-          ) : null}
+        <StampGrid count={filled} goal={goal} />
+      ) : m.nextReward ? (
+        <View style={{ height: 4, borderRadius: 999, backgroundColor: c.bgMuted, marginTop: 14, overflow: "hidden" }}>
+          <View style={{ height: 4, borderRadius: 999, backgroundColor: c.accent, width: `${Math.round((100 * (m.nextReward.pointsCost - m.nextReward.pointsNeeded)) / Math.max(1, m.nextReward.pointsCost))}%` }} />
         </View>
-      )}
-      <Text variant="meta" color="fgMuted">
-        {`${earnLine ?? "Ask at the counter"}${noEarn} · ${m.expiryDisclosure.charAt(0).toLowerCase()}${m.expiryDisclosure.slice(1).replace(/\.$/, "")}`}
-      </Text>
-      {/* Members on the shop page: the network pass carries this balance too. */}
-      {variant === "page" ? <WalletPassButton size="md" /> : null}
+      ) : null}
+      {carry > 0 ? (
+        <Text style={[ui(12, 400, 16), { marginTop: 10 }]} rawColor={c.fgMuted}>{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
+      ) : null}
     </View>
   ) : (
-    <View style={{ gap: 10 }}>
-      <Text variant="bodyStrong">{earnLine ? `Earn ${earnLine}` : "Show your card at the counter to earn."}</Text>
-      {program?.welcomeBonus ? <Text color="fgMuted">{`Get ${formatPts(program.welcomeBonus, term)} when you join.`}</Text> : null}
-      {neighbours ? (
-        <Text variant="meta" color="fgMuted">
-          {neighbours}
-        </Text>
-      ) : null}
-      <Button size={variant === "sheet" ? "md" : "lg"} fullWidth onPress={() => setJoining(true)}>
+    <View style={[styles.stampCard, { borderColor: c.line, gap: 6 }]}>
+      <Text style={ui(15, 600, 20)}>{earnLine ? `Earn ${earnLine}` : "Show your card at the counter to earn."}</Text>
+      {program?.welcomeBonus ? <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{`Get ${formatPts(program.welcomeBonus, term)} when you join.`}</Text> : null}
+      <Button size="md" fullWidth onPress={() => setJoining(true)} style={{ marginTop: 8 }}>
         Join free
       </Button>
     </View>
   );
 
+  const statusWord = status ? (status.open ? "open" : "closed") : null;
+  const statusRest = [
+    status ? status.label.replace(/^(Open|Closed)( · )?/, "").replace(/^closes /, "until ") : "hours not listed",
+    dist != null ? formatDistance(dist) : null,
+    neighbours,
+  ].filter(Boolean);
+
   return (
-    <View style={{ gap: 18 }}>
-      <View style={{ gap: 8 }}>
-        <ShopTile variant="hero" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={kind} muted={m?.muted} />
-        <View style={styles.statusRow}>
-          {status ? <StatusDot open={status.open} label={status.label.toLowerCase()} /> : null}
-          {statusLine ? (
-            <Text variant="meta" color="fgMuted">
-              {`${status ? "· " : ""}${statusLine}`}
+    <View>
+      <View style={styles.head}>
+        <ShopLogo shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} size={56} />
+        <View style={{ flex: 1, minWidth: 0, paddingRight: variant === "sheet" ? 50 : 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={[disp(22, 700, 26, -0.01), { flexShrink: 1 }]} accessibilityRole="header" numberOfLines={2}>
+              {s.merchant.name}
             </Text>
-          ) : null}
+            {m?.muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
+          </View>
+          <Text style={[ui(13, 400, 17), { fontStyle: "italic", marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
+            {kind}
+          </Text>
         </View>
       </View>
+      <View style={styles.statusRow}>
+        {status ? <View style={[styles.dot, { backgroundColor: status.open ? c.positive : c.fgSubtle }]} /> : null}
+        {statusWord ? <Text style={ui(13, 500, 17)}>{statusWord}</Text> : null}
+        <Text style={[ui(13, 400, 17), { flexShrink: 1 }]} rawColor={c.fgMuted}>
+          {`${statusWord ? "· " : ""}${statusRest.join(" · ")}`}
+        </Text>
+      </View>
 
-      {paused ? <Banner variant="neutral">{`This shop has paused its program. Your ${formatPts(m!.balance, term)} are safe.`}</Banner> : null}
-      {balance}
+      {paused ? <View style={{ marginTop: 16 }}><Banner variant="neutral">{`This shop has paused its program. Your ${formatPts(m!.balance, term)} are safe.`}</Banner></View> : null}
+      <View style={{ marginTop: 20 }}>{balance}</View>
 
       {(model.detail.data?.openRedemptions ?? []).map((r) => (
-        <Banner
-          key={r.id}
-          variant="neutral"
-          actionLabel="Show code"
-          onAction={() =>
-            router.push({
-              pathname: "/redeem",
-              params: { redemptionId: r.id, code: r.code, rewardName: r.rewardName, createdAt: r.createdAt, expiresAt: r.expiresAt ?? "none", memberId: m!.id, shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "", brandColor: s.merchant.brandColor ?? "", slug: s.merchant.slug },
-            })
-          }
-        >
-          {`${r.rewardName}: a code is waiting to be shown at the counter.`}
-        </Banner>
+        <View key={r.id} style={{ marginTop: 12 }}>
+          <Banner
+            variant="neutral"
+            actionLabel="Show code"
+            onAction={() =>
+              router.push({
+                pathname: "/redeem",
+                params: { redemptionId: r.id, code: r.code, rewardName: r.rewardName, createdAt: r.createdAt, expiresAt: r.expiresAt ?? "none", memberId: m!.id, shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "", brandColor: s.merchant.brandColor ?? "", slug: s.merchant.slug },
+              })
+            }
+          >
+            {`${r.rewardName}: a code is waiting to be shown at the counter.`}
+          </Banner>
+        </View>
       ))}
 
+      <View style={styles.actions}>
+        <Action icon={DirectionsGlyph} label="directions" onPress={directions} disabled={!loc} />
+        <Action icon={CallGlyph} label="call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
+        <Action icon={WebsiteGlyph} label="website" onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
+        <Action icon={ShareGlyph} label="share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
+      </View>
+
+      <Text style={[disp(17, 800, 21), { marginTop: 24 }]} accessibilityRole="header">
+        rewards
+      </Text>
+      {rewardsList.length === 0 ? (
+        <Text style={[ui(15, 400, 20), { paddingVertical: 14 }]} rawColor={c.fgMuted}>
+          This shop hasn't added rewards yet.
+        </Text>
+      ) : null}
+      {[...rewardsList]
+        .sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)
+        .map((r, i, all) => {
+          const canRedeem = !!m && r.affordable;
+          const toGo = Math.max(0, r.pointsCost - (m?.balance ?? 0));
+          return (
+            <Pressable
+              key={r.id}
+              accessibilityRole={canRedeem ? "button" : undefined}
+              accessibilityLabel={canRedeem ? `Redeem ${r.name}` : `${r.name}, ${formatPts(r.pointsCost, term)}${m ? `, ${toGo} to go` : ""}`}
+              disabled={!canRedeem || !online}
+              onPress={() => setRedeeming(r)}
+              style={({ pressed }) => [styles.rewardRow, { borderBottomColor: c.line, borderBottomWidth: i < all.length - 1 ? hairline : 0, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={ui(15, 500, 20)}>{r.name}</Text>
+                <Text style={[ui(13, 400, 17), { marginTop: 2 }]} rawColor={c.fgMuted}>
+                  {formatPts(r.pointsCost, term)}
+                </Text>
+              </View>
+              {m ? (
+                canRedeem ? (
+                  <Text style={ui(13, 600, 17)} rawColor={c.accentText}>
+                    ready
+                  </Text>
+                ) : (
+                  <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{`${toGo} to go`}</Text>
+                )
+              ) : null}
+            </Pressable>
+          );
+        })}
+      {!online && ready.length > 0 ? (
+        <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
+          {t("err.redeem.offlineCustomer")}
+        </Text>
+      ) : null}
+
       {peek ? null : (
-        <>
-          <View style={styles.actions}>
-            {loc ? <Action icon={Navigation} label="Directions" onPress={directions} /> : null}
-            {s.merchant.phone || loc?.phone ? <Action icon={Phone} label="Call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} /> : null}
-            {s.merchant.website ? <Action icon={Globe} label="Website" onPress={() => Linking.openURL(s.merchant.website!)} /> : null}
-            <Action icon={Share2} label="Share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
-          </View>
-
-          <Section title="Rewards">
-            {rewardsList.length === 0 ? (
-              <Text color="fgMuted" style={{ paddingVertical: 12 }}>
-                This shop hasn't added rewards yet.
-              </Text>
-            ) : null}
-            {[...rewardsList]
-              .sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)
-              .map((r, i, all) => (
-                <RewardCard
-                  key={r.id}
-                  reward={r}
-                  balance={m?.balance ?? 0}
-                  terminology={term}
-                  state={!m ? "info" : r.affordable ? "available" : "locked"}
-                  disabledReason={online ? null : t("err.redeem.offlineCustomer")}
-                  onRedeem={() => setRedeeming(r)}
-                  divider={i < all.length - 1}
-                />
-              ))}
-          </Section>
-
+        <View style={{ gap: 18, marginTop: 24 }}>
           {orderAhead || ticketsOn ? (
             <Section title="Order and services">
               {orderAhead ? <ListRow leadingIcon={ShoppingBag} title="Order ahead" subtitle="Pick up at the counter, pay there" chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
@@ -302,7 +376,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             <Section
               title="Your visits"
               action={
-                <Button variant="ghost" size="sm" style={{ marginRight: -4 }} onPress={() => router.push({ pathname: "/activity", params: { memberId: m!.id } })}>
+                <Button variant="ghost" size="sm" style={{ marginRight: -4 }} onPress={() => router.push({ pathname: "/history", params: { memberId: m!.id } })}>
                   See all
                 </Button>
               }
@@ -326,6 +400,9 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           <Section title="About">
             <View style={{ gap: 14, paddingTop: 12 }}>
               {s.merchant.description ? <Text>{s.merchant.description}</Text> : null}
+              <Text variant="meta" color="fgMuted">
+                {`${earnLine ?? "Ask at the counter"}${noEarn}${m ? ` · ${m.expiryDisclosure.charAt(0).toLowerCase()}${m.expiryDisclosure.slice(1).replace(/\.$/, "")}` : ""}`}
+              </Text>
               {loc ? (
                 <Pressable accessibilityRole="button" accessibilityLabel={`${loc.address}. Get directions`} onPress={directions} style={{ gap: 2 }}>
                   <Text variant="bodyStrong">{loc.address}</Text>
@@ -363,7 +440,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
               ) : null}
             </View>
           </Section>
-        </>
+        </View>
       )}
 
       {joining ? (
@@ -381,7 +458,36 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 }
 
 const styles = StyleSheet.create({
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  actions: { flexDirection: "row", gap: 8 },
-  action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, height: 64, paddingHorizontal: 4, borderRadius: radii.card },
+  head: { flexDirection: "row", alignItems: "center", gap: 14 },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  stampCard: { padding: 16, borderWidth: hairline, borderRadius: 16 },
+  stampHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+  grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 6, columnGap: 6, marginTop: 14 },
+  actions: { flexDirection: "row", gap: 8, marginTop: 16 },
+  action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, height: 56, paddingHorizontal: 4, borderRadius: 14 },
+  rewardRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, gap: 12 },
+});
+
+/** The pinned black capsule under the shop (canvas): members open My card to redeem at the counter. */
+export function ShopCardCta({ model }: { model: ShopModel }) {
+  const { c } = useTheme();
+  if (!model.shop.data || !model.membership) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Show my card to redeem"
+      onPress={() => router.push("/card")}
+      style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.fg, opacity: pressed ? 0.88 : 1 }]}
+    >
+      <CardQrIcon size={20} color={c.bg} />
+      <Text style={ui(16, 600, 20)} rawColor={c.bg}>
+        show my card to redeem
+      </Text>
+    </Pressable>
+  );
+}
+
+const ctaStyles = StyleSheet.create({
+  cta: { height: 54, borderRadius: 999, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
 });

@@ -50,7 +50,7 @@ describe("counter helpers", () => {
     expect(lookupKind("41")).toBe("incomplete");
   });
   it("labels the award button", () => {
-    expect(awardLabel(stamps, 0)).toBe("Add stamp");
+    expect(awardLabel(stamps, 0)).toBe("Add 1 stamp");
     expect(awardLabel(stamps, 0, 3)).toBe("Add 3 stamps");
     expect(awardLabel(perDollar, 1250)).toBe("Award 12 pts");
   });
@@ -64,7 +64,7 @@ describe("<CounterApp> award flow", () => {
     await userEvent.type(search, "4165550123{Enter}");
     expect(await screen.findByRole("heading", { name: "Pat Quinn" })).toBeTruthy();
     expect(api.lookup).toHaveBeenCalledWith("4165550123");
-    await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 stamp" }));
     expect(await screen.findByText("Added 1 stamp")).toBeTruthy();
     // The balance counts up from 6 to 7 (CountUp); wait for the settled paragraph.
     expect(await screen.findByText((_, el) => el?.tagName === "P" && /^Pat has 7 stamps$/.test(el.textContent ?? ""))).toBeTruthy();
@@ -96,7 +96,7 @@ describe("<CounterApp> award flow", () => {
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} queueKey="test.queue" />);
     await userEvent.type(screen.getByLabelText("Phone, last 4 digits or member code"), "4165550123{Enter}");
     await screen.findByRole("heading", { name: "Pat Quinn" });
-    await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 stamp" }));
     expect((await screen.findAllByText(/Saved on this device/)).length).toBeGreaterThan(0);
     expect(screen.getByText(/1 waiting to send/)).toBeTruthy();
     expect(JSON.parse(localStorage.getItem("test.queue")!)).toHaveLength(1);
@@ -112,7 +112,7 @@ describe("<CounterApp> award flow", () => {
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} />);
     await userEvent.type(screen.getByLabelText("Phone, last 4 digits or member code"), "4165550123{Enter}");
     await screen.findByRole("heading", { name: "Pat Quinn" });
-    await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 stamp" }));
     expect(await screen.findByText(/Pat already got stamps for this visit/)).toBeTruthy();
   });
 
@@ -122,7 +122,7 @@ describe("<CounterApp> award flow", () => {
     render(<CounterApp api={api} program={stamps} shopName="Pinecone Coffee" locations={[]} />);
     await userEvent.type(screen.getByLabelText("Phone, last 4 digits or member code"), "6475550199{Enter}");
     expect(await screen.findByText(/New customer/)).toBeTruthy();
-    const consent = screen.getByLabelText(/Send me offers and news from Pinecone Coffee/) as HTMLInputElement;
+    const consent = screen.getByLabelText(/Send me offers from Pinecone Coffee/) as HTMLInputElement;
     expect(consent.checked).toBe(false);
     await userEvent.click(screen.getByRole("button", { name: "Add and award" }));
     await waitFor(() => expect(api.award).toHaveBeenCalled());

@@ -7,10 +7,10 @@
  * After a successful add the button collapses to a quiet "In Apple Wallet" line. The web preview has no
  * wallet (platform null), so nothing renders there.
  */
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useSession } from "../../state/session";
-import { useTheme } from "../../theme";
-import { Button, Check, Text, Wallet, haptic, useToast } from "../../ui";
+import { ui, useTheme } from "../../theme";
+import { Check, Text, WalletPassGlyph, haptic, useToast } from "../../ui";
 import { useAddToWallet } from "./walletPass";
 import { useEffect } from "react";
 
@@ -36,12 +36,14 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
     );
   }
 
+  // Canvas Card artboard: a 54 pt black capsule, the wallet glyph, the platform's official wording.
   return (
-    <Button
-      size={size}
-      fullWidth
-      iconStart={Wallet}
-      loading={busy}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={buttonText}
+      accessibilityHint="Opens your phone's wallet"
+      accessibilityState={{ busy }}
+      disabled={busy}
       onPress={async () => {
         const r = await add();
         if (r === "opened") {
@@ -49,13 +51,17 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
           updatePrefs({ inWallet: { ...prefs.inWallet, [platform]: true } });
         }
       }}
-      accessibilityHint="Opens your phone's wallet"
+      style={({ pressed }) => [styles.btn, { height: size === "md" ? 48 : 54, backgroundColor: c.fg, opacity: pressed || busy ? 0.85 : 1 }]}
     >
-      {buttonText}
-    </Button>
+      {busy ? <ActivityIndicator color={c.bg} /> : <WalletPassGlyph size={22} color={c.bg} />}
+      <Text style={ui(16, 600, 20)} rawColor={c.bg}>
+        {buttonText}
+      </Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  btn: { borderRadius: 999, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   inWallet: { flexDirection: "row", gap: 6, justifyContent: "center", alignItems: "center", minHeight: 44 },
 });

@@ -2,6 +2,7 @@ import { layout, radii, shadows, springs } from "@ll/design-tokens";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
+import { shadow } from "./shadow";
 
 export interface DetentSheetProps {
   /** Visible heights in px, ascending: e.g. [peek, full]. */
@@ -18,6 +19,8 @@ export interface DetentSheetProps {
   accessibilityLabel?: string;
   /** Drawn on top of everything, top-right (the close button). */
   corner?: ReactNode;
+  /** Pinned to the bottom of the visible sheet (canvas: "show my card to redeem", 30 pt above the edge). */
+  footer?: ReactNode;
 }
 
 /**
@@ -25,8 +28,8 @@ export interface DetentSheetProps {
  * + PanResponder, 240 ms spring (foundations § Motion), radius 24, the float
  * shadow. Drag the header; the grabber is also a button that cycles detents.
  */
-export function DetentSheet({ detents, index, onIndexChange, containerHeight, header, children, onDismiss, accessibilityLabel = "Shop", corner }: DetentSheetProps) {
-  const { c } = useTheme();
+export function DetentSheet({ detents, index, onIndexChange, containerHeight, header, children, onDismiss, accessibilityLabel = "Shop", corner, footer }: DetentSheetProps) {
+  const { c, isDark } = useTheme();
   const maxH = detents[detents.length - 1] ?? 400;
   const offsetFor = (i: number) => maxH - (detents[Math.max(0, Math.min(detents.length - 1, i))] ?? 0);
   const y = useRef(new Animated.Value(maxH)).current;
@@ -75,7 +78,7 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
   );
 
   return (
-    <Animated.View style={[styles.sheet, { height: Math.min(maxH, containerHeight), backgroundColor: c.bg, transform: [{ translateY: y }] }, shadows.float.native]}>
+    <Animated.View style={[styles.sheet, { height: Math.min(maxH, containerHeight), backgroundColor: c.bg, transform: [{ translateY: y }] }, shadow("0 -4px 24px rgba(0,0,0,.08)", shadows.float.native)]}>
       <View {...pan.panHandlers}>
         <Pressable
           accessibilityRole="adjustable"
@@ -85,19 +88,27 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
           onPress={() => onIndexChange((index + 1) % detents.length)}
           style={styles.grabberHit}
         >
-          <View style={[styles.grabber, { backgroundColor: c.bgMuted }]} />
+          <View style={[styles.grabber, { backgroundColor: isDark ? c.lineStrong : "#E0E0DE" }]} />
         </Pressable>
         {header}
       </View>
       <View style={{ flex: 1 }}>{children}</View>
       {corner ? <View style={styles.corner}>{corner}</View> : null}
+      {footer ? (
+        // Pinned to the visible bottom edge: the sheet is translated down by (maxH - visible), so lift it by that much.
+        <Animated.View style={[styles.footer, { transform: [{ translateY: Animated.multiply(y, -1) }] }]} pointerEvents="box-none">
+          {footer}
+        </Animated.View>
+      ) : null}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, overflow: "hidden" },
-  corner: { position: "absolute", top: 10, right: 12 },
-  grabberHit: { alignItems: "center", justifyContent: "center", height: 22 },
+  corner: { position: "absolute", top: 33, right: 20 },
+  footer: { position: "absolute", left: 20, right: 20, bottom: 30 },
+  // Canvas: 10 pt above the grabber, 18 pt under it.
+  grabberHit: { alignItems: "center", justifyContent: "flex-start", paddingTop: 10, height: 33 },
   grabber: { width: layout.grabberWidth, height: layout.grabberHeight, borderRadius: 3 },
 });

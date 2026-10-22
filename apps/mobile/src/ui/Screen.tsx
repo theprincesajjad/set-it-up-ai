@@ -8,10 +8,15 @@ import { IconButton } from "./IconButton";
 import { ChevronLeft } from "./icons";
 import { Text } from "./Text";
 
-/** Height the floating capsule tab bar takes from the bottom of a tab screen (bar + gap + safe area). */
-export function useTabBarSpace(): number {
+/** Distance from the screen bottom to the tab bar (canvas: 26 pt; never into the home indicator). */
+export function useTabBarBottom(): number {
   const insets = useSafeAreaInsets();
-  return layout.tabBar + 12 + Math.max(insets.bottom, 12);
+  return Math.max(26, insets.bottom - 8);
+}
+
+/** Height the floating capsule tab bar takes from the bottom of a tab screen (bar + its offset + a gap). */
+export function useTabBarSpace(): number {
+  return layout.tabBar + useTabBarBottom() + 12;
 }
 
 export interface ScreenProps {

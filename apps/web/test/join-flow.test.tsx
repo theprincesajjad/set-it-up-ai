@@ -39,7 +39,7 @@ function makeDeps(over: Partial<JoinDeps> = {}): JoinDeps {
   };
 }
 
-const CONSENT = "Send me offers and news from Pinecone Coffee Co. by text and email. I can unsubscribe anytime.";
+const CONSENT = "Send me offers from Pinecone Coffee Co. by text or email. Optional. Unsubscribe any time.";
 
 async function enterPhone(digits = "4165550123") {
   fireEvent.change(screen.getByLabelText("Mobile number"), { target: { value: digits } });
@@ -52,8 +52,11 @@ describe("<JoinFlow> (counter QR join)", () => {
   it("phone → code (dev autofill) → name + unticked consent → join with QR + referral", async () => {
     const deps = makeDeps();
     render(<JoinFlow info={info} deps={deps} referralCode="REF12345" devAutofill />);
-    expect(screen.getByRole("heading", { name: "join in 30 seconds" })).toBeTruthy();
-    expect(screen.getByText("Join and get 1 free stamp")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeTruthy();
+    expect(screen.getByText("No app needed.")).toBeTruthy();
+    // CASL: the canvas wording, optional, never pre-ticked, offered before the code is sent.
+    const consent = screen.getByLabelText(CONSENT) as HTMLInputElement;
+    expect(consent.checked).toBe(false);
 
     await enterPhone();
     expect(deps.joinStart).toHaveBeenCalledWith("RONCY01", { phone: "+14165550123" });
@@ -66,9 +69,6 @@ describe("<JoinFlow> (counter QR join)", () => {
     });
     expect(deps.verifyOtp).toHaveBeenCalledWith({ phone: "+14165550123", code: "123456" });
 
-    // CASL: exact ux-copy wording, never pre-ticked.
-    const consent = screen.getByLabelText(CONSENT) as HTMLInputElement;
-    expect(consent.checked).toBe(false);
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Alex" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
@@ -83,12 +83,12 @@ describe("<JoinFlow> (counter QR join)", () => {
   it("sends the exact consent text only when ticked", async () => {
     const deps = makeDeps();
     render(<JoinFlow info={info} deps={deps} devAutofill />);
+    fireEvent.click(screen.getByLabelText(CONSENT));
     await enterPhone();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Sam" } });
-    fireEvent.click(screen.getByLabelText(CONSENT));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
     });

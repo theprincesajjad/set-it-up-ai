@@ -25,9 +25,9 @@ export default function SelectCounter() {
   const detail = useQuery({ queryKey: ["counter", "select", merchantId ?? ""], queryFn: () => api.merchant.detail(merchantId!), enabled: !!merchantId });
   const locations = (detail.data?.locations ?? []).filter((l) => l.active);
 
-  const start = (locationId: string, locationName: string) => {
+  const start = (locationId: string, locationName: string, locationAddress: string | null) => {
     const me = merchants.find((m) => m.merchantId === merchantId);
-    setConfig({ locationId, locationName });
+    setConfig({ locationId, locationName, locationAddress });
     if (config.sharedDevice) {
       setDeviceStaff(null);
       router.replace("/counter/pin");
@@ -83,7 +83,7 @@ export default function SelectCounter() {
               ) : (
                 <Card padded={false} style={{ paddingHorizontal: 16 }}>
                   {locations.map((l, i) => (
-                    <ListRow key={l.id} divider={i < locations.length - 1} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} chevron onPress={() => start(l.id, l.name)} />
+                    <ListRow key={l.id} divider={i < locations.length - 1} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} chevron onPress={() => start(l.id, l.name, l.address ?? null)} />
                   ))}
                 </Card>
               )}

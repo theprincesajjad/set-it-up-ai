@@ -33,6 +33,8 @@ export interface ProgramForCounter {
   pointsPerDollar: number;
   pointsPerVisit: number;
   terminology: string;
+  /** Stamp programs: stamps per card (the "7 / 10" goal). */
+  stampGoal?: number;
 }
 
 /** Estimated earn for the button label; the server's breakdown is the truth. */
@@ -44,7 +46,7 @@ export function estimateEarn(p: ProgramForCounter, amountCents: number): number 
 /** `quantity` (stamp / visit programs): +1/+2/+3 chips award quantity × pointsPerVisit in one tap. */
 export function awardLabel(p: ProgramForCounter, amountCents: number, quantity = 1): string {
   const n = p.pointsPerVisit * Math.max(1, quantity);
-  if (p.earnType === "stamps") return n > 1 ? `Add ${n} stamps` : "Add stamp";
+  if (p.earnType === "stamps") return n > 1 ? `Add ${n} stamps` : "Add 1 stamp";
   if (p.earnType === "per_visit") return quantity > 1 ? `Add ${quantity} visits (+${n} pts)` : `Add visit (+${n} pts)`;
   return `Award ${estimateEarn(p, amountCents)} pts`;
 }

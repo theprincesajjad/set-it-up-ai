@@ -38,9 +38,9 @@ import { onColor, shopInitials } from "@/lib/shopAvatar";
  * Shop avatar: round logo, or initials on the shop's own brandColor (neutral grey without one, or
  * black for `tone="solid"`). Falls back to initials when the logo fails to load. Never a blank square.
  */
-export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl" | "brandColor">; size?: 24 | 32 | 40 | 44 | 48 | 56 | 64 | 72; className?: string; tone?: "tint" | "solid" }) {
+export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl" | "brandColor">; size?: 24 | 32 | 40 | 44 | 48 | 52 | 56 | 64 | 72; className?: string; tone?: "tint" | "solid" }) {
   const [failed, setFailed] = useState(false);
-  const px = { 24: "size-6 text-[9px]", 32: "size-8 text-[11px]", 40: "size-10 text-meta-strong", 44: "size-11 text-meta-strong", 48: "size-12 text-body-strong", 56: "size-14 text-headline", 64: "size-16 text-title", 72: "size-[72px] text-title" }[size];
+  const px = { 24: "size-6 text-[9px]", 32: "size-8 text-[11px]", 40: "size-10 text-meta-strong", 44: "size-11 text-meta-strong", 48: "size-12 text-body-strong", 52: "size-[52px] text-[18px]", 56: "size-14 text-headline", 64: "size-16 text-title", 72: "size-[72px] text-title" }[size];
   if (shop.logoUrl && !failed)
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={shop.logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("shrink-0 rounded-full bg-bg-subtle object-cover", px, className)} />;

@@ -19,6 +19,8 @@ export interface CounterConfig {
   merchantName: string | null;
   locationId: string | null;
   locationName: string | null;
+  /** Street address of the location ("412 Roncesvalles Ave"), shown under the shop name. */
+  locationAddress?: string | null;
   /** Shared shop device: staff switch with a PIN, exit needs a manager PIN. */
   sharedDevice: boolean;
   kiosk: boolean;

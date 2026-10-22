@@ -153,7 +153,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
       };
     });
     const { width } = m.getContainer().getBoundingClientRect();
-    setLayout(pinPlan(pts, { chrome, labelAvoid: [{ x1: width - 4, y1: -1e4, x2: width + 1e4, y2: 1e4 }] }));
+    setLayout(pinPlan(pts, { chrome, labelAvoid: [{ x1: width - 4, y1: -1e4, x2: width + 1e4, y2: 1e4 }, { x1: -1e4, y1: -1e4, x2: 4, y2: 1e4 }] }));
   };
   useEffect(() => {
     if (ready) plan.current();
@@ -227,7 +227,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
             </Pressable>
           ) : (
             <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
-              <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!layout && !layout.labeled.has(s.merchant.id)} />
+              <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!layout && !layout.labeled.has(s.merchant.id)} side={layout?.left.has(s.merchant.id) ? "left" : "right"} />
             </Pressable>
           ),
           el,

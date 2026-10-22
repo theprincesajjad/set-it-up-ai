@@ -2,13 +2,15 @@
 import { radii, touchTargets } from "@ll/design-tokens";
 import type { staffApi } from "@ll/shared";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { formatMoney, formatPts, lockedRewardCopy, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { hairline } from "../../ui/shadow";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatMoney, formatNumber, formatPts, initials, lockedRewardCopy, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
 import { formatTime, rewardInSentence } from "../../lib/format";
 import { maskPhone } from "../../lib/phone";
 import type { QueueSnapshot } from "../../lib/offlineQueue";
 import type { ActiveStaff, RecentAward } from "../../state/counter";
-import { useTheme } from "../../theme";
+import { disp, ui, useTheme } from "../../theme";
 import {
   Appear,
   Avatar,
@@ -20,6 +22,8 @@ import {
   SuccessCheck,
   Banner,
   Button,
+  ChevronDownGlyph,
+  CloseGlyph,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -34,26 +38,36 @@ import {
 } from "../../ui";
 import type { CounterCustomer } from "../../lib/award";
 
-export function CounterHeader({ title, staff, onStaff, onMenu, canSwitch }: { title: string; staff: ActiveStaff | null; onStaff: () => void; onMenu: () => void; canSwitch: boolean }) {
+/**
+ * Counter header (canvas Counter.dc.html): the shop in Bricolage 800 17 over "counter · <location>", and the
+ * staff capsule (28 pt initials, first name, ▾) that opens the counter menu (today, queue, settings, switch).
+ */
+export function CounterHeader({ title, subtitle, staff, onMenu }: { title: string; subtitle?: string | null; staff: ActiveStaff | null; onStaff?: () => void; onMenu: () => void; canSwitch?: boolean }) {
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.header, { borderBottomColor: c.line }]}>
-      <Text variant="headline" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
-        {title}
-      </Text>
+    <View style={[styles.header, { borderBottomColor: c.line, paddingTop: Math.max(7, 54 - insets.top) }]}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={disp(17, 800, 21)} numberOfLines={1} accessibilityRole="header">
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[ui(12, 400, 16), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
       {staff ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={canSwitch ? `Signed in staff: ${staff.name ?? "Staff"}. Switch staff` : `Signed in staff: ${staff.name ?? "Staff"}`}
-          onPress={canSwitch ? onStaff : undefined}
-          style={[styles.staffChip, { backgroundColor: c.bgSubtle }]}
-        >
-          <Avatar name={staff.name} id={staff.userId} size={32} />
-          <Text variant="bodyStrong">{staff.name?.split(" ")[0] ?? "Staff"}</Text>
-          {canSwitch ? <ChevronDown size={18} color={c.fgMuted} /> : null}
+        <Pressable accessibilityRole="button" accessibilityLabel={`More. Signed in as ${staff.name ?? "staff"}`} onPress={onMenu} style={({ pressed }) => [styles.staffChip, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.8 : 1 }]}>
+          <View style={[styles.staffAv, { backgroundColor: c.bg }]}>
+            <Text style={ui(11, 600, 14)}>{initials(staff.name).toLowerCase()}</Text>
+          </View>
+          <Text style={ui(14, 500, 18)}>{staff.name?.split(" ")[0] ?? "Staff"}</Text>
+          <ChevronDownGlyph size={12} strokeWidth={2.4} color={c.fg} />
         </Pressable>
-      ) : null}
-      <IconButton icon={Ellipsis} label="More" variant="secondary" onPress={onMenu} />
+      ) : (
+        <IconButton icon={Ellipsis} label="More" variant="secondary" size={36} onPress={onMenu} />
+      )}
     </View>
   );
 }
@@ -81,21 +95,32 @@ export function EntryDisplay({ text, placeholder, error }: { text: string; place
   );
 }
 
-export function CustomerCard({ customer, program, vertical, onRedeem, onCode, cooldown }: { customer: CounterCustomer; program: CounterProgram | null; vertical: string; onRedeem?: () => void; onCode?: () => void; cooldown?: string | null }) {
+const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+
+/**
+ * Member found (canvas Counter.dc.html): 48 pt initials, name 18/600, masked phone · nth visit, a clear
+ * button; then the balance as one 64 pt tabular number ("7 / 10" with the goal in grey), what's left, and
+ * the stamp row (accent = earned, grey rings = to go).
+ */
+export function CustomerCard({ customer, program, onCode, onClear, cooldown }: { customer: CounterCustomer; program: CounterProgram | null; vertical?: string; onRedeem?: () => void; onCode?: () => void; onClear?: () => void; cooldown?: string | null }) {
   const { c } = useTheme();
+  const clear = onClear ? (
+    <Pressable accessibilityRole="button" accessibilityLabel="Clear customer" onPress={onClear} style={[styles.clear, { backgroundColor: c.bgSubtle }]}>
+      <CloseGlyph size={16} color={c.fg} />
+    </Pressable>
+  ) : null;
   if (customer.kind === "new") {
     return (
       <View style={{ gap: 8 }}>
         <View style={styles.row}>
-          <View style={[styles.newIcon, { backgroundColor: c.bgSubtle }]}>
-            <UserPlus size={24} color={c.fg} strokeWidth={1.75} />
+          <View style={[styles.av48, { backgroundColor: c.bgMuted }]}>
+            <UserPlus size={22} color={c.fg} strokeWidth={1.75} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="title">New customer</Text>
-            <Text variant="body" color="fgMuted" tabular>
-              {`•• ${customer.digits.slice(-4)}`}
-            </Text>
+            <Text style={ui(18, 600, 23)}>New customer</Text>
+            <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>{`•• ${customer.digits.slice(-4)}`}</Text>
           </View>
+          {clear}
         </View>
         <Text variant="meta" color="fgMuted">
           They'll get a welcome text with their card and a question about offers.
@@ -106,60 +131,119 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
   if (customer.kind === "offline") {
     return (
       <View style={styles.row}>
-        {/* No name offline: a phone glyph, not initials of "…1004" (polish-audit C17). */}
-        <View style={[styles.newIcon, { backgroundColor: c.bgMuted }]}>
-          <Phone size={24} color={c.fg} strokeWidth={1.75} />
+        {/* No name offline: a phone glyph, not initials of "…1004". */}
+        <View style={[styles.av48, { backgroundColor: c.bgMuted }]}>
+          <Phone size={22} color={c.fg} strokeWidth={1.75} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text variant="title" tabular>{customer.label}</Text>
-          <Text variant="meta" color="fgMuted">
+          <Text style={[ui(18, 600, 23), { fontVariant: ["tabular-nums"] }]}>{customer.label}</Text>
+          <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
             Balance updates when you're back online
           </Text>
         </View>
+        {clear}
       </View>
     );
   }
   const m = customer.member;
   const ready = m.rewardsAffordable[0];
+  const stamps = program?.earnType === "stamps" && program.stampGoal > 0;
+  const goal = stamps ? program!.stampGoal : 0;
+  const shown = stamps ? Math.min(m.balance, goal) : m.balance;
+  const toGo = m.nextReward ? m.nextReward.pointsNeeded : null;
+  const line = ready
+    ? `${m.terminology} · ${rewardInSentence(ready.name)} ready`
+    : toGo != null && m.nextReward
+      ? `${m.terminology} · ${toGo} to ${/^free /i.test(m.nextReward.name) ? `a ${rewardInSentence(m.nextReward.name)}` : m.nextReward.name}`
+      : m.terminology;
   return (
-    <View style={{ gap: 12 }}>
+    <View>
       <View style={styles.row}>
-        <Avatar name={m.name} id={m.memberId} size={56} />
-        <View style={{ flex: 1 }}>
-          <Text variant="title">{shortName(m.name)}</Text>
-          <Text variant="body" color="fgMuted" tabular>
-            {m.maskedPhone ? maskPhone(m.maskedPhone) : m.memberCode}
+        <View style={[styles.av48, { backgroundColor: c.bgMuted }]}>
+          <Text style={ui(15, 600, 19)}>{initials(m.name).toLowerCase()}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={ui(18, 600, 23)} numberOfLines={1}>
+            {m.name ?? "Customer"}
+          </Text>
+          <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted} numberOfLines={1}>
+            {[m.maskedPhone ? maskPhone(m.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2") : m.memberCode, `${ORD(m.visitCount + 1)} visit`].join(" · ")}
           </Text>
         </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text variant="displayNumber" tabular style={{ fontSize: 32, lineHeight: 36 }}>
-            {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance} / ${program.stampGoal}` : formatPts(m.balance, m.terminology).split(" ")[0]}
-          </Text>
-          <Text variant="meta" color="fgMuted">
-            {m.terminology}
-          </Text>
-        </View>
+        {clear}
       </View>
-      {m.vip ? <Badge tone="neutral">{m.vip.name}</Badge> : null}
-      {program?.earnType === "stamps" && program.stampGoal > 0 ? <StampCard count={m.balance} goal={program.stampGoal} vertical={vertical} compact /> : null}
-      {ready ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Reward ready: ${ready.name}. Redeem`} onPress={onRedeem} style={({ pressed }) => [styles.ready, { borderColor: c.line, backgroundColor: pressed ? c.bgSubtle : c.bg }]}>
-          <Gift size={22} color={c.accent} strokeWidth={2} />
-          <Text variant="headline" color="accentText" style={{ flex: 1 }}>
-            {`Reward ready: ${rewardInSentence(ready.name)}`}
+      {m.vip ? <View style={{ marginTop: 10 }}><Badge tone="neutral">{m.vip.name}</Badge></View> : null}
+
+      <View style={{ marginTop: 28, alignItems: "center" }} accessible accessibilityLabel={`${shown}${stamps ? ` of ${goal}` : ""} ${m.terminology}. ${line}`}>
+        <Text style={[disp(64, 800, 64, -0.02), { fontVariant: ["tabular-nums"] }]} maxFontSizeMultiplier={1.2}>
+          {formatNumber(shown)}
+          <Text style={disp(32, 800, 40, -0.02)} rawColor={c.fgSubtle}>
+            {stamps ? ` / ${goal}` : ` ${unitShort(m.terminology, m.balance)}`}
           </Text>
-          <ChevronRight size={20} color={c.fgMuted} />
-        </Pressable>
-      ) : m.nextReward ? (
-        <Text variant="meta" color="fgMuted">{`${formatPts(m.nextReward.pointsNeeded, m.terminology)} to ${m.nextReward.name}`}</Text>
-      ) : null}
+        </Text>
+        <Text style={[ui(14, 400, 18), { marginTop: 8 }]} rawColor={ready ? c.accentText : c.fgMuted}>
+          {line}
+        </Text>
+        {stamps ? (
+          <View style={styles.stampRow}>
+            {Array.from({ length: goal }, (_, i) => (
+              <View key={i} style={[styles.stamp, i < shown ? { backgroundColor: c.accent } : { borderWidth: 1.5, borderColor: c.lineStrong }]} />
+            ))}
+          </View>
+        ) : null}
+      </View>
       {m.openRedemptionCount > 0 ? (
-        <Banner variant="info" actionLabel={onCode ? "Enter code" : undefined} onAction={onCode}>
-          They have a reward code from the app.
-        </Banner>
+        <View style={{ marginTop: 20 }}>
+          <Banner variant="info" actionLabel={onCode ? "Enter code" : undefined} onAction={onCode}>
+            They have a reward code from the app.
+          </Banner>
+        </View>
       ) : null}
-      {cooldown ? <Banner variant="warning">{cooldown}</Banner> : null}
+      {cooldown ? <View style={{ marginTop: 12 }}><Banner variant="warning">{cooldown}</Banner></View> : null}
     </View>
+  );
+}
+
+function unitShort(term: string, n: number): string {
+  return formatPts(n, term).replace(/^[\d,]+ /, "");
+}
+
+/** +1 / +2 / +3 (canvas): grey 44 pt capsules in Bricolage 700 16, black when picked. */
+export function QuantityChips({ values, value, onChange, unit }: { values: number[]; value: number; onChange: (q: number) => void; unit: string }) {
+  const { c } = useTheme();
+  return (
+    <View style={styles.qtyRow} accessibilityRole="radiogroup">
+      {values.map((q) => {
+        const on = q === value;
+        return (
+          <Pressable key={q} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`+${q}`} accessibilityHint={`${q} ${unit} for this visit`} onPress={() => onChange(q)} style={({ pressed }) => [styles.qty, { backgroundColor: on ? c.fg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}>
+            <Text style={disp(16, 700, 20)} rawColor={on ? c.bg : c.fg}>{`+${q}`}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** The 72 pt black award button (canvas: radius 20, Bricolage 800 22). */
+export function AwardButton({ label, onPress, loading, disabled }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean }) {
+  const { c } = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, busy: !!loading }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.award, { backgroundColor: disabled ? c.bgMuted : c.fg, opacity: pressed ? 0.9 : 1 }]}>
+      {loading ? <ActivityIndicator color={c.bg} /> : <Text style={disp(22, 800, 26)} rawColor={disabled ? c.fgSubtle : c.bg}>{label}</Text>}
+    </Pressable>
+  );
+}
+
+/** Grey 52 pt secondary counter button ("Redeem · needs 10" disabled, "Enter code"). */
+export function CounterSecondary({ label, onPress, disabled, accessibilityLabel }: { label: string; onPress: () => void; disabled?: boolean; accessibilityLabel?: string }) {
+  const { c } = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondary, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle }]}>
+      <Text style={ui(15, 600, 19)} rawColor={disabled ? c.fgSubtle : c.fg} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -447,8 +531,18 @@ export function RewardPicker({
 }
 
 const styles = StyleSheet.create({
-  header: { height: 56, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth },
-  staffChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 4, paddingRight: 10, minHeight: 44, borderRadius: 999 },
+  // Canvas: 54 pt top padding includes the status bar; the screen's safe area provides that part.
+  header: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingTop: 7, paddingBottom: 14, borderBottomWidth: hairline },
+  staffChip: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 4, paddingRight: 6, height: 36, borderRadius: 999 },
+  staffAv: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  clear: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  av48: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  stampRow: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: 6, marginTop: 16 },
+  stamp: { width: 24, height: 24, borderRadius: 12 },
+  qtyRow: { flexDirection: "row", justifyContent: "center", gap: 8 },
+  qty: { height: 44, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  award: { height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  secondary: { flex: 1, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   newIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   ready: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 16, minHeight: touchTargets.counter },

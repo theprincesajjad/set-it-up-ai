@@ -82,3 +82,21 @@ export function typo(name: TextStyleName): TextStyle {
   };
 }
 
+
+/**
+ * Bricolage at an exact canvas size (the artboards set px sizes outside the token scale, e.g. 20 / 32 / 34).
+ * Letter-spacing is in em like the CSS (`-.01em`).
+ */
+export function disp(fontSize: number, weight: 700 | 800 = 800, lineHeight?: number, trackingEm = 0): TextStyle {
+  return {
+    fontFamily: familyForWeight(weight, true),
+    fontSize,
+    lineHeight: lineHeight ?? Math.round(fontSize * 1.2),
+    letterSpacing: trackingEm * fontSize,
+  };
+}
+
+/** System font (SF Pro / Roboto; Inter-like on web) at an exact canvas size. */
+export function ui(fontSize: number, weight: 400 | 500 | 600 | 700 = 400, lineHeight?: number): TextStyle {
+  return { fontSize, fontWeight: toWeight(weight), lineHeight: lineHeight ?? Math.round(fontSize * 1.3) };
+}

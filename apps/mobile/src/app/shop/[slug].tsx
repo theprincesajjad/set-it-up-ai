@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { t } from "../../copy/en-CA";
-import { ShopBody, useShopModel } from "../../features/customer/ShopBody";
+import { ShopBody, ShopCardCta, useShopModel } from "../../features/customer/ShopBody";
 import { useOnline } from "../../state/network";
 import { ErrorState, Screen, SkeletonList } from "../../ui";
 
@@ -24,7 +24,7 @@ export default function ShopDetail() {
     );
   }
   return (
-    <Screen back collapseTitle title={model.shop.data.merchant.name} titleCase="as-is" refreshing={model.shop.isRefetching} onRefresh={model.refetch} contentStyle={{ paddingTop: 8 }}>
+    <Screen back collapseTitle title={model.shop.data.merchant.name} titleCase="as-is" refreshing={model.shop.isRefetching} onRefresh={model.refetch} contentStyle={{ paddingTop: 8, paddingHorizontal: 20 }} footer={model.membership ? <ShopCardCta model={model} /> : undefined}>
       <ShopBody model={model} />
     </Screen>
   );

@@ -5,6 +5,10 @@
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
 import { WalletButtons } from "./WalletButtons";
+import { BRAND } from "@ll/shared";
+import { LogoMark } from "@/components/site/Brand";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { alsoEarning, joinHeadline, joinIntro } from "@/lib/joinCopy";
 import { placeKind } from "@/lib/place";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -14,7 +18,7 @@ import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError, errorMessage } from "@/lib/api/errors";
 import { firstName, formatPoints } from "@/lib/format";
 import { formatE164, toE164, validateNanp, PHONE_ERRORS } from "@/lib/phone";
-import { howYouEarn, welcomeOffer } from "@/lib/program";
+import { howYouEarn } from "@/lib/program";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { ConsentCheckbox } from "@/components/ui/Checkbox";
@@ -73,11 +77,15 @@ export interface JoinFlowProps {
   deps?: JoinDeps;
   appStoreUrl?: string;
   playStoreUrl?: string;
+  /** The shop's street and how many shops take the card there ("Your card works at 16 shops on Roncesvalles"). */
+  street?: { name: string; shopCount: number } | null;
+  /** Nearby shops of other kinds for the "Also earning here…" footer (canvas Join). */
+  alsoHere?: { verticals: string[]; total: number } | null;
 }
 
 const RESEND_SECONDS = 30;
 
-export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofill, networkShops, merchantId, showHeader = true, autoFocus = true, deps = defaultJoinDeps, appStoreUrl, playStoreUrl }: JoinFlowProps) {
+export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofill, merchantId, showHeader = true, autoFocus = true, deps = defaultJoinDeps, appStoreUrl, playStoreUrl, street, alsoHere }: JoinFlowProps) {
   const shop = info.merchant.name;
   const program = info.program;
   const consentText = copy.consent.merchant(shop);
@@ -152,8 +160,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       setNeedsName(!hasName);
       if (hasName) setName(firstName(r.user.name));
       if (!r.created && hasName) {
-        // Returning member: straight to joined (consent can be given later in Settings).
-        await doJoin(false, null, true);
+        // Returning member: straight to joined, with the consent they ticked (or not) on the first step.
+        await doJoin(consent, null, true);
         return;
       }
       setStep("details");
@@ -211,6 +219,63 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
     return <Joined info={info} result={result} name={userName} deps={deps} appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />;
   }
 
+  const consentBox = (
+    <ConsentCheckbox
+      version={copy.consent.merchantVersion}
+      text={consentText}
+      checked={consent}
+      onChange={setConsent}
+      size="sm"
+      // CASL: who is asking and how to stop, shown once they opt in (the label already says "Optional. Unsubscribe any time.").
+      caption={consent ? copy.consent.merchantCaption(shop, info.location.address, info.location.phone ? formatE164(info.location.phone) : "") : undefined}
+    />
+  );
+
+  // The counter-QR join (canvas Join.dc.html): brand row, shop, a lowercase headline, +1 phone, optional consent,
+  // black "Text me a code", the privacy line, and "Also earning here…" pinned to the bottom.
+  if (showHeader && step === "phone") {
+    const also = alsoHere ? alsoEarning(alsoHere.verticals.map((vertical) => ({ vertical })), alsoHere.total) : null;
+    return (
+      <div className="-mx-4 -mt-4 flex min-h-[calc(100dvh-1px)] flex-col px-6 pt-[52px] pb-[30px]">
+        <div className="flex items-center gap-2">
+          <LogoMark size={22} />
+          <span className="display text-[15px] leading-[18px] text-fg">{BRAND.name.toLowerCase()}</span>
+        </div>
+        <div className="mt-11 flex items-center gap-3">
+          <ShopLogo shop={info.merchant} size={52} />
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold leading-5 text-fg">{shop}</p>
+            <p className="truncate text-[13px] italic leading-[17px] text-fg-muted">{[placeKind(info.merchant.vertical), street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}</p>
+          </div>
+        </div>
+        <h1 className="display mt-5 text-[32px] leading-[35px] tracking-[-0.01em] text-fg">{joinHeadline(program, info.merchant.vertical)}</h1>
+        <p className="mt-2.5 text-[15px] leading-[21px] text-fg-muted">{joinIntro(program, info.rewards[0] ?? null, street ?? null)}</p>
+        {banner ? <Banner tone="warning" className="mt-4">{banner}</Banner> : null}
+        <form onSubmit={sendCode} noValidate className="mt-7 flex flex-col">
+          <PhoneField size="lg" autoFocus={autoFocus} value={digits} onChangeDigits={(d) => { setDigits(d); if (error) setError(null); }} error={phoneTried ? error : null} forceValidate={false} />
+          <div className="mt-[18px]">{consentBox}</div>
+          <Button type="submit" size="lg" fullWidth loading={busy} className="mt-6 h-[54px] text-[16px]">
+            {copy.action.textMeCode}
+          </Button>
+        </form>
+        <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-subtle">
+          We only use your number for your card.{" "}
+          <a href="/legal/rewards" className="text-fg-muted underline">Rewards terms</a> · <a href="/legal/privacy" className="text-fg-muted underline">Privacy</a>
+        </p>
+        {also ? (
+          <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-4">
+            <div className="flex shrink-0 gap-0.5">
+              {alsoHere!.verticals.slice(0, 3).map((v, i) => (
+                <CategoryIcon key={i} vertical={v} size={26} />
+              ))}
+            </div>
+            <span className="text-[13px] leading-[17px] text-fg-muted">{also}</span>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {showHeader ? (
@@ -228,14 +293,11 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       {step === "phone" ? (
         <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            {showHeader ? <h1 className="display text-large-title text-fg">join in 30 seconds</h1> : <h2 className="display text-title text-fg">join in 30 seconds</h2>}
-            {program ? (
-              <p className="text-body text-fg-muted">
-                {welcomeOffer(program, networkShops)}
-              </p>
-            ) : null}
+            <h2 className="display text-title text-fg">{joinHeadline(program, info.merchant.vertical)}</h2>
+            <p className="text-body text-fg-muted">{joinIntro(program, info.rewards[0] ?? null, street ?? null)}</p>
           </div>
           <PhoneField autoFocus={autoFocus} value={digits} onChangeDigits={(d) => { setDigits(d); if (error) setError(null); }} error={phoneTried ? error : null} forceValidate={false} />
+          {consentBox}
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {copy.action.textMeCode}
           </Button>
@@ -283,13 +345,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           {needsName ? (
             <TextField label="First name" autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); if (error) setError(null); }} error={error} maxLength={60} autoFocus />
           ) : null}
-          <ConsentCheckbox
-            version={copy.consent.merchantVersion}
-            text={consentText}
-            checked={consent}
-            onChange={setConsent}
-            caption={copy.consent.merchantCaption(shop, info.location.address, info.location.phone ? formatE164(info.location.phone) : "")}
-          />
+          {/* Consent was offered on the first step; visitors who were already signed in skipped it. */}
+          {signedIn ? consentBox : null}
           <Button type="submit" size="lg" fullWidth loading={busy || step === "joining"}>
             {copy.action.join(shop)}
           </Button>

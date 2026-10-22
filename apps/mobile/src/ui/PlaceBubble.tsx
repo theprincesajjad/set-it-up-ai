@@ -1,14 +1,15 @@
-import { shadows, type VerticalCategory } from "@ll/design-tokens";
-import { Image, StyleSheet, View, type TextStyle } from "react-native";
-import { useTheme } from "../theme";
+import { type VerticalCategory } from "@ll/design-tokens";
+import { Image, Platform, StyleSheet, View, type TextStyle } from "react-native";
+import { disp, ui, useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
+import { shadow } from "./shadow";
 import { Text } from "./Text";
 
 export interface PlaceBubbleProps {
   name: string;
   /** The ONE italic grey line under the name. */
   subtitle?: string | null;
-  /** Subtitle means points ("reward ready"): accent text. */
+  /** Subtitle means points ("reward ready"): accent text, upright, semibold. */
   accent?: boolean;
   vertical?: string | null;
   category?: VerticalCategory;
@@ -16,43 +17,56 @@ export interface PlaceBubbleProps {
   selected?: boolean;
   /** Hide the name/subtitle (dense map, far zoom). */
   bare?: boolean;
+  /** Bubble diameter (canvas: 36; selected 46). */
   size?: number;
+  /** Label to the right of the bubble (default) or to its left, right-aligned. */
+  side?: "right" | "left";
 }
 
 /**
- * A place, Corner-style: a round white bubble holding the shop's object (cup,
- * croissant…) or its photo, the name in bold black and one italic grey line.
- * Labels get a halo so they read on the map without a box.
+ * A place, Corner-style (canvas Main.dc.html): a 36 pt white bubble holding the shop's 24 pt object
+ * (cup, croissant…) or its photo, the name lowercase in Bricolage 700 13 and one italic 11 pt grey
+ * line; "reward ready" is accentText, upright, semibold. Labels get a white halo instead of a box.
+ * Selected: 46 pt with a 2.5 pt black ring and a 30 pt object (ShopSheet artboard).
  */
-export function PlaceBubble({ name, subtitle, accent, vertical, category, photoUrl, selected, bare, size = 40 }: PlaceBubbleProps) {
+export function PlaceBubble({ name, subtitle, accent, vertical, category, photoUrl, selected, bare, size = 36, side = "right" }: PlaceBubbleProps) {
   const { c, isDark } = useTheme();
-  const s = selected ? size + 8 : size;
-  // Halo so road labels never read through the name (polish-audit M10); the web preview stacks it in CSS
-  // (theme/webStyles.web.ts) because RN-web emits a single faint shadow.
-  const halo: TextStyle = { textShadowColor: c.bg, textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } };
+  const s = selected ? 46 : size;
+  const img = selected ? 30 : Math.round(size * (24 / 36));
+  // Halo so road labels never read through the name; the web preview stacks it in CSS (theme/webStyles.web.ts).
+  const halo: TextStyle = { textShadowColor: c.bg, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } };
   return (
-    <View style={styles.row} pointerEvents="none">
+    <View style={[styles.row, side === "left" ? { flexDirection: "row-reverse" } : null]} pointerEvents="none">
       <View
         style={[
           styles.bubble,
-          // Dark mode: a hairline ring, or the bubble melts into the dark map (polish-audit M39).
-          { width: s, height: s, borderRadius: s / 2, backgroundColor: c.bg, borderColor: selected ? c.fg : isDark ? c.lineStrong : c.bg, borderWidth: selected ? 2 : isDark ? 1 : 0 },
-          shadows.float.native,
+          { width: s, height: s, borderRadius: s / 2, backgroundColor: c.bg },
+          // Dark mode: a hairline ring, or the bubble melts into the dark map.
+          isDark && !selected ? { borderWidth: 1, borderColor: c.lineStrong } : null,
+          selected
+            ? shadow(`0 0 0 2.5px ${c.fg}, 0 4px 14px rgba(0,0,0,.18)`, { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 6 })
+            : shadow("0 1px 2px rgba(0,0,0,.08), 0 3px 10px rgba(0,0,0,.10)", { shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 3 }),
+          // Native has no spread ring: draw it as a border.
+          selected && !isWebRing ? { borderWidth: 2.5, borderColor: c.fg } : null,
         ]}
       >
         {photoUrl ? (
           <Image source={{ uri: photoUrl }} style={{ width: s - 4, height: s - 4, borderRadius: (s - 4) / 2 }} accessibilityIgnoresInvertColors />
         ) : (
-          <CategoryIcon category={category} vertical={vertical} size={Math.round(s * 0.66)} />
+          <CategoryIcon category={category} vertical={vertical} size={img} />
         )}
       </View>
       {bare ? null : (
-        <View style={styles.label}>
-          <Text variant="placeName" numberOfLines={2} style={[halo, { fontSize: 14, lineHeight: 17, fontWeight: "700" }]}>
-            {name}
+        <View style={[styles.label, side === "left" ? { alignItems: "flex-end" } : null]}>
+          <Text style={[disp(13, 700, 15), halo, side === "left" ? { textAlign: "right" } : null]} numberOfLines={2}>
+            {name.toLowerCase()}
           </Text>
           {subtitle ? (
-            <Text variant="placeSubtitle" color={accent ? "accentText" : "fgMuted"} numberOfLines={1} style={[halo, { fontSize: 12, lineHeight: 15 }, accent ? { fontWeight: "600" } : null]}>
+            <Text
+              style={[ui(11, accent ? 600 : 400, 14), halo, accent ? null : { fontStyle: "italic" }, side === "left" ? { textAlign: "right" } : null]}
+              rawColor={accent ? c.accentText : c.fgMuted}
+              numberOfLines={1}
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -62,8 +76,11 @@ export function PlaceBubble({ name, subtitle, accent, vertical, category, photoU
   );
 }
 
+/** Web draws the selected ring as a box-shadow spread (canvas CSS); native has no spread, so a border. */
+const isWebRing = Platform.OS === "web";
+
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  bubble: { alignItems: "center", justifyContent: "center" },
-  label: { maxWidth: 160 },
+  row: { flexDirection: "row", alignItems: "center", gap: 7 },
+  bubble: { alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  label: { maxWidth: 150 },
 });

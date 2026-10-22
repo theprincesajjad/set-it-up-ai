@@ -83,7 +83,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
           h: labelHeight(s.merchant.name),
         };
       }),
-      { chrome, labelAvoid: [{ x1: size.width - 4, y1: -1e4, x2: size.width + 1e4, y2: 1e4 }] },
+      { chrome, labelAvoid: [{ x1: size.width - 4, y1: -1e4, x2: size.width + 1e4, y2: 1e4 }, { x1: -1e4, y1: -1e4, x2: 4, y2: 1e4 }] },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [withCoords, memberships, selectedId, region, size, JSON.stringify(chrome)]);
@@ -166,10 +166,11 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
             );
           }
           const bare = !layout.labeled.has(s.merchant.id);
+          const side = layout.left.has(s.merchant.id) ? "left" : "right";
           return (
             <Marker
               // tracksViewChanges is off for performance, so a changed look needs a fresh marker.
-              key={`${s.merchant.id}-${selected ? 1 : 0}-${bare ? 1 : 0}`}
+              key={`${s.merchant.id}-${selected ? 1 : 0}-${bare ? 1 : 0}-${side}`}
               coordinate={coordinate}
               onPress={(e) => {
                 e.stopPropagation();
@@ -180,7 +181,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
               zIndex={selected ? 10 : mem ? 2 : 1}
               accessibilityLabel={pinLabel(s, mem)}
             >
-              <ShopPin shop={s} membership={mem} selected={selected} bare={bare} />
+              <ShopPin shop={s} membership={mem} selected={selected} bare={bare} side={side} />
             </Marker>
           );
         })}

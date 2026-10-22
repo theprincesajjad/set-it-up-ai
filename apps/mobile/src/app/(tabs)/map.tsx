@@ -1,7 +1,7 @@
-import { categoryLabels, layout, shadows } from "@ll/design-tokens";
+import { categoryLabels, layout } from "@ll/design-tokens";
 import type { networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
@@ -10,25 +10,29 @@ import { t } from "../../copy/en-CA";
 import { useDeviceLocation } from "../../features/customer/location";
 import { ExploreMap, mapsAvailable, TORONTO, type ExploreMapHandle } from "../../features/customer/MapView";
 import { useProfile, useWallet } from "../../features/customer/queries";
-import { ShopBody, useShopModel } from "../../features/customer/ShopBody";
+import { ShopBody, ShopCardCta, useShopModel } from "../../features/customer/ShopBody";
 import { useUnreadCount } from "../../features/customer/inbox";
 import { useHideTabBar } from "../../features/tabBar";
 import { AUDIENCE_LABELS, byDistance, exploreSections, filterShops, MAP_CATEGORIES, movedEnough, pinSubtitle, stripHeader, type Audience, type MapCategoryId, type PinMembership } from "../../lib/explore";
+import { shortHood } from "../../lib/discover";
 import { formatDistance } from "../../lib/format";
 import { perkHeadline, perkProgress } from "../../lib/perks";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
-import { typo, useTheme } from "../../theme";
+import { disp, typo, useTheme } from "../../theme";
 import {
   Banner,
-  Bell,
+  BellGlyph,
   Button,
   CategoryIcon,
-  Chip,
-  ChevronDown,
+  ChevronDownGlyph,
+  ChevronLeftGlyph,
+  CloseGlyph,
   DetentSheet,
   EmptyState,
+  floatShadow,
+  hairline,
   haptic,
   IconButton,
   List,
@@ -37,25 +41,31 @@ import {
   Map as MapIcon,
   MapPin,
   PerkCard,
+  RecenterGlyph,
   Search,
+  SearchGlyph,
+  shadow,
   Sheet,
   ShopTile,
   SkeletonRows,
   SkeletonShop,
   ErrorState,
   Text,
+  useTabBarBottom,
   useTabBarSpace,
   X,
 } from "../../ui";
 
 type Shop = networkApi.ShopListItemDto;
 
-/** Category rail: object icons with lowercase captions (Corner), right above the tab bar. */
+/**
+ * Category rail (canvas Main.dc.html): 46 pt white circles holding 30 pt objects, 12 pt lowercase Bricolage
+ * captions; the selected one gets a 2 pt black ring and a black caption.
+ */
 function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChange: (c: MapCategoryId) => void; onMap: boolean }) {
   const { c } = useTheme();
-  const halo = onMap ? { textShadowColor: c.bg, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } } : null;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail} accessibilityRole="tablist">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail} accessibilityRole="tablist" style={{ overflow: "visible" }}>
       {MAP_CATEGORIES.map((cat) => {
         const on = cat === value;
         return (
@@ -70,10 +80,20 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
             }}
             style={({ pressed }) => [styles.railItem, { transform: pressed ? [{ scale: 0.94 }] : undefined }]}
           >
-            <View style={[styles.railIcon, on ? { backgroundColor: c.bg, ...shadows.float.native } : null]}>
-              <CategoryIcon category={cat} size={34} />
+            <View
+              style={[
+                styles.railIcon,
+                { backgroundColor: c.bg },
+                on
+                  ? [shadow(`0 0 0 2px ${c.fg}`, {}), Platform.OS === "web" ? null : { borderWidth: 2, borderColor: c.fg }]
+                  : onMap
+                    ? shadow("0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.08)")
+                    : { backgroundColor: c.bgSubtle },
+              ]}
+            >
+              <CategoryIcon category={cat} size={30} />
             </View>
-            <Text variant="categoryLabel" color={on ? "fg" : "fgMuted"} style={halo}>
+            <Text style={disp(12, 700, 15)} rawColor={on ? c.fg : c.fgMuted}>
               {categoryLabels[cat]}
             </Text>
           </Pressable>
@@ -83,12 +103,39 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
   );
 }
 
+/** A white filter capsule over the map (canvas: 36 pt, Bricolage 700 14, float shadow); black when on. */
+function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityLabel }: { label: string; selected: boolean; onPress: () => void; chevron?: boolean; dot?: boolean; float: boolean; accessibilityLabel?: string }) {
+  const { c } = useTheme();
+  const fg = selected ? c.bg : c.fg;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected }}
+      onPress={() => {
+        haptic.select();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.mapChip, { backgroundColor: selected ? c.fg : float ? c.bg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }, float ? floatShadow : null]}
+    >
+      {dot ? <View style={[styles.openDot, { backgroundColor: c.positive }]} /> : null}
+      <Text style={disp(14, 700, 18)} rawColor={fg}>
+        {label}
+      </Text>
+      {chevron ? <ChevronDownGlyph size={12} strokeWidth={2.4} color={fg} /> : null}
+    </Pressable>
+  );
+}
+
 /** Explore is home (foundations § Customer app): full-bleed near-white map, floating chrome, object pins, shop sheet. */
 export default function Explore() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const tabSpace = useTabBarSpace();
+  const tabBarBottom = useTabBarBottom();
+  // The artboard's top chrome sits at y 56 under a 47 pt status bar.
+  const topY = insets.top > 0 ? insets.top + 9 : 56;
   const { prefs, updatePrefs } = useSession();
   const profile = useProfile();
   const wallet = useWallet();
@@ -96,7 +143,11 @@ export default function Explore() {
   const [prompt, setPrompt] = useState(!prefs.locationPrompted);
   const [mapOk, setMapOk] = useState(mapsAvailable());
   const [listMode, setListMode] = useState(false);
-  const [searching, setSearching] = useState(false);
+  const params0 = useLocalSearchParams<{ search?: string }>();
+  const [searching, setSearching] = useState(params0.search === "1");
+  useEffect(() => {
+    if (params0.search === "1") setSearching(true);
+  }, [params0.search]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState<MapCategoryId>("all");
   const [openNow, setOpenNow] = useState(false);
@@ -164,10 +215,15 @@ export default function Explore() {
       setDetent(0);
       const s = visible.find((x) => x.merchant.id === id);
       if (s) haptic.select();
-      if (s?.location?.lat != null && s.location.lng != null) mapRef.current?.focus(s.location.lat, s.location.lng);
     },
     [visible],
   );
+  // Focus after the render that sets the sheet's map padding, so the pin lands in the free area above it.
+  const selLat = sel?.location?.lat;
+  const selLng = sel?.location?.lng;
+  useEffect(() => {
+    if (selLat != null && selLng != null) mapRef.current?.focus(selLat, selLng);
+  }, [sel?.merchant.id, selLat, selLng]);
 
   const pickAudience = () => {
     const order: Audience[] = ["all", "mine", "new"];
@@ -192,16 +248,17 @@ export default function Explore() {
     }
   };
 
+  const float = !listMode && mapOk;
   const filters = (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled">
-      <Chip float={!listMode && mapOk} label={audience === "all" ? "my shops" : AUDIENCE_LABELS[audience]} trailingIcon={ChevronDown} selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={`Show: ${AUDIENCE_LABELS[audience]}`} />
-      <Chip float={!listMode && mapOk} label="open now" selected={openNow} onPress={() => setOpenNow((v) => !v)} />
-      {readySet.size > 0 ? <Chip float={!listMode && mapOk} label="rewards ready" selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled" style={{ overflow: "visible" }}>
+      <MapChip float={float} label={audience === "all" ? "my shops" : AUDIENCE_LABELS[audience]} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={`Show: ${AUDIENCE_LABELS[audience]}`} />
+      <MapChip float={float} label="open now" dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
+      {readySet.size > 0 ? <MapChip float={float} label="rewards ready" selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
     </ScrollView>
   );
 
   const searchField = (
-    <View style={[styles.searchField, { backgroundColor: c.bg }, shadows.float.native]}>
+    <View style={[styles.searchField, { backgroundColor: c.bg }, floatShadow]}>
       <Search size={18} color={c.fgMuted} strokeWidth={2} />
       <TextInput
         autoFocus
@@ -229,21 +286,24 @@ export default function Explore() {
     <View style={styles.topRow}>{searchField}</View>
   ) : (
     <View style={styles.topRow}>
-      <IconButton icon={Search} label="Search shops" variant="float" size={44} onPress={() => setSearching(true)} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Search shops" onPress={() => setSearching(true)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+        <SearchGlyph size={20} color={c.fg} />
+      </Pressable>
       <View style={{ flex: 1 }} />
-      <View style={[styles.group, { backgroundColor: c.bg }, shadows.float.native]}>
+      {listMode || !mapOk ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Show map" disabled={!mapOk} onPress={() => setListMode(false)} style={({ pressed }) => [styles.round, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.6 : mapOk ? 1 : 0.4 }]}>
+          <MapIcon size={20} color={c.fg} strokeWidth={1.9} />
+        </Pressable>
+      ) : null}
+      {/* Grouped capsule (Corner): the neighbourhood ▾ · the bell with an accent dot while something is unread. */}
+      <View style={[styles.group, { backgroundColor: c.bg }, floatShadow]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${placeName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
-          <MapPin size={16} color={c.fg} strokeWidth={2} />
-          <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 168 }}>
-            {(placeName ?? "your street").toLowerCase()}
+          <Text style={[disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
+            {shortHood(placeName) || "your street"}
           </Text>
+          <ChevronDownGlyph size={14} color={c.fg} />
         </Pressable>
         <View style={[styles.groupRule, { backgroundColor: c.line }]} />
-        <Pressable accessibilityRole="button" accessibilityLabel={listMode ? "Show map" : "Show list"} onPress={() => setListMode((v) => !v)} style={({ pressed }) => [styles.groupItem, styles.groupIcon, { opacity: pressed ? 0.6 : 1 }]} disabled={!mapOk}>
-          {listMode || !mapOk ? <MapIcon size={18} color={mapOk ? c.fg : c.fgSubtle} strokeWidth={1.75} /> : <List size={18} color={c.fg} strokeWidth={1.75} />}
-        </Pressable>
-        <View style={[styles.groupRule, { backgroundColor: c.line }]} />
-        {/* The bell (Corner's top-right capsule): inbox, with a dot while something is unread. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
@@ -251,9 +311,9 @@ export default function Explore() {
             haptic.select();
             router.push("/notifications");
           }}
-          style={({ pressed }) => [styles.groupItem, styles.groupIcon, { opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [styles.bell, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <Bell size={18} color={c.fg} strokeWidth={1.75} />
+          <BellGlyph size={20} color={c.fg} />
           {unread > 0 ? <View style={[styles.bellDot, { backgroundColor: c.accent, borderColor: c.bg }]} /> : null}
         </Pressable>
       </View>
@@ -351,6 +411,19 @@ export default function Explore() {
           ))}
         </View>
         {hoods.data?.items.length === 0 ? <Text color="fgMuted">{t("empty.noNeighbourhood.body")}</Text> : null}
+        {mapOk ? (
+          <Button
+            variant="secondary"
+            iconStart={List}
+            accessibilityLabel="Show list"
+            onPress={() => {
+              setHoodOpen(false);
+              setListMode(true);
+            }}
+          >
+            Show as a list
+          </Button>
+        ) : null}
         {loc.status !== "granted" ? (
           <Button
             variant="secondary"
@@ -442,21 +515,25 @@ export default function Explore() {
   }
 
   // ------------------------------------------------------------- map
-  const peekH = sel?.isMember ? 330 : 300;
-  const detents = [peekH, Math.round(areaH - insets.top - 8)];
+  // Canvas ShopSheet: the sheet's top edge sits at y 252 (592 pt tall on an 844 pt phone).
+  const fullH = Math.round(areaH - insets.top - 8);
+  const peekH = Math.min(592, fullH - 120);
+  const detents = [peekH, fullH];
   const located = all.filter((x) => x.location?.lat != null && x.location?.lng != null);
   const centroid = located.length ? { lat: located.reduce((a, x) => a + x.location!.lat!, 0) / located.length, lng: located.reduce((a, x) => a + x.location!.lng!, 0) / located.length } : null;
   const center = origin ?? centroid ?? TORONTO;
   const showSearchArea = !sel && !!mapCenter && movedEnough(mapCenter, origin ?? TORONTO);
-  const railH = 78;
+  // Canvas geometry: rail captions end 31 pt above the tab bar; the recenter circle sits 16 pt above the rail.
+  const railBottom = tabBarBottom + 60 + 31;
+  const railH = 67;
   // Floating chrome is an obstacle for pins too (lib/explore pinPlan): the top controls + filter row,
   // the rail + tab bar (or the shop sheet), and the recenter button.
-  const chromeTop = insets.top + 8 + 44 + 10 + 34 + 8;
-  const bottomChrome = sel ? (detents[detent] ?? peekH) : tabSpace + railH;
+  const chromeTop = topY + 44 + 12 + 36 + 8;
+  const bottomChrome = sel ? (detents[detent] ?? peekH) : railBottom + railH;
   const chrome = [
     { x1: -1e4, y1: -1e4, x2: 1e4, y2: chromeTop },
     { x1: -1e4, y1: areaH - bottomChrome, x2: 1e4, y2: 1e4 },
-    ...(sel ? [] : [{ x1: width - 76, y1: areaH - bottomChrome - 62, x2: 1e4, y2: 1e4 }]),
+    ...(sel ? [] : [{ x1: width - 68, y1: areaH - bottomChrome - 66, x2: 1e4, y2: 1e4 }]),
   ];
 
   return (
@@ -472,13 +549,21 @@ export default function Explore() {
         onRegion={setMapCenter}
         onFail={() => setMapOk(false)}
         chrome={chrome}
-        topInset={Math.max(150, chromeTop + 40)}
+        topInset={sel ? topY + 52 : Math.max(150, chromeTop + 40)}
         bottomInset={sel ? (detents[detent] ?? peekH) + 24 : Math.max(200, bottomChrome + 40)}
       />
 
-      <View style={[styles.top, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+      {sel ? (
+        // Shop sheet up (canvas ShopSheet): the map chrome gives way to one round back button.
+        <View style={[styles.top, { paddingTop: topY, paddingHorizontal: 16 }]} pointerEvents="box-none">
+          <Pressable accessibilityRole="button" accessibilityLabel="Back to map" onPress={() => setSelected(null)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+            <ChevronLeftGlyph size={20} color={c.fg} />
+          </Pressable>
+        </View>
+      ) : null}
+      <View style={[styles.top, { paddingTop: topY }, sel ? { display: "none" } : null]} pointerEvents="box-none">
         {topRow}
-        <View style={{ paddingTop: 10 }}>{filters}</View>
+        <View style={{ paddingTop: 12 }}>{filters}</View>
         {showSearchArea ? (
           <View style={{ alignItems: "center", marginTop: 12 }} pointerEvents="box-none">
             <Pressable
@@ -488,7 +573,7 @@ export default function Explore() {
                 if (mapCenter) setSearchCenter(mapCenter);
                 setMapCenter(null);
               }}
-              style={[styles.searchHere, { backgroundColor: c.fg }, shadows.float.native]}
+              style={[styles.searchHere, { backgroundColor: c.fg }, floatShadow]}
             >
               <Text variant="mapLabel" rawColor={c.bg}>
                 search here
@@ -504,17 +589,18 @@ export default function Explore() {
           </View>
         ) : null}
         {!shops.isLoading && visible.length === 0 ? (
-          <View style={{ marginTop: 12, marginHorizontal: 16, padding: 16, paddingVertical: 4, borderRadius: 16, backgroundColor: c.bg, ...shadows.float.native }}>{empty}</View>
+          <View style={{ marginTop: 12, marginHorizontal: 16, padding: 16, paddingVertical: 4, borderRadius: 16, backgroundColor: c.bg, ...floatShadow }}>{empty}</View>
         ) : null}
       </View>
 
       {!sel ? (
-        // A soft fade (bg → transparent) behind the rail and tab bar so the map never reads through the captions.
-        <Svg pointerEvents="none" style={[styles.fade, { height: tabSpace + railH + 32 }]} width="100%" height={tabSpace + railH + 32}>
+        // White fade behind the rail and tab bar (canvas: 220 pt, map → 92% white at 42% → white at 70%).
+        <Svg pointerEvents="none" style={[styles.fade, { height: 220 + (tabBarBottom - 26) }]} width="100%" height={220 + (tabBarBottom - 26)}>
           <Defs>
             <LinearGradient id="railFade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
-              <Stop offset="0.35" stopColor={c.bg} stopOpacity={0.85} />
+              <Stop offset="0" stopColor={isDark ? c.bg : "#F1F1EF"} stopOpacity={0} />
+              <Stop offset="0.42" stopColor={c.bg} stopOpacity={0.92} />
+              <Stop offset="0.7" stopColor={c.bg} stopOpacity={1} />
               <Stop offset="1" stopColor={c.bg} stopOpacity={1} />
             </LinearGradient>
           </Defs>
@@ -522,10 +608,15 @@ export default function Explore() {
         </Svg>
       ) : null}
       {!sel ? (
-        <View style={[styles.bottom, { bottom: tabSpace }]} pointerEvents="box-none">
+        <View style={[styles.bottom, { bottom: railBottom }]} pointerEvents="box-none">
           <View style={styles.recenterRow} pointerEvents="box-none">
-            <Pressable accessibilityRole="button" accessibilityLabel="Recenter on my location" onPress={recenter} style={({ pressed }) => [styles.recenter, { backgroundColor: c.fg, opacity: pressed ? 0.85 : 1 }, shadows.float.native]}>
-              <LocateFixed size={20} color={c.bg} strokeWidth={2} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Recenter on my location"
+              onPress={recenter}
+              style={({ pressed }) => [styles.recenter, { backgroundColor: c.fg, opacity: pressed ? 0.85 : 1 }, shadow("0 2px 10px rgba(0,0,0,.22)", { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 5 })]}
+            >
+              <RecenterGlyph size={18} color={c.bg} />
             </Pressable>
           </View>
           <CategoryRail value={category} onChange={setCategory} onMap />
@@ -541,9 +632,14 @@ export default function Explore() {
           containerHeight={areaH}
           onDismiss={() => setSelected(null)}
           accessibilityLabel={sel.merchant.name}
-          corner={<IconButton icon={X} label="Close shop" variant="secondary" size={32} onPress={() => setSelected(null)} />}
+          corner={
+            <Pressable accessibilityRole="button" accessibilityLabel="Close shop" onPress={() => setSelected(null)} style={({ pressed }) => [styles.close, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.7 : 1 }]}>
+              <CloseGlyph size={16} color={c.fg} />
+            </Pressable>
+          }
+          footer={<ShopCardCta model={model} />}
         >
-          <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: layout.gutterMobile, paddingTop: 4, paddingBottom: insets.bottom + 24 }}>
+          <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 0, paddingBottom: insets.bottom + (model.membership ? 110 : 24) }}>
             {model.shop.data ? <ShopBody model={model} variant="sheet" peek={detent === 0} /> : model.shop.isError ? <ErrorState message="This shop didn't load." onRetry={() => void model.shop.refetch()} /> : <SkeletonShop />}
           </ScrollView>
         </DetentSheet>
@@ -556,20 +652,24 @@ export default function Explore() {
 const styles = StyleSheet.create({
   top: { position: "absolute", left: 0, right: 0, top: 0 },
   topRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 10, minHeight: 44 },
-  group: { flexDirection: "row", alignItems: "center", height: layout.chrome, borderRadius: 999 },
-  groupItem: { flexDirection: "row", alignItems: "center", gap: 6, height: layout.chrome, paddingHorizontal: 14 },
-  groupRule: { width: StyleSheet.hairlineWidth * 2, height: 20 },
-  groupIcon: { paddingHorizontal: 0, width: 44, justifyContent: "center" },
-  bellDot: { position: "absolute", top: 11, right: 11, width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
+  close: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  group: { flexDirection: "row", alignItems: "center", height: layout.chrome, borderRadius: 999, paddingLeft: 14, paddingRight: 6, gap: 8 },
+  groupItem: { flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome },
+  groupRule: { width: hairline, height: 20, marginHorizontal: 2 },
+  bell: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  bellDot: { position: "absolute", top: 6, right: 7, width: 8, height: 8, borderRadius: 4, borderWidth: 2, boxSizing: "content-box" },
   searchField: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome, borderRadius: 999, paddingLeft: 14, paddingRight: 6 },
-  filters: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
+  filters: { gap: 8, paddingHorizontal: 16 },
+  mapChip: { height: 36, paddingHorizontal: 14, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 6 },
+  openDot: { width: 7, height: 7, borderRadius: 4 },
   searchHere: { height: 40, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   bottom: { position: "absolute", left: 0, right: 0 },
   fade: { position: "absolute", left: 0, right: 0, bottom: 0 },
-  recenterRow: { alignItems: "flex-end", paddingHorizontal: 16, paddingBottom: 6 },
-  recenter: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  rail: { gap: 6, paddingHorizontal: 12, paddingBottom: 6 },
-  railItem: { alignItems: "center", gap: 2, minWidth: 56, paddingTop: 2 },
-  railIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  listHeader: { paddingTop: 24, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  recenterRow: { alignItems: "flex-end", paddingHorizontal: 16, paddingBottom: 16 },
+  recenter: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  rail: { gap: 2, paddingHorizontal: 10 },
+  railItem: { alignItems: "center", gap: 6, width: 56 },
+  railIcon: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
+  listHeader: { paddingTop: 24, paddingBottom: 8, borderBottomWidth: hairline, marginHorizontal: 16 },
 });

@@ -24,11 +24,13 @@ export interface PhoneFieldProps {
   id?: string;
   showCountryPrefix?: boolean;
   onEnter?: () => void;
+  /** "lg": the join page field (canvas Join): 52 px, radius 12, borderless +1 tile, 18 px tabular digits, ink outline. */
+  size?: "md" | "lg";
 }
 
 /** NANP phone input: displays (416) 555-0123, emits digits and E.164 (system.md "PhoneField"). */
 export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function PhoneField(
-  { label = "Mobile number", hint, value, defaultValue = "", onChangeDigits, onChangeE164, error, forceValidate, autoFocus, disabled, name, id: idProp, showCountryPrefix = true, onEnter },
+  { label = "Mobile number", hint, value, defaultValue = "", onChangeDigits, onChangeE164, error, forceValidate, autoFocus, disabled, name, id: idProp, showCountryPrefix = true, onEnter, size = "md" },
   ref,
 ) {
   const autoId = useId();
@@ -50,10 +52,10 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
   }
 
   return (
-    <FieldShell id={id} label={label} hint={hint} error={message}>
+    <FieldShell id={id} label={label} hint={hint} error={message} gapClass={size === "lg" ? "gap-2" : undefined}>
       <div className="flex items-stretch gap-2">
         {showCountryPrefix ? (
-          <span aria-hidden className="inline-flex h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body text-fg-muted">
+          <span aria-hidden className={size === "lg" ? "inline-flex h-[52px] items-center rounded-[12px] bg-bg-subtle px-3.5 text-[16px] text-fg-muted" : "inline-flex h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body text-fg-muted"}>
             +1
           </span>
         ) : null}
@@ -78,7 +80,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
           disabled={disabled}
           aria-invalid={message ? true : undefined}
           aria-describedby={describedBy(id, message, hint)}
-          className={cn(inputBase, "h-12")}
+          className={size === "lg" ? cn(inputBase, "h-[52px] min-w-0 flex-1 rounded-[12px] border-[1.5px] border-fg text-[18px] tabular-nums hover:border-fg focus:ring-0") : cn(inputBase, "h-12")}
         />
       </div>
     </FieldShell>

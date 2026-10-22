@@ -110,7 +110,7 @@ await step("setup", async () => {
   // A live Roncesvalles Passport with two visits already made, so the campaign page has progress.
   const hood = (await call("GET", "/v1/network/neighbourhoods")).items.find((h) => h.slug === "roncesvalles");
   const day = 86_400_000;
-  const camp = await call("POST", "/v1/campaigns", { neighbourhoodId: hood.id, name: "Roncesvalles Passport", kind: "passport", startsAt: new Date(Date.now() - day).toISOString(), endsAt: new Date(Date.now() + 9 * day).toISOString(), description: "Visit five shops on the strip this fall.", goalVisits: 5, bonusPoints: 50, prize: "Win a basket from 12 Roncesvalles shops" }, admin);
+  const camp = await call("POST", "/v1/campaigns", { neighbourhoodId: hood.id, name: "Roncesvalles Passport", kind: "passport", startsAt: new Date(Date.now() - day).toISOString(), endsAt: new Date(Date.now() + 9 * day).toISOString(), description: "Visit five shops on the strip this fall.", goalVisits: 5, bonusPoints: 50, prize: "Win the street’s prize basket" }, admin);
   const slugs = ["nonnas-table", "village-green-grocer", "rise-yoga-studio", "hearth-and-crumb", "dog-eared-books"];
   const owners = {};
   for (const slug of slugs) {
@@ -155,7 +155,7 @@ await step("customer-sign-in", async () => {
   custState = await customer.context.storageState();
 });
 
-const walletReady = (page) => page.getByText(/^(rewards ready|earning|your shops)$/).first().waitFor();
+const walletReady = (page) => page.getByText(/^(ready now|earning|your shops)$/).first().waitFor();
 
 await step("wallet", async () => {
   await cp.goto(`${WEB}/wallet`);
@@ -211,14 +211,20 @@ await step("explore-map", async () => {
   await shot(cp, "07d-explore-category", { settle: 1200 });
   await cp.getByRole("tab", { name: "all", exact: true }).click();
   await cp.getByRole("button", { name: /^Hearth & Crumb Bakery/ }).first().click();
-  await shot(cp, "07b-explore-shop-sheet", { settle: 1400 });
+  await shot(cp, "07f-explore-shop-sheet-join", { settle: 1400 });
   // The grabber is the affordance (a button that cycles the sheet's detents).
   await cp.getByRole("slider", { name: "Hearth & Crumb Bakery" }).first().click();
   await shot(cp, "07c-explore-shop-sheet-full", { settle: 1200 });
   await cp.getByRole("button", { name: "Close shop" }).click();
   await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
   await shot(cp, "07e-explore-rewards-ready", { settle: 1400 });
+  // A member's shop with a reward ready (the canvas ShopSheet artboard).
+  await cp.getByRole("button", { name: /^Pinecone Coffee Co\./ }).first().click();
+  await shot(cp, "07b-explore-shop-sheet", { settle: 1400 });
+  await cp.getByRole("button", { name: "Close shop" }).click();
   await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
+  // The list view lives in the neighbourhood sheet now (the capsule is name ▾ · bell, as on the canvas).
+  await cp.getByRole("button", { name: /^Neighbourhood:/ }).click();
   await cp.getByRole("button", { name: "Show list" }).click();
   await shot(cp, "08b-explore-list-toggle", { settle: 1000 });
   await cp.getByRole("button", { name: "Show map" }).click();
@@ -270,7 +276,7 @@ await step("card", async () => {
   const notNow = cp.getByText("Not now", { exact: true });
   if (await notNow.isVisible().catch(() => false)) await notNow.click();
   await cp.getByRole("button", { name: "My card" }).last().click();
-  await cp.getByText("Show this at the counter").first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await cp.getByText("show this at the counter").first().waitFor({ timeout: 10000 }).catch(() => undefined);
   await shot(cp, "13-my-card", { settle: 1200 });
 });
 
@@ -301,6 +307,18 @@ await step("activity", async () => {
   await cp.goto(`${WEB}/activity`);
   await cp.getByText("activity", { exact: true }).first().waitFor();
   await shot(cp, "17-activity", { settle: 1200 });
+  await cp.goto(`${WEB}/history`);
+  await cp.getByText("points history", { exact: true }).first().waitFor();
+  await shot(cp, "17b-points-history", { settle: 1200 });
+});
+
+await step("discover", async () => {
+  await cp.goto(`${WEB}/discover`);
+  await cp.getByText("near you", { exact: true }).first().waitFor({ timeout: 15000 });
+  await shot(cp, "06d-discover", { settle: 1500 });
+  await cp.mouse.move(195, 600);
+  await cp.mouse.wheel(0, 500);
+  await shot(cp, "06e-discover-scrolled", { settle: 800 });
 });
 
 await step("campaign", async () => {
@@ -328,7 +346,7 @@ await step("notifications", async () => {
   await cp.waitForTimeout(1500);
   await shot(cp, "22a-explore-bell", { settle: 300 });
   await cp.getByRole("button", { name: /^Notifications/ }).first().click();
-  await cp.getByText("notifications", { exact: true }).first().waitFor();
+  await cp.getByText("activity", { exact: true }).first().waitFor();
   await shot(cp, "22-notifications", { settle: 1500 });
   await cp.goto(`${WEB}/settings/notifications`);
   await cp.getByText("points and rewards", { exact: true }).first().waitFor({ timeout: 10000 }).catch(() => undefined);
@@ -383,7 +401,9 @@ await step("counter-lookup-award", async () => {
   await keypad(sp, CUSTOMER.slice(9));
   await sp.getByRole("button", { name: /^Add/ }).first().waitFor();
   await shot(sp, "33-counter-member-found", { settle: 900 });
-  await sp.getByRole("button", { name: /Add 2 stamps/ }).first().click();
+  await sp.getByRole("radio", { name: "+2" }).first().click();
+  await shot(sp, "33b-counter-plus-two", { settle: 300 });
+  await sp.getByRole("button", { name: /^Add 2 stamps/ }).first().click();
   await sp.getByText(/^Added 2 stamps/).first().waitFor();
   await shot(sp, "34-counter-award-success-undo", { settle: 700 });
   await sp.getByRole("button", { name: /^Undo/ }).first().click();
@@ -427,7 +447,7 @@ await step("counter-redeem-code", async () => {
 });
 
 await step("counter-today", async () => {
-  await sp.getByRole("button", { name: "More", exact: true }).click();
+  await sp.getByRole("button", { name: /^More/ }).click();
   await shot(sp, "38a-counter-menu", { settle: 600 });
   await tap(sp, "Today");
   await sp.getByText("Visits", { exact: true }).first().waitFor();
@@ -454,7 +474,7 @@ await step("counter-offline", async () => {
 });
 
 await step("counter-kiosk", async () => {
-  await sp.getByRole("button", { name: "More", exact: true }).click();
+  await sp.getByRole("button", { name: /^More/ }).click();
   await tap(sp, "Counter settings");
   await sp.getByText("Start kiosk mode").waitFor();
   await shot(sp, "40a-counter-settings", { settle: 600 });

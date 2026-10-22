@@ -8,7 +8,7 @@ import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDi
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError, type ApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
-import { AmountDisplay, CounterHeader, CustomerCard, EntryDisplay, NoticeCard, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
+import { AmountDisplay, AwardButton, CounterHeader, CounterSecondary, CustomerCard, EntryDisplay, NoticeCard, QuantityChips, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
 import { scanBus } from "../../features/scanBus";
 import {
   activeMultiplier,
@@ -64,6 +64,11 @@ export default function Counter() {
   const [undoBusy, setUndoBusy] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [qty, setQty] = useState(1);
+  // Each customer starts at +1.
+  useEffect(() => {
+    if (state.step !== "customer") setQty(1);
+  }, [state.step]);
   const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rewards = useQuery({ queryKey: qk.counterRewards(merchantId), queryFn: () => api.merchant.rewards(merchantId), enabled: !!merchantId, staleTime: 5 * 60_000 });
@@ -413,41 +418,64 @@ export default function Counter() {
       );
     }
     if (state.step === "customer") {
+      const reset = () => {
+        setCategoryId(null);
+        setQty(1);
+        dispatch({ type: "reset" });
+      };
+      const chipsFor = programPaused ? [] : quantityChips(program);
+      const q = chipsFor.length > 0 ? qty : 1;
+      const stamps = program?.earnType === "stamps";
+      // "Add 1 stamp" / "Add 3 stamps" (canvas), visits "Add visit (+30 pts)", per-dollar "Award 24 pts".
+      const mainLabel = program
+        ? stamps && state.customer.kind !== "new"
+          ? awardButtonLabel(program, { points: estimate * q, multiplier, newCustomer: false }).replace(/^Add ([a-z])/i, "Add 1 $1")
+          : awardButtonLabel(program, { points: estimate * q, noEarn, multiplier, newCustomer: state.customer.kind === "new" })
+        : label;
+      const canRedeem = !!member && member.rewardsAffordable.length > 0 && activeRewards.length > 0;
+      const needs = member?.nextReward?.pointsCost ?? program?.stampGoal ?? null;
       return (
-        <View style={{ gap: 16 }}>
-          <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} onCode={() => setCodeOpen(true)} />
+        <View style={{ flexGrow: 1 }}>
+          <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} onCode={() => setCodeOpen(true)} onClear={reset} />
           {state.customer.kind === "new" ? (
-            <View style={[styles.nameField, { borderColor: c.lineStrong, backgroundColor: c.bg }]}>
+            <View style={[styles.nameField, { borderColor: c.lineStrong, backgroundColor: c.bg, marginTop: 16 }]}>
               <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgSubtle} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
             </View>
           ) : null}
           {perDollar && noEarnCategories.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginTop: 16 }}>
               <Chip large label="Front store" selected={!categoryId} onPress={() => setCategoryId(null)} />
               {noEarnCategories.map((cat) => (
                 <Chip key={cat.id} large label={cat.name} selected={categoryId === cat.id} onPress={() => setCategoryId(cat.id)} />
               ))}
             </ScrollView>
           ) : null}
-          {categoryId ? <Banner variant="info">{`${noEarnCategories.find((x) => x.id === categoryId)?.name ?? "This category"} doesn't earn ${program?.terminology ?? "points"}.`}</Banner> : null}
-          {state.error ? <Banner variant="danger">{state.error}</Banner> : null}
-          <Button size="counter" iconStart={Plus} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={() => award(1)}>
-            {label}
-          </Button>
-          <View style={styles.row}>
-            {/* More row (staff-counter.md § 3): +2 / +3 award several items in one tap. */}
-            {!programPaused
-              ? quantityChips(program).map((q) => (
-                  <Chip key={q} large label={`+${q}`} accessibilityLabel={awardButtonLabel(program!, { points: estimate * q, multiplier, newCustomer: state.customer.kind === "new" }).replace("Add and award", `Add and award ${q}`)} onPress={() => award(q)} />
-                ))
-              : null}
-            {member && activeRewards.length > 0 ? (
-              <Chip large label="Redeem" onPress={() => setRedeemOpen(true)} />
-            ) : null}
-            <View style={{ flex: 1 }} />
-            <Button variant="ghost" onPress={() => { setCategoryId(null); dispatch({ type: "reset" }); }}>
-              Cancel
-            </Button>
+          {categoryId ? <View style={{ marginTop: 12 }}><Banner variant="info">{`${noEarnCategories.find((x) => x.id === categoryId)?.name ?? "This category"} doesn't earn ${program?.terminology ?? "points"}.`}</Banner></View> : null}
+          {chipsFor.length > 0 ? (
+            <View style={{ marginTop: 36 }}>
+              {/* Canvas: +1 / +2 / +3 pick how many for this visit; the big button awards them in one tap. */}
+              <QuantityChips values={[1, ...chipsFor]} value={q} onChange={setQty} unit={program?.terminology ?? "stamps"} />
+              <Text style={{ fontSize: 12, lineHeight: 16, marginTop: 10, textAlign: "center" }} rawColor={c.fgSubtle}>
+                {stamps ? "One per drink in this order" : "One per item in this order"}
+              </Text>
+            </View>
+          ) : null}
+          {state.error ? <View style={{ marginTop: 12 }}><Banner variant="danger">{state.error}</Banner></View> : null}
+          <View style={styles.bottom}>
+            <AwardButton label={mainLabel} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={() => award(q)} />
+            <View style={styles.row}>
+              {member ? (
+                <CounterSecondary
+                  label={canRedeem ? "Redeem" : needs ? `Redeem · needs ${needs}` : "Redeem"}
+                  accessibilityLabel={canRedeem ? "Redeem" : `Redeem, needs ${needs ?? ""}`}
+                  disabled={!canRedeem}
+                  onPress={() => setRedeemOpen(true)}
+                />
+              ) : (
+                <CounterSecondary label="Cancel" onPress={reset} />
+              )}
+              <CounterSecondary label="Enter code" onPress={() => setCodeOpen(true)} />
+            </View>
           </View>
         </View>
       );
@@ -458,7 +486,12 @@ export default function Counter() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={["top", "bottom"]} onTouchStart={touch}>
       <CounterHeader
-        title={config.locationName ?? config.merchantName ?? "Counter"}
+        title={config.merchantName ?? config.locationName ?? "Counter"}
+        subtitle={(() => {
+          // "counter · 412 Roncesvalles" (canvas): the street address without its "Ave", else the location's name.
+          const where = config.locationAddress?.replace(/\s+(Ave|Avenue|St|Street|Rd|Road|Blvd)\.?$/i, "") ?? (config.locationName !== config.merchantName ? config.locationName : null);
+          return where ? `counter · ${where}` : "counter";
+        })()}
         staff={staff}
         canSwitch={config.sharedDevice}
         onStaff={() => router.push("/counter/pin")}
@@ -481,7 +514,7 @@ export default function Counter() {
           </View>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: layout.gutterMobile, gap: 16, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ padding: state.step === "customer" ? 20 : layout.gutterMobile, paddingBottom: state.step === "customer" ? 30 : layout.gutterMobile, gap: 16, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           {state.step === "customer" || state.step === "success" || state.step === "notice" || state.step === "pick" || panel ? customerPane : null}
           {!(state.step === "success" || state.step === "notice" || panel || (state.step === "customer" && !perDollar)) ? entryPane : null}
           {state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
@@ -545,7 +578,8 @@ export default function Counter() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bottom: { marginTop: "auto", paddingTop: 24, gap: 10 },
   wide: { flex: 1, flexDirection: "row", gap: 24, padding: 24 },
   banners: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
   nameField: { minHeight: 64, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },

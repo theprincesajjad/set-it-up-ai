@@ -8,10 +8,14 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
   const started = Date.now();
   await page.goto(`/j/${qrCode}?ref=NOTAREALCODE`);
-  await expect(page.getByRole("heading", { name: "join in 30 seconds" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
   await expect(page.getByText("Pinecone Coffee Co.").first()).toBeVisible();
+  // CASL: optional, unticked, offered with the phone (canvas Join).
+  const consent = page.getByLabel("Send me offers from Pinecone Coffee Co. by text or email. Optional. Unsubscribe any time.");
+  await expect(consent).not.toBeChecked();
   await page.screenshot({ path: shot("01-join-phone"), fullPage: true });
 
+  await consent.check();
   await page.getByLabel("Mobile number").fill(phone);
   await expect(page.getByLabel("Mobile number")).toHaveValue(`(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`);
   await page.getByRole("button", { name: "Text me a code" }).click();
@@ -22,10 +26,7 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page.getByLabel("First name")).toBeVisible();
-  const consent = page.getByLabel(/Send me offers and news from Pinecone Coffee Co\. by text and email\. I can unsubscribe anytime\./);
-  await expect(consent).not.toBeChecked();
   await page.getByLabel("First name").fill("Alex");
-  await consent.check();
   await page.screenshot({ path: shot("03-join-details"), fullPage: true });
   await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
 
@@ -55,7 +56,7 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
 test("/join/<code> alias renders the same page; bad codes explain what to do", async ({ page }) => {
   const { qrCode } = await cafeQr();
   await page.goto(`/join/${qrCode}`);
-  await expect(page.getByRole("heading", { name: "join in 30 seconds" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
   await page.goto("/j/NOPE000");
   await expect(page.getByText("This QR code isn't active. Ask staff for help.")).toBeVisible();
 });

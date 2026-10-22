@@ -147,39 +147,52 @@ export interface PinPoint {
   h?: number;
 }
 
-/** Rough label size for a pin: bold 14 px name (wraps at 160 px, never cut mid-word) + italic 12 px subtitle. */
+/** Rough label size for a pin: Bricolage 700 13 px name (wraps at 150 px, never cut mid-word) + italic 11 px subtitle. */
 export function labelWidth(name: string, subtitle: string): number {
-  return Math.min(160, Math.max(name.length * 7.6, subtitle.length * 6.2) + 8);
+  return Math.min(150, Math.max(name.length * 6.9, subtitle.length * 5.6) + 6);
 }
 export function labelHeight(name: string): number {
-  return name.length * 7.6 + 8 > 160 ? 54 : 38;
+  return name.length * 6.9 + 6 > 150 ? 44 : 30;
 }
 
+type Box = { x1: number; y1: number; x2: number; y2: number };
+
 /**
- * Which pins get a name + subtitle without labels overlapping (Corner keeps
- * every label readable; dense pins fall back to the bare object bubble).
- * Greedy by priority; a label is the box to the right of the bubble.
+ * Which pins get a name + subtitle without labels overlapping (Corner keeps every label readable; dense
+ * pins fall back to the bare object bubble). Greedy by priority; a label is the box to the right of the
+ * bubble, or to its left (canvas: "village apothecary" reads right-to-left) when the right side is taken.
  */
-export function labelPlan(
+export function labelPlanSides(
   points: readonly PinPoint[],
-  opts: { labelW?: number; labelH?: number; bubble?: number; /** Screen areas under floating chrome (no labels there). */ avoid?: { x1: number; y1: number; x2: number; y2: number }[] } = {},
-): Set<string> {
-  const { labelW = 150, labelH = 38, bubble = 40, avoid = [] } = opts;
+  opts: { labelW?: number; labelH?: number; bubble?: number; /** Screen areas under floating chrome (no labels there). */ avoid?: Box[]; /** Allow left-hand labels. */ flip?: boolean } = {},
+): { right: Set<string>; left: Set<string> } {
+  const { labelW = 150, labelH = 30, bubble = 36, avoid = [], flip = true } = opts;
   const r = bubble / 2;
-  const kept: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  const kept: Box[] = [];
   const bubbles = points.map((p) => ({ x1: p.x - r, y1: p.y - r, x2: p.x + r, y2: p.y + r, id: p.id }));
-  const out = new Set<string>();
-  const hit = (a: { x1: number; y1: number; x2: number; y2: number }, b: { x1: number; y1: number; x2: number; y2: number }) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  const right = new Set<string>();
+  const left = new Set<string>();
+  const hit = (a: Box, b: Box) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  const free = (p: PinPoint, box: Box) => !kept.some((k) => hit(k, box)) && !avoid.some((a) => hit(a, box)) && !bubbles.some((b) => b.id !== p.id && hit(b, box));
   for (const p of [...points].sort((a, b) => b.priority - a.priority)) {
     const h = p.h ?? labelH;
-    const box = { x1: p.x + r + 2, y1: p.y - h / 2, x2: p.x + r + 6 + (p.w ?? labelW), y2: p.y + h / 2 };
-    if (kept.some((k) => hit(k, box))) continue;
-    if (avoid.some((a) => hit(a, box))) continue;
-    if (bubbles.some((b) => b.id !== p.id && hit(b, box))) continue;
-    kept.push(box);
-    out.add(p.id);
+    const w = p.w ?? labelW;
+    const rbox = { x1: p.x + r + 2, y1: p.y - h / 2, x2: p.x + r + 7 + w, y2: p.y + h / 2 };
+    const lbox = { x1: p.x - r - 7 - w, y1: p.y - h / 2, x2: p.x - r - 2, y2: p.y + h / 2 };
+    if (free(p, rbox)) {
+      kept.push(rbox);
+      right.add(p.id);
+    } else if (flip && free(p, lbox)) {
+      kept.push(lbox);
+      left.add(p.id);
+    }
   }
-  return out;
+  return { right, left };
+}
+
+/** Right-hand labels only (v1 behaviour). */
+export function labelPlan(points: readonly PinPoint[], opts: { labelW?: number; labelH?: number; bubble?: number; avoid?: Box[] } = {}): Set<string> {
+  return labelPlanSides(points, { ...opts, flip: false }).right;
 }
 
 /** Label priority for a shop pin: selected > reward ready > my shop > open now > nearest. */
@@ -202,6 +215,8 @@ export interface PinPlan {
   hidden: Set<string>;
   /** Pins drawn as a black count capsule instead of a bubble (members.length > 1). */
   clusters: Map<string, PinCluster>;
+  /** Labelled pins whose label sits to the LEFT of the bubble. */
+  left: Set<string>;
 }
 
 /**
@@ -213,9 +228,9 @@ export interface PinPlan {
  */
 export function pinPlan(
   points: readonly PinPoint[],
-  opts: { chrome?: Rect[]; clusterPx?: number; maxLabels?: number; bubble?: number; labelAvoid?: Rect[] } = {},
+  opts: { chrome?: Rect[]; clusterPx?: number; maxLabels?: number; bubble?: number; labelAvoid?: Rect[]; flip?: boolean } = {},
 ): PinPlan {
-  const { chrome = [], clusterPx = 44, maxLabels = 8, bubble = 40 } = opts;
+  const { chrome = [], clusterPx = 44, maxLabels = 8, bubble = 36 } = opts;
   const r = bubble / 2;
   const hidden = new Set<string>();
   const inChrome = (p: PinPoint) => chrome.some((c) => p.x + r > c.x1 && p.x - r < c.x2 && p.y + r > c.y1 && p.y - r < c.y2);
@@ -239,12 +254,13 @@ export function pinPlan(
   }
   // A cluster has no label; its count capsule is the label.
   const labelable = heads.filter((h) => !clusters.has(h.id));
-  const labeled = labelPlan(
+  const sides = labelPlanSides(
     heads.map((h) => (clusters.has(h.id) ? { ...h, priority: -1 } : h)),
-    { avoid: [...chrome, ...(opts.labelAvoid ?? [])], bubble },
+    { avoid: [...chrome, ...(opts.labelAvoid ?? [])], bubble, flip: opts.flip ?? true },
   );
+  const labeled = new Set([...sides.right, ...sides.left]);
   for (const h of heads) if (clusters.has(h.id)) labeled.delete(h.id);
   // Cap: keep the highest-priority labels only.
   const keep = new Set(labelable.filter((h) => labeled.has(h.id)).slice(0, maxLabels).map((h) => h.id));
-  return { labeled: keep, hidden, clusters };
+  return { labeled: keep, hidden, clusters, left: new Set([...sides.left].filter((id) => keep.has(id))) };
 }

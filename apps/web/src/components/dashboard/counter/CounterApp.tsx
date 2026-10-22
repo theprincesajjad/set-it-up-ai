@@ -17,6 +17,7 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { applyKey, awardLabel, awardSuccess, centsFromKeypad, COUNTER_QUEUE_KEY, counterErrorMessage, keypadDisplay, lookupKind, readQueue, undoLabel, type KeypadKey, type ProgramForCounter, type QueuedAward } from "@/lib/dashboard/counter";
 import { CountUp } from "@/components/ui/CountUp";
+import { Spinner } from "@/components/ui/Spinner";
 import { formatMoney, formatPoints, formatSigned, formatTime, firstName, rewardInSentence } from "@/lib/format";
 import { formatNanp, maskPhone } from "@/lib/phone";
 import { typeLabel } from "@/lib/dashboard/labels";
@@ -56,6 +57,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [cents, setCents] = useState("");
   const [qty, setQty] = useState(1);
+  const [showRewards, setShowRewards] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -172,6 +174,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
     setQ("");
     setCents("");
     setQty(1);
+    setShowRewards(false);
     setError(null);
     setNewName("");
     setConsent(false);
@@ -328,6 +331,8 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
   }, [phase, perDollar, busy, award, reset]);
 
   const member = phase.kind === "member" ? phase.member : null;
+  const stamps = program.earnType === "stamps";
+  const goal = program.stampGoal || member?.nextReward?.pointsCost || 10;
   const hint = (() => {
     const k = lookupKind(q);
     if (!q) return "Phone number, last 4 digits, or member code";
@@ -507,48 +512,91 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
 
           {mode === "award" && member ? (
-            <section className="rounded-card border border-line bg-bg p-6" aria-labelledby="member-title">
-              <div className="flex items-start gap-3">
-                <Avatar name={member.name} id={member.memberId} size={40} />
+            // Member found (canvas Counter.dc.html): header, one 64 px "7 / 10", the stamp row, +1/+2/+3,
+            // a 72 px black award button, then "Redeem · needs 10" (disabled until ready) and "Enter code".
+            <section className="rounded-card border border-line bg-bg p-5 sm:p-6" aria-labelledby="member-title">
+              <div className="flex items-center gap-3">
+                <span aria-hidden className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-bg-muted text-[15px] font-semibold text-fg">
+                  {initialsOf(member.name)}
+                </span>
                 <div className="min-w-0 flex-1">
-                  <h2 id="member-title" className="truncate text-title text-fg">
+                  <h2 id="member-title" className="truncate text-[18px] font-semibold leading-[23px] text-fg">
                     {member.name ?? "Member"}
                   </h2>
-                  <p className="text-meta text-fg-muted">
-                    {maskPhone(member.maskedPhone)} · {member.visitCount} {member.visitCount === 1 ? "visit" : "visits"}{member.vip ? ` · ${member.vip.name}` : ""}
+                  <p className="text-[13px] leading-[17px] tabular-nums text-fg-muted">
+                    {maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · {ordinal(member.visitCount + 1)} visit{member.vip ? ` · ${member.vip.name}` : ""}
                   </p>
                 </div>
-                <div className="text-end">
-                  <p className="font-display text-display-number tabular-nums text-accent-text">{member.balance}</p>
-                  <p className="text-meta text-fg-muted">{member.terminology}</p>
-                </div>
+                <button type="button" aria-label="Clear customer" onClick={reset} className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring">
+                  <X aria-hidden className="size-4" strokeWidth={2.2} />
+                </button>
               </div>
-              {member.nextReward ? <ProgressBar className="mt-5" value={member.nextReward.progressPct} max={100} label={member.nextReward.name} valueText={`${member.nextReward.pointsNeeded} more`} /> : null}
+
+              <div className="mt-7 text-center">
+                <p className="display text-[64px] leading-[64px] tracking-[-0.02em] tabular-nums text-fg">
+                  {stamps ? Math.min(member.balance, goal) : member.balance.toLocaleString("en-CA")}
+                  <span className="text-[32px] text-fg-subtle">{stamps ? ` / ${goal}` : ` ${formatPoints(member.balance, member.terminology).replace(/^[\d,]+ /, "")}`}</span>
+                </p>
+                <p className={cn("mt-2 text-[14px] leading-[18px]", member.rewardsAffordable.length ? "text-accent-text" : "text-fg-muted")}>
+                  {member.terminology}
+                  {member.rewardsAffordable[0] ? ` · ${rewardInSentence(member.rewardsAffordable[0].name)} ready` : member.nextReward ? ` · ${member.nextReward.pointsNeeded} to ${/^free /i.test(member.nextReward.name) ? `a ${rewardInSentence(member.nextReward.name)}` : member.nextReward.name}` : ""}
+                </p>
+                {stamps ? (
+                  <div aria-hidden className="mt-4 flex flex-wrap justify-center gap-1.5">
+                    {Array.from({ length: goal }, (_, i) => (
+                      <span key={i} className={cn("size-6 rounded-full", i < Math.min(member.balance, goal) ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--ll-color-line-strong)]")} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               {member.openRedemptionCount > 0 ? (
-                <Banner tone="info" className="mt-3" icon={Ticket} action={<Button size="sm" variant="ghost" onClick={() => setMode("verify")}>Verify code</Button>}>
+                <Banner tone="info" className="mt-5" icon={Ticket} action={<Button size="sm" variant="ghost" onClick={() => setMode("verify")}>Enter code</Button>}>
                   This customer has a reward code waiting in the app.
                 </Banner>
               ) : null}
-              <p className="mt-2 text-caption text-fg-muted">{member.expiryDisclosure}</p>
 
-              <div className="mt-4 flex flex-col gap-3">
-                {perDollar ? (
+              {perDollar ? (
+                <div className="mt-6">
                   <AmountPad cents={cents} setCents={setCents} />
-                ) : (
-                  <div role="radiogroup" aria-label="How many" className="flex gap-2">
+                </div>
+              ) : (
+                <div className="mt-9">
+                  <div role="radiogroup" aria-label="How many" className="flex justify-center gap-2">
                     {[1, 2, 3].map((n) => (
-                      <button key={n} type="button" role="radio" aria-checked={qty === n} onClick={() => setQty(n)} className={cn("min-h-14 flex-1 rounded-input border text-title tabular-nums text-fg focus-visible:focus-ring", qty === n ? "border-fg bg-bg font-semibold shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line bg-bg hover:bg-bg-subtle")}>
+                      <button key={n} type="button" role="radio" aria-checked={qty === n} onClick={() => setQty(n)} className={cn("display h-11 rounded-full px-[18px] text-[16px] font-bold tabular-nums focus-visible:focus-ring", qty === n ? "bg-fg text-bg" : "bg-bg-subtle text-fg hover:bg-bg-muted")}>
                         +{n}
                       </button>
                     ))}
                   </div>
-                )}
-                <Button size="counter" loading={busy} onClick={() => void award({ memberId: member.memberId })}>
-                  {awardLabel(program, centsFromKeypad(cents), qty)}
-                </Button>
+                  <p className="mt-2.5 text-center text-[12px] text-fg-subtle">{stamps ? "One per drink in this order" : "One per item in this order"}</p>
+                </div>
+              )}
+
+              <div className="mt-8 flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void award({ memberId: member.memberId })}
+                  className="display inline-flex h-[72px] items-center justify-center rounded-[20px] bg-fg text-[22px] font-extrabold text-bg hover:bg-fg/90 focus-visible:focus-ring disabled:opacity-70"
+                >
+                  {busy ? <Spinner /> : awardLabel(program, centsFromKeypad(cents), qty)}
+                </button>
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    disabled={!member.rewardsAffordable.length || busy}
+                    onClick={() => (member.rewardsAffordable.length === 1 ? void redeem(member, member.rewardsAffordable[0]!.id) : setShowRewards(true))}
+                    className="h-[52px] flex-1 rounded-[16px] bg-bg-subtle text-[15px] font-semibold text-fg hover:bg-bg-muted focus-visible:focus-ring disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-bg-subtle"
+                  >
+                    {member.rewardsAffordable.length ? (member.rewardsAffordable.length === 1 ? `Redeem ${rewardInSentence(member.rewardsAffordable[0]!.name)}` : "Redeem") : `Redeem · needs ${member.nextReward?.pointsCost ?? goal}`}
+                  </button>
+                  <button type="button" onClick={() => setMode("verify")} className="h-[52px] flex-1 rounded-[16px] bg-bg-subtle text-[15px] font-semibold text-fg hover:bg-bg-muted focus-visible:focus-ring">
+                    Enter code
+                  </button>
+                </div>
               </div>
 
-              {member.rewardsAffordable.length ? (
+              {showRewards && member.rewardsAffordable.length > 1 ? (
                 <div className="mt-5">
                   <h3 className="text-meta-strong text-fg">Ready to redeem</h3>
                   <ul className="mt-2 divide-y divide-line border-y border-line">
@@ -568,14 +616,9 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
               {member.discountCards.length ? (
                 <p className="mt-3 text-meta text-fg-muted">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p>
               ) : null}
-              <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
-                <Button variant="secondary" onClick={reset}>
-                  Next customer
-                </Button>
-                <span className="text-meta text-fg-muted">
-                  or press <kbd className="rounded-[5px] border border-line px-1.5 text-caption">Esc</kbd>
-                </span>
-              </div>
+              <p className="mt-4 text-center text-caption text-fg-muted">
+                {member.expiryDisclosure} · <kbd className="rounded-[5px] border border-line px-1.5 text-caption">Esc</kbd> for the next customer
+              </p>
             </section>
           ) : null}
 
@@ -689,6 +732,18 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
 }
 
 /** The award check: ring then tick, ~320 ms, a single settle; drawn instantly with reduced motion. */
+/** "Emma Wong" → "ew" (counter header avatar, canvas). */
+function initialsOf(name: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")).toLowerCase() || "?";
+}
+
+/** 1 → "1st", 5 → "5th", 12 → "12th". */
+function ordinal(n: number): string {
+  const t = n % 100;
+  return `${n}${t >= 11 && t <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+}
+
 function SuccessMark() {
   return (
     <svg aria-hidden viewBox="0 0 48 48" className="ll-success-mark mb-4 size-12 text-positive">

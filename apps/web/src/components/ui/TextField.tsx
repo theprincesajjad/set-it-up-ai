@@ -13,12 +13,14 @@ export interface FieldShellProps {
   count?: string;
   children: ReactNode;
   hideLabel?: boolean;
+  /** Label → input spacing (default gap-1.5). */
+  gapClass?: string;
 }
 
 /** Label above, hint/error below, wired with aria-describedby. Shared by every input. */
-export function FieldShell({ id, label, hint, error, optionalLabel, required, count, children, hideLabel }: FieldShellProps) {
+export function FieldShell({ id, label, hint, error, optionalLabel, required, count, children, hideLabel, gapClass }: FieldShellProps) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={cn("flex flex-col", gapClass ?? "gap-1.5")}>
       <label htmlFor={id} className={cn("text-meta-strong text-fg", hideLabel && "sr-only")}>
         {label}
         {optionalLabel && !required ? <span className="font-normal text-fg-muted"> (optional)</span> : null}

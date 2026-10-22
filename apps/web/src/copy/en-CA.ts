@@ -76,9 +76,9 @@ export const copy = {
     a11yPrefix: "Sponsored.",
   },
   consent: {
-    /** consent.merchant.v1 — shown next to an UNCHECKED checkbox and sent verbatim as consent.text. */
-    merchantVersion: "consent.merchant.v1",
-    merchant: (shop: string) => `Send me offers and news from ${shop} by text and email. I can unsubscribe anytime.`,
+    /** consent.merchant.v2 (canvas Join) — shown next to an UNCHECKED checkbox and sent verbatim as consent.text. */
+    merchantVersion: "consent.merchant.v2",
+    merchant: (shop: string) => `Send me offers from ${shop} by text or email. Optional. Unsubscribe any time.`,
     /** consent.merchant.caption.v1 */
     merchantCaption: (shop: string, shopAddress: string, contact: string) =>
       `Messages come from ${shop}${shopAddress ? `, ${shopAddress}` : ""}${contact ? `, ${contact}` : ""}, sent via ${BRAND.name}. Reply STOP or tap unsubscribe in any message, or change it in Settings.`,

@@ -1,4 +1,4 @@
-import { blur, layout, shadows } from "@ll/design-tokens";
+import { blur, layout, shadowFloatDark, shadows } from "@ll/design-tokens";
 import { BlurView } from "expo-blur";
 import { Redirect, router } from "expo-router";
 import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
@@ -77,7 +77,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
         {name === "discover" ? <TabDiscoverIcon color={color} filled={focused} /> : null}
         {name === "wallet" ? <TabWalletIcon color={color} strokeWidth={sw} /> : null}
         {name === "activity" ? (
-          <View style={[styles.avatar, { backgroundColor: c.bgMuted, borderColor: focused ? c.fg : "transparent" }]}>
+          <View style={[styles.avatar, { backgroundColor: c.bgMuted }]}>
             <Text allowFontScaling={false} style={styles.avatarText} rawColor={c.fg}>
               {initials(who).toLowerCase()}
             </Text>
@@ -89,7 +89,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
   if (!state.routes.some((r) => ORDER.includes(r.name as TabName))) return null;
   return (
     <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom, transform: [{ translateY: y }] }]}>
-      <View accessibilityRole="tablist" style={[styles.capsule, isDark ? { boxShadow: undefined } : null, shadow(shadows.float.css), isDark ? { shadowOpacity: 0.4 } : null]}>
+      <View accessibilityRole="tablist" style={[styles.capsule, shadow(isDark ? shadowFloatDark : shadows.float.css), isDark && Platform.OS !== "web" ? { shadowOpacity: 0.4 } : null]}>
         <View style={[StyleSheet.absoluteFill, styles.clip]}>
           {Platform.OS === "ios" ? <BlurView intensity={blur.nativeIntensity} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} /> : null}
           {/* Android has no cheap live blur without a blur target: a near-opaque fill. Web frosts with backdrop-filter. */}
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   capsule: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-around", height: layout.tabBar, borderRadius: 999, paddingHorizontal: 8 },
   clip: { borderRadius: 999, overflow: "hidden" },
   item: { width: 48, height: 44, alignItems: "center", justifyContent: "center" },
-  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 0 },
+  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 11, lineHeight: 14, fontWeight: "600" },
   card: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
 });
