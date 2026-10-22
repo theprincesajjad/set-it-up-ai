@@ -64,4 +64,4 @@ Counter orders: `POST :m/orders/counter {items, tender?, tipCents?, customerPhon
 
 ## Split bills (restaurant.split_bills, Pro)
 `POST :m/orders/:orderId/splits` (`{mode:"even", ways, labels?}` | `{mode:"items", splits:[{label?, itemIds}]}`) · `GET|DELETE :m/orders/:orderId/splits`.
-Public: `GET /public/splits/:token` · `POST /public/splits/:token/pay {tipCents}` → clientSecret. **Web page needed at `/s/<token>`** (check services/splits.ts link).
+Public: `GET /public/splits/:token` · `POST /public/splits/:token/pay {tipCents}` → clientSecret. **Web page needed at `/pay/split/<token>`**.

@@ -4,10 +4,13 @@
  * YYYY-MM-DD in America/Toronto, dollars <-> cents, the tier teaser for a 402, a loader
  * that renders skeleton / error / data, and a few small form controls.
  */
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, type ReactNode } from "react";
+import type { tiffinApi } from "@ll/shared";
 import { RESTAURANT_PLANS, FEATURES, type FeatureKey } from "@ll/shared";
 import { ErrorLine, SkeletonRows } from "@/components/dashboard/kit";
+import { NoAccess } from "@/components/dashboard/PageStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
@@ -145,6 +148,42 @@ export function Line({ children, className }: { children: ReactNode; className?:
   return <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line py-2.5 last:border-b-0", className)}>{children}</div>;
 }
 
+/** Previous / next with the date between, for day and week views. `step` is days (1, 7). */
+export function DateNav({ value, onChange, step = 1, label, text, showToday = true }: { value: string; onChange: (d: string) => void; step?: number; label: string; text?: string; showToday?: boolean }) {
+  const btn = "inline-flex size-8 items-center justify-center rounded-input border border-line bg-bg text-fg hover:bg-bg-subtle focus-visible:focus-ring";
+  return (
+    <div role="group" aria-label={label} className="flex items-center gap-1.5 print:hidden">
+      <button type="button" aria-label="Previous" className={btn} onClick={() => onChange(addDaysISO(value, -step))}>
+        <ChevronLeft aria-hidden className="size-4" />
+      </button>
+      <span className="min-w-[8.5rem] px-1 text-center text-meta-strong tabular text-fg">{text ?? dayLabel(value)}</span>
+      <button type="button" aria-label="Next" className={btn} onClick={() => onChange(addDaysISO(value, step))}>
+        <ChevronRight aria-hidden className="size-4" />
+      </button>
+      {showToday ? (
+        <button type="button" onClick={() => onChange(todayISO())} className="ms-1 inline-flex h-8 items-center rounded-input px-2.5 text-meta font-medium text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+          Today
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Dietary flags as short words ("Halal", "Veg", "Spice 2") for list lines. */
+export function dietaryWords(d: tiffinApi.Dietary | undefined | null): string[] {
+  if (!d) return [];
+  const out: string[] = [];
+  if (d.zabihah) out.push("Zabihah halal");
+  else if (d.halal) out.push("Halal");
+  if (d.vegan) out.push("Vegan");
+  else if (d.vegetarian) out.push("Vegetarian");
+  if (d.jain) out.push("Jain");
+  if (d.glutenFree) out.push("Gluten-free");
+  if (d.spice) out.push(`Spice ${d.spice}`);
+  if (d.allergens?.length) out.push(`Contains ${d.allergens.join(", ")}`);
+  return out;
+}
+
 /* ------------------------------------------------------------ tier gate */
 
 type Tier = keyof typeof RESTAURANT_PLANS;
@@ -194,6 +233,7 @@ export function TierGate({ featureKey, title, what, children }: { featureKey: Fe
  */
 export function Loader<T>({ state, children, rows = 4, gate }: { state: ApiState<T>; children: (d: T) => ReactNode; rows?: number; gate?: { featureKey: FeatureKey; title: string; what: string } }) {
   if (state.status === 402 && gate) return <TierTeaser {...gate} />;
+  if (state.status === 403) return <NoAccess title="This part is for owners and managers" body="Ask the shop owner if you need to see it." />;
   if (state.error && !state.data) return <ErrorLine message={state.error} onRetry={() => void state.reload()} />;
   if (!state.data) return <SkeletonRows rows={rows} />;
   return <>{children(state.data)}</>;
