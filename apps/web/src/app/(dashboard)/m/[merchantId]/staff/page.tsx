@@ -1,18 +1,14 @@
 "use client";
-import { Check, KeyRound, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { FeatureTeaser } from "@/components/dashboard/FeatureTeaser";
+import { Empty, PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
@@ -46,40 +42,44 @@ export default function StaffPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Staff" description="Unlimited staff, always free. Everyone gets their own login and counter PIN." actions={owner ? <Button iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button> : undefined} />
+      <PageHeader flush title="Staff" description="Unlimited staff, always free. Everyone gets their own login and counter PIN." actions={owner ? <Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button> : undefined} />
       <Async state={state}>
         {(d) =>
           d.items.length <= 1 && owner ? (
-            <Card>
-              <EmptyState icon={UserPlus} title="It's just you so far" description="Add staff so they can award points with their own login. Unlimited, always free." action={<Button onClick={() => setInvite(true)}>Invite staff</Button>} />
-            </Card>
+            <Empty className="border-y border-line">It&apos;s just you so far. Add staff so they can award points with their own login.</Empty>
           ) : (
-            <Card padding="sm">
-              <ul className="divide-y divide-line">
+            <ul className="divide-y divide-line border-y border-line">
                 {d.items.map((s) => {
                   const self = s.userId === me.user.id;
                   return (
-                    <li key={s.userId} className="flex flex-wrap items-center gap-3 px-2 py-3">
-                      <Avatar name={s.name ?? s.email} id={s.userId} />
+                    <li key={s.userId} className="flex flex-wrap items-center gap-3 py-3">
+                      <Avatar name={s.name ?? s.email} id={s.userId} size={32} />
                       <div className="min-w-0 flex-1">
-                        <p className="flex flex-wrap items-center gap-2 text-body-strong text-fg">
-                          {s.name ?? s.email ?? "Invited"} {self ? <span className="text-meta font-normal text-fg-muted">(you)</span> : null}
-                          <Badge tone={s.role === "owner" ? "brand" : s.role === "manager" ? "info" : "neutral"}>{s.role[0]!.toUpperCase() + s.role.slice(1)}</Badge>
+                        <p className="flex flex-wrap items-center gap-2 text-meta-strong text-fg">
+                          {s.name ?? s.email ?? "Invited"} {self ? <span className="font-normal text-fg-muted">(you)</span> : null}
+                          {!owner || self ? <span className="font-normal text-fg-muted">· {s.role[0]!.toUpperCase() + s.role.slice(1)}</span> : null}
                         </p>
                         <p className="text-meta text-fg-muted">
-                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? <span className="inline-flex items-center gap-1"><Check aria-hidden className="size-3.5 text-positive" />PIN set</span> : "No PIN yet"}
+                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}
                         </p>
                       </div>
                       {owner && !self ? (
-                        <div className="w-40">
-                          <Select hideLabel label={`Role for ${s.name ?? "staff"}`} className="min-h-11" value={s.role} onChange={async (e) => {
+                        <label className="shrink-0">
+                          <span className="sr-only">{`Role for ${s.name ?? "staff"}`}</span>
+                          <select value={s.role} onChange={async (e) => {
                             const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
                             if (r) await state.reload();
-                          }} options={ROLES.map((r) => ({ value: r.value, label: r.label }))} />
-                        </div>
+                          }} className="h-9 rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle">
+                            {ROLES.map((r) => (
+                              <option key={r.value} value={r.value}>
+                                {r.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       ) : null}
                       {owner || self ? (
-                        <Button variant="secondary" size="sm" iconStart={KeyRound} onClick={() => setPinFor(s)}>
+                        <Button variant="secondary" size="sm" onClick={() => setPinFor(s)}>
                           {s.hasPin ? "Reset PIN" : "Set PIN"}
                         </Button>
                       ) : null}
@@ -92,17 +92,14 @@ export default function StaffPage() {
                   );
                 })}
               </ul>
-            </Card>
           )
         }
       </Async>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <FeatureTeaser featureKey="staff.permissions" title="Granular permissions" description="Pick exactly what each person can do, like refunds or catalog edits." />
 
       <Modal
         open={invite}
         onClose={() => setInvite(false)}
-        variant="sheet"
         title="Invite staff"
         actions={
           <>
@@ -133,13 +130,13 @@ export default function StaffPage() {
           <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <PhoneField label="Mobile number" hint="We text them a link to sign in." onChangeE164={setPhone} />
           <TextField type="email" label="Email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} />
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-label text-fg">Role</legend>
+          <fieldset className="flex flex-col divide-y divide-line rounded-input border border-line">
+            <legend className="mb-1 text-meta-strong text-fg">Role</legend>
             {ROLES.map((r) => (
-              <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 rounded-input border p-3", newRole === r.value ? "border-brand bg-bg-subtle" : "border-line")}>
-                <input type="radio" name="role" checked={newRole === r.value} onChange={() => setNewRole(r.value)} className="mt-1 size-5 accent-[var(--color-brand)]" />
+              <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 px-3 py-2.5", newRole === r.value && "bg-bg-subtle")}>
+                <input type="radio" name="role" checked={newRole === r.value} onChange={() => setNewRole(r.value)} className="mt-0.5 size-4 accent-[var(--ll-color-fg)]" />
                 <span>
-                  <span className="block text-body-strong text-fg">{r.label}</span>
+                  <span className="block text-meta-strong text-fg">{r.label}</span>
                   <span className="block text-meta text-fg-muted">{r.desc}</span>
                 </span>
               </label>

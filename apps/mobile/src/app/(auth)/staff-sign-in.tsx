@@ -44,8 +44,8 @@ export default function StaffSignIn() {
   const verifyCode = (value: string) => run(async () => done(await api.auth.emailOtpVerify({ email: email.trim(), code: value })));
 
   return (
-    <Screen back title="Staff sign in">
-      <Text variant="h2" accessibilityRole="header">
+    <Screen back>
+      <Text variant="largeTitle" accessibilityRole="header">
         Sign in to your shop
       </Text>
       <SegmentedControl
@@ -99,7 +99,7 @@ export default function StaffSignIn() {
           </Button>
         </>
       )}
-      <Text variant="bodySm" color="fgMuted">
+      <Text variant="meta" color="fgMuted">
         Staff on a shared shop tablet: sign in once with the owner or manager account, then switch with your PIN.
       </Text>
     </Screen>

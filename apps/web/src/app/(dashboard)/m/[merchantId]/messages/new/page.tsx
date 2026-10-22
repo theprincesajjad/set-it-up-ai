@@ -1,17 +1,14 @@
 "use client";
+import { BackLink, PageHeader, Panel, Segmented } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { ArrowLeft, Lock, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { messagingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { FeatureTeaser } from "@/components/dashboard/FeatureTeaser";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -120,29 +117,22 @@ function ComposePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/messages`} className="self-start">
-        Messages
-      </Button>
+      <BackLink href={`${base}/messages`}>Messages</BackLink>
       <PageHeader title="New message" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <Card padding="lg" className="flex flex-col gap-4">
-            <SegmentedControl label="Channel" value={channel} onChange={setChannel} options={[{ value: "email", label: "Email" }, { value: "push", label: "App push" }, ...(enabled("marketing.sms") ? [{ value: "sms" as const, label: "SMS" }] : [])]} />
-            {!enabled("marketing.sms") ? (
-              <p className="flex items-center gap-2 text-meta text-fg-muted">
-                <Lock aria-hidden className="size-4" /> SMS campaigns · Coming soon
-              </p>
-            ) : null}
+          <Panel className="flex flex-col gap-4">
+            <Segmented className="self-start" label="Channel" value={channel} onChange={setChannel} options={[{ value: "email", label: "Email" }, { value: "push", label: "App push" }, ...(enabled("marketing.sms") ? [{ value: "sms" as const, label: "SMS" }] : [])]} />
             <Select label="Audience" value={seg} onChange={(e) => setSeg(e.target.value as SegKind)} options={SEGMENTS} />
             {seg === "tag" ? <TextField label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} /> : null}
-            <p role="status" className="rounded-input bg-bg-subtle px-4 py-3 text-body text-fg">
+            <p role="status" className="border-y border-line py-3 text-meta text-fg">
               {count ? `Will go to ${formatNumber(count.recipients)} ${count.recipients === 1 ? "person" : "people"}` : "Counting..."}
-              {count && count.matched > count.recipients ? <span className="block text-meta">{formatNumber(count.excludedNoConsent)} without consent, {formatNumber(count.excludedMuted)} muted and {formatNumber(count.excludedNoContact)} unreachable won&apos;t get it.</span> : null}
-              {count && channel === "sms" ? <span className="block text-meta">Uses {formatNumber(count.smsCreditsNeeded)} of {formatNumber(count.smsCreditsRemaining ?? 0)} texts left this month.</span> : null}
+              {count && count.matched > count.recipients ? <span className="block text-meta text-fg-muted">{formatNumber(count.excludedNoConsent)} without consent, {formatNumber(count.excludedMuted)} muted and {formatNumber(count.excludedNoContact)} unreachable won&apos;t get it.</span> : null}
+              {count && channel === "sms" ? <span className="block text-meta text-fg-muted">Uses {formatNumber(count.smsCreditsNeeded)} of {formatNumber(count.smsCreditsRemaining ?? 0)} texts left this month.</span> : null}
             </p>
             {channel !== "sms" ? <TextField label={channel === "push" ? "Title" : "Subject"} optionalLabel={channel === "push"} value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={150} /> : null}
             <TextField type="textarea" label="Message" value={body} onChange={(e) => setBody(e.target.value)} maxLength={max} showCount hint={`Personalise with ${messagingApi.MESSAGE_VARIABLES.slice(0, 3).join(", ")}.`} />
-            <SegmentedControl label="When" value={when} onChange={setWhen} options={[{ value: "now", label: "Send now" }, { value: "later", label: "Schedule" }]} />
+            <Segmented className="self-start" label="When" value={when} onChange={setWhen} options={[{ value: "now", label: "Send now" }, { value: "later", label: "Schedule" }]} />
             {when === "later" ? <TextField type="datetime-local" label="Send at" hint="Toronto time" value={at} onChange={(e) => setAt(e.target.value)} /> : null}
             {error ? <Banner tone="danger">{error}</Banner> : null}
             {testNote ? <Banner tone="success">{testNote}</Banner> : null}
@@ -163,11 +153,10 @@ function ComposePage() {
                 Send test to me
               </Button>
             </div>
-          </Card>
-          {!enabled("marketing.sms") ? <FeatureTeaser featureKey="marketing.sms" title="SMS campaigns" /> : null}
+          </Panel>
         </div>
-        <aside aria-label="Preview" className="flex flex-col gap-2 lg:sticky lg:top-6 lg:self-start">
-          <h2 className="text-title text-fg">Preview</h2>
+        <aside aria-label="Preview" className="flex flex-col gap-2 lg:sticky lg:top-20 lg:self-start">
+          <h2 className="text-meta text-fg-muted">Preview</h2>
           <div className="overflow-hidden rounded-card border border-line bg-bg">
             {channel === "email" ? (
               <div className="border-b border-line bg-bg-subtle px-4 py-2 text-meta text-fg">

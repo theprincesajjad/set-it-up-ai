@@ -1,4 +1,5 @@
 "use client";
+import { EmptyState, PageHeader, Panel, Tabs } from "@/components/dashboard/kit";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import type { adsApi } from "@ll/shared";
@@ -6,13 +7,9 @@ import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
 import { PromoCard } from "@/components/ui/PromoCard";
 import { Select } from "@/components/ui/Select";
-import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
@@ -45,11 +42,11 @@ export default function AdsReviewPage() {
                 const c = checks[a.id] ?? POLICY.map(() => false);
                 return (
                   <li key={a.id}>
-                    <Card padding="lg" className="grid gap-5 lg:grid-cols-[360px_1fr]">
+                    <Panel className="grid gap-5 lg:grid-cols-[360px_1fr]">
                       <PromoCard promo={{ title: a.headline, body: a.body, kind: "offer", endsAt: a.endsAt, imageUrl: a.imageUrl }} shop={{ name: a.merchant.name, vertical: "other" }} sponsored={{ advertiser: a.merchant.name }} variant="feed" />
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-title text-fg">{a.merchant.name}</h2>
+                          <h2 className="text-body-strong text-fg">{a.merchant.name}</h2>
                           <Badge tone={AD_STATUS_TONE[a.status]} dot>{a.status.replace("_", " ")}</Badge>
                           <Badge tone={a.paymentStatus === "paid" ? "success" : "warning"}>{a.paymentStatus}</Badge>
                         </div>
@@ -74,7 +71,7 @@ export default function AdsReviewPage() {
                         ) : null}
                         {a.reviewNote ? <p className="text-meta text-fg-muted">Note: {a.reviewNote}</p> : null}
                       </div>
-                    </Card>
+                    </Panel>
                   </li>
                 );
               })}

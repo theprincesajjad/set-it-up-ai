@@ -132,14 +132,14 @@ function KioskInner() {
   const compactKeyH = Math.max(touchTargets.keypad, Math.min(touchTargets.kiosk, Math.floor((padArea - 3 * KEY_GAP) / 4)));
   if (step === "attract") {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.brand }]} onPress={reset} accessibilityRole="button" accessibilityLabel="Tap to check in">
-        <Text variant="display" rawColor={c.onBrand} center>
+      <Pressable style={[styles.full, { backgroundColor: c.fg }]} onPress={reset} accessibilityRole="button" accessibilityLabel="Tap to check in">
+        <Text variant="headline" rawColor={c.bg} center style={{ opacity: 0.7 }}>
           {shopName}
         </Text>
-        <Text variant="h1" rawColor={c.onBrand} center>
-          Check in and earn
+        <Text variant="displayNumber" rawColor={c.bg} center style={{ fontSize: 56, lineHeight: 60 }}>
+          check in and earn
         </Text>
-        <Text variant="h3" rawColor={c.onBrand} center>
+        <Text variant="headline" rawColor={c.bg} center style={{ fontWeight: "400", opacity: 0.7 }}>
           Tap anywhere to start
         </Text>
       </Pressable>
@@ -147,12 +147,12 @@ function KioskInner() {
   }
   if (step === "done" && result) {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.success }]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. Tap to finish`}>
-        <CircleCheck size={96} color={c.onSuccess} />
-        <Text variant="h1" rawColor={c.onSuccess} center style={{ fontSize: 40 * scale, lineHeight: 46 * scale }}>
+      <Pressable style={[styles.full, { backgroundColor: c.bg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. Tap to finish`}>
+        <CircleCheck size={80} color={c.positive} strokeWidth={1.5} />
+        <Text variant="displayNumber" center style={{ fontSize: 44 * scale, lineHeight: 50 * scale }}>
           {result.title}
         </Text>
-        <Text variant="h3" rawColor={c.onSuccess} center>
+        <Text variant="title" color="accentText" center>
           {result.sub}
         </Text>
       </Pressable>
@@ -173,7 +173,7 @@ function KioskInner() {
       <Button size="kiosk" loading={busy} onPress={() => checkIn(consent)}>
         Join and check in
       </Button>
-      <Button variant="secondary" size="kiosk" onPress={reset}>
+      <Button variant="ghost" size="kiosk" onPress={reset}>
         Start over
       </Button>
     </View>
@@ -187,16 +187,16 @@ function KioskInner() {
 
   if (!wide) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.compactRoot} onTouchStart={bump} keyboardShouldPersistTaps="handled">
           <View style={styles.compactHeader}>
             {logoEl(56)}
-            <Text variant="display" style={{ flex: 1, fontSize: 30 * scale, lineHeight: 34 * scale }}>
-              Check in and earn
+            <Text variant="largeTitle" style={{ flex: 1, fontSize: 30 * scale, lineHeight: 34 * scale }}>
+              check in and earn
             </Text>
           </View>
           <View style={styles.compactSub}>
-            <Text variant="bodyLg" style={{ flex: 1, fontSize: 18 * scale, lineHeight: 24 * scale }}>
+            <Text variant="bodyLg" color="fgMuted" style={{ flex: 1, fontSize: 18 * scale, lineHeight: 24 * scale }}>
               {subtitle}
             </Text>
             {bigTextToggle}
@@ -206,7 +206,7 @@ function KioskInner() {
             consentBlock
           ) : (
             <>
-              <Text variant="counterHero" center maxFontSizeMultiplier={1.4} style={{ fontSize: 40, lineHeight: 48, minHeight: 48 }}>
+              <Text variant="keypad" tabular center maxFontSizeMultiplier={1.4} style={{ fontSize: 36, lineHeight: 44, minHeight: 44, fontWeight: "500" }}>
                 {formatNanp(digits) || " "}
               </Text>
               {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -227,14 +227,14 @@ function KioskInner() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={[styles.root, wide ? { flexDirection: "row" } : null]} onTouchStart={bump}>
         <View style={[styles.left, wide ? { flex: 45 } : null]}>
           {logoEl(96)}
-          <Text variant="display" style={{ fontSize: 40 * scale, lineHeight: 44 * scale }}>
-            Check in and earn
+          <Text variant="largeTitle" style={{ fontSize: 48 * scale, lineHeight: 52 * scale }}>
+            check in and earn
           </Text>
-          <Text variant="bodyLg" style={{ fontSize: 20 * scale, lineHeight: 28 * scale }}>
+          <Text variant="bodyLg" color="fgMuted" style={{ fontSize: 20 * scale, lineHeight: 28 * scale }}>
             {subtitle}
           </Text>
           {bigTextToggle}
@@ -245,7 +245,7 @@ function KioskInner() {
             consentBlock
           ) : (
             <>
-              <Text variant="counterHero" center maxFontSizeMultiplier={1.4} style={{ fontSize: 48, lineHeight: 56, minHeight: 56 }}>
+              <Text variant="keypad" tabular center maxFontSizeMultiplier={1.4} style={{ fontSize: 44, lineHeight: 52, minHeight: 52, fontWeight: "500" }}>
                 {formatNanp(digits) || " "}
               </Text>
               {error ? <Banner variant="danger">{error}</Banner> : null}

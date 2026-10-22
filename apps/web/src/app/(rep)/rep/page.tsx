@@ -1,4 +1,5 @@
 "use client";
+import { EmptyState, Meter, PageHeader, Panel } from "@/components/dashboard/kit";
 import { Navigation, Phone, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -6,10 +7,8 @@ import type { repApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, ListRow } from "@/components/ui/Card";
-import { DensityGauge } from "@/components/ui/DensityGauge";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
+import { ListRow } from "@/components/ui/Card";
+import { DensityBar } from "@/components/dashboard/NetworkGauges";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -42,11 +41,10 @@ export default function RepToday() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={mainHood ? `Today on ${mainHood.name}` : "Today"} description={longDate()} actions={<Button iconStart={PlusCircle} href="/rep/new">Set up a merchant</Button>} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <PageHeader title={mainHood ? `Today on ${mainHood.name}` : "Today"} description={longDate()} actions={<Button size="sm" iconStart={PlusCircle} href="/rep/new">Set up a merchant</Button>} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card padding="lg">
-            <CardHeader title="Visits and follow-ups planned" subtitle="Leads whose next step is due" action={<Button variant="ghost" size="sm" href="/rep/leads">Pipeline</Button>} />
+          <Panel title="Visits and follow-ups planned" description="Leads whose next step is due" action={<Button variant="ghost" size="sm" href="/rep/leads">Pipeline</Button>}>
             {leads.loading && !leads.data ? (
               <Skeleton className="h-24" />
             ) : leads.data?.items.length ? (
@@ -54,10 +52,10 @@ export default function RepToday() {
                 {leads.data.items.map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center gap-2 py-2">
                     <div className="min-w-0 flex-1">
-                      <Link href={`/rep/leads/${l.id}`} className="text-body-strong text-fg hover:underline">{l.businessName}</Link>
+                      <Link href={`/rep/leads/${l.id}`} className="text-meta-strong text-fg hover:underline">{l.businessName}</Link>
                       <p className="text-meta text-fg-muted">{l.nextActionAt ? formatTime(l.nextActionAt) : ""} {l.address ? `· ${l.address}` : ""}</p>
                     </div>
-                    <Badge tone={LEAD_STAGE_TONE[l.stage]}>{l.stage.replace("_", " ")}</Badge>
+                    <span className="text-meta text-fg-muted">{l.stage.replace("_", " ")}</span>
                     {l.address ? <Button size="sm" variant="ghost" iconStart={Navigation} href={`https://maps.google.com/?q=${encodeURIComponent(l.address)}`}>Navigate</Button> : null}
                     <Button size="sm" variant="secondary" href={`/rep/new?leadId=${l.id}`}>Start setup</Button>
                   </li>
@@ -66,9 +64,8 @@ export default function RepToday() {
             ) : (
               <p className="text-meta text-fg-muted">Nothing due. Add prospects from the pipeline.</p>
             )}
-          </Card>
-          <Card padding="lg">
-            <CardHeader title="Check-ins due" subtitle="Day 7 and day 30 calls from the playbook" />
+          </Panel>
+          <Panel title="Check-ins due" description="Day 7 and day 30 calls from the playbook">
             {merchants.loading && !merchants.data ? (
               <Skeleton className="h-24" />
             ) : due.length ? (
@@ -76,19 +73,23 @@ export default function RepToday() {
                 {due.map(({ m, c }) => (
                   <li key={`${m.merchantId}-${c.day}`} className="flex flex-wrap items-center gap-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <ListRow title={<Link href={`/rep/merchants/${m.merchantId}`} className="hover:underline">{m.name}</Link>} subtitle={`Day ${c.day} check-in · ${m.daysSinceSignup} days since signing`} />
-                      <ProgressBar value={m.activeMembers} max={m.target} valueText={`${m.activeMembers} / ${m.target}`} className="max-w-60" />
+                      <Link href={`/rep/merchants/${m.merchantId}`} className="block truncate text-meta-strong text-fg hover:underline">{m.name}</Link>
+                      <p className="truncate text-meta text-fg-muted">Day {c.day} check-in · {m.daysSinceSignup} days since signing</p>
                     </div>
-                    <Button size="sm" variant="secondary" iconStart={Phone} onClick={() => setLog({ m, day: c.day })}>Log call</Button>
+                    <div className="hidden w-36 shrink-0 items-center gap-2 sm:flex" title="Active members">
+                      <Meter value={Math.min(m.activeMembers, m.target)} max={m.target} label={`${m.name}: active members`} />
+                      <span className="shrink-0 text-caption font-normal text-fg-muted tabular">{m.activeMembers}/{m.target}</span>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => setLog({ m, day: c.day })}>Log call</Button>
                   </li>
                 ))}
               </ul>
             ) : (
               <EmptyState title="All caught up" description="No check-ins due today." className="py-4" />
             )}
-          </Card>
+          </Panel>
         </div>
-        {mainHood ? <DensityGauge label={`${mainHood.name} density`} value={mainHood.shopCount} target={40} unit="shops" /> : <Skeleton className="h-48 rounded-card" />}
+        {mainHood ? <Panel><DensityBar label={`${mainHood.name} density`} value={mainHood.shopCount} target={40} unit="shops" /></Panel> : <Skeleton className="h-24 rounded-card" />}
       </div>
       <ConfirmDialog open={!!log} onClose={() => setLog(null)} title={`Log day ${log?.day} call`} body={log?.m.name} confirmLabel="Save" onConfirm={async () => {
         await browserApi.rep.checkIn(log!.m.merchantId, { day: log!.day, outcome, notes: note.trim() || undefined });

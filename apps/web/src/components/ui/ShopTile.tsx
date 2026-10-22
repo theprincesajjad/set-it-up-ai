@@ -117,7 +117,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
       <ShopLogo shop={shop} size={variant === "compact" ? 40 : 44} />
       <div className="min-w-0 flex-1">
         {sponsored ? <SponsoredBadge /> : null}
-        <div className="text-body-strong text-fg">{name}</div>
+        <div className={cn("text-body-strong text-fg", variant === "compact" && "[&_.truncate]:line-clamp-2 [&_.truncate]:whitespace-normal")}>{name}</div>
         {second ? <div className="truncate text-meta text-fg-muted">{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{verticalLabel(shop.vertical).toLowerCase()}</div> : null}
       </div>
       {variant === "wallet" && balance ? (

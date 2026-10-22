@@ -23,7 +23,7 @@ const dots: Record<BadgeTone, string> = {
   brand: "bg-bg",
   accent: "bg-accent",
   success: "bg-positive",
-  warning: "bg-accent",
+  warning: "bg-fg",
   danger: "bg-negative",
   info: "bg-fg",
 };

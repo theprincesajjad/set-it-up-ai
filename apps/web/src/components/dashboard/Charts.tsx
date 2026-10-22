@@ -103,7 +103,7 @@ function Plot({ data, format, height, kind, title }: PlotProps) {
   const h = hover != null ? data[hover] : null;
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
-    <figure aria-labelledby={`${id}-cap`} className="relative">
+    <figure aria-labelledby={`${id}-cap`} className="relative" onPointerLeave={() => setHover(null)}>
       <figcaption id={`${id}-cap`} className="sr-only">
         {title}: {data.length} days, total {format(total)}, highest {format(raw)}.
       </figcaption>
@@ -124,7 +124,7 @@ function Plot({ data, format, height, kind, title }: PlotProps) {
                   return (
                     <g key={d.label}>
                       {d.compare != null ? <rect x={i * bw + bw * 0.15} y={y(d.compare)} width={bw * 0.7} height={H - y(d.compare)} className="fill-bg-muted" /> : null}
-                      <rect x={i * bw + bw * 0.22} y={H - Math.max(bh, d.value > 0 ? 1.5 : 0)} width={bw * 0.56} height={Math.max(bh, d.value > 0 ? 1.5 : 0)} rx={1.5} className={cn("transition-opacity", hover != null && hover !== i ? "fill-fg opacity-30" : "fill-fg")} />
+                      <rect x={i * bw + bw * 0.22} y={H - Math.max(bh, d.value > 0 ? 1.5 : 0)} width={bw * 0.56} height={Math.max(bh, d.value > 0 ? 1.5 : 0)} rx={1.5} className={hover === i ? "fill-fg" : "fill-fg opacity-90"} />
                       <rect x={i * bw} y={0} width={bw} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
                     </g>
                   );
@@ -144,7 +144,7 @@ function Plot({ data, format, height, kind, title }: PlotProps) {
             <span aria-hidden className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-fg" style={{ left: `${(x(hover) / W) * 100}%`, top: y(h.value) }} />
           ) : null}
           {h ? (
-            <div aria-hidden className="pointer-events-none absolute -top-1 z-[1] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-[8px] border border-line bg-bg px-2 py-1 text-caption shadow-float" style={{ left: `${Math.min(92, Math.max(8, (x(hover!) / W) * 100))}%` }}>
+            <div aria-hidden className="pointer-events-none absolute top-0 z-[1] -translate-x-1/2 whitespace-nowrap rounded-[8px] border border-line bg-bg px-2 py-1 text-caption shadow-float" style={{ left: `${Math.min(92, Math.max(8, (x(hover!) / W) * 100))}%` }}>
               <span className="text-fg-muted">{shortDate(h.label)}</span> <span className="font-semibold text-fg tabular">{format(h.value)}</span>
               {h.compare != null ? <span className="text-fg-muted tabular"> · {format(h.compare)}</span> : null}
             </div>

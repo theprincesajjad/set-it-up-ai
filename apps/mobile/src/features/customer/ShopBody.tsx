@@ -11,7 +11,7 @@ import { distanceMetres, type customerApi, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Linking, Platform, Pressable, Share, StyleSheet, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
 import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
@@ -217,13 +217,13 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <>
-          <View style={styles.actions}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: variant === "sheet" ? -20 : -16 }} contentContainerStyle={[styles.actions, { paddingHorizontal: variant === "sheet" ? 20 : 16 }]}>
             {loc ? <Action icon={Navigation} label="Directions" onPress={directions} /> : null}
             {s.merchant.phone || loc?.phone ? <Action icon={Phone} label="Call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} /> : null}
             {s.merchant.website ? <Action icon={Globe} label="Website" onPress={() => Linking.openURL(s.merchant.website!)} /> : null}
             <Action icon={Share2} label="Share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
             {m ? <Action icon={BellOff} label={m.muted ? "Unmute" : "Mute"} onPress={toggleMute} /> : null}
-          </View>
+          </ScrollView>
 
           <Section title="Rewards">
             {rewardsList.length === 0 ? (
@@ -239,7 +239,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                   reward={r}
                   balance={m?.balance ?? 0}
                   terminology={term}
-                  state={m && r.affordable ? "available" : "locked"}
+                  state={!m ? "info" : r.affordable ? "available" : "locked"}
                   disabledReason={online ? null : t("err.redeem.offlineCustomer")}
                   onRedeem={() => setRedeeming(r)}
                   divider={i < all.length - 1}
@@ -369,6 +369,6 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
 const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  actions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  actions: { flexDirection: "row", gap: 8 },
   action: { flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 999 },
 });

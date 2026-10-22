@@ -101,12 +101,12 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
 
       {/* Category rail of objects */}
       {state.categories.length > 2 ? (
-        <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2] pb-[max(14px,env(safe-area-inset-bottom))] md:pb-6", sel && "max-md:hidden")}>
+        <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2] pb-[max(16px,env(safe-area-inset-bottom))] md:pb-6", sel && "max-md:hidden")}>
           <div role="group" aria-label="Categories" className="no-scrollbar pointer-events-auto mx-auto flex w-fit max-w-full gap-1 overflow-x-auto px-3 pt-2">
             {state.categories.map((c) => {
               const on = state.cat === c;
               return (
-                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[60px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
+                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[58px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
                   <span className={cn("flex size-12 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-[#0B0B0C]" : "group-hover:scale-105")}>
                     <CategoryIcon category={c} size={30} />
                   </span>

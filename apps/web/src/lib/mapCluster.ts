@@ -69,3 +69,33 @@ export function densestGroup<T extends { lat: number; lng: number }>(points: T[]
   }
   return best;
 }
+
+/**
+ * Which group anchors can show their name label (to the right of the 44px bubble) without
+ * overlapping another bubble or an already placed label. Anchors are taken in `groups` order
+ * (clusterPins returns them by priority: selected, my shops, offers, the rest).
+ */
+export function labelledAnchors(groups: PinGroup[], points: ClusterInput[], nameOf: (id: string) => string, opts: { bubble?: number; maxLabel?: number; charPx?: number } = {}): Set<string> {
+  const half = (opts.bubble ?? 44) / 2;
+  const maxLabel = opts.maxLabel ?? 150;
+  const charPx = opts.charPx ?? 7.4;
+  const at = new Map(points.map((p) => [p.id, p]));
+  type Box = { x1: number; x2: number; y1: number; y2: number };
+  const hit = (a: Box, b: Box) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+  const bubbles: { id: string; box: Box }[] = groups.flatMap((g) => {
+    const p = at.get(g.anchor);
+    return p ? [{ id: g.anchor, box: { x1: p.x - half, x2: p.x + half, y1: p.y - half, y2: p.y + half } }] : [];
+  });
+  const placed: Box[] = [];
+  const out = new Set<string>();
+  for (const g of groups) {
+    const p = at.get(g.anchor);
+    if (!p) continue;
+    const w = Math.min(maxLabel, Math.max(nameOf(g.anchor).length, 10) * charPx) + 8;
+    const box = { x1: p.x + half, x2: p.x + half + w, y1: p.y - 17, y2: p.y + 17 };
+    if (bubbles.some((b) => b.id !== g.anchor && hit(b.box, box)) || placed.some((b) => hit(b, box))) continue;
+    placed.push(box);
+    out.add(g.anchor);
+  }
+  return out;
+}

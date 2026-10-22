@@ -26,15 +26,15 @@ export default async function LegalPage({ params }: Props) {
   return (
     <>
       {isDraft ? (
-        <div role="note" className="sticky top-16 z-banner border-b border-warning bg-warning text-on-warning">
-          <p className="mx-auto flex max-w-[720px] items-center gap-2 px-4 py-2 text-label md:px-6">
-            <TriangleAlert aria-hidden className="size-4 shrink-0" />
+        <div role="note" className="sticky top-16 z-banner border-b border-line bg-bg-subtle text-fg">
+          <p className="mx-auto flex max-w-[720px] items-center gap-2 px-4 py-2.5 text-meta-strong md:px-6">
+            <TriangleAlert aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
             DRAFT: not reviewed by a lawyer and not in effect.
           </p>
         </div>
       ) : null}
-      <Container size="prose" className="py-10">
-        <p className="text-overline uppercase text-fg-muted">Legal{isDraft ? " · Draft" : ""}</p>
+      <Container size="prose" className="py-12 md:py-16">
+        <p className="mb-6 text-meta-strong text-fg-muted">Legal{isDraft ? " · Draft" : ""}</p>
         <article className="prose-ll" dangerouslySetInnerHTML={{ __html: html }} />
       </Container>
     </>

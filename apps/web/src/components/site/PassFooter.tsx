@@ -9,7 +9,7 @@ export function PassFooter() {
       <Link href="/for-shoppers" className="inline-flex items-center gap-2 text-meta text-fg-muted hover:text-fg">
         <LogoMark size={16} />
         <span>
-          Part of {BRAND.name} · one card for every shop on your street
+          Part of {BRAND.name}
         </span>
       </Link>
       <p className="flex gap-3 text-meta text-fg-subtle">

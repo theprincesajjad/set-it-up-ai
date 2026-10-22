@@ -161,7 +161,7 @@ export default function Wallet() {
             onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
             style={styles.hero}
           >
-            <Text variant="displayNumber" color={hero.kind === "ready" ? "accent" : "fg"} tabular>
+            <Text variant="displayNumber" tabular>
               {heroCopy.big}
             </Text>
             <View style={{ flex: 1, paddingBottom: 6 }}>
@@ -231,9 +231,9 @@ export default function Wallet() {
               <Text variant="bodyStrong" style={{ flex: 1 }}>
                 {live[0].name}
               </Text>
-              <Text variant="metaStrong" color="accentText" tabular>{`${live[0].progress.visited} / ${live[0].progress.goal}`}</Text>
+              <Text variant="metaStrong" tabular>{`${live[0].progress.visited} / ${live[0].progress.goal}`}</Text>
             </View>
-            <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} tone="accent" height={4} />
+            <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} height={4} />
             <Text variant="meta" color="fgMuted">
               {promoEnds(live[0].endsAt) ?? "Visit the shops on the list to finish it"}
             </Text>

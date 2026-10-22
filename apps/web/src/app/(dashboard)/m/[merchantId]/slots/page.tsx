@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader, Panel, Segmented } from "@/components/dashboard/kit";
 import { CalendarPlus } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi } from "@ll/shared";
@@ -6,9 +7,6 @@ import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -43,9 +41,8 @@ function Slots() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Pickup & drop-off" description="Slots come from your opening hours. Customers pick one when they order or book." actions={kinds.length > 1 ? <SegmentedControl label="Kind" value={kind} onChange={setKind} options={kinds} /> : undefined} />
-      <Card padding="lg">
-        <CardHeader title="Make slots" />
+      <PageHeader title="Pickup & drop-off" description="Slots come from your opening hours. Customers pick one when they order or book." actions={kinds.length > 1 ? <Segmented label="Kind" value={kind} onChange={setKind} options={kinds} /> : undefined} />
+      <Panel title="Make slots">
         <div className="grid gap-3 sm:grid-cols-4">
           <Select label="Location" value={loc} onChange={(e) => setLoc(e.target.value)} options={detail.locations.map((l) => ({ value: l.id, label: l.name }))} />
           <TextField label="Days ahead" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} />
@@ -62,9 +59,8 @@ function Slots() {
         }}>
           Make slots
         </Button>
-      </Card>
-      <Card padding="lg">
-        <CardHeader title="Upcoming bookings" />
+      </Panel>
+      <Panel title="Upcoming bookings">
         {bookings.data?.items.length ? (
           <ul className="divide-y divide-line">
             {bookings.data.items.map((b) => (
@@ -82,9 +78,8 @@ function Slots() {
         ) : (
           <p className="text-meta text-fg-muted">No bookings yet.</p>
         )}
-      </Card>
-      <Card padding="lg">
-        <CardHeader title="Slots" />
+      </Panel>
+      <Panel title="Slots">
         {[...byDay.entries()].slice(0, 7).map(([day, list]) => (
           <div key={day} className="mb-3">
             <p className="text-label text-fg">{day}</p>
@@ -98,7 +93,7 @@ function Slots() {
           </div>
         ))}
         {!byDay.size ? <p className="text-meta text-fg-muted">No slots yet. Make some above.</p> : null}
-      </Card>
+      </Panel>
     </div>
   );
 }

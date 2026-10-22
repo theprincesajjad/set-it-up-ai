@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader, Panel, Section, Dot } from "@/components/dashboard/kit";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
@@ -7,9 +8,7 @@ import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { DensityGauge } from "@/components/ui/DensityGauge";
-import { PageHeader, Section } from "@/components/ui/Layout";
+import { DensityBar } from "@/components/dashboard/NetworkGauges";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -34,49 +33,49 @@ export default function NeighbourhoodsPage() {
   const num = (v: string) => (v.trim() ? Number(v) : null);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Neighbourhoods & perks" description="BIA details, storefront targets and network-funded perks." actions={<Button iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
+      <PageHeader title="Neighbourhoods & perks" description="BIA details, storefront targets and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
       <Async state={hoods}>
         {(d) => (
-          <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-2 xl:grid-cols-3">
             {d.items.map((h) => (
               <li key={h.id}>
-                <Card padding="lg" className="flex h-full flex-col gap-3">
+                <div className="flex h-full flex-col gap-4 bg-bg p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h2 className="text-title text-fg">{h.name}</h2>
+                      <h2 className="text-body-strong text-fg">{h.name}</h2>
                       <p className="text-meta text-fg-muted">{h.biaName ?? "No BIA on file"} · {h.city}</p>
                     </div>
-                    <Badge tone={STATUS_TONE[h.status]}>{h.status}</Badge>
+                    <Dot tone={h.status === "live" ? "positive" : h.status === "pilot" ? "info" : "neutral"}>{h.status[0]!.toUpperCase() + h.status.slice(1)}</Dot>
                   </div>
-                  <DensityGauge compact label="Shops live" value={h.merchants} target={h.storefrontEstimate ?? 40} unit="shops" className="shadow-none" />
+                  <DensityBar label="Shops live" value={h.merchants} target={h.storefrontEstimate ?? 40} unit="shops" />
                   <p className="text-meta text-fg-muted">{formatNumber(h.activatedMerchants)} activated{h.biaContactName ? ` · BIA: ${h.biaContactName}` : ""}</p>
                   <div className="mt-auto flex gap-2">
-                    <IconButton icon={Pencil} label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "" })} />
-                    {h.merchants === 0 ? <IconButton icon={Trash2} label={`Delete ${h.name}`} onClick={() => setDelN(h)} /> : null}
+                    <Button variant="secondary" size="sm" aria-label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "" })}>Edit</Button>
+                    {h.merchants === 0 ? <Button variant="ghost" size="sm" onClick={() => setDelN(h)}>Delete</Button> : null}
                   </div>
-                </Card>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </Async>
       <Section title="Network perks" action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setP({ name: "", neighbourhoodId: "", threshold: "3", windowDays: "30", bonusPoints: "50", description: "" })}>Add perk</Button>}>
-        <Card padding="sm">
-          <ul className="divide-y divide-line">
+        <div>
+          <ul className="divide-y divide-line border-y border-line">
             {(perks.data?.items ?? []).map((x) => (
-              <li key={x.id} className="flex flex-wrap items-center gap-3 px-2 py-3">
+              <li key={x.id} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-body-strong text-fg">{x.name}</p>
+                  <p className="text-meta-strong text-fg">{x.name}</p>
                   <p className="text-meta text-fg-muted">Visit {x.threshold} shops in {x.windowDays} days → +{x.bonusPoints} pts · {hoods.data?.items.find((h) => h.id === x.neighbourhoodId)?.name ?? "Network-wide"} · {formatNumber(x.awards)} awarded</p>
                 </div>
                 <div className="w-32"><Switch label="Active" checked={x.active} onChange={async (v) => { await act.run(() => browserApi.admin.updatePerk(x.id, { active: v })); await perks.reload(); }} /></div>
-                <IconButton icon={Pencil} label={`Edit ${x.name}`} onClick={() => setP({ id: x.id, name: x.name, neighbourhoodId: x.neighbourhoodId ?? "", threshold: String(x.threshold), windowDays: String(x.windowDays), bonusPoints: String(x.bonusPoints), description: x.description ?? "" })} />
-                <IconButton icon={Trash2} label={`Delete ${x.name}`} onClick={async () => { await act.run(() => browserApi.admin.deletePerk(x.id)); await perks.reload(); }} />
+                <IconButton icon={Pencil} size={40} label={`Edit ${x.name}`} onClick={() => setP({ id: x.id, name: x.name, neighbourhoodId: x.neighbourhoodId ?? "", threshold: String(x.threshold), windowDays: String(x.windowDays), bonusPoints: String(x.bonusPoints), description: x.description ?? "" })} />
+                <IconButton icon={Trash2} size={40} label={`Delete ${x.name}`} onClick={async () => { await act.run(() => browserApi.admin.deletePerk(x.id)); await perks.reload(); }} />
               </li>
             ))}
             {perks.data && !perks.data.items.length ? <li className="p-3 text-meta text-fg-muted">No perks yet.</li> : null}
           </ul>
-        </Card>
+        </div>
       </Section>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <Modal open={!!n} onClose={() => setN(null)} title={n?.id ? "Edit neighbourhood" : "Add neighbourhood"} size="md" actions={

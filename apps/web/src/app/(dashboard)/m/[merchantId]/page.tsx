@@ -48,7 +48,7 @@ export default function HomePage() {
       <PageHeader
         title={name ? `${greeting()}, ${name}` : greeting()}
         description={`${longDate()} · ${m.name}`}
-        actions={<Button href={`${base}/counter`}>Open counter</Button>}
+        actions={<Button size="sm" href={`${base}/counter`}>Open counter</Button>}
         flush
       />
 

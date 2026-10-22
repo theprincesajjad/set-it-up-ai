@@ -117,6 +117,14 @@ export default function Explore() {
   };
   const shops = useQuery({ queryKey: qk.shops(JSON.stringify(params)), queryFn: () => api.network.shops(params) });
   const all = shops.data?.items ?? [];
+  // No neighbourhood picked yet: name the strip by where most of the shops around you are.
+  const placeName = useMemo(() => {
+    if (hoodName) return hoodName;
+    const counts = new Map<string, number>();
+    for (const x of all.slice(0, 20)) if (x.merchant.neighbourhoodId) counts.set(x.merchant.neighbourhoodId, (counts.get(x.merchant.neighbourhoodId) ?? 0) + 1);
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    return hoods.data?.items.find((h) => h.id === top)?.name ?? null;
+  }, [hoodName, all, hoods.data]);
 
   const memberships = useMemo(() => {
     const out: Record<string, PinMembership> = {};
@@ -185,7 +193,7 @@ export default function Explore() {
         autoFocus
         value={q}
         onChangeText={setQ}
-        placeholder={hoodName ? `Search ${hoodName}` : "Search shops or streets"}
+        placeholder={placeName ? `Search ${placeName}` : "Search shops or streets"}
         placeholderTextColor={c.fgSubtle}
         accessibilityLabel="Search shops"
         returnKeyType="search"
@@ -210,10 +218,10 @@ export default function Explore() {
       <IconButton icon={Search} label="Search shops" variant="float" size={44} onPress={() => setSearching(true)} />
       <View style={{ flex: 1 }} />
       <View style={[styles.group, { backgroundColor: c.bg }, shadows.float.native]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${hoodName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${placeName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
           <MapPin size={16} color={c.fg} strokeWidth={2} />
           <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 150 }}>
-            {(hoodName ?? "your street").toLowerCase()}
+            {(placeName ?? "your street").toLowerCase()}
           </Text>
         </Pressable>
         <View style={[styles.groupRule, { backgroundColor: c.line }]} />
@@ -377,7 +385,7 @@ export default function Explore() {
           )}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 16 }}>
-              <Text variant="largeTitle">{stripHeader(visible.length, hoodName).toLowerCase()}</Text>
+              <Text variant="largeTitle">{stripHeader(visible.length, placeName).toLowerCase()}</Text>
               {perk && progress ? <PerkCard headline={perkHeadline(perk, hoodName)} {...progress} /> : null}
             </View>
           }

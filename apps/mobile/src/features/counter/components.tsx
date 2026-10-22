@@ -14,6 +14,7 @@ import {
   Banner,
   Button,
   ChevronDown,
+  ChevronRight,
   CircleCheck,
   Clock3,
   Ellipsis,
@@ -30,8 +31,8 @@ import type { CounterCustomer } from "../../lib/award";
 export function CounterHeader({ title, staff, onStaff, onMenu, canSwitch }: { title: string; staff: ActiveStaff | null; onStaff: () => void; onMenu: () => void; canSwitch: boolean }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.header, { borderBottomColor: c.border }]}>
-      <Text variant="title" numberOfLines={1} style={{ flex: 1, fontSize: 18 }} accessibilityRole="header">
+    <View style={[styles.header, { borderBottomColor: c.line }]}>
+      <Text variant="mapLabel" numberOfLines={1} style={{ flex: 1, fontSize: 18, lineHeight: 24, textTransform: "none" }} accessibilityRole="header">
         {title}
       </Text>
       {staff ? (
@@ -39,14 +40,14 @@ export function CounterHeader({ title, staff, onStaff, onMenu, canSwitch }: { ti
           accessibilityRole="button"
           accessibilityLabel={canSwitch ? `Signed in staff: ${staff.name ?? "Staff"}. Switch staff` : `Signed in staff: ${staff.name ?? "Staff"}`}
           onPress={canSwitch ? onStaff : undefined}
-          style={[styles.staffChip, { backgroundColor: c.surfaceSunken }]}
+          style={[styles.staffChip, { backgroundColor: c.bgSubtle }]}
         >
           <Avatar name={staff.name} id={staff.userId} size={32} />
           <Text variant="bodyStrong">{staff.name?.split(" ")[0] ?? "Staff"}</Text>
           {canSwitch ? <ChevronDown size={18} color={c.fgMuted} /> : null}
         </Pressable>
       ) : null}
-      <IconButton icon={Ellipsis} label="More" onPress={onMenu} />
+      <IconButton icon={Ellipsis} label="More" variant="secondary" onPress={onMenu} />
     </View>
   );
 }
@@ -57,16 +58,16 @@ export function EntryDisplay({ text, placeholder, error }: { text: string; place
   return (
     <View style={{ gap: 6, alignItems: "center", minHeight: 72, justifyContent: "center" }} accessibilityLiveRegion="polite">
       {text ? (
-        <Text variant="keypad" maxFontSizeMultiplier={1.6} accessibilityLabel={`Entered ${text.replace(/\D/g, "").split("").join(" ")}`}>
+        <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={{ fontSize: 36, lineHeight: 42, fontWeight: "500", letterSpacing: 0.5 }} accessibilityLabel={`Entered ${text.replace(/\D/g, "").split("").join(" ")}`}>
           {text}
         </Text>
       ) : (
-        <Text variant="bodyLg" color="fgMuted">
+        <Text variant="headline" color="fgMuted" style={{ fontWeight: "400" }}>
           {placeholder}
         </Text>
       )}
       {error ? (
-        <Text variant="bodySm" rawColor={c.danger} center>
+        <Text variant="meta" rawColor={c.negative} center>
           {error}
         </Text>
       ) : null}
@@ -80,17 +81,17 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
     return (
       <View style={{ gap: 8 }}>
         <View style={styles.row}>
-          <View style={[styles.newIcon, { backgroundColor: c.brandSubtle }]}>
-            <UserPlus size={24} color={c.onBrandSubtle} />
+          <View style={[styles.newIcon, { backgroundColor: c.bgSubtle }]}>
+            <UserPlus size={24} color={c.fg} strokeWidth={1.75} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="h3">New customer</Text>
-            <Text variant="bodyLg" color="fgMuted">
+            <Text variant="title">New customer</Text>
+            <Text variant="body" color="fgMuted" tabular>
               {`...${customer.digits.slice(-4)}`}
             </Text>
           </View>
         </View>
-        <Text variant="bodySm" color="fgMuted">
+        <Text variant="meta" color="fgMuted">
           They'll get a welcome text with their card and a question about offers.
         </Text>
       </View>
@@ -101,8 +102,8 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
       <View style={styles.row}>
         <Avatar name={customer.label} size={56} />
         <View style={{ flex: 1 }}>
-          <Text variant="h3">{customer.label}</Text>
-          <Text variant="bodySm" color="fgMuted">
+          <Text variant="title">{customer.label}</Text>
+          <Text variant="meta" color="fgMuted">
             Balance updates when you're back online
           </Text>
         </View>
@@ -116,30 +117,32 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
       <View style={styles.row}>
         <Avatar name={m.name} id={m.memberId} size={56} />
         <View style={{ flex: 1 }}>
-          <Text variant="h3">{shortName(m.name)}</Text>
-          <Text variant="bodyLg" color="fgMuted">
+          <Text variant="title">{shortName(m.name)}</Text>
+          <Text variant="body" color="fgMuted" tabular>
             {m.maskedPhone ?? m.memberCode}
           </Text>
         </View>
-        {m.vip ? <Badge tone="brand">{m.vip.name}</Badge> : null}
+        <View style={{ alignItems: "flex-end" }}>
+          <Text variant="displayNumber" tabular style={{ fontSize: 32, lineHeight: 36 }}>
+            {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance}/${program.stampGoal}` : formatPts(m.balance, m.terminology).split(" ")[0]}
+          </Text>
+          <Text variant="meta" color="fgMuted">
+            {m.terminology}
+          </Text>
+        </View>
       </View>
-      {program?.earnType === "stamps" && program.stampGoal > 0 ? (
-        <StampCard count={m.balance} goal={program.stampGoal} vertical={vertical} compact />
-      ) : null}
-      <Text variant="title" tabular>
-        {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance} of ${program.stampGoal} ${m.terminology}` : formatPts(m.balance, m.terminology)}
-      </Text>
+      {m.vip ? <Badge tone="neutral">{m.vip.name}</Badge> : null}
+      {program?.earnType === "stamps" && program.stampGoal > 0 ? <StampCard count={m.balance} goal={program.stampGoal} vertical={vertical} compact /> : null}
       {ready ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Reward ready: ${ready.name}. Redeem`} onPress={onRedeem}>
-          <View style={[styles.ready, { backgroundColor: c.accent }]}>
-            <Gift size={22} color={c.onAccent} />
-            <Text variant="title" rawColor={c.onAccent} style={{ flex: 1 }}>
-              {`Reward ready: ${ready.name}`}
-            </Text>
-          </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Reward ready: ${ready.name}. Redeem`} onPress={onRedeem} style={({ pressed }) => [styles.ready, { borderColor: c.line, backgroundColor: pressed ? c.bgSubtle : c.bg }]}>
+          <Gift size={22} color={c.accent} strokeWidth={2} />
+          <Text variant="headline" color="accentText" style={{ flex: 1 }}>
+            {`Reward ready: ${ready.name}`}
+          </Text>
+          <ChevronRight size={20} color={c.fgMuted} />
         </Pressable>
       ) : m.nextReward ? (
-        <Text variant="bodySm" color="fgMuted">{`${formatPts(m.nextReward.pointsNeeded, m.terminology)} to ${m.nextReward.name}`}</Text>
+        <Text variant="meta" color="fgMuted">{`${formatPts(m.nextReward.pointsNeeded, m.terminology)} to ${m.nextReward.name}`}</Text>
       ) : null}
       {m.openRedemptionCount > 0 ? (
         <Banner variant="info" actionLabel={onCode ? "Enter code" : undefined} onAction={onCode}>
@@ -155,7 +158,7 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
 export function AmountDisplay({ cents }: { cents: number }) {
   return (
     <View style={{ alignItems: "center" }} accessibilityLiveRegion="polite">
-      <Text variant="counterHero" maxFontSizeMultiplier={1.6} style={{ fontSize: 56, lineHeight: 60 }}>
+      <Text variant="displayNumber" tabular maxFontSizeMultiplier={1.4} style={{ fontSize: 56, lineHeight: 62 }}>
         {formatMoney(cents)}
       </Text>
     </View>
@@ -171,13 +174,17 @@ export function UndoButton({ startedAt, onUndo, label = "Undo", busy }: { starte
   const left = undoSecondsLeft(startedAt, now);
   if (left === 0) return null;
   return (
-    <Button variant="inverse" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={`${label}, ${left} seconds left`}>
+    <Button variant="secondary" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={`${label}, ${left} seconds left`}>
       {`${label} (${left})`}
     </Button>
   );
 }
 
-/** Full-colour success card (leaf for awards, marigold for redeems). */
+/**
+ * Award / redeem result: white, a green check, what staff did in black, and
+ * the points in accent (the one accent on screen = points awarded). Undo is a
+ * grey counter-size button with its countdown.
+ */
 export function SuccessCard({
   view,
   tone,
@@ -196,41 +203,37 @@ export function SuccessCard({
   undoLabel?: string;
 }) {
   const { c } = useTheme();
-  const bg = tone === "accent" ? c.accent : c.success;
-  const fg = tone === "accent" ? c.onAccent : c.onSuccess;
+  const heroColor = tone === "accent" ? c.fg : c.accent;
   return (
-    <View style={[styles.success, { backgroundColor: bg }]} accessible={false}>
-      <View accessible accessibilityLabel={view.announcement} accessibilityLiveRegion="assertive" style={{ alignItems: "center", gap: 8 }}>
-        <CircleCheck size={48} color={fg} />
-        <Text variant="h2" rawColor={fg} center>
+    <View style={[styles.success, { backgroundColor: c.bg }]} accessible={false}>
+      <View accessible accessibilityLabel={view.announcement} accessibilityLiveRegion="assertive" style={{ alignItems: "center", gap: 6 }}>
+        {view.offline ? <Clock3 size={40} color={c.fgMuted} strokeWidth={1.75} /> : <CircleCheck size={40} color={c.positive} strokeWidth={1.75} />}
+        <Text variant="title" center>
           {view.title}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {view.offline ? <Clock3 size={24} color={fg} /> : null}
-          {/* "9 / 10" fills the card; a longer "1,240 pts" / "88 stamps" steps down so it stays on one line. */}
-          <Text variant="counterHero" rawColor={fg} center maxFontSizeMultiplier={1.4} numberOfLines={1} adjustsFontSizeToFit style={view.hero.length > 7 ? { fontSize: 52, lineHeight: 60 } : null}>
-            {view.hero}
-          </Text>
-        </View>
+        {/* "9 / 10" fills the card; a longer "1,240 pts" / "88 stamps" steps down so it stays on one line. */}
+        <Text variant="displayNumber" rawColor={heroColor} center tabular maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: view.hero.length > 7 ? 56 : 72, lineHeight: view.hero.length > 7 ? 64 : 80 }}>
+          {view.hero}
+        </Text>
         {view.next ? (
-          <Text variant="title" rawColor={fg} center>
+          <Text variant="headline" color="fgMuted" center style={{ fontWeight: "400" }}>
             {view.next}
           </Text>
         ) : null}
         {view.offline ? (
-          <Text variant="bodyStrong" rawColor={fg} center>
+          <Text variant="bodyStrong" center>
             Saved. Will send when you're back online.
           </Text>
         ) : null}
         {view.messages.map((msg) => (
-          <Text key={msg} variant="bodyStrong" rawColor={fg} center>
+          <Text key={msg} variant="bodyStrong" color="accentText" center>
             {msg}
           </Text>
         ))}
       </View>
       <View style={{ gap: 8, alignSelf: "stretch" }}>
         {view.rewardReady && onRedeemNow ? (
-          <Button variant="accent" size="counter" iconStart={Gift} onPress={onRedeemNow}>
+          <Button size="counter" iconStart={Gift} onPress={onRedeemNow}>
             Redeem now
           </Button>
         ) : null}
@@ -250,13 +253,13 @@ export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo:
   if (recent.length === 0) return null;
   return (
     <View style={{ gap: 4 }}>
-      <Text variant="overline" color="fgMuted">
-        Recent
+      <Text variant="metaStrong" color="fgMuted">
+        recent
       </Text>
       {recent.map((r, i) => {
         const left = undoSecondsLeft(r.at, now);
         return (
-          <View key={r.key} style={[styles.recent, { borderBottomColor: c.border }]}>
+          <View key={r.key} style={[styles.recent, { borderBottomColor: c.line }]}>
             <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>{`${formatTime(r.at)} · ${r.who} · ${r.label}`}</Text>
             {r.undone ? (
               <Badge tone="neutral">Undone</Badge>
@@ -294,7 +297,7 @@ export function QueueSheet({ visible, onClose, state, onRetry, onDismiss, online
             <Badge tone={i.status === "failed" ? "danger" : i.status === "sending" ? "info" : "warning"}>{i.status === "failed" ? "Needs attention" : i.status === "sending" ? "Sending" : "Waiting"}</Badge>
           </View>
           {i.error ? (
-            <Text variant="bodySm" color="fgMuted">
+            <Text variant="meta" color="fgMuted">
               {i.error.code === "duplicate" ? `Couldn't add for ${i.display.who}: it was already added.` : `Couldn't add for ${i.display.who}: ${i.error.message}`}
             </Text>
           ) : null}
@@ -342,10 +345,10 @@ export function RewardPicker({
       footer={
         reward ? (
           <>
-            <Button variant="accent" size="counter" loading={busy} disabled={!online} onPress={() => onConfirm(reward.id)}>
+            <Button size="counter" loading={busy} disabled={!online} onPress={() => onConfirm(reward.id)}>
               Confirm redeem
             </Button>
-            <Button variant="secondary" size="counter" onPress={() => setPicked(null)}>
+            <Button variant="ghost" size="counter" onPress={() => setPicked(null)}>
               Back
             </Button>
           </>
@@ -354,7 +357,7 @@ export function RewardPicker({
     >
       {!online ? <Banner variant="warning">Redeem needs internet. Awards still work.</Banner> : null}
       {member && reward ? (
-        <Text variant="h3">{`Uses ${formatPts(reward.pointsCost, member.terminology)} · ${shortName(member.name)} will have ${Math.max(0, member.balance - reward.pointsCost)}`}</Text>
+        <Text variant="headline">{`Uses ${formatPts(reward.pointsCost, member.terminology)} · ${shortName(member.name)} will have ${Math.max(0, member.balance - reward.pointsCost)}`}</Text>
       ) : null}
       {member && !reward
         ? rewards.map((r) => {
@@ -365,13 +368,13 @@ export function RewardPicker({
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !ok }}
                 onPress={ok ? () => setPicked(r.id) : undefined}
-                style={[styles.rewardRow, { borderColor: c.border, backgroundColor: ok ? c.surface : c.surfaceSunken }]}
+                style={({ pressed }) => [styles.rewardRow, { borderBottomColor: c.line, backgroundColor: pressed && ok ? c.bgSubtle : c.bg }]}
               >
-                <Gift size={24} color={ok ? c.onAccentSubtle : c.fgMuted} />
-                <Text variant="title" color={ok ? "fg" : "fgMuted"} style={{ flex: 1 }}>
+                <Gift size={22} color={ok ? c.accent : c.fgSubtle} strokeWidth={2} />
+                <Text variant="headline" color={ok ? "fg" : "fgMuted"} style={{ flex: 1 }}>
                   {r.name}
                 </Text>
-                <Text variant="bodyStrong" color="fgMuted">
+                <Text variant="body" color="fgMuted" tabular>
                   {ok ? formatPts(r.pointsCost, member.terminology) : lockedRewardCopy(r.pointsCost - member.balance, member.terminology)}
                 </Text>
               </Pressable>
@@ -388,8 +391,8 @@ const styles = StyleSheet.create({
   staffChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 4, paddingRight: 10, minHeight: 44, borderRadius: 999 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   newIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
-  ready: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: radii.md, padding: 14, minHeight: touchTargets.counter },
-  success: { flex: 1, borderRadius: radii.xl, padding: 20, alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 360 },
+  ready: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 16, minHeight: touchTargets.counter },
+  success: { flex: 1, paddingTop: 32, paddingBottom: 4, alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 360 },
   recent: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth },
-  rewardRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, borderRadius: radii.md, borderWidth: 1, paddingHorizontal: 16 },
+  rewardRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 4 },
 });

@@ -86,7 +86,7 @@ export default function CodeStep() {
   return (
     <Screen back>
       <View style={{ gap: 8 }}>
-        <Text variant="h2" accessibilityRole="header">
+        <Text variant="largeTitle" accessibilityRole="header">
           Enter the code
         </Text>
         <Text color="fgMuted">

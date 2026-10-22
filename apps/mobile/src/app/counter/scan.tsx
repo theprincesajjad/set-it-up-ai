@@ -21,7 +21,7 @@ export default function Scan() {
   if (!permission) return <View style={{ flex: 1, backgroundColor: "#000" }} />;
   if (!permission.granted) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas, justifyContent: "center", padding: 16 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.bg, justifyContent: "center", padding: 16 }}>
         <EmptyState
           icon={Camera}
           title="Camera is off"

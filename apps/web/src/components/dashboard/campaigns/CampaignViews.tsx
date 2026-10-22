@@ -1,4 +1,5 @@
 "use client";
+import { EmptyState, PageHeader, Panel, StatTile, StatusDot } from "@/components/dashboard/kit";
 import { ArrowLeft, Download, Plus, Printer, Trash2, Trophy, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,15 +8,11 @@ import { campaignsApi, type campaignsApi as C, type networkApi } from "@ll/share
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HBarList } from "@/components/dashboard/Charts";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
-import { StatTile } from "@/components/ui/StatTile";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
@@ -38,27 +35,27 @@ export function CampaignList({ base, neighbourhoods, isAdmin }: { base: string; 
   const hoodName = (id: string) => neighbourhoods.find((n) => n.id === id)?.name ?? "Neighbourhood";
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Neighbourhood campaigns" description="Street-wide events: customers visit participating shops to earn bonus points and enter a prize draw." actions={<Button iconStart={Plus} onClick={() => setCreate(true)}>New campaign</Button>} />
+      <PageHeader title="Neighbourhood campaigns" description="Street-wide events: customers visit participating shops to earn bonus points and enter a prize draw." actions={<Button size="sm" iconStart={Plus} onClick={() => setCreate(true)}>New campaign</Button>} />
       <Async state={list}>
         {(d) =>
           d.items.length ? (
-            <ul className="grid gap-4 md:grid-cols-2">
+            <ul className="divide-y divide-line border-y border-line">
               {d.items.map((c) => (
                 <li key={c.id}>
-                  <Card padding="lg" href={`${base}/${c.id}`} className="flex h-full flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-title text-fg">{c.name}</h2>
-                      <StatusBadge domain="campaign" status={c.status} />
-                      {isAdmin || c.priceCents ? <Badge tone={c.paid ? "success" : "warning"}>{c.paid ? "Paid" : c.priceCents ? "Unpaid" : "Free"}</Badge> : null}
+                  <Link href={`${base}/${c.id}`} className="flex flex-col gap-1 py-3 hover:bg-bg-subtle sm:flex-row sm:items-center sm:gap-6 sm:px-2">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-meta-strong text-fg">{c.name}</h2>
+                      <p className="truncate text-meta text-fg-muted">{hoodName(c.neighbourhoodId)} · {KIND_LABEL[c.kind]} · {formatDate(c.startsAt)} to {formatDate(c.endsAt)}</p>
                     </div>
-                    <p className="text-meta text-fg-muted">{hoodName(c.neighbourhoodId)} · {KIND_LABEL[c.kind]} · {formatDate(c.startsAt)} to {formatDate(c.endsAt)}</p>
-                    <p className="text-meta text-fg">{c.merchants.length} shops · visit {c.goalVisits} to enter{c.bonusPoints ? ` · +${c.bonusPoints} pts per shop` : ""}</p>
-                  </Card>
+                    <p className="shrink-0 text-meta text-fg-muted tabular">{c.merchants.length} shops · visit {c.goalVisits}{c.bonusPoints ? ` · +${c.bonusPoints} pts` : ""}</p>
+                    {isAdmin || c.priceCents ? <span className="w-16 shrink-0 text-meta text-fg-muted">{c.paid ? "Paid" : c.priceCents ? "Unpaid" : "Free"}</span> : null}
+                    <span className="w-24 shrink-0"><StatusDot domain="campaign" status={c.status} /></span>
+                  </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyState title="No campaigns yet" description="A passport week is the easiest way to show the street that events bring people in." action={<Button onClick={() => setCreate(true)}>New campaign</Button>} />
+            <EmptyState title="No campaigns yet" description="A passport week is the easiest way to show the street that events bring people in." action={<Button variant="secondary" size="sm" onClick={() => setCreate(true)}>New campaign</Button>} />
           )
         }
       </Async>
@@ -147,20 +144,20 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
         return (
           <div className="flex flex-col gap-5">
             <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={base} className="self-start print:hidden">All campaigns</Button>
-            <PageHeader title={x.name} description={<span className="flex flex-wrap items-center gap-2"><StatusBadge domain="campaign" status={x.status} />{hood?.name} · {KIND_LABEL[x.kind]} · {formatDate(x.startsAt)} to {formatDate(x.endsAt)}</span>} actions={
+            <PageHeader title={x.name} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="campaign" status={x.status} />{hood?.name} · {KIND_LABEL[x.kind]} · {formatDate(x.startsAt)} to {formatDate(x.endsAt)}</span>} actions={
               <div className="flex flex-wrap gap-2 print:hidden">
-                {x.status === "draft" ? <Button loading={act.busy} onClick={async () => { const n = await act.run(() => browserApi.campaigns.schedule(x.id)); if (n) { c.setData(n); toast({ message: "Scheduled", tone: "success" }); } }}>Schedule</Button> : null}
-                {editable ? <Button variant="secondary" onClick={() => setEdit(true)}>Edit</Button> : null}
-                {isAdmin ? <Button variant="secondary" onClick={async () => { const n = await act.run(() => browserApi.admin.markCampaignPaid(x.id, !x.paid)); if (n) c.setData(n); }}>{x.paid ? "Mark unpaid" : "Mark paid"}</Button> : null}
-                {isAdmin && ended && x.status !== "cancelled" ? <Button variant="accent" iconStart={Trophy} onClick={async () => { const d = await act.run(() => browserApi.admin.drawCampaign(x.id, !!x.drawnAt)); if (d) setDraw(d); }}>{x.drawnAt ? "Redraw" : "Prize draw"}</Button> : null}
-                {x.status !== "ended" && x.status !== "cancelled" ? <Button variant="ghost" onClick={() => setCancel(true)}>Cancel</Button> : null}
+                {x.status === "draft" ? <Button size="sm" loading={act.busy} onClick={async () => { const n = await act.run(() => browserApi.campaigns.schedule(x.id)); if (n) { c.setData(n); toast({ message: "Scheduled", tone: "success" }); } }}>Schedule</Button> : null}
+                {editable ? <Button size="sm" variant="secondary" onClick={() => setEdit(true)}>Edit</Button> : null}
+                {isAdmin ? <Button size="sm" variant="secondary" onClick={async () => { const n = await act.run(() => browserApi.admin.markCampaignPaid(x.id, !x.paid)); if (n) c.setData(n); }}>{x.paid ? "Mark unpaid" : "Mark paid"}</Button> : null}
+                {isAdmin && ended && x.status !== "cancelled" ? <Button size="sm" variant="accent" iconStart={Trophy} onClick={async () => { const d = await act.run(() => browserApi.admin.drawCampaign(x.id, !!x.drawnAt)); if (d) setDraw(d); }}>{x.drawnAt ? "Redraw" : "Prize draw"}</Button> : null}
+                {x.status !== "ended" && x.status !== "cancelled" ? <Button size="sm" variant="ghost" onClick={() => setCancel(true)}>Cancel</Button> : null}
               </div>
             } />
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             {x.status === "draft" && !x.paid && x.priceCents > 0 && !isAdmin ? <Banner tone="info">Price {formatMoney(x.priceCents)}. We&apos;ll invoice the BIA; you can schedule once it&apos;s paid.</Banner> : null}
             {draw ? <Banner tone="success" title="Winner drawn">{draw.winner.firstName ?? "Customer"} · {draw.winner.maskedPhone} (from {formatNumber(draw.eligibleCount)} who completed). Contact them through the shop where they last visited.</Banner> : null}
 
-            <Card padding="lg" className="flex flex-col gap-4">
+            <Panel className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
                 <TrendingUp aria-hidden className="mt-1 size-7 shrink-0 text-fg" />
                 <div>
@@ -171,7 +168,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
                 </div>
               </div>
               {r ? (
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
                   <StatTile label="Customers" value={formatNumber(r.uniqueCustomers)} caption={`${formatNumber(r.baselineUniqueCustomers)} before`} />
                   <StatTile label="New members" value={formatNumber(r.newMembers)} caption={`${formatNumber(r.baselineNewMembers)} before`} />
                   <StatTile label="Took part" value={formatNumber(r.participants)} caption={`${formatNumber(r.completions)} completed`} />
@@ -180,7 +177,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
               ) : null}
               {r?.perMerchant.length ? (
                 <>
-                  <h3 className="text-title text-fg">Visits by shop</h3>
+                  <h3 className="text-body-strong text-fg">Visits by shop</h3>
                   <HBarList rows={r.perMerchant.map((m) => ({ key: m.merchantId, label: m.name, value: m.visits, hint: `${m.baselineVisits} before` }))} />
                 </>
               ) : null}
@@ -191,10 +188,9 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
                 </div>
               ) : null}
               <p className="text-caption text-fg-muted">Aggregates only. No customer is identified in this report.</p>
-            </Card>
+            </Panel>
 
-            <Card padding="lg">
-              <CardHeader title={`Participating shops (${x.merchants.length})`} />
+            <Panel title={`Participating shops (${x.merchants.length})`}>
               <ul className="divide-y divide-line">
                 {x.merchants.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-2 py-2">
@@ -209,7 +205,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
                   <Button variant="secondary" disabled={!add} onClick={async () => { const n = await act.run(() => browserApi.campaigns.addMerchant(x.id, add)); if (n) { c.setData(n); setAdd(""); } }}>Add shop</Button>
                 </div>
               ) : null}
-            </Card>
+            </Panel>
             {edit ? <CampaignForm open onClose={() => setEdit(false)} neighbourhoods={neighbourhoods} isAdmin={isAdmin} onSaved={(n) => c.setData(n)} base={base} campaign={x} /> : null}
             <ConfirmDialog open={cancel} onClose={() => setCancel(false)} title={`Cancel ${x.name}?`} body="Customers stop seeing it. Points already earned stay." confirmLabel="Cancel campaign" danger onConfirm={async () => { c.setData(await browserApi.campaigns.cancel(x.id)); }} />
           </div>

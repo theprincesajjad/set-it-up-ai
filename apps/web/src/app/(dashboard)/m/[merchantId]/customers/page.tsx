@@ -26,7 +26,9 @@ export default function CustomersPage() {
 }
 
 function Customers() {
-  const { api, base, detail, role, enabled } = useMerchant();
+  const { api, base, detail, role, enabled, viewingAs } = useMerchant();
+  // Done-for-you migration: reps and admins (viewing as the shop) can import on any plan.
+  const canImport = enabled("customers.csv_import") || !!viewingAs;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -123,9 +125,9 @@ function Customers() {
         title="Customers"
         description={total != null ? `${formatNumber(total)} ${filtered ? "matching" : "members"} · Reveals and exports are logged` : "Everyone in your program"}
         actions={
-          role !== "staff" && (enabled("customers.csv_import") || enabled("customers.csv_export")) ? (
+          role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>
-              {enabled("customers.csv_import") ? (
+              {canImport ? (
                 <ToolbarButton icon={Upload} href={`${base}/customers/import`}>
                   Import
                 </ToolbarButton>

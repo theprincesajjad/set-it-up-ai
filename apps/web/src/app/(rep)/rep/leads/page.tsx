@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader, Segmented } from "@/components/dashboard/kit";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,10 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { PageHeader } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
 import { PhoneField } from "@/components/ui/PhoneField";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
@@ -45,9 +44,9 @@ export default function LeadsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Leads" description="Your pipeline and unassigned leads. Touching an unassigned lead claims it." actions={<Button iconStart={Plus} onClick={() => setCreate(true)}>Add prospect</Button>} />
+      <PageHeader title="Leads" description="Your pipeline and unassigned leads. Touching an unassigned lead claims it." actions={<Button size="sm" iconStart={Plus} onClick={() => setCreate(true)}>Add prospect</Button>} />
       <div className="flex flex-wrap items-center gap-3">
-        <SegmentedControl label="View" value={view} onChange={setView} options={[{ value: "board", label: "Board" }, { value: "list", label: "List" }]} />
+        <Segmented label="View" value={view} onChange={setView} options={[{ value: "board", label: "Board" }, { value: "list", label: "List" }]} />
         <div className="min-w-60 flex-1">
           <TextField type="search" label="Search leads" hideLabel placeholder="Search business or contact" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -64,8 +63,8 @@ export default function LeadsPage() {
                 <section key={s} aria-label={STAGE_LABEL[s]} className="flex w-64 shrink-0 snap-start flex-col gap-2 rounded-card bg-bg-subtle p-3">
                   <h2 className="flex justify-between text-label text-fg">{STAGE_LABEL[s]} <span className="tabular-nums text-fg-muted">{ls.length}</span></h2>
                   {ls.map((l) => (
-                    <Link key={l.id} href={`/rep/leads/${l.id}`} className="rounded-input bg-bg p-3 hover:shadow-float focus-visible:focus-ring">
-                      <p className="text-body-strong text-fg">{l.businessName}</p>
+                    <Link key={l.id} href={`/rep/leads/${l.id}`} className="rounded-input border border-line bg-bg p-3 hover:border-line-strong focus-visible:focus-ring">
+                      <p className="text-meta-strong text-fg">{l.businessName}</p>
                       <p className="text-meta text-fg-muted">{[l.vertical ? verticalLabel(l.vertical) : null, l.contactName].filter(Boolean).join(" · ") || "No details yet"}</p>
                       {l.nextActionAt ? <p className="mt-1 text-caption text-fg-muted">Next: {formatDate(l.nextActionAt, true)}</p> : null}
                     </Link>

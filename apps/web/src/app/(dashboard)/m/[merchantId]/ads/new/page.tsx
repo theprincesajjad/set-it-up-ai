@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft } from "lucide-react";
+import { BackLink, PageHeader, Panel, Segmented } from "@/components/dashboard/kit";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { adsApi, type adsApi as A } from "@ll/shared";
@@ -7,11 +7,8 @@ import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { PageHeader } from "@/components/ui/Layout";
 import { PromoCard } from "@/components/ui/PromoCard";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { formatMoney } from "@/lib/format";
@@ -54,12 +51,12 @@ function NewAd() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/ads`} className="self-start">Ads</Button>
+      <BackLink href={`${base}/ads`}>Ads</BackLink>
       <PageHeader title="New ad" description="Pick where it shows. You pay the rate card; there's no bidding." />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Card padding="lg" className="flex flex-col gap-4">
+        <Panel className="flex flex-col gap-4">
           <Select label="Placement" value={placement} onChange={(e) => setPlacement(e.target.value as A.AdPlacement)} options={placements.map((p) => ({ value: p, label: `${PLACEMENT_LABEL[p]} · ${adsApi.AD_RATE_CARD[p].dailyCents ? `${formatMoney(adsApi.AD_RATE_CARD[p].dailyCents)}/day` : ""}${adsApi.AD_RATE_CARD[p].dailyCents && adsApi.AD_RATE_CARD[p].cpmCents ? " or " : ""}${adsApi.AD_RATE_CARD[p].cpmCents ? `${formatMoney(adsApi.AD_RATE_CARD[p].cpmCents)} per 1,000 views` : ""}` }))} />
-          {card.dailyCents && card.cpmCents ? <SegmentedControl label="Pricing" value={effModel} onChange={setModel} options={[{ value: "daily", label: "Per day" }, { value: "cpm", label: "Per 1,000 views" }]} /> : null}
+          {card.dailyCents && card.cpmCents ? <Segmented label="Pricing" value={effModel} onChange={setModel} options={[{ value: "daily", label: "Per day" }, { value: "cpm", label: "Per 1,000 views" }]} /> : null}
           {placement === "promo_boost" || placement === "nearby_push" ? <Select label="Promo to boost" placeholder="Pick a live promo" value={promoId} onChange={(e) => setPromoId(e.target.value)} options={(promos.data?.items ?? []).map((p) => ({ value: p.id, label: p.title }))} /> : null}
           <TextField label="Headline" optionalLabel={!!promoId} value={headline} onChange={(e) => setHeadline(e.target.value)} maxLength={80} showCount />
           <TextField type="textarea" label="Text" optionalLabel value={body} onChange={(e) => setBody(e.target.value)} maxLength={280} showCount />
@@ -81,9 +78,9 @@ function NewAd() {
           }}>
             Submit for review
           </Button>
-        </Card>
-        <aside className="flex flex-col gap-2 lg:sticky lg:top-6 lg:self-start" aria-label="Preview">
-          <h2 className="text-title text-fg">Exactly as customers see it</h2>
+        </Panel>
+        <aside className="flex flex-col gap-2 lg:sticky lg:top-20 lg:self-start" aria-label="Preview">
+          <h2 className="text-meta text-fg-muted">Exactly as customers see it</h2>
           <PromoCard promo={{ title: headline || promo?.title || "Your headline", body: body || promo?.body, kind: promo?.kind ?? "offer", endsAt: fromLocalInput(end), imageUrl: promo?.imageUrl }} shop={detail.merchant} sponsored={{ advertiser: detail.merchant.name }} variant="feed" />
         </aside>
       </div>

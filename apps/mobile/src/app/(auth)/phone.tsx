@@ -50,7 +50,7 @@ export default function PhoneStep() {
         banner={banner ? <Banner variant={banner.tone} actionLabel={banner.tone === "danger" ? "Retry" : undefined} onAction={send}>{banner.text}</Banner> : null}
       >
         <View style={{ gap: 8 }}>
-          <Text variant="h2" accessibilityRole="header">
+          <Text variant="largeTitle" accessibilityRole="header">
             What's your mobile number?
           </Text>
           <Text color="fgMuted">We'll text you a code. This is also how shops find your card.</Text>

@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   rule: { position: "absolute", left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
   banner: { paddingHorizontal: 16, paddingBottom: 8 },
   largeTitle: { gap: 4, marginTop: 0, marginBottom: -4 },
-  content: { paddingHorizontal: layout.gutterMobile, gap: 24 },
+  content: { paddingHorizontal: layout.gutterMobile, paddingTop: 8, gap: 24 },
   /** No app bar: keep the first line off the status bar / notch edge. */
   noBar: { paddingTop: 16 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },

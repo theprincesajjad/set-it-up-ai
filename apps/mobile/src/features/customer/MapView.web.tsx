@@ -13,7 +13,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pressable, StyleSheet, View } from "react-native";
-import type { PinMembership } from "../../lib/explore";
+import { labelPlan, pinPriority, type PinMembership } from "../../lib/explore";
 import { useTheme } from "../../theme";
 import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -54,6 +54,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   const userMoved = useRef(false);
   const [ready, setReady] = useState(false);
   const [els, setEls] = useState<Record<string, HTMLElement>>({});
+  const [labeled, setLabeled] = useState<Set<string> | null>(null);
+  const plan = useRef<() => void>(() => undefined);
   const cb = useRef({ onSelect, onRegion, onFail });
   cb.current = { onSelect, onRegion, onFail };
   const withCoords = useMemo(() => shops.filter((s) => s.location?.lat != null && s.location?.lng != null), [shops]);
@@ -94,6 +96,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
       if ((e.originalEvent.target as HTMLElement | null)?.closest?.(".ll-pin")) return;
       cb.current.onSelect(null);
     });
+    m.on("moveend", () => plan.current());
     m.on("moveend", (e) => {
       // Only user pans count ("Search this area"), not our own easeTo.
       if (!(e as { originalEvent?: Event }).originalEvent) return;
@@ -120,6 +123,22 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   useEffect(() => {
     map.current?.setPadding({ top: topInset, right: 0, bottom: bottomInset, left: 0 });
   }, [topInset, bottomInset, ready]);
+
+  // Which pins carry their name: no two labels overlap (recomputed after every move).
+  plan.current = () => {
+    const m = map.current;
+    if (!m) return;
+    const pts = withCoords.map((s) => {
+      const p = m.project([s.location!.lng!, s.location!.lat!]);
+      const mem = memberships[s.merchant.id];
+      return { id: s.merchant.id, x: p.x, y: p.y, priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }) };
+    });
+    const { width, height } = m.getContainer().getBoundingClientRect();
+    setLabeled(labelPlan(pts, { avoid: [{ x1: 0, y1: 0, x2: width, y2: topInset }, { x1: 0, y1: height - bottomInset, x2: width, y2: height }] }));
+  };
+  useEffect(() => {
+    if (ready) plan.current();
+  }, [ready, withCoords, selectedId, memberships, topInset, bottomInset]);
 
   // One DOM marker per shop; the pin itself is rendered with a portal.
   useEffect(() => {
@@ -169,7 +188,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
         if (!el) return null;
         return createPortal(
           <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
-            <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} />
+            <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!labeled && !labeled.has(s.merchant.id)} />
           </Pressable>,
           el,
           s.merchant.id,

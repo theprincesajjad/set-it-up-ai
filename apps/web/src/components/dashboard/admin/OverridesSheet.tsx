@@ -1,4 +1,5 @@
 "use client";
+import { Segmented } from "@/components/dashboard/kit";
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { adminApi } from "@ll/shared";
@@ -6,7 +7,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
@@ -73,7 +73,7 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
               ))}
             </ul>
           ) : null}
-          <SegmentedControl label="Override" value={enabled} onChange={setEnabled} options={[{ value: "on", label: "Force on" }, ...(canForceOff(feature) ? [{ value: "off" as const, label: "Force off" }] : [])]} />
+          <Segmented label="Override" value={enabled} onChange={setEnabled} options={[{ value: "on", label: "Force on" }, ...(canForceOff(feature) ? [{ value: "off" as const, label: "Force off" }] : [])]} />
           <TextField label="Reason" optionalLabel value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Pilot shop, Roncesvalles" />
           {error ? <Banner tone="danger">{error}</Banner> : null}
           <Button disabled={!pick} loading={busy} className="self-start" onClick={async () => {

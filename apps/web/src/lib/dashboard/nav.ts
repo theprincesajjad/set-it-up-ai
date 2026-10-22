@@ -23,13 +23,13 @@ export interface NavEntry {
 
 /**
  * Nav key → the paid feature keys that unlock it (any one is enough). Sections not listed here
- * are free forever (home, counter, customers, program, reports, locations, staff, billing, settings).
+ * are free forever (home, counter, customers, program, reports, locations, staff, integrations
+ * (Google Business Profile), billing, settings).
  */
 export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
   promos: ["promos.basic", "promos.double_points", "promos.push_nearby"],
   "discount-cards": ["discount_cards"],
   messages: ["marketing.email", "marketing.sms", "marketing.automations"],
-  integrations: ["integrations.pos_auto_award", "integrations.webhooks"],
   orders: ["orders.order_ahead", "orders.pickup_status", "payments.in_app"],
   tickets: ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices"],
   catalog: ["orders.order_ahead"],
@@ -41,7 +41,8 @@ export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
 /**
  * Paid keys that don't get their own sidebar entry but gate parts of a free page
  * (shown only when enabled): VIP / birthday / referrals on Program, CSV on Customers,
- * cohorts + network overlap on Reports, staff permissions on Staff.
+ * cohorts + network overlap on Reports, staff permissions on Staff, and the paid connectors on
+ * Integrations (the page itself stays: Google Business Profile is free).
  */
 export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "loyalty.vip_levels",
@@ -51,6 +52,8 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "customers.csv_import",
   "reports.advanced",
   "staff.permissions",
+  "integrations.pos_auto_award",
+  "integrations.webhooks",
 ];
 
 export function enabledSet(features: { key: string; enabled: boolean }[]): Set<FeatureKey> {

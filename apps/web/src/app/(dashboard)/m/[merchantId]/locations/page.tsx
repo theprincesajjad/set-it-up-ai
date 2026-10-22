@@ -1,16 +1,14 @@
 "use client";
-import { Copy, MapPin, Pencil, Plus, Printer, RefreshCw } from "lucide-react";
+import { Copy, Plus, Printer } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge } from "@/components/ui/Badge";
+import { Dot, PageHeader } from "@/components/dashboard/kit";
 import { Banner } from "@/components/ui/Banner";
-import { Button, IconButton } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
+import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { QrCode } from "@/components/ui/QrCode";
@@ -45,62 +43,74 @@ export default function LocationsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       <PageHeader
         title="Locations & QR kit"
         description="Unlimited locations, always free. Each has its own counter QR."
         actions={
-          <Button iconStart={Plus} onClick={() => setEdit({ name: "", address: "", city: "Toronto", postalCode: "", phone: null, hours: hoursDraft(null) })}>
-            Add location
-          </Button>
+          <>
+            <Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setEdit({ name: "", address: "", city: "Toronto", postalCode: "", phone: null, hours: hoursDraft(null) })}>
+              Add location
+            </Button>
+            {state.data?.items[0] ? (
+              <Button size="sm" iconStart={Printer} href={`${base}/locations/kit?location=${state.data.items[0].id}`}>
+                Print QR kit
+              </Button>
+            ) : null}
+          </>
         }
       />
       <Async state={state}>
         {(d) => (
-          <ul className="grid gap-4 lg:grid-cols-2">
+          <ul className="divide-y divide-line border-y border-line">
             {d.items.map((l) => (
               <li key={l.id}>
-                <Card padding="lg" className="flex h-full flex-col gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="shrink-0 rounded-input bg-qr-bg p-2 ">
-                      <QrCode value={l.joinUrl} size={96} label={`Join QR for ${l.name}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="flex flex-wrap items-center gap-2 text-title text-fg">
-                        {l.name} {!l.active ? <Badge>Inactive</Badge> : null}
-                      </h2>
-                      <p className="flex items-start gap-1 text-meta text-fg-muted">
-                        <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
-                        {l.address}, {l.city}
-                      </p>
-                      <p className="text-meta text-fg-muted">{hoursSummary(l.hours)}</p>
-                      {l.phone ? <p className="text-meta text-fg-muted">{formatE164(l.phone)}</p> : null}
+                <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-start">
+                  <div className="shrink-0 self-start rounded-input border border-line bg-qr-bg p-1.5">
+                    <QrCode value={l.joinUrl} size={88} label={`Join QR for ${l.name}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="flex flex-wrap items-center gap-3 text-body-strong text-fg">
+                      {l.name} {!l.active ? <Dot>Inactive</Dot> : null}
+                    </h2>
+                    <p className="text-meta text-fg-muted">
+                      {l.address}, {l.city}
+                    </p>
+                    <p className="text-meta text-fg-muted">{hoursSummary(l.hours)}{l.phone ? ` · ${formatE164(l.phone)}` : ""}</p>
+                    <div className="mt-3 flex max-w-[460px] items-center gap-2 rounded-input border border-line ps-3">
+                      <span className="min-w-0 flex-1 truncate font-mono text-meta text-fg">{l.joinUrl.replace(/^https?:\/\//, "")}</span>
+                      <button
+                        type="button"
+                        aria-label="Copy join link"
+                        onClick={async () => {
+                          await navigator.clipboard?.writeText(l.joinUrl).catch(() => undefined);
+                          toast("Join link copied");
+                        }}
+                        className="inline-flex h-8 items-center gap-1.5 border-s border-line px-3 text-meta text-fg-muted hover:text-fg"
+                      >
+                        <Copy aria-hidden className="size-3.5" /> Copy
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 rounded-input bg-bg-subtle px-3 py-2">
-                    <span className="min-w-0 flex-1 truncate font-mono text-meta text-fg">{l.joinUrl.replace(/^https?:\/\//, "")}</span>
-                    <IconButton icon={Copy} label="Copy join link" size={40} onClick={async () => {
-                      await navigator.clipboard?.writeText(l.joinUrl).catch(() => undefined);
-                      toast("Join link copied");
-                    }} />
-                  </div>
-                  <div className="mt-auto flex flex-wrap gap-2">
-                    <Button iconStart={Printer} href={`${base}/locations/kit?location=${l.id}`}>
-                      Print QR kit
-                    </Button>
-                    <Button variant="secondary" iconStart={Pencil} onClick={() => setEdit({ id: l.id, name: l.name, address: l.address, city: l.city, postalCode: l.postalCode ?? "", phone: l.phone, hours: hoursDraft(l.hours) })}>
+                  <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                    {d.items.length > 1 ? (
+                      <Button variant="secondary" size="sm" href={`${base}/locations/kit?location=${l.id}`}>
+                        Print QR kit
+                      </Button>
+                    ) : null}
+                    <Button variant="secondary" size="sm" onClick={() => setEdit({ id: l.id, name: l.name, address: l.address, city: l.city, postalCode: l.postalCode ?? "", phone: l.phone, hours: hoursDraft(l.hours) })}>
                       Edit
                     </Button>
-                    <Button variant="ghost" iconStart={RefreshCw} onClick={() => setRotate(l)}>
+                    <Button variant="ghost" size="sm" onClick={() => setRotate(l)}>
                       New QR code
                     </Button>
                     {d.items.filter((x) => x.active).length > 1 && l.active ? (
-                      <Button variant="ghost" onClick={() => setRemove(l)}>
+                      <Button variant="ghost" size="sm" onClick={() => setRemove(l)}>
                         Deactivate
                       </Button>
                     ) : null}
                   </div>
-                </Card>
+                </div>
               </li>
             ))}
           </ul>

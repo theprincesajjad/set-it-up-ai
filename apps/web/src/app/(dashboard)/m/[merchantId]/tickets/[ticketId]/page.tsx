@@ -1,17 +1,15 @@
 "use client";
-import { ArrowLeft, Plus, Send, Trash2 } from "lucide-react";
+import { BackLink, PageHeader, Panel, StatusDot } from "@/components/dashboard/kit";
+import { Plus, Send, Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { serviceApi, type serviceApi as S } from "@ll/shared";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { StatusBadge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { PageHeader } from "@/components/ui/Layout";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { Timeline, ticketSteps } from "@/components/ui/Timeline";
@@ -30,9 +28,7 @@ export default function TicketPage() {
   return (
     <FeatureGate keys={["service.tickets"]} title="Service tickets">
       <div className="flex flex-col gap-4">
-        <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/tickets`} className="self-start">
-          Tickets
-        </Button>
+        <BackLink href={`${base}/tickets`}>Tickets</BackLink>
         <Async state={state}>{(d) => <Ticket d={d} onChange={(n) => state.setData(n)} reload={state.reload} />}</Async>
       </div>
     </FeatureGate>
@@ -60,20 +56,18 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
 
   return (
     <>
-      <PageHeader title={`#${t.number} · ${[t.itemDetails.make, t.itemDetails.model].filter(Boolean).join(" ") || t.itemKind}`} description={<span className="flex flex-wrap items-center gap-2"><StatusBadge domain="ticket" status={t.status} label={copy.ticketStatus[t.status]} />{t.customer?.name ?? "Customer"}{t.customer?.phone ? ` · ${t.customer.phone}` : ""}</span>} />
+      <PageHeader title={`#${t.number} · ${[t.itemDetails.make, t.itemDetails.model].filter(Boolean).join(" ") || t.itemKind}`} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="ticket" status={t.status} label={copy.ticketStatus[t.status]} />{t.customer?.name ?? "Customer"}{t.customer?.phone ? ` · ${t.customer.phone}` : ""}</span>} />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card padding="lg">
-            <CardHeader title="Issue" />
+          <Panel title="Issue">
             <p className="text-body text-fg">{t.issue}</p>
             {t.intakeNotes ? <p className="mt-2 border-s-[3px] border-line ps-3 text-meta text-fg-muted">{t.intakeNotes}</p> : null}
             {Object.keys(t.itemDetails).length ? <p className="mt-2 text-meta text-fg-muted">{Object.entries(t.itemDetails).map(([k, v]) => `${k}: ${v}`).join(" · ")}</p> : null}
-          </Card>
+          </Panel>
 
           {!closed && enabled("service.quote_approval") ? (
-            <Card padding="lg">
-              <CardHeader title={latest && latest.status !== "superseded" ? "New quote (replaces the current one)" : "Quote"} subtitle="Totals are recalculated by the server. Customers approve on their phone with a typed signature." />
+            <Panel title={latest && latest.status !== "superseded" ? "New quote (replaces the current one)" : "Quote"} description="Totals are recalculated by the server. Customers approve on their phone with a typed signature.">
               <TextField type="textarea" label="Diagnosis" optionalLabel value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
               <div className="mt-4 flex flex-col gap-2">
                 {lines.map((l, i) => (
@@ -112,16 +106,15 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                   Send quote
                 </Button>
               </div>
-            </Card>
+            </Panel>
           ) : null}
 
           {d.quotes.length ? (
-            <Card padding="lg">
-              <CardHeader title="Quotes" />
+            <Panel title="Quotes">
               <ul className="divide-y divide-line">
                 {d.quotes.map((q) => (
                   <li key={q.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
-                    <StatusBadge domain="quote" status={q.status} />
+                    <StatusDot domain="quote" status={q.status} />
                     <span className="flex-1 tabular-nums text-fg">{formatMoney(q.totalCents)}{q.depositCents ? ` · ${formatMoney(q.depositCents)} deposit${q.depositPaidAt ? " paid" : ""}` : ""}</span>
                     <span className="text-fg-muted">{q.signatureName ? `Signed by ${q.signatureName}` : q.sentAt ? `Sent ${formatDateTime(q.sentAt)}` : "Draft"}</span>
                     {q.status === "draft" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.sendQuote(q.id)); await reload(); }}>Send</Button> : null}
@@ -129,17 +122,16 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Panel>
           ) : null}
 
           {enabled("service.invoices") ? (
-            <Card padding="lg">
-              <CardHeader title="Invoice" />
+            <Panel title="Invoice">
               {d.invoices.length ? (
                 <ul className="divide-y divide-line">
                   {d.invoices.map((i) => (
                     <li key={i.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
-                      <StatusBadge domain="invoice" status={i.status} />
+                      <StatusDot domain="invoice" status={i.status} />
                       <span className="flex-1 tabular-nums">#{i.number} · {formatMoney(i.totalCents)}{i.depositAppliedCents ? ` (deposit ${formatMoney(i.depositAppliedCents)})` : ""} · due {formatMoney(i.amountDueCents)}</span>
                       {i.status === "open" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.markInvoicePaid(i.id, "card_terminal")); await reload(); }}>Paid at counter</Button> : null}
                       {i.payUrl ? <a href={i.payUrl} className="text-fg underline" target="_blank" rel="noreferrer">Pay link</a> : null}
@@ -158,13 +150,12 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                   Send invoice from quote
                 </Button>
               ) : !d.invoices.length ? <p className="text-meta text-fg-muted">Invoice once the quote is approved.</p> : null}
-            </Card>
+            </Panel>
           ) : null}
         </div>
 
         <div className="flex flex-col gap-6">
-          <Card padding="lg">
-            <CardHeader title="Timeline" />
+          <Panel title="Timeline">
             <Timeline steps={ticketSteps(t.status, copy.ticketStatus, d.events)} />
             {!closed ? (
               <div className="mt-2 flex flex-col gap-3 border-t border-line pt-4">
@@ -183,9 +174,8 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                 </Button>
               </div>
             ) : null}
-          </Card>
-          <Card padding="lg">
-            <CardHeader title="Notes" />
+          </Panel>
+          <Panel title="Notes">
             <ul className="flex flex-col gap-2 text-meta">
               {d.events.filter((e) => e.note).map((e) => (
                 <li key={e.id}>
@@ -205,7 +195,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
               <Checkbox label="Customer can see this" checked={visible} onChange={setVisible} />
               <Button type="submit" variant="secondary" className="self-start">Add note</Button>
             </form>
-          </Card>
+          </Panel>
         </div>
       </div>
     </>

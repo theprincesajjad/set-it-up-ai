@@ -90,10 +90,10 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 16 },
   top: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12 },
-  hero: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 16 },
+  hero: { alignItems: "center", paddingTop: 28, paddingBottom: 28 },
   still: { borderRadius: 24, overflow: "hidden" },
   road: { position: "absolute", borderRadius: 2 },
   pin: { position: "absolute" },
-  body: { gap: 10, paddingBottom: 24 },
+  body: { gap: 10, flex: 1 },
   actions: { gap: 4, paddingBottom: 12 },
 });

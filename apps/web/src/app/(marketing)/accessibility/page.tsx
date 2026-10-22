@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Accessibility", alternates: { canoni
 
 export default function AccessibilityPage() {
   return (
-    <Container size="prose" className="py-12">
+    <Container size="prose" className="py-12 md:py-20">
       <div className="prose-ll">
         <h1>Accessibility</h1>
         <p>

@@ -1,13 +1,11 @@
 "use client";
+import { EmptyState, PageHeader, Panel, StatusDot } from "@/components/dashboard/kit";
 import { ClipboardList } from "lucide-react";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
 import { formatDate } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
@@ -33,10 +31,10 @@ function List() {
             <ul className="grid gap-4 md:grid-cols-2">
               {d.items.map((c) => (
                 <li key={c.id}>
-                  <Card padding="lg" className="flex h-full flex-col gap-2">
+                  <Panel className="flex h-full flex-col gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-title text-fg">{c.name}</h2>
-                      <StatusBadge domain="campaign" status={c.status} />
+                      <h2 className="text-body-strong text-fg">{c.name}</h2>
+                      <StatusDot domain="campaign" status={c.status} />
                       {c.joined ? <Badge tone="success">You&apos;re in</Badge> : null}
                     </div>
                     <p className="text-meta text-fg-muted">{formatDate(c.startsAt)} to {formatDate(c.endsAt)} · {c.merchants.length} shops · visit {c.goalVisits} to enter{c.prize ? ` · Prize: ${c.prize}` : ""}</p>
@@ -49,7 +47,7 @@ function List() {
                         {c.joined ? "Leave" : "Join campaign"}
                       </Button>
                     ) : null}
-                  </Card>
+                  </Panel>
                 </li>
               ))}
             </ul>

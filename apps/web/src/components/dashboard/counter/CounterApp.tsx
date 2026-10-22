@@ -301,7 +301,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         </Banner>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
           {mode === "verify" ? (
             <section className="rounded-card border border-line bg-bg p-6" aria-labelledby="verify-title">
@@ -373,7 +373,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                         <Avatar name={m.name} id={m.memberId} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-body-strong text-fg">{m.name ?? "Member"}</span>
-                          <span className="block text-meta text-fg-muted">{m.maskedPhone}</span>
+                          <span className="block text-meta text-fg-muted">{m.maskedPhone?.replace(/\*/g, "•")}</span>
                         </span>
                         <span className="tabular-nums text-fg">{formatPoints(m.balance, m.terminology)}</span>
                       </button>
@@ -416,7 +416,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                     {member.name ?? "Member"}
                   </h2>
                   <p className="text-meta text-fg-muted">
-                    {member.maskedPhone} · {member.visitCount} visits{member.vip ? ` · ${member.vip.name}` : ""}
+                    {member.maskedPhone?.replace(/\*/g, "•")} · {member.visitCount} visits{member.vip ? ` · ${member.vip.name}` : ""}
                   </p>
                 </div>
                 <div className="text-end">
@@ -557,7 +557,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                     {a.points}
                   </span>
                   {a.canUndo && !a.reversed ? (
-                    <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-8 rounded-sm px-2 text-meta font-medium text-fg hover:underline">
+                    <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-8 rounded-sm px-2 text-meta text-fg-muted hover:text-fg hover:underline">
                       Undo
                     </button>
                   ) : null}

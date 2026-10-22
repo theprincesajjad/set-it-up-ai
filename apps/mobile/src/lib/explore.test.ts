@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byDistance, exploreSections, filterShops, movedEnough, pinSubtitle, placeKind, stripHeader } from "./explore";
+import { byDistance, exploreSections, filterShops, labelPlan, movedEnough, pinPriority, pinSubtitle, placeKind, stripHeader } from "./explore";
 import { perkHeadline, perkProgress } from "./perks";
 
 const shop = (id: string, vertical: string, o: Partial<{ isMember: boolean; hasPromo: boolean; openNow: boolean | null; distanceMetres: number | null }> = {}) => ({
@@ -49,6 +49,28 @@ describe("explore", () => {
     expect(stripHeader(1)).toBe("1 shop on this strip");
     expect(movedEnough({ lat: 43.65, lng: -79.45 }, { lat: 43.6501, lng: -79.4501 })).toBe(false);
     expect(movedEnough({ lat: 43.65, lng: -79.45 }, { lat: 43.66, lng: -79.45 })).toBe(true);
+  });
+});
+
+describe("pin labels", () => {
+  it("keeps labels that don't collide, highest priority first", () => {
+    const pts = [
+      { id: "a", x: 100, y: 100, priority: 1 },
+      { id: "b", x: 110, y: 110, priority: 5 },
+      { id: "c", x: 100, y: 300, priority: 0 },
+    ];
+    expect([...labelPlan(pts)].sort()).toEqual(["b", "c"]);
+  });
+  it("no labels under the floating chrome", () => {
+    expect([...labelPlan([{ id: "a", x: 50, y: 20, priority: 1 }], { avoid: [{ x1: 0, y1: 0, x2: 400, y2: 100 }] })]).toEqual([]);
+  });
+  it("a bubble under another pin's label blocks it", () => {
+    expect([...labelPlan([{ id: "a", x: 0, y: 0, priority: 2 }, { id: "b", x: 80, y: 0, priority: 1 }])]).toEqual(["b"]);
+  });
+  it("priority: selected > reward ready > member > nearest", () => {
+    const base = { selected: false, rewardReady: false, member: false, distanceMetres: 100 };
+    expect(pinPriority({ ...base, selected: true })).toBeGreaterThan(pinPriority({ ...base, rewardReady: true, member: true }));
+    expect(pinPriority({ ...base, member: true, distanceMetres: 900 })).toBeGreaterThan(pinPriority({ ...base, distanceMetres: 10 }));
   });
 });
 

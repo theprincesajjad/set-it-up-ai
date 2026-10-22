@@ -1,11 +1,10 @@
 "use client";
+import { PageHeader, Panel } from "@/components/dashboard/kit";
 import { Download } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
@@ -35,13 +34,13 @@ export default function AuditPage() {
   }, [a]);
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Audit log" description="Every admin, rep, rollout, consent and money action." actions={<Button variant="secondary" iconStart={Download} onClick={() => downloadCsv("audit.csv", [["time", "actor", "action", "entity", "entity_id", "merchant_id", "ip", "data"], ...rows.map((r) => [r.createdAt, r.actorName ?? "", r.action, r.entity ?? "", r.entityId ?? "", r.merchantId ?? "", r.ip ?? "", JSON.stringify(r.data)])])}>Export CSV</Button>} />
+      <PageHeader title="Audit log" description="Every admin, rep, rollout, consent and money action." actions={<Button size="sm" variant="secondary" iconStart={Download} onClick={() => downloadCsv("audit.csv", [["time", "actor", "action", "entity", "entity_id", "merchant_id", "ip", "data"], ...rows.map((r) => [r.createdAt, r.actorName ?? "", r.action, r.entity ?? "", r.entityId ?? "", r.merchantId ?? "", r.ip ?? "", JSON.stringify(r.data)])])}>Export CSV</Button>} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Select label="Area" value={action} onChange={(e) => setAction(e.target.value)} options={PREFIXES.map((p) => ({ value: p, label: p ? p.slice(0, -1) : "Everything" }))} />
         <TextField label="Exact action" optionalLabel placeholder="feature.stage_changed" value={custom} onChange={(e) => setCustom(e.target.value)} />
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <Card padding="none" className="overflow-x-auto">
+      <Panel padded={false} className="overflow-x-auto">
         {loading && !rows.length ? <Skeleton className="m-4 h-40" /> : (
           <table className="w-full min-w-[720px] text-meta">
             <caption className="sr-only">Audit entries</caption>
@@ -66,7 +65,7 @@ export default function AuditPage() {
             </tbody>
           </table>
         )}
-      </Card>
+      </Panel>
       {cursor ? <Button variant="secondary" className="self-start" onClick={async () => { const r = await browserApi.admin.audit({ action: a || undefined, limit: 50, cursor }); setRows((x) => [...x, ...r.items]); setCursor(r.nextCursor); }}>Load more</Button> : null}
     </div>
   );

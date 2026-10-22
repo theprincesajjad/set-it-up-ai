@@ -5,7 +5,7 @@ import { useCampaigns } from "../../features/customer/queries";
 import { formatShortDate } from "../../lib/format";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
-import { Banner, Button, Card, ErrorState, ProgressBar, Screen, Section, ShopLogo, ShopTile, SkeletonList, Text, Trophy } from "../../ui";
+import { Banner, Button, Check, ErrorState, Screen, Section, ShopLogo, ShopTile, SkeletonList, Text, Trophy } from "../../ui";
 
 /** 8. Campaign / passport detail: passport grid of participating shops + progress. */
 export default function CampaignDetail() {
@@ -43,64 +43,68 @@ export default function CampaignDetail() {
   const merchants = [...cmp.merchants].sort((a, b) => Number(visited.has(a.id)) - Number(visited.has(b.id)) || dist(a.id) - dist(b.id) || a.name.localeCompare(b.name));
 
   return (
-    <Screen back title={cmp.name}>
-      <View style={[styles.hero, { backgroundColor: c.accentSubtle }]}>
-        <Trophy size={56} color={c.onAccentSubtle} />
-      </View>
-      <View style={{ gap: 4 }}>
-        <Text variant="h2" accessibilityRole="header">
+    <Screen back collapseTitle title={cmp.name} titleCase="as-is" contentStyle={{ paddingTop: 8 }}>
+      <View style={{ gap: 6 }}>
+        <Trophy size={24} color={c.fg} strokeWidth={1.75} />
+        <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {cmp.name}
         </Text>
-        <Text color="fgMuted">{`${cmp.neighbourhood.name} · ${formatShortDate(cmp.startsAt)} – ${formatShortDate(cmp.endsAt)}`}</Text>
-        {cmp.prize ? <Text variant="bodyStrong">{cmp.prize}</Text> : null}
+        <Text variant="placeSubtitle" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDate(cmp.startsAt)} – ${formatShortDate(cmp.endsAt)}`}</Text>
+        {cmp.prize ? (
+          <Text variant="bodyStrong" style={{ marginTop: 6 }}>
+            {cmp.prize}
+          </Text>
+        ) : null}
         {cmp.description ? <Text color="fgMuted">{cmp.description}</Text> : null}
       </View>
 
       {my?.progress.completedAt ? (
-        <Card>
+        <View style={{ gap: 12 }}>
           <Banner variant="success">{ended ? `You visited ${done} shops.` : "You did it. You're entered in the draw."}</Banner>
           {!ended ? (
-            <Button variant="tonal" onPress={() => Share.share({ message: `I finished the ${cmp.name}! Visit ${goal} shops on ${cmp.neighbourhood.name} to enter.` })} style={{ marginTop: 12 }}>
+            <Button variant="secondary" onPress={() => Share.share({ message: `I finished the ${cmp.name}! Visit ${goal} shops on ${cmp.neighbourhood.name} to enter.` })} style={{ alignSelf: "flex-start" }}>
               Share
             </Button>
           ) : null}
-        </Card>
+        </View>
       ) : ended ? (
         <Banner variant="neutral">{`This campaign has ended. You visited ${done} shops.`}</Banner>
-      ) : (
-        <ProgressBar value={done} max={goal} tone="accent" label="Your passport" valueLabel={`${done} of ${goal}`} valueText={`${done} of ${goal} shops visited`} />
-      )}
+      ) : null}
 
-      <Section title="Passport">
-        <View style={styles.grid} accessible accessibilityLabel={`${done} of ${goal} shops visited · ${Math.max(0, goal - done)} to go`}>
-          {cmp.merchants.map((m) => {
-            const v = visited.has(m.id);
-            return (
-              <View key={m.id} style={styles.slot}>
-                <View style={[styles.stamp, { borderColor: v ? c.accent : c.stampEmpty, borderStyle: v ? "solid" : "dashed", opacity: v ? 1 : 0.4 }]}>
-                  <ShopLogo shop={brief(m)} size={52} round />
-                </View>
-                {v ? (
-                  <View style={[styles.visited, { backgroundColor: c.accent }]}>
-                    <Text variant="caption" rawColor={c.onAccent}>
-                      visited
-                    </Text>
+      <Section title="Your passport">
+        <View style={{ gap: 14, paddingTop: 14 }}>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+            <Text variant="displayNumber" tabular>{`${done} / ${goal}`}</Text>
+            <Text variant="meta" color="fgMuted">{`shops visited · ${Math.max(0, goal - done)} to go`}</Text>
+          </View>
+          <View style={styles.grid} accessible accessibilityLabel={`${done} of ${goal} shops visited · ${Math.max(0, goal - done)} to go`}>
+            {cmp.merchants.map((m) => {
+              const v = visited.has(m.id);
+              return (
+                <View key={m.id} style={[styles.stamp, { borderColor: v ? c.accent : c.line }]}>
+                  <View style={{ opacity: v ? 1 : 0.35 }}>
+                    <ShopLogo shop={brief(m)} size={44} />
                   </View>
-                ) : null}
-              </View>
-            );
-          })}
+                  {v ? (
+                    <View style={[styles.check, { backgroundColor: c.accent, borderColor: c.bg }]}>
+                      <Check size={11} color={c.onAccent} strokeWidth={3} />
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
         </View>
-        <Text variant="bodySm" color="fgMuted">{`${done} of ${goal} shops visited · ${Math.max(0, goal - done)} to go`}</Text>
       </Section>
 
       <Section title="Participating shops">
-        {merchants.map((m) => (
+        {merchants.map((m, i) => (
           <ShopTile
             key={m.id}
             variant="list"
             shop={{ ...brief(m), distanceM: byId.get(m.id)?.distanceMetres ?? null }}
-            subtitle={[visited.has(m.id) ? "Visited" : "Not visited yet", byId.get(m.id)?.location?.address].filter(Boolean).join(" · ")}
+            subtitle={[visited.has(m.id) ? "visited" : "not visited yet", byId.get(m.id)?.location?.address].filter(Boolean).join(" · ")}
+            divider={i < merchants.length - 1}
             onPress={() => router.push(`/shop/${m.slug}`)}
           />
         ))}
@@ -110,9 +114,7 @@ export default function CampaignDetail() {
 }
 
 const styles = StyleSheet.create({
-  hero: { height: 140, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 16 },
-  slot: { width: "25%", alignItems: "center" },
-  stamp: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  visited: { position: "absolute", bottom: -4, paddingHorizontal: 6, borderRadius: 6, transform: [{ rotate: "-8deg" }] },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  stamp: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  check: { position: "absolute", right: -2, bottom: -2, width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
 });

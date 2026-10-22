@@ -439,9 +439,9 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           <h2 id="also-on" className="text-headline text-fg">
             Also on your card nearby
           </h2>
-          <ul className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1">
+          <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1">
             {nearby.map((s) => (
-              <li key={s.merchant.id} className="w-56 shrink-0 snap-start">
+              <li key={s.merchant.id} className="w-60 shrink-0 snap-start">
                 <ShopTile variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
               </li>
             ))}

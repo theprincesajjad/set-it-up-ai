@@ -1,15 +1,12 @@
 "use client";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { BackLink, Dot, PageHeader, Panel, QuietLink, Row, RowList, StatBlock, StatusDot } from "@/components/dashboard/kit";
+import { ExternalLink, Upload } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, ListRow } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
-import { StatTile } from "@/components/ui/StatTile";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -25,35 +22,40 @@ export default function AdminMerchantPage() {
   const [reason, setReason] = useState("");
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href="/admin/merchants" className="self-start">Merchants</Button>
+      <BackLink href="/admin/merchants">Merchants</BackLink>
       <Async state={m}>
         {(d) => (
           <>
-            <PageHeader title={d.name} description={<span className="flex flex-wrap items-center gap-2"><StatusBadge domain="merchant" status={d.status} /><Badge>{d.plan}</Badge>{d.betaOptIn ? <Badge tone="info">Beta opt-in</Badge> : null}</span>} actions={
+            <PageHeader title={d.name} description={<span className="flex flex-wrap items-center gap-3"><StatusDot domain="merchant" status={d.status} /><span>{d.plan[0]!.toUpperCase() + d.plan.slice(1)} plan</span>{d.betaOptIn ? <span>· Beta opt-in</span> : null}</span>} actions={
               <>
-                <Button iconStart={ExternalLink} href={`/m/${d.id}`}>Open dashboard</Button>
-                {d.status !== "paused" && d.status !== "closed" ? <Button variant="secondary" onClick={() => setTo("paused")}>Pause</Button> : null}
-                {d.status === "paused" ? <Button variant="secondary" onClick={() => setTo("active")}>Resume</Button> : null}
-                {d.status !== "closed" ? <Button variant="ghost" onClick={() => setTo("closed")}>Close</Button> : null}
+                <Button size="sm" iconStart={ExternalLink} href={`/m/${d.id}`}>Open dashboard</Button>
+                {/* Done-for-you migration: admins can import members on any plan. */}
+                <Button size="sm" variant="secondary" iconStart={Upload} href={`/m/${d.id}/customers/import`}>Import customers</Button>
+                {d.status !== "paused" && d.status !== "closed" ? <Button size="sm" variant="secondary" onClick={() => setTo("paused")}>Pause</Button> : null}
+                {d.status === "paused" ? <Button size="sm" variant="secondary" onClick={() => setTo("active")}>Resume</Button> : null}
+                {d.status !== "closed" ? <Button size="sm" variant="ghost" onClick={() => setTo("closed")}>Close</Button> : null}
               </>
             } />
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatTile label="Members" value={formatNumber(d.members)} caption={`${formatNumber(d.activeMembers)} active`} />
-              <StatTile label="Locations" value={formatNumber(d.locations)} />
-              <StatTile label="SMS used" value={formatNumber(d.smsCreditsUsed)} caption="This month" />
-              <StatTile label="Setup step" value={d.onboardingStep.replace(/_/g, " ")} />
-            </div>
+            <StatBlock
+              items={[
+                { label: "Members", value: formatNumber(d.members), caption: `${formatNumber(d.activeMembers)} active` },
+                { label: "Locations", value: formatNumber(d.locations) },
+                { label: "SMS used", value: formatNumber(d.smsCreditsUsed), caption: "This month" },
+                { label: "Setup step", value: <span className="text-headline">{d.onboardingStep.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</span> },
+              ]}
+            />
             <div className="grid gap-6 lg:grid-cols-2">
-              <Card padding="lg">
-                <CardHeader title="Staff" />
-                <ul className="divide-y divide-line">{d.staff.map((s) => <li key={s.userId}><ListRow title={s.name ?? s.email ?? "User"} subtitle={s.email ?? undefined} trailing={<Badge>{s.role}</Badge>} /></li>)}</ul>
-                <CardHeader className="mt-5" title="Feature overrides" action={<Button variant="ghost" size="sm" href="/admin/rollout">Rollout</Button>} />
-                {d.overrides.length ? <ul className="flex flex-col gap-1 text-meta">{d.overrides.map((o) => <li key={o.key} className="flex justify-between gap-2"><span className="font-mono">{o.key}</span><Badge tone={o.enabled ? "success" : "neutral"}>{o.enabled ? "on" : "off"}</Badge></li>)}</ul> : <p className="text-meta text-fg-muted">None.</p>}
-              </Card>
-              <Card padding="lg">
-                <CardHeader title="Audit trail" />
-                <ul className="flex flex-col gap-2 text-meta">{(audit.data?.items ?? []).map((a) => <li key={a.id}><span className="font-mono text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
-              </Card>
+              <Panel title="Staff">
+                <RowList>{d.staff.map((s) => <Row key={s.userId} title={s.name ?? s.email ?? "User"} meta={s.email ?? undefined} trailing={<span className="text-meta text-fg-muted">{s.role}</span>} />)}</RowList>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-meta-strong text-fg">Feature overrides</h3>
+                  <QuietLink href="/admin/rollout">Rollout</QuietLink>
+                </div>
+                {d.overrides.length ? <ul className="mt-2 divide-y divide-line border-y border-line text-meta">{d.overrides.map((o) => <li key={o.key} className="flex min-h-9 items-center justify-between gap-2"><span className="font-mono text-caption font-normal">{o.key}</span><Dot tone={o.enabled ? "positive" : "neutral"}>{o.enabled ? "On" : "Off"}</Dot></li>)}</ul> : <p className="mt-2 text-meta text-fg-muted">None.</p>}
+              </Panel>
+              <Panel title="Audit trail">
+                <ul className="divide-y divide-line border-y border-line text-meta">{(audit.data?.items ?? []).map((a) => <li key={a.id} className="py-2"><span className="font-mono text-caption font-normal text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
+              </Panel>
             </div>
             <ConfirmDialog open={!!to} onClose={() => { setTo(null); setReason(""); }} title={to === "closed" ? `Close ${d.name}?` : to === "paused" ? `Pause ${d.name}?` : `Resume ${d.name}?`} body={to === "active" ? "Awards and messages work again." : "Paused and closed shops can't award points or send messages. Members keep their balances."} confirmLabel={to === "closed" ? "Close shop" : to === "paused" ? "Pause shop" : "Resume"} danger={to !== "active"} disabled={!reason.trim()} onConfirm={async () => {
               const r = await browserApi.admin.setMerchantStatus(d.id, { status: to!, reason: reason.trim() });

@@ -1,17 +1,13 @@
 "use client";
+import { EmptyState, PageHeader, Panel, Segmented, StatusDot } from "@/components/dashboard/kit";
 import { ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { StatusBadge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -52,7 +48,7 @@ function Orders() {
   };
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Orders" description="Updates every 10 seconds. Customers get a text when you mark an order ready." actions={<SegmentedControl label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]} />} />
+      <PageHeader title="Orders" description="Updates every 10 seconds. Customers get a text when you mark an order ready." actions={<Segmented label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]} />} />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {orders.loading && !orders.data ? (
         <Skeleton className="h-40 rounded-card" />
@@ -60,7 +56,7 @@ function Orders() {
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {orders.data.items.map((o) => (
             <li key={o.id}>
-              <Card padding="lg" className="flex h-full flex-col gap-3">
+              <Panel className="flex h-full flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-mono text-body-strong text-fg">#{o.number}</p>
@@ -68,7 +64,7 @@ function Orders() {
                       {o.customer?.name ?? "Customer"} · {o.pickupAt ? `Pickup ${formatTime(o.pickupAt)}` : `Placed ${relativeTime(o.createdAt)}`}
                     </p>
                   </div>
-                  <StatusBadge domain="order" status={o.status} />
+                  <StatusDot domain="order" status={o.status} />
                 </div>
                 <ul className="text-meta text-fg">
                   {o.items.map((i) => (
@@ -94,7 +90,7 @@ function Orders() {
                     </Button>
                   ) : null}
                 </div>
-              </Card>
+              </Panel>
             </li>
           ))}
         </ul>

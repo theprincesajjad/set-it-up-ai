@@ -14,7 +14,7 @@ import type { LngLatBoundsLike, Map as MlMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { networkApi } from "@ll/shared";
-import { clusterPins, densestGroup, type PinGroup } from "@/lib/mapCluster";
+import { clusterPins, densestGroup, labelledAnchors, type PinGroup } from "@/lib/mapCluster";
 import { loadCornerStyle, mapMode, webglAvailable } from "./mapStyle";
 import { MapCluster, MapPin } from "./MapPin";
 
@@ -36,7 +36,7 @@ const TORONTO: [number, number] = [-79.4, 43.66];
 /** Default room for the floating search + filters (top) and the category rail (bottom). */
 const DEFAULT_PADDING = { top: 140, bottom: 150, left: 40, right: 120 };
 const DEFAULT_ZOOM = 16;
-const MIN_OPEN_ZOOM = 15.5;
+const MIN_OPEN_ZOOM = 15.2;
 type Located = networkApi.ShopListItemDto & { location: { lat: number; lng: number } };
 
 function boundsOf(ml: typeof import("maplibre-gl"), pts: { lat: number; lng: number }[]): LngLatBoundsLike {
@@ -60,13 +60,15 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
   const [zoom, setZoom] = useState(14);
   const [els, setEls] = useState<Record<string, HTMLElement>>({});
   const [groups, setGroups] = useState<PinGroup[]>([]);
+  const [labels, setLabels] = useState<Set<string>>(new Set());
   const failRef = useRef(onFail);
   useEffect(() => {
     failRef.current = onFail;
   });
   const located = items.filter((s) => s.location?.lat != null && s.location?.lng != null) as Located[];
   const ll = (s: Located) => ({ lat: s.location.lat, lng: s.location.lng });
-  const showLabels = zoom >= 17 || located.length <= 6;
+  /** Names show from street zoom up, wherever they fit (Corner); the selected pin always shows its name. */
+  const showLabels = zoom >= 14.6 || located.length <= 6;
   const regroupRef = useRef<() => void>(() => {});
   useEffect(() => {
     regroupRef.current = () => {
@@ -76,7 +78,10 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
         const p = m.project([s.location.lng, s.location.lat]);
         return { id: s.merchant.id, x: p.x, y: p.y, isMember: s.isMember, hasPromo: s.hasPromo };
       });
-      setGroups(clusterPins(pts, { radius: showLabels ? 52 : 44, selected }));
+      const g = clusterPins(pts, { radius: 38, selected });
+      setGroups(g);
+      const names = new Map(located.map((s) => [s.merchant.id, s.merchant.name]));
+      setLabels(showLabels ? labelledAnchors(g, pts, (id) => names.get(id) ?? "") : new Set());
     };
   });
 
@@ -95,14 +100,27 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
       if (cancelled || !box.current) return;
       lib.current = ml;
       // The Corner basemap (cornerMapStyle on positron) is applied before the first paint: no flash of the stock style.
-      const m = new ml.Map({ container: box.current, style: style as never, center: TORONTO, zoom: DEFAULT_ZOOM, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false });
+      const m = new ml.Map({ container: box.current, style: style as never, center: TORONTO, zoom: DEFAULT_ZOOM, attributionControl: false, dragRotate: false, pitchWithRotate: false });
       m.touchZoomRotate.disableRotation();
+      // Attribution stays (OSM/OpenMapTiles licence) as a collapsed (i) in the top-right, clear of the rail.
+      m.addControl(new ml.AttributionControl({ compact: true }), "top-right");
       map.current = m;
       m.on("load", () => {
         loaded = true;
         clearTimeout(timer);
         setReady(true);
         setZoom(m.getZoom());
+        box.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+        // Quieter blocks than positron's default so the places carry the colour (foundations.md "almost colourless").
+        for (const l of m.getStyle().layers ?? []) {
+          if (l.type === "fill" && /building/.test(l.id)) {
+            try {
+              m.setPaintProperty(l.id, "fill-opacity", 0.55);
+            } catch {
+              /* keep */
+            }
+          }
+        }
       });
       m.on("click", () => bgTap.current?.());
       m.on("zoomend", () => {
@@ -218,7 +236,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
   }, [fitAllSignal]);
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 [&_.maplibregl-ctrl-top-right]:top-[112px]! md:[&_.maplibregl-ctrl-top-right]:top-[124px]!">
       {/* Inline style: maplibre-gl.css sets .maplibregl-map { position: relative } outside Tailwind layers. */}
       <div ref={box} style={{ position: "absolute", inset: 0 }} role="region" aria-label="Map of shops" />
       {Object.entries(els).map(([id, el]) => {
@@ -228,7 +246,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
         const others = g ? g.members.length - 1 : 0;
         // A group led by one of my shops (or the selected one) keeps that pin; others become a bubble.
         if (others > 0 && !s.isMember && id !== selected) return createPortal(<MapCluster count={g!.members.length} onExpand={() => expand(g!)} />, el, id);
-        return createPortal(<MapPin shop={s} selected={id === selected} onSelect={() => onSelect(id)} showLabel={showLabels} compact={zoom < 16 && located.length > 6} moreCount={others} onExpand={g && others ? () => expand(g) : undefined} />, el, id);
+        return createPortal(<MapPin shop={s} selected={id === selected} onSelect={() => onSelect(id)} showLabel={labels.has(id)} compact={zoom < 14.6 && located.length > 6} moreCount={others} onExpand={g && others ? () => expand(g) : undefined} />, el, id);
       })}
     </div>
   );

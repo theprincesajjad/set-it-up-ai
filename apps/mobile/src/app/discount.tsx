@@ -13,7 +13,7 @@ export default function DiscountFull() {
   const { user } = useSession();
   useBrightScreen("discount-card");
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas, padding: 16, justifyContent: "center", gap: 16 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg, padding: 16, justifyContent: "center", gap: 16 }}>
       <DiscountCard
         card={{ name: p.name ?? "", percentOff: Number(p.percentOff ?? 0), amountOffCents: Number(p.amountOffCents ?? 0), terms: p.terms || null }}
         shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null }}

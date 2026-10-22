@@ -1,16 +1,14 @@
 "use client";
-import { ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { BackLink, PageHeader, Panel, StatusDot } from "@/components/dashboard/kit";
+import { Lock, RefreshCw } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { integrationsApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { StatusBadge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
@@ -25,9 +23,7 @@ export default function IntegrationDetailPage() {
   const state = useApi(() => api.integrations.get(provider), [api, provider]);
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/integrations`} className="self-start">
-        Integrations
-      </Button>
+      <BackLink href={`${base}/integrations`}>Integrations</BackLink>
       <Async state={state}>{(d) => <Settings d={d} onChange={(n) => state.setData(n)} />}</Async>
     </div>
   );
@@ -62,9 +58,9 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
 
   return (
     <>
-      <PageHeader title={d.name} description={<span className="flex flex-wrap items-center gap-2"><StatusBadge domain="integration" status={d.status} />{d.lastSyncAt ? `Last sync ${relativeTime(d.lastSyncAt)}` : null}</span>} actions={
+      <PageHeader title={d.name} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="integration" status={d.status} />{d.lastSyncAt ? `Last sync ${relativeTime(d.lastSyncAt)}` : null}</span>} actions={
         <>
-          <Button variant="secondary" iconStart={RefreshCw} loading={act.busy} onClick={async () => {
+          <Button size="sm" variant="secondary" iconStart={RefreshCw} loading={act.busy} onClick={async () => {
             const r = await act.run(() => api.integrations.sync(d.provider));
             if (r) {
               onChange({ ...r.integration, mapping: r.mapping });
@@ -73,21 +69,19 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
           }}>
             Sync now
           </Button>
-          <Button variant="ghost" onClick={() => setConfirm(true)}>
+          <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
             Disconnect
           </Button>
         </>
       } />
       {d.lastError ? <Banner tone="danger">{d.lastError}</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <Card padding="lg">
-        <CardHeader title="Awarding" />
+      <Panel title="Awarding">
         <Switch label="Award points on every paid sale" description="Off: only when the customer is identified at the till." checked={autoAward} onChange={(v) => patch({ autoAward: v })} />
         <Switch label="Add POS customers with a phone as members" checked={autoEnroll} onChange={(v) => patch({ autoEnroll: v })} />
-      </Card>
+      </Panel>
       {extLocs.length ? (
-        <Card padding="lg">
-          <CardHeader title={`Match ${d.name} locations to your locations`} />
+        <Panel title={`Match ${d.name} locations to your locations`}>
           <div className="flex flex-col gap-3">
             {extLocs.map((x) => (
               <Select key={x.id} label={`${x.name}${x.detail ? ` (${x.detail})` : ""}`} placeholder="Not matched" value={locMap[x.id] ?? ""} onChange={(e) => setLocMap({ ...locMap, [x.id]: e.target.value })} options={detail.locations.map((l) => ({ value: l.id, label: l.name }))} />
@@ -96,11 +90,10 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
               Save locations
             </Button>
           </div>
-        </Card>
+        </Panel>
       ) : null}
       {extCats.length ? (
-        <Card padding="lg">
-          <CardHeader title="Category mapping" subtitle="Map POS categories like Rx to Prescriptions so they never earn." />
+        <Panel title="Category mapping" description="Map POS categories like Rx to Prescriptions so they never earn.">
           <div className="flex flex-col gap-3">
             {extCats.map((x) => (
               <div key={x.id}>
@@ -116,11 +109,11 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
               Save categories
             </Button>
           </div>
-        </Card>
+        </Panel>
       ) : (
-        <Card tone="flat">
+        <Panel>
           <p className="text-meta text-fg-muted">Locations and categories appear here after the first sync.</p>
-        </Card>
+        </Panel>
       )}
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} title={`Disconnect ${d.name}?`} body="Sales stop earning points automatically. Points already awarded stay." confirmLabel="Disconnect" danger onConfirm={async () => {
         await api.integrations.disconnect(d.provider);

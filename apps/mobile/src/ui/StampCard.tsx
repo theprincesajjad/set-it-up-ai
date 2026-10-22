@@ -39,7 +39,7 @@ export function StampCard({
   // Stamps are a balance: a full card is a reward ready; extra stamps carry over to the next card.
   const filled = Math.min(Math.max(0, count), g);
   const carry = count > g ? count - g : 0;
-  const oneRow = g <= 10 && !compact;
+  const oneRow = g <= 10;
   const cols = oneRow ? g : stampColumns(g);
   const gap = oneRow ? 6 : 10;
   const avail = Math.min(width, 480) - 32 - (cols - 1) * gap;
@@ -61,6 +61,7 @@ export function StampCard({
       accessibilityLabel={`${filled} of ${g} stamps.${toGo === 0 ? ` ${rewardName ?? "Reward"} is ready.` : rewardName ? ` ${toGo} more for a ${reward}.` : ""}${carry > 0 ? ` ${carry} extra carry over.` : ""}`}
       style={{ gap: 10, alignSelf: "stretch" }}
     >
+      {compact ? null : (
       <View style={styles.head}>
         {!compact ? (
           <Text variant="meta" color="fgMuted" style={{ flex: 1 }}>
@@ -71,6 +72,7 @@ export function StampCard({
         )}
         <Text variant="metaStrong" color="accentText" tabular>{`${filled} / ${g}`}</Text>
       </View>
+      )}
       <View style={[styles.grid, { gap }]}>
         {Array.from({ length: g }, (_, i) => {
           const isFilled = i < filled;

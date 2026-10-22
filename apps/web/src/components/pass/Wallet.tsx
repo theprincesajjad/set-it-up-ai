@@ -241,7 +241,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
     <div className="flex flex-col gap-6">
       {ready.length ? <ListGroup title="Rewards ready">{ready.map(row)}</ListGroup> : null}
       <ListGroup title={ready.length ? "Your shops" : undefined}>{rest.map(row)}</ListGroup>
-      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet">
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{verticalLabel(current.merchant.vertical).toLowerCase()}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
     </div>
@@ -252,10 +252,6 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
 function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.MembershipDto; d: customerApi.MembershipDetailResponse | undefined; profile: customerApi.ProfileDto; onChanged: () => Promise<void> }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="-mt-1 flex items-center gap-3">
-        <ShopLogo shop={m.merchant} size={44} />
-        <p className="text-meta italic text-fg-muted">{verticalLabel(m.merchant.vertical).toLowerCase()}</p>
-      </div>
       {m.program?.earnType === "stamps" ? (
         <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
       ) : (

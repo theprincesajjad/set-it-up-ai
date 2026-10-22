@@ -321,7 +321,7 @@ export default function Counter() {
 
   // ---------------------------------------------------------------- guards
   const queuedForCount = useMemo(() => queueState.pendingCount, [queueState.pendingCount]);
-  if (!ctx.ready) return <View style={{ flex: 1, backgroundColor: c.canvas }} />;
+  if (!ctx.ready) return <View style={{ flex: 1, backgroundColor: c.bg }} />;
   if (!config.merchantId || !config.locationId) return <Redirect href="/counter/select" />;
   if (config.sharedDevice && !staff) return <Redirect href="/counter/pin" />;
   if (config.kiosk) return <Redirect href="/counter/kiosk" />;
@@ -384,8 +384,8 @@ export default function Counter() {
     }
     if (state.step === "notice") {
       return (
-        <View style={[styles.notice, { backgroundColor: state.tone === "danger" ? c.dangerSubtle : c.neutralSubtle }]}>
-          <Text variant="h3" rawColor={state.tone === "danger" ? c.onDangerSubtle : c.onNeutralSubtle} center>
+        <View style={[styles.notice, { borderColor: c.line }]}>
+          <Text variant="title" color={state.tone === "danger" ? "negative" : "fg"} center>
             {state.message}
           </Text>
           <Button variant="secondary" size="counter" onPress={() => dispatch({ type: "reset" })}>
@@ -397,7 +397,7 @@ export default function Counter() {
     if (state.step === "pick") {
       return (
         <View style={{ gap: 4 }}>
-          <Text variant="h3">{`Ends in ${state.digits}`}</Text>
+          <Text variant="metaStrong" color="fgMuted">{`ends in ${state.digits}`}</Text>
           {state.matches.map((m) => (
             <ListRow
               key={m.memberId}
@@ -416,8 +416,8 @@ export default function Counter() {
         <View style={{ gap: 16 }}>
           <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} onCode={() => setCodeOpen(true)} />
           {state.customer.kind === "new" ? (
-            <View style={[styles.nameField, { borderColor: c.borderStrong, backgroundColor: c.surface }]}>
-              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgMuted} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
+            <View style={[styles.nameField, { borderColor: c.lineStrong, backgroundColor: c.bg }]}>
+              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgSubtle} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
             </View>
           ) : null}
           {perDollar && noEarnCategories.length > 0 ? (
@@ -455,7 +455,7 @@ export default function Counter() {
   })();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top", "bottom"]} onTouchStart={touch}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={["top", "bottom"]} onTouchStart={touch}>
       <CounterHeader
         title={config.locationName ?? config.merchantName ?? "Counter"}
         staff={staff}
@@ -463,11 +463,13 @@ export default function Counter() {
         onStaff={() => router.push("/counter/pin")}
         onMenu={() => setMenuOpen(true)}
       />
-      <OfflineBanner mode="counter" online={online} pending={queuedForCount} sentJustNow={ctx.sentJustNow} stale={queueState.stale} retrying={queueState.flushing} onPress={() => setQueueOpen(true)} />
-      {queueState.failedCount > 0 ? (
-        <Banner variant="danger" onPress={() => setQueueOpen(true)}>{`${queueState.failedCount} ${queueState.failedCount === 1 ? "award needs" : "awards need"} attention. Tap to see.`}</Banner>
-      ) : null}
-      {programPaused ? <Banner variant="neutral">{t("err.award.programPaused")}</Banner> : null}
+      <View style={styles.banners}>
+        <OfflineBanner mode="counter" online={online} pending={queuedForCount} sentJustNow={ctx.sentJustNow} stale={queueState.stale} retrying={queueState.flushing} onPress={() => setQueueOpen(true)} />
+        {queueState.failedCount > 0 ? (
+          <Banner variant="danger" onPress={() => setQueueOpen(true)}>{`${queueState.failedCount} ${queueState.failedCount === 1 ? "award needs" : "awards need"} attention. Tap to see.`}</Banner>
+        ) : null}
+        {programPaused ? <Banner variant="neutral">{t("err.award.programPaused")}</Banner> : null}
+      </View>
 
       {wide ? (
         <View style={[styles.wide]}>
@@ -504,13 +506,13 @@ export default function Counter() {
         }}
         title="Customer's reward code"
         footer={
-          <Button variant="accent" size="counter" loading={codeBusy} disabled={normalizeRedeemInput(code).length < 4 || !online} onPress={() => verifyCode(code)}>
+          <Button size="counter" loading={codeBusy} disabled={normalizeRedeemInput(code).length < 4 || !online} onPress={() => verifyCode(code)}>
             Confirm
           </Button>
         }
       >
         {!online ? <Banner variant="warning">{t("err.redeem.offline")}</Banner> : null}
-        <View style={[styles.codeField, { borderColor: codeError ? c.danger : c.borderStrong, backgroundColor: c.surface }]}>
+        <View style={[styles.codeField, { borderColor: codeError ? c.negative : c.lineStrong, backgroundColor: c.bg }]}>
           <TextInput
             value={code}
             onChangeText={(v) => setCode(normalizeRedeemInput(v))}
@@ -519,7 +521,7 @@ export default function Counter() {
             autoFocus
             maxLength={8}
             placeholder="K7Q2XM"
-            placeholderTextColor={c.fgMuted}
+            placeholderTextColor={c.fgSubtle}
             accessibilityLabel="Reward code"
             onSubmitEditing={() => verifyCode(code)}
             style={[typo("code"), { color: c.fg, textAlign: "center", flex: 1, minWidth: 0 }]}
@@ -544,7 +546,8 @@ export default function Counter() {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   wide: { flex: 1, flexDirection: "row", gap: 24, padding: 24 },
-  notice: { borderRadius: 24, padding: 24, gap: 24, justifyContent: "center", minHeight: 280 },
-  nameField: { minHeight: 64, borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },
+  notice: { borderRadius: 24, borderWidth: StyleSheet.hairlineWidth * 2, padding: 24, gap: 24, justifyContent: "center", minHeight: 280 },
+  banners: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
+  nameField: { minHeight: 64, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },
   codeField: { minHeight: 72, borderRadius: 12, borderWidth: 2, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" },
 });

@@ -1,10 +1,8 @@
-import { CalendarDays, Gift, MapPin, Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BRAND, type networkApi } from "@ll/shared";
 import { MSection } from "@/components/marketing/Section";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { ShopTile } from "@/components/ui/ShopTile";
@@ -50,53 +48,49 @@ export default async function NeighbourhoodPage({ params }: Props) {
   const n = detail.neighbourhood;
   return (
     <>
-      <MSection className="!pb-8">
-        <Link href="/neighbourhoods" className="text-label text-fg-link underline">
-          All neighbourhoods
+      <section className="mx-auto max-w-[1200px] px-4 pt-10 pb-12 md:px-8 md:pt-16 md:pb-16">
+        <Link href="/neighbourhoods" className="text-meta-strong text-fg-muted hover:text-fg">
+          ← All neighbourhoods
         </Link>
-        <h1 className="mt-4 font-display text-[40px] font-semibold leading-[44px] text-fg md:text-hero">Welcome to {n.name}</h1>
-        <p className="mt-3 text-body-lg text-fg-muted">
+        <h1 className="display mt-8 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Welcome to {n.name}</h1>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">
           {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"} on one card{n.biaName ? `, with the ${n.biaName}` : ""}. {copy.misc.joinTagline}
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button href={`/map?neighbourhood=${n.slug}`} iconStart={MapPin}>
+        <div className="mt-9 flex flex-wrap gap-3">
+          <Button size="lg" href={`/map?neighbourhood=${n.slug}`}>
             Shops near me
           </Button>
-          <Button variant="secondary" href="/for-shoppers">
+          <Button variant="secondary" size="lg" href="/for-shoppers">
             How it works
           </Button>
         </div>
-      </MSection>
+      </section>
 
       {detail.liveCampaigns.length || detail.perks.length || detail.livePromoCount ? (
-        <section className="pb-8">
-          <div className="mx-auto grid max-w-[1200px] gap-4 px-4 md:grid-cols-3 md:px-8">
+        <section className="mx-auto max-w-[1200px] px-4 pb-12 md:px-8">
+          <div className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
             {detail.liveCampaigns.map((c: networkApi.CampaignBriefDto) => (
-              <Link key={c.id} href={`/c/${c.id}`} className="flex flex-col gap-2 rounded-xl bg-accent-subtle p-5 text-on-accent-subtle focus-visible:focus-ring">
-                <span className="inline-flex items-center gap-2 text-overline uppercase">
-                  <CalendarDays aria-hidden className="size-4" /> On now
+              <Link key={c.id} href={`/c/${c.id}`} className="flex flex-col gap-2 bg-bg p-6 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+                <span className="flex items-center gap-2 text-meta text-fg-muted">
+                  <span aria-hidden className="size-1.5 rounded-full bg-accent" /> On now
                 </span>
-                <span className="text-h3">{c.name}</span>
-                <span className="text-body-sm">
+                <span className="text-headline text-fg">{c.name}</span>
+                <span className="text-meta text-fg-muted">
                   Until {formatDate(c.endsAt, true)} · visit {c.goalVisits} shops
                 </span>
               </Link>
             ))}
             {detail.perks.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 rounded-xl bg-surface p-5 shadow-sm">
-                <span className="inline-flex items-center gap-2 text-overline uppercase text-fg-muted">
-                  <Gift aria-hidden className="size-4" /> Neighbourhood perk
-                </span>
-                <span className="text-h3 text-fg">{p.name}</span>
-                {p.description ? <span className="text-body-sm text-fg-muted">{p.description}</span> : null}
+              <div key={p.id} className="flex flex-col gap-2 bg-bg p-6">
+                <span className="text-meta text-fg-muted">Neighbourhood perk</span>
+                <span className="text-headline text-fg">{p.name}</span>
+                {p.description ? <span className="text-meta text-fg-muted">{p.description}</span> : null}
               </div>
             ))}
             {detail.livePromoCount ? (
-              <div className="flex flex-col gap-2 rounded-xl bg-surface p-5 shadow-sm">
-                <span className="inline-flex items-center gap-2 text-overline uppercase text-fg-muted">
-                  <Megaphone aria-hidden className="size-4" /> Offers
-                </span>
-                <span className="text-h3 text-fg">{detail.livePromoCount} live offers</span>
+              <div className="flex flex-col gap-2 bg-bg p-6">
+                <span className="text-meta text-fg-muted">Offers</span>
+                <span className="text-headline text-fg">{detail.livePromoCount} live offers</span>
               </div>
             ) : null}
           </div>
@@ -104,19 +98,19 @@ export default async function NeighbourhoodPage({ params }: Props) {
       ) : null}
 
       <MSection tone="subtle">
-        <h2 className="mb-6 text-h2 text-fg">Shops on {n.name}</h2>
+        <h2 className="display mb-8 text-mkt-sm md:text-mkt-md">shops on {n.name.toLowerCase()}.</h2>
         {shops.length ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {shops.map((s) => (
               <li key={s.merchant.id}>
                 <ShopTile
                   variant="compact"
                   href={`/shops/${s.merchant.slug}`}
-                  shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl }}
+                  shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }}
                   subtitle={
-                    <span className="inline-flex items-center gap-1.5">
-                      {s.location?.address ?? n.name}
-                      {s.hasPromo ? <Badge tone="accent">Offer</Badge> : null}
+                    <span className="inline-flex items-center gap-2">
+                      <span className="truncate">{s.location?.address ?? n.name}</span>
+                      {s.hasPromo ? <span className="shrink-0 font-semibold text-accent-text">Offer</span> : null}
                     </span>
                   }
                 />

@@ -9,10 +9,10 @@
 import { googleMapStyle } from "@ll/design-tokens";
 import type { networkApi } from "@ll/shared";
 import Constants from "expo-constants";
-import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from "react";
+import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet } from "react-native";
 import RNMapView, { Marker, type Region } from "react-native-maps";
-import type { PinMembership } from "../../lib/explore";
+import { labelPlan, pinPriority, type PinMembership } from "../../lib/explore";
 import { useTheme } from "../../theme";
 import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -59,6 +59,25 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
   const { scheme } = useTheme();
   const map = useRef<RNMapView>(null);
   const withCoords = useMemo(() => shops.filter((s) => s.location?.lat != null && s.location?.lng != null), [shops]);
+  const [region, setRegion] = useState<Region>({ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+  const [size, setSize] = useState({ width: 390, height: 800 });
+  // Which pins carry their name: project to screen (linear is fine at street zoom) and drop labels that would overlap.
+  const labeled = useMemo(() => {
+    const x0 = region.longitude - region.longitudeDelta / 2;
+    const y0 = region.latitude + region.latitudeDelta / 2;
+    return labelPlan(
+      withCoords.map((s) => {
+        const mem = memberships[s.merchant.id];
+        return {
+          id: s.merchant.id,
+          x: ((s.location!.lng! - x0) / region.longitudeDelta) * size.width,
+          y: ((y0 - s.location!.lat!) / region.latitudeDelta) * size.height,
+          priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }),
+        };
+      }),
+      { avoid: [{ x1: 0, y1: 0, x2: size.width, y2: topInset }, { x1: 0, y1: size.height - bottomInset, x2: size.width, y2: size.height }] },
+    );
+  }, [withCoords, memberships, selectedId, region, size, topInset, bottomInset]);
   // Follow the centre (location / neighbourhood arriving later) until the user pans.
   const userMoved = useRef(false);
   useEffect(() => {
@@ -72,6 +91,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
       <RNMapView
         ref={map}
         style={StyleSheet.absoluteFill}
+        onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
         initialRegion={{ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
         mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
         customMapStyle={googleMapStyle[scheme]}
@@ -91,15 +111,20 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
         onPanDrag={() => {
           userMoved.current = true;
         }}
-        onRegionChangeComplete={(r: Region) => onRegion({ lat: r.latitude, lng: r.longitude })}
+        onRegionChangeComplete={(r: Region) => {
+          setRegion(r);
+          onRegion({ lat: r.latitude, lng: r.longitude });
+        }}
         accessibilityLabel="Map of shops"
       >
         {withCoords.map((s) => {
           const mem = memberships[s.merchant.id] ?? null;
           const selected = s.merchant.id === selectedId;
+          const bare = !labeled.has(s.merchant.id);
           return (
             <Marker
-              key={`${s.merchant.id}-${selected ? 1 : 0}`}
+              // tracksViewChanges is off for performance, so a changed look needs a fresh marker.
+              key={`${s.merchant.id}-${selected ? 1 : 0}-${bare ? 1 : 0}`}
               coordinate={{ latitude: s.location!.lat!, longitude: s.location!.lng! }}
               onPress={(e) => {
                 e.stopPropagation();
@@ -110,7 +135,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
               zIndex={selected ? 10 : mem ? 2 : 1}
               accessibilityLabel={pinLabel(s, mem)}
             >
-              <ShopPin shop={s} membership={mem} selected={selected} />
+              <ShopPin shop={s} membership={mem} selected={selected} bare={bare} />
             </Marker>
           );
         })}

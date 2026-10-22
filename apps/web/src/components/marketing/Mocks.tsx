@@ -40,7 +40,7 @@ function fake(id: string, name: string, vertical: string, o: Partial<networkApi.
 /** A phone: black bezel, white screen, a 9:41 status bar. */
 export function PhoneFrame({ children, className, tone = "bg" }: { children: ReactNode; className?: string; tone?: "bg" | "map" }) {
   return (
-    <div aria-hidden inert className={cn("pointer-events-none relative w-[300px] shrink-0 select-none rounded-[52px] bg-[#0B0B0C] p-[9px] ring-1 ring-line", className)}>
+    <div aria-hidden inert className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-[#0B0B0C] p-[9px] ring-1 ring-line", className)}>
       <div className={cn("relative h-[620px] overflow-hidden rounded-[43px]", tone === "map" ? "bg-ll-map-land" : "bg-bg")}>
         <div className="absolute inset-x-0 top-0 z-[5] flex h-11 items-center justify-between px-7 text-[13px] font-semibold text-[#0B0B0C]">
           <span>9:41</span>
@@ -83,12 +83,11 @@ const STREETS = (
 );
 
 const MAP_PINS: { s: networkApi.ShopListItemDto; x: number; y: number; selected?: boolean }[] = [
-  { s: fake("pc", "Pinecone Coffee", "cafe", { isMember: true, myBalance: 7 }), x: 72, y: 196, selected: true },
-  { s: fake("ll", "Leslie Loaf", "bakery", { hasPromo: true }), x: 140, y: 112 },
-  { s: fake("fx", "Fix-It Phone Lab", "repair_electronics"), x: 150, y: 290 },
-  { s: fake("sp", "Stitch Perfect", "alterations"), x: 60, y: 344 },
-  { s: fake("nt", "Nonna's Table", "restaurant"), x: 168, y: 396 },
-  { s: fake("gw", "Glow Studio", "salon"), x: 40, y: 452 },
+  { s: fake("ll", "Leslie Loaf", "bakery", { hasPromo: true }), x: 130, y: 150 },
+  { s: fake("pc", "Pinecone Coffee", "cafe", { isMember: true, myBalance: 7 }), x: 50, y: 222, selected: true },
+  { s: fake("fx", "Fix-It Lab", "repair_electronics"), x: 150, y: 296 },
+  { s: fake("sp", "Stitch Perfect", "alterations"), x: 40, y: 360 },
+  { s: fake("nt", "Nonna's Table", "restaurant"), x: 140, y: 420 },
 ];
 
 /** The Explore screen: Corner basemap, object pins, floating capsules, category rail. */
@@ -102,7 +101,7 @@ export function MapScreen({ rail = true }: { rail?: boolean }) {
           <MapPin shop={p.s} selected={!!p.selected} onSelect={noop} />
         </div>
       ))}
-      <div className="absolute inset-x-0 top-12 flex flex-col gap-2 px-3">
+      <div className="absolute inset-x-0 top-12 flex flex-col gap-2 overflow-hidden px-3">
         <div className="flex items-center gap-2">
           <span className="chrome inline-flex size-10 items-center justify-center rounded-full">
             <LogoMark size={20} />
@@ -113,7 +112,7 @@ export function MapScreen({ rail = true }: { rail?: boolean }) {
         </div>
         <div className="flex gap-1.5">
           {["roncesvalles", "my shops", "open now"].map((t, i) => (
-            <span key={t} className={cn("inline-flex h-8 items-center rounded-full px-3 text-[12px] font-semibold shadow-float", i === 1 ? "bg-[#0B0B0C] text-[#FFFFFF]" : "bg-[#FFFFFF] text-[#0B0B0C]")}>
+            <span key={t} className={cn("inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12px] font-semibold shadow-float", i === 1 ? "bg-[#0B0B0C] text-[#FFFFFF]" : "bg-[#FFFFFF] text-[#0B0B0C]")}>
               {t}
             </span>
           ))}
@@ -139,10 +138,10 @@ export function MapScreen({ rail = true }: { rail?: boolean }) {
 }
 
 const WALLET = [
-  { name: "Pinecone Coffee", v: "cafe", value: 10, t: "stamps", sub: "Free drink is ready", ready: true, c: "#7A4B2A" },
-  { name: "Leslie Loaf", v: "bakery", value: 1, t: "reward", sub: "Free loaf is ready", ready: true, c: null },
-  { name: "Fix-It Phone Lab", v: "repair_electronics", value: 340, t: "points", sub: "160 pts to $20 off", ready: false, c: "#1D4ED8" },
-  { name: "Glow Studio", v: "salon", value: 3, t: "visits", sub: "2 more for a free blow-dry", ready: false, c: null },
+  { name: "Pinecone", v: "cafe", value: 10, t: "stamps", sub: "Free drink", ready: true, c: "#7A4B2A" },
+  { name: "Leslie Loaf", v: "bakery", value: 1, t: "reward", sub: "Free loaf", ready: true, c: null },
+  { name: "Fix-It Lab", v: "repair_electronics", value: 340, t: "points", sub: "160 to $20 off", ready: false, c: "#1D4ED8" },
+  { name: "Glow Studio", v: "salon", value: 3, t: "visits", sub: "2 to a blow-dry", ready: false, c: null },
 ];
 
 /** The wallet: large title, one honest number, the black card button, a grouped list. */

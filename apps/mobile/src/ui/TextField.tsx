@@ -95,6 +95,6 @@ export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
   field: { flexDirection: "row", alignItems: "center", borderRadius: radii.input, paddingHorizontal: 12, gap: 6 },
-  input: { flex: 1, paddingVertical: 10 },
+  input: { flex: 1, minWidth: 0, width: "100%", paddingVertical: 10 },
   msg: { flexDirection: "row", gap: 6, alignItems: "flex-start" },
 });

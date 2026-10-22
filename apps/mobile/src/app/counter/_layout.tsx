@@ -18,7 +18,7 @@ function CounterStack() {
 function Themed() {
   const { c } = useTheme();
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.canvas } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
       <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
       <Stack.Screen name="kiosk" options={{ gestureEnabled: false }} />
     </Stack>

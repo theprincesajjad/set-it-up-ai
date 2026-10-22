@@ -1,7 +1,7 @@
 import type { customerApi } from "@ll/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { FlatList, View } from "react-native";
+import { View } from "react-native";
 import { t } from "../copy/en-CA";
 import { useCampaigns, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { RedeemConfirmSheet } from "../features/customer/sheets";
@@ -23,7 +23,7 @@ export default function Rewards() {
   const ready = loaded.filter((d) => d.rewards.some((r) => r.affordable));
 
   return (
-    <Screen back title="Rewards" refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
+    <Screen back largeTitle title="Rewards" refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
       <SegmentedControl
         options={[
           { value: "ready", label: "Ready" },
@@ -39,79 +39,58 @@ export default function Rewards() {
         ready.length === 0 ? (
           <EmptyState icon={Gift} title={t("empty.rewardsReady.title")} body={t("empty.rewardsReady.body")} actionLabel={t("empty.rewardsReady.action")} onAction={() => setTab("all")} />
         ) : (
-          ready.map((d) => (
-            <View key={d.membership.id} style={{ gap: 8 }}>
-              <ShopTile variant="compact" shop={d.membership.merchant} onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)} />
-              {d.rewards
-                .filter((r) => r.affordable)
-                .map((r) => (
+          ready.map((d) => {
+            const rs = d.rewards.filter((r) => r.affordable);
+            return (
+              <View key={d.membership.id}>
+                <ShopTile variant="compact" shop={d.membership.merchant} divider={false} onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)} />
+                {rs.map((r, i) => (
                   <RewardCard
                     key={r.id}
                     reward={r}
                     balance={d.membership.balance}
                     terminology={d.membership.terminology}
-                    vertical={d.membership.merchant.vertical}
                     state="available"
+                    divider={i < rs.length - 1}
                     disabledReason={online ? null : t("err.redeem.offlineCustomer")}
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
                 ))}
-            </View>
-          ))
+              </View>
+            );
+          })
         )
       ) : null}
 
       {tab === "all"
-        ? loaded.map((d) => (
-            <View key={d.membership.id} style={{ gap: 8 }}>
-              <ShopTile
-                variant="compact"
-                shop={d.membership.merchant}
-                balance={{ value: d.membership.balance, terminology: d.membership.terminology }}
-                subtitle={d.membership.expiryDisclosure}
-                onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)}
-              />
-              {d.rewards.length <= 1 ? (
-                d.rewards[0] ? (
+        ? loaded.map((d) => {
+            const rs = [...d.rewards].sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost);
+            return (
+              <View key={d.membership.id}>
+                <ShopTile
+                  variant="compact"
+                  shop={d.membership.merchant}
+                  balance={{ value: d.membership.balance, terminology: d.membership.terminology }}
+                  subtitle={d.membership.expiryDisclosure}
+                  divider={false}
+                  onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)}
+                />
+                {rs.length === 0 ? <Text color="fgMuted">This shop hasn't added rewards yet.</Text> : null}
+                {rs.map((r, i) => (
                   <RewardCard
-                    reward={d.rewards[0]}
+                    key={r.id}
+                    reward={r}
                     balance={d.membership.balance}
                     terminology={d.membership.terminology}
-                    vertical={d.membership.merchant.vertical}
-                    state={d.rewards[0].affordable ? "available" : "locked"}
+                    state={r.affordable ? "available" : "locked"}
+                    divider={i < rs.length - 1}
                     disabledReason={online ? null : t("err.redeem.offlineCustomer")}
-                    onRedeem={() => setRedeeming({ m: d.membership, r: d.rewards[0]! })}
+                    onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
-                ) : (
-                  <Text color="fgMuted">This shop hasn't added rewards yet.</Text>
-                )
-              ) : (
-                // Affordable first (references.md § 3); the row bleeds to the screen edge so the next card peeks.
-                <FlatList
-                  horizontal
-                  style={{ marginHorizontal: -16 }}
-                  contentContainerStyle={{ paddingHorizontal: 16 }}
-                  data={[...d.rewards].sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)}
-                  keyExtractor={(r) => r.id}
-                  showsHorizontalScrollIndicator={false}
-                  ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-                  renderItem={({ item: r }) => (
-                    <View style={{ width: 300 }}>
-                      <RewardCard
-                        reward={r}
-                        balance={d.membership.balance}
-                        terminology={d.membership.terminology}
-                        vertical={d.membership.merchant.vertical}
-                        state={r.affordable ? "available" : "locked"}
-                        disabledReason={online ? null : t("err.redeem.offlineCustomer")}
-                        onRedeem={() => setRedeeming({ m: d.membership, r })}
-                      />
-                    </View>
-                  )}
-                />
-              )}
-            </View>
-          ))
+                ))}
+              </View>
+            );
+          })
         : null}
 
       {tab === "passport" ? (
@@ -121,16 +100,16 @@ export default function Rewards() {
           (campaigns.data?.items ?? []).map((cmp) => (
             <Card key={cmp.id} onPress={() => router.push(`/campaigns/${cmp.id}`)} accessibilityLabel={`${cmp.name}. ${cmp.progress.visited} of ${cmp.progress.goal} shops visited.`}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text variant="title" style={{ flex: 1 }}>
+                <Text variant="headline" style={{ flex: 1 }}>
                   {cmp.name}
                 </Text>
-                <Badge tone={cmp.status === "live" ? "success" : cmp.status === "scheduled" ? "info" : "neutral"}>{cmp.status === "live" ? "Live" : cmp.status === "scheduled" ? "Starts soon" : "Ended"}</Badge>
+                <Badge tone={cmp.status === "live" ? "success" : "neutral"}>{cmp.status === "live" ? "live" : cmp.status === "scheduled" ? "starts soon" : "ended"}</Badge>
               </View>
-              <Text variant="bodySm" color="fgMuted">
+              <Text variant="meta" color="fgMuted">
                 {[cmp.neighbourhood.name, promoEnds(cmp.endsAt)].filter(Boolean).join(" · ")}
               </Text>
               <View style={{ marginTop: 8 }}>
-                <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} tone="accent" valueLabel={`${cmp.progress.visited} of ${cmp.progress.goal}`} />
+                <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} height={4} valueLabel={`${cmp.progress.visited} of ${cmp.progress.goal}`} />
               </View>
             </Card>
           ))

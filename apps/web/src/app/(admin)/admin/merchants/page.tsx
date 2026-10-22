@@ -1,11 +1,11 @@
 "use client";
+import { PageHeader, StatusDot } from "@/components/dashboard/kit";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { adminApi } from "@ll/shared";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { PageHeader } from "@/components/ui/Layout";
 import { TextField } from "@/components/ui/TextField";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
@@ -41,7 +41,7 @@ export default function AdminMerchantsPage() {
   const cols: Column<adminApi.AdminMerchant>[] = [
     { key: "name", header: "Merchant", mobile: "title", sortValue: (m) => m.name, cell: (m) => <span className="font-medium">{m.name}</span> },
     { key: "vertical", header: "Type", mobile: "hidden", cell: (m) => verticalLabel(m.vertical) },
-    { key: "status", header: "Status", mobile: "trailing", cell: (m) => <StatusBadge domain="merchant" status={m.status} /> },
+    { key: "status", header: "Status", mobile: "trailing", cell: (m) => <StatusDot domain="merchant" status={m.status} /> },
     { key: "plan", header: "Plan", mobile: "hidden", cell: (m) => <Badge tone={m.plan === "free" ? "neutral" : "brand"}>{m.plan}</Badge> },
     { key: "members", header: "Members", align: "end", mobile: "subtitle", sortValue: (m) => m.members, cell: (m) => `${formatNumber(m.members)} (${formatNumber(m.activeMembers)} active)` },
     { key: "act", header: "Activated", mobile: "hidden", cell: (m) => (m.activatedAt ? formatDate(m.activatedAt) : "–") },

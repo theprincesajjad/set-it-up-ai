@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader, Panel } from "@/components/dashboard/kit";
 import { ArrowLeft, ArrowRight, CheckCircle2, Copy, Lock, Printer } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -6,9 +7,7 @@ import { VERTICALS, VERTICAL_TEMPLATES, type Vertical, type merchantApi, type ne
 import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { PageHeader } from "@/components/ui/Layout";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Select } from "@/components/ui/Select";
@@ -111,12 +110,12 @@ export default function NewMerchantPage() {
 
   const joinUrl = created?.locations[0]?.joinUrl;
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5">
+    <div className="flex max-w-[960px] flex-col gap-5">
       <PageHeader title="Set up a merchant" description="About 20 minutes with the owner. Every step saves on this device." />
       <ProgressBar value={step + 1} max={STEPS.length} label={`Step ${step + 1} of ${STEPS.length}: ${STEPS[step]}`} valueText={STEPS[step]} />
       {error ? <Banner tone="danger">{error}</Banner> : null}
 
-      <Card padding="lg" className="flex flex-col gap-4">
+      <Panel className="flex flex-col gap-4">
         {step === 0 ? (
           <>
             <h2 className="text-body-strong text-fg">Find the shop</h2>
@@ -234,7 +233,7 @@ export default function NewMerchantPage() {
             </div>
           </div>
         ) : null}
-      </Card>
+      </Panel>
 
       {step < 8 ? (
         <div className="flex justify-between gap-3">

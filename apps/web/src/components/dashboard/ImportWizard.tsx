@@ -1,11 +1,11 @@
 "use client";
+import { Panel } from "@/components/dashboard/kit";
 import { CheckCircle2, Download, FileUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -74,7 +74,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       {error ? <Banner tone="danger">{error}</Banner> : null}
 
       {step === "upload" ? (
-        <Card padding="lg">
+        <Panel>
           <h2 className="text-body-strong text-fg">Upload a CSV file</h2>
           <p className="mt-1 text-body text-fg-muted">Export your members from your old loyalty app or spreadsheet. We need at least a phone number for each customer. Re-importing the same file never doubles anyone&apos;s balance.</p>
           <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong p-6 text-center hover:bg-bg-subtle focus-within:focus-ring">
@@ -96,11 +96,11 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
             <summary className="cursor-pointer text-label text-fg">Or paste CSV text</summary>
             <PasteBox onLoad={(t) => load(t, "Pasted data")} />
           </details>
-        </Card>
+        </Panel>
       ) : null}
 
       {step === "map" ? (
-        <Card padding="lg">
+        <Panel>
           <h2 className="text-body-strong text-fg">Match your columns</h2>
           <p className="mt-1 text-body text-fg-muted">
             {fileName}: {formatNumber(rows.length - 1)} rows. We guessed the matches; check them.
@@ -133,12 +133,12 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
               Next
             </Button>
           </div>
-        </Card>
+        </Panel>
       ) : null}
 
       {step === "preview" ? (
         <>
-          <Card padding="lg">
+          <Panel>
             <h2 className="text-body-strong text-fg">Preview</h2>
             <p className="mt-1 text-meta text-fg-muted">
               First {preview.rows.length} of {formatNumber(preview.total)} rows. {preview.invalid ? `${formatNumber(preview.invalid)} rows have no valid mobile number and will be skipped.` : "Every row has a valid mobile number."}
@@ -168,9 +168,9 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </Panel>
 
-          <Card padding="lg">
+          <Panel>
             <fieldset>
               <legend className="text-body-strong text-fg">Did these customers agree to get marketing messages from you?</legend>
               <div className="mt-3 flex flex-col gap-2">
@@ -195,7 +195,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
                 </Banner>
               ) : null}
             </fieldset>
-          </Card>
+          </Panel>
 
           {check ? (
             <Banner tone={check.errors.length ? "warning" : "success"} title="Check complete">
@@ -218,7 +218,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       ) : null}
 
       {step === "done" && result ? (
-        <Card padding="lg">
+        <Panel>
           <div className="flex items-start gap-3">
             <CheckCircle2 aria-hidden className="size-8 shrink-0 text-positive" />
             <div>
@@ -256,7 +256,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
               </Button>
             </>
           ) : null}
-        </Card>
+        </Panel>
       ) : null}
     </div>
   );

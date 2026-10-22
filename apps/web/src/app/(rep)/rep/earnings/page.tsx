@@ -1,9 +1,7 @@
 "use client";
+import { PageHeader, Panel, StatTile } from "@/components/dashboard/kit";
 import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
-import { StatTile } from "@/components/ui/StatTile";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -17,14 +15,13 @@ export default function EarningsPage() {
       <Async state={c}>
         {(s) => (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
               <StatTile label="Total earned" value={formatMoney(s.totalEarnedCents)} />
               <StatTile label="Setup pay" value={formatMoney(s.signedEarnedCents)} caption={`${formatNumber(s.merchantsSigned)} shops × ${formatMoney(s.rates.signedCents)}`} />
               <StatTile label="Activation bonuses" value={formatMoney(s.activationEarnedCents)} caption={`${formatNumber(s.merchantsActivated)} activated`} />
               <StatTile label="Still possible" value={formatMoney(s.pendingBonusCents)} caption="Bonuses in their 30-day window" />
             </div>
-            <Card padding="lg">
-              <CardHeader title="By shop" />
+            <Panel title="By shop">
               <div className="overflow-x-auto">
                 <table className="w-full text-meta">
                   <caption className="sr-only">Earnings by shop</caption>
@@ -44,7 +41,7 @@ export default function EarningsPage() {
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </Panel>
           </>
         )}
       </Async>

@@ -1,15 +1,14 @@
 "use client";
-import { ArrowLeft, ArrowRight, Check, Leaf, Printer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Printer } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ONBOARDING_STEPS_UI } from "./steps";
 import { STEP_COPY } from "@/components/dashboard/Checklist";
+import { Dot, Meter, PageHeader, Panel } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Select } from "@/components/ui/Select";
@@ -26,8 +25,8 @@ export default function SetupPage() {
   const { api, base } = useMerchant();
   const state = useApi(() => api.onboarding(), [api]);
   return (
-    <div className="mx-auto flex max-w-[760px] flex-col gap-6">
-      <PageHeader title="Set up your shop" description="Each step saves as you go. You can come back any time." />
+    <div className="flex flex-col gap-6">
+      <PageHeader flush title="Set up your shop" description="Each step saves as you go. You can come back any time." />
       <Async state={state}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
     </div>
   );
@@ -49,34 +48,51 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
 
   return (
     <>
-      <div>
-        <ProgressBar value={i + 1} max={steps.length} label={`Step ${i + 1} of ${steps.length}`} valueText={`${doneCount} of ${steps.length} done`} />
-        <ol className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Setup steps">
-          {steps.map((s, n) => (
-            <li key={s.key}>
-              <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-label", n === i ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg")}>
-                {s.done ? <Leaf aria-hidden className="size-4 text-positive" /> : <span className="tabular-nums text-fg-muted">{n + 1}</span>}
-                {STEP_COPY[s.key].label}
-              </button>
-            </li>
-          ))}
-        </ol>
-      </div>
       {allDone ? <Banner tone="success" title="You're live.">Your first customer can join right now.</Banner> : null}
-      <Card padding="lg">
-        <StepBody step={step} checklist={checklist} onChange={onChange} base={base} next={() => i < steps.length - 1 && go(i + 1)} />
-      </Card>
-      <div className="flex justify-between gap-3">
-        <Button variant="secondary" iconStart={ArrowLeft} disabled={i === 0} onClick={() => go(i - 1)}>
-          Back
-        </Button>
-        {i < steps.length - 1 ? (
-          <Button variant="secondary" iconEnd={ArrowRight} onClick={() => go(i + 1)}>
-            Next
-          </Button>
-        ) : (
-          <Button href={base}>Go to Home</Button>
-        )}
+      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div>
+          <div className="mb-3 flex items-baseline justify-between text-meta">
+            <span className="text-fg">
+              {doneCount} of {steps.length} done
+            </span>
+            <span className="tabular text-fg-muted">{Math.round((doneCount / steps.length) * 100)}%</span>
+          </div>
+          <Meter value={doneCount} max={steps.length} label="Setup progress" />
+          <ol className="mt-4 flex gap-1 overflow-x-auto lg:flex-col" aria-label="Setup steps">
+            {steps.map((s, n) => (
+              <li key={s.key}>
+                <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-9 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle")}>
+                  <span aria-hidden className={cn("inline-flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] tabular", s.done ? "bg-fg text-bg" : "border border-line-strong text-fg-muted")}>
+                    {s.done ? <Check className="size-3" strokeWidth={2.5} /> : n + 1}
+                  </span>
+                  <span className="sr-only">{s.done ? "Done: " : ""}</span>
+                  {STEP_COPY[s.key].label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          <Panel>
+            <StepBody step={step} checklist={checklist} onChange={onChange} base={base} next={() => i < steps.length - 1 && go(i + 1)} />
+          </Panel>
+          <div className="flex justify-between gap-3">
+            {i > 0 ? (
+              <Button variant="ghost" size="sm" iconStart={ArrowLeft} onClick={() => go(i - 1)}>
+                Back
+              </Button>
+            ) : (
+              <span />
+            )}
+            {i < steps.length - 1 ? (
+              <Button variant="ghost" size="sm" iconEnd={ArrowRight} onClick={() => go(i + 1)}>
+                Next
+              </Button>
+            ) : (
+              <Button variant="secondary" size="sm" href={base}>Go to Home</Button>
+            )}
+          </div>
+        </div>
       </div>
     </>
   );
@@ -107,14 +123,10 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-title text-fg">{copy.title}</h2>
-          <p className="mt-1 text-body text-fg-muted">{copy.body}</p>
+          <h2 className="text-headline text-fg">{copy.title}</h2>
+          <p className="mt-1 text-meta text-fg-muted">{copy.body}</p>
         </div>
-        {step.done ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-subtle px-3 py-1 text-label text-on-success-subtle">
-            <Check aria-hidden className="size-4" /> Done
-          </span>
-        ) : null}
+        {step.done ? <Dot tone="positive">Done</Dot> : null}
       </div>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
@@ -142,7 +154,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "program" ? (
         <>
-          {detail.program ? <p className="rounded-input bg-bg-subtle p-4 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
+          {detail.program ? <p className="border-y border-line py-3 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button loading={act.busy} onClick={() => complete("program")}>
               Looks good
@@ -156,9 +168,9 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "rewards" ? (
         <>
-          <ul className="flex flex-col gap-2">
+          <ul className="divide-y divide-line border-y border-line">
             {(rewards.data?.items ?? []).map((r) => (
-              <li key={r.id} className="flex items-center justify-between rounded-input border border-line p-3">
+              <li key={r.id} className="flex min-h-11 items-center justify-between">
                 <span className="text-body text-fg">{r.name}</span>
                 <span className="tabular-nums text-meta text-fg-muted">{formatPoints(r.pointsCost, detail.program?.terminology)}</span>
               </li>
@@ -217,7 +229,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
       {step.key === "first_members" ? (
         <>
           <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Active members" valueText={`${checklist.activeMembers} of ${checklist.activationTarget} active members`} />
-          <ul className="list-disc ps-5 text-body text-fg">
+          <ul className="list-disc ps-5 text-meta text-fg">
             <li>Ask every customer: &quot;Are you on the card? It&apos;s free, here and on the whole street.&quot;</li>
             <li>Put the QR stand right next to the till.</li>
             <li>Add the stamp or points before they pay, so they see it work.</li>

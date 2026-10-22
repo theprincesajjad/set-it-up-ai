@@ -1,9 +1,8 @@
-import { Lock, MapPin, ShieldCheck, Smartphone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@ll/shared";
 import { Faq } from "@/components/marketing/Faq";
-import { NetworkMapIllustration, StepIllustration } from "@/components/marketing/Illustrations";
+import { CardScreen, MapScreen, PhoneFrame, WalletScreen } from "@/components/marketing/Mocks";
 import { MHeading, MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -27,81 +26,103 @@ export default async function ShoppersPage() {
   }
   return (
     <>
-      <MSection>
-        <div className="grid items-center gap-10 md:grid-cols-2">
+      <section className="overflow-hidden">
+        <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:grid-cols-[1.05fr_1fr] md:px-8 md:pt-24 md:pb-28">
           <div>
-            <h1 className="font-display text-[40px] font-semibold leading-[44px] text-fg md:text-hero">{copy.misc.joinTagline}</h1>
-            <p className="mt-5 text-body-lg text-fg-muted">Earn rewards at the local places you already love. Free, and your points never expire.</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" href="/map" iconStart={MapPin}>
+            <p className="text-meta-strong text-fg-muted">For shoppers</p>
+            <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{copy.misc.joinTagline.toLowerCase()}</h1>
+            <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.55] text-fg-muted">Earn rewards at the local places you already love. Free, no app needed, and your points never expire.</p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" href="/map">
                 Find shops near me
               </Button>
-              <Button size="lg" variant="secondary" href={env.appStoreUrl} iconStart={Smartphone}>
-                App Store
-              </Button>
-              <Button size="lg" variant="secondary" href={env.playStoreUrl} iconStart={Smartphone}>
-                Google Play
+              <Button size="lg" variant="secondary" href="/me">
+                My card
               </Button>
             </div>
-            <p className="mt-4 text-caption text-fg-muted">Or just scan the QR at any participating shop.</p>
+            <p className="mt-5 text-meta text-fg-muted">
+              Or scan the QR at any participating shop. Prefer an app?{" "}
+              <a href={env.appStoreUrl} className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">
+                App Store
+              </a>{" "}
+              ·{" "}
+              <a href={env.playStoreUrl} className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">
+                Google Play
+              </a>
+            </p>
           </div>
-          <NetworkMapIllustration className="w-full" />
+          <div className="relative mx-auto flex w-full max-w-[540px] justify-center">
+            <PhoneFrame className="relative z-[1]">
+              <WalletScreen />
+            </PhoneFrame>
+            <PhoneFrame className="-ms-14 mt-14 hidden sm:block">
+              <CardScreen />
+            </PhoneFrame>
+          </div>
         </div>
-      </MSection>
+      </section>
 
       <MSection tone="subtle">
-        <MHeading eyebrow="How it works" title="Three steps, no app needed" />
-        <ol className="grid gap-6 md:grid-cols-3">
+        <MHeading eyebrow="How it works" title="three steps, no app needed." />
+        <ol className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
           {[
-            { k: "join" as const, t: "Scan or give your number", b: "Scan the QR on the counter, or tell staff your number. Takes 30 seconds." },
-            { k: "return" as const, t: "Earn", b: "Points or stamps at every shop you visit, all on one card." },
-            { k: "setup" as const, t: "Get rewards", b: "Free coffee, $5 off, a free cut. Each shop sets its own, and they never expire." },
+            { t: "Scan or give your number", b: "Scan the QR on the counter, or tell staff your number. Takes 30 seconds." },
+            { t: "Earn everywhere", b: "Points or stamps at every shop you visit, all on one card." },
+            { t: "Get rewards", b: "Free coffee, $5 off, a free cut. Each shop sets its own, and they never expire." },
           ].map((s, i) => (
-            <li key={s.t} className="rounded-xl bg-surface p-6 shadow-sm">
-              <StepIllustration kind={s.k} className="h-24 w-32" />
-              <p className="mt-4 text-overline uppercase text-fg-muted">Step {i + 1}</p>
-              <h3 className="mt-1 text-h3 text-fg">{s.t}</h3>
+            <li key={s.t} className="bg-bg p-6 md:p-8">
+              <span className="display text-mkt-sm tabular-nums text-fg-subtle">{i + 1}</span>
+              <h3 className="mt-6 text-headline text-fg">{s.t}</h3>
               <p className="mt-2 text-body text-fg-muted">{s.b}</p>
             </li>
           ))}
         </ol>
       </MSection>
 
-      {hoods.length ? (
-        <MSection>
-          <MHeading eyebrow="Live now" title="Where your card works" />
-          <ul className="flex flex-wrap gap-3">
-            {hoods.map((h) => (
-              <li key={h.slug}>
-                <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-surface px-5 text-label text-fg shadow-sm hover:shadow-md focus-visible:focus-ring">
-                  <MapPin aria-hidden className="size-4 text-fg-brand" />
-                  {h.name} · {h.shopCount} shops
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </MSection>
-      ) : null}
+      <MSection>
+        <div className="grid items-center gap-14 md:grid-cols-2">
+          <div>
+            <MHeading eyebrow="Live now" title="where your card works." sub="Every participating shop is on the map. Neighbourhood perks reward you for trying the place next door." className="mb-8!" />
+            {hoods.length ? (
+              <ul className="flex flex-wrap gap-2">
+                {hoods.map((h) => (
+                  <li key={h.slug}>
+                    <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full border border-line px-4 text-meta-strong text-fg transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+                      <span className="display lowercase">{h.name}</span>
+                      <span className="font-normal tabular-nums text-fg-muted">{h.shopCount} shops</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <div className="flex justify-center">
+            <PhoneFrame tone="map">
+              <MapScreen />
+            </PhoneFrame>
+          </div>
+        </div>
+      </MSection>
 
       <MSection tone="subtle">
-        <div className="grid gap-6 md:grid-cols-3">
+        <MHeading eyebrow="Your data" title="private by default." />
+        <div className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
           {[
-            { icon: ShieldCheck, t: "Shops see only their own customers", b: "The café never sees what you bought at the bookstore." },
-            { icon: Lock, t: "We never sell your data", b: "Not to advertisers, not to anyone. Delete your account anytime." },
-            { icon: Smartphone, t: "Offers only if you say yes", b: "Each shop asks separately. Reply STOP to any text to stop." },
+            { t: "Shops see only their own customers", b: "The café never sees what you bought at the bookstore." },
+            { t: "We never sell your data", b: "Not to advertisers, not to anyone. Delete your account anytime." },
+            { t: "Offers only if you say yes", b: "Each shop asks separately. Reply STOP to any text to stop." },
           ].map((b) => (
-            <div key={b.t} className="rounded-xl bg-surface p-6 shadow-sm">
-              <b.icon aria-hidden className="size-6 text-fg-brand" />
-              <h3 className="mt-3 text-title text-fg">{b.t}</h3>
-              <p className="mt-1 text-body text-fg-muted">{b.b}</p>
+            <div key={b.t} className="bg-bg p-6 md:p-8">
+              <h3 className="text-headline text-fg">{b.t}</h3>
+              <p className="mt-2 text-body text-fg-muted">{b.b}</p>
             </div>
           ))}
         </div>
       </MSection>
 
       <MSection>
-        <div className="mx-auto max-w-3xl">
-          <h2 className="mb-6 text-h2 text-fg">Questions</h2>
+        <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
+          <h2 className="display text-mkt-md md:text-mkt-lg">questions.</h2>
           <Faq
             items={[
               { q: "Does it cost anything?", a: "No. It's free for you, always." },

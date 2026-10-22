@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { useTheme } from "../../theme";
 import { isApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { formatMoney, shortName } from "../../lib/award";
@@ -8,11 +9,12 @@ import { formatTime } from "../../lib/format";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
-import { Avatar, Badge, Button, Card, EmptyState, ErrorState, Gift, History, ListRow, Plus, Screen, Section, SkeletonList, StatTile, Text, useToast } from "../../ui";
+import { Avatar, Badge, Button, EmptyState, ErrorState, Gift, History, ListRow, Plus, Screen, Section, SkeletonList, StatTile, Text, useToast } from "../../ui";
 import { last4 } from "../../lib/phone";
 
 /** Today: 2x2 stats + today's activity with the staff initials; Undo where the API allows it. */
 export default function Today() {
+  const { c } = useTheme();
   const { config, online } = useCounter();
   const toast = useToast();
   const mId = config.merchantId ?? "";
@@ -37,14 +39,26 @@ export default function Today() {
       {today.isLoading ? (
         <SkeletonList rows={2} rowHeight={96} />
       ) : today.data ? (
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <StatTile label="Visits" value={today.data.visitCount} />
-            <StatTile label="Points given" value={today.data.pointsIssued} />
+        // One bordered block, numbers split by hairlines (foundations § Stats), not four cards.
+        <View style={[styles.stats, { borderColor: c.line }]}>
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <StatTile label="Visits" value={today.data.visitCount} />
+            </View>
+            <View style={[styles.vrule, { backgroundColor: c.line }]} />
+            <View style={styles.stat}>
+              <StatTile label="Points given" value={today.data.pointsIssued} />
+            </View>
           </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <StatTile label="Redemptions" value={today.data.redemptions} />
-            <StatTile label="New members" value={today.data.newMembers} />
+          <View style={[styles.hrule, { backgroundColor: c.line }]} />
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <StatTile label="Redemptions" value={today.data.redemptions} />
+            </View>
+            <View style={[styles.vrule, { backgroundColor: c.line }]} />
+            <View style={styles.stat}>
+              <StatTile label="New members" value={today.data.newMembers} />
+            </View>
           </View>
         </View>
       ) : (
@@ -54,7 +68,7 @@ export default function Today() {
         {(activity.data?.items ?? []).length === 0 && !activity.isLoading ? (
           <EmptyState icon={History} title="No visits yet today" body="Awards show up here as you make them." />
         ) : (
-          <Card padded={false} style={{ paddingHorizontal: 16 }}>
+          <View>
             {(activity.data?.items ?? []).map((a, i, all) => (
               <ListRow
                 key={a.transactionId}
@@ -67,7 +81,7 @@ export default function Today() {
                 subtitle={[formatTime(a.createdAt), a.maskedPhone ? `...${last4(a.maskedPhone)}` : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "Redeemed" : null].filter(Boolean).join(" · ")}
                 trailing={
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : a.points > 0 ? "onSuccessSubtle" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
+                    <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : a.points > 0 ? "accentText" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
                       {`${a.points > 0 ? "+" : ""}${a.points}`}
                     </Text>
                     {a.reversed ? (
@@ -81,10 +95,18 @@ export default function Today() {
                 }
               />
             ))}
-          </Card>
+          </View>
         )}
       </Section>
-      <Text variant="bodySm" color="fgMuted">Later corrections go through Adjust in the dashboard.</Text>
+      <Text variant="meta" color="fgMuted">Later corrections go through Adjust in the dashboard.</Text>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  stats: { borderWidth: StyleSheet.hairlineWidth * 2, borderRadius: 16, overflow: "hidden" },
+  statRow: { flexDirection: "row" },
+  stat: { flex: 1, paddingHorizontal: 16, paddingVertical: 14 },
+  vrule: { width: StyleSheet.hairlineWidth * 2 },
+  hrule: { height: StyleSheet.hairlineWidth * 2 },
+});

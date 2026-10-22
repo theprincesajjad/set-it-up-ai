@@ -14,13 +14,15 @@ export interface ModalProps {
   /** "dialog" = centred on md+ and sheet-style on phones; "sheet" = always a bottom sheet. */
   variant?: "dialog" | "sheet";
   size?: "sm" | "md";
+  /** Optional leading visual next to the title (e.g. the shop avatar on a shop sheet). */
+  icon?: ReactNode;
 }
 
 /**
  * Modal / Sheet on the native <dialog>: focus trap, Escape, inert background and
  * focus restoration come from the browser (system.md §3 Modal + Sheet).
  */
-export function Modal({ open, onClose, title, description, children, actions, variant = "dialog", size = "sm" }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, actions, variant = "dialog", size = "sm", icon }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -67,9 +69,12 @@ export function Modal({ open, onClose, title, description, children, actions, va
       >
         <div aria-hidden className={cn("mx-auto -mt-2.5 mb-3 h-[5px] w-9 shrink-0 rounded-full bg-bg-muted", !sheet && "md:hidden")} />
         <div className="mb-2 flex items-start justify-between gap-4">
-          <h2 id={titleId} className="pt-1 text-headline text-fg">
-            {title}
-          </h2>
+          <div className="flex min-w-0 items-center gap-3">
+            {icon}
+            <h2 id={titleId} className="pt-1 text-headline text-fg">
+              {title}
+            </h2>
+          </div>
           <button type="button" onClick={onClose} aria-label="Close" className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg after:absolute after:-inset-2 after:content-[''] focus-visible:focus-ring">
             <X aria-hidden className="size-4" strokeWidth={2} />
           </button>

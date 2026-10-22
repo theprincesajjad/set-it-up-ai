@@ -1,5 +1,6 @@
 "use client";
-import { ArrowLeft, Mail, Phone, Store } from "lucide-react";
+import { BackLink, PageHeader, Panel } from "@/components/dashboard/kit";
+import { Mail, Phone, Store } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { repApi } from "@ll/shared";
@@ -7,8 +8,6 @@ import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -32,18 +31,17 @@ export default function LeadPage() {
   const act = useAction();
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href="/rep/leads" className="self-start">Leads</Button>
+      <BackLink href="/rep/leads">Leads</BackLink>
       <Async state={lead}>
         {(l) => (
           <>
             <PageHeader title={l.businessName} description={<span className="flex flex-wrap items-center gap-2"><Badge>{STAGE_LABEL[l.stage]}</Badge>{l.vertical ? verticalLabel(l.vertical) : null}{l.address ? ` · ${l.address}` : ""}</span>} actions={
-              l.merchantId ? <Button href={`/rep/merchants/${l.merchantId}`} iconStart={Store}>Open merchant</Button> : <Button href={`/rep/new?leadId=${l.id}`}>Start setup</Button>
+              l.merchantId ? <Button size="sm" href={`/rep/merchants/${l.merchantId}`} iconStart={Store}>Open merchant</Button> : <Button size="sm" href={`/rep/new?leadId=${l.id}`}>Start setup</Button>
             } />
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
               <div className="flex flex-col gap-6">
-                <Card padding="lg">
-                  <CardHeader title="Log activity" subtitle="Calls, emails and visits move a new lead to Contacted." />
+                <Panel title="Log activity" description="Calls, emails and visits move a new lead to Contacted.">
                   <form className="flex flex-col gap-3" onSubmit={async (e) => {
                     e.preventDefault();
                     const r = await act.run(() => browserApi.rep.addActivity(l.id, { kind, outcome: outcome.trim() || undefined, notes: notes.trim() || undefined, nextActionAt: next ? fromLocalInput(next) : undefined }));
@@ -60,11 +58,10 @@ export default function LeadPage() {
                     </div>
                     <TextField type="textarea" label="Notes" optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} />
                     <TextField type="datetime-local" label="Next action" optionalLabel value={next} onChange={(e) => setNext(e.target.value)} />
-                    <Button type="submit" loading={act.busy} className="self-start">Log activity</Button>
+                    <Button size="sm" type="submit" loading={act.busy} className="self-start">Log activity</Button>
                   </form>
-                </Card>
-                <Card padding="lg">
-                  <CardHeader title="History" />
+                </Panel>
+                <Panel title="History">
                   {l.activities.length ? (
                     <ol className="flex flex-col gap-3">
                       {l.activities.map((a) => (
@@ -78,10 +75,9 @@ export default function LeadPage() {
                   ) : (
                     <p className="text-meta text-fg-muted">No activity yet.</p>
                   )}
-                </Card>
+                </Panel>
               </div>
-              <Card padding="lg" className="flex flex-col gap-3">
-                <CardHeader title="Details" />
+              <Panel className="flex flex-col gap-3" title="Details">
                 <Select label="Stage" value={l.stage} onChange={async (e) => {
                   const r = await act.run(() => browserApi.rep.updateLead(l.id, { stage: e.target.value }));
                   if (r) lead.setData(r);
@@ -95,7 +91,7 @@ export default function LeadPage() {
                 {l.email ? <Button variant="ghost" size="sm" iconStart={Mail} href={`mailto:${l.email}`}>{l.email}</Button> : null}
                 {l.currentLoyalty ? <p className="text-meta text-fg-muted">Uses today: {l.currentLoyalty}</p> : null}
                 {l.notes ? <p className="text-meta text-fg">{l.notes}</p> : null}
-              </Card>
+              </Panel>
             </div>
           </>
         )}

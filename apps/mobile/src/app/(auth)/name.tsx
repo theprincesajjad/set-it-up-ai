@@ -87,7 +87,7 @@ export default function NameStep() {
         {m.program?.earnType === "stamps" ? (
           <StampCard count={m.balance} goal={m.program.stampGoal || 10} vertical={m.merchant.vertical} justEarned compact />
         ) : null}
-        <Text variant="h2" center accessibilityLiveRegion="polite">
+        <Text variant="largeTitle" center accessibilityLiveRegion="polite" style={{ textTransform: "none" }}>
           {joined.bonusPoints > 0
             ? t("ok.joinedBonus", { bonus: formatPts(joined.bonusPoints, m.terminology), shop: m.merchant.name })
             : t("ok.joined", { firstName: firstName(user?.name) ?? first })}
@@ -107,15 +107,15 @@ export default function NameStep() {
     >
       {!isReturning ? (
         <>
-          <Text variant="h2" accessibilityRole="header">
+          <Text variant="largeTitle" accessibilityRole="header">
             What should shops call you?
           </Text>
           <TextField label="First name" value={first} onChangeText={setFirst} autoComplete="given-name" textContentType="givenName" autoCapitalize="words" error={nameError} onBlur={() => setTouched(true)} />
           <TextField label="Last name" optionalLabel value={last} onChangeText={setLast} autoComplete="family-name" textContentType="familyName" autoCapitalize="words" />
           <View style={{ gap: 6 }}>
-            <Text variant="label">
+            <Text variant="metaStrong" color="fgMuted">
               Birthday{" "}
-              <Text variant="label" color="fgMuted">
+              <Text variant="metaStrong" color="fgSubtle">
                 (optional)
               </Text>
             </Text>
@@ -131,13 +131,13 @@ export default function NameStep() {
                 </Button>
               </View>
             </View>
-            <Text variant="bodySm" color="fgMuted">
+            <Text variant="meta" color="fgMuted">
               For a birthday treat at shops that offer one. We never ask for the year.
             </Text>
           </View>
         </>
       ) : (
-        <Text variant="h2" accessibilityRole="header">
+        <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {shop ? `Join ${shop.merchant.name}` : "Join this shop"}
         </Text>
       )}
@@ -146,7 +146,7 @@ export default function NameStep() {
         <Card tone="sunken">
           <View style={{ flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 8 }}>
             <ShopLogo shop={shop.merchant} size={40} />
-            <Text variant="title" style={{ flex: 1 }}>
+            <Text variant="headline" style={{ flex: 1 }}>
               {shop.merchant.name}
             </Text>
           </View>
@@ -188,7 +188,7 @@ export default function NameStep() {
               ))}
         </View>
       </Sheet>
-      <View style={{ height: 1, backgroundColor: c.canvas }} />
+      <View style={{ height: 1, backgroundColor: c.bg }} />
     </Screen>
   );
 }

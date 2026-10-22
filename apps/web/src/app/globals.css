@@ -31,7 +31,9 @@
   }
   body {
     min-height: 100dvh;
-    font-feature-settings: "cv11", "ss01";
+    /* Proportional by default (Inter's tabular set spaces hyphens and punctuation); numbers opt in with tabular-nums. */
+    font-variant-numeric: normal;
+    font-feature-settings: "cv11";
   }
   h1, h2, h3 {
     text-wrap: balance;

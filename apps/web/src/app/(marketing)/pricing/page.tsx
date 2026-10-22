@@ -1,6 +1,6 @@
-import { Check, ShieldCheck } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import type { Metadata } from "next";
-import { FEATURES, FEATURE_KEYS, FREE_FOREVER, PLANS, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type FeatureKey, type PlanId } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FREE_FOREVER, PLANS, PLAN_RANK, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type FeatureKey, type PlanId } from "@ll/shared";
 import { Faq } from "@/components/marketing/Faq";
 import { MSection } from "@/components/marketing/Section";
 import { Badge, ComingSoonBadge } from "@/components/ui/Badge";
@@ -15,20 +15,36 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free forever. No transaction fees. Unlimited locations. Your loyalty program and its reports, free for every shop.",
+  description: "Free forever: your loyalty program and its reports, unlimited locations and staff, no transaction fees. Plus and Pro add marketing, automations, payments and repair tools, coming soon.",
   alternates: { canonical: "/pricing" },
 };
 
-const GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
+/** Plan features shown on the cards and in the table (platform levers and per-campaign ads are not plan features). */
+const PLAN_FEATURES = FEATURE_KEYS.filter((k) => !FEATURES[k].platform && FEATURES[k].phase !== 3);
+const planFeatures = (id: PlanId) => PLAN_FEATURES.filter((k) => FEATURES[k].minPlan === id);
+
+/** What Free includes, in the order a shop owner thinks about it (from FREE_FOREVER, so it can't drift from gating). */
+const FREE_GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
+  { title: "Your loyalty program", match: (k) => k.startsWith("loyalty.") },
+  { title: "Customers and reports", match: (k) => k.startsWith("customers.") || k.startsWith("reports.") },
+  { title: "On the network", match: (k) => k.startsWith("network.") || k.startsWith("wallet.") },
+  { title: "Your team", match: (k) => k.startsWith("staff.") || k.startsWith("locations.") },
+];
+
+/** Comparison table sections. */
+const TABLE_GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
   { title: "Loyalty", match: (k) => k.startsWith("loyalty.") || k === "discount_cards" },
-  { title: "Promos", match: (k) => k.startsWith("promos.") || k.startsWith("marketing.") },
+  { title: "Customers and reports", match: (k) => k.startsWith("customers.") || k.startsWith("reports.") },
   { title: "Network", match: (k) => k.startsWith("network.") || k.startsWith("wallet.") },
-  { title: "Customers", match: (k) => k.startsWith("customers.") || k.startsWith("reports.") },
+  { title: "Promos and marketing", match: (k) => k.startsWith("promos.") || k.startsWith("marketing.") },
   { title: "Integrations", match: (k) => k.startsWith("integrations.") },
+  { title: "Orders and payments", match: (k) => k.startsWith("orders.") || k.startsWith("payments.") || k === "booking.pickup_slots" },
+  { title: "Repair and service", match: (k) => k.startsWith("service.") || k === "booking.dropoff_scheduling" },
   { title: "Team", match: (k) => k.startsWith("staff.") || k.startsWith("locations.") },
 ];
 
-const PLUS_TARGET = Math.min(...FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === "plus").map((k) => FEATURES[k].unlockAtMerchants));
+const PAID = PLAN_FEATURES.filter((k) => FEATURES[k].minPlan !== "free");
+const PLUS_TARGET = Math.min(...PAID.filter((k) => FEATURES[k].minPlan === "plus").map((k) => FEATURES[k].unlockAtMerchants).filter((n) => n > 0), 100);
 
 /** Real plan availability + network stats from GET /v1/public/plans; shared defaults when the API is down. */
 async function publicPlans(): Promise<{ available: Record<PlanId, boolean>; progress: { current: number; target: number; neighbourhoods: number } | null }> {
@@ -42,79 +58,176 @@ async function publicPlans(): Promise<{ available: Record<PlanId, boolean>; prog
   }
 }
 
-function PlanCard({ id, available }: { id: PlanId; available: boolean }) {
-  const plan = PLANS[id];
-  const free = id === "free";
-  const features = free ? [] : FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === id && FEATURES[k].phase === 2);
+function price(id: PlanId) {
+  return id === "free" ? "$0" : formatMoney(PLANS[id].priceCents).replace(".00", "");
+}
+
+function FeatureLine({ k, muted }: { k: FeatureKey; muted?: boolean }) {
   return (
-    <div className={cn("flex flex-col rounded-xl bg-surface p-6", free ? "border-2 border-brand shadow-md" : available ? "border border-border-strong" : "border border-dashed border-border-strong")}>
+    <li className="flex gap-2.5 py-1.5 text-meta">
+      <Check aria-hidden className={cn("mt-0.5 size-4 shrink-0", muted ? "text-fg-subtle" : "text-fg")} strokeWidth={2} />
+      <span className={muted ? "text-fg-muted" : "text-fg"}>{FEATURES[k].name}</span>
+    </li>
+  );
+}
+
+function FreeCard() {
+  return (
+    <div className="flex flex-col rounded-sheet border-[1.5px] border-fg bg-bg p-6 md:p-8 lg:col-span-1">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-h2 text-fg">{plan.name}</h2>
-        {free ? <Badge tone="brand">Every shop</Badge> : available ? null : <ComingSoonBadge />}
+        <h2 className="text-headline text-fg">{PLANS.free.name}</h2>
+        <Badge tone="brand">Every shop</Badge>
       </div>
-      <p className="mt-4 flex items-baseline gap-2">
-        <span className={cn("text-display tabular-nums", free || available ? "text-fg" : "text-fg-muted")}>{free ? "$0" : formatMoney(plan.priceCents).replace(".00", "")}</span>
-        <span className="text-body text-fg-muted">{free ? "forever" : "/month"}</span>
+      <p className="mt-5 flex items-baseline gap-2">
+        <span className="display text-mkt-lg tabular-nums">$0</span>
+        <span className="text-body text-fg-muted">forever</span>
       </p>
-      {!free && !available ? <p className="text-caption text-fg-muted">Planned price</p> : null}
-      <p className="mt-3 text-body text-fg">{plan.blurb}</p>
-      <p className="mt-2 text-body-sm text-fg-muted">Best for: {plan.bestFor.join(", ")}</p>
-      <div className="mt-5">
-        {free ? (
-          <Button href="/signup" fullWidth size="lg">
-            Get started free
-          </Button>
-        ) : available ? (
-          <Button href="/signup" fullWidth size="lg">
-            {`Start ${plan.name}`}
-          </Button>
-        ) : (
-          <Button variant="tonal" fullWidth size="lg" href="/signup">
-            Start free, get notified
-          </Button>
-        )}
-      </div>
-      {free ? (
-        <div className="mt-6 flex flex-col gap-5">
-          {GROUPS.map((g) => {
-            const keys = FREE_FOREVER.filter(g.match);
-            if (!keys.length) return null;
-            return (
-              <div key={g.title}>
-                <h3 className="text-overline uppercase text-fg-muted">{g.title}</h3>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {keys.map((k) => (
-                    <li key={k} className="flex gap-2 text-body-sm text-fg">
-                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
-                      <span>
-                        <span className="font-semibold">{FEATURES[k].name}.</span> {FEATURES[k].description}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="mt-6">
-          <p className="text-body-sm font-semibold text-fg">{id === "pro" ? "Includes everything in Plus, plus:" : "Includes everything in Free, plus:"}</p>
-          <ul className="mt-2 flex flex-col gap-2">
-            {features.map((k) => (
-              <li key={k} className="flex gap-2 text-body-sm text-fg">
-                <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
-                <span>
-                  <span className="font-semibold">{FEATURES[k].name}.</span> {FEATURES[k].description}
-                </span>
-              </li>
-            ))}
-            <li className="flex gap-2 text-body-sm text-fg">
-              <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
-              {plan.smsPerMonth.toLocaleString("en-CA")} texts a month included
+      <p className="mt-3 text-body text-fg">Your loyalty program and the reporting on it. Free forever, with no transaction fees.</p>
+      <Button href="/signup" fullWidth size="lg" className="mt-6">
+        Get started free
+      </Button>
+      <div className="mt-8 flex flex-col gap-5">
+        {FREE_GROUPS.map((g) => {
+          const keys = FREE_FOREVER.filter(g.match);
+          if (!keys.length) return null;
+          return (
+            <div key={g.title}>
+              <h3 className="text-meta-strong text-fg-muted">{g.title}</h3>
+              <ul className="mt-1">
+                {keys.map((k) => (
+                  <FeatureLine key={k} k={k} />
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+        <div>
+          <h3 className="text-meta-strong text-fg-muted">Always</h3>
+          <ul className="mt-1">
+            <li className="flex gap-2.5 py-1.5 text-meta text-fg">
+              <Check aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+              No-download join at the counter
+            </li>
+            <li className="flex gap-2.5 py-1.5 text-meta text-fg">
+              <Check aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+              No transaction fees, no contract
             </li>
           </ul>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PaidCard({ id, available }: { id: "plus" | "pro"; available: boolean }) {
+  const plan = PLANS[id];
+  const keys = planFeatures(id);
+  return (
+    <div className="flex flex-col rounded-sheet border border-line bg-bg p-6 md:p-8">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-headline text-fg">{plan.name}</h2>
+        {available ? null : <ComingSoonBadge />}
+      </div>
+      <p className="mt-5 flex items-baseline gap-2">
+        <span className={cn("display text-mkt-lg tabular-nums", available ? "text-fg" : "text-fg-subtle")}>{price(id)}</span>
+        <span className="text-body text-fg-muted">/month{available ? "" : ", planned"}</span>
+      </p>
+      <p className="text-meta text-fg-muted">or {formatMoney(plan.annualPriceCents).replace(".00", "")} a year</p>
+      <p className="mt-3 text-body text-fg">{plan.blurb}</p>
+      <p className="mt-1 text-meta text-fg-muted">Best for {plan.bestFor.join(", ").toLowerCase()}</p>
+      {available ? (
+        <Button href="/signup" fullWidth size="lg" className="mt-6">
+          {`Start ${plan.name}`}
+        </Button>
+      ) : (
+        <Button variant="secondary" fullWidth size="lg" href="/signup" className="mt-6">
+          Start free, get notified
+        </Button>
       )}
+      <div className="mt-8">
+        <h3 className="text-meta-strong text-fg-muted">{id === "plus" ? "Everything in Free, plus" : "Everything in Plus, plus"}</h3>
+        <ul className="mt-1">
+          {keys.map((k) => (
+            <FeatureLine key={k} k={k} muted={!available} />
+          ))}
+          {plan.smsPerMonth ? (
+            <li className="flex gap-2.5 py-1.5 text-meta">
+              <Check aria-hidden className={cn("mt-0.5 size-4 shrink-0", available ? "text-fg" : "text-fg-subtle")} strokeWidth={2} />
+              <span className={available ? "text-fg" : "text-fg-muted"}>{plan.smsPerMonth.toLocaleString("en-CA")} texts a month included</span>
+            </li>
+          ) : null}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function Cell({ on, soon }: { on: boolean; soon?: boolean }) {
+  return (
+    <td className="px-3 py-3 text-center">
+      {on ? <Check aria-label={soon ? "Included, coming soon" : "Included"} className={cn("mx-auto size-4", soon ? "text-fg-subtle" : "text-fg")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-line-strong/50" strokeWidth={1.75} />}
+    </td>
+  );
+}
+
+function CompareTable({ available }: { available: Record<PlanId, boolean> }) {
+  const plans: PlanId[] = ["free", "plus", "pro"];
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[560px] text-meta">
+        <caption className="sr-only">Compare plans</caption>
+        <thead>
+          <tr className="border-b border-line">
+            <th scope="col" className="py-4 text-start">
+              <span className="sr-only">Feature</span>
+            </th>
+            {plans.map((p) => (
+              <th key={p} scope="col" className="w-[18%] px-3 py-4 text-center">
+                <span className="block text-body-strong text-fg">{PLANS[p].name}</span>
+                <span className="block font-normal text-fg-muted">{p === "free" ? "$0" : `${price(p)}/mo`}{p !== "free" && !available[p] ? " · soon" : ""}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        {TABLE_GROUPS.map((g) => {
+          const keys = PLAN_FEATURES.filter(g.match);
+          if (!keys.length) return null;
+          return (
+            <tbody key={g.title}>
+              <tr>
+                <th colSpan={4} scope="colgroup" className="pt-8 pb-2 text-start text-meta-strong text-fg">
+                  {g.title}
+                </th>
+              </tr>
+              {keys.map((k) => {
+                const f = FEATURES[k];
+                return (
+                  <tr key={k} className="border-t border-line">
+                    <th scope="row" className="py-3 pe-4 text-start font-normal">
+                      <span className="text-fg">{f.name}</span>
+                      <span className="block text-fg-muted">{f.description}</span>
+                    </th>
+                    {plans.map((p) => (
+                      <Cell key={p} on={PLAN_RANK[p] >= PLAN_RANK[f.minPlan]} soon={p !== "free" && !available[p] && f.minPlan !== "free"} />
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          );
+        })}
+        <tbody>
+          <tr className="border-t border-line">
+            <th scope="row" className="py-3 pe-4 text-start font-normal text-fg">
+              Transaction fee
+            </th>
+            <td className="px-3 py-3 text-center text-fg">None</td>
+            <td colSpan={2} className="px-3 py-3 text-center text-fg-muted">
+              On in-app payments only
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -124,39 +237,40 @@ export default async function PricingPage() {
   const feePct = (PLATFORM_PAYMENT_FEE_BPS / 100).toFixed(2).replace(/0$/, "");
   return (
     <>
-      <MSection className="!pb-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <h1 className="font-display text-[36px] font-semibold leading-[42px] text-fg md:text-display">Free forever. No transaction fees. Unlimited locations.</h1>
-          <p className="mt-4 text-body-lg text-fg-muted">Your loyalty program and its reports, free for every shop. Promos, marketing and POS tools come later on Plus and Pro, and only if you want them.</p>
+      <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
+        <p className="text-meta-strong text-fg-muted">Pricing</p>
+        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Free forever. No transaction fees. Unlimited locations.</h1>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">Your loyalty program and its reports cost nothing, for every shop. Plus and Pro add marketing, automations, payments and repair tools. They&apos;re coming soon, and only if you want them.</p>
+      </section>
+      <section className="pb-16 md:pb-24">
+        <div className="mx-auto grid max-w-[1200px] gap-4 px-4 md:px-8 lg:grid-cols-3">
+          <FreeCard />
+          <PaidCard id="plus" available={available.plus} />
+          <PaidCard id="pro" available={available.pro} />
         </div>
-      </MSection>
-      <section className="pb-12">
-        <div className="mx-auto grid max-w-[1200px] gap-6 px-4 md:px-8 lg:grid-cols-3">
-          <PlanCard id="free" available />
-          <PlanCard id="plus" available={available.plus} />
-          <PlanCard id="pro" available={available.pro} />
-        </div>
-        <div className="mx-auto mt-10 flex max-w-3xl flex-col gap-6 px-4 md:px-8">
-          <p className="text-body text-fg-muted">{copy.soon.pricingNote}</p>
-          {progress ? <ProgressBar value={Math.min(progress.current, progress.target)} max={progress.target} label="Active shops on the network" valueText={`${progress.current} of ${progress.target} shops · ${progress.neighbourhoods} neighbourhoods`} /> : null}
-          <p className="text-body text-fg">
-            <span className="font-semibold">Payments:</span> In-app payments (Plus and Pro): Stripe&apos;s standard fee plus {feePct}%. The Free plan has no payments and no fees.
-          </p>
-          <div className="flex items-start gap-3 rounded-lg bg-brand-subtle p-5 text-on-brand-subtle">
-            <ShieldCheck aria-hidden className="mt-0.5 size-6 shrink-0" />
-            <p className="text-body-strong">{copy.soon.pricingPromise}</p>
+        <div className="mx-auto mt-10 grid max-w-[1200px] gap-8 px-4 md:grid-cols-[1.2fr_1fr] md:px-8">
+          <p className="display text-mkt-sm text-balance">{copy.soon.pricingPromise}</p>
+          <div className="flex flex-col gap-5">
+            <p className="text-body text-fg-muted">{copy.soon.pricingNote}</p>
+            {progress ? <ProgressBar value={Math.min(progress.current, progress.target)} max={progress.target} label="Active shops on the network" valueText={`${progress.current} of ${progress.target} shops · ${progress.neighbourhoods} neighbourhoods`} /> : null}
+            <p className="text-meta text-fg-muted">In-app payments (Plus and Pro): Stripe&apos;s standard fee plus {feePct}%. The Free plan has no payments and no fees.</p>
           </div>
         </div>
       </section>
-      <MSection tone="subtle">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="mb-6 text-h2 text-fg">Pricing questions</h2>
+      <MSection tone="subtle" className="md:py-24!">
+        <h2 className="display text-mkt-md md:text-mkt-lg">compare plans.</h2>
+        <div className="mt-8 rounded-sheet border border-line bg-bg px-5 pb-4 md:px-8">
+          <CompareTable available={available} />
+        </div>
+      </MSection>
+      <MSection>
+        <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
+          <h2 className="display text-mkt-md md:text-mkt-lg">pricing questions.</h2>
           <Faq
             items={[
-              { q: "Do you take a cut of my sales?", a: "No. Zero transaction fees on Free." },
-              { q: "Will loyalty ever cost money?", a: "No. Your loyalty program (points, stamps, visits, rewards, welcome bonus) and its reports are free forever and will never move to a paid plan." },
-              { q: "What needs Plus?", a: "Promos and bonus-point days, VIP levels, birthday and referral rewards, discount cards, email and SMS campaigns, CSV import and export, POS auto-award, webhooks and order-ahead. Pro adds service tickets, quotes, deposits and invoices." },
-              { q: "When do Plus and Pro launch?", a: "Once enough shops are on the network, so every paid feature launches with customers already using the app. Tap Notify me and we'll tell you." },
+              { q: "Do you take a cut of my sales?", a: "No. Zero transaction fees on Free. The only fee anywhere is on payments you take in the app on Plus or Pro." },
+              { q: "Will my loyalty program ever cost money?", a: "No. Points, visits and stamps, rewards, the welcome bonus, your customer list and reports stay free. They will never move to a paid plan." },
+              { q: "When do Plus and Pro launch?", a: "Once enough shops are on the network, so every paid feature launches with customers already using the app. Start on Free and we'll tell you." },
               { q: "Can I cancel a paid plan later?", a: "Yes, anytime. You go back to Free and keep all your loyalty data." },
               { q: "Is there a contract?", a: "No contract and no setup fee." },
             ]}

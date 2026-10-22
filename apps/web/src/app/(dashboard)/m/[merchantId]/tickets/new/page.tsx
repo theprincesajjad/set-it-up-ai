@@ -1,13 +1,11 @@
 "use client";
-import { ArrowLeft } from "lucide-react";
+import { BackLink, PageHeader, Panel } from "@/components/dashboard/kit";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -41,12 +39,10 @@ function Intake() {
   const [promised, setPromised] = useState("");
   const act = useAction();
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/tickets`} className="self-start">
-        Tickets
-      </Button>
+    <div className="flex max-w-[720px] flex-col gap-4">
+      <BackLink href={`${base}/tickets`}>Tickets</BackLink>
       <PageHeader title="Check in a repair" />
-      <Card padding="lg">
+      <Panel>
         <form className="flex flex-col gap-4" onSubmit={async (e) => {
           e.preventDefault();
           if (!phone) return act.setError("Enter the customer's mobile number.");
@@ -66,7 +62,7 @@ function Intake() {
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           <Button type="submit" loading={act.busy} className="self-start">Check in</Button>
         </form>
-      </Card>
+      </Panel>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
-import { ArrowLeft, Copy, KeyRound, Plus, Send, Trash2 } from "lucide-react";
+import { BackLink, PageHeader, Panel } from "@/components/dashboard/kit";
+import { Copy, KeyRound, Plus, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { integrationsApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
@@ -8,9 +9,7 @@ import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { PageHeader } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
@@ -54,14 +53,11 @@ export default function DevelopersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/integrations`} className="self-start">
-        Integrations
-      </Button>
+      <BackLink href={`${base}/integrations`}>Integrations</BackLink>
       <PageHeader title="Webhooks & API" description="Send events to your own systems, Zapier or Make. Free." />
 
       {role === "owner" ? (
-        <Card padding="lg">
-          <CardHeader title="API key" subtitle="For a custom POS or script: award, redeem and look up members." action={key.data?.configured ? <Badge tone="success">Active</Badge> : <Badge>Not set</Badge>} />
+        <Panel title="API key" description="For a custom POS or script: award, redeem and look up members." action={key.data?.configured ? <Badge tone="success">Active</Badge> : <Badge>Not set</Badge>}>
           {apiKey ? <Secret label="API key" value={apiKey} /> : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" iconStart={KeyRound} onClick={() => (key.data?.configured ? setRotate(true) : void act.run(async () => {
@@ -83,11 +79,10 @@ export default function DevelopersPage() {
             ) : null}
           </div>
           <p className="mt-2 text-caption text-fg-muted">Send it as the X-LL-Api-Key header. Docs: POST /v1/api/award, /v1/api/redeem, GET /v1/api/members/:phone.</p>
-        </Card>
+        </Panel>
       ) : null}
 
-      <Card padding="lg">
-        <CardHeader title="Outgoing webhooks" subtitle="We sign every delivery with X-LL-Signature and retry for 24 hours." action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => { setCreate(true); setSecret(null); }}>Add endpoint</Button>} />
+      <Panel title="Outgoing webhooks" description="We sign every delivery with X-LL-Signature and retry for 24 hours." action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => { setCreate(true); setSecret(null); }}>Add endpoint</Button>}>
         <Async state={hooks}>
           {(d) =>
             d.items.length ? (
@@ -128,7 +123,7 @@ export default function DevelopersPage() {
             )
           }
         </Async>
-      </Card>
+      </Panel>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
       <Modal open={create} onClose={() => setCreate(false)} title="Add a webhook endpoint" size="md" actions={secret ? <Button onClick={() => setCreate(false)}>Done</Button> : (

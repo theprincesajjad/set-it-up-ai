@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
 import { ShopTabs } from "@/components/pass/ShopTabs";
+import { StickyJoin } from "@/components/pass/StickyJoin";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/Badge";
@@ -256,11 +257,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
 
       {!membership && joinInfo ? (
-        <div className="chrome sticky bottom-0 z-sticky -mx-4 border-t border-line px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-none!">
-          <Button href="#join" fullWidth size="lg">
-            {copy.action.join(m.name)}
-          </Button>
-        </div>
+        <StickyJoin label={copy.action.join(m.name)} />
       ) : null}
     </div>
   );

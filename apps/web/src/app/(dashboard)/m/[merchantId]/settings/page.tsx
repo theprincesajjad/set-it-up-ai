@@ -4,15 +4,13 @@ import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
+import { PageHeader, PageTabs, Panel } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { Switch } from "@/components/ui/Switch";
-import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { BFF_BASE } from "@/lib/api/browser";
@@ -32,14 +30,12 @@ export default function SettingsPage() {
     ...(role === "owner" ? [{ id: "danger" as const, label: "Danger zone" }] : []),
   ];
   return (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-4">
-      <PageHeader title="Settings" description={detail.merchant.name} />
-      <Tabs label="Settings" items={items} value={tab} onChange={(v) => setTab(v as Tab)} />
-      <TabPanel active={tab === "profile"}><Profile /></TabPanel>
-      <TabPanel active={tab === "hours"}><HoursTab /></TabPanel>
-      <TabPanel active={tab === "counter"}><CounterTab /></TabPanel>
-      <TabPanel active={tab === "privacy"}><Privacy /></TabPanel>
-      <TabPanel active={tab === "danger"}><Danger /></TabPanel>
+    <div className="flex max-w-[860px] flex-col gap-6">
+      <PageHeader flush title="Settings" description={detail.merchant.name} />
+      <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} />
+      <div role="tabpanel">
+        {tab === "profile" ? <Profile /> : tab === "hours" ? <HoursTab /> : tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}
+      </div>
     </div>
   );
 }
@@ -48,17 +44,17 @@ function Profile() {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const m = detail.merchant;
-  const [f, setF] = useState({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "#1F6A50", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" });
+  const [f, setF] = useState({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "#0B0B0C", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" });
   const [phone, setPhone] = useState<string | null>(m.phone);
   const act = useAction();
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
   return (
-    <Card padding="lg">
+    <Panel>
       <form
         className="flex flex-col gap-4"
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!/^#[0-9a-fA-F]{6}$/.test(f.brandColor)) return act.setError("Use a hex colour like #1F6A50.");
+          if (!/^#[0-9a-fA-F]{6}$/.test(f.brandColor)) return act.setError("Use a hex colour like #0B0B0C.");
           const body: merchantApi.UpdateProfileBody = { name: f.name.trim(), description: f.description.trim() || null, logoUrl: f.logoUrl.trim() || null, coverUrl: f.coverUrl.trim() || null, brandColor: f.brandColor, email: f.email.trim() || null, phone, website: f.website.trim() || null, instagram: f.instagram.trim() || null };
           const r = await act.run(() => api.update(body));
           if (r) {
@@ -68,7 +64,7 @@ function Profile() {
         }}
       >
         <div className="flex items-center gap-4">
-          <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null }} size={72} />
+          <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: f.brandColor }} size={72} />
           <div className="flex-1">
             <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
           </div>
@@ -77,8 +73,8 @@ function Profile() {
         <TextField type="textarea" label="About your shop" value={f.description} onChange={(e) => set("description", e.target.value)} maxLength={2000} showCount />
         <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
         <div className="flex items-end gap-3">
-          <TextField label="Brand colour" value={f.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Used as an accent on your shop page." />
-          <input type="color" aria-label="Pick brand colour" value={/^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#1F6A50"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mb-7 h-12 w-14 cursor-pointer rounded-sm border border-line-strong" />
+          <TextField label="Brand colour" value={f.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Shown only inside your shop avatar." />
+          <input type="color" aria-label="Pick brand colour" value={/^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#0B0B0C"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mb-7 h-12 w-14 cursor-pointer rounded-input border border-line bg-bg p-1" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField type="email" label="Email" optionalLabel value={f.email} onChange={(e) => set("email", e.target.value)} />
@@ -96,7 +92,7 @@ function Profile() {
           </Button>
         </div>
       </form>
-    </Card>
+    </Panel>
   );
 }
 
@@ -106,8 +102,7 @@ function HoursTab() {
   const [h, setH] = useState(hoursDraft(detail.merchant.hours));
   const act = useAction();
   return (
-    <Card padding="lg">
-      <CardHeader title="Opening hours" subtitle={detail.locations.length > 1 ? `For ${detail.locations[0]?.name}. Edit other locations in Locations.` : "Shown on your shop page and the map."} />
+    <Panel title="Opening hours" description={detail.locations.length > 1 ? `For ${detail.locations[0]?.name}. Edit other locations in Locations.` : "Shown on your shop page and the map."}>
       <HoursEditor value={h} onChange={setH} />
       {act.error ? <Banner tone="danger" className="mt-3">{act.error}</Banner> : null}
       <Button className="mt-4" loading={act.busy} onClick={async () => {
@@ -119,7 +114,7 @@ function HoursTab() {
       }}>
         Save hours
       </Button>
-    </Card>
+    </Panel>
   );
 }
 
@@ -130,8 +125,7 @@ function CounterTab() {
   const act = useAction();
   return (
     <div className="flex flex-col gap-4">
-      <Card padding="lg">
-        <CardHeader title="Receipts" />
+      <Panel title="Receipts">
         <Switch
           label="Text customers a receipt after each award"
           description="Transactional: 'You earned 12 points at your shop. Balance 48.' Muted customers never get one."
@@ -149,10 +143,9 @@ function CounterTab() {
           }}
         />
         {act.error ? <Banner tone="warning" className="mt-3">{act.error}</Banner> : null}
-      </Card>
+      </Panel>
       {role === "owner" ? (
-        <Card padding="lg">
-          <CardHeader title="Early access" />
+        <Panel title="Early access">
           <Switch
             label="Try new tools in beta"
             description="Beta features turn on for you and your customers before everyone else. You can leave any time."
@@ -163,17 +156,24 @@ function CounterTab() {
               toast(v ? "You're in the beta" : "Beta turned off");
             }}
           />
-        </Card>
+        </Panel>
       ) : null}
     </div>
   );
 }
 
 function Privacy() {
-  const { api } = useMerchant();
+  const { api, enabled } = useMerchant();
+  // Pricing v2: CSV export is a Plus feature (customers.csv_export).
+  if (!enabled("customers.csv_export"))
+    return (
+      <Panel title="Your data" description="Your members and their history belong to you.">
+        <p className="text-meta text-fg">Need a copy of your data? Email help@localloyalty.example and we&apos;ll send it within 30 days.</p>
+        <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
+      </Panel>
+    );
   return (
-    <Card padding="lg">
-      <CardHeader title="Your data" subtitle="Download every member and every ledger entry as CSV. Customers' other shops are never included." />
+    <Panel title="Your data" description="Download every member and every ledger entry as CSV. Customers' other shops are never included.">
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" iconStart={Download} href={`${BFF_BASE}${api.base}/customers/export.csv`}>
           Export members
@@ -183,7 +183,7 @@ function Privacy() {
         </Button>
       </div>
       <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
-    </Card>
+    </Panel>
   );
 }
 
@@ -192,8 +192,7 @@ function Danger() {
   const [confirm, setConfirm] = useState(false);
   const active = detail.program?.active !== false;
   return (
-    <Card padding="lg" className="border border-danger">
-      <CardHeader title={active ? "Pause your program" : "Resume your program"} subtitle={active ? "Customers keep their points and can still redeem. New awards stop until you resume." : "Your program is paused. Resume to award points again."} />
+    <Panel title={active ? "Pause your program" : "Resume your program"} description={active ? "Customers keep their points and can still redeem. New awards stop until you resume." : "Your program is paused. Resume to award points again."}>
       <Button variant={active ? "danger" : "primary"} onClick={() => setConfirm(true)}>
         {active ? "Pause program" : "Resume program"}
       </Button>
@@ -202,6 +201,6 @@ function Danger() {
         const p = await api.updateProgram({ active: !active });
         setDetail({ ...detail, program: p });
       }} />
-    </Card>
+    </Panel>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { Panel } from "@/components/dashboard/kit";
 import { CalendarDays, Gift, Megaphone, Percent, Sparkles, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,6 @@ import { FeatureTeaser } from "@/components/dashboard/FeatureTeaser";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { PromoCard } from "@/components/ui/PromoCard";
 import { Select } from "@/components/ui/Select";
@@ -66,7 +66,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
     <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="flex min-w-0 flex-col gap-6">
         {locked ? <Banner tone="info">{live ? "This promo is live: you can change the title, description, image and end date." : "Ended promos can't be edited."}</Banner> : null}
-        <Card padding="lg">
+        <Panel>
           <fieldset disabled={!!promo && promo.status !== "draft" && promo.status !== "scheduled"}>
             <legend className="text-body-strong text-fg">What kind of promo?</legend>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -90,9 +90,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             </div>
             <p className="mt-2 text-meta text-fg-muted">{KIND_INFO[d.kind].hint}</p>
           </fieldset>
-        </Card>
+        </Panel>
 
-        <Card padding="lg">
+        <Panel>
           <div className="flex flex-col gap-4">
             <TextField label="Title" value={d.title} onChange={(e) => set("title", e.target.value)} maxLength={60} showCount error={errors.title} placeholder="Double stamps on slow afternoons" disabled={locked && !live} />
             <TextField type="textarea" label="Description" optionalLabel value={d.body} onChange={(e) => set("body", e.target.value)} maxLength={280} showCount error={errors.body} disabled={locked && !live} />
@@ -113,9 +113,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             ) : null}
             <Select label="Who sees it" value={d.audience} onChange={(e) => set("audience", e.target.value as PromoDraft["audience"])} disabled={locked} options={[{ value: "network", label: "Everyone on the network map and feed" }, { value: "members", label: "My members only" }, { value: "vip", label: "VIP members only" }]} />
           </div>
-        </Card>
+        </Panel>
 
-        <Card padding="lg">
+        <Panel>
           <h2 className="text-body-strong text-fg">When</h2>
           <ChipGroup label="Quick dates" className="mt-3">
             {([["today", "Today only"], ["weekend", "This weekend"], ["week", "1 week"]] as const).map(([k, l]) => (
@@ -142,9 +142,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             <TextField type="time" label="From (time)" optionalLabel value={d.startTime} onChange={(e) => set("startTime", e.target.value)} error={errors.startTime} disabled={locked} />
             <TextField type="time" label="Until (time)" optionalLabel value={d.endTime} onChange={(e) => set("endTime", e.target.value)} disabled={locked} />
           </div>
-        </Card>
+        </Panel>
 
-        <Card padding="lg">
+        <Panel>
           <h2 className="text-body-strong text-fg">Tell your regulars</h2>
           <p className="mt-1 text-meta text-fg-muted">Send this promo by email to customers who said yes to offers.</p>
           <Button variant="tonal" className="mt-3" iconStart={Megaphone} href={`${base}/messages/new?subject=${encodeURIComponent(d.title)}&body=${encodeURIComponent(d.body || d.title)}`}>
@@ -160,7 +160,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
               <FeatureTeaser featureKey="ads.sponsored_promo" title="Boost this promo" />
             )}
           </div>
-        </Card>
+        </Panel>
 
         {error ? <Banner tone="danger">{error}</Banner> : null}
         <div className="flex flex-wrap gap-2">
@@ -180,8 +180,8 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
           ) : null}
         </div>
       </div>
-      <aside aria-label="Preview" className="flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
-        <h2 className="text-title text-fg">Preview</h2>
+      <aside aria-label="Preview" className="flex flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
+        <h2 className="text-meta text-fg-muted">Preview</h2>
         <p className="text-meta text-fg-muted">How it looks in the neighbourhood feed.</p>
         <PromoCard promo={previewPromo} shop={{ ...detail.merchant, neighbourhood: null }} variant="feed" />
       </aside>

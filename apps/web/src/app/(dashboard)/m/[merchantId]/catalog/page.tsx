@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader, Panel } from "@/components/dashboard/kit";
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi } from "@ll/shared";
@@ -9,7 +10,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -46,7 +46,7 @@ function Catalog() {
   const act = useAction();
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Menu & catalog" description="What customers can order ahead. Prices are always set here, never by the app." actions={<Button iconStart={Plus} onClick={() => setEdit({ name: "", price: "", description: "", categoryId: "", modifiers: "" })}>Add item</Button>} />
+      <PageHeader title="Menu & catalog" description="What customers can order ahead. Prices are always set here, never by the app." actions={<Button size="sm" iconStart={Plus} onClick={() => setEdit({ name: "", price: "", description: "", categoryId: "", modifiers: "" })}>Add item</Button>} />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <Async state={state}>
         {(c) => (
@@ -55,8 +55,8 @@ function Catalog() {
               const items = c.items.filter((i) => (i.categoryId ?? "") === cat.id);
               if (!items.length && !cat.id) return null;
               return (
-                <Card key={cat.id || "none"} padding="lg">
-                  <h2 className="flex items-center gap-2 text-title text-fg">
+                <Panel key={cat.id || "none"}>
+                  <h2 className="flex items-center gap-2 text-body-strong text-fg">
                     {cat.name} {!cat.earnEligible ? <Badge>Doesn&apos;t earn</Badge> : null}
                   </h2>
                   <ul className="mt-2 divide-y divide-line">
@@ -77,7 +77,7 @@ function Catalog() {
                     ))}
                     {!items.length ? <li className="py-2 text-meta text-fg-muted">No items yet.</li> : null}
                   </ul>
-                </Card>
+                </Panel>
               );
             })}
             <form className="flex gap-2" onSubmit={async (e) => {

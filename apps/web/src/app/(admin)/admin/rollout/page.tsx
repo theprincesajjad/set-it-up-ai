@@ -1,16 +1,12 @@
 "use client";
-import { CircleCheck, CircleDashed, Lock, Users } from "lucide-react";
+import { Dot, PageHeader, Panel, Section, Segmented, StatusDot, Table, TableWrap, Td, Th } from "@/components/dashboard/kit";
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { NetworkGauges } from "@/components/dashboard/NetworkGauges";
 import { Async } from "@/components/dashboard/PageStates";
 import { OverridesSheet } from "@/components/dashboard/admin/OverridesSheet";
 import { StageDialog } from "@/components/dashboard/admin/StageDialog";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { PageHeader, Section } from "@/components/ui/Layout";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -28,79 +24,93 @@ export default function RolloutPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Rollout control" description="Decide when paid features switch on. Free-forever features are locked to Live." />
+      <PageHeader flush title="Rollout control" description="Decide when paid features switch on. Free-forever features are locked to Live." />
       <NetworkGauges activeMerchants={active} multiShopPct={dash.data?.multiShopPct ?? null} />
       <Async state={features}>
         {(d) => (
           <>
             {groupFeatures(d.items).map((g) => (
               <Section key={g.id} title={g.title}>
-                <Card padding="none" className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-meta">
-                    <caption className="sr-only">{g.title}</caption>
-                    <thead className="bg-bg-subtle text-label text-fg-muted">
+                <TableWrap>
+                  <Table label={g.title} className="min-w-[960px] table-fixed">
+                    <thead>
                       <tr>
-                        <th scope="col" className="px-4 py-3 text-start">Feature</th>
-                        <th scope="col" className="px-4 py-3 text-start">Plan</th>
-                        <th scope="col" className="px-4 py-3 text-start">Stage</th>
-                        <th scope="col" className="px-4 py-3 text-start">Unlock target</th>
-                        <th scope="col" className="px-4 py-3 text-end">Asked for it</th>
-                        <th scope="col" className="px-4 py-3 text-start">Overrides</th>
-                        <th scope="col" className="px-4 py-3 text-start">Last changed</th>
+                        <Th>Feature</Th>
+                        <Th className="w-[110px]">Plan</Th>
+                        <Th className="w-[180px]">Stage</Th>
+                        <Th className="w-[200px]">Unlock target</Th>
+                        <Th align="end" className="w-[100px]">Asked for it</Th>
+                        <Th className="w-[100px]">Overrides</Th>
+                        <Th className="w-[160px]">Last changed</Th>
                       </tr>
                     </thead>
                     <tbody>
                       {g.items.map((f) => (
-                        <tr key={f.key} className="border-t border-line" data-feature={f.key}>
-                          <td className="px-4 py-3">
+                        <tr key={f.key} className="[&:last-child>td]:border-b-0" data-feature={f.key}>
+                          <Td className="py-2">
                             <p className="font-medium text-fg">{f.name}</p>
-                            <p className="font-mono text-caption text-fg-muted">{f.key}</p>
-                          </td>
-                          <td className="px-4 py-3">{f.freeForever ? <Badge tone="success">Free forever</Badge> : <Badge tone="brand">{f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Badge>}</td>
-                          <td className="px-4 py-3">
+                            <p className="font-mono text-[11px] text-fg-muted">{f.key}</p>
+                          </Td>
+                          <Td className="text-fg-muted">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Td>
+                          <Td>
                             {stageLocked(f) ? (
                               <span className="inline-flex items-center gap-1.5">
-                                <Lock aria-hidden className="size-4 text-fg-muted" />
-                                <StatusBadge domain="rollout" status="ga" />
+                                <Lock aria-hidden className="size-3.5 text-fg-subtle" />
+                                <StatusDot domain="rollout" status="ga" />
                               </span>
                             ) : (
-                              <SegmentedControl label={`Stage for ${f.name}`} value={f.stage} onChange={(to) => to !== f.stage && setChange({ f, to })} options={[{ value: "hidden", label: "Hidden" }, { value: "beta", label: "Beta" }, { value: "ga", label: "GA" }]} />
+                              <Segmented label={`Stage for ${f.name}`} value={f.stage} onChange={(to) => to !== f.stage && setChange({ f, to })} options={[{ value: "hidden", label: "Hidden" }, { value: "beta", label: "Beta" }, { value: "ga", label: "GA" }]} />
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </Td>
+                          <Td>
                             {f.unlockAtMerchants ? (
-                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                {f.readyToUnlock ? <CircleCheck aria-hidden className="size-4 text-positive" /> : <CircleDashed aria-hidden className="size-4 text-fg-muted" />}
-                                {formatNumber(f.unlockAtMerchants)} merchants <span className="text-fg-muted">({f.readyToUnlock ? "met" : `${formatNumber(f.activeMerchants)} now`})</span>
-                              </span>
+                              <div className="flex items-center gap-3">
+                                <div className="h-1 w-20 overflow-hidden rounded-full bg-bg-muted" aria-hidden>
+                                  <div className={f.readyToUnlock ? "h-full bg-positive" : "h-full bg-fg"} style={{ width: `${Math.max(2, Math.min(100, (f.activeMerchants / f.unlockAtMerchants) * 100))}%` }} />
+                                </div>
+                                <span className="tabular text-fg-muted">
+                                  <span className="text-fg">{formatNumber(f.activeMerchants)}</span> / {formatNumber(f.unlockAtMerchants)}
+                                  {f.readyToUnlock ? <span className="text-positive"> · met</span> : null}
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-fg-muted">–</span>
+                              <span className="text-fg-subtle">–</span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-end tabular-nums">{f.freeForever ? "–" : formatNumber(f.interestCount ?? 0)}</td>
-                          <td className="px-4 py-3">
-                            {f.freeForever ? <span className="text-fg-muted">–</span> : <Button variant="ghost" size="sm" iconStart={Users} onClick={() => setOverrides(f)}>
-                              {f.overrides.enabled + f.overrides.disabled ? `${f.overrides.enabled} on${f.overrides.disabled ? ` · ${f.overrides.disabled} off` : ""}` : "Add"}
-                            </Button>}
-                          </td>
-                          <td className="px-4 py-3 text-fg-muted">{f.updatedAt ? `${f.updatedByName ?? "Admin"}, ${formatDate(f.updatedAt)}` : "Default"}{f.note ? <span className="block text-caption">{f.note}</span> : null}</td>
+                          </Td>
+                          <Td align="end">{f.freeForever ? <span className="text-fg-subtle">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
+                          <Td>
+                            {f.freeForever ? (
+                              <span className="text-fg-subtle">–</span>
+                            ) : (
+                              <button type="button" onClick={() => setOverrides(f)} className="rounded-sm text-meta text-fg hover:underline">
+                                {f.overrides.enabled + f.overrides.disabled ? `${f.overrides.enabled} on${f.overrides.disabled ? ` · ${f.overrides.disabled} off` : ""}` : "Add"}
+                              </button>
+                            )}
+                          </Td>
+                          <Td className="text-fg-muted">
+                            {f.updatedAt ? `${f.updatedByName ?? "Admin"}, ${formatDate(f.updatedAt)}` : "Default"}
+                            {f.note ? <span className="block max-w-[200px] truncate text-caption font-normal">{f.note}</span> : null}
+                          </Td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                </Card>
+                  </Table>
+                </TableWrap>
               </Section>
             ))}
           </>
         )}
       </Async>
       <Section title="Plans">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-3">
           {(plans.data?.items ?? []).map((p) => (
-            <Card key={p.id} padding="lg">
-              <CardHeader title={p.name} action={<Badge tone={p.available ? "success" : "neutral"}>{p.available ? "Purchasable" : "Not yet"}</Badge>} />
-              <p className="text-meta text-fg-muted">{p.id === "free" ? "Free forever, always available" : `${p.features.filter((x) => x.stage !== "hidden").length} of ${p.features.length} features out of Hidden`}</p>
-            </Card>
+            <div key={p.id} className="bg-bg px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-meta-strong text-fg">{p.name}</h3>
+                <Dot tone={p.available ? "positive" : "neutral"}>{p.available ? "Purchasable" : "Not yet"}</Dot>
+              </div>
+              <p className="mt-1 text-meta text-fg-muted">{p.id === "free" ? "Free forever, always available" : `${p.features.filter((x) => x.stage !== "hidden").length} of ${p.features.length} features out of Hidden`}</p>
+            </div>
           ))}
         </div>
       </Section>

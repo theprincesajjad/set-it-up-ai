@@ -131,3 +131,43 @@ export function pinSubtitle(vertical: string, m: PinMembership | null): { text: 
   const word = /stamp/i.test(m.terminology) ? (m.balance === 1 ? "stamp" : "stamps") : /star/i.test(m.terminology) ? (m.balance === 1 ? "star" : "stars") : "pts";
   return { text: `${m.balance.toLocaleString("en-CA")} ${word}`, accent: false };
 }
+
+/** A pin on screen: bubble centre in px, and how much its label matters. */
+export interface PinPoint {
+  id: string;
+  x: number;
+  y: number;
+  /** Higher keeps its label first (selected > reward ready > member > nearest). */
+  priority: number;
+}
+
+/**
+ * Which pins get a name + subtitle without labels overlapping (Corner keeps
+ * every label readable; dense pins fall back to the bare object bubble).
+ * Greedy by priority; a label is the box to the right of the bubble.
+ */
+export function labelPlan(
+  points: readonly PinPoint[],
+  opts: { labelW?: number; labelH?: number; bubble?: number; /** Screen areas under floating chrome (no labels there). */ avoid?: { x1: number; y1: number; x2: number; y2: number }[] } = {},
+): Set<string> {
+  const { labelW = 150, labelH = 38, bubble = 40, avoid = [] } = opts;
+  const r = bubble / 2;
+  const kept: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  const bubbles = points.map((p) => ({ x1: p.x - r, y1: p.y - r, x2: p.x + r, y2: p.y + r, id: p.id }));
+  const out = new Set<string>();
+  const hit = (a: { x1: number; y1: number; x2: number; y2: number }, b: { x1: number; y1: number; x2: number; y2: number }) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  for (const p of [...points].sort((a, b) => b.priority - a.priority)) {
+    const box = { x1: p.x + r + 2, y1: p.y - labelH / 2, x2: p.x + r + 6 + labelW, y2: p.y + labelH / 2 };
+    if (kept.some((k) => hit(k, box))) continue;
+    if (avoid.some((a) => hit(a, box))) continue;
+    if (bubbles.some((b) => b.id !== p.id && hit(b, box))) continue;
+    kept.push(box);
+    out.add(p.id);
+  }
+  return out;
+}
+
+/** Label priority for a shop pin. */
+export function pinPriority(o: { selected: boolean; rewardReady: boolean; member: boolean; distanceMetres: number | null }): number {
+  return (o.selected ? 1e7 : 0) + (o.rewardReady ? 1e6 : 0) + (o.member ? 1e5 : 0) + (o.distanceMetres == null ? 0 : Math.max(0, 1e4 - o.distanceMetres));
+}

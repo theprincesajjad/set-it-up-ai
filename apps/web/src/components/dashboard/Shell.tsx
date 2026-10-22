@@ -36,6 +36,13 @@ export interface ShellProps {
   children: ReactNode;
 }
 
+const CRUMBS: Record<string, string> = { kit: "QR kit", import: "Import", new: "New", developers: "Webhooks & API", automations: "Automations", earnings: "Earnings" };
+/** Last path segment as a breadcrumb label (ids read as "Details"). */
+function crumb(pathname: string): string {
+  const seg = pathname.split("/").filter(Boolean).pop() ?? "";
+  return CRUMBS[seg] ?? (/^[0-9a-f-]{8,}$/i.test(seg) ? "Details" : seg.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase()));
+}
+
 function isActive(pathname: string, i: ShellNavItem) {
   return i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`);
 }
@@ -135,12 +142,14 @@ export function Shell({ nav, header, footer, notice, mobileTitle, topActions, se
                     <span aria-hidden className="text-fg-subtle">
                       /
                     </span>
-                    <span className="text-fg">Details</span>
+                    <span className="text-fg">{crumb(pathname)}</span>
                   </>
                 ) : (
                   <span className="font-medium text-fg">{current.label}</span>
                 )
-              ) : null}
+              ) : (
+                <span className="font-medium text-fg">{crumb(pathname)}</span>
+              )}
             </span>
           </div>
           <button

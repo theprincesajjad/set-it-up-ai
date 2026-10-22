@@ -2,8 +2,7 @@ import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@ll/shared";
-import { MHeading, MSection } from "@/components/marketing/Section";
-import { Badge } from "@/components/ui/Badge";
+import { StatusDot } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { copy } from "@/copy/en-CA";
@@ -25,45 +24,55 @@ export default async function NeighbourhoodsPage() {
     items = null;
   }
   return (
-    <MSection>
-      <MHeading eyebrow="Where we are" title="One neighbourhood at a time" sub="We launch street by street, with the shops and the BIA. Here's where your card works today." />
-      {items === null ? (
-        <ErrorState title="Can't load neighbourhoods right now" description={copy.err.network} action={<Button variant="secondary" href="/neighbourhoods">Try again</Button>} />
-      ) : items.length === 0 ? (
-        <EmptyState icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="tonal" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((n) => (
-            <li key={n.id}>
-              <Link href={`/neighbourhoods/${n.slug}`} className="flex h-full flex-col gap-2 rounded-xl bg-surface p-6 shadow-sm transition-shadow hover:shadow-md focus-visible:focus-ring">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-h3 text-fg">{n.name}</h2>
-                  <Badge tone={n.status === "live" ? "success" : "info"}>{n.status === "live" ? "Live" : "Pilot"}</Badge>
-                </div>
-                <p className="text-body-sm text-fg-muted">
-                  {n.city}, {n.province}
-                  {n.biaName ? ` · ${n.biaName}` : ""}
-                </p>
-                <p className="mt-auto text-title tabular-nums text-fg-brand">
-                  {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-12 rounded-xl bg-canvas-subtle p-6 md:p-8">
-        <h2 className="text-h3 text-fg">{copy.empty.noNeighbourhood.title}</h2>
-        <p className="mt-2 text-body text-fg-muted">{copy.empty.noNeighbourhood.body}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button variant="tonal" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>
-            {copy.empty.noNeighbourhood.action}
-          </Button>
-          <Button variant="ghost" href="/for-bias">
-            Run a BIA? Talk to us
-          </Button>
+    <>
+      <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
+        <p className="text-meta-strong text-fg-muted">Where we are</p>
+        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">one neighbourhood at a time.</h1>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">We launch street by street, with the shops and the BIA. Here&apos;s where your card works today.</p>
+      </section>
+      <section className="mx-auto max-w-[1200px] px-4 pb-16 md:px-8 md:pb-24">
+        {items === null ? (
+          <ErrorState title="Can't load neighbourhoods right now" description={copy.err.network} action={<Button variant="secondary" href="/neighbourhoods">Try again</Button>} />
+        ) : items.length === 0 ? (
+          <EmptyState icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
+        ) : (
+          <ul className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((n) => (
+              <li key={n.id} className="bg-bg">
+                <Link href={`/neighbourhoods/${n.slug}`} className="flex h-full min-h-56 flex-col gap-2 p-6 transition-colors hover:bg-bg-subtle focus-visible:focus-ring md:p-8">
+                  <div className="flex items-center justify-between gap-2 text-meta text-fg-muted">
+                    <span>
+                      {n.city}, {n.province}
+                    </span>
+                    <StatusDot tone={n.status === "live" ? "positive" : "neutral"}>{n.status === "live" ? "Live" : "Pilot"}</StatusDot>
+                  </div>
+                  <h2 className="display mt-auto text-mkt-sm lowercase text-fg">{n.name}</h2>
+                  <p className="text-meta text-fg-muted">
+                    <span className="font-semibold tabular-nums text-fg">
+                      {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"}
+                    </span>
+                    {n.biaName ? ` · ${n.biaName}` : ""}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-12 grid gap-6 border-t border-line pt-10 md:grid-cols-[1fr_auto] md:items-end">
+          <div>
+            <h2 className="display text-mkt-sm">{copy.empty.noNeighbourhood.title.toLowerCase()}.</h2>
+            <p className="mt-2 text-body text-fg-muted">{copy.empty.noNeighbourhood.body}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="lg" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>
+              {copy.empty.noNeighbourhood.action}
+            </Button>
+            <Button variant="secondary" size="lg" href="/for-bias">
+              Run a BIA? Talk to us
+            </Button>
+          </div>
         </div>
-      </div>
-    </MSection>
+      </section>
+    </>
   );
 }

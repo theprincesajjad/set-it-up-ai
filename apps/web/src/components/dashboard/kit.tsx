@@ -58,8 +58,13 @@ export function Section({ title, description, action, children, className, id }:
 export function Panel({ title, description, action, children, className, footer, padded = true, as = "section" }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; children?: ReactNode; className?: string; footer?: ReactNode; padded?: boolean; as?: "section" | "div" }) {
   const As = as;
   const id = useId();
+  // Layout utilities (flex/grid/gap...) style the content; everything else styles the box.
+  const parts = (className ?? "").split(/\s+/).filter(Boolean);
+  const isLayout = (c: string) => /^(flex|grid|gap|items-|justify-|space-|divide-|place-|grid-cols|flex-col|flex-wrap)/.test(c.replace(/^[a-z0-9]+:/, ""));
+  const inner = parts.filter(isLayout).join(" ");
+  const outer = parts.filter((c) => !isLayout(c)).join(" ");
   return (
-    <As aria-labelledby={title && As === "section" ? id : undefined} className={cn("min-w-0 overflow-hidden rounded-card border border-line bg-bg", className)}>
+    <As aria-labelledby={title && As === "section" ? id : undefined} className={cn("min-w-0 overflow-hidden rounded-card border border-line bg-bg", outer)}>
       {title || action ? (
         <div className={cn("flex items-start justify-between gap-3 px-5 pt-4", !padded && "border-b border-line pb-3")}>
           <div className="min-w-0">
@@ -73,7 +78,7 @@ export function Panel({ title, description, action, children, className, footer,
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      {children ? <div className={cn(padded && "px-5 pb-5", padded && (title || action) ? "pt-3" : padded ? "pt-5" : "")}>{children}</div> : null}
+      {children ? <div className={cn(padded && "px-5 pb-5", padded && (title || action) ? "pt-3" : padded ? "pt-5" : "", inner)}>{children}</div> : null}
       {footer ? <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-bg-subtle px-5 py-3">{footer}</div> : null}
     </As>
   );
@@ -110,8 +115,9 @@ export interface StatItem {
 }
 
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
-export function StatBlock({ items, loading, label = "Key numbers", className, bare }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean }) {
-  const cols = items.length >= 4 ? "grid-cols-2 lg:grid-cols-4" : items.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2";
+export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 }) {
+  const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
+  const cols = n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   return (
     <dl aria-label={label} className={cn("grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
       {items.map((s) => {
@@ -349,7 +355,7 @@ export function Table({ children, label, className }: { children: ReactNode; lab
 /** Sticky header cell on bg-subtle (sticks under the 56px top bar). */
 export function Th({ className, align = "start", children, ...rest }: Omit<ThHTMLAttributes<HTMLTableCellElement>, "align"> & { align?: "start" | "end" }) {
   return (
-    <th scope="col" className={cn("sticky top-14 z-[1] h-9 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
+    <th scope="col" className={cn("z-[1] h-9 md:sticky md:top-14 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
       {children}
     </th>
   );
@@ -481,4 +487,96 @@ export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () 
       {onRetry ? <QuietButton onClick={onRetry}>Try again</QuietButton> : null}
     </div>
   );
+}
+
+/* --------------------------------------------------------- compat shims */
+
+/**
+ * Dashboard empty state (same props as ui/EmptyState): left-aligned, title + one sentence + one
+ * action, on a hairline row. No icon, no centred hero (foundations.md anti-slop checklist).
+ */
+export function EmptyState({ title, description, action, secondaryAction, className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-3 border-y border-line py-6 sm:flex-row sm:items-center sm:justify-between", className)}>
+      <div className="min-w-0">
+        <p className="text-meta-strong text-fg">{title}</p>
+        {description ? <p className="mt-0.5 text-meta text-fg-muted">{description}</p> : null}
+      </div>
+      {action || secondaryAction ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {secondaryAction}
+          {action}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Same props as ui/Tabs, drawn as the dashboard's underline tabs. */
+export function Tabs({ items, value, onChange, label, className }: { items: { id: string; label: ReactNode; meta?: ReactNode }[]; value: string; onChange: (id: string) => void; label: string; className?: string }) {
+  return (
+    <div role="tablist" aria-label={label} className={cn("flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]", className)}>
+      {items.map((t) => {
+        const on = t.id === value;
+        return (
+          <button
+            key={t.id}
+            role="tab"
+            type="button"
+            aria-selected={on}
+            onClick={() => onChange(t.id)}
+            className={cn("-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring [&_span]:text-caption", on ? "border-fg font-medium text-fg" : "border-transparent text-fg-muted hover:text-fg")}
+          >
+            {t.label}
+            {t.meta != null ? <span className="font-normal text-fg-muted tabular">{t.meta}</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function TabPanel({ active, children, className }: { active: boolean; children: ReactNode; className?: string }) {
+  if (!active) return null;
+  return (
+    <div role="tabpanel" className={className}>
+      {children}
+    </div>
+  );
+}
+
+/** Quiet "‹ Parent" link above a page title. */
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="-mb-2 inline-flex items-center gap-1 self-start text-meta text-fg-muted hover:text-fg print:hidden">
+      <ChevronRight aria-hidden className="size-3.5 rotate-180" />
+      {children}
+    </Link>
+  );
+}
+
+/** One cell of a StatGrid (same props as ui/StatTile): label above, number, small delta/caption below. */
+export function StatTile({ label, value, delta, href, loading, caption }: { label: string; value: ReactNode; delta?: { pct?: number; good?: boolean | null; text?: string } | null; spark?: number[]; href?: string; loading?: boolean; caption?: ReactNode }) {
+  const body = (
+    <>
+      <p className="text-meta text-fg-muted">{label}</p>
+      <p className="mt-1.5 text-[28px] font-semibold leading-8 tracking-[-0.01em] text-fg tabular">{loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : (value ?? "–")}</p>
+      {delta && !loading ? (
+        <p className={cn("mt-1 text-caption font-normal tabular", delta.good === true ? "text-positive" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${(delta.pct ?? 0) >= 0 ? "+" : ""}${delta.pct}%`}</p>
+      ) : null}
+      {caption ? <p className="mt-1 text-caption font-normal text-fg-muted">{caption}</p> : null}
+    </>
+  );
+  return href ? (
+    <Link href={href} className="block bg-bg px-5 py-4 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+      {body}
+    </Link>
+  ) : (
+    <div className="bg-bg px-5 py-4">{body}</div>
+  );
+}
+
+/** Bordered block of StatTiles separated by hairlines. */
+export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4", className)}>{children}</div>;
 }

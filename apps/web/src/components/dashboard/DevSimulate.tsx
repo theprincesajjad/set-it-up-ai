@@ -1,8 +1,8 @@
 "use client";
+import { Panel } from "@/components/dashboard/kit";
 import { useState } from "react";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { browserClient } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { safeNext } from "@/lib/routes";
@@ -26,7 +26,7 @@ export function DevSimulate({ title, body, action, id, cta, returnTo }: { title:
   };
   return (
     <div className="mx-auto max-w-[480px] px-4 py-16">
-      <Card padding="lg" className="flex flex-col gap-4">
+      <Panel className="flex flex-col gap-4">
         <p className="text-meta text-fg-muted text-fg-muted">Test mode</p>
         <h1 className="text-title text-fg">{title}</h1>
         <p className="text-body text-fg-muted">{body}</p>
@@ -51,7 +51,7 @@ export function DevSimulate({ title, body, action, id, cta, returnTo }: { title:
         <Button variant="ghost" onClick={back}>
           Go back
         </Button>
-      </Card>
+      </Panel>
     </div>
   );
 }

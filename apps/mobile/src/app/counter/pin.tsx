@@ -70,7 +70,7 @@ export default function StaffPin() {
 
   const wide = width >= 768;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={[styles.root, wide ? { flexDirection: "row" } : null]}>
         <View style={{ flex: 1, gap: 16 }}>
           <Text variant="h2">{verifyOnly ? "Manager PIN" : `Who's at the counter?`}</Text>

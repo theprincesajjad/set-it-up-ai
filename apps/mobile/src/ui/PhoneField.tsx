@@ -72,6 +72,6 @@ const styles = StyleSheet.create({
   wrap: { gap: 6 },
   field: { flexDirection: "row", alignItems: "center", borderRadius: 12, minHeight: 56, paddingHorizontal: 8, gap: 8 },
   chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  input: { flex: 1, paddingVertical: 10 },
+  input: { flex: 1, minWidth: 0, width: "100%", paddingVertical: 10 },
   msg: { flexDirection: "row", gap: 6, alignItems: "flex-start" },
 });

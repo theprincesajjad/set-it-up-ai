@@ -135,8 +135,12 @@ await step("onboarding", async () => {
   await page.getByLabel("First name").fill("Alex");
   await shot(page, "04-name-consent");
   await page.getByRole("button", { name: "Done" }).click();
-  await page.getByText("Hi Alex").waitFor();
-  await shot(page, "05-home-new-member");
+  await page.getByText("open now", { exact: true }).first().waitFor();
+  await page.waitForTimeout(2500);
+  await shot(page, "05-explore-new-member");
+  await page.goto(`${WEB}/wallet`);
+  await page.getByText("Your shops will live here").waitFor();
+  await shot(page, "05b-wallet-empty");
   await context.close();
 });
 
@@ -147,26 +151,29 @@ const cp = customer.page;
 let custState;
 await step("customer-sign-in", async () => {
   await signInByPhone(cp, CUSTOMER);
-  await cp.getByText(/^Hi /).first().waitFor();
+  await cp.getByText("open now", { exact: true }).first().waitFor();
   custState = await customer.context.storageState();
 });
 
-await step("home", async () => {
-  await cp.goto(`${WEB}/home`);
-  await cp.getByText("My shops").waitFor();
+const walletReady = (page) => page.getByText(/^(rewards ready|earning|your shops)$/).first().waitFor();
+
+await step("wallet", async () => {
+  await cp.goto(`${WEB}/wallet`);
+  await walletReady(cp);
   // Dismiss the push pre-prompt if it shows (first earn).
   const notNow = cp.getByText("Not now", { exact: true });
   if (await notNow.isVisible().catch(() => false)) {
     await shot(cp, "06b-push-prompt");
     await notNow.click();
   }
-  await shot(cp, "06-home", { settle: 1200 });
-  await shot(cp, "06-home-full", { fullPage: true });
+  await shot(cp, "06-wallet", { settle: 1200 });
+  await cp.mouse.wheel(0, 260);
+  await shot(cp, "06a-wallet-scrolled", { settle: 600 });
 });
 
 // Hero when nothing is ready yet: the closest reward in that shop's unit. Finds a seeded customer with
 // shops but no reward ready (one OTP per phone tried; the seed's customers start at +16475551000).
-await step("home-progress", async () => {
+await step("wallet-progress", async () => {
   let phone = null;
   for (let n = 1000; n < 1040 && !phone; n++) {
     const p = `+1647555${n}`;
@@ -179,10 +186,12 @@ await step("home-progress", async () => {
   if (!phone) throw new Error("no seeded customer without a reward ready");
   const { context, page } = await newPhone();
   await signInByPhone(page, phone);
-  await page.getByText("My shops").waitFor();
+  await page.getByText("open now", { exact: true }).first().waitFor();
+  await page.goto(`${WEB}/wallet`);
+  await walletReady(page);
   const notNow = page.getByText("Not now", { exact: true });
   if (await notNow.isVisible().catch(() => false)) await notNow.click();
-  await shot(page, "06c-home-progress", { settle: 1200 });
+  await shot(page, "06c-wallet-progress", { settle: 1200 });
   await context.close();
 });
 
@@ -197,10 +206,20 @@ await step("explore-map", async () => {
   await cp.locator(".maplibregl-canvas").waitFor({ timeout: 15000 });
   await cp.waitForTimeout(2500);
   await shot(cp, "07-explore-map");
-  await cp.getByRole("button", { name: /^Hearth & Crumb Bakery/ }).first().click().catch(() => undefined);
-  await shot(cp, "07b-explore-map-selected", { settle: 1200 });
-  await cp.getByText(/^See all \d+/).first().click();
-  await shot(cp, "07c-explore-half-sheet", { settle: 900 });
+  await cp.getByRole("tab", { name: "bakery" }).click();
+  await shot(cp, "07d-explore-category", { settle: 1200 });
+  await cp.getByRole("tab", { name: "all", exact: true }).click();
+  await cp.getByRole("button", { name: /^Hearth & Crumb Bakery/ }).first().click();
+  await shot(cp, "07b-explore-shop-sheet", { settle: 1400 });
+  await tap(cp, "Swipe up for rewards and hours");
+  await shot(cp, "07c-explore-shop-sheet-full", { settle: 1200 });
+  await cp.getByRole("button", { name: "Close", exact: true }).last().click();
+  await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
+  await shot(cp, "07e-explore-rewards-ready", { settle: 1400 });
+  await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
+  await cp.getByRole("button", { name: "Show list" }).click();
+  await shot(cp, "08b-explore-list-toggle", { settle: 1000 });
+  await cp.getByRole("button", { name: "Show map" }).click();
 });
 
 await step("explore-list", async () => {
@@ -212,36 +231,35 @@ await step("explore-list", async () => {
   const notNow = page.getByText("Not now", { exact: true });
   await notNow.waitFor({ timeout: 8000 }).catch(() => undefined);
   if (await notNow.isVisible().catch(() => false)) await notNow.click();
-  await page.getByText("My shops", { exact: true }).first().waitFor({ timeout: 15000 });
+  await page.getByText("nearby", { exact: true }).first().waitFor({ timeout: 15000 });
   await shot(page, "08-explore-list", { settle: 1200 });
   await context.close();
 });
 
 await step("shop-detail", async () => {
   await cp.goto(`${WEB}/shop/pinecone-coffee`);
-  await cp.getByText("Your balance").waitFor();
-  await shot(cp, "09-shop-rewards", { settle: 1000 });
-  await cp.mouse.wheel(0, 700);
-  await shot(cp, "09b-shop-rewards-scrolled");
-  await cp.getByRole("tab", { name: "Promos" }).click().catch(() => tap(cp, "Promos"));
-  await shot(cp, "10-shop-promos");
-  await cp.getByRole("tab", { name: "About" }).click().catch(() => tap(cp, "About"));
-  await shot(cp, "11-shop-about");
-  await cp.mouse.wheel(0, 900);
-  await shot(cp, "11b-shop-about-scrolled");
+  await cp.getByText("rewards", { exact: true }).first().waitFor();
+  await shot(cp, "09-shop", { settle: 1200 });
+  await cp.mouse.wheel(0, 600);
+  await shot(cp, "09b-shop-scrolled", { settle: 600 });
+  await cp.mouse.wheel(0, 1200);
+  await shot(cp, "11-shop-about", { settle: 600 });
+  await cp.goto(`${WEB}/shop/nonnas-table`);
+  await cp.getByText("rewards", { exact: true }).first().waitFor();
+  await shot(cp, "10-shop-points", { settle: 1200 });
 });
 
 await step("shop-join", async () => {
   await cp.goto(`${WEB}/shop/bloom-hair-studio`);
-  await cp.getByText("Earn here").waitFor();
+  await cp.getByRole("button", { name: "Join — free" }).first().waitFor();
   await shot(cp, "12-shop-not-member", { settle: 1000 });
   await cp.getByRole("button", { name: "Join — free" }).click();
   await shot(cp, "12b-join-sheet", { settle: 800 });
 });
 
 await step("card", async () => {
-  await cp.goto(`${WEB}/home`);
-  await cp.getByText("My shops").waitFor();
+  await cp.goto(`${WEB}/wallet`);
+  await walletReady(cp);
   const notNow = cp.getByText("Not now", { exact: true });
   if (await notNow.isVisible().catch(() => false)) await notNow.click();
   await cp.getByRole("button", { name: "My card" }).last().click();
@@ -251,7 +269,7 @@ await step("card", async () => {
 
 await step("rewards", async () => {
   await cp.goto(`${WEB}/rewards`);
-  await cp.getByText("Rewards", { exact: true }).first().waitFor();
+  await cp.getByText("rewards", { exact: true }).first().waitFor();
   await shot(cp, "14-rewards-ready", { settle: 1200 });
   await tap(cp, "All shops");
   await shot(cp, "14b-rewards-all", { settle: 900 });
@@ -262,7 +280,7 @@ await step("rewards", async () => {
 let redeemCode = null;
 await step("redeem", async () => {
   await cp.goto(`${WEB}/shop/pinecone-coffee`);
-  await cp.getByText("Your balance").waitFor();
+  await cp.getByText("rewards", { exact: true }).first().waitFor();
   await cp.getByRole("button", { name: /^Redeem/ }).first().click();
   await shot(cp, "15-redeem-confirm", { settle: 800 });
   const issued = cp.waitForResponse((r) => /\/redeem$/.test(r.url()) && r.request().method() === "POST");
@@ -274,7 +292,7 @@ await step("redeem", async () => {
 
 await step("activity", async () => {
   await cp.goto(`${WEB}/activity`);
-  await cp.getByText("Activity", { exact: true }).first().waitFor();
+  await cp.getByText("activity", { exact: true }).first().waitFor();
   await shot(cp, "17-activity", { settle: 1200 });
 });
 
@@ -298,15 +316,20 @@ await step("profile-settings", async () => {
 
 await step("dark-mode", async () => {
   const { context, page } = await newPhone({ scheme: "dark", storageState: custState });
-  await page.goto(`${WEB}/home`);
-  await page.getByText(/^Hi /).first().waitFor();
+  await page.goto(`${WEB}/map`);
+  await page.locator(".maplibregl-canvas").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(2500);
+  await shot(page, "21-dark-explore");
+  await page.goto(`${WEB}/wallet`);
+  await walletReady(page);
   const notNow = page.getByText("Not now", { exact: true });
   if (await notNow.isVisible().catch(() => false)) await notNow.click();
-  await shot(page, "21-dark-home", { settle: 1500 });
+  await shot(page, "21a-dark-wallet", { settle: 1500 });
   await page.goto(`${WEB}/shop/pinecone-coffee`);
-  await page.getByText("Your balance").waitFor();
+  await page.getByText("rewards", { exact: true }).first().waitFor();
   await shot(page, "21b-dark-shop", { settle: 1000 });
-  await page.goto(`${WEB}/home`);
+  await page.goto(`${WEB}/wallet`);
+  await walletReady(page);
   await page.getByRole("button", { name: "My card" }).last().click();
   await shot(page, "21c-dark-card", { settle: 1500 });
   await context.close();
@@ -326,7 +349,7 @@ await step("counter-sign-in", async () => {
   await sp.getByLabel("Password").fill("localloyalty-demo");
   await shot(sp, "30-counter-sign-in");
   await sp.getByRole("button", { name: "Sign in", exact: true }).click();
-  await sp.getByText("Counter mode", { exact: true }).first().waitFor();
+  await sp.getByText("counter mode", { exact: true }).first().waitFor();
   await shot(sp, "31-counter-location-picker", { settle: 1200 });
   await sp.getByText("412 Roncesvalles Ave").first().click();
   await sp.getByText("Customer's phone number").waitFor();
@@ -411,7 +434,7 @@ await step("counter-kiosk", async () => {
   await sp.getByText("Start kiosk mode").waitFor();
   await shot(sp, "40a-counter-settings", { settle: 600 });
   await tap(sp, "Start kiosk mode");
-  await sp.getByText("Check in and earn").first().waitFor();
+  await sp.getByText(/check in and earn/i).first().waitFor();
   await shot(sp, "40-kiosk-phone", { settle: 900 });
   // The kiosk is a landscape tablet on the counter (staff-counter.md § 7).
   await sp.setViewportSize({ width: 1180, height: 820 });

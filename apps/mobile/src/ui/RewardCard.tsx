@@ -11,7 +11,8 @@ export interface RewardCardProps {
   reward: { name: string; pointsCost: number; rewardType: string; value?: number; terms?: string | null };
   balance: number;
   terminology: string;
-  state: "available" | "locked" | "redeemed";
+  /** info = not a member yet: just the reward and its cost. */
+  state: "available" | "locked" | "redeemed" | "info";
   onRedeem?: () => void;
   redeemedAt?: string | null;
   disabledReason?: string | null;

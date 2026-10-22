@@ -1,6 +1,6 @@
 "use client";
+import { BackLink, PageHeader, Panel } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import type { messagingApi } from "@ll/shared";
 import { FeatureTeaser } from "@/components/dashboard/FeatureTeaser";
@@ -9,8 +9,6 @@ import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Layout";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -32,9 +30,7 @@ function AutomationsPage() {
   const state = useApi(enabled("marketing.automations") ? () => api.messages.automations() : null, [api]);
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/messages`} className="self-start">
-        Messages
-      </Button>
+      <BackLink href={`${base}/messages`}>Messages</BackLink>
       <PageHeader title="Automations" description="Messages that send themselves, only to customers who opted in." />
       {enabled("marketing.automations") ? <Async state={state}>{(d) => <div className="flex flex-col gap-4">{d.items.map((a) => <AutoCard key={a.kind} a={a} />)}</div>}</Async> : <FeatureTeaser featureKey="marketing.automations" title="Automations" />}
     </div>
@@ -56,9 +52,9 @@ function AutoCard({ a: initial }: { a: messagingApi.Automation }) {
     }
   };
   return (
-    <Card padding="lg" className="flex flex-col gap-3">
+    <Panel className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-title text-fg">{a.label}</h2>
+        <h2 className="text-body-strong text-fg">{a.label}</h2>
         <Badge>{formatNumber(a.sentCount)} sent</Badge>
       </div>
       <p className="text-meta text-fg-muted">{a.description}</p>
@@ -69,6 +65,6 @@ function AutoCard({ a: initial }: { a: messagingApi.Automation }) {
       <Button variant="secondary" className="self-start" loading={act.busy} onClick={() => save(a.enabled)}>
         Save
       </Button>
-    </Card>
+    </Panel>
   );
 }

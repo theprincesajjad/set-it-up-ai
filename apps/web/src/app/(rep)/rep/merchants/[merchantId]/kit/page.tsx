@@ -1,10 +1,9 @@
 "use client";
-import { ArrowLeft } from "lucide-react";
+import { BackLink, PageHeader } from "@/components/dashboard/kit";
 import { useParams } from "next/navigation";
 import { Async } from "@/components/dashboard/PageStates";
 import { QrKitPrint } from "@/components/dashboard/QrKitPrint";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/ui/Layout";
 import { browserApi } from "@/lib/api/browser";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";
@@ -18,7 +17,7 @@ export default function RepKitPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="print:hidden">
-        <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`/rep/merchants/${merchantId}`} className="self-start">Merchant</Button>
+        <BackLink href={`/rep/merchants/${merchantId}`}>Merchant</BackLink>
         <PageHeader title="QR kit" description="Print on the portable printer or save as PDF." />
       </div>
       <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} onPrinted={() => void browserApi.merchant(merchantId).completeStep("qr_kit").catch(() => undefined)} />}</Async>

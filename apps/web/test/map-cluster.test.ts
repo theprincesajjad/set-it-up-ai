@@ -39,3 +39,20 @@ describe("densestGroup", () => {
     expect(densestGroup([lone])).toEqual([lone]);
   });
 });
+
+import { labelledAnchors } from "@/lib/mapCluster";
+
+describe("labelledAnchors", () => {
+  it("shows a label only where it doesn't run into another bubble or label", () => {
+    const pts = [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 80, y: 5 }, // sits where a's label would go
+      { id: "c", x: 0, y: 200 },
+    ];
+    const groups = pts.map((p) => ({ anchor: p.id, members: [p.id] }));
+    const out = labelledAnchors(groups, pts, () => "Pinecone Coffee");
+    expect(out.has("a")).toBe(false);
+    expect(out.has("b")).toBe(true);
+    expect(out.has("c")).toBe(true);
+  });
+});

@@ -1,16 +1,13 @@
 "use client";
+import { BackLink, PageHeader, StatTile, StatusDot } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { ArrowLeft } from "lucide-react";
 import { useParams } from "next/navigation";
 import { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { PromoEditor } from "@/components/dashboard/PromoEditor";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/ui/Layout";
-import { StatTile } from "@/components/ui/StatTile";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api/errors";
 import { formatNumber } from "@/lib/format";
@@ -36,9 +33,7 @@ function PromoPage() {
   const [confirm, setConfirm] = useState<merchantApi.PromoStatus | null>(null);
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" iconStart={ArrowLeft} href={`${base}/promos`} className="self-start">
-        Promos
-      </Button>
+      <BackLink href={`${base}/promos`}>Promos</BackLink>
       <Async state={promo}>
         {(p) => {
           const r = results.data?.items.find((x) => x.promoId === p.id);
@@ -47,15 +42,15 @@ function PromoPage() {
             <>
               <PageHeader
                 title={p.title}
-                description={<StatusBadge domain="promo" status={p.status} />}
+                description={<StatusDot domain="promo" status={p.status} />}
                 actions={next.map((s) => (
-                  <Button key={s} variant={s === "live" ? "primary" : "secondary"} onClick={() => setConfirm(s)}>
+                  <Button size="sm" key={s} variant={s === "live" ? "primary" : "secondary"} onClick={() => setConfirm(s)}>
                     {STATUS_ACTION[s] ?? s}
                   </Button>
                 ))}
               />
               {p.status !== "draft" ? (
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
                   <StatTile label="Views" value={formatNumber(p.viewCount)} />
                   <StatTile label="Redemptions" value={formatNumber(p.claimCount)} />
                   <StatTile label="Visits during promo" value={r ? formatNumber(r.attributedVisits) : null} loading={results.loading} />

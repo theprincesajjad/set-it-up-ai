@@ -12,10 +12,10 @@ export const metadata: Metadata = { title: "Get started free", description: "Set
 export default async function SignupPage() {
   const [me, hoods] = await Promise.all([getMe(), publicServerApi().network.neighbourhoods().then((r) => r.items).catch(() => [])]);
   return (
-    <Container size="public" className="py-10 md:py-16">
-      <p className="text-overline uppercase text-fg-brand">{copy.misc.freeForever}</p>
-      <h1 className="mt-2 text-h1 text-fg">Get your shop on the street&apos;s card</h1>
-      <p className="mt-2 mb-8 text-body text-fg-muted">About 5 minutes. Prefer a hand? <Link href="/#book" className="text-fg-link underline">Book a free 20-minute visit</Link>.</p>
+    <Container size="public" className="py-12 md:py-20">
+      <p className="text-meta-strong text-fg-muted">{copy.misc.freeForever}</p>
+      <h1 className="display mt-4 text-mkt-sm text-balance md:text-mkt-md">get your shop on the street&apos;s card.</h1>
+      <p className="mt-3 mb-10 text-body text-fg-muted">About 5 minutes. Prefer a hand? <Link href="/#book" className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">Book a free 20-minute visit</Link>.</p>
       <SignupWizard signedInName={me ? me.user.name ?? me.user.email ?? "there" : null} neighbourhoods={hoods} />
     </Container>
   );
