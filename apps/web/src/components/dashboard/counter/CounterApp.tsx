@@ -1,5 +1,5 @@
 "use client";
-import { Check, Gift, RotateCcw, Search, Ticket, UserPlus, X } from "lucide-react";
+import { Clock3, Gift, RotateCcw, Search, Ticket, UserPlus, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { staffApi } from "@ll/shared";
 import { Avatar } from "@/components/ui/Avatar";
@@ -15,9 +15,10 @@ import { newIdempotencyKey } from "@/lib/api/client";
 import type { MerchantEndpoints } from "@/lib/api/endpoints";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
-import { applyKey, awardLabel, awardSuccess, centsFromKeypad, keypadDisplay, lookupKind, type KeypadKey, type ProgramForCounter } from "@/lib/dashboard/counter";
-import { formatMoney, formatPoints, formatTime, firstName } from "@/lib/format";
-import { formatNanp } from "@/lib/phone";
+import { applyKey, awardLabel, awardSuccess, centsFromKeypad, COUNTER_QUEUE_KEY, counterErrorMessage, keypadDisplay, lookupKind, readQueue, undoLabel, type KeypadKey, type ProgramForCounter, type QueuedAward } from "@/lib/dashboard/counter";
+import { CountUp } from "@/components/ui/CountUp";
+import { formatMoney, formatPoints, formatSigned, formatTime, firstName, rewardInSentence } from "@/lib/format";
+import { formatNanp, maskPhone } from "@/lib/phone";
 import { typeLabel } from "@/lib/dashboard/labels";
 
 type CounterApi = MerchantEndpoints["counter"];
@@ -27,7 +28,9 @@ type Phase =
   | { kind: "pick"; items: staffApi.MemberSummaryDto[] }
   | { kind: "new"; phone: string }
   | { kind: "member"; member: staffApi.MemberSummaryDto }
-  | { kind: "awarded"; res: staffApi.AwardResponse; at: number }
+  | { kind: "awarded"; res: staffApi.AwardResponse; at: number; from: number }
+  /** Saved on this device (offline / network error); sends with the same idempotency key. */
+  | { kind: "queued"; label: string; who: string }
   | { kind: "redeemed"; res: staffApi.CounterRedemptionResponse };
 
 export interface CounterAppProps {
@@ -37,6 +40,8 @@ export interface CounterAppProps {
   locations: { id: string; name: string }[];
   /** Undo window shown on the success screen (seconds). */
   undoSeconds?: number;
+  /** localStorage key for awards saved while offline (one per shop). */
+  queueKey?: string;
 }
 
 /**
@@ -44,7 +49,7 @@ export interface CounterAppProps {
  * Keyboard-first: "/" search, Enter = primary action, digits feed the amount keypad,
  * Esc = next customer. Every award/redeem tap gets one idempotency key, reused on retry.
  */
-export function CounterApp({ api, program, shopName, locations, undoSeconds = 30 }: CounterAppProps) {
+export function CounterApp({ api, program, shopName, locations, undoSeconds = 30, queueKey = COUNTER_QUEUE_KEY }: CounterAppProps) {
   const [mode, setMode] = useState<"award" | "verify">("award");
   const [locationId, setLocationId] = useState<string | undefined>(locations[0]?.id);
   const [q, setQ] = useState("");
@@ -63,6 +68,75 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
   const awardKey = useRef<string | null>(null);
   const redeemKey = useRef<string | null>(null);
   const perDollar = program.earnType === "per_dollar";
+  const [queue, setQueue] = useState<QueuedAward[]>([]);
+  const [online, setOnline] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  const queueRef = useRef<QueuedAward[]>([]);
+
+  // ---- Never lose an award (polish-audit D10): network failures go to a queue on this device, shown in a
+  // strip, retried with the SAME idempotency key when the browser is back online, every 20 s, or on "Retry now".
+  const saveQueue = useCallback(
+    (next: QueuedAward[]) => {
+      queueRef.current = next;
+      setQueue(next);
+      try {
+        localStorage.setItem(queueKey, JSON.stringify(next));
+      } catch {
+        /* private mode: the queue lives for this tab */
+      }
+    },
+    [queueKey],
+  );
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      saveQueue(readQueue(localStorage.getItem(queueKey)));
+    } catch {
+      /* ignore */
+    }
+    setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+  }, [queueKey, saveQueue]);
+
+  const flush = useCallback(async () => {
+    if (!queueRef.current.length) return;
+    setSending(true);
+    let sent = 0;
+    for (const item of [...queueRef.current]) {
+      try {
+        await api.award(item.body as Parameters<CounterApi["award"]>[0], item.key);
+        sent += 1;
+        saveQueue(queueRef.current.filter((x) => x.key !== item.key));
+      } catch (e) {
+        if (isApiError(e) && e.isNetwork) break;
+        // A final error (duplicate, cooldown...) is dropped from the queue but said out loud.
+        saveQueue(queueRef.current.filter((x) => x.key !== item.key));
+        setError(`${item.label}: ${counterErrorMessage(isApiError(e) ? e : {}, { terminology: program.terminology })}`);
+      }
+    }
+    setSending(false);
+    if (sent) {
+      setSentNote(`Back online · ${sent} sent`);
+      setTimeout(() => setSentNote(null), 4000);
+    }
+  }, [api, saveQueue, program.terminology]);
+  useEffect(() => {
+    const up = () => {
+      setOnline(true);
+      void flush();
+    };
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    const t = setInterval(() => {
+      if (queueRef.current.length && navigator.onLine) void flush();
+    }, 20_000);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+      clearInterval(t);
+    };
+  }, [flush]);
 
   useEffect(() => {
     try {
@@ -137,22 +211,33 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
       awardKey.current ??= newIdempotencyKey("counter");
       setBusy(true);
       setError(null);
+      const body = { ...ref, ...extra, amountCents: perDollar ? centsFromKeypad(cents) : undefined, quantity: perDollar || qty === 1 ? undefined : qty, locationId };
+      const before = phase.kind === "member" ? phase.member.balance : 0;
+      const label = awardLabel(program, centsFromKeypad(cents), qty);
       try {
-        const res = await api.award({ ...ref, ...extra, amountCents: perDollar ? centsFromKeypad(cents) : undefined, quantity: perDollar || qty === 1 ? undefined : qty, locationId }, awardKey.current);
+        const res = await api.award(body, awardKey.current);
         awardKey.current = null;
-        setPhase({ kind: "awarded", res, at: Date.now() });
+        setPhase({ kind: "awarded", res, at: Date.now(), from: res.duplicate ? res.balance : before });
         setNow(Date.now());
         setAnnounce(`${awardSuccess(program, res.pointsEarned)}. Balance ${formatPoints(res.balance, program.terminology)}.`);
         void loadRecent();
       } catch (e) {
-        // Keep the key on network errors so a retry can never double-award; drop it on final errors.
-        if (!(isApiError(e) && e.isNetwork)) awardKey.current = null;
-        setError(isApiError(e) && e.code === "cooldown" ? e.message : errorMessage(e));
+        if (isApiError(e) && e.isNetwork) {
+          // Saved, not lost: same key, sent later. The staff member moves on now.
+          const who = phase.kind === "member" ? (phase.member.name ?? "Member") : ref.phone ? formatNanp(ref.phone.replace(/^\+1/, "")) : "Customer";
+          saveQueue([...queueRef.current, { key: awardKey.current!, body, label: `${label} for ${who}`, at: Date.now() }]);
+          awardKey.current = null;
+          setPhase({ kind: "queued", label, who });
+          setAnnounce(`${label}. Saved on this device. It sends when you're back online.`);
+        } else {
+          awardKey.current = null;
+          setError(counterErrorMessage(isApiError(e) ? e : {}, { terminology: program.terminology, firstName: phase.kind === "member" ? firstName(phase.member.name) : null }));
+        }
       } finally {
         setBusy(false);
       }
     },
-    [api, cents, qty, locationId, perDollar, program, loadRecent],
+    [api, cents, qty, locationId, perDollar, program, loadRecent, phase, saveQueue],
   );
 
   const redeem = useCallback(
@@ -168,7 +253,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         void loadRecent();
       } catch (e) {
         if (!(isApiError(e) && e.isNetwork)) redeemKey.current = null;
-        setError(errorMessage(e));
+        setError(isApiError(e) && e.isNetwork ? "No connection. Redeem needs the internet; awards still save here." : counterErrorMessage(isApiError(e) ? e : {}, { terminology: member.terminology }));
       } finally {
         setBusy(false);
       }
@@ -186,7 +271,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         setPhase({ kind: "member", member: r.member });
         void loadRecent();
       } catch (e) {
-        setError(errorMessage(e));
+        setError(isApiError(e) && e.status === 403 ? "Too late to undo here. Adjust it from the customer's page." : errorMessage(e));
       } finally {
         setBusy(false);
       }
@@ -205,7 +290,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
       setAnnounce(`${res.redemption.reward.name} redeemed. Hand it over.`);
       void loadRecent();
     } catch (e) {
-      setError(isApiError(e) && e.code === "already_used" ? "Already redeemed. Ask the customer to check their app." : errorMessage(e));
+      setError(isApiError(e) && e.isNetwork ? "No connection. Checking a code needs the internet." : counterErrorMessage(isApiError(e) ? e : {}));
     } finally {
       setBusy(false);
     }
@@ -295,6 +380,20 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         ) : null}
       </div>
 
+      {queue.length || !online || sentNote ? (
+        <div role="status" className={cn("flex min-h-11 items-center gap-3 rounded-card px-4 py-2 text-meta", queue.length || !online ? "bg-fg text-bg" : "bg-bg-subtle text-fg")}>
+          {queue.length || !online ? <WifiOff aria-hidden className="size-4 shrink-0" strokeWidth={2} /> : null}
+          <span className="flex-1 font-medium tabular-nums">
+            {sentNote && !queue.length ? sentNote : !online && !queue.length ? "Offline · awards save on this device" : `${online ? "Sending" : "Offline"} · ${queue.length} waiting to send`}
+          </span>
+          {queue.length ? (
+            <button type="button" onClick={() => void flush()} disabled={sending} className="min-h-8 rounded-full px-3 font-semibold underline-offset-2 hover:underline focus-visible:focus-ring disabled:opacity-60">
+              {sending ? "Sending..." : "Retry now"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {error ? (
         <Banner tone="danger" action={<button type="button" aria-label="Dismiss" onClick={() => setError(null)} className="inline-flex size-9 items-center justify-center rounded-full"><X aria-hidden className="size-4" /></button>}>
           {error}
@@ -373,7 +472,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                         <Avatar name={m.name} id={m.memberId} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-body-strong text-fg">{m.name ?? "Member"}</span>
-                          <span className="block text-meta text-fg-muted">{m.maskedPhone?.replace(/\*/g, "•")}</span>
+                          <span className="block text-meta tabular-nums text-fg-muted">{maskPhone(m.maskedPhone)}</span>
                         </span>
                         <span className="tabular-nums text-fg">{formatPoints(m.balance, m.terminology)}</span>
                       </button>
@@ -416,7 +515,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                     {member.name ?? "Member"}
                   </h2>
                   <p className="text-meta text-fg-muted">
-                    {member.maskedPhone?.replace(/\*/g, "•")} · {member.visitCount} visits{member.vip ? ` · ${member.vip.name}` : ""}
+                    {maskPhone(member.maskedPhone)} · {member.visitCount} {member.visitCount === 1 ? "visit" : "visits"}{member.vip ? ` · ${member.vip.name}` : ""}
                   </p>
                 </div>
                 <div className="text-end">
@@ -469,52 +568,67 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
               {member.discountCards.length ? (
                 <p className="mt-3 text-meta text-fg-muted">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p>
               ) : null}
-              <div className="mt-4">
-                <Button variant="ghost" onClick={reset}>
+              <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
+                <Button variant="secondary" onClick={reset}>
                   Next customer
                 </Button>
+                <span className="text-meta text-fg-muted">
+                  or press <kbd className="rounded-[5px] border border-line px-1.5 text-caption">Esc</kbd>
+                </span>
               </div>
             </section>
           ) : null}
 
           {phase.kind === "awarded" ? (
             <section role="status" className="rounded-card border border-line bg-bg p-6" aria-labelledby="ok-title">
-              <span aria-hidden className="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
-                <Check className="size-5" strokeWidth={2.25} />
-              </span>
+              <SuccessMark />
               <p id="ok-title" className="text-large-title font-display text-fg">
                 {phase.res.duplicate ? "Already added" : awardSuccess(program, phase.res.pointsEarned)}
               </p>
-              <p className="mt-2 text-title font-normal text-fg tabular">
+              <p className="mt-2 text-title font-normal text-fg">
                 {phase.res.member.name ? `${firstName(phase.res.member.name)} has ` : "Balance "}
-                {formatPoints(phase.res.balance, program.terminology)}
-                {phase.res.memberCreated ? " · Welcome to the program" : ""}
+                <CountUp value={phase.res.balance} from={phase.from} className="tabular-nums text-accent-text" />
+                {` ${formatPoints(phase.res.balance, program.terminology).replace(/^[\d,]+ /, "")}`}
+                {phase.res.memberCreated ? " · new member" : ""}
               </p>
-              {phase.res.rewardsAvailable.length ? <p className="mt-2 text-body text-fg">Reward ready: {phase.res.rewardsAvailable.map((r) => r.name).join(", ")}</p> : phase.res.member.nextReward ? <p className="mt-2 text-body text-fg-muted">{copy.misc.stampsToGo(phase.res.member.nextReward.pointsNeeded, phase.res.member.nextReward.name)}</p> : null}
+              {phase.res.rewardsAvailable.length ? <p className="mt-2 text-body text-fg">Reward ready: {phase.res.rewardsAvailable.map((r) => rewardInSentence(r.name)).join(", ")}</p> : phase.res.member.nextReward ? <p className="mt-2 text-body text-fg-muted">{copy.misc.stampsToGo(phase.res.member.nextReward.pointsNeeded, rewardInSentence(phase.res.member.nextReward.name))}</p> : null}
               {phase.res.breakdown.length ? <p className="mt-1 text-meta text-fg-muted">{phase.res.breakdown.join(" · ")}</p> : null}
               {phase.res.messages.map((msg) => (
                 <p key={msg} className="mt-1 text-meta text-fg-muted">
                   {msg}
                 </p>
               ))}
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Button size="lg" onClick={reset} autoFocus>
                   Next customer
                 </Button>
                 {phase.res.transactionId && !phase.res.duplicate && now - phase.at < undoSeconds * 1000 ? (
                   <Button variant="secondary" size="lg" iconStart={RotateCcw} disabled={busy} onClick={() => void undo(phase.res.transactionId!)}>
-                    {`Undo (${Math.max(0, Math.ceil((undoSeconds * 1000 - (now - phase.at)) / 1000))})`}
+                    {undoLabel(Math.ceil((undoSeconds * 1000 - (now - phase.at)) / 1000))}
                   </Button>
                 ) : null}
               </div>
             </section>
           ) : null}
 
+          {phase.kind === "queued" ? (
+            <section role="status" className="rounded-card border border-line bg-bg p-6" aria-labelledby="queued-title">
+              <Clock3 aria-hidden className="mb-4 size-10 text-fg-muted" strokeWidth={1.5} />
+              <p id="queued-title" className="text-large-title font-display text-fg">
+                {phase.label} for {phase.who}
+              </p>
+              <p className="mt-2 text-body text-fg-muted">Saved on this device. It sends when you&apos;re back online, with nothing counted twice.</p>
+              <div className="mt-5">
+                <Button size="lg" onClick={reset} autoFocus>
+                  Next customer
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
           {phase.kind === "redeemed" ? (
             <section role="status" className="rounded-card border border-line bg-bg p-6">
-              <span aria-hidden className="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
-                <Check className="size-5" strokeWidth={2.25} />
-              </span>
+              <SuccessMark />
               <p className="text-large-title font-display text-fg">{phase.res.redemption.reward.name} redeemed.</p>
               <p className="mt-2 text-title font-normal text-fg">Hand it over.{phase.res.redemption.discountCents ? ` Discount ${formatMoney(phase.res.redemption.discountCents)}.` : ""}</p>
               <p className="mt-1 text-body text-fg-muted">
@@ -527,7 +641,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                 </Button>
                 {phase.res.redemption.transactionId ? (
                   <Button variant="secondary" size="lg" iconStart={RotateCcw} disabled={busy} onClick={() => void undo(phase.res.redemption.transactionId!)}>
-                    Undo
+                    Undo redeem
                   </Button>
                 ) : null}
               </div>
@@ -542,25 +656,26 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           {recent.length ? (
             <ul className="mt-2 divide-y divide-line border-y border-line">
               {recent.map((a) => (
-                <li key={a.transactionId} className="flex min-h-12 items-center gap-2 py-2">
-                  <div className="min-w-0 flex-1">
+                // Fixed trailing columns so every number lines up whether or not the row can be undone (D7).
+                <li key={a.transactionId} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_52px] items-center gap-2 py-2">
+                  <div className="min-w-0">
                     <p className="truncate text-meta text-fg">
-                      {a.name ?? a.maskedPhone ?? "Member"} {a.reversed ? <span className="text-fg-muted">· Undone</span> : null}
+                      {a.name ?? (a.maskedPhone ? maskPhone(a.maskedPhone) : "Member")}
+                      {a.reversed ? <span className="text-fg-muted"> · undone</span> : null}
                     </p>
-                    <p className="text-caption text-fg-muted">
+                    <p className="truncate text-caption text-fg-muted">
                       {formatTime(a.createdAt)} · {typeLabel(a.type)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
                   </div>
-                  <span className={cn("tabular-nums text-meta", a.points >= 0 ? "text-fg" : "text-fg")}>
-                    {a.points >= 0 ? "+" : ""}
-                    {a.points}
+                  <span className={cn("text-end tabular-nums text-meta", a.reversed ? "text-fg-subtle line-through" : a.points >= 0 ? "text-fg" : "text-fg-muted")}>{formatSigned(a.points)}</span>
+                  <span className="text-end">
+                    {a.canUndo && !a.reversed ? (
+                      <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-8 rounded-sm px-1 text-meta text-fg-muted hover:text-fg hover:underline focus-visible:focus-ring">
+                        Undo
+                      </button>
+                    ) : null}
                   </span>
-                  {a.canUndo && !a.reversed ? (
-                    <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-8 rounded-sm px-2 text-meta text-fg-muted hover:text-fg hover:underline">
-                      Undo
-                    </button>
-                  ) : null}
                 </li>
               ))}
             </ul>
@@ -570,6 +685,16 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         </aside>
       </div>
     </div>
+  );
+}
+
+/** The award check: ring then tick, ~320 ms, a single settle; drawn instantly with reduced motion. */
+function SuccessMark() {
+  return (
+    <svg aria-hidden viewBox="0 0 48 48" className="ll-success-mark mb-4 size-12 text-positive">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M15.5 24.5 L21.5 30.5 L33 18.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

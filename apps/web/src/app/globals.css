@@ -6,16 +6,16 @@
   /* Marketing headline sizes (Bricolage, display only). */
   --text-mkt-xl: 4.5rem;
   --text-mkt-xl--line-height: 1;
-  --text-mkt-xl--letter-spacing: -0.035em;
+  --text-mkt-xl--letter-spacing: -0.02em;
   --text-mkt-lg: 3.25rem;
   --text-mkt-lg--line-height: 1.02;
-  --text-mkt-lg--letter-spacing: -0.03em;
+  --text-mkt-lg--letter-spacing: -0.02em;
   --text-mkt-md: 2.25rem;
   --text-mkt-md--line-height: 1.06;
-  --text-mkt-md--letter-spacing: -0.025em;
+  --text-mkt-md--letter-spacing: -0.015em;
   --text-mkt-sm: 1.75rem;
   --text-mkt-sm--line-height: 1.1;
-  --text-mkt-sm--letter-spacing: -0.02em;
+  --text-mkt-sm--letter-spacing: -0.01em;
 
   --animate-otp-shake: ll-otp-shake 220ms ease-in-out;
   @keyframes ll-otp-shake {
@@ -47,11 +47,11 @@
   }
 }
 
-/* Bricolage display face, tight; use with a text-* size. */
+/* Bricolage display face; −0.01em like the spec (marketing sizes carry their own, max −0.02em). */
 @utility display {
   font-family: var(--font-display);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   font-variation-settings: "wdth" 100;
 }
 
@@ -81,4 +81,39 @@
   & th { font-weight: 600; color: var(--ll-color-fg-muted); }
   & code { font-family: var(--font-mono); font-size: 0.9em; }
   & hr { border-color: var(--ll-color-line); margin: 2rem 0; }
+}
+
+/* Counter award check (polish-audit C7/D12): the ring draws, then the tick, then one small settle. ≤ 400 ms. */
+.ll-success-mark circle {
+  stroke-dasharray: 139;
+  stroke-dashoffset: 139;
+  animation: ll-draw 220ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+.ll-success-mark path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: ll-draw 160ms 180ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+.ll-success-mark {
+  animation: ll-settle 340ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+@keyframes ll-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ll-settle {
+  0% { transform: scale(0.92); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ll-success-mark circle,
+  .ll-success-mark path {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .ll-success-mark {
+    animation: none;
+  }
 }

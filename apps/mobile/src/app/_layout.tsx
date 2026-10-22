@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useNotificationTaps } from "../features/customer/notifications";
 import { configureNotifications } from "../features/push";
 import { SessionExpiredSheet } from "../features/SessionExpiredSheet";
 import { wireQueryOnlineManager } from "../state/network";
@@ -24,6 +25,12 @@ import { ToastProvider } from "../ui";
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 wireQueryOnlineManager();
 installWebStyles();
+
+/** Mounted after the Stack so a cold-start tap can navigate (useNotificationTaps needs the router ready). */
+function NotificationTaps() {
+  useNotificationTaps();
+  return null;
+}
 
 export default function RootLayout() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
@@ -60,6 +67,7 @@ export default function RootLayout() {
                   <Stack.Screen name="discount" options={{ presentation: "fullScreenModal" }} />
                 </Stack>
                 <SessionExpiredSheet />
+                <NotificationTaps />
               </ToastProvider>
             </SessionProvider>
           </ThemeProvider>

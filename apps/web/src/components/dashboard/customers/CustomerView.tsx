@@ -3,6 +3,7 @@
  * One customer: balance, details, ledger, adjust, notes. Rendered inside the right-side panel on
  * the Customers table (Square pattern) and as the full page at /customers/[memberId] (deep links).
  */
+import { formatSigned } from "@/lib/format";
 import { Minus, Plus, Undo2, X } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
@@ -76,9 +77,8 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
         <span className="font-display text-[40px] font-extrabold leading-[44px] tracking-[-0.01em] text-accent-text tabular">{formatNumber(c.balance)}</span>
         <span className="text-body text-fg-muted">{formatPoints(c.balance, term, false).replace(/^[\d,]+\s*/, "")}</span>
       </p>
-      {goal > 0 ? (
-        <p className="mt-1 text-meta text-fg-muted">{c.rewardAvailable ? "Reward ready" : `${formatNumber(Math.max(0, goal - c.balance))} to the next reward`}</p>
-      ) : null}
+      {/* "Reward ready" already shows as the tag above; this line only says how far to go (D5). */}
+      {goal > 0 && !c.rewardAvailable ? <p className="mt-1 text-meta text-fg-muted">{`${formatNumber(Math.max(0, goal - c.balance))} to the next reward`}</p> : null}
       {manager ? (
         <Button variant="secondary" size="sm" className="mt-4" onClick={() => setAdjustOpen(true)}>
           Adjust {term}
@@ -123,15 +123,14 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
                 </p>
               </div>
               <span className={cn("shrink-0 text-meta tabular", t.reversedAt ? "text-fg-subtle line-through" : "text-fg")}>
-                {t.points >= 0 ? "+" : ""}
-                {t.points}
+                {formatSigned(t.points)}
               </span>
               {manager && !t.reversedAt && t.type !== "reversal" && new Date(t.createdAt).getTime() > recentCutoff ? (
-                <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg">
-                  <Undo2 aria-hidden className="size-3.5" />
+                <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                  <Undo2 aria-hidden className="size-4" strokeWidth={1.75} />
                 </button>
               ) : (
-                <span className="size-7 shrink-0" />
+                <span className="size-8 shrink-0" />
               )}
             </li>
           ))}

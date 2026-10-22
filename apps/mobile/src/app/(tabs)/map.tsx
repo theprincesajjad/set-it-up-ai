@@ -234,7 +234,7 @@ export default function Explore() {
       <View style={[styles.group, { backgroundColor: c.bg }, shadows.float.native]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${placeName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
           <MapPin size={16} color={c.fg} strokeWidth={2} />
-          <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 132 }}>
+          <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 168 }}>
             {(placeName ?? "your street").toLowerCase()}
           </Text>
         </Pressable>

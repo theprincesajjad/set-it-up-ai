@@ -66,12 +66,13 @@ describe("<CounterApp> award flow", () => {
     expect(api.lookup).toHaveBeenCalledWith("4165550123");
     await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
     expect(await screen.findByText("Added 1 stamp")).toBeTruthy();
-    expect(screen.getByText(/Pat has 7 stamps/)).toBeTruthy();
+    // The balance counts up from 6 to 7 (CountUp); wait for the settled paragraph.
+    expect(await screen.findByText((_, el) => el?.tagName === "P" && /^Pat has 7 stamps$/.test(el.textContent ?? ""))).toBeTruthy();
     const [body, key] = api.award.mock.calls[0]!;
     expect(body).toMatchObject({ memberId: member().memberId, locationId: "loc1" });
     expect((body as { amountCents?: number }).amountCents).toBeUndefined();
     expect(key).toMatch(/^counter-/);
-    await userEvent.click(screen.getByRole("button", { name: /Undo \(\d+\)/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Undo · \d+s/ }));
     await waitFor(() => expect(api.undo).toHaveBeenCalledWith("tx1"));
   });
 
@@ -88,17 +89,31 @@ describe("<CounterApp> award flow", () => {
     expect(api.award.mock.calls[0]![0]).toMatchObject({ amountCents: 1250 });
   });
 
-  it("reuses the same idempotency key when a network error forces a retry", async () => {
+  it("never loses an award: a network error saves it on the device and Retry now resends the same key", async () => {
+    localStorage.clear();
     const api = mockApi();
     api.award.mockRejectedValueOnce(ApiError.network());
+    render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} queueKey="test.queue" />);
+    await userEvent.type(screen.getByLabelText("Phone, last 4 digits or member code"), "4165550123{Enter}");
+    await screen.findByRole("heading", { name: "Pat Quinn" });
+    await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
+    expect((await screen.findAllByText(/Saved on this device/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/1 waiting to send/)).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem("test.queue")!)).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "Retry now" }));
+    await waitFor(() => expect(api.award).toHaveBeenCalledTimes(2));
+    expect(api.award.mock.calls[0]![1]).toBe(api.award.mock.calls[1]![1]);
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("test.queue")!)).toHaveLength(0));
+  });
+
+  it("words a cooldown like a person", async () => {
+    const api = mockApi();
+    api.award.mockRejectedValueOnce(new ApiError(409, "cooldown", "Too soon", undefined));
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} />);
     await userEvent.type(screen.getByLabelText("Phone, last 4 digits or member code"), "4165550123{Enter}");
     await screen.findByRole("heading", { name: "Pat Quinn" });
     await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
-    expect(await screen.findByText(/Can't connect right now/)).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Add stamp" }));
-    await screen.findByText("Added 1 stamp");
-    expect(api.award.mock.calls[0]![1]).toBe(api.award.mock.calls[1]![1]);
+    expect(await screen.findByText(/Pat already got stamps for this visit/)).toBeTruthy();
   });
 
   it("offers Add and award for a new phone with an unticked consent box", async () => {

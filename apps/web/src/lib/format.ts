@@ -72,3 +72,16 @@ export function formatClock(d: Date): string {
     .replace("a m", "am")
     .replace("p m", "pm");
 }
+
+/** "+50" / "−250" (U+2212, never a hyphen) for ledger deltas. */
+export function formatSigned(n: number): string {
+  if (n > 0) return `+${formatNumber(n)}`;
+  if (n < 0) return `−${formatNumber(Math.abs(n))}`;
+  return "0";
+}
+
+/** A reward name inside a sentence: "Free drink" → "free drink"; "$10 off" and "VIP night" stay. */
+export function rewardInSentence(name: string): string {
+  const m = /^([A-Z][a-z]+)(\b.*)$/.exec(name);
+  return m ? `${m[1]!.toLowerCase()}${m[2]}` : name;
+}

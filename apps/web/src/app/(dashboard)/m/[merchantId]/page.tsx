@@ -5,10 +5,12 @@ import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { Empty, Meter, PageHeader, QuietLink, Row, RowList, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
-import { firstName, formatNumber, formatTime } from "@/lib/format";
+import { firstName, formatNumber, formatPoints, formatTime } from "@/lib/format";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 import { signedPoints, sourceLabel, typeLabel } from "@/lib/dashboard/labels";
 import { RANGE_OPTIONS, greeting, longDate, pctDelta, rangeFor, relativeTime, type RangeKey } from "@/lib/dashboard/time";
+
+const plural = (n: number, word: string) => `${formatNumber(n)} ${word}${n === 1 ? "" : "s"}`;
 
 export default function HomePage() {
   const { api, base, detail, role, me, enabled } = useMerchant();
@@ -102,7 +104,7 @@ export default function HomePage() {
       <div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">
         <Section
           title="Today at the counter"
-          description={today.data ? `${formatNumber(today.data.visitCount)} visits · ${formatNumber(today.data.pointsIssued)} given · ${formatNumber(today.data.newMembers)} new` : " "}
+          description={today.data ? `${plural(today.data.visitCount, "visit")} · ${formatPoints(today.data.pointsIssued, term)} given · ${formatNumber(today.data.newMembers)} new` : " "}
           action={<QuietLink href={`${base}/counter`}>Counter</QuietLink>}
         >
           {today.loading && !today.data ? (
@@ -178,10 +180,7 @@ export default function HomePage() {
 
       {manager && upsellKeys.length === 3 ? (
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-fg-muted">
-          <span className="text-fg">More with Plus</span>
-          <span>— promos, marketing, POS sync</span>
-          <span aria-hidden>·</span>
-          <span>coming soon</span>
+          <span>Promos, marketing and POS sync are coming with Plus</span>
           <span aria-hidden>·</span>
           <NotifyLink keys={[...upsellKeys]} />
         </p>

@@ -1,11 +1,11 @@
 "use client";
 import { BellOff, ChevronRight } from "lucide-react";
+import { placeKind } from "@/lib/place";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatDistance, formatNumber, unitFor } from "@/lib/format";
 import { SponsoredBadge } from "./Badge";
-import { verticalLabel } from "./VerticalIcon";
 
 export interface ShopTileShop {
   name: string;
@@ -31,26 +31,8 @@ export interface ShopTileProps {
   className?: string;
 }
 
-/** "Pinecone Coffee Co." → "PC"; one word → first two letters. */
-export function shopInitials(name: string): string {
-  const words = name.replace(/['’]/g, "").replace(/[^\p{L}\p{N}\s&]/gu, " ").split(/\s+/).filter((w) => w && !/^(the|and|&|of|co|inc|ltd)$/i.test(w));
-  if (!words.length) return (name.trim()[0] ?? "?").toUpperCase();
-  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
-  return (words[0]![0]! + words[1]![0]!).toUpperCase();
-}
-
-/** Black or white text on a hex background (WCAG relative luminance). */
-export function onColor(hex: string): "#FFFFFF" | "#0B0B0C" {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "#FFFFFF";
-  const n = parseInt(m[1]!, 16);
-  const lin = (c: number) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return L > 0.4 ? "#0B0B0C" : "#FFFFFF";
-}
+export { onColor, shopInitials } from "@/lib/shopAvatar";
+import { onColor, shopInitials } from "@/lib/shopAvatar";
 
 /**
  * Shop avatar: round logo, or initials on the shop's own brandColor (neutral grey without one, or
@@ -67,10 +49,11 @@ export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: 
   return (
     <span
       aria-hidden
-      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-[0.01em]", !brand && (tone === "solid" ? "bg-fg text-bg" : "bg-bg-muted text-fg"), px, className)}
+      // Lowercase initials in the display face, same as the app's avatars (polish-audit W3).
+      className={cn("display inline-flex shrink-0 select-none items-center justify-center rounded-full font-extrabold tracking-normal", !brand && (tone === "solid" ? "bg-fg text-bg" : "bg-bg-muted text-fg"), px, className)}
       style={style}
     >
-      {shopInitials(shop.name)}
+      {shopInitials(shop.name).toLowerCase()}
     </span>
   );
 }
@@ -103,7 +86,8 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
           <ShopLogo shop={shop} size={64} />
           <div className="min-w-0 flex-1">
             {sponsored ? <SponsoredBadge /> : null}
-            <h1 className="display text-large-title text-fg">{shop.name}</h1>
+            {/* Shop title: 22/600 like the app's shop sheet, never heavy (polish-audit M13). */}
+            <h1 className="text-title font-semibold text-fg">{shop.name}</h1>
             {subtitle ? <p className="mt-0.5 text-meta italic text-fg-muted">{subtitle}</p> : null}
           </div>
         </div>
@@ -117,15 +101,18 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
       <ShopLogo shop={shop} size={variant === "compact" ? 40 : 44} />
       <div className="min-w-0 flex-1">
         {sponsored ? <SponsoredBadge /> : null}
-        <div className={cn("text-body-strong text-fg", variant === "compact" && "[&_.truncate]:line-clamp-2 [&_.truncate]:whitespace-normal")}>{name}</div>
-        {second ? <div className="truncate text-meta text-fg-muted">{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{verticalLabel(shop.vertical).toLowerCase()}</div> : null}
-      </div>
-      {variant === "wallet" && balance ? (
-        <div className="flex shrink-0 flex-col items-end">
-          <span className="display text-title leading-7 tabular-nums text-accent-text">{formatNumber(balance.value)}</span>
-          <span className="text-caption text-fg-muted">{rewardReady ? "reward ready" : unitFor(balance.terminology, balance.value, false)}</span>
+        {/* Name and balance share one baseline (polish-audit S11). */}
+        <div className="flex items-baseline gap-3">
+          <div className={cn("min-w-0 flex-1 text-body-strong text-fg", variant === "compact" && "[&_.truncate]:line-clamp-2 [&_.truncate]:whitespace-normal")}>{name}</div>
+          {variant === "wallet" && balance ? (
+            <span className="shrink-0 whitespace-nowrap">
+              <span className={cn("text-headline tabular-nums", balance.value === 0 ? "text-fg-muted" : "text-accent-text")}>{formatNumber(balance.value)}</span>
+              <span className="text-meta text-fg-muted"> {unitFor(balance.terminology, balance.value)}</span>
+            </span>
+          ) : null}
         </div>
-      ) : null}
+        {second ? <div className={cn("truncate text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKind(shop.vertical)}</div> : null}
+      </div>
       {href && variant !== "compact" ? <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" /> : null}
     </>
   );

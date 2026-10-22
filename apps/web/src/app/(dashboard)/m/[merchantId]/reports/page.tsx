@@ -1,5 +1,6 @@
 "use client";
-import { Download } from "lucide-react";
+import { Check, Download } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { useState } from "react";
 import { BarChart, HBarList, WeekdayBars } from "@/components/dashboard/Charts";
 import { PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, StatBlock, type StatItem } from "@/components/dashboard/kit";
@@ -99,7 +100,7 @@ export default function ReportsPage() {
                 action={
                   <>
                     <QuietButton aria-pressed={compare} onClick={() => setCompare((v) => !v)} className={compare ? "text-fg" : undefined}>
-                      <span aria-hidden className={compare ? "size-2 rounded-[2px] bg-bg-muted ring-1 ring-fg-subtle" : "size-2 rounded-[2px] border border-fg-subtle"} />
+                      <span aria-hidden className={cn("inline-flex size-4 items-center justify-center rounded-[4px] border", compare ? "border-fg bg-fg text-bg" : "border-line-strong")}>{compare ? <Check className="size-3" strokeWidth={3} /> : null}</span>
                       Compare to previous period
                     </QuietButton>
                     {exportBtn("visits-per-day.csv", [["date", "visits", "new_members", "points_issued", "points_redeemed", "revenue"], ...series.map((s) => [s.date, s.visits, s.newMembers, s.pointsIssued, s.pointsRedeemed, (s.revenueCents / 100).toFixed(2)])])}

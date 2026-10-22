@@ -86,13 +86,13 @@ export function ListGroup({ title, action, footer, children, className, inset = 
   return (
     <section className={cn("flex flex-col gap-2", className)} aria-label={label}>
       {title || action ? (
-        <div className="flex items-baseline justify-between gap-3 px-1">
+        <div className="flex items-baseline justify-between gap-3">
           {title ? <h2 className="text-meta-strong text-fg-muted">{title}</h2> : <span />}
           {action}
         </div>
       ) : null}
       <As className={cn("flex flex-col divide-y divide-line overflow-hidden", inset && "rounded-card border border-line bg-bg px-4")}>{children}</As>
-      {footer ? <div className="px-1 text-meta text-fg-muted">{footer}</div> : null}
+      {footer ? <div className="text-meta text-fg-muted">{footer}</div> : null}
     </section>
   );
 }

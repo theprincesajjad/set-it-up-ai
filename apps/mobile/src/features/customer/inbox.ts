@@ -13,7 +13,7 @@ import { isApiError } from "../../api/client";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
-import { openDeepLink } from "../deepLinks";
+import { openNotificationData, routeForNotification } from "./notifications";
 
 type Page = customerApi.NotificationsResponse;
 
@@ -83,29 +83,11 @@ export function useMarkRead() {
   });
 }
 
-/** Where a notification goes when tapped (its `data`), falling back to the shop. */
+/** Where a notification goes when tapped: its `data.url` first, then screen/ids (notifications.ts), then the shop. */
 export function openNotification(n: customerApi.NotificationDto): void {
   const d = n.data ?? {};
-  if (typeof d.url === "string" && d.url) return openDeepLink(d.url);
-  const slug = (typeof d.slug === "string" && d.slug) || n.merchant?.slug;
-  switch (d.screen) {
-    case "rewards":
-      return void router.push("/rewards");
-    case "card":
-      return void router.push("/card");
-    case "order":
-      if (typeof d.orderId === "string") return void router.push(`/orders/${d.orderId}`);
-      break;
-    case "ticket":
-      if (typeof d.ticketId === "string") return void router.push(`/tickets/${d.ticketId}`);
-      break;
-    case "campaign":
-      if (typeof d.campaignId === "string") return void router.push(`/campaigns/${d.campaignId}`);
-      break;
-    default:
-      break;
-  }
-  if (slug) router.push(`/shop/${slug}`);
+  if ((typeof d.url === "string" && d.url) || routeForNotification(d)) return openNotificationData(d);
+  if (n.merchant?.slug) router.push(`/shop/${n.merchant.slug}`);
 }
 
 /** Inbox sections: today · this week · earlier. */

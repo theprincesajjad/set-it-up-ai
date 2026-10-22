@@ -11,7 +11,7 @@ import { OtpField } from "@/components/ui/OtpField";
 import { PhoneField } from "@/components/ui/PhoneField";
 
 /** Customer sign-in by phone + OTP. Sets the httpOnly session, then navigates (or refreshes). */
-export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phone", heading = "h1" }: { next?: string; devAutofill?: boolean; title?: string; heading?: "h1" | "h2" }) {
+export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phone", heading = "h1", intro }: { next?: string; devAutofill?: boolean; title?: string; heading?: "h1" | "h2"; /** One sentence under the title (replaces the "6-digit code" line). */ intro?: string }) {
   const H = heading;
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -59,7 +59,10 @@ export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phon
 
   return (
     <div className="flex flex-col gap-5">
-      <H className={heading === "h1" ? "display text-large-title text-fg" : "display text-title text-fg"}>{title}</H>
+      <div className="flex flex-col gap-1.5">
+        <H className={heading === "h1" ? "display text-large-title text-fg" : "display text-title text-fg"}>{title}</H>
+        {intro ? <p className="text-body text-fg-muted">{intro}</p> : null}
+      </div>
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
       {step === "phone" ? (
         <form onSubmit={send} noValidate className="flex flex-col gap-4">
@@ -67,7 +70,7 @@ export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phon
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {copy.action.sendCode}
           </Button>
-          <p className="text-center text-meta text-fg-muted">We&apos;ll text you a 6-digit code.</p>
+          {intro ? null : <p className="text-meta text-fg-muted">We&apos;ll text you a 6-digit code.</p>}
         </form>
       ) : (
         <form

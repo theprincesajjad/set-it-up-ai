@@ -1,5 +1,6 @@
 import { Globe, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
+import { placeKind } from "@/lib/place";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
@@ -14,13 +15,13 @@ import { PointsRing } from "@/components/ui/PointsRing";
 import { PromoCard } from "@/components/ui/PromoCard";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopTile } from "@/components/ui/ShopTile";
-import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { copy } from "@/copy/en-CA";
 import { isApiError } from "@/lib/api/errors";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
-import { formatPoints } from "@/lib/format";
+import { formatPoints, rewardInSentence } from "@/lib/format";
+import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { openStatus, weekRows } from "@/lib/hours";
 import { howYouEarn } from "@/lib/program";
 
@@ -109,11 +110,11 @@ export default async function ShopPage({ params, searchParams }: Props) {
       <ShopTile
         variant="hero"
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }}
-        subtitle={[verticalLabel(m.vertical).toLowerCase(), m.neighbourhood?.name].filter(Boolean).join(" · ")}
+        subtitle={[placeKind(m.vertical), m.neighbourhood?.name.toLowerCase()].filter(Boolean).join(" · ")}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
-          {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label}</StatusDot> : null}
+          {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
           {shop.memberCount ? <span className="text-fg-muted">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</span> : null}
           {shop.features?.orderAhead ? <span className="text-fg-muted">Order ahead in the app</span> : null}
           {shop.features?.serviceTickets ? <span className="text-fg-muted">Repair tracking</span> : null}
@@ -131,16 +132,19 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
 
       {membership ? (
-        <div className="flex items-center gap-4 rounded-card border border-line p-4">
+        <div className="flex flex-col gap-4 rounded-card border border-line p-4">
+        <div className="flex items-center gap-4">
           <PointsRing balance={membership.balance} goal={membership.nextReward?.pointsCost ?? 0} terminology={membership.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
             <p className="text-meta text-fg-muted">You have</p>
             <p className="display text-title tabular-nums text-accent-text">{formatPoints(membership.balance, membership.terminology, false)}</p>
-            <p className="text-meta text-fg-muted">{membership.nextReward ? `${membership.nextReward.pointsNeeded} more for a ${membership.nextReward.name}` : membership.expiryDisclosure}</p>
+            <p className="text-meta text-fg-muted">{membership.nextReward ? `${membership.nextReward.pointsNeeded} more for a ${rewardInSentence(membership.nextReward.name)}` : membership.expiryDisclosure}</p>
           </div>
           <Button variant="secondary" size="sm" href="/me">
             My card
           </Button>
+        </div>
+        <MemberWalletButtons />
         </div>
       ) : null}
 
@@ -157,8 +161,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                     <div className="flex flex-col gap-1 py-3.5">
                       <p className="text-body-strong text-fg">{howYouEarn(program)}</p>
                       {program.welcomeBonus > 0 ? (
-                        <p className="flex items-center gap-2 text-meta text-fg">
-                          <span aria-hidden className="size-1.5 rounded-full bg-accent" />
+                        <p className="text-meta text-fg">
                           Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.
                         </p>
                       ) : null}

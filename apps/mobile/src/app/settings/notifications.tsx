@@ -5,7 +5,8 @@ import { Linking, StyleSheet, View } from "react-native";
 import { isApiError } from "../../api/client";
 import { CHANNEL_LABELS, groupPrefs, useNotificationPrefs, useSetNotificationPref } from "../../features/customer/inbox";
 import { usePhase2 } from "../../features/customer/queries";
-import { pushPermissionDenied, registerForPush } from "../../features/push";
+import { registerForCustomerPush } from "../../features/customer/notifications";
+import { pushPermissionDenied } from "../../features/push";
 import { useSession } from "../../state/session";
 import { Banner, ErrorState, ListRow, Screen, Section, Skeleton, Store, SwitchRow, Text, useToast } from "../../ui";
 
@@ -58,7 +59,7 @@ export default function NotificationSettings() {
           variant="neutral"
           actionLabel="Turn on"
           onAction={async () => {
-            const r = await registerForPush().catch(() => "unavailable" as const);
+            const r = await registerForCustomerPush().catch(() => "unavailable" as const);
             toast(r === "registered" ? "Notifications are on." : r === "denied" ? "Turn notifications on in your phone's settings." : "Notifications aren't available on this device yet.");
             updatePrefs({ pushPrompted: true });
           }}

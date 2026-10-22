@@ -15,8 +15,7 @@ export default async function MePage() {
   if (!me) {
     return (
       <div className="flex flex-col gap-4 pt-2">
-        <PhoneSignIn devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} title="Your card" />
-        <p className="text-meta text-fg-muted">Sign in with the number you gave at the counter to see your shops, balances and rewards.</p>
+        <PhoneSignIn devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} title="your card" intro="Use the number you gave at the counter. We'll text you a code." />
       </div>
     );
   }

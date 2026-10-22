@@ -3,7 +3,7 @@ import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 /** For settings that apply immediately. iOS proportions (51 × 31), black when on. Label on the left describes the on-state. */
-export function Switch({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean }) {
+export function Switch({ checked, onChange, label, description, disabled, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean; /** When the visible label is short ("Mute this shop"), the full spoken name. */ ariaLabel?: string }) {
   const id = useId();
   return (
     <div className="flex min-h-12 items-center justify-between gap-4 py-1">
@@ -18,6 +18,7 @@ export function Switch({ checked, onChange, label, description, disabled }: { ch
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={ariaLabel}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(

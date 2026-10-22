@@ -15,7 +15,7 @@ import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
 import { Appear, Banner, Button, Card, ConsentCheckbox, haptic, Sheet, ShopLogo, SuccessCheck, Text, useToast } from "../../ui";
 import { WalletPassButton } from "./WalletPassButton";
-import { registerForPush } from "../push";
+import { registerForCustomerPush } from "./notifications";
 import { observeServerTimestamp } from "../../lib/serverClock";
 
 export function JoinSheet({
@@ -248,7 +248,7 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
             loading={busy}
             onPress={async () => {
               setBusy(true);
-              const res = await registerForPush().catch(() => "unavailable" as const);
+              const res = await registerForCustomerPush().catch(() => "unavailable" as const);
               setBusy(false);
               if (res === "registered") toast({ tone: "success", message: "Notifications are on." });
               else if (res === "denied") toast("Notifications are off. You can turn them on in Settings.");

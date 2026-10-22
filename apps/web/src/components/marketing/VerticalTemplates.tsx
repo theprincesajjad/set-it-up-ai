@@ -1,4 +1,5 @@
 "use client";
+import { formatPoints, rewardInSentence } from "@/lib/format";
 import { useState } from "react";
 import { VERTICAL_TEMPLATES, type Vertical } from "@ll/shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
@@ -35,10 +36,10 @@ export function VerticalTemplates() {
         <div>
           <p className="text-meta text-fg-muted">Default program · {t.label}</p>
           <p className="display mt-3 text-mkt-sm md:text-mkt-md">
-            {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${reward?.name}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${reward?.name}`}
+            {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${rewardInSentence(reward?.name ?? "a reward")}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${rewardInSentence(reward?.name ?? "a reward")}`}
           </p>
           <p className="mt-4 text-body text-fg-muted">
-            Welcome bonus: {t.welcomeBonus} {t.terminology}. Change anything in your dashboard.
+            Welcome bonus: {formatPoints(t.welcomeBonus, t.terminology, false)}. Change anything in your dashboard.
           </p>
           {v === "pharmacy" ? <p className="mt-4 border-s-2 border-line ps-3 text-meta text-fg-muted">Front-store points only. {copy.misc.pharmacyRule}</p> : null}
           {t.categories.some((c) => !c.earnEligible) && v !== "pharmacy" ? (

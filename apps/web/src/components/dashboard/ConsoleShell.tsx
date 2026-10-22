@@ -66,10 +66,8 @@ export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: au
           </span>
           <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-fg">{TITLE[kind]}</span>
           {kind !== "bia" ? (
-            <span className="inline-flex items-center gap-1 text-caption font-normal text-fg-muted">
-              <span aria-hidden className={kind === "admin" ? "size-1.5 rounded-full bg-negative" : "size-1.5 rounded-full bg-location"} />
-              {kind === "admin" ? "Admin" : "Rep"}
-            </span>
+            // A neutral tag: a red dot read as an error, a blue one as "your location" (polish-audit D17).
+            <span className="inline-flex h-5 items-center rounded-full border border-line px-2 text-caption font-medium text-fg-muted">{kind === "admin" ? "admin" : "rep"}</span>
           ) : null}
         </div>
       }

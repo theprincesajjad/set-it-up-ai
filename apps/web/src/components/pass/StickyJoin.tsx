@@ -13,7 +13,7 @@ export function StickyJoin({ label, target = "join" }: { label: string; target?:
     return () => io.disconnect();
   }, [target]);
   return (
-    <div className={`chrome sticky bottom-0 z-sticky -mx-4 border-t border-line px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-none! transition-opacity duration-150 ease-out ${hidden ? "pointer-events-none opacity-0" : ""}`}>
+    <div className={`chrome sticky bottom-0 z-sticky -mx-4 border-t border-line px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-none! transition-[opacity,transform,visibility] duration-200 ease-out ${hidden ? "pointer-events-none invisible translate-y-full opacity-0" : ""}`}>
       <Button href={`#${target}`} fullWidth size="lg">
         {label}
       </Button>

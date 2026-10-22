@@ -16,5 +16,5 @@ export function typeLabel(t: string): string {
 
 /** "+2 stamps", "-1 stamp" (unit agrees with the absolute value). */
 export function signedPoints(n: number, terminology?: string | null): string {
-  return `${n >= 0 ? "+" : "-"}${formatPoints(Math.abs(n), terminology)}`;
+  return `${n >= 0 ? "+" : "\u2212"}${formatPoints(Math.abs(n), terminology)}`;
 }

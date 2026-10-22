@@ -69,3 +69,11 @@ export const PHONE_ERRORS = {
   incomplete: "Enter a 10-digit mobile number.",
   invalid: "That doesn't look like a Canadian or US mobile number. Check the area code.",
 } as const;
+
+/** The one mask (polish-audit S18): "(647) ••• 1009" from a full number or the API's "(647) ***-1009". */
+export function maskPhone(phone: string | null | undefined): string {
+  const d = (phone ?? "").replace(/\D/g, "");
+  if (d.length < 4) return phone ?? "";
+  const nanp = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+  return nanp.length >= 7 ? `(${nanp.slice(0, 3)}) ••• ${d.slice(-4)}` : `•• ${d.slice(-4)}`;
+}

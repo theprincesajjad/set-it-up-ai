@@ -85,6 +85,12 @@ export function llApi(c: ApiClient) {
       cancelRedemption: (redemptionId: string) => c.delete<{ balance: number }>(`/v1/me/redemptions/${enc(redemptionId)}`),
       card: () => c.get<customerApi.CardResponse>("/v1/me/card"),
       referral: (memberId: string) => c.get<customerApi.ReferralResponse>(`/v1/me/memberships/${enc(memberId)}/referral`),
+      notifications: (q: { limit?: number; cursor?: string; unread?: boolean } = {}) =>
+        c.get<customerApi.NotificationsResponse>("/v1/me/notifications", { query: { limit: q.limit ?? 30, cursor: q.cursor, unread: q.unread ? "1" : undefined } }),
+      readNotification: (id: string) => c.post<customerApi.NotificationsReadResponse>(`/v1/me/notifications/${enc(id)}/read`),
+      readAllNotifications: () => c.post<customerApi.NotificationsReadResponse>("/v1/me/notifications/read-all"),
+      notificationPrefs: () => c.get<customerApi.NotificationPrefsResponse>("/v1/me/notification-prefs"),
+      updateNotificationPrefs: (body: customerApi.UpdateNotificationPrefsBody) => c.put<customerApi.NotificationPrefsResponse>("/v1/me/notification-prefs", body),
       wallet: () => c.get<walletApi.WalletStatusResponse>("/v1/me/wallet"),
       googleWallet: () => c.get<walletApi.GoogleSaveResponse>("/v1/me/wallet/google"),
       appleWalletLink: () => c.get<walletApi.AppleLinkResponse>("/v1/me/wallet/apple/link"),

@@ -4,6 +4,8 @@
  * "No-download join"): phone → code → name + CASL consent → joined.
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
+import { WalletButtons } from "./WalletButtons";
+import { placeKind } from "@/lib/place";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { authApi, customerApi, networkApi, walletApi } from "@ll/shared";
@@ -11,7 +13,7 @@ import { copy } from "@/copy/en-CA";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError, errorMessage } from "@/lib/api/errors";
 import { firstName, formatPoints } from "@/lib/format";
-import { toE164, validateNanp, PHONE_ERRORS } from "@/lib/phone";
+import { formatE164, toE164, validateNanp, PHONE_ERRORS } from "@/lib/phone";
 import { howYouEarn, welcomeOffer } from "@/lib/program";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -21,7 +23,6 @@ import { OtpField } from "@/components/ui/OtpField";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
-import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { StampCard } from "@/components/ui/StampCard";
 import { TextField } from "@/components/ui/TextField";
 
@@ -217,7 +218,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <ShopLogo shop={info.merchant} size={56} />
           <div className="min-w-0">
             <p className="truncate text-headline text-fg">{shop}</p>
-            <p className="truncate text-meta italic text-fg-muted">{[verticalLabel(info.merchant.vertical).toLowerCase(), info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
+            <p className="truncate text-meta italic text-fg-muted">{[placeKind(info.merchant.vertical), info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
           </div>
         </header>
       ) : null}
@@ -227,10 +228,9 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       {step === "phone" ? (
         <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            {showHeader ? <h1 className="display text-large-title text-fg">Join in 30 seconds</h1> : <h2 className="display text-title text-fg">Join in 30 seconds</h2>}
+            {showHeader ? <h1 className="display text-large-title text-fg">join in 30 seconds</h1> : <h2 className="display text-title text-fg">join in 30 seconds</h2>}
             {program ? (
-              <p className="flex items-center gap-2 text-body text-fg">
-                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
+              <p className="text-body text-fg-muted">
                 {welcomeOffer(program, networkShops)}
               </p>
             ) : null}
@@ -288,7 +288,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             text={consentText}
             checked={consent}
             onChange={setConsent}
-            caption={copy.consent.merchantCaption(shop, info.location.address, info.location.phone ?? "")}
+            caption={copy.consent.merchantCaption(shop, info.location.address, info.location.phone ? formatE164(info.location.phone) : "")}
           />
           <Button type="submit" size="lg" fullWidth loading={busy || step === "joining"}>
             {copy.action.join(shop)}
@@ -323,9 +323,15 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   // Only rendered after the join completes (never server-rendered), so reading the UA here is safe.
   const [os] = useState<"ios" | "android" | "other">(platform);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
 
   useEffect(() => {
     headingRef.current?.focus();
+    // Hide a wallet the server can't issue yet (GET /v1/me/wallet → apple/google.available).
+    deps
+      .wallet()
+      .then((s) => setAvailable({ apple: s.apple.available, google: s.google.available }))
+      .catch(() => undefined);
     deps.card().then(setCard).catch(() => undefined);
     const { lat, lng } = info.location;
     if (lat != null && lng != null)
@@ -364,8 +370,6 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
 
   const fname = firstName(name);
   const bonus = result.bonusPoints > 0 ? formatPoints(result.bonusPoints, m.terminology, false) : null;
-  const showApple = os !== "android";
-  const showGoogle = os !== "ios";
   const goal = m.nextReward?.pointsCost ?? program?.stampGoal ?? 0;
 
   return (
@@ -399,23 +403,14 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
         <p className="text-meta text-fg-muted">{m.expiryDisclosure}</p>
       </div>
 
-      <section aria-label="Your card" className="flex flex-col items-center gap-3 rounded-sheet bg-bg-subtle px-4 py-6">
+      <section aria-label="Your card" className="flex flex-col items-center gap-3 rounded-card border border-line px-4 py-6">
         <p className="text-body-strong text-fg">Show this to staff</p>
         {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption="Turn your brightness up so it scans first time." /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
       </section>
 
       <div className="flex flex-col gap-2">
         {walletError ? <Banner tone="neutral">{walletError}</Banner> : null}
-        {showApple ? (
-          <Button size="lg" fullWidth variant={os === "ios" || os === "other" ? "primary" : "secondary"} loading={walletBusy === "apple"} onClick={apple}>
-            {copy.action.addToAppleWallet}
-          </Button>
-        ) : null}
-        {showGoogle ? (
-          <Button size="lg" fullWidth variant={os === "android" ? "primary" : "secondary"} loading={walletBusy === "google"} onClick={google}>
-            {copy.action.addToGoogleWallet}
-          </Button>
-        ) : null}
+        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={walletBusy} available={available} />
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
           <span className="text-fg-muted">{copy.action.getTheApp}</span>
           {os !== "android" ? (
@@ -441,8 +436,8 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           </h2>
           <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1">
             {nearby.map((s) => (
-              <li key={s.merchant.id} className="w-60 shrink-0 snap-start">
-                <ShopTile variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
+              <li key={s.merchant.id} className="flex w-60 shrink-0 snap-start">
+                <ShopTile className="h-full w-full" variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
               </li>
             ))}
           </ul>

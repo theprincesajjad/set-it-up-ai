@@ -53,3 +53,60 @@ export function awardSuccess(p: ProgramForCounter, pointsEarned: number): string
   if (p.earnType === "stamps") return `Added ${pointsEarned} stamp${pointsEarned === 1 ? "" : "s"}`;
   return `Awarded ${pointsEarned} ${p.terminology === "points" ? "pts" : p.terminology}`;
 }
+
+/**
+ * Counter errors in plain words (polish-audit D11): what happened and what to do, one sentence.
+ * `code` is the API error code; `message` the API's own text (used only when it is already human).
+ */
+export function counterErrorMessage(e: { code?: string; status?: number; message?: string; isNetwork?: boolean }, ctx: { terminology?: string | null; firstName?: string | null } = {}): string {
+  const word = (ctx.terminology || "points").toLowerCase();
+  const who = ctx.firstName || "They";
+  if (e.isNetwork || e.status === 0) return "No connection. The award is saved here and sends when you're back online.";
+  switch (e.code) {
+    case "cooldown":
+      return `${who} already got ${word} for this visit. Wait a few minutes, or adjust it from the customer's page.`;
+    case "insufficient_points":
+      return `Not enough ${word} for that reward yet.`;
+    case "expired":
+    case "code_expired":
+      return "This code expired. Their points went back. Ask them to tap Redeem again.";
+    case "already_used":
+      return "This code was already used. Ask the customer to check their app.";
+    case "void":
+      return "This code was cancelled. Ask the customer to tap Redeem again.";
+    case "not_found":
+      return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
+    case "program_paused":
+      return "Your program is paused. Resume it in Program & rewards to award again.";
+    default:
+      if (e.status === 404) return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
+      if (e.status === 409 && e.message) return e.message;
+      if (e.status && e.status >= 500) return "Something went wrong on our end. Try again in a moment.";
+      return e.message || "That didn't work. Try again.";
+  }
+}
+
+/** An award saved on this device while offline: replayed with the same idempotency key (never double-awards). */
+export interface QueuedAward {
+  key: string;
+  body: Record<string, unknown>;
+  label: string;
+  at: number;
+}
+
+export const COUNTER_QUEUE_KEY = "ll.counter.queue";
+
+export function readQueue(raw: string | null): QueuedAward[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is QueuedAward => !!x && typeof (x as QueuedAward).key === "string" && typeof (x as QueuedAward).body === "object") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** "Undo · 8s" for the countdown on the success panel. */
+export function undoLabel(secondsLeft: number): string {
+  return `Undo · ${Math.max(0, secondsLeft)}s`;
+}

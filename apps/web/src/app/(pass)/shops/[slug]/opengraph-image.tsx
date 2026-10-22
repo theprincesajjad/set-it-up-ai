@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import { BRAND } from "@ll/shared";
 import { publicServerApi } from "@/lib/api/server";
+import { ogFonts } from "@/lib/og";
+import { onColor, shopInitials } from "@/lib/shopAvatar";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -24,6 +26,8 @@ export default async function ShopOg({ params }: { params: Promise<{ slug: strin
   } catch {
     /* generic card */
   }
+  const fonts = await ogFonts();
+  const display = fonts.length ? "Bricolage Grotesque" : undefined;
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: tint, padding: 72, color: ink }}>
@@ -31,17 +35,20 @@ export default async function ShopOg({ params }: { params: Promise<{ slug: strin
           {logo ? (
             <img src={logo} width={120} height={120} style={{ borderRadius: 60 }} alt="" />
           ) : (
-            <div style={{ width: 120, height: 120, borderRadius: 60, background: brand, display: "flex" }} />
+            // Lowercase initials on the shop's colour, the same avatar as the app and the pass.
+            <div style={{ width: 120, height: 120, borderRadius: 60, background: brand, color: onColor(brand), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, fontWeight: 800, fontFamily: display }}>
+              {shopInitials(name).toLowerCase()}
+            </div>
           )}
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 52, fontWeight: 700 }}>{name}</div>
+            <div style={{ fontSize: 52, fontWeight: 700, display: "flex" }}>{name}</div>
             {where ? <div style={{ fontSize: 32, color: "#6B6B70", fontStyle: "italic" }}>{where.toLowerCase()}</div> : null}
           </div>
         </div>
-        <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1.02, letterSpacing: -3 }}>Earn rewards at {name}</div>
+        <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1.02, letterSpacing: -1.6, fontFamily: display, display: "flex" }}>{`earn rewards at ${name.toLowerCase()}`}</div>
         <div style={{ fontSize: 30, display: "flex", color: "#6B6B70" }}>Part of {BRAND.name} · No app needed · Free</div>
       </div>
     ),
-    size,
+    { ...size, fonts },
   );
 }

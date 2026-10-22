@@ -47,7 +47,11 @@
     ".next-webv2/types/**/*.ts",
     ".next-webv2/dev/types/**/*.ts",
     ".next-dash/types/**/*.ts",
-    ".next-dash/dev/types/**/*.ts"
+    ".next-dash/dev/types/**/*.ts",
+    ".next-polish/types/**/*.ts",
+    ".next-polish/dev/types/**/*.ts",
+    ".next-lead/types/**/*.ts",
+    ".next-lead/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

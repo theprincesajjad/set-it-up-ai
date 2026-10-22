@@ -1,7 +1,7 @@
 "use client";
 import type { networkApi } from "@ll/shared";
+import { placeKind } from "@/lib/place";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { cn } from "@/lib/cn";
 import { formatPoints } from "@/lib/format";
 
@@ -9,7 +9,7 @@ import { formatPoints } from "@/lib/format";
 export function pinSubtitle(shop: networkApi.ShopListItemDto): string {
   if (shop.isMember && shop.myBalance != null) return `your ${formatPoints(shop.myBalance, shop.terminology, false)}`;
   if (shop.hasPromo) return "offer on now";
-  return verticalLabel(shop.merchant.vertical).toLowerCase();
+  return placeKind(shop.merchant.vertical);
 }
 
 /**
@@ -54,8 +54,8 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         </span>
         </span>
         {showLabel || selected ? (
-          <span className="flex max-w-[140px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_3px_#fff,0_0_5px_#fff]">
-            <span className="w-full truncate text-[13px] font-semibold leading-[15px] tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
+          <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_3px_#fff,0_0_5px_#fff]">
+            <span className="line-clamp-2 w-full text-[13px] font-semibold leading-[15px] tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
             <span className="w-full truncate text-[12px] italic leading-[14px] text-[#6B6B70]">{sub}</span>
           </span>
         ) : null}

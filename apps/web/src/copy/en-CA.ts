@@ -15,7 +15,7 @@ export const copy = {
     join: (shop: string) => `Join ${shop}`,
     showCard: "Show my card",
     addToAppleWallet: "Add to Apple Wallet",
-    addToGoogleWallet: "Save to Google Wallet",
+    addToGoogleWallet: "Add to Google Wallet",
     redeem: "Redeem",
     showCodeToStaff: "Show code to staff",
     getNewCode: "Get a new code",

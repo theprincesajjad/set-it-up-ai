@@ -6,10 +6,20 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { API } from "./fixtures";
+import { useFreePlan } from "./freePlan";
 
 const OUT = "e2e/screenshots/v2/dashboard";
 const OWNER = { email: "owner+pinecone-coffee@example.com", password: "localloyalty-demo" };
 const PILOT = { email: "owner+fix-it-phone-lab@example.com", password: "localloyalty-demo" };
+
+// The seed makes this shop a pilot (paid features on); these checks are for the free plan.
+let restorePilot: (() => Promise<void>) | undefined;
+test.beforeAll(async () => {
+  restorePilot = await useFreePlan(OWNER);
+});
+test.afterAll(async () => {
+  await restorePilot?.();
+});
 const REP = { email: "rep@localloyalty.example", password: "localloyalty-rep" };
 const ADMIN = { email: "admin@localloyalty.example", password: "localloyalty-admin" };
 

@@ -1,7 +1,7 @@
 /**
  * Push registration (expo-notifications → POST /v1/me/push-tokens).
  * Asked only after the pre-permission sheet ("Know when you've earned a
- * reward"), never cold. Taps open the deep link in the payload (ll://...).
+ * reward"), never cold. Taps: features/customer/notifications.ts useNotificationTaps().
  */
 import Constants from "expo-constants";
 import * as Device from "expo-device";
@@ -17,12 +17,8 @@ export function configureNotifications(): () => void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
   });
-  const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
-    const data = resp.notification.request.content.data as { url?: string; deepLink?: string } | undefined;
-    const url = data?.url ?? data?.deepLink;
-    if (typeof url === "string") openDeepLink(url);
-  });
-  return () => sub.remove();
+  // Taps are routed by useNotificationTaps() (features/customer/notifications.ts), mounted in app/_layout.tsx.
+  return () => undefined;
 }
 
 export type PushResult = "registered" | "denied" | "unavailable";

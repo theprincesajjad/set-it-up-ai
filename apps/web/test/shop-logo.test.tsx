@@ -13,13 +13,13 @@ describe("shop logo fallback", () => {
   });
   it("falls back to initials when there's no logo or it fails to load", () => {
     const { container, rerender } = render(<ShopLogo shop={{ name: "Pinecone Coffee", vertical: "cafe", logoUrl: null }} />);
-    expect(screen.getByText("PC")).toBeTruthy();
+    expect(screen.getByText("pc")).toBeTruthy();
     rerender(<ShopLogo shop={{ name: "Pinecone Coffee", vertical: "cafe", logoUrl: "https://x.example/broken.png" }} />);
     const img = container.querySelector("img")!;
     expect(img).toBeTruthy();
     fireEvent.error(img);
     expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByText("PC")).toBeTruthy();
+    expect(screen.getByText("pc")).toBeTruthy();
   });
   it("uses the token map style roles (Corner basemap)", () => {
     expect(mapLayerRole({ id: "background", type: "background" })).toBe("background");

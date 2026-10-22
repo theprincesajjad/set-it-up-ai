@@ -106,10 +106,11 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
   const state = f.lockedReason === "plan" && f.stage !== "hidden" ? "plan" : f.stage === "beta" ? "beta" : "hidden";
   const plan = PLANS[def.minPlan];
   return (
-    <div className="max-w-[560px] py-10">
-      <p className="text-meta text-fg-muted">{state === "hidden" ? `Coming with ${plan.name}` : state === "beta" ? "In beta" : `On ${plan.name} · $${plan.priceCents / 100}/mo`}</p>
-      <h1 className="mt-1 text-title text-fg">{title ?? f.name}</h1>
+    // Same top and order as every page header (title, one line, then the state) — polish-audit D15.
+    <div className="max-w-[560px]">
+      <h1 className="text-title font-semibold text-fg">{title ?? f.name}</h1>
       <p className="mt-1 text-body text-fg-muted">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
+      <p className="mt-3 text-meta text-fg-muted">{state === "hidden" ? `Coming with ${plan.name}` : state === "beta" ? "In beta" : `On ${plan.name} · $${plan.priceCents / 100}/mo`}</p>
       <div className="mt-5 flex flex-wrap items-center gap-4">
         {state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
         {state === "beta" && role === "owner" ? (

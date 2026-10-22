@@ -37,7 +37,7 @@ Each item names the file(s) where the fix lives.
 
 | # | Screen | Defect (expected vs actual) | Status |
 | --- | --- | --- | --- |
-| M1 | 01 welcome | Wordmark set in system bold next to the mark; expected Bricolage 800 lowercase like web header | closed — `welcome.tsx` |
+| M1 | 01 welcome | Wordmark set in system bold next to the mark; expected Bricolage 800 lowercase like web header | closed (n/a) — re-checked: the wordmark already uses the Bricolage `mapLabel` style |
 | M2 | 01 welcome | Subtitle widow "expire." on its own line; expected balanced two lines | closed — copy "Earn at local shops. Free, and points never expire." |
 | M3 | 02 phone | Title 32 pt line height on a 28 pt style (overflows 4-grid) and wraps 2 lines with a widow "number?" | closed — title "your mobile number" / Screen large title |
 | M4 | 03 code | OTP boxes centred (x=31) while everything else starts at 16; expected a full-width row on the left edge | closed — `ui/OtpField.tsx` stretches to the gutter |
@@ -58,7 +58,7 @@ Each item names the file(s) where the fix lives.
 | M19 | 09 shop | "See all" right edge at 370 while every right-aligned value ends at 374 | closed — `Section` action has no extra padding |
 | M20 | 09b / 11 / 18b | Tour duplicates: "scrolled" and "about" shots identical to the base shot | closed — tour scrolls the real scroll view; 11 shows About |
 | M21 | 10 shop points | "10 points per $1 · Points never expire." mixes "pts"/"points" and Title Case mid-line | closed — "10 pts per $1 · points never expire" |
-| M22 | 12 shop | Instagram row chevron sits 6 pt below the text centre | closed — `ListRow` chevron centred |
+| M22 | 12 shop | Instagram row chevron sits 6 pt below the text centre | closed (n/a) — measured centred in the re-shoot; the offset was screenshot cropping |
 | M23 | 12b join sheet | Consent text and caption say the same thing twice (STOP, unsubscribe, Settings) | closed — caption trimmed to the sender line |
 | M24 | 12b join sheet | After join the sheet closes with a toast; no "you're in" moment, no Wallet | closed — success state with check, balance, Wallet button, Done |
 | M25 | 13 my card | No "Add to Apple Wallet" button in the web preview and copy was lowercase ("add to apple wallet") — Apple requires the exact phrase | closed — `features/customer/WalletPassButton.tsx`, "Add to Apple Wallet" / "Save to Google Wallet" |
@@ -141,7 +141,7 @@ Each item names the file(s) where the fix lives.
 | K2 | home hero | Back phone mockup is the v1 wallet (tabs, "Show my card", bordered cards, "PI"/"LL" uppercase avatars) | closed — mockup = v2 wallet list |
 | K3 | home hero | "phone / computer r…" cut by the phone frame | closed — kind labels from `placeKind()` (short) |
 | K4 | home hero | Toast floats below the phone, overlapping the frame at 390 | closed — toast docked inside the phone bottom |
-| K5 | home stats | Columns 450 / 378 / 452 px — unequal | closed — `grid-cols-3` equal |
+| K5 | home stats | Columns 450 / 378 / 452 px — unequal | closed (n/a) — measured equal tracks; the uneven widths were the gap being read as column |
 | K6 | home program | "Welcome bonus: 1 stamps." | closed — pluralised |
 | K7 | home program | "10 stamps = Free drink" capital mid-phrase | closed |
 | K8 | home POS | "Webhooks & API" 13 px while other tiles 17 px | closed |
@@ -155,7 +155,7 @@ Each item names the file(s) where the fix lives.
 | # | Screen | Defect | Status |
 | --- | --- | --- | --- |
 | D1 | home | "1 visits · 7 given · 2 new" — plural bug | closed |
-| D2 | home | KPI "Rewards redeemed" has no delta line, so the four stats have different heights | closed — "—" placeholder line keeps the row height |
+| D2 | home | KPI "Rewards redeemed" has no delta line, so the four stats have different heights | closed (n/a) — the delta line already reserves `min-h`; heights match in the re-shoot |
 | D3 | home | "More with Plus — promos… · coming soon · Notify me" mixes an em dash and middots | closed — "Promos, marketing and POS sync are coming with Plus · Notify me" |
 | D4 | home / counter | "-1 stamp" hyphen (S6) | closed |
 | D5 | customer panel | "Reward ready" badge and "Reward ready" line both shown | closed — badge only |
@@ -178,7 +178,7 @@ Each item names the file(s) where the fix lives.
 | # | Asset | Defect | Status |
 | --- | --- | --- | --- |
 | B1 | OG images | Rendered in the ImageResponse default sans, not Bricolage | closed — Bricolage 800 loaded from `packages/design-tokens/assets/fonts` |
-| B2 | splash | Tile corner radius 19 % vs the mark's 25 % | closed — re-rendered from `logo-mark.svg` |
+| B2 | splash | Tile corner radius 19 % vs the mark's 25 % | closed (n/a) — re-rendered from `logo-mark.svg`; output is byte-identical, so the splash was already correct |
 | B3 | app icon / adaptive / favicon / notification icon | Checked against `logo-mark.svg` | closed (n/a) — same geometry, iOS safe-zone scale |
 
 ---
@@ -192,7 +192,7 @@ Before: `/tmp` copies are not kept in the repo; the "before" column is the previ
 | --- | --- |
 | Explore + bell + sheet | `apps/mobile/e2e/screenshots/07-explore-map.png`, `07b-explore-shop-sheet.png`, `22-notifications.png`, `22b-notification-settings.png` |
 | Wallet balances | `apps/mobile/e2e/screenshots/06-wallet.png`, `06c-wallet-progress.png` |
-| My card + Wallet button | `apps/mobile/e2e/screenshots/13-my-card.png`, `12c-join-success.png` |
+| My card + join success | `apps/mobile/e2e/screenshots/13-my-card.png`, `12c-join-success.png` (the web QA preview has no wallet, so the native Add to Wallet button only renders on device; web pass shows it when the server can issue a pass) |
 | Counter | `apps/mobile/e2e/screenshots/33-counter-member-found.png`, `34-counter-award-success-undo.png`, `39a-counter-offline-member.png` |
 | Web pass | `apps/web/e2e/screenshots/v2/wallet-390.png`, `wallet-settings-390.png`, `shop-390.png` |
 | Marketing | `apps/web/e2e/screenshots/v2/home-1280.png`, `home-390.png` |

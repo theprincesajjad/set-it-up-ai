@@ -3,6 +3,10 @@
  * Web pass (`/me`): my card, my shops, rewards with redeem → code, activity and
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
+import { CountUp } from "@/components/ui/CountUp";
+import { placeKind } from "@/lib/place";
+import { NotificationSettings } from "./NotificationSettings";
+import { WalletButtons } from "./WalletButtons";
 import { Activity, ChevronRight, Download, Gift, LogOut, QrCode, Store, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,7 +31,6 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RedeemCode } from "@/components/ui/RedeemCode";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
-import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { platform } from "./JoinFlow";
 import { StampCard } from "@/components/ui/StampCard";
@@ -122,12 +125,15 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
       <section aria-labelledby="total" className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <h1 id="total" className="display text-large-title text-fg">
-            Wallet
+            wallet
           </h1>
           <span className="truncate text-meta text-fg-muted">{[first, headline.context].filter(Boolean).join(" · ")}</span>
         </div>
         <div className="flex items-end gap-3">
-          <p className={headline.kind === "ready" ? "display text-[64px] leading-[0.9] tabular-nums text-accent-text" : "display text-[64px] leading-[0.9] tabular-nums text-fg"}>{headline.value.toLocaleString("en-CA")}</p>
+          {/* 40: the display-number step of the scale (was 64, off-scale). Counts up when it changes. */}
+          <p className={headline.kind === "ready" ? "display text-display-number tabular-nums text-accent-text" : "display text-display-number tabular-nums text-fg"}>
+            <CountUp value={headline.value} />
+          </p>
           <p className="max-w-[220px] pb-1 text-body text-fg-muted">{headline.label}</p>
         </div>
         <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} fullWidth>
@@ -160,44 +166,52 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
 /** My card (foundations.md "My card"): white sheet, big QR, member code in mono, one black wallet button for this phone. */
 function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"apple" | "google" | null>(null);
+  const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
   const [os, setOs] = useState<"ios" | "android" | "other">("other");
   useEffect(() => {
     // The UA is only known on the client.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOs(platform());
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    browserApi.me
+      .wallet()
+      .then((s) => setAvailable({ apple: s.apple.available, google: s.google.available }))
+      .catch(() => undefined);
+  }, [open]);
+  const unavailable = "Wallet passes aren't available right now. Your card above works at the counter.";
   async function google() {
+    setBusy("google");
     try {
       const r = await browserApi.me.googleWallet();
       window.location.href = r.saveUrl;
     } catch {
-      setWalletError("Wallet passes aren't available right now. Your card above works at the counter.");
+      setWalletError(unavailable);
+    } finally {
+      setBusy(null);
     }
   }
   async function apple() {
+    setBusy("apple");
     try {
       const s = await browserApi.me.wallet();
       if (s.apple.available && s.apple.downloadUrl) window.location.href = s.apple.downloadUrl;
-      else setWalletError("Wallet passes aren't available right now. Your card above works at the counter.");
+      else setWalletError(unavailable);
     } catch {
-      setWalletError("Wallet passes aren't available right now. Your card above works at the counter.");
+      setWalletError(unavailable);
+    } finally {
+      setBusy(null);
     }
   }
-  const primaryGoogle = os === "android";
   return (
-    <Modal open={open} onClose={onClose} title="My card" variant="sheet">
+    <Modal open={open} onClose={onClose} title="my card" variant="sheet">
       <div className="flex flex-col items-center gap-5 pt-2">
-        <p className="text-body-strong text-fg">{profile.name ?? "Member"}</p>
+        <p className="self-start text-meta text-fg-muted">{profile.name ?? "Member"}</p>
         {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} caption="Works at every shop on the network" /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
         {walletError ? <Banner tone="neutral" className="w-full">{walletError}</Banner> : null}
-        <div className="flex w-full flex-col gap-1">
-          <Button size="lg" fullWidth onClick={primaryGoogle ? google : apple}>
-            {primaryGoogle ? copy.action.addToGoogleWallet : copy.action.addToAppleWallet}
-          </Button>
-          <Button variant="ghost" size="lg" fullWidth onClick={primaryGoogle ? apple : google}>
-            {primaryGoogle ? copy.action.addToAppleWallet : copy.action.addToGoogleWallet}
-          </Button>
-        </div>
+        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="w-full" />
         <p className="-mt-2 text-center text-meta text-fg-muted">Turn your brightness up so it scans first time.</p>
       </div>
     </Modal>
@@ -239,9 +253,10 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
   );
   return (
     <div className="flex flex-col gap-6">
-      {ready.length ? <ListGroup title="Rewards ready">{ready.map(row)}</ListGroup> : null}
-      <ListGroup title={ready.length ? "Your shops" : undefined}>{rest.map(row)}</ListGroup>
-      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{verticalLabel(current.merchant.vertical).toLowerCase()}</span> : undefined}>
+      {/* A plain list with hairlines, like the app's wallet (polish-audit W2). */}
+      {ready.length ? <ListGroup title="rewards ready" inset={false}>{ready.map(row)}</ListGroup> : null}
+      {rest.length ? <ListGroup title={ready.length ? "earning" : "your shops"} inset={false}>{rest.map(row)}</ListGroup> : null}
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKind(current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
     </div>
@@ -539,6 +554,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
 
   return (
     <div id="settings" className="flex flex-col gap-7">
+      <NotificationSettings />
       <ListGroup title="Messages from shops" footer="Each shop asks separately. Muting stops all offers from a shop; your points keep working.">
         {wallet.items.map((m) => (
           <li key={m.id} className="flex flex-col py-3">
@@ -547,8 +563,8 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
               <span className="min-w-0 flex-1 truncate">{m.merchant.name}</span>
               {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">Offers on</StatusDot> : null}
             </p>
-            <Switch label={`Get offers from ${m.merchant.name}`} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : "By text and email. Unsubscribe anytime."} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
-            <Switch label={`Mute ${m.merchant.name}`} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
+            <Switch label="Offers by text and email" ariaLabel={`Get offers from ${m.merchant.name}`} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : "By text and email. Unsubscribe anytime."} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
+            <Switch label="Mute this shop" ariaLabel={`Mute ${m.merchant.name}`} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
           </li>
         ))}
       </ListGroup>
@@ -557,7 +573,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
         <div className="flex flex-col gap-4 py-4">
           <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           <TextField label="Email" type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-          <Button onClick={save} loading={saving} variant="secondary" className="self-start">
+          <Button onClick={save} loading={saving} className="self-start">
             Save
           </Button>
         </div>

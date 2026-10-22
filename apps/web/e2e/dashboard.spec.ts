@@ -4,6 +4,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { API } from "./fixtures";
+import { useFreePlan } from "./freePlan";
 
 const shot = (name: string) => `e2e/screenshots/dashboard/${name}.png`;
 const OWNER = { email: "owner+pinecone-coffee@example.com", password: "localloyalty-demo" };
@@ -11,6 +12,15 @@ const REP = { email: "rep@localloyalty.example", password: "localloyalty-rep" };
 const ADMIN = { email: "admin@localloyalty.example", password: "localloyalty-admin" };
 
 test.use({ viewport: { width: 1280, height: 900 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
+
+// The seed makes this shop a pilot (paid features on); these checks are for the free plan.
+let restorePilot: (() => Promise<void>) | undefined;
+test.beforeAll(async () => {
+  restorePilot = await useFreePlan(OWNER);
+});
+test.afterAll(async () => {
+  await restorePilot?.();
+});
 
 async function signIn(page: Page, who: { email: string; password: string }, next?: string) {
   await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
@@ -56,7 +66,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Integrations" })).toBeVisible();
-  await expect(page.getByText("More with Plus")).toBeVisible();
+  await expect(page.getByText("Promos, marketing and POS sync are coming with Plus")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
@@ -92,7 +102,7 @@ test("owner: web counter award, undo and repeat customer", async ({ page }) => {
   await expect(page.getByText(/^Added \d+ stamps?$/)).toBeVisible();
   await expect(page.getByText(/Robin has/)).toBeVisible();
   await page.screenshot({ path: shot("05-counter-awarded"), fullPage: true });
-  await page.getByRole("button", { name: /^Undo \(\d+\)$/ }).click();
+  await page.getByRole("button", { name: /^Undo · \d+s$/ }).click();
   await expect(page.getByRole("heading", { name: "Robin" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "How many" })).toBeVisible();
   await page.getByRole("radio", { name: "+2" }).click();

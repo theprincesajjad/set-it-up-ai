@@ -53,7 +53,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
     <FieldShell id={id} label={label} hint={hint} error={message}>
       <div className="flex items-stretch gap-2">
         {showCountryPrefix ? (
-          <span aria-hidden className="inline-flex min-h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body tabular-nums text-fg-muted">
+          <span aria-hidden className="inline-flex h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body text-fg-muted">
             +1
           </span>
         ) : null}
@@ -78,7 +78,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
           disabled={disabled}
           aria-invalid={message ? true : undefined}
           aria-describedby={describedBy(id, message, hint)}
-          className={cn(inputBase, "tabular-nums")}
+          className={cn(inputBase, "h-12")}
         />
       </div>
     </FieldShell>

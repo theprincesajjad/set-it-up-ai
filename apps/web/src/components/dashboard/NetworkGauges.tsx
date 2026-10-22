@@ -13,14 +13,15 @@ export function DensityBar({ label, value, target, unit = "shops", format = form
   return (
     <div className={cn("min-w-0", className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="truncate text-meta text-fg-muted">{label}</p>
+        <p className="min-w-0 text-meta text-fg-muted">{label}</p>
         <p className="shrink-0 text-caption font-normal text-fg-muted">{s === "ready" ? <span className="text-positive">{STATUS_TEXT[s]}</span> : `${format(Math.max(0, target - value))} to go`}</p>
       </div>
       <p className="mt-1 text-headline text-fg tabular">
         {format(value)}
         <span className="text-meta font-normal text-fg-muted">
           {" "}
-          / {format(target)} {unit}
+          / {format(target)}
+          {unit === "%" ? "%" : ` ${unit}`}
         </span>
       </p>
       <div role="progressbar" aria-label={`${label}: ${format(value)} of ${format(target)} ${unit}. ${STATUS_TEXT[s]}.`} aria-valuemin={0} aria-valuemax={target} aria-valuenow={value} className="mt-2 h-1 overflow-hidden rounded-full bg-bg-muted">

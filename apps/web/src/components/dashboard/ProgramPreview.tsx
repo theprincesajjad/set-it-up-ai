@@ -5,7 +5,7 @@ import { PointsRing } from "@/components/ui/PointsRing";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
-import { formatNumber, formatPoints } from "@/lib/format";
+import { formatNumber, formatPoints, rewardInSentence } from "@/lib/format";
 import type { PreviewModel } from "@/lib/dashboard/program";
 import { Segmented } from "./kit";
 
@@ -35,6 +35,13 @@ interface Shop {
   vertical: string;
   logoUrl?: string | null;
   brandColor?: string | null;
+}
+
+/** The wallet row's one line, as the app writes it: "4 more for a free drink" / "120 pts to $5 off" (D13). */
+function progressSubtitle(model: PreviewModel): string {
+  if (model.kind === "stamps") return model.goal - model.stamps > 0 ? `${model.goal - model.stamps} more for a ${rewardInSentence(model.rewardName)}` : "reward ready";
+  if (!model.rewardName || model.goal <= 0) return model.expiry;
+  return model.balance >= model.goal ? "reward ready" : `${model.goal - model.balance} ${model.terminology === "points" ? "pts" : model.terminology} to ${rewardInSentence(model.rewardName)}`;
 }
 
 /** Renders the real (v2) customer components with the draft program: wallet, shop page, counter success. */
@@ -80,7 +87,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
         {view === "wallet" ? (
           <div className="flex flex-col gap-3">
             <p className="font-display text-large-title lowercase text-fg">wallet</p>
-            <ShopTile variant="wallet" shop={shop} balance={{ value: balance, terminology: model.terminology }} rewardReady={model.kind === "points" ? model.goal > 0 && model.balance >= model.goal : false} subtitle={model.sentence.split(". ")[0]} />
+            <ShopTile variant="wallet" shop={shop} balance={{ value: balance, terminology: model.terminology }} rewardReady={model.kind === "points" ? model.goal > 0 && model.balance >= model.goal : false} subtitle={progressSubtitle(model)} />
             {card}
             {rewards}
             <p className="text-caption font-normal text-fg-muted">{model.expiry}</p>

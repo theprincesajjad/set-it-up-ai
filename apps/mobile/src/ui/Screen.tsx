@@ -109,7 +109,7 @@ export function Screen({
               {shownTitle}
             </Text>
           </Animated.View>
-          <View style={[styles.side, { alignItems: "flex-end" }]}>{trailing}</View>
+          <View style={[styles.side, { justifyContent: "flex-end" }]}>{trailing}</View>
           <Animated.View style={[styles.rule, { backgroundColor: c.line, opacity: ruleOpacity }]} />
         </View>
       ) : null}

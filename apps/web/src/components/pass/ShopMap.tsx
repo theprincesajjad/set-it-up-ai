@@ -8,6 +8,7 @@
  * WebGL or tiles the page falls back to the list (`onFail`).
  */
 import { LocateFixed, Maximize2, Search, X } from "lucide-react";
+import { placeKind } from "@/lib/place";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -20,7 +21,6 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { Spinner } from "@/components/ui/Spinner";
-import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { cn } from "@/lib/cn";
 import { formatDistance, formatPoints } from "@/lib/format";
 import { FilterRow, type FinderState } from "./ShopFinder";
@@ -129,7 +129,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
 
 /** Shop sheet (foundations.md "Shop sheet"): grabber, avatar + name + italic vertical line, open dot, my progress, one black action. */
 function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () => void }) {
-  const kind = verticalLabel(s.merchant.vertical).toLowerCase();
+  const kind = placeKind(s.merchant.vertical);
   const where = s.distanceMetres != null ? formatDistance(s.distanceMetres) : s.location?.address;
   return (
     <section

@@ -1,5 +1,5 @@
 import { shadows, type VerticalCategory } from "@ll/design-tokens";
-import { Image, Platform, StyleSheet, View, type TextStyle } from "react-native";
+import { Image, StyleSheet, View, type TextStyle } from "react-native";
 import { useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
 import { Text } from "./Text";
@@ -27,12 +27,9 @@ export interface PlaceBubbleProps {
 export function PlaceBubble({ name, subtitle, accent, vertical, category, photoUrl, selected, bare, size = 40 }: PlaceBubbleProps) {
   const { c, isDark } = useTheme();
   const s = selected ? size + 8 : size;
-  // A real halo (stacked on web, where one text-shadow is too faint) so road labels never read through
-  // the name (polish-audit M10).
-  const halo: TextStyle =
-    Platform.OS === "web"
-      ? ({ textShadow: `0 0 2px ${c.bg}, 0 0 3px ${c.bg}, 0 0 6px ${c.bg}, 0 0 10px ${c.bg}` } as TextStyle)
-      : { textShadowColor: c.bg, textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } };
+  // Halo so road labels never read through the name (polish-audit M10); the web preview stacks it in CSS
+  // (theme/webStyles.web.ts) because RN-web emits a single faint shadow.
+  const halo: TextStyle = { textShadowColor: c.bg, textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } };
   return (
     <View style={styles.row} pointerEvents="none">
       <View

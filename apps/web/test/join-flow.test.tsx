@@ -32,7 +32,7 @@ function makeDeps(over: Partial<JoinDeps> = {}): JoinDeps {
     updateName: vi.fn(async () => ({})),
     join: vi.fn(async () => ({ membership: membership(1), created: true, bonusPoints: 1, referral: null })),
     card: vi.fn(async () => ({ memberCode: "K7QX2M9P", qrPayload: "LL:K7QX2M9P", qrSvg: "<svg></svg>", name: "Alex" })),
-    wallet: vi.fn(async () => ({ summary: { memberCode: "K7QX2M9P", qrValue: "LL:K7QX2M9P", name: null, shopCount: 1, totalPoints: 1, shops: [] }, apple: { available: false, downloadUrl: null, reason: "not configured" }, google: { available: false, saveUrl: null, reason: "not configured" } })),
+    wallet: vi.fn(async () => ({ summary: { memberCode: "K7QX2M9P", qrValue: "LL:K7QX2M9P", name: null, shopCount: 1, totalPoints: 1, shops: [] }, apple: { available: true, downloadUrl: "https://example.com/p.pkpass", reason: null }, google: { available: false, saveUrl: null, reason: "not configured" } })),
     googleWallet: vi.fn(async () => ({ saveUrl: "https://pay.google.com/gp/v/save/x" })),
     nearby: vi.fn(async () => ({ items: [], nextCursor: null })),
     ...over,
@@ -52,7 +52,7 @@ describe("<JoinFlow> (counter QR join)", () => {
   it("phone → code (dev autofill) → name + unticked consent → join with QR + referral", async () => {
     const deps = makeDeps();
     render(<JoinFlow info={info} deps={deps} referralCode="REF12345" devAutofill />);
-    expect(screen.getByRole("heading", { name: "Join in 30 seconds" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "join in 30 seconds" })).toBeTruthy();
     expect(screen.getByText("Join and get 1 free stamp")).toBeTruthy();
 
     await enterPhone();
@@ -76,7 +76,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     expect(deps.updateName).toHaveBeenCalledWith("Alex");
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01", referralCode: "REF12345" });
     await waitFor(() => expect(screen.getByText("You're in, Alex.")).toBeTruthy());
-    expect(screen.getByText("Add to Apple Wallet")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add to Apple Wallet" })).toBeTruthy();
     await waitFor(() => expect(deps.card).toHaveBeenCalled());
   });
 

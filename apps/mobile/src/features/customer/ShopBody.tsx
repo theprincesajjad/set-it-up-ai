@@ -11,7 +11,8 @@ import { distanceMetres, type customerApi, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
+import { radii } from "@ll/design-tokens";
+import { Linking, Platform, Pressable, Share, StyleSheet, View } from "react-native";
 import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
 import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
@@ -68,13 +69,15 @@ export function useShopModel(slug: string | null | undefined) {
 }
 export type ShopModel = ReturnType<typeof useShopModel>;
 
-/** Small grey capsule with an icon (directions, call, website...). */
+/** Quick action tile: icon over a short label, equal widths so four always fit (same as the web pass). */
 function Action({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, transform: pressed ? [{ scale: 0.98 }] : undefined }]}>
-      <Icon size={16} color={c.fg} strokeWidth={1.75} />
-      <Text variant="metaStrong">{label}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, transform: pressed ? [{ scale: 0.98 }] : undefined }]}>
+      <Icon size={20} color={c.fg} strokeWidth={1.75} />
+      <Text variant="metaStrong" numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -218,12 +221,12 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={[styles.actions, { paddingHorizontal: 16 }]}>
+          <View style={styles.actions}>
             {loc ? <Action icon={Navigation} label="Directions" onPress={directions} /> : null}
             {s.merchant.phone || loc?.phone ? <Action icon={Phone} label="Call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} /> : null}
             {s.merchant.website ? <Action icon={Globe} label="Website" onPress={() => Linking.openURL(s.merchant.website!)} /> : null}
             <Action icon={Share2} label="Share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
-          </ScrollView>
+          </View>
 
           <Section title="Rewards">
             {rewardsList.length === 0 ? (
@@ -380,5 +383,5 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   actions: { flexDirection: "row", gap: 8 },
-  action: { flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 999 },
+  action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, height: 64, paddingHorizontal: 4, borderRadius: radii.card },
 });

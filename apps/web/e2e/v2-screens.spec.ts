@@ -77,7 +77,7 @@ for (const s of SIZES) {
     const page = await c.newPage();
     const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
     await page.goto(`/j/${qrCode}`);
-    await expect(page.getByRole("heading", { name: "Join in 30 seconds" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "join in 30 seconds" })).toBeVisible();
     await shot(page, "join-1-phone", s.w);
     await page.getByLabel("Mobile number").fill(phone);
     await page.getByRole("button", { name: "Text me a code" }).click();

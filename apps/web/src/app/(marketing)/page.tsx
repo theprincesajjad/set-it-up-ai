@@ -22,6 +22,13 @@ const FACTS = [
   { n: "20 min", l: "to set up. A rep comes to your shop and does it with you" },
 ];
 
+const COMPARE: [string, string, string][] = [
+  ["Monthly fee", "$0", "$49–299"],
+  ["Transaction fee", "0%", "Up to 5%"],
+  ["Locations and staff", "Unlimited", "Per location"],
+  ["Setup", "Done with you", "Do it yourself"],
+];
+
 export default function Home() {
   return (
     <>
@@ -47,11 +54,12 @@ export default function Home() {
           <div className="relative mx-auto flex w-full max-w-[540px] justify-center pb-6">
             <PhoneFrame tone="map" className="relative z-[1]">
               <MapScreen />
+              {/* Docked inside the phone above the rail, where the app shows it (polish-audit K4). */}
+              <ToastMock className="absolute start-1/2 bottom-[104px] z-[6] -translate-x-1/2 whitespace-nowrap">Added 1 stamp. Sam now has 8.</ToastMock>
             </PhoneFrame>
             <PhoneFrame className="-ms-14 mt-14 hidden sm:block">
               <WalletScreen />
             </PhoneFrame>
-            <ToastMock className="absolute -start-2 bottom-0 z-[2] sm:-start-6">Added 1 stamp. Sam now has 8.</ToastMock>
           </div>
         </div>
       </section>
@@ -104,9 +112,9 @@ export default function Home() {
       <MSection tone="subtle">
         <div className="grid items-center gap-14 md:grid-cols-2">
           <MHeading eyebrow="At the counter" title="phone number, tap, done." sub="Under 5 seconds, even when the Wi-Fi isn't. Big keys, one decision per screen, and awards queue offline. Runs on any phone or tablet you already have." className="mb-0!" />
-          <div className="relative flex justify-center">
+          <div className="flex flex-col items-center gap-4">
             <CounterMock />
-            <ToastMock className="absolute -bottom-5 start-1/2 -translate-x-1/2 whitespace-nowrap">Added 1 stamp. Sam now has 8.</ToastMock>
+            <ToastMock className="whitespace-nowrap">Added 1 stamp. Sam now has 8.</ToastMock>
           </div>
         </div>
       </MSection>
@@ -152,9 +160,9 @@ export default function Home() {
                   {p}
                 </li>
               ))}
-              <li className="flex h-20 items-center justify-center px-4 text-center text-meta text-fg-muted">Webhooks & API</li>
+              <li className="flex h-20 items-center justify-center px-4 text-center text-headline text-fg-muted">Webhooks & API</li>
             </ul>
-            <p className="mt-3 text-meta text-fg-muted">POS auto-award, webhooks and the API are part of Plus · Coming soon</p>
+            <p className="mt-3 text-meta text-fg-muted">POS auto-award, webhooks and the API come with Plus, launching soon.</p>
           </div>
         </div>
       </MSection>
@@ -162,7 +170,22 @@ export default function Home() {
       {/* 8. Free means free */}
       <MSection tone="subtle">
         <MHeading eyebrow="Free means free" title="what you won't pay." />
-        <div className="overflow-x-auto rounded-sheet border border-line bg-bg">
+        {/* Phones: one block per row, nothing wraps mid-price (polish-audit K9). Wider: the table. */}
+        <dl className="divide-y divide-line rounded-sheet border border-line bg-bg sm:hidden">
+          {COMPARE.map(([k, us, them]) => (
+            <div key={k} className="flex flex-col gap-1 px-5 py-4">
+              <dt className="text-meta text-fg-muted">{k}</dt>
+              <dd className="flex items-baseline justify-between gap-4">
+                <span className="display text-title text-fg">{us}</span>
+                <span className="text-meta text-fg-muted">
+                  <span className="sr-only">Typical loyalty apps: </span>
+                  {them}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="hidden overflow-hidden rounded-sheet border border-line bg-bg sm:block">
           <table className="w-full text-body">
             <caption className="sr-only">{BRAND.name} compared with typical loyalty apps</caption>
             <thead className="text-meta-strong text-fg-muted">
@@ -179,12 +202,7 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {[
-                ["Monthly fee", "$0", "$49–299"],
-                ["Transaction fee", "0%", "Up to 5%"],
-                ["Locations and staff", "Unlimited", "Per location"],
-                ["Setup", "Done with you", "Do it yourself"],
-              ].map(([k, us, them]) => (
+              {COMPARE.map(([k, us, them]) => (
                 <tr key={k} className="border-t border-line">
                   <th scope="row" className="px-5 py-5 text-start font-normal text-fg-muted md:px-8">
                     {k}

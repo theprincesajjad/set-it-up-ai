@@ -46,6 +46,6 @@ export function weekRows(hours: networkApi.OpeningHours | null | undefined): { d
   if (!hours) return [];
   return ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((k) => ({
     day: LABELS[k]!,
-    text: (hours[k] ?? []).length ? (hours[k] ?? []).map(([o, c]) => `${hhmmToLabel(o)} – ${hhmmToLabel(c)}`).join(", ") : "Closed",
+    text: (hours[k] ?? []).length ? (hours[k] ?? []).map(([o, c]) => `${hhmmToLabel(o)}–${hhmmToLabel(c)}`).join(", ") : "Closed",
   }));
 }

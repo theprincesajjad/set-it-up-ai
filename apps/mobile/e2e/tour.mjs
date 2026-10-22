@@ -131,7 +131,7 @@ await step("onboarding", async () => {
   const { context, page } = await newPhone({ geo: false });
   const phone = `+1647555${String(Math.floor(7000 + Math.random() * 2999))}`;
   await signInByPhone(page, phone, { shots: true });
-  await page.getByText("What should shops call you?").waitFor();
+  await page.getByText("What's your name?").waitFor();
   await page.getByLabel("First name").fill("Alex");
   await shot(page, "04-name-consent");
   await page.getByRole("button", { name: "Done" }).click();
@@ -139,7 +139,7 @@ await step("onboarding", async () => {
   await page.waitForTimeout(2500);
   await shot(page, "05-explore-new-member");
   await page.goto(`${WEB}/wallet`);
-  await page.getByText("Your shops will live here").waitFor();
+  await page.getByText(/first points land here/).first().waitFor();
   await shot(page, "05b-wallet-empty");
   await context.close();
 });
@@ -167,6 +167,7 @@ await step("wallet", async () => {
     await notNow.click();
   }
   await shot(cp, "06-wallet", { settle: 1200 });
+  await cp.mouse.move(195, 600);
   await cp.mouse.wheel(0, 260);
   await shot(cp, "06a-wallet-scrolled", { settle: 600 });
 });
@@ -211,7 +212,8 @@ await step("explore-map", async () => {
   await cp.getByRole("tab", { name: "all", exact: true }).click();
   await cp.getByRole("button", { name: /^Hearth & Crumb Bakery/ }).first().click();
   await shot(cp, "07b-explore-shop-sheet", { settle: 1400 });
-  await tap(cp, "Swipe up for rewards and hours");
+  // The grabber is the affordance (a button that cycles the sheet's detents).
+  await cp.getByRole("slider", { name: "Hearth & Crumb Bakery" }).first().click();
   await shot(cp, "07c-explore-shop-sheet-full", { settle: 1200 });
   await cp.getByRole("button", { name: "Close shop" }).click();
   await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
@@ -240,10 +242,11 @@ await step("shop-detail", async () => {
   await cp.goto(`${WEB}/shop/pinecone-coffee`);
   await cp.getByText("rewards", { exact: true }).first().waitFor();
   await shot(cp, "09-shop", { settle: 1200 });
-  await cp.mouse.wheel(0, 600);
-  await shot(cp, "09b-shop-scrolled", { settle: 600 });
-  await cp.mouse.wheel(0, 1200);
-  await shot(cp, "11-shop-about", { settle: 600 });
+  await cp.mouse.move(195, 600);
+  await cp.mouse.wheel(0, 700);
+  await shot(cp, "09b-shop-scrolled", { settle: 800 });
+  await cp.mouse.wheel(0, 3000);
+  await shot(cp, "11-shop-about", { settle: 800 });
   await cp.goto(`${WEB}/shop/nonnas-table`);
   await cp.getByText("rewards", { exact: true }).first().waitFor();
   await shot(cp, "10-shop-points", { settle: 1200 });
@@ -251,10 +254,14 @@ await step("shop-detail", async () => {
 
 await step("shop-join", async () => {
   await cp.goto(`${WEB}/shop/bloom-hair-studio`);
-  await cp.getByRole("button", { name: "Join — free" }).first().waitFor();
+  await cp.getByRole("button", { name: "Join free" }).first().waitFor();
   await shot(cp, "12-shop-not-member", { settle: 1000 });
-  await cp.getByRole("button", { name: "Join — free" }).click();
+  await cp.getByRole("button", { name: "Join free" }).click();
   await shot(cp, "12b-join-sheet", { settle: 800 });
+  await cp.getByRole("button", { name: "Join Bloom Hair Studio" }).last().click();
+  await cp.getByText(/^You're in at /).first().waitFor({ timeout: 10000 });
+  await shot(cp, "12c-join-success", { settle: 900 });
+  await cp.getByRole("button", { name: "Done", exact: true }).click();
 });
 
 await step("card", async () => {
@@ -300,6 +307,7 @@ await step("campaign", async () => {
   await cp.goto(`${WEB}/campaigns/${campaignId}`);
   await cp.getByText("Roncesvalles Passport").first().waitFor();
   await shot(cp, "18-campaign", { settle: 1200 });
+  await cp.mouse.move(195, 600);
   await cp.mouse.wheel(0, 700);
   await shot(cp, "18b-campaign-scrolled");
 });
@@ -312,6 +320,19 @@ await step("profile-settings", async () => {
     await cp.goto(`${WEB}${path}`);
     await shot(cp, name, { settle: 1500 });
   }
+});
+
+await step("notifications", async () => {
+  await cp.goto(`${WEB}/map`);
+  await cp.getByRole("button", { name: /^Notifications/ }).first().waitFor({ timeout: 15000 });
+  await cp.waitForTimeout(1500);
+  await shot(cp, "22a-explore-bell", { settle: 300 });
+  await cp.getByRole("button", { name: /^Notifications/ }).first().click();
+  await cp.getByText("notifications", { exact: true }).first().waitFor();
+  await shot(cp, "22-notifications", { settle: 1500 });
+  await cp.goto(`${WEB}/settings/notifications`);
+  await cp.getByText("points and rewards", { exact: true }).first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await shot(cp, "22b-notification-settings", { settle: 1200 });
 });
 
 await step("dark-mode", async () => {
@@ -381,7 +402,8 @@ await step("counter-redeem", async () => {
   await sp.getByRole("button", { name: "Confirm redeem" }).click();
   await sp.getByText(/redeemed/i).first().waitFor();
   await shot(sp, "36-counter-redeem-success", { settle: 700 });
-  await sp.waitForTimeout(4500); // auto-return to the keypad
+  await tap(sp, "Next customer");
+  await sp.getByText("Customer's phone number").waitFor();
 });
 
 await step("counter-redeem-code", async () => {
@@ -400,7 +422,8 @@ await step("counter-redeem-code", async () => {
   await sp.getByRole("button", { name: "Confirm", exact: true }).click();
   await sp.getByText(/redeemed/i).first().waitFor();
   await shot(sp, "37b-counter-redeem-code-success", { settle: 600 });
-  await sp.waitForTimeout(4500);
+  await tap(sp, "Next customer");
+  await sp.getByText("Customer's phone number").waitFor();
 });
 
 await step("counter-today", async () => {
@@ -426,6 +449,8 @@ await step("counter-offline", async () => {
   await staffPhone.context.setOffline(false);
   await sp.getByText(/Back online/).first().waitFor({ timeout: 20000 }).catch(() => undefined);
   await shot(sp, "39c-counter-back-online", { settle: 200 });
+  const next = sp.getByText("Next customer", { exact: true });
+  if (await next.isVisible().catch(() => false)) await next.click();
 });
 
 await step("counter-kiosk", async () => {

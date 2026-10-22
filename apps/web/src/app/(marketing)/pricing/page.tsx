@@ -239,7 +239,7 @@ export default async function PricingPage() {
     <>
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
         <p className="text-meta-strong text-fg-muted">Pricing</p>
-        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Free forever. No transaction fees. Unlimited locations.</h1>
+        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">free forever. no transaction fees. unlimited locations.</h1>
         <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">Your loyalty program and its reports cost nothing, for every shop. Plus and Pro add marketing, automations, payments and repair tools. They&apos;re coming soon, and only if you want them.</p>
       </section>
       <section className="pb-16 md:pb-24">

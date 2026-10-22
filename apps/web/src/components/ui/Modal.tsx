@@ -61,7 +61,7 @@ export function Modal({ open, onClose, title, description, children, actions, va
     >
       <div
         className={cn(
-          "flex max-h-[90dvh] flex-col overflow-y-auto bg-bg px-5 pt-5 shadow-float motion-safe:animate-sheet-up",
+          "flex max-h-[90dvh] flex-col overflow-y-auto bg-bg px-4 pt-5 shadow-float motion-safe:animate-sheet-up sm:px-6",
           "rounded-t-sheet pb-[max(24px,env(safe-area-inset-bottom))]",
           sheet && "md:rounded-sheet md:mb-6",
           !sheet && "md:rounded-sheet md:p-6 md:motion-safe:animate-fade-in",
@@ -69,17 +69,25 @@ export function Modal({ open, onClose, title, description, children, actions, va
       >
         <div aria-hidden className={cn("mx-auto -mt-2.5 mb-3 h-[5px] w-9 shrink-0 rounded-full bg-bg-muted", !sheet && "md:hidden")} />
         <div className="mb-2 flex items-start justify-between gap-4">
+          {/* With an avatar, the description (italic kind) sits under the title, not under the avatar (W7). */}
           <div className="flex min-w-0 items-center gap-3">
             {icon}
-            <h2 id={titleId} className="pt-1 text-headline text-fg">
-              {title}
-            </h2>
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-title font-semibold text-fg">
+                {title}
+              </h2>
+              {icon && description ? (
+                <div id={descId} className="text-meta text-fg-muted">
+                  {description}
+                </div>
+              ) : null}
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg after:absolute after:-inset-2 after:content-[''] focus-visible:focus-ring">
             <X aria-hidden className="size-4" strokeWidth={2} />
           </button>
         </div>
-        {description ? (
+        {description && !icon ? (
           <div id={descId} className="mb-4 text-body text-fg-muted">
             {description}
           </div>

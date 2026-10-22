@@ -4,7 +4,7 @@
  * StampCard, MemberQr, Keypad, CategoryIcon) with static demo data. Decorative: every mock is
  * aria-hidden and inert, so nothing in it is focusable. No stock illustrations.
  */
-import { LocateFixed, QrCode as QrIcon, Search } from "lucide-react";
+import { LocateFixed, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import type { networkApi } from "@ll/shared";
 import { categoryLabels, type MapCategoryId } from "@ll/design-tokens";
@@ -40,7 +40,8 @@ function fake(id: string, name: string, vertical: string, o: Partial<networkApi.
 /** A phone: black bezel, white screen, a 9:41 status bar. */
 export function PhoneFrame({ children, className, tone = "bg" }: { children: ReactNode; className?: string; tone?: "bg" | "map" }) {
   return (
-    <div aria-hidden inert className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-[#0B0B0C] p-[9px] ring-1 ring-line", className)}>
+    // A picture of the app in light mode: tokens forced light so dark pages don't half-invert it (polish-audit W21).
+    <div aria-hidden inert data-theme="light" className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-[#0B0B0C] p-[9px] ring-1 ring-line text-fg", className)}>
       <div className={cn("relative h-[620px] overflow-hidden rounded-[43px]", tone === "map" ? "bg-ll-map-land" : "bg-bg")}>
         <div className="absolute inset-x-0 top-0 z-[5] flex h-11 items-center justify-between px-7 text-[13px] font-semibold text-[#0B0B0C]">
           <span>9:41</span>
@@ -138,39 +139,31 @@ export function MapScreen({ rail = true }: { rail?: boolean }) {
 }
 
 const WALLET = [
-  { name: "Pinecone", v: "cafe", value: 10, t: "stamps", sub: "Free drink", ready: true, c: "#7A4B2A" },
-  { name: "Leslie Loaf", v: "bakery", value: 1, t: "reward", sub: "Free loaf", ready: true, c: null },
-  { name: "Fix-It Lab", v: "repair_electronics", value: 340, t: "points", sub: "160 to $20 off", ready: false, c: "#1D4ED8" },
-  { name: "Glow Studio", v: "salon", value: 3, t: "visits", sub: "2 to a blow-dry", ready: false, c: null },
+  { name: "Pinecone Coffee", v: "cafe", value: 10, t: "stamps", sub: "reward ready", ready: true, c: "#2F5D4E" },
+  { name: "Leslie Loaf", v: "bakery", value: 8, t: "stamps", sub: "reward ready", ready: true, c: "#B4652A" },
+  { name: "Fix-It Lab", v: "repair_electronics", value: 340, t: "points", sub: "160 pts to $20 off", ready: false, c: "#3F3A6B" },
+  { name: "Glow Studio", v: "salon", value: 3, t: "visits", sub: "2 more for a blow-dry", ready: false, c: null },
 ];
 
-/** The wallet: large title, one honest number, the black card button, a grouped list. */
+/** The wallet as the app draws it (polish-audit K2): lowercase large title, one honest number, a plain list. */
 export function WalletScreen() {
   return (
     <div className="absolute inset-0 flex flex-col gap-4 px-4 pt-14">
-      <div className="flex items-center justify-between">
-        <span className="display text-[26px] leading-8 text-fg">Wallet</span>
-        <span className="text-[12px] text-fg-muted">Sam · across 4 shops</span>
-      </div>
-      <div className="flex items-end gap-2.5">
-        <span className="display text-[56px] leading-[0.9] text-accent-text">2</span>
-        <span className="pb-1 text-[13px] leading-4 text-fg-muted">rewards ready</span>
-      </div>
-      <span className="flex h-11 items-center justify-center gap-2 rounded-full bg-fg text-[14px] font-semibold text-bg">
-        <QrIcon className="size-4" strokeWidth={1.75} /> Show my card
-      </span>
-      <div className="flex gap-4 border-b border-line text-[13px] font-semibold">
-        <span className="border-b-2 border-fg pb-2 text-fg">Shops</span>
-        <span className="pb-2 text-fg-muted">Rewards</span>
-        <span className="pb-2 text-fg-muted">Activity</span>
+      <span className="display text-[28px] leading-8 text-fg">wallet</span>
+      <div className="flex items-end gap-3">
+        <span className="display text-[40px] leading-none text-fg">2</span>
+        <span className="flex flex-col pb-0.5 text-[13px] leading-4">
+          <span className="font-semibold text-fg">rewards ready</span>
+          <span className="text-fg-muted">across 2 shops</span>
+        </span>
       </div>
       {[
-        { title: "Rewards ready", rows: WALLET.filter((w) => w.ready) },
-        { title: "Your shops", rows: WALLET.filter((w) => !w.ready) },
+        { title: "rewards ready", rows: WALLET.filter((w) => w.ready) },
+        { title: "earning", rows: WALLET.filter((w) => !w.ready) },
       ].map((g) => (
-        <div key={g.title} className="flex flex-col gap-1.5">
-          <span className="px-1 text-[12px] font-semibold text-fg-muted">{g.title}</span>
-          <ul className="divide-y divide-line rounded-card border border-line px-3">
+        <div key={g.title} className="flex flex-col">
+          <span className="border-b border-line pb-1.5 text-[12px] font-semibold text-fg-muted">{g.title}</span>
+          <ul className="divide-y divide-line">
             {g.rows.map((w) => (
               <li key={w.name}>
                 <ShopTile variant="wallet" shop={{ name: w.name, vertical: w.v, brandColor: w.c }} balance={{ value: w.value, terminology: w.t }} rewardReady={w.ready} subtitle={w.sub} className="min-h-[56px]" />
@@ -195,10 +188,8 @@ export function JoinScreen() {
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
-        <span className="display text-[26px] leading-8 text-fg">Join in 30 seconds</span>
-        <span className="flex items-center gap-2 text-[13px] text-fg">
-          <span className="size-1.5 rounded-full bg-accent" /> Join and get 1 free stamp
-        </span>
+        <span className="display text-[26px] leading-8 text-fg">join in 30 seconds</span>
+        <span className="text-[13px] text-fg-muted">Join and get 1 free stamp</span>
       </div>
       <div className="flex flex-col gap-1.5">
         <span className="text-[12px] font-semibold text-fg">Mobile number</span>
@@ -219,8 +210,8 @@ export function CardScreen() {
     <div className="absolute inset-0 bg-bg-muted">
       <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col items-center gap-4 rounded-t-[28px] bg-bg px-5 pt-3">
         <span className="h-[5px] w-9 rounded-full bg-bg-muted" />
-        <span className="self-start text-[16px] font-semibold text-fg">My card</span>
-        <span className="text-[14px] font-semibold text-fg">Sam Rivera</span>
+        <span className="display self-start text-[22px] leading-7 text-fg">my card</span>
+        <span className="-mt-3 self-start text-[13px] text-fg-muted">Sam Rivera · 2 rewards ready</span>
         <MemberQr memberCode="LL4K7Q2M" size={190} caption="Works at every shop on the network">
           <QrCode value="https://localloyalty.example/c/LL4K7Q2M" size={190} />
         </MemberQr>
@@ -233,7 +224,7 @@ export function CardScreen() {
 /** The counter: number in, one big black key. */
 export function CounterMock({ className }: { className?: string }) {
   return (
-    <div aria-hidden inert className={cn("pointer-events-none flex w-full max-w-[380px] select-none flex-col gap-4 rounded-sheet border border-line bg-bg p-5", className)}>
+    <div aria-hidden inert data-theme="light" className={cn("pointer-events-none flex w-full max-w-[380px] select-none flex-col gap-4 rounded-sheet border border-line bg-bg p-5 text-fg", className)}>
       <div className="flex items-center justify-between text-[13px]">
         <span className="font-semibold text-fg">Counter</span>
         <span className="text-fg-muted">Pinecone Coffee · Roncesvalles</span>

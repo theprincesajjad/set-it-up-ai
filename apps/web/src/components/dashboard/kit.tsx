@@ -131,7 +131,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
               {s.delta ? (
                 <>
                   <span className={s.delta.good === true ? "text-positive" : s.delta.good === false ? "text-negative" : "text-fg-muted"}>{s.delta.text}</span>
-                  {s.delta.context ? <span className="hidden text-fg-muted sm:inline"> {s.delta.context}</span> : null}
+                  {s.delta.context ? <span className="text-fg-muted"> {s.delta.context}</span> : null}
                 </>
               ) : s.caption ? (
                 <span className="text-fg-muted">{s.caption}</span>

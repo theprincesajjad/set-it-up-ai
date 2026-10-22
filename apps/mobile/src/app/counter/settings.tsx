@@ -6,7 +6,7 @@ import { managerBus } from "../../features/scanBus";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { useSession } from "../../state/session";
-import { Banner, Button, Card, ConfirmDialog, Keypad, Screen, Section, Sheet, SwitchRow, Text, useToast } from "../../ui";
+import { Banner, Button, ConfirmDialog, Keypad, Screen, Section, Sheet, SwitchRow, Text, useToast } from "../../ui";
 
 /** Counter settings: theme, kiosk, scanner camera, shared device, my PIN, exit. */
 export default function CounterSettings() {
@@ -65,30 +65,32 @@ export default function CounterSettings() {
 
   return (
     <Screen back title="Counter settings">
-      <Card>
-        <SwitchRow label="Dark theme" description="Light is easier to read in bright shops." value={config.theme === "dark"} onValueChange={(v) => setConfig({ theme: v ? "dark" : "light" })} />
-        <SwitchRow label="Scanner faces customer" description="Use the front camera and mirror the preview." value={config.scannerFront} onValueChange={(v) => setConfig({ scannerFront: v })} />
-        <SwitchRow label="Sound on award" description="Off by default." value={config.sound} onValueChange={(v) => setConfig({ sound: v })} />
+      <Section title="This device">
+        <SwitchRow label="Dark theme" description="Light is easier to read in bright shops." value={config.theme === "dark"} onValueChange={(v) => setConfig({ theme: v ? "dark" : "light" })} divider />
+        <SwitchRow label="Scanner faces customer" description="Use the front camera and mirror the preview." value={config.scannerFront} onValueChange={(v) => setConfig({ scannerFront: v })} divider />
+        <SwitchRow label="Sound on award" description="A short chime when points go on." value={config.sound} onValueChange={(v) => setConfig({ sound: v })} divider />
         <SwitchRow label="Shared shop device" description="Staff switch with a PIN. Exit needs a manager." value={config.sharedDevice} onValueChange={(v) => setConfig({ sharedDevice: v })} />
-      </Card>
-      <Section title="Kiosk">
+      </Section>
+      <Section title="Kiosk" spaced>
         <Text color="fgMuted">Turn this tablet around so customers can check in with their number.</Text>
-        <Button size="counter" variant="secondary" onPress={() => guarded("kiosk")}>
+        <Button size="lg" variant="secondary" onPress={() => guarded("kiosk")}>
           Start kiosk mode
         </Button>
       </Section>
-      <Section title="My PIN">
-        <Button variant="secondary" onPress={() => setPinOpen(true)}>
+      <Section title="My PIN" spaced>
+        <Button size="lg" variant="secondary" onPress={() => setPinOpen(true)}>
           Set my counter PIN
         </Button>
       </Section>
-      {queueState.pendingCount > 0 ? <Banner variant="warning">{`${queueState.pendingCount} awards are still waiting to send. They stay on this device.`}</Banner> : null}
-      <Button variant="secondary" onPress={() => guarded("customer")}>
-        Exit counter mode
-      </Button>
-      <Button variant="ghost" onPress={() => setExitOpen(true)}>
-        Sign out of this device
-      </Button>
+      <Section title="Leave counter mode" spaced>
+        {queueState.pendingCount > 0 ? <Banner variant="warning">{`${queueState.pendingCount} ${queueState.pendingCount === 1 ? "award is" : "awards are"} still waiting to send. They stay on this phone.`}</Banner> : null}
+        <Button size="lg" variant="secondary" onPress={() => guarded("customer")}>
+          Exit counter mode
+        </Button>
+        <Button size="lg" variant="ghost" onPress={() => setExitOpen(true)}>
+          Sign out of this device
+        </Button>
+      </Section>
       <Sheet visible={pinOpen} onClose={() => setPinOpen(false)} title="Choose a 4-digit PIN" footer={<Button size="counter" disabled={pin.length !== 4} onPress={savePin}>Save PIN</Button>}>
         <Text variant="keypad" center>
           {pin.replace(/\d/g, "•") || "····"}

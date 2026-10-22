@@ -127,7 +127,7 @@ export default function NameStep() {
       {!isReturning ? (
         <>
           <Text variant="largeTitle" accessibilityRole="header">
-            What should shops call you?
+            What's your name?
           </Text>
           <TextField label="First name" value={first} onChangeText={setFirst} autoComplete="given-name" textContentType="givenName" autoCapitalize="words" error={nameError} onBlur={() => setTouched(true)} />
           <TextField label="Last name" optionalLabel value={last} onChangeText={setLast} autoComplete="family-name" textContentType="familyName" autoCapitalize="words" />
