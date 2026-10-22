@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Counter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ui{font-family:-apple-system,'Inter',system-ui,sans-serif}
+.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.q{height:44px;padding:0 18px;border-radius:999px;background:#F5F5F4;border:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:16px;color:#0B0B0C}
+.st{width:24px;height:24px;border-radius:999px}
+</style>
+</helmet>
+<div class="ui" style="width:390px;height:844px;position:relative;overflow:hidden;background:#fff">
+  <header style="display:flex;justify-content:space-between;align-items:center;padding:54px 20px 14px;border-bottom:1px solid #E8E8E6">
+    <div><div class="disp" style="font-weight:800;font-size:17px;color:#0B0B0C">Pinecone Coffee Co.</div><div style="font-size:12px;color:#6B6B70;margin-top:2px">counter · 412 Roncesvalles</div></div>
+    <button style="height:36px;padding:0 6px 0 4px;border-radius:999px;background:#F5F5F4;border:0;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#0B0B0C"><span style="width:28px;height:28px;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">sb</span>Sam<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0B0B0C" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg></button>
+  </header>
+
+  <div style="padding:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:48px;height:48px;border-radius:999px;background:#EDEDEC;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:#0B0B0C">ew</div>
+      <div style="flex:1"><div style="font-size:18px;font-weight:600;color:#0B0B0C">Emma Wong</div><div style="font-size:13px;color:#6B6B70;font-variant-numeric:tabular-nums">(647) •••-1034 · 5th visit</div></div>
+      <button aria-label="Clear customer" style="width:36px;height:36px;border-radius:999px;background:#F5F5F4;border:0;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B0B0C" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+    </div>
+
+    <div style="margin-top:28px;text-align:center">
+      <div class="disp" style="font-weight:800;font-size:64px;line-height:64px;letter-spacing:-.02em;color:#0B0B0C;font-variant-numeric:tabular-nums">7<span style="color:#9A9AA0;font-size:32px"> / 10</span></div>
+      <div style="font-size:14px;color:#6B6B70;margin-top:8px">stamps · 3 to a free drink</div>
+      <div style="display:flex;justify-content:center;gap:6px;margin-top:16px">
+        <span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="background:#FF5A1F"></span><span class="st" style="box-shadow:inset 0 0 0 1.5px #8A8A90"></span><span class="st" style="box-shadow:inset 0 0 0 1.5px #8A8A90"></span><span class="st" style="box-shadow:inset 0 0 0 1.5px #8A8A90"></span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:36px">
+      <button class="q" style="background:#0B0B0C;color:#fff">+1</button><button class="q">+2</button><button class="q">+3</button>
+    </div>
+    <div style="font-size:12px;color:#9A9AA0;text-align:center;margin-top:10px">One per drink in this order</div>
+  </div>
+
+  <div style="position:absolute;left:20px;right:20px;bottom:30px;display:flex;flex-direction:column;gap:10px">
+    <button style="height:72px;border-radius:20px;background:#0B0B0C;border:0;color:#fff;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:22px">Add 1 stamp</button>
+    <div style="display:flex;gap:10px">
+      <button style="flex:1;height:52px;border-radius:16px;background:#F5F5F4;border:0;font-size:15px;font-weight:600;color:#9A9AA0">Redeem · needs 10</button>
+      <button style="flex:1;height:52px;border-radius:16px;background:#F5F5F4;border:0;font-size:15px;font-weight:600;color:#0B0B0C">Enter code</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

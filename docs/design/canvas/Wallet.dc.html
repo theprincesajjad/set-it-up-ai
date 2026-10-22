@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wallet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ui{font-family:-apple-system,'Inter',system-ui,sans-serif}
+.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.sec{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:13px;color:#6B6B70;padding-bottom:8px;border-bottom:1px solid #E8E8E6;margin-top:28px}
+.r{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #E8E8E6;text-decoration:none}
+.av{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex:none;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px;color:#fff}
+.nm{font-size:16px;font-weight:500;color:#0B0B0C}
+.sub{font-size:13px;color:#6B6B70;margin-top:2px}
+.bal{margin-left:auto;text-align:right;flex:none}
+.bal b{display:block;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:20px;color:#FF5A1F;font-variant-numeric:tabular-nums}
+.bal span{font-size:12px;color:#6B6B70}
+</style>
+</helmet>
+<div class="ui" style="width:390px;height:844px;position:relative;overflow:hidden;background:#fff">
+  <div style="padding:60px 20px 0">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1 class="disp" style="margin:0;font-weight:800;font-size:34px;letter-spacing:-.01em;color:#0B0B0C">wallet</h1>
+      <button aria-label="Search shops" style="width:40px;height:40px;border-radius:999px;background:#F5F5F4;border:0;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0B0C" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></button>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:14px">
+      <span class="disp" style="font-weight:800;font-size:44px;line-height:44px;color:#0B0B0C;font-variant-numeric:tabular-nums">3</span>
+      <span style="font-size:15px;color:#0B0B0C;font-weight:500">rewards ready <span style="color:#6B6B70;font-weight:400">· across 4 shops</span></span>
+    </div>
+
+    <div class="sec">ready now</div>
+    <a href="ShopSheet.dc.html" class="r"><div class="av" style="background:#A4161A">nt</div><div><div class="nm">Nonna's Table</div><div class="sub" style="color:#C2410C">2 rewards ready</div></div><div class="bal"><b>1,610</b><span>points</span></div></a>
+    <a href="ShopSheet.dc.html" class="r"><div class="av" style="background:#2F5D50">pc</div><div><div class="nm">Pinecone Coffee Co.</div><div class="sub" style="color:#C2410C">free drink ready</div></div><div class="bal"><b>10</b><span>stamps</span></div></a>
+
+    <div class="sec">earning</div>
+    <a href="ShopSheet.dc.html" class="r"><div class="av" style="background:#38B000">vg</div><div style="min-width:0;flex:1"><div class="nm">Village Green Grocer</div><div class="sub">38 points to $5 off</div><div style="height:3px;border-radius:999px;background:#EDEDEC;margin-top:8px;width:150px"><div style="width:92%;height:3px;border-radius:999px;background:#0B0B0C"></div></div></div><div class="bal"><b style="color:#0B0B0C">462</b><span>points</span></div></a>
+    <a href="ShopSheet.dc.html" class="r"><div class="av" style="background:#8E7DBE">ry</div><div style="min-width:0;flex:1"><div class="nm">Rise Yoga Studio</div><div class="sub">60 points to a free class</div><div style="height:3px;border-radius:999px;background:#EDEDEC;margin-top:8px;width:150px"><div style="width:40%;height:3px;border-radius:999px;background:#0B0B0C"></div></div></div><div class="bal"><b style="color:#0B0B0C">40</b><span>points</span></div></a>
+
+    <div class="sec">roncesvalles</div>
+    <a href="Discover.dc.html" class="r" style="border-bottom:0"><div class="av" style="background:#F5F5F4"><img src="/_blob/47fff4c6eec8660563e7ce2dd1af96db" alt="" style="width:26px;height:26px"></div><div style="flex:1"><div class="nm">Passport week</div><div class="sub">2 of 5 shops · ends Oct 31</div></div><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9AA0" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+  </div>
+
+  <div style="position:absolute;left:16px;right:16px;bottom:26px;display:flex;gap:10px;align-items:center">
+    <nav aria-label="Main" style="flex:1;height:60px;border-radius:999px;background:rgba(255,255,255,.86);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-around;padding:0 8px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.08)">
+      <a href="Main.dc.html" aria-label="Map" style="width:48px;height:44px;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A9AA0" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"></path><path d="M9 4v14M15 6v14"></path></svg></a>
+      <a href="Discover.dc.html" aria-label="Discover" style="width:48px;height:44px;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A9AA0" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.4-.7z"></path></svg></a>
+      <a href="Wallet.dc.html" aria-label="Wallet" style="width:48px;height:44px;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B0B0C" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"></rect><path d="M3 10h18M16 15h2"></path></svg></a>
+      <a href="Inbox.dc.html" aria-label="Activity" style="width:48px;height:44px;display:flex;align-items:center;justify-content:center"><span style="width:28px;height:28px;border-radius:999px;background:#EDEDEC;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0B0B0C">nk</span></a>
+    </nav>
+    <a href="Card.dc.html" aria-label="Show my card" style="width:60px;height:60px;border-radius:999px;background:#0B0B0C;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.24)"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><path d="M14 14h3v3M21 14v.01M14 21h.01M17.5 21H21v-3.5"></path></svg></a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

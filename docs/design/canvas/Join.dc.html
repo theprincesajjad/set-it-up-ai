@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Join at the counter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ui{font-family:-apple-system,'Inter',system-ui,sans-serif}
+.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+</style>
+</helmet>
+<div class="ui" style="width:390px;height:844px;position:relative;overflow:hidden;background:#fff">
+  <div style="padding:52px 24px 0">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0B0B0C"></rect><circle cx="8" cy="8" r="2.4" fill="#fff"></circle><circle cx="16" cy="8" r="2.4" fill="#fff"></circle><circle cx="8" cy="16" r="2.4" fill="#fff"></circle><circle cx="16" cy="16" r="2.4" fill="#FF5A1F"></circle></svg>
+      <span class="disp" style="font-weight:800;font-size:15px;color:#0B0B0C">local loyalty</span>
+    </div>
+
+    <div style="margin-top:44px;display:flex;align-items:center;gap:12px">
+      <div style="width:52px;height:52px;border-radius:999px;background:#2F5D50;display:flex;align-items:center;justify-content:center"><span class="disp" style="font-weight:800;font-size:18px;color:#fff">pc</span></div>
+      <div><div style="font-size:15px;font-weight:600;color:#0B0B0C">Pinecone Coffee Co.</div><div style="font-size:13px;font-style:italic;color:#6B6B70">café · roncesvalles</div></div>
+    </div>
+    <h1 class="disp" style="margin:20px 0 0;font-weight:800;font-size:32px;line-height:35px;letter-spacing:-.01em;color:#0B0B0C">get a stamp for today’s coffee</h1>
+    <p style="margin:10px 0 0;font-size:15px;line-height:21px;color:#6B6B70">10 stamps = a free drink. Your card works at 16 shops on Roncesvalles. No app needed.</p>
+
+    <form style="margin-top:28px">
+      <label for="ph" style="display:block;font-size:13px;font-weight:600;color:#0B0B0C;margin-bottom:8px">Mobile number</label>
+      <div style="display:flex;gap:8px">
+        <div style="height:52px;padding:0 14px;border-radius:12px;background:#F5F5F4;display:flex;align-items:center;font-size:16px;color:#6B6B70">+1</div>
+        <input id="ph" type="tel" value="(416) 555-0123" style="flex:1;min-width:0;height:52px;border-radius:12px;border:1.5px solid #0B0B0C;padding:0 14px;font-size:18px;font-family:inherit;font-variant-numeric:tabular-nums;color:#0B0B0C;box-sizing:border-box">
+      </div>
+      <label style="display:flex;gap:12px;align-items:flex-start;margin-top:18px;font-size:13px;line-height:18px;color:#6B6B70">
+        <input type="checkbox" style="width:20px;height:20px;margin:0;flex:none;accent-color:#0B0B0C">
+        <span>Send me offers from Pinecone Coffee Co. by text or email. Optional. Unsubscribe any time.</span>
+      </label>
+      <button type="button" style="margin-top:24px;width:100%;height:54px;border-radius:999px;background:#0B0B0C;border:0;color:#fff;font-weight:600;font-size:16px;font-family:inherit">Text me a code</button>
+    </form>
+    <p style="margin:14px 0 0;font-size:12px;line-height:17px;color:#9A9AA0;text-align:center">We only use your number for your card. <a href="#" style="color:#6B6B70">Rewards terms</a> · <a href="#" style="color:#6B6B70">Privacy</a></p>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:30px;display:flex;gap:10px;align-items:center;padding-top:16px;border-top:1px solid #E8E8E6">
+    <div style="display:flex;gap:2px;flex:none">
+      <img src="/_blob/3ac71813f2bddb29dea5dac14b1f94df" alt="" style="width:26px;height:26px">
+      <img src="/_blob/55751560f41b9715ca9fe29ac7cd8155" alt="" style="width:26px;height:26px">
+      <img src="/_blob/8f69e085f6cf52fec6d1b49ae622eada" alt="" style="width:26px;height:26px">
+    </div>
+    <span style="font-size:13px;color:#6B6B70">Also earning here: the bakery, the salon, the phone repair and 12 more.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
