@@ -21,6 +21,44 @@ python3 docs/finance/model/build_xlsx.py --verify
 
 ---
 
+## Bootstrap scenario (Oct 22, 2026): costs at their real size
+
+The earlier scenarios carried a part-time contract developer at $4,000–6,000/month
+($180,000 over 36 months, 75% of all operating costs) and ~$1,465/month of
+overheads. The product is already built, so neither belongs in the plan.
+`bootstrap` in `model/model.py` uses:
+
+| Line | Before (base) | Bootstrap |
+| --- | --- | --- |
+| Developer | $4,000 → $6,000/mo | $0 year 1, $1,000 year 2, $1,500 year 3 (occasional contractor help) |
+| Hosting, DB, monitoring | $250/mo | $60/mo |
+| Software tools | $250/mo | $60/mo |
+| Insurance | $150/mo | $100/mo |
+| Bookkeeping | $250/mo | $75/mo |
+| Phone and misc | $100/mo | $30/mo |
+| Marketing | $300/mo | $0 (the counter and the BIA are the channel) |
+| Legal reserve | $150/mo | $0 (one $2,500 lawyer review instead) |
+| One-time setup | $8,000 | $4,000 |
+| Strip launch | $750 | $300 |
+
+Recommended gates, two BIA campaigns per mature strip and the faster strip pace
+are as in `lean_plan`. Everything else (reps at minimum wage, kits, SMS, Stripe)
+is unchanged.
+
+| | Base | Bootstrap |
+| --- | --- | --- |
+| Fixed overhead | $1,465/mo | $325/mo |
+| Year-1 total spend | ~$84,000 | **~$18,000** |
+| Break-even | month 51 | **month 31 (May 2029)** |
+| Peak cash needed | $357,308 | **$60,945** |
+| LTV/CAC | 3.6x | 4.2x |
+
+What's left is mostly growth spending that scales with signups and revenue:
+rep wages and activation bonuses (~$63k over 36 months), counter kits (~$14k),
+BIA prize and print costs (~$34k, paid from BIA revenue) and the founder-time
+support estimate inside the free-merchant cost. If the founder signs the first
+strip personally, the rep line drops further.
+
 ## 0. Pricing v2 (Oct 22, 2026): what the new free/paid split does to the numbers
 
 **Decision.** Only the loyalty program and reporting on it stay free (see `docs/business/pricing.md`). Everything else moves to Plus/Pro and stays hidden until its rollout gate.

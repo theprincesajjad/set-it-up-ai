@@ -264,6 +264,31 @@ SCENARIOS = {
         "bia_campaigns_per_strip_year": 2.0,
         "strips_per_quarter": [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6],
     },
+    # The product is already built (this repo), so there is no contract-dev line in year 1;
+    # the founder ships fixes with AI-assisted tooling and buys occasional contractor help
+    # later. Overheads are what a solo bootstrapped founder actually pays at this size
+    # (managed Postgres + hosting starts at tens of dollars, not hundreds). Recommended
+    # gates + two BIA campaigns per mature strip, as in lean_plan.
+    "bootstrap": {
+        "unlock_pro_active_merchants": 40,
+        "pro_features_ready_month": 8,
+        "unlock_plus_active_merchants": 100,
+        "unlock_ads_active_merchants": 300,
+        "dev_monthly_y1": 0.0,
+        "dev_monthly_y2": 1000.0,
+        "dev_monthly_y3": 1500.0,
+        "fixed_hosting_base": 60.0,
+        "fixed_saas_tools": 60.0,
+        "fixed_insurance": 100.0,
+        "fixed_accounting": 75.0,
+        "fixed_phone_misc": 30.0,
+        "fixed_marketing": 0.0,
+        "fixed_legal_reserve": 0.0,
+        "one_time_costs": {1: 1500.0, 3: 2500.0},
+        "strip_launch_cost": 300.0,
+        "bia_campaigns_per_strip_year": 2.0,
+        "strips_per_quarter": [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6],
+    },
     "bull": {
         "strips_per_quarter": [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6],
         "strip_potential_merchants": 32.3,  # v1 38, Pricing v2 -15%
@@ -280,7 +305,7 @@ SCENARIOS = {
     },
 }
 
-SCENARIO_ORDER = ["bear", "base", "base_reco_gates", "lean_plan", "bull"]
+SCENARIO_ORDER = ["bear", "base", "base_reco_gates", "lean_plan", "bootstrap", "bull"]
 
 # Pricing v1 (before the Oct 2026 founder decision): promos, marketing, POS etc. were free.
 # Overlaid on any scenario to reproduce the old numbers for output/pricing_v2_comparison.csv.
@@ -295,6 +320,7 @@ PRICING_V1_SCENARIO = {
     "bull": {"strip_potential_merchants": 38, "conversion_multiplier": 1.3},
     "base_reco_gates": {"strip_potential_merchants": 32},
     "lean_plan": {"strip_potential_merchants": 32},
+    "bootstrap": {"strip_potential_merchants": 32},
 }
 
 

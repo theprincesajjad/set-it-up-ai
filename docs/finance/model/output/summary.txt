@@ -4,6 +4,7 @@ BEAR            break-even (sustained) month: none (not within 36 months); exten
 BASE            break-even (sustained) month: none (not within 36 months); extended run: 51 (2031-01); peak cash need 36m: $302,028 (trough month 36), to break-even: $357,308; LTV/CAC 3.6x; payback 9.2 mo; M36 paying 82 of 339 active; M36 revenue $9,376/mo; M36 EBITDA $-7,695/mo
 BASE_RECO_GATES break-even (sustained) month: none (not within 36 months); extended run: 51 (2031-01); peak cash need 36m: $291,059 (trough month 36), to break-even: $334,997; LTV/CAC 3.6x; payback 9.2 mo; M36 paying 90 of 339 active; M36 revenue $10,702/mo; M36 EBITDA $-6,629/mo
 LEAN_PLAN       break-even (sustained) month: 35 (2029-09); extended run: 35 (2029-09); peak cash need 36m: $167,965 (trough month 34), to break-even: $167,965; LTV/CAC 3.6x; payback 9.2 mo; M36 paying 126 of 464 active; M36 revenue $21,390/mo; M36 EBITDA $921/mo
+BOOTSTRAP       break-even (sustained) month: 31 (2029-05); extended run: 31 (2029-05); peak cash need 36m: $60,945 (trough month 30), to break-even: $60,945; LTV/CAC 4.2x; payback 8.0 mo; M36 paying 126 of 464 active; M36 revenue $21,390/mo; M36 EBITDA $4,446/mo
 BULL            break-even (sustained) month: 36 (2029-10); extended run: 36 (2029-10); peak cash need 36m: $250,864 (trough month 35), to break-even: $250,864; LTV/CAC 7.4x; payback 6.0 mo; M36 paying 241 of 678 active; M36 revenue $28,620/mo; M36 EBITDA $430/mo
 
 Base unlocks: Plus month 24, Pro month 24, BIA month 20, ads month None
