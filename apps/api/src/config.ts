@@ -14,6 +14,12 @@ export interface Config {
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
   email: { provider: "console" | "resend"; resendApiKey?: string; from: string };
   push: { provider: "console" | "expo"; expoAccessToken?: string };
+  /** WhatsApp Cloud API (Meta Graph). Without an access token the fake provider is used. */
+  whatsapp: { provider: "fake" | "meta"; accessToken?: string; appSecret?: string; verifyToken?: string; apiVersion: string };
+  /** Phone ordering webhook (Twilio-style). The signature is checked with `authToken` (falls back to TWILIO_AUTH_TOKEN). */
+  phone: { authToken?: string };
+  /** TIFFIN_PAD=1 lets tiffin subscribers pay by pre-authorized debit (Stripe acss_debit). */
+  tiffin?: { padEnabled?: boolean };
   stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string };
     /** STRIPE_DIRECT_CHARGES: honour merchants.chargeMode = "direct" (merchant of record). Default off. */
     directCharges?: boolean;
@@ -65,6 +71,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     email: { provider: env.RESEND_API_KEY ? "resend" : "console", resendApiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM ?? "Local Loyalty <hello@localloyalty.example>" },
     push: { provider: env.EXPO_ACCESS_TOKEN || env.EXPO_PUSH === "1" ? "expo" : "console", expoAccessToken: env.EXPO_ACCESS_TOKEN },
+    whatsapp: {
+      provider: env.WHATSAPP_ACCESS_TOKEN ? "meta" : "fake",
+      accessToken: env.WHATSAPP_ACCESS_TOKEN,
+      appSecret: env.WHATSAPP_APP_SECRET,
+      verifyToken: env.WHATSAPP_VERIFY_TOKEN,
+      apiVersion: env.WHATSAPP_API_VERSION ?? "v21.0",
+    },
+    phone: { authToken: env.PHONE_WEBHOOK_AUTH_TOKEN ?? env.TWILIO_AUTH_TOKEN },
+    tiffin: { padEnabled: env.TIFFIN_PAD === "1" },
     stripe: {
       secretKey: env.STRIPE_SECRET_KEY,
       webhookSecret: env.STRIPE_WEBHOOK_SECRET,

@@ -31,6 +31,8 @@ export const shopsQuery = z
     q: z.string().trim().min(1).max(80).optional(),
     /** Only shops within this many metres (needs lat/lng). */
     radiusMetres: z.coerce.number().int().min(100).max(50_000).optional(),
+    /** Restaurants only: "1" = menu has halal items, "all" = every orderable item is halal (the shop's own claim). */
+    halal: z.enum(["1", "all"]).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(50),
     cursor: z.string().optional(),
   })
@@ -145,6 +147,8 @@ export interface ShopListItemDto {
   isMember: boolean;
   /** Members at this shop; null when fewer than MEMBER_COUNT_MIN (tiny numbers aren't shown). */
   memberCount: number | null;
+  /** Restaurant-pack shops with dietary tags on: "all" = every orderable item is tagged halal, "some" = at least one is. Absent otherwise. */
+  halalMenu?: "all" | "some";
 }
 
 /** Member counts below this are returned as null on public surfaces. */

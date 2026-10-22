@@ -2,6 +2,8 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { errorMessage } from "../../api/client";
 import { t } from "../../copy/en-CA";
+import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
+import { useLocale } from "../../lib/i18n";
 import { managerBus } from "../../features/scanBus";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
@@ -13,6 +15,7 @@ export default function CounterSettings() {
   const { config, setConfig, staff, queueState } = useCounter();
   const { setMode, signOut } = useSession();
   const toast = useToast();
+  const { t: tr } = useLocale();
   const [pinOpen, setPinOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [pinErr, setPinErr] = useState<string | null>(null);
@@ -70,6 +73,9 @@ export default function CounterSettings() {
         <SwitchRow label="Scanner faces customer" description="Use the front camera and mirror the preview." value={config.scannerFront} onValueChange={(v) => setConfig({ scannerFront: v })} divider />
         <SwitchRow label="Sound on award" description="A short chime when points go on." value={config.sound} onValueChange={(v) => setConfig({ sound: v })} divider />
         <SwitchRow label="Shared shop device" description="Staff switch with a PIN. Exit needs a manager." value={config.sharedDevice} onValueChange={(v) => setConfig({ sharedDevice: v })} />
+      </Section>
+      <Section title={tr("lang.label")} spaced>
+        <LanguageSwitcher />
       </Section>
       <Section title="Kiosk" spaced>
         <Text color="fgMuted">Turn this tablet around so customers can check in with their number.</Text>

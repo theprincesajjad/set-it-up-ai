@@ -3,6 +3,231 @@ import { z } from "zod";
 export const _placeholder = z.never().optional();
 
 // ===========================================================================
+// Menu (restaurant.dietary_tags, restaurant.multilingual_menu, restaurant.degh_preorders,
+// restaurant.dual_pricing): dietary tags, translations, degh pre-orders, cash price
+// ===========================================================================
+export const MENU_LANGS = ["en", "hi", "ur", "pa"] as const;
+export type MenuLang = (typeof MENU_LANGS)[number];
+export const TRANSLATION_LANGS = ["hi", "ur", "pa"] as const;
+
+/** Halal claims are the shop's own: halalCertifier is shown as given, never verified or implied by us. */
+export const dietaryTagsSchema = z
+  .object({
+    halal: z.boolean().optional(),
+    zabihah: z.boolean().optional(),
+    vegetarian: z.boolean().optional(),
+    vegan: z.boolean().optional(),
+    jain: z.boolean().optional(),
+    glutenFree: z.boolean().optional(),
+    spice: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    allergens: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+    halalCertifier: z.string().trim().min(1).max(120).optional(),
+  })
+  .strict()
+  .refine((v) => !v.halalCertifier || v.halal || v.zabihah, { message: "Name a halal certifier only on halal or zabihah items", path: ["halalCertifier"] });
+export type DietaryTagsInput = z.input<typeof dietaryTagsSchema>;
+
+export const translationsSchema = z
+  .record(z.string(), z.object({ name: z.string().trim().min(1).max(120).optional(), description: z.string().max(1000).optional() }))
+  .refine((v) => Object.keys(v).every((k) => (TRANSLATION_LANGS as readonly string[]).includes(k)), { message: "Translations are supported for hi, ur and pa" });
+
+const queryFlag = z
+  .enum(["1", "true", "0", "false"])
+  .optional()
+  .transform((v) => v === "1" || v === "true");
+
+/** GET /v1/public/shops/:slug/menu?lang=hi&halal=1&veg=1&maxSpice=2 */
+export const publicMenuQuery = z.object({
+  lang: z.enum(MENU_LANGS).optional(),
+  halal: queryFlag,
+  veg: queryFlag,
+  maxSpice: z.coerce.number().int().min(0).max(3).optional(),
+});
+export type PublicMenuQuery = z.infer<typeof publicMenuQuery>;
+
+/** PUT /v1/merchants/:merchantId/menu/languages (must include en) */
+export const menuLanguagesBody = z.object({ languages: z.array(z.enum(MENU_LANGS)).min(1).max(4) }).refine((v) => v.languages.includes("en"), { message: "English stays on", path: ["languages"] });
+export interface MenuLanguagesResponse {
+  languages: MenuLang[];
+}
+
+/** PUT /v1/merchants/:merchantId/dual-pricing: percent off the card price for cash, in basis points. */
+export const dualPricingBody = z.object({ cashDiscountBps: z.number().int().min(0).max(1000) });
+export interface DualPricingResponse {
+  cashDiscountBps: number;
+  enabled: boolean;
+}
+
+/** PUT /v1/merchants/:merchantId/preorders/settings: max pots (pre-order-only units) per pickup day; null = no cap. */
+export const preorderSettingsBody = z.object({ preorderDailyCap: z.number().int().min(1).max(1000).nullable() });
+export interface PreorderSettingsResponse {
+  preorderDailyCap: number | null;
+}
+
+export const tenderSchema = z.enum(["cash", "card"]);
+export type Tender = z.infer<typeof tenderSchema>;
+
+/** GET /v1/merchants/:merchantId/preorders?from=YYYY-MM-DD&to=YYYY-MM-DD (shop-local days; default today + 14 days) */
+export const preordersQuery = z.object({ from: z.iso.date().optional(), to: z.iso.date().optional() });
+export interface PreorderPrepLine {
+  catalogItemId: string | null;
+  name: string;
+  quantity: number;
+  /** Total servings (quantity x serves) when the item has serves. */
+  serves: number | null;
+}
+export interface PreorderOrderDto {
+  orderId: string;
+  number: number;
+  status: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  pickupAt: string;
+  notes: string | null;
+  totalCents: number;
+  depositCents: number;
+  depositPaid: boolean;
+  balanceDueCents: number;
+  items: { name: string; quantity: number; modifiers: { name: string; option: string }[] }[];
+}
+export interface PreorderDayDto {
+  /** Shop-local date, YYYY-MM-DD. */
+  date: string;
+  pots: number;
+  cap: number | null;
+  remaining: number | null;
+  prep: PreorderPrepLine[];
+  orders: PreorderOrderDto[];
+}
+export interface PreordersResponse {
+  days: PreorderDayDto[];
+}
+
+// ===========================================================================
+// Kitchen (restaurant.kds): tickets by station, item status, bump, recall; counter orders
+// ===========================================================================
+export const KITCHEN_ITEM_STATUSES = ["queued", "cooking", "ready"] as const;
+export type KitchenItemStatus = (typeof KITCHEN_ITEM_STATUSES)[number];
+
+/** GET /v1/merchants/:merchantId/kitchen/tickets. station defaults to the caller's own; station=all shows every station. */
+export const kitchenTicketsQuery = z.object({
+  station: z.string().trim().min(1).max(40).optional(),
+  /** Ticket language override (default: the caller's staff locale). */
+  lang: z.enum(MENU_LANGS).optional(),
+});
+export const kitchenItemStatusBody = z.object({ status: z.enum(["cooking", "ready"]) });
+
+export interface KitchenItemDto {
+  id: string;
+  catalogItemId: string | null;
+  /** In the viewer's language (English fallback). */
+  name: string;
+  nameEn: string;
+  quantity: number;
+  modifiers: { name: string; option: string }[];
+  notes: string | null;
+  station: string | null;
+  status: KitchenItemStatus;
+}
+export interface KitchenTicketDto {
+  orderId: string;
+  number: number;
+  kind: string;
+  channel: string;
+  orderStatus: string;
+  pickupAt: string | null;
+  notes: string | null;
+  firedAt: string;
+  bumpedAt: string | null;
+  ageSeconds: number;
+  items: KitchenItemDto[];
+}
+export interface KitchenTicketsResponse {
+  station: string | null;
+  lang: MenuLang;
+  /** Stations that have items on open tickets. */
+  stations: string[];
+  items: KitchenTicketDto[];
+}
+
+/** POST /v1/merchants/:merchantId/orders/counter: staff rings up a walk-in or dine-in order. */
+export const counterOrderBody = z.object({
+  locationId: z.uuid().optional(),
+  items: z
+    .array(
+      z.object({
+        catalogItemId: z.uuid(),
+        quantity: z.number().int().min(1).max(50),
+        modifiers: z.array(z.object({ name: z.string().min(1), option: z.string().min(1) })).max(20).default([]),
+      }),
+    )
+    .min(1)
+    .max(50),
+  /** Paid now by cash or card at the counter. Leave out to open a tab (pay at pickup, or split it). */
+  tender: tenderSchema.optional(),
+  tipCents: z.number().int().min(0).max(100_000).default(0),
+  /** Credit points to an existing customer by phone. */
+  customerPhone: z.string().min(7).max(20).optional(),
+  notes: z.string().max(500).nullish(),
+});
+export type CounterOrderBody = z.input<typeof counterOrderBody>;
+
+// ===========================================================================
+// Splits (restaurant.split_bills): even or by item, one pay link per guest
+// ===========================================================================
+export const createSplitsBody = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("even"), ways: z.number().int().min(2).max(30), labels: z.array(z.string().trim().min(1).max(60)).max(30).optional() }),
+  z.object({
+    mode: z.literal("items"),
+    /** Every order line must be in exactly one split. */
+    splits: z.array(z.object({ label: z.string().trim().min(1).max(60).optional(), itemIds: z.array(z.uuid()).min(1).max(50) })).min(2).max(30),
+  }),
+]);
+export type CreateSplitsBody = z.input<typeof createSplitsBody>;
+export const paySplitBody = z.object({ tipCents: z.number().int().min(0).max(100_000).default(0) });
+export type PaySplitBody = z.input<typeof paySplitBody>;
+
+export interface SplitDto {
+  id: string;
+  orderId: string;
+  label: string;
+  amountCents: number;
+  tipCents: number;
+  itemIds: string[];
+  status: "open" | "paid";
+  paidAt: string | null;
+  /** Share this link with the guest. */
+  payUrl: string;
+  payToken: string;
+}
+export interface OrderSplitsResponse {
+  orderId: string;
+  orderNumber: number;
+  totalCents: number;
+  paidCents: number;
+  orderPaid: boolean;
+  items: SplitDto[];
+}
+/** GET /v1/public/splits/:token */
+export interface PublicSplitResponse {
+  merchant: { name: string; slug: string; logoUrl: string | null };
+  orderNumber: number;
+  label: string;
+  amountCents: number;
+  tipCents: number;
+  status: "open" | "paid";
+  paidAt: string | null;
+  canPay: boolean;
+  lines: { name: string; quantity: number }[];
+}
+/** POST /v1/public/splits/:token/pay */
+export interface PaySplitResponse {
+  split: PublicSplitResponse;
+  payment: { paymentIntentId: string; clientSecret: string; amountCents: number };
+}
+
+
+// ===========================================================================
 // Catering (restaurant.catering, Growth): inquiry → tasting → quote → deposit → invoice
 // ===========================================================================
 export const CATERING_EVENT_TYPES = ["wedding", "walima", "mehndi", "engagement", "birthday", "aqiqah", "corporate", "religious", "other"] as const;
@@ -268,3 +493,5 @@ export interface HoldResponse {
   booking: HallBookingDto;
   deposit: CateringDepositPaymentDto | null;
 }
+
+export const linkHallBookingBody = z.object({ hallBookingId: z.uuid() });

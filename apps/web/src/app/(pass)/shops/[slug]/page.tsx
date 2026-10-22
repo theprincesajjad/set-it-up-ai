@@ -24,6 +24,9 @@ import { formatPoints, rewardInSentence } from "@/lib/format";
 import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { openStatus, weekRows } from "@/lib/hours";
 import { howYouEarn } from "@/lib/program";
+import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
+import { translator } from "@ll/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +55,8 @@ function directionsUrl(l: networkApi.LocationDto) {
 
 export default async function ShopPage({ params, searchParams }: Props) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
+  const locale = await getLocale(sp);
+  const t = translator(locale);
   const ref = typeof sp.ref === "string" ? sp.ref.slice(0, 32) : null;
   let shop: networkApi.PublicShopResponse;
   try {
@@ -99,13 +104,14 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const joinInfo: networkApi.JoinInfoResponse | null = loc ? { qrCode: "", merchant: m, location: loc, program, rewards: shop.rewards.slice(0, 3), consentText: shop.consentText } : null;
 
   const quick = [
-    m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: "Call", icon: Phone } : null,
-    loc ? { href: directionsUrl(loc), label: "Directions", icon: Navigation } : null,
-    m.website ? { href: m.website, label: "Website", icon: Globe } : null,
+    m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: t("shop.call"), icon: Phone } : null,
+    loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
+    m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
   ].filter((x): x is { href: string; label: string; icon: typeof Phone } => !!x);
 
   return (
-    <div className="flex flex-col gap-6 pt-2">
+    <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
+      <LanguageSwitcher className="self-start" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ShopTile
         variant="hero"
@@ -116,7 +122,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
           {shop.memberCount ? <span className="text-fg-muted">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</span> : null}
-          {shop.features?.orderAhead ? <span className="text-fg-muted">Order ahead in the app</span> : null}
+          {shop.features?.orderAhead ? <span className="text-fg-muted">{t("shop.orderAheadInApp")}</span> : null}
           {shop.features?.serviceTickets ? <span className="text-fg-muted">Repair tracking</span> : null}
         </div>
       ) : null}
@@ -152,7 +158,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         panels={[
           {
             id: "rewards",
-            label: "Rewards",
+            label: t("shop.rewards"),
             count: shop.rewards.length,
             content: (
               <>
@@ -187,7 +193,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           },
           {
             id: "promos",
-            label: "Promos",
+            label: t("shop.promos"),
             count: shop.promos.length,
             content: shop.promos.length ? (
               shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
@@ -197,7 +203,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           },
           {
             id: "about",
-            label: "About",
+            label: t("shop.about"),
             content: (
               <>
                 {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
@@ -212,7 +218,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                           {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
                         </p>
                       </div>
-                      <span className="text-meta-strong text-fg">Directions</span>
+                      <span className="text-meta-strong text-fg">{t("shop.directions")}</span>
                     </a>
                     {loc.hours ? (
                       <table className="my-2 w-full text-meta">
@@ -262,6 +268,6 @@ export default async function ShopPage({ params, searchParams }: Props) {
       {!membership && joinInfo ? (
         <StickyJoin label={copy.action.join(m.name)} />
       ) : null}
-    </div>
+    </LocaleScope>
   );
 }

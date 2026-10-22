@@ -2,6 +2,15 @@
 export const en = {
   "lang.label": "Language",
 
+  // Public shop page
+  "shop.rewards": "Rewards",
+  "shop.promos": "Promos",
+  "shop.about": "About",
+  "shop.call": "Call",
+  "shop.directions": "Directions",
+  "shop.website": "Website",
+  "shop.orderAheadInApp": "Order ahead in the app",
+
   // Customer menu and ordering
   "menu.title": "Menu",
   "menu.add": "Add",
@@ -105,6 +114,7 @@ export const en = {
   "counter.enterCode": "Enter code",
   "counter.customerFound": "Customer found",
   "counter.customerNotFound": "No customer found",
+  "counter.findCustomer": "Find customer",
   "counter.scanCard": "Scan card",
 } as const;
 

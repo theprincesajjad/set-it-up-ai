@@ -1,18 +1,20 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
 import { and, asc, eq } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
-import type { commerceApi } from "@ll/shared";
+import { restaurantApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
-import { badRequest, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, notFound } from "../lib/errors.js";
+import type { AppContext } from "../context.js";
 import { paymentsReady } from "./commerceShared.js";
-import { getMerchantFeatures } from "./features.js";
+import { getMerchantFeatures, requireFeature } from "./features.js";
 import { merchantProvince, taxLabel } from "./tax.js";
 
 type Item = typeof catalogItems.$inferSelect;
 type Category = typeof merchantCategories.$inferSelect;
 type Merchant = typeof merchants.$inferSelect;
 
-export function itemDto(i: Item): commerceApi.CatalogItemDto {
+/** Restaurant-pack fields are only returned for restaurant-tier shops, so other shops' output is unchanged. */
+export function itemDto(i: Item, restaurant = false): commerceApi.CatalogItemDto {
   return {
     id: i.id,
     merchantId: i.merchantId,
@@ -26,6 +28,9 @@ export function itemDto(i: Item): commerceApi.CatalogItemDto {
     orderable: i.orderable,
     sortOrder: i.sortOrder,
     createdAt: i.createdAt.toISOString(),
+    ...(restaurant
+      ? { dietary: i.dietary, translations: i.translations, preorderOnly: i.preorderOnly, leadTimeHours: i.leadTimeHours, serves: i.serves, depositBps: i.depositBps, station: i.station }
+      : {}),
   };
 }
 
@@ -52,16 +57,41 @@ function assertModifiers(mods: { name: string; options: { name: string }[] }[] |
 }
 
 export async function getCatalog(db: DbOrTx, merchantId: string): Promise<commerceApi.CatalogResponse> {
+  const [m] = await db.select({ tier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const restaurant = !!m?.tier;
   const [cats, items] = await Promise.all([
     db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, merchantId)).orderBy(asc(merchantCategories.name)),
     db.select().from(catalogItems).where(eq(catalogItems.merchantId, merchantId)).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)),
   ]);
-  return { categories: cats.map(categoryDto), items: items.map(itemDto) };
+  return { categories: cats.map(categoryDto), items: items.map((i) => itemDto(i, restaurant)) };
+}
+
+/** Restaurant-pack fields on a create/update body, with the feature each one needs. */
+const RESTAURANT_ITEM_FIELDS: { keys: readonly (keyof commerceApi.UpdateCatalogItemBody)[]; feature: FeatureKey }[] = [
+  { keys: ["dietary"], feature: "restaurant.dietary_tags" },
+  { keys: ["translations"], feature: "restaurant.multilingual_menu" },
+  { keys: ["preorderOnly", "leadTimeHours", "serves", "depositBps"], feature: "restaurant.degh_preorders" },
+  { keys: ["station"], feature: "restaurant.kds" },
+];
+
+async function gateRestaurantFields(db: DbOrTx, merchantId: string, body: commerceApi.UpdateCatalogItemBody) {
+  const used = RESTAURANT_ITEM_FIELDS.filter((g) => g.keys.some((k) => body[k] !== undefined));
+  if (!used.length) return;
+  const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Merchant");
+  for (const g of used) await requireFeature(db, m, g.feature);
+}
+
+function normaliseDietary(d: NonNullable<commerceApi.CreateCatalogItemBody["dietary"]>) {
+  // Zabihah is a halal claim too; vegan food is vegetarian.
+  return { ...d, ...(d.zabihah ? { halal: true } : {}), ...(d.vegan ? { vegetarian: true } : {}) };
 }
 
 export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<typeof commerceApi.createCatalogItemBody>) {
   await assertCategory(db, merchantId, body.categoryId);
   assertModifiers(body.modifiers);
+  await gateRestaurantFields(db, merchantId, body);
+  const restaurant = RESTAURANT_ITEM_FIELDS.some((g) => g.keys.some((k) => body[k] !== undefined));
   const [row] = await db
     .insert(catalogItems)
     .values({
@@ -75,29 +105,43 @@ export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<t
       available: body.available,
       orderable: body.orderable,
       sortOrder: body.sortOrder,
+      dietary: body.dietary ? normaliseDietary(body.dietary) : {},
+      translations: body.translations ?? {},
+      preorderOnly: body.preorderOnly ?? false,
+      leadTimeHours: body.leadTimeHours ?? 0,
+      serves: body.serves ?? null,
+      depositBps: body.depositBps ?? 0,
+      station: body.station ?? null,
     })
     .returning();
-  return itemDto(row!);
+  return itemDto(row!, restaurant || !!(await isRestaurantShop(db, merchantId)));
+}
+
+async function isRestaurantShop(db: DbOrTx, merchantId: string): Promise<boolean> {
+  const [m] = await db.select({ tier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  return !!m?.tier;
 }
 
 export async function updateItem(db: DbOrTx, merchantId: string, itemId: string, body: z.infer<typeof commerceApi.updateCatalogItemBody>) {
   await assertCategory(db, merchantId, body.categoryId);
   assertModifiers(body.modifiers);
+  await gateRestaurantFields(db, merchantId, body);
   const patch: Partial<typeof catalogItems.$inferInsert> = {};
-  for (const k of ["name", "description", "priceCents", "categoryId", "imageUrl", "modifiers", "available", "orderable", "sortOrder"] as const) {
+  for (const k of ["name", "description", "priceCents", "categoryId", "imageUrl", "modifiers", "available", "orderable", "sortOrder", "translations", "preorderOnly", "leadTimeHours", "serves", "depositBps", "station"] as const) {
     if (body[k] !== undefined) (patch as Record<string, unknown>)[k] = body[k];
   }
+  if (body.dietary !== undefined) patch.dietary = normaliseDietary(body.dietary);
   if (!Object.keys(patch).length) throw badRequest("Nothing to update");
   const [row] = await db.update(catalogItems).set(patch).where(and(eq(catalogItems.id, itemId), eq(catalogItems.merchantId, merchantId))).returning();
   if (!row) throw notFound("Catalog item");
-  return itemDto(row);
+  return itemDto(row, await isRestaurantShop(db, merchantId));
 }
 
 /** Archive (items referenced by past orders are kept for receipts). */
 export async function archiveItem(db: DbOrTx, merchantId: string, itemId: string) {
   const [row] = await db.update(catalogItems).set({ available: false, orderable: false }).where(and(eq(catalogItems.id, itemId), eq(catalogItems.merchantId, merchantId))).returning();
   if (!row) throw notFound("Catalog item");
-  return itemDto(row);
+  return itemDto(row, await isRestaurantShop(db, merchantId));
 }
 
 export async function createCategory(db: DbOrTx, merchantId: string, body: z.infer<typeof commerceApi.createCategoryBody>) {
@@ -112,8 +156,23 @@ export async function updateCategory(db: DbOrTx, merchantId: string, categoryId:
   return categoryDto(row);
 }
 
-/** Public menu: only available + orderable items. Caller checks orders.order_ahead. */
-export async function publicMenu(db: DbOrTx, merchant: Merchant): Promise<commerceApi.PublicMenuResponse> {
+/** Item passes the diner's dietary filters. Untagged spice counts as mild; halal includes zabihah, veg includes vegan and Jain. */
+export function matchesDiet(i: Pick<Item, "dietary">, q: { halal?: boolean; veg?: boolean; maxSpice?: number }): boolean {
+  const d = i.dietary ?? {};
+  if (q.halal && !(d.halal || d.zabihah)) return false;
+  if (q.veg && !(d.vegetarian || d.vegan || d.jain)) return false;
+  if (q.maxSpice !== undefined && (d.spice ?? 0) > q.maxSpice) return false;
+  return true;
+}
+
+/** Cash price for dual pricing: the card price less the shop's cash discount. */
+export const cashPriceCents = (priceCents: number, bps: number) => Math.round((priceCents * (10_000 - bps)) / 10_000);
+
+/**
+ * Public menu: only available + orderable items. Caller checks orders.order_ahead.
+ * Restaurant extras (lang, dietary filters, cash price) apply only when the shop has those features.
+ */
+export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantApi.PublicMenuQuery = { halal: false, veg: false }): Promise<commerceApi.PublicMenuResponse> {
   const [catalog, locs, features, province, payInApp] = await Promise.all([
     getCatalog(db, merchant.id),
     db.select().from(locations).where(and(eq(locations.merchantId, merchant.id), eq(locations.active, true))).orderBy(asc(locations.createdAt)),
@@ -121,7 +180,25 @@ export async function publicMenu(db: DbOrTx, merchant: Merchant): Promise<commer
     merchantProvince(db, merchant),
     paymentsReady(db, merchant),
   ]);
-  const items = catalog.items.filter((i) => i.available && i.orderable);
+  const dietOn = features["restaurant.dietary_tags"].enabled;
+  const langOn = features["restaurant.multilingual_menu"].enabled;
+  const dualOn = features["restaurant.dual_pricing"].enabled && merchant.cashDiscountBps > 0;
+  const lang: restaurantApi.MenuLang = langOn && q.lang && (merchant.languages as string[]).includes(q.lang) ? q.lang : "en";
+  let items = catalog.items.filter((i) => i.available && i.orderable);
+  if (dietOn) items = items.filter((i) => matchesDiet({ dietary: i.dietary ?? {} }, q));
+  items = items.map((i) => {
+    const out = { ...i };
+    // The dietary/translation/preorder keys exist only for restaurant-tier shops (see itemDto).
+    if (!dietOn) delete out.dietary;
+    if (!langOn) delete out.translations;
+    if (lang !== "en") {
+      const t = i.translations?.[lang];
+      if (t?.name) out.name = t.name;
+      if (t?.description) out.description = t.description;
+    }
+    if (dualOn) out.cashPriceCents = cashPriceCents(i.priceCents, merchant.cashDiscountBps);
+    return out;
+  });
   const tax = taxLabel(province);
   return {
     merchant: { id: merchant.id, slug: merchant.slug, name: merchant.name, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, timezone: merchant.timezone },
@@ -131,5 +208,43 @@ export async function publicMenu(db: DbOrTx, merchant: Merchant): Promise<commer
     tax: { province, label: tax.label, ratePpm: tax.ratePpm },
     payInApp,
     pickupSlots: features["booking.pickup_slots"].enabled,
+    ...(langOn ? { lang, languages: merchant.languages as restaurantApi.MenuLang[] } : {}),
+    ...(dualOn ? { dualPricing: { cashDiscountBps: merchant.cashDiscountBps } } : {}),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Restaurant menu settings (owner/manager)
+// ---------------------------------------------------------------------------
+export async function setMenuLanguages(ctx: AppContext, merchant: Merchant, languages: restaurantApi.MenuLang[]): Promise<restaurantApi.MenuLanguagesResponse> {
+  await requireFeature(ctx.db, merchant, "restaurant.multilingual_menu");
+  const unique = restaurantApi.MENU_LANGS.filter((l) => languages.includes(l));
+  await ctx.db.update(merchants).set({ languages: unique, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
+  return { languages: unique };
+}
+
+export async function getMenuLanguages(db: DbOrTx, merchant: Merchant): Promise<restaurantApi.MenuLanguagesResponse> {
+  await requireFeature(db, merchant, "restaurant.multilingual_menu");
+  return { languages: merchant.languages as restaurantApi.MenuLang[] };
+}
+
+/** Dual pricing (cash discount). Not allowed in Quebec. */
+export async function setDualPricing(ctx: AppContext, merchant: Merchant, bps: number): Promise<restaurantApi.DualPricingResponse> {
+  await requireFeature(ctx.db, merchant, "restaurant.dual_pricing");
+  if (bps > 0 && (await merchantProvince(ctx.db, merchant)) === "QC") {
+    throw new HttpError(409, "dual_pricing_not_allowed", "Cash discount pricing isn't available in Quebec.");
+  }
+  await ctx.db.update(merchants).set({ cashDiscountBps: bps, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
+  return { cashDiscountBps: bps, enabled: bps > 0 };
+}
+
+export async function getDualPricing(db: DbOrTx, merchant: Merchant): Promise<restaurantApi.DualPricingResponse> {
+  await requireFeature(db, merchant, "restaurant.dual_pricing");
+  return { cashDiscountBps: merchant.cashDiscountBps, enabled: merchant.cashDiscountBps > 0 };
+}
+
+export async function setPreorderCap(ctx: AppContext, merchant: Merchant, cap: number | null): Promise<restaurantApi.PreorderSettingsResponse> {
+  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await ctx.db.update(merchants).set({ preorderDailyCap: cap, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
+  return { preorderDailyCap: cap };
 }

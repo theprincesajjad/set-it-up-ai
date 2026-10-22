@@ -10,7 +10,7 @@ import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
 import { CategoriesEditor } from "@/components/dashboard/program/CategoriesEditor";
 import { RewardsEditor } from "@/components/dashboard/program/RewardsEditor";
 import { VipEditor } from "@/components/dashboard/program/VipEditor";
-import { ErrorLine, PageHeader, Panel, Segmented, ToolbarButton } from "@/components/dashboard/kit";
+import { ErrorLine, PageHeader, Panel, SaveBar, Segmented, ToolbarButton } from "@/components/dashboard/kit";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
@@ -209,33 +209,23 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
         {preview}
       </Modal>
 
-      {dirty ? (
-        <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-bg px-4 py-3 md:px-8 lg:start-[240px]">
-          <div className="mx-auto flex max-w-[1136px] flex-wrap items-center justify-between gap-3">
-            <p className="text-meta text-fg">{saveError ? <span className="text-negative">{saveError}</span> : "You have unsaved changes"}</p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setDraft(original)}>
-                Discard
-              </Button>
-              <Button
-                size="sm"
-                loading={saving}
-                onClick={() => {
-                  setTried(true);
-                  if (Object.keys(errors).length) {
-                    setSaveError("Fix the highlighted fields first.");
-                    return;
-                  }
-                  if (raisesTheBar(original, draft)) setConfirm(true);
-                  else void save();
-                }}
-              >
-                Save program
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <SaveBar dirty={dirty} error={saveError} onDiscard={() => setDraft(original)}>
+        <Button
+          size="sm"
+          loading={saving}
+          onClick={() => {
+            setTried(true);
+            if (Object.keys(errors).length) {
+              setSaveError("Fix the highlighted fields first.");
+              return;
+            }
+            if (raisesTheBar(original, draft)) setConfirm(true);
+            else void save();
+          }}
+        >
+          Save program
+        </Button>
+      </SaveBar>
       <ConfirmDialog
         open={confirm}
         onClose={() => setConfirm(false)}

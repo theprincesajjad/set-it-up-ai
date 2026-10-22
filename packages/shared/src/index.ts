@@ -4,3 +4,4 @@ export * from "./verticals.js";
 export * from "./points.js";
 export * from "./api/index.js";
 export * from "./i18n/index.js";
+export * from "./festivals.js";

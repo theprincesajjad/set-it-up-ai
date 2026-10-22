@@ -8,8 +8,9 @@ import { t } from "../../copy/en-CA";
 import { useOrderAhead } from "../../features/customer/queries";
 import { formatMoney } from "../../lib/award";
 import { addToCart, cartCount, cartSubtotal, orderItems, pickupChoices, setQuantity, unitPrice, type CartLine, type CartModifier } from "../../lib/cart";
-import { formatTime } from "../../lib/format";
 import { newIdempotencyKey } from "../../lib/ids";
+import { useLocale } from "../../lib/i18n";
+import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { Banner, Button, Card, Chip, EmptyState, ErrorState, IconButton, ListRow, LockedFeature, Minus, Plus, Screen, Section, Sheet, ShoppingBag, SkeletonList, Text, TextField } from "../../ui";
@@ -18,6 +19,7 @@ import { Banner, Button, Card, Chip, EmptyState, ErrorState, IconButton, ListRow
 export default function OrderAhead() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const qc = useQueryClient();
+  const { t: tr, money, pick, time } = useLocale();
   const menu = useOrderAhead(slug);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [item, setItem] = useState<commerceApi.CatalogItemDto | null>(null);
@@ -52,7 +54,7 @@ export default function OrderAhead() {
     );
   }
 
-  const sections = [...m.categories.map((cat) => ({ title: cat.name, items: cat.items })), ...(m.uncategorized.length ? [{ title: "More", items: m.uncategorized }] : [])];
+  const sections = [...m.categories.map((cat) => ({ title: cat.name, items: cat.items })), ...(m.uncategorized.length ? [{ title: tr("menu.title"), items: m.uncategorized }] : [])];
   const selectedMods = (it: commerceApi.CatalogItemDto): CartModifier[] =>
     it.modifiers.flatMap((g) => {
       const name = choice[g.name] ?? g.options[0]?.name;
@@ -95,11 +97,12 @@ export default function OrderAhead() {
       footer={
         cart.length > 0 ? (
           <Button size="lg" fullWidth onPress={() => setCheckout(true)}>
-            {`Review order · ${cartCount(cart)} · ${formatMoney(cartSubtotal(cart))}`}
+            {`${tr("cart.review")} · ${cartCount(cart)} · ${money(cartSubtotal(cart))}`}
           </Button>
         ) : undefined
       }
     >
+      <LanguageSwitcher />
       <Text color="fgMuted">{`Pick up at ${location?.name ?? m.merchant.name}${location?.address ? `, ${location.address}` : ""}. Pay at pickup.`}</Text>
       {sections.length === 0 ? <EmptyState icon={ShoppingBag} title="Nothing to order right now" body="Check back later." /> : null}
       {sections.map((sec) => (
@@ -108,9 +111,9 @@ export default function OrderAhead() {
             {sec.items.map((it) => (
               <ListRow
                 key={it.id}
-                title={it.name}
-                subtitle={it.description}
-                trailing={<Text variant="bodyStrong" tabular>{formatMoney(it.priceCents)}</Text>}
+                title={pick(it).name}
+                subtitle={pick(it).description}
+                trailing={<Text variant="bodyStrong" tabular>{money(it.priceCents)}</Text>}
                 onPress={() => {
                   setChoice({});
                   setItem(it);
@@ -124,7 +127,7 @@ export default function OrderAhead() {
       <Sheet
         visible={!!item}
         onClose={() => setItem(null)}
-        title={item?.name}
+        title={item ? pick(item).name : undefined}
         footer={
           item ? (
             <Button
@@ -134,12 +137,12 @@ export default function OrderAhead() {
                 setItem(null);
               }}
             >
-              {`Add · ${formatMoney(unitPrice({ basePriceCents: item.priceCents, modifiers: selectedMods(item) }))}`}
+              {`${tr("menu.add")} · ${money(unitPrice({ basePriceCents: item.priceCents, modifiers: selectedMods(item) }))}`}
             </Button>
           ) : undefined
         }
       >
-        {item?.description ? <Text color="fgMuted">{item.description}</Text> : null}
+        {item && pick(item).description ? <Text color="fgMuted">{pick(item).description}</Text> : null}
         {item?.modifiers.map((g) => (
           <View key={g.name} style={{ gap: 8 }}>
             <Text variant="label">{g.name}</Text>
@@ -155,10 +158,10 @@ export default function OrderAhead() {
       <Sheet
         visible={checkout}
         onClose={() => setCheckout(false)}
-        title="Your order"
+        title={tr("cart.title")}
         footer={
           <Button size="lg" fullWidth loading={placing} disabled={cart.length === 0 || (!pickupAt && !slotId)} onPress={place}>
-            Place order
+            {tr("checkout.placeOrder")}
           </Button>
         }
       >
@@ -176,14 +179,14 @@ export default function OrderAhead() {
           </View>
         ))}
         <Text variant="bodySm" color="fgMuted">{`About ${formatMoney(cartSubtotal(cart))} before tax. The shop confirms the total.`}</Text>
-        <Text variant="label">Pickup time</Text>
+        <Text variant="label">{tr("checkout.pickupTime")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {m.pickupSlots && (slots.data?.items.length ?? 0) > 0
             ? slots.data!.items.slice(0, 16).map((s) => (
-                <Chip key={s.id} label={formatTime(s.startsAt)} selected={slotId === s.id} onPress={() => { setSlotId(s.id); setPickupAt(null); }} />
+                <Chip key={s.id} label={time(s.startsAt)} selected={slotId === s.id} onPress={() => { setSlotId(s.id); setPickupAt(null); }} />
               ))
             : times.map((d, i) => (
-                <Chip key={d.toISOString()} label={i === 0 ? `ASAP · ${formatTime(d)}` : formatTime(d)} selected={pickupAt === d.toISOString()} onPress={() => { setPickupAt(d.toISOString()); setSlotId(null); }} />
+                <Chip key={d.toISOString()} label={i === 0 ? `${tr("checkout.asap")} · ${time(d)}` : time(d)} selected={pickupAt === d.toISOString()} onPress={() => { setPickupAt(d.toISOString()); setSlotId(null); }} />
               ))}
         </ScrollView>
         <TextField label="Note for the shop" optionalLabel value={notes} onChangeText={setNotes} maxLength={500} placeholder="Oat milk please" />

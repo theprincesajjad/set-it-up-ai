@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { centsSchema, uuidSchema } from "./common.js";
+import { dietaryTagsSchema, tenderSchema, translationsSchema, type DietaryTagsInput } from "./restaurant.js";
 
 const isoDateTime = z.iso.datetime({ offset: true });
 const isoDate = z.iso.date();
@@ -31,6 +32,16 @@ export const createCatalogItemBody = z.object({
   available: z.boolean().default(true),
   orderable: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
+  /** Restaurant pack: dietary tags (restaurant.dietary_tags) and hi/ur/pa translations (restaurant.multilingual_menu). */
+  dietary: dietaryTagsSchema.optional(),
+  translations: translationsSchema.optional(),
+  /** Restaurant pack: degh pre-orders (restaurant.degh_preorders). */
+  preorderOnly: z.boolean().optional(),
+  leadTimeHours: z.number().int().min(0).max(24 * 30).optional(),
+  serves: z.number().int().min(1).max(5000).nullish(),
+  depositBps: z.number().int().min(0).max(10_000).optional(),
+  /** Kitchen station (restaurant.kds), e.g. "tandoor". */
+  station: z.string().trim().min(1).max(40).nullish(),
 });
 export type CreateCatalogItemBody = z.input<typeof createCatalogItemBody>;
 
@@ -72,6 +83,16 @@ export interface CatalogItemDto {
   orderable: boolean;
   sortOrder: number;
   createdAt: string;
+  /** Restaurant-pack shops only (the keys are absent for other shops). */
+  dietary?: DietaryTagsInput;
+  translations?: Record<string, { name?: string; description?: string }>;
+  preorderOnly?: boolean;
+  leadTimeHours?: number;
+  serves?: number | null;
+  depositBps?: number;
+  station?: string | null;
+  /** Public menu: card price is priceCents; set when the shop shows a cash price (restaurant.dual_pricing). */
+  cashPriceCents?: number;
 }
 
 /** GET /v1/merchants/:merchantId/catalog */
@@ -98,6 +119,11 @@ export interface PublicMenuResponse {
   tax: TaxInfoDto;
   payInApp: boolean;
   pickupSlots: boolean;
+  /** Restaurant-pack shops only. */
+  lang?: "en" | "hi" | "ur" | "pa";
+  languages?: ("en" | "hi" | "ur" | "pa")[];
+  /** Present when the shop shows both prices. */
+  dualPricing?: { cashDiscountBps: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +153,8 @@ export const placeOrderBody = z.object({
   /** Redeem one of the customer's rewards at this merchant against the order. */
   redeemRewardId: uuidSchema.nullish(),
   notes: z.string().max(500).nullish(),
+  /** pickup (default) or preorder: degh pots with lead time and deposit (restaurant.degh_preorders). */
+  kind: z.enum(["pickup", "preorder"]).default("pickup"),
   /** in_app = card via Stripe (payments.in_app); at_pickup = pay at the counter. */
   paymentMethod: z.enum(["in_app", "at_pickup"]).default("in_app"),
   /** Required. Retries with the same key return the same order. */
@@ -148,6 +176,8 @@ export const updateOrderStatusBody = z.object({
   status: z.enum(["accepted", "preparing", "ready", "picked_up", "cancelled"]),
   /** Required when cancelling. Shown to the customer. */
   reason: z.string().max(300).nullish(),
+  /** Picking up an unpaid order: how it was paid. Cash gets the cash price when the shop uses dual pricing. */
+  tender: tenderSchema.optional(),
 });
 export type UpdateOrderStatusBody = z.input<typeof updateOrderStatusBody>;
 
@@ -194,6 +224,18 @@ export interface OrderDto {
   createdAt: string;
   items: OrderItemDto[];
   customer?: { name: string | null; phone: string | null };
+  /** Restaurant pack. */
+  kind: "pickup" | "preorder" | "tiffin" | "catering" | "banquet" | string;
+  channel: string;
+  /** Pre-orders: deposit charged online; the balance is due at pickup. */
+  depositCents: number;
+  depositPaidAt: string | null;
+  balanceDueCents: number;
+  /** Service fee paid by the customer (commission-free shops). */
+  customerFeeCents: number;
+  cashDiscountCents: number;
+  firedAt: string | null;
+  bumpedAt: string | null;
 }
 
 /** POST /v1/me/orders */

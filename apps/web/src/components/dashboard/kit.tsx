@@ -580,3 +580,41 @@ export function StatTile({ label, value, delta, href, loading, caption }: { labe
 export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4", className)}>{children}</div>;
 }
+
+/* ------------------------------------------------------- pill + save bar */
+
+const PILL: Record<DotTone, string> = {
+  positive: "bg-positive/10 text-positive",
+  negative: "bg-negative/10 text-negative",
+  neutral: "bg-bg-muted text-fg-muted",
+  accent: "bg-accent-soft text-accent-text",
+  info: "bg-bg-subtle text-fg border border-line",
+};
+
+/** Filled status capsule for dense tables ("Live", "Paused", "Needs approval"). Prefer `StatusDot` in prose lists. */
+export function StatusPill({ tone = "neutral", children, className }: { tone?: DotTone; children: ReactNode; className?: string }) {
+  return <span className={cn("inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-caption font-medium", PILL[tone], className)}>{children}</span>;
+}
+
+/**
+ * Sticky save bar for long forms: appears once `dirty`, pinned to the bottom of the content area
+ * (clears the 240px sidebar on desktop). Pass the primary action as `children`.
+ */
+export function SaveBar({ dirty, message, error, onDiscard, children }: { dirty: boolean; message?: ReactNode; error?: string | null; onDiscard?: () => void; children: ReactNode }) {
+  if (!dirty) return null;
+  return (
+    <div role="region" aria-label="Unsaved changes" className="fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-bg px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] md:px-8 lg:start-[240px] print:hidden">
+      <div className="mx-auto flex max-w-[1136px] flex-wrap items-center justify-between gap-3">
+        <p className="text-meta text-fg" aria-live="polite">{error ? <span className="text-negative">{error}</span> : (message ?? "You have unsaved changes")}</p>
+        <div className="flex gap-2">
+          {onDiscard ? (
+            <button type="button" onClick={onDiscard} className="inline-flex h-8 items-center rounded-input px-3 text-meta font-medium text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+              Discard
+            </button>
+          ) : null}
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}

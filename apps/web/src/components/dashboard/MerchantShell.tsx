@@ -1,7 +1,7 @@
 "use client";
 import {
   BarChart3, Blocks, CalendarClock, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
-  Wrench, Flag, type LucideIcon, Calculator, Check,
+  Wrench, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, type LucideIcon, Calculator, Check,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -20,6 +20,8 @@ import { ShopMark } from "./ShopMark";
 const ICONS: Record<string, LucideIcon> = {
   home: Home, counter: Calculator, customers: Users, program: Gift, promos: Megaphone, "discount-cards": IdCard, messages: Mail, reports: BarChart3,
   locations: MapPin, staff: UserCog, integrations: Blocks, billing: CreditCard, settings: Settings, orders: ShoppingBag, catalog: Tag, tickets: Wrench,
+  "restaurant-menu": UtensilsCrossed, "restaurant-preorders": Clock, "restaurant-tiffin": Truck, "restaurant-catering": PartyPopper, "restaurant-banquet": Building2,
+  "restaurant-kitchen": ChefHat, "restaurant-whatsapp": MessageCircle, "restaurant-reviews": Star, "restaurant-festivals": Sparkles, "restaurant-phone-orders": Phone,
   slots: CalendarClock, ads: Flag, campaigns: ClipboardList,
 };
 

@@ -338,6 +338,8 @@ export const NOTIFICATION_TYPES = [
   "booking_reminder",
   "promo_nearby",
   "passport_progress",
+  "tiffin_update",
+  "tiffin_menu",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -393,6 +395,8 @@ export const NOTIFICATION_CATALOG: readonly NotificationTypeInfo[] = [
   t("quote_sent", "transactional", "orders", "Quotes", "When a shop sends you a quote to approve.", { push: true, sms: true, email: true }),
   t("booking_reminder", "transactional", "orders", "Pickup and drop-off reminders", "Reminders for times you booked.", { push: true, sms: true }),
   t("passport_progress", "transactional", "points", "Neighbourhood passport", "Progress on neighbourhood challenges and bonuses.", { push: true }),
+  t("tiffin_update", "transactional", "orders", "Tiffin deliveries and billing", "Your tiffin is out for delivery or delivered, and when a payment fails.", { push: true, sms: true }),
+  t("tiffin_menu", "transactional", "orders", "Tomorrow's tiffin menu", "What's cooking for tomorrow, sent the evening before. Off unless you turn it on.", { push: false }),
   t("promo_nearby", "marketing", "offers", "Offers nearby", "Offers from shops you've joined, when you're close (at most one a day, never 9pm-8am).", { push: true }),
 ];
 

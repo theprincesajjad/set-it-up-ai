@@ -7,8 +7,10 @@
  *  - Downgrading never deletes anything: members, points, rewards, promos and
  *    every free feature keep working. Only paid features lock (402).
  *  - merchants.plan is derived from subscription state delivered by webhooks.
+ *  - Restaurant pack subscriptions (subscriptions.restaurantTier set) live in
+ *    billing-restaurant.ts and never feed merchants.plan.
  */
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { auditLogs, merchants, subscriptions } from "@ll/db";
 import { PLANS, PLAN_IDS, PLAN_RANK, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
 import type { z } from "zod";
@@ -22,9 +24,9 @@ import { getRolloutStages } from "./features.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Subscription = typeof subscriptions.$inferSelect;
-type SubStatus = Subscription["status"];
+export type SubStatus = Subscription["status"];
 
-const LIVE_STATUSES: SubStatus[] = ["active", "trialing", "past_due"];
+export const LIVE_STATUSES: SubStatus[] = ["active", "trialing", "past_due"];
 
 export function subscriptionDto(s: Subscription): billingApi.SubscriptionDto {
   return {
@@ -42,7 +44,7 @@ export async function currentSubscription(ctx: AppContext, merchantId: string): 
   const [live] = await ctx.db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.merchantId, merchantId), inArray(subscriptions.status, LIVE_STATUSES)))
+    .where(and(eq(subscriptions.merchantId, merchantId), isNull(subscriptions.restaurantTier), inArray(subscriptions.status, LIVE_STATUSES)))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
   return live ?? null;
@@ -53,6 +55,7 @@ export async function billingOverview(ctx: AppContext, merchant: Merchant): Prom
   const sub = await currentSubscription(ctx, merchant.id);
   return {
     plan: merchant.plan,
+    restaurantTier: merchant.restaurantTier ?? null,
     subscription: sub ? subscriptionDto(sub) : null,
     hasBillingAccount: !!merchant.stripeCustomerId,
     plans: PLAN_IDS.map((id) => {
@@ -88,14 +91,14 @@ function planForPrice(ctx: AppContext, priceId: string | undefined | null): Plan
   return null;
 }
 
-async function ensureCustomer(ctx: AppContext, merchant: Merchant): Promise<string> {
+export async function ensureCustomer(ctx: AppContext, merchant: Merchant): Promise<string> {
   if (merchant.stripeCustomerId) return merchant.stripeCustomerId;
   const { customerId } = await getPayments(ctx).createCustomer({ merchantId: merchant.id, email: merchant.email, name: merchant.name });
   await ctx.db.update(merchants).set({ stripeCustomerId: customerId, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
   return customerId;
 }
 
-const billingPage = (ctx: AppContext, merchantId: string) => `${ctx.config.publicWebUrl}/dashboard/billing?merchant=${merchantId}`;
+export const billingPage = (ctx: AppContext, merchantId: string) => `${ctx.config.publicWebUrl}/m/${merchantId}/billing`;
 
 export async function startCheckout(ctx: AppContext, merchant: Merchant, body: z.infer<typeof billingApi.checkoutBody>): Promise<billingApi.CheckoutResponse> {
   const stages = await getRolloutStages(ctx.db);
@@ -112,8 +115,8 @@ export async function startCheckout(ctx: AppContext, merchant: Merchant, body: z
     priceId: priceIdFor(ctx, body.plan, body.interval),
     unitAmountCents: body.interval === "year" ? p.annualPriceCents : p.priceCents,
     productName: `${p.name} plan`,
-    successUrl: body.successUrl ?? `${billingPage(ctx, merchant.id)}&checkout=success`,
-    cancelUrl: body.cancelUrl ?? `${billingPage(ctx, merchant.id)}&checkout=cancelled`,
+    successUrl: body.successUrl ?? `${billingPage(ctx, merchant.id)}?checkout=success`,
+    cancelUrl: body.cancelUrl ?? `${billingPage(ctx, merchant.id)}?checkout=cancelled`,
   });
   return { sessionId: s.id, url: s.url };
 }
@@ -166,7 +169,7 @@ export async function downgradeToFree(ctx: AppContext, merchant: Merchant, immed
 
 /** merchants.plan = best plan among live subscriptions, else free. */
 export async function recomputePlan(ctx: AppContext, merchantId: string): Promise<PlanId> {
-  const live = await ctx.db.select().from(subscriptions).where(and(eq(subscriptions.merchantId, merchantId), inArray(subscriptions.status, LIVE_STATUSES)));
+  const live = await ctx.db.select().from(subscriptions).where(and(eq(subscriptions.merchantId, merchantId), isNull(subscriptions.restaurantTier), inArray(subscriptions.status, LIVE_STATUSES)));
   const plan = live.reduce<PlanId>((best, s) => (PLAN_RANK[s.plan] > PLAN_RANK[best] ? s.plan : best), "free");
   const [before] = await ctx.db.select({ plan: merchants.plan }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (before && before.plan !== plan) {
@@ -176,14 +179,14 @@ export async function recomputePlan(ctx: AppContext, merchantId: string): Promis
   return plan;
 }
 
-async function audit(ctx: AppContext, merchantId: string, action: string, data: Record<string, unknown>) {
+export async function audit(ctx: AppContext, merchantId: string, action: string, data: Record<string, unknown>) {
   await ctx.db.insert(auditLogs).values({ merchantId, action, entity: "subscription", data });
 }
 
 // ---------------------------------------------------------------------------
 // Webhook handlers (Stripe-shaped objects)
 // ---------------------------------------------------------------------------
-function mapStatus(s: string): SubStatus {
+export function mapStatus(s: string): SubStatus {
   switch (s) {
     case "active":
     case "trialing":
@@ -198,9 +201,9 @@ function mapStatus(s: string): SubStatus {
   }
 }
 
-const idOf = (v: unknown): string | null => (typeof v === "string" ? v : v && typeof v === "object" && "id" in v ? String((v as { id: unknown }).id) : null);
+export const idOf = (v: unknown): string | null => (typeof v === "string" ? v : v && typeof v === "object" && "id" in v ? String((v as { id: unknown }).id) : null);
 
-async function merchantFor(ctx: AppContext, metadata: Record<string, string> | undefined, customerId: string | null): Promise<Merchant | null> {
+export async function merchantFor(ctx: AppContext, metadata: Record<string, string> | undefined, customerId: string | null): Promise<Merchant | null> {
   const mid = metadata?.merchant_id;
   if (mid) {
     const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, mid)).limit(1);
@@ -214,7 +217,7 @@ async function merchantFor(ctx: AppContext, metadata: Record<string, string> | u
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Obj = Record<string, any>;
+export type Obj = Record<string, any>;
 
 export async function onCheckoutCompleted(ctx: AppContext, session: Obj): Promise<void> {
   if (session.mode !== "subscription") return;

@@ -7,16 +7,21 @@
  * unprocessed (500 to Stripe) so the retry runs it again.
  */
 import { and, eq } from "drizzle-orm";
-import { merchants, webhookEvents } from "@ll/db";
+import { auditLogs, merchants, webhookEvents } from "@ll/db";
 import { PLATFORM_PAYMENT_FEE_BPS, type billingApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
-import { PLATFORM_CHARGE_MARKER, getPayments, type PaymentsEvent, type PlatformChargeResult } from "../providers/payments.js";
+import { conflict, notFound } from "../lib/errors.js";
+import { PLATFORM_CHARGE_MARKER, getPayments, type ChargeMode, type CreatePaymentIntentArgs, type PaymentIntentInfo, type PaymentsEvent, type PlatformChargeResult } from "../providers/payments.js";
 import { onBillingInvoiceFailed, onCheckoutCompleted, onSubscriptionEvent } from "./billing.js";
+import { isRestaurantObject, onRestaurantCheckoutCompleted, onRestaurantInvoicePaid, onRestaurantSubscriptionEvent } from "./billing-restaurant.js";
 import { requireFeature } from "./features.js";
 import { onInvoicePayment } from "./invoices.js";
 import { onOrderPayment } from "./orders.js";
+import { onTiffinPayment } from "./tiffin.js";
 import { onDepositPayment } from "./quotes.js";
+import { onCateringDeposit } from "./catering.js";
+import { onHallDeposit } from "./banquet.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -58,6 +63,54 @@ export async function connectStatus(ctx: AppContext, merchant: Merchant): Promis
     platformFeeBps: PLATFORM_PAYMENT_FEE_BPS,
     provider: payments.name,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Charge mode: destination (platform charges, funds transferred) vs direct
+// (charge created on the merchant's connected account, merchant of record).
+// ---------------------------------------------------------------------------
+/** The mode to use for this merchant's Connect charges. "direct" only while STRIPE_DIRECT_CHARGES is on. */
+export function chargeModeFor(ctx: Pick<AppContext, "config">, merchant: Pick<Merchant, "chargeMode">): ChargeMode {
+  return ctx.config.stripe.directCharges && merchant.chargeMode === "direct" ? "direct" : "destination";
+}
+
+/**
+ * Create a Connect payment honouring the merchant's charge mode. Order, quote
+ * deposit, invoice and tiffin code should call this instead of
+ * getPayments(ctx).createPaymentIntent so direct charges (application_fee_amount
+ * on the connected account) work with no other change.
+ */
+export async function createConnectPayment(
+  ctx: AppContext,
+  merchant: Pick<Merchant, "chargeMode" | "stripeAccountId">,
+  args: Omit<CreatePaymentIntentArgs, "connectedAccountId" | "chargeMode"> & { connectedAccountId?: string },
+): Promise<PaymentIntentInfo> {
+  const connectedAccountId = args.connectedAccountId ?? merchant.stripeAccountId;
+  if (!connectedAccountId) throw new Error("Merchant has no connected Stripe account");
+  return getPayments(ctx).createPaymentIntent({ ...args, connectedAccountId, chargeMode: chargeModeFor(ctx, merchant) });
+}
+
+/** Refund a Connect payment: a direct charge refunds on the merchant's account, a destination charge reverses the transfer. */
+export async function refundConnectPayment(
+  ctx: AppContext,
+  merchant: Pick<Merchant, "chargeMode" | "stripeAccountId">,
+  args: { paymentIntentId: string; amountCents?: number; idempotencyKey: string; reason?: string; chargeMode?: ChargeMode },
+) {
+  // A charge keeps the mode it was created with; the caller can pass it when the merchant has since switched.
+  const mode = args.chargeMode ?? chargeModeFor(ctx, merchant);
+  return getPayments(ctx).refund({ ...args, chargeMode: mode, connectedAccountId: mode === "direct" ? (merchant.stripeAccountId ?? undefined) : undefined });
+}
+
+/** Admin: switch how a merchant's payments are created. Takes effect only while STRIPE_DIRECT_CHARGES is on. */
+export async function setChargeMode(ctx: AppContext, actorId: string, merchantId: string, chargeMode: ChargeMode): Promise<billingApi.ChargeModeResponse> {
+  const [before] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!before) throw notFound("Merchant");
+  if (chargeMode === "direct" && !before.stripeAccountId) throw conflict("Connect a Stripe account before switching to direct charges.");
+  if (before.chargeMode !== chargeMode) {
+    await ctx.db.update(merchants).set({ chargeMode, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
+    await ctx.db.insert(auditLogs).values({ merchantId, actorUserId: actorId, action: "billing.charge_mode_changed", entity: "merchant", entityId: merchantId, data: { from: before.chargeMode, to: chargeMode } });
+  }
+  return { merchantId, chargeMode, directChargesEnabled: !!ctx.config.stripe.directCharges };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,6 +188,9 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
   if (kind === "order") await onOrderPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "deposit") await onDepositPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "invoice") await onInvoicePayment(ctx, id, String(pi.id), outcome);
+  else if (kind === "tiffin") await onTiffinPayment(ctx, id, String(pi.id), outcome);
+  else if (kind === "catering_deposit") await onCateringDeposit(ctx, id, String(pi.id), outcome);
+  else if (kind === "hall_deposit") await onHallDeposit(ctx, id, String(pi.id), outcome);
 }
 
 /** Apply one event. Exported for the dev simulator; webhooks go through processWebhookEvent. */
@@ -151,11 +207,13 @@ export async function applyPaymentsEvent(ctx: AppContext, event: PaymentsEvent):
           stripeEventId: event.id,
         });
       }
-      return onCheckoutCompleted(ctx, obj);
+      return isRestaurantObject(obj) ? onRestaurantCheckoutCompleted(ctx, obj) : onCheckoutCompleted(ctx, obj);
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
-      return onSubscriptionEvent(ctx, obj, event.type);
+      return isRestaurantObject(obj) ? onRestaurantSubscriptionEvent(ctx, obj, event.type) : onSubscriptionEvent(ctx, obj, event.type);
+    case "invoice.paid":
+      return onRestaurantInvoicePaid(ctx, obj);
     case "invoice.payment_failed":
       return onBillingInvoiceFailed(ctx, obj);
     case "payment_intent.succeeded":

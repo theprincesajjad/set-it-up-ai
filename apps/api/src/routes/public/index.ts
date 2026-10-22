@@ -6,7 +6,7 @@
 import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { merchants, serviceTickets } from "@ll/db";
-import { commerceApi, serviceApi } from "@ll/shared";
+import { commerceApi, restaurantApi, serviceApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
@@ -14,7 +14,7 @@ import { slotFeature, listSlots } from "../../services/bookings.js";
 import { publicMenu } from "../../services/catalog.js";
 import { loadMerchant, paymentsReady } from "../../services/commerceShared.js";
 import { requireFeature } from "../../services/features.js";
-import { getInvoiceByToken, invoiceDto, payInvoice } from "../../services/invoices.js";
+import { getInvoiceByToken, invoiceDto, invoiceFeature, payInvoice } from "../../services/invoices.js";
 import { depositPayment, getQuoteByToken, isExpired, quoteDto, respondToQuote } from "../../services/quotes.js";
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -30,7 +30,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: { slug: string } }>("/public/shops/:slug/menu", async (req) => {
     const m = await merchantBySlug(req.params.slug);
     await requireFeature(ctx.db, m, "orders.order_ahead");
-    return publicMenu(ctx.db, m);
+    return publicMenu(ctx.db, m, parse(restaurantApi.publicMenuQuery, req.query));
   });
 
   app.get<{ Params: { slug: string } }>("/public/shops/:slug/slots", async (req) => {
@@ -94,7 +94,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const inv = await getInvoiceByToken(ctx.db, req.params.token);
     const merchant = await loadMerchant(ctx.db, inv.merchantId);
     if (!merchant) throw notFound("Invoice");
-    await requireFeature(ctx.db, merchant, "service.invoices");
+    await requireFeature(ctx.db, merchant, invoiceFeature(inv));
     const [ticket] = inv.ticketId ? await ctx.db.select().from(serviceTickets).where(eq(serviceTickets.id, inv.ticketId)).limit(1) : [];
     return {
       merchant: publicMerchant(merchant),

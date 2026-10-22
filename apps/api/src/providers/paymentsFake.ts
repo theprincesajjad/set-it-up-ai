@@ -10,7 +10,10 @@
  */
 import type { Config } from "../config.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
+import type { AddOnId, RestaurantTier } from "@ll/shared";
 import type {
+  BillingInterval,
+  ChargeMode,
   CheckoutArgs,
   ConnectAccountStatus,
   CreatePaymentIntentArgs,
@@ -19,6 +22,7 @@ import type {
   PaymentsProvider,
   PlatformChargeArgs,
   PlatformChargeResult,
+  ProviderInvoice,
   SubscriptionSnapshot,
 } from "./payments.js";
 import { PLATFORM_CHARGE_MARKER } from "./payments.js";
@@ -28,6 +32,7 @@ const TOLERANCE_SECONDS = 300;
 
 interface FakeIntent extends PaymentIntentInfo {
   connectedAccountId: string;
+  chargeMode: ChargeMode;
   refundedCents: number;
 }
 
@@ -41,6 +46,20 @@ interface FakeSubscription {
   interval: string;
   merchantId: string;
   priceId: string;
+  restaurantTier: RestaurantTier | null;
+  /** Price of the base item (tier or plan), cents per period. */
+  baseAmountCents: number;
+  items: Map<string, FakeItem>;
+  couponId: string | null;
+  foundingScheduled: boolean;
+}
+
+interface FakeItem {
+  id: string;
+  addOnId: AddOnId;
+  quantity: number;
+  interval: BillingInterval;
+  unitAmountCents: number;
 }
 
 export class FakePayments implements PaymentsProvider {
@@ -53,7 +72,8 @@ export class FakePayments implements PaymentsProvider {
   readonly customers = new Map<string, { merchantId: string; email?: string | null; name: string }>();
   readonly sessions = new Map<string, CheckoutArgs & { id: string; url: string; completed: boolean }>();
   readonly subscriptions = new Map<string, FakeSubscription>();
-  readonly refunds: { id: string; paymentIntentId: string; amountCents: number }[] = [];
+  readonly refunds: { id: string; paymentIntentId: string; amountCents: number; connectedAccountId?: string }[] = [];
+  readonly invoices: (ProviderInvoice & { customerId: string })[] = [];
 
   constructor(private readonly config: Pick<Config, "publicWebUrl" | "publicApiUrl" | "stripe">) {
     this.webhookSecret = config.stripe.webhookSecret ?? FAKE_WEBHOOK_SECRET;
@@ -106,7 +126,9 @@ export class FakePayments implements PaymentsProvider {
       applicationFeeCents: args.applicationFeeCents,
       metadata: { ...args.metadata },
       connectedAccountId: args.connectedAccountId,
+      chargeMode: args.chargeMode ?? "destination",
       refundedCents: 0,
+      ...(args.paymentMethodTypes ? { paymentMethodTypes: args.paymentMethodTypes } : {}),
     };
     this.intents.set(id, intent);
     this.intentsByKey.set(args.idempotencyKey, id);
@@ -136,6 +158,7 @@ export class FakePayments implements PaymentsProvider {
       applicationFeeCents: 0,
       metadata: { ...args.metadata, merchant_id: args.merchantId, [PLATFORM_CHARGE_MARKER]: "true" },
       connectedAccountId: "",
+      chargeMode: "destination",
       refundedCents: 0,
     };
     this.intents.set(id, intent);
@@ -148,25 +171,27 @@ export class FakePayments implements PaymentsProvider {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);
     i.status = "succeeded";
-    return this.event("payment_intent.succeeded", this.intentObject(i));
+    return this.event("payment_intent.succeeded", this.intentObject(i), i.chargeMode === "direct" ? i.connectedAccountId : undefined);
   }
 
   failPaymentIntent(id: string): PaymentsEvent {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);
     i.status = "requires_payment_method";
-    return this.event("payment_intent.payment_failed", { ...this.intentObject(i), last_payment_error: { message: "Your card was declined." } });
+    return this.event("payment_intent.payment_failed", { ...this.intentObject(i), last_payment_error: { message: "Your card was declined." } }, i.chargeMode === "direct" ? i.connectedAccountId : undefined);
   }
 
-  async refund(args: { paymentIntentId: string; amountCents?: number; idempotencyKey: string; reason?: string }) {
+  async refund(args: { paymentIntentId: string; amountCents?: number; idempotencyKey: string; reason?: string; connectedAccountId?: string; chargeMode?: ChargeMode }) {
     const i = this.intents.get(args.paymentIntentId);
     if (!i) throw new Error(`Unknown fake payment intent ${args.paymentIntentId}`);
+    // Same constraint as Stripe: a direct charge can only be refunded on the connected account that owns it.
+    if (i.chargeMode === "direct" && args.connectedAccountId !== i.connectedAccountId) throw new Error("Refunding a direct charge needs its connectedAccountId");
     const prior = this.refunds.find((r) => r.id === `re_${args.idempotencyKey}`);
     if (prior) return { id: prior.id, status: "succeeded", amountCents: prior.amountCents };
     const amount = args.amountCents ?? i.amountCents - i.refundedCents;
     if (amount > i.amountCents - i.refundedCents) throw new Error("Refund exceeds amount paid");
     i.refundedCents += amount;
-    const r = { id: `re_${args.idempotencyKey}`, paymentIntentId: i.id, amountCents: amount };
+    const r = { id: `re_${args.idempotencyKey}`, paymentIntentId: i.id, amountCents: amount, connectedAccountId: args.connectedAccountId };
     this.refunds.push(r);
     return { id: r.id, status: "succeeded", amountCents: amount };
   }
@@ -206,10 +231,16 @@ export class FakePayments implements PaymentsProvider {
       plan: s.plan,
       interval: s.interval,
       merchantId: s.merchantId,
-      priceId: s.priceId ?? `price_fake_${s.plan}_${s.interval}`,
+      priceId: s.priceId ?? `price_fake_${s.restaurantTier ? `restaurant_${s.restaurantTier}` : s.plan}_${s.interval}`,
+      restaurantTier: s.restaurantTier ?? null,
+      baseAmountCents: s.unitAmountCents,
+      items: new Map(),
+      couponId: s.couponId ?? null,
+      foundingScheduled: false,
     };
     this.subscriptions.set(subId, sub);
-    const metadata = { merchant_id: s.merchantId, plan: s.plan, interval: s.interval };
+    this.addInvoice(sub, sub.baseAmountCents, `${s.productName}`, now);
+    const metadata = { merchant_id: s.merchantId, plan: s.plan, interval: s.interval, ...(s.restaurantTier ? { restaurant_tier: s.restaurantTier } : {}) };
     return [
       this.event("checkout.session.completed", {
         id: s.id,
@@ -242,6 +273,88 @@ export class FakePayments implements PaymentsProvider {
     if (!sub) throw new Error(`Unknown fake subscription ${subscriptionId}`);
     sub.status = "canceled";
     return this.event("customer.subscription.deleted", this.subscriptionObject(sub));
+  }
+
+  /** Simulate a renewal: next period, a paid invoice (invoice.paid) and subscription.updated. */
+  renewSubscription(subscriptionId: string, now = new Date()): PaymentsEvent[] {
+    const sub = this.subscriptions.get(subscriptionId);
+    if (!sub) throw new Error(`Unknown fake subscription ${subscriptionId}`);
+    const end = new Date(sub.currentPeriodEnd);
+    if (sub.interval === "year") end.setUTCFullYear(end.getUTCFullYear() + 1);
+    else end.setUTCMonth(end.getUTCMonth() + 1);
+    sub.currentPeriodEnd = end;
+    sub.status = "active";
+    const total = this.subscriptionTotal(sub);
+    const inv = this.addInvoice(sub, total, "Subscription renewal", now);
+    return [
+      this.event("invoice.paid", {
+        id: inv.id,
+        object: "invoice",
+        customer: sub.customerId,
+        subscription: sub.id,
+        billing_reason: "subscription_cycle",
+        amount_paid: total,
+        metadata: { merchant_id: sub.merchantId },
+      }),
+      this.event("customer.subscription.updated", this.subscriptionObject(sub)),
+    ];
+  }
+
+  /** The customer.subscription.updated event for the subscription's current state (portal edits, tier changes). */
+  subscriptionUpdated(subscriptionId: string): PaymentsEvent {
+    const sub = this.subscriptions.get(subscriptionId);
+    if (!sub) throw new Error(`Unknown fake subscription ${subscriptionId}`);
+    return this.event("customer.subscription.updated", this.subscriptionObject(sub));
+  }
+
+  async changeSubscriptionTier(args: { subscriptionId: string; tier: RestaurantTier; interval: BillingInterval; unitAmountCents: number; productName: string }): Promise<SubscriptionSnapshot> {
+    const sub = this.subscriptions.get(args.subscriptionId);
+    if (!sub) throw new Error(`Unknown fake subscription ${args.subscriptionId}`);
+    sub.restaurantTier = args.tier;
+    sub.baseAmountCents = args.unitAmountCents;
+    sub.priceId = `price_fake_restaurant_${args.tier}_${sub.interval}`;
+    return snap(sub);
+  }
+
+  async addSubscriptionItem(args: { subscriptionId: string; addOnId: AddOnId; quantity: number; interval: BillingInterval; unitAmountCents: number; name: string }) {
+    const sub = this.subscriptions.get(args.subscriptionId);
+    if (!sub) throw new Error(`Unknown fake subscription ${args.subscriptionId}`);
+    const id = this.nextId("si");
+    sub.items.set(id, { id, addOnId: args.addOnId, quantity: args.quantity, interval: args.interval, unitAmountCents: args.unitAmountCents });
+    this.addInvoice(sub, args.unitAmountCents * args.quantity, `${args.name} (prorated)`, new Date());
+    return { itemId: id };
+  }
+
+  async updateSubscriptionItem(args: { itemId: string; quantity: number }) {
+    for (const sub of this.subscriptions.values()) {
+      const it = sub.items.get(args.itemId);
+      if (it) return void (it.quantity = args.quantity);
+    }
+    throw new Error(`Unknown fake subscription item ${args.itemId}`);
+  }
+
+  async removeSubscriptionItem(itemId: string) {
+    for (const sub of this.subscriptions.values()) if (sub.items.delete(itemId)) return;
+  }
+
+  readonly foundingCoupon = "founding_50_12m";
+
+  async foundingCouponId() {
+    return this.foundingCoupon;
+  }
+
+  async scheduleFoundingOffer(subscriptionId: string) {
+    const sub = this.subscriptions.get(subscriptionId);
+    if (!sub) throw new Error(`Unknown fake subscription ${subscriptionId}`);
+    sub.foundingScheduled = true;
+  }
+
+  async listInvoices(customerId: string, limit = 24): Promise<ProviderInvoice[]> {
+    return this.invoices
+      .filter((i) => i.customerId === customerId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+      .map(({ customerId: _c, ...inv }) => inv);
   }
 
   async createPortalSession(args: { customerId: string; returnUrl: string }) {
@@ -285,6 +398,31 @@ export class FakePayments implements PaymentsProvider {
     return { id: this.nextId("evt"), type, account: account ?? null, created: Math.floor(Date.now() / 1000), data: { object } };
   }
 
+  private subscriptionTotal(sub: FakeSubscription): number {
+    let total = sub.baseAmountCents;
+    for (const it of sub.items.values()) total += it.unitAmountCents * it.quantity;
+    return total;
+  }
+
+  private addInvoice(sub: FakeSubscription, totalCents: number, description: string, at: Date): ProviderInvoice {
+    const id = this.nextId("in");
+    const inv = {
+      id,
+      number: `FAKE-${String(this.invoices.length + 1).padStart(4, "0")}`,
+      status: "paid",
+      totalCents,
+      amountPaidCents: totalCents,
+      currency: "cad",
+      description,
+      createdAt: at,
+      hostedUrl: `${this.config.publicWebUrl}/dev/invoice/${id}`,
+      pdfUrl: null,
+      customerId: sub.customerId,
+    };
+    this.invoices.push(inv);
+    return inv;
+  }
+
   private intentObject(i: FakeIntent) {
     return {
       id: i.id,
@@ -295,7 +433,10 @@ export class FakePayments implements PaymentsProvider {
       currency: "cad",
       status: i.status,
       metadata: i.metadata,
-      transfer_data: i.connectedAccountId ? { destination: i.connectedAccountId } : null,
+      // Direct charges live on the connected account: no transfer, and the event arrives as a Connect event.
+      transfer_data: i.connectedAccountId && i.chargeMode === "destination" ? { destination: i.connectedAccountId } : null,
+      on_behalf_of: i.connectedAccountId && i.chargeMode === "destination" ? i.connectedAccountId : null,
+      ll_charge_mode: i.chargeMode,
     };
   }
 
@@ -307,14 +448,26 @@ export class FakePayments implements PaymentsProvider {
       customer: sub.customerId,
       status: sub.status,
       cancel_at_period_end: sub.cancelAtPeriodEnd,
-      metadata: { merchant_id: sub.merchantId, plan: sub.plan, interval: sub.interval },
-      items: { data: [{ current_period_end: end, price: { id: sub.priceId, recurring: { interval: sub.interval } } }] },
+      metadata: { merchant_id: sub.merchantId, plan: sub.plan, interval: sub.interval, ...(sub.restaurantTier ? { restaurant_tier: sub.restaurantTier } : {}) },
+      discounts: sub.couponId ? [sub.couponId] : [],
+      items: {
+        data: [
+          { id: `si_fake_base_${sub.id}`, quantity: 1, current_period_end: end, price: { id: sub.priceId, recurring: { interval: sub.interval } }, metadata: {} },
+          ...[...sub.items.values()].map((it) => ({
+            id: it.id,
+            quantity: it.quantity,
+            current_period_end: end,
+            price: { id: `price_fake_addon_${it.addOnId}_${it.interval}`, recurring: { interval: it.interval } },
+            metadata: { add_on_id: it.addOnId },
+          })),
+        ],
+      },
     };
   }
 }
 
 function toInfo(i: FakeIntent): PaymentIntentInfo {
-  return { id: i.id, clientSecret: i.clientSecret, status: i.status, amountCents: i.amountCents, applicationFeeCents: i.applicationFeeCents, metadata: i.metadata };
+  return { id: i.id, clientSecret: i.clientSecret, status: i.status, amountCents: i.amountCents, applicationFeeCents: i.applicationFeeCents, metadata: i.metadata, chargeMode: i.chargeMode, ...(i.paymentMethodTypes ? { paymentMethodTypes: i.paymentMethodTypes } : {}) };
 }
 
 function snap(s: FakeSubscription): SubscriptionSnapshot {

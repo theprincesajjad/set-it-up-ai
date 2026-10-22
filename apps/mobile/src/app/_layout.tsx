@@ -17,6 +17,7 @@ import { configureNotifications } from "../features/push";
 import { SessionExpiredSheet } from "../features/SessionExpiredSheet";
 import { wireQueryOnlineManager } from "../state/network";
 import { queryClient, queryPersister } from "../state/query";
+import { LocaleProvider, LocaleRoot } from "../lib/i18n";
 import { SessionProvider } from "../state/session";
 import { ThemeProvider } from "../theme";
 import { installWebStyles } from "../theme/webStyles";
@@ -54,6 +55,8 @@ export default function RootLayout() {
         <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: 7 * 24 * 60 * 60 * 1000 }}>
           <ThemeProvider>
             <SessionProvider>
+              <LocaleProvider>
+              <LocaleRoot>
               <ToastProvider>
                 <StatusBar style="auto" />
                 <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors[scheme].bg } }}>
@@ -69,6 +72,8 @@ export default function RootLayout() {
                 <SessionExpiredSheet />
                 <NotificationTaps />
               </ToastProvider>
+              </LocaleRoot>
+              </LocaleProvider>
             </SessionProvider>
           </ThemeProvider>
         </PersistQueryClientProvider>

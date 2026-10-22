@@ -237,6 +237,8 @@ export const merchants = pgTable(
     languages: jsonb("languages").$type<string[]>().notNull().default(["en"]),
     /** Cash discount (dual pricing) in basis points off the card price; 0 = off. Not allowed in Quebec. */
     cashDiscountBps: integer("cash_discount_bps").notNull().default(0),
+    /** Max degh pots (pre-order-only units) per pickup day; null = no cap. */
+    preorderDailyCap: integer("preorder_daily_cap"),
     /** Stripe Connect charge mode: destination (platform account) or direct (merchant is merchant of record). */
     chargeMode: text("charge_mode").notNull().default("destination"),
     /** WhatsApp Business phone number (E.164) connected for this shop. */

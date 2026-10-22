@@ -37,6 +37,7 @@ import { last4, toE164 } from "../../lib/phone";
 import { api } from "../../state/api";
 import { useCounter, type RecentAward } from "../../state/counter";
 import { qk } from "../../state/query";
+import { useLocale } from "../../lib/i18n";
 import { typo, useTheme } from "../../theme";
 import { Banner, Button, Camera, Chip, EmptyState, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
 
@@ -47,6 +48,7 @@ export default function Counter() {
   const { c } = useTheme();
   const { width } = useWindowDimensions();
   const toast = useToast();
+  const { t: tr } = useLocale();
   const ctx = useCounter();
   const { config, merchant, program, programPaused, staff, online, queue, queueState, flush, recent, addRecent, markUndone, touch, cacheMembers, cachedMember } = ctx;
   const merchantId = config.merchantId ?? "";
@@ -356,10 +358,10 @@ export default function Counter() {
         {state.step !== "customer" ? (
           <View style={styles.row}>
             <Button variant="secondary" size="lg" iconStart={Camera} style={{ flex: 1 }} onPress={() => router.push("/counter/scan")}>
-              {t("counter.scanCard")}
+              {tr("counter.scanCard")}
             </Button>
             <Button variant="secondary" size="lg" iconStart={Ticket} style={{ flex: 1 }} onPress={() => setCodeOpen(true)}>
-              {t("counter.enterCode")}
+              {tr("counter.enterCode")}
             </Button>
           </View>
         ) : null}
@@ -373,7 +375,7 @@ export default function Counter() {
         {showKeypad ? <Keypad onKey={onKey} /> : null}
         {state.step === "entry" || state.step === "lookingUp" ? (
           <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
-            {t("counter.findCustomer")}
+            {tr("counter.findCustomer")}
           </Button>
         ) : null}
       </View>

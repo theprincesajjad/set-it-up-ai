@@ -113,6 +113,7 @@ export function deepLink(type: NotificationType, merchant: Pick<Merchant, "id" |
   const str = (k: string) => (typeof data[k] === "string" ? (data[k] as string) : undefined);
   if (merchant) Object.assign(out, { merchantId: merchant.id, slug: merchant.slug });
   if (type === "quote_sent" && str("url")) return { ...out, screen: "quote" };
+  if (str("subscriptionId")) return { ...out, screen: "tiffin", url: `ll://tiffin/${str("subscriptionId")}` };
   if (str("orderId")) return { ...out, screen: "order", url: `ll://order/${str("orderId")}` };
   if (str("ticketId")) return { ...out, screen: "ticket", url: str("url") && type !== "ticket_updated" ? str("url") : `ll://ticket/${str("ticketId")}` };
   if (str("campaignId")) return { ...out, screen: "campaign", url: `ll://campaign/${str("campaignId")}` };

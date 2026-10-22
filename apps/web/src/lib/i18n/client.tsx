@@ -1,0 +1,66 @@
+"use client";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, t as translate, type Locale, type LocaleInfo, type MessageKey, type TranslationsJson, type Vars } from "@ll/shared";
+
+export const LOCALE_COOKIE = "ll_lang";
+
+interface LocaleValue {
+  locale: Locale;
+  info: LocaleInfo;
+  dir: "ltr" | "rtl";
+  t: (key: MessageKey, vars?: Vars) => string;
+  setLocale: (next: Locale) => void;
+  money: (cents: number, currency?: string) => string;
+  number: (n: number) => string;
+  date: (d: Date | string | number, opts?: Intl.DateTimeFormatOptions, tz?: string) => string;
+  time: (d: Date | string | number, tz?: string) => string;
+  /** Item name/description in the active language, falling back to the shop's own text. */
+  pick: (item: { name: string; description?: string | null; translations?: TranslationsJson | null }) => { name: string; description: string | null };
+}
+
+const Ctx = createContext<LocaleValue | null>(null);
+
+/** Mounted by LocaleScope (server). Client components read it with `useLocale()`. */
+export function LocaleProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  const setLocale = useCallback(
+    (next: Locale) => {
+      try {
+        document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+      } catch {
+        // cookies blocked: the ?lang= param below still switches this page
+      }
+      const sp = new URLSearchParams(params.toString());
+      sp.set("lang", next);
+      router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+    },
+    [router, pathname, params],
+  );
+
+  const value = useMemo<LocaleValue>(
+    () => ({
+      locale,
+      info: LOCALES[locale],
+      dir: LOCALES[locale].dir,
+      t: (key, vars) => translate(locale, key, vars),
+      setLocale,
+      money: (cents, currency) => formatCurrency(locale, cents, currency),
+      number: (n) => formatNumber(locale, n),
+      date: (d, opts, tz) => formatDate(locale, d, opts, tz),
+      time: (d, tz) => formatTime(locale, d, tz),
+      pick: (item) => pickTranslation(item, locale),
+    }),
+    [locale, setLocale],
+  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useLocale(): LocaleValue {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useLocale must be used inside <LocaleScope>");
+  return v;
+}

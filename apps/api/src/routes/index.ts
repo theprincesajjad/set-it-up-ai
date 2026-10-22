@@ -19,6 +19,8 @@ import ads from "./ads/index.js";
 import campaigns from "./campaigns/index.js";
 import publicRoutes from "./public/index.js";
 import notifications from "./notifications/index.js";
+import catering from "./catering/index.js";
+import banquet from "./banquet/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -41,4 +43,6 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await campaigns(app, ctx);
   await publicRoutes(app, ctx);
   await notifications(app, ctx);
+  await catering(app, ctx);
+  await banquet(app, ctx);
 }

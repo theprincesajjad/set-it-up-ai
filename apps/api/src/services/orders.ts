@@ -3,18 +3,18 @@
  * trusted. Points are awarded once, through ledger.awardPurchase, when the
  * order is picked up (idempotency key `order:<id>`).
  */
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
-import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchants, orderItems, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
-import { rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
+import { FEES, rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { getPayments, platformFeeCents } from "../providers/payments.js";
 import { bookSlotTx, cancelBookingsForOrder } from "./bookings.js";
-import { decodeCursor, encodeCursor, iso, loadMerchant, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
+import { decodeCursor, encodeCursor, formatLocalDateTime, iso, loadMerchant, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
-import { getMerchantFeatures, requireFeature } from "./features.js";
+import { getMerchantFeatures, isFeatureOn, requireFeature } from "./features.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
@@ -42,6 +42,12 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 // ---------------------------------------------------------------------------
 // DTOs
 // ---------------------------------------------------------------------------
+/** What the customer still owes: deposit orders owe the balance, unpaid orders owe the total. */
+export function balanceDueCents(o: Pick<Order, "status" | "paymentStatus" | "kind" | "totalCents" | "depositCents" | "customerFeeCents" | "depositPaidAt">): number {
+  if (o.paymentStatus === "paid" || o.paymentStatus === "refunded" || o.status === "cancelled" || o.status === "refunded") return 0;
+  return Math.max(0, o.totalCents - (o.kind === "preorder" && o.depositPaidAt ? o.depositCents + o.customerFeeCents : 0));
+}
+
 export function orderDto(o: Order, items: OrderItem[], merchantName: string, customer?: { name: string | null; phone: string | null }): commerceApi.OrderDto {
   return {
     id: o.id,
@@ -68,6 +74,15 @@ export function orderDto(o: Order, items: OrderItem[], merchantName: string, cus
     paidAt: iso(o.paidAt),
     cancelReason: o.cancelReason,
     createdAt: o.createdAt.toISOString(),
+    kind: o.kind,
+    channel: o.channel,
+    depositCents: o.depositCents,
+    depositPaidAt: iso(o.depositPaidAt),
+    balanceDueCents: balanceDueCents(o),
+    customerFeeCents: o.customerFeeCents,
+    cashDiscountCents: o.cashDiscountCents,
+    firedAt: iso(o.firedAt),
+    bumpedAt: iso(o.bumpedAt),
     items: items.map((i) => ({
       id: i.id,
       catalogItemId: i.catalogItemId,
@@ -114,6 +129,11 @@ export interface PricedLine {
   categoryId: string | null;
   discountEligible: boolean;
   lineTotalCents: number;
+  /** Restaurant pack: routing, pre-order rules. */
+  station: string | null;
+  preorderOnly: boolean;
+  leadTimeHours: number;
+  depositBps: number;
 }
 
 /** Price an order from the catalog. Throws 400 for unknown/unavailable items or modifiers. */
@@ -149,8 +169,53 @@ export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<
       categoryId: item.categoryId,
       discountEligible: cat ? cat.discountEligible && cat.earnEligible : true,
       lineTotalCents: unit * line.quantity,
+      station: item.station,
+      preorderOnly: item.preorderOnly,
+      leadTimeHours: item.leadTimeHours,
+      depositBps: item.depositBps,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Restaurant pack: kitchen hooks, pre-orders, cash discount
+// ---------------------------------------------------------------------------
+/**
+ * Called when an order is ready for the kitchen: placed (pay at pickup / counter)
+ * or paid (in app). services/kitchen.ts registers the KDS ticket firing here.
+ */
+export type OrderFiredHook = (ctx: AppContext, orderId: string) => Promise<void>;
+export const orderFiredHooks: OrderFiredHook[] = [];
+async function fireOrder(ctx: AppContext, orderId: string) {
+  for (const h of orderFiredHooks) await h(ctx, orderId);
+}
+
+const MAX_PREORDER_AHEAD_MS = 60 * 24 * 60 * 60 * 1000;
+
+/** YYYY-MM-DD in the shop's timezone. */
+export function localDateKey(d: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+/** Pots (pre-order-only units) already booked for a local pickup day, excluding cancelled orders. */
+export async function potsBookedOn(db: DbOrTx, merchant: Pick<Merchant, "id" | "timezone">, dateKey: string): Promise<number> {
+  const rows = await db
+    .select({ pickupAt: orders.pickupAt, quantity: orderItems.quantity })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .innerJoin(catalogItems, eq(catalogItems.id, orderItems.catalogItemId))
+    .where(and(eq(orders.merchantId, merchant.id), eq(orders.kind, "preorder"), eq(catalogItems.preorderOnly, true), inArray(orders.status, ["pending", "accepted", "preparing", "ready", "picked_up"])));
+  return rows.filter((r) => r.pickupAt && localDateKey(r.pickupAt, merchant.timezone) === dateKey).reduce((s, r) => s + r.quantity, 0);
+}
+
+/**
+ * Cash discount (dual pricing): off the post-reward card subtotal. Tax is charged on the discounted price.
+ * Zero unless the shop has restaurant.dual_pricing and a cash discount set.
+ */
+export async function cashDiscountFor(db: DbOrTx, merchant: Merchant, baseCents: number): Promise<number> {
+  if (merchant.cashDiscountBps <= 0 || baseCents <= 0) return 0;
+  if (!(await isFeatureOn(db, merchant, "restaurant.dual_pricing"))) return 0;
+  return Math.round((baseCents * merchant.cashDiscountBps) / 10_000);
 }
 
 /** Discount for a reward against priced lines (no-earn/discount-ineligible categories excluded). */
@@ -218,18 +283,39 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   const [loc] = await ctx.db.select().from(locations).where(and(eq(locations.id, body.locationId), eq(locations.merchantId, merchant.id))).limit(1);
   if (!loc || !loc.active) throw badRequest("Unknown location");
   if (body.slotId) await requireFeature(ctx.db, merchant, "booking.pickup_slots");
-  const accountId = body.paymentMethod === "in_app" ? await requirePaymentsReady(ctx.db, merchant) : null;
+  const isPreorder = body.kind === "preorder";
+  if (isPreorder) {
+    await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+    if (body.slotId) throw badRequest("Pre-orders are picked up at a time you choose, not a pickup slot");
+    if (!body.pickupAt) throw badRequest("Choose a pickup time for your pre-order");
+  }
+  let accountId = body.paymentMethod === "in_app" && !isPreorder ? await requirePaymentsReady(ctx.db, merchant) : null;
 
   const now = ctx.now();
   let pickupAt: Date | null = null;
   if (!body.slotId && body.pickupAt) {
     pickupAt = new Date(body.pickupAt);
     if (pickupAt.getTime() < now.getTime() - 60_000) throw badRequest("Pickup time is in the past");
-    if (pickupAt.getTime() > now.getTime() + MAX_PICKUP_AHEAD_MS) throw badRequest("Pickup time is too far ahead");
+    if (pickupAt.getTime() > now.getTime() + (isPreorder ? MAX_PREORDER_AHEAD_MS : MAX_PICKUP_AHEAD_MS)) throw badRequest("Pickup time is too far ahead");
   }
 
   const lines = await priceItems(ctx.db, merchant.id, body.items);
   const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
+
+  let potsRequested = 0;
+  let depositBase = 0;
+  if (isPreorder) {
+    const leadHours = Math.max(0, ...lines.map((l) => l.leadTimeHours));
+    const earliest = new Date(now.getTime() + leadHours * 3_600_000);
+    if (pickupAt!.getTime() < earliest.getTime()) {
+      throw new HttpError(409, "preorder_lead_time", `These items need ${leadHours} hours' notice. Earliest pickup is ${formatLocalDateTime(earliest, merchant.timezone)}.`, { leadTimeHours: leadHours, earliestPickupAt: earliest.toISOString() });
+    }
+    potsRequested = lines.filter((l) => l.preorderOnly).reduce((s, l) => s + l.quantity, 0);
+    depositBase = lines.reduce((s, l) => s + Math.round((l.lineTotalCents * l.depositBps) / 10_000), 0);
+  } else {
+    const po = lines.find((l) => l.preorderOnly);
+    if (po) throw new HttpError(409, "preorder_only", `${po.name} is pre-order only. Place it as a pre-order with a pickup day.`, { catalogItemId: po.catalogItemId });
+  }
 
   // Optional reward redemption (points move only through the ledger).
   let discount = 0;
@@ -259,17 +345,46 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
 
   const province = await merchantProvince(ctx.db, merchant);
   const tax = computeTax(subtotal - discount, province);
-  const total = subtotal - discount + tax.taxCents + body.tipCents;
-  const inApp = body.paymentMethod === "in_app";
-  if (inApp && total > 0 && total < MIN_CARD_CHARGE_CENTS) {
+  const commissionFree = await isFeatureOn(ctx.db, merchant, "restaurant.commission_free");
+  // Pre-orders pay the deposit online (none configured: everything is paid at pickup).
+  const depositCents = isPreorder ? Math.min(depositBase, subtotal - discount) : 0;
+  const inApp = isPreorder ? depositCents > 0 : body.paymentMethod === "in_app";
+  if (isPreorder && depositCents > 0 && body.paymentMethod === "at_pickup") {
+    await undoRedemption("Order not placed");
+    throw badRequest("This pre-order needs a deposit by card. Choose pay in app.");
+  }
+  // Commission-free shops charge the customer a small service fee on card payments instead of a platform commission.
+  const customerFee = inApp && commissionFree ? FEES.customerServiceFeeCents : 0;
+  const total = subtotal - discount + tax.taxCents + body.tipCents + customerFee;
+  const charge = isPreorder ? depositCents + customerFee : total;
+  if (inApp && charge > 0 && charge < MIN_CARD_CHARGE_CENTS) {
     await undoRedemption("Order not placed");
     throw badRequest("This total is too small to pay by card. Choose pay at pickup.");
   }
-  const fee = inApp ? platformFeeCents(total) : 0;
+  // Commission-free shops pay 0% commission; others keep the standard in-app payment fee.
+  const fee = inApp && !commissionFree ? platformFeeCents(charge) : 0;
+  const paymentMethod = inApp ? "in_app" : "at_pickup";
+  if (inApp && !accountId) {
+    try {
+      accountId = await requirePaymentsReady(ctx.db, merchant);
+    } catch (err) {
+      await undoRedemption("Order not placed");
+      throw err;
+    }
+  }
 
   let order: Order;
   try {
     order = await ctx.db.transaction(async (tx) => {
+      if (isPreorder && potsRequested > 0 && merchant.preorderDailyCap != null) {
+        const day = localDateKey(pickupAt!, merchant.timezone);
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`preorder:${merchant.id}:${day}`}))`);
+        const booked = await potsBookedOn(tx, merchant, day);
+        if (booked + potsRequested > merchant.preorderDailyCap) {
+          const remaining = Math.max(0, merchant.preorderDailyCap - booked);
+          throw new HttpError(409, "preorder_full", remaining ? `Only ${remaining} pot${remaining === 1 ? "" : "s"} left for that day.` : "That day is fully booked. Pick another day.", { remaining, date: day });
+        }
+      }
       const number = await nextNumber(tx, merchant.id, "order");
       const [o] = await tx
         .insert(orders)
@@ -287,9 +402,12 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
           tipCents: body.tipCents,
           totalCents: total,
           platformFeeCents: fee,
-          paymentMethod: body.paymentMethod,
+          paymentMethod,
           paymentStatus: inApp ? (total === 0 ? "paid" : "requires_action") : "unpaid",
           paidAt: inApp && total === 0 ? now : null,
+          kind: body.kind,
+          depositCents,
+          customerFeeCents: customerFee,
           redemptionId: redemption?.id ?? null,
           idempotencyKey: body.idempotencyKey,
         })
@@ -303,6 +421,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
           unitPriceCents: l.unitPriceCents,
           modifiers: l.modifiers,
           categoryId: l.categoryId,
+          station: l.station,
         })),
       );
       if (body.slotId) {
@@ -322,12 +441,12 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   }
 
   let payment: commerceApi.PlaceOrderResponse["payment"] = null;
-  if (inApp && total > 0 && accountId) {
+  if (inApp && charge > 0 && accountId) {
     try {
       const pi = await getPayments(ctx).createPaymentIntent({
-        amountCents: total,
+        amountCents: charge,
         connectedAccountId: accountId,
-        applicationFeeCents: fee,
+        applicationFeeCents: fee + customerFee,
         description: `${merchant.name} order #${order.number}`,
         metadata: { ll_kind: "order", ll_id: order.id, merchant_id: merchant.id },
         idempotencyKey: `order:${order.id}:pi`,
@@ -341,6 +460,8 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
       throw new HttpError(502, "payment_error", "We couldn't start the payment. Please try again.", { cause: (err as Error).message });
     }
   }
+  // Kitchen: pay-at-pickup orders and free orders are placed now; card orders fire when paid. Pre-orders fire on the day.
+  if (!isPreorder && (!inApp || total === 0)) await fireOrder(ctx, order.id);
   return { order: await loadOrderDto(ctx.db, order), payment, duplicate: false };
 }
 
@@ -417,7 +538,8 @@ async function transition(ctx: AppContext, order: Order, to: OrderStatus, patch:
 /** Refund the in-app payment (if any) and give back redeemed points. */
 async function unwindPaymentAndRewards(ctx: AppContext, order: Order, reason: string): Promise<Partial<typeof orders.$inferInsert>> {
   const patch: Partial<typeof orders.$inferInsert> = {};
-  if (order.paymentMethod === "in_app" && order.paymentStatus === "paid" && order.stripePaymentIntentId) {
+  const depositHeld = order.kind === "preorder" && !!order.depositPaidAt && order.paymentStatus === "authorized";
+  if (order.paymentMethod === "in_app" && (order.paymentStatus === "paid" || depositHeld) && order.stripePaymentIntentId) {
     await getPayments(ctx).refund({ paymentIntentId: order.stripePaymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason });
     patch.paymentStatus = "refunded";
   } else if (order.paymentMethod === "at_pickup" && order.paymentStatus === "paid") {
@@ -471,7 +593,8 @@ export async function updateOrderStatus(ctx: AppContext, staff: StaffContext, or
   const to = body.status;
   if (!TRANSITIONS[order.status].includes(to)) throw conflict(`Can't move an order from ${order.status} to ${to}`);
   const now = ctx.now();
-  if (to !== "cancelled" && order.paymentMethod === "in_app" && order.paymentStatus !== "paid") {
+  const depositPaid = order.kind === "preorder" && !!order.depositPaidAt;
+  if (to !== "cancelled" && order.paymentMethod === "in_app" && order.paymentStatus !== "paid" && !depositPaid) {
     throw new HttpError(409, "awaiting_payment", "This order hasn't been paid yet");
   }
 
@@ -504,10 +627,25 @@ export async function updateOrderStatus(ctx: AppContext, staff: StaffContext, or
     }
   } else if (to === "picked_up") {
     const patch: Partial<typeof orders.$inferInsert> = { pickedUpAt: now };
-    if (order.paymentMethod === "at_pickup") Object.assign(patch, { paymentStatus: "paid", paidAt: now });
+    if (order.paymentMethod === "at_pickup" && order.paymentStatus === "unpaid") {
+      Object.assign(patch, { paymentStatus: "paid", paidAt: now });
+      // Cash at the counter gets the cash price (restaurant.dual_pricing); tax follows the lower price.
+      if (body.tender === "cash" && order.cashDiscountCents === 0 && order.depositCents === 0) {
+        const cash = await cashDiscountFor(ctx.db, merchant, order.subtotalCents - order.discountCents);
+        if (cash > 0) {
+          const tax = computeTax(order.subtotalCents - order.discountCents - cash, await merchantProvince(ctx.db, merchant));
+          Object.assign(patch, { cashDiscountCents: cash, taxCents: tax.taxCents, totalCents: order.subtotalCents - order.discountCents - cash + tax.taxCents + order.tipCents + order.customerFeeCents });
+        }
+      }
+    } else if (depositPaid && order.paymentStatus === "authorized") {
+      // Pre-order: the balance is collected at the counter.
+      Object.assign(patch, { paymentStatus: "paid", paidAt: now });
+    }
     updated = await transition(ctx, order, "picked_up", patch);
     await ctx.db.update(bookings).set({ status: "completed" }).where(and(eq(bookings.orderId, order.id), eq(bookings.status, "booked")));
-    const points = await awardOrderPoints(ctx, updated);
+    // A counter order rung up without a customer is under the cashier's name: no points.
+    const [cashier] = order.channel === "counter" ? await ctx.db.select({ userId: merchantStaff.userId }).from(merchantStaff).where(and(eq(merchantStaff.merchantId, order.merchantId), eq(merchantStaff.userId, order.userId))).limit(1) : [];
+    const points = cashier ? 0 : await awardOrderPoints(ctx, updated);
     updated = { ...updated, pointsEarned: points };
   } else {
     updated = await transition(ctx, order, to);
@@ -562,7 +700,7 @@ export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIn
   if (order.stripePaymentIntentId && order.stripePaymentIntentId !== paymentIntentId) return;
   const now = ctx.now();
   if (outcome === "failed") {
-    if (order.paymentStatus !== "paid" && order.paymentStatus !== "refunded") {
+    if (order.paymentStatus !== "paid" && order.paymentStatus !== "refunded" && !order.depositPaidAt) {
       await ctx.db.update(orders).set({ paymentStatus: "failed", updatedAt: now }).where(eq(orders.id, order.id));
     }
     return;
@@ -574,5 +712,11 @@ export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIn
     await ctx.db.update(orders).set({ paymentStatus: "refunded", stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
     return;
   }
+  if (order.kind === "preorder" && order.depositCents > 0) {
+    // Deposit only: "authorized" means the deposit is in and the balance is due at pickup.
+    await ctx.db.update(orders).set({ paymentStatus: "authorized", depositPaidAt: now, stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
+    return;
+  }
   await ctx.db.update(orders).set({ paymentStatus: "paid", paidAt: now, stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
+  await fireOrder(ctx, order.id);
 }

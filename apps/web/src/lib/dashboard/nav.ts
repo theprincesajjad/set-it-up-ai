@@ -11,7 +11,7 @@ import type { FeatureKey } from "@ll/shared";
 export type StaffRole = "owner" | "manager" | "staff";
 
 /** Sidebar groups, drawn with a small gap between them (no headings). */
-export type NavGroup = "main" | "loyalty" | "commerce" | "network" | "shop";
+export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop";
 
 export interface NavEntry {
   key: string;
@@ -56,6 +56,22 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "integrations.webhooks",
 ];
 
+/** Restaurant pack pages (restaurant-pack-brief.md): `/m/[id]/restaurant/<slug>`; shown when the shop has any `restaurant.*` feature. */
+export const RESTAURANT_NAV: readonly { slug: string; label: string }[] = [
+  { slug: "menu", label: "Menu & dietary" },
+  { slug: "preorders", label: "Pre-orders" },
+  { slug: "tiffin", label: "Tiffin" },
+  { slug: "catering", label: "Catering" },
+  { slug: "banquet", label: "Banquet" },
+  { slug: "kitchen", label: "Kitchen display" },
+  { slug: "whatsapp", label: "WhatsApp" },
+  { slug: "reviews", label: "Reviews" },
+  { slug: "festivals", label: "Festivals" },
+  { slug: "phone-orders", label: "Phone orders" },
+];
+
+export const hasRestaurantFeature = (enabled: Set<FeatureKey>) => [...enabled].some((k) => k.startsWith("restaurant."));
+
 export function enabledSet(features: { key: string; enabled: boolean }[]): Set<FeatureKey> {
   return new Set(features.filter((f) => f.enabled).map((f) => f.key as FeatureKey));
 }
@@ -92,6 +108,10 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
     { key: "billing", href: `${base}/billing`, label: "Billing & plans", group: "shop" },
     { key: "settings", href: `${base}/settings`, label: "Settings", group: "shop" },
   ];
+  if (hasRestaurantFeature(enabled)) {
+    const at = items.findIndex((i) => i.key === "ads");
+    items.splice(at < 0 ? items.length : at, 0, ...RESTAURANT_NAV.map((r): NavEntry => ({ key: `restaurant-${r.slug}`, href: `${base}/restaurant/${r.slug}`, label: r.label, group: "restaurant" })));
+  }
   return items.filter((i) => navUnlocked(i.key, enabled) && (i.key !== "billing" || role === "owner"));
 }
 

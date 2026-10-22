@@ -14,7 +14,7 @@ import { FakePayments, getPayments, type PaymentsEvent } from "../../providers/p
 import { connectStatus, processWebhookEvent, startConnectOnboarding } from "../../services/payments.js";
 
 const simulateBody = z.object({
-  action: z.enum(["succeed_payment", "fail_payment", "complete_checkout", "complete_onboarding", "fail_renewal", "end_subscription"]),
+  action: z.enum(["succeed_payment", "fail_payment", "complete_checkout", "complete_onboarding", "fail_renewal", "end_subscription", "renew_subscription", "update_subscription"]),
   /** PaymentIntent, Checkout Session, Connect account or Subscription id. */
   id: z.string().min(3),
 });
@@ -68,6 +68,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
           break;
         case "end_subscription":
           events = [payments.endSubscription(body.id)];
+          break;
+        case "renew_subscription":
+          events = payments.renewSubscription(body.id, ctx.now());
+          break;
+        case "update_subscription":
+          events = [payments.subscriptionUpdated(body.id)];
           break;
       }
     } catch (err) {

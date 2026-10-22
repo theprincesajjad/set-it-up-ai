@@ -6,7 +6,7 @@
  */
 import { and, desc, eq, inArray, lt, or, type SQL } from "drizzle-orm";
 import { invoices, serviceTickets, type DbOrTx, type LineItem } from "@ll/db";
-import type { serviceApi } from "@ll/shared";
+import type { FeatureKey, serviceApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -43,6 +43,11 @@ export function invoiceDto(i: Invoice, publicWebUrl: string): serviceApi.Invoice
     pointsEarned: i.pointsEarned,
     createdAt: i.createdAt.toISOString(),
   };
+}
+
+/** Catering / hall balance invoices ride the restaurant pack, not the Pro service plan. */
+export function invoiceFeature(inv: Pick<Invoice, "cateringEventId" | "hallBookingId">): FeatureKey {
+  return inv.cateringEventId ? "restaurant.catering" : inv.hallBookingId ? "restaurant.banquet" : "service.invoices";
 }
 
 export async function getMerchantInvoice(db: DbOrTx, merchantId: string, invoiceId: string): Promise<Invoice> {
@@ -151,7 +156,7 @@ export async function payInvoice(ctx: AppContext, inv: Invoice): Promise<service
   if (!merchant) throw notFound("Invoice");
   if (inv.status === "paid") return { invoice: invoiceDto(inv, ctx.config.publicWebUrl), payment: null };
   if (inv.status !== "open") throw conflict(`Invoice is ${inv.status}`);
-  await requireFeature(ctx.db, merchant, "service.invoices");
+  await requireFeature(ctx.db, merchant, invoiceFeature(inv));
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   if (inv.amountDueCents < 50) throw badRequest("The balance is too small to pay by card; pay at the counter");
   const payments = getPayments(ctx);

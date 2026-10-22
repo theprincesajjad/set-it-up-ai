@@ -50,7 +50,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
     <>
       {allDone ? <Banner tone="success" title="You're live.">Your first customer can join right now.</Banner> : null}
       <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <div>
+        <div className="min-w-0">
           <div className="mb-3 flex items-baseline justify-between text-meta">
             <span className="text-fg">
               {doneCount} of {steps.length} done

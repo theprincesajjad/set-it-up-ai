@@ -60,4 +60,6 @@ export interface Providers {
   outbox: Outbox;
   /** Payments (Stripe Connect + Billing). Optional: use getPayments(ctx) from ./payments.js, which falls back to FakePayments. */
   payments?: import("./payments.js").PaymentsProvider;
+  /** WhatsApp Cloud API. Optional: use getWhatsApp(ctx) from ./whatsapp.js, which falls back to the fake. */
+  whatsapp?: import("./whatsapp.js").WhatsAppProvider;
 }
