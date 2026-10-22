@@ -9,7 +9,7 @@
  *
  * Points only change through ledger.ts.
  */
-import { and, desc, eq, gte, inArray, isNull, like, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, like, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   auditLogs,
@@ -223,6 +223,8 @@ export interface AwardInput extends CustomerRef {
   customerName?: string;
   consent?: customerApi.ConsentBody;
   idempotencyKey: string;
+  /** Visit/stamp programs: stamps for this visit (1-10). */
+  quantity?: number;
 }
 
 async function doAward(
@@ -248,6 +250,7 @@ async function doAward(
     ignoreCooldown: opts.ignoreCooldown,
     joinedVia: who.joinedVia,
     consent,
+    quantity: input.quantity,
   });
   // ensureMember only stores consent for new or not-yet-consented members; an existing member resolved by id needs it here.
   if (consent && who.member && !result.duplicate) {
@@ -384,7 +387,14 @@ export async function verifyRedemptionCode(ctx: AppContext, staff: StaffContext,
   const [used] = await ctx.db
     .update(redemptions)
     .set({ status: "used", usedAt: ctx.now() })
-    .where(and(eq(redemptions.merchantId, staff.merchant.id), eq(redemptions.code, code), eq(redemptions.status, "issued")))
+    .where(
+      and(
+        eq(redemptions.merchantId, staff.merchant.id),
+        eq(redemptions.code, code),
+        eq(redemptions.status, "issued"),
+        or(isNull(redemptions.expiresAt), gt(redemptions.expiresAt, ctx.now())),
+      ),
+    )
     .returning();
   if (used) {
     const [reward] = await ctx.db.select().from(rewards).where(eq(rewards.id, used.rewardId)).limit(1);
@@ -404,6 +414,9 @@ export async function verifyRedemptionCode(ctx: AppContext, staff: StaffContext,
     .where(and(eq(redemptions.merchantId, staff.merchant.id), eq(redemptions.code, code)))
     .limit(1);
   if (!existing) throw notFound("Reward code");
+  if (existing.status === "issued" && existing.expiresAt && existing.expiresAt <= ctx.now()) {
+    throw new HttpError(409, "redemption_expired", "This code expired. Ask the customer to redeem again in the app (their points are refunded)");
+  }
   if (existing.status === "used") throw new HttpError(409, "already_used", `This code was already used${existing.usedAt ? ` at ${existing.usedAt.toISOString()}` : ""}`);
   throw new HttpError(409, "void", "This code was cancelled");
 }

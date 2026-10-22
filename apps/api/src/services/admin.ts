@@ -6,6 +6,7 @@
 import { and, asc, count, desc, eq, gte, ilike, inArray, like, lte, or, sql } from "drizzle-orm";
 import {
   auditLogs,
+  featureInterest,
   featureOverrides,
   featureRollouts,
   locations,
@@ -115,14 +116,16 @@ const freeForeverError = (key: FeatureKey) =>
   new HttpError(422, "free_forever", `${FEATURES[key].name} is free forever and must stay available to every merchant (stage "ga", no opt-outs).`, { key });
 
 export async function listFeatures(ctx: AppContext): Promise<adminApi.AdminFeature[]> {
-  const [rows, ov, [active]] = await Promise.all([
+  const [rows, ov, [active], interest] = await Promise.all([
     ctx.db.select().from(featureRollouts),
     ctx.db
       .select({ key: featureOverrides.key, enabled: sql<number>`count(*) filter (where ${featureOverrides.enabled})::int`, disabled: sql<number>`count(*) filter (where not ${featureOverrides.enabled})::int` })
       .from(featureOverrides)
       .groupBy(featureOverrides.key),
     ctx.db.select({ n: count() }).from(merchants).where(eq(merchants.status, "active")),
+    ctx.db.select({ key: featureInterest.featureKey, n: count() }).from(featureInterest).groupBy(featureInterest.featureKey),
   ]);
+  const interestMap = new Map(interest.map((i) => [i.key, num(i.n)]));
   const stored = new Map(rows.map((r) => [r.key, r]));
   const ovMap = new Map(ov.map((o) => [o.key, o]));
   const activeMerchants = num(active?.n);
@@ -143,6 +146,7 @@ export async function listFeatures(ctx: AppContext): Promise<adminApi.AdminFeatu
       activeMerchants,
       readyToUnlock: activeMerchants >= def.unlockAtMerchants,
       overrides: { enabled: num(o?.enabled), disabled: num(o?.disabled) },
+      interestCount: interestMap.get(key) ?? 0,
       note: row?.note ?? null,
       updatedBy: row?.updatedBy ?? null,
       updatedAt: iso(row?.updatedAt ?? null),

@@ -10,7 +10,8 @@
 import { z } from "zod";
 import { phoneSchema } from "./common.js";
 import type { SponsoredItem } from "./ads.js";
-import { consentSchema, type DiscountCardDto, type MerchantBriefDto, type ProgramSummaryDto, type RewardDto } from "./customer.js";
+import type { PlanId, RolloutStage, FeatureKey } from "../plans.js";
+import { consentSchema, type CustomerFeaturesDto, type DiscountCardDto, type MerchantBriefDto, type ProgramSummaryDto, type RewardDto } from "./customer.js";
 
 const lat = z.coerce.number().min(-90).max(90);
 const lng = z.coerce.number().min(-180).max(180);
@@ -142,7 +143,12 @@ export interface ShopListItemDto {
   /** Signed-in callers only: their balance here, or null if not a member. */
   myBalance: number | null;
   isMember: boolean;
+  /** Members at this shop; null when fewer than MEMBER_COUNT_MIN (tiny numbers aren't shown). */
+  memberCount: number | null;
 }
+
+/** Member counts below this are returned as null on public surfaces. */
+export const MEMBER_COUNT_MIN = 10;
 
 /** GET /v1/network/shops */
 export interface ShopsResponse {
@@ -208,6 +214,34 @@ export interface PublicShopResponse {
   discountCards: DiscountCardDto[];
   /** Suggested CASL consent wording for the join form. */
   consentText: string;
+  /** Members at this shop; null when fewer than MEMBER_COUNT_MIN. */
+  memberCount: number | null;
+  /** Customer-facing entry points this shop has switched on. */
+  features: CustomerFeaturesDto;
+}
+
+/** GET /v1/public/plans: pricing page data (no merchant data). */
+export interface PublicPlanDto {
+  id: PlanId;
+  name: string;
+  priceCents: number;
+  annualPriceCents: number;
+  blurb: string;
+  bestFor: string[];
+  smsPerMonth: number;
+  /** Purchasable now: at least one of the plan's features is out of "hidden". Free is always true. */
+  available: boolean;
+  /** Paid features on this plan and their global rollout stage (empty for Free). */
+  features: { key: FeatureKey; name: string; description: string; stage: RolloutStage }[];
+}
+export interface PublicPlansResponse {
+  items: PublicPlanDto[];
+  network: {
+    /** Merchants with status "active". */
+    activeMerchants: number;
+    /** Neighbourhoods with status pilot or live. */
+    neighbourhoods: number;
+  };
 }
 
 /** GET /v1/public/join/:qrCode */

@@ -25,12 +25,13 @@ import {
   rewards,
   type DbOrTx,
 } from "@ll/db";
-import { distanceMetres, type adsApi, type networkApi } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, PLAN_IDS, PLANS, distanceMetres, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
 import { customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { startPhoneOtp } from "./auth.js";
-import { JOINABLE_STATUSES } from "./customer.js";
+import { JOINABLE_STATUSES, notMerged } from "./customer.js";
+import { customerFeaturesFor, getRolloutStages } from "./features.js";
 import { promoAppliesAt } from "./ledger.js";
 import { cardsForMember, locationDto, merchantBrief, programSummary, promoDto, rewardDto, terminologyOf } from "./serializers.js";
 import { injectSponsored as injectSponsoredItems } from "./sponsored.js";
@@ -79,6 +80,22 @@ async function locationsByMerchant(db: DbOrTx, merchantIds: string[]): Promise<M
   if (!merchantIds.length) return out;
   const rows = await db.select().from(locations).where(and(inArray(locations.merchantId, merchantIds), eq(locations.active, true))).orderBy(locations.createdAt);
   for (const l of rows) out.set(l.merchantId, [...(out.get(l.merchantId) ?? []), l]);
+  return out;
+}
+
+/** Member counts per merchant (one grouped query), hidden (null) below MEMBER_COUNT_MIN. */
+async function memberCountsFor(db: DbOrTx, merchantIds: string[]): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>();
+  if (!merchantIds.length) return out;
+  const rows = await db
+    .select({ merchantId: merchantMembers.merchantId, n: sql<number>`count(*)::int` })
+    .from(merchantMembers)
+    .where(and(inArray(merchantMembers.merchantId, merchantIds), notMerged))
+    .groupBy(merchantMembers.merchantId);
+  for (const r of rows) {
+    const n = Number(r.n);
+    out.set(r.merchantId, n >= networkContract.MEMBER_COUNT_MIN ? n : null);
+  }
   return out;
 }
 
@@ -220,7 +237,12 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       ),
     );
   const ids = rows.map((r) => r.m.id);
-  const [locs, ps, mine] = await Promise.all([locationsByMerchant(ctx.db, ids), windowPromos(ctx.db, ids, now), membershipsFor(ctx.db, userId, ids)]);
+  const [locs, ps, mine, counts] = await Promise.all([
+    locationsByMerchant(ctx.db, ids),
+    windowPromos(ctx.db, ids, now),
+    membershipsFor(ctx.db, userId, ids),
+    memberCountsFor(ctx.db, ids),
+  ]);
   const promoBy = new Set(ps.filter((p) => p.audience === "network" && promoAppliesAt(p, now, rows.find((r) => r.m.id === p.merchantId)!.m.timezone)).map((p) => p.merchantId));
   let items: networkApi.ShopListItemDto[] = rows.map(({ m, program }) => {
     const ls = locs.get(m.id) ?? [];
@@ -238,6 +260,7 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       earnType: program?.earnType ?? null,
       myBalance: membership ? membership.balance : null,
       isMember: !!membership,
+      memberCount: counts.get(m.id) ?? null,
     };
   });
   if (q.radiusMetres) items = items.filter((i) => i.distanceMetres !== null && i.distanceMetres <= q.radiusMetres!);
@@ -334,7 +357,7 @@ async function joinableMerchantBySlug(db: DbOrTx, slug: string): Promise<Merchan
 export async function publicShop(ctx: AppContext, slug: string): Promise<networkApi.PublicShopResponse> {
   const now = ctx.now();
   const m = await joinableMerchantBySlug(ctx.db, slug);
-  const [locs, [program], rs, ps, cards, hood] = await Promise.all([
+  const [locs, [program], rs, ps, cards, hood, counts, features] = await Promise.all([
     locationsByMerchant(ctx.db, [m.id]),
     ctx.db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, m.id)).limit(1),
     ctx.db.select().from(rewards).where(and(eq(rewards.merchantId, m.id), eq(rewards.active, true))).orderBy(rewards.sortOrder, rewards.pointsCost),
@@ -343,6 +366,8 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
     m.neighbourhoodId
       ? ctx.db.select({ id: neighbourhoods.id, slug: neighbourhoods.slug, name: neighbourhoods.name }).from(neighbourhoods).where(eq(neighbourhoods.id, m.neighbourhoodId)).limit(1)
       : Promise.resolve([]),
+    memberCountsFor(ctx.db, [m.id]),
+    customerFeaturesFor(ctx.db, [m]),
   ]);
   return {
     merchant: {
@@ -363,6 +388,39 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
     // Public visitors see every card a new member would get (VIP-only cards excluded).
     discountCards: cardsForMember(cards, null),
     consentText: customerApi.marketingConsentText(m.name),
+    memberCount: counts.get(m.id) ?? null,
+    features: features.get(m.id)!,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public plans (pricing page)
+// ---------------------------------------------------------------------------
+export async function publicPlans(ctx: AppContext): Promise<networkApi.PublicPlansResponse> {
+  const [stages, [active], [hoods]] = await Promise.all([
+    getRolloutStages(ctx.db),
+    ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(eq(merchants.status, "active")),
+    ctx.db.select({ n: sql<number>`count(*)::int` }).from(neighbourhoods).where(inArray(neighbourhoods.status, ["pilot", "live"])),
+  ]);
+  return {
+    items: PLAN_IDS.map((id) => {
+      const p = PLANS[id];
+      return {
+        id,
+        name: p.name,
+        priceCents: p.priceCents,
+        annualPriceCents: p.annualPriceCents,
+        blurb: p.blurb,
+        bestFor: [...p.bestFor],
+        smsPerMonth: p.smsPerMonth,
+        available: isPlanAvailable(id, stages),
+        features:
+          id === "free"
+            ? []
+            : FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === id).map((k) => ({ key: k, name: FEATURES[k].name, description: FEATURES[k].description, stage: stages[k] })),
+      };
+    }),
+    network: { activeMerchants: Number(active?.n ?? 0), neighbourhoods: Number(hoods?.n ?? 0) },
   };
 }
 

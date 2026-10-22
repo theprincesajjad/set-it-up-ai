@@ -30,6 +30,16 @@ Any lead field plus `stage`. → `LeadDetail`. Stage changes are audit-logged.
 ### `POST /v1/rep/leads/:leadId/activities`
 Body `{ kind, outcome?, notes?, stage?, nextActionAt? }` → `201 LeadDetail`. A call/email/visit on a `new` lead moves it to `contacted`.
 
+### `POST /v1/public/leads` (no auth) — marketing-site lead forms
+Body `publicLeadBody { businessName, contactName?, email?, phone?, vertical?, neighbourhoodSlug?, message?, kind }`,
+`kind: "book_visit" | "talk_to_us" | "bia"` (`PUBLIC_LEAD_KINDS`). At least one of `email` / `phone` is required.
+Creates an **unassigned** lead in stage `new` (shows up for every rep; the first rep to touch it claims it).
+`neighbourhoodSlug` is resolved to `neighbourhoodId` (unknown slugs are kept in `notes`); `kind` and `message` are stored
+in `notes` (prefixed `[website: <kind>]`). Emails `BRAND.supportEmail` via the email provider (a mail failure doesn't fail the form).
+Audit: `lead.public_created`. → `201 PublicLeadResponse { id, received: true }` (no lead details are echoed back).
+Errors: `400` (validation, no email/phone, bad phone), `429 rate_limited` (more than `PUBLIC_LEAD_RATE_LIMIT_PER_HOUR` = 5
+submissions per IP per rolling hour; in-memory per API instance).
+
 ## Done-for-you merchants
 
 ### `POST /v1/rep/merchants`

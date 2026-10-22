@@ -66,7 +66,9 @@ All tokens stop working immediately. Errors: `400` (missing confirm).
 ## Wallet
 
 ### GET /v1/me/memberships
-`200` → `{ items: MembershipDto[], totals: { shops, rewardsAvailable } }`, most recently visited first. Closed shops are excluded.
+`200` → `{ items: (MembershipDto & { features: CustomerFeaturesDto })[], totals: { shops, rewardsAvailable } }`, most recently visited first. Closed shops are excluded.
+`features { orderAhead, pickupSlots, serviceTickets, inAppPayments }`: customer-facing entry points enabled at that shop
+(same rule as `GET /v1/public/shops/:slug`, see [network.md](network.md)).
 
 ### POST /v1/me/memberships (join a shop)
 Body: exactly one of `merchantId` or `locationQrCode`, plus optional `consent: { text }` and `referralCode`.
@@ -111,6 +113,9 @@ Body `{ "rewardId": "uuid", "idempotencyKey"?: "..." }` (or `Idempotency-Key` he
 Deducts the points now and issues a 6-character code (`status: "issued"`) the customer shows at the counter; staff confirm it with
 `POST /v1/merchants/:merchantId/counter/redemptions/verify` (see [staff.md](staff.md)).
 `201` (new) / `200` (retry, `duplicate: true`) → `{ redemption: RedemptionDto, balance, duplicate }`.
+**Expiry:** app-issued codes expire 10 minutes after `createdAt` (`redemption.expiresAt`; `null` for codes that don't expire).
+Show a countdown. After `expiresAt` the counter rejects the code (`409 redemption_expired`) and a background job
+(`redemptions.expire`, every minute) voids it (`status: "void"`) and refunds the points through the ledger.
 Errors: `404` (membership/reward), `409 insufficient_points`, `409 conflict` (shop paused).
 
 ### DELETE /v1/me/redemptions/:redemptionId

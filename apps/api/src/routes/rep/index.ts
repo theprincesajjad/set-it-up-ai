@@ -7,6 +7,7 @@ import { parse } from "../../lib/validate.js";
 import { buildQrKit, loadMerchantDetail } from "../../services/merchant.js";
 import * as svc from "../../services/rep.js";
 import { rejectMalformedIds } from "../merchant/params.js";
+import registerPublicLeads from "./public-leads.js";
 
 type Req<P = object> = FastifyRequest<{ Params: P }>;
 const repFilter = z.object({ repUserId: z.uuid().optional() });
@@ -15,6 +16,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
   await parent.register(async (app) => {
     rejectMalformedIds(app);
     await routes(app, ctx);
+    await registerPublicLeads(app, ctx);
   });
 }
 

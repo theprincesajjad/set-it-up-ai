@@ -110,7 +110,7 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
   const terms = Array.from(new Set(wallet.items.map((m) => m.terminology)));
   const totalUnit = terms.length === 1 ? unitFor(terms[0], totalBalance, false) : terms.length ? "points and stamps" : "points";
 
-  const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? m : x)) }));
+  const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
   return (
     <div className="flex flex-col gap-5">

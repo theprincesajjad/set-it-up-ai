@@ -61,9 +61,9 @@ export function AppShell({ nav, header, footer, mobileTitle, mobileActions, env,
 
   return (
     <div className="min-h-dvh bg-canvas">
-      {env ? <div className="sticky top-0 z-banner"><EnvironmentStrip env={env} /></div> : null}
+      {env ? <div className="sticky top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
       <div className="flex">
-        <aside className="sticky top-0 hidden h-dvh w-[72px] shrink-0 flex-col gap-4 overflow-y-auto border-e border-border bg-canvas-subtle p-3 md:flex lg:w-[248px]">
+        <aside className="sticky top-0 hidden print:!hidden h-dvh w-[72px] shrink-0 flex-col gap-4 overflow-y-auto border-e border-border bg-canvas-subtle p-3 md:flex lg:w-[248px]">
           <div className="hidden lg:block">{header}</div>
           <nav aria-label="Main" className="flex flex-col gap-1">
             {nav.map((i) => link(i, true))}
@@ -71,16 +71,16 @@ export function AppShell({ nav, header, footer, mobileTitle, mobileActions, env,
           {footer ? <div className="mt-auto hidden lg:block">{footer}</div> : null}
         </aside>
         <div className="min-w-0 flex-1">
-          <div className="sticky top-0 z-sticky flex h-14 items-center justify-between gap-3 border-b border-border bg-canvas px-4 md:hidden">
+          <div className="sticky top-0 z-sticky flex h-14 items-center justify-between gap-3 border-b border-border bg-canvas px-4 md:hidden print:hidden">
             <div className="min-w-0 truncate text-title text-fg">{mobileTitle}</div>
             {mobileActions}
           </div>
-          <main id="main" className="mx-auto w-full max-w-[1200px] px-4 py-6 pb-24 md:px-6 md:pb-10">
+          <main id="main" className="mx-auto w-full max-w-[1200px] px-4 py-6 pb-24 md:px-6 md:pb-10 print:max-w-none print:p-0">
             {children}
           </main>
         </div>
       </div>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-sticky grid h-14 grid-cols-5 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-sticky grid h-14 print:hidden grid-cols-5 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         {bottom.map((i) => (
           <Link key={i.href} href={i.href} aria-current={isActive(i) ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-caption", isActive(i) ? "text-fg-brand" : "text-fg-muted")}>
             <i.icon aria-hidden className="size-6" />

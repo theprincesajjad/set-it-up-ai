@@ -55,6 +55,7 @@ Body: exactly one of `phone`, `memberCode` (or scanned `LL:` payload), `memberId
 | `locationId` | uuid | The counter's location (recommended). |
 | `customerName` | string | Used only when the phone is new to the network. |
 | `consent` | `{ text }` | Customer said yes to marketing at the counter. Staff must show/read the exact text. Stored with source `counter_staff`. |
+| `quantity` | int 1-10 | Visit/stamp programs only: items in this visit (two coffees = 2). Awards `quantity × pointsPerVisit` as **one** transaction and **one** visit; the cooldown is checked once. Ignored for `per_dollar`. Default 1. |
 | `idempotencyKey` | string | Required (or header). |
 
 A new phone creates the network customer and joins them (welcome bonus applies). A scanned member code of a customer new to this shop joins them too.
@@ -93,7 +94,8 @@ Errors: `404` (member/reward), `409 insufficient_points`.
 
 For codes customers issued in the app (`POST /v1/me/memberships/:id/redeem`). Body `{ "code": "7KQ2XM" }` (case-insensitive).
 Marks the code `used` exactly once. `200` → `CounterRedemptionResponse`.
-Errors: `404` (no such code **at this merchant**), `409 already_used`, `409 void` (cancelled by the customer or reversed).
+Errors: `404` (no such code **at this merchant**), `409 already_used`, `409 void` (cancelled by the customer, reversed or expired and refunded),
+`409 redemption_expired` (app-issued code past its `expiresAt`, 10 minutes after issue; the customer's points are refunded and they can redeem again).
 
 ## GET .../counter/today?locationId=
 
@@ -127,7 +129,7 @@ The counter app queues taps while offline and replays them here. Body `{ events:
 ] }
 ```
 
-Award events take the same fields as `/award`; redeem events the same as `/redeem`; both need `idempotencyKey` and `occurredAt` (ISO with offset).
+Award events take the same fields as `/award` (including `quantity`); redeem events the same as `/redeem`; both need `idempotencyKey` and `occurredAt` (ISO with offset).
 Events are processed **in order**, each on its own; one failure never blocks the rest.
 
 `200` → `SyncResponse`

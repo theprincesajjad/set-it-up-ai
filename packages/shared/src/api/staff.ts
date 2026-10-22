@@ -58,6 +58,11 @@ const awardFields = z.object({
   customerName: z.string().trim().min(1).max(120).optional(),
   /** Customer said yes to marketing at the counter (CASL express consent; staff read `text` aloud or showed it). */
   consent: consentSchema.optional(),
+  /**
+   * Visit/stamp programs only: items in this visit (e.g. two coffees = 2 stamps). Awards
+   * quantity × pointsPerVisit as one transaction and one visit. Ignored for per_dollar. Default 1.
+   */
+  quantity: z.number().int().min(1).max(10).optional(),
 });
 
 /** POST .../counter/award */

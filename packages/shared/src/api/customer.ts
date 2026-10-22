@@ -207,8 +207,19 @@ export interface MembershipDto {
 }
 
 /** GET /v1/me/memberships */
+/**
+ * Customer-facing features a shop has switched on (enabled = plan + rollout + overrides).
+ * Apps show order-ahead / pickup / repair-ticket / pay entry points only when true.
+ */
+export interface CustomerFeaturesDto {
+  orderAhead: boolean;
+  pickupSlots: boolean;
+  serviceTickets: boolean;
+  inAppPayments: boolean;
+}
+
 export interface WalletResponse {
-  items: MembershipDto[];
+  items: (MembershipDto & { features: CustomerFeaturesDto })[];
   totals: { shops: number; rewardsAvailable: number };
 }
 
@@ -235,6 +246,8 @@ export interface RedemptionDto {
   status: "issued" | "used" | "void";
   discountCents: number | null;
   usedAt: string | null;
+  /** App-issued codes expire 10 minutes after createdAt if not used (points are refunded). Null = no expiry. */
+  expiresAt: string | null;
   createdAt: string;
 }
 

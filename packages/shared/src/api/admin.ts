@@ -52,6 +52,8 @@ export interface AdminFeature {
   /** activeMerchants >= unlockAtMerchants. */
   readyToUnlock: boolean;
   overrides: { enabled: number; disabled: number };
+  /** Merchants that tapped "Notify me" on this feature (demand signal before flipping the gate). */
+  interestCount: number;
   note: string | null;
   updatedBy: string | null;
   updatedAt: string | null;

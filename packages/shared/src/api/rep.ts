@@ -58,6 +58,31 @@ export const listLeadsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().optional(),
 });
+/** Marketing-site lead forms: "book a visit", "talk to us", BIA enquiry. */
+export const PUBLIC_LEAD_KINDS = ["book_visit", "talk_to_us", "bia"] as const;
+export type PublicLeadKind = (typeof PUBLIC_LEAD_KINDS)[number];
+/** Per-IP submissions allowed per rolling hour on POST /v1/public/leads. */
+export const PUBLIC_LEAD_RATE_LIMIT_PER_HOUR = 5;
+
+/** POST /v1/public/leads (no auth). Give at least one of email or phone so someone can reply. */
+export const publicLeadBody = z
+  .object({
+    businessName: z.string().trim().min(1).max(160),
+    contactName: z.string().trim().max(120).optional(),
+    email: z.email().max(200).optional(),
+    phone: phoneSchema.optional(),
+    vertical: z.string().trim().max(40).optional(),
+    neighbourhoodSlug: z.string().trim().max(80).optional(),
+    message: z.string().trim().max(2000).optional(),
+    kind: z.enum(PUBLIC_LEAD_KINDS),
+  })
+  .refine((b) => !!b.email || !!b.phone, { message: "Give an email or phone number so we can reply", path: ["email"] });
+export type PublicLeadBody = z.infer<typeof publicLeadBody>;
+export interface PublicLeadResponse {
+  id: string;
+  received: true;
+}
+
 export const addLeadActivityBody = z.object({
   kind: leadActivityKindSchema,
   outcome: z.string().trim().max(200).optional(),

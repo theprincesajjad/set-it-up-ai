@@ -97,6 +97,8 @@ export interface PostArgs {
   counterAccount?: "merchant_issued" | "merchant_redeemed" | "network_issued";
   /** Allow the balance to go below zero (refund reversals only). */
   allowNegative?: boolean;
+  /** createdAt for the transaction (callers pass ctx.now() so injected clocks line up). Defaults to the DB clock. */
+  at?: Date;
 }
 
 export interface PostResult {
@@ -153,6 +155,7 @@ export async function postTransaction(tx: Tx, args: PostArgs): Promise<PostResul
       rewardId: args.rewardId ?? null,
       campaignId: args.campaignId ?? null,
       reversesTransactionId: args.reversesTransactionId ?? null,
+      ...(args.at ? { createdAt: args.at } : {}),
     })
     .onConflictDoNothing()
     .returning();
@@ -275,6 +278,7 @@ export async function ensureMember(ctx: AppContext, tx: Tx, args: EnsureMemberAr
       marketingConsentAt: args.consent ? ctx.now() : null,
       marketingConsentSource: args.consent?.source ?? null,
       marketingConsentText: args.consent?.text ?? null,
+      createdAt: ctx.now(),
     })
     .onConflictDoNothing()
     .returning();
@@ -299,6 +303,7 @@ export async function ensureMember(ctx: AppContext, tx: Tx, args: EnsureMemberAr
       description: "Welcome bonus",
       idempotencyKey: `welcome:${inserted.id}`,
       locationId: args.locationId ?? null,
+      at: ctx.now(),
     });
     member = r.member;
   }
@@ -389,6 +394,8 @@ export interface AwardArgs {
   ignoreCooldown?: boolean;
   joinedVia?: JoinSource;
   consent?: ConsentInput | null;
+  /** Visit/stamp programs: items in this visit (e.g. 2 coffees = 2 stamps), 1-10, default 1. Ignored for per_dollar. */
+  quantity?: number;
 }
 
 export interface AwardResult {
@@ -480,8 +487,9 @@ export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<A
       const [lvl] = await tx.select().from(vipLevels).where(eq(vipLevels.id, member.vipLevelId)).limit(1);
       if (lvl) vipMultiplier = lvl.multiplierPct / 100;
     }
+    const quantity = visitBased ? Math.min(10, Math.max(1, Math.floor(args.quantity ?? 1))) : 1;
     const earn = calculateEarn({
-      rules: { earnType: program.earnType, pointsPerDollar: program.pointsPerDollar, pointsPerVisit: program.pointsPerVisit, minSpendCents: program.minSpendCents },
+      rules: { earnType: program.earnType, pointsPerDollar: program.pointsPerDollar, pointsPerVisit: program.pointsPerVisit * quantity, minSpendCents: program.minSpendCents },
       lines,
       noEarnCategoryIds: noEarn,
       boosts,
@@ -505,6 +513,7 @@ export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<A
         staffUserId: args.staffUserId,
         locationId: args.locationId,
         promoId: boosts[0]?.promoId ?? null,
+        at: now,
       });
       transaction = r.transaction;
       member = r.member;
@@ -524,6 +533,7 @@ export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<A
           neighbourhoodId: merchant.neighbourhoodId,
           source: args.source,
           amountCents,
+          createdAt: now,
         })
         .returning();
       const [m] = await tx
@@ -615,6 +625,7 @@ async function applyNetworkPerks(tx: Tx, merchant: Merchant, member: Member, now
       points: perk.bonusPoints,
       description: perk.name,
       idempotencyKey: `perk:${perk.id}:${member.userId}`,
+      at: now,
     });
     await tx.insert(networkPerkAwards).values({ perkId: perk.id, userId: member.userId, merchantId: merchant.id, transactionId: r.transaction.id }).onConflictDoNothing();
     return { member: r.member, points: perk.bonusPoints, message: `${perk.name}: +${perk.bonusPoints} bonus points from the neighbourhood` };
@@ -652,8 +663,12 @@ export interface RedeemArgs {
   subtotalCents?: number | null;
 }
 
+/** App-issued (customer_app) redemption codes expire if not used at the counter. */
+export const REDEMPTION_CODE_TTL_MS = 10 * 60_000;
+
 export async function redeemReward(ctx: AppContext, args: RedeemArgs) {
   return ctx.db.transaction(async (tx) => {
+    const now = ctx.now();
     const [reward] = await tx.select().from(rewards).where(and(eq(rewards.id, args.rewardId), eq(rewards.merchantId, args.merchantId))).limit(1);
     if (!reward || !reward.active) throw notFound("Reward");
     const r = await postTransaction(tx, {
@@ -667,6 +682,7 @@ export async function redeemReward(ctx: AppContext, args: RedeemArgs) {
       staffUserId: args.staffUserId,
       locationId: args.locationId,
       idempotencyKey: args.idempotencyKey,
+      at: now,
     });
     if (r.duplicate) {
       const [existing] = await tx.select().from(redemptions).where(eq(redemptions.transactionId, r.transaction.id)).limit(1);
@@ -685,8 +701,10 @@ export async function redeemReward(ctx: AppContext, args: RedeemArgs) {
           code: randomCode(6),
           // Staff-initiated redemptions are applied at the counter immediately.
           status: args.source === "customer_app" ? "issued" : "used",
-          usedAt: args.source === "customer_app" ? null : ctx.now(),
+          usedAt: args.source === "customer_app" ? null : now,
+          expiresAt: args.source === "customer_app" ? new Date(now.getTime() + REDEMPTION_CODE_TTL_MS) : null,
           discountCents,
+          createdAt: now,
         })
         .onConflictDoNothing()
         .returning();
@@ -711,6 +729,7 @@ export async function adjustPoints(
       description: args.reason,
       staffUserId: args.staffUserId,
       idempotencyKey: args.idempotencyKey,
+      at: ctx.now(),
     }),
   );
 }
@@ -743,6 +762,7 @@ export async function reverseTransaction(
       idempotencyKey: `reverse:${orig.id}`,
       counterAccount: counter,
       allowNegative: true,
+      at: ctx.now(),
     });
     if (orig.points > 0 && LIFETIME_TYPES.has(orig.type)) {
       await tx

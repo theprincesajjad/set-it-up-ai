@@ -177,6 +177,14 @@ export interface MerchantFeaturesResponse {
   plansAvailable: Record<PlanId, boolean>;
 }
 
+/** POST /v1/merchants/:merchantId/features/:key/notify ("Notify me" on a coming-soon feature). No body. */
+export interface FeatureInterestResponse {
+  key: FeatureKey;
+  interested: true;
+  /** When this merchant first asked to be notified. */
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Locations
 // ---------------------------------------------------------------------------

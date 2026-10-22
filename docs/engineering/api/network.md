@@ -38,9 +38,12 @@ Query: `lat`, `lng` (both or neither), `neighbourhood` (slug), `vertical` (e.g. 
   "location": { "...": "LocationDto (nearest active location)" },
   "locationCount": 1, "distanceMetres": 42, "openNow": true, "hasPromo": true,
   "terminology": "stamps", "earnType": "stamps",
-  "myBalance": 7, "isMember": true
+  "myBalance": 7, "isMember": true,
+  "memberCount": 42
 }
 ```
+
+`memberCount` = members at the shop (merged duplicates excluded); `null` when fewer than `MEMBER_COUNT_MIN` (10) so tiny numbers aren't revealed.
 
 Sorted by distance when `lat/lng` are given (shops without coordinates last), otherwise by name. `hasPromo` = a `network`-audience promo applies right now.
 `myBalance`/`isMember` are filled only for signed-in callers. Errors: `400` (only one of lat/lng, radius without a point, bad cursor), `404` (unknown neighbourhood).
@@ -63,8 +66,20 @@ Increment the promo's `viewCount` / `claimCount`. Call `view` when a promo card 
 
 ## GET /v1/public/shops/:slug
 The public merchant page (web pass / app shop screen). `200` → `PublicShopResponse`:
-`{ merchant: { ...brief, description, phone, email, website, instagram, coverUrl, timezone, neighbourhood }, locations: LocationDto[], program: ProgramSummaryDto|null, rewards: RewardDto[], promos: PromoDto[] (network audience, in date window, with activeNow), discountCards: DiscountCardDto[] (VIP-only cards excluded), consentText }`.
+`{ merchant: { ...brief, description, phone, email, website, instagram, coverUrl, timezone, neighbourhood }, locations: LocationDto[], program: ProgramSummaryDto|null, rewards: RewardDto[], promos: PromoDto[] (network audience, in date window, with activeNow), discountCards: DiscountCardDto[] (VIP-only cards excluded), consentText, memberCount, features }`.
+- `memberCount`: number of members, or `null` below 10 (same rule as the shop list).
+- `features: CustomerFeaturesDto { orderAhead, pickupSlots, serviceTickets, inAppPayments }` — `true` only when the feature is
+  enabled for this shop (plan + rollout stage + admin overrides; keys `orders.order_ahead`, `booking.pickup_slots`,
+  `service.tickets`, `payments.in_app`). Show the matching entry points only when `true` instead of probing for `402`s.
 Errors: `404`.
+
+## GET /v1/public/plans
+Pricing page data, no auth, no merchant data. `200` → `PublicPlansResponse`:
+`{ items: PublicPlanDto[], network: { activeMerchants, neighbourhoods } }`.
+Each plan: `{ id, name, priceCents, annualPriceCents, blurb, bestFor, smsPerMonth, available, features }` where
+`available = isPlanAvailable(plan, rollout stages)` (Free is always `true`; a paid plan once any of its features leaves `hidden`)
+and `features` lists that plan's paid features `{ key, name, description, stage: "hidden"|"beta"|"ga" }` (empty for Free).
+`network.activeMerchants` = merchants with status `active`; `network.neighbourhoods` = neighbourhoods with status `pilot` or `live`.
 
 ## No-download join from the counter QR (< 30 seconds)
 

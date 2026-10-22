@@ -15,7 +15,8 @@ activatedMerchants, activationRate, customers, multiShopCustomers, multiShopPct,
 ### `GET /v1/admin/features`
 → `{ items: AdminFeature[] }` — every `FEATURE_KEYS` entry: `stage` (DB, else default), `defaultStage`, `freeForever`,
 `minPlan`, `phase`, `unlockAtMerchants`, `activeMerchants` (merchants with status `active`), `readyToUnlock`,
-`overrides { enabled, disabled }`, `note`, `updatedBy`, `updatedAt`.
+`overrides { enabled, disabled }`, `interestCount` (merchants that tapped "Notify me", see
+`POST /v1/merchants/:merchantId/features/:key/notify` in [merchant.md](merchant.md)), `note`, `updatedBy`, `updatedAt`.
 
 ### `PUT /v1/admin/features/:key/stage`
 Body `{ stage: "hidden"|"beta"|"ga", note? }` → `AdminFeature`. Audit-logged as `feature.stage_changed` (`{ from, to, note }`).

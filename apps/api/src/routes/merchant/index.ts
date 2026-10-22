@@ -18,6 +18,7 @@ import {
   setBetaOptIn,
   updateProfile,
 } from "../../services/merchant.js";
+import { recordFeatureInterest } from "../../services/features.js";
 import registerCustomers from "./customers.js";
 import registerProgram from "./program.js";
 import { rejectMalformedIds } from "./params.js";
@@ -90,6 +91,13 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/merchants/:merchantId/features", async (req: MerchantReq) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
     return merchantFeaturesResponse(ctx.db, s.merchant);
+  });
+
+  app.post("/merchants/:merchantId/features/:key/notify", async (req: FastifyRequest<{ Params: { merchantId: string; key: string } }>, reply): Promise<merchantApi.FeatureInterestResponse> => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    const { created, ...out } = await recordFeatureInterest(ctx.db, s.merchant.id, req.params.key, s.user.id, ctx.now());
+    reply.status(created ? 201 : 200);
+    return out;
   });
 
   app.put("/merchants/:merchantId/beta", async (req: MerchantReq) => {

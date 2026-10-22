@@ -73,6 +73,12 @@ Body `{ step: "profile"|"program"|"rewards"|"staff"|"qr_kit" }`. → updated `On
 Dashboard rule: `enabled` → show; `lockedReason: "plan"` → show locked with upsell; `lockedReason: "rollout"` with
 `stage: "hidden"` → hide; `stage: "beta"` → "coming soon / join beta".
 
+### `POST /v1/merchants/:merchantId/features/:key/notify` (manager)
+"Notify me" on a coming-soon feature. No body. Records one interest row per merchant + feature (`feature_interest`,
+idempotent; the first caller's user id and time are kept). Admins see the total as `interestCount` on `GET /v1/admin/features`.
+→ `201` (first time) / `200` (already recorded) `FeatureInterestResponse { key, interested: true, createdAt }`.
+Errors: `403` (staff role), `404` (unknown feature key), `409 feature_released` (feature stage is already `ga`).
+
 ### `PUT /v1/merchants/:merchantId/beta` (owner)
 Body `{ optIn: boolean }`. → `MerchantFeaturesResponse`.
 

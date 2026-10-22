@@ -3,7 +3,7 @@ import { networkApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { parse } from "../../lib/validate.js";
 import { requireUuid } from "../../services/customer.js";
-import { feed, getNeighbourhood, joinInfo, listNeighbourhoods, listShops, publicShop, startQrJoin, trackPromo } from "../../services/network.js";
+import { feed, getNeighbourhood, joinInfo, listNeighbourhoods, listShops, publicPlans, publicShop, startQrJoin, trackPromo } from "../../services/network.js";
 
 /**
  * Public network routes (no auth; optional bearer token personalises results).
@@ -24,6 +24,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post<{ Params: { promoId: string } }>("/network/promos/:promoId/claim", async (req) => trackPromo(ctx, requireUuid(req.params.promoId, "Promo"), "claim"));
 
   app.get<{ Params: { slug: string } }>("/public/shops/:slug", async (req) => publicShop(ctx, req.params.slug));
+
+  app.get("/public/plans", async () => publicPlans(ctx));
 
   app.get<{ Params: { qrCode: string } }>("/public/join/:qrCode", async (req) => joinInfo(ctx, req.params.qrCode));
 

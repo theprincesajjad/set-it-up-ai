@@ -35,6 +35,7 @@ import { BRAND, staffApi, type customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { customerFeaturesFor } from "./features.js";
 import { ensureMember, generateMemberCode, postTransaction, redeemReward, reverseTransaction } from "./ledger.js";
 import {
   affordable,
@@ -235,7 +236,8 @@ function membershipDto(row: WalletRow, rs: Reward[]): customerApi.MembershipDto 
 export async function getWallet(ctx: AppContext, userId: string): Promise<customerApi.WalletResponse> {
   const rows = await walletRows(ctx.db, userId);
   const rs = await activeRewardsByMerchant(ctx.db, rows.map((r) => r.merchant.id));
-  const items = rows.map((r) => membershipDto(r, rs.get(r.merchant.id) ?? []));
+  const features = await customerFeaturesFor(ctx.db, rows.map((r) => r.merchant));
+  const items = rows.map((r) => ({ ...membershipDto(r, rs.get(r.merchant.id) ?? []), features: features.get(r.merchant.id)! }));
   return { items, totals: { shops: items.length, rewardsAvailable: items.reduce((s, i) => s + i.rewardsAvailableCount, 0) } };
 }
 
@@ -271,6 +273,7 @@ function redemptionDto(r: typeof redemptions.$inferSelect, rewardName: string): 
     status: r.status as customerApi.RedemptionDto["status"],
     discountCents: r.discountCents ?? null,
     usedAt: iso(r.usedAt),
+    expiresAt: iso(r.expiresAt),
     createdAt: r.createdAt.toISOString(),
   };
 }

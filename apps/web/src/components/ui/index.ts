@@ -42,3 +42,5 @@ export * from "./Timeline";
 export * from "./Toast";
 export * from "./VerticalIcon";
 export * from "./SegmentedControl";
+export * from "./DensityGauge";
+export * from "./Keypad";
