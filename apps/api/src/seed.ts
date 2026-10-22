@@ -20,6 +20,10 @@ async function main() {
     if (!r.skipped) {
       console.log(`\nSeeded ${r.merchants} merchants, ${r.customers} customers, ${r.visits} visits, ${r.redemptions} redemptions, ${r.leads} leads in ${((Date.now() - started) / 1000).toFixed(1)}s.`);
     }
+    console.log("\nPricing v2: only loyalty + reporting are free; paid features are hidden at launch.");
+    console.log("Pilot shops with admin overrides (promos, discount cards, VIP, birthday/referrals, email, CSV, advanced reports):");
+    for (const p of r.pilotOverrides) console.log(`  ${p.merchant} (${p.slug})`);
+    console.log("Other shops' seeded promos stay hidden until an admin enables the feature (Admin → Rollout → overrides).");
     console.log("\nDemo credentials");
     console.log("────────────────");
     for (const c of r.credentials) console.log(`${c.role.padEnd(6)} ${c.email.padEnd(48)} ${c.password}${c.merchant ? `   (${c.merchant})` : ""}`);

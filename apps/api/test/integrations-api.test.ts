@@ -3,7 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchantMembers, users } from "@ll/db";
 import { twilioSignature } from "../src/providers/twilio.js";
 import { rotateApiKey } from "../src/services/merchant.js";
-import { createMerchant, createTestEnv, createUser, nextPhone, type TestEnv } from "./helpers.js";
+import { createMerchant as createBaseMerchant, createTestEnv, createUser, nextPhone, type TestEnv, grantFeatures } from "./helpers.js";
+
+/** Pricing v2: the merchant REST API ("Webhooks & API") is Plus; these shops are pilots with admin overrides. */
+async function createMerchant(env: TestEnv) {
+  const m = await createBaseMerchant(env);
+  await grantFeatures(env, m.merchant.id, ["integrations.webhooks"]);
+  return m;
+}
 
 let env: TestEnv;
 beforeEach(async () => {

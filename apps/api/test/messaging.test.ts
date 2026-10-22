@@ -225,7 +225,23 @@ describe("opt-outs", () => {
   });
 });
 
-describe("automations (Plus) + birthday bonus (free)", () => {
+describe("Pricing v2: email & push campaigns are Plus", () => {
+  it("refuses campaigns (402) for a shop without marketing.email", async () => {
+    const m = await createBaseMerchant(env);
+    for (const channel of ["email", "push"] as const) {
+      const r = await env.app.inject({
+        method: "POST",
+        url: `/v1/merchants/${m.merchant.id}/messages`,
+        headers: { authorization: `Bearer ${m.ownerToken}` },
+        payload: { channel, subject: channel === "email" ? "Hi" : undefined, body: "Hello" },
+      });
+      expect(r.statusCode).toBe(402);
+      expect(r.json().error.code).toBe("feature_locked");
+    }
+  });
+});
+
+describe("automations (Plus) + birthday bonus (Plus since Pricing v2)", () => {
   it("gates automations and runs win-back / reward-ready once per trigger", async () => {
     const s = await setup();
     const url = (k: string) => `/v1/merchants/${s.merchant.id}/automations/${k}`;
@@ -257,13 +273,17 @@ describe("automations (Plus) + birthday bonus (free)", () => {
     expect(deliveries).toHaveLength(0);
   });
 
-  it("awards the birthday bonus once per year via the ledger (free), message only with automation", async () => {
+  it("awards the birthday bonus once per year via the ledger (pilot override), message only with automation", async () => {
     env.clock.now = new Date("2026-11-03T15:00:00Z");
     const s = await setup();
     await env.db.update(loyaltyPrograms).set({ birthdayBonus: 25 }).where(eq(loyaltyPrograms.merchantId, s.merchant.id));
     // Clock is 2026-11-03 10:00 Toronto.
     await env.db.update(users).set({ birthday: "1990-11-03" }).where(eq(users.id, s.noConsent.userId));
     await env.db.update(users).set({ birthday: "1985-11-04" }).where(eq(users.id, s.alice.userId));
+    // Pricing v2: without loyalty.birthday_bonus the job skips the shop entirely.
+    await grantFeatures(env, s.merchant.id, ["loyalty.birthday_bonus"], false);
+    expect(await awardBirthdayBonuses(env.ctx)).toBe(0);
+    await grantFeatures(env, s.merchant.id, ["loyalty.birthday_bonus"]);
     expect(await awardBirthdayBonuses(env.ctx)).toBe(1);
     expect(await awardBirthdayBonuses(env.ctx)).toBe(0);
     const [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.noConsent.id));

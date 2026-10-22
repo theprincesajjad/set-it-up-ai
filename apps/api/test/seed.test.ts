@@ -33,6 +33,18 @@ describe("seedDemo", () => {
     expect(result.visits).toBeGreaterThan(30);
   });
 
+  it("Pricing v2: pilot shops show promos via admin overrides; other shops' promos stay hidden", async () => {
+    expect(result.pilotOverrides.map((p) => p.slug)).toEqual(["pinecone-coffee", "hearth-and-crumb", "village-apothecary"]);
+    const page = (slug: string) => env.app.inject({ method: "GET", url: `/v1/public/shops/${slug}` }).then((r) => r.json());
+    const cafe = await page("pinecone-coffee");
+    expect(cafe.features).toMatchObject({ promos: true, discountCards: true });
+    expect(cafe.promos.map((p: { title: string }) => p.title)).toContain("Two-stamp Tuesdays");
+    // Nonna's has a scheduled event promo in the DB, but it isn't a pilot: hidden.
+    const nonnas = await page("nonnas-table");
+    expect(nonnas.features.promos).toBe(false);
+    expect(nonnas.promos).toEqual([]);
+  });
+
   it("pharmacy prescriptions are no-earn", async () => {
     const [pharmacy] = await env.db.select().from(merchants).where(eq(merchants.slug, "village-apothecary"));
     const cats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, pharmacy!.id));

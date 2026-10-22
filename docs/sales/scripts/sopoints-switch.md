@@ -24,9 +24,9 @@ If you can't verify, don't quote numbers. Say: "Check what you're paying them pe
 | Locations | Unlimited, free | Check plan limits |
 | Staff logins | Unlimited, free | Check plan limits |
 | POS auto-award | Square, Clover, Shopify, Lightspeed, Toast (confirm live list this week) | Check current integrations |
-| Migration | **Free**: we import your members and balances | n/a |
+| Migration | **Free**: your rep imports your members and balances for you | n/a |
 | Repair/auto workflows (later, optional) | Pro add-on planned: tickets, quote approvals, deposits, invoices | Not offered as far as we know (re-verify) |
-| Promise | Anything free today stays free (written policy) | n/a |
+| Promise | The loyalty program and its reports stay free, forever (written policy) | n/a |
 
 ## Worked example (illustrative only)
 

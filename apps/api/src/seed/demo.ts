@@ -1,6 +1,7 @@
 /**
  * Realistic Toronto demo: Roncesvalles Village pilot (+ Leslieville and the
- * Danforth), ~16 merchants from vertical templates, promos, a "visit 3 shops"
+ * Danforth), ~16 merchants from vertical templates, promos (live on 3 pilot shops via admin
+ * overrides, since promos are Plus and hidden at launch under Pricing v2), a "visit 3 shops"
  * network perk, an admin, a rep, one owner per merchant, ~120 customers with
  * 90 days of visit history posted through the ledger, and sales leads.
  *
@@ -9,7 +10,9 @@
  */
 import bcrypt from "bcryptjs";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import type { FeatureKey } from "@ll/shared";
 import {
+  featureOverrides,
   leadActivities,
   leads,
   ledgerTransactions,
@@ -65,7 +68,27 @@ export interface SeedResult {
   redemptions: number;
   leads: number;
   credentials: { role: string; email: string; password: string; merchant?: string }[];
+  /** Pricing v2: paid features are hidden at launch; these pilot shops get them via admin per-merchant overrides. */
+  pilotOverrides: { slug: string; merchant: string; features: FeatureKey[] }[];
 }
+
+/**
+ * Pricing v2: only loyalty + reporting are free. Promos, discount cards, VIP, birthday/referral bonuses,
+ * email campaigns and CSV are Plus and hidden at launch, so the demo turns them on for a few pilot shops
+ * with admin overrides (exactly how real pilots get them). Other shops' promos stay in the DB but hidden.
+ */
+export const DEMO_PILOT_FEATURES: FeatureKey[] = [
+  "promos.basic",
+  "promos.double_points",
+  "discount_cards",
+  "loyalty.vip_levels",
+  "loyalty.birthday_bonus",
+  "loyalty.referrals",
+  "marketing.email",
+  "customers.csv_export",
+  "reports.advanced",
+];
+export const DEMO_PILOT_SHOPS = ["pinecone-coffee", "hearth-and-crumb", "village-apothecary"] as const;
 
 /** Small deterministic PRNG (mulberry32). */
 function rng(seed: number) {
@@ -93,12 +116,16 @@ function credentialsList(): SeedResult["credentials"] {
   ];
 }
 
+function pilotList(): SeedResult["pilotOverrides"] {
+  return DEMO_PILOT_SHOPS.map((slug) => ({ slug, merchant: MERCHANTS.find((m) => m.slug === slug)!.name, features: DEMO_PILOT_FEATURES }));
+}
+
 export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResult> {
   const log = opts.log ?? (() => {});
   const [existing] = await db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, "roncesvalles")).limit(1);
   if (existing) {
     log("Demo data already present (neighbourhood 'roncesvalles' exists) — skipping.");
-    return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList() };
+    return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
   const R = rng(opts.seed ?? 20261021);
@@ -184,6 +211,11 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   });
   const byslug = (s: string) => created.find((c) => c.data.slug === s)!.id;
   const nowReal = realStart;
+  // Pilot overrides first, so the seeded history earns with their promo boosts.
+  await db.insert(featureOverrides).values(
+    DEMO_PILOT_SHOPS.flatMap((slug) => DEMO_PILOT_FEATURES.map((key) => ({ merchantId: byslug(slug), key, enabled: true, reason: "Demo pilot shop (Pricing v2)", createdAt: historyStart }))),
+  );
+  log(`Pilot overrides (Plus features hidden at launch): ${DEMO_PILOT_SHOPS.join(", ")} get ${DEMO_PILOT_FEATURES.join(", ")}`);
   await db.insert(promos).values([
     { merchantId: byslug("pinecone-coffee"), title: "Two-stamp Tuesdays", body: "Every Tuesday, every drink earns double stamps.", kind: "multiplier", multiplierPct: 200, daysOfWeek: [2], startsAt: new Date(historyStart.getTime() + 10 * DAY), status: "live", audience: "network", viewCount: 412, claimCount: 0 },
     { merchantId: byslug("hearth-and-crumb"), title: "Pączki Saturday", body: "Fresh pączki every Saturday until they're gone.", kind: "offer", daysOfWeek: [6], startTime: "08:00", endTime: "12:00", startsAt: new Date(historyStart.getTime() + 5 * DAY), status: "live", audience: "network", viewCount: 260, claimCount: 41 },
@@ -368,5 +400,6 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     redemptions: redemptionCount,
     leads: Number(leadCount),
     credentials: credentialsList(),
+    pilotOverrides: pilotList(),
   };
 }

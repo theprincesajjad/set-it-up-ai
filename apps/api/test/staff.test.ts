@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ledgerEntries, locations, merchantMembers, merchantStaff, merchants, messageDeliveries, users, visits } from "@ll/db";
+import { featureOverrides, ledgerEntries, locations, merchantMembers, merchantStaff, merchants, messageDeliveries, users, visits } from "@ll/db";
 import type { staffApi } from "@ll/shared";
 import { awardPurchase, ledgerBalance, redeemReward } from "../src/services/ledger.js";
 import { flushReceipts, localDayStart } from "../src/services/staff.js";
@@ -141,10 +141,14 @@ describe("award", () => {
     expect(env.ctx.providers.outbox.sms).toHaveLength(0);
 
     await env.db.update(merchants).set({ smsReceiptsEnabled: true }).where(eq(merchants.id, s.merchant.id));
+    // Receipts are SMS, a paid feature: still nothing on Free.
+    const free = await call("POST", `${s.base}/award`, { phone, amountCents: 100, idempotencyKey: key() }, s.staffToken);
+    expect(free.json().receiptQueued).toBe(false);
+    await env.db.insert(featureOverrides).values({ merchantId: s.merchant.id, key: "marketing.sms", enabled: true });
     const second = await call("POST", `${s.base}/award`, { phone, amountCents: 3600, idempotencyKey: key() }, s.staffToken);
     expect(second.json().receiptQueued).toBe(true);
     await flushReceipts();
-    expect(env.ctx.providers.outbox.sms.at(-1)).toMatchObject({ to: phone, body: "You earned 36 points at Test Shop. Balance 48. Reply STOP to opt out" });
+    expect(env.ctx.providers.outbox.sms.at(-1)).toMatchObject({ to: phone, body: "You earned 36 points at Test Shop. Balance 49. Reply STOP to opt out" });
     const [d] = await env.db.select().from(messageDeliveries);
     expect(d).toMatchObject({ kind: "transactional", status: "sent", channel: "sms" });
 

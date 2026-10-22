@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, featureOverrides, merchantMembers, merchantStaff, merchants, messageDeliveries, neighbourhoodManagers, pushTokens, rewards, users } from "@ll/db";
 import { awardPurchase } from "../src/services/ledger.js";
 import { flushReceipts } from "../src/services/staff.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -21,6 +21,8 @@ const call = (method: Method, url: string, token?: string, payload?: unknown) =>
 
 async function shop(opts: Parameters<typeof createMerchant>[1] = {}) {
   const m = await createMerchant(env, opts);
+  // Pricing v2: email/push campaigns and CSV export are Plus; these shops are pilots (admin overrides).
+  await grantFeatures(env, m.merchant.id, ["marketing.email", "customers.csv_export"]);
   const staffUser = await createUser(env.db, { name: "Jo Staff" });
   await env.db.insert(merchantStaff).values({ merchantId: m.merchant.id, userId: staffUser.id, role: "staff" });
   const manager = await createUser(env.db, { name: "Max Manager", email: `max${Date.now()}${Math.random()}@example.com` });

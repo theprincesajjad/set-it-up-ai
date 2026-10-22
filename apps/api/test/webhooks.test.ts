@@ -30,6 +30,31 @@ async function register(m: Awaited<ReturnType<typeof createMerchant>>, events = 
   return r.json() as { id: string; secret: string };
 }
 
+describe("Pricing v2: webhooks & API are Plus", () => {
+  it("a shop without the feature can't register hooks or issue/use API keys; existing hooks stop receiving events", async () => {
+    const plain = await createBaseMerchant(env);
+    const h = { authorization: `Bearer ${plain.ownerToken}` };
+    expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${plain.merchant.id}/webhooks`, headers: h, payload: { url: "https://hooks.example.com/ll", events: ["*"] } })).statusCode).toBe(402);
+    expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${plain.merchant.id}/api-key`, headers: h })).statusCode).toBe(402);
+
+    // A pilot that set things up, then lost the feature.
+    const m = await createMerchant(env);
+    await register(m, ["points.earned"]);
+    const key = await rotateApiKey(env.ctx, m.merchant.id, m.owner.id);
+    await grantFeatures(env, m.merchant.id, ["integrations.webhooks"], false);
+    await emitMerchantEvent(env.ctx, m.merchant.id, "points.earned", { points: 5 });
+    expect(await env.db.select().from(outboundWebhookDeliveries).where(eq(outboundWebhookDeliveries.merchantId, m.merchant.id))).toHaveLength(0);
+    const api = await env.app.inject({ method: "GET", url: "/v1/api/me", headers: { "x-ll-api-key": key } });
+    expect(api.statusCode).toBe(402);
+    expect(api.json().error.code).toBe("feature_locked");
+    // Hooks and key are kept; switching the feature back on resumes delivery.
+    await grantFeatures(env, m.merchant.id, ["integrations.webhooks"]);
+    await emitMerchantEvent(env.ctx, m.merchant.id, "points.earned", { points: 5 });
+    expect(await env.db.select().from(outboundWebhookDeliveries).where(eq(outboundWebhookDeliveries.merchantId, m.merchant.id))).toHaveLength(1);
+    expect((await env.app.inject({ method: "GET", url: "/v1/api/me", headers: { "x-ll-api-key": key } })).statusCode).toBe(200);
+  });
+});
+
 describe("outbound webhooks", () => {
   it("registers, returns the secret once, stores it encrypted, validates input", async () => {
     const m = await createMerchant(env);

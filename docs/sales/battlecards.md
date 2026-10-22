@@ -1,6 +1,6 @@
 # Competitor Battlecards
 
-Last updated: Oct 21, 2026
+Last updated: Oct 22, 2026 (SoPoints pricing verified; Pricing v2: see docs/business/pricing.md)
 
 **Read this first:**
 - Every price below comes from the PRD's research or public pages **as of Oct 21, 2026**. Items marked **⚠ verify** are unconfirmed or change often. **Re-check the competitor's own page before quoting any number to a merchant**, and tell the merchant where it came from.
@@ -9,19 +9,22 @@ Last updated: Oct 21, 2026
 
 ## Our position in one line
 
-> **Free forever loyalty (no fee, unlimited locations and staff), set up for you, working with your existing POS, on one app shared by every shop on the street.**
+> **Free forever loyalty and reports (no fee, unlimited rewards, locations and staff), set up for you, on one app shared by every shop on the street.**
+
+Pricing v2 (Oct 22, 2026): Free = the loyalty program + reports, network listing, wallet pass, customer directory. Promos, VIP/birthday/referrals, discount cards, email/SMS, CSV, POS auto-award and webhooks are **Plus (C$39/mo)**, which isn't sold yet ("coming soon"). **Don't promise any of those on Free.**
 
 ## Quick comparison
 
 | | **Local Loyalty** | SoPoints | Square Loyalty | Wallet stamp cards | TapMango / Kangaroo | Paper cards |
 | --- | --- | --- | --- | --- | --- | --- |
-| Price to merchant | **$0** | Free plan w/ 5% fee; paid US$49–199/mo ⚠ | From ~$60/mo per location (CAD) ⚠ | Free to ~$50/mo ⚠ | ~$59–299/mo or custom ⚠ | Printing cost |
-| Transaction fee | **0%** | 5% on free plan ⚠ | None for loyalty ⚠ | Usually none ⚠ | Usually none ⚠ | None |
+| Price to merchant | **$0** loyalty + reports (Plus C$39 / Pro C$79 coming later) | Free $0 + 5% fee; Starter US$49, Pro US$79, Enterprise US$199/mo (sopoints.com/pricing, Oct 22, 2026) | From ~$60/mo per location (CAD) ⚠ | Free to ~$50/mo ⚠ | ~$59–299/mo or custom ⚠ | Printing cost |
+| Transaction fee | **0%** | Free 5%, Starter 2.5%, Pro 0% (Oct 22, 2026; base of the % not stated) | None for loyalty ⚠ | Usually none ⚠ | Usually none ⚠ | None |
 | Done-for-you setup | **Yes** | Field agents ⚠ | Self-serve | Self-serve | Onboarding varies ⚠ | n/a |
 | Shared local network | **Yes** | Yes | No | No | No | No |
 | No-download join | **Yes** (phone #, wallet pass) | ⚠ verify | Yes (phone # at checkout) | Yes | Often app/tablet based ⚠ | Yes |
-| Multi-POS | **Yes** (Square, Clover, Shopify, Lightspeed, Toast; confirm live) | ⚠ verify | Square only | Usually none | Several ⚠ | n/a |
-| Unlimited locations free | **Yes** | ⚠ verify | No (per location) | ⚠ verify | No ⚠ | n/a |
+| Rewards on the free plan | **Unlimited** | No active rewards on Free; 10 on Starter; unlimited on Pro (Oct 22, 2026) |
+| Multi-POS | **On Plus** (Square, Clover, Shopify, Lightspeed, Toast; confirm live). Free uses the counter app | ⚠ verify | Square only | Usually none | Several ⚠ | n/a |
+| Unlimited locations free | **Yes** | No: Free 1 location, Starter 2, Pro 10 (Oct 22, 2026) | No (per location) | ⚠ verify | No ⚠ | n/a |
 
 ---
 
@@ -29,12 +32,23 @@ Last updated: Oct 21, 2026
 
 **What it is:** Toronto company. One card across local GTA independents; each shop keeps its own points. Uses field agents. Same thesis as ours, same city. **Threat: high.**
 
-**Pricing (Oct 21, 2026, PRD; ⚠ verify at sopoints.com/pricing):** free plan with a 5% transaction fee; paid plans US$49–199/month. Confirm what the 5% is charged on.
+**Pricing (verified Oct 22, 2026, source: sopoints.com/pricing):**
+
+| Plan | Price | Fee | Limits / includes |
+| --- | --- | --- | --- |
+| Free | $0 | 5% transaction fee | 1 location, 4,000 points/month cap, no active rewards, no campaigns, basic analytics only |
+| Starter | US$49/mo | 2.5% | 2 locations, 10 rewards |
+| Pro | US$79/mo | 0% | 10 locations, unlimited rewards, 10 campaigns, birthday rewards, multiple staff |
+| Enterprise | US$199/mo | | |
+
+The page doesn't say what the 5% (or 2.5%) applies to. Don't guess with merchants; ask what they actually pay.
 
 **Their strengths (be honest):** first mover in Toronto, the same network idea, people on the ground, merchants already trained on it.
 
 **Our angle:**
-- **0% fee** vs a percentage fee on their free plan.
+- **0% fee** vs 5% on their free plan (2.5% on Starter).
+- **Our Free is more generous than their Free or Starter:** unlimited rewards, locations and staff, plus reports. Their free plan has no active rewards, a 4,000 points/month cap and one location.
+- Campaigns and birthday rewards are on SoPoints Pro (US$79/mo). For us they will be on Plus (C$39/mo) when it launches. Don't sell Plus yet; say "coming soon".
 - **Done for you**, including free migration of members and balances.
 - **Density:** we launch whole streets at once with the BIA, so the network is real in week 1.
 - **Later:** repair/auto workflows (Pro), which SoPoints doesn't offer as far as we know ⚠ verify.
@@ -165,7 +179,7 @@ Full script: [scripts/square-loyalty-users.md](scripts/square-loyalty-users.md).
 
 | Item | Where to check | Last checked |
 | --- | --- | --- |
-| SoPoints free-plan fee %, what it applies to, paid plan prices & currency | sopoints.com/pricing | Oct 21, 2026 (via PRD) |
+| SoPoints plan prices, fees, limits (Free/Starter/Pro/Enterprise) | sopoints.com/pricing | **Oct 22, 2026 (lead, direct)**. Still unknown: what the 5%/2.5% applies to |
 | SoPoints no-download options, POS integrations, location/staff limits | SoPoints site | Not yet checked |
 | Square Loyalty Canada price and tiers | square.com/ca/en/software/loyalty | Oct 21, 2026 (via PRD) |
 | Clover loyalty options and pricing in Canada | Clover Canada site, App Market | Not yet checked |

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, discountCards, ledgerEntries, locations, loyaltyPrograms, merchantMembers, pushTokens, rewards, sessions, users, vipLevels } from "@ll/db";
 import { customerApi } from "@ll/shared";
 import { awardPurchase, ledgerBalance } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -101,6 +101,7 @@ describe("joining and the wallet", () => {
 
   it("shows membership detail with history paging, rewards, cards and VIP; hides it from other users", async () => {
     const s = await shop();
+    await grantFeatures(env, s.merchant.id, ["loyalty.vip_levels", "discount_cards"]); // Plus (Pricing v2): pilot shop
     const [gold] = await env.db.insert(vipLevels).values({ merchantId: s.merchant.id, name: "Gold", thresholdPoints: 50, multiplierPct: 150 }).returning();
     await env.db.insert(discountCards).values([
       { merchantId: s.merchant.id, name: "Seniors 10%", percentOff: 10, eligibility: "seniors", terms: "Not on prescriptions" },
@@ -214,6 +215,10 @@ describe("card, push tokens and referrals", () => {
     await env.db.update(loyaltyPrograms).set({ referralBonus: 25 }).where(eq(loyaltyPrograms.merchantId, s.merchant.id));
     const ann = await customer("Ann");
     const annJoin = (await call("POST", "/v1/me/memberships", { merchantId: s.merchant.id }, ann.token)).json();
+    // Pricing v2: referrals are Plus. Without the feature: no code (402) and the bonus shows as 0 (apps hide "Invite").
+    expect(annJoin.membership.program.referralBonus).toBe(0);
+    expect((await call("GET", `/v1/me/memberships/${annJoin.membership.id}/referral`, undefined, ann.token)).statusCode).toBe(402);
+    await grantFeatures(env, s.merchant.id, ["loyalty.referrals"]);
     const ref = await call("GET", `/v1/me/memberships/${annJoin.membership.id}/referral`, undefined, ann.token);
     expect(ref.statusCode).toBe(200);
     const { code, shareUrl, bonusPoints } = ref.json();
@@ -224,6 +229,14 @@ describe("card, push tokens and referrals", () => {
 
     const own = await call("POST", "/v1/me/memberships", { merchantId: s.merchant.id, referralCode: code }, ann.token);
     expect(own.json().referral).toEqual({ applied: false, reason: "own_code" });
+
+    // Feature switched off (pilot override removed): a code shared earlier joins the friend without bonuses.
+    await grantFeatures(env, s.merchant.id, ["loyalty.referrals"], false);
+    const cat = await customer("Cat");
+    const catJoin = await call("POST", "/v1/me/memberships", { merchantId: s.merchant.id, referralCode: code }, cat.token);
+    expect(catJoin.statusCode).toBe(201);
+    expect(catJoin.json()).toMatchObject({ bonusPoints: 0, referral: { applied: false, reason: "unavailable" }, membership: { balance: 0 } });
+    await grantFeatures(env, s.merchant.id, ["loyalty.referrals"]);
 
     const bob = await customer("Bob");
     const bobJoin = await call("POST", "/v1/me/memberships", { merchantId: s.merchant.id, referralCode: code.toLowerCase() }, bob.token);

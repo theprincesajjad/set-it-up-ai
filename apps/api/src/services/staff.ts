@@ -313,6 +313,9 @@ export async function flushReceipts(): Promise<void> {
  */
 async function queueReceipt(ctx: AppContext, merchant: Merchant, member: Member, points: number, terminology: string): Promise<boolean> {
   if (!merchant.smsReceiptsEnabled || member.muted) return false;
+  // Texts cost money, so receipts ride on the paid SMS feature (Free has no SMS).
+  const enabled = await enabledFeaturesByMerchantId(ctx.db, [merchant.id], ["marketing.sms"]);
+  if (!enabled.get(merchant.id)?.has("marketing.sms")) return false;
   const [u] = await ctx.db.select({ phone: users.phone, deletedAt: users.deletedAt }).from(users).where(eq(users.id, member.userId)).limit(1);
   if (!u?.phone || u.deletedAt) return false;
   const term = points === 1 ? terminology.replace(/s$/, "") : terminology;

@@ -35,7 +35,8 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
 
   app.post("/merchants/:merchantId/customers/import", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
-    await requireFeature(ctx.db, s.merchant, "customers.csv_import");
+    // Done-for-you migration: reps and admins can import for any shop on any plan.
+    if (!s.impersonated) await requireFeature(ctx.db, s.merchant, "customers.csv_import");
     const body = parse(merchantApi.importCustomersBody, req.body);
     return svc.importCustomersCsv(ctx, s.merchant.id, s.user.id, body);
   });
