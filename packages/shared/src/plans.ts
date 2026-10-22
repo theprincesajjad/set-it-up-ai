@@ -68,8 +68,11 @@ export const PLANS: Record<PlanId, Plan> = {
   },
 };
 
-/** Platform fee on payments processed in-app (basis points). Free plan has no payments. */
-export const PLATFORM_PAYMENT_FEE_BPS = 75;
+/**
+ * Headline platform fee on deposits and invoices (basis points), shown in billing and Connect status.
+ * Online orders on paid plans carry no platform fee; the full rule set is FEES / computeFees.
+ */
+export const PLATFORM_PAYMENT_FEE_BPS = 100;
 
 // ---------------------------------------------------------------------------
 // Restaurant pack (docs/business/combined-strategy.md): a separate ladder for

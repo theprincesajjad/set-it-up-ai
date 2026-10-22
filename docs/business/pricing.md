@@ -29,7 +29,7 @@ The invariant still holds: a free-forever feature can never be gated. Admins can
 - **Data:** CSV export, CSV import and migration from another app.
 - **Integrations:** POS auto-award (Square, Clover, Shopify, Lightspeed, Toast), Mailchimp, outgoing webhooks, Zapier/Make and the merchant REST API.
 - **Reports:** advanced reports (retention cohorts, network overlap, promo results).
-- **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee + 0.75% platform fee).
+- **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
 
 ## Pro: $79/mo ($790/yr), 1,500 SMS/mo included
 
@@ -83,7 +83,7 @@ Card processing (Stripe's standard rate) is passed through at cost on every paym
 
 One function computes all of these: `computeFees()` in `apps/api/src/services/fees.ts`. Delivery apps commonly keep 15 to 30% of an order; a Growth restaurant doing $5,000 a month in online orders pays $199 flat instead of roughly $750 to $1,500 in commission. The pricing page and the billing screen both show this table.
 
-Note: Café & Retail and Service shops that are not on a restaurant tier still pay the 0.75% in-app payment fee (`PLATFORM_PAYMENT_FEE_BPS`) on orders, quote deposits and invoices today. `computeFees()` follows the 0% / 1.5% order rule above; moving the existing order, deposit and invoice code onto it changes those shops' fees and needs a founder decision.
+Note: every payment path now uses `computeFees()`. Café & Retail and Service shops pay 0% on online orders (was 0.75%) and 1% on quote deposits and invoices (was 0.75%).
 
 ### Charge mode
 

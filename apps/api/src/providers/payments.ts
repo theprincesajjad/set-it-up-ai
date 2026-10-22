@@ -9,7 +9,7 @@
  *
  * Use `getPayments(ctx)`; never construct a provider in a route.
  */
-import { PLATFORM_PAYMENT_FEE_BPS, type AddOnId, type RestaurantTier } from "@ll/shared";
+import { type AddOnId, type RestaurantTier } from "@ll/shared";
 import type { Config } from "../config.js";
 import type { AppContext } from "../context.js";
 import { FakePayments } from "./paymentsFake.js";
@@ -46,7 +46,7 @@ export interface CreatePaymentIntentArgs {
   amountCents: number;
   /** Merchant's Connect account (destination charge). */
   connectedAccountId: string;
-  /** Platform fee kept by us (PLATFORM_PAYMENT_FEE_BPS of the amount). */
+  /** Platform fee kept by us (from computeFees). */
   applicationFeeCents: number;
   description: string;
   /** Must include ll_kind (order | deposit | invoice | tiffin), ll_id and merchant_id. */
@@ -179,10 +179,6 @@ export interface PaymentsProvider {
   verifyWebhook(rawBody: string, signatureHeader: string | undefined): PaymentsEvent;
 }
 
-/** 0.75% platform fee on in-app payments, rounded to the nearest cent. */
-export function platformFeeCents(amountCents: number): number {
-  return Math.round((Math.max(0, amountCents) * PLATFORM_PAYMENT_FEE_BPS) / 10000);
-}
 
 export function createPaymentsProvider(config: Config): PaymentsProvider {
   return config.stripe.secretKey ? new StripePayments(config) : new FakePayments(config);

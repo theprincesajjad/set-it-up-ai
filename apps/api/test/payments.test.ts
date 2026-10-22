@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchants, orders, subscriptions, webhookEvents } from "@ll/db";
-import { StripePayments, platformFeeCents } from "../src/providers/payments.js";
+import { StripePayments } from "../src/providers/payments.js";
 import { createPlatformCharge, platformChargeHandlers, type PlatformChargeEvent } from "../src/services/payments.js";
 import { createMerchant, createTestEnv, type TestEnv } from "./helpers.js";
 import { PAID_FEATURES, call, customer, deliver, fake, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
@@ -12,15 +12,6 @@ beforeEach(async () => {
   env = await createTestEnv();
 });
 afterEach(async () => env.close());
-
-describe("platform fee", () => {
-  it("is 0.75% rounded to the cent", () => {
-    expect(platformFeeCents(10000)).toBe(75);
-    expect(platformFeeCents(1754)).toBe(13);
-    expect(platformFeeCents(29380)).toBe(220);
-    expect(platformFeeCents(0)).toBe(0);
-  });
-});
 
 describe("platform charges (merchant pays the platform)", () => {
   it("charges on the platform account, saves the Stripe customer, and calls handlers once on success", async () => {
@@ -71,7 +62,7 @@ describe("Stripe Connect onboarding", () => {
     expect(r.body.url).toContain("stripe-onboarding");
     const again = await call(env, m.ownerToken, "POST", `${url}/connect`, {});
     expect(again.body.accountId).toBe(r.body.accountId);
-    expect((await call(env, m.ownerToken, "GET", `${url}/status`)).body).toMatchObject({ connected: true, chargesEnabled: false, platformFeeBps: 75, provider: "fake" });
+    expect((await call(env, m.ownerToken, "GET", `${url}/status`)).body).toMatchObject({ connected: true, chargesEnabled: false, platformFeeBps: 100, provider: "fake" });
     await call(env, null, "POST", "/v1/payments/fake/simulate", { action: "complete_onboarding", id: r.body.accountId });
     const [row] = await env.db.select().from(merchants).where(eq(merchants.id, m.merchant.id));
     expect(row).toMatchObject({ stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true });

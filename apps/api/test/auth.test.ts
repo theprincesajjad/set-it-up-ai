@@ -177,7 +177,7 @@ describe("/auth/me memberships and staff PINs", () => {
     const { merchant, owner, ownerToken } = await createMerchant(env);
     const me = await call("GET", "/v1/auth/me", undefined, ownerToken);
     expect(me.json().merchants).toEqual([
-      { merchantId: merchant.id, name: "Test Shop", slug: merchant.slug, role: "owner", status: "active", logoUrl: null, hasPin: false },
+      { merchantId: merchant.id, name: "Test Shop", slug: merchant.slug, role: "owner", status: "active", logoUrl: null, hasPin: false, locale: "en", station: null },
     ]);
     expect(me.json().user.id).toBe(owner.id);
   });

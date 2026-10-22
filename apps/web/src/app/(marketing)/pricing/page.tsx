@@ -241,7 +241,7 @@ export default async function PricingPage() {
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
         <p className="text-meta-strong text-fg-muted">Pricing</p>
         <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">free forever. no transaction fees. unlimited locations.</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">Your loyalty program and its reports cost nothing, for every shop. Plus and Pro add marketing, automations, payments and repair tools. They&apos;re coming soon, and only if you want them.</p>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">Your loyalty program and its reports cost nothing, for every shop. Café &amp; Retail and Service add marketing, automations, payments and repair tools. They&apos;re coming soon, and only if you want them.</p>
       </section>
       <section className="pb-16 md:pb-24">
         <div className="mx-auto grid max-w-[1200px] gap-4 px-4 md:px-8 lg:grid-cols-3">
@@ -254,7 +254,7 @@ export default async function PricingPage() {
           <div className="flex flex-col gap-5">
             <p className="text-body text-fg-muted">{copy.soon.pricingNote}</p>
             {progress ? <ProgressBar value={Math.min(progress.current, progress.target)} max={progress.target} label="Active shops on the network" valueText={`${progress.current} of ${progress.target} shops · ${progress.neighbourhoods} neighbourhoods`} /> : null}
-            <p className="text-meta text-fg-muted">In-app payments (Plus and Pro): Stripe&apos;s standard fee plus {feePct}%. The Free plan has no payments and no fees.</p>
+            <p className="text-meta text-fg-muted">In-app payments on paid plans: no platform fee on online orders, {feePct}% on deposits and invoices, plus Stripe&apos;s standard card fee. The Free plan has no fees on loyalty.</p>
           </div>
         </div>
       </section>
