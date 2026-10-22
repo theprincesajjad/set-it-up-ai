@@ -7,7 +7,6 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Keypad } from "@/components/ui/Keypad";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Segmented } from "@/components/dashboard/kit";
 import { inputBase } from "@/components/ui/TextField";
 import { copy } from "@/copy/en-CA";

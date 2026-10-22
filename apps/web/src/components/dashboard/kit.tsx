@@ -124,10 +124,10 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
         const body = (
           <>
             <dt className="text-meta text-fg-muted">{s.label}</dt>
-            <dd className="mt-1.5 text-[28px] font-semibold leading-8 tracking-[-0.01em] text-fg tabular">
+            <dd className="mt-1.5 text-[30px] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
               {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
             </dd>
-            <dd className="mt-1 min-h-4 text-caption font-normal tabular">
+            <dd className="mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
               {s.delta ? (
                 <>
                   <span className={s.delta.good === true ? "text-positive" : s.delta.good === false ? "text-negative" : "text-fg-muted"}>{s.delta.text}</span>
@@ -142,11 +142,11 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
           </>
         );
         return s.href ? (
-          <Link key={s.label} href={s.href} className="block bg-bg px-5 py-4 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+          <Link key={s.label} href={s.href} className="block bg-bg px-5 py-[18px] transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
             {body}
           </Link>
         ) : (
-          <div key={s.label} className="bg-bg px-5 py-4">
+          <div key={s.label} className="bg-bg px-5 py-[18px]">
             {body}
           </div>
         );

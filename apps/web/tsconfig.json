@@ -51,7 +51,9 @@
     ".next-polish/types/**/*.ts",
     ".next-polish/dev/types/**/*.ts",
     ".next-lead/types/**/*.ts",
-    ".next-lead/dev/types/**/*.ts"
+    ".next-lead/dev/types/**/*.ts",
+    ".next-canvas/types/**/*.ts",
+    ".next-canvas/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -12,7 +12,6 @@ import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
 import { useApi } from "@/lib/dashboard/useApi";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
-import { Meter } from "./kit";
 import { useMerchant } from "./MerchantContext";
 import { NoAccess } from "./PageStates";
 import { Shell, type ShellNavItem } from "./Shell";
@@ -84,20 +83,25 @@ function Switcher({ me }: { me: authApi.MeResponse }) {
   );
 }
 
-/** "Complete your setup  67%" with a thin bar, until the checklist is done (Square). */
+/** "Complete your setup  5 / 6" with a 3 px bar, until the checklist is done (canvas Dashboard sidebar). */
 function SetupProgress() {
   const { api, base, role } = useMerchant();
   const pathname = usePathname();
   const ob = useApi(role !== "staff" ? () => api.onboarding() : null, [api, role, pathname]);
-  const pct = ob.data?.percentComplete;
-  if (pct == null || pct >= 100) return null;
+  const steps = ob.data?.steps ?? [];
+  const done = steps.filter((x) => x.done).length;
+  if (!ob.data || steps.length === 0 || done >= steps.length) return null;
   return (
-    <Link href={`${base}/setup`} className="mt-2 block rounded-[8px] px-2 py-1.5 hover:bg-bg-muted/60 focus-visible:focus-ring">
-      <span className="flex items-baseline justify-between text-meta">
-        <span className="text-fg">Complete your setup</span>
-        <span className="tabular text-fg-muted">{Math.round(pct)}%</span>
+    <Link href={`${base}/setup`} aria-label={`Complete your setup, ${done} of ${steps.length} done`} className="block rounded-[8px] px-1.5 pb-0.5 pt-2.5 hover:bg-bg-muted/60 focus-visible:focus-ring">
+      <span className="flex justify-between text-[12px] leading-4 text-fg-muted">
+        <span>Complete your setup</span>
+        <span className="tabular">
+          {done} / {steps.length}
+        </span>
       </span>
-      <Meter className="mt-1.5" value={pct} max={100} label="Setup progress" />
+      <span aria-hidden className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-[#E0E0DE] dark:bg-bg-muted">
+        <span className="block h-[3px] rounded-full bg-fg" style={{ width: `${Math.round((done / steps.length) * 100)}%` }} />
+      </span>
     </Link>
   );
 }

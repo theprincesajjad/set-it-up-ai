@@ -6,6 +6,7 @@
  */
 import { WalletButtons } from "./WalletButtons";
 import { BRAND } from "@ll/shared";
+import Link from "next/link";
 import { LogoMark } from "@/components/site/Brand";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { alsoEarning, joinHeadline, joinIntro } from "@/lib/joinCopy";
@@ -260,7 +261,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
         </form>
         <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-subtle">
           We only use your number for your card.{" "}
-          <a href="/legal/rewards" className="text-fg-muted underline">Rewards terms</a> · <a href="/legal/privacy" className="text-fg-muted underline">Privacy</a>
+          <Link href="/legal/rewards" className="text-fg-muted underline">Rewards terms</Link> · <Link href="/legal/privacy" className="text-fg-muted underline">Privacy</Link>
         </p>
         {also ? (
           <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-4">

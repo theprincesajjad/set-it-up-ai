@@ -7,15 +7,18 @@ import { CountUp } from "@/components/ui/CountUp";
 import { placeKind } from "@/lib/place";
 import { NotificationSettings } from "./NotificationSettings";
 import { WalletButtons } from "./WalletButtons";
-import { Activity, ChevronRight, Download, Gift, LogOut, QrCode, Store, Trash2 } from "lucide-react";
+import { Activity, ChevronRight, Download, Gift, LogOut, Store, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/cn";
+import { OPEN_CARD_EVENT, PassTabBar } from "./PassTabBar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { customerApi } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
-import { formatDate, formatPoints, formatTime } from "@/lib/format";
+import { formatDate, formatPoints, formatTime, groupCode } from "@/lib/format";
 import { walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
@@ -24,13 +27,12 @@ import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
 import { DiscountCard } from "@/components/ui/DiscountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MemberQr } from "@/components/ui/MemberQr";
 import { Modal } from "@/components/ui/Modal";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RedeemCode } from "@/components/ui/RedeemCode";
 import { RewardCard } from "@/components/ui/RewardCard";
-import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
+import { ShopLogo } from "@/components/ui/ShopTile";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { platform } from "./JoinFlow";
 import { StampCard } from "@/components/ui/StampCard";
@@ -81,6 +83,21 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
     else if ((h as string) === "card") setCardOpen(true);
   }, []);
 
+  useEffect(() => {
+    const open = () => setCardOpen(true);
+    const onHash = () => {
+      const h = window.location.hash.replace("#", "");
+      if (h === "card") setCardOpen(true);
+      else if (["shops", "rewards", "activity", "settings"].includes(h)) setTab(h as Tab);
+    };
+    window.addEventListener(OPEN_CARD_EVENT, open);
+    window.addEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener(OPEN_CARD_EVENT, open);
+      window.removeEventListener("hashchange", onHash);
+    };
+  }, []);
+
   const selectTab = (t: string) => {
     setTab(t as Tab);
     history.replaceState(null, "", `#${t}`);
@@ -118,27 +135,27 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
 
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
-  const first = profile.name?.trim().split(/\s+/)[0] ?? null;
+  const initials = (profile.name ?? "").trim().split(/\s+/).filter(Boolean).map((w) => w[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join("").toLowerCase() || "me";
   return (
-    <div className="flex flex-col gap-6 pt-2">
-      {/* Wallet hero (foundations.md "Wallet"): one honest number. Points and stamps are never summed across shops. */}
-      <section aria-labelledby="total" className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 pb-24">
+      {/* Wallet (canvas Wallet.dc.html): lowercase large title, one honest number + "rewards ready · across N shops". */}
+      <section aria-labelledby="total" className="-mx-4 -mt-4 px-5 pt-[60px]">
         <div className="flex items-center justify-between gap-3">
-          <h1 id="total" className="display text-large-title text-fg">
+          <h1 id="total" className="display text-[34px] leading-[40px] font-extrabold tracking-[-0.01em] text-fg">
             wallet
           </h1>
-          <span className="truncate text-meta text-fg-muted">{[first, headline.context].filter(Boolean).join(" · ")}</span>
+          <Link href="/map" aria-label="Search shops" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring">
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          </Link>
         </div>
-        <div className="flex items-end gap-3">
-          {/* 40: the display-number step of the scale (was 64, off-scale). Counts up when it changes. */}
-          <p className={headline.kind === "ready" ? "display text-display-number tabular-nums text-accent-text" : "display text-display-number tabular-nums text-fg"}>
+        <div className="mt-3.5 flex items-baseline gap-2.5">
+          <span className="display text-[44px] leading-[44px] font-extrabold tabular-nums text-fg">
             <CountUp value={headline.value} />
-          </p>
-          <p className="max-w-[220px] pb-1 text-body text-fg-muted">{headline.label}</p>
+          </span>
+          <span className="text-[15px] font-medium leading-5 text-fg">
+            {headline.label} <span className="font-normal text-fg-muted">· {headline.context}</span>
+          </span>
         </div>
-        <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} fullWidth>
-          {copy.action.showCard}
-        </Button>
       </section>
       <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} />
       <Tabs
@@ -159,6 +176,7 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
       {tab === "rewards" ? <RewardsTab wallet={wallet} details={details} loading={loadingDetails} onShowShops={() => selectTab("shops")} onChanged={async () => { await refreshWallet(); await loadDetails(); }} /> : null}
       {tab === "activity" ? <ActivityTab wallet={wallet} details={details} loading={loadingDetails} /> : null}
       {tab === "settings" ? <SettingsTab wallet={wallet} profile={profile} onMembership={updateMembership} /> : null}
+      <PassTabBar initials={initials} active={tab === "activity" ? "activity" : "wallet"} />
     </div>
   );
 }
@@ -206,16 +224,32 @@ function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: (
     }
   }
   return (
-    <Modal open={open} onClose={onClose} title="my card" variant="sheet">
-      <div className="flex flex-col items-center gap-5 pt-2">
-        <p className="self-start text-meta text-fg-muted">{profile.name ?? "Member"}</p>
-        {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} caption="Works at every shop on the network" /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
-        {walletError ? <Banner tone="neutral" className="w-full">{walletError}</Banner> : null}
-        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="w-full" />
-        <p className="-mt-2 text-center text-meta text-fg-muted">Turn your brightness up so it scans first time.</p>
+    <Modal open={open} onClose={onClose} title="my card" variant="sheet" titleClassName="display pt-1.5 text-[17px] leading-[21px] text-fg">
+      {/* canvas Card.dc.html: headline, bordered 200 px QR tile, mono member code, one black wallet button. */}
+      <div className="flex flex-col items-center pb-3">
+        <p className="display mt-8 text-center text-[28px] leading-8 text-fg">show this at the counter</p>
+        <p className="mt-2 text-center text-[15px] leading-5 text-fg-muted">One card for every shop on the street.</p>
+        <div className="mt-8 rounded-[20px] border border-line bg-qr-bg p-[18px] dark:border-transparent">
+          {card?.qrSvg ? (
+            <div role="img" aria-label={`Member QR code ${card.memberCode}`} className="size-[200px] [&>svg]:block [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: card.qrSvg }} />
+          ) : (
+            <div className="skeleton size-[200px] rounded-[8px]" aria-busy="true" />
+          )}
+        </div>
+        <p className="mt-[22px] font-mono text-[24px] font-semibold leading-[30px] tracking-[0.14em] text-fg tabular-nums">{groupCode(card?.memberCode ?? profile.memberCode)}</p>
+        <p className="mt-1 text-[13px] leading-[17px] text-fg-muted">{shortName(profile.name)} · staff can type this code</p>
+        {walletError ? <Banner tone="neutral" className="mt-6 w-full">{walletError}</Banner> : null}
+        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="mt-8 w-full" />
       </div>
     </Modal>
   );
+}
+
+/** "Nikos Gagnon" → "Nikos G." */
+function shortName(name: string | null | undefined): string {
+  const p = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (p.length === 0) return "Member";
+  return p.length === 1 ? p[0]! : `${p[0]} ${p[p.length - 1]![0]!.toUpperCase()}.`;
 }
 
 function progressLine(m: customerApi.MembershipDto) {
@@ -229,33 +263,51 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0);
   const rest = wallet.items.filter((m) => m.rewardsAvailableCount === 0);
   const current = wallet.items.find((m) => m.id === openShop) ?? null;
-  const row = (m: customerApi.MembershipDto) => (
-    <li key={m.id}>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        onClick={() => {
-          setOpenShop(m.id);
-          if (!details[m.id]) void loadDetails([m.id]);
-        }}
-        className="-mx-4 block w-[calc(100%+2rem)] px-4 text-start transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring"
-      >
-        <ShopTile
-          variant="wallet"
-          shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }}
-          balance={{ value: m.balance, terminology: m.terminology }}
-          rewardReady={m.rewardsAvailableCount > 0}
-          muted={m.muted}
-          subtitle={progressLine(m)}
-        />
-      </button>
-    </li>
+  // canvas Wallet rows: 44 px avatar, name 16/500, one line (accent when ready), a thin bar while earning,
+  // the balance right-aligned (accent when a reward is ready, black otherwise).
+  const row = (m: customerApi.MembershipDto, last: boolean) => {
+    const ready = m.rewardsAvailableCount > 0;
+    const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : null;
+    const unit = formatPoints(m.balance, m.terminology, false).replace(/^[\d,]+ /, "");
+    return (
+      <li key={m.id}>
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => {
+            setOpenShop(m.id);
+            if (!details[m.id]) void loadDetails([m.id]);
+          }}
+          className={cn("flex w-full items-center gap-3.5 py-3.5 text-start transition-colors hover:bg-bg-subtle focus-visible:focus-ring", !last && "border-b border-line")}
+        >
+          <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} className="text-[15px]" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[16px] font-medium leading-[21px] text-fg">{m.merchant.name}</span>
+            <span className={cn("mt-0.5 block truncate text-[13px] leading-[17px]", ready ? "text-accent-text" : "text-fg-muted")}>{ready ? (m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : "reward ready") : progressLine(m)}</span>
+            {!ready && pct != null ? (
+              <span aria-hidden className="mt-2 block h-[3px] w-[150px] overflow-hidden rounded-full bg-bg-muted">
+                <span className="block h-[3px] rounded-full bg-fg" style={{ width: `${pct}%` }} />
+              </span>
+            ) : null}
+          </span>
+          <span className="ms-auto shrink-0 text-end">
+            <b className={cn("display block text-[20px] leading-6 tabular-nums", ready ? "text-accent" : "text-fg")}>{m.balance.toLocaleString("en-CA")}</b>
+            <span className="text-[12px] text-fg-muted">{unit}</span>
+          </span>
+        </button>
+      </li>
+    );
+  };
+  const section = (title: string, items: customerApi.MembershipDto[]) => (
+    <section>
+      <h2 className="display border-b border-line pb-2 text-[13px] font-bold tracking-normal text-fg-muted">{title}</h2>
+      <ul>{items.map((m, i) => row(m, i === items.length - 1))}</ul>
+    </section>
   );
   return (
-    <div className="flex flex-col gap-6">
-      {/* A plain list with hairlines, like the app's wallet (polish-audit W2). */}
-      {ready.length ? <ListGroup title="rewards ready" inset={false}>{ready.map(row)}</ListGroup> : null}
-      {rest.length ? <ListGroup title={ready.length ? "earning" : "your shops"} inset={false}>{rest.map(row)}</ListGroup> : null}
+    <div className="flex flex-col gap-7">
+      {ready.length ? section("ready now", ready) : null}
+      {rest.length ? section(ready.length ? "earning" : "your shops", rest) : null}
       <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKind(current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>

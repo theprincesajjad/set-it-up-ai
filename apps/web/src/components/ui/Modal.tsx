@@ -14,6 +14,8 @@ export interface ModalProps {
   /** "dialog" = centred on md+ and sheet-style on phones; "sheet" = always a bottom sheet. */
   variant?: "dialog" | "sheet";
   size?: "sm" | "md";
+  /** Override the title style (My card: Bricolage 800 17, canvas Card). */
+  titleClassName?: string;
   /** Optional leading visual next to the title (e.g. the shop avatar on a shop sheet). */
   icon?: ReactNode;
 }
@@ -22,7 +24,7 @@ export interface ModalProps {
  * Modal / Sheet on the native <dialog>: focus trap, Escape, inert background and
  * focus restoration come from the browser (system.md §3 Modal + Sheet).
  */
-export function Modal({ open, onClose, title, description, children, actions, variant = "dialog", size = "sm", icon }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, actions, variant = "dialog", size = "sm", icon, titleClassName }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -73,7 +75,7 @@ export function Modal({ open, onClose, title, description, children, actions, va
           <div className="flex min-w-0 items-center gap-3">
             {icon}
             <div className="min-w-0">
-              <h2 id={titleId} className="text-title font-semibold text-fg">
+              <h2 id={titleId} className={titleClassName ?? "text-title font-semibold text-fg"}>
                 {title}
               </h2>
               {icon && description ? (
