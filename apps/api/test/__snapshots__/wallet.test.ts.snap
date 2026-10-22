@@ -1,0 +1,124 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Apple Wallet pass (v2 design) > pass.json snapshot: near-black storeCard, rewards ready header, per-shop balances (never summed), QR, locations, no relevantDate 1`] = `
+{
+  "authenticationToken": "tttttttttttttttttttttttttttttttt",
+  "backgroundColor": "rgb(11, 11, 12)",
+  "barcodes": [
+    {
+      "altText": "K7Q2M9",
+      "format": "PKBarcodeFormatQR",
+      "message": "LL:K7Q2M9",
+      "messageEncoding": "iso-8859-1",
+    },
+  ],
+  "description": "Local Loyalty member card",
+  "foregroundColor": "rgb(245, 245, 244)",
+  "formatVersion": 1,
+  "labelColor": "rgb(255, 122, 69)",
+  "locations": [
+    {
+      "latitude": 43.6496,
+      "longitude": -79.4218,
+      "relevantText": "Show this at Pinecone Coffee to earn",
+    },
+    {
+      "latitude": 43.6502,
+      "longitude": -79.4305,
+      "relevantText": "Show this at Dundas West Bakery & Café to earn",
+    },
+  ],
+  "logoText": "local loyalty",
+  "maxDistance": 100,
+  "organizationName": "Local Loyalty",
+  "passTypeIdentifier": "pass.test.loyalty",
+  "serialNumber": "A_SERIAL",
+  "sharingProhibited": true,
+  "storeCard": {
+    "auxiliaryFields": [
+      {
+        "key": "member",
+        "label": "member",
+        "value": "Priya",
+      },
+    ],
+    "backFields": [
+      {
+        "key": "memberships",
+        "label": "Your shops",
+        "value": "Pinecone Coffee: 130 points (1 reward ready)
+Points never expire.
+
+Dundas West Bakery & Café: 7 stamps
+Stamps expire after 12 months with no visits.
+
+Ossington Repair: 0 points
+Points never expire.",
+      },
+      {
+        "key": "expiry",
+        "label": "Points expiry",
+        "value": "Points never expire unless a shop says so above. Dundas West Bakery & Café: after 12 months without a visit.",
+      },
+      {
+        "key": "how",
+        "label": "How to use",
+        "value": "Show this card at the counter of any Local Loyalty shop. Staff scan the code to add points or redeem a reward. One card for every shop on your street.",
+      },
+      {
+        "key": "code",
+        "label": "Member code",
+        "value": "K7Q2M9",
+      },
+      {
+        "key": "updates",
+        "label": "Updates",
+        "value": "This card updates itself when your balance changes. Turn notifications for it on or off in the pass details (•••).",
+      },
+      {
+        "attributedValue": "<a href='http://localhost:3000/terms'>localhost:3000/terms</a>",
+        "key": "terms",
+        "label": "Terms",
+        "value": "http://localhost:3000/terms",
+      },
+      {
+        "attributedValue": "<a href='mailto:hello@localloyalty.example'>hello@localloyalty.example</a>",
+        "key": "help",
+        "label": "Support",
+        "value": "hello@localloyalty.example",
+      },
+    ],
+    "headerFields": [
+      {
+        "changeMessage": "Rewards ready: %@",
+        "key": "ready",
+        "label": "rewards ready",
+        "textAlignment": "PKTextAlignmentRight",
+        "value": 1,
+      },
+    ],
+    "primaryFields": [
+      {
+        "key": "primary",
+        "label": "ready at Pinecone Coffee",
+        "value": "1 reward",
+      },
+    ],
+    "secondaryFields": [
+      {
+        "changeMessage": "You now have %@ at Pinecone Coffee",
+        "key": "shop1",
+        "label": "pinecone coffee",
+        "value": "130 points",
+      },
+      {
+        "key": "shop2",
+        "label": "dundas west bakery…",
+        "value": "7 stamps",
+      },
+    ],
+  },
+  "teamIdentifier": "TEAM123456",
+  "webServiceURL": "http://localhost:4000/v1/wallet/apple",
+}
+`;

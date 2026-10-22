@@ -42,3 +42,4 @@ export * from "./PerkCard";
 export * from "./PlaceBubble";
 export * from "./CategoryIcon";
 export * from "./haptics";
+export * from "./motion";

@@ -6,7 +6,8 @@ import { Text } from "./Text";
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
-  title: string;
+  /** Optional: most empty states are one sentence (`body`) + one action. */
+  title?: string;
   body?: string | null;
   actionLabel?: string;
   onAction?: () => void;
@@ -15,17 +16,22 @@ export interface EmptyStateProps {
   tone?: "brand" | "danger";
 }
 
-/** One sentence + one action, on the left edge. No illustration of people, no icon-in-a-circle. */
+/**
+ * One sentence + one action, on the left edge. No illustration of people, no icon-in-a-circle.
+ * `secondaryLabel` exists for legacy callers; new screens pass one action only (polish-audit S10).
+ */
 export function EmptyState({ icon: Icon, title, body, actionLabel, onAction, secondaryLabel, onSecondary, tone = "brand" }: EmptyStateProps) {
   const { c } = useTheme();
   return (
     <View style={styles.wrap}>
       {Icon ? <Icon size={24} color={tone === "danger" ? c.negative : c.fgMuted} strokeWidth={1.75} /> : null}
-      <Text variant="headline" accessibilityRole="header">
-        {title}
-      </Text>
+      {title ? (
+        <Text variant="headline" accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
       {body ? (
-        <Text variant="body" color="fgMuted">
+        <Text variant="body" color={title ? "fgMuted" : "fg"}>
           {body}
         </Text>
       ) : null}
@@ -47,8 +53,23 @@ export function EmptyState({ icon: Icon, title, body, actionLabel, onAction, sec
   );
 }
 
-export function ErrorState({ message, onRetry, offline }: { message: string; onRetry?: () => void; offline?: boolean }) {
-  return <EmptyState icon={offline ? CloudOff : CircleAlert} tone="danger" title={offline ? "You're offline" : "Couldn't load this"} body={message} actionLabel={onRetry ? "Try again" : undefined} onAction={onRetry} />;
+/** One sentence + retry (polish-audit S9). The sentence says what failed in plain words. */
+export function ErrorState({ message, onRetry, offline }: { message?: string; onRetry?: () => void; offline?: boolean }) {
+  const { c } = useTheme();
+  const Icon = offline ? CloudOff : CircleAlert;
+  return (
+    <View style={styles.wrap} accessibilityRole="alert">
+      <Icon size={22} color={offline ? c.fgMuted : c.negative} strokeWidth={1.75} />
+      <Text variant="body">{message ?? (offline ? "You're offline. This will load when you're back." : "This didn't load. Check your connection and try again.")}</Text>
+      {onRetry ? (
+        <View style={styles.actions}>
+          <Button variant="secondary" size="sm" onPress={onRetry}>
+            Try again
+          </Button>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

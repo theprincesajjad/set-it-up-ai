@@ -16,7 +16,7 @@ import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Button, EmptyState, ListRow, OfflineBanner, ORDER_STATUS_LABELS, ProgressBar, PromoCard, Screen, Section, ShopTile, SkeletonList, Store, Text, Ticket, TICKET_STATUS_LABELS, Trophy } from "../../ui";
+import { Banner, Button, CountUp, EmptyState, ErrorState, ListRow, OfflineBanner, ORDER_STATUS_LABELS, ProgressBar, PromoCard, Screen, Section, ShopTile, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_LABELS, Trophy } from "../../ui";
 
 type Membership = customerApi.WalletResponse["items"][number];
 
@@ -161,9 +161,7 @@ export default function Wallet() {
             onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
             style={styles.hero}
           >
-            <Text variant="displayNumber" tabular>
-              {heroCopy.big}
-            </Text>
+            {/^\d+$/.test(heroCopy.big) ? <CountUp value={Number(heroCopy.big)} variant="displayNumber" /> : <Text variant="displayNumber" tabular>{heroCopy.big}</Text>}
             <View style={{ flex: 1, paddingBottom: 6 }}>
               <Text variant="bodyStrong" numberOfLines={2}>
                 {heroCopy.line}
@@ -177,7 +175,7 @@ export default function Wallet() {
       }
     >
       {hero.kind === "progress" ? <ProgressBar value={hero.value} max={hero.max} tone="accent" height={4} valueText={heroCopy?.label} /> : null}
-      {wallet.isError && memberships.length > 0 ? <Banner variant="danger">Couldn't refresh. Pull to try again.</Banner> : null}
+      {wallet.isError && memberships.length > 0 ? <Banner variant="neutral" actionLabel="Try again" onAction={() => void wallet.refetch()}>{"Couldn't refresh. Showing your last balances."}</Banner> : null}
       {wallet.dataUpdatedAt && !online ? (
         <Text variant="caption" color="fgMuted">
           {t("misc.updatedAgo", { relativeTime: relativeTime(wallet.dataUpdatedAt) })}
@@ -185,9 +183,11 @@ export default function Wallet() {
       ) : null}
 
       {wallet.isLoading ? (
-        <SkeletonList rows={4} rowHeight={56} />
+        <SkeletonRows rows={4} />
+      ) : wallet.isError && memberships.length === 0 ? (
+        <ErrorState offline={!online} message={online ? "Your wallet didn't load." : "You're offline. Your card still works at the counter."} onRetry={() => void wallet.refetch()} />
       ) : memberships.length === 0 ? (
-        <EmptyState title={t("empty.wallet.title")} body={t("empty.wallet.body")} actionLabel={t("action.showCard")} onAction={() => router.push("/card")} secondaryLabel="Find shops nearby" onSecondary={() => router.push("/map")} />
+        <EmptyState body={t("empty.wallet.body")} actionLabel={t("action.showCard")} onAction={() => router.push("/card")} />
       ) : (
         <>
           {ready.length > 0 ? <Section title="Rewards ready">{ready.map((m, i) => shopRow(m, i, ready.length))}</Section> : null}
@@ -226,17 +226,24 @@ export default function Wallet() {
       {live[0] ? (
         <Section title={live[0].neighbourhood.name}>
           <Pressable accessibilityRole="button" accessibilityLabel={`${live[0].name}. ${live[0].progress.visited} of ${live[0].progress.goal} shops.`} onPress={() => router.push(`/campaigns/${live[0]!.id}`)} style={{ paddingVertical: 14, gap: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Trophy size={20} color={c.fg} strokeWidth={1.75} />
-              <Text variant="bodyStrong" style={{ flex: 1 }}>
-                {live[0].name}
-              </Text>
-              <Text variant="metaStrong" tabular>{`${live[0].progress.visited} / ${live[0].progress.goal}`}</Text>
+            {/* Same columns as a shop row: 44 leading, text at 56 (polish-audit, wallet passport row). */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={styles.lead}>
+                <Trophy size={20} color={c.fg} strokeWidth={1.75} />
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+                  <Text variant="placeName" style={{ flex: 1 }} numberOfLines={1}>
+                    {live[0].name}
+                  </Text>
+                  <Text variant="bodyStrong" tabular>{`${live[0].progress.visited} / ${live[0].progress.goal}`}</Text>
+                </View>
+                <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} height={4} />
+                <Text variant="meta" color="fgMuted">
+                  {promoEnds(live[0].endsAt) ?? "Visit the shops on the list to finish it"}
+                </Text>
+              </View>
             </View>
-            <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} height={4} />
-            <Text variant="meta" color="fgMuted">
-              {promoEnds(live[0].endsAt) ?? "Visit the shops on the list to finish it"}
-            </Text>
           </Pressable>
         </Section>
       ) : null}
@@ -268,4 +275,5 @@ export default function Wallet() {
 
 const styles = StyleSheet.create({
   hero: { flexDirection: "row", alignItems: "flex-end", gap: 12, paddingTop: 8 },
+  lead: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
 });

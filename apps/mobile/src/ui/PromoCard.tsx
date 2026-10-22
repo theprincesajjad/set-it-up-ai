@@ -17,20 +17,25 @@ export interface PromoCardProps {
   joinLabel?: string;
   onJoin?: () => void;
   variant?: "feed" | "compact";
+  /** On the shop's own page the shop row is noise (polish-audit M17). */
+  hideShop?: boolean;
+  /** The program's word: a 2× promo on a stamp card is "2× stamps", not points (polish-audit M18). */
+  terminology?: string | null;
 }
 
 /** Accent only when the promo is about points (2x, +50 pts). */
-function kindBadge(p: PromoCardProps["promo"]): { tone: BadgeTone; label: string } | null {
-  if (p.kind === "multiplier") return { tone: "accent", label: `${p.multiplierPct ? p.multiplierPct / 100 : 2}× points` };
-  if (p.kind === "bonus_points") return { tone: "accent", label: `+${p.bonusPoints ?? 0} pts` };
+function kindBadge(p: PromoCardProps["promo"], terminology?: string | null): { tone: BadgeTone; label: string } | null {
+  const word = terminology && terminology !== "points" ? terminology : "points";
+  if (p.kind === "multiplier") return { tone: "accent", label: `${p.multiplierPct ? p.multiplierPct / 100 : 2}× ${word}` };
+  if (p.kind === "bonus_points") return { tone: "accent", label: word === "points" ? `+${p.bonusPoints ?? 0} pts` : `+${p.bonusPoints ?? 0} ${word}` };
   if (p.kind === "discount") return { tone: "neutral", label: `${p.percentOff ?? 0}% off` };
   if (p.kind === "event") return { tone: "neutral", label: "Event" };
   return null;
 }
 
 /** Hairline card; same layout for organic and sponsored. */
-export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, joinLabel, onJoin, variant = "feed" }: PromoCardProps) {
-  const badge = kindBadge(promo);
+export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, joinLabel, onJoin, variant = "feed", hideShop, terminology }: PromoCardProps) {
+  const badge = kindBadge(promo, terminology);
   const ends = promoEnds(promo.endsAt);
   const a11y = [sponsored ? "Sponsored." : null, shop.name, promo.title, badge?.label, ends].filter(Boolean).join(" ");
   return (
@@ -38,6 +43,7 @@ export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, jo
       {promo.imageUrl && variant === "feed" ? <Image source={{ uri: promo.imageUrl }} style={styles.image} accessibilityIgnoresInvertColors /> : null}
       <View style={styles.body}>
         {sponsored ? <SponsoredBadge onPress={onSponsoredInfo} /> : null}
+        {hideShop ? null : (
         <View style={styles.shopRow}>
           <ShopLogo shop={shop} size={22} />
           <Text variant="metaStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
@@ -49,6 +55,7 @@ export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, jo
             </Text>
           ) : null}
         </View>
+        )}
         <Text variant="headline" numberOfLines={2}>
           {promo.title}
         </Text>

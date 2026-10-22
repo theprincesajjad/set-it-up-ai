@@ -11,6 +11,7 @@ import { useDeviceLocation } from "../../features/customer/location";
 import { ExploreMap, mapsAvailable, TORONTO, type ExploreMapHandle } from "../../features/customer/MapView";
 import { useProfile, useWallet } from "../../features/customer/queries";
 import { ShopBody, useShopModel } from "../../features/customer/ShopBody";
+import { useUnreadCount } from "../../features/customer/inbox";
 import { useHideTabBar } from "../../features/tabBar";
 import { AUDIENCE_LABELS, byDistance, exploreSections, filterShops, MAP_CATEGORIES, movedEnough, pinSubtitle, stripHeader, type Audience, type MapCategoryId, type PinMembership } from "../../lib/explore";
 import { formatDistance } from "../../lib/format";
@@ -21,6 +22,7 @@ import { useSession } from "../../state/session";
 import { typo, useTheme } from "../../theme";
 import {
   Banner,
+  Bell,
   Button,
   CategoryIcon,
   Chip,
@@ -38,7 +40,9 @@ import {
   Search,
   Sheet,
   ShopTile,
-  SkeletonList,
+  SkeletonRows,
+  SkeletonShop,
+  ErrorState,
   Text,
   useTabBarSpace,
   X,
@@ -106,6 +110,7 @@ export default function Explore() {
   const [searchCenter, setSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<ExploreMapHandle>(null);
+  const unread = useUnreadCount();
 
   const hoodSlug = prefs.neighbourhoodSlug ?? profile.data?.homeNeighbourhood?.slug ?? null;
   const hoods = useQuery({ queryKey: qk.neighbourhoods, queryFn: api.network.neighbourhoods, staleTime: 60 * 60_000 });
@@ -229,13 +234,27 @@ export default function Explore() {
       <View style={[styles.group, { backgroundColor: c.bg }, shadows.float.native]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${placeName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
           <MapPin size={16} color={c.fg} strokeWidth={2} />
-          <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 150 }}>
+          <Text variant="mapLabel" numberOfLines={1} style={{ maxWidth: 132 }}>
             {(placeName ?? "your street").toLowerCase()}
           </Text>
         </Pressable>
         <View style={[styles.groupRule, { backgroundColor: c.line }]} />
-        <Pressable accessibilityRole="button" accessibilityLabel={listMode ? "Show map" : "Show list"} onPress={() => setListMode((v) => !v)} style={[styles.groupItem, { paddingHorizontal: 12 }]} disabled={!mapOk}>
-          {listMode || !mapOk ? <MapIcon size={18} color={mapOk ? c.fg : c.fgSubtle} strokeWidth={2} /> : <List size={18} color={c.fg} strokeWidth={2} />}
+        <Pressable accessibilityRole="button" accessibilityLabel={listMode ? "Show map" : "Show list"} onPress={() => setListMode((v) => !v)} style={({ pressed }) => [styles.groupItem, styles.groupIcon, { opacity: pressed ? 0.6 : 1 }]} disabled={!mapOk}>
+          {listMode || !mapOk ? <MapIcon size={18} color={mapOk ? c.fg : c.fgSubtle} strokeWidth={1.75} /> : <List size={18} color={c.fg} strokeWidth={1.75} />}
+        </Pressable>
+        <View style={[styles.groupRule, { backgroundColor: c.line }]} />
+        {/* The bell (Corner's top-right capsule): inbox, with a dot while something is unread. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+          onPress={() => {
+            haptic.select();
+            router.push("/notifications");
+          }}
+          style={({ pressed }) => [styles.groupItem, styles.groupIcon, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Bell size={18} color={c.fg} strokeWidth={1.75} />
+          {unread > 0 ? <View style={[styles.bellDot, { backgroundColor: c.accent, borderColor: c.bg }]} /> : null}
         </Pressable>
       </View>
     </View>
@@ -394,14 +413,20 @@ export default function Explore() {
           )}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 16 }}>
-              <Text variant="largeTitle">{stripHeader(visible.length, placeName).toLowerCase()}</Text>
+              {/* Count in the display face, the place under it: no widow on long neighbourhood names. */}
+              <View style={{ gap: 2 }}>
+                <Text variant="largeTitle" tabular>{`${visible.length} ${visible.length === 1 ? "shop" : "shops"}`}</Text>
+                <Text variant="body" color="fgMuted">
+                  {stripHeader(visible.length, placeName).replace(/^\d+ shops? /, "").toLowerCase()}
+                </Text>
+              </View>
               {perk && progress ? <PerkCard headline={perkHeadline(perk, hoodName)} {...progress} /> : null}
             </View>
           }
           ListEmptyComponent={
             shops.isLoading ? (
-              <View style={{ padding: 16 }}>
-                <SkeletonList rows={5} rowHeight={56} />
+              <View style={{ paddingHorizontal: 16 }}>
+                <SkeletonRows rows={6} trailing={false} />
               </View>
             ) : (
               <View style={{ paddingHorizontal: 16 }}>{empty}</View>
@@ -518,21 +543,8 @@ export default function Explore() {
           accessibilityLabel={sel.merchant.name}
           corner={<IconButton icon={X} label="Close shop" variant="secondary" size={32} onPress={() => setSelected(null)} />}
         >
-          <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}>
-            {model.shop.data ? (
-              <>
-                <ShopBody model={model} variant="sheet" peek={detent === 0} />
-                {detent === 0 ? (
-                  <Pressable accessibilityRole="button" onPress={() => setDetent(1)} style={{ paddingTop: 16 }}>
-                    <Text variant="metaStrong" color="fgMuted">
-                      Swipe up for rewards and hours
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </>
-            ) : (
-              <SkeletonList rows={3} rowHeight={44} />
-            )}
+          <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: layout.gutterMobile, paddingTop: 4, paddingBottom: insets.bottom + 24 }}>
+            {model.shop.data ? <ShopBody model={model} variant="sheet" peek={detent === 0} /> : model.shop.isError ? <ErrorState message="This shop didn't load." onRetry={() => void model.shop.refetch()} /> : <SkeletonShop />}
           </ScrollView>
         </DetentSheet>
       ) : null}
@@ -547,6 +559,8 @@ const styles = StyleSheet.create({
   group: { flexDirection: "row", alignItems: "center", height: layout.chrome, borderRadius: 999 },
   groupItem: { flexDirection: "row", alignItems: "center", gap: 6, height: layout.chrome, paddingHorizontal: 14 },
   groupRule: { width: StyleSheet.hairlineWidth * 2, height: 20 },
+  groupIcon: { paddingHorizontal: 0, width: 44, justifyContent: "center" },
+  bellDot: { position: "absolute", top: 11, right: 11, width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
   searchField: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome, borderRadius: 999, paddingLeft: 14, paddingRight: 6 },
   filters: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   searchHere: { height: 40, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center" },
@@ -557,5 +571,5 @@ const styles = StyleSheet.create({
   rail: { gap: 6, paddingHorizontal: 12, paddingBottom: 6 },
   railItem: { alignItems: "center", gap: 2, minWidth: 56, paddingTop: 2 },
   railIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  listHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 0 },
+  listHeader: { paddingTop: 24, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 16 },
 });

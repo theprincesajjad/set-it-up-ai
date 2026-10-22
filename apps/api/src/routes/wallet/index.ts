@@ -9,7 +9,7 @@ import { requireUser } from "../../lib/auth.js";
 import { HttpError } from "../../lib/errors.js";
 import { appleSignerFromConfig, missingAppleConfig, PASS_COLORS } from "../../services/wallet-apple.js";
 import { googleConfigured } from "../../services/wallet-google.js";
-import { iconPng, logoPng } from "../../services/wallet-png.js";
+import { iconPng, logoPng, walletAsset } from "../../services/wallet-png.js";
 import {
   applePassBuffer,
   authenticatePass,
@@ -90,7 +90,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
 
   // Public pass artwork (Google Wallet object logo).
-  app.get("/wallet/assets/logo.png", async (_req, reply) => reply.header("content-type", "image/png").header("cache-control", "public, max-age=86400").send(iconPng(660, PASS_COLORS.background)));
+  app.get("/wallet/assets/logo.png", async (_req, reply) =>
+    reply.header("content-type", "image/png").header("cache-control", "public, max-age=86400").send(walletAsset("google-logo.png") ?? iconPng(660, PASS_COLORS.background)),
+  );
   app.get("/wallet/assets/strip.png", async (_req, reply) => reply.header("content-type", "image/png").header("cache-control", "public, max-age=86400").send(logoPng(320, 100)));
 
   // -------------------------------------------------------------------------

@@ -93,6 +93,8 @@ export function Screen({
           {subtitle}
         </View>
       ) : null}
+      {/* Inside the content so a banner that renders nothing (online) adds no space (polish-audit M31). */}
+      {banner}
       {children}
     </>
   );
@@ -103,7 +105,7 @@ export function Screen({
         <View style={[styles.bar, { backgroundColor: bg }]}>
           <View style={styles.side}>{back ? <IconButton icon={ChevronLeft} label="Back" variant="secondary" size={36} onPress={goBack} /> : null}</View>
           <Animated.View style={[styles.center, { opacity: smallTitleOpacity }]} accessibilityElementsHidden={largeTitle} importantForAccessibility={largeTitle ? "no-hide-descendants" : "auto"}>
-            <Text variant="mapLabel" numberOfLines={1} accessibilityRole={largeTitle ? undefined : "header"} style={[{ fontSize: 17, lineHeight: 22 }, titleCase === "as-is" ? { textTransform: "none" } : null]}>
+            <Text variant="headline" numberOfLines={1} accessibilityRole={largeTitle ? undefined : "header"}>
               {shownTitle}
             </Text>
           </Animated.View>
@@ -111,7 +113,6 @@ export function Screen({
           <Animated.View style={[styles.rule, { backgroundColor: c.line, opacity: ruleOpacity }]} />
         </View>
       ) : null}
-      {banner ? <View style={styles.banner}>{banner}</View> : null}
       {scroll ? (
         <Animated.ScrollView
           scrollEventThrottle={16}
@@ -159,16 +160,16 @@ export function Section({ title, action, children, style, rule = true }: { title
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  bar: { height: layout.appBar, flexDirection: "row", alignItems: "center", paddingHorizontal: 12 },
+  /** 16: the back button's circle sits on the same left edge as the content (polish-audit S2). */
+  bar: { height: layout.appBar, flexDirection: "row", alignItems: "center", paddingHorizontal: layout.gutterMobile },
   side: { width: 88, flexDirection: "row", alignItems: "center", gap: 4 },
   center: { flex: 1, alignItems: "center" },
   rule: { position: "absolute", left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
-  banner: { paddingHorizontal: 16, paddingBottom: 8 },
   largeTitle: { gap: 4, marginTop: 0, marginBottom: -4 },
   content: { paddingHorizontal: layout.gutterMobile, paddingTop: 8, gap: 24 },
   /** No app bar: keep the first line off the status bar / notch edge. */
   noBar: { paddingTop: 16 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  floatingBack: { position: "absolute", left: 12, borderRadius: 999, ...shadows.none.native },
+  floatingBack: { position: "absolute", left: layout.gutterMobile, borderRadius: 999, ...shadows.none.native },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28 },
 });

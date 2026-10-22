@@ -1,0 +1,36 @@
+{
+  "id": "3388000000012345678.ll_network_loyalty",
+  "issuerName": "Local Loyalty",
+  "programName": "member card",
+  "localizedIssuerName": {
+    "defaultValue": {
+      "language": "en-CA",
+      "value": "Local Loyalty"
+    }
+  },
+  "localizedProgramName": {
+    "defaultValue": {
+      "language": "en-CA",
+      "value": "member card"
+    }
+  },
+  "programLogo": {
+    "sourceUri": {
+      "uri": "http://localhost:4000/v1/wallet/assets/logo.png"
+    },
+    "contentDescription": {
+      "defaultValue": {
+        "language": "en-CA",
+        "value": "Local Loyalty logo"
+      }
+    }
+  },
+  "hexBackgroundColor": "#0B0B0C",
+  "countryCode": "CA",
+  "reviewStatus": "UNDER_REVIEW",
+  "multipleDevicesAndHoldersAllowedStatus": "ONE_USER_ALL_DEVICES",
+  "homepageUri": {
+    "uri": "http://localhost:3000",
+    "description": "Local Loyalty"
+  }
+}

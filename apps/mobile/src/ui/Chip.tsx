@@ -33,14 +33,15 @@ export function Chip({ label, selected, onPress, icon: Icon, trailingIcon: Trail
         haptic.select();
         onPress?.();
       }}
-      hitSlop={large ? 8 : 6}
+      hitSlop={large ? 8 : 4}
       style={({ pressed }) => [
         styles.chip,
         {
-          minHeight: large ? 48 : 34,
+          minHeight: large ? 48 : 36,
           paddingHorizontal: large ? 18 : 14,
           backgroundColor: selected ? c.fg : float ? c.bg : c.bgSubtle,
-          opacity: pressed ? 0.8 : 1,
+          opacity: pressed ? 0.85 : 1,
+          transform: pressed ? [{ scale: 0.98 }] : undefined,
         },
         float ? shadows.float.native : null,
       ]}

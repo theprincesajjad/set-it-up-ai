@@ -35,7 +35,7 @@ export interface ButtonProps {
 }
 
 const SIZES: Record<ButtonSize, { height: number; px: number; text: TextStyleName; icon: number; radius: number }> = {
-  sm: { height: 34, px: 14, text: "metaStrong", icon: 16, radius: radii.full },
+  sm: { height: 36, px: 14, text: "metaStrong", icon: 16, radius: radii.full },
   md: { height: touchTargets.default, px: 18, text: "bodyStrong", icon: 18, radius: radii.full },
   lg: { height: 52, px: 22, text: "bodyStrong", icon: 20, radius: radii.full },
   counter: { height: touchTargets.counter, px: 24, text: "headline", icon: 22, radius: radii.card },

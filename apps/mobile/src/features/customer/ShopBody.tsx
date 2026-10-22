@@ -16,7 +16,7 @@ import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
 import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
 import { placeKind } from "../../lib/explore";
-import { formatDayTime, formatDistance, hoursRows, openStatus } from "../../lib/format";
+import { formatDayTime, formatDistance, hoursRows, openStatus, signed } from "../../lib/format";
 import { displayPhone } from "../../lib/phone";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
@@ -27,6 +27,7 @@ import {
   Banner,
   BellOff,
   Button,
+  CountUp,
   DiscountCard,
   Globe,
   ListRow,
@@ -70,7 +71,7 @@ export type ShopModel = ReturnType<typeof useShopModel>;
 function Action({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, transform: pressed ? [{ scale: 0.98 }] : undefined }]}>
       <Icon size={16} color={c.fg} strokeWidth={1.75} />
       <Text variant="metaStrong">{label}</Text>
     </Pressable>
@@ -129,7 +130,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   };
   const earnLine = program
     ? program.earnType === "per_dollar"
-      ? `${program.pointsPerDollar} ${program.pointsPerDollar === 1 ? "point" : "points"} per $1`
+      ? `${program.pointsPerDollar} ${program.pointsPerDollar === 1 ? "pt" : "pts"} per $1`
       : program.earnType === "stamps"
         ? `1 ${termWord(term, 1)} per visit · ${program.stampGoal} for a reward`
         : `${formatPts(program.pointsPerVisit, term)} per visit`
@@ -145,9 +146,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
       ) : (
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
-            <Text variant="displayNumber" color="accent" tabular>
-              {formatNumber(m.balance)}
-            </Text>
+            <CountUp value={m.balance} format={formatNumber} variant="displayNumber" color="accent" />
             <Text variant="bodyStrong" color="fgMuted">
               {unitLabel(term, m.balance)}
             </Text>
@@ -164,7 +163,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         </View>
       )}
       <Text variant="meta" color="fgMuted">
-        {`${earnLine ?? "Ask at the counter"}${noEarn} · ${m.expiryDisclosure}`}
+        {`${earnLine ?? "Ask at the counter"}${noEarn} · ${m.expiryDisclosure.charAt(0).toLowerCase()}${m.expiryDisclosure.slice(1).replace(/\.$/, "")}`}
       </Text>
     </View>
   ) : (
@@ -177,7 +176,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         </Text>
       ) : null}
       <Button size={variant === "sheet" ? "md" : "lg"} fullWidth onPress={() => setJoining(true)}>
-        Join — free
+        Join free
       </Button>
     </View>
   );
@@ -217,12 +216,11 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: variant === "sheet" ? -20 : -16 }} contentContainerStyle={[styles.actions, { paddingHorizontal: variant === "sheet" ? 20 : 16 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={[styles.actions, { paddingHorizontal: 16 }]}>
             {loc ? <Action icon={Navigation} label="Directions" onPress={directions} /> : null}
             {s.merchant.phone || loc?.phone ? <Action icon={Phone} label="Call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} /> : null}
             {s.merchant.website ? <Action icon={Globe} label="Website" onPress={() => Linking.openURL(s.merchant.website!)} /> : null}
             <Action icon={Share2} label="Share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
-            {m ? <Action icon={BellOff} label={m.muted ? "Unmute" : "Mute"} onPress={toggleMute} /> : null}
           </ScrollView>
 
           <Section title="Rewards">
@@ -266,7 +264,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           {s.promos.length > 0 || discountCards.length > 0 ? (
             <Section title="Offers" rule={false}>
               {s.promos.map((p) => (
-                <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
+                <PromoCard key={p.id} variant="compact" hideShop terminology={term} promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
               ))}
               {discountCards.map((dc) => (
                 <Pressable
@@ -285,11 +283,21 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get ${formatPts(m.program!.referralBonus, term)}`} chevron divider={false} onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
           ) : null}
 
+          {m ? (
+            <ListRow
+              leadingIcon={BellOff}
+              title={m.muted ? "Unmute this shop" : "Mute this shop"}
+              subtitle={m.muted ? "Offers from this shop are off" : `No offers from this shop. Your ${termWord(term)} keep working.`}
+              divider={false}
+              onPress={toggleMute}
+            />
+          ) : null}
+
           {model.detail.data && model.detail.data.history.items.length > 0 ? (
             <Section
               title="Your visits"
               action={
-                <Button variant="ghost" size="sm" onPress={() => router.push({ pathname: "/activity", params: { memberId: m!.id } })}>
+                <Button variant="ghost" size="sm" style={{ marginRight: -4 }} onPress={() => router.push({ pathname: "/activity", params: { memberId: m!.id } })}>
                   See all
                 </Button>
               }
@@ -302,7 +310,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                   subtitle={formatDayTime(tx.createdAt)}
                   trailing={
                     <Text variant="bodyStrong" color={tx.points > 0 ? "accentText" : "fgMuted"} tabular>
-                      {`${tx.points > 0 ? "+" : ""}${tx.points}`}
+                      {signed(tx.points)}
                     </Text>
                   }
                 />
@@ -370,5 +378,5 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   actions: { flexDirection: "row", gap: 8 },
-  action: { flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 999 },
+  action: { flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 999 },
 });

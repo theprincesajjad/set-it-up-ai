@@ -1,4 +1,3 @@
-import { nativeFonts } from "@ll/design-tokens";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { formatNumber, unitLabel } from "../lib/award";
 import { formatDistance } from "../lib/format";
@@ -6,6 +5,7 @@ import { placeKind } from "../lib/explore";
 import { typo, useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
 import { BellOff } from "./icons";
+import { CountUp } from "./motion";
 import { Text } from "./Text";
 
 export interface ShopTileShop {
@@ -102,7 +102,8 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
         <ShopLogo shop={shop} size={56} />
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text variant="largeTitle" accessibilityRole="header" numberOfLines={2} style={{ textTransform: "none", flexShrink: 1, fontFamily: nativeFonts.displayBold, fontSize: 22, lineHeight: 26 }}>
+            {/* Shop sheet / page title: system 22/600, never heavy (polish-audit M13). */}
+            <Text variant="title" accessibilityRole="header" numberOfLines={2} style={{ flexShrink: 1 }}>
               {shop.name}
             </Text>
             {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
@@ -118,15 +119,24 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
   const size = variant === "compact" ? 36 : 44;
   const sub = rewardReady ? (subtitle ?? "reward ready") : (subtitle ?? [shop.neighbourhood, formatDistance(shop.distanceM)].filter(Boolean).join(" · "));
   const a11y = [shop.name, balance ? `${formatNumber(balance.value)} ${balance.terminology}` : null, rewardReady ? "Reward ready" : null, sub, muted ? "Muted" : null].filter(Boolean).join(". ");
+  const zero = !!balance && balance.value === 0;
   const row = (pressed: boolean) => (
     <View style={[styles.row, { minHeight: variant === "compact" ? 56 : 68 }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
       <ShopLogo shop={shop} size={size} />
       <View style={{ flex: 1, gap: 2 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        {/* Name and balance share one baseline (polish-audit S11): "Nonna's Table ······ 1,610 pts". */}
+        <View style={styles.titleLine}>
           <Text variant="placeName" numberOfLines={1} style={{ flexShrink: 1 }}>
             {shop.name}
           </Text>
-          {muted ? <BellOff size={14} color={c.fgMuted} /> : null}
+          {muted ? <BellOff size={13} color={c.fgMuted} /> : null}
+          <View style={{ flex: 1 }} />
+          {balance ? (
+            <Text variant="bodyStrong" color={zero ? "fgMuted" : "accentText"} tabular numberOfLines={1}>
+              <CountUp value={balance.value} format={formatNumber} variant="headline" color={zero ? "fgMuted" : "accentText"} />
+              <Text variant="meta" color="fgMuted">{` ${unitLabel(balance.terminology, balance.value)}`}</Text>
+            </Text>
+          ) : null}
         </View>
         {sub ? (
           <Text variant="meta" color={rewardReady ? "accentText" : "fgMuted"} numberOfLines={1}>
@@ -134,21 +144,11 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
           </Text>
         ) : null}
       </View>
-      {balance ? (
-        <View style={{ alignItems: "flex-end" }}>
-          <Text variant="headline" color="accentText" tabular>
-            {formatNumber(balance.value)}
-          </Text>
-          <Text variant="caption" color="fgMuted">
-            {unitLabel(balance.terminology, balance.value)}
-          </Text>
-        </View>
-      ) : null}
       {divider ? <View style={[styles.divider, { backgroundColor: c.line, left: size + 12 }]} /> : null}
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} unstable_pressDelay={40}>
       {({ pressed }) => row(pressed)}
     </Pressable>
   ) : (
@@ -161,4 +161,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   divider: { position: "absolute", right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
   hero: { flexDirection: "row", alignItems: "center", gap: 12 },
+  titleLine: { flexDirection: "row", alignItems: "baseline", gap: 6 },
 });

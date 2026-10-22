@@ -40,7 +40,9 @@ const inverse = fs
   .replace(/width="340" height="64"/, 'width="56" height="56"');
 
 async function render(svg, size, file) {
-  const density = Math.max(72, Math.ceil((72 * size) / 56) * 2);
+  // Rasterise at ~2x the target, then downsample (crisp circle edges).
+  const intrinsic = Number(/width="(\d+)"/.exec(svg)[1]);
+  const density = Math.min(2400, Math.max(1, Math.ceil((72 * size * 2) / intrinsic)));
   await sharp(Buffer.from(svg), { density }).resize(size, size).png({ compressionLevel: 9 }).toFile(path.join(out, file));
   console.log(`wrote ${file} (${size}x${size})`);
 }

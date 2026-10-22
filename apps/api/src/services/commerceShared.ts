@@ -9,6 +9,7 @@ import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, forbidden } from "../lib/errors.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
+import { prepareTransactional } from "./notifications.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -40,19 +41,23 @@ export async function notifyCustomer(ctx: AppContext, args: NotifyArgs): Promise
     const log = (channel: "sms" | "push", to: string, body: string, status: string, providerId?: string | null, error?: string | null) =>
       ctx.db.insert(messageDeliveries).values({ userId: args.userId, merchantId: args.merchantId, channel, to, body, kind: "transactional", status, providerId: providerId ?? null, error: error ?? null });
 
-    if (args.push !== false) {
+    // Inbox row + the customer's notification prefs (services/notifications.ts).
+    const n = await prepareTransactional(ctx, args);
+    let tickets: import("../providers/types.js").PushTicket[] | undefined;
+    if (args.push !== false && n.push) {
       const tokens = await ctx.db.select({ token: pushTokens.token }).from(pushTokens).where(eq(pushTokens.userId, args.userId));
       if (tokens.length) {
         try {
-          const r = await ctx.providers.push.send(tokens.map((t) => ({ token: t.token, title: args.title, body: args.body, data: args.data })));
+          const r = await ctx.providers.push.send(tokens.map((t) => ({ token: t.token, title: args.title, body: args.body, data: n.data, channelId: n.channelId, priority: "high" as const })));
           out.push = r.ok;
+          tickets = r.tickets;
           for (const t of tokens) await log("push", t.token, `${args.title}: ${args.body}`, "sent");
         } catch (err) {
           for (const t of tokens) await log("push", t.token, `${args.title}: ${args.body}`, "failed", null, (err as Error).message);
         }
       }
     }
-    if (args.sms !== false && user.phone) {
+    if (args.sms !== false && n.sms && user.phone) {
       const body = args.smsBody ?? args.body;
       try {
         const r = await ctx.providers.sms.send(user.phone, body);
@@ -62,6 +67,7 @@ export async function notifyCustomer(ctx: AppContext, args: NotifyArgs): Promise
         await log("sms", user.phone, body, "failed", null, (err as Error).message);
       }
     }
+    await n.finish({ ...out, tickets });
   } catch (err) {
     if (ctx.config.env !== "test") console.error("[notifyCustomer]", err);
   }

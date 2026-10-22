@@ -30,7 +30,7 @@ export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size
       accessibilityState={{ disabled: !!disabled }}
       onPress={disabled ? undefined : onPress}
       hitSlop={hit}
-      style={({ pressed }) => [styles.wrap, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [styles.wrap, { opacity: pressed ? 0.7 : 1, transform: pressed ? [{ scale: 0.96 }] : undefined }]}
     >
       <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }, variant === "float" ? shadows.float.native : null]}>
         <Icon size={size >= 64 ? 26 : size <= 36 ? 18 : 20} color={fg} strokeWidth={1.75} />

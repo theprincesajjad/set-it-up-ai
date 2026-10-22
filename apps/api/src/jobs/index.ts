@@ -16,9 +16,10 @@ import { adsJobs } from "./ads.js";
 import { commerceJobs } from "./commerce.js";
 import { connectorsJobs } from "./connectors.js";
 import { messagingJobs } from "./messaging.js";
+import { notificationJobs } from "./notifications.js";
 import { redemptionJobs } from "./redemptions.js";
 
-export const jobs: Job[] = [...messagingJobs, ...commerceJobs, ...adsJobs, ...connectorsJobs, ...redemptionJobs];
+export const jobs: Job[] = [...messagingJobs, ...commerceJobs, ...adsJobs, ...connectorsJobs, ...redemptionJobs, ...notificationJobs];
 
 export function startJobs(ctx: AppContext): () => void {
   if (process.env.JOBS === "0" || ctx.config.env === "test") return () => {};

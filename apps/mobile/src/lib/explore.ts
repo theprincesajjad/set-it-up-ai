@@ -67,7 +67,9 @@ export function exploreSections<T extends ExploreShop>(shops: T[]): { title: str
 
 /** "14 shops on Roncesvalles" / "1 shop on this strip". */
 export function stripHeader(count: number, place?: string | null): string {
-  return `${count} ${count === 1 ? "shop" : "shops"} ${place ? `on ${place}` : "on this strip"}`;
+  // Neighbourhoods take "in" ("in roncesvalles village"); a bare street or strip takes "on".
+  const prep = place && /\b(village|park|junction|town|market|annex|square|heights|corners)\b/i.test(place) ? "in" : "on";
+  return `${count} ${count === 1 ? "shop" : "shops"} ${place ? `${prep} ${place}` : "on this strip"}`;
 }
 
 /** Show "search here" once the map centre moved > 400 m from the last search. */

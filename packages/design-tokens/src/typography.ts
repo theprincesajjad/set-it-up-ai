@@ -12,7 +12,7 @@
  *
  * Scale (px): 11 caption · 13 meta · 15 body · 17 headline · 22 title ·
  * 28 large title · 40 display number. Line height 1.3 UI, 1.15 display.
- * Letter-spacing −0.01em on display sizes. Numbers always tabular.
+ * Letter-spacing −0.01em on display sizes. Numbers that change are tabular; running text is not.
  * Italic is used for exactly one thing: the grey subtitle under a place name.
  */
 
@@ -75,7 +75,11 @@ export interface TextStyle {
   /** em */
   letterSpacing: number;
   family: keyof typeof fontFamilies;
-  /** Use tabular figures (true everywhere in v2: numbers always tabular). */
+  /**
+   * Tabular figures. On for the number styles (display numbers, keypad, stats, codes); off for running text,
+   * because the tabular set also widens hyphens and punctuation ("Dog‑Eared", "555‑0123"). Amounts inside
+   * running text opt in (`<Text tabular>` native, `tabular-nums` web).
+   */
   tabular: boolean;
   /** Render lowercase (map, category and city labels). */
   lowercase?: boolean;
@@ -93,7 +97,7 @@ const ui = (fontSize: number, fontWeight: number, extra: Partial<TextStyle> = {}
   fontWeight,
   letterSpacing: 0,
   family: "sans",
-  tabular: true,
+  tabular: false,
   ...extra,
 });
 
@@ -133,16 +137,16 @@ export const textStyles = {
   bodyStrong: ui(15, 600),
   headline: ui(17, 600),
   title: ui(22, 600),
-  largeTitle: display(28, 800, { lowercase: true }),
+  largeTitle: display(28, 800, { lowercase: true, tabular: false }),
   displayNumber: display(40, 800),
   /** Place name next to a map bubble / in lists: bold black. */
   placeName: ui(15, 600),
   /** The ONE italic: grey subtitle under a place name ("trending cozy cafe"). */
   placeSubtitle: ui(13, 400, { italic: true }),
   /** City pills, map capsule labels ("toronto", "search here"). */
-  mapLabel: display(15, 700, { lowercase: true, letterSpacing: 0, lineHeight: Math.round(15 * UI_LH) }),
+  mapLabel: display(15, 700, { lowercase: true, tabular: false, letterSpacing: 0, lineHeight: Math.round(15 * UI_LH) }),
   /** Category rail captions under the object icons ("coffee"). */
-  categoryLabel: display(13, 700, { lowercase: true, letterSpacing: 0, lineHeight: Math.round(13 * UI_LH) }),
+  categoryLabel: display(13, 700, { lowercase: true, tabular: false, letterSpacing: 0, lineHeight: Math.round(13 * UI_LH) }),
 
   // ── Deprecated v1 names, re-pointed onto the v2 scale ───────
   /** @deprecated use displayNumber (marketing hero also caps at 40 in-product) */ hero: display(40, 800),
@@ -156,9 +160,9 @@ export const textStyles = {
   /** @deprecated section headers are lowercase metaStrong in fgMuted; no uppercase overlines */ overline: ui(11, 600),
   /** @deprecated use displayNumber in accent */ points: display(40, 800),
   /** @deprecated use displayNumber */ counterHero: display(40, 800),
-  /** @deprecated use largeTitle-size tabular sans: keypad digits */ keypad: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH) }),
-  /** @deprecated dashboard stats: plain 28 tabular numbers */ stat: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH), letterSpacing: DISPLAY_TRACKING }),
-  /** Redemption codes shown to staff ("K7 4Q"): 40 tabular, tracked for legibility. */ code: ui(40, 700, { lineHeight: Math.round(40 * DISPLAY_LH), letterSpacing: 0.08 }),
+  /** @deprecated use largeTitle-size tabular sans: keypad digits */ keypad: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH), tabular: true }),
+  /** @deprecated dashboard stats: plain 28 tabular numbers */ stat: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH), letterSpacing: DISPLAY_TRACKING, tabular: true }),
+  /** Redemption codes shown to staff ("K7 4Q"): 40 tabular, tracked for legibility. */ code: ui(40, 700, { lineHeight: Math.round(40 * DISPLAY_LH), letterSpacing: 0.08, tabular: true }),
 } as const satisfies Record<string, TextStyle>;
 
 export type TextStyleName = keyof typeof textStyles;

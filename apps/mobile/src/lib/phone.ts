@@ -70,3 +70,21 @@ export function maskMiddle(phone: string | null | undefined): string {
 export function last4(phone: string | null | undefined): string {
   return (phone ?? "").replace(/\D/g, "").slice(-4);
 }
+
+/**
+ * The one mask (polish-audit S18): "(647) ••• 1009". Works on a full number or the API's masked form
+ * "(647) ***-1009". Without an area code: "•• 1009".
+ */
+export function maskPhone(phone: string | null | undefined): string {
+  const d = (phone ?? "").replace(/\D/g, "");
+  if (d.length < 4) return phone ?? "";
+  const tail = d.slice(-4);
+  const nanp = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+  return nanp.length >= 7 ? `(${nanp.slice(0, 3)}) ••• ${tail}` : `•• ${tail}`;
+}
+
+/** Last four for tight rows: "•• 1009". */
+export function last4Label(phone: string | null | undefined): string {
+  const t = last4(phone);
+  return t ? `•• ${t}` : "";
+}

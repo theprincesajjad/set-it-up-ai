@@ -65,6 +65,16 @@ export function createEndpoints(c: ApiClient) {
       campaigns: (lat?: number, lng?: number) => c.get<{ items: campaignsApi.MyCampaign[] }>("/v1/me/campaigns", { query: { lat, lng } }),
     },
 
+    /** Inbox + per-type preferences (packages/shared customerApi notifications, docs/engineering/api/notifications.md). */
+    notifications: {
+      list: (q: { limit?: number; cursor?: string; unread?: boolean } = {}) =>
+        c.get<customerApi.NotificationsResponse>("/v1/me/notifications", { query: { limit: q.limit ?? 30, cursor: q.cursor, unread: q.unread ? "1" : undefined } }),
+      read: (id: string) => c.post<customerApi.NotificationsReadResponse>(`/v1/me/notifications/${enc(id)}/read`),
+      readAll: () => c.post<customerApi.NotificationsReadResponse>("/v1/me/notifications/read-all"),
+      prefs: () => c.get<customerApi.NotificationPrefsResponse>("/v1/me/notification-prefs"),
+      updatePrefs: (body: customerApi.UpdateNotificationPrefsBody) => c.put<customerApi.NotificationPrefsResponse>("/v1/me/notification-prefs", body),
+    },
+
     wallet: {
       status: () => c.get<walletApi.WalletStatusResponse>("/v1/me/wallet"),
       appleLink: () => c.get<walletApi.AppleLinkResponse>("/v1/me/wallet/apple/link"),

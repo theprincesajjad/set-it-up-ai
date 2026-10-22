@@ -33,11 +33,16 @@ export function consolePush(outbox: Outbox, log = false): PushProvider {
   return {
     name: "console",
     async send(msgs) {
+      const tickets = [];
       for (const m of msgs) {
-        push(outbox.push, { token: m.token, title: m.title, body: m.body, at: new Date() });
+        push(outbox.push, { token: m.token, title: m.title, body: m.body, at: new Date(), data: m.data, channelId: m.channelId });
         if (log) console.log(`[push -> ${m.token}] ${m.title}: ${m.body}`);
+        tickets.push({ token: m.token, status: "ok" as const, id: `console_${randomToken(6)}` });
       }
-      return { ok: msgs.length, failed: 0 };
+      return { ok: msgs.length, failed: 0, tickets };
+    },
+    async receipts(ids) {
+      return Object.fromEntries(ids.map((id) => [id, { status: "ok" as const }]));
     },
   };
 }

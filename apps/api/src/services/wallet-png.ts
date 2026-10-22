@@ -1,5 +1,32 @@
-/** Minimal PNG encoder for pass images (icon/logo) so we ship no binary assets. */
+/**
+ * Pass artwork. The real v2 artwork is rendered from the brand SVGs by
+ * scripts/render-wallet-assets.cjs into assets/wallet/*.png (committed). The
+ * minimal PNG encoder below is only a fallback if those files are missing.
+ */
+import { readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
+
+const ASSET_DIR = new URL("../../assets/wallet/", import.meta.url);
+const assetCache = new Map<string, Buffer | null>();
+
+/** Read assets/wallet/<name> (cached). Null if it isn't there. */
+export function walletAsset(name: string): Buffer | null {
+  if (!assetCache.has(name)) {
+    let buf: Buffer | null = null;
+    try {
+      buf = readFileSync(new URL(name, ASSET_DIR));
+    } catch {
+      buf = null;
+    }
+    assetCache.set(name, buf);
+  }
+  return assetCache.get(name)!;
+}
+
+/** PNG width/height from the IHDR chunk. */
+export function pngSize(buf: Buffer): { width: number; height: number } {
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);

@@ -1,0 +1,81 @@
+{
+  "id": "3388000000012345678.ll_aaaaaaaabbbb4ccc8dddeeeeeeeeeeee",
+  "classId": "3388000000012345678.ll_network_loyalty",
+  "state": "ACTIVE",
+  "accountId": "K7Q2M9",
+  "accountName": "Priya",
+  "hexBackgroundColor": "#0B0B0C",
+  "loyaltyPoints": {
+    "label": "Rewards ready",
+    "balance": {
+      "int": 1
+    }
+  },
+  "secondaryLoyaltyPoints": {
+    "label": "Shops",
+    "balance": {
+      "int": 3
+    }
+  },
+  "barcode": {
+    "type": "QR_CODE",
+    "value": "LL:K7Q2M9",
+    "alternateText": "K7Q2M9"
+  },
+  "textModulesData": [
+    {
+      "id": "shop1",
+      "header": "Pinecone Coffee",
+      "body": "130 points · 1 reward ready"
+    },
+    {
+      "id": "shop2",
+      "header": "Dundas West Bakery & Café",
+      "body": "7 stamps"
+    },
+    {
+      "id": "shop3",
+      "header": "Ossington Repair",
+      "body": "0 points"
+    },
+    {
+      "id": "expiry",
+      "header": "Points expiry",
+      "body": "Dundas West Bakery & Café: after 12 months without a visit\nOther shops: points never expire."
+    },
+    {
+      "id": "how",
+      "header": "How to use",
+      "body": "Show this card at the counter of any Local Loyalty shop to earn and redeem."
+    }
+  ],
+  "linksModuleData": {
+    "uris": [
+      {
+        "id": "card",
+        "uri": "http://localhost:3000/me",
+        "description": "Your shops and rewards"
+      },
+      {
+        "id": "terms",
+        "uri": "http://localhost:3000/terms",
+        "description": "Terms"
+      },
+      {
+        "id": "support",
+        "uri": "mailto:hello@localloyalty.example",
+        "description": "Support"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "latitude": 43.6496,
+      "longitude": -79.4218
+    },
+    {
+      "latitude": 43.6502,
+      "longitude": -79.4305
+    }
+  ]
+}

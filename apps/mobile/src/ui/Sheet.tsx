@@ -1,11 +1,12 @@
-import { layout, radii, shadows } from "@ll/design-tokens";
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { layout, radii, shadows, springs } from "@ll/design-tokens";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { Button, type ButtonVariant } from "./Button";
 import { IconButton } from "./IconButton";
 import { X } from "./icons";
+import { useReducedMotion } from "./motion";
 import { Text } from "./Text";
 
 export interface SheetProps {
@@ -18,20 +19,45 @@ export interface SheetProps {
   scroll?: boolean;
 }
 
-/** Bottom sheet: radius 24, grabber, title + round close, scrim tap / Android back closes. */
+/**
+ * Bottom sheet: radius 24, grabber, title (system 22/600, the one sheet title style) + round close,
+ * 16 pt gutters like every page, scrim tap / Android back closes.
+ */
 export function Sheet({ visible, onClose, title, children, footer, scroll = true }: SheetProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const reduce = useReducedMotion();
+  // Stay mounted while the sheet animates out, so closing is a motion, not a cut.
+  const [mounted, setMounted] = useState(visible);
+  const y = useRef(new Animated.Value(visible ? 0 : 1)).current;
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      if (reduce) y.setValue(0);
+      else Animated.spring(y, { toValue: 0, ...springs.sheet, useNativeDriver: true }).start();
+    } else if (mounted) {
+      if (reduce) {
+        y.setValue(1);
+        setMounted(false);
+      } else Animated.timing(y, { toValue: 1, duration: 180, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => setMounted(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, reduce]);
+  const translateY = y.interpolate({ inputRange: [0, 1], outputRange: [0, Math.min(height, 900)] });
+  const scrim = y.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrim }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
+        </Animated.View>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.bg, paddingBottom: insets.bottom + 16 }, shadows.float.native]}>
+          <Animated.View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.bg, paddingBottom: insets.bottom + 16, transform: [{ translateY }] }, shadows.float.native]}>
             <View style={[styles.grabber, { backgroundColor: c.bgMuted }]} />
             {title ? (
               <View style={styles.titleRow}>
-                <Text variant="mapLabel" accessibilityRole="header" style={{ flex: 1, fontSize: 20, lineHeight: 26, textTransform: "none" }}>
+                <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
                   {title}
                 </Text>
                 <IconButton icon={X} label="Close" variant="secondary" size={32} onPress={onClose} />
@@ -45,7 +71,7 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
               <View style={styles.body}>{children}</View>
             )}
             {footer ? <View style={styles.footer}>{footer}</View> : null}
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -94,7 +120,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingTop: 8 },
   grabber: { alignSelf: "center", width: layout.grabberWidth, height: layout.grabberHeight, borderRadius: 3, marginBottom: 10 },
-  titleRow: { flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 16, paddingBottom: 8, gap: 12 },
-  body: { paddingHorizontal: 20, paddingBottom: 8, gap: 14 },
-  footer: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
+  titleRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: layout.gutterMobile, paddingBottom: 12, gap: 12, minHeight: 44 },
+  body: { paddingHorizontal: layout.gutterMobile, paddingBottom: 8, gap: 16 },
+  footer: { paddingHorizontal: layout.gutterMobile, paddingTop: 12, gap: 4 },
 });

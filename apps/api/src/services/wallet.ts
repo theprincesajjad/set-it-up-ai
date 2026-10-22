@@ -1,20 +1,26 @@
 /**
  * Network wallet pass: ONE pass per customer (Apple + Google) showing their
- * member QR (LL:<memberCode>) and a balance summary across shops.
+ * member QR (LL:<memberCode>), rewards ready and per-shop balances.
  *
- * Other teams: call `notifyPassUpdate(ctx, userId)` after a balance changes.
- * It never throws and is safe to fire-and-forget.
+ * Pass updates are automatic: every ledger balance change (award, redeem,
+ * adjust, reversal — counter, app, POS and API) reaches `notifyPassUpdate`
+ * through the ledger's balance listeners (registered at the bottom of this
+ * file). Other teams may still call `notifyPassUpdate(ctx, userId)` after
+ * changing anything else shown on the pass (e.g. the customer's name); it
+ * never throws and skips the push when the pass content didn't change.
  */
-import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
-import { loyaltyPrograms, merchantMembers, merchants, users, walletDeviceRegistrations, walletPasses } from "@ll/db";
+import { createHash } from "node:crypto";
+import { and, asc, desc, eq, gt, inArray, isNotNull, ne } from "drizzle-orm";
+import { locations, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, rewards, users, walletDeviceRegistrations, walletPasses } from "@ll/db";
 import { walletApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { hmacSha256, randomToken, safeEqual } from "../lib/crypto.js";
 import { HttpError, notFound } from "../lib/errors.js";
 import { httpFor } from "./integrations-http.js";
+import { balanceListeners, type BalanceListener } from "./ledger.js";
 import { apnsFor } from "./wallet-apns.js";
-import { appleSignerFromConfig, buildPkpass, missingAppleConfig } from "./wallet-apple.js";
-import { googleConfigured, googleSaveUrl, updateGoogleObject } from "./wallet-google.js";
+import { appleSignerFromConfig, buildPkpass, missingAppleConfig, type PassLocation } from "./wallet-apple.js";
+import { addGoogleMessage, googleConfigured, googleSaveUrl, updateGoogleObject } from "./wallet-google.js";
 
 export type WalletPass = typeof walletPasses.$inferSelect;
 type Platform = "apple" | "google";
@@ -26,25 +32,84 @@ export async function walletSummary(ctx: AppContext, userId: string): Promise<wa
     .select({
       merchantId: merchants.id,
       name: merchants.name,
+      slug: merchants.slug,
       balance: merchantMembers.balance,
       terminology: loyaltyPrograms.terminology,
       expiryMonths: loyaltyPrograms.expiryMonths,
       lastVisitAt: merchantMembers.lastVisitAt,
+      joinedAt: merchantMembers.createdAt,
     })
     .from(merchantMembers)
     .innerJoin(merchants, eq(merchants.id, merchantMembers.merchantId))
     .leftJoin(loyaltyPrograms, eq(loyaltyPrograms.merchantId, merchants.id))
     .where(and(eq(merchantMembers.userId, userId), ne(merchants.status, "closed")))
     .orderBy(desc(merchantMembers.balance));
-  const shops = rows.map((r) => ({ merchantId: r.merchantId, name: r.name, balance: r.balance, terminology: r.terminology ?? "points", expiryMonths: r.expiryMonths ?? null }));
+  const costs = rows.length
+    ? await ctx.db
+        .select({ merchantId: rewards.merchantId, cost: rewards.pointsCost })
+        .from(rewards)
+        .where(and(inArray(rewards.merchantId, rows.map((r) => r.merchantId)), eq(rewards.active, true)))
+    : [];
+  const ready = (merchantId: string, balance: number) => costs.filter((c) => c.merchantId === merchantId && c.cost <= balance).length;
+  const shops = rows
+    .map((r) => ({
+      merchantId: r.merchantId,
+      name: r.name,
+      slug: r.slug,
+      balance: r.balance,
+      terminology: r.terminology ?? "points",
+      expiryMonths: r.expiryMonths ?? null,
+      rewardsReady: ready(r.merchantId, r.balance),
+      lastVisitAt: r.lastVisitAt ? r.lastVisitAt.toISOString() : null,
+      _recent: (r.lastVisitAt ?? r.joinedAt).getTime(),
+    }))
+    // Rewards ready first, then the most recent visit (the shop that just changed is on the front).
+    .sort((a, b) => Number(b.rewardsReady > 0) - Number(a.rewardsReady > 0) || b._recent - a._recent || a.name.localeCompare(b.name))
+    .map(({ _recent, ...x }) => x);
   return {
     memberCode: user.memberCode,
     qrValue: walletApi.memberQrValue(user.memberCode),
     name: user.name,
     shopCount: shops.length,
     totalPoints: shops.reduce((s, x) => s + Math.max(0, x.balance), 0),
+    rewardsReady: shops.reduce((s, x) => s + x.rewardsReady, 0),
     shops,
   };
+}
+
+const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const r = (d: number) => (d * Math.PI) / 180;
+  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lng - a.lng) / 2) ** 2;
+  return 2 * 6371e3 * Math.asin(Math.sqrt(h));
+};
+
+/**
+ * Up to 10 member-shop locations, nearest first, for lock-screen relevance
+ * ("Show this at Pinecone to earn"). "Near" = the customer's home neighbourhood
+ * centre, or else their most recently visited shop.
+ */
+export async function passLocations(ctx: AppContext, userId: string, max = 10): Promise<PassLocation[]> {
+  const rows = await ctx.db
+    .select({ name: merchants.name, lat: locations.lat, lng: locations.lng, lastVisitAt: merchantMembers.lastVisitAt })
+    .from(merchantMembers)
+    .innerJoin(merchants, eq(merchants.id, merchantMembers.merchantId))
+    .innerJoin(locations, eq(locations.merchantId, merchants.id))
+    .where(and(eq(merchantMembers.userId, userId), ne(merchants.status, "closed"), eq(locations.active, true), isNotNull(locations.lat), isNotNull(locations.lng)))
+    .orderBy(desc(merchantMembers.lastVisitAt), asc(locations.createdAt))
+    .limit(200);
+  if (!rows.length) return [];
+  const [home] = await ctx.db
+    .select({ lat: neighbourhoods.centerLat, lng: neighbourhoods.centerLng })
+    .from(users)
+    .innerJoin(neighbourhoods, eq(neighbourhoods.id, users.homeNeighbourhoodId))
+    .where(eq(users.id, userId))
+    .limit(1);
+  const origin = home?.lat != null && home.lng != null ? { lat: home.lat, lng: home.lng } : { lat: rows[0]!.lat!, lng: rows[0]!.lng! };
+  return rows
+    .map((r) => ({ r, d: haversine(origin, { lat: r.lat!, lng: r.lng! }) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, max)
+    .map(({ r }) => ({ latitude: Number(r.lat!.toFixed(6)), longitude: Number(r.lng!.toFixed(6)), relevantText: `Show this at ${r.name} to earn` }));
 }
 
 export async function getOrCreatePass(ctx: AppContext, userId: string, platform: Platform): Promise<WalletPass> {
@@ -74,17 +139,20 @@ export function walletNotConfigured(platform: Platform, missing: string[]) {
 export async function applePassBuffer(ctx: AppContext, pass: WalletPass): Promise<Buffer> {
   const signer = appleSignerFromConfig(ctx.config);
   if (!signer) throw walletNotConfigured("apple", missingAppleConfig(ctx.config));
-  const summary = await walletSummary(ctx, pass.userId);
-  return buildPkpass(ctx.config, signer, { serialNumber: pass.serialNumber, authToken: pass.authToken, summary });
+  const [summary, locs] = await Promise.all([walletSummary(ctx, pass.userId), passLocations(ctx, pass.userId)]);
+  return buildPkpass(ctx.config, signer, { serialNumber: pass.serialNumber, authToken: pass.authToken, summary, locations: locs });
+}
+
+export function missingGoogleConfig(ctx: AppContext): string[] {
+  const missing = [!ctx.config.google.walletIssuerId && "GOOGLE_WALLET_ISSUER_ID", !ctx.config.google.walletServiceAccountJson && "GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"].filter(Boolean) as string[];
+  return missing.length ? missing : ["valid GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"];
 }
 
 export async function googleSaveLink(ctx: AppContext, userId: string): Promise<string> {
-  if (!googleConfigured(ctx.config)) {
-    const missing = [!ctx.config.google.walletIssuerId && "GOOGLE_WALLET_ISSUER_ID", !ctx.config.google.walletServiceAccountJson && "GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"].filter(Boolean) as string[];
-    throw walletNotConfigured("google", missing.length ? missing : ["valid GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"]);
-  }
+  if (!googleConfigured(ctx.config)) throw walletNotConfigured("google", missingGoogleConfig(ctx));
   await getOrCreatePass(ctx, userId, "google");
-  return googleSaveUrl(ctx.config, userId, await walletSummary(ctx, userId), ctx.now());
+  const [summary, locs] = await Promise.all([walletSummary(ctx, userId), passLocations(ctx, userId)]);
+  return googleSaveUrl(ctx.config, userId, { summary, locations: locs }, ctx.now());
 }
 
 // ---------------------------------------------------------------------------
@@ -155,31 +223,78 @@ export async function serialsUpdatedSince(ctx: AppContext, deviceLibraryId: stri
 // ---------------------------------------------------------------------------
 // Updates
 // ---------------------------------------------------------------------------
+/** Last pushed pass content per user (per process): unchanged content → no push. */
+const lastContent = new WeakMap<AppContext, Map<string, string>>();
+
+export interface PassUpdateResult {
+  changed: boolean;
+  apple: { devices: number; sent: number; invalid: number };
+  google: "updated" | "missing" | "skipped" | "failed";
+}
+
 /**
  * Mark the customer's passes updated and push to their devices (Apple via
- * APNs, Google via object PATCH). Fire-and-forget: never throws.
+ * APNs → device re-fetches the pass and shows the changeMessage; Google via
+ * object PATCH). Skipped when the pass content is unchanged since the last
+ * push. Fire-and-forget: never throws.
  */
-export async function notifyPassUpdate(ctx: AppContext, userId: string): Promise<void> {
+export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { force?: boolean } = {}): Promise<PassUpdateResult | undefined> {
   try {
+    const existing = await ctx.db.select({ id: walletPasses.id, platform: walletPasses.platform }).from(walletPasses).where(eq(walletPasses.userId, userId));
+    if (!existing.length) return undefined;
+    const [summary, locs] = await Promise.all([walletSummary(ctx, userId), passLocations(ctx, userId)]);
+    const hash = createHash("sha1").update(JSON.stringify({ summary, locs })).digest("hex");
+    let seen = lastContent.get(ctx);
+    if (!seen) lastContent.set(ctx, (seen = new Map()));
+    const out: PassUpdateResult = { changed: false, apple: { devices: 0, sent: 0, invalid: 0 }, google: "skipped" };
+    if (!opts.force && seen.get(userId) === hash) return out;
+    seen.set(userId, hash);
+    out.changed = true;
     const passes = await ctx.db.update(walletPasses).set({ lastUpdatedAt: ctx.now() }).where(eq(walletPasses.userId, userId)).returning();
-    if (!passes.length) return;
     const apple = passes.filter((p) => p.platform === "apple");
     if (apple.length) {
       const regs = await ctx.db
         .select()
         .from(walletDeviceRegistrations)
         .where(inArray(walletDeviceRegistrations.passId, apple.map((p) => p.id)));
+      out.apple.devices = regs.length;
       if (regs.length) {
         const topic = ctx.config.apple.passTypeId ?? "pass.local.loyalty";
         const r = await apnsFor(ctx).push([...new Set(regs.map((x) => x.pushToken))], topic);
+        out.apple.sent = r.sent;
+        out.apple.invalid = r.invalid.length;
         if (r.invalid.length) await ctx.db.delete(walletDeviceRegistrations).where(inArray(walletDeviceRegistrations.pushToken, r.invalid));
       }
     }
     if (passes.some((p) => p.platform === "google") && googleConfigured(ctx.config)) {
-      await updateGoogleObject(ctx.config, userId, await walletSummary(ctx, userId), httpFor(ctx), ctx.now());
+      try {
+        out.google = await updateGoogleObject(ctx.config, userId, { summary, locations: locs }, httpFor(ctx), ctx.now());
+      } catch (err) {
+        out.google = "failed";
+        if (ctx.config.env !== "test") console.error(`[wallet] Google object update failed for ${userId}`, err);
+      }
     }
+    return out;
   } catch (err) {
-    console.error(`[wallet] pass update failed for ${userId}`, err);
+    if (ctx.config.env !== "test") console.error(`[wallet] pass update failed for ${userId}`, err);
+    return undefined;
+  }
+}
+
+/**
+ * Show a message on the customer's Google Wallet pass (with a notification).
+ * Apple has no message API: Apple customers see the pass's changeMessage when
+ * the balance updates. Never throws.
+ */
+export async function addPassMessage(ctx: AppContext, userId: string, msg: { id: string; header: string; body: string }): Promise<"added" | "missing" | "skipped" | "failed"> {
+  try {
+    if (!googleConfigured(ctx.config)) return "skipped";
+    const [g] = await ctx.db.select({ id: walletPasses.id }).from(walletPasses).where(and(eq(walletPasses.userId, userId), eq(walletPasses.platform, "google"))).limit(1);
+    if (!g) return "skipped";
+    return await addGoogleMessage(ctx.config, userId, { ...msg, id: msg.id.replace(/[^\w.-]/g, "_").slice(0, 60) }, httpFor(ctx), ctx.now());
+  } catch (err) {
+    if (ctx.config.env !== "test") console.error(`[wallet] Google message failed for ${userId}`, err);
+    return "failed";
   }
 }
 
@@ -188,3 +303,15 @@ export async function notifyPassUpdateForMember(ctx: AppContext, memberId: strin
   const [m] = await ctx.db.select({ userId: merchantMembers.userId }).from(merchantMembers).where(eq(merchantMembers.id, memberId)).limit(1);
   if (m) await notifyPassUpdate(ctx, m.userId);
 }
+
+/** Customers with at least one wallet pass (Apple or Google). */
+export async function hasWalletPass(ctx: AppContext, userId: string): Promise<boolean> {
+  const [p] = await ctx.db.select({ id: walletPasses.id }).from(walletPasses).where(eq(walletPasses.userId, userId)).limit(1);
+  return !!p;
+}
+
+// Every ledger balance change updates the pass.
+const walletBalanceListener: BalanceListener = async (ctx, change) => {
+  await notifyPassUpdate(ctx, change.userId);
+};
+if (!balanceListeners.includes(walletBalanceListener)) balanceListeners.push(walletBalanceListener);

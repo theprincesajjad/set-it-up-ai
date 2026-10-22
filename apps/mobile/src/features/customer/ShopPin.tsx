@@ -31,13 +31,16 @@ export function pinLabel(shop: networkApi.ShopListItemDto, membership: PinMember
   return `${shop.merchant.name}, ${pinSubtitle(shop.merchant.vertical, membership).text}`;
 }
 
-/** Overlapping pins fold into a small black count capsule (24 pt, 12 pt number), centred where the bubble would be. */
+/**
+ * Overlapping pins fold into a black count capsule, centred where the bubble would be: 32 pt (the pin's own
+ * scale; it was 24, too small to hit, polish-audit M11). The marker around it is the full 40 x 200 pin.
+ */
 export function ClusterPin({ count }: { count: number }) {
   const { c } = useTheme();
   return (
     <View style={{ width: PIN_WIDTH, height: PIN_BUBBLE, justifyContent: "center" }} pointerEvents="none">
-      <View style={[{ position: "absolute", left: PIN_ANCHOR_X - 14, minWidth: 28, height: 24, borderRadius: 12, paddingHorizontal: 8, alignItems: "center", justifyContent: "center", backgroundColor: c.fg, borderWidth: 2, borderColor: c.bg }, shadows.float.native]}>
-        <Text variant="metaStrong" rawColor={c.bg} tabular style={{ fontSize: 12, lineHeight: 15, fontWeight: "700" }}>
+      <View style={[{ position: "absolute", left: PIN_ANCHOR_X - 16, minWidth: 32, height: 32, borderRadius: 16, paddingHorizontal: 10, alignItems: "center", justifyContent: "center", backgroundColor: c.fg, borderWidth: 2, borderColor: c.bg }, shadows.float.native]}>
+        <Text variant="metaStrong" rawColor={c.bg} tabular style={{ fontWeight: "700" }}>
           {String(count)}
         </Text>
       </View>

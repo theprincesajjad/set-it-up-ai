@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPhoneEdit, displayPhone, formatNanp, isValidNanp, maskMiddle, sanitizePhoneInput, toE164, validateNanp } from "./phone";
+import { applyPhoneEdit, displayPhone, formatNanp, isValidNanp, maskMiddle, maskPhone, last4Label, sanitizePhoneInput, toE164, validateNanp } from "./phone";
 
 describe("formatNanp (system.md PhoneField examples)", () => {
   it.each([
@@ -69,4 +69,10 @@ describe("applyPhoneEdit (caret stays at the end; backspace over a format char d
 describe("display helpers", () => {
   it("displayPhone formats E.164", () => expect(displayPhone("+14165550123")).toBe("(416) 555-0123"));
   it("maskMiddle hides the middle digits", () => expect(maskMiddle("+14165550123")).toBe("(416) •••-••23"));
+  it("maskPhone: one mask for full and API-masked numbers", () => {
+    expect(maskPhone("+16475551009")).toBe("(647) ••• 1009");
+    expect(maskPhone("(647) ***-1009")).toBe("(647) ••• 1009");
+    expect(maskPhone("1009")).toBe("•• 1009");
+    expect(last4Label("(647) ***-1009")).toBe("•• 1009");
+  });
 });

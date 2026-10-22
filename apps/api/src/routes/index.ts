@@ -18,6 +18,7 @@ import integrations from "./integrations/index.js";
 import ads from "./ads/index.js";
 import campaigns from "./campaigns/index.js";
 import publicRoutes from "./public/index.js";
+import notifications from "./notifications/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -39,4 +40,5 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await ads(app, ctx);
   await campaigns(app, ctx);
   await publicRoutes(app, ctx);
+  await notifications(app, ctx);
 }

@@ -38,5 +38,5 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
 
 const styles = StyleSheet.create({
   track: { flexDirection: "row", borderRadius: 10, padding: 2, gap: 2 },
-  seg: { flex: 1, minHeight: 34, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  seg: { flex: 1, minHeight: 36, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
 });

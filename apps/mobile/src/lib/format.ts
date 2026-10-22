@@ -131,3 +131,20 @@ export function hoursRows(hours: Hours, now = new Date()): { day: string; text: 
     };
   });
 }
+
+/** "+50" / "−250" (U+2212 minus, never a hyphen) for ledger deltas. */
+export function signed(n: number): string {
+  if (n > 0) return `+${n.toLocaleString("en-CA")}`;
+  if (n < 0) return `−${Math.abs(n).toLocaleString("en-CA")}`;
+  return "0";
+}
+
+/**
+ * A reward name inside a sentence: "Free drink" → "free drink", "$10 off" stays, proper nouns stay
+ * ("Free Pinecone mug" → "free Pinecone mug"). Only the first word is lowered, and only when it is a
+ * plain capitalised word (not "VIP", not "$5").
+ */
+export function rewardInSentence(name: string): string {
+  const m = /^([A-Z][a-z]+)(\b.*)$/.exec(name);
+  return m ? `${m[1]!.toLowerCase()}${m[2]}` : name;
+}

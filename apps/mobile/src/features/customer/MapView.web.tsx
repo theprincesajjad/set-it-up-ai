@@ -202,6 +202,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
         const dot = document.createElement("div");
         Object.assign(dot.style, { width: "16px", height: "16px", borderRadius: "50%", boxSizing: "border-box", background: c.location, border: "3px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" });
         mk = new maplibregl.Marker({ element: dot }).setLngLat([p.coords.longitude, p.coords.latitude]).addTo(m);
+        // Under every pin: the dot never sits on top of a selected bubble (polish-audit M15).
+        mk.getElement().style.zIndex = "0";
       },
       () => undefined,
     );

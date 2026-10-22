@@ -3,6 +3,11 @@
  * of every file) + signature (PKCS#7 detached, signed with the Pass Type ID
  * certificate, WWDR intermediate included), zipped.
  * Spec: https://developer.apple.com/documentation/walletpasses/building-a-pass
+ *
+ * v2 design (docs/design/foundations.md): near-black card, white text, the
+ * accent (#FF7A45, the dark-mode accent) as the label colour, the "four
+ * corners" mark. Balances are always shown per shop in the shop's own units;
+ * points and stamps are never summed.
  */
 import { createHash } from "node:crypto";
 import { zipSync } from "fflate";
@@ -10,18 +15,27 @@ import forge from "node-forge";
 import { BRAND, walletApi } from "@ll/shared";
 import type { Config } from "../config.js";
 import { pemFromEnv } from "./wallet-apns.js";
-import { iconPng, logoPng } from "./wallet-png.js";
+import { iconPng, logoPng, walletAsset } from "./wallet-png.js";
 
-export const PASS_COLORS = { background: "#115E59", foreground: "#FFFFFF", label: "#CCFBF1" };
+/** v2 tokens: bg (dark) #0B0B0C, fg (dark) #F5F5F4, accent (dark) #FF7A45. */
+export const PASS_COLORS = { background: "#0B0B0C", foreground: "#F5F5F4", label: "#FF7A45", accent: "#FF5A1F" };
 const rgb = (hex: string) => {
   const v = parseInt(hex.slice(1), 16);
   return `rgb(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255})`;
 };
 
+export interface PassLocation {
+  latitude: number;
+  longitude: number;
+  relevantText: string;
+}
+
 export interface ApplePassInput {
   serialNumber: string;
   authToken: string;
   summary: walletApi.WalletSummary;
+  /** Up to 10 member shop locations (lock-screen relevance). */
+  locations?: PassLocation[];
 }
 
 export interface AppleSigner {
@@ -51,14 +65,48 @@ export function missingAppleConfig(config: Config): string[] {
   return pairs.filter(([, v]) => !v).map(([k]) => k);
 }
 
-const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
+/** "1 stamp", "120 points", "3 stars": the shop's own unit, singular when 1. */
+export function balanceText(balance: number, terminology: string): string {
+  const unit = Math.abs(balance) === 1 ? terminology.replace(/s$/, "") : terminology;
+  return `${balance.toLocaleString("en-CA")} ${unit}`;
+}
+
+const expiryLine = (x: walletApi.WalletShopBalance) =>
+  x.expiryMonths ? `${x.terminology.charAt(0).toUpperCase()}${x.terminology.slice(1)} expire after ${x.expiryMonths} months with no visits.` : `${x.terminology.charAt(0).toUpperCase()}${x.terminology.slice(1)} never expire.`;
 
 export function buildPassJson(config: Config, p: { passTypeId: string; teamId: string }, input: ApplePassInput) {
   const s = input.summary;
-  const shopLines = s.shops.length
-    ? s.shops.map((x) => `${x.name}: ${x.balance} ${x.terminology}${x.expiryMonths ? ` (expire after ${x.expiryMonths} months of inactivity)` : ""}`).join("\n")
+  const ready = s.rewardsReady;
+  const top = s.shops.slice(0, 2);
+  const readyShops = s.shops.filter((x) => x.rewardsReady > 0);
+
+  const primary =
+    ready > 0
+      ? {
+          key: "primary",
+          label: readyShops.length === 1 ? `ready at ${truncate(readyShops[0]!.name, 28)}` : `ready across ${readyShops.length} shops`,
+          value: `${ready} ${ready === 1 ? "reward" : "rewards"}`,
+        }
+      : { key: "primary", label: s.shopCount ? "member at" : "your card", value: s.shopCount ? `${s.shopCount} ${s.shopCount === 1 ? "shop" : "shops"}` : "every shop on your street" };
+
+  // Slot 1 = the shop visited most recently (the one that just changed), so its
+  // change message is the lock-screen notification: "You now have 130 points at Pinecone".
+  const shopFields = top.map((x, i) => ({
+    key: `shop${i + 1}`,
+    label: truncate(x.name.toLowerCase(), 20),
+    value: balanceText(x.balance, x.terminology),
+    ...(i === 0 ? { changeMessage: `You now have %@ at ${x.name}` } : {}),
+  }));
+
+  const memberships = s.shops.length
+    ? s.shops
+        .map((x) => `${x.name}: ${balanceText(x.balance, x.terminology)}${x.rewardsReady ? ` (${x.rewardsReady} ${x.rewardsReady === 1 ? "reward" : "rewards"} ready)` : ""}\n${expiryLine(x)}`)
+        .join("\n\n")
     : "Show this card at any participating shop to join and start earning.";
-  const expiring = s.shops.filter((x) => x.expiryMonths);
+  const anyExpiry = s.shops.some((x) => x.expiryMonths);
+
   return {
     formatVersion: 1,
     passTypeIdentifier: p.passTypeId,
@@ -68,42 +116,57 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
     authenticationToken: input.authToken,
     organizationName: BRAND.name,
     description: `${BRAND.name} member card`,
-    logoText: BRAND.name,
+    logoText: BRAND.name.toLowerCase(),
     foregroundColor: rgb(PASS_COLORS.foreground),
     backgroundColor: rgb(PASS_COLORS.background),
     labelColor: rgb(PASS_COLORS.label),
     sharingProhibited: true,
+    // No relevantDate: the pass is relevant by place, never by time.
+    ...(input.locations?.length ? { locations: input.locations.slice(0, 10), maxDistance: 100 } : {}),
     barcodes: [{ format: "PKBarcodeFormatQR", message: s.qrValue, messageEncoding: "iso-8859-1", altText: s.memberCode }],
     storeCard: {
-      headerFields: [{ key: "shops", label: "SHOPS", value: s.shopCount }],
-      primaryFields: [{ key: "points", label: "TOTAL POINTS", value: s.totalPoints, changeMessage: "You now have %@ points across your shops" }],
-      secondaryFields: [{ key: "member", label: "MEMBER", value: s.name ?? "Member" }],
-      auxiliaryFields: s.shops.slice(0, 2).map((x, i) => ({ key: `shop${i}`, label: truncate(x.name.toUpperCase(), 18), value: x.balance, changeMessage: `${x.name}: %@ ${x.terminology}` })),
+      headerFields: [{ key: "ready", label: "rewards ready", value: ready, textAlignment: "PKTextAlignmentRight", changeMessage: "Rewards ready: %@" }],
+      primaryFields: [primary],
+      secondaryFields: shopFields,
+      auxiliaryFields: [{ key: "member", label: "member", value: s.name ?? s.memberCode }],
       backFields: [
-        { key: "balances", label: "Your shops", value: shopLines },
+        { key: "memberships", label: "Your shops", value: memberships },
         {
           key: "expiry",
           label: "Points expiry",
-          value: expiring.length ? `Points never expire unless noted above. ${expiring.map((x) => `${x.name}: after ${x.expiryMonths} months without a visit.`).join(" ")}` : "Your points never expire.",
+          value: anyExpiry
+            ? `Points never expire unless a shop says so above. ${s.shops
+                .filter((x) => x.expiryMonths)
+                .map((x) => `${x.name}: after ${x.expiryMonths} months without a visit.`)
+                .join(" ")}`
+            : "Your points never expire.",
         },
+        { key: "how", label: "How to use", value: `Show this card at the counter of any ${BRAND.name} shop. Staff scan the code to add points or redeem a reward. One card for every shop on your street.` },
         { key: "code", label: "Member code", value: s.memberCode },
-        { key: "how", label: "How it works", value: `Show this card at the counter at any ${BRAND.name} shop to earn and redeem. One card for every shop on your street.` },
-        { key: "help", label: "Help", value: BRAND.supportEmail },
+        { key: "updates", label: "Updates", value: "This card updates itself when your balance changes. Turn notifications for it on or off in the pass details (•••)." },
+        { key: "terms", label: "Terms", value: `${config.publicWebUrl}/terms`, attributedValue: `<a href='${config.publicWebUrl}/terms'>${config.publicWebUrl.replace(/^https?:\/\//, "")}/terms</a>` },
+        { key: "help", label: "Support", value: BRAND.supportEmail, attributedValue: `<a href='mailto:${BRAND.supportEmail}'>${BRAND.supportEmail}</a>` },
       ],
     },
   };
 }
 
+/** Pass images: v2 artwork from assets/wallet (see scripts/render-wallet-assets.cjs), procedural fallback. */
+export function passImages(): Record<string, Buffer> {
+  const pick = (name: string, fallback: () => Buffer) => walletAsset(name) ?? fallback();
+  return {
+    "icon.png": pick("icon.png", () => iconPng(29, PASS_COLORS.background)),
+    "icon@2x.png": pick("icon@2x.png", () => iconPng(58, PASS_COLORS.background)),
+    "icon@3x.png": pick("icon@3x.png", () => iconPng(87, PASS_COLORS.background)),
+    "logo.png": pick("logo.png", () => logoPng(50, 50)),
+    "logo@2x.png": pick("logo@2x.png", () => logoPng(100, 100)),
+    "logo@3x.png": pick("logo@3x.png", () => logoPng(150, 150)),
+  };
+}
+
 /** Pass files (without manifest/signature). */
 export function passFiles(config: Config, p: { passTypeId: string; teamId: string }, input: ApplePassInput): Record<string, Buffer> {
-  return {
-    "pass.json": Buffer.from(JSON.stringify(buildPassJson(config, p, input))),
-    "icon.png": iconPng(29, PASS_COLORS.background),
-    "icon@2x.png": iconPng(58, PASS_COLORS.background),
-    "icon@3x.png": iconPng(87, PASS_COLORS.background),
-    "logo.png": logoPng(160, 50),
-    "logo@2x.png": logoPng(320, 100),
-  };
+  return { "pass.json": Buffer.from(JSON.stringify(buildPassJson(config, p, input))), ...passImages() };
 }
 
 export function manifestFor(files: Record<string, Buffer>): Buffer {

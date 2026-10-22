@@ -1,5 +1,5 @@
 import { shadows, type VerticalCategory } from "@ll/design-tokens";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, Platform, StyleSheet, View, type TextStyle } from "react-native";
 import { useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
 import { Text } from "./Text";
@@ -25,15 +25,21 @@ export interface PlaceBubbleProps {
  * Labels get a halo so they read on the map without a box.
  */
 export function PlaceBubble({ name, subtitle, accent, vertical, category, photoUrl, selected, bare, size = 40 }: PlaceBubbleProps) {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const s = selected ? size + 8 : size;
-  const halo = { textShadowColor: c.bg, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } };
+  // A real halo (stacked on web, where one text-shadow is too faint) so road labels never read through
+  // the name (polish-audit M10).
+  const halo: TextStyle =
+    Platform.OS === "web"
+      ? ({ textShadow: `0 0 2px ${c.bg}, 0 0 3px ${c.bg}, 0 0 6px ${c.bg}, 0 0 10px ${c.bg}` } as TextStyle)
+      : { textShadowColor: c.bg, textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } };
   return (
     <View style={styles.row} pointerEvents="none">
       <View
         style={[
           styles.bubble,
-          { width: s, height: s, borderRadius: s / 2, backgroundColor: c.bg, borderColor: selected ? c.fg : c.bg, borderWidth: selected ? 2 : 0 },
+          // Dark mode: a hairline ring, or the bubble melts into the dark map (polish-audit M39).
+          { width: s, height: s, borderRadius: s / 2, backgroundColor: c.bg, borderColor: selected ? c.fg : isDark ? c.lineStrong : c.bg, borderWidth: selected ? 2 : isDark ? 1 : 0 },
           shadows.float.native,
         ]}
       >

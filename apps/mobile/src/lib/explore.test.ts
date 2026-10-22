@@ -47,6 +47,7 @@ describe("explore", () => {
   it("sheet header and search-this-area threshold", () => {
     expect(stripHeader(14, "Roncesvalles")).toBe("14 shops on Roncesvalles");
     expect(stripHeader(1)).toBe("1 shop on this strip");
+    expect(stripHeader(16, "Roncesvalles Village")).toBe("16 shops in Roncesvalles Village");
     expect(movedEnough({ lat: 43.65, lng: -79.45 }, { lat: 43.6501, lng: -79.4501 })).toBe(false);
     expect(movedEnough({ lat: 43.65, lng: -79.45 }, { lat: 43.66, lng: -79.45 })).toBe(true);
   });
