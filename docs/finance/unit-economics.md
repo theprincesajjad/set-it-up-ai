@@ -59,6 +59,8 @@ BIA prize and print costs (~$34k, paid from BIA revenue) and the founder-time
 support estimate inside the free-merchant cost. If the founder signs the first
 strip personally, the rep line drops further.
 
+**Launch plan (Oct 22, 2026):** the founder's "3-month free blitz, then switch on paid plans in month 4" plan, with founder-only / +2 / +4 rep options and the full option grid, is in `launch-plan-economics.md`. It uses this cost base. The fixed overhead in `model.py` sums to $340/mo: the $325 above leaves out the $15 app-store fees.
+
 ## 0. Pricing v2 (Oct 22, 2026): what the new free/paid split does to the numbers
 
 **Decision.** Only the loyalty program and reporting on it stay free (see `docs/business/pricing.md`). Everything else moves to Plus/Pro and stays hidden until its rollout gate.

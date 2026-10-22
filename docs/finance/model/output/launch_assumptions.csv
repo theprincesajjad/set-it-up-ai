@@ -1,0 +1,55 @@
+key,value,unit,note
+paid_launch_month,,model month,None = density gates (unlock_*_active_merchants). A number unlocks Plus AND Pro that month regardless of density
+acquisition_mode,strips,strips|blitz,'strips' = scheduled strip launches x acquisition_ramp (original); 'blitz' = capacity-driven founder/rep onboarding below
+activation_lag_months,0,months (0 or 1),"1 = a shop counts as active (25 members) from the month after it signs, not the month it signs"
+blitz_months,3,months,Founder's plan: months 1-3 are a non-stop onboarding blitz
+weeks_per_month,4.33,weeks,52/12
+blitz_strip_shops,35,target shops/strip,Founder: strips of ~30-40 repeat-visit shops
+blitz_eventual_sign_rate,0.6000,share of target shops,Assumption: ~70% eventually sign x Pricing v2 adoption hit -15% = 0.60 -> 21 shops/strip (the strip model's 27.2 counts 44 eligible storefronts)
+blitz_max_monthly_share,0.5000,share of a strip's unsigned pool signable per month,Assumption: owners need 1-3 visits; holdouts wait for proof. Caps how fast one strip can be signed however many reps you send
+founder_signs_per_week_blitz,4.00,signed shops/week,Founder: ~3-5 signed shops/week alone
+founder_signs_per_week_sustained,1.50,signed shops/week,Assumption: after month 3 the founder also runs support and paid upgrades
+month1_ramp,0.7500,x capacity in month 1,"Assumption: first strip, pitch and kit still being tuned; reps training"
+reps_blitz,0,student reps,Option: 0 / 2 / 4
+reps_sustained,0,student reps,"Reps kept on after month 3 (same people, fewer shifts)"
+rep_shifts_per_week_blitz,3,6-hr shifts/rep/week,Founder: 'a few shifts a week' per rep
+rep_shifts_per_week_sustained,1,6-hr shifts/rep/week,Assumption: part-time students after the blitz
+rep_shift_hours,6,hours,PRD
+rep_signs_per_shift,3.00,signed shops/shift,PRD: ~3 activations per 6-hour shift
+rep_training_hours,12,"paid hours/rep, once",Assumption: 2 paid training shifts (Ontario: training is paid time)
+strips_open_cap_blitz,1.50,new strips/month,Assumption: how many new strips the team can prep and walk per month
+strips_open_cap_sustained,0.5000,new strips/month,Assumption: after the blitz
+conv6_target,,share of active free merchants,"If set, conversion_multiplier is solved so that this share of a static cohort of active free merchants upgrades within 6 months of launch, at the reference prices (vertical-weighted)"
+price_ref_plus,39.00,CAD/month,Price at which the conversion rates are defined (plans.ts)
+price_ref_pro,79.00,CAD/month,Price at which the conversion rates are defined (plans.ts)
+price_elasticity_plus,0.00,elasticity of conversion,0 = conversion ignores price (original). Launch plan: 0.8
+price_elasticity_pro,0.00,elasticity of conversion,0 = conversion ignores price (original). Launch plan: 0.5
+post_launch_signup_haircut,0.00,share,Fewer shops agree to join once most of the product is paywalled (applies to every signup from the paid launch on)
+launch_free_churn_shock,0.00,"share of network, once",Free shops that leave in the launch month
+bia_one_off,{},CAD by month,"Optional: one BIA campaign sold early, e.g. {5: 2250} ($1,500-3,000 range)"
+LAUNCH_BASE.unlock_pro_active_merchants,40,,override used by every launch-plan option
+LAUNCH_BASE.pro_features_ready_month,1,,override used by every launch-plan option
+LAUNCH_BASE.unlock_plus_active_merchants,100,,override used by every launch-plan option
+LAUNCH_BASE.unlock_ads_active_merchants,300,,override used by every launch-plan option
+LAUNCH_BASE.dev_monthly_y1,0.00,,override used by every launch-plan option
+LAUNCH_BASE.dev_monthly_y2,1000.00,,override used by every launch-plan option
+LAUNCH_BASE.dev_monthly_y3,1500.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_hosting_base,60.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_saas_tools,60.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_insurance,100.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_accounting,75.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_phone_misc,30.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_marketing,0.00,,override used by every launch-plan option
+LAUNCH_BASE.fixed_legal_reserve,0.00,,override used by every launch-plan option
+LAUNCH_BASE.one_time_costs,"{1: 1500.0, 3: 2500.0}",,override used by every launch-plan option
+LAUNCH_BASE.strip_launch_cost,300.00,,override used by every launch-plan option
+LAUNCH_BASE.bia_campaigns_per_strip_year,0.00,,override used by every launch-plan option
+LAUNCH_BASE.acquisition_mode,blitz,,override used by every launch-plan option
+LAUNCH_BASE.activation_lag_months,1,,override used by every launch-plan option
+LAUNCH_BASE.plus_features_ready_month,1,,override used by every launch-plan option
+LAUNCH_BASE.price_elasticity_plus,0.8000,,override used by every launch-plan option
+LAUNCH_BASE.price_elasticity_pro,0.5000,,override used by every launch-plan option
+LAUNCH_BASE.conv6_target,0.2000,,override used by every launch-plan option
+ONBOARDING_OPTIONS.founder,"{'reps_blitz': 0, 'reps_sustained': 0, 'founder_signs_per_week_blitz': 4.0, 'strips_open_cap_blitz': 1.5, 'strips_open_cap_sustained': 0.5}",,Founder alone
+ONBOARDING_OPTIONS.reps2,"{'reps_blitz': 2, 'reps_sustained': 2, 'founder_signs_per_week_blitz': 3.0, 'strips_open_cap_blitz': 3.0, 'strips_open_cap_sustained': 1.0}",,Founder + 2 reps
+ONBOARDING_OPTIONS.reps4,"{'reps_blitz': 4, 'reps_sustained': 4, 'founder_signs_per_week_blitz': 2.0, 'strips_open_cap_blitz': 4.0, 'strips_open_cap_sustained': 1.5}",,Founder + 4 reps
