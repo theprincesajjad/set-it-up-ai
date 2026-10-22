@@ -14,7 +14,10 @@ export interface Config {
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
   email: { provider: "console" | "resend"; resendApiKey?: string; from: string };
   push: { provider: "console" | "expo"; expoAccessToken?: string };
-  stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string } };
+  stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string };
+    /** STRIPE_DIRECT_CHARGES: honour merchants.chargeMode = "direct" (merchant of record). Default off. */
+    directCharges?: boolean;
+  };
   square: { appId?: string; appSecret?: string; webhookSignatureKey?: string; environment: "sandbox" | "production" };
   clover: { appId?: string; appSecret?: string; environment: "sandbox" | "production"; webhookAuthCode?: string };
   shopify: { apiKey?: string; apiSecret?: string };
@@ -71,6 +74,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         proMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
         proAnnual: env.STRIPE_PRICE_PRO_ANNUAL,
       },
+      directCharges: env.STRIPE_DIRECT_CHARGES === "1" || env.STRIPE_DIRECT_CHARGES === "true",
     },
     square: { appId: env.SQUARE_APP_ID, appSecret: env.SQUARE_APP_SECRET, webhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY, environment: env.SQUARE_ENV === "production" ? "production" : "sandbox" },
     clover: { appId: env.CLOVER_APP_ID, appSecret: env.CLOVER_APP_SECRET, environment: env.CLOVER_ENV === "production" ? "production" : "sandbox", webhookAuthCode: env.CLOVER_WEBHOOK_AUTH_CODE },

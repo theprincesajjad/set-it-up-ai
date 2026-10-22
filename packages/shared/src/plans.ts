@@ -109,6 +109,18 @@ export const ADD_ONS: Record<AddOnId, { id: AddOnId; name: string; priceCents: n
 };
 
 /**
+ * Feature keys an add-on unlocks for merchants on at least the Growth tier
+ * (Pro already includes them). Restaurant Growth + banquet_module = banquet booking.
+ */
+export const ADD_ON_UNLOCKS: Partial<Record<AddOnId, readonly FeatureKey[]>> = {
+  banquet_module: ["restaurant.banquet"],
+  phone_ai: ["restaurant.phone_ai"],
+};
+
+/** WhatsApp messages granted per whatsapp_1000 pack (per billing period). */
+export const WHATSAPP_PACK_MESSAGES = 1000;
+
+/**
  * Platform fees on payments (combined strategy). Orders: 0% for shops on a
  * paid plan or restaurant pack ("commission-free"), 1.5% for Free shops, plus
  * an optional $0.49 customer service fee. Deposits, invoices and tiffin billing: 1%.
@@ -354,6 +366,8 @@ export interface FeatureContext {
   override?: boolean | null;
   /** The merchant's restaurant pack tier, if they bought it. */
   restaurantTier?: RestaurantTier | null;
+  /** Active add-on ids (merchant_add_ons). banquet_module / phone_ai unlock their feature on Growth. */
+  addOns?: readonly string[];
 }
 
 /**
@@ -368,10 +382,17 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (ctx.override === false) return false;
   if (ctx.stage === "hidden") return false;
   if (def.pack === "restaurant") {
-    if (!ctx.restaurantTier || RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!]) return false;
+    if (!ctx.restaurantTier) return false;
+    if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;
   } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan]) return false;
   if (ctx.stage === "beta") return ctx.betaOptIn === true;
   return true;
+}
+
+/** Growth (or higher) merchants with the matching add-on get the feature without Pro. */
+function unlockedByAddOn(key: FeatureKey, ctx: FeatureContext): boolean {
+  if (!ctx.addOns?.length || !ctx.restaurantTier || RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK.growth) return false;
+  return ctx.addOns.some((id) => ADD_ON_UNLOCKS[id as AddOnId]?.includes(key));
 }
 
 /** Any restaurant tier includes everything in Café & Retail (ordering, promos, marketing, POS sync). */

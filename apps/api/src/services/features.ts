@@ -1,10 +1,19 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { featureInterest, featureOverrides, featureRollouts, merchants } from "@ll/db";
+import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants } from "@ll/db";
 import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 
 type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"] };
+
+/** Active add-on ids per merchant (merchant_add_ons.status = active). */
+export async function activeAddOns(db: DbOrTx, merchantIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (!merchantIds.length) return out;
+  const rows = await db.select().from(merchantAddOns).where(and(inArray(merchantAddOns.merchantId, merchantIds), eq(merchantAddOns.status, "active")));
+  for (const r of rows) out.set(r.merchantId, [...(out.get(r.merchantId) ?? []), r.addOnId]);
+  return out;
+}
 
 export async function getRolloutStages(db: DbOrTx): Promise<Record<FeatureKey, RolloutStage>> {
   const rows = await db.select().from(featureRollouts);
@@ -25,15 +34,16 @@ export interface FeatureState {
 }
 
 export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promise<Record<FeatureKey, FeatureState>> {
-  const [stages, overrides] = await Promise.all([
+  const [stages, overrides, addOns] = await Promise.all([
     getRolloutStages(db),
     db.select().from(featureOverrides).where(eq(featureOverrides.merchantId, merchant.id)),
+    activeAddOns(db, [merchant.id]),
   ]);
   const ov = new Map(overrides.map((o) => [o.key, o.enabled]));
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
     const stage = stages[key];
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, stage, betaOptIn: merchant.betaOptIn, override: ov.get(key) ?? null });
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, addOns: addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: ov.get(key) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -80,18 +90,19 @@ export async function isFeatureOn(db: DbOrTx, merchant: Merchant, key: FeatureKe
 export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   const out = new Map<string, Set<FeatureKey>>();
   if (!list.length || !keys.length) return out;
-  const [stages, overrides] = await Promise.all([
+  const [stages, overrides, addOns] = await Promise.all([
     getRolloutStages(db),
     db
       .select()
       .from(featureOverrides)
       .where(and(inArray(featureOverrides.merchantId, list.map((m) => m.id)), inArray(featureOverrides.key, [...keys]))),
+    activeAddOns(db, list.map((m) => m.id)),
   ]);
   const ov = new Map(overrides.map((o) => [`${o.merchantId}:${o.key}`, o.enabled]));
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, addOns: addOns.get(m.id), stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }
@@ -101,7 +112,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
 /** Same as enabledFeaturesFor, when only merchant ids are at hand. */
 export async function enabledFeaturesByMerchantId(db: DbOrTx, ids: string[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   if (!ids.length) return new Map();
-  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
+  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
   return enabledFeaturesFor(db, rows, keys);
 }
 

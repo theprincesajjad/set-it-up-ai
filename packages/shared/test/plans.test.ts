@@ -121,6 +121,17 @@ describe("restaurant pack", () => {
     expect(effectivePlan("pro", "starter")).toBe("pro");
     for (const k of RESTAURANT_FEATURES) expect(FEATURES[k].defaultStage).toBe("ga");
   });
+  it("unlocks banquet and phone AI on Growth with the matching add-on only", () => {
+    const g = { plan: "free", stage: "ga", restaurantTier: "growth" } as const;
+    expect(isFeatureEnabled("restaurant.banquet", g)).toBe(false);
+    expect(isFeatureEnabled("restaurant.banquet", { ...g, addOns: ["banquet_module"] })).toBe(true);
+    expect(isFeatureEnabled("restaurant.phone_ai", { ...g, addOns: ["banquet_module"] })).toBe(false);
+    expect(isFeatureEnabled("restaurant.phone_ai", { ...g, addOns: ["phone_ai"] })).toBe(true);
+    expect(isFeatureEnabled("restaurant.kds", { ...g, addOns: ["banquet_module", "phone_ai"] })).toBe(false);
+    // Starter can't buy its way into Growth features, and hidden stages still win.
+    expect(isFeatureEnabled("restaurant.banquet", { plan: "free", stage: "ga", restaurantTier: "starter", addOns: ["banquet_module"] })).toBe(false);
+    expect(isFeatureEnabled("restaurant.banquet", { ...g, stage: "hidden", addOns: ["banquet_module"] })).toBe(false);
+  });
   it("does not make Plus purchasable just because restaurant features are live", () => {
     expect(isPlanAvailable("plus", {})).toBe(false);
   });
