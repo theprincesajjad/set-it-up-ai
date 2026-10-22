@@ -90,7 +90,7 @@ export function restaurantUnlock(slug: string): { name: string; description: str
   const def = FEATURES[r.feature];
   const plan = RESTAURANT_PLANS[def.packTier ?? "starter"];
   const add = SLUG_ADD_ON[slug] ? ADD_ONS[SLUG_ADD_ON[slug]!] : null;
-  return { name: r.label, description: def.description, tier: plan.name, tierPriceCents: plan.priceCents, addOn: add && plan.tier === "pro" ? { name: add.name, priceCents: add.priceCents } : null };
+  return { name: r.label, description: def.description, tier: plan.name, tierPriceCents: plan.priceCents, addOn: add && plan.tier === "pro" ? { name: add.name.replace(/ \(Growth\)/, ""), priceCents: add.priceCents } : null };
 }
 
 /** Restaurant modules split by entitlement (enabled = merchant's enabled feature keys, add-ons included). */

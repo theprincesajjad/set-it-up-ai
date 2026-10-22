@@ -250,7 +250,9 @@ export function approvalToken(url: string | null | undefined): string | null {
 // ---------------------------------------------------------------------------
 // Banquet
 // ---------------------------------------------------------------------------
-export const HALL_START_TIMES = ["11:00", "12:00", "17:00", "18:00", "19:00"] as const;
+/** Earliest and latest start offered for a hold, in 30-minute steps (an event may run past midnight). */
+export const HALL_FIRST_START = "09:00";
+export const HALL_LAST_START = "22:00";
 export const HALL_HOURS = [3, 4, 5, 6] as const;
 
 /** Hold window for a day, a start time and a duration in hours. */
@@ -271,6 +273,22 @@ export function busyOnDay(busy: BusyWindow[], day: string): BusyWindow[] {
   const from = torontoInstant(day, "00:00").getTime();
   const to = torontoInstant(addDays(day, 1), "00:00").getTime();
   return busy.filter((b) => new Date(b.startsAt).getTime() < to && new Date(b.endsAt).getTime() > from);
+}
+
+/**
+ * Start times ("HH:MM", Toronto, 30-minute steps) on `day` where a hold of `hours` fits in the hall's free time:
+ * the whole window must clear every confirmed booking and live hold. Edges may touch.
+ */
+export function freeStartTimes(busy: BusyWindow[], day: string, hours: number): string[] {
+  const [h0, m0] = HALL_FIRST_START.split(":").map(Number) as [number, number];
+  const [h1, m1] = HALL_LAST_START.split(":").map(Number) as [number, number];
+  const out: string[] = [];
+  for (let min = h0 * 60 + m0; min <= h1 * 60 + m1; min += 30) {
+    const hhmm = `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+    const w = holdWindow(day, hhmm, hours);
+    if (!overlapsBusy(busy, w.startsAt, w.endsAt)) out.push(hhmm);
+  }
+  return out;
 }
 
 /** Does a proposed window overlap anything busy? */

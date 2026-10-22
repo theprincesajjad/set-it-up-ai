@@ -5,11 +5,21 @@ import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTran
 
 export const LOCALE_COOKIE = "ll_lang";
 
+/**
+ * Variables that hold Latin runs (shop and customer names, amounts, phone numbers). In a right-to-left locale `t()` wraps
+ * them in a first-strong isolate so "Sarson Dhaba." or "$12.50" can't reorder the Urdu around them; `rich()` wraps them in <bdi>.
+ */
+const LATIN_VARS = new Set(["shop", "name", "amount", "price", "certifier", "phone"]);
+const FSI = "\u2068";
+const PDI = "\u2069";
+
 interface LocaleValue {
   locale: Locale;
   info: LocaleInfo;
   dir: "ltr" | "rtl";
   t: (key: MessageKey, vars?: Vars) => string;
+  /** Like `t`, but the Latin variables (shop, name, amount, price, certifier, phone) come back wrapped in <bdi>. */
+  rich: (key: MessageKey, vars?: Vars) => ReactNode;
   setLocale: (next: Locale) => void;
   money: (cents: number, currency?: string) => string;
   number: (n: number) => string;
@@ -46,7 +56,21 @@ export function LocaleProvider({ locale, children }: { locale: Locale; children:
       locale,
       info: LOCALES[locale],
       dir: LOCALES[locale].dir,
-      t: (key, vars) => translate(locale, key, vars),
+      t: (key, vars) => {
+        const rtl = LOCALES[locale].dir === "rtl";
+        if (!rtl || !vars) return translate(locale, key, vars);
+        const v: Vars = {};
+        for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `${FSI}${x}${PDI}` : x;
+        return translate(locale, key, v);
+      },
+      rich: (key, vars) => {
+        if (!vars) return translate(locale, key);
+        const v: Vars = {};
+        for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `\uE000${k}\uE001` : x;
+        return translate(locale, key, v)
+          .split(/\uE000(\w+)\uE001/)
+          .map((part, i) => (i % 2 ? <bdi key={i}>{vars[part]}</bdi> : part));
+      },
       setLocale,
       money: (cents, currency) => formatCurrency(locale, cents, currency),
       number: (n) => formatNumber(locale, n),

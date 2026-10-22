@@ -62,6 +62,7 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       autoAssign: (onlyUnassigned = true) => c.post<{ assigned: number }>(`${t}/routes/auto-assign`, { onlyUnassigned }),
       subscribers: (q: Q = {}) => c.get<tiffinApi.SubscribersResponse>(`${t}/subscribers`, { query: q }),
       subscriber: (id: string) => c.get<tiffinApi.SubscriberDto>(`${t}/subscribers/${enc(id)}`),
+      subscriberCharges: (id: string) => c.get<tiffinApi.SubscriberChargesResponse>(`${t}/subscribers/${enc(id)}/charges`),
       updateSubscriber: (id: string, body: { routeId?: string | null; stopOrder?: number | null; addressNotes?: string | null }) => c.patch<tiffinApi.SubscriberDto>(`${t}/subscribers/${enc(id)}`, body),
       pause: (id: string, body: tiffinApi.PauseBody) => c.post<SubscriberChange>(`${t}/subscribers/${enc(id)}/pause`, body),
       resume: (id: string) => c.post<SubscriberChange>(`${t}/subscribers/${enc(id)}/resume`, {}),

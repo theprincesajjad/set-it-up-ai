@@ -117,3 +117,12 @@
     animation: none;
   }
 }
+
+/* Urdu (Noto Nastaliq) has tall ascenders and deep descenders: headings need generous leading or one line's flourishes
+   land on the line above, and on Latin shop names set in that line. Applies inside any <LocaleScope locale="ur">. */
+[lang^="ur"] :is(h1, h2, h3, .text-large-title, .text-title, .text-headline) {
+  line-height: 2.1;
+}
+[lang^="ur"] :is(p, li, dd, dt, label, legend) {
+  line-height: 1.8;
+}

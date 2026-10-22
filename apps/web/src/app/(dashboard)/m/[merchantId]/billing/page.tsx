@@ -5,7 +5,7 @@ import { useState } from "react";
 import { FEATURES, FEATURE_KEYS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useNetworkShops } from "@/components/dashboard/FeatureTeaser";
-import { Dot, Meter, PageHeader, Panel, Section, Segmented } from "@/components/dashboard/kit";
+import { Dot, Meter, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async, NoAccess } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
@@ -32,7 +32,7 @@ export default function BillingPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Paid tools switch on as the network grows." />
-      <Async state={state}>{(b) => <Billing b={b} reload={state.reload} />}</Async>
+      <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(b) => <Billing b={b} reload={state.reload} />}</Async>
     </div>
   );
 }

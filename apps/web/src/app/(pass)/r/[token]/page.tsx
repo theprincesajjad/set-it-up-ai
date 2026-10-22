@@ -1,13 +1,12 @@
 import { Link2Off } from "lucide-react";
 import type { Metadata } from "next";
 import { ReviewView } from "@/components/pass/ReviewView";
-import { COPY } from "@/components/pass/restaurantCopy";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "How was your visit?", robots: { index: false, follow: false } };
@@ -18,7 +17,7 @@ type Props = { params: Promise<{ token: string }>; searchParams: Promise<Record<
 export default async function ReviewPage({ params, searchParams }: Props) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
-  const c = COPY[locale];
+  const t = await getT(sp);
   const data = await publicServerApi()
     .public.review(token)
     .catch((e: unknown) => (isApiError(e) && (e.status === 404 || e.status === 400) ? ("gone" as const) : ("error" as const)));
@@ -26,9 +25,9 @@ export default async function ReviewPage({ params, searchParams }: Props) {
     <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
       <LanguageSwitcher className="self-start" />
       {data === "gone" ? (
-        <EmptyState icon={Link2Off} title={c.reviewGoneTitle} description={c.reviewGoneBody} />
+        <EmptyState icon={Link2Off} title={t("review.goneTitle")} description={t("review.goneBody")} />
       ) : data === "error" ? (
-        <ErrorState title={c.loadError} description="" action={<Button variant="secondary" href={`/r/${encodeURIComponent(token)}`}>{c.tryAgain}</Button>} />
+        <ErrorState title={t("review.loadError")} description="" action={<Button variant="secondary" href={`/r/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
       ) : (
         <ReviewView token={token} initial={data} />
       )}

@@ -10,15 +10,13 @@ import { browserApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { useLocale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { COPY, fill } from "./restaurantCopy";
 
 /**
  * /r/<token>: one-tap rating, optional private note, then the Google review link. The link is always
  * offered when the shop has one (Google's policy: never gate reviews on the rating) and leads for 4 and 5 stars.
  */
 export function ReviewView({ token, initial }: { token: string; initial: whatsappApi.PublicReviewView }) {
-  const { locale, number } = useLocale();
-  const c = COPY[locale];
+  const { number, t, rich } = useLocale();
   const shop = initial.merchant;
   const [rating, setRating] = useState<number>(initial.rating ?? 0);
   const [feedback, setFeedback] = useState("");
@@ -37,7 +35,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
     try {
       setDone(await browserApi.public.submitReview(token, { rating, ...(feedback.trim() ? { feedback: feedback.trim() } : {}) }));
     } catch (e) {
-      setError(isApiError(e) && !e.isNetwork && e.status < 500 && e.status !== 404 ? e.message : c.reviewError);
+      setError(isApiError(e) && !e.isNetwork && e.status < 500 && e.status !== 404 ? e.message : t("review.error"));
     } finally {
       setBusy(false);
     }
@@ -45,7 +43,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
 
   const google = url ? (
     <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: lead ? "primary" : "secondary", size: "lg", fullWidth: true })}>
-      {lead ? c.googleLead : c.googleAlso}
+      {lead ? t("review.googleLead") : t("review.googleAlso")}
     </a>
   ) : null;
 
@@ -58,17 +56,17 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
 
       {answered ? (
         <section aria-live="polite" className="flex flex-col gap-4">
-          <Stars value={finalRating} readOnly label={(n) => fill(c.starLabel, { n: number(n) })} />
-          <h1 className={cn("text-title text-fg [text-wrap:balance]", locale === "ur" && "leading-[1.7]")}>{done ? fill(lead ? c.thanksHigh : c.thanksLow, { shop: shop.name }) : fill(c.alreadyRated, { n: number(finalRating) })}</h1>
+          <Stars value={finalRating} readOnly label={(n) => t("review.stars", { n: number(n) })} />
+          <h1 className="text-title text-fg [text-wrap:balance]">{done ? rich(lead ? "review.thanksHigh" : "review.thanksLow", { shop: shop.name }) : t("review.alreadyRated", { n: number(finalRating) })}</h1>
           {google}
         </section>
       ) : (
         <section className="flex flex-col gap-5">
           <div>
-            <h1 className={cn("text-title text-fg [text-wrap:balance]", locale === "ur" && "leading-[1.7]")}>{fill(c.reviewTitle, { shop: shop.name })}</h1>
-            <p className={cn("mt-1 text-body text-fg-muted", locale === "ur" && "leading-[1.9]")}>{c.reviewSub}</p>
+            <h1 className="text-title text-fg [text-wrap:balance]">{rich("review.title", { shop: shop.name })}</h1>
+            <p className="mt-1 text-body text-fg-muted">{t("review.sub")}</p>
           </div>
-          <Stars value={rating} onChange={setRating} label={(n) => fill(c.starLabel, { n: number(n) })} />
+          <Stars value={rating} onChange={setRating} label={(n) => t("review.stars", { n: number(n) })} />
           {rating ? (
             <form
               className="flex flex-col gap-4"
@@ -77,10 +75,10 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
                 void submit();
               }}
             >
-              <TextField type="textarea" label={c.feedbackLabel} hint={fill(c.feedbackHint, { shop: shop.name })} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} optionalLabel={false} autoFocus />
+              <TextField type="textarea" label={t("review.feedbackLabel")} hint={rich("review.feedbackHint", { shop: shop.name })} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} optionalLabel={false} autoFocus />
               {error ? <Banner tone="danger">{error}</Banner> : null}
               <Button type="submit" size="lg" fullWidth loading={busy}>
-                {c.send}
+                {t("review.send")}
               </Button>
             </form>
           ) : null}

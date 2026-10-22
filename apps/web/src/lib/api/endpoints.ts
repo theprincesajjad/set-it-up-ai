@@ -20,6 +20,7 @@ import type {
   networkApi,
   repApi,
   reportsApi,
+  restaurantApi,
   serviceApi,
   staffApi,
   walletApi,
@@ -73,6 +74,8 @@ export function llApi(c: ApiClient) {
       review: (token: string) => c.get<whatsappApi.PublicReviewView>(`/v1/public/reviews/${enc(token)}`, { anonymous: true }),
       submitReview: (token: string, body: whatsappApi.ReviewSubmitBody) => c.post<whatsappApi.ReviewSubmitResponse>(`/v1/public/reviews/${enc(token)}`, body, { anonymous: true }),
       whatsappPay: (orderId: string, t: string) => c.get<whatsappApi.WhatsappPayView>(`/v1/public/whatsapp/pay/${enc(orderId)}`, { anonymous: true, query: { t } }),
+      // App payment page (/pay/intent/:id?cs=): what a PaymentIntent from the mobile app is paying for
+      paymentIntent: (paymentIntentId: string, cs: string) => c.get<restaurantApi.PaymentIntentView>(`/v1/public/payments/${enc(paymentIntentId)}`, { anonymous: true, query: { cs } }),
       // Split bill guest page (/pay/split/:token)
       ...publicSplitEndpoints(c),
     },

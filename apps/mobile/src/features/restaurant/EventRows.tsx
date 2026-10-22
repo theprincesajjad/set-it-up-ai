@@ -16,7 +16,7 @@ export const EVENT_TONE: Record<restaurantApi.CateringStatus, Tone> = { inquiry:
 export const BOOKING_TONE: Record<restaurantApi.HallBookingStatus, Tone> = { hold: "warning", confirmed: "success", completed: "neutral", cancelled: "neutral" };
 
 /** One hall booking: when, the hold countdown, and Pay deposit / Cancel hold. */
-export function BookingRow({ booking, shop, last }: { booking: restaurantApi.HallBookingDto; shop?: string; last: boolean }) {
+export function BookingRow({ booking, last }: { booking: restaurantApi.HallBookingDto; last: boolean }) {
   const { c } = useTheme();
   const { t, date, time } = useLocale();
   const money = useMoney();
@@ -67,7 +67,7 @@ export function BookingRow({ booking, shop, last }: { booking: restaurantApi.Hal
         strong
         divider={false}
         title={booking.hallName ?? t("rest.bk.hall")}
-        subtitle={[shop, `${date(booking.startsAt, { weekday: "short", day: "numeric", month: "short" })}, ${time(booking.startsAt)} – ${time(booking.endsAt)}`, t("rest.guests", { n: booking.headcount })].filter(Boolean).join(" · ")}
+        subtitle={[booking.merchantName, `${date(booking.startsAt, { weekday: "short", day: "numeric", month: "short" })}, ${time(booking.startsAt)} – ${time(booking.endsAt)}`, t("rest.guests", { n: booking.headcount })].filter(Boolean).join(" · ")}
         trailing={<StatusBadge tone={BOOKING_TONE[status]}>{t(`rest.bk.status.${status}` as const)}</StatusBadge>}
       />
       <View style={{ paddingBottom: 14, gap: 10 }}>

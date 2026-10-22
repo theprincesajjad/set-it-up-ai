@@ -60,7 +60,7 @@ function DiscountCardsPage() {
                 <li key={c.id} className="flex flex-col gap-3">
                   <DiscountCard card={c} shop={detail.merchant} live={false} />
                   <div className="flex items-center gap-2 border-y border-line py-1">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 [&_label]:text-meta [&_label]:text-fg-muted">
                       <Switch label="Active" checked={c.active} onChange={async (v) => {
                         await act.run(() => api.updateDiscountCard(c.id, { active: v }));
                         await cards.reload();

@@ -113,6 +113,60 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
   );
 }
 
+const CHARGE_TONE: Record<tiffinApi.ChargeDto["status"], [DotTone, string]> = {
+  pending: ["info", "Pending"],
+  paid: ["positive", "Paid"],
+  failed: ["negative", "Failed"],
+  refunded: ["neutral", "Refunded"],
+};
+
+/** One subscriber's billing periods, newest first: period, amount, skip credit, status and the day it was paid. */
+function Charges({ sub }: { sub: tiffinApi.SubscriberDto }) {
+  const { api } = useMerchant();
+  const state = useApi(() => api.tiffin.subscriberCharges(sub.id), [api, sub.id, sub.status, sub.currentPeriodStart]);
+  const items = state.data?.items ?? [];
+  return (
+    <Section title="Charges">
+      {state.error && !state.data ? (
+        <p className="text-meta text-negative">
+          Couldn&apos;t load charges.{" "}
+          <button type="button" onClick={() => void state.reload()} className="font-medium underline underline-offset-4">Try again</button>
+        </p>
+      ) : !state.data ? (
+        <p className="text-meta text-fg-muted">Loading charges...</p>
+      ) : !items.length ? (
+        <p className="text-meta text-fg-muted">Nothing billed yet. The first charge appears when they pay at sign-up.</p>
+      ) : (
+        <div className="-mx-1 overflow-x-auto px-1">
+          <table className="w-full min-w-[420px] text-meta">
+            <caption className="sr-only">Charges for {sub.customer.name ?? "this subscriber"}</caption>
+            <thead>
+              <tr className="border-b border-line text-start text-fg-muted">
+                <th scope="col" className="py-1.5 pe-2 text-start font-normal">Period</th>
+                <th scope="col" className="py-1.5 pe-2 text-end font-normal">Amount</th>
+                <th scope="col" className="py-1.5 pe-2 text-end font-normal">Credit</th>
+                <th scope="col" className="py-1.5 pe-2 text-start font-normal">Status</th>
+                <th scope="col" className="py-1.5 text-end font-normal">Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((c) => (
+                <tr key={c.id} className="border-b border-line last:border-b-0">
+                  <td className="py-2 pe-2">{dayShort(c.periodStart)} to {dayShort(c.periodEnd)}</td>
+                  <td className="py-2 pe-2 text-end tabular-nums">{formatMoney(c.amountCents)}</td>
+                  <td className="py-2 pe-2 text-end tabular-nums text-fg-muted">{c.creditCents ? `-${formatMoney(c.creditCents)}` : "None"}</td>
+                  <td className="py-2 pe-2"><Dot tone={CHARGE_TONE[c.status][0]}>{CHARGE_TONE[c.status][1]}</Dot></td>
+                  <td className="py-2 text-end tabular-nums text-fg-muted">{c.paidAt ? formatDateYear(c.paidAt) : "Not yet"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.SubscriberDto; routes: tiffinApi.RouteDto[]; onClose: () => void; onChanged: (s: tiffinApi.SubscriberDto) => void }) {
   const { api, role } = useMerchant();
   const toast = useToast();
@@ -184,6 +238,7 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
             />
             {sub.status === "past_due" ? <p className="mt-2 text-meta text-negative">Last payment failed. Meals are on hold until it goes through; the customer has a retry link.</p> : null}
           </Section>
+          <Charges sub={sub} />
           {sub.status !== "cancelled" ? (
             <Section title="On their behalf">
               <div className="flex flex-wrap gap-2">

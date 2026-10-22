@@ -33,7 +33,7 @@ function MessagesPage() {
   ];
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Messages" description="Email your regulars. The legally required footer and unsubscribe link are added for you." actions={<><Button size="sm" variant="secondary" iconStart={Workflow} href={`${base}/messages/automations`}>Automations</Button><Button size="sm" iconStart={PenLine} href={`${base}/messages/new`}>Write an email</Button></>} />
+      <PageHeader flush title="Messages" description="Email your regulars. The legally required footer and unsubscribe link are added for you." actions={<><Button size="sm" variant="secondary" iconStart={Workflow} href={`${base}/messages/automations`}>Automations</Button><Button size="sm" iconStart={PenLine} href={`${base}/messages/new`}>Write an email</Button></>} />
       <AudienceHeader />
       <DataTable caption="Messages" columns={cols} rows={list.data?.items ?? []} rowKey={(m) => m.id} loading={list.loading} error={list.error} onRetry={list.reload} onRowClick={(m) => router.push(`${base}/messages/${m.id}`)} empty={<EmptyState icon={Mail} title="Say hello to your regulars" description="Customers who said yes to hearing from you will get it." action={<Button variant="secondary" size="sm" href={`${base}/messages/new`}>Write an email</Button>} />} />
     </div>

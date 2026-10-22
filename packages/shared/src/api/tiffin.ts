@@ -254,6 +254,10 @@ export interface SubscriptionDto {
 export interface SubscriberDto extends SubscriptionDto {
   customer: { id: string; name: string | null; phone: string | null; email: string | null };
 }
+/** GET /tiffin/subscribers/:subId/charges: one subscriber's billing periods, newest first (max 24). */
+export interface SubscriberChargesResponse {
+  items: ChargeDto[];
+}
 export interface SubscribersResponse {
   items: SubscriberDto[];
   nextCursor: string | null;

@@ -8,7 +8,7 @@ import { t as copy } from "../../copy/en-CA";
 import { ChipGroup, DateField, InfoRow, useMoney } from "../../features/restaurant/components";
 import { featureOff, rk, useHalls } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
-import { addDays, busyOnDay, dayToDate, fromPerHeadCents, HALL_HOURS, HALL_START_TIMES, holdWindow, overlapsBusy, torontoInstant, torontoToday } from "../../lib/restaurant";
+import { addDays, busyOnDay, dayToDate, freeStartTimes, fromPerHeadCents, HALL_HOURS, holdWindow, overlapsBusy, torontoInstant, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
@@ -92,7 +92,7 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
   const qc = useQueryClient();
   const today = torontoToday();
   const [day, setDay] = useState<string | null>(null);
-  const [start, setStart] = useState<string>("18:00");
+  const [start, setStart] = useState<string | null>(null);
   const [hours, setHours] = useState<number>(5);
   const [pkg, setPkg] = useState<string | null>(null);
   const [type, setType] = useState<restaurantApi.CateringEventType>("wedding");
@@ -112,7 +112,10 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
   });
   const busyList = avail.data?.halls.find((x) => x.hall.id === hall?.id)?.busy ?? [];
   const dayBusy = day ? busyOnDay(busyList, day) : [];
-  const win = day ? holdWindow(day, start, hours) : null;
+  // Start times come from the hall's free time that day for the chosen length; a stale pick falls back to the first free one.
+  const times = useMemo(() => (day ? freeStartTimes(busyList, day, hours) : []), [busyList, day, hours]);
+  const startAt = start && times.includes(start) ? start : (times[0] ?? null);
+  const win = day && startAt ? holdWindow(day, startAt, hours) : null;
   const clash = win ? overlapsBusy(busyList, win.startsAt, win.endsAt) : false;
   const count = Number.parseInt(guests, 10);
   const guestsOk = Number.isInteger(count) && count >= 1 && !!hall && count <= hall.capacity;
@@ -165,8 +168,12 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
       ) : null}
       {day ? (
         <>
-          <ChipGroup label={t("rest.bk.start")} value={start} onChange={setStart} options={HALL_START_TIMES.map((h) => ({ value: h as string, label: time(torontoInstant(day, h)) }))} />
           <ChipGroup label={t("rest.bk.length")} value={hours} onChange={setHours} options={HALL_HOURS.map((h) => ({ value: h as number, label: t("rest.bk.hours", { n: h }) }))} />
+          {times.length > 0 ? (
+            <ChipGroup label={t("rest.bk.start")} value={startAt} onChange={setStart} options={times.map((h) => ({ value: h, label: time(torontoInstant(day, h)) }))} />
+          ) : (
+            <Banner variant="danger">{t("rest.bk.noTimes", { n: hours })}</Banner>
+          )}
           {clash ? <Banner variant="danger">{t("rest.bk.clash")}</Banner> : null}
         </>
       ) : null}

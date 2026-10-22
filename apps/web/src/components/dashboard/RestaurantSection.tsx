@@ -9,14 +9,14 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { RESTAURANT_MORE, hasRestaurantFeature, enabledSet, restaurantModules } from "@/lib/dashboard/nav";
-import { FeatureTeaser } from "./FeatureTeaser";
+import { TierTeaser } from "./restaurant/shared";
 import { useMerchant } from "./MerchantContext";
 
 export function RestaurantSection({ children }: { children: ReactNode }) {
   const { base, features } = useMerchant();
   const pathname = usePathname() ?? "";
   const enabled = enabledSet(features.features);
-  if (!hasRestaurantFeature(enabled)) return <FeatureTeaser featureKey="restaurant.dietary_tags" title="Restaurant tools" />;
+  if (!hasRestaurantFeature(enabled)) return <TierTeaser featureKey="restaurant.dietary_tags" title="Restaurant tools" description="Halal and dietary tags, tiffin subscriptions, catering, pot pre-orders and WhatsApp ordering, built for restaurants." />;
   const { unlocked, locked } = restaurantModules(enabled);
   const tabs = [...unlocked, ...(locked.length ? [RESTAURANT_MORE] : [])];
   return (

@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StatusBadge } from "../../features/restaurant/components";
 import { BookingRow, EVENT_TONE } from "../../features/restaurant/EventRows";
-import { useRestaurantMine, useShopNames } from "../../features/restaurant/queries";
+import { useRestaurantMine } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { dayToDate } from "../../lib/restaurant";
 import { Card, EmptyState, ListRow, Screen, SegmentedControl, SkeletonList, Store, Users } from "../../ui";
@@ -13,7 +13,6 @@ export default function MyEvents() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const { t, date } = useLocale();
   const mine = useRestaurantMine({ always: true });
-  const names = useShopNames();
   const [tab, setTab] = useState<"catering" | "halls">(params.tab === "halls" ? "halls" : "catering");
   const events = [...mine.events].sort((a, b) => b.eventDate.localeCompare(a.eventDate));
   const bookings = [...mine.bookings].sort((a, b) => b.startsAt.localeCompare(a.startsAt));
@@ -41,7 +40,7 @@ export default function MyEvents() {
                 strong
                 divider={i < events.length - 1}
                 title={`${t(`event.${e.eventType}` as MessageKey)} · ${t("rest.guests", { n: e.headcount })}`}
-                subtitle={[names.get(e.merchantId), date(dayToDate(e.eventDate), { weekday: "short", day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}
+                subtitle={[e.merchantName, date(dayToDate(e.eventDate), { weekday: "short", day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}
                 trailing={<StatusBadge tone={EVENT_TONE[e.status]}>{e.status === "quoted" ? t("rest.cat.quoteReady") : t(`rest.cat.status.${e.status}` as const)}</StatusBadge>}
                 onPress={() => router.push(`/events/${e.id}`)}
               />
@@ -53,7 +52,7 @@ export default function MyEvents() {
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
           {bookings.map((b, i) => (
-            <BookingRow key={b.id} booking={b} shop={names.get(b.merchantId)} last={i === bookings.length - 1} />
+            <BookingRow key={b.id} booking={b} last={i === bookings.length - 1} />
           ))}
         </Card>
       )}

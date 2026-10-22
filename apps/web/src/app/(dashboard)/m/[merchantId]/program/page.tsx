@@ -28,7 +28,14 @@ export default function ProgramPage() {
   const rewards = useApi(() => api.rewards(), [api]);
   const vip = useApi(() => api.vipLevels(), [api]);
   const cats = useApi(() => api.categories(), [api]);
-  if (!program.data || !rewards.data) return program.error ? <ErrorLine message={program.error} onRetry={program.reload} /> : <PageSkeleton rows={4} />;
+  if (!program.data || !rewards.data) return program.error ? (
+      <div>
+        <PageHeader title="Program & rewards" description="How customers earn and what they get." />
+        <ErrorLine message={program.error} onRetry={program.reload} />
+      </div>
+    ) : (
+      <PageSkeleton rows={4} />
+    );
   return (
     <Editor
       program={program.data}
@@ -175,15 +182,15 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           </div>
 
           <Panel title="Expiry">
-            <fieldset id="expiry" className="flex flex-col divide-y divide-line rounded-input border border-line">
+            <fieldset id="expiry" className="flex flex-col divide-y divide-line border-y border-line">
               <legend className="sr-only">When {term} expire</legend>
-              <label className="flex cursor-pointer items-start gap-3 px-4 py-3">
+              <label className="flex cursor-pointer items-start gap-3 py-3">
                 <input type="radio" name="expiry" checked={draft.expiryMonths === null} onChange={() => set("expiryMonths", null)} className="mt-0.5 size-4 accent-[var(--ll-color-fg)]" />
                 <span className="flex flex-wrap items-center gap-2 text-meta-strong text-fg">
                   {term.charAt(0).toUpperCase() + term.slice(1)} never expire <span className="font-normal text-fg-muted">Recommended</span>
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-3 px-4 py-3">
+              <label className="flex cursor-pointer items-start gap-3 py-3">
                 <input type="radio" name="expiry" checked={draft.expiryMonths !== null} onChange={() => set("expiryMonths", draft.expiryMonths ?? 12)} className="mt-0.5 size-4 accent-[var(--ll-color-fg)]" />
                 <span className="flex flex-1 flex-col gap-3">
                   <span className="text-meta-strong text-fg">Expire after a stretch without a visit</span>

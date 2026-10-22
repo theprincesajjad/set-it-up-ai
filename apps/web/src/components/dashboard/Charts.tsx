@@ -49,7 +49,7 @@ export function ChartFrame({ title, subtitle, children, table, action, className
           <h3 className="text-body-strong text-fg">{title}</h3>
           {subtitle ? <p className="text-meta text-fg-muted">{subtitle}</p> : null}
         </div>
-        <div className="ms-auto flex items-center gap-3">
+        <div className="flex w-full items-center justify-between gap-3 whitespace-nowrap sm:ms-auto sm:w-auto sm:justify-end">
           {action}
           <button type="button" onClick={() => setAsTable((v) => !v)} className="rounded-sm text-meta text-fg-muted hover:text-fg focus-visible:focus-ring">
             {asTable ? "View as chart" : "View as table"}

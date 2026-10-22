@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { Dot, PageHeader } from "@/components/dashboard/kit";
+import { Dot, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -60,7 +60,7 @@ export default function LocationsPage() {
           </>
         }
       />
-      <Async state={state}>
+      <Async state={state} skeleton={<SkeletonRows rows={3} />}>
         {(d) => (
           <ul className="divide-y divide-line border-y border-line">
             {d.items.map((l) => (

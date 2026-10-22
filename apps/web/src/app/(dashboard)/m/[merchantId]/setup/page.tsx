@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ONBOARDING_STEPS_UI } from "./steps";
 import { STEP_COPY } from "@/components/dashboard/Checklist";
-import { Dot, Meter, PageHeader, Panel } from "@/components/dashboard/kit";
+import { Dot, Meter, PageHeader, Panel, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
@@ -27,7 +27,7 @@ export default function SetupPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Set up your shop" description="Each step saves as you go. You can come back any time." />
-      <Async state={state}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
+      <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
     </div>
   );
 }

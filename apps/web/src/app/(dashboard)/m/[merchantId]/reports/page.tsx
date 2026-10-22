@@ -3,11 +3,11 @@ import { Check, Download } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useState } from "react";
 import { BarChart, HBarList, WeekdayBars } from "@/components/dashboard/Charts";
-import { PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, StatBlock, type StatItem } from "@/components/dashboard/kit";
+import { Empty, ErrorLine, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
+import { DataTable, type Column } from "@/components/ui/DataTable";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { NoAccess } from "@/components/dashboard/PageStates";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { Skeleton } from "@/components/ui/Skeleton";
 import type { reportsApi } from "@ll/shared";
 import { formatDate, formatMoney, formatNumber, formatPoints } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
@@ -16,6 +16,14 @@ import { useApi } from "@/lib/dashboard/useApi";
 
 type Tab = "overview" | "visits" | "members" | "rewards" | "promos" | "network" | "advanced";
 const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+const promoCols: Column<reportsApi.PromoResult>[] = [
+  { key: "promo", header: "Promo", mobile: "title", cell: (x) => <span className="font-medium">{x.title}</span> },
+  { key: "views", header: "Views", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.views)} views` },
+  { key: "claims", header: "Redemptions", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.claims)} redeemed` },
+  { key: "visits", header: "Visits", align: "end", mobile: "hidden", cell: (x) => formatNumber(x.attributedVisits) },
+  { key: "lift", header: "Lift", align: "end", mobile: "trailing", cell: (x) => (x.liftPct == null ? "–" : `${x.liftPct > 0 ? "+" : ""}${Math.round(x.liftPct)}%`) },
+];
 
 export default function ReportsPage() {
   const { api, role, enabled, detail } = useMerchant();
@@ -76,6 +84,9 @@ export default function ReportsPage() {
         ]}
       />
 
+      {overview.error && !overview.data ? <ErrorLine message={overview.error} onRetry={overview.reload} /> : null}
+      {daily.error && !daily.data ? <ErrorLine message={daily.error} onRetry={daily.reload} /> : null}
+
       {tab === "overview" ? (
         <>
           <StatBlock
@@ -101,14 +112,14 @@ export default function ReportsPage() {
                   <>
                     <QuietButton aria-pressed={compare} onClick={() => setCompare((v) => !v)} className={compare ? "text-fg" : undefined}>
                       <span aria-hidden className={cn("inline-flex size-4 items-center justify-center rounded-[4px] border", compare ? "border-fg bg-fg text-bg" : "border-line-strong")}>{compare ? <Check className="size-3" strokeWidth={3} /> : null}</span>
-                      Compare to previous period
+                      Compare<span className="hidden sm:inline"> to previous period</span>
                     </QuietButton>
                     {exportBtn("visits-per-day.csv", [["date", "visits", "new_members", "points_issued", "points_redeemed", "revenue"], ...series.map((s) => [s.date, s.visits, s.newMembers, s.pointsIssued, s.pointsRedeemed, (s.revenueCents / 100).toFixed(2)])])}
                   </>
                 }
               />
             ) : (
-              <Skeleton className="h-60 rounded-card" />
+              <SkeletonRows rows={6} />
             )}
           </Panel>
           {daily.data ? (
@@ -126,7 +137,7 @@ export default function ReportsPage() {
             <WeekdayBars counts={weekday} />
           </Panel>
           <Panel title={"Most frequent visitors"}>
-            {top.data ? <HBarList rows={top.data.items.map((t) => ({ key: t.memberId, label: `${t.name ?? "Member"}${t.phoneLast4 ? ` ···${t.phoneLast4}` : ""}`, value: t.visits }))} /> : <Skeleton className="h-40" />}
+            {top.data ? <HBarList rows={top.data.items.map((t) => ({ key: t.memberId, label: `${t.name ?? "Member"}${t.phoneLast4 ? ` ···${t.phoneLast4}` : ""}`, value: t.visits }))} /> : <SkeletonRows rows={5} />}
           </Panel>
         </>
       ) : null}
@@ -139,53 +150,34 @@ export default function ReportsPage() {
             </Panel>
           ) : null}
           <Panel title={"Top customers by spend"} action={top.data ? exportBtn("top-customers.csv", [["name", "last4", "visits", "spend", "points_earned", "balance"], ...top.data.items.map((t) => [t.name ?? "", t.phoneLast4 ?? "", t.visits, (t.spendCents / 100).toFixed(2), t.pointsEarned, t.balance])]) : null}>
-            {top.data ? <HBarList format={(n) => formatMoney(n)} rows={top.data.items.map((t) => ({ key: t.memberId, label: t.name ?? "Member", value: t.spendCents, hint: `${t.visits} visits` }))} /> : <Skeleton className="h-40" />}
+            {top.data ? <HBarList format={(n) => formatMoney(n)} rows={top.data.items.map((t) => ({ key: t.memberId, label: t.name ?? "Member", value: t.spendCents, hint: `${t.visits} visits` }))} /> : <SkeletonRows rows={5} />}
           </Panel>
         </>
       ) : null}
 
       {tab === "rewards" ? (
         <Panel title={"Redemptions by reward"} action={rewards.data ? exportBtn("rewards.csv", [["reward", "cost", "redemptions", "members", "points_spent", "discount"], ...rewards.data.items.map((x) => [x.name, x.pointsCost, x.redemptions, x.uniqueMembers, x.pointsSpent, (x.discountCents / 100).toFixed(2)])]) : null}>
-          {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <p className="text-meta text-fg-muted">Not enough data yet. Check back after a week of visits.</p>) : <Skeleton className="h-40" />}
+          {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <Empty className="py-2">Not enough data yet. Check back after a week of visits.</Empty>) : <SkeletonRows rows={5} />}
         </Panel>
       ) : null}
 
       {tab === "promos" && promosOn ? (
-        <Panel title={"Promo results"} description="Visits during each promo compared with the 14 days before.">
+        <Section title="Promo results" description="Visits during each promo compared with the 14 days before.">
           {promos.data ? (
             promos.data.items.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-meta">
-                  <caption className="sr-only">Promo results</caption>
-                  <thead className="text-caption text-fg-muted">
-                    <tr>
-                      <th scope="col" className="py-2 text-start">Promo</th>
-                      <th scope="col" className="py-2 text-end">Views</th>
-                      <th scope="col" className="py-2 text-end">Redemptions</th>
-                      <th scope="col" className="py-2 text-end">Visits</th>
-                      <th scope="col" className="py-2 text-end">Lift</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {promos.data.items.map((x) => (
-                      <tr key={x.promoId} className="border-t border-line">
-                        <td className="py-2">{x.title}</td>
-                        <td className="py-2 text-end tabular-nums">{formatNumber(x.views)}</td>
-                        <td className="py-2 text-end tabular-nums">{formatNumber(x.claims)}</td>
-                        <td className="py-2 text-end tabular-nums">{formatNumber(x.attributedVisits)}</td>
-                        <td className="py-2 text-end tabular-nums">{x.liftPct == null ? "–" : `${x.liftPct > 0 ? "+" : ""}${Math.round(x.liftPct)}%`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                caption="Promo results"
+                rowKey={(x) => x.promoId}
+                rows={promos.data.items}
+                columns={promoCols}
+              />
             ) : (
-              <p className="text-meta text-fg-muted">Results show up once a promo goes live.</p>
+              <Empty className="py-2">Results show up once a promo goes live.</Empty>
             )
           ) : (
-            <Skeleton className="h-40" />
+            <SkeletonRows rows={5} />
           )}
-        </Panel>
+        </Section>
       ) : null}
 
       {tab === "network" && overlapOn ? (
@@ -202,7 +194,7 @@ export default function ReportsPage() {
             </Panel>
           </>
         ) : (
-          <Skeleton className="h-60 rounded-card" />
+          <SkeletonRows rows={6} />
         )
       ) : null}
 
@@ -232,7 +224,7 @@ export default function ReportsPage() {
                 </table>
               </div>
             ) : (
-              <Skeleton className="h-40" />
+              <SkeletonRows rows={5} />
             )}
           </Panel>
         ) : null
@@ -247,7 +239,7 @@ function LiabilityCard({ l, term }: { l: reportsApi.PointsLiability; term: strin
     <Section title={`Unredeemed ${term}`} description="What your members are holding right now, not just in this date range.">
       <StatBlock
         items={[
-          { label: "Outstanding", value: formatPoints(l.outstandingPoints, term), caption: `${formatNumber(l.membersWithBalance)} ${l.membersWithBalance === 1 ? "member" : "members"} with a balance` },
+          { label: "Outstanding", value: <>{formatNumber(l.outstandingPoints)}<span className="ms-1.5 text-body font-normal text-fg-muted">{l.outstandingPoints === 1 ? term.replace(/s$/, "") : term}</span></>, caption: `${formatNumber(l.membersWithBalance)} ${l.membersWithBalance === 1 ? "member" : "members"} with a balance` },
           {
             label: "Estimated value",
             value: l.estimatedValueCents != null ? formatMoney(l.estimatedValueCents) : "–",

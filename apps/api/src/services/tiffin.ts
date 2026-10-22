@@ -837,6 +837,13 @@ async function subscriberById(db: DbOrTx, merchantId: string, subId: string): Pr
 
 export const getSubscriber = subscriberById;
 
+/** A subscriber's billing periods, newest first: amount, skip credit, status and paid date. */
+export async function listSubscriberCharges(db: DbOrTx, merchantId: string, subId: string): Promise<tiffinApi.SubscriberChargesResponse> {
+  const row = await merchantSubRow(db, merchantId, subId);
+  const rows = await db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, row.sub.id), eq(tiffinCharges.merchantId, merchantId))).orderBy(desc(tiffinCharges.periodStart)).limit(24);
+  return { items: rows.map(chargeDto) };
+}
+
 export async function updateSubscriber(db: DbOrTx, merchantId: string, subId: string, body: z.output<typeof tiffinApi.updateSubscriberBody>): Promise<tiffinApi.SubscriberDto> {
   const row = await merchantSubRow(db, merchantId, subId);
   const patch: Partial<typeof tiffinSubscriptions.$inferInsert> = { updatedAt: new Date() };

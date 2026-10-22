@@ -24,7 +24,8 @@ export function TierTeaser({ featureKey, title, description, inline }: { feature
       <div className="min-w-0">
         <p className="text-meta-strong text-fg">Included with {plan.name}</p>
         <p className="mt-0.5 text-meta text-fg-muted">
-          {description ?? def.description} {plan.name} is ${plan.priceCents / 100} a month.
+          {inline ? `${description ?? def.description} ` : ""}
+          {plan.name} is ${plan.priceCents / 100} a month.
         </p>
       </div>
       {role === "owner" ? (

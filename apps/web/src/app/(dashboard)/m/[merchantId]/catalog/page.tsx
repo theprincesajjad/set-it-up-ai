@@ -75,7 +75,7 @@ function Catalog() {
                           <p className="truncate text-body text-fg">{i.name}</p>
                           <p className="truncate text-meta text-fg-muted tabular">{formatMoney(i.priceCents)}{i.modifiers.length ? ` · ${i.modifiers.map((m) => m.name).join(", ")}` : ""}</p>
                         </div>
-                        <div className="shrink-0">
+                        <div className="shrink-0 [&_label]:text-meta [&_label]:text-fg-muted">
                           <Switch label="Orderable" checked={i.orderable && i.available} onChange={async (v) => {
                             await act.run(() => api.updateItem(i.id, { orderable: v, available: v }));
                             await state.reload();
@@ -89,7 +89,7 @@ function Catalog() {
                 </Section>
               );
             })}
-            <form className="flex items-start gap-2 border-t border-line pt-4" onSubmit={async (e) => {
+            <form className="flex items-start gap-2" onSubmit={async (e) => {
               e.preventDefault();
               if (!newCat.trim()) return;
               await act.run(() => api.createCatalogCategory({ name: newCat.trim() }));

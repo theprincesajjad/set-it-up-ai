@@ -120,7 +120,9 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
   const cols = n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   return (
     <dl aria-label={label} className={cn("grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
-      {items.map((s) => {
+      {items.map((s, idx) => {
+        // An odd last cell spans both phone columns so the hairline grid has no empty grey cell.
+        const span = idx === items.length - 1 && items.length % 2 === 1 ? "col-span-2 lg:col-span-1" : "";
         const body = (
           <>
             <dt className="text-meta text-fg-muted">{s.label}</dt>
@@ -142,11 +144,11 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
           </>
         );
         return s.href ? (
-          <Link key={s.label} href={s.href} className="block bg-bg px-5 py-[18px] transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+          <Link key={s.label} href={s.href} className={cn("block bg-bg px-5 py-[18px] transition-colors hover:bg-bg-subtle focus-visible:focus-ring", span)}>
             {body}
           </Link>
         ) : (
-          <div key={s.label} className="bg-bg px-5 py-[18px]">
+          <div key={s.label} className={cn("bg-bg px-5 py-[18px]", span)}>
             {body}
           </div>
         );

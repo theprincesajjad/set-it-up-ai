@@ -14,6 +14,7 @@ import {
   firstServiceDay,
   fromPerHeadCents,
   holdLeft,
+  freeStartTimes,
   holdWindow,
   isIsoDay,
   isPostalCode,
@@ -158,6 +159,20 @@ describe("banquet", () => {
     expect(busyOnDay(busy, "2026-11-16")).toHaveLength(0);
     expect(overlapsBusy(busy, "2026-11-14T20:00:00Z", "2026-11-14T22:30:00Z")).toBe(true);
     expect(overlapsBusy(busy, "2026-11-15T03:00:00Z", "2026-11-15T06:00:00Z")).toBe(false);
+  });
+  it("offers 30-minute start times only where the whole hold fits", () => {
+    // Busy 17:00-22:00 Toronto (22:00Z-03:00Z).
+    const times = freeStartTimes(busy, "2026-11-14", 5);
+    expect(times[0]).toBe("09:00");
+    expect(times).toContain("12:00"); // ends exactly when the booking starts
+    expect(times).not.toContain("12:30");
+    expect(times).not.toContain("18:00");
+    expect(times).toContain("22:00"); // after the booking
+    expect(freeStartTimes(busy, "2026-11-14", 5).every((h) => /^\d\d:(00|30)$/.test(h))).toBe(true);
+    expect(freeStartTimes(busy, "2026-11-13", 5)).toHaveLength(27);
+    // A short hold squeezes in earlier than a long one.
+    expect(freeStartTimes(busy, "2026-11-14", 3)).toContain("14:00");
+    expect(freeStartTimes(busy, "2026-11-14", 6)).not.toContain("14:00");
   });
   it("shows the cheapest package per head", () => {
     expect(fromPerHeadCents({ packages: [{ name: "a", perHeadCents: 4500, includes: [] }, { name: "b", perHeadCents: 3800, includes: [] }] })).toBe(3800);

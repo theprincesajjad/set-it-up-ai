@@ -2,7 +2,7 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { Banner } from "./Banner";
+import { ErrorLine } from "@/components/dashboard/kit";
 import { Button } from "./Button";
 import { Skeleton } from "./Skeleton";
 
@@ -66,11 +66,9 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
     <div className="flex flex-col gap-3">
       {toolbar}
       {error ? (
-        <Banner tone="danger" action={onRetry ? <Button variant="ghost" size="sm" onClick={onRetry}>Try again</Button> : undefined}>
-          {error}
-        </Banner>
+        <ErrorLine message={error} onRetry={onRetry} />
       ) : null}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-bg md:block">
+      <div className="hidden overflow-x-auto border-y border-line bg-bg md:block">
         <table className="w-full border-collapse text-meta">
           <caption className="sr-only">{caption}</caption>
           <thead className="sticky top-0 z-sticky bg-bg-subtle">
@@ -126,7 +124,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
       </div>
 
       {/* < md: list rows */}
-      <ul aria-label={caption} className="flex flex-col divide-y divide-line rounded-card border border-line bg-bg px-4 md:hidden">
+      <ul aria-label={caption} className="flex flex-col divide-y divide-line border-y border-line bg-bg md:hidden">
         {loading
           ? Array.from({ length: 5 }, (_, i) => (
               <li key={i} className="py-3">

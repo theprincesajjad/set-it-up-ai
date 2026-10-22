@@ -90,6 +90,10 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const staff = await staffFor(req, "staff");
     return svc.getSubscriber(ctx.db, staff.merchant.id, uid(req.params.subId));
   });
+  app.get<{ Params: M & { subId: string } }>(`${base}/subscribers/:subId/charges`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return svc.listSubscriberCharges(ctx.db, staff.merchant.id, uid(req.params.subId));
+  });
   app.patch<{ Params: M & { subId: string } }>(`${base}/subscribers/:subId`, async (req) => {
     const staff = await staffFor(req, "manager");
     return svc.updateSubscriber(ctx.db, staff.merchant.id, uid(req.params.subId), parse(tiffinApi.updateSubscriberBody, req.body));

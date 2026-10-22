@@ -340,6 +340,31 @@ describe("billing and skip credit", () => {
     expect(s).toMatchObject({ status: "active", currentPeriodStart: "2026-12-04", currentPeriodEnd: "2027-01-03", nextBillingDate: "2027-01-04" });
   });
 
+  it("lists a subscriber's charges for the kitchen: period, amount, credit, status and paid date", async () => {
+    const k = await kitchen();
+    const { c, sub } = await activeSub(k, { servings: 2 });
+    const url = `${k.base}/subscribers/${sub.id}/charges`;
+    const first = await call(env, k.m.ownerToken, "GET", url);
+    expect(first.status).toBe(200);
+    expect(first.body.items).toHaveLength(1);
+    expect(first.body.items[0]).toMatchObject({ periodStart: "2026-11-04", periodEnd: "2026-12-03", amountCents: 19000, creditCents: 0, status: "paid" });
+    expect(first.body.items[0].paidAt).toBeTruthy();
+
+    await call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${sub.id}/skips`, { dates: ["2026-11-10", "2026-11-11"] });
+    await at("2026-12-04T15:00:00Z");
+    await runDaily(env.ctx);
+    const after = await call(env, k.m.ownerToken, "GET", url);
+    expect(after.body.items.map((x: { periodStart: string }) => x.periodStart)).toEqual(["2026-12-04", "2026-11-04"]); // newest first
+    expect(after.body.items[0]).toMatchObject({ status: "pending", creditCents: 1636, amountCents: 19000 - 1636, paidAt: null });
+
+    // Another kitchen's subscriber, a stranger, and an unknown id are all refused.
+    const other = await kitchen();
+    expect((await call(env, other.m.ownerToken, "GET", `${other.base}/subscribers/${sub.id}/charges`)).status).toBe(404);
+    expect((await call(env, other.m.ownerToken, "GET", url)).status).toBe(403);
+    expect((await call(env, c.token, "GET", url)).status).toBeGreaterThanOrEqual(403);
+    expect((await call(env, k.m.ownerToken, "GET", `${k.base}/subscribers/00000000-0000-4000-8000-000000000000/charges`)).status).toBe(404);
+  });
+
   it("marks past due and tells the customer when a payment fails, then recovers on retry", async () => {
     const k = await kitchen();
     const { c, sub } = await activeSub(k);

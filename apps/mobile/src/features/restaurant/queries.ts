@@ -116,10 +116,3 @@ export function useWhatsappConsent(merchantId: string | undefined, features: Fea
   });
   return { available: on && !featureOff(query.error), query, set };
 }
-
-
-/** Shop names by merchant id from my wallet (events and bookings carry only the merchant id). */
-export function useShopNames(): Map<string, string> {
-  const wallet = useWallet();
-  return new Map((wallet.data?.items ?? []).map((m) => [m.merchant.id, m.merchant.name]));
-}

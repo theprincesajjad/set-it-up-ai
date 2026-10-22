@@ -227,7 +227,7 @@ function Customers() {
             <button
               type="button"
               disabled={loadingMore}
-              className="font-medium text-fg hover:underline disabled:opacity-50"
+              className="inline-flex h-8 items-center rounded-full border border-line px-3 font-medium text-fg transition-colors hover:bg-bg-subtle disabled:opacity-50 focus-visible:focus-ring"
               onClick={async () => {
                 setLoadingMore(true);
                 try {
