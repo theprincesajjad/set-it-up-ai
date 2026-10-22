@@ -1,6 +1,6 @@
 # Expo web screenshot tour
 
-Renders the app with react-native-web and drives it with Playwright (Chromium from `PLAYWRIGHT_BROWSERS_PATH`; never run `playwright install`) at an iPhone-sized viewport (390x844 @2x). Screenshots go to `e2e/screenshots/` (`01-…` onboarding, `06-…` home … `21-…` dark mode, `30-…` counter mode, `40-…` kiosk).
+Renders the app with react-native-web and drives it with Playwright (Chromium from `PLAYWRIGHT_BROWSERS_PATH`; never run `playwright install`) at an iPhone-sized viewport (390x844 @2x). Screenshots go to `e2e/screenshots/` (`01-…` onboarding, `05-…` first explore / empty wallet, `06-…` wallet, `07-…` explore map + shop sheet, `08-…` list, `09-…`/`10-…`/`11-…` shop page, `13` my card … `21-…` dark mode, `30-…` counter mode, `40-…` kiosk).
 
 Rerun (from the repo root, fresh seed so the OTP limit of 5 codes per phone per hour starts at zero):
 
@@ -13,6 +13,7 @@ cd apps/mobile && EXPO_PUBLIC_API_URL=http://localhost:4300 pnpm export:web && p
 
 - `tour.mjs` serves `dist-web/` itself (`e2e/serve.mjs`, port `E2E_WEB_PORT`, default 8300). `E2E_API_URL` (default `http://localhost:4300`) and `E2E_CUSTOMER_PHONE` (default `+16475551009`, a seeded customer with four shops) are optional.
 - Setup through the API: an admin override turns on order-ahead for Pinecone Coffee (shows the `features` entry point), and a live Roncesvalles Passport is created with two visits. Pinecone's stamp cooldown is set to 0 and the customer's card is topped up to two free drinks (one redeemed in the app, one at the counter), because the seed's balances are relative to today.
-- `06c-home-progress` signs in the first seeded customer (from `+16475551000`) with shops but no reward ready, to show the closest-reward hero.
+- `node e2e/tour.mjs customer-sign-in,explore` runs several steps (comma-separated prefixes). If another API already holds port 4300, use another port for both the API and `EXPO_PUBLIC_API_URL` / `E2E_API_URL` (and `E2E_WEB_PORT`).
+- `06c-wallet-progress` signs in the first seeded customer (from `+16475551000`) with shops but no reward ready, to show the closest-reward hero.
 - Map tiles (OpenFreeMap) are fetched with `curl` (machine proxy + CA bundle) and handed to Chromium via `page.route`, cached in the OS temp dir. The "explore-list" step blocks tiles to show the list fallback.
 - The tour mutates the database (awards, a redemption, a kiosk check-in). Reseed before rerunning.

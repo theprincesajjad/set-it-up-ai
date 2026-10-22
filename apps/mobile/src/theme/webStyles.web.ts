@@ -6,6 +6,6 @@ export function installWebStyles(): void {
   if (typeof document === "undefined" || document.getElementById("ll-web-styles")) return;
   const el = document.createElement("style");
   el.id = "ll-web-styles";
-  el.textContent = "input,textarea,.maplibregl-canvas,div:focus{outline:none!important}*{-webkit-tap-highlight-color:transparent}.maplibregl-ctrl-attrib{font-size:10px}";
+  el.textContent = "*:focus,*:focus-visible{outline:none!important}*{-webkit-tap-highlight-color:transparent}.maplibregl-ctrl-attrib{font-size:10px}";
   document.head.appendChild(el);
 }

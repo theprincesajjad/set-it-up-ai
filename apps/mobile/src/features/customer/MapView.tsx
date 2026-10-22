@@ -93,7 +93,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
       userMoved.current = true;
       map.current?.fitToCoordinates(
         points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
-        { edgePadding: { top: 40, bottom: 40, left: 40, right: 180 }, animated: true },
+        { edgePadding: { top: 40, bottom: 110, left: 40, right: 180 }, animated: true },
       );
     },
   }));

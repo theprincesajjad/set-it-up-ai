@@ -2,22 +2,22 @@
 
 One Expo app with two modes:
 
-- **Customer app**: onboarding (phone OTP), Home, Explore map, My card (sheet), Activity, Profile, shop detail, rewards and redeem, passport campaigns, referrals, Wallet passes, push, settings (consent, mute, export, delete), and Phase 2 order-ahead and repair tickets.
+- **Customer app**: onboarding (phone OTP), Explore map (the home tab), Wallet, My card (sheet), Activity, Profile, shop sheet / page, rewards and redeem, passport campaigns, referrals, Wallet passes, push, settings (consent, mute, export, delete), and Phase 2 order-ahead and repair tickets.
 - **Staff counter mode**: staff sign-in (email + password or email code), merchant + location picker, optional shared-device PIN switcher, keypad / QR / last-4 lookup, award in ≤ 2 taps with a 10-second undo, redeem, redeem-code verification, Today, offline queue, and a customer-facing kiosk.
 
-Specs: `docs/design/screens/customer-mobile.md`, `docs/design/screens/staff-counter.md`, `docs/design/references.md` (look and feel), `docs/design/system.md` (components), `docs/design/ux-copy.md` (copy). API contract: `packages/shared/src/api/*` and `docs/engineering/api/*.md`.
+Look and feel: **`docs/design/foundations.md` (v2, built from Corner) wins over everything else**; see "Design system v2" below. Specs: `docs/design/screens/customer-mobile.md`, `docs/design/screens/staff-counter.md`, `docs/design/references.md` (look and feel), `docs/design/system.md` (components), `docs/design/ux-copy.md` (copy). API contract: `packages/shared/src/api/*` and `docs/engineering/api/*.md`.
 
 ## Stack
 
 | | |
 | --- | --- |
 | Expo SDK | 58 (`expo@~58.0.17`, React Native 0.88, React 19.3, TypeScript 6, strict + `noUncheckedIndexedAccess`) |
-| Navigation | expo-router (file routes in `src/app`), JS bottom tabs with a raised centre "My card" button, native-stack sheets |
+| Navigation | expo-router (file routes in `src/app`), JS tabs with a custom frosted capsule tab bar (map · wallet · black card button · activity · avatar), native-stack sheets |
 | Server state | TanStack Query, persisted to AsyncStorage so screens show cached data offline |
-| Tokens | `@ll/design-tokens` (colours, type, spacing, touch targets). Figtree + Fraunces via `@expo-google-fonts/*` |
+| Tokens | `@ll/design-tokens` v2 (colours, type, radii, `shadows.float`, blur, springs, map style, category PNGs). Body = system font; display = Bricolage Grotesque 700/800 via `@expo-google-fonts/bricolage-grotesque` |
 | Icons | `lucide-react-native`, imported one file per icon in `src/ui/icons.ts` |
 | Web (QA preview) | react-native-web + react-dom + @expo/metro-runtime (`web.output: "single"`); maplibre-gl map on web only |
-| Native modules | expo-secure-store, expo-camera, expo-brightness, expo-keep-awake, expo-notifications, expo-location, expo-haptics, expo-file-system, expo-sharing, react-native-maps, @react-native-community/netinfo, @react-native-async-storage/async-storage |
+| Native modules | expo-blur (tab bar), expo-secure-store, expo-camera, expo-brightness, expo-keep-awake, expo-notifications, expo-location, expo-haptics, expo-file-system, expo-sharing, react-native-maps, @react-native-community/netinfo, @react-native-async-storage/async-storage |
 
 ## Layout
 
@@ -120,11 +120,11 @@ Native-only modules have `.web` twins that Metro picks for web, so native bundle
 | Module | Web twin | Behaviour on web |
 | --- | --- | --- |
 | `state/secureStore.ts` (expo-secure-store) | `secureStore.web.ts` | Tokens in localStorage |
-| `features/customer/MapView.tsx` (react-native-maps) | `MapView.web.tsx` | maplibre-gl on OpenFreeMap Positron tiles (no key), recoloured to the muted palette; the same `<ShopPin>` views portalled into DOM markers; style load failure → list fallback |
+| `features/customer/MapView.tsx` (react-native-maps) | `MapView.web.tsx` | maplibre-gl on OpenFreeMap Positron restyled with `cornerMapStyle(base, scheme)` from @ll/design-tokens; the same `<ShopPin>` views portalled into DOM markers; style load failure → list fallback |
 | `features/customer/brightness.ts` (expo-brightness, keep-awake) | `brightness.web.ts` | No-op |
 | `features/push.ts` (expo-notifications) | `push.web.ts` | `registerForPush()` → `"unavailable"`; deep links shared via `features/deepLinks.ts` |
 | `state/network.ts` (NetInfo) | `network.web.ts` | Browser `online` / `offline` events |
-| `theme/webStyles.ts` | `webStyles.web.ts` | Drops the browser focus outline that doubled our field focus border |
+| `theme/webStyles.ts` | `webStyles.web.ts` | Drops browser focus outlines (fields draw their own; modal/canvas rings in screenshots) |
 
 expo-camera, expo-location, expo-haptics and AsyncStorage have their own web implementations. Differences from a phone: no safe-area insets or status bar, the card "sheet" (`formSheet`) is a full page, no Wallet buttons, no camera scan in headless Chromium, and the `Date` header is hidden from cross-origin fetches (the redeem countdown falls back to the code's `createdAt`).
 
@@ -154,11 +154,11 @@ expo-camera, expo-location, expo-haptics and AsyncStorage have their own web imp
 - Shop detail shows "Order ahead" when `features.orderAhead`, and "My tickets here" when `features.serviceTickets` (or the member already has tickets there).
 - `usePhase2()` fetches `/v1/me/orders` / `/v1/me/tickets` only when one of my shops has the matching flag; "Orders & tickets" (Profile) and Home "In progress" follow it.
 
-**Home hero.** Points and stamps are different units, so no screen adds balances together (`lib/hero.ts`). The big number is the count of rewards ready now ("3 rewards ready · across 2 shops"). With none ready it shows the closest reward in that shop's unit ("2 stamps to a free pastry · at Hearth & Crumb Bakery", closest = highest % progress). With nothing to work toward it shows the shop count. A member with no shops sees the empty state. My card shows rewards ready (or the shop count). Shop cards keep their own unit.
+**Wallet summary (was the Home hero).** Points and stamps are different units, so no screen adds balances together (`lib/hero.ts`). Under the large title "wallet" one number + line: rewards ready now ("3 rewards ready · across 2 shops"); with none ready the closest reward in that shop's unit ("2 stamps to a free pastry · at Hearth & Crumb Bakery") with a thin accent bar; with nothing to work toward the shop count. My card shows rewards ready (or the shop count). Shop rows keep their own unit.
 
 **Kiosk on a phone.** Under 768 px wide the kiosk uses a compact header (56 px logo, title beside it) and sizes keys to the space left, between 72 px (the counter keypad minimum) and 88 px. The keypad and "Check in" fit on 390x844, and it scrolls only if even 72 px keys don't fit. The tablet layout is unchanged.
 
-**Shop logos.** Pilot shops have no logo (`logoUrl: null`). `ShopLogo` draws coloured initials ("PC", "CK" for The Copper Kettle Pub) on the merchant's `brandColor`, with white or ink text by contrast; without a brand colour it uses the vertical tint. The shop hero without a cover photo is a soft wash of the same colour.
+**Shop avatars.** Round. Logo if there is one; else lowercase initials in Bricolage on the merchant's `brandColor` (the only place a brand colour appears); else the category object (cup, croissant…) on `bgSubtle`. No cover heroes or colour washes.
 
 **Social proof.** `memberCount` (null below 10) shows as "39 neighbours are members" in the shop's About tab and in the "Earn here" card for non-members.
 
@@ -167,6 +167,20 @@ expo-camera, expo-location, expo-haptics and AsyncStorage have their own web imp
 **Consent (CASL).** Consent checkboxes are never pre-checked. The per-shop text the API supplies (`consentText`, or `customerApi.marketingConsentText`) is shown and sent back unchanged.
 
 **Brightness.** My card, the redeem code, the full-screen QR and discount cards set brightness to max and keep the screen awake while focused. They restore the previous brightness on blur or backgrounding.
+
+## Design system v2 (foundations.md)
+
+The app was rebuilt (not recoloured) on `docs/design/foundations.md`. Rules the code follows:
+
+- **Type.** `typo(name)` in `src/theme` returns the system font + `fontWeight` for UI/body styles (`familyForWeight` returns `undefined`), and a Bricolage family for display styles (`largeTitle`, `displayNumber`, `mapLabel`, `categoryLabel`). `placeSubtitle` is the only italic. Page titles are lowercase (`Screen` lowercases them; `titleCase="as-is"` for shop names).
+- **Colour.** Monochrome; primary buttons are black (`fg`). `accent` / `accentText` only for points: balances, stamps, "reward ready", points awarded at the counter. Status = dot + word (`StatusDot`, `Badge`). No tinted cards, no icon-in-a-circle.
+- **Depth.** Cards on white get a hairline (`Card`); `shadows.float` only for map chrome, sheets, toasts, the tab bar. Frosting (BlurView + `colors.chrome`) only on the tab bar (Android: near-opaque fill, no blur target).
+- **Navigation.** `(tabs)`: `map` (first tab, `/` redirects here), `wallet`, `activity`, `you`. The tab bar is a floating capsule (`app/(tabs)/_layout.tsx`); the centre black circle opens `/card`. `useHideTabBar()` (`features/tabBar.ts`) slides it away while the Explore shop sheet is up. `/home` redirects to `/wallet` for old links.
+- **Explore.** Full-bleed Corner map (`googleMapStyle` on Android, `mutedStandard` + no POIs on iOS, `cornerMapStyle` on web). Top-left search circle; top-right grouped capsule (neighbourhood name → picker, list/map toggle); filter capsules `my shops ▾` (native action sheet: all / mine / new) · `open now` · `rewards ready` (only when one is ready); category rail (`MAP_CATEGORIES` object PNGs) above the tab bar; black recenter circle. Filters frame the remaining shops (`fit`). Pins: `PlaceBubble` (white bubble + category object or logo, bold name, italic subtitle from `pinSubtitle`: "7 / 10 stamps", "reward ready" in accent, or the lowercase kind of place). `labelPlan` (pure, tested) keeps only non-overlapping labels, by priority selected > reward ready > member > nearest, and none under the chrome; the rest show the bare bubble. Long names wrap to two lines rather than cut mid-word.
+- **Shop.** `features/customer/ShopBody.tsx` is one column used by the Explore sheet (`DetentSheet`, peek → full height) and `/shop/[slug]`: avatar + name + italic kind, open dot, stamp row or points bar, rewards (rows with a black "Redeem"), order/services and offers only when flags / API data say so, your visits, about.
+- **Paid features.** Free = loyalty + reports. Promos, discount cards, referrals, VIP etc. render only when the API returns them or the shop's `features` flags are on (`features.promos`, `features.referrals`…). Customers never see upgrade prompts.
+- **Native details.** `ui/haptics.ts`: selection on tabs, capsules and keypad; light impact on primary buttons; success on award / redeem / join / claim; warning on undo. iOS keeps the system switch; large titles collapse into the bar (`Screen largeTitle`); `ConfirmDialog` stacks like an action sheet. Dark mode follows the OS (counter/kiosk default light).
+- **Brand assets.** `ui/Logo.tsx` = the four-corners mark (`apps/web/public/brand/logo-mark.svg`, inverse in dark). `assets/icon.png`, `adaptive-icon.png` (on `#0B0B0C`), `splash-icon.png` / `splash-icon-dark.png`, `notification-icon.png` are rendered from those SVGs with sharp.
 
 ## Quality gates
 
@@ -177,7 +191,7 @@ cd apps/mobile && npx expo export --platform android   # JS bundle (also --platf
 cd apps/mobile && npx expo-doctor                       # @types/react-dom is excluded (pinned to 19.3.0 with react-dom)
 ```
 
-Unit tests cover the pure modules in `src/lib` and `src/api` and run in plain Node. There is no simulator and no jest-expo. Screens are verified by the Expo web screenshot tour (`pnpm e2e:web`, see above) and by hand on a simulator.
+Unit tests cover the pure modules in `src/lib` (incl. `explore.ts`: filters, pin subtitles, label collision) and `src/api` and run in plain Node. There is no simulator and no jest-expo. Screens are verified by the Expo web screenshot tour (`pnpm e2e:web`, see above) and by hand on a simulator.
 
 ## Known gaps
 

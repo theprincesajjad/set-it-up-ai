@@ -28,14 +28,12 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    // Reset when reopened.
+    if (open) return;
+    // Reset after closing, so text typed right after opening is never wiped.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setQ("");
     setResults([]);
     setCursor(0);
-    const t = setTimeout(() => input.current?.focus(), 0);
-    return () => clearTimeout(t);
   }, [open]);
 
   useEffect(() => {
@@ -81,6 +79,7 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
           <Search aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} />
           <input
             ref={input}
+            autoFocus
             value={q}
             onChange={(e) => {
               setQ(e.target.value);

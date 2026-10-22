@@ -70,7 +70,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
       if (points.length === 1) return void m.easeTo({ center: [points[0]!.lng, points[0]!.lat], zoom: 16, duration: 320 });
       const b = new maplibregl.LngLatBounds();
       for (const p of points) b.extend([p.lng, p.lat]);
-      m.fitBounds(b, { padding: { top: 40, bottom: 40, left: 40, right: 180 }, maxZoom: 16.5, duration: 320 });
+      m.fitBounds(b, { padding: { top: 40, bottom: 110, left: 40, right: 180 }, maxZoom: 16.5, duration: 320 });
     },
   }));
 
