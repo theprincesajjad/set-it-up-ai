@@ -2,7 +2,8 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { integrations } from "@ll/db";
 import { getConnector } from "../connectors/index.js";
 import type { AppContext } from "../context.js";
-import { decryptCredentials, encryptCredentials, runSync } from "../services/integrations.js";
+import { enabledFeaturesByMerchantId } from "../services/features.js";
+import { decryptCredentials, encryptCredentials, integrationFeature, runSync } from "../services/integrations.js";
 import { httpFor } from "../services/integrations-http.js";
 import { retryFailedEvents } from "../services/integrations-pipeline.js";
 import { deliverDueWebhooks, pruneDeliveries } from "../services/webhooks-out.js";
@@ -33,11 +34,14 @@ export async function refreshExpiringTokens(ctx: AppContext, withinMs = 24 * 360
   return { refreshed };
 }
 
-/** Daily: re-sync Mailchimp audiences (consent changes) and POS locations/categories. */
+/** Daily: re-sync Mailchimp audiences (consent changes) and POS locations/categories. Skips connections paused by Pricing v2 gating. */
 export async function dailySync(ctx: AppContext) {
   const rows = await ctx.db.select().from(integrations).where(eq(integrations.status, "connected"));
+  const on = await enabledFeaturesByMerchantId(ctx.db, rows.map((r) => r.merchantId), ["integrations.pos_auto_award", "marketing.email", "integrations.webhooks"]);
   for (const row of rows) {
     if (!getConnector(row.provider)?.sync) continue;
+    const feature = integrationFeature(row.provider);
+    if (feature && !on.get(row.merchantId)?.has(feature)) continue;
     if (row.lastSyncAt && ctx.now().getTime() - row.lastSyncAt.getTime() < 20 * 3600_000) continue;
     try {
       await runSync(ctx, row);

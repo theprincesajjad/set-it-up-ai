@@ -1,5 +1,6 @@
-import { createPgliteDb, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
+import { createPgliteDb, featureOverrides, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
 import type { FastifyInstance } from "fastify";
+import type { FeatureKey } from "@ll/shared";
 import { buildApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
 import type { AppContext } from "../src/context.js";
@@ -65,4 +66,16 @@ export async function createMerchant(env: TestEnv, opts: { earnType?: "per_dolla
 export async function createNeighbourhood(db: Db, slug = `hood-${phoneSeq++}`) {
   const [n] = await db.insert(neighbourhoods).values({ slug, name: slug, status: "live", centerLat: 43.65, centerLng: -79.45 }).returning();
   return n!;
+}
+
+/**
+ * Pricing v2: promos, marketing, VIP, CSV, integrations... are paid and hidden at launch.
+ * Tests of those areas enable them the way pilot shops get them: an admin per-merchant override.
+ */
+export async function grantFeatures(env: Pick<TestEnv, "db">, merchantId: string, keys: FeatureKey[], enabled = true) {
+  if (!keys.length) return;
+  await env.db
+    .insert(featureOverrides)
+    .values(keys.map((key) => ({ merchantId, key, enabled, reason: "test pilot" })))
+    .onConflictDoUpdate({ target: [featureOverrides.merchantId, featureOverrides.key], set: { enabled } });
 }

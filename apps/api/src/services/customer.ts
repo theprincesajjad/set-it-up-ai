@@ -35,7 +35,7 @@ import { BRAND, staffApi, type customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { customerFeaturesFor } from "./features.js";
+import { customerFeaturesFor, isFeatureOn, requireFeature, type CustomerFeatures } from "./features.js";
 import { ensureMember, generateMemberCode, postTransaction, redeemReward, reverseTransaction } from "./ledger.js";
 import {
   affordable,
@@ -212,8 +212,10 @@ async function activeRewardsByMerchant(db: DbOrTx, merchantIds: string[]): Promi
   return out;
 }
 
-function membershipDto(row: WalletRow, rs: Reward[]): customerApi.MembershipDto {
-  const { member, merchant, program, vip } = row;
+/** Paid loyalty extras (VIP, birthday, referral bonuses) are hidden when the shop doesn't have them enabled. */
+function membershipDto(row: WalletRow, rs: Reward[], f: CustomerFeatures): customerApi.MembershipDto {
+  const { member, merchant, program } = row;
+  const vip = f.vipLevels ? row.vip : null;
   return {
     id: member.id,
     merchant: merchantBrief(merchant),
@@ -223,7 +225,7 @@ function membershipDto(row: WalletRow, rs: Reward[]): customerApi.MembershipDto 
     lastVisitAt: iso(member.lastVisitAt),
     joinedAt: member.createdAt.toISOString(),
     terminology: terminologyOf(program),
-    program: programSummary(program),
+    program: programSummary(program, f),
     expiryDisclosure: expiryDisclosure(program),
     nextReward: nextReward(rs, member.balance),
     rewardsAvailableCount: affordable(rs, member.balance).length,
@@ -237,7 +239,7 @@ export async function getWallet(ctx: AppContext, userId: string): Promise<custom
   const rows = await walletRows(ctx.db, userId);
   const rs = await activeRewardsByMerchant(ctx.db, rows.map((r) => r.merchant.id));
   const features = await customerFeaturesFor(ctx.db, rows.map((r) => r.merchant));
-  const items = rows.map((r) => ({ ...membershipDto(r, rs.get(r.merchant.id) ?? []), features: features.get(r.merchant.id)! }));
+  const items = rows.map((r) => ({ ...membershipDto(r, rs.get(r.merchant.id) ?? [], features.get(r.merchant.id)!), features: features.get(r.merchant.id)! }));
   return { items, totals: { shops: items.length, rewardsAvailable: items.reduce((s, i) => s + i.rewardsAvailableCount, 0) } };
 }
 
@@ -250,8 +252,8 @@ async function ownMembershipRow(db: DbOrTx, userId: string, memberId: string): P
 
 export async function getMembership(ctx: AppContext, userId: string, memberId: string): Promise<customerApi.MembershipDto> {
   const row = await ownMembershipRow(ctx.db, userId, memberId);
-  const rs = await activeRewardsByMerchant(ctx.db, [row.merchant.id]);
-  return membershipDto(row, rs.get(row.merchant.id) ?? []);
+  const [rs, features] = await Promise.all([activeRewardsByMerchant(ctx.db, [row.merchant.id]), customerFeaturesFor(ctx.db, [row.merchant])]);
+  return membershipDto(row, rs.get(row.merchant.id) ?? [], features.get(row.merchant.id)!);
 }
 
 function encodeCursor(d: Date, id: string) {
@@ -286,7 +288,7 @@ export async function getMembershipDetail(
 ): Promise<customerApi.MembershipDetailResponse> {
   const row = await ownMembershipRow(ctx.db, userId, memberId);
   const cursor = decodeCursor(q.historyCursor);
-  const [rs, cards, open, history] = await Promise.all([
+  const [rs, cards, open, history, features] = await Promise.all([
     activeRewardsByMerchant(ctx.db, [row.merchant.id]),
     ctx.db.select().from(discountCards).where(and(eq(discountCards.merchantId, row.merchant.id), eq(discountCards.active, true))),
     ctx.db
@@ -307,14 +309,17 @@ export async function getMembershipDetail(
       )
       .orderBy(desc(ledgerTransactions.createdAt), desc(ledgerTransactions.id))
       .limit(q.historyLimit + 1),
+    customerFeaturesFor(ctx.db, [row.merchant]),
   ]);
+  const f = features.get(row.merchant.id)!;
   const merchantRewards = rs.get(row.merchant.id) ?? [];
   const page = history.slice(0, q.historyLimit);
   const last = page[page.length - 1];
   return {
-    membership: membershipDto(row, merchantRewards),
+    membership: membershipDto(row, merchantRewards, f),
     rewards: memberRewards(merchantRewards, row.member.balance),
-    discountCards: cardsForMember(cards, row.member),
+    // Discount cards are a paid feature: hidden (not deleted) while the shop doesn't have it.
+    discountCards: f.discountCards ? cardsForMember(cards, row.member) : [],
     openRedemptions: open.map((o) => redemptionDto(o.r, o.rewardName)),
     history: { items: page.map(ledgerTxDto), nextCursor: history.length > q.historyLimit && last ? encodeCursor(last.createdAt, last.id) : null },
   };
@@ -341,6 +346,7 @@ export async function joinMerchant(ctx: AppContext, userId: string, body: custom
   }
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId!)).limit(1);
   if (!merchant || !(JOINABLE_STATUSES as readonly string[]).includes(merchant.status)) throw notFound("Shop");
+  const referralsOn = body.referralCode ? await isFeatureOn(ctx.db, merchant, "loyalty.referrals") : false;
 
   const result = await ctx.db.transaction(async (tx) => {
     const [existing] = await tx
@@ -353,7 +359,8 @@ export async function joinMerchant(ctx: AppContext, userId: string, body: custom
     let referral: ReferralOutcome | null = null;
     let ref: typeof referrals.$inferSelect | undefined;
     let referrer: Member | undefined;
-    if (body.referralCode) {
+    if (body.referralCode && !referralsOn) referral = { applied: false, reason: "unavailable" };
+    else if (body.referralCode) {
       [ref] = await tx
         .select()
         .from(referrals)
@@ -438,6 +445,7 @@ async function rewardReferral(tx: Tx, merchantId: string, ref: typeof referrals.
 
 export async function getOrCreateReferral(ctx: AppContext, userId: string, memberId: string, fresh: boolean): Promise<customerApi.ReferralResponse> {
   const row = await ownMembershipRow(ctx.db, userId, memberId);
+  await requireFeature(ctx.db, row.merchant, "loyalty.referrals");
   let code: string | undefined;
   if (!fresh) {
     const [pending] = await ctx.db
@@ -584,6 +592,18 @@ export async function unregisterPushToken(ctx: AppContext, userId: string, token
 // ---------------------------------------------------------------------------
 // PIPEDA export
 // ---------------------------------------------------------------------------
+const EXPORT_ALL_FEATURES: CustomerFeatures = {
+  orderAhead: true,
+  pickupSlots: true,
+  serviceTickets: true,
+  inAppPayments: true,
+  promos: true,
+  discountCards: true,
+  referrals: true,
+  vipLevels: true,
+  birthdayBonus: true,
+};
+
 export async function exportData(ctx: AppContext, userId: string): Promise<customerApi.DataExportResponse> {
   const profile = await getProfile(ctx, userId);
   const rows = await walletRows(ctx.db, userId);
@@ -612,7 +632,8 @@ export async function exportData(ctx: AppContext, userId: string): Promise<custo
     exportedAt: ctx.now().toISOString(),
     profile,
     memberships: rows.map((r) => ({
-      ...membershipDto(r, rs.get(r.merchant.id) ?? []),
+      // A personal-data export shows everything we hold (VIP level, bonuses), whatever the shop's plan.
+      ...membershipDto(r, rs.get(r.merchant.id) ?? [], EXPORT_ALL_FEATURES),
       transactions: txs.filter((t) => t.memberId === r.member.id).map(ledgerTxDto),
       redemptions: reds.filter((x) => x.r.memberId === r.member.id).map((x) => redemptionDto(x.r, x.rewardName)),
     })),

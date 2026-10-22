@@ -31,7 +31,7 @@ import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { startPhoneOtp } from "./auth.js";
 import { JOINABLE_STATUSES, notMerged } from "./customer.js";
-import { customerFeaturesFor, getRolloutStages } from "./features.js";
+import { customerFeaturesFor, enabledFeaturesByMerchantId, getRolloutStages, promoFeature } from "./features.js";
 import { promoAppliesAt } from "./ledger.js";
 import { cardsForMember, locationDto, merchantBrief, programSummary, promoDto, rewardDto, terminologyOf } from "./serializers.js";
 import { injectSponsored as injectSponsoredItems } from "./sponsored.js";
@@ -110,10 +110,14 @@ async function membershipsFor(db: DbOrTx, userId: string | null, merchantIds: st
   return out;
 }
 
-/** Candidate promos for these merchants: status live/scheduled and inside their date window. */
+/**
+ * Candidate promos for these merchants: status live/scheduled and inside their date window.
+ * Promos are a paid feature: a shop without promos.basic (or promos.double_points for
+ * boosts) shows none of them to customers. The rows stay; they show again once enabled.
+ */
 async function windowPromos(db: DbOrTx, merchantIds: string[], at: Date): Promise<Promo[]> {
   if (!merchantIds.length) return [];
-  return db
+  const rows = await db
     .select()
     .from(promos)
     .where(
@@ -125,6 +129,9 @@ async function windowPromos(db: DbOrTx, merchantIds: string[], at: Date): Promis
       ),
     )
     .orderBy(promos.startsAt);
+  if (!rows.length) return rows;
+  const on = await enabledFeaturesByMerchantId(db, [...new Set(rows.map((p) => p.merchantId))], ["promos.basic", "promos.double_points"]);
+  return rows.filter((p) => on.get(p.merchantId)?.has(promoFeature(p.kind)));
 }
 
 async function hoodBySlug(db: DbOrTx, slug: string) {
@@ -382,11 +389,12 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
       neighbourhood: hood[0] ?? null,
     },
     locations: (locs.get(m.id) ?? []).map((l) => locationDto(l, m.timezone, now)),
-    program: programSummary(program),
+    program: programSummary(program, features.get(m.id)!),
     rewards: rs.map(rewardDto),
     promos: ps.filter((p) => p.audience === "network").map((p) => promoDto(p, m.timezone, now)),
     // Public visitors see every card a new member would get (VIP-only cards excluded).
-    discountCards: cardsForMember(cards, null),
+    // Discount cards are a paid feature: hidden while the shop doesn't have it.
+    discountCards: features.get(m.id)!.discountCards ? cardsForMember(cards, null) : [],
     consentText: customerApi.marketingConsentText(m.name),
     memberCount: counts.get(m.id) ?? null,
     features: features.get(m.id)!,
@@ -437,15 +445,16 @@ async function resolveQr(db: DbOrTx, qrCode: string): Promise<{ merchant: Mercha
 
 export async function joinInfo(ctx: AppContext, qrCode: string): Promise<networkApi.JoinInfoResponse> {
   const { merchant, location } = await resolveQr(ctx.db, qrCode);
-  const [[program], rs] = await Promise.all([
+  const [[program], rs, features] = await Promise.all([
     ctx.db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1),
     ctx.db.select().from(rewards).where(and(eq(rewards.merchantId, merchant.id), eq(rewards.active, true))).orderBy(rewards.pointsCost).limit(3),
+    customerFeaturesFor(ctx.db, [merchant]),
   ]);
   return {
     qrCode: location.qrCode,
     merchant: merchantBrief(merchant),
     location: locationDto(location, merchant.timezone, ctx.now()),
-    program: programSummary(program),
+    program: programSummary(program, features.get(merchant.id)!),
     rewards: rs.map(rewardDto),
     consentText: customerApi.marketingConsentText(merchant.name),
   };

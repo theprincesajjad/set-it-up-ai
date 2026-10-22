@@ -1,32 +1,37 @@
+import { dark, light } from "./colors.js";
 import { palette as p } from "./palette.js";
 
 /**
- * Chart colours (merchant dashboard reports, admin gauges).
+ * Chart colours (v2): charts are `fg` (thin black line / black bars) with
+ * `accent` ONLY for the highlighted series. Light grid, no legends unless two
+ * series. Every mark colour is >= 3:1 on `bg` in its theme (tested).
  *
- * - categorical: up to 6 series, in this order. Every colour is >= 3:1 against
- *   `surface` in its theme (tested). Beyond 6 series, group into "Other".
- *   Never rely on colour alone: direct-label lines, add legends with shapes.
- * - sequential: single-hue pine ramp for heatmaps (visits by hour/day).
- * - status: for density gauges and activation progress.
- * - "network" vs "you": comparisons always use brand (you) vs stone (network).
+ * - categorical: at most 3 series [fg, accent, fgMuted]. More than 3 → group into "Other".
+ * - sequential: neutral ramp for heatmaps (visits by hour/day), light → dark.
+ * - you / network: "you" is fg, the network comparison is fgSubtle-ish grey.
+ * - status: density gauges / activation progress (dot + word, never a filled card).
  */
 export const chartColors = {
   light: {
-    categorical: [p.pine[600], p.brick[500], p.lake[600], "#7A4FA3", p.ochre[600], p.stone[600]],
-    sequential: [p.pine[50], p.pine[100], p.pine[200], p.pine[300], p.pine[400], p.pine[500], p.pine[600], p.pine[800]],
-    you: p.pine[600],
-    network: p.stone[500],
-    grid: p.stone[200],
-    axis: p.stone[600],
-    status: { low: p.cherry[600], building: p.ochre[600], healthy: p.leaf[600] },
+    categorical: [light.fg, light.accent, light.fgMuted],
+    sequential: [p.gray[50], p.gray[100], p.gray[150], "#D4D4D6", p.gray[400], p.gray[600], "#3A3A3F", p.gray[950]],
+    line: light.fg,
+    highlight: light.accent,
+    you: light.fg,
+    network: p.gray[450],
+    grid: light.line,
+    axis: light.fgMuted,
+    status: { low: light.negative, building: light.fgMuted, healthy: light.positive },
   },
   dark: {
-    categorical: [p.pine[300], p.brick[300], p.lake[300], "#C2A3E0", p.ochre[300], p.stone[300]],
-    sequential: [p.pine[950], p.pine[900], p.pine[800], p.pine[700], p.pine[600], p.pine[500], p.pine[400], p.pine[300]],
-    you: p.pine[300],
-    network: p.stone[500],
-    grid: p.stone[800],
-    axis: p.stone[400],
-    status: { low: p.cherry[400], building: p.ochre[400], healthy: p.leaf[400] },
+    categorical: [dark.fg, dark.accent, dark.fgMuted],
+    sequential: [p.gray[900], p.gray[850], p.gray[800], "#3A3A3F", p.gray[550], p.gray[650], "#D4D4D6", p.gray[50]],
+    line: dark.fg,
+    highlight: dark.accent,
+    you: dark.fg,
+    network: p.gray[500],
+    grid: dark.line,
+    axis: dark.fgMuted,
+    status: { low: dark.negative, building: dark.fgMuted, healthy: dark.positive },
   },
 } as const;

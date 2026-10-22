@@ -11,7 +11,16 @@ import {
   unsubscribeToken,
 } from "../src/services/messaging.js";
 import { messagingJobs } from "../src/jobs/messaging.js";
-import { createMerchant, createTestEnv, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant as createBaseMerchant, createTestEnv, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
+
+/** Pricing v2: these features are paid and hidden at launch; this file's shops are pilots with admin overrides. */
+const PILOT_FEATURES = ["marketing.email", "loyalty.birthday_bonus"] as const;
+async function createMerchant(env: TestEnv, opts: Parameters<typeof createBaseMerchant>[1] = {}) {
+  const m = await createBaseMerchant(env, opts);
+  await grantFeatures(env, m.merchant.id, [...PILOT_FEATURES]);
+  return m;
+}
+
 
 let env: TestEnv;
 // Real-time clock: members/visits get DB-default timestamps, so keep ctx.now() aligned with them.

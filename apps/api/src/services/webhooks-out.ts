@@ -15,6 +15,7 @@ import { integrationsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { decrypt, encrypt, hmacSha256, randomToken, safeEqual } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { enabledFeaturesByMerchantId } from "./features.js";
 import { httpFor, type Fetch } from "./integrations-http.js";
 
 export const OUTBOUND_EVENTS = integrationsApi.OUTBOUND_EVENTS;
@@ -160,6 +161,8 @@ export function eventEnvelope(ctx: AppContext, merchantId: string, event: string
 }
 
 async function enqueue(ctx: AppContext, merchantId: string, event: string, data: unknown, onlyWebhookId?: string): Promise<number> {
+  // Outbound webhooks are paid (Plus: integrations.webhooks). Subscriptions are kept but receive nothing while it's off.
+  if (!(await enabledFeaturesByMerchantId(ctx.db, [merchantId], ["integrations.webhooks"])).get(merchantId)?.has("integrations.webhooks")) return 0;
   const hooks = await ctx.db
     .select()
     .from(outboundWebhooks)

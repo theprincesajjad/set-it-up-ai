@@ -10,6 +10,7 @@ import { parse } from "../../lib/validate.js";
 import { verifyTwilioSignature, twiml } from "../../providers/twilio.js";
 import { requireFeature } from "../../services/features.js";
 import {
+  integrationFeature,
   completeOAuth,
   connectorEntry,
   currentMapping,
@@ -83,7 +84,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const { merchantId, provider } = parse(providerParams, req.params);
     const s = await requireStaff(ctx, req, merchantId, "manager");
     requireKnownProvider(provider);
-    if (isPosProvider(provider)) await requireFeature(ctx.db, s.merchant, "integrations.pos_auto_award");
+    const feature = integrationFeature(provider);
+    if (feature) await requireFeature(ctx.db, s.merchant, feature);
     const body = parse(integrationsApi.connectBody, req.body ?? {});
     return startConnect(ctx, merchantId, s.user.id, provider, body as Record<string, unknown>);
   });
@@ -154,7 +156,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.patch("/merchants/:merchantId/webhooks/:webhookId", async (req) => {
     const { merchantId, webhookId } = parse(hookParams, req.params);
-    await requireStaff(ctx, req, merchantId, "manager");
+    const s = await requireStaff(ctx, req, merchantId, "manager");
+    await requireFeature(ctx.db, s.merchant, "integrations.webhooks");
     return updateWebhook(ctx, merchantId, webhookId, parse(integrationsApi.updateWebhookBody, req.body));
   });
 
@@ -167,7 +170,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post("/merchants/:merchantId/webhooks/:webhookId/test", async (req) => {
     const { merchantId, webhookId } = parse(hookParams, req.params);
-    await requireStaff(ctx, req, merchantId, "manager");
+    const s = await requireStaff(ctx, req, merchantId, "manager");
+    await requireFeature(ctx.db, s.merchant, "integrations.webhooks");
     return (await sendTestWebhook(ctx, merchantId, webhookId)) ?? { status: "queued", statusCode: null };
   });
 

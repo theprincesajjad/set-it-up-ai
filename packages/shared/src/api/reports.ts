@@ -2,8 +2,8 @@
  * API contract for the "reports" area (/v1/merchants/:merchantId/reports/...).
  * Endpoint docs: docs/engineering/api/reports.md.
  *
- * reports.basic (free): overview, daily, top-customers, rewards, promos,
- * network-overlap, activation. reports.advanced (Plus): retention cohorts.
+ * reports.basic (free forever): overview, daily, top-customers, rewards, activation.
+ * reports.advanced (Plus): retention cohorts, network-overlap. promos.basic (Plus): promo results.
  * Money is integer cents; dates in the daily series are the merchant's local dates.
  */
 import { z } from "zod";

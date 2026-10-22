@@ -2,7 +2,7 @@
   "name": "@ll/design-tokens",
   "version": "0.1.0",
   "private": true,
-  "description": "Design tokens for Local Loyalty: colours, type, spacing, motion, verticals. TS for React Native, CSS + Tailwind v4 @theme for web.",
+  "description": "Design tokens for Local Loyalty (v2, docs/design/foundations.md): colours, type, spacing, motion, map style, category icons. TS for React Native, CSS + Tailwind v4 @theme for web.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -11,18 +11,24 @@
     "./css/tokens.css": "./css/tokens.css",
     "./css/theme.css": "./css/theme.css",
     "./tokens.css": "./css/tokens.css",
-    "./theme.css": "./css/theme.css"
+    "./theme.css": "./css/theme.css",
+    "./map/corner-light.json": "./map/corner-light.json",
+    "./map/corner-dark.json": "./map/corner-dark.json",
+    "./assets/categories/*": "./assets/categories/*"
   },
   "files": [
     "src",
-    "css"
+    "css",
+    "map",
+    "assets"
   ],
   "scripts": {
     "build": "tsx src/build-css.ts",
     "build:css": "tsx src/build-css.ts",
     "check:css": "tsx src/build-css.ts --check",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "render:icons": "node scripts/render-categories.cjs"
   },
   "dependencies": {
     "@ll/shared": "workspace:*"

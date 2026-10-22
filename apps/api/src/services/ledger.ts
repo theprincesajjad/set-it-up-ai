@@ -30,6 +30,7 @@ import { calculateEarn, networkBonusInShopUnits, rewardDiscountCents, type Activ
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { enabledFeaturesFor } from "./features.js";
 
 type TxType = (typeof ledgerTransactions.$inferInsert)["type"];
 type TxSource = (typeof ledgerTransactions.$inferInsert)["source"];
@@ -336,7 +337,18 @@ export function promoAppliesAt(p: Promo, at: Date, timeZone: string): boolean {
   return true;
 }
 
-export async function activeBoosts(tx: DbOrTx, merchant: Pick<Merchant, "id" | "timezone">, at: Date): Promise<(ActiveBoost & { promoId: string })[]> {
+/**
+ * Promo boosts (double points / bonus points) live right now. Boosts are a paid
+ * feature (promos.double_points): a shop without it gets no boosts, even from
+ * promos created while it had the feature (the rows stay; they apply again once enabled).
+ */
+export async function activeBoosts(
+  tx: DbOrTx,
+  merchant: Pick<Merchant, "id" | "timezone" | "plan" | "betaOptIn">,
+  at: Date,
+): Promise<(ActiveBoost & { promoId: string })[]> {
+  const on = (await enabledFeaturesFor(tx, [merchant], ["promos.double_points"])).get(merchant.id);
+  if (!on?.has("promos.double_points")) return [];
   const rows = await tx
     .select()
     .from(promos)
@@ -483,7 +495,8 @@ export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<A
     const noEarn = cats.filter((c) => !c.earn).map((c) => c.id);
     const boosts = await activeBoosts(tx, merchant, now);
     let vipMultiplier = 1;
-    if (member.vipLevelId) {
+    // VIP multipliers are a paid feature (loyalty.vip_levels); levels are kept but don't boost earn while it's off.
+    if (member.vipLevelId && (await enabledFeaturesFor(tx, [merchant], ["loyalty.vip_levels"])).get(merchant.id)?.has("loyalty.vip_levels")) {
       const [lvl] = await tx.select().from(vipLevels).where(eq(vipLevels.id, member.vipLevelId)).limit(1);
       if (lvl) vipMultiplier = lvl.multiplierPct / 100;
     }

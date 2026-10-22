@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <ellipse cx="32" cy="57.5" rx="13" ry="2.6" fill="#000" fill-opacity=".08"/>
+  <!-- cup -->
+  <path d="M18.5 17h27l-3.4 37.2a2.2 2.2 0 0 1-2.2 2H24.1a2.2 2.2 0 0 1-2.2-2Z" fill="#EFEDE9"/>
+  <path d="M35 17h10.5l-3.4 37.2a2.2 2.2 0 0 1-2.2 2H34Z" fill="#DCD8D1"/>
+  <path d="M18.5 17h3.4l2.5 39.2h-.3a2.2 2.2 0 0 1-2.2-2Z" fill="#FBFAF8"/>
+  <!-- sleeve -->
+  <path d="M18.6 27h26.8l-1.4 16H20Z" fill="#C98F57"/>
+  <path d="M35.4 27h10l-1.4 16h-9Z" fill="#B27A45"/>
+  <path d="M18.6 27h3.6l1 16H20Z" fill="#DCA772"/>
+  <rect x="26" y="32.5" width="8" height="5" rx="2.5" fill="#B27A45" fill-opacity=".55"/>
+  <!-- lid -->
+  <path d="M20.5 12.4C21.6 9.2 25.5 7.5 32 7.5s10.4 1.7 11.5 4.9Z" fill="#46464C"/>
+  <path d="M20.5 12.4C21.6 9.2 25.5 7.5 32 7.5c-4 .6-6.8 2.2-7.6 4.9Z" fill="#5E5E66"/>
+  <rect x="16" y="12" width="32" height="6" rx="3" fill="#2F2F34"/>
+  <rect x="16" y="12" width="15" height="3" rx="1.5" fill="#46464C"/>
+  <ellipse cx="37.5" cy="10.2" rx="2.6" ry="1" fill="#26262A"/>
+</svg>

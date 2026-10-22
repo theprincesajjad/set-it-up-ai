@@ -49,7 +49,15 @@ export function expiryDisclosure(program: Pick<Program, "expiryMonths" | "termin
   return `${Term} expire after ${program.expiryMonths} months with no visits.`;
 }
 
-export function programSummary(program: Program | null | undefined): customerApi.ProgramSummaryDto | null {
+/**
+ * `paid`: the shop's enabled paid extras. Birthday / referral bonuses show as 0
+ * when the shop doesn't have the feature (the bonus isn't awarded then either).
+ * Omit only where no paid extras are involved.
+ */
+export function programSummary(
+  program: Program | null | undefined,
+  paid: { birthdayBonus: boolean; referrals: boolean } = { birthdayBonus: false, referrals: false },
+): customerApi.ProgramSummaryDto | null {
   if (!program || !program.active) return null;
   return {
     name: program.name,
@@ -60,8 +68,8 @@ export function programSummary(program: Program | null | undefined): customerApi
     minSpendCents: program.minSpendCents,
     stampGoal: program.stampGoal,
     welcomeBonus: program.welcomeBonus,
-    birthdayBonus: program.birthdayBonus,
-    referralBonus: program.referralBonus,
+    birthdayBonus: paid.birthdayBonus ? program.birthdayBonus : 0,
+    referralBonus: paid.referrals ? program.referralBonus : 0,
     expiryMonths: program.expiryMonths ?? null,
     expiryDisclosure: expiryDisclosure(program),
     termsText: program.termsText ?? null,

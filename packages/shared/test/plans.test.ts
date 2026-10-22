@@ -1,12 +1,84 @@
 import { describe, expect, it } from "vitest";
-import { FEATURES, FREE_FOREVER, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone } from "../src/index.js";
+import { FEATURES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
 
 describe("plans", () => {
-  it("keeps every loyalty feature free forever", () => {
-    for (const k of FREE_FOREVER) expect(FEATURES[k].minPlan).toBe("free");
-    expect(FREE_FOREVER).toContain("loyalty.points");
-    expect(FREE_FOREVER).toContain("locations.unlimited");
-    expect(FREE_FOREVER).toContain("integrations.pos_auto_award");
+  it("keeps the loyalty program and reporting free forever (Pricing v2)", () => {
+    const expected: FeatureKey[] = [
+      "loyalty.points",
+      "loyalty.visits",
+      "loyalty.stamps",
+      "loyalty.items",
+      "loyalty.rewards_catalog",
+      "loyalty.welcome_bonus",
+      "loyalty.manual_adjust",
+      "loyalty.no_earn_categories",
+      "network.listing",
+      "wallet.passes",
+      "customers.directory",
+      "reports.basic",
+      "staff.unlimited",
+      "locations.unlimited",
+    ];
+    expect([...FREE_FOREVER].sort()).toEqual([...expected].sort());
+    for (const k of FREE_FOREVER) {
+      expect(FEATURES[k].minPlan).toBe("free");
+      expect(FEATURES[k].defaultStage).toBe("ga");
+      // Never gated: on for a free merchant at GA with no override.
+      expect(isFeatureEnabled(k, { plan: "free", stage: "ga" })).toBe(true);
+    }
+  });
+  it("puts promos, marketing, VIP, CSV and integrations on Plus, hidden at launch", () => {
+    const plus: FeatureKey[] = [
+      "promos.basic",
+      "promos.double_points",
+      "loyalty.vip_levels",
+      "loyalty.birthday_bonus",
+      "loyalty.referrals",
+      "discount_cards",
+      "marketing.email",
+      "marketing.sms",
+      "marketing.automations",
+      "promos.push_nearby",
+      "customers.csv_export",
+      "customers.csv_import",
+      "integrations.pos_auto_award",
+      "integrations.webhooks",
+      "reports.advanced",
+      "orders.order_ahead",
+      "orders.pickup_status",
+      "payments.in_app",
+      "booking.pickup_slots",
+    ];
+    for (const k of plus) {
+      expect(FEATURES[k].minPlan, k).toBe("plus");
+      expect(FEATURES[k].defaultStage, k).toBe("hidden");
+      expect(FEATURES[k].unlockAtMerchants, k).toBe(100);
+      expect(isFeatureEnabled(k, { plan: "free", stage: "ga" }), k).toBe(false);
+      expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" }), k).toBe(true);
+      // Pro includes Plus.
+      expect(isFeatureEnabled(k, { plan: "pro", stage: "ga" }), k).toBe(true);
+    }
+    for (const k of ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices", "booking.dropoff_scheduling", "staff.permissions"] as const) {
+      expect(FEATURES[k].minPlan).toBe("pro");
+      expect(FEATURES[k].defaultStage).toBe("hidden");
+      expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" })).toBe(false);
+    }
+    // Every paid feature ships hidden; only FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
+    for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe("hidden");
+    expect(FEATURE_KEYS.filter((k) => !FREE_FOREVER.includes(k) && !PAID_FEATURES.includes(k)).sort()).toEqual(
+      ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "campaigns.neighbourhood", "network.perks"].sort(),
+    );
+    expect(PLANS.plus.priceCents).toBe(3900);
+    expect(PLANS.pro.priceCents).toBe(7900);
+  });
+  it("treats network perks as a platform lever, not a merchant feature", () => {
+    expect(FEATURES["network.perks"].platform).toBe(true);
+    expect(FREE_FOREVER).not.toContain("network.perks");
+    expect(isFeatureEnabled("network.perks", { plan: "free", stage: "ga" })).toBe(true);
+  });
+  it("lets an admin override unlock a hidden paid feature for a pilot shop", () => {
+    expect(isFeatureEnabled("promos.basic", { plan: "free", stage: "hidden", override: true })).toBe(true);
+    expect(isFeatureEnabled("promos.basic", { plan: "free", stage: "hidden" })).toBe(false);
   });
   it("hides paid features until rolled out", () => {
     expect(isFeatureEnabled("orders.order_ahead", { plan: "pro", stage: "hidden" })).toBe(false);

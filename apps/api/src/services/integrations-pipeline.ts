@@ -18,7 +18,7 @@ import { getConnector, isPosProvider, type InboundEvent, type PosProviderId, typ
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
-import { getMerchantFeatures } from "./features.js";
+import { getMerchantFeatures, requireFeature } from "./features.js";
 import { apiContextFor, categoryMap, findConnectedByAccount, getIntegration, locationForExternal, markDisconnected, type Integration } from "./integrations.js";
 import { awardPurchase, postTransaction, reverseTransaction, type AwardResult } from "./ledger.js";
 import { notifyPassUpdate } from "./wallet.js";
@@ -218,13 +218,16 @@ async function afterAward(ctx: AppContext, merchantId: string, provider: string,
   await notifyPassUpdate(ctx, r.member.userId);
 }
 
+export const POS_PAUSED_MESSAGE = "POS auto-award is paused: it's a Plus feature that isn't enabled for this business";
+
 export async function applyPosPurchase(ctx: AppContext, integ: Integration, p: PurchaseEvent, eventRowId: string): Promise<OutcomeRow> {
   const provider = integ.provider as PosProviderId;
   const merchantId = integ.merchantId;
   const settings = integ.settings;
   if (settings.autoAward === false) return { status: "ignored", purchaseRef: p.externalId, error: "Auto-award is turned off" };
   const features = await getMerchantFeatures(ctx.db, (await merchantRow(ctx, merchantId))!);
-  if (!features["integrations.pos_auto_award"].enabled) return { status: "ignored", purchaseRef: p.externalId, error: "POS auto-award is not enabled" };
+  // Paid (Plus). A connection kept from before stays connected but stops awarding, with this status on the event.
+  if (!features["integrations.pos_auto_award"].enabled) return { status: "ignored", purchaseRef: p.externalId, error: POS_PAUSED_MESSAGE };
 
   const idempotencyKey = `${provider}:${p.externalId}`;
   const locationId = await locationForExternal(ctx.db, merchantId, provider, p.externalLocationId);
@@ -476,6 +479,8 @@ export async function claimUnmatched(
       .limit(1);
   }
   if (!row) throw notFound("Purchase");
+  // Claiming a POS purchase is part of POS auto-award (paid).
+  await requireFeature(ctx.db, (await merchantRow(ctx, args.merchantId))!, "integrations.pos_auto_award");
   if (row.status === "claimed") throw new HttpError(409, "already_claimed", "Points for this purchase were already claimed");
   if (row.status !== "unmatched") throw new HttpError(409, "not_claimable", "This purchase can't be claimed");
   if (row.createdAt < since) throw new HttpError(410, "claim_expired", `Purchases can be claimed within ${CLAIM_WINDOW_DAYS} days`);

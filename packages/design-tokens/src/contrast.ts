@@ -62,7 +62,7 @@ export const WCAG = {
  * Pick the more readable of two text colours for a background. Use when a
  * merchant supplies their own colour (e.g. logo backdrop) at runtime.
  */
-export function pickOnColor(bg: string, dark = "#221E19", light = "#FFFFFF"): string {
+export function pickOnColor(bg: string, dark = "#0B0B0C", light = "#FFFFFF"): string {
   return contrastRatio(bg, dark) >= contrastRatio(bg, light) ? dark : light;
 }
 

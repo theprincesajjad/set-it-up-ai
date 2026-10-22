@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <ellipse cx="32" cy="57" rx="17" ry="2.6" fill="#000" fill-opacity=".08"/>
+  <!-- star points: centre (32,32.5); light from top-left, each point split into a lit and a shaded facet -->
+  <path d="M32 5.5 25.1 23.4 32 32.5Z" fill="#FFD960"/>
+  <path d="M32 5.5 38.9 23.4 32 32.5Z" fill="#F7B82A"/>
+  <path d="M58 23.6 38.9 23.4 32 32.5Z" fill="#F7B82A"/>
+  <path d="M58 23.6 43.1 35.8 32 32.5Z" fill="#E09A12"/>
+  <path d="M48.1 54 43.1 35.8 32 32.5Z" fill="#E09A12"/>
+  <path d="M48.1 54 32 43.5 32 32.5Z" fill="#C9850A"/>
+  <path d="M15.9 54 32 43.5 32 32.5Z" fill="#F0AA1E"/>
+  <path d="M15.9 54 20.9 35.8 32 32.5Z" fill="#E09A12"/>
+  <path d="M6 23.6 20.9 35.8 32 32.5Z" fill="#FFCB3D"/>
+  <path d="M6 23.6 25.1 23.4 32 32.5Z" fill="#FFE07A"/>
+</svg>

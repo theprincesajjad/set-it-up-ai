@@ -9,7 +9,7 @@ import { rotateApiKey } from "../src/services/merchant.js";
 import { consoleApns, setApnsPusher } from "../src/services/wallet-apns.js";
 import { buildPassJson, signManifest, unsignedBundle } from "../src/services/wallet-apple.js";
 import { notifyPassUpdate, walletSummary } from "../src/services/wallet.js";
-import { createMerchant, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -41,6 +41,8 @@ function configureApple() {
 
 async function customerWithPoints() {
   const m = await createMerchant(env);
+  // The merchant REST API is Plus (Pricing v2): this shop is a pilot with an admin override.
+  await grantFeatures(env, m.merchant.id, ["integrations.webhooks"]);
   const phone = nextPhone();
   const key = await rotateApiKey(env.ctx, m.merchant.id, m.owner.id);
   await env.app.inject({ method: "POST", url: "/v1/api/award", headers: { "x-ll-api-key": key }, payload: { phone, amountCents: 4200 } });

@@ -9,6 +9,7 @@ import { merchantMembers, rewards, users } from "@ll/db";
 import { normalizePhone, type PurchaseLine } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, forbidden, notFound } from "../lib/errors.js";
+import { requireFeature } from "./features.js";
 import { categoryMap } from "./integrations.js";
 import { applyRefund } from "./integrations-pipeline.js";
 import { awardPurchase, redeemReward } from "./ledger.js";
@@ -25,6 +26,8 @@ export async function requireApiKey(ctx: AppContext, req: FastifyRequest): Promi
   const m = await verifyMerchantApiKey(ctx.db, key.trim());
   if (!m) throw new HttpError(401, "unauthorized", "Invalid API key");
   if (m.status === "closed") throw forbidden("This business is closed");
+  // The merchant REST API is part of "Webhooks & API" (Plus). A key issued earlier stops working while it's off.
+  await requireFeature(ctx.db, m, "integrations.webhooks");
   return m;
 }
 

@@ -24,20 +24,37 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-figtree, "Figtree"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-fraunces, "Fraunces"), ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--ll-font-mono);
 
-  /* Semantic colours: bg-canvas, text-fg, text-fg-muted, bg-brand text-on-brand, border-border-strong ... */
+  /* Semantic colours (v2): bg-bg, bg-bg-subtle, text-fg, text-fg-muted, border-line, text-accent-text, bg-accent-soft ...
+   * v1 names (canvas, surface, brand, ...) still resolve, to v2 values. Deprecated. */
+  --color-bg: var(--ll-color-bg);
+  --color-bg-subtle: var(--ll-color-bg-subtle);
+  --color-bg-muted: var(--ll-color-bg-muted);
+  --color-fg: var(--ll-color-fg);
+  --color-fg-muted: var(--ll-color-fg-muted);
+  --color-fg-subtle: var(--ll-color-fg-subtle);
+  --color-line: var(--ll-color-line);
+  --color-line-strong: var(--ll-color-line-strong);
+  --color-accent: var(--ll-color-accent);
+  --color-accent-text: var(--ll-color-accent-text);
+  --color-accent-soft: var(--ll-color-accent-soft);
+  --color-on-accent: var(--ll-color-on-accent);
+  --color-positive: var(--ll-color-positive);
+  --color-negative: var(--ll-color-negative);
+  --color-location: var(--ll-color-location);
+  --color-chrome: var(--ll-color-chrome);
+  --color-overlay: var(--ll-color-overlay);
+  --color-qr-fg: var(--ll-color-qr-fg);
+  --color-qr-bg: var(--ll-color-qr-bg);
   --color-canvas: var(--ll-color-canvas);
   --color-canvas-subtle: var(--ll-color-canvas-subtle);
   --color-surface: var(--ll-color-surface);
   --color-surface-raised: var(--ll-color-surface-raised);
   --color-surface-sunken: var(--ll-color-surface-sunken);
   --color-surface-inverse: var(--ll-color-surface-inverse);
-  --color-overlay: var(--ll-color-overlay);
-  --color-fg: var(--ll-color-fg);
-  --color-fg-muted: var(--ll-color-fg-muted);
   --color-fg-inverse: var(--ll-color-fg-inverse);
   --color-fg-link: var(--ll-color-fg-link);
   --color-fg-disabled: var(--ll-color-fg-disabled);
@@ -51,9 +68,7 @@
   --color-brand-subtle: var(--ll-color-brand-subtle);
   --color-on-brand-subtle: var(--ll-color-on-brand-subtle);
   --color-fg-brand: var(--ll-color-fg-brand);
-  --color-accent: var(--ll-color-accent);
   --color-accent-hover: var(--ll-color-accent-hover);
-  --color-on-accent: var(--ll-color-on-accent);
   --color-accent-subtle: var(--ll-color-accent-subtle);
   --color-on-accent-subtle: var(--ll-color-on-accent-subtle);
   --color-neutral-subtle: var(--ll-color-neutral-subtle);
@@ -81,10 +96,8 @@
   --color-skeleton-highlight: var(--ll-color-skeleton-highlight);
   --color-stamp-empty: var(--ll-color-stamp-empty);
   --color-ring-track: var(--ll-color-ring-track);
-  --color-qr-fg: var(--ll-color-qr-fg);
-  --color-qr-bg: var(--ll-color-qr-bg);
 
-  /* Vertical identity: bg-vertical-cafe-tint text-vertical-cafe-ink ... */
+  /* Deprecated: vertical colours are neutral in v2 (bg-subtle tile, fg glyph). */
   --color-vertical-cafe-accent: var(--ll-vertical-cafe-accent);
   --color-vertical-cafe-on-accent: var(--ll-vertical-cafe-on-accent);
   --color-vertical-cafe-tint: var(--ll-vertical-cafe-tint);
@@ -170,9 +183,6 @@
   --color-chart-1: var(--ll-chart-1);
   --color-chart-2: var(--ll-chart-2);
   --color-chart-3: var(--ll-chart-3);
-  --color-chart-4: var(--ll-chart-4);
-  --color-chart-5: var(--ll-chart-5);
-  --color-chart-6: var(--ll-chart-6);
   --color-chart-seq-1: var(--ll-chart-seq-1);
   --color-chart-seq-2: var(--ll-chart-seq-2);
   --color-chart-seq-3: var(--ll-chart-seq-3);
@@ -181,6 +191,8 @@
   --color-chart-seq-6: var(--ll-chart-seq-6);
   --color-chart-seq-7: var(--ll-chart-seq-7);
   --color-chart-seq-8: var(--ll-chart-seq-8);
+  --color-chart-line: var(--ll-chart-line);
+  --color-chart-highlight: var(--ll-chart-highlight);
   --color-chart-you: var(--ll-chart-you);
   --color-chart-network: var(--ll-chart-network);
   --color-chart-grid: var(--ll-chart-grid);
@@ -189,8 +201,9 @@
   --color-chart-status-building: var(--ll-chart-status-building);
   --color-chart-status-healthy: var(--ll-chart-status-healthy);
 
-  /* Elevation (switches in dark mode) */
+  /* Elevation: shadow-float is the only v2 shadow (switches in dark mode). sm = none; md/lg/xl = float (deprecated). */
   --shadow-none: var(--ll-shadow-none);
+  --shadow-float: var(--ll-shadow-float);
   --shadow-sm: var(--ll-shadow-sm);
   --shadow-md: var(--ll-shadow-md);
   --shadow-lg: var(--ll-shadow-lg);
@@ -198,165 +211,152 @@
 }
 
 @theme {
-  /* Raw palette for marketing / illustration only: bg-pine-600, text-marigold-700 ... */
-  --color-pine-50: #EEF6F2;
-  --color-pine-100: #D6EBE1;
-  --color-pine-200: #AED6C4;
-  --color-pine-300: #7DBBA0;
-  --color-pine-400: #4E9C7D;
-  --color-pine-500: #2F8063;
-  --color-pine-600: #1F6A50;
-  --color-pine-700: #195841;
-  --color-pine-800: #144634;
-  --color-pine-900: #0F3527;
-  --color-pine-950: #09221A;
-  --color-marigold-50: #FFF8E8;
-  --color-marigold-100: #FEEDC6;
-  --color-marigold-200: #FDDA8E;
-  --color-marigold-300: #FBC255;
-  --color-marigold-400: #F5A524;
-  --color-marigold-500: #E08B0B;
-  --color-marigold-600: #B86E06;
-  --color-marigold-700: #8F5408;
-  --color-marigold-800: #6E410C;
-  --color-marigold-900: #4F2F0C;
-  --color-brick-50: #FDF2EE;
-  --color-brick-100: #FADFD5;
-  --color-brick-200: #F4BBA8;
-  --color-brick-300: #EB9479;
-  --color-brick-400: #DD6E4E;
-  --color-brick-500: #C65334;
-  --color-brick-600: #A64128;
-  --color-brick-700: #843421;
-  --color-brick-800: #63281A;
-  --color-brick-900: #431C13;
-  --color-stone-0: #FFFFFF;
-  --color-stone-25: #FDFBF7;
-  --color-stone-50: #FAF6EF;
-  --color-stone-100: #F3EDE3;
-  --color-stone-200: #E7DFD2;
-  --color-stone-300: #D4C9B8;
-  --color-stone-400: #A99D8B;
-  --color-stone-500: #857867;
-  --color-stone-600: #655A4C;
-  --color-stone-700: #4A4238;
-  --color-stone-800: #332D26;
-  --color-stone-850: #29241E;
-  --color-stone-900: #1F1B16;
-  --color-stone-950: #16130F;
-  --color-stone-1000: #0F0D0A;
-  --color-leaf-50: #ECF8EF;
-  --color-leaf-100: #D2EFDA;
-  --color-leaf-300: #7FCB95;
-  --color-leaf-400: #4FB06E;
-  --color-leaf-600: #1D7A3D;
-  --color-leaf-700: #17633A;
-  --color-leaf-800: #124D2D;
-  --color-leaf-900: #0D3820;
-  --color-ochre-50: #FFF6E0;
-  --color-ochre-100: #FDE8B5;
-  --color-ochre-300: #F6C35A;
-  --color-ochre-400: #EBAA2E;
-  --color-ochre-600: #A35A06;
-  --color-ochre-700: #7F4507;
-  --color-ochre-800: #5E3409;
-  --color-ochre-900: #3F2408;
-  --color-cherry-50: #FEF2F1;
-  --color-cherry-100: #FDE0DD;
-  --color-cherry-300: #F59A90;
-  --color-cherry-400: #EE6B5E;
-  --color-cherry-600: #B42318;
-  --color-cherry-700: #932018;
-  --color-cherry-800: #701A14;
-  --color-cherry-900: #4E130F;
-  --color-lake-50: #EEF4FB;
-  --color-lake-100: #D8E6F6;
-  --color-lake-300: #8DB7E6;
-  --color-lake-400: #5F98D9;
-  --color-lake-600: #1D5FA8;
-  --color-lake-700: #184E8A;
-  --color-lake-800: #133D6C;
-  --color-lake-900: #0E2C4E;
+  /* Raw palette for marketing / illustration only (ll- prefix so Tailwind's own scales are untouched): bg-ll-gray-950, text-ll-orange-700 ... */
+  --color-ll-gray-0: #FFFFFF;
+  --color-ll-gray-50: #F5F5F4;
+  --color-ll-gray-100: #EDEDEC;
+  --color-ll-gray-150: #E8E8E6;
+  --color-ll-gray-400: #9A9AA0;
+  --color-ll-gray-450: #8A8A90;
+  --color-ll-gray-500: #7A7A82;
+  --color-ll-gray-550: #6E6E76;
+  --color-ll-gray-600: #6B6B70;
+  --color-ll-gray-650: #A1A1A8;
+  --color-ll-gray-800: #2A2A2E;
+  --color-ll-gray-850: #202023;
+  --color-ll-gray-900: #161618;
+  --color-ll-gray-950: #0B0B0C;
+  --color-ll-orange-50: #FFF1EA;
+  --color-ll-orange-400: #FF7A45;
+  --color-ll-orange-500: #FF5A1F;
+  --color-ll-orange-600: #E84E14;
+  --color-ll-orange-700: #C2410C;
+  --color-ll-orange-950: #2A1710;
+  --color-ll-green-500: #22C55E;
+  --color-ll-green-600: #16A34A;
+  --color-ll-red-400: #F87171;
+  --color-ll-red-600: #DC2626;
+  --color-ll-red-700: #B91C1C;
+  --color-ll-blue-400: #4C8DF8;
+  --color-ll-blue-500: #2F7BF6;
+  --color-ll-map-land: #F2F2F0;
+  --color-ll-map-water: #E9F0F5;
+  --color-ll-map-park: #EEF3EA;
+  --color-ll-map-road: #FFFFFF;
+  --color-ll-map-land-dark: #121214;
+  --color-ll-map-water-dark: #0F1820;
+  --color-ll-map-park-dark: #141A14;
+  --color-ll-map-road-dark: #232327;
 
-  /* Type scale: text-body, text-h1, text-points, text-code ... */
-  --text-hero: 3.5rem;
-  --text-hero--line-height: 3.75rem;
-  --text-hero--font-weight: 600;
-  --text-hero--letter-spacing: -0.02em;
-  --text-display: 2.5rem;
-  --text-display--line-height: 2.75rem;
-  --text-display--font-weight: 600;
-  --text-display--letter-spacing: -0.015em;
-  --text-h1: 2rem;
-  --text-h1--line-height: 2.375rem;
-  --text-h1--font-weight: 700;
-  --text-h1--letter-spacing: -0.01em;
-  --text-h2: 1.5rem;
-  --text-h2--line-height: 1.875rem;
-  --text-h2--font-weight: 700;
-  --text-h2--letter-spacing: -0.005em;
-  --text-h3: 1.25rem;
-  --text-h3--line-height: 1.625rem;
-  --text-h3--font-weight: 600;
-  --text-title: 1.0625rem;
-  --text-title--line-height: 1.5rem;
-  --text-title--font-weight: 600;
-  --text-body-lg: 1.125rem;
-  --text-body-lg--line-height: 1.75rem;
-  --text-body-lg--font-weight: 400;
-  --text-body: 1rem;
-  --text-body--line-height: 1.5rem;
-  --text-body--font-weight: 400;
-  --text-body-strong: 1rem;
-  --text-body-strong--line-height: 1.5rem;
-  --text-body-strong--font-weight: 600;
-  --text-body-sm: 0.875rem;
-  --text-body-sm--line-height: 1.25rem;
-  --text-body-sm--font-weight: 400;
-  --text-label: 0.875rem;
-  --text-label--line-height: 1.25rem;
-  --text-label--font-weight: 600;
-  --text-label--letter-spacing: 0.005em;
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1rem;
+  /* Type scale (v2): text-caption 11, text-meta 13, text-body 15, text-headline 17, text-title 22, text-large-title 28, text-display-number 40.
+   * Pair display styles with font-display (and lowercase for map/category labels). */
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 0.875rem;
   --text-caption--font-weight: 500;
-  --text-caption--letter-spacing: 0.01em;
-  --text-overline: 0.75rem;
-  --text-overline--line-height: 1rem;
-  --text-overline--font-weight: 700;
-  --text-overline--letter-spacing: 0.08em;
-  --text-points: 3.5rem;
-  --text-points--line-height: 3.75rem;
-  --text-points--font-weight: 700;
-  --text-points--letter-spacing: -0.02em;
-  --text-counter-hero: 4.5rem;
-  --text-counter-hero--line-height: 4.75rem;
-  --text-counter-hero--font-weight: 700;
-  --text-counter-hero--letter-spacing: -0.02em;
-  --text-keypad: 2rem;
-  --text-keypad--line-height: 2.25rem;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.0625rem;
+  --text-meta--font-weight: 400;
+  --text-meta-strong: 0.8125rem;
+  --text-meta-strong--line-height: 1.0625rem;
+  --text-meta-strong--font-weight: 600;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.25rem;
+  --text-body--font-weight: 400;
+  --text-body-strong: 0.9375rem;
+  --text-body-strong--line-height: 1.25rem;
+  --text-body-strong--font-weight: 600;
+  --text-headline: 1.0625rem;
+  --text-headline--line-height: 1.375rem;
+  --text-headline--font-weight: 600;
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.8125rem;
+  --text-title--font-weight: 600;
+  --text-large-title: 1.75rem;
+  --text-large-title--line-height: 2rem;
+  --text-large-title--font-weight: 800;
+  --text-large-title--letter-spacing: -0.01em;
+  --text-display-number: 2.5rem;
+  --text-display-number--line-height: 2.875rem;
+  --text-display-number--font-weight: 800;
+  --text-display-number--letter-spacing: -0.01em;
+  --text-place-name: 0.9375rem;
+  --text-place-name--line-height: 1.25rem;
+  --text-place-name--font-weight: 600;
+  --text-place-subtitle: 0.8125rem;
+  --text-place-subtitle--line-height: 1.0625rem;
+  --text-place-subtitle--font-weight: 400;
+  --text-map-label: 0.9375rem;
+  --text-map-label--line-height: 1.25rem;
+  --text-map-label--font-weight: 700;
+  --text-category-label: 0.8125rem;
+  --text-category-label--line-height: 1.0625rem;
+  --text-category-label--font-weight: 700;
+  --text-hero: 2.5rem;
+  --text-hero--line-height: 2.875rem;
+  --text-hero--font-weight: 800;
+  --text-hero--letter-spacing: -0.01em;
+  --text-display: 2.5rem;
+  --text-display--line-height: 2.875rem;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.01em;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 2rem;
+  --text-h1--font-weight: 800;
+  --text-h1--letter-spacing: -0.01em;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.8125rem;
+  --text-h2--font-weight: 600;
+  --text-h3: 1.0625rem;
+  --text-h3--line-height: 1.375rem;
+  --text-h3--font-weight: 600;
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.375rem;
+  --text-body-lg--font-weight: 400;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.0625rem;
+  --text-body-sm--font-weight: 400;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.0625rem;
+  --text-label--font-weight: 600;
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 0.875rem;
+  --text-overline--font-weight: 600;
+  --text-points: 2.5rem;
+  --text-points--line-height: 2.875rem;
+  --text-points--font-weight: 800;
+  --text-points--letter-spacing: -0.01em;
+  --text-counter-hero: 2.5rem;
+  --text-counter-hero--line-height: 2.875rem;
+  --text-counter-hero--font-weight: 800;
+  --text-counter-hero--letter-spacing: -0.01em;
+  --text-keypad: 1.75rem;
+  --text-keypad--line-height: 2rem;
   --text-keypad--font-weight: 600;
-  --text-stat: 2rem;
-  --text-stat--line-height: 2.25rem;
-  --text-stat--font-weight: 700;
+  --text-stat: 1.75rem;
+  --text-stat--line-height: 2rem;
+  --text-stat--font-weight: 600;
   --text-stat--letter-spacing: -0.01em;
   --text-code: 2.5rem;
-  --text-code--line-height: 2.75rem;
+  --text-code--line-height: 2.875rem;
   --text-code--font-weight: 700;
-  --text-code--letter-spacing: 0.12em;
+  --text-code--letter-spacing: 0.08em;
 
-  /* Radii: rounded-xs (4) rounded-sm (8) rounded-md (12) rounded-lg (16) rounded-xl (24) */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  /* Radii (v2): rounded-input (10) rounded-card (16) rounded-sheet (24) rounded-full. xs/sm/md = 10, lg = 16, xl = 24 (deprecated). */
+  --radius-input: 10px;
+  --radius-card: 16px;
+  --radius-sheet: 24px;
+  --radius-xs: 10px;
+  --radius-sm: 10px;
+  --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
-  /* Motion: ease-standard, ease-enter, ease-exit, ease-emphasized */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-enter: cubic-bezier(0, 0, 0, 1);
-  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
-  --ease-emphasized: cubic-bezier(0.3, 1.4, 0.5, 1);
+  /* Motion: ease-out (taps, 150ms), ease-sheet (sheets, 240ms) */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Frosted map chrome: backdrop-blur-chrome */
+  --blur-chrome: 20px;
 
   /* Breakpoints (Tailwind defaults, restated so they are owned here) */
   --breakpoint-sm: 40rem;
@@ -369,9 +369,9 @@
 
   /* Animations */
   --animate-shimmer: ll-shimmer 1.4s linear infinite;
-  --animate-stamp-pop: ll-stamp-pop 600ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
-  --animate-fade-in: ll-fade-in 220ms cubic-bezier(0, 0, 0, 1) both;
-  --animate-sheet-up: ll-sheet-up 320ms cubic-bezier(0, 0, 0, 1) both;
+  --animate-stamp-pop: ll-stamp-pop 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: ll-fade-in 150ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-sheet-up: ll-sheet-up 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
 
   @keyframes ll-shimmer {
     0% { background-position: -200% 0; }
@@ -393,6 +393,19 @@
 }
 
 /* Utilities */
+@utility chrome {
+  /* Frosted capsule over the map: tab bar, top capsules. Map chrome ONLY. */
+  background-color: var(--ll-color-chrome);
+  -webkit-backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));
+  backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));
+  box-shadow: var(--ll-shadow-float);
+}
+@utility hairline {
+  border: var(--ll-border-hairline) solid var(--ll-color-line);
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
 @utility touch-target {
   min-height: var(--ll-touch-default);
   min-width: var(--ll-touch-default);
@@ -439,8 +452,11 @@
 
 @layer base {
   html {
-    background-color: var(--ll-color-canvas);
+    background-color: var(--ll-color-bg);
     color: var(--ll-color-fg);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
   }
   :focus-visible {

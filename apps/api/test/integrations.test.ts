@@ -4,8 +4,17 @@ import { integrations, ledgerTransactions, locations, merchantCategories, mercha
 import { decryptCredentials, encryptCredentials, signOAuthState } from "../src/services/integrations.js";
 import { setHttp } from "../src/services/integrations-http.js";
 import { retryFailedEvents } from "../src/services/integrations-pipeline.js";
-import { createMerchant, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant as createBaseMerchant, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 import { SQ_LOCATION, SQ_MERCHANT, b64hmac, fakeFetch, squareOrderUpdated, squarePaymentUpdated, squareRefundUpdated, squareRoutes } from "./integrations-support.js";
+
+/** Pricing v2: these features are paid and hidden at launch; this file's shops are pilots with admin overrides. */
+const PILOT_FEATURES = ["integrations.pos_auto_award", "integrations.webhooks", "marketing.email"] as const;
+async function createMerchant(env: TestEnv, opts: Parameters<typeof createBaseMerchant>[1] = {}) {
+  const m = await createBaseMerchant(env, opts);
+  await grantFeatures(env, m.merchant.id, [...PILOT_FEATURES]);
+  return m;
+}
+
 
 let env: TestEnv;
 const SIG_KEY = "sq_test_signature_key";
@@ -57,13 +66,16 @@ const memberByPhone = async (merchantId: string, phone: string) => {
 };
 
 describe("integrations catalog + OAuth", () => {
-  it("lists every connector (free) and requires a manager", async () => {
+  it("lists every connector, marks paid ones (Pricing v2) and requires a manager", async () => {
     const m = await setup();
     const r = await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/integrations`, headers: auth(m.ownerToken) });
     expect(r.statusCode).toBe(200);
     const items = r.json().items as { provider: string; free: boolean; status: string; available: boolean; category: string }[];
     expect(items.map((i) => i.provider)).toEqual(expect.arrayContaining(["square", "clover", "shopify", "lightspeed", "toast", "google_business", "mailchimp", "zapier", "make", "webhooks", "api", "twilio"]));
-    expect(items.every((i) => i.free)).toBe(true);
+    // Pricing v2: POS, Mailchimp and automation (webhooks/API/Zapier/Make) are Plus; Google Business and Twilio stay free.
+    expect(items.filter((i) => i.free).map((i) => i.provider).sort()).toEqual(["google_business", "twilio"]);
+    // This pilot shop has the paid features via admin overrides, so nothing is locked.
+    expect(items.every((i) => !(i as unknown as { locked: boolean }).locked)).toBe(true);
     expect(items.find((i) => i.provider === "square")).toMatchObject({ status: "not_connected", available: true, category: "pos" });
     expect(items.find((i) => i.provider === "clover")!.available).toBe(false);
 
@@ -300,6 +312,37 @@ describe("POS webhook pipeline (Square)", () => {
     await env.db.update(merchants).set({ status: "paused" }).where(eq(merchants.id, m.merchant.id));
     expect((await postSquare(squarePaymentUpdated({ eventId: "e2", orderId: "O2" }))).json().results[0].status).toBe("ignored");
     expect(await memberByPhone(m.merchant.id, m.phone!)).toBeNull();
+  });
+
+  it("Pricing v2: a shop without POS auto-award can't connect; an existing connection pauses with a clear status", async () => {
+    // Not a pilot: no overrides, so the Plus features are locked (hidden at launch).
+    const plain = await createBaseMerchant(env);
+    const list = (await env.app.inject({ method: "GET", url: `/v1/merchants/${plain.merchant.id}/integrations`, headers: auth(plain.ownerToken) })).json().items as {
+      provider: string;
+      locked: boolean;
+      feature: string | null;
+    }[];
+    expect(list.find((i) => i.provider === "square")).toMatchObject({ locked: true, feature: "integrations.pos_auto_award" });
+    expect(list.find((i) => i.provider === "google_business")).toMatchObject({ locked: false, feature: null });
+    const c = await env.app.inject({ method: "POST", url: `/v1/merchants/${plain.merchant.id}/integrations/square/connect`, headers: auth(plain.ownerToken), payload: {} });
+    expect(c.statusCode).toBe(402);
+    expect(c.json().error.code).toBe("feature_locked");
+
+    // A pilot that connected Square, then lost the feature (override removed): connection kept, awarding stops.
+    const m = await setup();
+    await connectSquare(m);
+    await grantFeatures(env, m.merchant.id, ["integrations.pos_auto_award"], false);
+    const r = await postSquare(squarePaymentUpdated({ eventId: "lost_1", orderId: "LOST_1" }));
+    expect(r.json().results[0].status).toBe("ignored");
+    const [ev] = await env.db.select().from(webhookEvents).where(eq(webhookEvents.externalId, "lost_1"));
+    expect(ev!.error).toMatch(/paused: it's a Plus feature/);
+    expect(await memberByPhone(m.merchant.id, m.phone!)).toBeNull();
+    const sq = (await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/integrations`, headers: auth(m.ownerToken) })).json().items.find((i: { provider: string }) => i.provider === "square");
+    expect(sq).toMatchObject({ status: "connected", locked: true });
+    expect(sq.pausedReason).toMatch(/^Paused: POS auto-award is a Plus feature/);
+    // Re-enabled → awards again; nothing was deleted.
+    await grantFeatures(env, m.merchant.id, ["integrations.pos_auto_award"]);
+    expect((await postSquare(squarePaymentUpdated({ eventId: "back_1", orderId: "BACK_1" }))).json().results[0].status).toBe("processed");
   });
 
   it("autoEnroll=false only awards existing members", async () => {

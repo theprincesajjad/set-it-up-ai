@@ -1,223 +1,243 @@
 import { palette as p } from "./palette.js";
 
 /**
- * Semantic colour roles. Every component uses these, never raw hex.
+ * Semantic colour roles (v2, docs/design/foundations.md § Colour).
  *
- * Naming: `x` is a fill, `onX` is text/icon drawn ON that fill,
- * `xSubtle` is a tinted background, `onXSubtle` is text/icon on that tint,
- * `fg*` is text on canvas/surface. All `on*` and `fg*` pairs are contrast
- * tested in test/contrast.test.ts (>= 4.5:1).
+ * The first block is the v2 system, exactly as the foundations table. New
+ * code uses ONLY these. The second block keeps the role names the apps
+ * already use so they keep compiling, but every one now resolves to a v2
+ * value (brand = black, surfaces = white, tints = bg-subtle). They are
+ * deprecated: restyle onto the v2 names.
+ *
+ * Accent rule: `accent` (#FF5A1F) is 3.1:1 on white, so it is for fills,
+ * stamps, dots and large numbers (>= 17px semibold / 24px regular) only.
+ * Small accent text uses `accentText` (#C2410C light, 5.2:1).
  */
 export interface ColorRoles {
-  // Backgrounds
-  canvas: string; // app/page background ("paper")
-  canvasSubtle: string; // alternating sections, sidebar
-  surface: string; // cards, sheets, inputs
-  surfaceRaised: string; // popovers, menus, toasts on top of surface
-  surfaceSunken: string; // wells, table header, segmented control track
-  surfaceInverse: string; // tooltips, snackbars in light mode
-  overlay: string; // modal scrim (with alpha)
-
-  // Text
+  // ── v2 roles ────────────────────────────────────────────────
+  /** Screens, sheets. */
+  bg: string;
+  /** Grouped backgrounds, sidebar, table header. */
+  bgSubtle: string;
+  /** Pressed rows, skeletons, active sidebar item. */
+  bgMuted: string;
+  /** Primary text; primary buttons are fg-filled (black in light). */
   fg: string;
-  fgMuted: string; // secondary text, labels, helper text, placeholders
-  fgInverse: string; // text on surfaceInverse
-  fgLink: string;
-  fgDisabled: string; // exempt from contrast (WCAG 1.4.3 exception), but kept >= 3:1 anyway where possible
-
-  // Lines
-  border: string; // decorative dividers, card outlines (exempt from 3:1)
-  borderStrong: string; // input borders, checkbox outlines (>= 3:1 vs surface)
-  focusRing: string; // 2px focus ring + 2px offset (>= 3:1 vs canvas & surface)
-
-  // Brand (primary actions)
-  brand: string;
-  brandHover: string;
-  brandPressed: string;
-  onBrand: string;
-  brandSubtle: string;
-  onBrandSubtle: string;
-  fgBrand: string; // brand colour used as text on canvas/surface (e.g. points numbers, links in cards)
-
-  // Accent (stamps, points earned, celebratory moments, highlights)
+  /** Secondary text, italic place subtitles. */
+  fgMuted: string;
+  /** Placeholders, disabled. Not for readable text (below 4.5:1). */
+  fgSubtle: string;
+  /** Hairlines (1px web, StyleSheet.hairlineWidth native). */
+  line: string;
+  /** Form-control outlines that must meet 3:1 (inputs, checkboxes, empty stamp slots). */
+  lineStrong: string;
+  /** Points, stamps, "reward ready", activity dots. Nothing else. Fills / large numbers. */
   accent: string;
-  accentHover: string;
+  /** Accent for small text (balances in lists, "reward ready" label). >= 4.5:1 on bg and accentSoft. */
+  accentText: string;
+  /** Background behind accent text / badges. */
+  accentSoft: string;
+  /** Icon/text drawn on an accent fill (icons + large text only, 3:1). */
   onAccent: string;
-  accentSubtle: string;
-  onAccentSubtle: string;
-
-  // Neutral chips, "Sponsored" label, "Coming soon" lock tag
-  neutralSubtle: string;
-  onNeutralSubtle: string;
-
-  // Semantic
-  success: string;
-  onSuccess: string;
-  successSubtle: string;
-  onSuccessSubtle: string;
-  warning: string;
-  onWarning: string;
-  warningSubtle: string;
-  onWarningSubtle: string;
-  danger: string;
-  dangerHover: string;
-  onDanger: string;
-  dangerSubtle: string;
-  onDangerSubtle: string;
-  info: string;
-  onInfo: string;
-  infoSubtle: string;
-  onInfoSubtle: string;
-
-  // Specials
-  disabledBg: string;
-  onDisabled: string;
-  skeleton: string;
-  skeletonHighlight: string;
-  stampEmpty: string; // empty stamp slot outline
-  ringTrack: string; // points ring background track
+  /** "Open now" dot, positive deltas (dot/icon, 3:1). */
+  positive: string;
+  /** Closed, errors, destructive. Text-safe on bg. */
+  negative: string;
+  /** The user's own location dot only. */
+  location: string;
+  /** Frosted chrome fill (tab bar, top capsules): bg at 80%, use with blur.chrome. */
+  chrome: string;
+  /** Modal scrim. */
+  overlay: string;
   /** QR codes are ALWAYS black on white, both themes, for scanner reliability. */
   qrFg: string;
   qrBg: string;
+
+  // ── Deprecated v1 role names, redefined onto v2 ─────────────
+  /** @deprecated use `bg` */ canvas: string;
+  /** @deprecated use `bgSubtle` */ canvasSubtle: string;
+  /** @deprecated use `bg` (cards on a white page get a `line` hairline, not a fill) */ surface: string;
+  /** @deprecated use `bg` + shadows.float */ surfaceRaised: string;
+  /** @deprecated use `bgSubtle` */ surfaceSunken: string;
+  /** @deprecated use `fg` as a fill */ surfaceInverse: string;
+  /** @deprecated use `bg` as text on an fg fill */ fgInverse: string;
+  /** @deprecated links are `fg` + underline */ fgLink: string;
+  /** @deprecated use `fgSubtle` */ fgDisabled: string;
+  /** @deprecated use `line` */ border: string;
+  /** @deprecated use `lineStrong` */ borderStrong: string;
+  /** Focus ring: fg (2px + 2px offset). */ focusRing: string;
+  /** @deprecated primary buttons are `fg` (black) */ brand: string;
+  /** @deprecated */ brandHover: string;
+  /** @deprecated */ brandPressed: string;
+  /** @deprecated use `bg` on an `fg` fill */ onBrand: string;
+  /** @deprecated use `bgMuted` (no tinted fills in v2) */ brandSubtle: string;
+  /** @deprecated use `fg` */ onBrandSubtle: string;
+  /** @deprecated brand-coloured text is gone; use `fg`, or `accentText` for points */ fgBrand: string;
+  /** @deprecated */ accentHover: string;
+  /** @deprecated use `accentSoft` */ accentSubtle: string;
+  /** @deprecated use `accentText` */ onAccentSubtle: string;
+  /** @deprecated use `bgMuted` */ neutralSubtle: string;
+  /** @deprecated use `fgMuted` */ onNeutralSubtle: string;
+  /** @deprecated use `positive` (dot + word, never a filled card) */ success: string;
+  /** @deprecated */ onSuccess: string;
+  /** @deprecated use `bgSubtle` */ successSubtle: string;
+  /** @deprecated use `fg` */ onSuccessSubtle: string;
+  /** @deprecated no warning colour in v2: use an fg (black) banner */ warning: string;
+  /** @deprecated */ onWarning: string;
+  /** @deprecated use `bgSubtle` */ warningSubtle: string;
+  /** @deprecated use `fg` */ onWarningSubtle: string;
+  /** @deprecated use `negative` */ danger: string;
+  /** @deprecated */ dangerHover: string;
+  /** @deprecated */ onDanger: string;
+  /** @deprecated use `bgSubtle` + a `negative` icon */ dangerSubtle: string;
+  /** @deprecated use `fg` */ onDangerSubtle: string;
+  /** @deprecated no info colour in v2: use `fg` */ info: string;
+  /** @deprecated */ onInfo: string;
+  /** @deprecated use `bgSubtle` */ infoSubtle: string;
+  /** @deprecated use `fg` */ onInfoSubtle: string;
+  /** @deprecated use `bgMuted` */ disabledBg: string;
+  /** @deprecated */ onDisabled: string;
+  /** Skeleton block (bgMuted) and its shimmer highlight (bgSubtle). */ skeleton: string;
+  skeletonHighlight: string;
+  /** Empty stamp slot outline (lineStrong). */ stampEmpty: string;
+  /** Points ring / bar track (bgMuted). */ ringTrack: string;
+}
+
+const v2Light = {
+  bg: p.gray[0],
+  bgSubtle: p.gray[50],
+  bgMuted: p.gray[100],
+  fg: p.gray[950],
+  fgMuted: p.gray[600],
+  fgSubtle: p.gray[400],
+  line: p.gray[150],
+  lineStrong: p.gray[450],
+  accent: p.orange[500],
+  accentText: p.orange[700],
+  accentSoft: p.orange[50],
+  onAccent: p.gray[0],
+  positive: p.green[600],
+  negative: p.red[600],
+  location: p.blue[500],
+  chrome: "rgba(255, 255, 255, 0.8)",
+  overlay: "rgba(11, 11, 12, 0.4)",
+  qrFg: "#000000",
+  qrBg: "#FFFFFF",
+} as const;
+
+const v2Dark = {
+  bg: p.gray[950],
+  bgSubtle: p.gray[900],
+  bgMuted: p.gray[850],
+  fg: p.gray[50],
+  fgMuted: p.gray[650],
+  fgSubtle: p.gray[550],
+  line: p.gray[800],
+  lineStrong: p.gray[500],
+  accent: p.orange[400],
+  accentText: p.orange[400],
+  accentSoft: p.orange[950],
+  onAccent: p.gray[950],
+  positive: p.green[500],
+  negative: p.red[400],
+  location: p.blue[400],
+  chrome: "rgba(22, 22, 24, 0.8)",
+  overlay: "rgba(0, 0, 0, 0.6)",
+  qrFg: "#000000",
+  qrBg: "#FFFFFF",
+} as const;
+
+type V2 = { [K in keyof typeof v2Light]: string };
+
+/** v1 role names expressed in v2 roles (same mapping in both themes). */
+function legacy(c: V2, x: { brandHover: string; brandPressed: string; accentHover: string; dangerHover: string; onDanger: string; onSuccess: string }) {
+  return {
+    canvas: c.bg,
+    canvasSubtle: c.bgSubtle,
+    surface: c.bg,
+    surfaceRaised: c.bg,
+    surfaceSunken: c.bgSubtle,
+    surfaceInverse: c.fg,
+    fgInverse: c.bg,
+    fgLink: c.fg,
+    fgDisabled: c.fgSubtle,
+    border: c.line,
+    borderStrong: c.lineStrong,
+    focusRing: c.fg,
+    brand: c.fg,
+    brandHover: x.brandHover,
+    brandPressed: x.brandPressed,
+    onBrand: c.bg,
+    brandSubtle: c.bgMuted,
+    onBrandSubtle: c.fg,
+    fgBrand: c.fg,
+    accentHover: x.accentHover,
+    accentSubtle: c.accentSoft,
+    onAccentSubtle: c.accentText,
+    neutralSubtle: c.bgMuted,
+    onNeutralSubtle: c.fgMuted,
+    success: c.positive,
+    onSuccess: x.onSuccess,
+    successSubtle: c.bgSubtle,
+    onSuccessSubtle: c.fg,
+    warning: c.fg,
+    onWarning: c.bg,
+    warningSubtle: c.bgSubtle,
+    onWarningSubtle: c.fg,
+    danger: c.negative,
+    dangerHover: x.dangerHover,
+    onDanger: x.onDanger,
+    dangerSubtle: c.bgSubtle,
+    onDangerSubtle: c.fg,
+    info: c.fg,
+    onInfo: c.bg,
+    infoSubtle: c.bgSubtle,
+    onInfoSubtle: c.fg,
+    disabledBg: c.bgMuted,
+    onDisabled: c.fgMuted,
+    skeleton: c.bgMuted,
+    skeletonHighlight: c.bgSubtle,
+    stampEmpty: c.lineStrong,
+    ringTrack: c.bgMuted,
+  };
 }
 
 export const light: ColorRoles = {
-  canvas: p.stone[50],
-  canvasSubtle: p.stone[100],
-  surface: p.stone[0],
-  surfaceRaised: p.stone[0],
-  surfaceSunken: p.stone[100],
-  surfaceInverse: p.stone[900],
-  overlay: "rgba(31, 27, 22, 0.48)",
-
-  fg: p.stone[900],
-  fgMuted: p.stone[600],
-  fgInverse: p.stone[50],
-  fgLink: p.pine[700],
-  fgDisabled: p.stone[400],
-
-  border: p.stone[200],
-  borderStrong: p.stone[500],
-  focusRing: p.lake[600],
-
-  brand: p.pine[600],
-  brandHover: p.pine[700],
-  brandPressed: p.pine[800],
-  onBrand: p.stone[0],
-  brandSubtle: p.pine[50],
-  onBrandSubtle: p.pine[800],
-  fgBrand: p.pine[700],
-
-  accent: p.marigold[400],
-  accentHover: p.marigold[500],
-  onAccent: p.stone[900],
-  accentSubtle: p.marigold[50],
-  onAccentSubtle: p.marigold[800],
-
-  neutralSubtle: p.stone[100],
-  onNeutralSubtle: p.stone[700],
-
-  success: p.leaf[600],
-  onSuccess: p.stone[0],
-  successSubtle: p.leaf[50],
-  onSuccessSubtle: p.leaf[800],
-  warning: p.ochre[400],
-  onWarning: p.stone[900],
-  warningSubtle: p.ochre[50],
-  onWarningSubtle: p.ochre[800],
-  danger: p.cherry[600],
-  dangerHover: p.cherry[700],
-  onDanger: p.stone[0],
-  dangerSubtle: p.cherry[50],
-  onDangerSubtle: p.cherry[800],
-  info: p.lake[600],
-  onInfo: p.stone[0],
-  infoSubtle: p.lake[50],
-  onInfoSubtle: p.lake[800],
-
-  disabledBg: p.stone[200],
-  onDisabled: p.stone[600],
-  skeleton: p.stone[200],
-  skeletonHighlight: p.stone[100],
-  stampEmpty: p.stone[500],
-  ringTrack: p.stone[200],
-  qrFg: "#000000",
-  qrBg: "#FFFFFF",
+  ...v2Light,
+  ...legacy(v2Light, {
+    brandHover: "#26262A",
+    brandPressed: "#3A3A3F",
+    accentHover: p.orange[600],
+    dangerHover: p.red[700],
+    onDanger: p.gray[0],
+    onSuccess: p.gray[0],
+  }),
 };
 
 export const dark: ColorRoles = {
-  canvas: p.stone[950],
-  canvasSubtle: p.stone[1000],
-  surface: p.stone[900],
-  surfaceRaised: p.stone[850],
-  surfaceSunken: p.stone[1000],
-  surfaceInverse: p.stone[100],
-  overlay: "rgba(0, 0, 0, 0.64)",
-
-  fg: p.stone[100],
-  fgMuted: p.stone[400],
-  fgInverse: p.stone[900],
-  fgLink: p.pine[300],
-  fgDisabled: p.stone[600],
-
-  border: p.stone[800],
-  borderStrong: p.stone[500],
-  focusRing: p.lake[400],
-
-  brand: p.pine[400],
-  brandHover: p.pine[300],
-  brandPressed: p.pine[200],
-  onBrand: p.stone[1000],
-  brandSubtle: p.pine[950],
-  onBrandSubtle: p.pine[200],
-  fgBrand: p.pine[300],
-
-  accent: p.marigold[400],
-  accentHover: p.marigold[300],
-  onAccent: p.stone[1000],
-  accentSubtle: "#33240C",
-  onAccentSubtle: p.marigold[200],
-
-  neutralSubtle: p.stone[800],
-  onNeutralSubtle: p.stone[200],
-
-  success: p.leaf[400],
-  onSuccess: p.stone[1000],
-  successSubtle: "#10291A",
-  onSuccessSubtle: p.leaf[300],
-  warning: p.ochre[400],
-  onWarning: p.stone[1000],
-  warningSubtle: "#30210A",
-  onWarningSubtle: p.ochre[300],
-  danger: p.cherry[400],
-  dangerHover: p.cherry[300],
-  onDanger: p.stone[1000],
-  dangerSubtle: "#3A1411",
-  onDangerSubtle: p.cherry[300],
-  info: p.lake[400],
-  onInfo: p.stone[1000],
-  infoSubtle: "#0F2238",
-  onInfoSubtle: p.lake[300],
-
-  disabledBg: p.stone[800],
-  onDisabled: p.stone[400],
-  skeleton: p.stone[800],
-  skeletonHighlight: p.stone[850],
-  stampEmpty: p.stone[500],
-  ringTrack: p.stone[800],
-  qrFg: "#000000",
-  qrBg: "#FFFFFF",
+  ...v2Dark,
+  ...legacy(v2Dark, {
+    brandHover: "#E5E5E3",
+    brandPressed: "#D4D4D2",
+    accentHover: "#FF8F62",
+    dangerHover: "#FCA5A5",
+    onDanger: p.gray[950],
+    onSuccess: p.gray[950],
+  }),
 };
 
 export const colors = { light, dark } as const;
 export type ThemeName = keyof typeof colors;
 export type ColorRole = keyof ColorRoles;
 
+/** The v2 role names (what new code should use). */
+export const v2ColorRoles = Object.keys(v2Light) as ColorRole[];
+
 /** A foreground/background pair the system promises is readable. */
 export interface ContrastPair {
   fg: ColorRole;
   bg: ColorRole;
-  /** Minimum ratio: 4.5 for body text, 3 for UI/non-text. */
+  /** Minimum ratio: 4.5 for body text, 3 for UI/non-text and large text. */
   min: number;
   note: string;
 }
@@ -234,44 +254,25 @@ const textOn = (bgs: ColorRole[], fgs: ColorRole[], note: string): ContrastPair[
  * test checks it.
  */
 export const contrastPairs: ContrastPair[] = [
-  ...textOn(
-    ["canvas", "canvasSubtle", "surface", "surfaceRaised", "surfaceSunken"],
-    ["fg", "fgMuted", "fgLink", "fgBrand"],
-    "Body & secondary text, links and brand-coloured numbers on every background",
-  ),
-  { fg: "fgInverse", bg: "surfaceInverse", min: TEXT, note: "Tooltip / snackbar text" },
-  ...(["brand", "brandHover", "brandPressed"] as ColorRole[]).map((bg) => ({
-    fg: "onBrand" as ColorRole,
-    bg,
-    min: TEXT,
-    note: "Primary button label in all states",
-  })),
-  { fg: "onBrandSubtle", bg: "brandSubtle", min: TEXT, note: "Brand chip, selected tab, tonal button" },
-  { fg: "onAccent", bg: "accent", min: TEXT, note: "Accent button / points-earned banner" },
-  { fg: "onAccent", bg: "accentHover", min: TEXT, note: "Accent button hover" },
-  { fg: "onAccentSubtle", bg: "accentSubtle", min: TEXT, note: "Reward-ready chip, promo card tint" },
-  { fg: "onNeutralSubtle", bg: "neutralSubtle", min: TEXT, note: "Sponsored label, Coming soon tag, neutral chip" },
-  { fg: "onSuccess", bg: "success", min: TEXT, note: "Success fill (award confirmation)" },
-  { fg: "onSuccessSubtle", bg: "successSubtle", min: TEXT, note: "Success banner / badge" },
-  { fg: "onWarning", bg: "warning", min: TEXT, note: "Warning fill (offline banner)" },
-  { fg: "onWarningSubtle", bg: "warningSubtle", min: TEXT, note: "Warning banner / badge" },
+  ...textOn(["bg", "bgSubtle", "bgMuted"], ["fg", "fgMuted"], "Primary & secondary text on every background"),
+  ...textOn(["bg", "bgSubtle", "accentSoft"], ["accentText"], "Small accent text: balances, 'reward ready', points labels"),
+  { fg: "bg", bg: "fg", min: TEXT, note: "Primary (black) button label, inverse snackbar" },
+  { fg: "negative", bg: "bg", min: TEXT, note: "Inline error / 'closed' text" },
+  { fg: "qrFg", bg: "qrBg", min: 15, note: "QR modules: always black on white" },
+  // Large text / non-text UI (WCAG 1.4.3 large, 1.4.11)
+  { fg: "accent", bg: "bg", min: UI, note: "Accent fills, stamps, dots and large (>= 17px semibold) numbers" },
+  { fg: "onAccent", bg: "accent", min: UI, note: "Check icon / large label on a filled stamp or accent badge" },
+  { fg: "positive", bg: "bg", min: UI, note: "'Open now' dot, positive delta arrow" },
+  { fg: "location", bg: "bg", min: UI, note: "User location dot" },
+  { fg: "lineStrong", bg: "bg", min: UI, note: "Input / checkbox outline, empty stamp slot" },
+  { fg: "lineStrong", bg: "bgSubtle", min: UI, note: "Input outline on grouped background" },
+  { fg: "fg", bg: "bg", min: UI, note: "Focus ring (fg), chart line/bars" },
+  { fg: "fgSubtle", bg: "bg", min: 2.5, note: "Placeholder / disabled (exempt; kept legible)" },
+  // Deprecated names still used by apps
+  ...(["brand", "brandHover", "brandPressed"] as ColorRole[]).map((bg) => ({ fg: "onBrand" as ColorRole, bg, min: TEXT, note: "Legacy primary button label in all states" })),
   { fg: "onDanger", bg: "danger", min: TEXT, note: "Destructive button" },
   { fg: "onDanger", bg: "dangerHover", min: TEXT, note: "Destructive button hover" },
-  { fg: "onDangerSubtle", bg: "dangerSubtle", min: TEXT, note: "Error banner / inline error" },
-  { fg: "onInfo", bg: "info", min: TEXT, note: "Info fill" },
-  { fg: "onInfoSubtle", bg: "infoSubtle", min: TEXT, note: "Info banner / badge" },
-  { fg: "danger", bg: "surface", min: TEXT, note: "Inline field error text on input surface" },
-  { fg: "danger", bg: "canvas", min: TEXT, note: "Inline error text on canvas" },
-  { fg: "onSuccessSubtle", bg: "surface", min: TEXT, note: "'+12 pts' green text in activity list" },
+  { fg: "onAccentSubtle", bg: "accentSubtle", min: TEXT, note: "Legacy reward-ready chip" },
+  { fg: "onNeutralSubtle", bg: "neutralSubtle", min: TEXT, note: "Legacy neutral chip" },
   { fg: "onDisabled", bg: "disabledBg", min: UI, note: "Disabled control label (exempt; held to 3:1)" },
-  { fg: "qrFg", bg: "qrBg", min: 15, note: "QR modules: always black on white" },
-  // Non-text UI (WCAG 1.4.11)
-  { fg: "borderStrong", bg: "surface", min: UI, note: "Input / checkbox border" },
-  { fg: "borderStrong", bg: "canvas", min: UI, note: "Input border on canvas" },
-  { fg: "focusRing", bg: "canvas", min: UI, note: "Focus ring" },
-  { fg: "focusRing", bg: "surface", min: UI, note: "Focus ring on cards" },
-  { fg: "brand", bg: "surface", min: UI, note: "Brand icons, selected radio, progress fill" },
-  { fg: "brand", bg: "canvas", min: UI, note: "Brand icons on canvas" },
-  { fg: "stampEmpty", bg: "surface", min: UI, note: "Empty stamp slot outline" },
-  { fg: "danger", bg: "dangerSubtle", min: UI, note: "Error icon in error banner" },
 ];

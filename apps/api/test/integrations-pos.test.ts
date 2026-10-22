@@ -3,8 +3,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { integrations, locations, merchantCategories, merchantMembers, users, webhookEvents } from "@ll/db";
 import { encryptCredentials } from "../src/services/integrations.js";
 import { setHttp } from "../src/services/integrations-http.js";
-import { createMerchant, createTestEnv, nextPhone, type TestEnv } from "./helpers.js";
+import { createMerchant as createBaseMerchant, createTestEnv, nextPhone, type TestEnv, grantFeatures } from "./helpers.js";
 import { CLOVER_MID, SHOP, b64hmac, cloverOrder, cloverPayment, fakeFetch, hexhmac, lightspeedSale, shopifyOrderPaid, shopifyRefund, toastOrder } from "./integrations-support.js";
+
+/** Pricing v2: these features are paid and hidden at launch; this file's shops are pilots with admin overrides. */
+const PILOT_FEATURES = ["integrations.pos_auto_award", "integrations.webhooks"] as const;
+async function createMerchant(env: TestEnv, opts: Parameters<typeof createBaseMerchant>[1] = {}) {
+  const m = await createBaseMerchant(env, opts);
+  await grantFeatures(env, m.merchant.id, [...PILOT_FEATURES]);
+  return m;
+}
+
 
 let env: TestEnv;
 beforeEach(async () => {

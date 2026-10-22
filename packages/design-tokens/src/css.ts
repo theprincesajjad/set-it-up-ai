@@ -6,12 +6,17 @@ import { chartColors } from "./charts.js";
 import { colors, type ColorRoles } from "./colors.js";
 import { palette } from "./palette.js";
 import {
+  blur,
   borderWidths,
   breakpoints,
+  categoryIconSizes,
   durations,
   easings,
+  iconSizes,
+  iconStroke,
   layout,
   radii,
+  shadowFloatDark,
   shadows,
   spacing,
   touchTargets,
@@ -36,6 +41,7 @@ function colorVars(c: ColorRoles, indent = "  "): string[] {
 
 function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
   const out = [...colorVars(colors[theme], indent)];
+  // Deprecated: verticals are neutral in v2 (same values for every vertical). Kept so old class names resolve.
   for (const v of Object.values(verticalVisuals)) {
     const c = v[theme];
     const n = kebab(v.vertical);
@@ -47,20 +53,11 @@ function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
   const ch = chartColors[theme];
   ch.categorical.forEach((c, i) => out.push(`${indent}--ll-chart-${i + 1}: ${c};`));
   ch.sequential.forEach((c, i) => out.push(`${indent}--ll-chart-seq-${i + 1}: ${c};`));
-  out.push(`${indent}--ll-chart-you: ${ch.you};`);
-  out.push(`${indent}--ll-chart-network: ${ch.network};`);
-  out.push(`${indent}--ll-chart-grid: ${ch.grid};`);
-  out.push(`${indent}--ll-chart-axis: ${ch.axis};`);
+  for (const k of ["line", "highlight", "you", "network", "grid", "axis"] as const) out.push(`${indent}--ll-chart-${k}: ${ch[k]};`);
   for (const [k, v] of Object.entries(ch.status)) out.push(`${indent}--ll-chart-status-${k}: ${v};`);
-  if (theme === "light") {
-    for (const [k, v] of Object.entries(shadows)) out.push(`${indent}--ll-shadow-${k}: ${v.css};`);
-  } else {
-    out.push(`${indent}--ll-shadow-none: none;`);
-    // Shadows are barely visible on dark surfaces; make them deeper and neutral.
-    out.push(`${indent}--ll-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);`);
-    out.push(`${indent}--ll-shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);`);
-    out.push(`${indent}--ll-shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);`);
-    out.push(`${indent}--ll-shadow-xl: 0 24px 48px -12px rgb(0 0 0 / 0.7);`);
+  for (const [k, v] of Object.entries(shadows)) {
+    const css = theme === "dark" && v.css !== "none" ? shadowFloatDark : v.css;
+    out.push(`${indent}--ll-shadow-${k}: ${css};`);
   }
   return out;
 }
@@ -75,6 +72,11 @@ function staticVars(indent = "  "): string[] {
   for (const [k, v] of Object.entries(easings)) out.push(`${indent}--ll-ease-${k}: ${v};`);
   for (const [k, v] of Object.entries(zIndex)) out.push(`${indent}--ll-z-${k}: ${v};`);
   for (const [k, v] of Object.entries(touchTargets)) out.push(`${indent}--ll-touch-${k}: ${px(v)};`);
+  for (const [k, v] of Object.entries(iconSizes)) out.push(`${indent}--ll-icon-${k}: ${px(v)};`);
+  out.push(`${indent}--ll-icon-stroke: ${iconStroke};`);
+  for (const [k, v] of Object.entries(categoryIconSizes)) out.push(`${indent}--ll-category-icon-${k}: ${px(v)};`);
+  out.push(`${indent}--ll-blur-chrome: ${px(blur.chrome)};`);
+  out.push(`${indent}--ll-blur-saturate: ${blur.saturate};`);
   for (const [k, v] of Object.entries(borderWidths)) out.push(`${indent}--ll-border-${kebab(k)}: ${px(v)};`);
   for (const [k, v] of Object.entries(breakpoints)) out.push(`${indent}--ll-breakpoint-${k}: ${px(v)};`);
   for (const [k, s] of Object.entries(textStyles)) {
@@ -83,6 +85,7 @@ function staticVars(indent = "  "): string[] {
     out.push(`${indent}--ll-text-${n}-line-height: ${rem(s.lineHeight)};`);
     out.push(`${indent}--ll-text-${n}-weight: ${s.fontWeight};`);
     out.push(`${indent}--ll-text-${n}-tracking: ${s.letterSpacing}em;`);
+    out.push(`${indent}--ll-text-${n}-family: var(--ll-font-${s.family});`);
   }
   return out;
 }
@@ -143,14 +146,15 @@ export function buildThemeCss(): string {
     `}`,
     ``,
     `@theme inline {`,
-    `  --font-sans: var(--font-figtree, "Figtree"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;`,
-    `  --font-display: var(--font-fraunces, "Fraunces"), ui-serif, Georgia, Cambria, "Times New Roman", serif;`,
+    `  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;`,
+    `  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;`,
     `  --font-mono: var(--ll-font-mono);`,
     ``,
-    `  /* Semantic colours: bg-canvas, text-fg, text-fg-muted, bg-brand text-on-brand, border-border-strong ... */`,
+    `  /* Semantic colours (v2): bg-bg, bg-bg-subtle, text-fg, text-fg-muted, border-line, text-accent-text, bg-accent-soft ...`,
+    `   * v1 names (canvas, surface, brand, ...) still resolve, to v2 values. Deprecated. */`,
   ];
   for (const k of Object.keys(colors.light)) out.push(`  --color-${kebab(k)}: var(--ll-color-${kebab(k)});`);
-  out.push(``, `  /* Vertical identity: bg-vertical-cafe-tint text-vertical-cafe-ink ... */`);
+  out.push(``, `  /* Deprecated: vertical colours are neutral in v2 (bg-subtle tile, fg glyph). */`);
   for (const v of Object.values(verticalVisuals)) {
     const n = kebab(v.vertical);
     for (const part of ["accent", "on-accent", "tint", "ink"]) {
@@ -158,21 +162,22 @@ export function buildThemeCss(): string {
     }
   }
   out.push(``, `  /* Charts */`);
-  for (let i = 1; i <= 6; i++) out.push(`  --color-chart-${i}: var(--ll-chart-${i});`);
-  for (let i = 1; i <= 8; i++) out.push(`  --color-chart-seq-${i}: var(--ll-chart-seq-${i});`);
-  for (const k of ["you", "network", "grid", "axis", "status-low", "status-building", "status-healthy"]) {
+  chartColors.light.categorical.forEach((_, i) => out.push(`  --color-chart-${i + 1}: var(--ll-chart-${i + 1});`));
+  chartColors.light.sequential.forEach((_, i) => out.push(`  --color-chart-seq-${i + 1}: var(--ll-chart-seq-${i + 1});`));
+  for (const k of ["line", "highlight", "you", "network", "grid", "axis", "status-low", "status-building", "status-healthy"]) {
     out.push(`  --color-chart-${k}: var(--ll-chart-${k});`);
   }
-  out.push(``, `  /* Elevation (switches in dark mode) */`);
+  out.push(``, `  /* Elevation: shadow-float is the only v2 shadow (switches in dark mode). sm = none; md/lg/xl = float (deprecated). */`);
   for (const k of Object.keys(shadows)) out.push(`  --shadow-${k}: var(--ll-shadow-${k});`);
   out.push(`}`, ``);
 
   out.push(`@theme {`);
-  out.push(`  /* Raw palette for marketing / illustration only: bg-pine-600, text-marigold-700 ... */`);
+  out.push(`  /* Raw palette for marketing / illustration only (ll- prefix so Tailwind's own scales are untouched): bg-ll-gray-950, text-ll-orange-700 ... */`);
   for (const [name, scale] of Object.entries(palette)) {
-    for (const [step, hex] of Object.entries(scale)) out.push(`  --color-${name}-${step}: ${hex};`);
+    for (const [step, hex] of Object.entries(scale)) out.push(`  --color-ll-${name}-${kebab(step)}: ${hex};`);
   }
-  out.push(``, `  /* Type scale: text-body, text-h1, text-points, text-code ... */`);
+  out.push(``, `  /* Type scale (v2): text-caption 11, text-meta 13, text-body 15, text-headline 17, text-title 22, text-large-title 28, text-display-number 40.`);
+  out.push(`   * Pair display styles with font-display (and lowercase for map/category labels). */`);
   for (const [k, s] of Object.entries(textStyles)) {
     const n = kebab(k);
     out.push(`  --text-${n}: ${rem(s.fontSize)};`);
@@ -180,18 +185,20 @@ export function buildThemeCss(): string {
     out.push(`  --text-${n}--font-weight: ${s.fontWeight};`);
     if (s.letterSpacing !== 0) out.push(`  --text-${n}--letter-spacing: ${s.letterSpacing}em;`);
   }
-  out.push(``, `  /* Radii: rounded-xs (4) rounded-sm (8) rounded-md (12) rounded-lg (16) rounded-xl (24) */`);
+  out.push(``, `  /* Radii (v2): rounded-input (10) rounded-card (16) rounded-sheet (24) rounded-full. xs/sm/md = 10, lg = 16, xl = 24 (deprecated). */`);
   for (const [k, v] of Object.entries(radii)) if (k !== "none" && k !== "full") out.push(`  --radius-${k}: ${px(v)};`);
-  out.push(``, `  /* Motion: ease-standard, ease-enter, ease-exit, ease-emphasized */`);
+  out.push(``, `  /* Motion: ease-out (taps, ${durations.tap}ms), ease-sheet (sheets, ${durations.sheet}ms) */`);
   for (const [k, v] of Object.entries(easings)) out.push(`  --ease-${k}: ${v};`);
+  out.push(``, `  /* Frosted map chrome: backdrop-blur-chrome */`);
+  out.push(`  --blur-chrome: ${px(blur.chrome)};`);
   out.push(``, `  /* Breakpoints (Tailwind defaults, restated so they are owned here) */`);
   for (const [k, v] of Object.entries(breakpoints)) out.push(`  --breakpoint-${k}: ${rem(v)};`);
   out.push(``, `  --spacing: 0.25rem;`);
   out.push(``, `  /* Animations */`);
   out.push(`  --animate-shimmer: ll-shimmer 1.4s linear infinite;`);
-  out.push(`  --animate-stamp-pop: ll-stamp-pop ${durations.celebrate}ms ${easings.emphasized} both;`);
-  out.push(`  --animate-fade-in: ll-fade-in ${durations.base}ms ${easings.enter} both;`);
-  out.push(`  --animate-sheet-up: ll-sheet-up ${durations.slow}ms ${easings.enter} both;`);
+  out.push(`  --animate-stamp-pop: ll-stamp-pop ${durations.sheet}ms ${easings.out} both;`);
+  out.push(`  --animate-fade-in: ll-fade-in ${durations.tap}ms ${easings.out} both;`);
+  out.push(`  --animate-sheet-up: ll-sheet-up ${durations.sheet}ms ${easings.sheet} both;`);
   out.push(``);
   out.push(`  @keyframes ll-shimmer {`);
   out.push(`    0% { background-position: -200% 0; }`);
@@ -214,6 +221,19 @@ export function buildThemeCss(): string {
 
   out.push(
     `/* Utilities */`,
+    `@utility chrome {`,
+    `  /* Frosted capsule over the map: tab bar, top capsules. Map chrome ONLY. */`,
+    `  background-color: var(--ll-color-chrome);`,
+    `  -webkit-backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));`,
+    `  backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));`,
+    `  box-shadow: var(--ll-shadow-float);`,
+    `}`,
+    `@utility hairline {`,
+    `  border: var(--ll-border-hairline) solid var(--ll-color-line);`,
+    `}`,
+    `@utility tabular {`,
+    `  font-variant-numeric: tabular-nums;`,
+    `}`,
     `@utility touch-target {`,
     `  min-height: var(--ll-touch-default);`,
     `  min-width: var(--ll-touch-default);`,
@@ -260,8 +280,11 @@ export function buildThemeCss(): string {
     ``,
     `@layer base {`,
     `  html {`,
-    `    background-color: var(--ll-color-canvas);`,
+    `    background-color: var(--ll-color-bg);`,
     `    color: var(--ll-color-fg);`,
+    `    font-variant-numeric: tabular-nums;`,
+    `    -webkit-font-smoothing: antialiased;`,
+    `    -moz-osx-font-smoothing: grayscale;`,
     `    -webkit-text-size-adjust: 100%;`,
     `  }`,
     `  :focus-visible {`,

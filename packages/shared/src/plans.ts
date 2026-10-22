@@ -1,13 +1,24 @@
 /**
  * Plans and feature gating.
  *
- * Business rules (non-negotiable, see docs/business/model.md):
- *  1. Every loyalty feature is on the Free plan, forever. No transaction fee,
- *     unlimited locations, unlimited members, unlimited staff for loyalty.
- *  2. Paid features (Plus / Pro) are rolled out only after the network has
- *     enough merchants. Until a feature's rollout stage is "ga" (or "beta" for
- *     opted-in merchants) it is hidden from everyone, paying or not.
- *  3. A feature that ships on Free can never move to a paid plan.
+ * Business rules (see docs/business/pricing.md, Pricing v2, founder decision Oct 2026):
+ *  1. Loyalty + reporting on it are free forever. FREE_FOREVER = the loyalty
+ *     program (points, visits, stamps, items, rewards, welcome bonus, manual
+ *     adjustments, no-earn categories), being findable on the network, the
+ *     wallet pass, the customer directory and basic reports. No transaction fee,
+ *     unlimited members. (Unlimited staff and locations are kept free per the
+ *     founder's earlier instruction; whether they stay free is an open question.)
+ *  2. Everything else is on Plus ($39) or Pro ($79) and ships "hidden": it rolls
+ *     out only after the network has enough merchants. Until a feature's rollout
+ *     stage is "ga" (or "beta" for opted-in merchants) it is hidden from everyone,
+ *     paying or not, except pilot shops with an admin per-merchant override.
+ *  3. Invariant: a FREE_FOREVER feature is never gated (admins can't hide it and
+ *     it can't move to a paid plan; tests enforce this). Pre-launch we moved
+ *     promos, marketing, VIP/birthday/referrals, discount cards, CSV and
+ *     integrations to paid once (Pricing v2); after launch, free stays free.
+ *  4. Network perks ("visit 3 shops" bonuses) are a platform/BIA lever, not a
+ *     merchant feature: admins configure them and they run network-wide
+ *     regardless of a merchant's plan.
  */
 
 export const PLAN_IDS = ["free", "plus", "pro"] as const;
@@ -33,7 +44,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Free",
     priceCents: 0,
     annualPriceCents: 0,
-    blurb: "Loyalty, promos and the network. Free forever, no transaction fees.",
+    blurb: "Your loyalty program, the network listing, wallet pass and reports. Free forever, no transaction fees.",
     bestFor: ["Every merchant"],
     smsPerMonth: 0,
   },
@@ -42,7 +53,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Plus",
     priceCents: 3900,
     annualPriceCents: 39000,
-    blurb: "Order-ahead, pickup, push promos to nearby members and SMS.",
+    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks and order-ahead.",
     bestFor: ["Cafés", "Restaurants", "Bakeries", "Retail"],
     smsPerMonth: 500,
   },
@@ -51,7 +62,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Pro",
     priceCents: 7900,
     annualPriceCents: 79000,
-    blurb: "Service tickets, quote approvals, deposits, invoices and scheduling.",
+    blurb: "Everything in Plus, plus service tickets, quote approvals, deposits, invoices and scheduling.",
     bestFor: ["Repair", "Auto", "Alterations", "Print shops"],
     smsPerMonth: 1500,
   },
@@ -80,46 +91,53 @@ export interface FeatureDef {
   unlockAtMerchants: number;
   /** Which "phase" of the roadmap introduces it. */
   phase: 1 | 2 | 3;
+  /**
+   * Platform lever (e.g. network perks): configured by admins/BIAs and applied
+   * network-wide regardless of a merchant's plan. Not a merchant plan feature,
+   * so it is not part of FREE_FOREVER.
+   */
+  platform?: boolean;
 }
 
 export const FEATURE_KEYS = [
-  // ---- Free forever (Phase 1) ----
+  // ---- Free forever (Phase 1): loyalty + reporting ----
   "loyalty.points",
   "loyalty.visits",
   "loyalty.stamps",
   "loyalty.items",
   "loyalty.rewards_catalog",
-  "loyalty.vip_levels",
   "loyalty.welcome_bonus",
-  "loyalty.birthday_bonus",
-  "loyalty.referrals",
   "loyalty.manual_adjust",
   "loyalty.no_earn_categories",
-  "discount_cards",
-  "promos.basic",
-  "promos.double_points",
   "network.listing",
-  "network.perks",
   "wallet.passes",
   "customers.directory",
-  "customers.csv_export",
-  "customers.csv_import",
   "reports.basic",
   "staff.unlimited",
   "locations.unlimited",
-  "integrations.pos_auto_award",
-  "integrations.webhooks",
+  // ---- Platform lever (admin/BIA-configured, runs regardless of merchant plan) ----
+  "network.perks",
+  // ---- Plus ----
+  "promos.basic",
+  "promos.double_points",
+  "loyalty.vip_levels",
+  "loyalty.birthday_bonus",
+  "loyalty.referrals",
+  "discount_cards",
   "marketing.email",
-  // ---- Plus (Phase 2) ----
-  "orders.order_ahead",
-  "orders.pickup_status",
-  "promos.push_nearby",
   "marketing.sms",
   "marketing.automations",
-  "payments.in_app",
+  "promos.push_nearby",
+  "customers.csv_export",
+  "customers.csv_import",
+  "integrations.pos_auto_award",
+  "integrations.webhooks",
   "reports.advanced",
+  "orders.order_ahead",
+  "orders.pickup_status",
+  "payments.in_app",
   "booking.pickup_slots",
-  // ---- Pro (Phase 2) ----
+  // ---- Pro (everything in Plus, plus) ----
   "service.tickets",
   "service.quote_approval",
   "service.deposits",
@@ -153,46 +171,51 @@ const f = (
 
 export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
   [
+    // ---- Free forever: loyalty + reporting ----
     f("loyalty.points", "Points per dollar", "Earn points for every dollar spent.", "free", 1),
     f("loyalty.visits", "Points per visit", "Earn a fixed number of points per visit.", "free", 1),
     f("loyalty.stamps", "Stamp cards", "Buy N, get one free, digitally.", "free", 1),
     f("loyalty.items", "Points per item", "Bonus points for specific items or categories.", "free", 1),
     f("loyalty.rewards_catalog", "Rewards catalog", "Multiple reward tiers: $ off, % off, free item.", "free", 1),
-    f("loyalty.vip_levels", "VIP levels", "Status levels with earn multipliers.", "free", 1),
     f("loyalty.welcome_bonus", "Welcome bonus", "Points when a customer joins.", "free", 1),
-    f("loyalty.birthday_bonus", "Birthday reward", "Automatic birthday points.", "free", 1),
-    f("loyalty.referrals", "Referrals", "Customer invites a friend; both earn.", "free", 1),
     f("loyalty.manual_adjust", "Manual adjustments", "Add or remove points with an audit trail.", "free", 1),
     f("loyalty.no_earn_categories", "No-earn categories", "Exclude categories (e.g. prescriptions) from earning.", "free", 1),
-    f("discount_cards", "Digital discount cards", "Show-to-save cards with exclusions.", "free", 1),
-    f("promos.basic", "Promos", "Post offers with start and end dates.", "free", 1),
-    f("promos.double_points", "Bonus point promos", "Double points days, bonus points on items.", "free", 1),
     f("network.listing", "Network listing", "Appear on the neighbourhood map and feed.", "free", 1),
-    f("network.perks", "Network perks", "Neighbourhood-wide perks like 'visit 3 shops' bonuses.", "free", 1),
     f("wallet.passes", "Apple & Google Wallet", "One network pass customers add without an app.", "free", 1),
     f("customers.directory", "Customer directory", "Every member, balance, visit history.", "free", 1),
-    f("customers.csv_export", "CSV export", "Export your customers and activity.", "free", 1),
-    f("customers.csv_import", "Import & migrate", "Bring members from another loyalty app.", "free", 1),
-    f("reports.basic", "Reports", "Visits, members, redemptions, promo results.", "free", 1),
+    f("reports.basic", "Reports", "Visits, members, rewards and redemptions.", "free", 1),
     f("staff.unlimited", "Unlimited staff", "Every staff member gets their own login.", "free", 1),
     f("locations.unlimited", "Unlimited locations", "One program across all your locations.", "free", 1),
-    f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "free", 1),
-    f("integrations.webhooks", "Webhooks & API", "Connect anything with outgoing webhooks.", "free", 1),
-    f("marketing.email", "Email campaigns", "Email opted-in members (CASL compliant).", "free", 1),
-    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 100),
-    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
-    f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100),
+    // ---- Platform lever: configured by admins / BIAs, runs for every shop ----
+    { ...f("network.perks", "Network perks", "Neighbourhood-wide perks like 'visit 3 shops' bonuses, run by the network.", "free", 1), platform: true },
+    // ---- Plus ----
+    f("promos.basic", "Promos", "Post offers with start and end dates.", "plus", 2, 100),
+    f("promos.double_points", "Bonus point promos", "Double points days, bonus points on items.", "plus", 2, 100),
+    f("loyalty.vip_levels", "VIP levels", "Status levels with earn multipliers.", "plus", 2, 100),
+    f("loyalty.birthday_bonus", "Birthday reward", "Automatic birthday points.", "plus", 2, 100),
+    f("loyalty.referrals", "Referrals", "Customer invites a friend; both earn.", "plus", 2, 100),
+    f("discount_cards", "Digital discount cards", "Show-to-save cards with exclusions.", "plus", 2, 100),
+    f("marketing.email", "Email & push campaigns", "Email and push opted-in members (CASL compliant).", "plus", 2, 100),
     f("marketing.sms", "SMS campaigns", "Text opted-in members. Included SMS each month.", "plus", 2, 100),
     f("marketing.automations", "Automations", "Win-back, we-miss-you and reward-ready messages.", "plus", 2, 100),
-    f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
+    f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100),
+    f("customers.csv_export", "CSV export", "Export your customers and activity.", "plus", 2, 100),
+    f("customers.csv_import", "Import & migrate", "Bring members from another loyalty app.", "plus", 2, 100),
+    f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "plus", 2, 100),
+    f("integrations.webhooks", "Webhooks & API", "Outgoing webhooks, Zapier/Make and the merchant REST API.", "plus", 2, 100),
     f("reports.advanced", "Advanced reports", "Cohorts, retention, network overlap.", "plus", 2, 100),
+    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 100),
+    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
+    f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
+    // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
     f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),
     f("service.deposits", "Deposits", "Collect a deposit on approval.", "pro", 2, 40),
     f("service.invoices", "Invoices", "Final invoices, paid in-app.", "pro", 2, 40),
     f("booking.dropoff_scheduling", "Drop-off scheduling", "Slots and reminders for drop-offs.", "pro", 2, 40),
     f("staff.permissions", "Staff permissions", "Granular roles per staff member.", "pro", 2, 40),
+    // ---- Phase 3: paid per campaign ----
     f("ads.sponsored_listing", "Sponsored listing", "Top of the neighbourhood feed and search.", "free", 3, 300),
     f("ads.sponsored_promo", "Sponsored promo", "Boost a promo across the network.", "free", 3, 300),
     f("ads.map_pin", "Featured map pin", "Highlighted pin on the network map.", "free", 3, 300),
@@ -200,10 +223,17 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
   ].map((d) => [d.key, d]),
 ) as Record<FeatureKey, FeatureDef>;
 
-/** Free-forever feature keys. A test guarantees these never move to a paid plan. */
+/**
+ * Free-forever feature keys: the loyalty program and reporting on it. Tests
+ * guarantee these stay on Free, ship "ga" and can never be gated (admins can't
+ * hide them).
+ */
 export const FREE_FOREVER: readonly FeatureKey[] = FEATURE_KEYS.filter(
-  (k) => FEATURES[k].minPlan === "free" && FEATURES[k].phase === 1,
+  (k) => FEATURES[k].minPlan === "free" && FEATURES[k].phase === 1 && !FEATURES[k].platform,
 );
+
+/** Paid plan features (Plus or Pro), in display order. */
+export const PAID_FEATURES: readonly FeatureKey[] = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan !== "free");
 
 export interface FeatureContext {
   plan: PlanId;

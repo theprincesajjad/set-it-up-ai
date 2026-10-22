@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <ellipse cx="32" cy="55.5" rx="22" ry="2.8" fill="#000" fill-opacity=".08"/>
+  <!-- button -->
+  <rect x="29.6" y="10" width="4.8" height="8" rx="1.2" fill="#8A919C"/>
+  <rect x="31.8" y="10" width="2.6" height="8" rx="1" fill="#6E7580"/>
+  <ellipse cx="32" cy="10" rx="5.5" ry="2.2" fill="#46464C"/>
+  <ellipse cx="31" cy="9.4" rx="2.6" ry=".9" fill="#5E5E66"/>
+  <!-- dome -->
+  <path d="M10 44c0-13 9.8-26 22-26s22 13 22 26Z" fill="#F0B83E"/>
+  <path d="M32 18c12.2 0 22 13 22 26H38c0-12-2.2-22.6-6-26Z" fill="#D69A24"/>
+  <path d="M27.4 18.6c-6.8 3.4-11.6 10.8-12.6 19.6-.2 1.8-2.4 1.8-2.4 0 .4-9.6 6.6-17.6 15-19.6Z" fill="#FFDD86"/>
+  <!-- base -->
+  <rect x="6" y="43" width="52" height="5.5" rx="2.75" fill="#3A3A3F"/>
+  <rect x="6" y="43" width="26" height="2.8" rx="1.4" fill="#55555C"/>
+  <rect x="9" y="48" width="46" height="4.5" rx="1.6" fill="#26262A"/>
+</svg>

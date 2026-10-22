@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <mask id="jaw">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M28 1h8v12.5a4 4 0 0 1-8 0Z" fill="#000"/>
+    </mask>
+  </defs>
+  <ellipse cx="32" cy="57" rx="17" ry="2.6" fill="#000" fill-opacity=".08"/>
+  <g transform="rotate(45 32 32)">
+    <rect x="28" y="22" width="8" height="34" rx="4" fill="#A3ABB8"/>
+    <rect x="32" y="22" width="4" height="34" rx="2" fill="#838C9A"/>
+    <rect x="28" y="22" width="2.4" height="34" rx="1.2" fill="#C8CED7"/>
+    <rect x="27" y="38" width="10" height="19" rx="5" fill="#F2B33D"/>
+    <rect x="32" y="38" width="5" height="19" rx="2.5" fill="#D9962A"/>
+    <rect x="27" y="38" width="3" height="19" rx="1.5" fill="#FFD27A"/>
+    <g mask="url(#jaw)">
+      <path d="M32 3a12 12 0 0 1 12 12c0 4.4-2.4 8.2-6 10.3V28H26v-2.7A12 12 0 0 1 20 15 12 12 0 0 1 32 3Z" fill="#A3ABB8"/>
+      <path d="M32 3a12 12 0 0 1 12 12c0 4.4-2.4 8.2-6 10.3V28h-6Z" fill="#838C9A"/>
+      <path d="M32 3a12 12 0 0 0-12 12c0 3 1.1 5.7 2.9 7.8C21.4 15 25 7 32 3Z" fill="#C8CED7"/>
+    </g>
+  </g>
+</svg>

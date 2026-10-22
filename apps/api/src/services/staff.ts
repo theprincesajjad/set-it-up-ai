@@ -44,6 +44,7 @@ import {
   type AwardResult,
   type ConsentInput,
 } from "./ledger.js";
+import { enabledFeaturesByMerchantId } from "./features.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -67,7 +68,7 @@ async function loadProgram(db: DbOrTx, merchantId: string): Promise<Program | nu
  * merchant scope and "not merged"). One joined query + 4 parallel reads.
  */
 async function summaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit = 10): Promise<staffApi.MemberSummaryDto[]> {
-  const [rows, program, rs, cards] = await Promise.all([
+  const [rows, program, rs, cards, paid] = await Promise.all([
     db
       .select({ member: merchantMembers, phone: users.phone, name: users.name, memberCode: users.memberCode, vip: vipLevels })
       .from(merchantMembers)
@@ -82,6 +83,7 @@ async function summaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit 
       .from(rewards)
       .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true))),
     db.select().from(discountCards).where(and(eq(discountCards.merchantId, merchantId), eq(discountCards.active, true))),
+    enabledFeaturesByMerchantId(db, [merchantId], ["discount_cards", "loyalty.vip_levels"]).then((m) => m.get(merchantId) ?? new Set()),
   ]);
   if (!rows.length) return [];
   const open = await db
@@ -100,10 +102,11 @@ async function summaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit 
     visitCount: member.visitCount,
     lastVisitAt: iso(member.lastVisitAt),
     joinedAt: member.createdAt.toISOString(),
-    vip: vipDto(vip),
+    // VIP levels and discount cards are paid: hidden at the counter while the shop doesn't have them.
+    vip: paid.has("loyalty.vip_levels") ? vipDto(vip) : null,
     rewardsAffordable: affordable(rs, member.balance),
     nextReward: nextReward(rs, member.balance),
-    discountCards: cardsForMember(cards, member),
+    discountCards: paid.has("discount_cards") ? cardsForMember(cards.filter((c) => c.eligibility !== "vip" || paid.has("loyalty.vip_levels")), member) : [],
     openRedemptionCount: openBy.get(member.id) ?? 0,
     marketingConsent: !!member.marketingConsentAt,
     expiryDisclosure: expiryDisclosure(program),

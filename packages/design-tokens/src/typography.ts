@@ -1,43 +1,68 @@
 /**
- * Typography.
+ * Typography (v2, docs/design/foundations.md § Type).
  *
- * - UI + body: **Figtree** (Google Fonts, OFL). Friendly, open, very legible
- *   at small sizes and on low-dpi screens; has tabular figures (`tnum`).
- *   Web: `next/font/google` → Figtree, `variable: "--font-figtree"`, weights 400/500/600/700.
- *   Mobile: `@expo-google-fonts/figtree` (same weights). If fonts fail to load,
- *   fall back to the system font (never block render on fonts).
- * - Display (marketing site, print, big shop-sign moments only): **Fraunces**
- *   (Google Fonts, OFL), soft optical size 72-144, weight 600. Never in app UI
- *   below 24px, never in counter mode.
- * - Numbers that change (balances, keypad, KPIs) always use tabular figures.
+ * - Display & map labels: **Bricolage Grotesque** 700/800 (Google Fonts, OFL).
+ *   Web: `next/font/google` → Bricolage_Grotesque, `variable: "--font-bricolage"`, weights 700/800.
+ *   Native: `@expo-google-fonts/bricolage-grotesque` (BricolageGrotesque_700Bold, _800ExtraBold).
+ *   Map / category / city labels are lowercase.
+ * - UI & body, web: **Inter** 400/500/600 (`variable: "--font-inter"`), tabular numbers.
+ * - UI & body, native: the **system font** (SF Pro / Roboto). `nativeFonts.body`
+ *   is `undefined` on purpose: leave `fontFamily` unset and use `fontWeight`.
+ *   This is what makes the app feel native.
+ *
+ * Scale (px): 11 caption · 13 meta · 15 body · 17 headline · 22 title ·
+ * 28 large title · 40 display number. Line height 1.3 UI, 1.15 display.
+ * Letter-spacing −0.01em on display sizes. Numbers always tabular.
+ * Italic is used for exactly one thing: the grey subtitle under a place name.
  */
 
 export const fontFamilies = {
-  sans: '"Figtree", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  display: '"Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif',
+  sans: '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  display: '"Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
 } as const;
 
 /** Google Fonts used on web. */
 export const googleFonts = {
-  sans: { family: "Figtree", weights: [400, 500, 600, 700], cssVariable: "--font-figtree" },
-  display: { family: "Fraunces", weights: [600], cssVariable: "--font-fraunces", axes: ["SOFT", "opsz"] },
+  sans: { family: "Inter", weights: [400, 500, 600], cssVariable: "--font-inter" },
+  display: { family: "Bricolage Grotesque", weights: [700, 800], cssVariable: "--font-bricolage" },
 } as const;
 
-/** React Native font family names (from @expo-google-fonts/figtree). */
-export const nativeFonts = {
-  regular: "Figtree_400Regular",
-  medium: "Figtree_500Medium",
-  semibold: "Figtree_600SemiBold",
-  bold: "Figtree_700Bold",
-  display: "Fraunces_600SemiBold",
-} as const;
+/**
+ * React Native font families. Display = Bricolage (load these two names with
+ * expo-font from @expo-google-fonts/bricolage-grotesque). Everything else is
+ * `undefined` = system font; set `fontWeight` instead of a family.
+ */
+export const nativeFonts: {
+  display: string;
+  displayBold: string;
+  displayHeavy: string;
+  body: undefined;
+  regular: undefined;
+  medium: undefined;
+  semibold: undefined;
+  bold: undefined;
+} = {
+  /** Default display face (800 heavy, the Corner label look). */
+  display: "BricolageGrotesque_800ExtraBold",
+  displayBold: "BricolageGrotesque_700Bold",
+  displayHeavy: "BricolageGrotesque_800ExtraBold",
+  body: undefined,
+  regular: undefined,
+  medium: undefined,
+  semibold: undefined,
+  bold: undefined,
+};
+
+/** The expo-font map keys to load in the root layout. */
+export const nativeFontsToLoad = ["BricolageGrotesque_700Bold", "BricolageGrotesque_800ExtraBold"] as const;
 
 export const fontWeights = {
   regular: 400,
   medium: 500,
   semibold: 600,
   bold: 700,
+  heavy: 800,
 } as const;
 export type FontWeight = keyof typeof fontWeights;
 
@@ -50,48 +75,90 @@ export interface TextStyle {
   /** em */
   letterSpacing: number;
   family: keyof typeof fontFamilies;
-  /** Use tabular figures. */
-  tabular?: boolean;
-  uppercase?: boolean;
+  /** Use tabular figures (true everywhere in v2: numbers always tabular). */
+  tabular: boolean;
+  /** Render lowercase (map, category and city labels). */
+  lowercase?: boolean;
+  /** Italic: ONLY the grey subtitle under a place name. */
+  italic?: boolean;
 }
 
-const t = (
-  fontSize: number,
-  lineHeight: number,
-  fontWeight: number,
-  letterSpacing = 0,
-  extra: Partial<TextStyle> = {},
-): TextStyle => ({ fontSize, lineHeight, fontWeight, letterSpacing, family: "sans", ...extra });
+const UI_LH = 1.3;
+const DISPLAY_LH = 1.15;
+const DISPLAY_TRACKING = -0.01;
+
+const ui = (fontSize: number, fontWeight: number, extra: Partial<TextStyle> = {}): TextStyle => ({
+  fontSize,
+  lineHeight: Math.round(fontSize * UI_LH),
+  fontWeight,
+  letterSpacing: 0,
+  family: "sans",
+  tabular: true,
+  ...extra,
+});
+
+const display = (fontSize: number, fontWeight: 700 | 800, extra: Partial<TextStyle> = {}): TextStyle => ({
+  fontSize,
+  lineHeight: Math.round(fontSize * DISPLAY_LH),
+  fontWeight,
+  letterSpacing: DISPLAY_TRACKING,
+  family: "display",
+  tabular: true,
+  ...extra,
+});
+
+/** The v2 scale in px. */
+export const typeScale = {
+  caption: 11,
+  meta: 13,
+  body: 15,
+  headline: 17,
+  title: 22,
+  largeTitle: 28,
+  displayNumber: 40,
+} as const;
 
 /**
- * Type scale. Mobile body is never below 16px; captions never below 12px.
- * Names are what engineers use: `text-body`, `typography.body`.
+ * Text styles. The first block is the v2 system. The second block keeps v1
+ * names the apps use so they compile, each re-pointed onto the v2 scale
+ * (deprecated; restyle onto the v2 names). Note `title` is now 22 (was 17):
+ * use `headline` for 17px row/card titles.
  */
 export const textStyles = {
-  /** Marketing hero only. */
-  hero: t(56, 60, 600, -0.02, { family: "display" }),
-  display: t(40, 44, 600, -0.015, { family: "display" }),
-  h1: t(32, 38, 700, -0.01),
-  h2: t(24, 30, 700, -0.005),
-  h3: t(20, 26, 600),
-  title: t(17, 24, 600),
-  bodyLg: t(18, 28, 400),
-  body: t(16, 24, 400),
-  bodyStrong: t(16, 24, 600),
-  bodySm: t(14, 20, 400),
-  label: t(14, 20, 600, 0.005),
-  caption: t(12, 16, 500, 0.01),
-  overline: t(12, 16, 700, 0.08, { uppercase: true }),
-  /** Big points balance on My Card / reward screens. (Not "balance": Tailwind owns text-balance.) */
-  points: t(56, 60, 700, -0.02, { tabular: true }),
-  /** Counter success state new balance, kiosk numbers. */
-  counterHero: t(72, 76, 700, -0.02, { tabular: true }),
-  /** Keypad digits, entered phone number in counter mode. */
-  keypad: t(32, 36, 600, 0, { tabular: true }),
-  /** Dashboard KPI tiles. */
-  stat: t(32, 36, 700, -0.01, { tabular: true }),
-  /** Redemption codes shown to staff (e.g. "K7 4Q"). */
-  code: t(40, 44, 700, 0.12, { tabular: true }),
+  // ── v2 ──────────────────────────────────────────────────────
+  caption: ui(11, 500),
+  meta: ui(13, 400),
+  metaStrong: ui(13, 600),
+  body: ui(15, 400),
+  bodyStrong: ui(15, 600),
+  headline: ui(17, 600),
+  title: ui(22, 600),
+  largeTitle: display(28, 800, { lowercase: true }),
+  displayNumber: display(40, 800),
+  /** Place name next to a map bubble / in lists: bold black. */
+  placeName: ui(15, 600),
+  /** The ONE italic: grey subtitle under a place name ("trending cozy cafe"). */
+  placeSubtitle: ui(13, 400, { italic: true }),
+  /** City pills, map capsule labels ("toronto", "search here"). */
+  mapLabel: display(15, 700, { lowercase: true, letterSpacing: 0, lineHeight: Math.round(15 * UI_LH) }),
+  /** Category rail captions under the object icons ("coffee"). */
+  categoryLabel: display(13, 700, { lowercase: true, letterSpacing: 0, lineHeight: Math.round(13 * UI_LH) }),
+
+  // ── Deprecated v1 names, re-pointed onto the v2 scale ───────
+  /** @deprecated use displayNumber (marketing hero also caps at 40 in-product) */ hero: display(40, 800),
+  /** @deprecated use displayNumber */ display: display(40, 800),
+  /** @deprecated use largeTitle */ h1: display(28, 800),
+  /** @deprecated use title */ h2: ui(22, 600),
+  /** @deprecated use headline */ h3: ui(17, 600),
+  /** @deprecated use headline */ bodyLg: ui(17, 400),
+  /** @deprecated use meta */ bodySm: ui(13, 400),
+  /** @deprecated use metaStrong */ label: ui(13, 600),
+  /** @deprecated section headers are lowercase metaStrong in fgMuted; no uppercase overlines */ overline: ui(11, 600),
+  /** @deprecated use displayNumber in accent */ points: display(40, 800),
+  /** @deprecated use displayNumber */ counterHero: display(40, 800),
+  /** @deprecated use largeTitle-size tabular sans: keypad digits */ keypad: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH) }),
+  /** @deprecated dashboard stats: plain 28 tabular numbers */ stat: ui(28, 600, { lineHeight: Math.round(28 * DISPLAY_LH), letterSpacing: DISPLAY_TRACKING }),
+  /** Redemption codes shown to staff ("K7 4Q"): 40 tabular, tracked for legibility. */ code: ui(40, 700, { lineHeight: Math.round(40 * DISPLAY_LH), letterSpacing: 0.08 }),
 } as const satisfies Record<string, TextStyle>;
 
 export type TextStyleName = keyof typeof textStyles;

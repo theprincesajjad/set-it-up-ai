@@ -18,7 +18,7 @@ import {
   setBetaOptIn,
   updateProfile,
 } from "../../services/merchant.js";
-import { recordFeatureInterest } from "../../services/features.js";
+import { recordFeatureInterest, requireFeature } from "../../services/features.js";
 import registerCustomers from "./customers.js";
 import registerProgram from "./program.js";
 import { rejectMalformedIds } from "./params.js";
@@ -120,6 +120,8 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   });
   app.post("/merchants/:merchantId/api-key", async (req: MerchantReq, reply): Promise<merchantApi.ApiKeyCreated> => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    // Issuing a key needs "Webhooks & API" (Plus); viewing status and revoking always work.
+    await requireFeature(ctx.db, s.merchant, "integrations.webhooks");
     reply.status(201);
     return { apiKey: await rotateApiKey(ctx, s.merchant.id, s.user.id) };
   });

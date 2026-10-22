@@ -1,18 +1,22 @@
 # Design system
 
-Owner: Design. Status: v1 (MVP + Phase 2 placeholders).
-Tokens: `packages/design-tokens` (`@ll/design-tokens`). Brand: [brand.md](./brand.md).
-Copy: [ux-copy.md](./ux-copy.md). Screen specs: [screens/](./screens/).
+Owner: Design. Status: **v2** (Corner-derived). **Spec: [foundations.md](./foundations.md)** —
+it wins over everything below. Tokens: `packages/design-tokens` (`@ll/design-tokens`).
+Brand: [brand.md](./brand.md). Copy: [ux-copy.md](./ux-copy.md). Screens: [screens/](./screens/).
 
 Web (Next.js + Tailwind v4) and mobile (Expo / React Native) build **the same component
 names with the same props**. Web components live in `apps/web/src/components/ui/`, mobile in
-`apps/mobile/src/components/ui/`. When a prop only makes sense on one platform it is marked.
+`apps/mobile/src/ui/`.
+
+> Component sections 1–7 were written for v1 and still name v1 roles (`brand`, `surface`,
+> `*Subtle` tints, `shadow.md`, `overline`). Those names still compile but now resolve to v2
+> values. **§ 0.4 "v2 deltas" overrides them** until each section is rewritten during the restyle.
 
 ---
 
 ## 0. Using the tokens
 
-### Web
+### 0.1 Web
 
 ```css
 /* apps/web/src/app/globals.css */
@@ -22,84 +26,101 @@ names with the same props**. Web components live in `apps/web/src/components/ui/
 
 ```tsx
 // apps/web/src/app/layout.tsx
-import { Figtree, Fraunces } from "next/font/google";
-const figtree = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-figtree", display: "swap" });
-const fraunces = Fraunces({ subsets: ["latin"], weight: ["600"], axes: ["SOFT", "opsz"], variable: "--font-fraunces", display: "swap" });
-<html lang="en-CA" className={`${figtree.variable} ${fraunces.variable}`}> <body className="bg-canvas text-fg font-sans text-body antialiased">
+import { Bricolage_Grotesque, Inter } from "next/font/google";
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-inter", display: "swap" });
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-bricolage", display: "swap" });
+<html lang="en-CA" className={`${inter.variable} ${bricolage.variable}`}> <body className="bg-bg text-fg font-sans text-body">
 ```
 
-- Semantic utilities: `bg-canvas`, `bg-surface`, `text-fg`, `text-fg-muted`, `bg-brand text-on-brand`,
-  `hover:bg-brand-hover`, `border-border`, `border-border-strong`, `bg-danger-subtle text-on-danger-subtle`,
-  `bg-vertical-cafe-tint text-vertical-cafe-ink`, `fill-chart-1`.
-- Type: `text-h1`, `text-h2`, `text-h3`, `text-title`, `text-body`, `text-body-sm`, `text-label`,
-  `text-caption`, `text-overline uppercase`, `text-points tabular-nums`, `text-stat`, `text-keypad`,
-  `text-counter-hero`, `text-code`.
-- Radii: `rounded-xs` 4, `rounded-sm` 8, `rounded-md` 12, `rounded-lg` 16, `rounded-xl` 24, `rounded-full`.
-- Shadows: `shadow-sm|md|lg|xl` (switch in dark mode). Easing: `ease-standard|enter|exit|emphasized`.
-- Extras: `touch-target`, `touch-target-counter`, `touch-target-kiosk`, `focus-ring`, `skeleton`,
-  `z-sticky|banner|overlay|modal|popover|toast`, `animate-stamp-pop|fade-in|sheet-up|shimmer`.
-- Theme: follows OS. Force with `<html data-theme="light|dark">`. `dark:` variant respects both.
-- Raw palette (`bg-pine-600`, `text-marigold-700`, ...) is for marketing and illustration only.
-  Lint rule to add: no raw palette or Tailwind default colours (`bg-gray-*`, `text-white`) in
-  `apps/web/src/app/(app)` or `components/ui`.
+- Colour utilities (v2): `bg-bg`, `bg-bg-subtle`, `bg-bg-muted`, `text-fg`, `text-fg-muted`,
+  `text-fg-subtle`, `border-line`, `border-line-strong`, `bg-accent`, `text-accent-text`,
+  `bg-accent-soft`, `text-on-accent`, `bg-positive`, `text-negative`, `bg-location`, `bg-chrome`.
+  Primary button: `bg-fg text-bg`.
+- Type: `text-caption` 11 · `text-meta` 13 · `text-body` 15 · `text-headline` 17 · `text-title` 22 ·
+  `text-large-title` 28 · `text-display-number` 40; plus `text-place-name`, `text-place-subtitle italic`,
+  `text-map-label` / `text-category-label` (with `font-display lowercase`). Numbers are tabular globally.
+- Radii: `rounded-input` 10 · `rounded-card` 16 · `rounded-sheet` 24 · `rounded-full`.
+- Shadow: `shadow-float` only (map chrome, sheets, popovers, toasts). Cards: `hairline` / `border-line`.
+- Frosted chrome: `chrome` utility (bg 80% + `backdrop-blur-chrome` 20 px + float shadow). Map chrome only.
+- Motion: `ease-out` + `duration-150` for taps; `ease-sheet` + `duration-240` (or `animate-sheet-up`) for sheets.
+- Extras: `touch-target` (44), `touch-target-counter` (72), `touch-target-kiosk` (88), `focus-ring`,
+  `skeleton`, `tabular`, `z-*`, `animate-stamp-pop|fade-in|sheet-up|shimmer`.
+- Theme follows the OS; force with `<html data-theme="light|dark">`. `dark:` respects both.
+- Raw palette is prefixed (`bg-ll-gray-950`, `text-ll-orange-700`) and is for marketing only.
 
-### Mobile
+### 0.2 Mobile
 
 ```ts
-import { colors, textStyles, spacing, radii, shadows, touchTargets, durations, nativeFonts, verticalVisual } from "@ll/design-tokens";
-const scheme = useColorScheme();            // counter mode / kiosk: default "light", user toggle
-const c = colors[scheme === "dark" ? "dark" : "light"];
+import { colors, textStyles, spacing, radii, shadows, blur, springs, touchTargets, nativeFonts, nativeFontsToLoad, verticalVisual } from "@ll/design-tokens";
+const c = colors[scheme];                          // counter / kiosk default "light"
 ```
 
-- Load fonts with `@expo-google-fonts/figtree` (`Figtree_400Regular`, `_500Medium`, `_600SemiBold`,
-  `_700Bold`). Map `fontWeight` → `nativeFonts.*` in a `<Text variant="body">` wrapper; RN Android
-  does not synthesise weights for custom fonts.
-- Shadows: spread `shadows.md.native`. Dark mode: use `surfaceRaised` instead of shadow.
-- Respect `AccessibilityInfo.isReduceMotionEnabled()` and `allowFontScaling` (cap at
-  `maxFontSizeMultiplier={1.6}` on counter mode keypad digits only; everywhere else unlimited).
-- Use `react-native-reanimated` with `easingsNative` / `springs`. Haptics via `expo-haptics`.
+- **UI text uses the system font.** `nativeFonts.body` (and `regular/medium/semibold/bold`) are
+  `undefined`: leave `fontFamily` unset and set `fontWeight` from `textStyles[x].fontWeight`.
+- **Display** (`family: "display"` styles, map/category labels): load `BricolageGrotesque_700Bold` and
+  `BricolageGrotesque_800ExtraBold` from `@expo-google-fonts/bricolage-grotesque`; use
+  `nativeFonts.display` (800) / `nativeFonts.displayBold` (700). Apply `textTransform: "lowercase"`
+  when `lowercase`, `fontStyle: "italic"` when `italic`, `fontVariant: ["tabular-nums"]` always.
+- Hairlines: `StyleSheet.hairlineWidth` in `line`. Shadow: spread `shadows.float.native` (only on floating things).
+- Frosted chrome: `expo-blur` `<BlurView intensity={blur.nativeIntensity}>` + `colors.*.chrome` overlay.
+- Motion: Reanimated `withTiming(…, { duration: durations.tap, easing: Easing.bezier(...easingsNative.out) })`,
+  sheets `withSpring(springs.sheet)`. Haptics on award/redeem. Respect reduce-motion.
+- Map: `cornerMapStyle(positronJson, scheme)` for MapLibre; `googleMapStyle[scheme]` as
+  `customMapStyle` on Android; Apple Maps: `mapType="mutedStandard"`, `pointsOfInterestFilter={[]}`.
+- Category objects: `require("@ll/design-tokens/assets/categories/coffee.png")` (Metro picks @2x/@3x);
+  `verticalVisual(v).category` → file stem via `categoryAsset`.
 
-### Foundations at a glance
+### 0.3 Foundations at a glance
 
-| Token group | Values |
+| Token group | Values (light / dark) |
 | --- | --- |
-| Brand | pine `#1F6A50` (hover `#195841`, pressed `#144634`), on-brand `#FFFFFF` |
-| Accent | marigold `#F5A524`, on-accent ink `#1F1B16` |
-| Canvas / surface | paper `#FAF6EF` / white `#FFFFFF`; dark `#16130F` / `#1F1B16` |
-| Text | fg `#1F1B16`, muted `#655A4C`, link `#195841`; dark fg `#F3EDE3`, muted `#A99D8B` |
-| Semantic | success `#1D7A3D`, warning `#EBAA2E` (text `#5E3409`), danger `#B42318`, info `#1D5FA8` |
-| Spacing | 4 px grid: 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 |
-| Radii | 4, 8, 12, 16, 24, full |
-| Type | Figtree; body 16/24; mobile minimum 16 for body, 12 for captions |
-| Touch | min 44, default 48, counter 64, keypad 72, kiosk 88, gap 8 |
-| Motion | 80 / 150 / 220 / 320 / 600 ms; standard `cubic-bezier(0.2,0,0,1)` |
-| Breakpoints | sm 640, md 768, lg 1024, xl 1280, 2xl 1536 |
-| Z-index | sticky 100, banner 200, dropdown 300, overlay 400, modal 500, popover 600, toast 700, tooltip 800 |
+| Backgrounds | `bg` #FFFFFF / #0B0B0C · `bgSubtle` #F5F5F4 / #161618 · `bgMuted` #EDEDEC / #202023 |
+| Text | `fg` #0B0B0C / #F5F5F4 · `fgMuted` #6B6B70 / #A1A1A8 · `fgSubtle` #9A9AA0 / #6E6E76 |
+| Lines | `line` #E8E8E6 / #2A2A2E · `lineStrong` #8A8A90 / #7A7A82 (form-control outlines, 3:1) |
+| Accent | `accent` #FF5A1F / #FF7A45 (fills, stamps, large numbers) · `accentText` #C2410C / #FF7A45 (small text) · `accentSoft` #FFF1EA / #2A1710 · `onAccent` #FFFFFF / #0B0B0C |
+| Status | `positive` #16A34A / #22C55E · `negative` #DC2626 / #F87171 · `location` #2F7BF6 / #4C8DF8 |
+| Chrome | `chrome` rgba(255,255,255,.8) / rgba(22,22,24,.8) + 20 px blur |
+| Type | Bricolage Grotesque 700/800 (display, lowercase labels) · Inter 400/500/600 web · system font native · 11/13/15/17/22/28/40 · LH 1.3 UI, 1.15 display · −0.01em display |
+| Spacing | 4 px grid; gutter 16 mobile, 24–32 web |
+| Radii | 10 input/small button · 16 card · 24 sheet · full capsules/chips/chrome/avatars |
+| Shadow | `float`: `0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.08)` (only floating things) |
+| Icons | Lucide 20/24, stroke 1.75 · category objects 28 (pin) / 40 (rail) |
+| Touch | ≥ 44 · counter keys 72 · kiosk 88 · gap 8 |
+| Motion | 150 ms ease-out (taps) · 240 ms spring (sheets) · nothing bounces twice |
 
-Contrast: every pair in `contrastPairs` (`colors.ts`) is tested at >= 4.5:1 (text) or >= 3:1 (UI).
-Lowest body-text pair: `fgMuted` on `surfaceSunken` = 5.78:1 (light), 5.77:1 on `surfaceRaised` (dark).
-**If you need a new colour pair, add it to `contrastPairs` first.**
+**Accent contrast:** `#FF5A1F` is 3.1:1 on white, so it is for fills, dots, stamps and numbers
+≥ 17 px semibold. Any smaller accent text uses `accentText` (5.2:1 on white, 4.7:1 on `accentSoft`).
+Every pair in `contrastPairs` is tested (text ≥ 4.5:1, UI ≥ 3:1). **Add a pair there before using it.**
 
-### Global rules
+### 0.4 v2 deltas (override sections 1–7)
 
-1. **One primary action per screen.** Primary = brand fill. Everything else is secondary/ghost.
-2. **Touch:** every interactive element >= 48 x 48 hit area (44 absolute minimum on dense web
-   tables with a pointer). Counter mode >= 64.
-3. **Focus:** web uses `:focus-visible` 2 px `focusRing` + 2 px offset (already global). Never
-   `outline: none` without a replacement.
-4. **States** every interactive component must implement: default, hover (web), pressed, focus-visible,
-   disabled, loading; plus error/success where relevant.
-5. **Loading:** skeletons for content > 300 ms; spinners only inside buttons. Never a full-screen
-   spinner except app boot.
-6. **Old phones:** no blur/backdrop-filter, no box-shadow animations, no Lottie on lists, images
-   served at 1x/2x with `width` hints, lists virtualised (`FlashList`) beyond 30 rows. Target
-   60 fps on a 2023 mid-range Android (Moto G / Galaxy A14 class).
-7. **Bright shops:** counter mode uses light theme, body 18 px, no text below 14 px, success uses
-   full-fill colour blocks rather than subtle tints.
-8. **Numbers:** tabular figures; thousands separator `1,250`; money `$4.50`; points `120 pts`
-   (or the program's terminology).
-9. **Dark mode** is supported everywhere except printed artifacts and QR codes (always black on white).
-10. **Right-to-left:** not required for MVP, but use logical properties (`ps-`, `pe-`, `start`, `end`).
+| Component | v2 |
+| --- | --- |
+| Button | primary = `fg` fill, `bg` label, radius 10 (or full capsule over the map). One per screen. `accent` variant removed: "Redeem" is primary. secondary = `line` hairline on `bg`; ghost = `fg` text. |
+| Card | `bg` + 1 px `line`, radius 16, **no shadow**. No tinted cards. |
+| ListRow | 44 px min (web tables) / 56 native; hairline dividers; pressed = `bgMuted`. |
+| Sheet / Modal | radius 24, `bg`, `shadow-float`, grabber 36 x 5 `bgMuted`. Shop opens as a sheet first. |
+| Tab bar (native) | frosted capsule (`chrome`), 4 icons **map · wallet · [card] · activity** + avatar; card = round black button. |
+| Badge / status | dot + word; no filled colour chips. Reward ready = `accentText` on `accentSoft`. |
+| Section headers | lowercase `metaStrong` in `fgMuted` (no uppercase overlines). |
+| Avatar | shop `brandColor` fill + initials/logo. The only place shop colour appears. |
+| ShopTile / MapPin | round white bubble (`shadow-float`) with photo or category object; bold name + italic `fgMuted` subtitle. No teardrops, no coloured pins. Clusters: black circle. |
+| Stamps / points | filled stamp = `accent`, empty = 1.5 px `lineStrong`. Balances right-aligned in `accentText` (or `accent` ≥ 17 px). |
+| Stats / charts | plain numbers in one bordered block split by hairlines; `fg` line/bars, `accent` only for the highlighted series; light grid. |
+| Dashboard nav | `bgSubtle` sidebar, 32 px rows, active = `bgMuted`. |
+| Empty state | one sentence + one action, no illustration of people. |
+
+### 0.5 Global rules
+
+1. **One black element per screen** carries the strongest action. Everything else is quiet.
+2. **Touch:** ≥ 44 x 44 hit area everywhere; counter keys 72; kiosk 88.
+3. **Focus:** web `:focus-visible` 2 px `fg` ring + 2 px offset (global). Never `outline: none` without a replacement.
+4. **States:** default, hover (web), pressed, focus-visible, disabled, loading; error/success where relevant.
+5. **Loading:** skeletons for content > 300 ms; spinners only inside buttons.
+6. **Blur** only on map chrome; elsewhere solid `bg`. Lists virtualised beyond 30 rows.
+7. **Numbers:** tabular; `1,250`; `$4.50`; `120 pts` (or the program's terminology).
+8. **Dark mode** everywhere except printed artifacts and QR codes (always black on white).
+9. Run the [anti-slop checklist](./foundations.md#anti-slop-checklist-review-every-screen-against-this) on every screen.
 
 ---
 
@@ -581,17 +602,16 @@ Use `chartColors[theme]` (TS) or `var(--ll-chart-*)` / `fill-chart-1` (web).
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| Series 1 (you / primary) | `#1F6A50` | `#7DBBA0` |
-| Series 2 | `#C65334` | `#EB9479` |
-| Series 3 | `#1D5FA8` | `#8DB7E6` |
-| Series 4 | `#7A4FA3` | `#C2A3E0` |
-| Series 5 | `#A35A06` | `#F6C35A` |
-| Series 6 / network | `#655A4C` / `#857867` | `#D4C9B8` / `#857867` |
-| Grid / axis text | `#E7DFD2` / `#655A4C` | `#332D26` / `#A99D8B` |
-| Sequential (heatmap) | pine 50 → 800 | pine 950 → 300 |
+| Series 1 (you / primary) | `#0B0B0C` (fg) | `#F5F5F4` |
+| Series 2 (highlight) | `#FF5A1F` (accent) | `#FF7A45` |
+| Series 3 | `#6B6B70` (fgMuted) | `#A1A1A8` |
+| Network | `#8A8A90` | `#7A7A82` |
+| Grid / axis text | `#E8E8E6` / `#6B6B70` | `#2A2A2E` / `#A1A1A8` |
+| Sequential (heatmap) | grey #F5F5F4 → #0B0B0C | grey #161618 → #F5F5F4 |
 
-Rules: max 6 series; direct labels over legends; 2 px lines, 4 px dots on hover only; bars radius 4
-top; tooltips use `surfaceInverse`. "You vs network" comparisons: you = series 1, network = stone.
+Rules (v2): max 3 series (more → "Other"); no legend unless two series; thin 1.5–2 px `fg` lines or
+`fg` bars, `accent` only for the highlighted series; light grid; bars radius 4 top; tooltips `fg` fill
+with `bg` text. "You vs network": you = `fg`, network = grey.
 Every chart has a "View as table" toggle (accessibility + CSV).
 
 ---

@@ -5,6 +5,7 @@ Owner: Design. Product name is a working name and lives in `packages/shared/src/
 strings**; interpolate `BRAND.name`. Assets in `apps/web/public/brand/` use the current name
 and must be regenerated if it changes.
 
+**v2 look: [foundations.md](./foundations.md) is the spec and wins over this file.**
 Tokens: `packages/design-tokens` (`@ll/design-tokens`). System: [system.md](./system.md).
 Copy: [ux-copy.md](./ux-copy.md). Screens: [screens/](./screens/).
 
@@ -62,104 +63,85 @@ billing and invoices). Dates `Oct 21` / `Tue, Oct 21`; times `3:30 pm`.
 - Name the shop, not the platform, in anything a customer sees about a shop. The platform name
   appears in onboarding, settings, legal, and the "Sent via" line.
 - No exclamation marks in errors. At most one per screen elsewhere.
-- No "Oops", "Uh oh", "Whoops". No ALL CAPS except the overline style.
+- No "Oops", "Uh oh", "Whoops". No ALL CAPS. Map, category and city labels are lowercase.
 - Never guilt ("Don't miss out!", "Last chance!" unless it is literally the last day of a promo).
 - Points are always described as never expiring, unless the merchant enabled expiry, in which
   case the rule is shown next to every balance.
 
 ## 3. Logo
 
-Files in `apps/web/public/brand/`:
+Files in `apps/web/public/brand/` (v2):
 
 | File | Use |
 | --- | --- |
-| `logo-mark.svg` | The mark, full colour, on paper/white. Favicon, avatar, small spaces. |
-| `logo-mark-mono.svg` | One colour (`currentColor`). Receipts, stamps, embossing, single-ink print, coloured tabs. |
-| `wordmark.svg` | Horizontal lockup on light backgrounds. Default logo. |
-| `wordmark-inverse.svg` | Lockup on pine `#1F6A50` or ink `#1F1B16`. |
-| `app-icon.svg` | 1024 x 1024 master for iOS / Android / PWA. Full bleed, platforms mask it. |
+| `logo-mark.svg` | The mark: black tile, four places, one accent. Favicon, avatar, small spaces. |
+| `logo-mark-mono.svg` | One colour (`currentColor`); the earned place is a ring + dot. Receipts, stamps, embossing, single-ink print. |
+| `wordmark.svg` | Mark + lowercase "local loyalty" on white. Default logo. |
+| `wordmark-inverse.svg` | Same on black `#0B0B0C` (tile turns white, places turn black). |
+| `app-icon.svg` | 1024 x 1024 master for iOS / Android / PWA. Full bleed black, platforms mask it. |
 | `qr-stand-a6.svg` | Counter stand template (see section 7). |
 
-**Concept: "The Shopfront".** A rounded pine storefront under a striped marigold awning with a
-scalloped edge. The door is open. The marigold doorknob is the _point_: the small reward
-every visit leaves behind. It reads as "a shop" at 16 px and as "your shop" at poster size.
+**Concept: "four corners".** A black rounded tile with four round places in a 2 x 2 grid.
+Three are white; one is filled with the accent `#FF5A1F`: the point you earned. It reads as a
+stamp card and as a map of corner shops, and survives at 16 px.
 
-- **Clear space:** the door height (14/64 of the mark) on every side.
-- **Minimum size:** mark 16 px (digital) / 6 mm (print). Wordmark 96 px / 25 mm wide.
-- **Wordmark type:** Figtree Bold, tracking -0.5 at 34 px. "Local" ink, "Loyalty" pine. The SVG
-  uses live text; outline it (convert to paths) before sending to a print shop.
-- **Don't:** recolour the awning, add a maple leaf, put the mark in a circle, add drop shadows,
-  rotate, stretch, outline, or place the full-colour mark on marigold or photos without a paper
-  backing plate.
+- **Colours:** black `#0B0B0C`, white, accent `#FF5A1F`. Nothing else. No gradients, no shadow.
+- **Clear space:** one place (dot diameter) on every side. **Minimum:** mark 16 px / 6 mm; wordmark 96 px / 25 mm wide.
+- **Wordmark type:** Bricolage Grotesque 800, **lowercase** "local loyalty", tracking -0.01em.
+  The SVGs use live text; outline before sending to a printer.
+- **Don't:** recolour the places, move the accent to another corner, add a second accent, put
+  the mark in a circle, add drop shadows, rotate, stretch or outline it, or use title case in the wordmark.
 
-**App icon:** pine `#1F6A50` field, deeper pine `#195841` halo, paper shop body, door in pine,
-marigold awning with pale-marigold stripes. Artwork fits inside the central 704 px (Android
-adaptive safe zone). Export: iOS 1024 PNG no alpha; Android adaptive foreground = everything
-except the background `rect`; background = `#1F6A50`. Expo `app.json`: `icon` and
-`android.adaptiveIcon.backgroundColor: "#1F6A50"`; splash background `#FAF6EF` with the mark centred.
+**App icon:** black field, four places spanning 290–734 px (inside the 704 px Android safe zone).
+Export: iOS 1024 PNG no alpha; Android adaptive foreground = the four circles, background `#0B0B0C`.
+Expo `app.json`: `android.adaptiveIcon.backgroundColor: "#0B0B0C"`; splash background `#FFFFFF`
+with the mark centred (dark splash `#0B0B0C` with the inverse mark).
 
 ## 4. Colour meaning
 
-Full tokens: `packages/design-tokens/src/palette.ts` and `colors.ts`. Contrast is tested in CI
-(`pnpm --filter @ll/design-tokens test`).
+Spec: [foundations.md § Colour](./foundations.md#colour). Tokens: `packages/design-tokens/src/colors.ts`
+(contrast tested in CI). **Monochrome first; colour comes from the places, not the chrome.**
 
-| Colour | Hex | Means | Use for | Never for |
+| Colour | Light / dark | Means | Use for | Never for |
 | --- | --- | --- | --- | --- |
-| **Pine** | `#1F6A50` (brand) | Trust, local, "go" | Primary buttons, links, active tabs, brand header, the "you" series in charts | Errors, success toasts (use leaf) |
-| **Marigold** | `#F5A524` (accent) | Sunshine, reward, "you earned it" | Filled stamps, points-earned moments, reward-ready badge, awning | Body text (fails contrast); warnings |
-| **Brick** | `#C65334` | Toronto storefront brick, warmth | Illustration, marketing backgrounds, second chart series | UI states (looks like an error) |
-| **Paper** | `#FAF6EF` (canvas) | Warm, printed, human | App and page background | Pure white page backgrounds (surfaces are white, canvas is paper) |
-| **Ink** | `#1F1B16` (fg) | Readable, calm | Body text, icons | Never pure `#000` except QR codes |
-| **Leaf** | `#1D7A3D` | Success | Award confirmed, payment received, connected | Brand buttons |
-| **Ochre** | `#EBAA2E` / text `#5E3409` | Warning | Offline banner, expiring codes, quote needs approval | Rewards |
-| **Cherry** | `#B42318` | Danger | Errors, destructive actions, declined | Promos, "sale" |
-| **Lake** | `#1D5FA8` | Info, focus | Focus rings, info banners, "new" | Brand |
+| **Ink** `fg` | `#0B0B0C` / `#F5F5F4` | Clarity | Text, icons, **primary buttons (black)**, the one black element per screen, chart lines | — |
+| **White** `bg` | `#FFFFFF` / `#0B0B0C` | Calm | Screens and sheets | Tinted cards |
+| **Greys** `bg-subtle` `bg-muted` `line` | see foundations | Structure | Grouped backgrounds, pressed rows, hairlines | Decoration |
+| **Accent** `accent` | `#FF5A1F` / `#FF7A45` | Points | Stamps, points, "reward ready", activity dots, large balances | Anything that isn't points. Small text (use `accent-text` `#C2410C`) |
+| **Positive** | `#16A34A` / `#22C55E` | Open, up | "Open now" dot, positive deltas | Buttons, cards |
+| **Negative** | `#DC2626` / `#F87171` | Closed, error | Errors, destructive actions, "closed" | Promos, "sale" |
+| **Location** | `#2F7BF6` / `#4C8DF8` | You are here | The user's own location dot only | Links, info |
 
-**Ratios to remember:** 60% paper/white, 30% ink and stone neutrals, 8% pine, 2% marigold.
-Marigold is a spice: if a screen has more than one marigold element besides stamps, remove one.
+**Rules:** no more than one accent-coloured thing per viewport; status is a dot + word, never a
+filled card; no gradients; dark mode is a straight inversion of the same roles.
 
-**Dark mode** keeps the same meaning with lifted tints (pine `#4E9C7D`, text on it is near-black).
-Counter mode and the kiosk default to light (bright shops), with a manual dark toggle.
-
-**Verticals** each have a hue-derived `accent / tint / ink` (`verticalVisuals` in tokens) used
-for shop placeholders and map pins when a shop has no logo. The shop's logo and photos always win.
+**Shops** keep their own `brandColor`, shown only inside their avatar (initials or logo). Verticals
+have no colour in v2: each maps to a map category with an object illustration (section 6).
 
 ## 5. Typography
 
-- **Figtree** (Google Fonts) for all UI. Weights 400 / 500 / 600 / 700. Tabular figures for
-  balances, keypad, KPIs (`font-variant-numeric: tabular-nums`; RN `fontVariant: ["tabular-nums"]`).
-- **Fraunces** (Google Fonts, SemiBold 600, SOFT 50, opsz auto) for display moments only:
-  marketing headlines, printed stands, campaign posters, the "Welcome to Roncesvalles" hero.
-  Never in app UI below 24 px; never in counter mode or the dashboard.
-- System font fallback always. Never block first paint on font loading (`font-display: swap`).
+Spec: [foundations.md § Type](./foundations.md#type).
+
+- **Bricolage Grotesque** 700 / 800 for display, big numbers, and every map, category and city
+  label, which are **lowercase** ("toronto", "coffee", "search here").
+- **Inter** 400 / 500 / 600 for web UI and body. **System font** (SF Pro / Roboto) for native UI.
+- Numbers always tabular. Italic only for the grey subtitle under a place name.
+- Fallback to the system font always; never block first paint on font loading.
 
 ## 6. Photography and illustration
 
-**Photography** (marketing, shop pages, onboarding):
+**Photography** (marketing, shop pages, onboarding): real Toronto streets and owners in daylight;
+hands and counters more than posed faces; phones small and incidental. Don't: stock handshakes,
+neon, money imagery, gold coins, CN Tower shortcuts. In the product, shop photos sit in round
+white bubbles (map pins) or 16:9 covers.
 
-- Real Toronto streets and real owners: Roncesvalles, the Danforth, Leslieville, Junction,
-  Bloor West. Daylight, slightly warm white balance, natural grain.
-- People mid-action: handing over a coffee, a mechanic wiping hands, a florist wrapping stems.
-  Hands and counters more than posed faces. Diverse, every age, including seniors.
-- Phones appear small and incidental; the shop is the hero, not the screen.
-- Shot on the street, at eye level. Awnings, hand-painted signs, streetcar tracks, snowbanks in
-  winter. Four seasons, not just summer.
-- Don't: stock-photo handshakes, people pointing at phones, neon, money imagery, gold coins,
-  "deal" starbursts, flat-lays of gift cards, CN Tower as a shortcut for "Toronto".
+**Category objects** (the only illustration in the product): one set of small flat-3D objects
+in `packages/design-tokens/assets/categories/` (`coffee` cup, `bakery` croissant, `eat` bowl,
+`shops` bag, `beauty` scissors, `repair` wrench, `services` bell, `top` star), 64 x 64
+SVG + PNG @1x/2x/3x. Light from the top-left, 2–3 tones per material, no outlines, a faint contact
+shadow. Shown at 28–40 px in white bubbles and the category rail. New categories must match the set.
 
-**Merchant photos in the app**: shop cover 16:9, logo 1:1. If missing, use the vertical
-placeholder (`ShopTile` placeholder: vertical `tint` with the lucide icon in `accent`).
-
-**Illustration**:
-
-- Flat shapes, chunky rounded corners (match `radius.lg`), 2 px ink line accents allowed.
-  Palette: paper, pine, marigold, brick, stone. One accent object per illustration.
-- Subjects: storefronts with awnings, a street of shops, a paper bag, a coffee cup, a wrench,
-  a bicycle, a streetcar silhouette. Used for empty states, onboarding, and campaign posters.
-- Empty-state illustrations are 120-160 px, never more than 30% of the viewport, and always
-  paired with a single clear action.
-- Icons: **lucide** (`lucide-react`, `lucide-react-native`), stroke 2, rounded joins. Don't mix
-  icon sets. Vertical icons are mapped in `verticalVisuals`.
+**Empty states:** one sentence + one action. No illustrations of people.
 
 ## 7. Counter QR stand
 
@@ -175,12 +157,12 @@ cardstock with "fit to page". Generated per location by Locations & QR kit
 | `#qr-slot` | QR for `https://<host>/j/<code>` | 50 x 50 mm, black on white, ECC level M, quiet zone provided by the white card |
 | `#join-url` | Short URL without `https://` | Shown for people who type it |
 
-Copy is fixed: "Scan to join" / "earn points at {Shop} and every shop on {Street}" /
+Copy is fixed: "scan to join" (lowercase, Bricolage) / "earn points at {Shop} and every shop on {Street}" /
 "No app needed · Free · Takes 30 seconds" / "No phone camera? Just tell us your number."
 Printing: 300 dpi, matte cardstock (glossy causes glare on QR under shop lights), no lamination
 gloss. QR must survive being scanned at 1 m on a 3-year-old phone: do not shrink below 40 mm.
 
-Kit also includes a window decal (round, 120 mm: mark + "Proud member of {Street} Local Loyalty")
+Kit also includes a window decal (round, 120 mm, white: mark + "proud member of {street} local loyalty", lowercase)
 and a 2-line staff script card (see [ux-copy.md](./ux-copy.md#11-staff-script-card)).
 
 ## 8. Do and don't
@@ -194,5 +176,6 @@ and a 2-line staff script card (see [ux-copy.md](./ux-copy.md#11-staff-script-ca
 | Black-on-white QR, big, with a manual fallback | Branded/coloured QR codes, logos inside QR |
 | Keep counter screens to one decision each | Put marketing or tips on counter screens |
 | Explain consent in one plain sentence | Pre-tick consent boxes or bundle consent with sign-up |
-| Paper canvas, white cards, pine actions | Gradients, glassmorphism, neon, gold |
-| Celebrate earning with a stamp pop and a haptic | Confetti on every tap, sounds by default |
+| White screens, hairlines, one black action | Gradients, tinted cards, glassmorphism outside map chrome, neon, gold |
+| Accent only for points | Accent on buttons, links or decoration |
+| Celebrate earning with a stamp fill and a haptic | Confetti on every tap, sounds by default |

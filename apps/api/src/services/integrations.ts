@@ -4,10 +4,12 @@
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { integrations, locations, merchantCategories, merchants, merchantStaff, outboundWebhooks, users, type Db } from "@ll/db";
-import { CONNECTORS, getConnector, type ApiContext, type Connector, type Credentials, type ExternalRef } from "../connectors/index.js";
+import { FEATURES, PLANS, type FeatureKey } from "@ll/shared";
+import { CONNECTORS, getConnector, isPosProvider, type ApiContext, type Connector, type Credentials, type ExternalRef } from "../connectors/index.js";
 import type { AppContext } from "../context.js";
 import { decrypt, encrypt, hmacSha256, randomToken, safeEqual, sha256 } from "../lib/crypto.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
+import { getMerchantFeatures } from "./features.js";
 import { httpFor } from "./integrations-http.js";
 
 export type Integration = typeof integrations.$inferSelect;
@@ -121,6 +123,14 @@ export async function apiContextFor(ctx: AppContext, integ: Integration): Promis
 // ---------------------------------------------------------------------------
 // Catalog
 // ---------------------------------------------------------------------------
+/** Which paid feature an integration needs (Pricing v2): POS → POS auto-award, Mailchimp → email marketing, automation → Webhooks & API. */
+export function integrationFeature(provider: string): FeatureKey | null {
+  if (isPosProvider(provider)) return "integrations.pos_auto_award";
+  if (provider === "mailchimp") return "marketing.email";
+  if (provider === "zapier" || provider === "make" || provider === "webhooks" || provider === "api") return "integrations.webhooks";
+  return null;
+}
+
 export interface CatalogEntry {
   provider: string;
   name: string;
@@ -129,7 +139,13 @@ export interface CatalogEntry {
   auth: "oauth" | "credentials" | "link" | "api_key" | "webhook" | "managed";
   available: boolean;
   status: "not_connected" | "pending" | "connected" | "error" | "disconnected";
-  free: true;
+  free: boolean;
+  /** Paid feature this integration needs, or null when it's free. */
+  feature: FeatureKey | null;
+  /** True when that feature isn't enabled for this merchant (connect is refused; existing connections are paused). */
+  locked: boolean;
+  /** Set when a connection exists but is paused because its feature is off (it stops auto-awarding / syncing / sending). */
+  pausedReason: string | null;
   connectFields: { key: string; label: string; required: boolean }[];
   externalAccountId: string | null;
   lastSyncAt: string | null;
@@ -139,7 +155,19 @@ export interface CatalogEntry {
   setup: { events?: string[]; scopes?: string[]; envVars: string[] };
 }
 
-export function connectorEntry(ctx: AppContext, c: Connector, row: Integration | null): CatalogEntry {
+function lockState(provider: string, enabled: ReadonlySet<FeatureKey> | null, connected: boolean) {
+  const feature = integrationFeature(provider);
+  const locked = !!feature && !!enabled && !enabled.has(feature);
+  return {
+    free: !feature,
+    feature,
+    locked,
+    pausedReason: locked && connected ? `Paused: ${FEATURES[feature!].name} is a ${PLANS[FEATURES[feature!].minPlan].name} feature that isn't enabled for this business` : null,
+  };
+}
+
+/** `enabled`: the merchant's enabled features (null = not checked, e.g. right after connecting). */
+export function connectorEntry(ctx: AppContext, c: Connector, row: Integration | null, enabled: ReadonlySet<FeatureKey> | null = null): CatalogEntry {
   return {
     provider: c.id,
     name: c.name,
@@ -148,7 +176,7 @@ export function connectorEntry(ctx: AppContext, c: Connector, row: Integration |
     auth: c.auth,
     available: c.configured(ctx.config),
     status: row ? row.status : "not_connected",
-    free: true,
+    ...lockState(c.id, enabled, row?.status === "connected"),
     connectFields: c.connectFields ?? [],
     externalAccountId: row?.externalAccountId ?? null,
     lastSyncAt: row?.lastSyncAt?.toISOString() ?? null,
@@ -163,7 +191,9 @@ export async function integrationCatalog(ctx: AppContext, merchantId: string): P
   const rows = await ctx.db.select().from(integrations).where(eq(integrations.merchantId, merchantId));
   const byProvider = new Map(rows.map((r) => [r.provider, r]));
   const hooks = await ctx.db.select({ createdVia: outboundWebhooks.createdVia, active: outboundWebhooks.active }).from(outboundWebhooks).where(eq(outboundWebhooks.merchantId, merchantId));
-  const [m] = await ctx.db.select({ apiKeyHash: merchants.apiKeyHash }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const states = m ? await getMerchantFeatures(ctx.db, m) : null;
+  const enabled = new Set(states ? (Object.values(states).filter((f) => f.enabled).map((f) => f.key) as FeatureKey[]) : []);
   const hookStatus = (via: string[]) => (hooks.some((h) => h.active && via.includes(h.createdVia)) ? "connected" : "not_connected");
   const extra = (provider: string, name: string, category: string, description: string, auth: CatalogEntry["auth"], status: CatalogEntry["status"], available = true): CatalogEntry => ({
     provider,
@@ -173,7 +203,7 @@ export async function integrationCatalog(ctx: AppContext, merchantId: string): P
     auth,
     available,
     status,
-    free: true,
+    ...lockState(provider, enabled, status === "connected"),
     connectFields: [],
     externalAccountId: null,
     lastSyncAt: null,
@@ -183,7 +213,7 @@ export async function integrationCatalog(ctx: AppContext, merchantId: string): P
     setup: { envVars: [] },
   });
   return [
-    ...Object.values(CONNECTORS).map((c) => connectorEntry(ctx, c, byProvider.get(c.id) ?? null)),
+    ...Object.values(CONNECTORS).map((c) => connectorEntry(ctx, c, byProvider.get(c.id) ?? null, enabled)),
     extra("zapier", "Zapier", "automation", "Trigger 6,000+ apps when members join, earn or redeem. Uses your API key.", "api_key", hookStatus(["zapier"])),
     extra("make", "Make", "automation", "Build Make scenarios from loyalty events. Uses your API key.", "api_key", hookStatus(["make"])),
     extra("webhooks", "Webhooks", "automation", "Send signed JSON to your own URL on every loyalty event.", "webhook", hookStatus(["dashboard", "api"])),

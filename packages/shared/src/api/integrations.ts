@@ -39,8 +39,14 @@ export interface IntegrationSummary {
   /** False when the server lacks the platform app credentials for this provider. */
   available: boolean;
   status: IntegrationStatus;
-  /** Every integration is free. */
-  free: true;
+  /** False when the integration needs a paid feature (Pricing v2: POS auto-award, Mailchimp, webhooks/API are Plus). */
+  free: boolean;
+  /** Paid feature key this integration needs (e.g. "integrations.pos_auto_award"), or null when free. */
+  feature: string | null;
+  /** The feature isn't enabled for this merchant: connecting is refused (402) and existing connections are paused. */
+  locked: boolean;
+  /** Human-readable reason when an existing connection is paused because its feature is off; null otherwise. */
+  pausedReason: string | null;
   /** Extra fields the connect call needs (e.g. Shopify shop domain, Toast restaurant GUID). */
   connectFields: { key: string; label: string; required: boolean }[];
   externalAccountId: string | null;

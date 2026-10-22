@@ -4,7 +4,15 @@ import { auditLogs, discountCards, ledgerEntries, merchantCategories, merchantMe
 import { VERTICAL_TEMPLATES } from "@ll/shared";
 import { awardPurchase, ledgerBalance } from "../src/services/ledger.js";
 import { verifyMerchantApiKey } from "../src/services/merchant.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
+
+/** Pricing v2: promos, VIP, discount cards, CSV and the API are Plus (hidden at launch). Pilot shops get them via admin overrides. */
+const PLUS_PROGRAM_FEATURES = ["promos.basic", "promos.double_points", "loyalty.vip_levels", "discount_cards", "customers.csv_export", "customers.csv_import", "integrations.webhooks"] as const;
+async function createPilotMerchant(env: TestEnv, opts: Parameters<typeof createMerchant>[1] = {}) {
+  const m = await createMerchant(env, opts);
+  await grantFeatures(env, m.merchant.id, [...PLUS_PROGRAM_FEATURES]);
+  return m;
+}
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -149,7 +157,7 @@ describe("profile, onboarding, features", () => {
   });
 
   it("generates, verifies and revokes API keys (owner only)", async () => {
-    const { merchant, ownerToken } = await createMerchant(env);
+    const { merchant, ownerToken } = await createPilotMerchant(env);
     const mgr = await addStaff(merchant.id, "manager");
     expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/api-key`, headers: auth(mgr.token) })).statusCode).toBe(403);
     const r = await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/api-key`, headers: auth(ownerToken) });
@@ -260,7 +268,7 @@ describe("loyalty program configuration", () => {
   });
 
   it("CRUDs rewards, VIP levels and discount cards", async () => {
-    const { merchant, ownerToken, noEarnCategory } = await createMerchant(env);
+    const { merchant, ownerToken, noEarnCategory } = await createPilotMerchant(env);
     const base = `/v1/merchants/${merchant.id}`;
     const bad = await env.app.inject({ method: "POST", url: `${base}/rewards`, headers: auth(ownerToken), payload: { name: "x", pointsCost: 100, rewardType: "percent_off", value: 150 } });
     expect(bad.statusCode).toBe(400);
@@ -315,7 +323,8 @@ describe("loyalty program configuration", () => {
     // Normal categories are editable.
     const front = cats.find((c: { name: string }) => c.name === "Front store");
     expect((await env.app.inject({ method: "PATCH", url: `${base}/${front.id}`, headers: auth(token), payload: { discountEligible: false } })).statusCode).toBe(200);
-    // Bonus promos can't target the prescriptions category.
+    // Bonus promos can't target the prescriptions category (promos are Plus: enable for this pilot shop).
+    await grantFeatures(env, merchant.id, ["promos.double_points"]);
     const promo = await env.app.inject({
       method: "POST",
       url: `/v1/merchants/${merchant.id}/promos`,
@@ -328,8 +337,42 @@ describe("loyalty program configuration", () => {
     expect(r.earn.basePoints).toBe(0);
   });
 
-  it("schedules promos and enforces status transitions", async () => {
+  it("Pricing v2: a free shop can't create or edit paid program features, but keeps, reads and deletes its data", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
+    const base = `/v1/merchants/${merchant.id}`;
+    const call = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, payload?: Record<string, unknown>) =>
+      env.app.inject({ method, url: `${base}${url}`, headers: auth(ownerToken), ...(payload ? { payload } : {}) });
+    const locked = async (r: Awaited<ReturnType<typeof call>>) => {
+      expect(r.statusCode).toBe(402);
+      expect(r.json().error.code).toBe("feature_locked");
+    };
+    await locked(await call("POST", "/promos", { title: "Offer", kind: "offer", startsAt: "2026-11-10T00:00:00Z" }));
+    await locked(await call("POST", "/promos", { title: "2x", kind: "multiplier", multiplierPct: 200, startsAt: "2026-11-10T00:00:00Z" }));
+    await locked(await call("POST", "/vip-levels", { name: "Gold", thresholdPoints: 500, multiplierPct: 150 }));
+    await locked(await call("POST", "/discount-cards", { name: "Seniors", percentOff: 10 }));
+    await locked(await env.app.inject({ method: "GET", url: `${base}/customers/export.csv`, headers: auth(ownerToken) }));
+    await locked(await call("POST", "/customers/import", { csv: "phone,points\n4165550101,25" }));
+    await locked(await call("POST", "/api-key"));
+    // Free forever: rewards, manual adjustments, the directory.
+    expect((await call("POST", "/rewards", { name: "Free coffee", pointsCost: 100, rewardType: "free_item", value: 0 })).statusCode).toBe(201);
+    expect((await call("GET", "/customers")).statusCode).toBe(200);
+
+    // Data created while a pilot override was on stays readable/deletable after it's removed; edits are locked.
+    await grantFeatures(env, merchant.id, ["promos.basic", "loyalty.vip_levels"]);
+    const promo = (await call("POST", "/promos", { title: "Offer", kind: "offer", startsAt: "2026-11-10T00:00:00Z" })).json();
+    const vip = (await call("POST", "/vip-levels", { name: "Gold", thresholdPoints: 500, multiplierPct: 150 })).json();
+    await grantFeatures(env, merchant.id, ["promos.basic", "loyalty.vip_levels"], false);
+    expect((await call("GET", "/promos")).json().items).toHaveLength(1);
+    await locked(await call("PATCH", `/promos/${promo.id}`, { title: "Edited" }));
+    await locked(await call("POST", `/promos/${promo.id}/status`, { status: "live" }));
+    await locked(await call("PATCH", `/vip-levels/${vip.id}`, { name: "Platinum" }));
+    expect((await call("GET", "/vip-levels")).json().items).toHaveLength(1);
+    expect((await call("DELETE", `/promos/${promo.id}`)).statusCode).toBe(204);
+    expect((await call("DELETE", `/vip-levels/${vip.id}`)).statusCode).toBe(204);
+  });
+
+  it("schedules promos and enforces status transitions", async () => {
+    const { merchant, ownerToken } = await createPilotMerchant(env);
     const base = `/v1/merchants/${merchant.id}/promos`;
     const create = (payload: Record<string, unknown>) => env.app.inject({ method: "POST", url: base, headers: auth(ownerToken), payload });
     expect((await create({ title: "2x", kind: "multiplier", startsAt: "2026-11-10T00:00:00Z" })).statusCode).toBe(400);
@@ -359,7 +402,7 @@ describe("loyalty program configuration", () => {
 
 describe("customers directory", () => {
   it("searches, filters, adjusts, reverses and exports", async () => {
-    const { merchant, owner } = await createMerchant(env);
+    const { merchant, owner } = await createPilotMerchant(env);
     const base = `/v1/merchants/${merchant.id}/customers`;
     const a = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: "+14165551234", customerName: "Alice Nguyen", source: "staff_app", amountCents: 6000 });
     env.clock.now = new Date(env.clock.now.getTime() + 40 * 86400000);
@@ -448,7 +491,7 @@ describe("CSV import", () => {
   ].join("\n");
 
   it("imports members with opening balances, no welcome bonus, CASL-safe consent, idempotently", async () => {
-    const { merchant, ownerToken } = await createMerchant(env, { welcomeBonus: 50 });
+    const { merchant, ownerToken } = await createPilotMerchant(env, { welcomeBonus: 50 });
     const staff = await addStaff(merchant.id, "staff");
     const url = `/v1/merchants/${merchant.id}/customers/import`;
     expect((await env.app.inject({ method: "POST", url, headers: auth(staff.token), payload: { csv } })).statusCode).toBe(403);
@@ -486,8 +529,8 @@ describe("CSV import", () => {
   });
 
   it("reuses the network identity of existing customers", async () => {
-    const a = await createMerchant(env);
-    const b = await createMerchant(env);
+    const a = await createPilotMerchant(env);
+    const b = await createPilotMerchant(env);
     await awardPurchase(env.ctx, { merchantId: a.merchant.id, phone: "+14165550101", source: "staff_app", amountCents: 1000 });
     const r = (await env.app.inject({ method: "POST", url: `/v1/merchants/${b.merchant.id}/customers/import`, headers: auth(b.ownerToken), payload: { csv: "phone,points\n4165550101,25" } })).json();
     expect(r.membersCreated).toBe(1);

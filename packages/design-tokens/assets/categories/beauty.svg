@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <ellipse cx="32" cy="58" rx="16" ry="2.6" fill="#000" fill-opacity=".08"/>
+  <!-- piece B (behind): tip top-right, handle bottom-left -->
+  <path d="M44.5 5.5c.9.3 1.2 1.1 1 2L35.4 34.6l-4.6-2.6Z" fill="#AEB5C0"/>
+  <path d="M44.5 5.5c.9.3 1.2 1.1 1 2L35.4 34.6l-2.2-1.2Z" fill="#8E96A3"/>
+  <path d="M33 33.6 25.6 43" stroke="#6E4FC4" stroke-width="5" stroke-linecap="round"/>
+  <path fill-rule="evenodd" d="M22.5 37.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 3.6a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 0 0 0-7.8Z" fill="#7C5BD0"/>
+  <!-- piece A (front): tip top-left, handle bottom-right -->
+  <path d="M19.5 5.5c-.9.3-1.2 1.1-1 2l10.1 27.1 4.6-2.6Z" fill="#E4E8ED"/>
+  <path d="M19.5 5.5c-.9.3-1.2 1.1-1 2l10.1 27.1 1.6-.9Z" fill="#F7F9FB"/>
+  <path d="M19.5 5.5 31 33.4l2.2-1.4Z" fill="#C3C9D2"/>
+  <path d="M31 33.6 38.4 43" stroke="#9D7FE6" stroke-width="5" stroke-linecap="round"/>
+  <path fill-rule="evenodd" d="M41.5 37.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 3.6a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 0 0 0-7.8Z" fill="#9D7FE6"/>
+  <path fill-rule="evenodd" d="M41.5 37.5a7.5 7.5 0 0 1 7.3 5.8 7.5 7.5 0 0 0-13.2-2.4l2.9 2.2a3.9 3.9 0 0 1 3-2c.1 0 0 0 0 0Z" fill="#BBA6F2"/>
+  <!-- pivot -->
+  <circle cx="32" cy="33" r="2.6" fill="#6E7580"/>
+  <circle cx="31.4" cy="32.4" r="1" fill="#C3C9D2"/>
+</svg>

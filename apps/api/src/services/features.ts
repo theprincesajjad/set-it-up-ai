@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { featureInterest, featureOverrides, featureRollouts, type merchants } from "@ll/db";
+import { featureInterest, featureOverrides, featureRollouts, merchants } from "@ll/db";
 import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
@@ -68,41 +68,80 @@ export async function recordFeatureInterest(
   return { key: k, interested: true, createdAt: row.createdAt.toISOString(), created: !!inserted };
 }
 
+/** Is one feature on for this merchant (plan + rollout + admin override)? Never throws. */
+export async function isFeatureOn(db: DbOrTx, merchant: Merchant, key: FeatureKey): Promise<boolean> {
+  return (await enabledFeaturesFor(db, [merchant], [key])).get(merchant.id)?.has(key) ?? false;
+}
+
+/**
+ * Batched: which of `keys` each merchant has enabled. One rollout read + one
+ * overrides read for any number of merchants (use it on customer-facing lists).
+ */
+export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
+  const out = new Map<string, Set<FeatureKey>>();
+  if (!list.length || !keys.length) return out;
+  const [stages, overrides] = await Promise.all([
+    getRolloutStages(db),
+    db
+      .select()
+      .from(featureOverrides)
+      .where(and(inArray(featureOverrides.merchantId, list.map((m) => m.id)), inArray(featureOverrides.key, [...keys]))),
+  ]);
+  const ov = new Map(overrides.map((o) => [`${o.merchantId}:${o.key}`, o.enabled]));
+  for (const m of list) {
+    const on = new Set<FeatureKey>();
+    for (const key of keys) {
+      if (isFeatureEnabled(key, { plan: m.plan, stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
+    }
+    out.set(m.id, on);
+  }
+  return out;
+}
+
+/** Same as enabledFeaturesFor, when only merchant ids are at hand. */
+export async function enabledFeaturesByMerchantId(db: DbOrTx, ids: string[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
+  if (!ids.length) return new Map();
+  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
+  return enabledFeaturesFor(db, rows, keys);
+}
+
+/** Which promo kinds need which feature: boosts (multiplier / bonus points) need promos.double_points. */
+export function promoFeature(kind: string): FeatureKey {
+  return kind === "multiplier" || kind === "bonus_points" ? "promos.double_points" : "promos.basic";
+}
+
 /** Customer-facing entry points per shop (enabled features only), so apps don't probe for 402s. */
 export interface CustomerFeatures {
   orderAhead: boolean;
   pickupSlots: boolean;
   serviceTickets: boolean;
   inAppPayments: boolean;
+  /** Paid (Plus): promos in the feed / shop page, discount cards, referrals, VIP levels, birthday points. */
+  promos: boolean;
+  discountCards: boolean;
+  referrals: boolean;
+  vipLevels: boolean;
+  birthdayBonus: boolean;
 }
 const CUSTOMER_FEATURE_KEYS = {
   orderAhead: "orders.order_ahead",
   pickupSlots: "booking.pickup_slots",
   serviceTickets: "service.tickets",
   inAppPayments: "payments.in_app",
+  promos: "promos.basic",
+  discountCards: "discount_cards",
+  referrals: "loyalty.referrals",
+  vipLevels: "loyalty.vip_levels",
+  birthdayBonus: "loyalty.birthday_bonus",
 } as const satisfies Record<keyof CustomerFeatures, FeatureKey>;
 
 /** Batched: one rollout read + one overrides read for any number of merchants. */
 export async function customerFeaturesFor(db: DbOrTx, list: Merchant[]): Promise<Map<string, CustomerFeatures>> {
   const out = new Map<string, CustomerFeatures>();
-  if (!list.length) return out;
-  const keys = Object.values(CUSTOMER_FEATURE_KEYS) as FeatureKey[];
-  const [stages, overrides] = await Promise.all([
-    getRolloutStages(db),
-    db
-      .select()
-      .from(featureOverrides)
-      .where(and(inArray(featureOverrides.merchantId, list.map((m) => m.id)), inArray(featureOverrides.key, keys))),
-  ]);
-  const ov = new Map(overrides.map((o) => [`${o.merchantId}:${o.key}`, o.enabled]));
+  const on = await enabledFeaturesFor(db, list, Object.values(CUSTOMER_FEATURE_KEYS));
   for (const m of list) {
-    const on = (key: FeatureKey) => isFeatureEnabled(key, { plan: m.plan, stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null });
-    out.set(m.id, {
-      orderAhead: on(CUSTOMER_FEATURE_KEYS.orderAhead),
-      pickupSlots: on(CUSTOMER_FEATURE_KEYS.pickupSlots),
-      serviceTickets: on(CUSTOMER_FEATURE_KEYS.serviceTickets),
-      inAppPayments: on(CUSTOMER_FEATURE_KEYS.inAppPayments),
-    });
+    const set = on.get(m.id) ?? new Set<FeatureKey>();
+    out.set(m.id, Object.fromEntries(Object.entries(CUSTOMER_FEATURE_KEYS).map(([k, key]) => [k, set.has(key)])) as unknown as CustomerFeatures);
   }
   return out;
 }

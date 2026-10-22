@@ -1,10 +1,14 @@
-/** Loyalty program config: program, rewards, VIP levels, categories, discount cards, promos. Writes need manager+. */
+/**
+ * Loyalty program config: program, rewards, VIP levels, categories, discount cards, promos. Writes need manager+.
+ * Pricing v2: VIP levels, discount cards and promos are paid (Plus). Creating or editing them needs the feature;
+ * reading, ending/archiving and deleting existing rows stays open so a merchant can always see and clean up data.
+ */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { merchantApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
-import { requireFeature } from "../../services/features.js";
+import { promoFeature, requireFeature } from "../../services/features.js";
 import * as svc from "../../services/merchant-program.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
@@ -56,6 +60,7 @@ export default async function registerProgram(app: FastifyInstance, ctx: AppCont
   });
   app.patch("/merchants/:merchantId/vip-levels/:levelId", async (req: Req<{ levelId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    await requireFeature(ctx.db, s.merchant, "loyalty.vip_levels");
     return svc.updateVipLevel(ctx, s.merchant.id, s.user.id, req.params.levelId, parse(merchantApi.updateVipLevelBody, req.body));
   });
   app.delete("/merchants/:merchantId/vip-levels/:levelId", async (req: Req<{ levelId: string }>, reply) => {
@@ -97,6 +102,7 @@ export default async function registerProgram(app: FastifyInstance, ctx: AppCont
   });
   app.patch("/merchants/:merchantId/discount-cards/:cardId", async (req: Req<{ cardId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    await requireFeature(ctx.db, s.merchant, "discount_cards");
     return svc.updateDiscountCard(ctx, s.merchant.id, s.user.id, req.params.cardId, parse(merchantApi.updateDiscountCardBody, req.body));
   });
   app.delete("/merchants/:merchantId/discount-cards/:cardId", async (req: Req<{ cardId: string }>, reply) => {
@@ -118,17 +124,25 @@ export default async function registerProgram(app: FastifyInstance, ctx: AppCont
   app.post("/merchants/:merchantId/promos", async (req: Req, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
     const body = parse(merchantApi.createPromoBody, req.body);
-    await requireFeature(ctx.db, s.merchant, body.kind === "multiplier" || body.kind === "bonus_points" ? "promos.double_points" : "promos.basic");
+    await requireFeature(ctx.db, s.merchant, promoFeature(body.kind));
     reply.status(201);
     return svc.createPromo(ctx, s.merchant.id, s.user.id, body);
   });
   app.patch("/merchants/:merchantId/promos/:promoId", async (req: Req<{ promoId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
-    return svc.updatePromo(ctx, s.merchant.id, s.user.id, req.params.promoId, parse(merchantApi.updatePromoBody, req.body));
+    const body = parse(merchantApi.updatePromoBody, req.body);
+    const cur = await svc.getPromo(ctx.db, s.merchant.id, req.params.promoId);
+    await requireFeature(ctx.db, s.merchant, promoFeature(body.kind ?? cur.kind));
+    return svc.updatePromo(ctx, s.merchant.id, s.user.id, req.params.promoId, body);
   });
   app.post("/merchants/:merchantId/promos/:promoId/status", async (req: Req<{ promoId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
     const { status } = parse(merchantApi.promoStatusBody, req.body);
+    // Ending / archiving is always allowed; scheduling or going live needs the feature.
+    if (status !== "ended" && status !== "archived") {
+      const cur = await svc.getPromo(ctx.db, s.merchant.id, req.params.promoId);
+      await requireFeature(ctx.db, s.merchant, promoFeature(cur.kind));
+    }
     return svc.transitionPromo(ctx, s.merchant.id, s.user.id, req.params.promoId, status);
   });
   app.delete("/merchants/:merchantId/promos/:promoId", async (req: Req<{ promoId: string }>, reply) => {

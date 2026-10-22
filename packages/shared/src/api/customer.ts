@@ -216,6 +216,16 @@ export interface CustomerFeaturesDto {
   pickupSlots: boolean;
   serviceTickets: boolean;
   inAppPayments: boolean;
+  /**
+   * Paid (Plus) loyalty-marketing features. When off, the API already hides the
+   * content (promos, discount cards, VIP, referral/birthday bonuses); these flags
+   * let apps hide the matching entry points too.
+   */
+  promos: boolean;
+  discountCards: boolean;
+  referrals: boolean;
+  vipLevels: boolean;
+  birthdayBonus: boolean;
 }
 
 export interface WalletResponse {
@@ -267,7 +277,8 @@ export interface JoinResponse {
   created: boolean;
   /** Points granted on joining (welcome + referral bonus). */
   bonusPoints: number;
-  referral: { applied: boolean; reason?: "invalid" | "own_code" | "already_member" | "already_used" } | null;
+  /** reason "unavailable": the shop doesn't have referrals (a paid feature) switched on. */
+  referral: { applied: boolean; reason?: "invalid" | "own_code" | "already_member" | "already_used" | "unavailable" } | null;
 }
 
 /** POST /v1/me/memberships/:memberId/redeem */

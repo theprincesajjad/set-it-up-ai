@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <path id="c" d="M6.5 42.5C5.4 36.8 10.6 31 17 27.2 21.2 20.6 26.4 16.5 32 16.5s10.8 4.1 15 10.7c6.4 3.8 11.6 9.6 10.5 15.3-3.2 2-7.4.6-11.2-1.4C42 44 37.2 45.5 32 45.5s-10-1.5-14.3-4.4c-3.8 2-8 3.4-11.2 1.4Z"/>
+    <clipPath id="k"><use href="#c"/></clipPath>
+  </defs>
+  <ellipse cx="32" cy="49.5" rx="22" ry="2.8" fill="#000" fill-opacity=".08"/>
+  <g clip-path="url(#k)">
+    <rect width="64" height="64" fill="#BF7530"/>
+    <use href="#c" transform="translate(-1.6 -4)" fill="#F8C878"/>
+    <use href="#c" transform="translate(-.4 -1.8)" fill="#E89F49"/>
+    <!-- grooves between the rolled layers -->
+    <path d="M23.4 18.6c-2.6 6.4-2.4 16.6 1.2 26.6l-2.4-.4c-3.2-9.6-3.2-19.6-.4-25.6Z" fill="#C27A33"/>
+    <path d="M24.8 19.4c-1.8 6.6-1.4 15.6 1.4 24.6l-1.2.2c-3-9.4-3.2-18.6-1.2-24.4Z" fill="#F4BA66"/>
+    <path d="M40.6 18.6c2.6 6.4 2.4 16.6-1.2 26.6l2.4-.4c3.2-9.6 3.2-19.6.4-25.6Z" fill="#B86E2A"/>
+    <path d="M13.8 29.6c-1 4.6-.2 9.8 2.4 13.6l1.6-1.4c-2.2-3.6-2.8-8.2-2-12.4Z" fill="#C27A33"/>
+    <path d="M15.6 29.4c-.6 4.2 0 8.6 2 12l-.8.6c-2-3.6-2.6-8-1.8-12.2Z" fill="#F4BA66"/>
+    <path d="M50.2 29.6c1 4.6.2 9.8-2.4 13.6l-1.6-1.4c2.2-3.6 2.8-8.2 2-12.4Z" fill="#B06628"/>
+    <!-- right-side shade (light from top-left) -->
+    <path d="M41.6 19C46 25 47.4 34.4 44.8 44c4-1.2 8.6-1.4 13-2V64H41.6Z" fill="#B86E2A" fill-opacity=".35"/>
+    <!-- gloss -->
+    <path d="M27.4 21.4c1.4-1.6 3-2.6 4.8-2.8-1.4 1.4-2.4 3.2-3 5.4-.4 1.2-2.2.8-1.8-.6Z" fill="#FFE6B0"/>
+  </g>
+</svg>
