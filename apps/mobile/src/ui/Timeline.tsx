@@ -59,7 +59,7 @@ export function Timeline({ status, events, quoteSlot }: { status: TicketStatus; 
               {i < rows.length - 1 ? <View style={[styles.connector, { backgroundColor: done ? c.brand : c.border }]} /> : null}
             </View>
             <View style={styles.content}>
-              <Text variant={current ? "bodyStrong" : "body"} color={done || current ? "fg" : "fgMuted"} style={current ? { fontFamily: "Figtree_700Bold" } : null}>
+              <Text variant={current ? "bodyStrong" : "body"} color={done || current ? "fg" : "fgMuted"}>
                 {TICKET_STATUS_LABELS[s]}
               </Text>
               {ev ? (

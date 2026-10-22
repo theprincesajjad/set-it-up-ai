@@ -44,7 +44,7 @@ export default function SelectCounter() {
             variant="secondary"
             onPress={() => {
               setMode("customer");
-              router.replace("/home");
+              router.replace("/map");
             }}
           >
             Use the customer app
@@ -103,7 +103,7 @@ export default function SelectCounter() {
                 size="sm"
                 onPress={() => {
                   setMode("customer");
-                  router.replace("/home");
+                  router.replace("/map");
                 }}
               >
                 Customer app

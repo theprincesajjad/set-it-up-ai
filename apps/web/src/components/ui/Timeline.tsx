@@ -21,36 +21,36 @@ export function Timeline({ steps, label = "Progress" }: { steps: TimelineStep[];
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         return (
-          <li key={s.id} className="relative flex gap-3 pb-5" aria-current={s.state === "current" ? "step" : undefined}>
-            {!last ? <span aria-hidden className={cn("absolute start-[11px] top-6 bottom-0 w-0.5", s.state === "done" ? "bg-brand" : "bg-border")} /> : null}
+          <li key={s.id} className="relative flex gap-3 pb-5 last:pb-0" aria-current={s.state === "current" ? "step" : undefined}>
+            {!last ? <span aria-hidden className={cn("absolute start-[9px] top-5 bottom-0 w-px", s.state === "done" ? "bg-fg" : "bg-line")} /> : null}
             <span
               aria-hidden
               className={cn(
-                "relative z-[1] flex size-6 shrink-0 items-center justify-center rounded-full",
-                s.state === "done" && "bg-brand text-on-brand",
-                s.state === "current" && "border-2 border-brand bg-surface",
-                s.state === "upcoming" && "border-2 border-border bg-surface",
-                s.state === "stopped" && "bg-danger text-on-danger",
-                s.state === "waiting" && "bg-warning text-on-warning",
+                "relative z-[1] mt-px flex size-[19px] shrink-0 items-center justify-center rounded-full",
+                s.state === "done" && "bg-fg text-bg",
+                s.state === "current" && "border-[1.5px] border-fg bg-bg",
+                s.state === "upcoming" && "border border-line bg-bg",
+                s.state === "stopped" && "bg-negative text-[#FFFFFF]",
+                s.state === "waiting" && "border-[1.5px] border-fg bg-bg text-fg",
               )}
             >
-              {s.state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : null}
-              {s.state === "current" ? <span className="size-2.5 rounded-full bg-brand motion-safe:animate-pulse" /> : null}
-              {s.state === "stopped" ? <X className="size-3.5" strokeWidth={3} /> : null}
-              {s.state === "waiting" ? <Hourglass className="size-3.5" /> : null}
+              {s.state === "done" ? <Check className="size-3" strokeWidth={3} /> : null}
+              {s.state === "current" ? <span className="size-[7px] rounded-full bg-fg" /> : null}
+              {s.state === "stopped" ? <X className="size-3" strokeWidth={3} /> : null}
+              {s.state === "waiting" ? <Hourglass className="size-2.5" strokeWidth={2.5} /> : null}
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn("text-body", s.state === "upcoming" ? "text-fg-muted" : "text-fg", (s.state === "current" || s.state === "waiting") && "font-semibold")}>
                 <span className="sr-only">{s.state === "done" ? "Done: " : s.state === "current" ? "Current: " : s.state === "stopped" ? "Stopped: " : s.state === "waiting" ? "Waiting: " : "Next: "}</span>
                 {s.label}
               </p>
-              {s.at ? <p className="text-caption text-fg-muted">{formatDateTime(s.at)}</p> : null}
-              {s.note ? <div className="mt-1 text-body-sm text-fg">{s.note}</div> : null}
+              {s.at ? <p className="text-meta text-fg-muted">{formatDateTime(s.at)}</p> : null}
+              {s.note ? <div className="mt-1 text-meta text-fg">{s.note}</div> : null}
               {s.photos?.length ? (
                 <div className="mt-2 flex gap-2">
                   {s.photos.map((p) => (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img key={p} src={p} alt="" className="size-16 rounded-sm object-cover" loading="lazy" />
+                    <img key={p} src={p} alt="" className="size-16 rounded-input object-cover" loading="lazy" />
                   ))}
                 </div>
               ) : null}

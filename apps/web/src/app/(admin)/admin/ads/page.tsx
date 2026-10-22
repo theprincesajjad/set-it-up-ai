@@ -36,7 +36,7 @@ export default function AdsReviewPage() {
     <div className="flex flex-col gap-4">
       <PageHeader title="Ads review" description="Every sponsored item is checked before it serves." />
       <Tabs label="Status" value={status} onChange={(v) => setStatus(v as adsApi.AdStatus)} items={[{ id: "pending_review", label: "Waiting" }, { id: "active", label: "Live" }, { id: "rejected", label: "Rejected" }, { id: "ended", label: "Ended" }]} />
-      {act.error ? <p className="text-danger">{act.error}</p> : null}
+      {act.error ? <p className="text-negative">{act.error}</p> : null}
       <Async state={list}>
         {(d) =>
           d.items.length ? (
@@ -53,7 +53,7 @@ export default function AdsReviewPage() {
                           <Badge tone={AD_STATUS_TONE[a.status]} dot>{a.status.replace("_", " ")}</Badge>
                           <Badge tone={a.paymentStatus === "paid" ? "success" : "warning"}>{a.paymentStatus}</Badge>
                         </div>
-                        <p className="text-body-sm text-fg-muted">{PLACEMENT_LABEL[a.placement]} · {formatDate(a.startsAt)} to {formatDate(a.endsAt)} · {formatMoney(a.budgetCents)} ({a.pricingModel === "daily" ? `${formatMoney(a.rateCents)}/day` : `${formatMoney(a.rateCents)} CPM`}){a.radiusMetres ? ` · ${a.radiusMetres} m radius` : ""} · {a.neighbourhoodIds.length} neighbourhoods</p>
+                        <p className="text-meta text-fg-muted">{PLACEMENT_LABEL[a.placement]} · {formatDate(a.startsAt)} to {formatDate(a.endsAt)} · {formatMoney(a.budgetCents)} ({a.pricingModel === "daily" ? `${formatMoney(a.rateCents)}/day` : `${formatMoney(a.rateCents)} CPM`}){a.radiusMetres ? ` · ${a.radiusMetres} m radius` : ""} · {a.neighbourhoodIds.length} neighbourhoods</p>
                         {a.status === "pending_review" ? (
                           <>
                             <fieldset className="flex flex-col gap-1">
@@ -72,7 +72,7 @@ export default function AdsReviewPage() {
                             <Button variant="ghost" size="sm" onClick={async () => { await act.run(() => browserApi.admin.markAdPaid(a.id, "invoiced")); await list.reload(); }}>Mark invoiced</Button>
                           </div>
                         ) : null}
-                        {a.reviewNote ? <p className="text-body-sm text-fg-muted">Note: {a.reviewNote}</p> : null}
+                        {a.reviewNote ? <p className="text-meta text-fg-muted">Note: {a.reviewNote}</p> : null}
                       </div>
                     </Card>
                   </li>

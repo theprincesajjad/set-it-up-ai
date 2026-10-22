@@ -1,51 +1,30 @@
 /**
- * Explore map pin (references.md § 1, Corner): 36 px round logo with a white
- * ring (52 + short name when selected); a marigold balance badge for my shops and
- * a pine dot for a live promo. Shared by MapView.tsx (native) and MapView.web.tsx.
+ * Explore map pin (foundations § "Places are objects, not markers"): a white
+ * bubble with the shop's category object (or its logo photo), the name in
+ * bold black and ONE italic grey line ("7 / 10 stamps", "reward ready" in
+ * accent, or the lowercase kind of place). Shared by MapView.tsx and MapView.web.tsx.
  */
 import type { networkApi } from "@ll/shared";
-import { StyleSheet, View } from "react-native";
-import { formatNumber } from "../../lib/award";
-import { useTheme } from "../../theme";
-import { ShopLogo, Text } from "../../ui";
+import { View } from "react-native";
+import { pinSubtitle, type PinMembership } from "../../lib/explore";
+import { PlaceBubble } from "../../ui";
 
-function shortLabel(name: string): string {
-  return name.length > 14 ? `${name.slice(0, 13)}…` : name;
-}
+/** Width of the marker view; the bubble's centre sits PIN_ANCHOR_X px from its left edge. */
+export const PIN_WIDTH = 200;
+export const PIN_BUBBLE = 40;
+export const PIN_ANCHOR_X = PIN_BUBBLE / 2;
 
-export function ShopPin({ shop, selected }: { shop: networkApi.ShopListItemDto; selected: boolean }) {
-  const { c } = useTheme();
-  const size = selected ? 52 : 36;
+export function ShopPin({ shop, membership, selected, bare }: { shop: networkApi.ShopListItemDto; membership: PinMembership | null; selected: boolean; bare?: boolean }) {
+  const sub = pinSubtitle(shop.merchant.vertical, membership);
   return (
-    <View style={{ alignItems: "center", width: 96 }}>
-      <View style={[styles.ring, { width: size + 4, height: size + 4, borderRadius: (size + 4) / 2 }, selected ? { borderColor: c.brand } : null]}>
-        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden" }}>
-          <ShopLogo shop={shop.merchant} size={size} />
-        </View>
-        {shop.isMember && shop.myBalance != null ? (
-          <View style={[styles.badge, { backgroundColor: c.accent }]}>
-            <Text variant="caption" rawColor={c.onAccent} tabular style={{ fontFamily: "Figtree_700Bold" }}>
-              {formatNumber(shop.myBalance)}
-            </Text>
-          </View>
-        ) : null}
-        {shop.hasPromo ? <View style={[styles.promoDot, { backgroundColor: c.brand }]} /> : null}
+    <View style={{ width: PIN_WIDTH, paddingLeft: selected ? 0 : 4 }} pointerEvents="none">
+      <View style={{ marginLeft: selected ? -4 : 0 }}>
+        <PlaceBubble name={shop.merchant.name} subtitle={sub.text} accent={sub.accent} vertical={shop.merchant.vertical} photoUrl={shop.merchant.logoUrl} selected={selected} bare={bare && !selected} size={PIN_BUBBLE} />
       </View>
-      {/* Only the selected pin carries its name, so a busy strip stays readable (Blackbird); the peek card names the rest. */}
-      {selected ? (
-        <View style={[styles.label, { backgroundColor: c.brand }]}>
-          <Text variant="caption" rawColor={c.onBrand} numberOfLines={1}>
-            {shortLabel(shop.merchant.name)}
-          </Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  ring: { borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
-  badge: { position: "absolute", top: -6, right: -10, minWidth: 22, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#FFFFFF" },
-  promoDot: { position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: "#FFFFFF" },
-  label: { marginTop: 2, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, maxWidth: 96 },
-});
+export function pinLabel(shop: networkApi.ShopListItemDto, membership: PinMembership | null): string {
+  return `${shop.merchant.name}, ${pinSubtitle(shop.merchant.vertical, membership).text}`;
+}

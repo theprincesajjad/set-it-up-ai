@@ -33,8 +33,8 @@ export interface PromoCardProps {
 function kindBadge(p: PromoCardPromo) {
   if (p.kind === "multiplier") return <Badge tone="accent">{p.multiplierPct ? `${p.multiplierPct / 100}x points` : "Bonus points"}</Badge>;
   if (p.kind === "bonus_points") return <Badge tone="accent">{p.bonusPoints ? `+${p.bonusPoints} pts` : "Bonus points"}</Badge>;
-  if (p.kind === "discount") return <Badge tone="brand">{p.percentOff ? `${p.percentOff}% off` : "Discount"}</Badge>;
-  if (p.kind === "event") return <Badge tone="info">Event</Badge>;
+  if (p.kind === "discount") return <Badge tone="neutral">{p.percentOff ? `${p.percentOff}% off` : "Discount"}</Badge>;
+  if (p.kind === "event") return <Badge tone="neutral">Event</Badge>;
   return null;
 }
 
@@ -57,25 +57,25 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href }: Pr
     <>
       {promo.imageUrl && variant === "feed" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={promo.imageUrl} alt="" loading="lazy" className="aspect-video w-full rounded-t-lg object-cover" />
+        <img src={promo.imageUrl} alt="" loading="lazy" className="aspect-video w-full object-cover" />
       ) : null}
       <div className="flex flex-col gap-2 p-4">
         <div className="flex items-center gap-2">
           <ShopLogo shop={shop} size={24} />
-          <span className="truncate text-label text-fg">{shop.name}</span>
-          {shop.distanceM != null ? <span className="text-caption text-fg-muted">{formatDistance(shop.distanceM)}</span> : null}
+          <span className="truncate text-meta-strong text-fg">{shop.name}</span>
+          {shop.distanceM != null ? <span className="text-meta text-fg-muted">{formatDistance(shop.distanceM)}</span> : null}
         </div>
-        <p className="line-clamp-2 text-title text-fg">{promo.title}</p>
-        {promo.body && variant !== "compact" ? <p className="line-clamp-2 text-body-sm text-fg-muted">{promo.body}</p> : null}
+        <p className="line-clamp-2 text-headline text-fg">{promo.title}</p>
+        {promo.body && variant !== "compact" ? <p className="line-clamp-2 text-meta text-fg-muted">{promo.body}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
           {kindBadge(promo)}
-          {m ? <span className="text-body-sm text-fg-muted">{m}</span> : null}
+          {m ? <span className="text-meta text-fg-muted">{m}</span> : null}
         </div>
       </div>
     </>
   );
   return (
-    <article aria-label={sponsored ? `${copy.ad.a11yPrefix} ${promo.title}` : promo.title} className="overflow-hidden rounded-lg bg-surface shadow-sm">
+    <article aria-label={sponsored ? `${copy.ad.a11yPrefix} ${promo.title}` : promo.title} className="overflow-hidden rounded-card border border-line bg-bg">
       {sponsored ? (
         <div className="px-4 pt-3">
           <button type="button" onClick={() => setWhy(true)} className="rounded-full focus-visible:focus-ring" aria-haspopup="dialog">
@@ -95,9 +95,9 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href }: Pr
       {sponsored ? (
         <Modal open={why} onClose={() => setWhy(false)} title={copy.ad.whyTitle} variant="sheet">
           <p className="text-body text-fg">{copy.ad.whyBody(sponsored.advertiser, sponsored.street ?? "your street")}</p>
-          {sponsored.reason ? <p className="mt-2 text-body-sm text-fg-muted">{sponsored.reason}</p> : null}
+          {sponsored.reason ? <p className="mt-2 text-meta text-fg-muted">{sponsored.reason}</p> : null}
           <p className="mt-4">
-            <Link href="/me#settings" className="text-label text-fg-link underline">
+            <Link href="/me#settings" className="text-meta-strong text-fg underline underline-offset-2">
               Ad settings
             </Link>
           </p>

@@ -62,23 +62,23 @@ export default function LocationsPage() {
               <li key={l.id}>
                 <Card padding="lg" className="flex h-full flex-col gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="shrink-0 rounded-md bg-qr-bg p-2 shadow-sm">
+                    <div className="shrink-0 rounded-input bg-qr-bg p-2 ">
                       <QrCode value={l.joinUrl} size={96} label={`Join QR for ${l.name}`} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <h2 className="flex flex-wrap items-center gap-2 text-title text-fg">
                         {l.name} {!l.active ? <Badge>Inactive</Badge> : null}
                       </h2>
-                      <p className="flex items-start gap-1 text-body-sm text-fg-muted">
+                      <p className="flex items-start gap-1 text-meta text-fg-muted">
                         <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
                         {l.address}, {l.city}
                       </p>
-                      <p className="text-body-sm text-fg-muted">{hoursSummary(l.hours)}</p>
-                      {l.phone ? <p className="text-body-sm text-fg-muted">{formatE164(l.phone)}</p> : null}
+                      <p className="text-meta text-fg-muted">{hoursSummary(l.hours)}</p>
+                      {l.phone ? <p className="text-meta text-fg-muted">{formatE164(l.phone)}</p> : null}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 rounded-md bg-surface-sunken px-3 py-2">
-                    <span className="min-w-0 flex-1 truncate font-mono text-body-sm text-fg">{l.joinUrl.replace(/^https?:\/\//, "")}</span>
+                  <div className="flex items-center gap-2 rounded-input bg-bg-subtle px-3 py-2">
+                    <span className="min-w-0 flex-1 truncate font-mono text-meta text-fg">{l.joinUrl.replace(/^https?:\/\//, "")}</span>
                     <IconButton icon={Copy} label="Copy join link" size={40} onClick={async () => {
                       await navigator.clipboard?.writeText(l.joinUrl).catch(() => undefined);
                       toast("Join link copied");

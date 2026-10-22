@@ -66,9 +66,9 @@ function Slots() {
       <Card padding="lg">
         <CardHeader title="Upcoming bookings" />
         {bookings.data?.items.length ? (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {bookings.data.items.map((b) => (
-              <li key={b.id} className="flex flex-wrap items-center gap-3 py-2 text-body-sm">
+              <li key={b.id} className="flex flex-wrap items-center gap-3 py-2 text-meta">
                 <span className="min-w-40 flex-1 text-fg">{formatDate(b.startsAt, true)} {formatTime(b.startsAt)} · {b.status}</span>
                 {b.status === "booked" ? (
                   <>
@@ -80,7 +80,7 @@ function Slots() {
             ))}
           </ul>
         ) : (
-          <p className="text-body-sm text-fg-muted">No bookings yet.</p>
+          <p className="text-meta text-fg-muted">No bookings yet.</p>
         )}
       </Card>
       <Card padding="lg">
@@ -90,14 +90,14 @@ function Slots() {
             <p className="text-label text-fg">{day}</p>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {list.map((s) => (
-                <span key={s.id} className="inline-flex h-8 items-center rounded-full border border-border px-2.5 text-caption tabular-nums text-fg">
+                <span key={s.id} className="inline-flex h-8 items-center rounded-full border border-line px-2.5 text-caption tabular-nums text-fg">
                   {formatTime(s.startsAt)} · {s.remaining}/{s.capacity}
                 </span>
               ))}
             </div>
           </div>
         ))}
-        {!byDay.size ? <p className="text-body-sm text-fg-muted">No slots yet. Make some above.</p> : null}
+        {!byDay.size ? <p className="text-meta text-fg-muted">No slots yet. Make some above.</p> : null}
       </Card>
     </div>
   );

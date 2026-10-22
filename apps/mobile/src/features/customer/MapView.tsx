@@ -1,33 +1,22 @@
 /**
- * Explore map (references.md § 1, Corner-style): react-native-maps with a
- * muted style, round logo pins with a white ring + short label, a marigold
- * balance badge for my shops and a pine dot for a live promo. Falls back to
- * the list (onFail) when maps aren't configured: Android needs
- * GOOGLE_MAPS_API_KEY at build time (app.config.ts → extra.mapsEnabledAndroid);
- * iOS uses Apple Maps (mutedStandard) with no key.
+ * Explore map (native): react-native-maps with the Corner basemap. Android
+ * (Google provider) takes `googleMapStyle` from @ll/design-tokens; Apple Maps
+ * can't be restyled, so iOS uses `mutedStandard` with every point of interest
+ * filtered out, which is the closest near-white map. Pins are <ShopPin> views.
+ * Falls back to the list (onFail) when maps aren't configured: Android needs
+ * GOOGLE_MAPS_API_KEY at build time (app.config.ts → extra.mapsEnabledAndroid).
  */
+import { googleMapStyle } from "@ll/design-tokens";
 import type { networkApi } from "@ll/shared";
 import Constants from "expo-constants";
 import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from "react";
 import { Platform, StyleSheet } from "react-native";
 import RNMapView, { Marker, type Region } from "react-native-maps";
-import { ShopPin } from "./ShopPin";
+import type { PinMembership } from "../../lib/explore";
+import { useTheme } from "../../theme";
+import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
 export const TORONTO = { lat: 43.6532, lng: -79.3832 };
-
-/** Google muted basemap: stone greys, pine parks, lake water, POIs off except transit (system.md § MapPin). */
-const MUTED_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#F3EDE3" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#655A4C" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#FAF6EF" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ visibility: "on" }, { color: "#D6E8DE" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#FBF8F2" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#E7DFD2" }] },
-  { featureType: "transit", stylers: [{ visibility: "simplified" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#CFE0F0" }] },
-];
 
 export function mapsAvailable(): boolean {
   if (process.env.EXPO_PUBLIC_DISABLE_MAPS === "1") return false;
@@ -53,19 +42,21 @@ export interface ExploreMapHandle {
   focus: (lat: number, lng: number) => void;
 }
 
-export const ExploreMap = forwardRef<
-  ExploreMapHandle,
-  {
-    shops: networkApi.ShopListItemDto[];
-    center: { lat: number; lng: number };
-    showsUser: boolean;
-    selectedId: string | null;
-    onSelect: (id: string | null) => void;
-    onRegion: (center: { lat: number; lng: number }) => void;
-    onFail: () => void;
-    bottomInset: number;
-  }
->(function ExploreMap({ shops, center, showsUser, selectedId, onSelect, onRegion, onFail, bottomInset }, ref) {
+export interface ExploreMapProps {
+  shops: networkApi.ShopListItemDto[];
+  memberships: Record<string, PinMembership>;
+  center: { lat: number; lng: number };
+  showsUser: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onRegion: (center: { lat: number; lng: number }) => void;
+  onFail: () => void;
+  topInset: number;
+  bottomInset: number;
+}
+
+export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset }, ref) {
+  const { scheme } = useTheme();
   const map = useRef<RNMapView>(null);
   const withCoords = useMemo(() => shops.filter((s) => s.location?.lat != null && s.location?.lng != null), [shops]);
   // Follow the centre (location / neighbourhood arriving later) until the user pans.
@@ -83,12 +74,19 @@ export const ExploreMap = forwardRef<
         style={StyleSheet.absoluteFill}
         initialRegion={{ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
         mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
-        customMapStyle={MUTED_STYLE}
+        customMapStyle={googleMapStyle[scheme]}
+        userInterfaceStyle={scheme}
+        pointsOfInterestFilter={[]}
         showsUserLocation={showsUser}
         showsMyLocationButton={false}
         showsPointsOfInterests={false}
+        showsBuildings={false}
+        showsTraffic={false}
+        showsCompass={false}
         toolbarEnabled={false}
-        mapPadding={{ top: 120, right: 0, bottom: bottomInset, left: 0 }}
+        pitchEnabled={false}
+        rotateEnabled={false}
+        mapPadding={{ top: topInset, right: 0, bottom: bottomInset, left: 0 }}
         onPress={() => onSelect(null)}
         onPanDrag={() => {
           userMoved.current = true;
@@ -96,21 +94,26 @@ export const ExploreMap = forwardRef<
         onRegionChangeComplete={(r: Region) => onRegion({ lat: r.latitude, lng: r.longitude })}
         accessibilityLabel="Map of shops"
       >
-        {withCoords.map((s) => (
-          <Marker
-            key={s.merchant.id}
-            coordinate={{ latitude: s.location!.lat!, longitude: s.location!.lng! }}
-            onPress={(e) => {
-              e.stopPropagation();
-              onSelect(s.merchant.id);
-            }}
-            tracksViewChanges={false}
-            anchor={{ x: 0.5, y: 0.35 }}
-            accessibilityLabel={`${s.merchant.name}${s.isMember && s.myBalance != null ? `, ${s.myBalance} ${s.terminology}` : ""}${s.hasPromo ? ", has a promo" : ""}`}
-          >
-            <ShopPin shop={s} selected={s.merchant.id === selectedId} />
-          </Marker>
-        ))}
+        {withCoords.map((s) => {
+          const mem = memberships[s.merchant.id] ?? null;
+          const selected = s.merchant.id === selectedId;
+          return (
+            <Marker
+              key={`${s.merchant.id}-${selected ? 1 : 0}`}
+              coordinate={{ latitude: s.location!.lat!, longitude: s.location!.lng! }}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelect(s.merchant.id);
+              }}
+              tracksViewChanges={false}
+              anchor={{ x: PIN_ANCHOR_X / PIN_WIDTH, y: 0.5 }}
+              zIndex={selected ? 10 : mem ? 2 : 1}
+              accessibilityLabel={pinLabel(s, mem)}
+            >
+              <ShopPin shop={s} membership={mem} selected={selected} />
+            </Marker>
+          );
+        })}
       </RNMapView>
     </MapBoundary>
   );

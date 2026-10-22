@@ -1,64 +1,28 @@
 import type { adsApi, customerApi, networkApi } from "@ll/shared";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { t } from "../../copy/en-CA";
-import { useCampaigns, useMembershipDetails, usePhase2, useProfile, useWallet } from "../../features/customer/queries";
 import { useDeviceLocation } from "../../features/customer/location";
-import { JoinSheet, PushPrompt, RedeemConfirmSheet, SponsoredWhySheet } from "../../features/customer/sheets";
-import { firstName, formatNumber, formatPts, termWord } from "../../lib/award";
-import { heroText, homeHero } from "../../lib/hero";
-import { perkHeadline, perkProgress } from "../../lib/perks";
+import { useCampaigns, usePhase2, useWallet } from "../../features/customer/queries";
+import { JoinSheet, PushPrompt, SponsoredWhySheet } from "../../features/customer/sheets";
 import { capSponsored } from "../../lib/feed";
 import { promoEnds, relativeTime } from "../../lib/format";
+import { heroText, homeHero } from "../../lib/hero";
+import { termWord } from "../../lib/award";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import {
-  Badge,
-  Banner,
-  Button,
-  Card,
-  Chip,
-  EmptyState,
-  ListRow,
-  MapPin,
-  Gift,
-  PerkCard,
-  QrCodeIcon,
-  Trophy,
-  UserPlus,
-  OfflineBanner,
-  ProgressBar,
-  PromoCard,
-  RewardCard,
-  Screen,
-  Section,
-  Sheet,
-  ShopLogo,
-  ShopTile,
-  SkeletonList,
-  Store,
-  Text,
-  Ticket,
-} from "../../ui";
-import { ORDER_STATUS_LABELS, TICKET_STATUS_LABELS } from "../../ui";
+import { Banner, Button, EmptyState, ListRow, OfflineBanner, ORDER_STATUS_LABELS, ProgressBar, PromoCard, Screen, Section, ShopTile, SkeletonList, Store, Text, Ticket, TICKET_STATUS_LABELS, Trophy } from "../../ui";
 
-/** Feed filter chips → verticals (customer-mobile.md § 2). */
-const FILTERS: { key: string; label: string; verticals: string[] | null }[] = [
-  { key: "all", label: "All", verticals: null },
-  { key: "food", label: "Food & drink", verticals: ["cafe", "restaurant", "bakery", "bar", "grocery"] },
-  { key: "services", label: "Services", verticals: ["salon", "barber", "spa", "repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"] },
-  { key: "health", label: "Health", verticals: ["pharmacy", "fitness"] },
-  { key: "shops", label: "Shops", verticals: ["retail", "bookstore", "florist", "pet", "other"] },
-];
+type Membership = customerApi.WalletResponse["items"][number];
 
-/** One-line progress: "2 more for a free drink" / "130 pts to Free tire rotation" / reward ready. */
+/** One line of progress: "3 more for a free drink" / "130 pts to Free tire rotation". */
 function progressLine(m: customerApi.MembershipDto): string {
-  if (m.rewardsAvailableCount > 0) return "Reward ready";
+  if (m.rewardsAvailableCount > 0) return m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : "reward ready";
   if (!m.nextReward) return m.expiryDisclosure;
   return m.program?.earnType === "stamps"
     ? t("misc.stampsToGo", { n: m.nextReward.pointsNeeded, reward: m.nextReward.name.toLowerCase() })
@@ -68,67 +32,49 @@ function progressLine(m: customerApi.MembershipDto): string {
 const seenPromos = new Set<string>();
 const seenAds = new Set<string>();
 
-export default function Home() {
+/**
+ * Wallet (foundations § Customer app): iOS large title "wallet" that
+ * collapses on scroll, one honest summary line (never points + stamps added
+ * together), then a list of shops: rewards ready first under a hairline
+ * header, the balance right-aligned in accent. Optional blocks only appear
+ * when the API returns them (passport, order-ahead, promos are paid features).
+ */
+export default function Wallet() {
   const { c } = useTheme();
-  const { user, prefs, updatePrefs } = useSession();
+  const { prefs } = useSession();
   const online = useOnline();
   const wallet = useWallet();
-  const profile = useProfile();
   const phase2 = usePhase2();
   const loc = useDeviceLocation(prefs.locationPrompted);
-  const [filter, setFilter] = useState("all");
-  const [showAll, setShowAll] = useState(false);
   const [why, setWhy] = useState<{ shop: string } | null>(null);
   const [joining, setJoining] = useState<networkApi.FeedItemDto | null>(null);
-  const [redeeming, setRedeeming] = useState<{ m: customerApi.MembershipDto; r: customerApi.MemberRewardDto } | null>(null);
   const [pushOpen, setPushOpen] = useState(false);
-  const [hoodOpen, setHoodOpen] = useState(false);
 
-  const memberships = wallet.data?.items ?? [];
-  const neighbourhoodSlug = prefs.neighbourhoodSlug ?? profile.data?.homeNeighbourhood?.slug ?? null;
-  const hoods = useQuery({ queryKey: qk.neighbourhoods, queryFn: api.network.neighbourhoods, staleTime: 60 * 60_000 });
-  const hoodName = hoods.data?.items.find((h) => h.slug === neighbourhoodSlug)?.name ?? profile.data?.homeNeighbourhood?.name ?? null;
+  const memberships: Membership[] = wallet.data?.items ?? [];
   const campaigns = useCampaigns(loc.coords?.lat, loc.coords?.lng);
   const live = (campaigns.data?.items ?? []).filter((x) => x.status === "live");
-
-  const hoodDetail = useQuery({ queryKey: ["hood", neighbourhoodSlug ?? ""], queryFn: () => api.network.neighbourhood(neighbourhoodSlug!), enabled: !!neighbourhoodSlug, staleTime: 30 * 60_000 });
-  const perk = hoodDetail.data?.perks[0] ?? null;
-  const perkState = perk ? perkProgress(perk, memberships, hoodDetail.data?.neighbourhood.id ?? null) : null;
   const hero = homeHero(memberships);
   const heroCopy = hero.kind === "empty" ? null : heroText(hero);
-  const referralShop = memberships.find((m) => (m.program?.referralBonus ?? 0) > 0);
 
-  const readyIds = memberships.filter((m) => m.rewardsAvailableCount > 0).map((m) => m.id);
-  const details = useMembershipDetails(readyIds);
-  const ready = details.flatMap((d) => (d.data ? d.data.rewards.filter((r) => r.affordable).map((r) => ({ m: d.data!.membership, r })) : []));
+  const sorted = useMemo(() => [...memberships].sort((a, b) => (b.lastVisitAt ?? "").localeCompare(a.lastVisitAt ?? "")), [memberships]);
+  const ready = sorted.filter((m) => m.rewardsAvailableCount > 0);
+  const rest = sorted.filter((m) => m.rewardsAvailableCount === 0);
 
-  const sorted = useMemo(
-    () =>
-      [...memberships].sort((a, b) => {
-        if ((b.rewardsAvailableCount > 0 ? 1 : 0) !== (a.rewardsAvailableCount > 0 ? 1 : 0)) return b.rewardsAvailableCount > 0 ? 1 : -1;
-        return (b.lastVisitAt ?? "").localeCompare(a.lastVisitAt ?? "");
-      }),
-    [memberships],
-  );
-
-  const feedKey = `${loc.coords ? `${loc.coords.lat.toFixed(3)},${loc.coords.lng.toFixed(3)}` : neighbourhoodSlug ?? "all"}`;
+  // Promos are a paid feature: the feed only has items for shops that have them on, and the block hides when empty.
+  const promosOn = memberships.length === 0 || memberships.some((m) => m.features?.promos);
+  const feedKey = loc.coords ? `${loc.coords.lat.toFixed(3)},${loc.coords.lng.toFixed(3)}` : (prefs.neighbourhoodSlug ?? "all");
   const feed = useInfiniteQuery({
     queryKey: qk.feed(feedKey),
     initialPageParam: undefined as string | undefined,
+    enabled: promosOn,
     queryFn: ({ pageParam }) =>
-      api.network.feed({ ...(loc.coords ? { lat: loc.coords.lat, lng: loc.coords.lng } : neighbourhoodSlug ? { neighbourhood: neighbourhoodSlug } : {}), limit: 10, cursor: pageParam }),
+      api.network.feed({ ...(loc.coords ? { lat: loc.coords.lat, lng: loc.coords.lng } : prefs.neighbourhoodSlug ? { neighbourhood: prefs.neighbourhoodSlug } : {}), limit: 6, cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const feedItems = capSponsored((feed.data?.pages ?? []).flatMap((p) => p.items)).filter((it) => {
-    const f = FILTERS.find((x) => x.key === filter);
-    if (!f?.verticals) return true;
-    const v = it.sponsored ? null : it.merchant.vertical;
-    return it.sponsored || (v !== null && f.verticals.includes(v));
-  });
+  const feedItems = capSponsored((feed.data?.pages ?? []).flatMap((p) => p.items)).slice(0, 6);
 
-  // One view/impression per promo per session.
   useEffect(() => {
-    for (const it of feedItems.slice(0, 10)) {
+    for (const it of feedItems) {
       if (it.sponsored) {
         if (!seenAds.has(it.adCampaignId)) {
           seenAds.add(it.adCampaignId);
@@ -150,11 +96,24 @@ export default function Home() {
     }
   }, [memberships, prefs.pushPrompted]);
 
-  const refresh = () => Promise.all([wallet.refetch(), feed.refetch(), campaigns.refetch(), phase2.refetch()]);
   const inProgress = [
     ...phase2.tickets.filter((x) => !["picked_up", "cancelled", "declined"].includes(x.status)).map((x) => ({ kind: "ticket" as const, x })),
     ...phase2.orders.filter((x) => ["pending", "accepted", "preparing", "ready"].includes(x.status)).map((x) => ({ kind: "order" as const, x })),
-  ].sort((a, b) => (a.kind === "ticket" && a.x.status === "quote_sent" ? -1 : b.kind === "ticket" && b.x.status === "quote_sent" ? 1 : 0));
+  ];
+
+  const shopRow = (m: Membership, i: number, n: number) => (
+    <ShopTile
+      key={m.id}
+      variant="list"
+      shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }}
+      balance={{ value: m.balance, terminology: m.terminology }}
+      subtitle={progressLine(m)}
+      rewardReady={m.rewardsAvailableCount > 0}
+      muted={m.muted}
+      divider={i < n - 1}
+      onPress={() => router.push(`/shop/${m.merchant.slug}`)}
+    />
+  );
 
   const renderFeed = (it: networkApi.FeedEntry) => {
     if (it.sponsored) {
@@ -187,17 +146,37 @@ export default function Home() {
 
   return (
     <Screen
+      title="Wallet"
       largeTitle
-      title={`Hi ${firstName(user?.name) ?? "there"}`}
-      subtitle={
-        <Button variant="ghost" size="sm" iconStart={MapPin} onPress={() => setHoodOpen(true)} accessibilityLabel={`Neighbourhood: ${hoodName ?? "not set"}. Change`} style={{ alignSelf: "flex-start", paddingHorizontal: 0 }}>
-          {hoodName ?? "Pick your neighbourhood"}
-        </Button>
-      }
+      tabBar
       banner={<OfflineBanner mode="customer" online={online} />}
       refreshing={wallet.isRefetching}
-      onRefresh={refresh}
+      onRefresh={() => Promise.all([wallet.refetch(), feed.refetch(), campaigns.refetch(), phase2.refetch()])}
+      subtitle={
+        heroCopy ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={heroCopy.label}
+            disabled={hero.kind !== "ready" && hero.kind !== "progress"}
+            onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
+            style={styles.hero}
+          >
+            <Text variant="displayNumber" color={hero.kind === "ready" ? "accent" : "fg"} tabular>
+              {heroCopy.big}
+            </Text>
+            <View style={{ flex: 1, paddingBottom: 6 }}>
+              <Text variant="bodyStrong" numberOfLines={2}>
+                {heroCopy.line}
+              </Text>
+              <Text variant="meta" color="fgMuted" numberOfLines={1}>
+                {heroCopy.chip.charAt(0).toLowerCase() + heroCopy.chip.slice(1)}
+              </Text>
+            </View>
+          </Pressable>
+        ) : null
+      }
     >
+      {hero.kind === "progress" ? <ProgressBar value={hero.value} max={hero.max} tone="accent" height={4} valueText={heroCopy?.label} /> : null}
       {wallet.isError && memberships.length > 0 ? <Banner variant="danger">Couldn't refresh. Pull to try again.</Banner> : null}
       {wallet.dataUpdatedAt && !online ? (
         <Text variant="caption" color="fgMuted">
@@ -205,201 +184,73 @@ export default function Home() {
         </Text>
       ) : null}
 
-      {hero.kind !== "empty" && heroCopy ? (
-        <Pressable
-          style={styles.hero}
-          accessibilityRole="button"
-          accessibilityLabel={heroCopy.label}
-          disabled={hero.kind === "shops"}
-          onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
-        >
-          <Text variant="points" tabular center style={{ fontSize: 64, lineHeight: 68 }}>
-            {heroCopy.big}
-          </Text>
-          <Text variant="title" center numberOfLines={2}>
-            {heroCopy.line}
-          </Text>
-          {hero.kind === "progress" ? (
-            <View style={styles.heroBar}>
-              <ProgressBar value={hero.value} max={hero.max} tone="accent" />
-            </View>
-          ) : null}
-          <View style={[styles.pill, { backgroundColor: hero.kind === "ready" ? c.accentSubtle : c.brandSubtle }]}>
-            <Text variant="label" rawColor={hero.kind === "ready" ? c.onAccentSubtle : c.onBrandSubtle} numberOfLines={1}>
-              {heroCopy.chip}
-            </Text>
-          </View>
-        </Pressable>
-      ) : null}
-
-      <View style={styles.shortcuts}>
-        {[
-          { label: "My card", icon: QrCodeIcon, go: () => router.push("/card") },
-          { label: "Rewards", icon: Gift, go: () => router.push("/rewards") },
-          { label: "Passport", icon: Trophy, go: () => (live[0] ? router.push(`/campaigns/${live[0].id}`) : router.push({ pathname: "/rewards", params: { tab: "passport" } })) },
-          { label: "Invite", icon: UserPlus, go: () => router.push(referralShop ? { pathname: "/referrals", params: { memberId: referralShop.id } } : "/referrals") },
-        ].map((x) => (
-          <Pressable key={x.label} accessibilityRole="button" accessibilityLabel={x.label} onPress={x.go} style={styles.shortcut}>
-            <View style={[styles.shortcutIcon, { backgroundColor: c.surface, borderColor: c.border }]}>
-              <x.icon size={24} color={c.fgBrand} />
-            </View>
-            <Text variant="caption">{x.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {ready.length > 0 ? (
-        <Section title="Rewards ready" action={<Badge tone="accent">{String(ready.length)}</Badge>}>
-          <FlatList
-            horizontal
-            style={styles.bleed}
-            contentContainerStyle={styles.bleedContent}
-            data={ready}
-            keyExtractor={(x) => `${x.m.id}-${x.r.id}`}
-            showsHorizontalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-            renderItem={({ item }) => (
-              <View style={{ width: 296 }}>
-                <RewardCard reward={item.r} balance={item.m.balance} terminology={item.m.terminology} vertical={item.m.merchant.vertical} state="available" shopName={item.m.merchant.name} onRedeem={() => setRedeeming({ m: item.m, r: item.r })} />
-              </View>
-            )}
-          />
-        </Section>
-      ) : null}
+      {wallet.isLoading ? (
+        <SkeletonList rows={4} rowHeight={56} />
+      ) : memberships.length === 0 ? (
+        <EmptyState title={t("empty.wallet.title")} body={t("empty.wallet.body")} actionLabel={t("action.showCard")} onAction={() => router.push("/card")} secondaryLabel="Find shops nearby" onSecondary={() => router.push("/map")} />
+      ) : (
+        <>
+          {ready.length > 0 ? <Section title="Rewards ready">{ready.map((m, i) => shopRow(m, i, ready.length))}</Section> : null}
+          {rest.length > 0 ? <Section title={ready.length > 0 ? "Earning" : "Your shops"}>{rest.map((m, i) => shopRow(m, i, rest.length))}</Section> : null}
+        </>
+      )}
 
       {inProgress.length > 0 ? (
         <Section title="In progress">
-          <Card padded={false} style={{ paddingHorizontal: 16 }}>
-            {inProgress.slice(0, 4).map((row, i, shown) =>
-              row.kind === "ticket" ? (
-                <ListRow
-                  key={row.x.id}
-                  divider={i < shown.length - 1}
-                  leadingIcon={Ticket}
-                  title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
-                  subtitle={row.x.merchantName}
-                  trailing={<Badge tone={row.x.status === "quote_sent" ? "warning" : row.x.status === "ready" ? "success" : "info"}>{row.x.status === "quote_sent" ? "Needs your approval" : TICKET_STATUS_LABELS[row.x.status]}</Badge>}
-                  onPress={() => router.push(`/tickets/${row.x.id}`)}
-                />
-              ) : (
-                <ListRow
-                  key={row.x.id}
-                  divider={i < shown.length - 1}
-                  leadingIcon={Store}
-                  title={`Pickup order #${row.x.number}`}
-                  subtitle={row.x.merchantName}
-                  trailing={<Badge tone={row.x.status === "ready" ? "success" : row.x.status === "pending" ? "warning" : "info"}>{ORDER_STATUS_LABELS[row.x.status]}</Badge>}
-                  onPress={() => router.push(`/orders/${row.x.id}`)}
-                />
-              ),
-            )}
-          </Card>
+          {inProgress.slice(0, 4).map((row, i, shown) =>
+            row.kind === "ticket" ? (
+              <ListRow
+                key={row.x.id}
+                divider={i < shown.length - 1}
+                leadingIcon={Ticket}
+                title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
+                subtitle={`${row.x.merchantName} · ${row.x.status === "quote_sent" ? "needs your approval" : TICKET_STATUS_LABELS[row.x.status].toLowerCase()}`}
+                chevron
+                onPress={() => router.push(`/tickets/${row.x.id}`)}
+              />
+            ) : (
+              <ListRow
+                key={row.x.id}
+                divider={i < shown.length - 1}
+                leadingIcon={Store}
+                title={`Pickup order #${row.x.number}`}
+                subtitle={`${row.x.merchantName} · ${ORDER_STATUS_LABELS[row.x.status].toLowerCase()}`}
+                chevron
+                onPress={() => router.push(`/orders/${row.x.id}`)}
+              />
+            ),
+          )}
         </Section>
       ) : null}
 
-      <Section
-        title="My shops"
-        action={sorted.length > 0 ? <Button variant="ghost" size="sm" onPress={() => setShowAll((v) => !v)}>{showAll ? "Show less" : `See all ${sorted.length}`}</Button> : undefined}
-      >
-        {wallet.isLoading ? (
-          <SkeletonList rows={1} rowHeight={148} />
-        ) : memberships.length === 0 ? (
-          <EmptyState
-            icon={Store}
-            title={t("empty.wallet.title")}
-            body={t("empty.wallet.body")}
-            actionLabel={t("action.showCard")}
-            onAction={() => router.push("/card")}
-            secondaryLabel="Find shops nearby"
-            onSecondary={() => router.push("/map")}
-          />
-        ) : showAll ? (
-          sorted.map((m) => (
-            <ShopTile
-              key={m.id}
-              variant="wallet"
-              shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }}
-              balance={{ value: m.balance, terminology: m.terminology }}
-              subtitle={progressLine(m)}
-              rewardReady={m.rewardsAvailableCount > 0}
-              muted={m.muted}
-              onPress={() => router.push(`/shop/${m.merchant.slug}`)}
-            />
-          ))
-        ) : (
-          <FlatList
-            horizontal
-            style={styles.bleed}
-            contentContainerStyle={styles.bleedContent}
-            data={sorted}
-            keyExtractor={(m) => m.id}
-            showsHorizontalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-            renderItem={({ item: m }) => (
-              <Card accentEdge={m.rewardsAvailableCount > 0} onPress={() => router.push(`/shop/${m.merchant.slug}`)} accessibilityLabel={`${m.merchant.name}. ${m.balance} ${m.terminology}. ${progressLine(m)}`} style={{ width: 228, minHeight: 172 }}>
-                <View style={{ gap: 10, flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <ShopLogo shop={m.merchant} size={40} />
-                    <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
-                      {m.merchant.name}
-                    </Text>
-                  </View>
-                  <Text variant="h2" color="fgBrand" tabular>
-                    {formatPts(m.balance, m.terminology)}
-                  </Text>
-                  {m.nextReward ? <ProgressBar value={m.nextReward.pointsCost - m.nextReward.pointsNeeded} max={m.nextReward.pointsCost} tone="accent" /> : null}
-                  <Text variant="bodySm" color="fgMuted" numberOfLines={1}>
-                    {progressLine(m)}
-                  </Text>
-                </View>
-              </Card>
-            )}
-          />
-        )}
-      </Section>
-
       {live[0] ? (
-        <Card onPress={() => router.push(`/campaigns/${live[0]!.id}`)} accessibilityLabel={`${live[0].name}. ${live[0].progress.visited} of ${live[0].progress.goal} shops.`}>
-          <Text variant="overline" color="fgMuted">
-            {live[0].neighbourhood.name}
-          </Text>
-          <Text variant="title">{`${live[0].name} · ${live[0].progress.visited} of ${live[0].progress.goal} shops`}</Text>
-          <View style={{ marginTop: 8 }}>
-            <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} tone="accent" />
-          </View>
-          <Text variant="bodySm" color="fgMuted" style={{ marginTop: 6 }}>
-            {promoEnds(live[0].endsAt) ?? ""}
-          </Text>
-        </Card>
+        <Section title={live[0].neighbourhood.name}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${live[0].name}. ${live[0].progress.visited} of ${live[0].progress.goal} shops.`} onPress={() => router.push(`/campaigns/${live[0]!.id}`)} style={{ paddingVertical: 14, gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Trophy size={20} color={c.fg} strokeWidth={1.75} />
+              <Text variant="bodyStrong" style={{ flex: 1 }}>
+                {live[0].name}
+              </Text>
+              <Text variant="metaStrong" color="accentText" tabular>{`${live[0].progress.visited} / ${live[0].progress.goal}`}</Text>
+            </View>
+            <ProgressBar value={live[0].progress.visited} max={live[0].progress.goal} tone="accent" height={4} />
+            <Text variant="meta" color="fgMuted">
+              {promoEnds(live[0].endsAt) ?? "Visit the shops on the list to finish it"}
+            </Text>
+          </Pressable>
+        </Section>
       ) : null}
 
-      {perk && perkState ? <PerkCard headline={perkHeadline(perk, hoodName)} {...perkState} /> : null}
-
-      <Section title="Nearby promos">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={[styles.bleedContent, { gap: 8 }]}>
-          {FILTERS.map((f) => (
-            <Chip key={f.key} label={f.label} selected={filter === f.key} onPress={() => setFilter(f.key)} />
-          ))}
-        </ScrollView>
-        {feed.isLoading ? (
-          <SkeletonList rows={2} rowHeight={140} />
-        ) : feed.isError && feedItems.length === 0 ? (
-          <Banner variant="danger" actionLabel="Try again" onAction={() => feed.refetch()}>
-            {t("err.network")}
-          </Banner>
-        ) : feedItems.length === 0 ? (
-          <EmptyState icon={MapPin} title={t("empty.noNeighbourhood.title")} body={t("empty.noNeighbourhood.body")} actionLabel="Suggest my street" onAction={() => router.push("/settings/suggest")} secondaryLabel="See where we are" onSecondary={() => router.push("/map")} />
-        ) : (
-          <>
-            {feedItems.map(renderFeed)}
-            {feed.hasNextPage ? (
-              <Button variant="secondary" loading={feed.isFetchingNextPage} onPress={() => feed.fetchNextPage()}>
-                Show more
-              </Button>
-            ) : null}
-          </>
-        )}
-      </Section>
+      {promosOn && feedItems.length > 0 ? (
+        <Section title="Nearby offers" rule={false}>
+          {feedItems.map(renderFeed)}
+          {feed.hasNextPage && feedItems.length < 6 ? (
+            <Button variant="secondary" loading={feed.isFetchingNextPage} onPress={() => feed.fetchNextPage()}>
+              Show more
+            </Button>
+          ) : null}
+        </Section>
+      ) : null}
 
       {joining ? (
         <JoinSheet
@@ -409,51 +260,12 @@ export default function Home() {
           onJoined={() => feed.refetch()}
         />
       ) : null}
-      {redeeming ? <RedeemConfirmSheet visible onClose={() => setRedeeming(null)} membership={redeeming.m} reward={redeeming.r} /> : null}
-      <SponsoredWhySheet visible={!!why} onClose={() => setWhy(null)} shopName={why?.shop ?? ""} street={hoodName} terminology={termWord(memberships[0]?.terminology)} />
+      <SponsoredWhySheet visible={!!why} onClose={() => setWhy(null)} shopName={why?.shop ?? ""} street={null} terminology={termWord(memberships[0]?.terminology)} />
       <PushPrompt visible={pushOpen} onClose={() => setPushOpen(false)} />
-      <Sheet visible={hoodOpen} onClose={() => setHoodOpen(false)} title="Your neighbourhood">
-        {(hoods.data?.items ?? []).map((h) => (
-          <ListRow
-            key={h.id}
-            leading={<ShopLogo shop={{ name: h.name, vertical: "other" }} size={40} />}
-            title={h.name}
-            subtitle={`${h.shopCount} shops`}
-            selected={h.slug === neighbourhoodSlug}
-            onPress={() => {
-              updatePrefs({ neighbourhoodSlug: h.slug });
-              void api.me.updateProfile({ homeNeighbourhoodId: h.id }).catch(() => undefined);
-              setHoodOpen(false);
-            }}
-          />
-        ))}
-        {hoods.data?.items.length === 0 ? <Text color="fgMuted">{t("empty.noNeighbourhood.body")}</Text> : null}
-        {!prefs.locationPrompted ? (
-          <Button
-            variant="tonal"
-            iconStart={MapPin}
-            onPress={async () => {
-              updatePrefs({ locationPrompted: true });
-              await loc.request();
-              setHoodOpen(false);
-            }}
-          >
-            Use my location
-          </Button>
-        ) : null}
-      </Sheet>
-      <View style={{ height: 8, backgroundColor: c.canvas }} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: "center", gap: 8, paddingTop: 4, paddingBottom: 4 },
-  heroBar: { alignSelf: "stretch", marginHorizontal: 48, marginVertical: 4 },
-  bleed: { marginHorizontal: -16 },
-  bleedContent: { paddingHorizontal: 16 },
-  pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  shortcuts: { flexDirection: "row", justifyContent: "space-between" },
-  shortcut: { flex: 1, alignItems: "center", gap: 6, minHeight: 72 },
-  shortcutIcon: { width: 56, height: 56, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  hero: { flexDirection: "row", alignItems: "flex-end", gap: 12, paddingTop: 8 },
 });

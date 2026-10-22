@@ -39,8 +39,11 @@ export default function ReportsPage() {
   const prevDaily = useApi(manager && compare ? () => api.reports.daily({ from: prevFrom, to: r.from }) : null, [api, range, compare]);
   const top = useApi(manager && (tab === "visits" || tab === "members") ? () => api.reports.topCustomers({ from: r.from, to: r.to, by: tab === "visits" ? "visits" : "spend", limit: 10 }) : null, [api, range, tab]);
   const rewards = useApi(manager && tab === "rewards" ? () => api.reports.rewards({ from: r.from, to: r.to }) : null, [api, range, tab]);
-  const promos = useApi(manager && tab === "promos" ? () => api.reports.promos() : null, [api, tab]);
-  const overlap = useApi(manager && tab === "network" ? () => api.reports.networkOverlap() : null, [api, tab]);
+  // Pricing v2: promo results need promos (Plus); network overlap is reports.advanced (Plus).
+  const promosOn = enabled("promos.basic");
+  const overlapOn = enabled("reports.advanced");
+  const promos = useApi(manager && tab === "promos" && promosOn ? () => api.reports.promos() : null, [api, tab]);
+  const overlap = useApi(manager && tab === "network" && overlapOn ? () => api.reports.networkOverlap() : null, [api, tab]);
   const activation = useApi(manager && tab === "members" ? () => api.reports.activation() : null, [api, tab]);
   const retention = useApi(manager && tab === "advanced" && enabled("reports.advanced") ? () => api.reports.retention(6) : null, [api, tab]);
   if (!manager) return <NoAccess />;
@@ -64,8 +67,8 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Reports" description="All the basics are free. Customer names are only shown for your own shop." actions={<SegmentedControl label="Date range" value={range} onChange={setRange} options={[{ value: "7d", label: "7 days" }, { value: "30d", label: "30 days" }, { value: "90d", label: "90 days" }]} />} />
-      <Tabs label="Report" value={tab} onChange={(v) => setTab(v as Tab)} items={[{ id: "overview", label: "Overview" }, { id: "visits", label: "Visits" }, { id: "members", label: "Members" }, { id: "rewards", label: "Rewards" }, { id: "promos", label: "Promos" }, { id: "network", label: "Network" }, { id: "advanced", label: "Retention", meta: enabled("reports.advanced") ? null : <Badge>Soon</Badge> }]} />
+      <PageHeader title="Reports" description="Loyalty reports are free forever. Customer names are only shown for your own shop." actions={<SegmentedControl label="Date range" value={range} onChange={setRange} options={[{ value: "7d", label: "7 days" }, { value: "30d", label: "30 days" }, { value: "90d", label: "90 days" }]} />} />
+      <Tabs label="Report" value={tab} onChange={(v) => setTab(v as Tab)} items={[{ id: "overview", label: "Overview" }, { id: "visits", label: "Visits" }, { id: "members", label: "Members" }, { id: "rewards", label: "Rewards" }, { id: "promos", label: "Promos", meta: promosOn ? null : <Badge>Soon</Badge> }, { id: "network", label: "Network", meta: overlapOn ? null : <Badge>Soon</Badge> }, { id: "advanced", label: "Retention", meta: enabled("reports.advanced") ? null : <Badge>Soon</Badge> }]} />
 
       {tab === "overview" ? (
         <>
@@ -82,7 +85,7 @@ export default function ReportsPage() {
           {daily.data ? (
             <BarChart title="Visits per day" valueLabel="Visits" compareLabel={compare ? "Previous period" : undefined} data={series.map((s, i) => ({ label: formatDate(`${s.date}T12:00:00Z`), value: s.visits, compare: compare ? prev[i]?.visits : undefined }))} action={exportBtn("visits-per-day.csv", [["date", "visits", "new_members", "points_issued", "points_redeemed", "revenue"], ...series.map((s) => [s.date, s.visits, s.newMembers, s.pointsIssued, s.pointsRedeemed, (s.revenueCents / 100).toFixed(2)])])} />
           ) : (
-            <Skeleton className="h-60 rounded-lg" />
+            <Skeleton className="h-60 rounded-card" />
           )}
           {daily.data ? <BarChart title="New members per day" valueLabel="New members" data={series.map((s) => ({ label: formatDate(`${s.date}T12:00:00Z`), value: s.newMembers }))} /> : null}
         </>
@@ -119,17 +122,18 @@ export default function ReportsPage() {
       {tab === "rewards" ? (
         <Card padding="lg">
           <CardHeader title="Redemptions by reward" action={rewards.data ? exportBtn("rewards.csv", [["reward", "cost", "redemptions", "members", "points_spent", "discount"], ...rewards.data.items.map((x) => [x.name, x.pointsCost, x.redemptions, x.uniqueMembers, x.pointsSpent, (x.discountCents / 100).toFixed(2)])]) : null} />
-          {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <p className="text-body-sm text-fg-muted">Not enough data yet. Check back after a week of visits.</p>) : <Skeleton className="h-40" />}
+          {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <p className="text-meta text-fg-muted">Not enough data yet. Check back after a week of visits.</p>) : <Skeleton className="h-40" />}
         </Card>
       ) : null}
 
-      {tab === "promos" ? (
+      {tab === "promos" && !promosOn ? <FeatureTeaser featureKey="promos.basic" title="Promo results" /> : null}
+      {tab === "promos" && promosOn ? (
         <Card padding="lg">
           <CardHeader title="Promo results" subtitle="Visits during each promo compared with the 14 days before." />
           {promos.data ? (
             promos.data.items.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-body-sm">
+                <table className="w-full text-meta">
                   <caption className="sr-only">Promo results</caption>
                   <thead className="text-label text-fg-muted">
                     <tr>
@@ -142,7 +146,7 @@ export default function ReportsPage() {
                   </thead>
                   <tbody>
                     {promos.data.items.map((x) => (
-                      <tr key={x.promoId} className="border-t border-border">
+                      <tr key={x.promoId} className="border-t border-line">
                         <td className="py-2">{x.title}</td>
                         <td className="py-2 text-end tabular-nums">{formatNumber(x.views)}</td>
                         <td className="py-2 text-end tabular-nums">{formatNumber(x.claims)}</td>
@@ -154,7 +158,7 @@ export default function ReportsPage() {
                 </table>
               </div>
             ) : (
-              <p className="text-body-sm text-fg-muted">Results show up once a promo goes live.</p>
+              <p className="text-meta text-fg-muted">Results show up once a promo goes live.</p>
             )
           ) : (
             <Skeleton className="h-40" />
@@ -162,7 +166,8 @@ export default function ReportsPage() {
         </Card>
       ) : null}
 
-      {tab === "network" ? (
+      {tab === "network" && !overlapOn ? <FeatureTeaser featureKey="reports.advanced" title="Network overlap" /> : null}
+      {tab === "network" && overlapOn ? (
         overlap.data ? (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -171,11 +176,11 @@ export default function ReportsPage() {
             </div>
             <Card padding="lg">
               <CardHeader title={`Overlap on ${overlap.data.neighbourhood?.name ?? "your street"}`} subtitle="Aggregated: no customer is ever identified. Shops with fewer than 5 shared members aren't listed." />
-              {overlap.data.shops.length ? <HBarList tone="chart-network" rows={overlap.data.shops.map((s) => ({ key: s.merchantId, label: s.name, value: s.sharedMembers, hint: overlap.data!.myMembers ? `${Math.round((s.sharedMembers / overlap.data!.myMembers) * 100)}%` : undefined }))} /> : <p className="text-body-sm text-fg-muted">Not enough shared customers yet{overlap.data.suppressedShops ? ` (${overlap.data.suppressedShops} shops below the privacy threshold)` : ""}.</p>}
+              {overlap.data.shops.length ? <HBarList tone="chart-network" rows={overlap.data.shops.map((s) => ({ key: s.merchantId, label: s.name, value: s.sharedMembers, hint: overlap.data!.myMembers ? `${Math.round((s.sharedMembers / overlap.data!.myMembers) * 100)}%` : undefined }))} /> : <p className="text-meta text-fg-muted">Not enough shared customers yet{overlap.data.suppressedShops ? ` (${overlap.data.suppressedShops} shops below the privacy threshold)` : ""}.</p>}
             </Card>
           </>
         ) : (
-          <Skeleton className="h-60 rounded-lg" />
+          <Skeleton className="h-60 rounded-card" />
         )
       ) : null}
 
@@ -185,7 +190,7 @@ export default function ReportsPage() {
             <CardHeader title="Retention by join month" subtitle="Share of each month's new members who visited again." />
             {retention.data ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-body-sm">
+                <table className="w-full text-meta">
                   <caption className="sr-only">Retention cohorts</caption>
                   <thead className="text-label text-fg-muted">
                     <tr>
@@ -196,7 +201,7 @@ export default function ReportsPage() {
                   </thead>
                   <tbody>
                     {retention.data.cohorts.map((co) => (
-                      <tr key={co.cohort} className="border-t border-border">
+                      <tr key={co.cohort} className="border-t border-line">
                         <td className="py-2">{co.cohort}</td>
                         <td className="py-2 text-end tabular-nums">{co.size}</td>
                         {co.retention.map((v, i) => <td key={i} className="py-2 text-end tabular-nums">{pct(v)}</td>)}

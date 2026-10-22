@@ -1,23 +1,26 @@
 "use client";
-import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-/** Interactive filter / selection chip (36px, 48px hit area). */
-export function Chip({ selected, onClick, children, icon, className }: { selected?: boolean; onClick?: () => void; children: ReactNode; icon?: ReactNode; className?: string }) {
+/**
+ * Filter / selection capsule (36px, 44px hit area). Unselected: white with a hairline;
+ * selected: black. `floating` adds the one float shadow for chips over the map.
+ */
+export function Chip({ selected, onClick, children, icon, className, floating }: { selected?: boolean; onClick?: () => void; children: ReactNode; icon?: ReactNode; className?: string; floating?: boolean }) {
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-label transition-colors focus-visible:focus-ring",
-        "after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-['']",
-        selected ? "border-transparent bg-brand-subtle text-on-brand-subtle" : "border-border-strong bg-surface text-fg hover:bg-surface-sunken",
+        "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-meta-strong transition-colors duration-150 ease-out focus-visible:focus-ring",
+        "after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
+        selected ? "bg-fg text-bg" : floating ? "bg-bg text-fg" : "border border-line bg-bg text-fg hover:bg-bg-subtle",
+        floating && "shadow-float",
         className,
       )}
     >
-      {selected ? <Check aria-hidden className="size-4" /> : icon}
+      {icon}
       {children}
     </button>
   );
@@ -25,7 +28,7 @@ export function Chip({ selected, onClick, children, icon, className }: { selecte
 
 export function ChipGroup({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div role="group" aria-label={label} className={cn("flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]", className)}>
+    <div role="group" aria-label={label} className={cn("no-scrollbar flex gap-2 overflow-x-auto", className)}>
       {children}
     </div>
   );

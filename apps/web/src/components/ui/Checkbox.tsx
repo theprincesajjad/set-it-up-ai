@@ -13,7 +13,7 @@ export interface CheckboxProps {
   id?: string;
 }
 
-/** 24px box, 48px hit area, brand fill when checked (system.md "Checkbox"). */
+/** 22px box, 48px hit area, black fill when checked (v2). */
 export function Checkbox({ checked, onChange, label, caption, disabled, name, id: idProp }: CheckboxProps) {
   const auto = useId();
   const id = idProp ?? auto;
@@ -33,20 +33,20 @@ export function Checkbox({ checked, onChange, label, caption, disabled, name, id
         <span
           aria-hidden
           className={cn(
-            "flex size-6 items-center justify-center rounded-[6px] border-2 transition-colors peer-focus-visible:focus-ring",
-            checked ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface",
+            "flex size-[22px] items-center justify-center rounded-[6px] border-[1.5px] transition-colors duration-150 ease-out peer-focus-visible:focus-ring",
+            checked ? "border-fg bg-fg text-bg" : "border-line-strong/70 bg-bg",
             disabled && "opacity-60",
           )}
         >
-          {checked ? <Check className="size-4" strokeWidth={3} /> : null}
+          {checked ? <Check className="size-3.5" strokeWidth={3} /> : null}
         </span>
       </span>
-      <div className="flex flex-col gap-1 pt-0.5">
+      <div className="flex flex-col gap-1 pt-px">
         <label htmlFor={id} className="cursor-pointer text-body text-fg">
           {label}
         </label>
         {caption ? (
-          <p id={`${id}-caption`} className="text-caption text-fg-muted">
+          <p id={`${id}-caption`} className="text-meta text-fg-muted">
             {caption}
           </p>
         ) : null}

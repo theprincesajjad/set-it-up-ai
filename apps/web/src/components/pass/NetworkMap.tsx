@@ -10,13 +10,12 @@
  * bubble; tapping either zooms in on that group.
  */
 import "maplibre-gl/dist/maplibre-gl.css";
-import { LocateFixed } from "lucide-react";
 import type { LngLatBoundsLike, Map as MlMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { networkApi } from "@ll/shared";
 import { clusterPins, densestGroup, type PinGroup } from "@/lib/mapCluster";
-import { MAP_STYLE_URL, muteStyle, webglAvailable } from "./mapStyle";
+import { loadCornerStyle, mapMode, webglAvailable } from "./mapStyle";
 import { MapCluster, MapPin } from "./MapPin";
 
 export interface NetworkMapProps {
@@ -25,11 +24,17 @@ export interface NetworkMapProps {
   onSelect: (id: string) => void;
   me?: { lat: number; lng: number } | null;
   onFail: (reason: string) => void;
+  /** Bump to fit every shop in view (the floating "show all" control lives in ShopMap). */
+  fitAllSignal?: number;
+  /** Tap on empty map (closes the shop sheet). */
+  onBackgroundTap?: () => void;
+  /** Room for floating chrome: filters on top, rail / sheet at the bottom. */
+  padding?: { top: number; bottom: number; left: number; right: number };
 }
 
 const TORONTO: [number, number] = [-79.4, 43.66];
-/** Room for the "show all" button (top) and the chips + peek card (bottom). */
-const PADDING = { top: 72, bottom: 220, left: 48, right: 48 };
+/** Default room for the floating search + filters (top) and the category rail (bottom). */
+const DEFAULT_PADDING = { top: 140, bottom: 150, left: 40, right: 120 };
 const DEFAULT_ZOOM = 16;
 const MIN_OPEN_ZOOM = 15.5;
 type Located = networkApi.ShopListItemDto & { location: { lat: number; lng: number } };
@@ -40,7 +45,12 @@ function boundsOf(ml: typeof import("maplibre-gl"), pts: { lat: number; lng: num
   return b;
 }
 
-export default function NetworkMap({ items, selected, onSelect, me, onFail }: NetworkMapProps) {
+export default function NetworkMap({ items, selected, onSelect, me, onFail, fitAllSignal = 0, onBackgroundTap, padding = DEFAULT_PADDING }: NetworkMapProps) {
+  const PADDING = padding;
+  const bgTap = useRef(onBackgroundTap);
+  useEffect(() => {
+    bgTap.current = onBackgroundTap;
+  });
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
   const markers = useRef(new Map<string, Marker>());
@@ -80,19 +90,21 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
     const timer = setTimeout(() => {
       if (!loaded && !cancelled) failRef.current("timeout");
     }, 12000);
-    void import("maplibre-gl").then((ml) => {
+    const ac = new AbortController();
+    void Promise.all([import("maplibre-gl"), loadCornerStyle(mapMode(), undefined, ac.signal)]).then(([ml, style]) => {
       if (cancelled || !box.current) return;
       lib.current = ml;
-      const m = new ml.Map({ container: box.current, style: MAP_STYLE_URL, center: TORONTO, zoom: DEFAULT_ZOOM, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false });
+      // The Corner basemap (cornerMapStyle on positron) is applied before the first paint: no flash of the stock style.
+      const m = new ml.Map({ container: box.current, style: style as never, center: TORONTO, zoom: DEFAULT_ZOOM, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false });
       m.touchZoomRotate.disableRotation();
       map.current = m;
       m.on("load", () => {
         loaded = true;
         clearTimeout(timer);
-        muteStyle(m);
         setReady(true);
         setZoom(m.getZoom());
       });
+      m.on("click", () => bgTap.current?.());
       m.on("zoomend", () => {
         setZoom(m.getZoom());
         regroupRef.current();
@@ -103,10 +115,13 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
           failRef.current((e as { error?: Error }).error?.message ?? "style");
         }
       });
-    }).catch(() => failRef.current("load"));
+    }).catch(() => {
+      if (!cancelled) failRef.current("load");
+    });
     const ms = markers.current;
     return () => {
       cancelled = true;
+      ac.abort();
       clearTimeout(timer);
       ms.forEach((mk) => mk.remove());
       ms.clear();
@@ -130,7 +145,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
       let mk = markers.current.get(s.merchant.id);
       if (!mk) {
         const el = document.createElement("div");
-        mk = new ml.Marker({ element: el, anchor: "bottom" }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m);
+        mk = new ml.Marker({ element: el, anchor: "left", offset: [-22, 0] }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m);
         // The pin inside is the button; the marker wrapper must not be a second (nested) one.
         for (const a of ["role", "aria-label", "tabindex"]) el.removeAttribute(a);
         markers.current.set(s.merchant.id, mk);
@@ -158,7 +173,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
       const el = document.createElement("div");
       el.setAttribute("role", "img");
       el.setAttribute("aria-label", "You are here");
-      el.className = "size-4 rounded-full border-2 border-[#FFFFFF] bg-info shadow-[0_0_0_12px_rgba(29,95,168,0.2)]";
+      el.className = "size-4 rounded-full border-[3px] border-[#FFFFFF] bg-location shadow-[0_0_0_10px_rgba(47,123,246,0.18),0_1px_3px_rgba(0,0,0,0.3)]";
       meMarker.current = new ml.Marker({ element: el }).setLngLat([me.lng, me.lat]).addTo(m);
     }
   }, [ready, me]);
@@ -190,9 +205,17 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
   useEffect(() => {
     for (const [id, mk] of markers.current) mk.getElement().style.zIndex = id === selected ? "3" : "1";
     const s = located.find((x) => x.merchant.id === selected);
-    if (s && map.current) map.current.easeTo({ center: [s.location!.lng!, s.location!.lat!], duration: 300, offset: [0, -60] });
+    if (s && map.current) map.current.easeTo({ center: [s.location!.lng!, s.location!.lat!], duration: 300, offset: [0, -90] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
+
+  useEffect(() => {
+    const m = map.current;
+    const ml = lib.current;
+    if (!fitAllSignal || !m || !ml || !located.length) return;
+    m.fitBounds(boundsOf(ml, located.map(ll)), { padding: PADDING, maxZoom: DEFAULT_ZOOM });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitAllSignal]);
 
   return (
     <div className="absolute inset-0">
@@ -207,20 +230,6 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail }: Ne
         if (others > 0 && !s.isMember && id !== selected) return createPortal(<MapCluster count={g!.members.length} onExpand={() => expand(g!)} />, el, id);
         return createPortal(<MapPin shop={s} selected={id === selected} onSelect={() => onSelect(id)} showLabel={showLabels} compact={zoom < 16 && located.length > 6} moreCount={others} onExpand={g && others ? () => expand(g) : undefined} />, el, id);
       })}
-      <button
-        type="button"
-        aria-label="Show all shops"
-        title="Show all shops"
-        onClick={() => {
-          const m = map.current;
-          const ml = lib.current;
-          if (!m || !ml || !located.length) return;
-          m.fitBounds(boundsOf(ml, located.map(ll)), { padding: PADDING, maxZoom: DEFAULT_ZOOM });
-        }}
-        className="absolute end-3 top-3 z-[2] inline-flex size-11 items-center justify-center rounded-full bg-surface text-fg shadow-md focus-visible:focus-ring"
-      >
-        <LocateFixed aria-hidden className="size-5" />
-      </button>
     </div>
   );
 }

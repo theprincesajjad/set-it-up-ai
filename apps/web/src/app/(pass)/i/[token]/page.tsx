@@ -17,7 +17,7 @@ export default async function InvoicePage({ params }: Props) {
   const data = await publicServerApi()
     .public.invoice(token)
     .catch((e: unknown) => (isApiError(e) && (e.status === 404 || e.status === 402) ? ("gone" as const) : ("error" as const)));
-  if (data === "gone") return <EmptyState icon={Link2Off} title="This link doesn't work anymore" description="Contact the shop for a new one." action={<Button variant="tonal" href="/map">Find the shop</Button>} />;
+  if (data === "gone") return <EmptyState icon={Link2Off} title="This link doesn't work anymore" description="Contact the shop for a new one." action={<Button variant="secondary" href="/map">Find the shop</Button>} />;
   if (data === "error") return <ErrorState title="Can't load your invoice right now" description={copy.err.network} action={<Button variant="secondary" href={`/i/${encodeURIComponent(token)}`}>Try again</Button>} />;
   return <InvoiceView token={token} initial={data} />;
 }

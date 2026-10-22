@@ -118,14 +118,14 @@ export function SignupWizard({ signedInName, neighbourhoods }: SignupWizardProps
 
       {step === "account" ? (
         <form onSubmit={submitAccount} noValidate className="flex flex-col gap-4">
-          <h2 className="text-h2 text-fg">Create your account</h2>
+          <h2 className="display text-title text-fg">Create your account</h2>
           <TextField label="Your name" autoComplete="name" value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} error={errors.name} />
           <TextField label="Email" type="email" autoComplete="email" value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} error={errors.email} />
           <TextField label="Password" type="password" autoComplete="new-password" hint="At least 8 characters." value={account.password} onChange={(e) => setAccount({ ...account, password: e.target.value })} error={errors.password} />
           <Button type="submit" size="lg" fullWidth loading={busy}>
             Continue
           </Button>
-          <p className="text-caption text-fg-muted">
+          <p className="text-meta text-fg-muted">
             By continuing you agree to the{" "}
             <Link className="underline" href="/legal/terms">
               Terms
@@ -141,11 +141,11 @@ export function SignupWizard({ signedInName, neighbourhoods }: SignupWizardProps
 
       {step === "shop" ? (
         <form onSubmit={submitShop} noValidate className="flex flex-col gap-4">
-          <h2 className="text-h2 text-fg">{signedInName ? `Add your shop, ${signedInName.split(" ")[0]}` : "Your shop"}</h2>
+          <h2 className="display text-title text-fg">{signedInName ? `Add your shop, ${signedInName.split(" ")[0]}` : "Your shop"}</h2>
           <TextField label="Shop name" value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} error={errors.shopName} maxLength={120} />
           <Select label="Type of shop" placeholder="Choose one" value={shop.vertical} onChange={(e) => setShop({ ...shop, vertical: e.target.value })} options={verticalOptions} error={errors.vertical} />
           {template ? (
-            <p className="rounded-md bg-brand-subtle px-3 py-2 text-body-sm text-on-brand-subtle">
+            <p className="rounded-card bg-bg-subtle px-4 py-3 text-meta text-fg">
               We&apos;ll start you on: {howYouEarn({ ...template, minSpendCents: 0 })} {template.rewards[0] ? `${template.earnType === "stamps" ? template.stampGoal : template.rewards[0].pointsCost} ${template.terminology} = ${template.rewards[0].name}.` : ""} Change it anytime.
             </p>
           ) : null}
@@ -173,18 +173,18 @@ export function SignupWizard({ signedInName, neighbourhoods }: SignupWizardProps
           <Banner tone="success" icon={CircleCheck} title="You're live.">
             Your first customer can join right now.
           </Banner>
-          <h2 className="text-h2 text-fg">{created.merchant.name}</h2>
+          <h2 className="display text-title text-fg">{created.merchant.name}</h2>
           {created.program ? <p className="text-body text-fg-muted">{howYouEarn(created.program)}</p> : null}
           {created.locations[0] ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl bg-surface p-6 shadow-sm">
+            <div className="flex flex-col items-center gap-3 rounded-card border border-line p-6">
               <p className="text-title">Scan to join</p>
-              <div className="w-56 rounded-lg bg-qr-bg p-3">
+              <div className="w-56 rounded-card border border-line bg-qr-bg p-3">
                 <QrCode value={created.locations[0].joinUrl} size={200} label={`QR code for ${created.locations[0].joinUrl}`} />
               </div>
-              <a className="inline-flex items-center gap-1 text-body-sm text-fg-link underline" href={routes.join(created.locations[0].qrCode)} target="_blank" rel="noopener noreferrer">
+              <a className="inline-flex items-center gap-1 text-meta-strong text-fg underline underline-offset-2" href={routes.join(created.locations[0].qrCode)} target="_blank" rel="noopener noreferrer">
                 Try your join page <ExternalLink aria-hidden className="size-3.5" />
               </a>
-              <p className="text-center text-caption text-fg-muted">Print your QR stand from the dashboard (Locations & QR kit). A rep can also bring one.</p>
+              <p className="text-center text-meta text-fg-muted">Print your QR stand from the dashboard (Locations & QR kit). A rep can also bring one.</p>
             </div>
           ) : null}
           <Button size="lg" fullWidth href={routes.dashboard(created.merchant.id)}>

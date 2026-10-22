@@ -30,24 +30,22 @@ export function LockedFeature({ icon: Icon, title, description, state = "hidden"
   const [notified, setNotified] = useState(!!notifiedProp);
   const [busy, setBusy] = useState(false);
   return (
-    <div className="rounded-lg border border-dashed border-border-strong bg-surface p-4 md:p-5">
+    <div className="rounded-card border border-line bg-bg p-4 md:p-5">
       <div className="flex items-start gap-3">
-        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-subtle text-on-neutral-subtle">
-          <Icon className="size-5" />
-        </span>
+        <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" strokeWidth={1.75} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-title text-fg">{title}</h3>
-            {state === "hidden" ? <ComingSoonBadge /> : state === "beta" ? <Badge tone="info">In beta</Badge> : <Badge tone="brand">{planLabel ?? "Available on Plus"}</Badge>}
+            <h3 className="text-headline text-fg">{title}</h3>
+            {state === "hidden" ? <ComingSoonBadge /> : state === "beta" ? <Badge tone="info" dot>In beta</Badge> : <Badge tone="neutral">{planLabel ?? "Available on Plus"}</Badge>}
           </div>
-          <p className="mt-1 text-body-sm text-fg-muted">{description}</p>
+          <p className="mt-1 text-meta text-fg-muted">{description}</p>
           {network ? (
             <ProgressBar className="mt-3" value={network.current} max={network.target} label="Network progress" valueText={`${network.current} of ${network.target} shops on the network`} />
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {state === "hidden" && onNotify ? (
               <Button
-                variant="tonal"
+                variant="secondary"
                 size="sm"
                 iconStart={notified ? Check : undefined}
                 loading={busy}
@@ -66,7 +64,7 @@ export function LockedFeature({ icon: Icon, title, description, state = "hidden"
               </Button>
             ) : null}
             {state === "beta" && onTryBeta ? (
-              <Button variant="tonal" size="sm" onClick={onTryBeta}>
+              <Button variant="secondary" size="sm" onClick={onTryBeta}>
                 Try the beta
               </Button>
             ) : null}

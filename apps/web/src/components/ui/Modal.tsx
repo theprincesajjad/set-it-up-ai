@@ -52,25 +52,26 @@ export function Modal({ open, onClose, title, description, children, actions, va
       }}
       className={cn(
         "z-modal m-0 max-h-[90dvh] w-full max-w-none overflow-visible bg-transparent p-0 text-fg backdrop:bg-overlay",
-        "fixed inset-x-0 bottom-0 top-auto",
+        "fixed inset-x-0 bottom-0 top-auto mx-auto",
         !sheet && "md:inset-0 md:m-auto md:h-fit",
         size === "md" ? "md:max-w-[560px]" : "md:max-w-[480px]",
       )}
     >
       <div
         className={cn(
-          "flex max-h-[90dvh] flex-col overflow-y-auto bg-surface-raised p-6 shadow-xl motion-safe:animate-sheet-up",
-          "rounded-t-xl pb-[max(24px,env(safe-area-inset-bottom))]",
-          !sheet && "md:rounded-xl md:pb-6 md:motion-safe:animate-fade-in",
+          "flex max-h-[90dvh] flex-col overflow-y-auto bg-bg px-5 pt-5 shadow-float motion-safe:animate-sheet-up",
+          "rounded-t-sheet pb-[max(24px,env(safe-area-inset-bottom))]",
+          sheet && "md:rounded-sheet md:mb-6",
+          !sheet && "md:rounded-sheet md:p-6 md:motion-safe:animate-fade-in",
         )}
       >
-        <div aria-hidden className={cn("mx-auto -mt-4 mb-3 h-1 w-9 rounded-full bg-border-strong", !sheet && "md:hidden")} />
+        <div aria-hidden className={cn("mx-auto -mt-2.5 mb-3 h-[5px] w-9 shrink-0 rounded-full bg-bg-muted", !sheet && "md:hidden")} />
         <div className="mb-2 flex items-start justify-between gap-4">
-          <h2 id={titleId} className="text-h3 text-fg">
+          <h2 id={titleId} className="pt-1 text-headline text-fg">
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="-me-2 -mt-2 inline-flex size-12 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-surface-sunken focus-visible:focus-ring">
-            <X aria-hidden className="size-5" />
+          <button type="button" onClick={onClose} aria-label="Close" className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg after:absolute after:-inset-2 after:content-[''] focus-visible:focus-ring">
+            <X aria-hidden className="size-4" strokeWidth={2} />
           </button>
         </div>
         {description ? (

@@ -4,7 +4,7 @@
  * "No-download join"): phone → code → name + CASL consent → joined.
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
-import { Gift, Smartphone } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { authApi, customerApi, networkApi, walletApi } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
@@ -21,6 +21,7 @@ import { OtpField } from "@/components/ui/OtpField";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
+import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { StampCard } from "@/components/ui/StampCard";
 import { TextField } from "@/components/ui/TextField";
 
@@ -210,33 +211,35 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {showHeader ? (
-        <header className="flex items-center gap-3">
+        <header className="flex items-center gap-3.5 pt-2">
           <ShopLogo shop={info.merchant} size={56} />
           <div className="min-w-0">
-            <p className="truncate text-h2 text-fg">{shop}</p>
-            <p className="truncate text-body-sm text-fg-muted">{info.location.name !== shop ? info.location.name : info.location.address}</p>
+            <p className="truncate text-headline text-fg">{shop}</p>
+            <p className="truncate text-meta italic text-fg-muted">{[verticalLabel(info.merchant.vertical).toLowerCase(), info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
           </div>
         </header>
-      ) : null}
-      {program ? (
-        <p className="inline-flex w-fit items-center gap-2 rounded-full bg-accent-subtle px-3 py-1.5 text-label text-on-accent-subtle">
-          <Gift aria-hidden className="size-4" />
-          {welcomeOffer(program, networkShops)}
-        </p>
       ) : null}
 
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
 
       {step === "phone" ? (
         <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
-          {showHeader ? <h1 className="text-h1 text-fg">Join in 30 seconds</h1> : <h2 className="text-h2 text-fg">Join in 30 seconds</h2>}
+          <div className="flex flex-col gap-1.5">
+            {showHeader ? <h1 className="display text-large-title text-fg">Join in 30 seconds</h1> : <h2 className="display text-title text-fg">Join in 30 seconds</h2>}
+            {program ? (
+              <p className="flex items-center gap-2 text-body text-fg">
+                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
+                {welcomeOffer(program, networkShops)}
+              </p>
+            ) : null}
+          </div>
           <PhoneField autoFocus={autoFocus} value={digits} onChangeDigits={(d) => { setDigits(d); if (error) setError(null); }} error={phoneTried ? error : null} forceValidate={false} />
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {copy.action.textMeCode}
           </Button>
-          <p className="text-caption text-fg-muted">No app needed. Free. We&apos;ll text you a 6-digit code.</p>
+          <p className="text-center text-meta text-fg-muted">No app needed. Free. We&apos;ll text you a 6-digit code.</p>
         </form>
       ) : null}
 
@@ -249,17 +252,17 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           noValidate
           className="flex flex-col gap-4"
         >
-          <h1 ref={headingRef} tabIndex={-1} className="text-h1 text-fg outline-none">
+          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
             Enter your code
           </h1>
-          <p className="text-body text-fg-muted">
+          <p className="-mt-2 text-body text-fg-muted">
             We texted a code to <span className="font-semibold text-fg tabular-nums">{formatPhone(digits)}</span>.{" "}
-            <button type="button" className="text-fg-link underline" onClick={() => { setStep("phone"); setCode(""); setError(null); }}>
+            <button type="button" className="font-semibold text-fg underline underline-offset-2" onClick={() => { setStep("phone"); setCode(""); setError(null); }}>
               Change
             </button>
           </p>
           <OtpField value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
-          {devCode && devAutofill ? <p className="text-caption text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" size="lg" fullWidth loading={busy}>
             Continue
           </Button>
@@ -267,14 +270,14 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             <Button variant="ghost" size="sm" disabled={resendIn > 0 || busy} onClick={resend} className="-ms-3">
               {resendIn > 0 ? `Resend in 0:${String(resendIn).padStart(2, "0")}` : copy.action.resend}
             </Button>
-            {resendIn === 0 ? <p className="text-caption text-fg-muted">Still nothing? Ask staff to add your number at the counter.</p> : null}
+            {resendIn === 0 ? <p className="text-meta text-fg-muted">Still nothing? Ask staff to add your number at the counter.</p> : null}
           </div>
         </form>
       ) : null}
 
       {step === "details" || step === "joining" ? (
         <form onSubmit={submitDetails} noValidate className="flex flex-col gap-5">
-          <h1 ref={headingRef} tabIndex={-1} className="text-h1 text-fg outline-none">
+          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
             {needsName ? "Almost done" : copy.ok.welcomeBack(name)}
           </h1>
           {needsName ? (
@@ -290,7 +293,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <Button type="submit" size="lg" fullWidth loading={busy || step === "joining"}>
             {copy.action.join(shop)}
           </Button>
-          {program ? <p className="text-caption text-fg-muted">{howYouEarn(program)} {program.expiryDisclosure}</p> : null}
+          {program ? <p className="text-meta text-fg-muted">{howYouEarn(program)} {program.expiryDisclosure}</p> : null}
         </form>
       ) : null}
     </div>
@@ -301,7 +304,7 @@ function formatPhone(d: string) {
   return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d;
 }
 
-function platform(): "ios" | "android" | "other" {
+export function platform(): "ios" | "android" | "other" {
   if (typeof navigator === "undefined") return "other";
   const ua = navigator.userAgent;
   if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
@@ -366,34 +369,45 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const goal = m.nextReward?.pointsCost ?? program?.stampGoal ?? 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <h1 ref={headingRef} tabIndex={-1} className="text-h2 text-fg outline-none" role="status">
-          {bonus && !fname ? copy.ok.joinedBonus(bonus, info.merchant.name) : fname ? copy.ok.joined(fname) : "You're in."}
-        </h1>
-        {bonus && fname ? (
-          <p className="text-body text-fg-muted">
-            {bonus} added at {info.merchant.name.replace(/\.$/, "")}.
-          </p>
-        ) : null}
+    <div className="flex flex-col gap-7 pt-2">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <ShopLogo shop={info.merchant} size={40} />
+          <p className="min-w-0 truncate text-meta text-fg-muted">{info.merchant.name}</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none" role="status">
+            {bonus && !fname ? copy.ok.joinedBonus(bonus, info.merchant.name) : fname ? copy.ok.joined(fname) : "You're in."}
+          </h1>
+          {bonus && fname ? (
+            <p className="text-body text-fg-muted">
+              {bonus} added at {info.merchant.name.replace(/\.$/, "")}.
+            </p>
+          ) : null}
+        </div>
         {program?.earnType === "stamps" ? (
           <StampCard stamps={m.balance} goal={program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={info.merchant.vertical} newlyEarned={Array.from({ length: result.bonusPoints }, (_, i) => i)} className="w-full" terminology={m.terminology} />
         ) : (
-          <PointsRing balance={m.balance} goal={goal} terminology={m.terminology} rewardName={m.nextReward?.name} size={120} />
+          <div className="flex items-center gap-4 rounded-card border border-line p-4">
+            <PointsRing balance={m.balance} goal={goal} terminology={m.terminology} size={64} showCaption={false} />
+            <div className="min-w-0">
+              <p className="display text-title tabular-nums text-accent-text">{formatPoints(m.balance, m.terminology, false)}</p>
+              {m.nextReward ? <p className="text-meta text-fg-muted">{copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
+            </div>
+          </div>
         )}
-        <p className="text-caption text-fg-muted">{m.expiryDisclosure}</p>
+        <p className="text-meta text-fg-muted">{m.expiryDisclosure}</p>
       </div>
 
-      <section aria-label="Your card" className="flex flex-col items-center gap-2">
-        <p className="text-label text-fg">Show this to staff</p>
-        {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} /> : <div className="skeleton aspect-square w-[240px] rounded-xl" aria-busy="true" />}
-        <p className="text-caption text-fg-muted">Turn your brightness up so it scans first time.</p>
+      <section aria-label="Your card" className="flex flex-col items-center gap-3 rounded-sheet bg-bg-subtle px-4 py-6">
+        <p className="text-body-strong text-fg">Show this to staff</p>
+        {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption="Turn your brightness up so it scans first time." /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
       </section>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {walletError ? <Banner tone="neutral">{walletError}</Banner> : null}
         {showApple ? (
-          <Button size="lg" fullWidth variant={os === "ios" ? "primary" : "secondary"} loading={walletBusy === "apple"} onClick={apple}>
+          <Button size="lg" fullWidth variant={os === "ios" || os === "other" ? "primary" : "secondary"} loading={walletBusy === "apple"} onClick={apple}>
             {copy.action.addToAppleWallet}
           </Button>
         ) : null}
@@ -402,22 +416,19 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
             {copy.action.addToGoogleWallet}
           </Button>
         ) : null}
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body-sm">
-          <span className="inline-flex items-center gap-1 text-fg-muted">
-            <Smartphone aria-hidden className="size-4" />
-            {copy.action.getTheApp}:
-          </span>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
+          <span className="text-fg-muted">{copy.action.getTheApp}</span>
           {os !== "android" ? (
-            <a className="text-fg-link underline" href={appStoreUrl} rel="noopener noreferrer">
-              App Store
+            <a className="inline-flex items-center gap-0.5 font-semibold text-fg" href={appStoreUrl} rel="noopener noreferrer">
+              App Store <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
           {os !== "ios" ? (
-            <a className="text-fg-link underline" href={playStoreUrl} rel="noopener noreferrer">
-              Google Play
+            <a className="inline-flex items-center gap-0.5 font-semibold text-fg" href={playStoreUrl} rel="noopener noreferrer">
+              Google Play <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
-          <a className="text-fg-link underline" href="/me">
+          <a className="font-semibold text-fg" href="/me">
             My card on the web
           </a>
         </div>
@@ -425,13 +436,13 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
 
       {nearby.length ? (
         <section aria-labelledby="also-on" className="flex flex-col gap-3">
-          <h2 id="also-on" className="text-title text-fg">
+          <h2 id="also-on" className="text-headline text-fg">
             Also on your card nearby
           </h2>
-          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+          <ul className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1">
             {nearby.map((s) => (
-              <li key={s.merchant.id} className="w-60 shrink-0 snap-start">
-                <ShopTile variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, distanceM: s.distanceMetres }} />
+              <li key={s.merchant.id} className="w-56 shrink-0 snap-start">
+                <ShopTile variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
               </li>
             ))}
           </ul>

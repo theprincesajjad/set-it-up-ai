@@ -57,10 +57,12 @@ The closest competitor is already in Toronto: SoPoints runs a free, multi-mercha
 
 Loyalty stays free forever; money comes from three later streams: an operations subscription, a small payments margin, and paid neighbourhood campaigns. Prices below are proposals to test, in CAD.
 
+> **Superseded by Pricing v2 (Oct 22, 2026): see [pricing.md](pricing.md).** Only the loyalty program and its reports are free. Promos, discount cards, VIP/birthday/referrals, email/SMS, CSV and integrations moved to Plus. The table below is updated to match.
+
 | Tier | Price | Who it's for | What's included |
 | --- | --- | --- | --- |
-| **Free** | $0, no transaction fee | Every merchant | Points and rewards, promos, digital discount card, network listing, phone + web dashboard, done-for-you setup, QR counter stand |
-| **Plus** | $39/mo | Cafés, restaurants, bakeries, retail | Order-ahead and pickup, "ready" notifications, push promos to nearby network members, 500 SMS/mo |
+| **Free** | $0, no transaction fee | Every merchant | Points, stamps and rewards, welcome bonus, network listing, wallet pass, customer directory, basic reports, phone + web dashboard, done-for-you setup, QR counter stand |
+| **Plus** | $39/mo | Cafés, restaurants, bakeries, retail | Promos and bonus-point days, VIP/birthday/referrals, discount cards, email + SMS + automations, CSV, POS auto-award, webhooks/API, advanced reports, order-ahead and pickup, push promos to nearby network members, 500 SMS/mo |
 | **Pro** | $79/mo | Repair, auto, alterations, print shops | Everything in Plus + service tickets, quote approval, deposits, invoices, pickup/drop-off scheduling, multi-staff |
 | **Payments** | Stripe cost (2.9% + C$0.30 online) + 0.75% platform fee | Plus and Pro | In-app checkout, deposits, invoice pay |
 | **Neighbourhood campaigns** | $1,500–3,000 per campaign | BIAs | A street-wide "shop local" points event run through the app |

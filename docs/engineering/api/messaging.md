@@ -19,8 +19,8 @@ Auth: `manager` or `owner` of the merchant (admins / the merchant's rep pass as 
 
 | Channel | Feature | Notes |
 | --- | --- | --- |
-| `email` | `marketing.email` (free) | `subject` required; body ≤ 10,000 chars |
-| `push` | `marketing.email` (free) | to every app token (`push_tokens`) of consented members; body ≤ 180; title = subject or shop name |
+| `email` | `marketing.email` (Plus since Pricing v2) | `subject` required; body ≤ 10,000 chars |
+| `push` | `marketing.email` (Plus since Pricing v2) | to every app token (`push_tokens`) of consented members; body ≤ 180; title = subject or shop name |
 | `sms` | `marketing.sms` (Plus) | body ≤ 320 chars before footer; 1 credit per recipient |
 
 SMS credits: monthly allowance = `max(PLANS[plan].smsPerMonth, PLANS.plus.smsPerMonth)` (pilot overrides on a free plan get the
@@ -100,7 +100,7 @@ Saving with `enabled: false` is always allowed; enabling needs `marketing.automa
 
 All automations are promotional → CASL rules above apply.
 
-**Birthday points are free** (`loyalty.birthday_bonus`): job `loyalty.birthday-bonus` (hourly) posts a ledger
+**Birthday points are Plus** (`loyalty.birthday_bonus`, Pricing v2; shops without it are skipped and their program shows `birthdayBonus: 0` to customers): job `loyalty.birthday-bonus` (hourly) posts a ledger
 `birthday_bonus` of `program.birthdayBonus` once per member per year (idempotency key `birthday:<memberId>:<year>`,
 `merchant_members.last_birthday_bonus_year`), with no consent needed (it's points, not a message). Only the birthday
 *message* is Plus.

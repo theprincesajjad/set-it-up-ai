@@ -61,7 +61,7 @@ export default function UsersPage() {
           <TextField type="search" label="Search users" hideLabel placeholder="At least 3 characters" value={q} onChange={(e) => setQ(e.target.value)} />
           <Select hideLabel label="Role" value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "", label: "Any role" }, { value: "rep", label: "Reps" }, { value: "admin", label: "Admins" }]} />
         </div>
-      } empty={<p className="p-6 text-center text-body-sm text-fg-muted">Search to find a user. We don&apos;t list everyone, for privacy.</p>} />
+      } empty={<p className="p-6 text-center text-meta text-fg-muted">Search to find a user. We don&apos;t list everyone, for privacy.</p>} />
     </div>
   );
 }

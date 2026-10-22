@@ -1,11 +1,12 @@
-import { Clock, Globe, MapPin, Navigation, Phone } from "lucide-react";
+import { Globe, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
 import { ShopTabs } from "@/components/pass/ShopTabs";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { ListGroup } from "@/components/ui/Card";
+import { StatusDot } from "@/components/ui/Badge";
 import { DiscountCard } from "@/components/ui/DiscountCard";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { PointsRing } from "@/components/ui/PointsRing";
@@ -95,54 +96,51 @@ export default async function ShopPage({ params, searchParams }: Props) {
   };
   const joinInfo: networkApi.JoinInfoResponse | null = loc ? { qrCode: "", merchant: m, location: loc, program, rewards: shop.rewards.slice(0, 3), consentText: shop.consentText } : null;
 
+  const quick = [
+    m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: "Call", icon: Phone } : null,
+    loc ? { href: directionsUrl(loc), label: "Directions", icon: Navigation } : null,
+    m.website ? { href: m.website, label: "Website", icon: Globe } : null,
+  ].filter((x): x is { href: string; label: string; icon: typeof Phone } => !!x);
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pt-2">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ShopTile
         variant="hero"
-        shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl }}
-        subtitle={[verticalLabel(m.vertical), loc?.address, m.neighbourhood?.name].filter(Boolean).join(" · ")}
+        shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }}
+        subtitle={[verticalLabel(m.vertical).toLowerCase(), m.neighbourhood?.name].filter(Boolean).join(" · ")}
       />
-      <div className="flex flex-wrap items-center gap-2">
-      {status ? (
-        <p className={status.open ? "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-success-subtle px-3 text-caption font-semibold text-on-success-subtle" : "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle"}>
-          <Clock aria-hidden className="size-3.5" />
-          {status.label}
-        </p>
+      {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
+        <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
+          {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label}</StatusDot> : null}
+          {shop.memberCount ? <span className="text-fg-muted">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</span> : null}
+          {shop.features?.orderAhead ? <span className="text-fg-muted">Order ahead in the app</span> : null}
+          {shop.features?.serviceTickets ? <span className="text-fg-muted">Repair tracking</span> : null}
+        </div>
       ) : null}
-      {shop.memberCount ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-surface-sunken px-3 text-caption font-semibold text-fg">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</p> : null}
-      {shop.features?.orderAhead ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-brand-subtle px-3 text-caption font-semibold text-on-brand-subtle">Order ahead in the app</p> : null}
-      {shop.features?.serviceTickets ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-brand-subtle px-3 text-caption font-semibold text-on-brand-subtle">Repair tracking</p> : null}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {m.phone || loc?.phone ? (
-          <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${m.phone ?? loc?.phone}`}>
-            Call
-          </Button>
-        ) : null}
-        {loc ? (
-          <Button variant="secondary" size="sm" iconStart={Navigation} href={directionsUrl(loc)}>
-            Directions
-          </Button>
-        ) : null}
-        {m.website ? (
-          <Button variant="secondary" size="sm" iconStart={Globe} href={m.website}>
-            Website
-          </Button>
-        ) : null}
-      </div>
+      {quick.length ? (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${quick.length}, minmax(0, 1fr))` }}>
+          {quick.map((q) => (
+            <a key={q.label} href={q.href} {...(/^https?:/.test(q.href) ? { rel: "noopener noreferrer" } : {})} className="flex h-16 flex-col items-center justify-center gap-1 rounded-card bg-bg-subtle text-meta-strong text-fg transition-colors hover:bg-bg-muted active:bg-bg-muted focus-visible:focus-ring">
+              <q.icon aria-hidden className="size-5" strokeWidth={1.75} />
+              {q.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
 
       {membership ? (
-        <Card className="flex items-center gap-4">
+        <div className="flex items-center gap-4 rounded-card border border-line p-4">
           <PointsRing balance={membership.balance} goal={membership.nextReward?.pointsCost ?? 0} terminology={membership.terminology} size={64} showCaption={false} />
-          <div className="flex-1">
-            <p className="text-title text-fg">You have {formatPoints(membership.balance, membership.terminology, false)}</p>
-            <p className="text-body-sm text-fg-muted">{membership.nextReward ? `${membership.nextReward.pointsNeeded} more for a ${membership.nextReward.name}` : membership.expiryDisclosure}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-meta text-fg-muted">You have</p>
+            <p className="display text-title tabular-nums text-accent-text">{formatPoints(membership.balance, membership.terminology, false)}</p>
+            <p className="text-meta text-fg-muted">{membership.nextReward ? `${membership.nextReward.pointsNeeded} more for a ${membership.nextReward.name}` : membership.expiryDisclosure}</p>
           </div>
-          <Button variant="tonal" size="sm" href="/me">
+          <Button variant="secondary" size="sm" href="/me">
             My card
           </Button>
-        </Card>
+        </div>
       ) : null}
 
       <ShopTabs
@@ -154,17 +152,29 @@ export default async function ShopPage({ params, searchParams }: Props) {
             content: (
               <>
                 {program ? (
-                  <Card>
-                    <h2 className="text-title text-fg">How you earn here</h2>
-                    <p className="mt-1 text-body text-fg">{howYouEarn(program)}</p>
-                    {program.welcomeBonus > 0 ? <p className="mt-1 text-body-sm text-fg-muted">Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.</p> : null}
-                    <p className="mt-1 text-body-sm text-fg-muted">{program.expiryDisclosure}</p>
-                    {m.vertical === "pharmacy" ? <p className="mt-2 text-body-sm text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
-                  </Card>
+                  <ListGroup title="How you earn here" as="div">
+                    <div className="flex flex-col gap-1 py-3.5">
+                      <p className="text-body-strong text-fg">{howYouEarn(program)}</p>
+                      {program.welcomeBonus > 0 ? (
+                        <p className="flex items-center gap-2 text-meta text-fg">
+                          <span aria-hidden className="size-1.5 rounded-full bg-accent" />
+                          Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.
+                        </p>
+                      ) : null}
+                      <p className="text-meta text-fg-muted">{program.expiryDisclosure}</p>
+                      {m.vertical === "pharmacy" ? <p className="text-meta text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
+                    </div>
+                  </ListGroup>
                 ) : null}
-                {shop.rewards.map((r) => (
-                  <RewardCard key={r.id} reward={r} terminology={terminology} balance={membership?.balance ?? 0} state={membership ? (membership.balance >= r.pointsCost ? "available" : "locked") : "preview"} />
-                ))}
+                {shop.rewards.length ? (
+                  <ListGroup title="Rewards">
+                    {shop.rewards.map((r) => (
+                      <li key={r.id}>
+                        <RewardCard layout="row" reward={r} terminology={terminology} balance={membership?.balance ?? 0} state={membership ? (membership.balance >= r.pointsCost ? "available" : "locked") : "preview"} />
+                      </li>
+                    ))}
+                  </ListGroup>
+                ) : null}
                 {shop.discountCards.map((c) => (
                   <DiscountCard key={c.id} card={c} shop={m} live={false} />
                 ))}
@@ -176,9 +186,9 @@ export default async function ShopPage({ params, searchParams }: Props) {
             label: "Promos",
             count: shop.promos.length,
             content: shop.promos.length ? (
-              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl }} />)
+              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
             ) : (
-              <p className="text-body text-fg-muted">No offers right now. Members hear about new ones first.</p>
+              <p className="py-6 text-center text-body text-fg-muted">No offers right now. Members hear about new ones first.</p>
             ),
           },
           {
@@ -188,42 +198,40 @@ export default async function ShopPage({ params, searchParams }: Props) {
               <>
                 {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
                 {loc ? (
-                  <Card>
-                    <h2 className="flex items-center gap-2 text-title text-fg">
-                      <MapPin aria-hidden className="size-5 text-fg-muted" />
-                      {loc.address}
-                    </h2>
-                    <p className="text-body-sm text-fg-muted">
-                      {loc.city}
-                      {loc.postalCode ? ` ${loc.postalCode}` : ""}
-                      {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
-                    </p>
+                  <ListGroup title="Visit" as="div">
+                    <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body-strong text-fg">{loc.address}</p>
+                        <p className="text-meta text-fg-muted">
+                          {loc.city}
+                          {loc.postalCode ? ` ${loc.postalCode}` : ""}
+                          {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
+                        </p>
+                      </div>
+                      <span className="text-meta-strong text-fg">Directions</span>
+                    </a>
                     {loc.hours ? (
-                      <table className="mt-3 w-full text-body-sm">
+                      <table className="my-2 w-full text-meta">
                         <caption className="sr-only">Opening hours</caption>
                         <tbody>
                           {weekRows(loc.hours).map((r) => (
                             <tr key={r.day}>
-                              <th scope="row" className="py-0.5 text-start font-normal text-fg-muted">
+                              <th scope="row" className="py-1 text-start font-normal text-fg-muted">
                                 {r.day}
                               </th>
-                              <td className="py-0.5 text-end tabular-nums text-fg">{r.text}</td>
+                              <td className="py-1 text-end tabular-nums text-fg">{r.text}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" iconStart={Navigation} href={directionsUrl(loc)}>
-                        Directions
-                      </Button>
-                      {m.instagram ? (
-                        <Button variant="ghost" size="sm" href={m.instagram.startsWith("http") ? m.instagram : `https://instagram.com/${m.instagram.replace(/^@/, "")}`}>
-                          {`Instagram @${m.instagram.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}`}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </Card>
+                    {m.instagram ? (
+                      <a href={m.instagram.startsWith("http") ? m.instagram : `https://instagram.com/${m.instagram.replace(/^@/, "")}`} rel="noopener noreferrer" className="-mx-4 flex items-center justify-between px-4 py-3.5 text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+                        <span>Instagram</span>
+                        <span className="text-fg-muted">@{m.instagram.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}</span>
+                      </a>
+                    ) : null}
+                  </ListGroup>
                 ) : null}
               </>
             ),
@@ -232,33 +240,26 @@ export default async function ShopPage({ params, searchParams }: Props) {
       />
 
       {!membership && joinInfo ? (
-        <section id="join" aria-label={`Join ${m.name}`} className="scroll-mt-4 rounded-xl bg-surface p-4 shadow-md">
+        <section id="join" aria-label={`Join ${m.name}`} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5">
           <JoinFlow info={joinInfo} merchantId={m.id} referralCode={ref} signedIn={!!me} signedInName={me?.user.name ?? null} showHeader={false} autoFocus={false} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
         </section>
       ) : null}
 
       {nearby.length && m.neighbourhood ? (
-        <section aria-labelledby="more" className="flex flex-col gap-2">
-          <h2 id="more" className="text-h3 text-fg">
-            More shops on {m.neighbourhood.name}
-          </h2>
-          <ul className="flex flex-col divide-y divide-border">
-            {nearby.map((s) => (
-              <li key={s.merchant.id}>
-                <ShopTile variant="list" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl }} subtitle={s.location?.address} />
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ListGroup title={`More shops on ${m.neighbourhood.name}`}>
+          {nearby.map((s) => (
+            <li key={s.merchant.id}>
+              <ShopTile variant="list" href={`/shops/${s.merchant.slug}`} className="-mx-4 px-4 hover:bg-bg-subtle" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={s.location?.address} />
+            </li>
+          ))}
+        </ListGroup>
       ) : null}
 
       {!membership && joinInfo ? (
-        <div className="sticky bottom-0 z-sticky -mx-4 border-t border-border bg-canvas px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-          <div>
-            <Button href="#join" fullWidth size="lg">
-              {copy.action.join(m.name)}
-            </Button>
-          </div>
+        <div className="chrome sticky bottom-0 z-sticky -mx-4 border-t border-line px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-none!">
+          <Button href="#join" fullWidth size="lg">
+            {copy.action.join(m.name)}
+          </Button>
         </div>
       ) : null}
     </div>

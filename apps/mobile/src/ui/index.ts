@@ -39,3 +39,6 @@ export * from "./Toast";
 export * from "./icons";
 export * from "./DetentSheet";
 export * from "./PerkCard";
+export * from "./PlaceBubble";
+export * from "./CategoryIcon";
+export * from "./haptics";

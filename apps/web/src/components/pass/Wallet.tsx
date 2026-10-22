@@ -3,7 +3,7 @@
  * Web pass (`/me`): my card, my shops, rewards with redeem → code, activity and
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
-import { Activity, Download, QrCode, Gift, LogOut, Settings, Store, Trash2 } from "lucide-react";
+import { Activity, ChevronRight, Download, Gift, LogOut, QrCode, Store, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { customerApi } from "@ll/shared";
@@ -12,21 +12,24 @@ import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
 import { formatDate, formatPoints, formatTime } from "@/lib/format";
-import { walletHeadline, type WalletHeadline } from "@/lib/walletSummary";
+import { walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
-import { Badge } from "@/components/ui/Badge";
+import { StatusDot } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { ListGroup } from "@/components/ui/Card";
 import { DiscountCard } from "@/components/ui/DiscountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberQr } from "@/components/ui/MemberQr";
 import { Modal } from "@/components/ui/Modal";
 import { PointsRing } from "@/components/ui/PointsRing";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RedeemCode } from "@/components/ui/RedeemCode";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
+import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { platform } from "./JoinFlow";
 import { StampCard } from "@/components/ui/StampCard";
 import { Switch } from "@/components/ui/Switch";
 import { Tabs } from "@/components/ui/Tabs";
@@ -112,36 +115,35 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
 
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
+  const first = profile.name?.trim().split(/\s+/)[0] ?? null;
   return (
-    <div className="flex flex-col gap-5">
-      {/* One big number (references.md §2), then the card button that opens the QR sheet (§4). */}
-      <section aria-labelledby="total" className="flex flex-col items-center gap-2 pt-2 text-center">
-        <p className="text-body-sm text-fg-muted">{profile.name ? `Hi, ${profile.name.split(" ")[0]}` : "Your card"}</p>
-        <h1 id="total" className="sr-only">
-          My shops
-        </h1>
-        <p className="text-points tabular-nums text-fg">{headline.value.toLocaleString("en-CA")}</p>
-        <p className="-mt-1 max-w-xs text-body-sm text-fg-muted">{headline.label}</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <span className="inline-flex h-7 items-center gap-1 rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle">
-            {headline.kind === "ready" ? <Gift aria-hidden className="size-3.5" /> : null}
-            {headline.context}
-          </span>
+    <div className="flex flex-col gap-6 pt-2">
+      {/* Wallet hero (foundations.md "Wallet"): one honest number. Points and stamps are never summed across shops. */}
+      <section aria-labelledby="total" className="flex flex-col gap-5">
+        <div className="flex items-center justify-between gap-3">
+          <h1 id="total" className="display text-large-title text-fg">
+            Wallet
+          </h1>
+          <span className="truncate text-meta text-fg-muted">{[first, headline.context].filter(Boolean).join(" · ")}</span>
         </div>
-        <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} className="mt-2 w-full">
+        <div className="flex items-end gap-3">
+          <p className={headline.kind === "ready" ? "display text-[64px] leading-[0.9] tabular-nums text-accent-text" : "display text-[64px] leading-[0.9] tabular-nums text-fg"}>{headline.value.toLocaleString("en-CA")}</p>
+          <p className="max-w-[220px] pb-1 text-body text-fg-muted">{headline.label}</p>
+        </div>
+        <Button size="lg" iconStart={QrCode} onClick={() => setCardOpen(true)} fullWidth>
           {copy.action.showCard}
         </Button>
       </section>
-      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} headline={headline} />
+      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} />
       <Tabs
         label="Wallet"
         value={tab}
         onChange={selectTab}
         items={[
-          { id: "shops", label: <span className="inline-flex items-center gap-1.5"><Store aria-hidden className="size-4" />Shops</span> },
-          { id: "rewards", label: <span className="inline-flex items-center gap-1.5"><Gift aria-hidden className="size-4" />Rewards</span> },
-          { id: "activity", label: <span className="inline-flex items-center gap-1.5"><Activity aria-hidden className="size-4" />Activity</span> },
-          { id: "settings", label: <span className="inline-flex items-center gap-1.5"><Settings aria-hidden className="size-4" />Settings</span> },
+          { id: "shops", label: "Shops" },
+          { id: "rewards", label: "Rewards" },
+          { id: "activity", label: "Activity" },
+          { id: "settings", label: "Settings" },
         ]}
       />
 
@@ -155,9 +157,15 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
   );
 }
 
-/** My card as a sheet (references.md §4): pine card with total + name, white QR tile, big member code, wallet buttons. */
-function CardSheet({ open, onClose, card, profile, headline }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; headline: WalletHeadline }) {
+/** My card (foundations.md "My card"): white sheet, big QR, member code in mono, one black wallet button for this phone. */
+function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [os, setOs] = useState<"ios" | "android" | "other">("other");
+  useEffect(() => {
+    // The UA is only known on the client.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOs(platform());
+  }, []);
   async function google() {
     try {
       const r = await browserApi.me.googleWallet();
@@ -175,92 +183,105 @@ function CardSheet({ open, onClose, card, profile, headline }: { open: boolean; 
       setWalletError("Wallet passes aren't available right now. Your card above works at the counter.");
     }
   }
+  const primaryGoogle = os === "android";
   return (
     <Modal open={open} onClose={onClose} title="My card" variant="sheet">
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex w-full items-center justify-between rounded-xl bg-brand px-5 py-4 text-on-brand">
-        <div>
-          <p className="text-overline uppercase opacity-90">Scan before paying</p>
-          <p className="text-title">{profile.name ?? "Member"}</p>
+      <div className="flex flex-col items-center gap-5 pt-2">
+        <p className="text-body-strong text-fg">{profile.name ?? "Member"}</p>
+        {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} caption="Works at every shop on the network" /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
+        {walletError ? <Banner tone="neutral" className="w-full">{walletError}</Banner> : null}
+        <div className="flex w-full flex-col gap-1">
+          <Button size="lg" fullWidth onClick={primaryGoogle ? google : apple}>
+            {primaryGoogle ? copy.action.addToGoogleWallet : copy.action.addToAppleWallet}
+          </Button>
+          <Button variant="ghost" size="lg" fullWidth onClick={primaryGoogle ? apple : google}>
+            {primaryGoogle ? copy.action.addToAppleWallet : copy.action.addToGoogleWallet}
+          </Button>
         </div>
-        <div className="text-end">
-          <p className="text-h2 tabular-nums">{headline.value.toLocaleString("en-CA")}</p>
-          <p className="max-w-40 text-caption">{headline.shortLabel}</p>
-        </div>
+        <p className="-mt-2 text-center text-meta text-fg-muted">Turn your brightness up so it scans first time.</p>
       </div>
-      {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={240} /> : <MemberQr memberCode={profile.memberCode} caption="Show your number at the counter" />}
-      <p className="text-center text-body-sm text-fg-muted">Works at every shop on the network. Turn your brightness up.</p>
-      {walletError ? <Banner tone="neutral">{walletError}</Banner> : null}
-      <div className="grid w-full gap-2">
-        <Button variant="secondary" fullWidth onClick={apple}>
-          {copy.action.addToAppleWallet}
-        </Button>
-        <Button variant="secondary" fullWidth onClick={google}>
-          {copy.action.addToGoogleWallet}
-        </Button>
-      </div>
-    </div>
     </Modal>
   );
+}
+
+function progressLine(m: customerApi.MembershipDto) {
+  return m.nextReward ? copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name) : m.expiryDisclosure;
 }
 
 function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChanged, profile }: { wallet: customerApi.WalletResponse; details: Details; openShop: string | null; setOpenShop: (id: string | null) => void; loadDetails: (ids?: string[]) => Promise<void>; onChanged: () => Promise<void>; profile: customerApi.ProfileDto }) {
   if (!wallet.items.length)
     return <EmptyState icon={Store} title={copy.empty.wallet.title} description={copy.empty.wallet.body} action={<Button href="/map">Find shops nearby</Button>} />;
+  // Rewards ready float to the top under their own header (foundations.md "Wallet").
+  const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0);
+  const rest = wallet.items.filter((m) => m.rewardsAvailableCount === 0);
+  const current = wallet.items.find((m) => m.id === openShop) ?? null;
+  const row = (m: customerApi.MembershipDto) => (
+    <li key={m.id}>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => {
+          setOpenShop(m.id);
+          if (!details[m.id]) void loadDetails([m.id]);
+        }}
+        className="-mx-4 block w-[calc(100%+2rem)] px-4 text-start transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring"
+      >
+        <ShopTile
+          variant="wallet"
+          shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }}
+          balance={{ value: m.balance, terminology: m.terminology }}
+          rewardReady={m.rewardsAvailableCount > 0}
+          muted={m.muted}
+          subtitle={progressLine(m)}
+        />
+      </button>
+    </li>
+  );
   return (
-    <ul className="flex flex-col gap-3">
-      {wallet.items.map((m) => {
-        const open = openShop === m.id;
-        const d = details[m.id];
-        return (
-          <li key={m.id} className="flex flex-col gap-3">
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => {
-                setOpenShop(open ? null : m.id);
-                if (!open && !d) void loadDetails([m.id]);
-              }}
-              className="text-start focus-visible:focus-ring rounded-lg"
-            >
-              <ShopTile
-                variant="wallet"
-                shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl }}
-                balance={{ value: m.balance, terminology: m.terminology }}
-                rewardReady={m.rewardsAvailableCount > 0}
-                muted={m.muted}
-                subtitle={m.nextReward ? copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name) : m.expiryDisclosure}
-              />
-            </button>
-            {open ? (
-              <div className="flex flex-col gap-3 rounded-lg bg-canvas-subtle p-3">
-                {m.program?.earnType === "stamps" ? (
-                  <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
-                ) : (
-                  <Card className="flex justify-center">
-                    <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} rewardName={m.nextReward?.name} size={120} />
-                  </Card>
-                )}
-                <p className="text-caption text-fg-muted">{m.expiryDisclosure}</p>
-                {!d ? (
-                  <SkeletonCard />
-                ) : (
-                  <>
-                    <MemberRewards membership={m} detail={d} onChanged={async () => { await onChanged(); await loadDetails([m.id]); }} />
-                    {d.discountCards.map((c) => (
-                      <DiscountCard key={c.id} card={c} shop={m.merchant} memberName={profile.name} />
-                    ))}
-                  </>
-                )}
-                <Button variant="ghost" size="sm" href={`/shops/${m.merchant.slug}`} className="self-start">
-                  Shop page
-                </Button>
-              </div>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-6">
+      {ready.length ? <ListGroup title="Rewards ready">{ready.map(row)}</ListGroup> : null}
+      <ListGroup title={ready.length ? "Your shops" : undefined}>{rest.map(row)}</ListGroup>
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet">
+        {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
+      </Modal>
+    </div>
+  );
+}
+
+/** Shop sheet: italic vertical line, a stamp row or points ring, rewards, discount cards, then the shop page. */
+function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.MembershipDto; d: customerApi.MembershipDetailResponse | undefined; profile: customerApi.ProfileDto; onChanged: () => Promise<void> }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="-mt-1 flex items-center gap-3">
+        <ShopLogo shop={m.merchant} size={44} />
+        <p className="text-meta italic text-fg-muted">{verticalLabel(m.merchant.vertical).toLowerCase()}</p>
+      </div>
+      {m.program?.earnType === "stamps" ? (
+        <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
+      ) : (
+        <div className="flex items-center gap-4 rounded-card border border-line p-4">
+          <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
+          <div className="min-w-0 flex-1">
+            <p className="display text-title tabular-nums text-accent-text">{formatPoints(m.balance, m.terminology, false)}</p>
+            <p className="text-meta text-fg-muted">{progressLine(m)}</p>
+          </div>
+        </div>
+      )}
+      {!d ? (
+        <SkeletonCard />
+      ) : (
+        <>
+          <MemberRewards membership={m} detail={d} onChanged={onChanged} />
+          {d.discountCards.map((c) => (
+            <DiscountCard key={c.id} card={c} shop={m.merchant} memberName={profile.name} />
+          ))}
+        </>
+      )}
+      <p className="text-meta text-fg-muted">{m.expiryDisclosure}</p>
+      <Button variant="secondary" size="lg" fullWidth href={`/shops/${m.merchant.slug}`} iconEnd={ChevronRight}>
+        Shop page
+      </Button>
+    </div>
   );
 }
 
@@ -311,32 +332,37 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   }
 
   const open = detail.openRedemptions;
+  if (!open.length && !detail.rewards.length) return null;
   return (
     <div className="flex flex-col gap-3">
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      {open.map((r) => (
-        <Card key={r.id} tone="flat" className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-title">{r.rewardName}</p>
-            <p className="text-body-sm text-fg-muted">Code ready to show</p>
-          </div>
-          <Button variant="accent" size="sm" onClick={() => setActive({ redemption: r, used: false })}>
-            {copy.action.showCodeToStaff}
-          </Button>
-        </Card>
-      ))}
-      {detail.rewards.map((r) => (
-        <RewardCard
-          key={r.id}
-          reward={r}
-          balance={membership.balance}
-          terminology={membership.terminology}
-          state={busy === r.id ? "redeeming" : r.affordable ? "available" : "locked"}
-          onRedeem={() => void redeem(r.id)}
-        >
-          <Skeleton className="h-10 w-full" />
-        </RewardCard>
-      ))}
+      <ListGroup title="Rewards">
+        {open.map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3 py-3.5">
+            <div className="min-w-0">
+              <p className="text-body-strong text-fg">{r.rewardName}</p>
+              <p className="text-meta font-semibold text-accent-text">Code ready to show</p>
+            </div>
+            <Button size="sm" onClick={() => setActive({ redemption: r, used: false })}>
+              {copy.action.showCodeToStaff}
+            </Button>
+          </li>
+        ))}
+        {detail.rewards.map((r) => (
+          <li key={r.id}>
+            <RewardCard
+              layout="row"
+              reward={r}
+              balance={membership.balance}
+              terminology={membership.terminology}
+              state={busy === r.id ? "redeeming" : r.affordable ? "available" : "locked"}
+              onRedeem={() => void redeem(r.id)}
+            >
+              <Skeleton className="h-10 w-full" />
+            </RewardCard>
+          </li>
+        ))}
+      </ListGroup>
       <Modal
         open={!!active}
         onClose={async () => {
@@ -348,10 +374,13 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
         variant="sheet"
       >
         {active ? (
-          <div className="flex flex-col items-center gap-3">
-            <ShopLogo shop={membership.merchant} size={48} />
-            <p className="text-h2 text-fg">{active.redemption.rewardName}</p>
-            <RedeemCode code={active.redemption.code} rewardName={membership.merchant.name} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
+          <div className="flex flex-col items-center gap-4 pt-1">
+            <div className="flex items-center gap-2.5">
+              <ShopLogo shop={membership.merchant} size={32} />
+              <p className="text-body-strong text-fg">{membership.merchant.name}</p>
+            </div>
+            <p className="display text-large-title text-fg">{active.redemption.rewardName}</p>
+            <RedeemCode code={active.redemption.code} rewardName="Your code" expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
           </div>
         ) : null}
       </Modal>
@@ -363,25 +392,39 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0 || (details[m.id]?.openRedemptions.length ?? 0) > 0);
   if (loading && !Object.keys(details).length) return <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   if (!ready.length) {
-    const closest = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => (a.nextReward!.pointsNeeded - b.nextReward!.pointsNeeded))[0];
+    const close = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct).slice(0, 5);
+    if (!close.length)
+      return <EmptyState icon={Gift} title={copy.empty.rewardsReady.title} description={copy.empty.rewardsReady.body} action={<Button variant="secondary" onClick={onShowShops}>{copy.empty.rewardsReady.action}</Button>} />;
     return (
-      <EmptyState
-        icon={Gift}
-        title={copy.empty.rewardsReady.title}
-        description={closest ? `${copy.empty.rewardsReady.body} Closest: ${closest.nextReward!.pointsNeeded} more at ${closest.merchant.name}.` : copy.empty.rewardsReady.body}
-        action={<Button variant="tonal" onClick={onShowShops}>{copy.empty.rewardsReady.action}</Button>}
-      />
+      <div className="flex flex-col gap-3">
+        <p className="text-body text-fg-muted">{copy.empty.rewardsReady.body}</p>
+        <ListGroup title="Closest rewards">
+          {close.map((m) => (
+            <li key={m.id} className="flex flex-col gap-2.5 py-3.5">
+              <div className="flex items-center gap-3">
+                <ShopLogo shop={m.merchant} size={32} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-body-strong text-fg">{m.nextReward!.name}</p>
+                  <p className="truncate text-meta text-fg-muted">{m.merchant.name}</p>
+                </div>
+                <span className="shrink-0 text-meta tabular-nums text-fg-muted">{formatPoints(m.nextReward!.pointsNeeded, m.terminology)} to go</span>
+              </div>
+              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={`${m.nextReward!.progressPct}% of the way to ${m.nextReward!.name}`} />
+            </li>
+          ))}
+        </ListGroup>
+      </div>
     );
   }
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {ready.map((m) => (
-        <section key={m.id} aria-label={m.merchant.name} className="flex flex-col gap-2">
-          <h2 className="flex items-center gap-2 text-title text-fg">
+        <section key={m.id} aria-label={m.merchant.name} className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5 px-1">
             <ShopLogo shop={m.merchant} size={24} />
-            {m.merchant.name}
-            <span className="text-body-sm font-normal text-fg-muted">· {formatPoints(m.balance, m.terminology)}</span>
-          </h2>
+            <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{m.merchant.name}</h2>
+            <span className="text-meta tabular-nums text-fg-muted">{formatPoints(m.balance, m.terminology)}</span>
+          </div>
           {details[m.id] ? <MemberRewards membership={m} detail={details[m.id]!} onChanged={onChanged} /> : <SkeletonCard />}
         </section>
       ))}
@@ -404,24 +447,24 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
     return <EmptyState icon={Activity} title={e.title} description={e.body} action={<Button href="/map">{e.action}</Button>} />;
   }
   return (
-    <ul className="flex flex-col divide-y divide-border rounded-lg bg-surface px-4 shadow-sm">
+    <ListGroup>
       {rows.map(({ t, m }) => (
-        <li key={t.id} className="flex min-h-16 items-center gap-3 py-2">
+        <li key={t.id} className="flex min-h-16 items-center gap-3 py-2.5">
           <ShopLogo shop={m.merchant} size={40} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-body-strong text-fg">{t.description || TX_LABELS[t.type] || t.type}</p>
-            <p className="truncate text-body-sm text-fg-muted">
+            <p className="truncate text-meta text-fg-muted">
               {m.merchant.name} · {formatDate(t.createdAt, true)}, {formatTime(t.createdAt)}
               {t.reversed ? " · reversed" : ""}
             </p>
           </div>
-          <span className={t.points >= 0 ? "text-body-strong tabular-nums text-success" : "text-body-strong tabular-nums text-fg"}>
+          <span className={t.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-fg" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
             {t.points >= 0 ? "+" : "−"}
             {formatPoints(Math.abs(t.points), m.terminology)}
           </span>
         </li>
       ))}
-    </ul>
+    </ListGroup>
   );
 }
 
@@ -499,54 +542,45 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   }
 
   return (
-    <div id="settings" className="flex flex-col gap-6">
-      <Card>
-        <h2 className="text-title text-fg">Messages from shops</h2>
-        <p className="mt-1 text-body-sm text-fg-muted">Each shop asks separately. Muting stops all offers from a shop; your points keep working.</p>
-        <ul className="mt-3 flex flex-col divide-y divide-border">
-          {wallet.items.map((m) => (
-            <li key={m.id} className="flex flex-col gap-1 py-3">
-              <p className="flex items-center gap-2 text-body-strong text-fg">
-                <ShopLogo shop={m.merchant} size={24} />
-                {m.merchant.name}
-                {m.marketingConsent.granted ? <Badge tone="success">Offers on</Badge> : null}
-              </p>
-              <Switch label={`Get offers from ${m.merchant.name}`} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : "By text and email. Unsubscribe anytime."} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
-              <Switch label={`Mute ${m.merchant.name}`} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
-            </li>
-          ))}
-        </ul>
-      </Card>
+    <div id="settings" className="flex flex-col gap-7">
+      <ListGroup title="Messages from shops" footer="Each shop asks separately. Muting stops all offers from a shop; your points keep working.">
+        {wallet.items.map((m) => (
+          <li key={m.id} className="flex flex-col py-3">
+            <p className="flex items-center gap-2.5 py-1 text-body-strong text-fg">
+              <ShopLogo shop={m.merchant} size={24} />
+              <span className="min-w-0 flex-1 truncate">{m.merchant.name}</span>
+              {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">Offers on</StatusDot> : null}
+            </p>
+            <Switch label={`Get offers from ${m.merchant.name}`} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : "By text and email. Unsubscribe anytime."} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
+            <Switch label={`Mute ${m.merchant.name}`} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
+          </li>
+        ))}
+      </ListGroup>
 
-      <Card>
-        <h2 className="text-title text-fg">Your details</h2>
-        <div className="mt-3 flex flex-col gap-4">
+      <ListGroup title="Your details" as="div" footer={<>Phone <span className="tabular-nums">{formatE164(profile.phone)}</span> · Member number <span className="tabular-nums">{profile.memberCode}</span></>}>
+        <div className="flex flex-col gap-4 py-4">
           <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           <TextField label="Email" type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-          <p className="text-body-sm text-fg-muted">
-            Phone: <span className="tabular-nums">{formatE164(profile.phone)}</span> · Member number <span className="tabular-nums">{profile.memberCode}</span>
-          </p>
-          <Button onClick={save} loading={saving} className="self-start">
+          <Button onClick={save} loading={saving} variant="secondary" className="self-start">
             Save
           </Button>
         </div>
-      </Card>
+      </ListGroup>
 
-      <Card>
-        <h2 className="text-title text-fg">Your data</h2>
-        <p className="mt-1 text-body-sm text-fg-muted">Download everything we hold about you, or delete your account.</p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button variant="secondary" iconStart={Download} onClick={exportData}>
-            Download my data
-          </Button>
-          <Button variant="secondary" iconStart={LogOut} onClick={signOut}>
-            Sign out
-          </Button>
-          <Button variant="ghost" iconStart={Trash2} onClick={() => setDeleteOpen(true)} className="text-danger">
-            {"Delete my account"}
-          </Button>
-        </div>
-      </Card>
+      <ListGroup title="Your data" as="div" footer="Download everything we hold about you, or delete your account.">
+        <button type="button" onClick={exportData} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+          <Download aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
+          <span className="flex-1">Download my data</span>
+        </button>
+        <button type="button" onClick={signOut} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+          <LogOut aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
+          <span className="flex-1">Sign out</span>
+        </button>
+        <button type="button" onClick={() => setDeleteOpen(true)} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-negative hover:bg-bg-subtle focus-visible:focus-ring">
+          <Trash2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
+          <span className="flex-1">Delete my account</span>
+        </button>
+      </ListGroup>
 
       <Modal
         open={deleteOpen}

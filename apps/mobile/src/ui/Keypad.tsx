@@ -1,8 +1,8 @@
 import { radii, touchTargets } from "@ll/design-tokens";
-import * as Haptics from "expo-haptics";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
-import { Delete, X } from "./icons";
+import { haptic } from "./haptics";
+import { Delete } from "./icons";
 import { Text } from "./Text";
 
 export type KeypadKey = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "back" | "clear";
@@ -23,13 +23,13 @@ const ROWS: KeypadKey[][] = [
   ["clear", "0", "back"],
 ];
 
-/** 3 x 4 keypad, 72 px keys (kiosk 88), haptic selection, long-press backspace = clear. */
+/** 3 x 4 keypad: grey keys, black tabular digits, 72 pt (kiosk 88), haptic tick, long-press delete = clear. */
 export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadProps) {
   const { c } = useTheme();
   const h = Math.max(touchTargets.keypad, keyHeight ?? (size === "kiosk" ? touchTargets.kiosk : touchTargets.keypad));
   const press = (k: KeypadKey) => {
     if (disabled) return;
-    Haptics.selectionAsync().catch(() => undefined);
+    haptic.select();
     onKey(k);
   };
   return (
@@ -38,6 +38,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
         <View key={r} style={styles.row}>
           {row.map((k) => {
             const label = k === "back" ? "Delete" : k === "clear" ? "Clear" : k;
+            const fn = k === "back" || k === "clear";
             return (
               <Pressable
                 key={k}
@@ -45,17 +46,16 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
                 accessibilityLabel={label}
                 onPress={() => press(k)}
                 onLongPress={k === "back" ? () => press("clear") : undefined}
-                style={({ pressed }) => [
-                  styles.key,
-                  { height: h, backgroundColor: pressed ? c.surfaceSunken : c.surface, borderColor: c.border, opacity: disabled ? 0.48 : 1 },
-                ]}
+                style={({ pressed }) => [styles.key, { height: h, backgroundColor: pressed ? c.bgMuted : fn ? c.bg : c.bgSubtle, opacity: disabled ? 0.4 : 1 }]}
               >
                 {k === "back" ? (
-                  <Delete size={28} color={c.fg} />
+                  <Delete size={26} color={c.fg} strokeWidth={1.75} />
                 ) : k === "clear" ? (
-                  <X size={28} color={c.fg} />
+                  <Text variant="bodyStrong" color="fgMuted">
+                    Clear
+                  </Text>
                 ) : (
-                  <Text variant="keypad" maxFontSizeMultiplier={1.6} style={size === "kiosk" ? { fontSize: 36, lineHeight: 40 } : null}>
+                  <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={[{ fontWeight: "500", fontSize: 30, lineHeight: 36 }, size === "kiosk" ? { fontSize: 36, lineHeight: 42 } : null]}>
                     {k}
                   </Text>
                 )}
@@ -71,5 +71,5 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
 const styles = StyleSheet.create({
   grid: { gap: 8 },
   row: { flexDirection: "row", gap: 8 },
-  key: { flex: 1, borderRadius: radii.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  key: { flex: 1, borderRadius: radii.card, alignItems: "center", justifyContent: "center" },
 });

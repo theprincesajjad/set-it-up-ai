@@ -1,4 +1,4 @@
-import { StyleSheet, Switch as RNSwitch, View } from "react-native";
+import { Platform, StyleSheet, Switch as RNSwitch, View } from "react-native";
 import { useTheme } from "../theme";
 import { Text } from "./Text";
 
@@ -16,9 +16,9 @@ export function SwitchRow({ label, description, value, onValueChange, disabled }
   return (
     <View style={styles.row}>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyStrong">{label}</Text>
+        <Text variant="body">{label}</Text>
         {description ? (
-          <Text variant="bodySm" color="fgMuted">
+          <Text variant="meta" color="fgMuted">
             {description}
           </Text>
         ) : null}
@@ -28,14 +28,13 @@ export function SwitchRow({ label, description, value, onValueChange, disabled }
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: c.borderStrong, true: c.brand }}
-        thumbColor={c.surface}
-        ios_backgroundColor={c.borderStrong}
+        // iOS keeps the system switch (green); Android tints it black so it matches the black primary.
+        {...(Platform.OS === "android" ? { trackColor: { false: c.bgMuted, true: c.fg }, thumbColor: c.bg } : {})}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingVertical: 8 },
 });

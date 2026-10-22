@@ -20,8 +20,8 @@ export function DiscountCard({
   memberName?: string | null;
   live?: boolean;
 }) {
-  const { vertical } = useTheme();
-  const v = vertical(shop.vertical);
+  const { c } = useTheme();
+  const v = { ink: c.fg };
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     if (!live) return;
@@ -31,18 +31,18 @@ export function DiscountCard({
   const value = card.percentOff > 0 ? `${card.percentOff}% off` : formatMoney(card.amountOffCents) + " off";
   const clock = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   return (
-    <View style={[styles.card, { backgroundColor: v.tint }]} accessible accessibilityLabel={`${shop.name} ${card.name}, ${value}. ${card.terms ?? ""}`}>
+    <View style={[styles.card, { backgroundColor: c.bg, borderColor: c.line }]} accessible accessibilityLabel={`${shop.name} ${card.name}, ${value}. ${card.terms ?? ""}`}>
       <View style={styles.top}>
         <ShopLogo shop={shop} size={40} />
-        <Text variant="label" rawColor={v.ink} style={{ flex: 1 }}>
+        <Text variant="metaStrong" rawColor={v.ink} style={{ flex: 1 }}>
           {shop.name}
         </Text>
         <Badge tone="success">Valid today</Badge>
       </View>
-      <Text variant="h1" rawColor={v.ink}>
+      <Text variant="displayNumber" rawColor={v.ink}>
         {value}
       </Text>
-      <Text variant="title" rawColor={v.ink}>
+      <Text variant="headline" rawColor={v.ink}>
         {card.name}
       </Text>
       {card.terms ? (
@@ -65,7 +65,7 @@ export function DiscountCard({
 }
 
 const styles = StyleSheet.create({
-  card: { aspectRatio: 1.586, borderRadius: radii.xl, padding: 20, gap: 4, justifyContent: "space-between" },
+  card: { aspectRatio: 1.586, borderRadius: radii.sheet, borderWidth: StyleSheet.hairlineWidth * 2, padding: 20, gap: 4, justifyContent: "space-between" },
   top: { flexDirection: "row", alignItems: "center", gap: 8 },
   bottom: { flexDirection: "row", alignItems: "center", gap: 8 },
 });

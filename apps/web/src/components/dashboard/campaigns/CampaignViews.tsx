@@ -51,8 +51,8 @@ export function CampaignList({ base, neighbourhoods, isAdmin }: { base: string; 
                       <StatusBadge domain="campaign" status={c.status} />
                       {isAdmin || c.priceCents ? <Badge tone={c.paid ? "success" : "warning"}>{c.paid ? "Paid" : c.priceCents ? "Unpaid" : "Free"}</Badge> : null}
                     </div>
-                    <p className="text-body-sm text-fg-muted">{hoodName(c.neighbourhoodId)} · {KIND_LABEL[c.kind]} · {formatDate(c.startsAt)} to {formatDate(c.endsAt)}</p>
-                    <p className="text-body-sm text-fg">{c.merchants.length} shops · visit {c.goalVisits} to enter{c.bonusPoints ? ` · +${c.bonusPoints} pts per shop` : ""}</p>
+                    <p className="text-meta text-fg-muted">{hoodName(c.neighbourhoodId)} · {KIND_LABEL[c.kind]} · {formatDate(c.startsAt)} to {formatDate(c.endsAt)}</p>
+                    <p className="text-meta text-fg">{c.merchants.length} shops · visit {c.goalVisits} to enter{c.bonusPoints ? ` · +${c.bonusPoints} pts per shop` : ""}</p>
                   </Card>
                 </li>
               ))}
@@ -162,12 +162,12 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
 
             <Card padding="lg" className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
-                <TrendingUp aria-hidden className="mt-1 size-7 shrink-0 text-fg-brand" />
+                <TrendingUp aria-hidden className="mt-1 size-7 shrink-0 text-fg" />
                 <div>
-                  <p className="text-overline uppercase text-fg-muted">Visit lift</p>
-                  <p className="text-h2 text-fg">{!started ? `Starts ${formatDate(x.startsAt, true)}` : r ? liftText(r) : "..."}</p>
-                  {!started ? <p className="text-body-sm text-fg-muted">Visit lift against the same days before shows here once the campaign is live.</p> : null}
-                  {r && started ? <p className="text-body-sm text-fg-muted">{formatNumber(r.visits)} visits at participating shops vs {formatNumber(r.baselineVisits)} in the {formatDate(r.baselineWindow.startsAt)}–{formatDate(r.baselineWindow.endsAt)} baseline.</p> : null}
+                  <p className="text-meta text-fg-muted text-fg-muted">Visit lift</p>
+                  <p className="text-title text-fg">{!started ? `Starts ${formatDate(x.startsAt, true)}` : r ? liftText(r) : "..."}</p>
+                  {!started ? <p className="text-meta text-fg-muted">Visit lift against the same days before shows here once the campaign is live.</p> : null}
+                  {r && started ? <p className="text-meta text-fg-muted">{formatNumber(r.visits)} visits at participating shops vs {formatNumber(r.baselineVisits)} in the {formatDate(r.baselineWindow.startsAt)}–{formatDate(r.baselineWindow.endsAt)} baseline.</p> : null}
                 </div>
               </div>
               {r ? (
@@ -195,7 +195,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
 
             <Card padding="lg">
               <CardHeader title={`Participating shops (${x.merchants.length})`} />
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {x.merchants.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-2 py-2">
                     <Link href={`/shops/${m.slug}`} className="text-body text-fg hover:underline">{m.name}</Link>

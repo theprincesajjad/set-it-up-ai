@@ -1,23 +1,30 @@
 "use client";
-import { CheckCircle2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { RewardCard } from "@/components/ui/RewardCard";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
-import { formatPoints } from "@/lib/format";
+import { formatNumber, formatPoints } from "@/lib/format";
 import type { PreviewModel } from "@/lib/dashboard/program";
+import { Segmented } from "./kit";
 
 export type PreviewView = "wallet" | "shop" | "counter";
 
-/** 320 x 640 phone frame, radius 40, 8px fg bezel (merchant-dashboard.md §5). */
+/** 320 x 640 phone: hairline device, white screen, no heavy bezel or shadow. */
 export function PhoneFrame({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <div role="group" aria-label={label} className="mx-auto w-[320px] max-w-full rounded-[40px] border-8 border-fg bg-canvas shadow-lg">
-      <div className="flex h-[624px] flex-col overflow-hidden rounded-[32px]">
-        <div aria-hidden className="mx-auto mt-2 h-5 w-24 shrink-0 rounded-full bg-fg" />
-        <div className="flex-1 overflow-y-auto px-3 pb-4 pt-3">{children}</div>
+    <div role="group" aria-label={label} className="mx-auto w-[320px] max-w-full rounded-[46px] border border-line bg-bg-subtle p-2">
+      <div className="flex h-[620px] flex-col overflow-hidden rounded-[38px] border border-line bg-bg">
+        <div aria-hidden className="flex h-9 shrink-0 items-center justify-between px-6 text-[11px] font-semibold text-fg">
+          <span className="tabular">9:41</span>
+          <span className="h-[18px] w-[72px] rounded-full bg-fg" />
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-3 rounded-[2px] bg-fg" />
+            <span className="h-2 w-4 rounded-[3px] border border-fg" />
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-5 pt-2">{children}</div>
       </div>
     </div>
   );
@@ -27,9 +34,10 @@ interface Shop {
   name: string;
   vertical: string;
   logoUrl?: string | null;
+  brandColor?: string | null;
 }
 
-/** Renders the real customer components with the draft program (wallet, shop page, counter success). */
+/** Renders the real (v2) customer components with the draft program: wallet, shop page, counter success. */
 export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { model: PreviewModel; shop: Shop; view?: PreviewView; onViewChange?: (v: PreviewView) => void }) {
   const [inner, setInner] = useState<PreviewView>("wallet");
   const view = viewProp ?? inner;
@@ -37,14 +45,14 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
   const header = (
     <span className="flex items-center gap-2">
       <ShopLogo shop={shop} size={24} />
-      <span className="truncate text-label text-fg">{shop.name}</span>
+      <span className="truncate text-meta-strong text-fg">{shop.name}</span>
     </span>
   );
   const card =
     model.kind === "stamps" ? (
       <StampCard stamps={model.stamps} goal={model.goal} rewardName={model.rewardName} vertical={shop.vertical} terminology={model.terminology} header={header} />
     ) : (
-      <div className="flex flex-col items-center gap-2 rounded-lg bg-surface p-4 shadow-sm">
+      <div className="flex flex-col items-center gap-2 rounded-card border border-line bg-bg p-4">
         <div className="self-start">{header}</div>
         <PointsRing balance={model.balance} goal={model.goal} terminology={model.terminology} rewardName={model.rewardName} size={120} />
       </div>
@@ -57,7 +65,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-center">
-        <SegmentedControl
+        <Segmented
           label="Preview"
           value={view}
           onChange={setView}
@@ -71,36 +79,39 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
       <PhoneFrame label={`Customer preview: ${view}`}>
         {view === "wallet" ? (
           <div className="flex flex-col gap-3">
-            <p className="text-h3 text-fg">My shops</p>
+            <p className="font-display text-large-title lowercase text-fg">wallet</p>
             <ShopTile variant="wallet" shop={shop} balance={{ value: balance, terminology: model.terminology }} rewardReady={model.kind === "points" ? model.goal > 0 && model.balance >= model.goal : false} subtitle={model.sentence.split(". ")[0]} />
             {card}
             {rewards}
-            <p className="text-caption text-fg-muted">{model.expiry}</p>
+            <p className="text-caption font-normal text-fg-muted">{model.expiry}</p>
           </div>
         ) : null}
         {view === "shop" ? (
           <div className="flex flex-col gap-3">
             <ShopTile variant="list" shop={shop} subtitle="Open · closes 6 pm" />
-            {model.welcome ? <p className="self-start rounded-full bg-accent-subtle px-3 py-1 text-label text-on-accent-subtle">{model.welcome}</p> : null}
-            <div className="rounded-lg bg-surface p-4 shadow-sm">
-              <p className="text-title text-fg">How you earn here</p>
-              <p className="mt-1 text-body-sm text-fg">{model.sentence}</p>
-              <p className="mt-2 text-caption text-fg-muted">{model.expiry}</p>
+            {model.welcome ? <p className="self-start rounded-full bg-accent-soft px-3 py-1 text-meta-strong text-accent-text">{model.welcome}</p> : null}
+            <div className="border-y border-line py-3">
+              <p className="text-headline text-fg">How you earn here</p>
+              <p className="mt-1 text-meta text-fg">{model.sentence}</p>
+              <p className="mt-2 text-caption font-normal text-fg-muted">{model.expiry}</p>
             </div>
             {rewards}
           </div>
         ) : null}
         {view === "counter" ? (
-          <div className="flex h-full flex-col gap-3">
-            <div className="rounded-lg bg-success p-5 text-on-success">
-              <CheckCircle2 aria-hidden className="size-8" />
-              <p className="mt-2 text-h2">{model.kind === "stamps" ? `Added ${model.lastEarn} stamp${model.lastEarn === 1 ? "" : "s"}` : `Awarded ${formatPoints(model.lastEarn, model.terminology)}`}</p>
-              <p className="mt-1 text-body">
+          <div className="flex h-full flex-col gap-4 pt-6">
+            <span aria-hidden className="inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
+              <Check className="size-5" strokeWidth={2.25} />
+            </span>
+            <div>
+              <p className="text-title text-fg">{model.kind === "stamps" ? `Added ${model.lastEarn} stamp${model.lastEarn === 1 ? "" : "s"}` : `Awarded ${formatPoints(model.lastEarn, model.terminology)}`}</p>
+              <p className="mt-3 font-display text-display-number text-accent-text tabular">{formatNumber(balance)}</p>
+              <p className="text-meta text-fg-muted">
                 Sam has {formatPoints(balance, model.terminology)}
                 {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for a ${model.rewardName.toLowerCase()}` : model.rewardName ? ` · ${Math.max(0, model.goal - model.balance)} to ${model.rewardName}` : ""}
               </p>
             </div>
-            <p className="text-caption text-fg-muted">What staff see after an award. Customers get the same balance on their card.</p>
+            <p className="mt-auto text-caption font-normal text-fg-muted">What staff see after an award. Customers get the same balance on their card.</p>
           </div>
         ) : null}
       </PhoneFrame>

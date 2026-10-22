@@ -7,9 +7,10 @@ this repo in parallel.
 
 Local Loyalty is a shared loyalty network for independent neighbourhood
 businesses (Toronto first). Customers carry **one** identity (phone number /
-wallet pass / app) across every shop on the street. **Loyalty is free forever
-for merchants: no transaction fees, unlimited locations, unlimited staff,
-unlimited members.** Money comes later from paid add-ons (Plus $39, Pro $79),
+wallet pass / app) across every shop on the street. **Loyalty and reporting on it
+are free forever for merchants: no transaction fees, unlimited locations, unlimited
+staff, unlimited members.** Everything else (promos, VIP, marketing, CSV,
+integrations, ...) is paid (Pricing v2, `docs/business/pricing.md`). Money comes later from paid add-ons (Plus $39, Pro $79),
 a 0.75% platform fee on in-app payments, sponsored placements/ads, and paid
 BIA neighbourhood campaigns. Paid features are **hidden** until the network is
 big enough; an admin flips their rollout stage (`hidden → beta → ga`).
@@ -36,7 +37,9 @@ docs/           business, engineering, design, finance, sales
    Platform roles: `requirePlatformRole(req, "rep" | "admin")`.
 3. **Paid / unreleased features are gated server-side** with
    `requireFeature(db, merchant, "feature.key")` from `src/services/features.ts`.
-   Feature keys live in `packages/shared/src/plans.ts`. Never move a free feature to paid.
+   Feature keys live in `packages/shared/src/plans.ts`. A `FREE_FOREVER` feature is never
+   gated. Customer-facing reads hide paid content when the merchant lacks the feature
+   (batched: `enabledFeaturesFor` / `customerFeaturesFor`); existing data is kept.
 4. **CASL**: promotional messages only go to members with `marketing_consent_at`
    set and `muted = false`. Transactional messages (order ready, quote to approve,
    OTP) are allowed without marketing consent. Every promo message includes the

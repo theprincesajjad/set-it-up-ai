@@ -9,7 +9,7 @@ export interface TabItem {
   meta?: ReactNode;
 }
 
-/** Underline page tabs with roving focus + arrow keys (system.md §3 Tabs). */
+/** Underline page tabs with roving focus + arrow keys (system.md §3 Tabs). v2: hairline base, 2px black indicator. */
 export function Tabs({ items, value, onChange, label, className }: { items: TabItem[]; value: string; onChange: (id: string) => void; label: string; className?: string }) {
   const base = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -25,7 +25,7 @@ export function Tabs({ items, value, onChange, label, className }: { items: TabI
     onChange(items[next]!.id);
   };
   return (
-    <div role="tablist" aria-label={label} className={cn("flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]", className)}>
+    <div role="tablist" aria-label={label} className={cn("no-scrollbar flex gap-5 overflow-x-auto border-b border-line", className)}>
       {items.map((t, i) => {
         const active = t.id === value;
         return (
@@ -43,8 +43,8 @@ export function Tabs({ items, value, onChange, label, className }: { items: TabI
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => onKey(e, i)}
             className={cn(
-              "-mb-px inline-flex h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-label transition-colors focus-visible:focus-ring",
-              active ? "border-brand text-fg" : "border-transparent text-fg-muted hover:text-fg",
+              "-mb-px inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-body-strong transition-colors duration-150 ease-out focus-visible:focus-ring",
+              active ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg",
             )}
           >
             {t.label}

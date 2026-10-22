@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Megaphone, Plus } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
@@ -20,7 +21,16 @@ const TABS: { id: merchantApi.PromoStatus; label: string }[] = [
   { id: "ended", label: "Ended" },
 ];
 
-export default function PromosPage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function PromosPageGated() {
+  return (
+    <FeatureGate keys={["promos.basic", "promos.double_points"]} title="Promos">
+      <PromosPage />
+    </FeatureGate>
+  );
+}
+
+function PromosPage() {
   const { api, base, detail } = useMerchant();
   const [tab, setTab] = useState<merchantApi.PromoStatus>("live");
   const all = useApi(() => api.promos(), [api]);
@@ -32,15 +42,15 @@ export default function PromosPage() {
       <Tabs label="Promo status" value={tab} onChange={(v) => setTab(v as merchantApi.PromoStatus)} items={TABS.map((t) => ({ id: t.id, label: t.label, meta: all.data ? <span className="text-caption tabular-nums text-fg-muted">{count(t.id)}</span> : null }))} />
       {all.loading && !all.data ? (
         <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-40 rounded-lg" />
-          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-card" />
+          <Skeleton className="h-40 rounded-card" />
         </div>
       ) : items.length ? (
         <ul className="grid gap-4 md:grid-cols-2">
           {items.map((p) => (
             <li key={p.id} className="flex flex-col gap-2">
               <PromoCard promo={p} shop={detail.merchant} variant="preview" href={`${base}/promos/${p.id}`} />
-              <p className="flex flex-wrap items-center gap-2 px-1 text-body-sm text-fg-muted">
+              <p className="flex flex-wrap items-center gap-2 px-1 text-meta text-fg-muted">
                 <StatusBadge domain="promo" status={p.status} />
                 {formatDate(p.startsAt)}
                 {p.endsAt ? ` to ${formatDate(p.endsAt)}` : ""}

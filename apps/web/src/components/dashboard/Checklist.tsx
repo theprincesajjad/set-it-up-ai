@@ -28,23 +28,23 @@ export function ChecklistCard({ checklist, base }: { checklist: merchantApi.Onbo
     <Card padding="lg" aria-labelledby="checklist-title">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 id="checklist-title" className="text-h3 text-fg">
+          <h2 id="checklist-title" className="text-body-strong text-fg">
             Get set up
           </h2>
-          <p className="text-body-sm text-fg-muted">A few minutes now, and your first customers can join today.</p>
+          <p className="text-meta text-fg-muted">A few minutes now, and your first customers can join today.</p>
         </div>
-        <Link href={`${base}/setup`} className="text-label text-fg-link underline-offset-2 hover:underline">
+        <Link href={`${base}/setup`} className="text-label text-fg underline-offset-2 hover:underline">
           Open setup guide
         </Link>
       </div>
       <ProgressBar value={done} max={checklist.steps.length} label="Setup progress" valueText={`${done} of ${checklist.steps.length}`} />
-      <ul className="mt-4 flex flex-col divide-y divide-border">
+      <ul className="mt-4 flex flex-col divide-y divide-line">
         {orderSteps(checklist.steps).map((s) => {
           const c = STEP_COPY[s.key];
           return (
             <li key={s.key}>
-              <Link href={`${base}${s.key === "first_members" || s.done ? c.path : `/setup?step=${s.key}`}`} className="flex min-h-14 items-center gap-3 py-2 hover:bg-canvas-subtle focus-visible:focus-ring">
-                <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full", s.done ? "bg-success-subtle text-on-success-subtle" : "border-2 border-border-strong")}>
+              <Link href={`${base}${s.key === "first_members" || s.done ? c.path : `/setup?step=${s.key}`}`} className="flex min-h-14 items-center gap-3 py-2 hover:bg-bg-subtle focus-visible:focus-ring">
+                <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full", s.done ? "bg-success-subtle text-on-success-subtle" : "border-2 border-line-strong")}>
                   {s.done ? <Leaf className="size-4" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -52,15 +52,15 @@ export function ChecklistCard({ checklist, base }: { checklist: merchantApi.Onbo
                     <span className="sr-only">{s.done ? "Done: " : "To do: "}</span>
                     {c.label}
                   </span>
-                  {s.detail ? <span className="block text-body-sm text-fg-muted">{s.detail}</span> : null}
+                  {s.detail ? <span className="block text-meta text-fg-muted">{s.detail}</span> : null}
                 </span>
                 {!s.done ? (
-                  <span className="flex shrink-0 items-center gap-1 text-label text-fg-link">
+                  <span className="flex shrink-0 items-center gap-1 text-label text-fg">
                     {c.action}
                     <ChevronRight aria-hidden className="size-4" />
                   </span>
                 ) : (
-                  <Check aria-hidden className="size-4 text-success" />
+                  <Check aria-hidden className="size-4 text-positive" />
                 )}
               </Link>
             </li>
@@ -79,7 +79,7 @@ export function ActivationCard({ active, target, createdAt }: { active: number; 
     <Card padding="lg">
       <h2 className="text-title text-fg">Your first 25 members</h2>
       <ProgressBar className="mt-3" value={active} max={target} label="Active members" valueText={`${active} of ${target} active members`} />
-      <p className="mt-2 text-body-sm text-fg-muted">
+      <p className="mt-2 text-meta text-fg-muted">
         {days > 0 ? `${days} day${days === 1 ? "" : "s"} left in your first 30. ` : ""}Ask every customer for their number this week. A member counts once they&apos;ve visited.
       </p>
     </Card>

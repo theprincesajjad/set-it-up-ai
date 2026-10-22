@@ -1,4 +1,4 @@
-import { radii, shadows } from "@ll/design-tokens";
+import { layout, radii, shadows } from "@ll/design-tokens";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,7 @@ export interface SheetProps {
   scroll?: boolean;
 }
 
-/** Bottom sheet: top radius xl, grabber, scrim tap / Android back to close (system.md § Sheet). */
+/** Bottom sheet: radius 24, grabber, title + round close, scrim tap / Android back closes. */
 export function Sheet({ visible, onClose, title, children, footer, scroll = true }: SheetProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -27,14 +27,14 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
       <View style={styles.root}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close" style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.surfaceRaised, paddingBottom: insets.bottom + 16 }, shadows.lg.native]}>
-            <View style={[styles.grabber, { backgroundColor: c.borderStrong }]} />
+          <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.bg, paddingBottom: insets.bottom + 16 }, shadows.float.native]}>
+            <View style={[styles.grabber, { backgroundColor: c.bgMuted }]} />
             {title ? (
               <View style={styles.titleRow}>
-                <Text variant="h3" accessibilityRole="header" style={{ flex: 1 }}>
+                <Text variant="mapLabel" accessibilityRole="header" style={{ flex: 1, fontSize: 20, lineHeight: 26, textTransform: "none" }}>
                   {title}
                 </Text>
-                <IconButton icon={X} label="Close" onPress={onClose} />
+                <IconButton icon={X} label="Close" variant="secondary" size={32} onPress={onClose} />
               </View>
             ) : null}
             {scroll ? (
@@ -64,7 +64,7 @@ export interface ConfirmDialogProps {
   loading?: boolean;
 }
 
-/** Confirm dialog: title states the action, body the consequence, destructive on the right. */
+/** Confirm: title states the action, body the consequence; stacked like an iOS action sheet. */
 export function ConfirmDialog({ visible, title, body, confirmLabel, cancelLabel = "Cancel", onConfirm, onCancel, variant = "danger", loading }: ConfirmDialogProps) {
   return (
     <Sheet
@@ -73,14 +73,14 @@ export function ConfirmDialog({ visible, title, body, confirmLabel, cancelLabel 
       title={title}
       scroll={false}
       footer={
-        <View style={styles.actions}>
-          <Button variant="secondary" onPress={onCancel} style={{ flex: 1 }}>
-            {cancelLabel}
-          </Button>
-          <Button variant={variant} onPress={onConfirm} loading={loading} style={{ flex: 1 }}>
+        <>
+          <Button variant={variant === "danger" ? "primary" : variant} size="lg" fullWidth onPress={onConfirm} loading={loading}>
             {confirmLabel}
           </Button>
-        </View>
+          <Button variant="ghost" size="lg" fullWidth onPress={onCancel}>
+            {cancelLabel}
+          </Button>
+        </>
       }
     >
       <Text variant="body" color="fgMuted">
@@ -92,10 +92,9 @@ export function ConfirmDialog({ visible, title, body, confirmLabel, cancelLabel 
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: "flex-end" },
-  sheet: { borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, paddingTop: 8 },
-  grabber: { alignSelf: "center", width: 36, height: 4, borderRadius: 2, marginBottom: 8 },
-  titleRow: { flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 4 },
-  body: { paddingHorizontal: 16, paddingBottom: 8, gap: 12 },
-  footer: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
-  actions: { flexDirection: "row", gap: 8 },
+  sheet: { borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingTop: 8 },
+  grabber: { alignSelf: "center", width: layout.grabberWidth, height: layout.grabberHeight, borderRadius: 3, marginBottom: 10 },
+  titleRow: { flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 16, paddingBottom: 8, gap: 12 },
+  body: { paddingHorizontal: 20, paddingBottom: 8, gap: 14 },
+  footer: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
 });

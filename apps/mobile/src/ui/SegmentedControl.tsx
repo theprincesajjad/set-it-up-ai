@@ -14,7 +14,7 @@ export interface SegmentedControlProps<T extends string> {
 export function SegmentedControl<T extends string>({ options, value, onChange, accessibilityLabel }: SegmentedControlProps<T>) {
   const { c } = useTheme();
   return (
-    <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={[styles.track, { backgroundColor: c.surfaceSunken }]}>
+    <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={[styles.track, { backgroundColor: c.bgMuted }]}>
       {options.map((o) => {
         const selected = o.value === value;
         return (
@@ -24,9 +24,9 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
             hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.seg, selected ? [{ backgroundColor: c.surface }, shadows.sm.native] : null]}
+            style={[styles.seg, selected ? [{ backgroundColor: c.bg }, shadows.float.native, { shadowOpacity: 0.06, elevation: 1 }] : null]}
           >
-            <Text variant="label" color={selected ? "fg" : "fgMuted"}>
+            <Text variant="metaStrong" color={selected ? "fg" : "fgMuted"}>
               {o.label}
             </Text>
           </Pressable>
@@ -37,6 +37,6 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 3 },
-  seg: { flex: 1, minHeight: 40, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  track: { flexDirection: "row", borderRadius: 10, padding: 2, gap: 2 },
+  seg: { flex: 1, minHeight: 34, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
 });

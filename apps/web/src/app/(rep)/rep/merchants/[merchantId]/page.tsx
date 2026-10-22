@@ -56,11 +56,11 @@ export default function RepMerchantPage() {
                 <CardHeader title="Program" />
                 <p className="text-body text-fg">{d.program ? programSentence(draftFromProgram(d.program)) : "Not set up"}</p>
                 <CardHeader className="mt-5" title="Staff" />
-                <ul className="divide-y divide-border">{(team.data?.items ?? []).map((s) => <li key={s.userId}><ListRow title={s.name ?? s.email ?? "Invited"} subtitle={s.role} trailing={s.hasPin ? <Badge tone="success">PIN set</Badge> : <Badge>No PIN</Badge>} /></li>)}</ul>
+                <ul className="divide-y divide-line">{(team.data?.items ?? []).map((s) => <li key={s.userId}><ListRow title={s.name ?? s.email ?? "Invited"} subtitle={s.role} trailing={s.hasPin ? <Badge tone="success">PIN set</Badge> : <Badge>No PIN</Badge>} /></li>)}</ul>
               </Card>
               <Card padding="lg">
                 <CardHeader title="Last 10 transactions" />
-                {activity.data?.items.length ? <ul className="divide-y divide-border">{activity.data.items.map((a) => <li key={a.id}><ListRow title={a.customerName ?? "Member"} subtitle={`${a.type.replace(/_/g, " ")} · ${relativeTime(a.createdAt)}`} trailing={<span className="tabular-nums">{a.points > 0 ? "+" : ""}{a.points}</span>} /></li>)}</ul> : <p className="text-body-sm text-fg-muted">No activity yet.</p>}
+                {activity.data?.items.length ? <ul className="divide-y divide-line">{activity.data.items.map((a) => <li key={a.id}><ListRow title={a.customerName ?? "Member"} subtitle={`${a.type.replace(/_/g, " ")} · ${relativeTime(a.createdAt)}`} trailing={<span className="tabular-nums">{a.points > 0 ? "+" : ""}{a.points}</span>} /></li>)}</ul> : <p className="text-meta text-fg-muted">No activity yet.</p>}
               </Card>
             </div>
           </>

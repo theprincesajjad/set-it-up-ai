@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree, Fraunces } from "next/font/google";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { BRAND } from "@ll/shared";
 import { ToastProvider } from "@/components/ui/Toast";
 import { env } from "@/lib/env";
 import "./globals.css";
 
-const figtree = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-figtree", display: "swap" });
-const fraunces = Fraunces({ subsets: ["latin"], axes: ["SOFT", "opsz"], variable: "--font-fraunces", display: "swap" });
+/** UI + body (docs/design/foundations.md "Type"). Variable names are what @ll/design-tokens/theme.css reads. */
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+/** Display numbers, headings and lowercase map / category labels. */
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth"], variable: "--font-bricolage", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
@@ -21,17 +23,18 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF6EF" },
-    { media: "(prefers-color-scheme: dark)", color: "#16130F" },
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B0B0C" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-CA" className={`${figtree.variable} ${fraunces.variable}`}>
-      <body className="bg-canvas font-sans text-body text-fg antialiased">
-        <a href="#main" className="sr-only z-toast rounded-md bg-surface px-4 py-2 text-label text-fg focus:not-sr-only focus:fixed focus:start-4 focus:top-4">
+    <html lang="en-CA" className={`${inter.variable} ${bricolage.variable}`}>
+      <body className="bg-bg font-sans text-body text-fg antialiased">
+        <a href="#main" className="sr-only z-toast rounded-full bg-fg px-4 py-2 text-meta-strong text-bg focus:not-sr-only focus:fixed focus:start-4 focus:top-4">
           Skip to content
         </a>
         <ToastProvider>{children}</ToastProvider>

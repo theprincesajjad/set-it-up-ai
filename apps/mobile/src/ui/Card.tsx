@@ -1,4 +1,4 @@
-import { radii, shadows } from "@ll/design-tokens";
+import { radii } from "@ll/design-tokens";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useTheme } from "../theme";
@@ -10,24 +10,25 @@ export interface CardProps {
   action?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
-  /** Inside another surface: border, no shadow. */
+  /** v1 prop; every card is now a hairline card. */
   inset?: boolean;
+  /** sunken = grey grouped block (no hairline). */
   tone?: "surface" | "sunken";
-  /** 4 px accent left edge (reward ready). */
+  /** v1 prop (reward-ready edge); ignored, status is a dot + word now. */
   accentEdge?: boolean;
   padded?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-/** system.md § Card: surface, radius lg, padding 16, shadow sm on canvas. */
-export function Card({ children, title, action, onPress, accessibilityLabel, inset, tone = "surface", accentEdge, padded = true, style }: CardProps) {
-  const { c, isDark } = useTheme();
+/** Cards on a white page get a hairline, not a shadow (foundations § Shape). Radius 16. */
+export function Card({ children, title, action, onPress, accessibilityLabel, tone = "surface", padded = true, style }: CardProps) {
+  const { c } = useTheme();
   const body = (
     <>
       {title || action ? (
         <View style={styles.header}>
           {title ? (
-            <Text variant="title" style={{ flex: 1 }} accessibilityRole="header">
+            <Text variant="headline" style={{ flex: 1 }} accessibilityRole="header">
               {title}
             </Text>
           ) : (
@@ -41,19 +42,13 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ins
   );
   const base: StyleProp<ViewStyle> = [
     styles.card,
-    {
-      backgroundColor: tone === "sunken" ? c.surfaceSunken : isDark ? c.surfaceRaised : c.surface,
-      padding: padded ? 16 : 0,
-      borderColor: c.border,
-      borderWidth: inset || isDark ? 1 : 0,
-    },
-    !inset && !isDark && tone === "surface" ? shadows.sm.native : null,
-    accentEdge ? { borderLeftWidth: 4, borderLeftColor: c.accent } : null,
+    tone === "sunken" ? { backgroundColor: c.bgSubtle } : { backgroundColor: c.bg, borderColor: c.line, borderWidth: StyleSheet.hairlineWidth * 2 },
+    { padding: padded ? 16 : 0 },
     style,
   ];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [base, { opacity: pressed ? 0.88 : 1 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [base, pressed ? { backgroundColor: c.bgSubtle } : null]}>
         {body}
       </Pressable>
     );
@@ -62,6 +57,6 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ins
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radii.lg, overflow: "hidden" },
+  card: { borderRadius: radii.card, overflow: "hidden" },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 },
 });

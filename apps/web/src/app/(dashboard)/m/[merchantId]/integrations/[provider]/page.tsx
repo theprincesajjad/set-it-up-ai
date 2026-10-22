@@ -106,7 +106,7 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
               <div key={x.id}>
                 <Select label={x.name} placeholder="Earns normally" value={catMap[x.id] ?? ""} onChange={(e) => setCatMap({ ...catMap, [x.id]: e.target.value })} options={(cats.data?.items ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.earnEligible ? "" : " (doesn't earn)"}` }))} />
                 {catMap[x.id] && noEarn(catMap[x.id]!) ? (
-                  <p className="mt-1 flex items-center gap-1 text-body-sm text-fg-muted">
+                  <p className="mt-1 flex items-center gap-1 text-meta text-fg-muted">
                     <Lock aria-hidden className="size-3.5" /> Sales in {x.name} won&apos;t earn points.
                   </p>
                 ) : null}
@@ -119,7 +119,7 @@ function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onCha
         </Card>
       ) : (
         <Card tone="flat">
-          <p className="text-body-sm text-fg-muted">Locations and categories appear here after the first sync.</p>
+          <p className="text-meta text-fg-muted">Locations and categories appear here after the first sync.</p>
         </Card>
       )}
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} title={`Disconnect ${d.name}?`} body="Sales stop earning points automatically. Points already awarded stay." confirmLabel="Disconnect" danger onConfirm={async () => {

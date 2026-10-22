@@ -20,7 +20,7 @@ export default async function OrderPage({ params }: Props) {
   const me = await getMe();
   if (!me) return <PhoneSignIn title="Sign in to see your order" devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />;
   const order = await (await getServerApi()).me.order(id).catch((e: unknown) => (isApiError(e) && e.status === 404 ? ("gone" as const) : ("error" as const)));
-  if (order === "gone") return <EmptyState icon={PackageSearch} title="We couldn't find that order" description="It may belong to another account. Check the link in your text." action={<Button variant="tonal" href="/me">My card</Button>} />;
+  if (order === "gone") return <EmptyState icon={PackageSearch} title="We couldn't find that order" description="It may belong to another account. Check the link in your text." action={<Button variant="secondary" href="/me">My card</Button>} />;
   if (order === "error") return <ErrorState title="Can't load your order right now" description={copy.err.network} action={<Button variant="secondary" href={`/o/${encodeURIComponent(id)}`}>Try again</Button>} />;
   return <OrderStatus initial={order} />;
 }

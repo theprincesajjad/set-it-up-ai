@@ -122,15 +122,15 @@ export function QrKitPrint({ kit, street, initialLocationId, onPrinted }: { kit:
             Print or save as PDF
           </Button>
         </div>
-        <p className="text-body-sm text-fg-muted">The QR is always black on white: it scans best under shop lights. A6 prints on 4x6&quot; card with &quot;fit to page&quot;.</p>
+        <p className="text-meta text-fg-muted">The QR is always black on white: it scans best under shop lights. A6 prints on 4x6&quot; card with &quot;fit to page&quot;.</p>
         {loc ? (
-          <p className="text-body-sm text-fg">
+          <p className="text-meta text-fg">
             Join link: <span className="font-mono">{loc.joinUrl.replace(/^https?:\/\//, "")}</span>
           </p>
         ) : null}
       </div>
       {loc ? (
-        <div className="qr-kit-sheet mx-auto shadow-lg print:shadow-none">
+        <div className="qr-kit-sheet mx-auto shadow-float print:shadow-none">
           {size === "script" ? <ScriptCard kit={kit} street={street} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} />}
         </div>
       ) : (

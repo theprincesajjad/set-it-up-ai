@@ -1,9 +1,7 @@
-// Deep imports: only the weights we use get bundled (the package index pulls in every weight).
-import { Figtree_400Regular } from "@expo-google-fonts/figtree/400Regular";
-import { Figtree_500Medium } from "@expo-google-fonts/figtree/500Medium";
-import { Figtree_600SemiBold } from "@expo-google-fonts/figtree/600SemiBold";
-import { Figtree_700Bold } from "@expo-google-fonts/figtree/700Bold";
-import { Fraunces_600SemiBold } from "@expo-google-fonts/fraunces/600SemiBold";
+// Deep imports: only the two display weights get bundled (the package index pulls in every weight).
+// Body text is the system font (SF Pro / Roboto); Bricolage is for titles, numbers and map labels.
+import { BricolageGrotesque_700Bold } from "@expo-google-fonts/bricolage-grotesque/700Bold";
+import { BricolageGrotesque_800ExtraBold } from "@expo-google-fonts/bricolage-grotesque/800ExtraBold";
 import { useFonts } from "expo-font";
 import { colors } from "@ll/design-tokens";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -29,7 +27,7 @@ installWebStyles();
 
 export default function RootLayout() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  const [fontsLoaded, fontError] = useFonts({ Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold, Fraunces_600SemiBold });
+  const [fontsLoaded, fontError] = useFonts({ BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
   // Never block first paint on fonts for long (system font fallback).
   const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
@@ -44,20 +42,20 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors[scheme].canvas }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors[scheme].bg }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: 7 * 24 * 60 * 60 * 1000 }}>
           <ThemeProvider>
             <SessionProvider>
               <ToastProvider>
                 <StatusBar style="auto" />
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors[scheme].canvas } }}>
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors[scheme].bg } }}>
                   <Stack.Screen name="index" />
                   <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
                   <Stack.Screen name="counter" options={{ gestureEnabled: false }} />
                   <Stack.Screen name="redeem" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
-                  <Stack.Screen name="card" options={{ presentation: "formSheet", sheetAllowedDetents: [0.92], sheetGrabberVisible: true, sheetCornerRadius: 24 }} />
+                  <Stack.Screen name="card" options={{ presentation: "formSheet", sheetAllowedDetents: [0.94], sheetGrabberVisible: true, sheetCornerRadius: 24, contentStyle: { backgroundColor: colors[scheme].bg } }} />
                   <Stack.Screen name="qr" options={{ presentation: "fullScreenModal" }} />
                   <Stack.Screen name="discount" options={{ presentation: "fullScreenModal" }} />
                 </Stack>

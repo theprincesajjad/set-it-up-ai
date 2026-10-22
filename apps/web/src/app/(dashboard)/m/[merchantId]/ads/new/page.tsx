@@ -73,7 +73,7 @@ function NewAd() {
             <TextField type="datetime-local" label="Ends" value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
           {effModel === "cpm" ? <TextField label="Budget" inputMode="decimal" prefix="$" hint={`Minimum ${formatMoney(adsApi.AD_RULES.minBudgetCents)}.`} value={budget} onChange={(e) => setBudget(e.target.value)} /> : null}
-          <p className="rounded-md bg-surface-sunken px-4 py-3 text-body text-fg">Total: <strong className="tabular-nums">{formatMoney(cost)}</strong>{effModel === "daily" ? ` (${days} days × ${formatMoney(card.dailyCents)})` : ""}. You pay after you submit; it runs once approved.</p>
+          <p className="rounded-input bg-bg-subtle px-4 py-3 text-body text-fg">Total: <strong className="tabular-nums">{formatMoney(cost)}</strong>{effModel === "daily" ? ` (${days} days × ${formatMoney(card.dailyCents)})` : ""}. You pay after you submit; it runs once approved.</p>
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           <Button className="self-start" loading={act.busy} onClick={async () => {
             const r = await act.run(() => api.createAd({ placement, pricingModel: effModel, promoId: promoId || undefined, headline: headline.trim() || undefined, body: body.trim() || undefined, neighbourhoodIds: nbhd, radiusMetres: radius ? Number(radius) : undefined, startsAt: fromLocalInput(start), endsAt: fromLocalInput(end), budgetCents: effModel === "cpm" ? cost : undefined }));

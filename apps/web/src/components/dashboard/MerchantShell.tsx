@@ -1,20 +1,22 @@
 "use client";
 import {
-  BarChart3, Blocks, CalendarClock, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
-  Wrench, Flag, type LucideIcon, Calculator,
+  BarChart3, Blocks, CalendarClock, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
+  Wrench, Flag, type LucideIcon, Calculator, Check,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
-import { AppShell, type NavItem } from "@/components/ui/AppShell";
-import { Badge } from "@/components/ui/Badge";
-import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Wordmark } from "@/components/site/Brand";
 import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
+import { useApi } from "@/lib/dashboard/useApi";
 import { AccountMenu } from "./AccountMenu";
+import type { CommandSearch } from "./CommandMenu";
+import { Meter } from "./kit";
 import { useMerchant } from "./MerchantContext";
 import { NoAccess } from "./PageStates";
+import { Shell, type ShellNavItem } from "./Shell";
+import { ShopMark } from "./ShopMark";
 
 const ICONS: Record<string, LucideIcon> = {
   home: Home, counter: Calculator, customers: Users, program: Gift, promos: Megaphone, "discount-cards": IdCard, messages: Mail, reports: BarChart3,
@@ -22,75 +24,141 @@ const ICONS: Record<string, LucideIcon> = {
   slots: CalendarClock, ads: Flag, campaigns: ClipboardList,
 };
 
-export function MerchantShell({ me, children }: { me: authApi.MeResponse; children: ReactNode }) {
-  const { base, detail, role, features, viewingAs, enabled } = useMerchant();
+/** Merchant switcher (avatar + name) with a small popover listing the owner's other shops. */
+function Switcher({ me }: { me: authApi.MeResponse }) {
+  const { detail } = useMerchant();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const m = detail.merchant;
+  const many = me.merchants.length > 1;
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const inner = (
+    <>
+      <ShopMark name={m.name} brandColor={m.brandColor} logoUrl={m.logoUrl} size={28} />
+      <span className="min-w-0 flex-1 text-start">
+        <span className="block truncate text-[14px] font-semibold leading-5 text-fg">{m.name}</span>
+      </span>
+      {many ? <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-fg-muted" /> : null}
+    </>
+  );
+  if (!many) return <div className="flex h-10 items-center gap-2.5 px-2">{inner}</div>;
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Switch shop (current: ${m.name})`} onClick={() => setOpen((v) => !v)} className="flex h-10 w-full items-center gap-2.5 rounded-[8px] px-2 hover:bg-bg-muted/60 focus-visible:focus-ring">
+        {inner}
+      </button>
+      {open ? (
+        <div role="menu" className="absolute inset-x-0 top-11 z-popover rounded-input border border-line bg-bg p-1 shadow-float">
+          {me.merchants.map((x) => (
+            <button
+              key={x.merchantId}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                router.push(`/m/${x.merchantId}`);
+              }}
+              className="flex h-9 w-full items-center gap-2 rounded-[8px] px-2 text-start text-meta text-fg hover:bg-bg-subtle"
+            >
+              <ShopMark name={x.name} size={20} />
+              <span className="min-w-0 flex-1 truncate">{x.name}</span>
+              {x.merchantId === m.id ? <Check aria-hidden className="size-3.5" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Complete your setup  67%" with a thin bar, until the checklist is done (Square). */
+function SetupProgress() {
+  const { api, base, role } = useMerchant();
+  const pathname = usePathname();
+  const ob = useApi(role !== "staff" ? () => api.onboarding() : null, [api, role, pathname]);
+  const pct = ob.data?.percentComplete;
+  if (pct == null || pct >= 100) return null;
+  return (
+    <Link href={`${base}/setup`} className="mt-2 block rounded-[8px] px-2 py-1.5 hover:bg-bg-muted/60 focus-visible:focus-ring">
+      <span className="flex items-baseline justify-between text-meta">
+        <span className="text-fg">Complete your setup</span>
+        <span className="tabular text-fg-muted">{Math.round(pct)}%</span>
+      </span>
+      <Meter className="mt-1.5" value={pct} max={100} label="Setup progress" />
+    </Link>
+  );
+}
+
+export function MerchantShell({ me, children }: { me: authApi.MeResponse; children: ReactNode }) {
+  const { base, detail, role, features, viewingAs, api } = useMerchant();
   const pathname = usePathname() ?? "";
   const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)));
-  const nav: NavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, bottom: e.bottom, exact: e.exact }));
+  const nav: ShellNavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, group: e.group, exact: e.exact }));
   const section = pathname.slice(base.length).split("/")[1] ?? "";
   const sectionKey = section === "" ? "home" : section === "setup" ? "home" : section;
   const allowed = canOpen(role, sectionKey);
-  void enabled;
 
-  const switcher =
-    me.merchants.length > 1 ? (
-      <label className="mt-3 block">
-        <span className="sr-only">Switch shop</span>
-        <select
-          value={detail.merchant.id}
-          onChange={(e) => router.push(`/m/${e.target.value}`)}
-          className="min-h-11 w-full rounded-sm border border-border-strong bg-surface px-2 text-label text-fg"
-        >
-          {me.merchants.map((m) => (
-            <option key={m.merchantId} value={m.merchantId}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
-    ) : (
-      <p className="mt-3 truncate text-label text-fg">{detail.merchant.name}</p>
-    );
+  const search = useMemo<CommandSearch | undefined>(
+    () =>
+      role === "staff"
+        ? undefined
+        : {
+            label: "Customers",
+            run: async (q) => (await api.customers({ q, limit: 6 })).items.map((c) => ({ id: c.memberId, label: c.name ?? "No name", meta: c.phone ? c.phone.replace(/\*/g, "•") : undefined, href: `${base}/customers?member=${c.memberId}` })),
+          },
+    [api, base, role],
+  );
+
+  const links = me.platformRole === "admin" ? [{ href: "/admin", label: "Admin" }] : me.platformRole === "rep" ? [{ href: "/rep", label: "Rep console" }] : [];
 
   return (
-    <AppShell
+    <Shell
       nav={nav}
-      env={viewingAs ?? undefined}
+      search={search}
+      searchPlaceholder={role === "staff" ? "Jump to" : "Search customers or pages"}
       header={
         <div>
-          <Wordmark size={28} href={null} />
-          {switcher}
-          <Button href={`${base}/counter`} variant="tonal" size="sm" fullWidth className="mt-3" iconStart={Calculator}>
-            Open counter
-          </Button>
+          <Switcher me={me} />
+          <SetupProgress />
         </div>
       }
-      footer={<AccountMenu name={me.user.name} email={me.user.email} links={me.platformRole === "admin" ? [{ href: "/admin", label: "Admin" }] : me.platformRole === "rep" ? [{ href: "/rep", label: "Rep console" }] : []} />}
-      mobileTitle={
-        <span className="flex items-center gap-2">
-          {detail.merchant.name}
-          {viewingAs ? <Badge tone="danger">{viewingAs === "admin" ? "Admin" : "Rep"}</Badge> : null}
-        </span>
-      }
-      mobileActions={
-        me.merchants.length > 1 ? (
-          <select aria-label="Switch shop" value={detail.merchant.id} onChange={(e) => router.push(`/m/${e.target.value}`)} className="max-w-36 rounded-sm border border-border-strong bg-surface px-2 py-1 text-caption">
-            {me.merchants.map((m) => (
-              <option key={m.merchantId} value={m.merchantId}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        ) : undefined
+      footer={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
+      mobileTitle={detail.merchant.name}
+      notice={
+        viewingAs ? (
+          <div role="status" className="mb-6 flex items-center justify-between gap-3 rounded-input border border-line bg-bg-subtle px-4 py-2 text-meta print:hidden">
+            <span className="flex min-w-0 items-center gap-2">
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-negative" />
+              <span className="truncate">
+                Viewing as {detail.merchant.name} ({viewingAs === "admin" ? "admin" : "rep"}). Changes are logged.
+              </span>
+            </span>
+            <Link href={viewingAs === "admin" ? `/admin/merchants/${detail.merchant.id}` : `/rep/merchants/${detail.merchant.id}`} className="shrink-0 font-medium text-fg hover:underline">
+              Exit
+            </Link>
+          </div>
+        ) : null
       }
     >
-      {viewingAs ? (
-        <Banner tone="danger" className="sticky top-1 z-banner mb-4 print:hidden" action={<Button variant="ghost" size="sm" href={viewingAs === "admin" ? `/admin/merchants/${detail.merchant.id}` : `/rep/merchants/${detail.merchant.id}`}>Exit</Button>}>
-          Viewing as {detail.merchant.name}. Changes are logged.
-        </Banner>
-      ) : null}
-      {allowed ? children : <NoAccess title="This page is for owners and managers" body="Staff can use Today and the counter. Ask the owner if you need more." action={<Button href={`${base}/counter`}>Open counter</Button>} />}
-    </AppShell>
+      {allowed ? (
+        children
+      ) : (
+        <NoAccess title="This page is for owners and managers" body="Staff can use Today and the counter. Ask the owner if you need more." action={<Button href={`${base}/counter`}>Open counter</Button>} />
+      )}
+    </Shell>
   );
 }
+

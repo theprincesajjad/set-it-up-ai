@@ -55,18 +55,18 @@ export default function LeadsPage() {
       {leads.error ? <Banner tone="danger">{leads.error}</Banner> : null}
       {view === "board" ? (
         leads.loading && !leads.data ? (
-          <Skeleton className="h-60 rounded-lg" />
+          <Skeleton className="h-60 rounded-card" />
         ) : (
           <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
             {repApi.LEAD_STAGES.map((s) => {
               const ls = items.filter((l) => l.stage === s);
               return (
-                <section key={s} aria-label={STAGE_LABEL[s]} className="flex w-64 shrink-0 snap-start flex-col gap-2 rounded-lg bg-canvas-subtle p-3">
+                <section key={s} aria-label={STAGE_LABEL[s]} className="flex w-64 shrink-0 snap-start flex-col gap-2 rounded-card bg-bg-subtle p-3">
                   <h2 className="flex justify-between text-label text-fg">{STAGE_LABEL[s]} <span className="tabular-nums text-fg-muted">{ls.length}</span></h2>
                   {ls.map((l) => (
-                    <Link key={l.id} href={`/rep/leads/${l.id}`} className="rounded-md bg-surface p-3 shadow-sm hover:shadow-md focus-visible:focus-ring">
+                    <Link key={l.id} href={`/rep/leads/${l.id}`} className="rounded-input bg-bg p-3 hover:shadow-float focus-visible:focus-ring">
                       <p className="text-body-strong text-fg">{l.businessName}</p>
-                      <p className="text-body-sm text-fg-muted">{[l.vertical ? verticalLabel(l.vertical) : null, l.contactName].filter(Boolean).join(" · ") || "No details yet"}</p>
+                      <p className="text-meta text-fg-muted">{[l.vertical ? verticalLabel(l.vertical) : null, l.contactName].filter(Boolean).join(" · ") || "No details yet"}</p>
                       {l.nextActionAt ? <p className="mt-1 text-caption text-fg-muted">Next: {formatDate(l.nextActionAt, true)}</p> : null}
                     </Link>
                   ))}

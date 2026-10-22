@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, View, useWindowDimensions } from "react-native";
 import { useBrightScreen } from "../features/customer/brightness";
 import { groupMemberCode } from "../lib/award";
-import { QrCode, Text } from "../ui";
+import { monoFamily, QrCode, Text } from "../ui";
 
 /** Full-screen QR (tap to close). Always black on white. */
 export default function FullQr() {
@@ -14,10 +14,10 @@ export default function FullQr() {
     <Pressable accessibilityRole="button" accessibilityLabel="Close full screen card" onPress={() => router.back()} style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", gap: 16 }}>
       <QrCode value={payload ?? ""} size={size} accessibilityLabel="Member QR code" />
       <View>
-        <Text variant="code" rawColor="#1F1B16" center>
+        <Text rawColor="#0B0B0C" center style={{ fontFamily: monoFamily, fontSize: 28, lineHeight: 34, letterSpacing: 3 }}>
           {groupMemberCode(code ?? "")}
         </Text>
-        <Text rawColor="#655A4C" center>
+        <Text rawColor="#6B6B70" center>
           Tap anywhere to close
         </Text>
       </View>

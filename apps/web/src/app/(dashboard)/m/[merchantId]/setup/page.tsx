@@ -54,8 +54,8 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
         <ol className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Setup steps">
           {steps.map((s, n) => (
             <li key={s.key}>
-              <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-label", n === i ? "border-brand bg-brand-subtle text-on-brand-subtle" : "border-border-strong text-fg")}>
-                {s.done ? <Leaf aria-hidden className="size-4 text-success" /> : <span className="tabular-nums text-fg-muted">{n + 1}</span>}
+              <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-label", n === i ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg")}>
+                {s.done ? <Leaf aria-hidden className="size-4 text-positive" /> : <span className="tabular-nums text-fg-muted">{n + 1}</span>}
                 {STEP_COPY[s.key].label}
               </button>
             </li>
@@ -107,7 +107,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-h2 text-fg">{copy.title}</h2>
+          <h2 className="text-title text-fg">{copy.title}</h2>
           <p className="mt-1 text-body text-fg-muted">{copy.body}</p>
         </div>
         {step.done ? (
@@ -142,7 +142,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "program" ? (
         <>
-          {detail.program ? <p className="rounded-md bg-surface-sunken p-4 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
+          {detail.program ? <p className="rounded-input bg-bg-subtle p-4 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button loading={act.busy} onClick={() => complete("program")}>
               Looks good
@@ -158,9 +158,9 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         <>
           <ul className="flex flex-col gap-2">
             {(rewards.data?.items ?? []).map((r) => (
-              <li key={r.id} className="flex items-center justify-between rounded-md border border-border p-3">
+              <li key={r.id} className="flex items-center justify-between rounded-input border border-line p-3">
                 <span className="text-body text-fg">{r.name}</span>
-                <span className="tabular-nums text-body-sm text-fg-muted">{formatPoints(r.pointsCost, detail.program?.terminology)}</span>
+                <span className="tabular-nums text-meta text-fg-muted">{formatPoints(r.pointsCost, detail.program?.terminology)}</span>
               </li>
             ))}
           </ul>

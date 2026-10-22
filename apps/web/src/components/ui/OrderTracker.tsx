@@ -1,6 +1,6 @@
-import { PackageCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatMoney, formatTime } from "@/lib/format";
+import { StatusDot } from "./Badge";
 
 const STEPS = [
   { id: "pending", label: "Sent" },
@@ -26,42 +26,33 @@ export interface OrderTrackerProps {
   refundCents?: number | null;
 }
 
-/** 4-step order tracker (system.md §6 OrderTracker). */
+/** 4-step order tracker (system.md §6 OrderTracker). v2: large title + big order number, thin black progress. */
 export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, cancelReason, refundCents }: OrderTrackerProps) {
   if (status === "cancelled" || status === "refunded") {
     return (
-      <div className="rounded-lg bg-neutral-subtle p-5 text-on-neutral-subtle">
-        <h2 className="text-h2">{statusLabel}</h2>
-        {cancelReason ? <p className="mt-1 text-body">{cancelReason}</p> : null}
-        {refundCents ? <p className="mt-1 text-body-sm">Refund: {formatMoney(refundCents)} back to your card.</p> : null}
+      <div className="flex flex-col gap-1">
+        <h2 className="display text-large-title text-fg">{statusLabel}</h2>
+        {cancelReason ? <p className="text-body text-fg">{cancelReason}</p> : null}
+        {refundCents ? <p className="text-meta text-fg-muted">Refund: {formatMoney(refundCents)} back to your card.</p> : null}
       </div>
     );
   }
   const idx = stepIndex(status);
+  const ready = status === "ready";
   return (
-    <div className="flex flex-col gap-4">
-      {status === "ready" ? (
-        <div role="status" className="flex flex-col items-center gap-2 rounded-lg bg-success p-6 text-center text-on-success">
-          <PackageCheck aria-hidden className="size-10" />
-          <h2 className="text-h2">Ready for pickup</h2>
-          <p className="text-body">Show this at the counter</p>
-          <p className="text-code tabular-nums">#{number}</p>
-        </div>
-      ) : (
-        <div>
-          <h2 className="text-h2 text-fg">{statusLabel}</h2>
-          <p className="text-body text-fg-muted">
-            {shopName}
-            {pickupAt ? ` · pickup ${formatTime(pickupAt)}` : ""}
-          </p>
-          <p className="mt-2 text-[32px] font-bold leading-9 tracking-[0.12em] tabular-nums text-fg">#{number}</p>
-        </div>
-      )}
+    <div className="flex flex-col gap-5">
+      <div role={ready ? "status" : undefined} className="flex flex-col gap-1">
+        <p className="text-meta text-fg-muted">
+          {ready ? <StatusDot tone="positive">Show this at the counter</StatusDot> : <>{shopName}{pickupAt ? ` · pickup ${formatTime(pickupAt)}` : ""}</>}
+        </p>
+        <h2 className="display text-large-title text-fg">{ready ? "Ready for pickup" : statusLabel}</h2>
+        <p className="display mt-2 text-[56px] leading-none tabular-nums text-fg">#{number}</p>
+      </div>
       <ol aria-label="Order progress" className="grid grid-cols-4 gap-1.5">
         {STEPS.map((s, i) => (
-          <li key={s.id} aria-current={i === idx ? "step" : undefined} className="flex flex-col gap-1.5">
-            <span aria-hidden className={cn("h-2 rounded-full", i <= idx ? "bg-brand" : "bg-ring-track")} />
-            <span className={cn("text-caption", i === idx ? "font-semibold text-fg" : "text-fg-muted")}>
+          <li key={s.id} aria-current={i === idx ? "step" : undefined} className="flex flex-col gap-2">
+            <span aria-hidden className={cn("h-1 rounded-full", i <= idx ? "bg-fg" : "bg-bg-muted")} />
+            <span className={cn("text-meta", i === idx ? "font-semibold text-fg" : "text-fg-muted")}>
               <span className="sr-only">{i < idx ? "Done: " : i === idx ? "Current: " : "Next: "}</span>
               {s.label}
             </span>

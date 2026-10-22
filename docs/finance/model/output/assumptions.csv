@@ -5,7 +5,7 @@ extended_months,60,months,Extended run used ONLY to find break-even if it falls 
 starting_cash,0,CAD,Founder starts at $0; peak cash need = money required to bootstrap
 strips_per_quarter,"[0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]",strips/quarter,"Assumption. One pilot strip, then gated growth (PRD: go/no-go gates)"
 launch_order_in_quarter,"[1, 2, 0]",month index,"Assumption: mid, last, first month of quarter"
-strip_potential_merchants,32,merchants/strip,Assumption: 80+ storefronts (PRD strip criterion) x ~55% repeat-visit verticals x ~70% eventually sign
+strip_potential_merchants,27.20,merchants/strip,Assumption: 80+ storefronts (PRD strip criterion) x ~55% repeat-visit verticals x ~70% eventually sign = 32; Pricing v2 adoption risk -15% (a thinner free tier signs fewer shops) = 27.2 (v1: 32)
 acquisition_ramp,"[0.25, 0.22, 0.15, 0.1, 0.06, 0.05, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]",share of potential,"Assumption: blitz in first 2 months (2-4 reps per strip, PRD), long tail; sums to 100%"
 activation_rate,0.6000,share of signed,PRD success metric: 60% of signed reach 25 active members
 free_merchant_churn,0.0150,per month,Assumption: business closures + drop-outs; free plan has no switching cost
@@ -26,11 +26,11 @@ mix_retail,0.2500,share of merchants,Assumption
 mix_repair_auto,0.2000,share of merchants,Assumption: PRD says lead with repair/auto for revenue
 mix_personal_services,0.1200,share of merchants,Assumption
 mix_pharmacy,0.0800,share of merchants,Assumption
-conv12_food_bev,0.2000,12-month conversion,Assumption: order-ahead/pickup pain is moderate
-conv12_retail,0.1200,12-month conversion,Assumption: SMS + push promos only
-conv12_repair_auto,0.4000,12-month conversion,"Assumption: quote approval/deposits replace phone tag (validate with $100 pilot deposits, PRD)"
-conv12_personal_services,0.1500,12-month conversion,Assumption
-conv12_pharmacy,0.0500,12-month conversion,Assumption: limited by OCP inducement rules
+conv12_food_bev,0.4300,12-month conversion,"Assumption (Pricing v2; v1 20%): promos, double-points days, email/SMS and order-ahead are all Plus"
+conv12_retail,0.2600,12-month conversion,"Assumption (Pricing v2; v1 12%): promos, email, POS auto-award now Plus"
+conv12_repair_auto,0.4500,12-month conversion,"Assumption (Pricing v2; v1 40%): quote approval/deposits replace phone tag (validate with $100 pilot deposits, PRD); POS auto-award/SMS add a little"
+conv12_personal_services,0.3200,12-month conversion,Assumption (Pricing v2; v1 15%): birthday/VIP/SMS reminders now Plus
+conv12_pharmacy,0.1000,12-month conversion,Assumption (Pricing v2; v1 5%): limited by OCP inducement rules
 pro_share_food_bev,0.0500,share Pro,Assumption
 pro_share_retail,0.0500,share Pro,Assumption
 pro_share_repair_auto,0.8500,share Pro,"Assumption: service tickets, quotes, invoices are Pro"
@@ -55,8 +55,8 @@ sms_rate,0.0220,CAD/segment,"Twilio CA outbound US$0.0079-0.0083/segment (twilio
 sms_used_plus,300,SMS/month,Assumption: 60% of Plus allowance (plans.ts smsPerMonth = 500)
 sms_used_pro,900,SMS/month,Assumption: 60% of Pro allowance (plans.ts smsPerMonth = 1500)
 otp_sms_per_new_customer,1.50,SMS,Assumption: phone-number join verification + welcome
-txn_sms_per_customer,0.3000,SMS/month,Assumption: reward-ready / receipt texts on Free
-infra_per_merchant,1.00,CAD/month,"Assumption: DB, storage, wallet pass updates, email"
+txn_sms_per_customer,0.00,SMS/month,"Pricing v2: no SMS on Free (reward-ready texts are Plus automations, inside the Plus/Pro allowance). v1: 0.3. NOTE: SMS receipts (smsReceiptsEnabled) are not yet gated in the API"
+infra_per_merchant,0.6000,CAD/month,"Assumption: DB, storage, wallet pass updates. Pricing v2: no email campaigns or POS sync on Free (v1: $1.00)"
 infra_per_customer,0.0100,CAD/month,Assumption: per active customer hosting + push
 support_hourly,25.00,CAD/hr,"Assumption: blended support cost (founder time is free, see fixed costs)"
 support_min_free,5,min/merchant/month,Assumption

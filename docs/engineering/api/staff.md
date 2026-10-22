@@ -31,6 +31,8 @@ Generate one UUID per tap and reuse it for every retry, including when the tap i
 
 `openRedemptionCount > 0` means the customer has an app-issued reward code waiting: ask for it and call `redemptions/verify`.
 
+Pricing v2: `vip` is `null` and `discountCards` is `[]` when the shop doesn't have `loyalty.vip_levels` / `discount_cards` (Plus). Earn at the counter also skips promo boosts and VIP multipliers then.
+
 ## GET .../counter/lookup?q=
 
 `q` is detected automatically:

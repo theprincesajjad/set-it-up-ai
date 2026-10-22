@@ -65,7 +65,7 @@ export const copy = {
     notified: "We'll let you know",
     pricingNote:
       "Paid tools switch on once enough shops are on the network, so every feature launches with customers already using the app.",
-    pricingPromise: "Our promise: a feature that's free today stays free. Loyalty will never move to a paid plan.",
+    pricingPromise: "Our promise: your loyalty program and its reports are free forever. They will never move to a paid plan.",
     planAvailable: (plan: string, price: string) => `Available on ${plan} · ${price}/mo`,
   },
   ad: {

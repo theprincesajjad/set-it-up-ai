@@ -51,27 +51,34 @@ export function useTheme(): Theme {
   return t ?? buildTheme("light");
 }
 
-const familyForWeight = (w: number, display: boolean): string => {
-  if (display) return nativeFonts.display;
-  if (w >= 700) return nativeFonts.bold;
-  if (w >= 600) return nativeFonts.semibold;
-  if (w >= 500) return nativeFonts.medium;
-  return nativeFonts.regular;
+/**
+ * Display (Bricolage) uses its own family per weight; everything else returns
+ * `undefined` = the system font (SF Pro / Roboto), which takes `fontWeight`.
+ * The system font is what makes the app feel native (foundations.md § Type).
+ */
+export const familyForWeight = (w: number, display: boolean): string | undefined => {
+  if (!display) return undefined;
+  return w >= 800 ? nativeFonts.displayHeavy : nativeFonts.displayBold;
 };
 
-/**
- * RN text style for a token text style. Android doesn't synthesise weights for
- * custom fonts, so weight maps to a font family (system.md § Mobile).
- */
+type RNWeight = NonNullable<TextStyle["fontWeight"]>;
+const toWeight = (w: number): RNWeight => String(w) as RNWeight;
+
+/** RN text style for a token text style (system font body, Bricolage display). */
 export function typo(name: TextStyleName): TextStyle {
-  const s = textStyles[name];
+  const s = textStyles[name] as (typeof textStyles)[TextStyleName] & { lowercase?: boolean; italic?: boolean };
   const display = s.family === "display";
+  const family = familyForWeight(s.fontWeight, display);
   return {
     fontSize: s.fontSize,
     lineHeight: s.lineHeight,
     letterSpacing: s.letterSpacing * s.fontSize,
-    fontFamily: familyForWeight(s.fontWeight, display),
+    // Custom display faces carry their weight in the family; a fontWeight on top
+    // makes Android pick a synthetic bold, so only the system font gets one.
+    ...(family ? { fontFamily: family } : { fontWeight: toWeight(s.fontWeight) }),
     ...(s.tabular ? { fontVariant: ["tabular-nums"] } : {}),
-    ...("uppercase" in s && s.uppercase ? { textTransform: "uppercase" } : {}),
+    ...(s.italic ? { fontStyle: "italic" } : {}),
+    ...(s.lowercase ? { textTransform: "lowercase" } : {}),
   };
 }
+

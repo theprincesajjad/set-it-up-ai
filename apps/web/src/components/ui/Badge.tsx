@@ -1,37 +1,47 @@
-import { Info, Sprout, type LucideIcon } from "lucide-react";
+import { Info, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
 
+/**
+ * v2 capsule labels. Status is a small dot + word on a quiet grey capsule, never a filled
+ * coloured badge (foundations.md "Colour"). Only "accent" (points, rewards) carries colour.
+ */
 const tones: Record<BadgeTone, string> = {
-  neutral: "bg-neutral-subtle text-on-neutral-subtle",
-  brand: "bg-brand-subtle text-on-brand-subtle",
-  accent: "bg-accent-subtle text-on-accent-subtle",
-  success: "bg-success-subtle text-on-success-subtle",
-  warning: "bg-warning-subtle text-on-warning-subtle",
-  danger: "bg-danger-subtle text-on-danger-subtle",
-  info: "bg-info-subtle text-on-info-subtle",
+  neutral: "bg-bg-subtle text-fg-muted",
+  brand: "bg-fg text-bg",
+  accent: "bg-accent-soft text-accent-text",
+  success: "bg-bg-subtle text-fg",
+  warning: "bg-bg-subtle text-fg",
+  danger: "bg-bg-subtle text-fg",
+  info: "bg-bg-subtle text-fg",
+};
+
+const dots: Record<BadgeTone, string> = {
+  neutral: "bg-fg-subtle",
+  brand: "bg-bg",
+  accent: "bg-accent",
+  success: "bg-positive",
+  warning: "bg-accent",
+  danger: "bg-negative",
+  info: "bg-fg",
 };
 
 /** Non-interactive status label: always text, never colour alone. */
 export function Badge({ tone = "neutral", icon: Icon, iconEnd: IconEnd, dot, children, className }: { tone?: BadgeTone; icon?: LucideIcon; iconEnd?: LucideIcon; dot?: boolean; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 text-caption font-semibold", tones[tone], className)}>
-      {dot ? <span aria-hidden className="size-1.5 rounded-full bg-current" /> : null}
-      {Icon ? <Icon aria-hidden className="size-3.5" /> : null}
+    <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tones[tone], className)}>
+      {dot ? <span aria-hidden className={cn("size-1.5 rounded-full", dots[tone])} /> : null}
+      {Icon ? <Icon aria-hidden className="size-3.5" strokeWidth={2} /> : null}
       {children}
-      {IconEnd ? <IconEnd aria-hidden className="size-3" /> : null}
+      {IconEnd ? <IconEnd aria-hidden className="size-3" strokeWidth={2} /> : null}
     </span>
   );
 }
 
 export function ComingSoonBadge({ label = "Coming soon" }: { label?: string }) {
-  return (
-    <Badge tone="neutral" icon={Sprout}>
-      {label}
-    </Badge>
-  );
+  return <Badge tone="neutral">{label}</Badge>;
 }
 
 export function SponsoredBadge() {
@@ -72,5 +82,16 @@ export function StatusBadge({ domain, status, label }: { domain: StatusDomain; s
     <Badge tone={tone} dot>
       {text}
     </Badge>
+  );
+}
+
+/** "● Open now" — the status pattern for inline text: a 6px dot and a word, no capsule. */
+export function StatusDot({ tone = "neutral", children, className }: { tone?: "positive" | "negative" | "neutral" | "accent"; children: ReactNode; className?: string }) {
+  const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent" }[tone];
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", c)} />
+      {children}
+    </span>
   );
 }

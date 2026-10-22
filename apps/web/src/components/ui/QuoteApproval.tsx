@@ -75,62 +75,66 @@ export function QuoteApproval(p: QuoteApprovalProps) {
   }
 
   return (
-    <section aria-labelledby="quote-title" className="rounded-lg bg-surface p-4 shadow-sm md:p-6">
-      <h2 id="quote-title" className="text-h3 text-fg">
-        {p.title}
-      </h2>
-      {p.ticketLabel ? <p className="text-caption text-fg-muted">{p.ticketLabel}</p> : null}
+    <section aria-labelledby="quote-title" className="flex flex-col gap-5">
+      <div>
+        <h2 id="quote-title" className="display text-title text-fg">
+          {p.title}
+        </h2>
+        {p.ticketLabel ? <p className="mt-0.5 text-meta text-fg-muted">{p.ticketLabel}</p> : null}
+      </div>
 
-      <table className="mt-4 w-full text-body-sm">
-        <thead className="sr-only">
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {p.lineItems.map((l, i) => (
-            <tr key={i} className="border-b border-border align-top">
-              <td className="py-2 pe-2 text-fg">{l.description}</td>
-              <td className="py-2 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${l.quantity}` : ""}</td>
-              <td className="py-2 text-end tabular-nums text-fg">{formatMoney(l.totalCents)}</td>
+      {p.diagnosis ? <p className="text-body text-fg">{p.diagnosis}</p> : null}
+
+      <div className="rounded-card border border-line px-4">
+        <table className="w-full text-body">
+          <thead className="sr-only">
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Amount</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colSpan={2} className="pt-3 text-fg-muted">
-              Subtotal
-            </td>
-            <td className="pt-3 text-end tabular-nums">{formatMoney(p.subtotalCents)}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} className="text-fg-muted">
-              {p.taxLabel ?? "HST 13%"}
-            </td>
-            <td className="text-end tabular-nums">{formatMoney(p.taxCents)}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} className="pt-2 text-h3">
-              Total
-            </td>
-            <td className="pt-2 text-end text-h3 tabular-nums">{formatMoney(p.totalCents)}</td>
-          </tr>
-          {p.depositCents > 0 ? (
-            <tr className="bg-accent-subtle text-on-accent-subtle">
-              <td colSpan={2} className="rounded-s-sm px-2 py-2 font-semibold">
-                Deposit due on approval
+          </thead>
+          <tbody>
+            {p.lineItems.map((l, i) => (
+              <tr key={i} className="border-b border-line align-top">
+                <td className="py-3 pe-2 text-fg">{l.description}</td>
+                <td className="py-3 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${l.quantity}` : ""}</td>
+                <td className="py-3 text-end tabular-nums text-fg">{formatMoney(l.totalCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="text-meta">
+            <tr>
+              <td colSpan={2} className="pt-3 text-fg-muted">
+                Subtotal
               </td>
-              <td className="rounded-e-sm px-2 py-2 text-end font-semibold tabular-nums">{formatMoney(p.depositCents)}</td>
+              <td className="pt-3 text-end tabular-nums text-fg">{formatMoney(p.subtotalCents)}</td>
             </tr>
-          ) : null}
-        </tfoot>
-      </table>
+            <tr>
+              <td colSpan={2} className="pt-1 text-fg-muted">
+                {p.taxLabel ?? "HST 13%"}
+              </td>
+              <td className="pt-1 text-end tabular-nums text-fg">{formatMoney(p.taxCents)}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} className="pt-3 pb-3 text-headline text-fg">
+                Total
+              </td>
+              <td className="pt-3 pb-3 text-end text-headline tabular-nums text-fg">{formatMoney(p.totalCents)}</td>
+            </tr>
+            {p.depositCents > 0 ? (
+              <tr className="border-t border-line">
+                <td colSpan={2} className="py-3 text-body-strong text-fg">
+                  Deposit due on approval
+                </td>
+                <td className="py-3 text-end text-body-strong tabular-nums text-fg">{formatMoney(p.depositCents)}</td>
+              </tr>
+            ) : null}
+          </tfoot>
+        </table>
+      </div>
 
-      {p.diagnosis ? <blockquote className="mt-4 border-s-[3px] border-border ps-3 text-body text-fg">{p.diagnosis}</blockquote> : null}
-
-      <div className="mt-5">
+      <div>
         {p.status === "approved" ? (
           <Banner tone="success" title={`Approved ${p.respondedAt ? formatDateTime(p.respondedAt) : ""}${p.signatureName ? ` by ${p.signatureName}` : ""}`} />
         ) : p.status === "declined" ? (
@@ -146,18 +150,18 @@ export function QuoteApproval(p: QuoteApprovalProps) {
         ) : p.canRespond ? (
           <div className="flex flex-col gap-3">
             <TextField label="Type your name to sign" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={nameError} maxLength={120} />
-            <p className="text-caption text-fg-muted">By approving you agree to the work above. Your approval is recorded with your name, time and device.</p>
+            <p className="text-meta text-fg-muted">By approving you agree to the work above. Your approval is recorded with your name, time and device.</p>
             {p.error ? <Banner tone="danger">{p.error}</Banner> : null}
-            <Button size="lg" fullWidth loading={busy === "approve"} onClick={approve}>
+            <Button size="lg" fullWidth loading={busy === "approve"} onClick={approve} className="mt-1">
               {approveLabel}
             </Button>
-            <Button variant="secondary" fullWidth onClick={() => setDeclineOpen(true)} disabled={busy !== null}>
+            <Button variant="ghost" size="lg" fullWidth onClick={() => setDeclineOpen(true)} disabled={busy !== null}>
               Decline
             </Button>
           </div>
         ) : null}
         {p.shop.phone ? (
-          <Button variant="ghost" fullWidth className={cn("mt-2")} iconStart={Phone} href={`tel:${p.shop.phone}`}>
+          <Button variant="secondary" size="lg" fullWidth className={cn("mt-3")} iconStart={Phone} href={`tel:${p.shop.phone}`}>
             {`Call ${p.shop.name}`}
           </Button>
         ) : null}

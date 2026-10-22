@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { ArrowLeft } from "lucide-react";
 import { useParams } from "next/navigation";
 import { merchantApi } from "@ll/shared";
@@ -17,7 +18,16 @@ import { STATUS_ACTION, draftFromPromo } from "@/lib/dashboard/promos";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useState } from "react";
 
-export default function PromoPage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function PromoPageGated() {
+  return (
+    <FeatureGate keys={["promos.basic", "promos.double_points"]} title="Promos">
+      <PromoPage />
+    </FeatureGate>
+  );
+}
+
+function PromoPage() {
   const { promoId } = useParams<{ promoId: string }>();
   const { api, base } = useMerchant();
   const toast = useToast();

@@ -77,7 +77,7 @@ export function EmailSignIn({ next, devAutofill }: { next?: string | null; devAu
       ) : codeSent ? (
         <>
           <OtpField value={code} onChange={setCode} label="Code from your email" />
-          {devCode && devAutofill ? <p className="text-caption text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
         </>
       ) : null}
       <Button type="submit" size="lg" fullWidth loading={busy}>

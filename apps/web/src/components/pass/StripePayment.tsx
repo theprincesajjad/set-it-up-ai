@@ -50,14 +50,14 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
       <Button type="submit" size="lg" fullWidth loading={busy} disabled={!stripe}>
         {label ?? `Pay ${formatMoney(amountCents)}`}
       </Button>
-      <p className="text-caption text-fg-muted">Payments processed securely by Stripe.</p>
+      <p className="text-center text-meta text-fg-muted">Payments processed securely by Stripe.</p>
     </form>
   );
 }
 
 export default function StripePayment({ publishableKey, clientSecret, ...rest }: StripePaymentProps) {
   return (
-    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: { theme: "stripe", variables: { colorPrimary: "#1F6A50", borderRadius: "8px", fontFamily: "Figtree, system-ui, sans-serif" } } }}>
+    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: { theme: "stripe", variables: { colorPrimary: "#0B0B0C", colorText: "#0B0B0C", colorTextSecondary: "#6B6B70", borderRadius: "10px", fontFamily: "Inter, system-ui, sans-serif" } } }}>
       <Form {...rest} />
     </Elements>
   );

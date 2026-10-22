@@ -41,7 +41,7 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
     <Modal open onClose={onClose} variant="sheet" size="md" title={`Overrides: ${feature.name}`} description="Force this feature on for pilot shops (or off), whatever the stage or plan.">
       <div className="flex flex-col gap-4">
         {items.length ? (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-line rounded-input border border-line">
             {items.map((o) => (
               <li key={o.merchantId} className="flex items-center gap-2 px-3 py-2">
                 <div className="min-w-0 flex-1">
@@ -58,15 +58,15 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
             ))}
           </ul>
         ) : (
-          <p className="text-body-sm text-fg-muted">No overrides yet.</p>
+          <p className="text-meta text-fg-muted">No overrides yet.</p>
         )}
-        <div className="flex flex-col gap-3 rounded-md bg-surface-sunken p-3">
+        <div className="flex flex-col gap-3 rounded-input bg-bg-subtle p-3">
           <TextField type="search" label="Find a merchant" value={q} onChange={(e) => { setQ(e.target.value); setPick(null); }} placeholder="Shop name" />
           {!pick && results.length && q.trim().length >= 2 ? (
             <ul className="flex flex-col gap-1" aria-label="Merchant results">
               {results.map((m) => (
                 <li key={m.id}>
-                  <button type="button" onClick={() => { setPick(m); setQ(m.name); }} className={cn("flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-start text-body hover:bg-surface")}>
+                  <button type="button" onClick={() => { setPick(m); setQ(m.name); }} className={cn("flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-start text-body hover:bg-bg")}>
                     {m.name} <span className="text-caption text-fg-muted">{m.status}</span>
                   </button>
                 </li>

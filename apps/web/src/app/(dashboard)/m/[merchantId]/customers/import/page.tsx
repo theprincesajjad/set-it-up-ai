@@ -1,5 +1,6 @@
 "use client";
 import { ArrowLeft } from "lucide-react";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { ImportWizard } from "@/components/dashboard/ImportWizard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +14,9 @@ export default function ImportPage() {
         Customers
       </Button>
       <PageHeader title="Import customers" description="Bring your members and balances from another loyalty app. No welcome bonus is given on import." />
-      <ImportWizard importCsv={(b) => api.importCustomers(b)} />
+      <FeatureGate keys={["customers.csv_import"]} title="Import & migrate">
+        <ImportWizard importCsv={(b) => api.importCustomers(b)} />
+      </FeatureGate>
     </div>
   );
 }

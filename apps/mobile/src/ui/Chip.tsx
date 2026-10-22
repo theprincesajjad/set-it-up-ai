@@ -1,6 +1,8 @@
+import { shadows } from "@ll/design-tokens";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
-import { Check, type LucideIcon } from "./icons";
+import { haptic } from "./haptics";
+import type { LucideIcon } from "./icons";
 import { Text } from "./Text";
 
 export interface ChipProps {
@@ -8,45 +10,53 @@ export interface ChipProps {
   selected?: boolean;
   onPress?: () => void;
   icon?: LucideIcon;
+  /** Trailing glyph, e.g. ChevronDown for "my shops ▾". */
+  trailingIcon?: LucideIcon;
   /** Counter mode: 48 visual height. */
   large?: boolean;
+  /** Over the map: white capsule with the float shadow. */
+  float?: boolean;
   /** Spoken label when the visible one is terse ("+2" → "Add 2 stamps"). */
   accessibilityLabel?: string;
 }
 
-/** Interactive filter chip: height 36 (hit 48), radius full, selected = brandSubtle + check. */
-export function Chip({ label, selected, onPress, icon: Icon, large, accessibilityLabel }: ChipProps) {
+/** Capsule (foundations § Shape): grey fill, black when on. Over the map it floats on white. */
+export function Chip({ label, selected, onPress, icon: Icon, trailingIcon: Trailing, large, float, accessibilityLabel }: ChipProps) {
   const { c } = useTheme();
-  const fg = selected ? c.onBrandSubtle : c.fg;
+  const fg = selected ? c.bg : c.fg;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       accessibilityLabel={accessibilityLabel ?? label}
-      onPress={onPress}
+      onPress={() => {
+        haptic.select();
+        onPress?.();
+      }}
       hitSlop={large ? 8 : 6}
       style={({ pressed }) => [
         styles.chip,
         {
-          minHeight: large ? 48 : 36,
-          paddingHorizontal: large ? 16 : 12,
-          backgroundColor: selected ? c.brandSubtle : c.surface,
-          borderColor: selected ? c.brandSubtle : c.borderStrong,
-          opacity: pressed ? 0.88 : 1,
+          minHeight: large ? 48 : 34,
+          paddingHorizontal: large ? 18 : 14,
+          backgroundColor: selected ? c.fg : float ? c.bg : c.bgSubtle,
+          opacity: pressed ? 0.8 : 1,
         },
+        float ? shadows.float.native : null,
       ]}
     >
       <View style={styles.row}>
-        {selected ? <Check size={16} color={fg} /> : Icon ? <Icon size={16} color={fg} /> : null}
-        <Text variant={large ? "bodyStrong" : "label"} rawColor={fg}>
+        {Icon ? <Icon size={large ? 18 : 15} color={fg} strokeWidth={2} /> : null}
+        <Text variant={large ? "bodyStrong" : "metaStrong"} rawColor={fg}>
           {label}
         </Text>
+        {Trailing ? <Trailing size={14} color={fg} strokeWidth={2.25} /> : null}
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: { borderRadius: 999, borderWidth: 1, justifyContent: "center" },
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chip: { borderRadius: 999, justifyContent: "center" },
+  row: { flexDirection: "row", alignItems: "center", gap: 5 },
 });

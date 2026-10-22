@@ -23,8 +23,8 @@ function Secret({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-2">
       <Banner tone="warning">Copy this now. For your security we only show it once.</Banner>
-      <div className="flex items-center gap-2 rounded-md bg-surface-sunken p-3">
-        <code className="min-w-0 flex-1 break-all font-mono text-body-sm text-fg" aria-label={label}>
+      <div className="flex items-center gap-2 rounded-input bg-bg-subtle p-3">
+        <code className="min-w-0 flex-1 break-all font-mono text-meta text-fg" aria-label={label}>
           {value}
         </code>
         <IconButton icon={Copy} label={`Copy ${label}`} onClick={async () => {
@@ -91,11 +91,11 @@ export default function DevelopersPage() {
         <Async state={hooks}>
           {(d) =>
             d.items.length ? (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {d.items.map((h) => (
                   <li key={h.id} className="flex flex-wrap items-center gap-3 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-body-sm text-fg">{h.url}</p>
+                      <p className="truncate font-mono text-meta text-fg">{h.url}</p>
                       <p className="text-caption text-fg-muted">
                         {h.events.join(", ")}
                         {h.description ? ` · ${h.description}` : ""}
@@ -124,7 +124,7 @@ export default function DevelopersPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-body-sm text-fg-muted">No endpoints yet.</p>
+              <p className="text-meta text-fg-muted">No endpoints yet.</p>
             )
           }
         </Async>
@@ -154,7 +154,7 @@ export default function DevelopersPage() {
             <fieldset className="grid gap-1 sm:grid-cols-2">
               <legend className="mb-2 text-label text-fg">Events</legend>
               {(hooks.data?.events ?? []).map((ev) => (
-                <Checkbox key={ev} label={<span className="font-mono text-body-sm">{ev}</span>} checked={events.includes(ev)} onChange={(c) => setEvents(c ? [...events, ev] : events.filter((x) => x !== ev))} />
+                <Checkbox key={ev} label={<span className="font-mono text-meta">{ev}</span>} checked={events.includes(ev)} onChange={(c) => setEvents(c ? [...events, ev] : events.filter((x) => x !== ev))} />
               ))}
             </fieldset>
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -163,7 +163,7 @@ export default function DevelopersPage() {
       </Modal>
       <Modal open={!!log} onClose={() => setLog(null)} title="Recent deliveries" size="md">
         {log?.items.length ? (
-          <ul className="divide-y divide-border text-body-sm">
+          <ul className="divide-y divide-line text-meta">
             {log.items.map((x) => (
               <li key={x.id} className="flex items-center justify-between gap-2 py-2">
                 <span className="font-mono">{x.event}</span>
@@ -173,7 +173,7 @@ export default function DevelopersPage() {
             ))}
           </ul>
         ) : (
-          <p className="text-body-sm text-fg-muted">No deliveries yet.</p>
+          <p className="text-meta text-fg-muted">No deliveries yet.</p>
         )}
       </Modal>
       <ConfirmDialog open={rotate} onClose={() => setRotate(false)} title="Rotate the API key?" body="The old key stops working right away. Update your POS or scripts with the new one." confirmLabel="Rotate key" danger onConfirm={async () => {

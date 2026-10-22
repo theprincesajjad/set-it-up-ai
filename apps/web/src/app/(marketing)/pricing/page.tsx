@@ -15,7 +15,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free forever. No transaction fees. Unlimited locations. Every loyalty feature, for every shop.",
+  description: "Free forever. No transaction fees. Unlimited locations. Your loyalty program and its reports, free for every shop.",
   alternates: { canonical: "/pricing" },
 };
 
@@ -98,7 +98,7 @@ function PlanCard({ id, available }: { id: PlanId; available: boolean }) {
         </div>
       ) : (
         <div className="mt-6">
-          <p className="text-body-sm font-semibold text-fg">Includes everything in Free, plus:</p>
+          <p className="text-body-sm font-semibold text-fg">{id === "pro" ? "Includes everything in Plus, plus:" : "Includes everything in Free, plus:"}</p>
           <ul className="mt-2 flex flex-col gap-2">
             {features.map((k) => (
               <li key={k} className="flex gap-2 text-body-sm text-fg">
@@ -127,7 +127,7 @@ export default async function PricingPage() {
       <MSection className="!pb-8">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-[36px] font-semibold leading-[42px] text-fg md:text-display">Free forever. No transaction fees. Unlimited locations.</h1>
-          <p className="mt-4 text-body-lg text-fg-muted">Every loyalty feature, for every shop. Paid tools come later, and only if you want them.</p>
+          <p className="mt-4 text-body-lg text-fg-muted">Your loyalty program and its reports, free for every shop. Promos, marketing and POS tools come later on Plus and Pro, and only if you want them.</p>
         </div>
       </MSection>
       <section className="pb-12">
@@ -154,7 +154,8 @@ export default async function PricingPage() {
           <Faq
             items={[
               { q: "Do you take a cut of my sales?", a: "No. Zero transaction fees on Free." },
-              { q: "Will loyalty ever cost money?", a: "No. A feature that's free today stays free. Loyalty will never move to a paid plan." },
+              { q: "Will loyalty ever cost money?", a: "No. Your loyalty program (points, stamps, visits, rewards, welcome bonus) and its reports are free forever and will never move to a paid plan." },
+              { q: "What needs Plus?", a: "Promos and bonus-point days, VIP levels, birthday and referral rewards, discount cards, email and SMS campaigns, CSV import and export, POS auto-award, webhooks and order-ahead. Pro adds service tickets, quotes, deposits and invoices." },
               { q: "When do Plus and Pro launch?", a: "Once enough shops are on the network, so every paid feature launches with customers already using the app. Tap Notify me and we'll tell you." },
               { q: "Can I cancel a paid plan later?", a: "Yes, anytime. You go back to Free and keep all your loyalty data." },
               { q: "Is there a contract?", a: "No contract and no setup fee." },

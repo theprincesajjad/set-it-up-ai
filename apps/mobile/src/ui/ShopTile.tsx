@@ -1,44 +1,53 @@
-import { radii } from "@ll/design-tokens";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { formatNumber, unitLabel } from "../lib/award";
 import { formatDistance } from "../lib/format";
-import { useTheme } from "../theme";
-import { Badge } from "./Badge";
-import { Card } from "./Card";
-import { BellOff, Gift, verticalIcon } from "./icons";
+import { placeKind } from "../lib/explore";
+import { typo, useTheme } from "../theme";
+import { CategoryIcon } from "./CategoryIcon";
+import { BellOff } from "./icons";
 import { Text } from "./Text";
 
 export interface ShopTileShop {
   name: string;
   vertical: string;
   logoUrl?: string | null;
-  /** Merchant brand colour; tints the initials fallback when there is no logo. */
+  /** Merchant brand colour; shown ONLY inside the shop's own avatar. */
   brandColor?: string | null;
   coverUrl?: string | null;
   neighbourhood?: string | null;
   distanceM?: number | null;
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+
 /**
- * Logo, or coloured initials when the shop has no logo (most pilot shops):
- * brand colour fill with whichever of white / ink reads better, or the
- * vertical tint + accent when the shop has no brand colour either.
+ * A shop's avatar (round): its logo; else initials on its brand colour; else
+ * the category object (cup, croissant...) on grey. The brand colour lives here
+ * and nowhere else (foundations § Colour, "Shop identity").
  */
-export function ShopLogo({ shop, size = 48, round = false }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name" | "brandColor">; size?: number; round?: boolean }) {
-  const { vertical } = useTheme();
-  const radius = round ? size / 2 : size <= 28 ? radii.xs : size >= 72 ? radii.lg : radii.md;
+export function ShopLogo({ shop, size = 44, round = true }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name" | "brandColor">; size?: number; round?: boolean }) {
+  const { c } = useTheme();
+  const radius = round ? size / 2 : Math.round(size * 0.28);
   if (shop.logoUrl) {
-    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radius }} accessibilityIgnoresInvertColors accessibilityLabel={`${shop.name} logo`} />;
+    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.bgSubtle }} accessibilityIgnoresInvertColors accessibilityLabel={`${shop.name} logo`} />;
   }
-  const v = vertical(shop.vertical);
-  const brand = shop.brandColor && /^#[0-9a-f]{6}$/i.test(shop.brandColor) ? shop.brandColor : null;
-  const bg = brand ?? v.tint;
-  const fg = brand ? readableOn(brand) : v.accent;
+  const brand = shop.brandColor && HEX.test(shop.brandColor) ? shop.brandColor : null;
+  if (!brand) {
+    return (
+      <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: c.bgSubtle }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <CategoryIcon vertical={shop.vertical} size={Math.round(size * 0.62)} />
+      </View>
+    );
+  }
   const letters = shopInitials(shop.name, size < 32 ? 1 : 2);
   return (
-    <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Text rawColor={fg} style={{ fontFamily: "Figtree_700Bold", fontSize: Math.round(size * (letters.length > 1 ? 0.38 : 0.46)), lineHeight: Math.round(size * 0.5), letterSpacing: 0.5 }} allowFontScaling={false}>
-        {letters}
+    <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: brand }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Text
+        rawColor={readableOn(brand)}
+        allowFontScaling={false}
+        style={[typo("displayNumber"), { fontSize: Math.round(size * (letters.length > 1 ? 0.36 : 0.44)), lineHeight: Math.round(size * 0.5), letterSpacing: 0 }]}
+      >
+        {letters.toLowerCase()}
       </Text>
     </View>
   );
@@ -58,12 +67,12 @@ function luminance(hex: string): number {
   return 0.2126 * ch[0]! + 0.7152 * ch[1]! + 0.0722 * ch[2]!;
 }
 
-/** White or ink (#1F1B16), whichever has the higher contrast on `hex`. */
+/** White or ink, whichever has the higher contrast on `hex`. */
 export function readableOn(hex: string): string {
   const l = luminance(hex);
   const white = 1.05 / (l + 0.05);
-  const ink = (l + 0.05) / (luminance("#1F1B16") + 0.05);
-  return white >= ink ? "#FFFFFF" : "#1F1B16";
+  const ink = (l + 0.05) / (luminance("#0B0B0C") + 0.05);
+  return white >= ink ? "#FFFFFF" : "#0B0B0C";
 }
 
 export interface ShopTileProps {
@@ -76,130 +85,79 @@ export interface ShopTileProps {
   muted?: boolean;
   onPress?: () => void;
   selected?: boolean;
+  divider?: boolean;
 }
 
-/** system.md § ShopTile. */
-export function ShopTile({ shop, variant, balance, subtitle, openLabel, rewardReady, muted, onPress, selected }: ShopTileProps) {
-  const { c, vertical } = useTheme();
+/**
+ * Shop rows (Corner "your places"): avatar, bold name, one grey line, the
+ * balance right-aligned in accent. `hero` is the header of the shop page / sheet:
+ * avatar, name in the display face, italic kind of place.
+ */
+export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted, onPress, selected, divider = true }: ShopTileProps) {
+  const { c } = useTheme();
   if (variant === "hero") {
-    const v = vertical(shop.vertical);
-    const Icon = verticalIcon(v.icon);
-    // No cover photo: a soft wash of the shop's brand colour ties the hero to its initials logo.
-    const brand = shop.brandColor && /^#[0-9a-f]{6}$/i.test(shop.brandColor) ? shop.brandColor : null;
     return (
-      <View>
-        <View style={[styles.cover, { backgroundColor: brand ? `${brand}24` : v.tint }]}>
-          {shop.coverUrl ? (
-            <Image source={{ uri: shop.coverUrl }} style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
-          ) : (
-            <Icon size={96} color={brand ?? v.accent} style={{ opacity: brand ? 0.22 : 0.3 }} />
-          )}
-        </View>
-        <View style={styles.heroLogo}>
-          <View style={[styles.heroLogoRing, { backgroundColor: c.canvas }]}>
-            <ShopLogo shop={shop} size={72} />
+      <View style={styles.hero}>
+        <ShopLogo shop={shop} size={56} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none", flexShrink: 1 }}>
+              {shop.name}
+            </Text>
+            {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
           </View>
-        </View>
-        <View style={{ paddingHorizontal: 16, marginTop: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text variant="h2" accessibilityRole="header" style={{ flexShrink: 1 }}>
-            {shop.name}
+          <Text variant="placeSubtitle" color="fgMuted" numberOfLines={1}>
+            {subtitle ?? placeKind(shop.vertical)}
           </Text>
-          {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
         </View>
       </View>
     );
   }
 
-  const size = variant === "compact" ? 40 : 48;
-  const nameRow = (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <Text variant={variant === "wallet" ? "title" : "bodyStrong"} numberOfLines={1} style={{ flexShrink: 1 }}>
-        {shop.name}
-      </Text>
-      {muted ? <BellOff size={16} color={c.fgMuted} /> : null}
-    </View>
-  );
-  const sub = subtitle ?? [shop.neighbourhood, formatDistance(shop.distanceM)].filter(Boolean).join(" · ");
-  const a11y = [
-    shop.name,
-    balance ? `${formatNumber(balance.value)} ${balance.terminology}` : null,
-    rewardReady ? "Reward ready" : null,
-    sub,
-    openLabel?.label,
-    muted ? "Muted" : null,
-  ]
-    .filter(Boolean)
-    .join(". ");
-
-  if (variant === "wallet") {
-    return (
-      <Card onPress={onPress} accessibilityLabel={a11y} accentEdge={rewardReady} padded={false}>
-        <View style={[styles.walletRow, { minHeight: 88 }]}>
-          <ShopLogo shop={shop} size={48} />
-          <View style={{ flex: 1, gap: 2 }}>
-            {nameRow}
-            {rewardReady ? (
-              <Badge tone="accent" icon={Gift}>
-                Reward ready
-              </Badge>
-            ) : sub ? (
-              <Text variant="bodySm" color="fgMuted" numberOfLines={2}>
-                {sub}
-              </Text>
-            ) : null}
-          </View>
-          {balance ? (
-            <View style={{ alignItems: "flex-end" }}>
-              <Text variant="h3" color="fgBrand" tabular style={{ fontFamily: "Figtree_700Bold" }}>
-                {formatNumber(balance.value)}
-              </Text>
-              <Text variant="caption" color="fgMuted">
-                {unitLabel(balance.terminology, balance.value)}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </Card>
-    );
-  }
-
-  const row = (
-    <View style={[styles.listRow, { minHeight: variant === "compact" ? 56 : 64 }, selected ? { backgroundColor: c.brandSubtle } : null]}>
+  const size = variant === "compact" ? 36 : 44;
+  const sub = rewardReady ? (subtitle ?? "reward ready") : (subtitle ?? [shop.neighbourhood, formatDistance(shop.distanceM)].filter(Boolean).join(" · "));
+  const a11y = [shop.name, balance ? `${formatNumber(balance.value)} ${balance.terminology}` : null, rewardReady ? "Reward ready" : null, sub, muted ? "Muted" : null].filter(Boolean).join(". ");
+  const row = (pressed: boolean) => (
+    <View style={[styles.row, { minHeight: variant === "compact" ? 56 : 68 }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
       <ShopLogo shop={shop} size={size} />
       <View style={{ flex: 1, gap: 2 }}>
-        {nameRow}
-        {sub ? (
-          <Text variant="bodySm" color="fgMuted" numberOfLines={1}>
-            {sub}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text variant="placeName" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {shop.name}
           </Text>
-        ) : null}
-        {openLabel ? (
-          <Text variant="bodySm" color={openLabel.open ? "onSuccessSubtle" : "fgMuted"}>
-            {openLabel.label}
+          {muted ? <BellOff size={14} color={c.fgMuted} /> : null}
+        </View>
+        {sub ? (
+          <Text variant="meta" color={rewardReady ? "accentText" : "fgMuted"} numberOfLines={1}>
+            {sub}
           </Text>
         ) : null}
       </View>
       {balance ? (
-        <Text variant="bodyStrong" color="fgBrand" tabular>
-          {`${formatNumber(balance.value)} ${unitLabel(balance.terminology, balance.value)}`}
-        </Text>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text variant="headline" color="accentText" tabular>
+            {formatNumber(balance.value)}
+          </Text>
+          <Text variant="caption" color="fgMuted">
+            {unitLabel(balance.terminology, balance.value)}
+          </Text>
+        </View>
       ) : null}
+      {divider ? <View style={[styles.divider, { backgroundColor: c.line, left: size + 12 }]} /> : null}
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}>
-      {row}
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress}>
+      {({ pressed }) => row(pressed)}
     </Pressable>
   ) : (
-    row
+    row(false)
   );
 }
 
 const styles = StyleSheet.create({
-  logo: { borderRadius: radii.md, alignItems: "center", justifyContent: "center" },
-  walletRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
-  listRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, borderRadius: radii.md },
-  cover: { aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  heroLogo: { marginTop: -40, paddingHorizontal: 16 },
-  heroLogoRing: { alignSelf: "flex-start", padding: 4, borderRadius: radii.lg },
+  logo: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  divider: { position: "absolute", right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  hero: { flexDirection: "row", alignItems: "center", gap: 14 },
 });

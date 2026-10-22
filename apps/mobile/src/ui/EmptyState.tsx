@@ -5,7 +5,7 @@ import { CircleAlert, CloudOff, type LucideIcon } from "./icons";
 import { Text } from "./Text";
 
 export interface EmptyStateProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   body?: string | null;
   actionLabel?: string;
@@ -15,31 +15,33 @@ export interface EmptyStateProps {
   tone?: "brand" | "danger";
 }
 
-/** Centred stack: 48 icon in 96 circle → h3 → body → one action. Never a dead end. */
+/** One sentence + one action, on the left edge. No illustration of people, no icon-in-a-circle. */
 export function EmptyState({ icon: Icon, title, body, actionLabel, onAction, secondaryLabel, onSecondary, tone = "brand" }: EmptyStateProps) {
   const { c } = useTheme();
   return (
     <View style={styles.wrap}>
-      <View style={[styles.circle, { backgroundColor: tone === "danger" ? c.dangerSubtle : c.brandSubtle }]}>
-        <Icon size={48} color={tone === "danger" ? c.danger : c.onBrandSubtle} strokeWidth={1.75} />
-      </View>
-      <Text variant="h3" center accessibilityRole="header">
+      {Icon ? <Icon size={24} color={tone === "danger" ? c.negative : c.fgMuted} strokeWidth={1.75} /> : null}
+      <Text variant="headline" accessibilityRole="header">
         {title}
       </Text>
       {body ? (
-        <Text variant="body" color="fgMuted" center>
+        <Text variant="body" color="fgMuted">
           {body}
         </Text>
       ) : null}
-      {actionLabel && onAction ? (
-        <Button variant={tone === "danger" ? "secondary" : "primary"} onPress={onAction}>
-          {actionLabel}
-        </Button>
-      ) : null}
-      {secondaryLabel && onSecondary ? (
-        <Button variant="ghost" onPress={onSecondary}>
-          {secondaryLabel}
-        </Button>
+      {(actionLabel && onAction) || (secondaryLabel && onSecondary) ? (
+        <View style={styles.actions}>
+          {actionLabel && onAction ? (
+            <Button variant={tone === "danger" ? "secondary" : "primary"} size="sm" onPress={onAction}>
+              {actionLabel}
+            </Button>
+          ) : null}
+          {secondaryLabel && onSecondary ? (
+            <Button variant="secondary" size="sm" onPress={onSecondary}>
+              {secondaryLabel}
+            </Button>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -50,6 +52,6 @@ export function ErrorState({ message, onRetry, offline }: { message: string; onR
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", alignSelf: "center", maxWidth: 360, gap: 12, paddingVertical: 32, paddingHorizontal: 16 },
-  circle: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  wrap: { alignItems: "flex-start", gap: 6, paddingVertical: 24 },
+  actions: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
 });

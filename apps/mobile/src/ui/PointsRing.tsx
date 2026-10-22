@@ -2,12 +2,11 @@ import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { formatNumber, unitLabel } from "../lib/award";
 import { useTheme } from "../theme";
-import { Gift } from "./icons";
 import { Text } from "./Text";
 
-const SIZES = { 64: { stroke: 8, font: 20 }, 120: { stroke: 10, font: 32 }, 200: { stroke: 14, font: 56 } } as const;
+const SIZES = { 64: { stroke: 5, font: 18 }, 120: { stroke: 7, font: 30 }, 200: { stroke: 10, font: 52 } } as const;
 
-/** Circular progress to the next reward (points programs). Full accent ring + gift when ready. */
+/** Thin circular progress to the next reward (points programs), accent on bgMuted. */
 export function PointsRing({ balance, goal, terminology, rewardName, size = 120 }: { balance: number; goal: number | null; terminology: string; rewardName?: string | null; size?: 64 | 120 | 200 }) {
   const { c } = useTheme();
   const { stroke, font } = SIZES[size];
@@ -20,12 +19,12 @@ export function PointsRing({ balance, goal, terminology, rewardName, size = 120 
   return (
     <View accessible accessibilityLabel={label} style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size} style={{ position: "absolute" }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={c.ringTrack} strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={c.bgMuted} strokeWidth={stroke} fill="none" />
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke={ready ? c.accent : c.brand}
+          stroke={c.accent}
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"
@@ -34,12 +33,11 @@ export function PointsRing({ balance, goal, terminology, rewardName, size = 120 
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      {ready && size === 64 ? (
-        <Gift size={24} color={c.onAccentSubtle} />
+      {size === 64 ? (
+        <Text variant="metaStrong" color="fg" tabular>{`${Math.round(pct * 100)}%`}</Text>
       ) : (
         <View style={{ alignItems: "center" }}>
-          {ready ? <Gift size={size / 8} color={c.onAccentSubtle} /> : null}
-          <Text variant="points" tabular style={{ fontSize: font, lineHeight: font * 1.1 }}>
+          <Text variant="displayNumber" tabular style={{ fontSize: font, lineHeight: font * 1.1 }}>
             {formatNumber(balance)}
           </Text>
           <Text variant="caption" color="fgMuted">

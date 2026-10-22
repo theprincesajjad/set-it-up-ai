@@ -36,9 +36,9 @@ export default function RolloutPage() {
             {groupFeatures(d.items).map((g) => (
               <Section key={g.id} title={g.title}>
                 <Card padding="none" className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-body-sm">
+                  <table className="w-full min-w-[900px] text-meta">
                     <caption className="sr-only">{g.title}</caption>
-                    <thead className="bg-surface-sunken text-label text-fg-muted">
+                    <thead className="bg-bg-subtle text-label text-fg-muted">
                       <tr>
                         <th scope="col" className="px-4 py-3 text-start">Feature</th>
                         <th scope="col" className="px-4 py-3 text-start">Plan</th>
@@ -51,7 +51,7 @@ export default function RolloutPage() {
                     </thead>
                     <tbody>
                       {g.items.map((f) => (
-                        <tr key={f.key} className="border-t border-border" data-feature={f.key}>
+                        <tr key={f.key} className="border-t border-line" data-feature={f.key}>
                           <td className="px-4 py-3">
                             <p className="font-medium text-fg">{f.name}</p>
                             <p className="font-mono text-caption text-fg-muted">{f.key}</p>
@@ -70,7 +70,7 @@ export default function RolloutPage() {
                           <td className="px-4 py-3">
                             {f.unlockAtMerchants ? (
                               <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                {f.readyToUnlock ? <CircleCheck aria-hidden className="size-4 text-success" /> : <CircleDashed aria-hidden className="size-4 text-fg-muted" />}
+                                {f.readyToUnlock ? <CircleCheck aria-hidden className="size-4 text-positive" /> : <CircleDashed aria-hidden className="size-4 text-fg-muted" />}
                                 {formatNumber(f.unlockAtMerchants)} merchants <span className="text-fg-muted">({f.readyToUnlock ? "met" : `${formatNumber(f.activeMerchants)} now`})</span>
                               </span>
                             ) : (
@@ -99,7 +99,7 @@ export default function RolloutPage() {
           {(plans.data?.items ?? []).map((p) => (
             <Card key={p.id} padding="lg">
               <CardHeader title={p.name} action={<Badge tone={p.available ? "success" : "neutral"}>{p.available ? "Purchasable" : "Not yet"}</Badge>} />
-              <p className="text-body-sm text-fg-muted">{p.id === "free" ? "Free forever, always available" : `${p.features.filter((x) => x.stage !== "hidden").length} of ${p.features.length} features out of Hidden`}</p>
+              <p className="text-meta text-fg-muted">{p.id === "free" ? "Free forever, always available" : `${p.features.filter((x) => x.stage !== "hidden").length} of ${p.features.length} features out of Hidden`}</p>
             </Card>
           ))}
         </div>

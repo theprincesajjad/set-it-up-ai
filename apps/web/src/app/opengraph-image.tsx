@@ -5,25 +5,25 @@ export const alt = `${BRAND.name}: one card for every shop on your street`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** Default social card. Paper canvas, pine type, the Shopfront mark. No text-in-photo. */
+/** Default social card (v2): white, black type, the four-corners mark. */
 export default function OgImage() {
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#FAF6EF", padding: 72 }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#FFFFFF", padding: 72 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <svg width="88" height="88" viewBox="0 0 64 64">
-            <rect x="6" y="10" width="52" height="48" rx="12" fill="#1F6A50" />
-            <rect x="6" y="10" width="52" height="16" rx="8" fill="#F5A524" />
-            <path d="M24 58V44a8 8 0 0 1 16 0v14z" fill="#FAF6EF" />
-            <circle cx="35.5" cy="51" r="2" fill="#F5A524" />
+          <svg width="72" height="72" viewBox="0 0 64 64">
+            <rect width="64" height="64" rx="16" fill="#0B0B0C" />
+            <circle cx="22" cy="22" r="7.5" fill="#FFFFFF" />
+            <circle cx="42" cy="22" r="7.5" fill="#FFFFFF" />
+            <circle cx="22" cy="42" r="7.5" fill="#FFFFFF" />
+            <circle cx="42" cy="42" r="7.5" fill="#FF5A1F" />
           </svg>
-          <div style={{ fontSize: 44, fontWeight: 700, color: "#1F1B16", display: "flex" }}>{BRAND.name}</div>
+          <div style={{ fontSize: 40, fontWeight: 800, color: "#0B0B0C", display: "flex", letterSpacing: -1 }}>{BRAND.name.toLowerCase()}</div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 76, fontWeight: 700, color: "#1F1B16", lineHeight: 1.05, letterSpacing: -2 }}>One card for every shop on your street.</div>
-          <div style={{ fontSize: 34, color: "#655A4C" }}>Free forever · No transaction fees · Unlimited locations</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ fontSize: 84, fontWeight: 800, color: "#0B0B0C", lineHeight: 1, letterSpacing: -3 }}>one card for every shop on your street.</div>
+          <div style={{ fontSize: 32, color: "#6B6B70" }}>Free forever · No transaction fees · Unlimited locations</div>
         </div>
-        <div style={{ display: "flex", height: 16, background: "#1F6A50", borderRadius: 8 }} />
       </div>
     ),
     size,

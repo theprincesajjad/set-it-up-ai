@@ -46,13 +46,13 @@ export default function AdminMerchantPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <Card padding="lg">
                 <CardHeader title="Staff" />
-                <ul className="divide-y divide-border">{d.staff.map((s) => <li key={s.userId}><ListRow title={s.name ?? s.email ?? "User"} subtitle={s.email ?? undefined} trailing={<Badge>{s.role}</Badge>} /></li>)}</ul>
+                <ul className="divide-y divide-line">{d.staff.map((s) => <li key={s.userId}><ListRow title={s.name ?? s.email ?? "User"} subtitle={s.email ?? undefined} trailing={<Badge>{s.role}</Badge>} /></li>)}</ul>
                 <CardHeader className="mt-5" title="Feature overrides" action={<Button variant="ghost" size="sm" href="/admin/rollout">Rollout</Button>} />
-                {d.overrides.length ? <ul className="flex flex-col gap-1 text-body-sm">{d.overrides.map((o) => <li key={o.key} className="flex justify-between gap-2"><span className="font-mono">{o.key}</span><Badge tone={o.enabled ? "success" : "neutral"}>{o.enabled ? "on" : "off"}</Badge></li>)}</ul> : <p className="text-body-sm text-fg-muted">None.</p>}
+                {d.overrides.length ? <ul className="flex flex-col gap-1 text-meta">{d.overrides.map((o) => <li key={o.key} className="flex justify-between gap-2"><span className="font-mono">{o.key}</span><Badge tone={o.enabled ? "success" : "neutral"}>{o.enabled ? "on" : "off"}</Badge></li>)}</ul> : <p className="text-meta text-fg-muted">None.</p>}
               </Card>
               <Card padding="lg">
                 <CardHeader title="Audit trail" />
-                <ul className="flex flex-col gap-2 text-body-sm">{(audit.data?.items ?? []).map((a) => <li key={a.id}><span className="font-mono text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
+                <ul className="flex flex-col gap-2 text-meta">{(audit.data?.items ?? []).map((a) => <li key={a.id}><span className="font-mono text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
               </Card>
             </div>
             <ConfirmDialog open={!!to} onClose={() => { setTo(null); setReason(""); }} title={to === "closed" ? `Close ${d.name}?` : to === "paused" ? `Pause ${d.name}?` : `Resume ${d.name}?`} body={to === "active" ? "Awards and messages work again." : "Paused and closed shops can't award points or send messages. Members keep their balances."} confirmLabel={to === "closed" ? "Close shop" : to === "paused" ? "Pause shop" : "Resume"} danger={to !== "active"} disabled={!reason.trim()} onConfirm={async () => {

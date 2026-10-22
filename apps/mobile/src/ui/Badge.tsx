@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
-import { Info, Sprout, type LucideIcon } from "./icons";
+import { Info, type LucideIcon } from "./icons";
 import { Text } from "./Text";
 
 export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
@@ -13,31 +13,50 @@ export interface BadgeProps {
   dot?: boolean;
 }
 
+/**
+ * Status is a small dot + word, never a filled coloured card (foundations § Colour).
+ * accent = points / reward ready (soft fill); success / danger = coloured dot + plain word;
+ * everything else is a grey capsule.
+ */
 export function useToneColors(tone: BadgeTone) {
   const { c } = useTheme();
   const map: Record<BadgeTone, { bg: string; fg: string; solid: string }> = {
-    neutral: { bg: c.neutralSubtle, fg: c.onNeutralSubtle, solid: c.fgMuted },
-    brand: { bg: c.brandSubtle, fg: c.onBrandSubtle, solid: c.brand },
-    accent: { bg: c.accentSubtle, fg: c.onAccentSubtle, solid: c.accent },
-    success: { bg: c.successSubtle, fg: c.onSuccessSubtle, solid: c.success },
-    warning: { bg: c.warningSubtle, fg: c.onWarningSubtle, solid: c.warning },
-    danger: { bg: c.dangerSubtle, fg: c.onDangerSubtle, solid: c.danger },
-    info: { bg: c.infoSubtle, fg: c.onInfoSubtle, solid: c.info },
+    neutral: { bg: c.bgSubtle, fg: c.fgMuted, solid: c.fgMuted },
+    brand: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
+    accent: { bg: c.accentSoft, fg: c.accentText, solid: c.accent },
+    success: { bg: "transparent", fg: c.fg, solid: c.positive },
+    warning: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
+    danger: { bg: "transparent", fg: c.negative, solid: c.negative },
+    info: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
   };
   return map[tone];
 }
 
-/** Status badge: height 24, radius full, caption 12/600. Always text, never colour alone. */
 export function Badge({ children, tone = "neutral", icon: Icon, trailingIcon: Trailing, dot }: BadgeProps) {
   const t = useToneColors(tone);
+  const dotted = dot || tone === "success" || tone === "danger";
+  const bare = t.bg === "transparent";
   return (
-    <View style={[styles.badge, { backgroundColor: t.bg }]}>
-      {dot ? <View style={[styles.dot, { backgroundColor: t.fg }]} /> : null}
-      {Icon ? <Icon size={14} color={t.fg} strokeWidth={2} /> : null}
-      <Text variant="caption" rawColor={t.fg} style={{ fontFamily: "Figtree_600SemiBold" }}>
+    <View style={[styles.badge, { backgroundColor: t.bg, paddingHorizontal: bare ? 0 : 8 }]}>
+      {dotted ? <View style={[styles.dot, { backgroundColor: t.solid }]} /> : null}
+      {Icon ? <Icon size={13} color={t.fg} strokeWidth={2} /> : null}
+      <Text variant="metaStrong" rawColor={t.fg} style={{ fontSize: 12, lineHeight: 16 }}>
         {children}
       </Text>
       {Trailing ? <Trailing size={12} color={t.fg} strokeWidth={2} /> : null}
+    </View>
+  );
+}
+
+/** Open / closed: a dot + word ("open · until 6 pm"). */
+export function StatusDot({ open, label }: { open: boolean; label: string }) {
+  const { c } = useTheme();
+  return (
+    <View style={styles.status} accessible accessibilityLabel={label}>
+      <View style={[styles.dot, { backgroundColor: open ? c.positive : c.fgSubtle }]} />
+      <Text variant="meta" color={open ? "fg" : "fgMuted"}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -54,14 +73,11 @@ export function SponsoredBadge({ onPress }: { onPress?: () => void }) {
 }
 
 export function ComingSoonBadge() {
-  return (
-    <Badge tone="neutral" icon={Sprout}>
-      Coming soon
-    </Badge>
-  );
+  return <Badge tone="neutral">Coming soon</Badge>;
 }
 
 const styles = StyleSheet.create({
-  badge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, minHeight: 24, paddingHorizontal: 8, borderRadius: 999 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
+  badge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, minHeight: 22, borderRadius: 999 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  status: { flexDirection: "row", alignItems: "center", gap: 6 },
 });

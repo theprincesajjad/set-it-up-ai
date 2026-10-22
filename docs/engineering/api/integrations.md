@@ -3,14 +3,31 @@
 Contract: `packages/shared/src/api/integrations.ts` (`integrationsApi`). Provider setup: `docs/engineering/connectors.md`.
 Code: `apps/api/src/routes/integrations/`, `src/connectors/<provider>/`, `services/integrations*.ts`, `services/webhooks-out.ts`, `jobs/connectors.ts`.
 
-Every integration is **free** (`integrations.pos_auto_award`, `integrations.webhooks`). Points only change through
+**Pricing v2: integrations are Plus** (hidden at launch; pilot shops get them by admin override). Google Business and
+Twilio (managed SMS) stay free. Feature per provider (`integrationFeature()` in `services/integrations.ts`):
+
+- POS (square, clover, shopify, lightspeed, toast) → `integrations.pos_auto_award`
+- mailchimp → `marketing.email`
+- zapier, make, webhooks, api → `integrations.webhooks`
+
+What happens when the feature is off:
+
+- `POST …/integrations/:provider/connect` → `402 feature_locked`.
+- An existing POS connection stays `connected`, but webhook events are stored as `ignored` with
+  `error: "POS auto-award is paused: it's a Plus feature that isn't enabled for this business"`.
+  The daily sync skips it, and `POST /v1/me/purchases/claim` → `402`.
+- Outbound webhooks aren't queued. `POST`/`PATCH` webhooks and `…/test` → `402`.
+- The merchant REST API (`/v1/api/*`) answers `402 feature_locked` for a key issued earlier.
+
+Nothing is deleted, and switching the feature back on resumes everything. Points only change through
 `services/ledger.ts`. Errors use the standard envelope `{ error: { code, message, details? } }`.
 
 ## Objects
 
 **`IntegrationSummary`** — `provider, name, category (pos|ecommerce|marketing|messaging|automation), description,
 auth (oauth|credentials|link|api_key|webhook|managed), available, status (not_connected|pending|connected|error|disconnected),
-free: true, connectFields[{key,label,required}], externalAccountId, lastSyncAt, lastError, settings, webhookUrl,
+free (false for paid ones), feature (paid feature key | null), locked (feature off for this merchant),
+pausedReason (string when an existing connection is paused by the lock, else null), connectFields[{key,label,required}], externalAccountId, lastSyncAt, lastError, settings, webhookUrl,
 setup {events, scopes, envVars}`.
 `available: false` = the server lacks the platform app credentials (show "coming soon", not an error).
 `settings` include `autoAward` (default true), `autoEnroll` (default true: POS customers with a phone become members),

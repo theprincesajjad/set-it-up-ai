@@ -1,0 +1,23 @@
+import { cn } from "@/lib/cn";
+
+/** Shop identity: brandColor lives only inside this mark (foundations.md "Shop identity"). */
+export function ShopMark({ name, brandColor, logoUrl, size = 28, className }: { name: string; brandColor?: string | null; logoUrl?: string | null; size?: number; className?: string }) {
+  const initials =
+    name
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .trim()
+      .split(/\s+/)
+      .filter((w) => !/^(the|and|of|co)$/i.test(w))
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+  const style = { width: size, height: size, fontSize: Math.round(size * 0.4) };
+  if (logoUrl)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={logoUrl} alt="" style={style} className={cn("shrink-0 rounded-[8px] object-cover", className)} />;
+  return (
+    <span aria-hidden style={{ ...style, background: brandColor ?? "var(--ll-color-fg)" }} className={cn("inline-flex shrink-0 items-center justify-center rounded-[8px] font-semibold", brandColor ? "text-white" : "text-bg", className)}>
+      {initials}
+    </span>
+  );
+}

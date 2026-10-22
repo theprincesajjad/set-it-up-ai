@@ -59,12 +59,12 @@ function Catalog() {
                   <h2 className="flex items-center gap-2 text-title text-fg">
                     {cat.name} {!cat.earnEligible ? <Badge>Doesn&apos;t earn</Badge> : null}
                   </h2>
-                  <ul className="mt-2 divide-y divide-border">
+                  <ul className="mt-2 divide-y divide-line">
                     {items.map((i) => (
                       <li key={i.id} className="flex flex-wrap items-center gap-3 py-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-body-strong text-fg">{i.name}</p>
-                          <p className="text-body-sm text-fg-muted">{formatMoney(i.priceCents)}{i.modifiers.length ? ` · ${i.modifiers.map((m) => m.name).join(", ")}` : ""}</p>
+                          <p className="text-meta text-fg-muted">{formatMoney(i.priceCents)}{i.modifiers.length ? ` · ${i.modifiers.map((m) => m.name).join(", ")}` : ""}</p>
                         </div>
                         <div className="w-40">
                           <Switch label="Orderable" checked={i.orderable && i.available} onChange={async (v) => {
@@ -75,7 +75,7 @@ function Catalog() {
                         <IconButton icon={Pencil} label={`Edit ${i.name}`} onClick={() => setEdit({ id: i.id, name: i.name, price: (i.priceCents / 100).toFixed(2), description: i.description ?? "", categoryId: i.categoryId ?? "", modifiers: i.modifiers.map((m) => `${m.name}: ${m.options.map((o) => `${o.name}${o.priceCents ? ` ${(o.priceCents / 100).toFixed(2)}` : ""}`).join(", ")}`).join("\n") })} />
                       </li>
                     ))}
-                    {!items.length ? <li className="py-2 text-body-sm text-fg-muted">No items yet.</li> : null}
+                    {!items.length ? <li className="py-2 text-meta text-fg-muted">No items yet.</li> : null}
                   </ul>
                 </Card>
               );

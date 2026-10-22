@@ -6,6 +6,12 @@ Local Loyalty — 36-month financial model (Python 3 standard library only).
     python3 docs/finance/model/model.py --quiet    # same, no console summary
 
 Business model encoded here (founder's model, overrides the PRD where they differ):
+  Pricing v2 (founder decision, Oct 2026; docs/business/pricing.md): ONLY the loyalty program
+           and reporting on it are free forever (plus network listing, wallet pass, directory,
+           unlimited staff/locations). Promos, VIP/birthday/referrals, discount cards, email/SMS,
+           CSV, POS auto-award and webhooks move to Plus. Effects modelled: lower free-merchant
+           cost, higher free->paid conversion, slower free sign-ups (PRICING_V1 keeps the old
+           inputs so output/pricing_v2_comparison.csv shows before/after).
   Phase 1  Loyalty is FREE FOREVER: no transaction fee, unlimited locations and staff.
            We pay to onboard merchants strip by strip (BIA neighbourhoods).
   Phase 2  Once the network has enough active merchants (plans.ts `unlockAtMerchants`
@@ -67,9 +73,10 @@ ASSUMPTIONS = {
     "strips_per_quarter": A([0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4], "strips/quarter",
                             "Assumption. One pilot strip, then gated growth (PRD: go/no-go gates)"),
     "launch_order_in_quarter": A([1, 2, 0], "month index", "Assumption: mid, last, first month of quarter"),
-    "strip_potential_merchants": A(32, "merchants/strip",
+    "strip_potential_merchants": A(27.2, "merchants/strip",
                                    "Assumption: 80+ storefronts (PRD strip criterion) x ~55% repeat-visit "
-                                   "verticals x ~70% eventually sign"),
+                                   "verticals x ~70% eventually sign = 32; Pricing v2 adoption risk -15% "
+                                   "(a thinner free tier signs fewer shops) = 27.2 (v1: 32)"),
     # Share of a strip's potential that signs in each month after launch (age 0 = launch month).
     "acquisition_ramp": A([0.25, 0.22, 0.15, 0.10, 0.06, 0.05] + [0.01] * 17, "share of potential",
                           "Assumption: blitz in first 2 months (2-4 reps per strip, PRD), long tail; sums to 100%"),
@@ -104,12 +111,17 @@ ASSUMPTIONS = {
     "mix_personal_services": A(0.12, "share of merchants", "Assumption"),
     "mix_pharmacy": A(0.08, "share of merchants", "Assumption"),
     # Probability an active free merchant upgrades within 12 months of paid features being GA.
-    "conv12_food_bev": A(0.20, "12-month conversion", "Assumption: order-ahead/pickup pain is moderate"),
-    "conv12_retail": A(0.12, "12-month conversion", "Assumption: SMS + push promos only"),
-    "conv12_repair_auto": A(0.40, "12-month conversion",
-                            "Assumption: quote approval/deposits replace phone tag (validate with $100 pilot deposits, PRD)"),
-    "conv12_personal_services": A(0.15, "12-month conversion", "Assumption"),
-    "conv12_pharmacy": A(0.05, "12-month conversion", "Assumption: limited by OCP inducement rules"),
+    # Pricing v2: promos, email/SMS, VIP/birthday/referrals and POS auto-award are now Plus, so
+    # conversion rises most where those matter (food, retail, personal services). Blended
+    # 12-month conversion: base 35% (v1 20%), bear ~20%, bull ~45% (via conversion_multiplier).
+    "conv12_food_bev": A(0.43, "12-month conversion", "Assumption (Pricing v2; v1 20%): promos, double-points days, "
+                                                      "email/SMS and order-ahead are all Plus"),
+    "conv12_retail": A(0.26, "12-month conversion", "Assumption (Pricing v2; v1 12%): promos, email, POS auto-award now Plus"),
+    "conv12_repair_auto": A(0.45, "12-month conversion",
+                            "Assumption (Pricing v2; v1 40%): quote approval/deposits replace phone tag (validate with "
+                            "$100 pilot deposits, PRD); POS auto-award/SMS add a little"),
+    "conv12_personal_services": A(0.32, "12-month conversion", "Assumption (Pricing v2; v1 15%): birthday/VIP/SMS reminders now Plus"),
+    "conv12_pharmacy": A(0.10, "12-month conversion", "Assumption (Pricing v2; v1 5%): limited by OCP inducement rules"),
     # Of the merchants who upgrade in a vertical, the share choosing Pro ($79) rather than Plus ($39).
     "pro_share_food_bev": A(0.05, "share Pro", "Assumption"),
     "pro_share_retail": A(0.05, "share Pro", "Assumption"),
@@ -142,8 +154,11 @@ ASSUMPTIONS = {
     "sms_used_plus": A(300, "SMS/month", "Assumption: 60% of Plus allowance (plans.ts smsPerMonth = 500)"),
     "sms_used_pro": A(900, "SMS/month", "Assumption: 60% of Pro allowance (plans.ts smsPerMonth = 1500)"),
     "otp_sms_per_new_customer": A(1.5, "SMS", "Assumption: phone-number join verification + welcome"),
-    "txn_sms_per_customer": A(0.3, "SMS/month", "Assumption: reward-ready / receipt texts on Free"),
-    "infra_per_merchant": A(1.00, "CAD/month", "Assumption: DB, storage, wallet pass updates, email"),
+    "txn_sms_per_customer": A(0.0, "SMS/month", "Pricing v2: no SMS on Free (reward-ready texts are Plus automations, "
+                                                "inside the Plus/Pro allowance). v1: 0.3. NOTE: SMS receipts "
+                                                "(smsReceiptsEnabled) are not yet gated in the API"),
+    "infra_per_merchant": A(0.60, "CAD/month", "Assumption: DB, storage, wallet pass updates. Pricing v2: no email "
+                                               "campaigns or POS sync on Free (v1: $1.00)"),
     "infra_per_customer": A(0.01, "CAD/month", "Assumption: per active customer hosting + push"),
     "support_hourly": A(25.0, "CAD/hr", "Assumption: blended support cost (founder time is free, see fixed costs)"),
     "support_min_free": A(5, "min/merchant/month", "Assumption"),
@@ -214,10 +229,10 @@ ASSUMPTIONS = {
 SCENARIOS = {
     "bear": {
         "strips_per_quarter": [0, 1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3],
-        "strip_potential_merchants": 24,
+        "strip_potential_merchants": 20.4,  # v1 24, Pricing v2 -15%
         "activation_rate": 0.50,
         "members_per_active_merchant": 50,
-        "conversion_multiplier": 0.6,
+        "conversion_multiplier": 0.513,  # Pricing v2: blended 12-month conversion ~20% (v1 0.6 -> ~13%)
         "paid_churn": 0.045,
         "free_merchant_churn": 0.025,
         "payments_adoption": 0.40,
@@ -251,10 +266,10 @@ SCENARIOS = {
     },
     "bull": {
         "strips_per_quarter": [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6],
-        "strip_potential_merchants": 38,
+        "strip_potential_merchants": 32.3,  # v1 38, Pricing v2 -15%
         "activation_rate": 0.70,
         "members_per_active_merchant": 100,
-        "conversion_multiplier": 1.3,
+        "conversion_multiplier": 1.385,  # Pricing v2: blended 12-month conversion ~45% (v1 1.3 -> ~25%)
         "paid_churn": 0.0225,
         "free_merchant_churn": 0.01,
         "payments_adoption": 0.75,
@@ -266,6 +281,31 @@ SCENARIOS = {
 }
 
 SCENARIO_ORDER = ["bear", "base", "base_reco_gates", "lean_plan", "bull"]
+
+# Pricing v1 (before the Oct 2026 founder decision): promos, marketing, POS etc. were free.
+# Overlaid on any scenario to reproduce the old numbers for output/pricing_v2_comparison.csv.
+PRICING_V1 = {
+    "conv12_food_bev": 0.20, "conv12_retail": 0.12, "conv12_repair_auto": 0.40,
+    "conv12_personal_services": 0.15, "conv12_pharmacy": 0.05,
+    "txn_sms_per_customer": 0.3, "infra_per_merchant": 1.00,
+}
+PRICING_V1_SCENARIO = {
+    "base": {"strip_potential_merchants": 32},
+    "bear": {"strip_potential_merchants": 24, "conversion_multiplier": 0.6},
+    "bull": {"strip_potential_merchants": 38, "conversion_multiplier": 1.3},
+    "base_reco_gates": {"strip_potential_merchants": 32},
+    "lean_plan": {"strip_potential_merchants": 32},
+}
+
+
+def values_v1(scenario="base"):
+    """Scenario inputs as they were under Pricing v1 (for the before/after comparison)."""
+    return values(scenario, **PRICING_V1, **PRICING_V1_SCENARIO[scenario])
+
+
+def conv12_blended(v):
+    """Blended probability an active free merchant upgrades within 12 months of paid GA."""
+    return sum(v["mix_" + vt] * (1 - (1 - hazard(v, vt)) ** 12) for vt in VERTICALS)
 
 FIXED_KEYS = ["fixed_hosting_base", "fixed_saas_tools", "fixed_insurance", "fixed_accounting",
               "fixed_app_stores", "fixed_phone_misc", "fixed_marketing", "fixed_legal_reserve"]
@@ -625,6 +665,21 @@ def main(quiet=False):
     # assumptions dump (for reference / diffing)
     write_csv(os.path.join(OUT, "assumptions.csv"), ["key", "value", "unit", "note"],
               [[k, a["value"], a["unit"], a["note"]] for k, a in ASSUMPTIONS.items()])
+    # Pricing v2 before/after
+    cmp_rows = []
+    cmp_metrics = ["conv12_blended", "free_cost_per_active_merchant", "total_signups", "breakeven_month",
+                   "breakeven_month_extended", "breakeven_calendar_extended", "peak_cash_need", "peak_cash_need_extended",
+                   "ltv_cac", "ltv_cac_fully_loaded", "payback_months", "cac_per_paying", "m36_active_merchants",
+                   "m36_paid_total", "m36_rev_total", "m36_ebitda", "y3_revenue"]
+    for sc in ["bear", "base", "lean_plan", "bull"]:
+        for label, v in (("v1", values_v1(sc)), ("v2", values(sc))):
+            s = summarize(run(v), v)
+            u = unit_economics(v)
+            s["conv12_blended"] = conv12_blended(v)
+            s["free_cost_per_active_merchant"] = u["free_cost_per_active_merchant"]
+            s["ltv_cac_fully_loaded"] = u["ltv_cac_fully_loaded"]
+            cmp_rows.append([sc, label] + [s[k] if s[k] is not None else "none" for k in cmp_metrics])
+    write_csv(os.path.join(OUT, "pricing_v2_comparison.csv"), ["scenario", "pricing"] + cmp_metrics, cmp_rows)
     # summary
     b = results["base"][2]
     lines = ["Local Loyalty model summary (CAD)", ""]

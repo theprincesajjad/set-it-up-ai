@@ -39,8 +39,8 @@ function List() {
                       <StatusBadge domain="campaign" status={c.status} />
                       {c.joined ? <Badge tone="success">You&apos;re in</Badge> : null}
                     </div>
-                    <p className="text-body-sm text-fg-muted">{formatDate(c.startsAt)} to {formatDate(c.endsAt)} · {c.merchants.length} shops · visit {c.goalVisits} to enter{c.prize ? ` · Prize: ${c.prize}` : ""}</p>
-                    {c.description ? <p className="text-body-sm text-fg">{c.description}</p> : null}
+                    <p className="text-meta text-fg-muted">{formatDate(c.startsAt)} to {formatDate(c.endsAt)} · {c.merchants.length} shops · visit {c.goalVisits} to enter{c.prize ? ` · Prize: ${c.prize}` : ""}</p>
+                    {c.description ? <p className="text-meta text-fg">{c.description}</p> : null}
                     {c.canChange ? (
                       <Button className="mt-auto self-start" variant={c.joined ? "secondary" : "primary"} loading={act.busy} onClick={async () => {
                         await act.run(() => (c.joined ? api.leaveCampaign(c.id) : api.joinCampaign(c.id)));
@@ -58,7 +58,7 @@ function List() {
           )
         }
       </Async>
-      {act.error ? <p className="text-danger">{act.error}</p> : null}
+      {act.error ? <p className="text-negative">{act.error}</p> : null}
     </div>
   );
 }

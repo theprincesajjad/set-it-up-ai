@@ -1,4 +1,3 @@
-import { BadgePercent, Gift, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { formatDate, formatPoints } from "@/lib/format";
@@ -26,37 +25,35 @@ export interface RewardCardProps {
   /** Rendered while `redeeming` (usually <RedeemCode/>). */
   children?: ReactNode;
   className?: string;
+  /** "card" (hairline block, default) or "row" (inside a ListGroup). */
+  layout?: "card" | "row";
 }
 
-const icons: Record<RewardCardReward["rewardType"], LucideIcon> = { amount_off: BadgePercent, percent_off: BadgePercent, free_item: Gift, custom: Gift };
-
-export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, redeemedAt, children, className }: RewardCardProps) {
-  const Icon = icons[reward.rewardType];
+/** A reward: name + cost; a Redeem button when affordable, thin progress when not. No icon tiles. */
+export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, redeemedAt, children, className, layout = "card" }: RewardCardProps) {
   const toGo = Math.max(0, reward.pointsCost - balance);
   return (
-    <div className={cn("rounded-lg bg-surface p-4 shadow-sm", className)}>
+    <div className={cn(layout === "card" ? "rounded-card border border-line bg-bg p-4" : "py-3.5", className)}>
       <div className="flex items-center gap-3">
-        <span aria-hidden className="flex size-14 shrink-0 items-center justify-center rounded-md bg-accent-subtle text-on-accent-subtle">
-          <Icon className="size-6" />
-        </span>
         <div className="min-w-0 flex-1">
-          <p className="text-title text-fg">{reward.name}</p>
-          <p className="text-body-sm text-fg-muted">{formatPoints(reward.pointsCost, terminology)}</p>
+          <p className="text-body-strong text-fg">{reward.name}</p>
+          <p className="text-meta tabular-nums text-fg-muted">
+            {state === "available" ? <span className="font-semibold text-accent-text">Ready · </span> : null}
+            {formatPoints(reward.pointsCost, terminology)}
+          </p>
         </div>
         {state === "available" && onRedeem ? (
-          <Button variant="accent" size="sm" onClick={onRedeem}>
+          <Button size="sm" onClick={onRedeem}>
             Redeem
           </Button>
         ) : null}
-        {state === "redeemed" ? <Badge tone="success">{redeemedAt ? `Redeemed ${formatDate(redeemedAt)}` : "Redeemed"}</Badge> : null}
+        {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{formatPoints(toGo, terminology)} to go</span> : null}
+        {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? `Redeemed ${formatDate(redeemedAt)}` : "Redeemed"}</Badge> : null}
       </div>
       {state === "locked" ? (
-        <div className="mt-3">
-          <ProgressBar value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} tone="accent" showValue={false} valueText={`${balance} of ${reward.pointsCost} ${terminology}`} />
-          <p className="mt-1.5 text-body-sm text-fg-muted">{formatPoints(toGo, terminology)} to go</p>
-        </div>
+        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={`${balance} of ${reward.pointsCost} ${terminology}`} />
       ) : null}
-      {reward.description || reward.terms ? <p className="mt-2 text-caption text-fg-muted">{reward.terms ?? reward.description}</p> : null}
+      {reward.description || reward.terms ? <p className="mt-2 text-meta text-fg-muted">{reward.terms ?? reward.description}</p> : null}
       {state === "redeeming" ? <div className="mt-3">{children}</div> : null}
     </div>
   );

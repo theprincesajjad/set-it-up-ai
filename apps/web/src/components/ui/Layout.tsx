@@ -7,13 +7,13 @@ export function Container({ size = "app", className, children }: { size?: "publi
   return <div className={cn("mx-auto w-full", w, className)}>{children}</div>;
 }
 
-/** Page header: h1 + optional description + primary action on the right (sticky bottom on mobile is up to the page). */
+/** Page header (foundations.md "Merchant dashboard"): title 22 semibold, one-line description, actions on the right. */
 export function PageHeader({ title, description, actions, eyebrow, className }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode; className?: string }) {
   return (
     <header className={cn("mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between", className)}>
       <div className="min-w-0">
-        {eyebrow ? <p className="text-overline uppercase text-fg-muted">{eyebrow}</p> : null}
-        <h1 className="text-h1 text-fg">{title}</h1>
+        {eyebrow ? <p className="mb-1 text-meta text-fg-muted">{eyebrow}</p> : null}
+        <h1 className="text-title text-fg">{title}</h1>
         {description ? <p className="mt-1 text-body text-fg-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
@@ -26,7 +26,7 @@ export function Section({ title, action, children, className, id }: { title?: Re
     <section id={id} className={cn("flex flex-col gap-3", className)} aria-labelledby={id && title ? `${id}-title` : undefined}>
       {title ? (
         <div className="flex items-center justify-between gap-3">
-          <h2 id={id ? `${id}-title` : undefined} className="text-h3 text-fg">
+          <h2 id={id ? `${id}-title` : undefined} className="text-headline text-fg">
             {title}
           </h2>
           {action}
@@ -37,7 +37,19 @@ export function Section({ title, action, children, className, id }: { title?: Re
   );
 }
 
-/** 4px coloured environment strip for staff consoles (system.md §7): info for rep, danger for admin. */
+/** Thin environment strip for staff consoles (system.md §7): black for rep, red for admin. */
 export function EnvironmentStrip({ env }: { env: "rep" | "admin" }) {
-  return <div aria-hidden className={cn("h-1 w-full", env === "admin" ? "bg-danger" : "bg-info")} />;
+  return <div aria-hidden className={cn("h-[3px] w-full", env === "admin" ? "bg-negative" : "bg-fg")} />;
+}
+
+/** iOS-style large title for phone-first pages (28 Bricolage), with an optional line under it. */
+export function LargeTitle({ children, subtitle, className, id }: { children: ReactNode; subtitle?: ReactNode; className?: string; id?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-1", className)}>
+      <h1 id={id} className="display text-large-title text-fg">
+        {children}
+      </h1>
+      {subtitle ? <p className="text-body text-fg-muted">{subtitle}</p> : null}
+    </div>
+  );
 }

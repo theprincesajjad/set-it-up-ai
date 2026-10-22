@@ -39,7 +39,7 @@ export interface DataTableProps<T> {
 }
 
 /**
- * Dashboard table (system.md §6 DataTable): sticky sortable header, 52px rows,
+ * Dashboard table (system.md §6 DataTable): sticky sortable header, 44px rows,
  * right-aligned numbers; collapses into list rows below md.
  */
 export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, onRetry, empty, onRowClick, selectedKey, hasMore, onLoadMore, loadingMore, summary, toolbar }: DataTableProps<T>) {
@@ -70,18 +70,18 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
           {error}
         </Banner>
       ) : null}
-      <div className="hidden overflow-x-auto rounded-lg bg-surface shadow-sm md:block">
-        <table className="w-full border-collapse text-body-sm">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-bg md:block">
+        <table className="w-full border-collapse text-meta">
           <caption className="sr-only">{caption}</caption>
-          <thead className="sticky top-0 z-sticky bg-surface-sunken">
+          <thead className="sticky top-0 z-sticky bg-bg-subtle">
             <tr>
               {columns.map((c) => {
                 const active = sort?.key === c.key;
                 const Icon = active ? (sort!.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
                 return (
-                  <th key={c.key} scope="col" aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined} className={cn("h-11 px-4 text-label font-semibold text-fg-muted", c.align === "end" ? "text-end" : "text-start")}>
+                  <th key={c.key} scope="col" aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined} className={cn("h-10 px-4 text-meta-strong text-fg-muted", c.align === "end" ? "text-end" : "text-start")}>
                     {c.sortValue ? (
-                      <button type="button" onClick={() => toggle(c.key)} className="inline-flex min-h-11 items-center gap-1 focus-visible:focus-ring">
+                      <button type="button" onClick={() => toggle(c.key)} className="inline-flex min-h-10 items-center gap-1 hover:text-fg focus-visible:focus-ring">
                         {c.header}
                         <Icon aria-hidden className="size-3.5" />
                       </button>
@@ -96,7 +96,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
           <tbody>
             {loading
               ? Array.from({ length: 8 }, (_, i) => (
-                  <tr key={i} className="h-[52px] border-t border-border">
+                  <tr key={i} className="h-11 border-t border-line">
                     {columns.map((c) => (
                       <td key={c.key} className="px-4">
                         <Skeleton className="h-3 w-3/4" />
@@ -110,7 +110,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                     <tr
                       key={k}
                       onClick={onRowClick ? () => onRowClick(r) : undefined}
-                      className={cn("h-[52px] border-t border-border hover:bg-canvas-subtle", onRowClick && "cursor-pointer", selectedKey === k && "bg-brand-subtle")}
+                      className={cn("h-11 border-t border-line transition-colors hover:bg-bg-subtle", onRowClick && "cursor-pointer", selectedKey === k && "bg-bg-muted")}
                     >
                       {columns.map((c) => (
                         <td key={c.key} className={cn("px-4 text-fg", c.align === "end" && "text-end tabular-nums", c.className)}>
@@ -122,11 +122,11 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                 })}
           </tbody>
         </table>
-        {!loading && rows.length === 0 ? <div className="border-t border-border">{empty}</div> : null}
+        {!loading && rows.length === 0 ? <div className="border-t border-line">{empty}</div> : null}
       </div>
 
       {/* < md: list rows */}
-      <ul aria-label={caption} className="flex flex-col divide-y divide-border rounded-lg bg-surface px-4 shadow-sm md:hidden">
+      <ul aria-label={caption} className="flex flex-col divide-y divide-line rounded-card border border-line bg-bg px-4 md:hidden">
         {loading
           ? Array.from({ length: 5 }, (_, i) => (
               <li key={i} className="py-3">
@@ -140,7 +140,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-body-strong text-fg">{titleCol?.cell(r)}</div>
                     {subCols.length ? (
-                      <div className="truncate text-body-sm text-fg-muted">
+                      <div className="truncate text-meta text-fg-muted">
                         {subCols.map((c, i) => (
                           <span key={c.key}>
                             {i > 0 ? " · " : ""}

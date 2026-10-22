@@ -23,19 +23,19 @@ export function DensityGauge({ label, value, target, unit = "shops", format = fo
   const len = Math.PI * r;
   const togo = Math.max(0, target - value);
   return (
-    <div className={cn("flex flex-col items-center rounded-lg bg-surface p-4 text-center shadow-sm", className)}>
-      <p className="text-overline uppercase text-fg-muted">{label}</p>
+    <div className={cn("flex flex-col items-center rounded-card border border-line bg-bg p-4 text-center", className)}>
+      <p className="text-meta-strong text-fg-muted">{label}</p>
       <div role="img" aria-label={`${label}: ${format(value)} of ${format(target)} ${unit}. ${STATUS_TEXT[s]}.`} className="relative mt-2" style={{ width: compact ? 128 : 160, height: compact ? 72 : 90 }}>
         <svg viewBox="0 0 160 90" width="100%" height="100%" aria-hidden>
-          <path d="M12 82 A68 68 0 0 1 148 82" fill="none" strokeWidth={12} strokeLinecap="round" className="stroke-ring-track" />
-          <path d="M12 82 A68 68 0 0 1 148 82" fill="none" strokeWidth={12} strokeLinecap="round" strokeDasharray={`${len}`} strokeDashoffset={len * (1 - pct)} className={cn("transition-[stroke-dashoffset] duration-500 ease-standard", STATUS_STROKE[s])} />
+          <path d="M12 82 A68 68 0 0 1 148 82" fill="none" strokeWidth={8} strokeLinecap="round" className="stroke-ring-track" />
+          <path d="M12 82 A68 68 0 0 1 148 82" fill="none" strokeWidth={8} strokeLinecap="round" strokeDasharray={`${len}`} strokeDashoffset={len * (1 - pct)} className={cn("transition-[stroke-dashoffset] duration-500 ease-out", STATUS_STROKE[s])} />
         </svg>
-        <span className="absolute inset-x-0 bottom-0 text-stat tabular-nums text-fg">{format(value)}</span>
+        <span className="absolute inset-x-0 bottom-0 display text-stat tabular-nums text-fg">{format(value)}</span>
       </div>
-      <p className="mt-1 text-body-sm tabular-nums text-fg">
+      <p className="mt-1 text-meta tabular-nums text-fg">
         {format(value)} / {format(target)} {unit}
       </p>
-      <p className="text-caption text-fg-muted">{s === "ready" ? "Target met" : `${format(togo)} to go · ${STATUS_TEXT[s]}`}</p>
+      <p className="text-meta text-fg-muted">{s === "ready" ? "Target met" : `${format(togo)} to go · ${STATUS_TEXT[s]}`}</p>
       {s === "ready" && !compact ? (
         <Badge tone="success" className="mt-2">
           Ready to unlock

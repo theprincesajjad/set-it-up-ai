@@ -1,7 +1,6 @@
 /** Sheets shared by several customer screens: join (CASL), redeem confirm, sponsored "why", push pre-prompt. */
 import { customerApi } from "@ll/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -14,7 +13,7 @@ import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Bell, Button, Card, ConsentCheckbox, Sheet, ShopLogo, Text, useToast } from "../../ui";
+import { Banner, Bell, Button, Card, ConsentCheckbox, haptic, Sheet, ShopLogo, Text, useToast } from "../../ui";
 import { registerForPush } from "../push";
 import { observeServerTimestamp } from "../../lib/serverClock";
 
@@ -47,7 +46,7 @@ export function JoinSheet({
     try {
       const res = await api.me.join({ merchantId: shop.id, ...(consent ? { consent: { text } } : {}) });
       await qc.invalidateQueries({ queryKey: qk.wallet });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      haptic.success();
       toast({
         tone: "success",
         message: res.bonusPoints > 0 ? t("ok.joinedBonus", { bonus: formatPts(res.bonusPoints, res.membership.terminology), shop: shop.name }) : `You're in at ${shop.name}.`,
@@ -66,7 +65,7 @@ export function JoinSheet({
       onClose={onClose}
       title={t("action.join", { shop: shop.name })}
       footer={
-        <Button fullWidth loading={busy} onPress={join}>
+        <Button size="lg" fullWidth loading={busy} onPress={join}>
           {t("action.join", { shop: shop.name })}
         </Button>
       }
@@ -108,6 +107,7 @@ export function RedeemConfirmSheet({
       const res = await api.me.redeem(membership.id, reward.id, key);
       // Just issued: createdAt is "now" on the server (clock fallback when the Date header is hidden).
       if (!res.duplicate) observeServerTimestamp(res.redemption.createdAt);
+      haptic.success();
       void qc.invalidateQueries({ queryKey: qk.wallet });
       void qc.invalidateQueries({ queryKey: qk.membership(membership.id) });
       onClose();
@@ -142,10 +142,10 @@ export function RedeemConfirmSheet({
       title={reward.name}
       footer={
         <>
-          <Button variant="accent" fullWidth loading={busy} disabled={!online} onPress={go}>
+          <Button size="lg" fullWidth loading={busy} disabled={!online} onPress={go}>
             {t("action.showCodeToStaff")}
           </Button>
-          <Button variant="secondary" fullWidth onPress={onClose}>
+          <Button variant="ghost" fullWidth onPress={onClose}>
             {t("action.notNow")}
           </Button>
         </>
@@ -177,8 +177,8 @@ export function RedeemConfirmSheet({
           </View>
         </View>
       </Card>
-      {reward.description ? <Text variant="bodySm" color="fgMuted">{reward.description}</Text> : null}
-      <Text variant="bodySm" color="fgMuted">
+      {reward.description ? <Text variant="meta" color="fgMuted">{reward.description}</Text> : null}
+      <Text variant="meta" color="fgMuted">
         Only tap this at the counter. The code lasts 10 minutes.
       </Text>
       {!online ? <Banner variant="warning">{t("err.redeem.offlineCustomer")}</Banner> : null}
@@ -229,22 +229,18 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
           >
             {t("action.turnOn")}
           </Button>
-          <Button variant="secondary" fullWidth onPress={close}>
+          <Button variant="ghost" fullWidth onPress={close}>
             {t("action.notNow")}
           </Button>
         </>
       }
     >
-      <View style={{ alignItems: "center", gap: 12 }}>
-        <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: c.brandSubtle, alignItems: "center", justifyContent: "center" }}>
-          <Bell size={48} color={c.onBrandSubtle} />
-        </View>
-        <Text variant="h3" center>
+      <View style={{ gap: 10 }}>
+        <Bell size={26} color={c.fg} strokeWidth={1.75} />
+        <Text variant="mapLabel" style={{ fontSize: 20, lineHeight: 26, textTransform: "none" }}>
           {t("consent.push.title")}
         </Text>
-        <Text color="fgMuted" center>
-          {t("consent.push.body")}
-        </Text>
+        <Text color="fgMuted">{t("consent.push.body")}</Text>
       </View>
     </Sheet>
   );

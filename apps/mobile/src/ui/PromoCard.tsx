@@ -10,7 +10,7 @@ import { Text } from "./Text";
 export interface PromoCardProps {
   promo: { title: string; kind: string; endsAt: string | null; imageUrl?: string | null; multiplierPct?: number | null; bonusPoints?: number | null; percentOff?: number | null; body?: string | null };
   shop: ShopTileShop;
-  /** Sponsored placements ALWAYS show the label (top-left above the shop row). */
+  /** Sponsored placements ALWAYS show the label. */
   sponsored?: boolean;
   onSponsoredInfo?: () => void;
   onPress?: () => void;
@@ -19,15 +19,16 @@ export interface PromoCardProps {
   variant?: "feed" | "compact";
 }
 
+/** Accent only when the promo is about points (2x, +50 pts). */
 function kindBadge(p: PromoCardProps["promo"]): { tone: BadgeTone; label: string } | null {
-  if (p.kind === "multiplier") return { tone: "accent", label: `${p.multiplierPct ? p.multiplierPct / 100 : 2}x points` };
+  if (p.kind === "multiplier") return { tone: "accent", label: `${p.multiplierPct ? p.multiplierPct / 100 : 2}× points` };
   if (p.kind === "bonus_points") return { tone: "accent", label: `+${p.bonusPoints ?? 0} pts` };
-  if (p.kind === "discount") return { tone: "brand", label: `${p.percentOff ?? 0}% off` };
-  if (p.kind === "event") return { tone: "info", label: "Event" };
+  if (p.kind === "discount") return { tone: "neutral", label: `${p.percentOff ?? 0}% off` };
+  if (p.kind === "event") return { tone: "neutral", label: "Event" };
   return null;
 }
 
-/** system.md § PromoCard. Same layout for organic and sponsored (no special colours). */
+/** Hairline card; same layout for organic and sponsored. */
 export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, joinLabel, onJoin, variant = "feed" }: PromoCardProps) {
   const badge = kindBadge(promo);
   const ends = promoEnds(promo.endsAt);
@@ -38,29 +39,29 @@ export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, jo
       <View style={styles.body}>
         {sponsored ? <SponsoredBadge onPress={onSponsoredInfo} /> : null}
         <View style={styles.shopRow}>
-          <ShopLogo shop={shop} size={24} />
-          <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
+          <ShopLogo shop={shop} size={22} />
+          <Text variant="metaStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
             {shop.name}
           </Text>
           {shop.distanceM != null ? (
-            <Text variant="caption" color="fgMuted">
+            <Text variant="meta" color="fgMuted">
               {formatDistance(shop.distanceM)}
             </Text>
           ) : null}
         </View>
-        <Text variant="title" numberOfLines={2}>
+        <Text variant="headline" numberOfLines={2}>
           {promo.title}
         </Text>
         <View style={styles.meta}>
           {badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : null}
           {ends ? (
-            <Text variant="bodySm" color="fgMuted">
+            <Text variant="meta" color="fgMuted">
               {ends}
             </Text>
           ) : null}
           <View style={{ flex: 1 }} />
           {joinLabel && onJoin ? (
-            <Button variant="tonal" size="sm" onPress={onJoin}>
+            <Button variant="secondary" size="sm" onPress={onJoin}>
               {joinLabel}
             </Button>
           ) : null}
@@ -71,8 +72,8 @@ export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, jo
 }
 
 const styles = StyleSheet.create({
-  image: { width: "100%", aspectRatio: 16 / 9, borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg },
-  body: { padding: 16, gap: 8 },
+  image: { width: "100%", aspectRatio: 16 / 9, borderTopLeftRadius: radii.card, borderTopRightRadius: radii.card },
+  body: { padding: 16, gap: 6 },
   shopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   meta: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 });

@@ -1,18 +1,26 @@
 import { layout, shadows } from "@ll/design-tokens";
 import { router } from "expo-router";
-import type { ReactNode } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { useRef, type ReactNode } from "react";
+import { Animated, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { IconButton } from "./IconButton";
 import { ChevronLeft } from "./icons";
 import { Text } from "./Text";
 
+/** Height the floating capsule tab bar takes from the bottom of a tab screen (bar + gap + safe area). */
+export function useTabBarSpace(): number {
+  const insets = useSafeAreaInsets();
+  return layout.tabBar + 12 + Math.max(insets.bottom, 12);
+}
+
 export interface ScreenProps {
   children: ReactNode;
   title?: string;
-  /** Large h1 title (Home, Rewards). */
+  /** iOS large title (lowercase, display face) that collapses into the bar on scroll. */
   largeTitle?: boolean;
+  /** Page titles are lowercase (the voice); pass "as-is" for proper names (shop pages). */
+  titleCase?: "lower" | "as-is";
   subtitle?: ReactNode;
   back?: boolean;
   onBack?: () => void;
@@ -24,74 +32,122 @@ export interface ScreenProps {
   banner?: ReactNode;
   edges?: Edge[];
   contentStyle?: StyleProp<ViewStyle>;
-  background?: "canvas" | "surface";
-  /** Full-bleed hero under the status bar with a round back button floating over it (Shop detail). */
+  background?: "canvas" | "surface" | "subtle";
+  /** Full-bleed content under the status bar with a round back button floating over it. */
   floatingBack?: boolean;
+  /** A tab screen: leaves room for the floating tab bar. */
+  tabBar?: boolean;
+  /** The content shows the title itself (shop header): the bar title fades in once it scrolls away. */
+  collapseTitle?: boolean;
 }
 
-/** Canvas + safe area + 56 app bar + gutters 16. */
-export function Screen({ children, title, largeTitle, subtitle, back, onBack, trailing, scroll = true, refreshing, onRefresh, footer, banner, edges = ["top"], contentStyle, background = "canvas", floatingBack }: ScreenProps) {
+/**
+ * The page frame: safe area, a 44 pt bar (round back button, centred title),
+ * gutters 16. With `largeTitle` the title sits big under the bar and fades
+ * into the bar as you scroll (SF-style), with a hairline appearing under it.
+ */
+export function Screen({
+  children,
+  title,
+  largeTitle,
+  titleCase = "lower",
+  subtitle,
+  back,
+  onBack,
+  trailing,
+  scroll = true,
+  refreshing,
+  onRefresh,
+  footer,
+  banner,
+  edges = ["top"],
+  contentStyle,
+  background = "canvas",
+  floatingBack,
+  tabBar,
+  collapseTitle,
+}: ScreenProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabSpace = useTabBarSpace();
+  const y = useRef(new Animated.Value(0)).current;
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace("/")));
-  const showBar = back || (title && !largeTitle) || trailing;
-  const barShown = !floatingBack && !!showBar && !(largeTitle && !back);
+  const bg = background === "subtle" ? c.bgSubtle : c.bg;
+  const shownTitle = title ? (titleCase === "lower" ? title.toLowerCase() : title) : "";
+  const barShown = !floatingBack && (back || !!title || !!trailing);
+  const smallTitleOpacity = largeTitle
+    ? y.interpolate({ inputRange: [24, 44], outputRange: [0, 1], extrapolate: "clamp" })
+    : collapseTitle
+      ? y.interpolate({ inputRange: [48, 72], outputRange: [0, 1], extrapolate: "clamp" })
+      : 1;
+  const ruleOpacity = y.interpolate({ inputRange: [0, 12], outputRange: [0, 1], extrapolate: "clamp" });
+  const bottomPad = (tabBar ? tabSpace : 0) + (footer ? 16 : 40);
+
   const content = (
     <>
       {largeTitle && title ? (
         <View style={styles.largeTitle}>
-          <View style={{ flex: 1 }}>
-            <Text variant="h1" accessibilityRole="header">
-              {title}
-            </Text>
-            {subtitle}
-          </View>
-          {!showBar ? trailing : null}
+          <Text variant="largeTitle" accessibilityRole="header" style={titleCase === "as-is" ? { textTransform: "none" } : null}>
+            {shownTitle}
+          </Text>
+          {subtitle}
         </View>
       ) : null}
       {children}
     </>
   );
+
   return (
-    <SafeAreaView edges={floatingBack ? edges.filter((e) => e !== "top") : edges} style={[styles.root, { backgroundColor: c[background] }]}>
+    <SafeAreaView edges={floatingBack ? edges.filter((e) => e !== "top") : edges} style={[styles.root, { backgroundColor: bg }]}>
       {barShown ? (
-        <View style={styles.bar}>
-          {back ? <IconButton icon={ChevronLeft} label="Back" onPress={goBack} /> : <View style={{ width: 8 }} />}
-          <Text variant="title" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
-            {!largeTitle ? (title ?? "") : ""}
-          </Text>
-          {trailing}
+        <View style={[styles.bar, { backgroundColor: bg }]}>
+          <View style={styles.side}>{back ? <IconButton icon={ChevronLeft} label="Back" variant="secondary" size={36} onPress={goBack} /> : null}</View>
+          <Animated.View style={[styles.center, { opacity: smallTitleOpacity }]} accessibilityElementsHidden={largeTitle} importantForAccessibility={largeTitle ? "no-hide-descendants" : "auto"}>
+            <Text variant="mapLabel" numberOfLines={1} accessibilityRole={largeTitle ? undefined : "header"} style={[{ fontSize: 17, lineHeight: 22 }, titleCase === "as-is" ? { textTransform: "none" } : null]}>
+              {shownTitle}
+            </Text>
+          </Animated.View>
+          <View style={[styles.side, { alignItems: "flex-end" }]}>{trailing}</View>
+          <Animated.View style={[styles.rule, { backgroundColor: c.line, opacity: ruleOpacity }]} />
         </View>
       ) : null}
-      {banner}
+      {banner ? <View style={styles.banner}>{banner}</View> : null}
       {scroll ? (
-        <ScrollView
-          contentContainerStyle={[styles.content, !barShown && !floatingBack ? styles.noBar : null, contentStyle]}
+        <Animated.ScrollView
+          scrollEventThrottle={16}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: true })}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPad }, !barShown && !floatingBack ? styles.noBar : null, contentStyle]}
           keyboardShouldPersistTaps="handled"
-          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.brand} colors={[c.brand]} /> : undefined}
+          keyboardDismissMode="on-drag"
+          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.fgMuted} colors={[c.fg]} /> : undefined}
         >
           {content}
-        </ScrollView>
+        </Animated.ScrollView>
       ) : (
-        <View style={[styles.content, !barShown ? styles.noBar : null, { flex: 1 }, contentStyle]}>{content}</View>
+        <View style={[styles.content, !barShown ? styles.noBar : null, { flex: 1, paddingBottom: tabBar ? tabSpace : 16 }, contentStyle]}>{content}</View>
       )}
       {floatingBack ? (
-        <View style={[styles.floatingBack, { top: insets.top + 8, backgroundColor: c.surface }, shadows.sm.native]}>
-          <IconButton icon={ChevronLeft} label="Back" onPress={goBack} />
+        <View style={[styles.floatingBack, { top: insets.top + 8 }]}>
+          <IconButton icon={ChevronLeft} label="Back" variant="float" size={36} onPress={goBack} />
         </View>
       ) : null}
-      {footer ? <View style={[styles.footer, { borderTopColor: c.border, backgroundColor: c[background] }]}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { borderTopColor: c.line, backgroundColor: bg, paddingBottom: Math.max(12, tabBar ? tabSpace : 0) }]}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
 
-export function Section({ title, action, children, style }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+/**
+ * A group with a lowercase grey header over a hairline ("rewards ready").
+ * `rule={false}` drops the hairline (when the children draw their own box).
+ */
+export function Section({ title, action, children, style, rule = true }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle>; rule?: boolean }) {
+  const { c } = useTheme();
   return (
-    <View style={[{ gap: 12 }, style]}>
+    <View style={[{ gap: rule ? 0 : 10 }, style]}>
       {title ? (
-        <View style={styles.sectionHeader}>
-          <Text variant="h3" accessibilityRole="header" style={{ flex: 1 }}>
-            {title}
+        <View style={[styles.sectionHeader, rule ? { borderBottomColor: c.line, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 8 } : null]}>
+          <Text variant="metaStrong" color="fgMuted" accessibilityRole="header" style={{ flex: 1 }}>
+            {title.toLowerCase()}
           </Text>
           {action}
         </View>
@@ -103,12 +159,16 @@ export function Section({ title, action, children, style }: { title?: string; ac
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  bar: { height: layout.appBar, flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 },
-  largeTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  content: { paddingHorizontal: layout.gutterMobile, paddingBottom: 32, gap: 24 },
+  bar: { height: layout.appBar, flexDirection: "row", alignItems: "center", paddingHorizontal: 12 },
+  side: { width: 88, flexDirection: "row", alignItems: "center", gap: 4 },
+  center: { flex: 1, alignItems: "center" },
+  rule: { position: "absolute", left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  banner: { paddingHorizontal: 16, paddingBottom: 8 },
+  largeTitle: { gap: 4, marginTop: 0, marginBottom: -4 },
+  content: { paddingHorizontal: layout.gutterMobile, gap: 24 },
   /** No app bar: keep the first line off the status bar / notch edge. */
   noBar: { paddingTop: 16 },
-  footer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  floatingBack: { position: "absolute", left: 12, borderRadius: 999 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  floatingBack: { position: "absolute", left: 12, borderRadius: 999, ...shadows.none.native },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28 },
 });

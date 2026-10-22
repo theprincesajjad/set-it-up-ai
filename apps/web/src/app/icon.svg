@@ -1,21 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="t">
   <title id="t">Local Loyalty</title>
-  <!-- "The Shopfront": a corner shop under a striped awning. The marigold doorknob is the point you earn. -->
-  <defs>
-    <clipPath id="awning">
-      <path d="M6 22a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v2a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0a6.5 6.5 0 0 1-13 0z"/>
-    </clipPath>
-  </defs>
-  <!-- shop body -->
-  <rect x="6" y="10" width="52" height="48" rx="12" fill="#1F6A50"/>
-  <!-- awning: marigold with pale-marigold stripes, scalloped edge -->
-  <g clip-path="url(#awning)">
-    <rect x="6" y="10" width="52" height="21" fill="#F5A524"/>
-    <rect x="19" y="10" width="13" height="21" fill="#FDDA8E"/>
-    <rect x="45" y="10" width="13" height="21" fill="#FDDA8E"/>
-  </g>
-  <!-- door -->
-  <path d="M24 58V44a8 8 0 0 1 16 0v14z" fill="#FAF6EF"/>
-  <!-- doorknob = the point -->
-  <circle cx="35.5" cy="51" r="2" fill="#F5A524"/>
+  <!-- v2 mark "four corners": a black tile, four places; one is filled with the accent = the point you earned.
+       Reads as a stamp card and as a map of corner shops. Black #0B0B0C, white, accent #FF5A1F. Nothing else. -->
+  <rect width="64" height="64" rx="16" fill="#0B0B0C"/>
+  <circle cx="22" cy="22" r="7.5" fill="#FFFFFF"/>
+  <circle cx="42" cy="22" r="7.5" fill="#FFFFFF"/>
+  <circle cx="22" cy="42" r="7.5" fill="#FFFFFF"/>
+  <circle cx="42" cy="42" r="7.5" fill="#FF5A1F"/>
 </svg>

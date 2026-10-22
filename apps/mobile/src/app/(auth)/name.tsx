@@ -67,11 +67,11 @@ export default function NameStep() {
         await qc.invalidateQueries({ queryKey: qk.wallet });
         setJoined(res);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-        setTimeout(() => router.replace("/home"), 1500);
+        setTimeout(() => router.replace("/map"), 1500);
         return;
       }
       toast({ message: t("ok.joined", { firstName: first.trim() }), tone: "success" });
-      router.replace("/home");
+      router.replace("/map");
     } catch (e) {
       setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
     } finally {

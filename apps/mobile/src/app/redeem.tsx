@@ -1,6 +1,5 @@
 import { radii } from "@ll/design-tokens";
 import { useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
@@ -15,7 +14,7 @@ import { secondsLeft } from "../lib/serverClock";
 import { api } from "../state/api";
 import { qk } from "../state/query";
 import { useTheme } from "../theme";
-import { Banner, Button, CircleCheck, ConfirmDialog, QrCode, ShopLogo, Text } from "../ui";
+import { Banner, Button, CircleCheck, ConfirmDialog, haptic, QrCode, ShopLogo, Text } from "../ui";
 
 /** Legacy fallback when the API didn't send expiresAt: app codes last 10 minutes from createdAt. */
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -50,10 +49,10 @@ export default function Redeem() {
     if (open) seenOpen.current = true;
     else if (seenOpen.current) {
       setState("confirmed");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      haptic.success();
       AccessibilityInfo.announceForAccessibility(t("ok.redeem.customer", { reward: p.rewardName }));
       void qc.invalidateQueries({ queryKey: qk.wallet });
-      setTimeout(() => (router.canGoBack() ? router.back() : router.replace("/home")), 4000);
+      setTimeout(() => (router.canGoBack() ? router.back() : router.replace("/map")), 4000);
     }
   }, [detail.data, state, p.redemptionId, p.rewardName, qc]);
 
@@ -83,11 +82,14 @@ export default function Redeem() {
 
   if (state === "confirmed") {
     return (
-      <SafeAreaView style={[styles.root, { backgroundColor: c.success, justifyContent: "center" }]}>
+      <SafeAreaView style={[styles.root, { backgroundColor: c.bg, justifyContent: "center" }]}>
         <View style={{ alignItems: "center", gap: 16 }} accessibilityLiveRegion="assertive">
-          <CircleCheck size={72} color={c.onSuccess} />
-          <Text variant="h2" rawColor={c.onSuccess} center>
+          <CircleCheck size={64} color={c.positive} strokeWidth={1.75} />
+          <Text variant="largeTitle" center style={{ textTransform: "none" }}>
             {t("ok.redeem.customer", { reward: p.rewardName })}
+          </Text>
+          <Text color="fgMuted" center>
+            {p.shopName}
           </Text>
         </View>
       </SafeAreaView>
@@ -95,49 +97,46 @@ export default function Redeem() {
   }
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.canvas }]}>
+    <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
       <View style={styles.body}>
         <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null, brandColor: p.brandColor || null }} size={56} />
-        <Text variant="h2" center>
-          {p.rewardName}
-        </Text>
-        <Text color="fgMuted" center>
-          {p.shopName}
-        </Text>
+        <View style={{ gap: 2 }}>
+          <Text variant="largeTitle" center style={{ textTransform: "none" }}>
+            {p.rewardName}
+          </Text>
+          <Text color="fgMuted" center>
+            {p.shopName}
+          </Text>
+        </View>
         {state === "expired" ? (
           <>
             <Banner variant="neutral">{t("err.redeem.expired")}</Banner>
-            <Button variant="accent" fullWidth onPress={() => router.replace(p.slug ? `/shop/${p.slug}` : "/rewards")}>
+            <Button size="lg" fullWidth onPress={() => router.replace(p.slug ? `/shop/${p.slug}` : "/rewards")}>
               {t("action.getNewCode")}
             </Button>
           </>
         ) : (
           <>
-            <View style={[styles.codeBox, { backgroundColor: c.surfaceSunken }]} accessible accessibilityLabel={`Code ${(p.code ?? "").split("").join(" ")}`}>
+            <View style={[styles.codeBox, { borderColor: c.line }]} accessible accessibilityLabel={`Code ${(p.code ?? "").split("").join(" ")}`}>
               <Text variant="code" center>
                 {groupCode(p.code ?? "")}
               </Text>
-            </View>
-            <View style={{ backgroundColor: c.qrBg, padding: 12, borderRadius: radii.md }}>
-              <QrCode value={p.code ?? ""} size={160} />
-            </View>
-            {left !== null ? (
-              <View style={[styles.timer, { backgroundColor: left <= 60 ? c.warningSubtle : c.surfaceSunken }]}>
-                <Text variant="bodyStrong" tabular rawColor={left <= 60 ? c.onWarningSubtle : c.fg} accessibilityLiveRegion={left <= 60 ? "polite" : "none"}>
-                  {`Expires in ${formatCountdown(left)}`}
-                </Text>
+              <View style={{ backgroundColor: c.qrBg, padding: 10, borderRadius: radii.input, alignSelf: "center" }}>
+                <QrCode value={p.code ?? ""} size={152} />
               </View>
-            ) : null}
+            </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={[styles.dot, { backgroundColor: c.brand }]} />
-              <Text color="fgMuted">Waiting for staff...</Text>
+              <View style={[styles.dot, { backgroundColor: c.accent }]} />
+              <Text variant="meta" color="fgMuted" tabular accessibilityLiveRegion={left !== null && left <= 60 ? "polite" : "none"}>
+                {`Waiting for staff${left !== null ? ` · expires in ${formatCountdown(left)}` : ""}`}
+              </Text>
             </View>
           </>
         )}
         {error ? <Banner variant="danger">{error}</Banner> : null}
       </View>
       {state === "waiting" ? (
-        <Button variant="secondary" fullWidth onPress={() => setConfirmCancel(true)}>
+        <Button variant="ghost" fullWidth onPress={() => setConfirmCancel(true)}>
           Cancel code
         </Button>
       ) : (
@@ -162,7 +161,6 @@ export default function Redeem() {
 const styles = StyleSheet.create({
   root: { flex: 1, padding: 16 },
   body: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  codeBox: { borderRadius: radii.lg, paddingHorizontal: 24, paddingVertical: 16, minWidth: 220 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  timer: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  codeBox: { borderRadius: radii.sheet, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 28, paddingVertical: 20, gap: 16, minWidth: 240 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
 });

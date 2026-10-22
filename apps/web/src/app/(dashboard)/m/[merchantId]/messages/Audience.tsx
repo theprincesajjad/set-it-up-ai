@@ -18,7 +18,7 @@ export function AudienceHeader() {
         <StatTile label="Can text" value={enabled("marketing.sms") ? (sms.data ? formatNumber(sms.data.recipients) : null) : "–"} loading={sms.loading} caption={enabled("marketing.sms") ? undefined : "SMS is coming soon"} />
         <StatTile label="No consent" value={email.data ? formatNumber(email.data.excludedNoConsent + email.data.excludedMuted) : null} loading={email.loading} caption={email.data?.excludedMuted ? `incl. ${formatNumber(email.data.excludedMuted)} muted` : undefined} />
       </div>
-      <p className="text-body-sm text-fg-muted">Only customers who said yes get offers. That&apos;s the law (CASL) and it&apos;s good manners.</p>
+      <p className="text-meta text-fg-muted">Only customers who said yes get offers. That&apos;s the law (CASL) and it&apos;s good manners.</p>
     </section>
   );
 }

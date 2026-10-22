@@ -26,14 +26,14 @@ export default function EarningsPage() {
             <Card padding="lg">
               <CardHeader title="By shop" />
               <div className="overflow-x-auto">
-                <table className="w-full text-body-sm">
+                <table className="w-full text-meta">
                   <caption className="sr-only">Earnings by shop</caption>
                   <thead className="text-label text-fg-muted">
                     <tr><th scope="col" className="py-2 text-start">Shop</th><th scope="col" className="py-2 text-start">Signed</th><th scope="col" className="py-2 text-end">Setup pay</th><th scope="col" className="py-2 text-end">Activation bonus</th><th scope="col" className="py-2 text-start ps-3">Status</th></tr>
                   </thead>
                   <tbody>
                     {s.items.map((i) => (
-                      <tr key={i.merchantId} className="border-t border-border">
+                      <tr key={i.merchantId} className="border-t border-line">
                         <td className="py-2">{i.name}</td>
                         <td className="py-2">{formatDate(i.signedAt)}</td>
                         <td className="py-2 text-end tabular-nums">{formatMoney(i.signedCents)}</td>

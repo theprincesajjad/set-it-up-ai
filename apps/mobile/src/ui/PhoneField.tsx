@@ -24,9 +24,9 @@ export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(functio
   const { c } = useTheme();
   return (
     <View style={styles.wrap}>
-      <Text variant="label">{label}</Text>
-      <View style={[styles.field, { backgroundColor: c.surface, borderColor: error ? c.danger : c.borderStrong, borderWidth: error ? 2 : 1 }]}>
-        <View style={[styles.chip, { backgroundColor: c.surfaceSunken }]} accessibilityElementsHidden importantForAccessibility="no">
+      <Text variant="metaStrong" color="fgMuted">{label}</Text>
+      <View style={[styles.field, { backgroundColor: c.bg, borderColor: error ? c.negative : c.lineStrong, borderWidth: error ? 2 : 1 }]}>
+        <View style={[styles.chip, { backgroundColor: c.bgSubtle }]} accessibilityElementsHidden importantForAccessibility="no">
           <Text variant="bodyStrong" color="fgMuted">
             +1
           </Text>
@@ -44,23 +44,23 @@ export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(functio
           autoComplete="tel"
           autoFocus={autoFocus}
           placeholder="(416) 555-0123"
-          placeholderTextColor={c.fgMuted}
+          placeholderTextColor={c.fgSubtle}
           accessibilityLabel={label}
           accessibilityHint={error ?? hint ?? undefined}
           onSubmitEditing={onSubmitEditing}
           returnKeyType="done"
-          style={[typo("h3"), styles.input, { color: c.fg, fontVariant: ["tabular-nums"] }]}
+          style={[typo("title"), styles.input, { color: c.fg, fontVariant: ["tabular-nums"] }]}
         />
       </View>
       {error ? (
         <View style={styles.msg} accessibilityLiveRegion="polite">
-          <CircleAlert size={16} color={c.danger} />
-          <Text variant="bodySm" color="danger" style={{ flex: 1 }}>
+          <CircleAlert size={16} color={c.negative} />
+          <Text variant="meta" color="negative" style={{ flex: 1 }}>
             {error}
           </Text>
         </View>
       ) : hint ? (
-        <Text variant="bodySm" color="fgMuted">
+        <Text variant="meta" color="fgMuted">
           {hint}
         </Text>
       ) : null}
@@ -70,8 +70,8 @@ export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(functio
 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
-  field: { flexDirection: "row", alignItems: "center", borderRadius: 8, minHeight: 56, paddingHorizontal: 8, gap: 8 },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  field: { flexDirection: "row", alignItems: "center", borderRadius: 12, minHeight: 56, paddingHorizontal: 8, gap: 8 },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   input: { flex: 1, paddingVertical: 10 },
   msg: { flexDirection: "row", gap: 6, alignItems: "flex-start" },
 });

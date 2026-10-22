@@ -1,7 +1,8 @@
+import { springs } from "@ll/design-tokens";
 import { useEffect, useRef } from "react";
-import { AccessibilityInfo, Animated, Image, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useTheme } from "../theme";
-import { Gift, verticalIcon } from "./icons";
+import { Check, Gift } from "./icons";
 import { Text } from "./Text";
 
 /** Columns: 5 for goal 10, 4 for 8, otherwise ceil(goal/2) up to 6. */
@@ -11,49 +12,45 @@ export function stampColumns(goal: number): number {
   return Math.min(6, Math.max(1, Math.ceil(goal / 2)));
 }
 
-/** Seeded rotation -8..8 deg for a hand-stamped feel. */
-const rotation = (i: number) => ((i * 37) % 17) - 8;
-
 /**
- * Stamp grid (system.md § StampCard, references.md § 3 / Honest Greens):
- * earned stamps show the shop's mark (logo, else the vertical icon) on marigold,
- * unearned slots show their number, the last slot is a gift, and a "3 / 10"
- * pill sits top-right.
+ * The stamp row: earned stamps are accent dots with a check, open slots are
+ * outlined circles (lineStrong, 3:1), the last slot holds the reward. One
+ * accent meaning: these are points. A "7 / 10" count sits right.
  */
 export function StampCard({
   count,
   goal,
-  vertical,
-  logoUrl,
   rewardName,
   justEarned,
   compact,
 }: {
   count: number;
   goal: number;
-  vertical: string;
+  /** v1 props, ignored (no logos in stamps). */
+  vertical?: string;
   logoUrl?: string | null;
   rewardName?: string | null;
   justEarned?: boolean;
   compact?: boolean;
 }) {
-  const { c, vertical: vfn } = useTheme();
+  const { c } = useTheme();
   const { width } = useWindowDimensions();
   const g = Math.max(1, goal);
   // Stamps are a balance: a full card is a reward ready; extra stamps carry over to the next card.
   const filled = Math.min(Math.max(0, count), g);
   const carry = count > g ? count - g : 0;
-  const cols = stampColumns(g);
-  const slot = Math.max(compact ? 32 : 44, Math.min(56, Math.floor((Math.min(width, 480) - 64 - (cols - 1) * 12) / cols)));
-  const v = vfn(vertical);
-  const Icon = verticalIcon(v.icon);
+  const oneRow = g <= 10 && !compact;
+  const cols = oneRow ? g : stampColumns(g);
+  const gap = oneRow ? 6 : 10;
+  const avail = Math.min(width, 480) - 32 - (cols - 1) * gap;
+  const slot = Math.max(compact ? 24 : 26, Math.min(compact ? 32 : 44, Math.floor(avail / cols)));
   const pop = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!justEarned) return;
     AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
       if (reduce) return;
-      pop.setValue(0.4);
-      Animated.spring(pop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start();
+      pop.setValue(0.5);
+      Animated.spring(pop, { toValue: 1, ...springs.pop, useNativeDriver: true }).start();
     });
   }, [justEarned, pop]);
   const toGo = Math.max(0, g - filled);
@@ -62,38 +59,23 @@ export function StampCard({
     <View
       accessible
       accessibilityLabel={`${filled} of ${g} stamps.${toGo === 0 ? ` ${rewardName ?? "Reward"} is ready.` : rewardName ? ` ${toGo} more for a ${reward}.` : ""}${carry > 0 ? ` ${carry} extra carry over.` : ""}`}
-      style={{ gap: 12, alignSelf: "stretch" }}
+      style={{ gap: 10, alignSelf: "stretch" }}
     >
       <View style={styles.head}>
-        {!compact && (rewardName || toGo === 0) ? (
-          <Text variant="bodyStrong" style={{ flex: 1 }}>
-            {toGo === 0 ? `${rewardName ?? "Reward"} is ready` : `${toGo} more for a ${reward}`}
+        {!compact ? (
+          <Text variant="meta" color="fgMuted" style={{ flex: 1 }}>
+            {toGo === 0 ? `${rewardName ?? "Reward"} is ready` : rewardName ? `${toGo} more for a ${reward}` : `${toGo} to go`}
           </Text>
         ) : (
           <View style={{ flex: 1 }} />
         )}
-        <View style={[styles.pill, { backgroundColor: c.accentSubtle }]}>
-          <Text variant="label" rawColor={c.onAccentSubtle} tabular>{`${filled} / ${g}`}</Text>
-        </View>
+        <Text variant="metaStrong" color="accentText" tabular>{`${filled} / ${g}`}</Text>
       </View>
-      <View style={[styles.grid, { gap: 12 }]}>
+      <View style={[styles.grid, { gap }]}>
         {Array.from({ length: g }, (_, i) => {
           const isFilled = i < filled;
           const isLast = i === g - 1;
           const isNew = justEarned && i === filled - 1;
-          const inner = isLast ? (
-            <Gift size={slot * 0.44} color={isFilled ? c.onBrand : c.fgMuted} />
-          ) : isFilled ? (
-            logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={{ width: slot * 0.7, height: slot * 0.7, borderRadius: slot * 0.35 }} accessibilityIgnoresInvertColors />
-            ) : (
-              <Icon size={slot * 0.44} color={c.onAccent} />
-            )
-          ) : (
-            <Text variant="label" color="fgMuted" tabular>
-              {String(i + 1)}
-            </Text>
-          );
           return (
             <Animated.View
               key={i}
@@ -103,21 +85,20 @@ export function StampCard({
                   width: slot,
                   height: slot,
                   borderRadius: slot / 2,
-                  backgroundColor: isFilled ? (isLast ? c.brand : c.accent) : "transparent",
-                  borderColor: c.stampEmpty,
-                  borderWidth: isFilled ? 0 : 2,
-                  borderStyle: isFilled ? "solid" : "dashed",
-                  transform: [{ rotate: `${isFilled ? rotation(i) : 0}deg` }, { scale: isNew ? pop : 1 }],
+                  backgroundColor: isFilled ? c.accent : "transparent",
+                  borderColor: c.lineStrong,
+                  borderWidth: isFilled ? 0 : 1.5,
+                  transform: [{ scale: isNew ? pop : 1 }],
                 },
               ]}
             >
-              {inner}
+              {isLast ? <Gift size={slot * 0.46} color={isFilled ? c.onAccent : c.fgMuted} strokeWidth={2} /> : isFilled ? <Check size={slot * 0.5} color={c.onAccent} strokeWidth={2.5} /> : null}
             </Animated.View>
           );
         })}
       </View>
       {carry > 0 && !compact ? (
-        <Text variant="bodySm" color="fgMuted">{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
+        <Text variant="meta" color="fgMuted">{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
       ) : null}
     </View>
   );
@@ -125,7 +106,6 @@ export function StampCard({
 
 const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 8 },
-  pill: { borderRadius: 999, paddingHorizontal: 10, minHeight: 28, justifyContent: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   slot: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
 });

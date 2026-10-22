@@ -1,19 +1,13 @@
 "use client";
-import { CalendarClock, FileText, Flag, Mail, MessageSquareText, ShoppingBag, Sparkles, Wrench, BarChart3, CreditCard, type LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { FEATURES, PLANS, type FeatureKey } from "@ll/shared";
-import { LockedFeature } from "@/components/ui/LockedFeature";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
+import { cn } from "@/lib/cn";
 import { useMerchant } from "./MerchantContext";
-
-const ICONS: Partial<Record<FeatureKey, LucideIcon>> = {
-  "orders.order_ahead": ShoppingBag, "orders.pickup_status": ShoppingBag, "booking.pickup_slots": CalendarClock, "booking.dropoff_scheduling": CalendarClock,
-  "service.tickets": Wrench, "service.quote_approval": FileText, "service.deposits": CreditCard, "service.invoices": FileText,
-  "marketing.sms": MessageSquareText, "marketing.automations": Mail, "reports.advanced": BarChart3, "payments.in_app": CreditCard,
-  "ads.sponsored_promo": Flag, "ads.sponsored_listing": Flag, "ads.map_pin": Flag, "promos.push_nearby": Sparkles,
-};
 
 /** ux-copy.md §5 one-liners. */
 export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
@@ -21,10 +15,17 @@ export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
   "service.tickets": "Track every repair from drop-off to pickup, with photos and status updates.",
   "service.quote_approval": "Send a quote; your customer approves it on their phone. No more phone tag.",
   "service.invoices": "Send the final bill and get paid in the app. Customers earn points automatically.",
+  "promos.basic": "Post offers like double stamps on a slow afternoon.",
+  "discount_cards": "Show-to-save cards for students, seniors or your street.",
+  "marketing.email": "Email your opted-in regulars, CASL compliant.",
   "marketing.sms": "Text your opted-in regulars. 500 texts a month included with Plus.",
   "marketing.automations": "\"We miss you\" and \"Your reward is ready\" messages that send themselves.",
+  "integrations.pos_auto_award": "Award points automatically from Square, Clover and more.",
+  "integrations.webhooks": "Webhooks, Zapier and the merchant API.",
+  "customers.csv_export": "Export your customers and their activity.",
+  "customers.csv_import": "Bring your members over from another loyalty app.",
   "ads.sponsored_promo": "Show your offer to people near your street. Always labelled Sponsored.",
-  "reports.advanced": "See how many new members come back month after month.",
+  "reports.advanced": "Retention cohorts and which shops your customers also visit.",
 };
 
 let networkShops: Promise<number> | null = null;
@@ -51,49 +52,71 @@ function notifiedKeys(): string[] {
   }
 }
 
+/** "Notify me" for coming-soon features: POST .../features/:key/notify for each key, remembered locally. */
+export function useNotify(keys: FeatureKey[]) {
+  const { api } = useMerchant();
+  const id = keys.join(",");
+  const [notified, setNotified] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    // localStorage is client-only; read after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNotified(id.split(",").every((k) => notifiedKeys().includes(k)));
+  }, [id]);
+  const notify = useCallback(async () => {
+    setBusy(true);
+    const ks = id.split(",") as FeatureKey[];
+    await Promise.all(ks.map((k) => api.notifyFeature(k).catch(() => undefined)));
+    try {
+      localStorage.setItem(NOTIFY_KEY, JSON.stringify([...new Set([...notifiedKeys(), ...ks])]));
+    } catch {
+      /* private mode */
+    }
+    setNotified(true);
+    setBusy(false);
+  }, [api, id]);
+  return { notified, busy, notify };
+}
+
+/** Text-only Notify me / We'll let you know. */
+export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?: string }) {
+  const { notified, busy, notify } = useNotify(keys);
+  return notified ? (
+    <span className={cn("inline-flex items-center gap-1 text-meta text-fg-muted", className)}>
+      <Check aria-hidden className="size-3.5" /> We&apos;ll let you know
+    </span>
+  ) : (
+    <button type="button" disabled={busy} onClick={() => void notify()} className={cn("rounded-sm text-meta font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg focus-visible:focus-ring", className)}>
+      Notify me
+    </button>
+  );
+}
+
 /**
- * LockedFeature for one feature key, in the right state (system.md §6):
- * hidden → Coming soon + Notify me; beta → Try the beta (owners opt in); plan → Available on Plus.
+ * Quiet notice for a paid feature reached by deep link (sidebar never shows it while locked).
+ * hidden → coming soon + Notify me; beta → owners can opt in; plan → see plans (owners).
  * Renders nothing when the feature is enabled.
  */
 export function FeatureTeaser({ featureKey, title, description }: { featureKey: FeatureKey; title?: string; description?: string }) {
   const { feature, role, api, refresh, base } = useMerchant();
   const toast = useToast();
-  const shops = useNetworkShops();
-  const [notified, setNotified] = useState(false);
-  useEffect(() => {
-    // localStorage is client-only; read after mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNotified(notifiedKeys().includes(featureKey));
-  }, [featureKey]);
   const f = feature(featureKey);
   const def = FEATURES[featureKey];
   if (!f || f.enabled) return null;
   const state = f.lockedReason === "plan" && f.stage !== "hidden" ? "plan" : f.stage === "beta" ? "beta" : "hidden";
   const plan = PLANS[def.minPlan];
   return (
-    <LockedFeature
-      key={`${featureKey}-${notified}`}
-      icon={ICONS[featureKey] ?? Sparkles}
-      title={title ?? f.name}
-      description={description ?? TEASER_COPY[featureKey] ?? f.description}
-      state={state}
-      planLabel={`Available on ${plan.name} · $${plan.priceCents / 100}/mo`}
-      network={state === "hidden" && def.unlockAtMerchants > 0 && shops != null ? { current: Math.min(shops, def.unlockAtMerchants), target: def.unlockAtMerchants } : null}
-      notified={notified}
-      onNotify={async () => {
-        // POST .../features/:key/notify records interest; also remembered locally so the button state survives reloads.
-        await api.notifyFeature(featureKey).catch(() => undefined);
-        try {
-          localStorage.setItem(NOTIFY_KEY, JSON.stringify([...new Set([...notifiedKeys(), featureKey])]));
-        } catch {
-          /* private mode */
-        }
-        setNotified(true);
-      }}
-      onTryBeta={
-        role === "owner"
-          ? async () => {
+    <div className="max-w-[560px] py-10">
+      <p className="text-meta text-fg-muted">{state === "hidden" ? `Coming with ${plan.name}` : state === "beta" ? "In beta" : `On ${plan.name} · $${plan.priceCents / 100}/mo`}</p>
+      <h1 className="mt-1 text-title text-fg">{title ?? f.name}</h1>
+      <p className="mt-1 text-body text-fg-muted">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        {state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
+        {state === "beta" && role === "owner" ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={async () => {
               try {
                 await api.setBeta(true);
                 await refresh();
@@ -101,10 +124,20 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
               } catch (e) {
                 toast({ message: errorMessage(e), tone: "error" });
               }
-            }
-          : undefined
-      }
-      seePlansHref={role === "owner" ? `${base}/billing` : undefined}
-    />
+            }}
+          >
+            Try the beta
+          </Button>
+        ) : null}
+        {role === "owner" ? (
+          <a href={`${base}/billing`} className="text-meta text-fg-muted hover:text-fg">
+            See plans
+          </a>
+        ) : null}
+        <a href={base} className="text-meta text-fg-muted hover:text-fg">
+          Back to home
+        </a>
+      </div>
+    </div>
   );
 }

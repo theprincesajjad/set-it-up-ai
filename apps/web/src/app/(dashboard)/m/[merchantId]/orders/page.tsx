@@ -55,7 +55,7 @@ function Orders() {
       <PageHeader title="Orders" description="Updates every 10 seconds. Customers get a text when you mark an order ready." actions={<SegmentedControl label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]} />} />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {orders.loading && !orders.data ? (
-        <Skeleton className="h-40 rounded-lg" />
+        <Skeleton className="h-40 rounded-card" />
       ) : orders.data?.items.length ? (
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {orders.data.items.map((o) => (
@@ -63,14 +63,14 @@ function Orders() {
               <Card padding="lg" className="flex h-full flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-mono text-h3 text-fg">#{o.number}</p>
-                    <p className="text-body-sm text-fg-muted">
+                    <p className="font-mono text-body-strong text-fg">#{o.number}</p>
+                    <p className="text-meta text-fg-muted">
                       {o.customer?.name ?? "Customer"} · {o.pickupAt ? `Pickup ${formatTime(o.pickupAt)}` : `Placed ${relativeTime(o.createdAt)}`}
                     </p>
                   </div>
                   <StatusBadge domain="order" status={o.status} />
                 </div>
-                <ul className="text-body-sm text-fg">
+                <ul className="text-meta text-fg">
                   {o.items.map((i) => (
                     <li key={i.id}>
                       {i.quantity} × {i.name}
@@ -78,8 +78,8 @@ function Orders() {
                     </li>
                   ))}
                 </ul>
-                {o.notes ? <p className="rounded-sm bg-surface-sunken p-2 text-body-sm text-fg">{o.notes}</p> : null}
-                <p className="text-body-sm text-fg-muted">
+                {o.notes ? <p className="rounded-sm bg-bg-subtle p-2 text-meta text-fg">{o.notes}</p> : null}
+                <p className="text-meta text-fg-muted">
                   {formatMoney(o.totalCents)} · {o.paymentMethod === "in_app" ? `Paid in app (${o.paymentStatus})` : "Pay at pickup"}
                 </p>
                 <div className="mt-auto flex flex-wrap gap-2">

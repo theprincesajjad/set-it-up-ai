@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { IdCard, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
@@ -29,7 +30,16 @@ const ELIGIBILITY: { value: merchantApi.DiscountCard["eligibility"]; label: stri
 
 type Draft = { id?: string; name: string; percentOff: string; amountOff: string; eligibility: merchantApi.DiscountCard["eligibility"]; terms: string; excluded: string[] };
 
-export default function DiscountCardsPage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function DiscountCardsPageGated() {
+  return (
+    <FeatureGate keys={["discount_cards"]} title="Digital discount cards">
+      <DiscountCardsPage />
+    </FeatureGate>
+  );
+}
+
+function DiscountCardsPage() {
   const { api, detail } = useMerchant();
   const toast = useToast();
   const cards = useApi(() => api.discountCards(), [api]);

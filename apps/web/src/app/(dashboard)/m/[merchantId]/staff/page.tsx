@@ -55,7 +55,7 @@ export default function StaffPage() {
             </Card>
           ) : (
             <Card padding="sm">
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {d.items.map((s) => {
                   const self = s.userId === me.user.id;
                   return (
@@ -63,11 +63,11 @@ export default function StaffPage() {
                       <Avatar name={s.name ?? s.email} id={s.userId} />
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-2 text-body-strong text-fg">
-                          {s.name ?? s.email ?? "Invited"} {self ? <span className="text-body-sm font-normal text-fg-muted">(you)</span> : null}
+                          {s.name ?? s.email ?? "Invited"} {self ? <span className="text-meta font-normal text-fg-muted">(you)</span> : null}
                           <Badge tone={s.role === "owner" ? "brand" : s.role === "manager" ? "info" : "neutral"}>{s.role[0]!.toUpperCase() + s.role.slice(1)}</Badge>
                         </p>
-                        <p className="text-body-sm text-fg-muted">
-                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? <span className="inline-flex items-center gap-1"><Check aria-hidden className="size-3.5 text-success" />PIN set</span> : "No PIN yet"}
+                        <p className="text-meta text-fg-muted">
+                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? <span className="inline-flex items-center gap-1"><Check aria-hidden className="size-3.5 text-positive" />PIN set</span> : "No PIN yet"}
                         </p>
                       </div>
                       {owner && !self ? (
@@ -136,11 +136,11 @@ export default function StaffPage() {
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-label text-fg">Role</legend>
             {ROLES.map((r) => (
-              <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 rounded-md border p-3", newRole === r.value ? "border-brand bg-brand-subtle" : "border-border")}>
+              <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 rounded-input border p-3", newRole === r.value ? "border-brand bg-bg-subtle" : "border-line")}>
                 <input type="radio" name="role" checked={newRole === r.value} onChange={() => setNewRole(r.value)} className="mt-1 size-5 accent-[var(--color-brand)]" />
                 <span>
                   <span className="block text-body-strong text-fg">{r.label}</span>
-                  <span className="block text-body-sm text-fg-muted">{r.desc}</span>
+                  <span className="block text-meta text-fg-muted">{r.desc}</span>
                 </span>
               </label>
             ))}

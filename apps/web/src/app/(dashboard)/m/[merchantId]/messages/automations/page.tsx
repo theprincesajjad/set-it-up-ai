@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import type { messagingApi } from "@ll/shared";
@@ -17,7 +18,16 @@ import { formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 /** Automations (Plus: marketing.automations). Gated: shows the Coming soon card until enabled. */
-export default function AutomationsPage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function AutomationsPageGated() {
+  return (
+    <FeatureGate keys={["marketing.automations"]} title="Automations">
+      <AutomationsPage />
+    </FeatureGate>
+  );
+}
+
+function AutomationsPage() {
   const { api, base, enabled } = useMerchant();
   const state = useApi(enabled("marketing.automations") ? () => api.messages.automations() : null, [api]);
   return (
@@ -51,7 +61,7 @@ function AutoCard({ a: initial }: { a: messagingApi.Automation }) {
         <h2 className="text-title text-fg">{a.label}</h2>
         <Badge>{formatNumber(a.sentCount)} sent</Badge>
       </div>
-      <p className="text-body-sm text-fg-muted">{a.description}</p>
+      <p className="text-meta text-fg-muted">{a.description}</p>
       <Switch label="On" checked={a.enabled} onChange={(v) => save(v)} />
       <TextField label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
       <TextField type="textarea" label="Message" value={body} onChange={(e) => setBody(e.target.value)} />

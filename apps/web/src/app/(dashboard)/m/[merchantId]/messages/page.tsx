@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Mail, PenLine, Workflow } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { messagingApi } from "@ll/shared";
@@ -12,7 +13,16 @@ import { PageHeader } from "@/components/ui/Layout";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
 
-export default function MessagesPage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function MessagesPageGated() {
+  return (
+    <FeatureGate keys={["marketing.email", "marketing.sms"]} title="Email & SMS campaigns">
+      <MessagesPage />
+    </FeatureGate>
+  );
+}
+
+function MessagesPage() {
   const { api, base } = useMerchant();
   const router = useRouter();
   const list = useApi(() => api.messages.list({ limit: 50 }), [api]);

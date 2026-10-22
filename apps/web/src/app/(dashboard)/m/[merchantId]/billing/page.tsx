@@ -23,7 +23,7 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 const HERO: Record<"plus" | "pro", FeatureKey> = { plus: "orders.order_ahead", pro: "service.tickets" };
 const FAQ = [
-  ["Will loyalty ever cost money?", "No. Every loyalty feature stays free. That's a promise in our terms."],
+  ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
   ["What's the 0.75% fee?", "Only on payments you take in the app with Plus or Pro. The Free plan has no payments and no fees."],
   ["Why can't I buy Plus yet?", copy.soon.pricingNote],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
@@ -73,22 +73,22 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
 
       <Card padding="lg" className="border-2 border-brand">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2 text-fg">
+          <h2 className="text-title text-fg">
             You&apos;re on <strong>{b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}</strong>
             {b.plan === "free" ? ". Forever." : "."}
           </h2>
           <Badge tone="brand">{b.plan === "free" ? "Free plan" : "Current plan"}</Badge>
         </div>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-          {["No transaction fees", "Unlimited locations, staff and members", "Every loyalty feature", "Network listing and perks"].map((t) => (
+          {["No transaction fees", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-body text-fg">
-              <Leaf aria-hidden className="size-5 text-success" />
+              <Leaf aria-hidden className="size-5 text-positive" />
               {t}
             </li>
           ))}
         </ul>
         {sub ? (
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
             <p className="text-body text-fg">
               {sub.cancelAtPeriodEnd ? "Ends" : "Renews"} {formatDateYear(sub.currentPeriodEnd)} · billed {sub.interval === "year" ? "yearly" : "monthly"} · {sub.status.replace("_", " ")}
             </p>
@@ -112,12 +112,12 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
             )}
           </div>
         ) : (
-          <p className="mt-3 text-body-sm text-fg-muted">No card on file needed.</p>
+          <p className="mt-3 text-meta text-fg-muted">No card on file needed.</p>
         )}
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-h3 text-fg">Plans</h2>
+        <h2 className="text-body-strong text-fg">Plans</h2>
         {b.plans.some((p) => p.id !== "free" && p.available) ? <SegmentedControl label="Billing period" value={period} onChange={setPeriod} options={[{ value: "month", label: "Monthly" }, { value: "year", label: "Pay yearly: 2 months free" }]} /> : null}
       </div>
       <ul className="grid gap-4 lg:grid-cols-3">
@@ -129,26 +129,26 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
             <li key={p.id}>
               <Card padding="lg" className={cn("flex h-full flex-col gap-3", p.current && "outline outline-2 outline-brand")}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-h3 text-fg">{p.name}</h3>
+                  <h3 className="text-body-strong text-fg">{p.name}</h3>
                   {p.current ? <Badge tone="brand">Current</Badge> : p.id !== "free" && !p.available ? <ComingSoonBadge /> : null}
                 </div>
-                <p className={cn("text-h2 tabular-nums", p.id !== "free" && !p.available ? "text-fg-muted" : "text-fg")}>
+                <p className={cn("text-title tabular-nums", p.id !== "free" && !p.available ? "text-fg-muted" : "text-fg")}>
                   {p.id === "free" ? "$0" : formatMoney(price).replace(".00", "")}
                   <span className="text-body text-fg-muted">{p.id === "free" ? " forever" : period === "year" ? "/year, CAD" : "/month, CAD"}</span>
                 </p>
                 {p.id !== "free" && !p.available ? <p className="-mt-2 text-caption text-fg-muted">Planned price</p> : null}
-                <p className="text-body-sm text-fg">{p.blurb}</p>
+                <p className="text-meta text-fg">{p.blurb}</p>
                 <ChipGroup label="Best for">
                   {p.bestFor.map((x) => (
-                    <span key={x} className="inline-flex h-7 items-center rounded-full bg-surface-sunken px-2.5 text-caption text-fg">
+                    <span key={x} className="inline-flex h-7 items-center rounded-full bg-bg-subtle px-2.5 text-caption text-fg">
                       {x}
                     </span>
                   ))}
                 </ChipGroup>
-                <ul className="flex flex-col gap-1.5 text-body-sm text-fg">
-                  {(p.id === "free" ? ["Points, stamps and visits", "Rewards, VIP levels, promos", "Email campaigns", "POS integrations and reports"] : feats.map((k) => FEATURES[k].name)).map((f) => (
+                <ul className="flex flex-col gap-1.5 text-meta text-fg">
+                  {(p.id === "free" ? ["Points, stamps and visits", "Rewards and welcome bonus", "Network listing and wallet pass", "Customer directory and reports"] : feats.map((k) => FEATURES[k].name)).map((f) => (
                     <li key={f} className="flex items-start gap-2">
-                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
+                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-positive" />
                       {f}
                     </li>
                   ))}
@@ -179,14 +179,14 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           );
         })}
       </ul>
-      <p className="text-body-sm text-fg-muted">{copy.soon.pricingPromise}</p>
+      <p className="text-meta text-fg-muted">{copy.soon.pricingPromise}</p>
 
       <Section title="Payments in the app">
         {enabled("payments.in_app") ? <PaymentsCard merchantId={merchantId} /> : <FeatureTeaser featureKey="payments.in_app" title="In-app payments" description="Take deposits, invoices and order-ahead payments by card. 0.75% platform fee on Plus and Pro; Free has no payments and no fees." />}
       </Section>
 
       <Section title="Questions">
-        <div className="flex flex-col divide-y divide-border rounded-lg bg-surface shadow-sm">
+        <div className="flex flex-col divide-y divide-line rounded-card bg-bg ">
           {FAQ.map(([q, a]) => (
             <details key={q} className="group px-4 py-3">
               <summary className="min-h-11 cursor-pointer list-none py-2 text-body-strong text-fg">{q}</summary>

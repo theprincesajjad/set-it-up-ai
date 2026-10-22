@@ -36,7 +36,7 @@ const config: ExpoConfig = {
   icon: "./assets/icon.png",
   scheme: "ll",
   userInterfaceStyle: "automatic",
-  backgroundColor: "#FAF6EF",
+  backgroundColor: "#FFFFFF",
   ios: {
     bundleIdentifier: bundleId,
     supportsTablet: true,
@@ -49,7 +49,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: bundleId,
-    adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#1F6A50" },
+    adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#0B0B0C" },
     permissions: ["CAMERA", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
     ...(googleMapsApiKey ? { config: { googleMaps: { apiKey: googleMapsApiKey } } } : {}),
     intentFilters: [
@@ -72,14 +72,14 @@ const config: ExpoConfig = {
     "expo-font",
     [
       "expo-splash-screen",
-      { backgroundColor: "#FAF6EF", image: "./assets/splash-icon.png", imageWidth: 120 },
+      { backgroundColor: "#FFFFFF", image: "./assets/splash-icon.png", imageWidth: 88, dark: { backgroundColor: "#0B0B0C", image: "./assets/splash-icon-dark.png" } },
     ],
     [
       "expo-camera",
       { cameraPermission: "Scan a customer's card or reward code at the counter.", recordAudioAndroid: false },
     ],
     ["expo-location", { locationWhenInUsePermission: "See shops near you on the map." }],
-    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#1F6A50" }],
+    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#0B0B0C" }],
   ],
   // Expo web is a QA/preview target (screenshots in e2e/); the customer web pass is apps/web.
   web: { bundler: "metro", output: "single", favicon: "./assets/icon.png" },

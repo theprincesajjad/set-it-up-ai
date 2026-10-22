@@ -1,8 +1,22 @@
 @import "tailwindcss";
 @import "@ll/design-tokens/theme.css";
 
-
+/* App-level additions on top of the v2 tokens (docs/design/foundations.md). */
 @theme {
+  /* Marketing headline sizes (Bricolage, display only). */
+  --text-mkt-xl: 4.5rem;
+  --text-mkt-xl--line-height: 1;
+  --text-mkt-xl--letter-spacing: -0.035em;
+  --text-mkt-lg: 3.25rem;
+  --text-mkt-lg--line-height: 1.02;
+  --text-mkt-lg--letter-spacing: -0.03em;
+  --text-mkt-md: 2.25rem;
+  --text-mkt-md--line-height: 1.06;
+  --text-mkt-md--letter-spacing: -0.025em;
+  --text-mkt-sm: 1.75rem;
+  --text-mkt-sm--line-height: 1.1;
+  --text-mkt-sm--letter-spacing: -0.02em;
+
   --animate-otp-shake: ll-otp-shake 220ms ease-in-out;
   @keyframes ll-otp-shake {
     0%, 100% { transform: translateX(0); }
@@ -17,32 +31,52 @@
   }
   body {
     min-height: 100dvh;
+    font-feature-settings: "cv11", "ss01";
   }
   h1, h2, h3 {
     text-wrap: balance;
   }
-  ::selection {
-    background-color: var(--ll-color-brand-subtle);
-    color: var(--ll-color-on-brand-subtle);
+  p {
+    text-wrap: pretty;
   }
+  ::selection {
+    background-color: var(--ll-color-bg-muted);
+    color: var(--ll-color-fg);
+  }
+}
+
+/* Bricolage display face, tight; use with a text-* size. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variation-settings: "wdth" 100;
+}
+
+/* Horizontal scroller without a visible scrollbar (chips, rails). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 /* Legal / long-form markdown. */
 @utility prose-ll {
   color: var(--ll-color-fg);
-  & h1 { font-size: var(--text-h1); line-height: var(--text-h1--line-height); font-weight: 700; margin: 2rem 0 1rem; }
-  & h2 { font-size: var(--text-h2); line-height: var(--text-h2--line-height); font-weight: 700; margin: 2rem 0 0.75rem; }
-  & h3 { font-size: var(--text-h3); line-height: var(--text-h3--line-height); font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  font-size: var(--text-body);
+  line-height: 1.6;
+  & h1 { font-family: var(--font-display); font-size: var(--text-mkt-sm); line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 1.5rem; }
+  & h2 { font-size: var(--text-headline); line-height: 1.4; font-weight: 600; margin: 2.5rem 0 0.75rem; }
+  & h3 { font-size: var(--text-body); line-height: 1.4; font-weight: 600; margin: 1.75rem 0 0.5rem; }
   & p, & ul, & ol, & table, & blockquote { margin: 0.75rem 0; }
-  & ul { list-style: disc; padding-inline-start: 1.5rem; }
-  & ol { list-style: decimal; padding-inline-start: 1.5rem; }
+  & ul { list-style: disc; padding-inline-start: 1.25rem; }
+  & ol { list-style: decimal; padding-inline-start: 1.25rem; }
   & li { margin: 0.25rem 0; }
-  & a { color: var(--ll-color-fg-link); text-decoration: underline; }
+  & a { color: var(--ll-color-fg); text-decoration: underline; text-decoration-color: var(--ll-color-line-strong); text-underline-offset: 2px; }
   & strong { font-weight: 600; }
-  & blockquote { border-inline-start: 3px solid var(--ll-color-border-strong); padding-inline-start: 1rem; color: var(--ll-color-fg-muted); }
-  & table { width: 100%; border-collapse: collapse; font-size: var(--text-body-sm); display: block; overflow-x: auto; }
-  & th, & td { border: 1px solid var(--ll-color-border); padding: 0.5rem; text-align: start; vertical-align: top; }
-  & th { background: var(--ll-color-surface-sunken); }
+  & blockquote { border-inline-start: 2px solid var(--ll-color-line); padding-inline-start: 1rem; color: var(--ll-color-fg-muted); }
+  & table { width: 100%; border-collapse: collapse; font-size: var(--text-meta); display: block; overflow-x: auto; }
+  & th, & td { border-bottom: 1px solid var(--ll-color-line); padding: 0.5rem 0.75rem 0.5rem 0; text-align: start; vertical-align: top; }
+  & th { font-weight: 600; color: var(--ll-color-fg-muted); }
   & code { font-family: var(--font-mono); font-size: 0.9em; }
-  & hr { border-color: var(--ll-color-border); margin: 2rem 0; }
+  & hr { border-color: var(--ll-color-line); margin: 2rem 0; }
 }

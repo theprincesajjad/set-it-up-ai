@@ -2,8 +2,9 @@
 
 Contract: `packages/shared/src/api/reports.ts` (`reportsApi`). Code: `apps/api/src/routes/reports/index.ts`, `services/reports.ts`.
 
-Auth: `manager` or `owner` of the merchant (staff → `403`). Feature: `reports.basic` (free) for everything except
-retention, which needs `reports.advanced` (Plus) → `402 feature_locked`.
+Auth: `manager` or `owner` of the merchant (staff → `403`). Feature: `reports.basic` (free forever) for overview,
+daily, top-customers, rewards and activation. **Pricing v2:** retention and network-overlap need `reports.advanced`
+(Plus), and promo results need `promos.basic` (Plus). Otherwise → `402 feature_locked`.
 
 Range query (`rangeQuery`): `from`, `to` ISO datetimes; default last 30 days ending now; max 366 days; `400` if `from >= to`.
 Ranges are half-open `[from, to)`. Money in cents. Ratios are 0–1 with 3 decimals.
@@ -48,8 +49,7 @@ the 14 days before; `null` without a baseline).
 "How many of my members also shop elsewhere on my strip" (last 90 days). **Aggregates only — never identities.**
 → `NetworkOverlapReport { neighbourhood, windowDays, myMembers, sharedMembers, sharedPct, avgOtherShops, shops[{ merchantId, name, vertical, sharedMembers }], suppressedShops }`.
 Shops with fewer than `OVERLAP_MIN_COHORT` (5) shared members are not listed (counted in `suppressedShops`).
-Merchants without a neighbourhood get zeros and `neighbourhood: null`. Free (`reports.basic`) — see the note on
-`reports.advanced` below.
+Merchants without a neighbourhood get zeros and `neighbourhood: null`. Plus (`reports.advanced`) since Pricing v2.
 
 ### `GET …/reports/activation`
 → `ActivationReport { activeMembers (≥1 visit, all time), target (ACTIVATION_THRESHOLD, 25), remaining, progressPct, activatedAt, daysSinceSignup, last30Days[{ date, newActive }] }`.
@@ -58,5 +58,5 @@ Merchants without a neighbourhood get zeros and `neighbourhood: null`. Free (`re
 → `RetentionReport { months, cohorts: [{ cohort: "YYYY-MM", size, retention: number[] }] }` — `retention[i]` = share of the
 join-month cohort with a visit `i` months later (oldest cohort first; later cohorts have shorter arrays).
 
-Note: `FEATURES["reports.advanced"].description` mentions "network overlap"; the overlap summary is deliberately served
-under the free `reports.basic` (it sells the network). Product should confirm, or move it behind `reports.advanced`.
+Note: since Pricing v2 the network-overlap summary is served under `reports.advanced` (Plus), matching
+`FEATURES["reports.advanced"].description`.

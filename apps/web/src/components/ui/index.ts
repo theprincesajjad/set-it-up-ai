@@ -41,6 +41,7 @@ export * from "./TextField";
 export * from "./Timeline";
 export * from "./Toast";
 export * from "./VerticalIcon";
+export * from "./CategoryIcon";
 export * from "./SegmentedControl";
 export * from "./DensityGauge";
 export * from "./Keypad";

@@ -24,7 +24,7 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
   }, [order.id, order.status]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 pt-2">
       <OrderTracker
         status={order.status}
         statusLabel={copy.orderStatus[order.status] ?? order.status}
@@ -34,24 +34,24 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
         cancelReason={order.cancelReason}
         refundCents={order.status === "refunded" || (order.status === "cancelled" && order.paymentStatus === "refunded") ? order.totalCents : null}
       />
-      <section aria-label="Order" className="rounded-lg bg-surface p-4 shadow-sm">
-        <ul className="flex flex-col divide-y divide-border text-body-sm">
+      <section aria-label="Order" className="rounded-card border border-line px-4 py-1">
+        <ul className="flex flex-col divide-y divide-line text-body">
           {order.items.map((i) => (
-            <li key={i.id} className="flex justify-between gap-3 py-2">
+            <li key={i.id} className="flex justify-between gap-3 py-3">
               <span>
                 {i.quantity} × {i.name}
-                {i.modifiers.length ? <span className="block text-caption text-fg-muted">{i.modifiers.map((m) => m.option).join(", ")}</span> : null}
+                {i.modifiers.length ? <span className="block text-meta text-fg-muted">{i.modifiers.map((m) => m.option).join(", ")}</span> : null}
               </span>
               <span className="tabular-nums">{formatMoney(i.lineTotalCents)}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex justify-between border-t border-border pt-3 text-title">
+        <div className="flex justify-between border-t border-line py-3 text-body-strong">
           <span>Total</span>
           <span className="tabular-nums">{formatMoney(order.totalCents)}</span>
         </div>
-        <p className="mt-1 text-caption text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? "Paid in the app" : "Payment pending") : "Pay at pickup"}</p>
-        {order.pointsEarned > 0 ? <p className="mt-1 text-body-sm text-success">You earned {order.pointsEarned} pts</p> : null}
+        <p className="pb-3 text-meta text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? "Paid in the app" : "Payment pending") : "Pay at pickup"}</p>
+        {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-accent-text">You earned {order.pointsEarned} pts</p> : null}
       </section>
     </div>
   );

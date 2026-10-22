@@ -27,8 +27,8 @@ export function DevSimulate({ title, body, action, id, cta, returnTo }: { title:
   return (
     <div className="mx-auto max-w-[480px] px-4 py-16">
       <Card padding="lg" className="flex flex-col gap-4">
-        <p className="text-overline uppercase text-fg-muted">Test mode</p>
-        <h1 className="text-h2 text-fg">{title}</h1>
+        <p className="text-meta text-fg-muted text-fg-muted">Test mode</p>
+        <h1 className="text-title text-fg">{title}</h1>
         <p className="text-body text-fg-muted">{body}</p>
         {error ? <Banner tone="danger">{error}</Banner> : null}
         <Button

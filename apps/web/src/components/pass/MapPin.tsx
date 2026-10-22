@@ -1,59 +1,82 @@
 "use client";
 import type { networkApi } from "@ll/shared";
-import { ShopLogo } from "@/components/ui/ShopTile";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { cn } from "@/lib/cn";
 import { formatPoints } from "@/lib/format";
 
+/** The italic grey line under a place name: my balance, a live offer, or what kind of place it is. */
+export function pinSubtitle(shop: networkApi.ShopListItemDto): string {
+  if (shop.isMember && shop.myBalance != null) return `your ${formatPoints(shop.myBalance, shop.terminology, false)}`;
+  if (shop.hasPromo) return "offer on now";
+  return verticalLabel(shop.merchant.vertical).toLowerCase();
+}
+
 /**
- * Corner-style pin (references.md §1): round logo (or coloured initials) with a white ring and a
- * short name label; marigold balance badge on my shops; pine dot when a promo is live; selected
- * pin is larger and lifted. `moreCount` > 0 means overlapping shops were folded into this pin
- * (my shops win the collision pass): a "+N" badge zooms in on them.
+ * Corner-style place (foundations.md "Places are objects, not markers"): a small round white
+ * bubble holding the shop's object illustration (or its logo), the name in bold black and one
+ * italic grey line beside it. My shops get a small accent dot (activity). The bubble's centre is
+ * the shop's location (the marker is anchored "left" with a -22px offset).
+ * `moreCount` > 0: overlapping shops were folded into this pin; a "+N" bubble zooms in on them.
  */
 export function MapPin({ shop, selected, onSelect, showLabel = true, compact = false, moreCount = 0, onExpand }: { shop: networkApi.ShopListItemDto; selected: boolean; onSelect: () => void; showLabel?: boolean; compact?: boolean; moreCount?: number; onExpand?: () => void }) {
   const name = shop.merchant.name;
-  const short = name.length > 14 ? `${name.slice(0, 13)}…` : name;
-  const pin = (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      aria-pressed={selected}
-      aria-label={`${name}${shop.isMember && shop.myBalance != null ? `, ${formatPoints(shop.myBalance, shop.terminology)}` : ""}${shop.hasPromo ? ", has an offer" : ""}`}
-      className="group flex cursor-pointer flex-col items-center gap-1 focus-visible:outline-none"
-    >
-      <span className={cn("relative rounded-full bg-[#FFFFFF] p-[2px] shadow-md transition-transform duration-150 ease-standard group-focus-visible:focus-ring", selected ? "scale-[1.3] ring-2 ring-brand" : "group-hover:scale-110")}>
-        <ShopLogo shop={shop.merchant} size={compact && !selected ? 32 : 40} tone="solid" className="!rounded-full" />
-        {shop.isMember && shop.myBalance != null ? (
-          <span className="absolute -end-2.5 -top-2 min-w-6 rounded-full border-2 border-[#FFFFFF] bg-accent px-1 text-center text-[11px] font-bold leading-4 tabular-nums text-on-accent">{shop.myBalance > 999 ? "999+" : shop.myBalance}</span>
-        ) : null}
-        {shop.hasPromo ? <span aria-hidden className="absolute -bottom-0.5 -end-0.5 size-3.5 rounded-full border-2 border-[#FFFFFF] bg-brand" /> : null}
-      </span>
-      {showLabel || selected ? <span className={cn("max-w-28 truncate rounded-full px-1.5 text-[11px] font-semibold leading-4 text-fg shadow-sm", selected ? "mt-1.5 bg-fg text-fg-inverse" : "bg-surface/95")}>{short}</span> : null}
-    </button>
-  );
-  if (!moreCount || !onExpand) return pin;
+  const sub = pinSubtitle(shop);
+  const size = compact && !selected ? 36 : 44;
   return (
-    <span className="relative flex flex-col items-center">
-      {pin}
+    <span className="relative flex items-center">
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          onExpand();
+          onSelect();
         }}
-        aria-label={`${moreCount} more ${moreCount === 1 ? "shop" : "shops"} here, zoom in`}
-        className="absolute -start-4 -top-2 z-[1] inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-full border-2 border-[#FFFFFF] bg-fg px-1 text-[11px] font-bold tabular-nums text-fg-inverse shadow-md focus-visible:focus-ring"
+        aria-pressed={selected}
+        aria-label={`${name}${shop.isMember && shop.myBalance != null ? `, ${formatPoints(shop.myBalance, shop.terminology)}` : ""}${shop.hasPromo ? ", has an offer" : ""}`}
+        className="group flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
       >
-        +{moreCount}
+        <span className="flex w-11 shrink-0 justify-center">
+        <span
+          className={cn(
+            "relative flex shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
+            selected ? "scale-110 ring-2 ring-[#0B0B0C]" : "group-hover:scale-105",
+          )}
+          style={{ width: size, height: size }}
+        >
+          {shop.merchant.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={shop.merchant.logoUrl} alt="" className="size-[calc(100%-6px)] rounded-full object-cover" />
+          ) : (
+            <CategoryIcon vertical={shop.merchant.vertical} size={Math.round(size * 0.62)} />
+          )}
+          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-3 rounded-full border-2 border-[#FFFFFF] bg-accent" /> : null}
+        </span>
+        </span>
+        {showLabel || selected ? (
+          <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_4px_#fff,0_0_6px_#fff]">
+            <span className="w-full truncate text-[13px] font-bold leading-4 tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
+            <span className="w-full truncate text-[12px] italic leading-4 text-[#6B6B70]">{sub}</span>
+          </span>
+        ) : null}
       </button>
+      {moreCount && onExpand ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onExpand();
+          }}
+          aria-label={`${moreCount} more ${moreCount === 1 ? "shop" : "shops"} here, zoom in`}
+          className="absolute -start-2 -top-2 z-[1] inline-flex h-5 min-w-5 cursor-pointer items-center justify-center rounded-full bg-[#0B0B0C] px-1 text-[11px] font-bold tabular-nums text-[#FFFFFF] shadow-float focus-visible:focus-ring"
+        >
+          +{moreCount}
+        </button>
+      ) : null}
     </span>
   );
 }
 
-/** Count bubble for overlapping shops (none of them mine). Tap zooms in on the group. */
+/** Count bubble for overlapping shops (none of them mine): a white bubble with the number. Tap zooms in. */
 export function MapCluster({ count, onExpand }: { count: number; onExpand: () => void }) {
   return (
     <button
@@ -63,9 +86,9 @@ export function MapCluster({ count, onExpand }: { count: number; onExpand: () =>
         onExpand();
       }}
       aria-label={`${count} shops here, zoom in`}
-      className="group flex cursor-pointer flex-col items-center focus-visible:outline-none"
+      className="group flex cursor-pointer items-center focus-visible:outline-none"
     >
-      <span className="inline-flex size-11 items-center justify-center rounded-full border-[3px] border-[#FFFFFF] bg-brand text-label font-bold tabular-nums text-on-brand shadow-md ring-4 ring-brand/25 transition-transform duration-150 ease-standard group-hover:scale-110 group-focus-visible:focus-ring">
+      <span className="display inline-flex size-11 items-center justify-center rounded-full bg-[#FFFFFF] text-[17px] tabular-nums text-[#0B0B0C] shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">
         {count}
       </span>
     </button>

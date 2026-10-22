@@ -39,7 +39,7 @@ export default function CodeStep() {
       if (!res.created && res.user.name) {
         toast({ message: t("ok.welcomeBack", { firstName: firstName(res.user.name) }), tone: "success" });
         if (params.join) router.replace({ pathname: "/name", params: { join: params.join, returning: "1" } });
-        else router.replace("/home");
+        else router.replace("/map");
       } else {
         router.replace({ pathname: "/name", params: params.join ? { join: params.join } : {} });
       }

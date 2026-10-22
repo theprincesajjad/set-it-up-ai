@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { ArrowLeft, Send } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +13,16 @@ import { StatTile } from "@/components/ui/StatTile";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
-export default function MessagePage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function MessagePageGated() {
+  return (
+    <FeatureGate keys={["marketing.email", "marketing.sms"]} title="Email & SMS campaigns">
+      <MessagePage />
+    </FeatureGate>
+  );
+}
+
+function MessagePage() {
   const { messageId } = useParams<{ messageId: string }>();
   const { api, base } = useMerchant();
   const state = useApi(() => api.messages.get(messageId), [api, messageId]);
@@ -34,8 +44,8 @@ export default function MessagePage() {
                 <Button variant="ghost" iconStart={Send} loading={test.busy} onClick={async () => { setTestNote(null); const r = await test.run(() => api.messages.sendTest(m.id)); if (r) setTestNote(`Test sent to ${r.to.join(", ")}. ${r.testsRemainingToday} left today.`); }}>Send test to me</Button>
               </>
             } />
-            {testNote ? <p role="status" className="text-body-sm text-success">{testNote}</p> : null}
-            {test.error ? <p className="text-danger">{test.error}</p> : null}
+            {testNote ? <p role="status" className="text-meta text-positive">{testNote}</p> : null}
+            {test.error ? <p className="text-negative">{test.error}</p> : null}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatTile label="Recipients" value={formatNumber(m.recipientCount)} />
               <StatTile label="Sent" value={formatNumber(m.stats.sent)} />
@@ -46,7 +56,7 @@ export default function MessagePage() {
               <h2 className="text-title text-fg">What recipients get</h2>
               <pre className="mt-2 whitespace-pre-wrap font-sans text-body text-fg">{m.preview}</pre>
             </Card>
-            {act.error ? <p className="text-danger">{act.error}</p> : null}
+            {act.error ? <p className="text-negative">{act.error}</p> : null}
           </>
         )}
       </Async>

@@ -43,23 +43,23 @@ export default function AuditPage() {
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <Card padding="none" className="overflow-x-auto">
         {loading && !rows.length ? <Skeleton className="m-4 h-40" /> : (
-          <table className="w-full min-w-[720px] text-body-sm">
+          <table className="w-full min-w-[720px] text-meta">
             <caption className="sr-only">Audit entries</caption>
-            <thead className="bg-surface-sunken text-label text-fg-muted">
+            <thead className="bg-bg-subtle text-label text-fg-muted">
               <tr><th scope="col" className="px-4 py-3 text-start">When</th><th scope="col" className="px-4 py-3 text-start">Who</th><th scope="col" className="px-4 py-3 text-start">Action</th><th scope="col" className="px-4 py-3 text-start">Target</th><th scope="col" className="px-4 py-3"><span className="sr-only">Details</span></th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <Fragment key={r.id}>
-                  <tr className="border-t border-border">
+                  <tr className="border-t border-line">
                     <td className="whitespace-nowrap px-4 py-2">{formatDateTime(r.createdAt)}</td>
                     <td className="px-4 py-2">{r.actorName ?? "System"}</td>
                     <td className="px-4 py-2 font-mono">{r.action}</td>
                     <td className="px-4 py-2 text-fg-muted">{[r.entity, r.entityId?.slice(0, 8)].filter(Boolean).join(" ")}</td>
-                    <td className="px-4 py-2 text-end"><button type="button" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)} className="min-h-11 text-label text-fg-link">{open === r.id ? "Hide" : "Details"}</button></td>
+                    <td className="px-4 py-2 text-end"><button type="button" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)} className="min-h-11 text-label text-fg">{open === r.id ? "Hide" : "Details"}</button></td>
                   </tr>
                   {open === r.id ? (
-                    <tr className="bg-canvas-subtle"><td colSpan={5} className="px-4 py-3"><pre className="max-h-64 overflow-auto whitespace-pre-wrap font-mono text-caption text-fg">{JSON.stringify(r.data, null, 2)}</pre>{r.ip ? <p className="mt-1 text-caption text-fg-muted">IP {r.ip}</p> : null}</td></tr>
+                    <tr className="bg-bg-subtle"><td colSpan={5} className="px-4 py-3"><pre className="max-h-64 overflow-auto whitespace-pre-wrap font-mono text-caption text-fg">{JSON.stringify(r.data, null, 2)}</pre>{r.ip ? <p className="mt-1 text-caption text-fg-muted">IP {r.ip}</p> : null}</td></tr>
                   ) : null}
                 </Fragment>
               ))}

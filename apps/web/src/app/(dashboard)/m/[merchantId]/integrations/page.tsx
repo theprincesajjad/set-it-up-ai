@@ -49,7 +49,7 @@ export default function IntegrationsPage() {
   const hidden = new Set(enabled("payments.in_app") || enabled("marketing.sms") ? [] : ["twilio"]);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Integrations" description="Every integration is free. Connect your POS and points are awarded automatically." actions={<Button variant="secondary" iconStart={Code2} href={`${base}/integrations/developers`}>Webhooks & API</Button>} />
+      <PageHeader title="Integrations" description="POS auto-award, Mailchimp and webhooks are Plus features. Connect your POS and points are awarded automatically." actions={<Button variant="secondary" iconStart={Code2} href={`${base}/integrations/developers`}>Webhooks & API</Button>} />
       {status === "connected" ? <Banner tone="success">{provider ? `${provider[0]!.toUpperCase()}${provider.slice(1)} is connected.` : "Connected."} Match your locations and categories below.</Banner> : null}
       {status === "error" ? <Banner tone="danger">{ERRORS[params.get("error") ?? ""] ?? "We couldn't connect that app. Try again."}</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -71,7 +71,7 @@ export default function IntegrationsPage() {
                       <li key={i.provider}>
                         <Card padding="lg" className="flex h-full flex-col gap-3">
                           <div className="flex items-start gap-3">
-                            <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-subtle text-label font-bold text-on-brand-subtle">
+                            <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-input bg-bg-subtle text-label font-bold text-fg">
                               {i.name.slice(0, 2)}
                             </span>
                             <div className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ export default function IntegrationsPage() {
                               </div>
                             </div>
                           </div>
-                          <p className="text-body-sm text-fg-muted">{i.description}</p>
+                          <p className="text-meta text-fg-muted">{i.description}</p>
                           {i.status === "connected" && i.lastSyncAt ? <p className="text-caption text-fg-muted">Last sync {relativeTime(i.lastSyncAt)}</p> : null}
                           <div className="mt-auto flex gap-2">
                             {!i.available ? (
@@ -119,10 +119,10 @@ export default function IntegrationsPage() {
       </Async>
 
       <Section title="Purchases without a customer">
-        <p className="text-body-sm text-fg-muted">POS sales where we couldn&apos;t tell who the customer was. Attach a phone number to give them their points (within 30 days).</p>
+        <p className="text-meta text-fg-muted">POS sales where we couldn&apos;t tell who the customer was. Attach a phone number to give them their points (within 30 days).</p>
         {unmatched.data?.items.length ? (
           <Card padding="sm">
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-line">
               {unmatched.data.items.map((u) => (
                 <li key={u.id} className="flex flex-wrap items-center gap-3 px-2 py-3">
                   <Receipt aria-hidden className="size-5 text-fg-muted" />
@@ -131,7 +131,7 @@ export default function IntegrationsPage() {
                       {formatMoney(u.totalCents)} · {u.provider}
                       {u.receiptCode ? ` · Receipt ${u.receiptCode}` : ""}
                     </p>
-                    <p className="text-body-sm text-fg-muted">
+                    <p className="text-meta text-fg-muted">
                       {formatDateTime(u.occurredAt)}
                       {u.customerName ? ` · ${u.customerName}` : ""}
                     </p>
@@ -145,7 +145,7 @@ export default function IntegrationsPage() {
           </Card>
         ) : (
           <Card tone="flat">
-            <p className="text-body-sm text-fg-muted">{unmatched.loading ? "Loading..." : "Nothing waiting. Every POS sale found its customer."}</p>
+            <p className="text-meta text-fg-muted">{unmatched.loading ? "Loading..." : "Nothing waiting. Every POS sale found its customer."}</p>
           </Card>
         )}
       </Section>

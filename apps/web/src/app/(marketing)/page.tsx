@@ -122,7 +122,7 @@ export default function Home() {
       {/* POS connectors */}
       <MSection>
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
-          <MHeading eyebrow="Works with your POS" title="Points on every sale, automatically" sub="Connect your point of sale and customers earn when they pay. No POS? The free counter app works on any phone or tablet." />
+          <MHeading eyebrow="Works with your POS" title="Points on every sale, automatically" sub="On Plus, connect your point of sale and customers earn when they pay. On Free, the counter app works on any phone or tablet." />
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {POS.map((p) => (
               <li key={p} className="flex min-h-16 items-center gap-2 rounded-lg bg-surface px-4 text-title text-fg shadow-sm">
@@ -190,12 +190,12 @@ export default function Home() {
           <MHeading eyebrow="Questions" title="The honest answers" />
           <Faq
             items={[
-              { q: "Is it really free?", a: "Yes. Every loyalty feature is free forever: points, stamps, rewards, promos, discount cards, unlimited staff and locations, and no transaction fees." },
+              { q: "Is it really free?", a: "Yes. Your loyalty program and its reports are free forever: points, stamps, visits, rewards, welcome bonus, the network listing and wallet pass, unlimited staff and locations, and no transaction fees. Promos, email and SMS, VIP levels and POS auto-award come later on Plus." },
               {
                 q: "How do you make money?",
                 a: "Later, optional paid tools like order-ahead and repair approvals, plus sponsored spots shops can choose to buy. They're always labelled. Loyalty never moves to a paid plan.",
               },
-              { q: "Do I need a POS integration?", a: "No. Staff can type a phone number or scan a card in the free counter app. If you use Square, Clover, Shopify, Lightspeed or Toast, you can connect it so points are awarded automatically." },
+              { q: "Do I need a POS integration?", a: "No. Staff can type a phone number or scan a card in the free counter app. If you use Square, Clover, Shopify, Lightspeed or Toast, Plus connects it so points are awarded automatically." },
               { q: "What about my customers' data?", a: "Your customers are yours. You see only your own members; other shops never see them. Customers only get offers if they say yes, as CASL requires." },
               { q: "Can I leave?", a: "Anytime. Export everything as CSV from your dashboard." },
             ]}

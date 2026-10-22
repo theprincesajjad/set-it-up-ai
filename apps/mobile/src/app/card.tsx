@@ -7,7 +7,7 @@ import { errorMessage, isApiError } from "../api/client";
 import { t } from "../copy/en-CA";
 import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
-import { formatNumber, formatPts, groupMemberCode } from "../lib/award";
+import { formatPts, groupMemberCode } from "../lib/award";
 import { rewardsReadyCount } from "../lib/hero";
 import { displayPhone, maskMiddle } from "../lib/phone";
 import { api } from "../state/api";
@@ -15,13 +15,13 @@ import { useOnline } from "../state/network";
 import { qk } from "../state/query";
 import { useSession } from "../state/session";
 import { useTheme } from "../theme";
-import { Banner, Button, Check, Chip, DiscountCard, QrCode, Receipt, SegmentedControl, Sheet, Skeleton, Text, TextField, Wallet, useToast } from "../ui";
+import { Banner, Button, Check, Chip, DiscountCard, IconButton, ListRow, Phone, QrCode, Receipt, SegmentedControl, Sheet, Skeleton, Text, TextField, Wallet, X, haptic, monoFamily, useToast } from "../ui";
 
 /**
- * My card — a sheet opened from the raised tab-bar button (references.md § 4).
- * Pine card with name + rewards ready (never a points-plus-stamps total), QR in a white tile, big monospace member
- * code, brightness max, Wallet buttons, "Forgot to scan? Claim a purchase".
- * Renders from cache instantly and works offline.
+ * My card (foundations § My card): a white sheet opened from the black card
+ * button in the tab bar. Big QR (black on white in both themes), the member
+ * code in mono, one black "add to apple wallet" button, no card art.
+ * Rewards ready (never a points-plus-stamps total). Renders from cache instantly and works offline.
  */
 export default function CardSheet() {
   const { c } = useTheme();
@@ -51,7 +51,7 @@ export default function CardSheet() {
   const walletAvailable = pass.data ? pass.data[platformKey].available : true;
   const inWallet = prefs.inWallet[platformKey];
   const phone = user?.phone ?? prefs.lastPhone;
-  const qrSize = Math.min(240, Math.round(width * 0.6));
+  const qrSize = Math.min(280, Math.round(width * 0.68));
 
   const addToWallet = async () => {
     setWalletBusy(true);
@@ -74,6 +74,7 @@ export default function CardSheet() {
     try {
       const res = await api.me.claimPurchase(shop, claimCode.trim());
       const m = memberships.find((x) => x.merchant.id === shop);
+      haptic.success();
       toast({ tone: "success", message: `Added ${formatPts(res.pointsAwarded, m?.terminology)}. You have ${formatPts(res.balance, m?.terminology)}.` });
       void qc.invalidateQueries({ queryKey: qk.wallet });
       setClaimOpen(false);
@@ -97,7 +98,19 @@ export default function CardSheet() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={styles.content}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.bg }} contentContainerStyle={styles.content}>
+      <View style={styles.head}>
+        <View style={{ flex: 1 }}>
+          <Text variant="largeTitle" accessibilityRole="header">
+            my card
+          </Text>
+          <Text variant="meta" color="fgMuted">
+            {card?.name ?? user?.name ?? "Member"}
+            {memberships.length > 0 ? ` · ${readyCount > 0 ? `${readyCount} ${readyCount === 1 ? "reward" : "rewards"} ready` : `${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}` : ""}
+          </Text>
+        </View>
+        <IconButton icon={X} label="Close" variant="secondary" size={32} onPress={() => router.back()} />
+      </View>
       {!online ? <Banner variant="neutral">Offline · your card still works</Banner> : null}
       {discountCards.length > 0 ? (
         <SegmentedControl
@@ -111,40 +124,20 @@ export default function CardSheet() {
       ) : null}
       {tab === "card" ? (
         <>
-          <View style={[styles.pine, { backgroundColor: c.brand }]}>
-            <View style={styles.pineTop}>
-              <View style={{ flex: 1 }}>
-                <Text variant="overline" rawColor={c.onBrand} style={{ opacity: 0.85 }}>
-                  Scan before paying
-                </Text>
-                <Text variant="title" rawColor={c.onBrand}>
-                  {card?.name ?? user?.name ?? "Member"}
-                </Text>
-              </View>
-              {memberships.length > 0 ? (
-                <View style={{ alignItems: "flex-end" }} accessible accessibilityLabel={readyCount > 0 ? `${readyCount} ${readyCount === 1 ? "reward" : "rewards"} ready` : `${memberships.length} ${memberships.length === 1 ? "shop" : "shops"}`}>
-                  <Text variant="h2" rawColor={c.onBrand} tabular>
-                    {formatNumber(readyCount > 0 ? readyCount : memberships.length)}
-                  </Text>
-                  <Text variant="caption" rawColor={c.onBrand}>
-                    {readyCount > 0 ? (readyCount === 1 ? "reward ready" : "rewards ready") : memberships.length === 1 ? "shop" : "shops"}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint="Opens the QR full screen"
-              disabled={!card}
-              onPress={() => card && router.push({ pathname: "/qr", params: { payload: card.qrPayload, code: card.memberCode } })}
-              style={[styles.qrTile, { backgroundColor: c.qrBg }]}
-            >
-              {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={`Your member QR code, number ${card.memberCode.split("").join(" ")}`} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
-            </Pressable>
-            <Text variant="code" rawColor={c.onBrand} center selectable style={{ fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }), fontSize: 34, lineHeight: 40 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Opens the QR full screen"
+            disabled={!card}
+            onPress={() => card && router.push({ pathname: "/qr", params: { payload: card.qrPayload, code: card.memberCode } })}
+            style={[styles.qrTile, { backgroundColor: c.qrBg, borderColor: c.line }]}
+          >
+            {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={`Your member QR code, number ${card.memberCode.split("").join(" ")}`} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
+          </Pressable>
+          <View style={{ alignItems: "center", gap: 4 }}>
+            <Text rawColor={c.fg} center selectable style={styles.code}>
               {card ? groupMemberCode(card.memberCode) : "•••• ••••"}
             </Text>
-            <Text variant="bodySm" rawColor={c.onBrand} center>
+            <Text variant="meta" color="fgMuted" center>
               Show this at the counter
             </Text>
           </View>
@@ -152,27 +145,29 @@ export default function CardSheet() {
           {walletAvailable ? (
             inWallet ? (
               <View style={styles.inWallet}>
-                <Check size={16} color={c.success} />
-                <Text variant="bodySm" color="fgMuted">
+                <Check size={16} color={c.positive} />
+                <Text variant="meta" color="fgMuted">
                   In your Wallet
                 </Text>
               </View>
             ) : (
-              <Button variant="secondary" size="lg" iconStart={Wallet} loading={walletBusy} disabled={!online} onPress={addToWallet}>
-                {Platform.OS === "ios" ? t("action.addToAppleWallet") : t("action.addToGoogleWallet")}
+              <Button size="lg" fullWidth iconStart={Wallet} loading={walletBusy} disabled={!online} onPress={addToWallet}>
+                {(Platform.OS === "ios" ? t("action.addToAppleWallet") : t("action.addToGoogleWallet")).toLowerCase()}
               </Button>
             )
           ) : null}
-          {memberships.length > 0 ? (
-            <Button variant="ghost" iconStart={Receipt} onPress={() => setClaimOpen(true)}>
-              Forgot to scan? Claim a purchase
-            </Button>
-          ) : null}
-          {phone ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={reveal ? `Or give your number: ${displayPhone(phone)}` : "Or give your number. Tap to reveal"} onPress={() => setReveal((r) => !r)}>
-              <Text color="fgMuted" center>{`Or give your number: ${reveal ? displayPhone(phone) : maskMiddle(phone)}`}</Text>
-            </Pressable>
-          ) : null}
+          <View>
+            {memberships.length > 0 ? <ListRow leadingIcon={Receipt} title="Forgot to scan? Claim a purchase" chevron onPress={() => setClaimOpen(true)} divider={!!phone} /> : null}
+            {phone ? (
+              <ListRow
+                leadingIcon={Phone}
+                title={`Or give your number: ${reveal ? displayPhone(phone) : maskMiddle(phone)}`}
+                accessibilityLabel={reveal ? `Or give your number: ${displayPhone(phone)}` : "Or give your number. Tap to reveal"}
+                onPress={() => setReveal((r) => !r)}
+                divider={false}
+              />
+            ) : null}
+          </View>
         </>
       ) : (
         discountCards.map(({ dc, m }) => (
@@ -187,9 +182,6 @@ export default function CardSheet() {
           </Pressable>
         ))
       )}
-      <Button variant="secondary" onPress={() => router.back()}>
-        Done
-      </Button>
 
       <Sheet
         visible={claimOpen}
@@ -215,9 +207,9 @@ export default function CardSheet() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingTop: 24, gap: 16, paddingBottom: 40 },
-  pine: { borderRadius: radii.xl, padding: 20, gap: 12 },
-  pineTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  qrTile: { alignSelf: "center", padding: 16, borderRadius: radii.lg },
+  content: { paddingHorizontal: 20, paddingTop: 20, gap: 20, paddingBottom: 40 },
+  head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  qrTile: { alignSelf: "center", padding: 18, borderRadius: radii.sheet, borderWidth: StyleSheet.hairlineWidth * 2 },
+  code: { fontFamily: monoFamily, fontSize: 28, lineHeight: 34, letterSpacing: 3, fontVariant: ["tabular-nums"] },
   inWallet: { flexDirection: "row", gap: 6, justifyContent: "center", alignItems: "center" },
 });

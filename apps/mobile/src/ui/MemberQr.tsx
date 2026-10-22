@@ -1,38 +1,35 @@
-import { radii, shadows } from "@ll/design-tokens";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { radii } from "@ll/design-tokens";
+import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { groupMemberCode } from "../lib/award";
 import { useTheme } from "../theme";
 import { QrCode } from "./QrCode";
 import { Text } from "./Text";
 
-/**
- * My card QR: black on white inside a white rounded-xl card (even in dark
- * mode), min 220, target 260 / 70% of width, member number in code style.
- */
+/** Big QR, black on white in both themes, member code in mono under it. */
 export function MemberQr({ payload, memberCode, name, size }: { payload: string; memberCode: string; name?: string | null; size?: number }) {
   const { width } = useWindowDimensions();
   const { c } = useTheme();
-  const qr = size ?? Math.max(220, Math.min(260, Math.round(width * 0.7)));
+  const qr = size ?? Math.max(220, Math.min(280, Math.round(width * 0.7)));
   return (
-    <View style={[styles.card, { backgroundColor: c.qrBg }, shadows.md.native]}>
+    <View style={[styles.card, { backgroundColor: c.qrBg }]}>
       {name ? (
-        <Text variant="h3" rawColor="#1F1B16" center>
+        <Text variant="headline" rawColor="#0B0B0C" center>
           {name}
         </Text>
       ) : null}
-      <View style={{ padding: 16, backgroundColor: c.qrBg }}>
+      <View style={{ padding: 12, backgroundColor: c.qrBg }}>
         <QrCode value={payload} size={qr} accessibilityLabel={`Your member QR code. Member number ${memberCode.split("").join(" ")}`} />
       </View>
-      <Text variant="code" rawColor="#1F1B16" style={{ fontSize: 28, lineHeight: 32 }} center selectable>
+      <Text rawColor="#0B0B0C" center selectable style={styles.code}>
         {groupMemberCode(memberCode)}
-      </Text>
-      <Text variant="bodySm" rawColor="#655A4C" center>
-        Show this at the counter
       </Text>
     </View>
   );
 }
 
+export const monoFamily = Platform.select({ ios: "Menlo", android: "monospace", default: "ui-monospace, Menlo, monospace" });
+
 const styles = StyleSheet.create({
-  card: { borderRadius: radii.xl, padding: 20, alignItems: "center", gap: 4, alignSelf: "center" },
+  card: { borderRadius: radii.sheet, padding: 16, alignItems: "center", gap: 4, alignSelf: "center" },
+  code: { fontFamily: monoFamily, fontSize: 24, lineHeight: 30, letterSpacing: 2, fontVariant: ["tabular-nums"] },
 });

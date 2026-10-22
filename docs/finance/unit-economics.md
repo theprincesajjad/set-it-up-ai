@@ -1,6 +1,6 @@
 # Local Loyalty — Unit economics, rollout gates and pricing
 
-Oct 21, 2026 · Finance & business ops · All money in CAD
+Oct 21, 2026 (Pricing v2 update Oct 22, 2026) · Finance & business ops · All money in CAD
 
 This document explains the numbers in the financial model and turns them into decisions. The model is `docs/finance/model/model.py`. It uses the Python standard library only, and every assumption sits in one `ASSUMPTIONS` dict. The workbook is `docs/finance/model/local-loyalty-model.xlsx`, with live formulas checked against `model.py` to within 1e-13. Generated CSVs are in `docs/finance/model/output/`.
 
@@ -15,9 +15,60 @@ python3 docs/finance/model/build_xlsx.py --verify
 
 **The founder's model** (it overrides the PRD where they differ):
 
-- Loyalty is free forever, with no transaction fee, unlimited locations and unlimited staff.
+- Loyalty **and reporting on it** are free forever, with no transaction fee, unlimited locations and unlimited staff. Since **Pricing v2** (Oct 22, 2026) that is *all* that is free: promos, VIP/birthday/referrals, discount cards, email/SMS, CSV, POS auto-award and webhooks are Plus. See `docs/business/pricing.md`.
 - Paid Plus ($39/mo) and Pro ($79/mo) plans, plus a 0.75% platform fee on in-app payments, start only after the network has density.
 - Network monetization comes after that: BIA campaigns, sponsored placements, map pins and push boosts.
+
+---
+
+## 0. Pricing v2 (Oct 22, 2026): what the new free/paid split does to the numbers
+
+**Decision.** Only the loyalty program and reporting on it stay free (see `docs/business/pricing.md`). Everything else moves to Plus/Pro and stays hidden until its rollout gate.
+
+**What changed in `model.py`** (all assumptions; the old values are kept in `PRICING_V1` so `output/pricing_v2_comparison.csv` reproduces the before case exactly):
+
+| Input | Pricing v1 | Pricing v2 | Why |
+| --- | --- | --- | --- |
+| Free-merchant infra (`infra_per_merchant`) | $1.00/mo | $0.60/mo | No email campaigns or POS sync on Free |
+| Transactional SMS on Free (`txn_sms_per_customer`) | 0.3/customer/mo | 0 | No SMS on Free (reward-ready texts become a Plus automation) |
+| Blended 12-month free→paid conversion after GA | 20% | **35%** base, 20% bear, 45% bull | Promos, marketing and POS auto-award are now behind the paywall. Per vertical (base): café 20→43%, retail 12→26%, repair 40→45%, personal services 15→32%, pharmacy 5→10% |
+| Merchant acquisition (`strip_potential_merchants`) | 32 / strip | 27.2 (–15%) | Adoption risk: a thinner free tier signs fewer shops (bear 24→20.4, bull 38→32.3) |
+
+The founder's brief described the old conversion as 25%. The model's actual v1 figure was 20% blended over 12 months (35% over 24 months). v2 targets 35% over 12 months.
+
+**Before → after** (source: `output/pricing_v2_comparison.csv`):
+
+| Scenario | Break-even month (60-month run) | Cash needed, months 1–36 | Cash needed to reach break-even | LTV/CAC (fully loaded) | Payback | Paying merchants, M36 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Base** | Month 60 (Oct 2031) → **month 51 (Jan 2031)** | $322,991 → **$302,028** | $420,715 → **$357,308** | 2.65x (1.93x) → **3.63x (3.05x)** | 12.6 → **9.2 mo** | 58 of 399 → 82 of 339 |
+| Lean plan | Month 39 (Jan 2030) → **month 35 (Sep 2029)**, inside 36 months | $197,411 → **$167,965** | $199,398 → **$167,965** | 2.65x → 3.63x | 12.6 → 9.2 mo | 87 of 546 → 126 of 464 |
+| Bull | Month 46 (Aug 2030) → **month 36 (Oct 2029)** | $297,223 → $250,864 | $315,811 → $250,864 | 5.52x → 7.40x | 8.1 → 6.0 mo | 162 of 797 → 241 of 678 |
+| Bear | Not within 60 → not within 60 | $305,900 → $297,613 | $545,418 → $516,375 | 0.78x → 1.03x | 28.5 → 21.6 mo | 2 of 156 → **0 of 132** |
+
+Per merchant (base): a free active merchant now costs **$3.87/mo** (was $4.62). CAC per paying merchant falls from $553 to **$373**, because more of the merchants we pay to sign end up paying. Contribution per payer falls slightly, from $43.90 to $40.65, because the new converts are mostly Plus (Pro share 36% → 27%, ARPU $53.56 → $49.93).
+
+**Sensitivity of the base case:**
+
+| Case | Break-even (60m) | Cash to break-even | LTV/CAC |
+| --- | --- | --- | --- |
+| v2 as modelled (35%, –15% acquisition) | Month 51 | $357,308 | 3.63x |
+| No acquisition hit (35%, 32/strip) | Month 51 | $354,931 | 3.75x |
+| –25% acquisition (35%, 24/strip) | Month 54 | $360,422 | 3.53x |
+| Conversion only ~26% (–15% acquisition) | Month 57 | $385,875 | 2.91x |
+| **Conversion doesn't move (~21%) but acquisition still –15%** | Month 60 | $405,603 | 2.47x |
+
+Even the worst row is no worse than v1 ($420,715, month 60), because Free is cheaper to serve. **The upside depends almost entirely on conversion actually rising.** Measure it first.
+
+**Risks:**
+
+1. **Network density comes first.** Fewer free sign-ups mean the network reaches the gates later. In the base case Plus/Pro unlock at **month 24 instead of 22**. In bear the network never reaches 150 active merchants, so there is **no subscription revenue in 36 months**. Fewer shops per strip also weakens the customer side ("one card for the whole street"). Track signed shops per strip against the 27 assumed. If a strip stalls below about 20, sell harder on wallet pass + network listing (still free) before discounting Plus.
+2. **Free must still win the counter.** The pitch is now "your loyalty program is free forever", not "everything is free". Sales copy, the website and the battlecards must not promise promos, email or POS auto-award on Free.
+3. **SoPoints comparison: our Free is still more generous.** The lead checked sopoints.com/pricing on Oct 22, 2026. SoPoints Free is $0 + a 5% transaction fee, 1 location, a 4,000 points/month cap, no active rewards, no campaigns and basic analytics only. Starter is US$49/mo (2.5% fee, 2 locations, 10 rewards); Pro is US$79/mo (0% fee, 10 locations, unlimited rewards, 10 campaigns, birthday rewards, multiple staff); Enterprise is US$199/mo. Our Free (0% fee, unlimited rewards, locations and staff, reports) beats SoPoints Free and Starter on loyalty. Our Plus (C$39) covers what SoPoints charges US$79 for (campaigns, birthday rewards). The page doesn't say what the 5% applies to.
+4. **Conversion is the whole bet.** Validate it on pilot shops with admin overrides before GA. Kill criterion: if blended conversion stays below about 25% after 6 months of GA, v2 is roughly break-even against v1 on cash but costs us network density.
+5. **Free churn may rise** for merchants who used promos/email. The model keeps free churn at 1.5%/mo, and nothing is live yet, so no merchant loses anything today.
+6. **Open engineering item.** SMS receipts (`smsReceiptsEnabled`, sent from `apps/api/src/services/staff.ts`) are still sent on Free. Gate them or the "no SMS on Free" cost assumption is optimistic (v1 put this at about $0.36 per free merchant per month).
+
+The tables in sections 1–9 below now show **Pricing v2** where they come straight from the model outputs (section 1). The per-merchant breakdowns in sections 2–3 are the **v1** detail for reference; use the deltas above.
 
 ---
 
@@ -25,13 +76,13 @@ python3 docs/finance/model/build_xlsx.py --verify
 
 | Scenario | Break-even inside 36 months? | Break-even month (60-month run) | Cash needed, months 1–36 | Cash needed to reach break-even | LTV/CAC | Payback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Bear | No | Not within 60 | $305,900 | > $545,000 | 0.8x | 28.5 mo |
-| **Base** (plans.ts gates as written) | **No** | **Month 60 (Oct 2031), barely** | **$322,991** | **$420,715** | **2.6x** (1.9x fully loaded) | **12.6 mo** |
-| Base + recommended gates | No | Month 60 | $310,918 | $401,427 | 2.6x | 12.6 mo |
-| **Lean plan** (recommended) | No (month 36 EBITDA is –$1,649) | **Month 39 (Jan 2030)** | **$197,411** | **$199,398** | 2.6x | 12.6 mo |
-| Bull | No | Month 46 (Aug 2030) | $297,223 | $315,811 | 5.5x | 8.1 mo |
+| Bear | No | Not within 60 | $297,613 | > $516,000 | 1.0x | 21.6 mo |
+| **Base** (plans.ts gates as written) | **No** | **Month 51 (Jan 2031)** | **$302,028** | **$357,308** | **3.6x** (3.1x fully loaded) | **9.2 mo** |
+| Base + recommended gates | No | Month 51 | $291,059 | $334,997 | 3.6x | 9.2 mo |
+| **Lean plan** (recommended) | **Yes: month 35 (Sep 2029)** | Month 35 | **$167,965** | **$167,965** | 3.6x | 9.2 mo |
+| Bull | Yes: month 36 (Oct 2029) | Month 36 | $250,864 | $250,864 | 7.4x | 6.0 mo |
 
-Source: `output/scenarios.csv`. The scenario definitions are `SCENARIOS` in `model.py`. The **lean plan** is the base case with four changes:
+Pricing v2 figures (Oct 22, 2026); the v1 figures are in section 0. Source: `output/scenarios.csv`. The scenario definitions are `SCENARIOS` in `model.py`. The **lean plan** is the base case with four changes:
 
 1. Recommended rollout gates (section 4).
 2. Half the contract-developer spend: a technical co-founder on equity, or a founder who builds with AI-assisted tooling.
@@ -40,10 +91,10 @@ Source: `output/scenarios.csv`. The scenario definitions are `SCENARIOS` in `mod
 
 **What this means.** A free-forever loyalty network with $39/$79 add-ons is a slow-revenue business:
 
-- In the base case there is **no revenue at all in year 1**. Paid features do not unlock until **month 22 (Aug 2028)**, because plans.ts waits for 150 *active* merchants. At 60% activation that means about 250 signed merchants.
-- The founder needs roughly **$320k to get through 36 months** and about **$420k to reach break-even**. That is too much to bootstrap from savings.
+- In the base case there is **no revenue at all in year 1**. Paid features do not unlock until **month 24 (Oct 2028)** under Pricing v2 (month 22 under v1), because the model waits for 150 *active* merchants. At 60% activation that means about 250 signed merchants.
+- The founder needs roughly **$300k to get through 36 months** and about **$357k to reach break-even** (v1: $323k and $421k). That is still too much to bootstrap from savings.
 
-Acquisition is not what makes this expensive:
+Acquisition is not what makes this expensive (Pricing v1 figures; v2 year-1 burn is $83,053, of which $8,302 is acquisition):
 
 - Year-1 spend in the base case is $84,349.
 - $48,000 of that is the developer, $17,580 is overhead and $8,000 is one-time legal and trademark costs.
@@ -55,7 +106,7 @@ Onboarding merchants is cheap. Product payroll is what burns cash while you wait
 
 ## 2. Per-merchant economics (base case, steady state, per month)
 
-Source: `output/unit_economics.csv` and the *Unit Economics* sheet.
+Pricing v1 detail, kept for reference. Pricing v2 changes: free merchant $4.62 → $3.87, CAC per paying $553 → $373, contribution $43.90 → $40.65, LTV/CAC 2.6x → 3.6x (section 0). Current values: `output/unit_economics.csv` and the *Unit Economics* sheet.
 
 ### 2.1 What a free merchant costs
 
@@ -128,7 +179,7 @@ Repair and auto are 20% of merchants but **about 40% of paying merchants and abo
 
 ## 3. Network-effect economics: why no transaction fee beats SoPoints' 5%
 
-The PRD lists SoPoints' free plan as carrying a **5% transaction fee** ([SoPoints pricing](https://sopoints.com/pricing), cited in the PRD; **verify** what base the fee applies to before using it in sales). The comparison below assumes the fee applies to loyalty-member sales.
+SoPoints' free plan carries a **5% transaction fee** ([SoPoints pricing](https://sopoints.com/pricing), verified by the lead Oct 22, 2026: Free = $0 + 5%, 1 location, 4,000 points/month cap, no active rewards, no campaigns, basic analytics; the page doesn't say what base the 5% applies to). The comparison below assumes the fee applies to loyalty-member sales.
 
 | Example café | SoPoints free plan | Local Loyalty Free |
 | --- | --- | --- |

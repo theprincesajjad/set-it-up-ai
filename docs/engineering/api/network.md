@@ -68,7 +68,10 @@ Increment the promo's `viewCount` / `claimCount`. Call `view` when a promo card 
 The public merchant page (web pass / app shop screen). `200` → `PublicShopResponse`:
 `{ merchant: { ...brief, description, phone, email, website, instagram, coverUrl, timezone, neighbourhood }, locations: LocationDto[], program: ProgramSummaryDto|null, rewards: RewardDto[], promos: PromoDto[] (network audience, in date window, with activeNow), discountCards: DiscountCardDto[] (VIP-only cards excluded), consentText, memberCount, features }`.
 - `memberCount`: number of members, or `null` below 10 (same rule as the shop list).
-- `features: CustomerFeaturesDto { orderAhead, pickupSlots, serviceTickets, inAppPayments }` — `true` only when the feature is
+- Pricing v2: `promos` and `discountCards` are empty when the shop doesn't have `promos.basic` / `discount_cards` (Plus).
+  The same promo rule applies to the feed, `hasPromo` and `livePromoCount` (boost promos need `promos.double_points`).
+  `program.birthdayBonus` / `referralBonus` show `0` when those features are off.
+- `features: CustomerFeaturesDto { orderAhead, pickupSlots, serviceTickets, inAppPayments, promos, discountCards, referrals, vipLevels, birthdayBonus }` — `true` only when the feature is
   enabled for this shop (plan + rollout stage + admin overrides; keys `orders.order_ahead`, `booking.pickup_slots`,
   `service.tickets`, `payments.in_app`). Show the matching entry points only when `true` instead of probing for `402`s.
 Errors: `404`.

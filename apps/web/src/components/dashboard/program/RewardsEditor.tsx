@@ -4,10 +4,9 @@ import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Panel } from "@/components/dashboard/kit";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -45,47 +44,49 @@ export function RewardsEditor({ rewards, onChange }: { rewards: merchantApi.Rewa
   }
 
   return (
-    <Card padding="lg">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-h3 text-fg">Rewards</h2>
-          <p className="text-body-sm text-fg-muted">{HINTS[detail.merchant.vertical] ?? "Start with one easy reward customers can reach in a month."}</p>
-        </div>
-        <Button variant="secondary" iconStart={Plus} onClick={() => setEdit({ name: "", rewardType: "free_item", value: "", pointsCost: "", description: "" })}>
+    <Panel
+      title="Rewards"
+      description={HINTS[detail.merchant.vertical] ?? "Start with one easy reward customers can reach in a month."}
+      action={
+        <Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setEdit({ name: "", rewardType: "free_item", value: "", pointsCost: "", description: "" })}>
           Add reward
         </Button>
-      </div>
+      }
+    >
       {sorted.length ? (
-        <ul className="flex flex-col divide-y divide-border">
+        <ul className="flex flex-col divide-y divide-line border-y border-line">
           {sorted.map((r, i) => (
-            <li key={r.id} className="flex min-h-16 flex-wrap items-center gap-2 py-2">
+            <li key={r.id} className="flex min-h-14 flex-wrap items-center gap-1 py-1.5">
               <div className="flex flex-col">
-                <IconButton icon={ArrowUp} label={`Move ${r.name} up`} size={40} disabled={i === 0} onClick={() => move(i, -1)} />
-                <IconButton icon={ArrowDown} label={`Move ${r.name} down`} size={40} disabled={i === sorted.length - 1} onClick={() => move(i, 1)} />
+                <button type="button" aria-label={`Move ${r.name} up`} disabled={i === 0} onClick={() => move(i, -1)} className="inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg disabled:opacity-30">
+                  <ArrowUp aria-hidden className="size-3.5" />
+                </button>
+                <button type="button" aria-label={`Move ${r.name} down`} disabled={i === sorted.length - 1} onClick={() => move(i, 1)} className="inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg disabled:opacity-30">
+                  <ArrowDown aria-hidden className="size-3.5" />
+                </button>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-body-strong text-fg">{r.name}</p>
-                <p className="text-body-sm text-fg-muted">
-                  {formatPoints(r.pointsCost, term)} · <Badge>{TYPE_LABEL[r.rewardType]}</Badge>
+                <p className="text-meta-strong text-fg">{r.name}</p>
+                <p className="text-meta text-fg-muted">
+                  {formatPoints(r.pointsCost, term)} · {TYPE_LABEL[r.rewardType]}
                   {r.rewardType === "amount_off" ? ` ${formatMoney(r.value)}` : r.rewardType === "percent_off" ? ` ${r.value}%` : ""}
                 </p>
               </div>
-              <div className="w-36">
+              <div className="w-28">
                 <Switch label="Active" checked={r.active} onChange={async (v) => replace(await api.updateReward(r.id, { active: v }))} />
               </div>
-              <IconButton icon={Pencil} label={`Edit ${r.name}`} onClick={() => setEdit({ id: r.id, name: r.name, rewardType: r.rewardType, value: r.rewardType === "amount_off" ? String(r.value / 100) : String(r.value || ""), pointsCost: String(r.pointsCost), description: r.description ?? "" })} />
-              <IconButton icon={Trash2} label={`Delete ${r.name}`} onClick={() => setDel(r)} />
+              <IconButton icon={Pencil} size={40} label={`Edit ${r.name}`} onClick={() => setEdit({ id: r.id, name: r.name, rewardType: r.rewardType, value: r.rewardType === "amount_off" ? String(r.value / 100) : String(r.value || ""), pointsCost: String(r.pointsCost), description: r.description ?? "" })} />
+              <IconButton icon={Trash2} size={40} label={`Delete ${r.name}`} onClick={() => setDel(r)} />
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-body-sm text-fg-muted">No rewards yet. Customers need something to earn toward.</p>
+        <p className="text-meta text-fg-muted">No rewards yet. Customers need something to earn toward.</p>
       )}
 
       <Modal
         open={!!edit}
         onClose={() => setEdit(null)}
-        variant="sheet"
         title={edit?.id ? "Edit reward" : "Add reward"}
         actions={
           <>
@@ -141,6 +142,6 @@ export function RewardsEditor({ rewards, onChange }: { rewards: merchantApi.Rewa
           toast(r.archived ? "Turned off (it has redemptions)" : "Deleted");
         }}
       />
-    </Card>
+    </Panel>
   );
 }

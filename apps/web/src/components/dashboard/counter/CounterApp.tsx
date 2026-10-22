@@ -1,15 +1,14 @@
 "use client";
-import { Gift, RotateCcw, Search, Ticket, UserPlus, X } from "lucide-react";
+import { Check, Gift, RotateCcw, Search, Ticket, UserPlus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { staffApi } from "@ll/shared";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Keypad } from "@/components/ui/Keypad";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Segmented } from "@/components/dashboard/kit";
 import { inputBase } from "@/components/ui/TextField";
 import { copy } from "@/copy/en-CA";
 import { newIdempotencyKey } from "@/lib/api/client";
@@ -259,7 +258,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         {announce}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SegmentedControl
+        <Segmented
           label="Counter mode"
           value={mode}
           onChange={(v) => {
@@ -272,7 +271,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ]}
         />
         {locations.length > 1 ? (
-          <label className="flex items-center gap-2 text-label text-fg">
+          <label className="flex items-center gap-2 text-meta text-fg-muted">
             Location
             <select
               value={locationId}
@@ -284,7 +283,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                   /* ignore */
                 }
               }}
-              className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-body"
+              className="h-8 rounded-input border border-line bg-bg px-2 text-meta text-fg"
             >
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -305,11 +304,11 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
           {mode === "verify" ? (
-            <section className="rounded-lg bg-surface p-5 shadow-sm" aria-labelledby="verify-title">
-              <h2 id="verify-title" className="text-h3 text-fg">
+            <section className="rounded-card border border-line bg-bg p-6" aria-labelledby="verify-title">
+              <h2 id="verify-title" className="text-body-strong text-fg">
                 Verify a reward code
               </h2>
-              <p className="mt-1 text-body-sm text-fg-muted">For rewards the customer redeemed in the app. The code is on their screen.</p>
+              <p className="mt-1 text-meta text-fg-muted">For rewards the customer redeemed in the app. The code is on their screen.</p>
               <form
                 className="mt-4 flex flex-col gap-3 sm:flex-row"
                 onSubmit={(e) => {
@@ -321,7 +320,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                   Reward code
                 </label>
                 <input id="redeem-code" autoFocus autoComplete="off" autoCapitalize="characters" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K74Q" className={cn(inputBase, "min-h-16 text-center font-mono text-code tracking-[0.3em] sm:max-w-60")} />
-                <Button type="submit" size="lg" variant="accent" loading={busy}>
+                <Button type="submit" size="lg" loading={busy} className="min-h-16">
                   {copy.action.redeem}
                 </Button>
               </form>
@@ -329,8 +328,8 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
 
           {mode === "award" && (phase.kind === "idle" || phase.kind === "pick" || phase.kind === "new") ? (
-            <section className="rounded-lg bg-surface p-5 shadow-sm" aria-labelledby="find-title">
-              <h2 id="find-title" className="text-h3 text-fg">
+            <section className="rounded-card border border-line bg-bg p-6" aria-labelledby="find-title">
+              <h2 id="find-title" className="text-body-strong text-fg">
                 Find customer
               </h2>
               <form
@@ -341,7 +340,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                 }}
               >
                 <div className="relative flex-1">
-                  <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-fg-muted" />
+                  <Search aria-hidden className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-fg-muted" strokeWidth={1.75} />
                   <label htmlFor="counter-search" className="sr-only">
                     Phone, last 4 digits or member code
                   </label>
@@ -355,28 +354,28 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                     onChange={(e) => setQ(e.target.value)}
                     aria-describedby="counter-hint"
                     placeholder="(416) 555-0123 or 0123 or K7QX2M9P"
-                    className={cn(inputBase, "min-h-16 ps-11 text-title")}
+                    className={cn(inputBase, "min-h-16 ps-12 text-title tabular")}
                   />
                 </div>
                 <Button type="submit" size="lg" loading={busy} className="min-h-16">
                   Find customer
                 </Button>
               </form>
-              <p id="counter-hint" className="mt-2 text-body-sm text-fg-muted">
-                {hint} · Press <kbd className="rounded-xs border border-border px-1">/</kbd> to search, <kbd className="rounded-xs border border-border px-1">Esc</kbd> for the next customer
+              <p id="counter-hint" className="mt-2 text-meta text-fg-muted">
+                {hint} · Press <kbd className="rounded-[5px] border border-line px-1.5 text-caption">/</kbd> to search, <kbd className="rounded-[5px] border border-line px-1.5 text-caption">Esc</kbd> for the next customer
               </p>
 
               {phase.kind === "pick" ? (
-                <ul className="mt-4 divide-y divide-border rounded-md border border-border" aria-label="Matching members">
+                <ul className="mt-4 divide-y divide-line rounded-input border border-line" aria-label="Matching members">
                   {phase.items.map((m) => (
                     <li key={m.memberId}>
-                      <button type="button" onClick={() => setPhase({ kind: "member", member: m })} className="flex min-h-16 w-full items-center gap-3 px-3 text-start hover:bg-canvas-subtle focus-visible:focus-ring">
+                      <button type="button" onClick={() => setPhase({ kind: "member", member: m })} className="flex min-h-16 w-full items-center gap-3 px-3 text-start hover:bg-bg-subtle focus-visible:focus-ring">
                         <Avatar name={m.name} id={m.memberId} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-body-strong text-fg">{m.name ?? "Member"}</span>
-                          <span className="block text-body-sm text-fg-muted">{m.maskedPhone}</span>
+                          <span className="block text-meta text-fg-muted">{m.maskedPhone}</span>
                         </span>
-                        <span className="tabular-nums text-fg-brand">{formatPoints(m.balance, m.terminology)}</span>
+                        <span className="tabular-nums text-fg">{formatPoints(m.balance, m.terminology)}</span>
                       </button>
                     </li>
                   ))}
@@ -385,16 +384,16 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
 
               {phase.kind === "new" ? (
                 <form
-                  className="mt-4 flex flex-col gap-3 rounded-md border border-border p-4"
+                  className="mt-4 flex flex-col gap-3 rounded-input border border-line p-4"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void award({ phone: phase.phone }, { customerName: newName.trim() || undefined, consent: consent ? { text: copy.consent.merchant(shopName) } : undefined });
                   }}
                 >
                   <p className="flex items-center gap-2 text-body-strong text-fg">
-                    <UserPlus aria-hidden className="size-5 text-fg-brand" /> New customer: {formatNanp(phase.phone.replace(/^\+1/, ""))}
+                    <UserPlus aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} /> New customer: {formatNanp(phase.phone.replace(/^\+1/, ""))}
                   </p>
-                  <label className="flex flex-col gap-1.5 text-label text-fg">
+                  <label className="flex flex-col gap-1.5 text-meta-strong text-fg">
                     First name (optional)
                     <input value={newName} onChange={(e) => setNewName(e.target.value)} autoComplete="off" className={inputBase} />
                   </label>
@@ -409,23 +408,23 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
 
           {mode === "award" && member ? (
-            <section className="rounded-lg bg-surface p-5 shadow-sm" aria-labelledby="member-title">
+            <section className="rounded-card border border-line bg-bg p-6" aria-labelledby="member-title">
               <div className="flex items-start gap-3">
-                <Avatar name={member.name} id={member.memberId} size={56} />
+                <Avatar name={member.name} id={member.memberId} size={40} />
                 <div className="min-w-0 flex-1">
-                  <h2 id="member-title" className="truncate text-h2 text-fg">
+                  <h2 id="member-title" className="truncate text-title text-fg">
                     {member.name ?? "Member"}
                   </h2>
-                  <p className="text-body-sm text-fg-muted">
+                  <p className="text-meta text-fg-muted">
                     {member.maskedPhone} · {member.visitCount} visits{member.vip ? ` · ${member.vip.name}` : ""}
                   </p>
                 </div>
                 <div className="text-end">
-                  <p className="text-h2 tabular-nums text-fg-brand">{member.balance}</p>
-                  <p className="text-caption text-fg-muted">{member.terminology}</p>
+                  <p className="font-display text-display-number tabular-nums text-accent-text">{member.balance}</p>
+                  <p className="text-meta text-fg-muted">{member.terminology}</p>
                 </div>
               </div>
-              {member.nextReward ? <ProgressBar className="mt-4" tone="accent" value={member.nextReward.progressPct} max={100} label={member.nextReward.name} valueText={`${member.nextReward.pointsNeeded} more`} /> : null}
+              {member.nextReward ? <ProgressBar className="mt-5" value={member.nextReward.progressPct} max={100} label={member.nextReward.name} valueText={`${member.nextReward.pointsNeeded} more`} /> : null}
               {member.openRedemptionCount > 0 ? (
                 <Banner tone="info" className="mt-3" icon={Ticket} action={<Button size="sm" variant="ghost" onClick={() => setMode("verify")}>Verify code</Button>}>
                   This customer has a reward code waiting in the app.
@@ -439,7 +438,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                 ) : (
                   <div role="radiogroup" aria-label="How many" className="flex gap-2">
                     {[1, 2, 3].map((n) => (
-                      <button key={n} type="button" role="radio" aria-checked={qty === n} onClick={() => setQty(n)} className={cn("min-h-12 flex-1 rounded-md border text-title tabular-nums focus-visible:focus-ring", qty === n ? "border-brand bg-brand-subtle text-on-brand-subtle" : "border-border-strong bg-surface text-fg")}>
+                      <button key={n} type="button" role="radio" aria-checked={qty === n} onClick={() => setQty(n)} className={cn("min-h-14 flex-1 rounded-input border text-title tabular-nums text-fg focus-visible:focus-ring", qty === n ? "border-fg bg-bg font-semibold shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line bg-bg hover:bg-bg-subtle")}>
                         +{n}
                       </button>
                     ))}
@@ -452,14 +451,14 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
 
               {member.rewardsAffordable.length ? (
                 <div className="mt-5">
-                  <h3 className="text-title text-fg">Ready to redeem</h3>
-                  <ul className="mt-2 flex flex-col gap-2">
+                  <h3 className="text-meta-strong text-fg">Ready to redeem</h3>
+                  <ul className="mt-2 divide-y divide-line border-y border-line">
                     {member.rewardsAffordable.map((r) => (
-                      <li key={r.id} className="flex items-center gap-3 rounded-md bg-accent-subtle p-3">
-                        <Gift aria-hidden className="size-5 text-on-accent-subtle" />
-                        <span className="min-w-0 flex-1 text-body-strong text-on-accent-subtle">{r.name}</span>
-                        <span className="text-body-sm tabular-nums text-on-accent-subtle">{formatPoints(r.pointsCost, member.terminology)}</span>
-                        <Button size="sm" variant="accent" disabled={busy} onClick={() => void redeem(member, r.id)}>
+                      <li key={r.id} className="flex min-h-14 items-center gap-3 py-2">
+                        <Gift aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} />
+                        <span className="min-w-0 flex-1 text-body-strong text-fg">{r.name}</span>
+                        <span className="text-meta tabular-nums text-fg-muted">{formatPoints(r.pointsCost, member.terminology)}</span>
+                        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void redeem(member, r.id)}>
                           {copy.action.redeem}
                         </Button>
                       </li>
@@ -468,7 +467,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                 </div>
               ) : null}
               {member.discountCards.length ? (
-                <p className="mt-3 text-body-sm text-fg-muted">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p>
+                <p className="mt-3 text-meta text-fg-muted">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p>
               ) : null}
               <div className="mt-4">
                 <Button variant="ghost" onClick={reset}>
@@ -479,24 +478,27 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
 
           {phase.kind === "awarded" ? (
-            <section role="status" className="rounded-lg bg-success p-6 text-on-success shadow-sm" aria-labelledby="ok-title">
-              <p id="ok-title" className="text-counter-hero font-bold">
+            <section role="status" className="rounded-card border border-line bg-bg p-6" aria-labelledby="ok-title">
+              <span aria-hidden className="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
+                <Check className="size-5" strokeWidth={2.25} />
+              </span>
+              <p id="ok-title" className="text-large-title font-display text-fg">
                 {phase.res.duplicate ? "Already added" : awardSuccess(program, phase.res.pointsEarned)}
               </p>
-              <p className="mt-2 text-title">
+              <p className="mt-2 text-title font-normal text-fg-muted">
                 {phase.res.member.name ? `${firstName(phase.res.member.name)} has ` : "Balance "}
-                {formatPoints(phase.res.balance, program.terminology)}
+                <span className="font-semibold text-accent-text tabular">{formatPoints(phase.res.balance, program.terminology)}</span>
                 {phase.res.memberCreated ? " · Welcome to the program" : ""}
               </p>
-              {phase.res.rewardsAvailable.length ? <p className="mt-2 text-body">Reward ready: {phase.res.rewardsAvailable.map((r) => r.name).join(", ")}</p> : phase.res.member.nextReward ? <p className="mt-2 text-body">{copy.misc.stampsToGo(phase.res.member.nextReward.pointsNeeded, phase.res.member.nextReward.name)}</p> : null}
-              {phase.res.breakdown.length ? <p className="mt-1 text-body-sm opacity-90">{phase.res.breakdown.join(" · ")}</p> : null}
+              {phase.res.rewardsAvailable.length ? <p className="mt-2 text-body text-fg">Reward ready: {phase.res.rewardsAvailable.map((r) => r.name).join(", ")}</p> : phase.res.member.nextReward ? <p className="mt-2 text-body text-fg-muted">{copy.misc.stampsToGo(phase.res.member.nextReward.pointsNeeded, phase.res.member.nextReward.name)}</p> : null}
+              {phase.res.breakdown.length ? <p className="mt-1 text-meta text-fg-muted">{phase.res.breakdown.join(" · ")}</p> : null}
               {phase.res.messages.map((msg) => (
-                <p key={msg} className="mt-1 text-body-sm">
+                <p key={msg} className="mt-1 text-meta text-fg-muted">
                   {msg}
                 </p>
               ))}
               <div className="mt-5 flex flex-wrap gap-3">
-                <Button variant="inverse" size="lg" onClick={reset} autoFocus>
+                <Button size="lg" onClick={reset} autoFocus>
                   Next customer
                 </Button>
                 {phase.res.transactionId && !phase.res.duplicate && now - phase.at < undoSeconds * 1000 ? (
@@ -509,15 +511,18 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
 
           {phase.kind === "redeemed" ? (
-            <section role="status" className="rounded-lg bg-success p-6 text-on-success shadow-sm">
-              <p className="text-counter-hero font-bold">{phase.res.redemption.reward.name} redeemed.</p>
-              <p className="mt-2 text-title">Hand it over.{phase.res.redemption.discountCents ? ` Discount ${formatMoney(phase.res.redemption.discountCents)}.` : ""}</p>
-              <p className="mt-1 text-body">
+            <section role="status" className="rounded-card border border-line bg-bg p-6">
+              <span aria-hidden className="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
+                <Check className="size-5" strokeWidth={2.25} />
+              </span>
+              <p className="text-large-title font-display text-fg">{phase.res.redemption.reward.name} redeemed.</p>
+              <p className="mt-2 text-title font-normal text-fg">Hand it over.{phase.res.redemption.discountCents ? ` Discount ${formatMoney(phase.res.redemption.discountCents)}.` : ""}</p>
+              <p className="mt-1 text-body text-fg-muted">
                 {phase.res.member.name ? `${firstName(phase.res.member.name)} has ` : "Balance "}
                 {formatPoints(phase.res.member.balance, phase.res.member.terminology)} left.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Button variant="inverse" size="lg" onClick={reset} autoFocus>
+                <Button size="lg" onClick={reset} autoFocus>
                   Next customer
                 </Button>
                 {phase.res.redemption.transactionId ? (
@@ -530,29 +535,29 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
           ) : null}
         </div>
 
-        <aside aria-labelledby="recent-title" className="rounded-lg bg-surface p-4 shadow-sm">
-          <h2 id="recent-title" className="text-title text-fg">
+        <aside aria-labelledby="recent-title" className="min-w-0">
+          <h2 id="recent-title" className="text-body-strong text-fg">
             Recent at the counter
           </h2>
           {recent.length ? (
-            <ul className="mt-2 divide-y divide-border">
+            <ul className="mt-2 divide-y divide-line border-y border-line">
               {recent.map((a) => (
-                <li key={a.transactionId} className="flex min-h-14 items-center gap-2 py-2">
+                <li key={a.transactionId} className="flex min-h-12 items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-body-sm text-fg">
-                      {a.name ?? a.maskedPhone ?? "Member"} {a.reversed ? <Badge tone="neutral">Undone</Badge> : null}
+                    <p className="truncate text-meta text-fg">
+                      {a.name ?? a.maskedPhone ?? "Member"} {a.reversed ? <span className="text-fg-muted">· Undone</span> : null}
                     </p>
                     <p className="text-caption text-fg-muted">
                       {formatTime(a.createdAt)} · {typeLabel(a.type)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
                   </div>
-                  <span className={cn("tabular-nums text-body-sm", a.points >= 0 ? "text-fg-brand" : "text-fg")}>
+                  <span className={cn("tabular-nums text-meta", a.points >= 0 ? "text-fg" : "text-fg")}>
                     {a.points >= 0 ? "+" : ""}
                     {a.points}
                   </span>
                   {a.canUndo && !a.reversed ? (
-                    <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-11 rounded-sm px-2 text-label text-fg-link hover:underline">
+                    <button type="button" onClick={() => void undo(a.transactionId)} disabled={busy} className="min-h-8 rounded-sm px-2 text-meta font-medium text-fg hover:underline">
                       Undo
                     </button>
                   ) : null}
@@ -560,7 +565,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-body-sm text-fg-muted">Awards and redemptions show up here.</p>
+            <p className="mt-2 text-meta text-fg-muted">Awards and redemptions show up here.</p>
           )}
         </aside>
       </div>
@@ -571,8 +576,8 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
 function AmountPad({ cents, setCents }: { cents: string; setCents: (fn: (c: string) => string) => void }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-label text-fg">Purchase amount</p>
-      <output aria-live="polite" aria-label="Purchase amount" className="block rounded-md bg-surface-sunken px-4 py-3 text-end text-keypad tabular-nums text-fg">
+      <p className="text-meta-strong text-fg">Purchase amount</p>
+      <output aria-live="polite" aria-label="Purchase amount" className="block border-b border-line px-1 py-3 text-end font-display text-display-number tabular-nums text-fg">
         {keypadDisplay(cents)}
       </output>
       <Keypad size="compact" onKey={(k) => setCents((c) => applyKey(c, k))} label="Amount keypad" />

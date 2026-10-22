@@ -28,15 +28,15 @@ export function Checkbox({ checked, onChange, label, caption, disabled, large }:
         style={[
           styles.box,
           large ? styles.boxLarge : null,
-          { borderColor: checked ? c.brand : c.borderStrong, backgroundColor: checked ? c.brand : c.surface },
+          { borderColor: checked ? c.fg : c.lineStrong, backgroundColor: checked ? c.fg : c.bg },
         ]}
       >
-        {checked ? <Check size={large ? 24 : 18} color={c.onBrand} strokeWidth={3} /> : null}
+        {checked ? <Check size={large ? 24 : 18} color={c.bg} strokeWidth={3} /> : null}
       </View>
       <View style={styles.text}>
         <Text variant={large ? "bodyLg" : "body"}>{label}</Text>
         {caption ? (
-          <Text variant="bodySm" color="fgMuted">
+          <Text variant="meta" color="fgMuted">
             {caption}
           </Text>
         ) : null}
@@ -55,7 +55,7 @@ export function ConsentCheckbox(props: Omit<CheckboxProps, "label"> & { text: st
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 12, alignItems: "flex-start", minHeight: 48, paddingVertical: 8 },
-  box: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: "center", justifyContent: "center", marginTop: 0 },
+  box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, marginTop: 1, alignItems: "center", justifyContent: "center" },
   boxLarge: { width: 32, height: 32, borderRadius: 8 },
   text: { flex: 1, gap: 4 },
 });

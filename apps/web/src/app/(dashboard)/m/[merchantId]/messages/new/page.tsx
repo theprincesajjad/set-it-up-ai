@@ -1,4 +1,5 @@
 "use client";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { ArrowLeft, Lock, Send } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -29,7 +30,16 @@ const SEGMENTS: { value: SegKind; label: string }[] = [
   { value: "tag", label: "Customers with a tag" },
 ];
 
-export default function ComposePage() {
+/** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
+export default function ComposePageGated() {
+  return (
+    <FeatureGate keys={["marketing.email", "marketing.sms"]} title="Email & SMS campaigns">
+      <ComposePage />
+    </FeatureGate>
+  );
+}
+
+function ComposePage() {
   const { api, base, detail, enabled } = useMerchant();
   const router = useRouter();
   const params = useSearchParams();
@@ -119,16 +129,16 @@ export default function ComposePage() {
           <Card padding="lg" className="flex flex-col gap-4">
             <SegmentedControl label="Channel" value={channel} onChange={setChannel} options={[{ value: "email", label: "Email" }, { value: "push", label: "App push" }, ...(enabled("marketing.sms") ? [{ value: "sms" as const, label: "SMS" }] : [])]} />
             {!enabled("marketing.sms") ? (
-              <p className="flex items-center gap-2 text-body-sm text-fg-muted">
+              <p className="flex items-center gap-2 text-meta text-fg-muted">
                 <Lock aria-hidden className="size-4" /> SMS campaigns · Coming soon
               </p>
             ) : null}
             <Select label="Audience" value={seg} onChange={(e) => setSeg(e.target.value as SegKind)} options={SEGMENTS} />
             {seg === "tag" ? <TextField label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} /> : null}
-            <p role="status" className="rounded-md bg-brand-subtle px-4 py-3 text-body text-on-brand-subtle">
+            <p role="status" className="rounded-input bg-bg-subtle px-4 py-3 text-body text-fg">
               {count ? `Will go to ${formatNumber(count.recipients)} ${count.recipients === 1 ? "person" : "people"}` : "Counting..."}
-              {count && count.matched > count.recipients ? <span className="block text-body-sm">{formatNumber(count.excludedNoConsent)} without consent, {formatNumber(count.excludedMuted)} muted and {formatNumber(count.excludedNoContact)} unreachable won&apos;t get it.</span> : null}
-              {count && channel === "sms" ? <span className="block text-body-sm">Uses {formatNumber(count.smsCreditsNeeded)} of {formatNumber(count.smsCreditsRemaining ?? 0)} texts left this month.</span> : null}
+              {count && count.matched > count.recipients ? <span className="block text-meta">{formatNumber(count.excludedNoConsent)} without consent, {formatNumber(count.excludedMuted)} muted and {formatNumber(count.excludedNoContact)} unreachable won&apos;t get it.</span> : null}
+              {count && channel === "sms" ? <span className="block text-meta">Uses {formatNumber(count.smsCreditsNeeded)} of {formatNumber(count.smsCreditsRemaining ?? 0)} texts left this month.</span> : null}
             </p>
             {channel !== "sms" ? <TextField label={channel === "push" ? "Title" : "Subject"} optionalLabel={channel === "push"} value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={150} /> : null}
             <TextField type="textarea" label="Message" value={body} onChange={(e) => setBody(e.target.value)} maxLength={max} showCount hint={`Personalise with ${messagingApi.MESSAGE_VARIABLES.slice(0, 3).join(", ")}.`} />
@@ -158,15 +168,15 @@ export default function ComposePage() {
         </div>
         <aside aria-label="Preview" className="flex flex-col gap-2 lg:sticky lg:top-6 lg:self-start">
           <h2 className="text-title text-fg">Preview</h2>
-          <div className="overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="overflow-hidden rounded-card border border-line bg-bg">
             {channel === "email" ? (
-              <div className="border-b border-border bg-surface-sunken px-4 py-2 text-body-sm text-fg">
+              <div className="border-b border-line bg-bg-subtle px-4 py-2 text-meta text-fg">
                 <p><span className="text-fg-muted">From:</span> {detail.merchant.name}</p>
                 <p><span className="text-fg-muted">Subject:</span> {subject || "Your subject"}</p>
               </div>
             ) : null}
             <div className="whitespace-pre-wrap p-4 text-body text-fg">{(body || "Your message").replace(/\{\{first_name\}\}/g, "Sam").replace(/\{\{name\}\}/g, "Sam Lee").replace(/\{\{merchant\}\}/g, detail.merchant.name)}</div>
-            <div className="border-t border-dashed border-border-strong bg-canvas-subtle px-4 py-3 text-caption text-fg-muted">
+            <div className="border-t border-dashed border-line-strong bg-bg-subtle px-4 py-3 text-caption text-fg-muted">
               <p className="mb-1 font-semibold text-fg">Added automatically</p>
               {channel === "sms" ? `— ${detail.merchant.name}. Reply STOP to opt out.` : channel === "push" ? `(${detail.merchant.name} · mute this shop in the app to stop offers)` : `${detail.merchant.name}${loc ? ` · ${loc.address}` : ""} · You're getting this because you said yes to offers from ${detail.merchant.name}. Unsubscribe · Sent via ${BRAND.name}.`}
             </div>

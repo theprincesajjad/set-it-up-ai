@@ -1,42 +1,33 @@
 /**
  * Web version of MapView.tsx (Expo web preview / screenshots). Same props and
  * handle, drawn with maplibre-gl on OpenFreeMap's Positron vector tiles
- * (no API key), recoloured to the muted paper palette. Pins are the same
- * <ShopPin> React Native views, portalled into maplibre DOM markers.
+ * (no API key), restyled with `cornerMapStyle` from @ll/design-tokens: the
+ * near-white Corner basemap (no POIs, small grey street labels). Pins are the
+ * same <ShopPin> React Native views, portalled into maplibre DOM markers.
  * If the style can't load (offline, blocked), onFail switches Explore to the list.
  */
+import { cornerMapStyle, MAP_BASE_STYLE_URL, type MapMode } from "@ll/design-tokens";
 import type { networkApi } from "@ll/shared";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pressable, StyleSheet, View } from "react-native";
-import { ShopPin } from "./ShopPin";
+import type { PinMembership } from "../../lib/explore";
+import { useTheme } from "../../theme";
+import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
 export const TORONTO = { lat: 43.6532, lng: -79.3832 };
-
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 export function mapsAvailable(): boolean {
   return process.env.EXPO_PUBLIC_DISABLE_MAPS !== "1";
 }
 
-/** Recolour Positron to the app's muted basemap (same palette as MUTED_STYLE in MapView.tsx). */
-function mute(map: maplibregl.Map) {
-  for (const layer of map.getStyle().layers ?? []) {
-    const id = layer.id;
-    try {
-      if (layer.type === "background") map.setPaintProperty(id, "background-color", "#F3EDE3");
-      else if (layer.type === "fill" && /water/.test(id)) map.setPaintProperty(id, "fill-color", "#CFE0F0");
-      else if (layer.type === "fill" && /park|wood|grass|landcover|landuse_(park|cemetery)/.test(id)) map.setPaintProperty(id, "fill-color", "#D6E8DE");
-      else if (layer.type === "fill" && /building/.test(id)) map.setPaintProperty(id, "fill-color", "#EBE3D6");
-      else if (layer.type === "line" && /highway|road|street|path|minor|major/.test(id) && !/casing|outline/.test(id)) map.setPaintProperty(id, "line-color", "#FFFFFF");
-      else if (layer.type === "symbol" && /poi/.test(id)) map.setLayoutProperty(id, "visibility", "none");
-      else if (layer.type === "symbol") map.setPaintProperty(id, "text-color", "#655A4C");
-    } catch {
-      // layer without that property: ignore
-    }
-  }
+async function loadStyle(mode: MapMode): Promise<maplibregl.StyleSpecification> {
+  const res = await fetch(MAP_BASE_STYLE_URL);
+  if (!res.ok) throw new Error(`style ${res.status}`);
+  const base = (await res.json()) as maplibregl.StyleSpecification;
+  return cornerMapStyle(base as never, mode) as unknown as maplibregl.StyleSpecification;
 }
 
 export interface ExploreMapHandle {
@@ -45,16 +36,19 @@ export interface ExploreMapHandle {
 
 type Props = {
   shops: networkApi.ShopListItemDto[];
+  memberships: Record<string, PinMembership>;
   center: { lat: number; lng: number };
   showsUser: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onRegion: (center: { lat: number; lng: number }) => void;
   onFail: () => void;
+  topInset: number;
   bottomInset: number;
 };
 
-export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMap({ shops, center, showsUser, selectedId, onSelect, onRegion, onFail, bottomInset }, ref) {
+export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset }, ref) {
+  const { scheme, c } = useTheme();
   const host = useRef<HTMLElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const userMoved = useRef(false);
@@ -75,20 +69,24 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     let loaded = false;
     const m = new maplibregl.Map({
       container: el,
-      style: STYLE_URL,
+      style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": scheme === "dark" ? "#121214" : "#F2F2F0" } }] },
       center: [center.lng, center.lat],
-      zoom: 15.4,
+      zoom: 15.6,
       attributionControl: { compact: true },
       dragRotate: false,
       pitchWithRotate: false,
     });
     m.touchZoomRotate.disableRotation();
     map.current = m;
-    m.on("load", () => {
-      loaded = true;
-      mute(m);
-      setReady(true);
-    });
+    loadStyle(scheme)
+      .then((style) => {
+        m.setStyle(style);
+        m.once("idle", () => {
+          loaded = true;
+          setReady(true);
+        });
+      })
+      .catch(() => cb.current.onFail());
     m.on("error", () => {
       if (!loaded) cb.current.onFail();
     });
@@ -120,8 +118,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   }, [center.lat, center.lng]);
 
   useEffect(() => {
-    map.current?.setPadding({ top: 120, right: 0, bottom: bottomInset, left: 0 });
-  }, [bottomInset, ready]);
+    map.current?.setPadding({ top: topInset, right: 0, bottom: bottomInset, left: 0 });
+  }, [topInset, bottomInset, ready]);
 
   // One DOM marker per shop; the pin itself is rendered with a portal.
   useEffect(() => {
@@ -132,7 +130,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     for (const s of withCoords) {
       const el = document.createElement("div");
       el.className = "ll-pin";
-      markers.push(new maplibregl.Marker({ element: el, anchor: "top", offset: [0, -20] }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m));
+      // The bubble's centre sits on the coordinate; the name runs to the right of it.
+      markers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [-PIN_ANCHOR_X, 0] }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m));
       next[s.merchant.id] = el;
     }
     setEls(next);
@@ -140,8 +139,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   }, [withCoords, ready]);
 
   useEffect(() => {
-    for (const [id, el] of Object.entries(els)) el.style.zIndex = id === selectedId ? "3" : "1";
-  }, [els, selectedId]);
+    for (const [id, el] of Object.entries(els)) el.style.zIndex = id === selectedId ? "3" : memberships[id] ? "2" : "1";
+  }, [els, selectedId, memberships]);
 
   // "You are here" dot.
   useEffect(() => {
@@ -151,7 +150,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const dot = document.createElement("div");
-        Object.assign(dot.style, { width: "16px", height: "16px", borderRadius: "8px", background: "#1D5FA8", border: "2px solid #fff", boxShadow: "0 0 0 10px rgba(29,95,168,0.18)" });
+        Object.assign(dot.style, { width: "16px", height: "16px", borderRadius: "8px", background: c.location, border: "3px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" });
         mk = new maplibregl.Marker({ element: dot }).setLngLat([p.coords.longitude, p.coords.latitude]).addTo(m);
       },
       () => undefined,
@@ -169,12 +168,8 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
         const el = els[s.merchant.id];
         if (!el) return null;
         return createPortal(
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${s.merchant.name}${s.isMember && s.myBalance != null ? `, ${s.myBalance} ${s.terminology}` : ""}${s.hasPromo ? ", has a promo" : ""}`}
-            onPress={() => cb.current.onSelect(s.merchant.id)}
-          >
-            <ShopPin shop={s} selected={s.merchant.id === selectedId} />
+          <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
+            <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} />
           </Pressable>,
           el,
           s.merchant.id,

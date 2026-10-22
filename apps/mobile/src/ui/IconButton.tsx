@@ -1,3 +1,4 @@
+import { shadows } from "@ll/design-tokens";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
 import type { LucideIcon } from "./icons";
@@ -8,35 +9,32 @@ export interface IconButtonProps {
   /** Required: used for accessibilityLabel. */
   label: string;
   onPress?: () => void;
-  variant?: "ghost" | "secondary" | "primary";
-  size?: 48 | 64;
-  /** Show the label under the icon (Shop detail action row). */
+  /** ghost: bare icon · secondary: grey circle · primary: black circle · float: white circle over the map. */
+  variant?: "ghost" | "secondary" | "primary" | "float";
+  size?: 32 | 36 | 44 | 48 | 64;
+  /** Show the label under the icon (shop action row). */
   showLabel?: boolean;
   badgeDot?: boolean;
   disabled?: boolean;
 }
 
-export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size = 48, showLabel, badgeDot, disabled }: IconButtonProps) {
+export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size = 44, showLabel, badgeDot, disabled }: IconButtonProps) {
   const { c } = useTheme();
-  const bg = variant === "primary" ? c.brand : variant === "secondary" ? c.surface : "transparent";
-  const fg = disabled ? c.fgDisabled : variant === "primary" ? c.onBrand : variant === "secondary" ? c.fg : c.fgBrand;
+  const bg = variant === "primary" ? c.fg : variant === "secondary" ? c.bgSubtle : variant === "float" ? c.bg : "transparent";
+  const fg = disabled ? c.fgSubtle : variant === "primary" ? c.bg : c.fg;
+  const hit = Math.max(0, (44 - size) / 2);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       onPress={disabled ? undefined : onPress}
-      style={({ pressed }) => [styles.wrap, { minWidth: size, minHeight: size, opacity: pressed ? 0.7 : 1 }]}
+      hitSlop={hit}
+      style={({ pressed }) => [styles.wrap, { opacity: pressed ? 0.6 : 1 }]}
     >
-      <View
-        style={[
-          styles.circle,
-          { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
-          variant === "secondary" ? { borderWidth: 1, borderColor: c.borderStrong } : null,
-        ]}
-      >
-        <Icon size={size >= 64 ? 28 : 24} color={fg} strokeWidth={2} />
-        {badgeDot ? <View style={[styles.dot, { backgroundColor: c.danger, borderColor: c.surface }]} /> : null}
+      <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }, variant === "float" ? shadows.float.native : null]}>
+        <Icon size={size >= 64 ? 26 : size <= 36 ? 18 : 20} color={fg} strokeWidth={1.75} />
+        {badgeDot ? <View style={[styles.dot, { backgroundColor: c.accent, borderColor: bg === "transparent" ? c.bg : bg }]} /> : null}
       </View>
       {showLabel ? (
         <Text variant="caption" color="fgMuted" center>
@@ -50,5 +48,5 @@ export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center", gap: 4 },
   circle: { alignItems: "center", justifyContent: "center" },
-  dot: { position: "absolute", top: 10, right: 10, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  dot: { position: "absolute", top: 6, right: 6, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
 });

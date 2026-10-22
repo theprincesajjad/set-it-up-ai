@@ -2,31 +2,27 @@ import { radii } from "@ll/design-tokens";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
-import { ComingSoonBadge } from "./Badge";
 import { Button } from "./Button";
 import { Check, type LucideIcon } from "./icons";
 import { Text } from "./Text";
 
-/** "Coming soon" card: dashed border, honest reason, Notify me. Never "Upgrade". */
+/** Staff-only "coming soon" line with Notify me. Never shown to customers, never "Upgrade". */
 export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: LucideIcon; title: string; body: string; onNotify?: () => void }) {
   const { c } = useTheme();
   const [notified, setNotified] = useState(false);
   return (
-    <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.borderStrong }]}>
+    <View style={[styles.card, { borderColor: c.line }]}>
       <View style={styles.row}>
-        <View style={[styles.circle, { backgroundColor: c.neutralSubtle }]}>
-          <Icon size={20} color={c.onNeutralSubtle} />
-        </View>
-        <Text variant="title" style={{ flex: 1 }}>
+        <Icon size={20} color={c.fgMuted} strokeWidth={1.75} />
+        <Text variant="bodyStrong" style={{ flex: 1 }}>
           {title}
         </Text>
-        <ComingSoonBadge />
       </View>
-      <Text variant="bodySm" color="fgMuted">
+      <Text variant="meta" color="fgMuted">
         {body}
       </Text>
       <Button
-        variant="tonal"
+        variant="secondary"
         size="sm"
         iconStart={notified ? Check : undefined}
         onPress={() => {
@@ -34,6 +30,7 @@ export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: Luc
           onNotify?.();
         }}
         disabled={notified}
+        style={{ alignSelf: "flex-start" }}
       >
         {notified ? "We'll let you know" : "Notify me"}
       </Button>
@@ -42,7 +39,6 @@ export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: Luc
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderStyle: "dashed", borderRadius: radii.lg, padding: 16, gap: 10 },
+  card: { borderWidth: StyleSheet.hairlineWidth * 2, borderRadius: radii.card, padding: 16, gap: 8 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  circle: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
 });

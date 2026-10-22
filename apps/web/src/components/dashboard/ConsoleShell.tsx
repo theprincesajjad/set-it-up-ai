@@ -2,12 +2,12 @@
 import {
   BadgeDollarSign, BarChart3, ClipboardList, Flag, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Store, Users, CreditCard, type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
-import { AppShell } from "@/components/ui/AppShell";
-import { Badge } from "@/components/ui/Badge";
-import { Wordmark } from "@/components/site/Brand";
+import { browserApi } from "@/lib/api/browser";
 import { AccountMenu } from "./AccountMenu";
+import type { CommandSearch } from "./CommandMenu";
+import { Shell } from "./Shell";
 
 const ICONS: Record<string, LucideIcon> = {
   today: LayoutDashboard, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package, earnings: BadgeDollarSign,
@@ -16,54 +16,67 @@ const ICONS: Record<string, LucideIcon> = {
 
 export type ConsoleKind = "rep" | "admin" | "bia";
 
-const NAV: Record<ConsoleKind, { key: string; href: string; label: string; bottom?: boolean; exact?: boolean }[]> = {
+const NAV: Record<ConsoleKind, { key: string; href: string; label: string; group: string; exact?: boolean }[]> = {
   rep: [
-    { key: "today", href: "/rep", label: "Today", bottom: true, exact: true },
-    { key: "leads", href: "/rep/leads", label: "Leads", bottom: true },
-    { key: "merchants", href: "/rep/merchants", label: "My merchants", bottom: true },
-    { key: "new", href: "/rep/new", label: "New merchant", bottom: true },
-    { key: "earnings", href: "/rep/earnings", label: "Earnings" },
+    { key: "today", href: "/rep", label: "Today", group: "a", exact: true },
+    { key: "leads", href: "/rep/leads", label: "Leads", group: "a" },
+    { key: "merchants", href: "/rep/merchants", label: "My merchants", group: "a" },
+    { key: "new", href: "/rep/new", label: "New merchant", group: "a" },
+    { key: "earnings", href: "/rep/earnings", label: "Earnings", group: "b" },
   ],
   admin: [
-    { key: "network", href: "/admin", label: "Network", bottom: true, exact: true },
-    { key: "rollout", href: "/admin/rollout", label: "Rollout", bottom: true },
-    { key: "merchants", href: "/admin/merchants", label: "Merchants", bottom: true },
-    { key: "neighbourhoods", href: "/admin/neighbourhoods", label: "Neighbourhoods & perks" },
-    { key: "users", href: "/admin/users", label: "Users & roles" },
-    { key: "campaigns", href: "/admin/campaigns", label: "BIA campaigns", bottom: true },
-    { key: "ads", href: "/admin/ads", label: "Ads review" },
-    { key: "audit", href: "/admin/audit", label: "Audit log" },
+    { key: "network", href: "/admin", label: "Network", group: "a", exact: true },
+    { key: "rollout", href: "/admin/rollout", label: "Rollout", group: "a" },
+    { key: "merchants", href: "/admin/merchants", label: "Merchants", group: "a" },
+    { key: "neighbourhoods", href: "/admin/neighbourhoods", label: "Neighbourhoods & perks", group: "b" },
+    { key: "campaigns", href: "/admin/campaigns", label: "BIA campaigns", group: "b" },
+    { key: "ads", href: "/admin/ads", label: "Ads review", group: "b" },
+    { key: "users", href: "/admin/users", label: "Users & roles", group: "c" },
+    { key: "audit", href: "/admin/audit", label: "Audit log", group: "c" },
   ],
-  bia: [{ key: "campaigns", href: "/bia", label: "Campaigns", bottom: true, exact: false }],
+  bia: [{ key: "campaigns", href: "/bia", label: "Campaigns", group: "a" }],
 };
 
-/** Rep console / admin / BIA shell: dashboard shell + environment strip + role badge (system.md §7). */
+const TITLE: Record<ConsoleKind, string> = { rep: "Rep console", admin: "Admin", bia: "BIA campaigns" };
+
+/** Rep console / admin / BIA shell: same calm shell as the merchant dashboard, with a role label in place of the shop switcher. */
 export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: authApi.MeResponse; children: ReactNode }) {
   const nav = NAV[kind].map((n) => ({ ...n, icon: ICONS[n.key] ?? Store }));
-  const badge = kind === "admin" ? <Badge tone="danger">Admin</Badge> : kind === "rep" ? <Badge tone="info">Rep</Badge> : <Badge tone="brand">BIA</Badge>;
   const links = [
     ...(me.platformRole === "admin" && kind !== "admin" ? [{ href: "/admin", label: "Admin" }] : []),
     ...(me.platformRole !== "none" && kind !== "rep" ? [{ href: "/rep", label: "Rep console" }] : []),
     ...me.merchants.slice(0, 3).map((m) => ({ href: `/m/${m.merchantId}`, label: m.name })),
   ];
+  const search = useMemo<CommandSearch | undefined>(
+    () =>
+      kind === "admin"
+        ? { label: "Merchants", run: async (q) => (await browserApi.admin.merchants({ q, limit: 6 })).items.map((m) => ({ id: m.id, label: m.name, meta: `${m.activeMembers} active`, href: `/admin/merchants/${m.id}` })) }
+        : undefined,
+    [kind],
+  );
   return (
-    <AppShell
-      env={kind === "bia" ? undefined : kind}
+    <Shell
       nav={nav}
+      search={search}
+      searchPlaceholder={kind === "admin" ? "Search merchants or pages" : "Jump to"}
       header={
-        <div className="flex flex-col gap-2">
-          <Wordmark size={28} href={null} />
-          <div>{badge}</div>
+        <div className="flex h-10 items-center gap-2.5 px-2">
+          <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-[8px] bg-fg text-[11px] font-bold text-bg">
+            LL
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-fg">{TITLE[kind]}</span>
+          {kind !== "bia" ? (
+            <span className="inline-flex items-center gap-1 text-caption font-normal text-fg-muted">
+              <span aria-hidden className={kind === "admin" ? "size-1.5 rounded-full bg-negative" : "size-1.5 rounded-full bg-location"} />
+              {kind === "admin" ? "Admin" : "Rep"}
+            </span>
+          ) : null}
         </div>
       }
       footer={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
-      mobileTitle={
-        <span className="flex items-center gap-2">
-          {kind === "admin" ? "Admin" : kind === "rep" ? "Rep console" : "BIA campaigns"} {badge}
-        </span>
-      }
+      mobileTitle={TITLE[kind]}
     >
       {children}
-    </AppShell>
+    </Shell>
   );
 }

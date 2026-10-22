@@ -68,7 +68,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         {locked ? <Banner tone="info">{live ? "This promo is live: you can change the title, description, image and end date." : "Ended promos can't be edited."}</Banner> : null}
         <Card padding="lg">
           <fieldset disabled={!!promo && promo.status !== "draft" && promo.status !== "scheduled"}>
-            <legend className="text-h3 text-fg">What kind of promo?</legend>
+            <legend className="text-body-strong text-fg">What kind of promo?</legend>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
               {(Object.keys(KIND_INFO) as PromoKind[]).map((k) => {
                 const Icon = KIND_ICON[k];
@@ -80,7 +80,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     disabled={disabled || live}
                     aria-pressed={d.kind === k}
                     onClick={() => set("kind", k)}
-                    className={cn("flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-md border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-brand bg-brand-subtle text-on-brand-subtle" : "border-border-strong text-fg hover:bg-surface-sunken")}
+                    className={cn("flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}
                   >
                     <Icon aria-hidden className="size-6" />
                     {KIND_INFO[k].label}
@@ -88,7 +88,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                 );
               })}
             </div>
-            <p className="mt-2 text-body-sm text-fg-muted">{KIND_INFO[d.kind].hint}</p>
+            <p className="mt-2 text-meta text-fg-muted">{KIND_INFO[d.kind].hint}</p>
           </fieldset>
         </Card>
 
@@ -116,7 +116,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Card>
 
         <Card padding="lg">
-          <h2 className="text-h3 text-fg">When</h2>
+          <h2 className="text-body-strong text-fg">When</h2>
           <ChipGroup label="Quick dates" className="mt-3">
             {([["today", "Today only"], ["weekend", "This weekend"], ["week", "1 week"]] as const).map(([k, l]) => (
               <Chip key={k} onClick={() => setD((x) => ({ ...x, ...quickRange(k) }))}>
@@ -145,15 +145,15 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Card>
 
         <Card padding="lg">
-          <h2 className="text-h3 text-fg">Tell your regulars</h2>
-          <p className="mt-1 text-body-sm text-fg-muted">Send this promo by email to customers who said yes to offers.</p>
+          <h2 className="text-body-strong text-fg">Tell your regulars</h2>
+          <p className="mt-1 text-meta text-fg-muted">Send this promo by email to customers who said yes to offers.</p>
           <Button variant="tonal" className="mt-3" iconStart={Megaphone} href={`${base}/messages/new?subject=${encodeURIComponent(d.title)}&body=${encodeURIComponent(d.body || d.title)}`}>
             Also email opted-in members
           </Button>
           {!enabled("marketing.sms") ? <div className="mt-4"><FeatureTeaser featureKey="marketing.sms" title="SMS campaigns" /></div> : null}
           <div className="mt-4">
             {enabled("ads.sponsored_promo") && promo?.status === "live" ? (
-              <Link href={`${base}/ads/new?promoId=${promo.id}`} className="text-label text-fg-link underline">
+              <Link href={`${base}/ads/new?promoId=${promo.id}`} className="text-label text-fg underline">
                 Boost this promo
               </Link>
             ) : (
@@ -182,7 +182,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
       </div>
       <aside aria-label="Preview" className="flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
         <h2 className="text-title text-fg">Preview</h2>
-        <p className="text-body-sm text-fg-muted">How it looks in the neighbourhood feed.</p>
+        <p className="text-meta text-fg-muted">How it looks in the neighbourhood feed.</p>
         <PromoCard promo={previewPromo} shop={{ ...detail.merchant, neighbourhood: null }} variant="feed" />
       </aside>
     </div>

@@ -119,7 +119,7 @@ export default function NewMerchantPage() {
       <Card padding="lg" className="flex flex-col gap-4">
         {step === 0 ? (
           <>
-            <h2 className="text-h3 text-fg">Find the shop</h2>
+            <h2 className="text-body-strong text-fg">Find the shop</h2>
             <TextField label="Shop name" value={d.name} onChange={(e) => set("name", e.target.value)} autoComplete="organization" />
             {exact ? <Banner tone="danger">Already on the network: {exact.merchant.name}. Open it from My merchants instead.</Banner> : dupes.length ? <Banner tone="info">Similar names on the network: {dupes.map((s) => s.merchant.name).join(", ")}. Make sure this is a different shop.</Banner> : null}
             <TextField label="Street address" value={d.address} onChange={(e) => set("address", e.target.value)} autoComplete="street-address" />
@@ -133,8 +133,8 @@ export default function NewMerchantPage() {
         ) : null}
         {step === 1 ? (
           <>
-            <h2 className="text-h3 text-fg">The owner</h2>
-            <p className="text-body-sm text-fg-muted">They get a text and an email to claim the account. Transactional only, no marketing.</p>
+            <h2 className="text-body-strong text-fg">The owner</h2>
+            <p className="text-meta text-fg-muted">They get a text and an email to claim the account. Transactional only, no marketing.</p>
             <TextField label="Owner's name" value={d.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
             <PhoneField label="Owner's mobile" defaultValue={d.ownerPhone?.replace(/^\+1/, "") ?? ""} onChangeE164={(p) => set("ownerPhone", p)} />
             <TextField type="email" label="Owner's email" optionalLabel value={d.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)} />
@@ -143,32 +143,32 @@ export default function NewMerchantPage() {
         {step === 2 ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div className="flex flex-col gap-4">
-              <h2 className="text-h3 text-fg">Type of shop</h2>
+              <h2 className="text-body-strong text-fg">Type of shop</h2>
               <div role="radiogroup" aria-label="Type of shop" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {VERTICALS.map((v) => (
-                  <button key={v} type="button" role="radio" aria-checked={d.vertical === v} onClick={() => set("vertical", v)} className={cn("flex min-h-20 flex-col items-center justify-center gap-1 rounded-md border p-2 text-center text-label focus-visible:focus-ring", d.vertical === v ? "border-brand bg-brand-subtle text-on-brand-subtle" : "border-border-strong text-fg hover:bg-surface-sunken")}>
-                    <span className="flex size-9 items-center justify-center rounded-md" style={{ background: verticalVar(v, "tint"), color: verticalVar(v, "accent") }}>
+                  <button key={v} type="button" role="radio" aria-checked={d.vertical === v} onClick={() => set("vertical", v)} className={cn("flex min-h-20 flex-col items-center justify-center gap-1 rounded-input border p-2 text-center text-label focus-visible:focus-ring", d.vertical === v ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}>
+                    <span className="flex size-9 items-center justify-center rounded-input" style={{ background: verticalVar(v, "tint"), color: verticalVar(v, "accent") }}>
                       <VerticalGlyph vertical={v} className="size-5" />
                     </span>
                     {verticalLabel(v)}
                   </button>
                 ))}
               </div>
-              <p className="rounded-md bg-brand-subtle px-4 py-3 text-body text-on-brand-subtle">{programSentence(tmpl.draft, tmpl.rewards[0])}</p>
-              <p className="text-body-sm text-fg-muted">The owner can tweak this any time in Program & rewards.</p>
+              <p className="rounded-input bg-bg-subtle px-4 py-3 text-body text-fg">{programSentence(tmpl.draft, tmpl.rewards[0])}</p>
+              <p className="text-meta text-fg-muted">The owner can tweak this any time in Program & rewards.</p>
             </div>
             <ProgramPreview model={previewModel(tmpl.draft, tmpl.rewards)} shop={{ name: d.name || "The shop", vertical: d.vertical, logoUrl: null }} />
           </div>
         ) : null}
         {step === 3 ? (
           <>
-            <h2 className="text-h3 text-fg">Categories</h2>
-            <p className="text-body-sm text-fg-muted">From the {verticalLabel(d.vertical)} template. Regulated ones never earn.</p>
-            <ul className="divide-y divide-border">
+            <h2 className="text-body-strong text-fg">Categories</h2>
+            <p className="text-meta text-fg-muted">From the {verticalLabel(d.vertical)} template. Regulated ones never earn.</p>
+            <ul className="divide-y divide-line">
               {VERTICAL_TEMPLATES[d.vertical].categories.map((c) => (
                 <li key={c.name} className="flex min-h-12 items-center justify-between gap-2">
                   <span className="flex items-center gap-2 text-body text-fg">{!c.earnEligible ? <Lock aria-hidden className="size-4 text-fg-muted" /> : null}{c.name}</span>
-                  <span className="text-body-sm text-fg-muted">{c.earnEligible ? "Earns" : "Doesn't earn"}</span>
+                  <span className="text-meta text-fg-muted">{c.earnEligible ? "Earns" : "Doesn't earn"}</span>
                 </li>
               ))}
             </ul>
@@ -177,14 +177,14 @@ export default function NewMerchantPage() {
         ) : null}
         {step === 4 ? (
           <>
-            <h2 className="text-h3 text-fg">Staff you&apos;re training today</h2>
+            <h2 className="text-body-strong text-fg">Staff you&apos;re training today</h2>
             <TextField label="Name" optionalLabel value={d.staffName} onChange={(e) => set("staffName", e.target.value)} />
             <PhoneField label="Mobile" defaultValue={d.staffPhone?.replace(/^\+1/, "") ?? ""} onChangeE164={(p) => set("staffPhone", p)} hint="Optional. They get a text to sign in to counter mode." />
           </>
         ) : null}
         {step === 5 ? (
           <>
-            <h2 className="text-h3 text-fg">Ready to create</h2>
+            <h2 className="text-body-strong text-fg">Ready to create</h2>
             <dl className="grid grid-cols-[140px_1fr] gap-2 text-body">
               <dt className="text-fg-muted">Shop</dt><dd>{d.name}, {d.address}</dd>
               <dt className="text-fg-muted">Type</dt><dd>{verticalLabel(d.vertical)} · {programSentence(tmpl.draft, tmpl.rewards[0])}</dd>
@@ -196,7 +196,7 @@ export default function NewMerchantPage() {
         ) : null}
         {step === 6 && created ? (
           <>
-            <h2 className="text-h3 text-fg">QR kit</h2>
+            <h2 className="text-body-strong text-fg">QR kit</h2>
             <p className="text-body text-fg-muted">Print the stand now and set it next to the till.</p>
             <div className="flex flex-wrap gap-2">
               <Button iconStart={Printer} href={`/rep/merchants/${created.merchant.id}/kit`}>Print QR kit</Button>
@@ -210,7 +210,7 @@ export default function NewMerchantPage() {
         ) : null}
         {step === 7 ? (
           <>
-            <h2 className="text-h3 text-fg">Train the staff</h2>
+            <h2 className="text-body-strong text-fg">Train the staff</h2>
             {["Find a customer: type their number or scan their card", "Add a stamp: one tap after they pay", "Undo: tap Undo right away if it was a mistake"].map((t, i) => (
               <Checkbox key={t} label={t} checked={trained[i]!} onChange={(v) => setTrained(trained.map((x, j) => (j === i ? v : x)))} />
             ))}
@@ -219,11 +219,11 @@ export default function NewMerchantPage() {
         ) : null}
         {step === 8 && created ? (
           <div className="flex flex-col items-start gap-4">
-            <CheckCircle2 aria-hidden className="size-10 text-success" />
-            <h2 className="text-h2 text-fg">{created.merchant.name} is live.</h2>
+            <CheckCircle2 aria-hidden className="size-10 text-positive" />
+            <h2 className="text-title text-fg">{created.merchant.name} is live.</h2>
             {joinUrl ? (
-              <div className="flex w-full max-w-md items-center gap-2 rounded-md bg-surface-sunken px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-body-sm">{joinUrl.replace(/^https?:\/\//, "")}</span>
+              <div className="flex w-full max-w-md items-center gap-2 rounded-input bg-bg-subtle px-3 py-2">
+                <span className="min-w-0 flex-1 truncate font-mono text-meta">{joinUrl.replace(/^https?:\/\//, "")}</span>
                 <Button size="sm" variant="ghost" iconStart={Copy} onClick={() => navigator.clipboard?.writeText(joinUrl)}>Copy</Button>
               </div>
             ) : null}

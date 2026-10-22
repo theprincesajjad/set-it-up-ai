@@ -58,8 +58,8 @@ export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phon
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <H className={heading === "h1" ? "text-h1 text-fg" : "text-h2 text-fg"}>{title}</H>
+    <div className="flex flex-col gap-5">
+      <H className={heading === "h1" ? "display text-large-title text-fg" : "display text-title text-fg"}>{title}</H>
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
       {step === "phone" ? (
         <form onSubmit={send} noValidate className="flex flex-col gap-4">
@@ -67,7 +67,7 @@ export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phon
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {copy.action.sendCode}
           </Button>
-          <p className="text-caption text-fg-muted">We&apos;ll text you a 6-digit code.</p>
+          <p className="text-center text-meta text-fg-muted">We&apos;ll text you a 6-digit code.</p>
         </form>
       ) : (
         <form
@@ -79,7 +79,7 @@ export function PhoneSignIn({ next, devAutofill, title = "Sign in with your phon
           className="flex flex-col gap-4"
         >
           <OtpField value={code} onChange={setCode} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
-          {devCode && devAutofill ? <p className="text-caption text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" size="lg" fullWidth loading={busy}>
             Sign in
           </Button>

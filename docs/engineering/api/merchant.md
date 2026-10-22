@@ -24,10 +24,22 @@ own rep (`merchants.repUserId`) act as `owner`.
 
 ## Feature gating
 
-All of these are free forever; they are still checked server-side (`402 feature_locked`) so admin overrides behave
-consistently: `customers.directory`, `customers.csv_export`, `customers.csv_import`, `loyalty.manual_adjust`,
-`loyalty.vip_levels`, `loyalty.rewards_catalog`, `discount_cards`, `promos.basic`, `promos.double_points`
-(multiplier / bonus_points promos), `loyalty.stamps` / `loyalty.visits` (switching earn type).
+Pricing v2 (`docs/business/pricing.md`). Every check returns `402 feature_locked` when the feature is off. Admin
+per-merchant overrides (pilot shops) always win.
+
+- **Free forever (never locked):** `customers.directory`, `loyalty.manual_adjust`, `loyalty.rewards_catalog`,
+  `loyalty.stamps` / `loyalty.visits` (switching earn type).
+- **Plus (hidden at launch):**
+  - `customers.csv_export` (customers + activity export) and `customers.csv_import`.
+  - `loyalty.vip_levels`: `POST`/`PATCH` vip-levels.
+  - `discount_cards`: `POST`/`PATCH` discount-cards.
+  - `promos.basic` / `promos.double_points` (multiplier / bonus_points kinds): `POST`/`PATCH` promos, and
+    `POST …/promos/:id/status` to `scheduled`/`live`/`draft`.
+  - `integrations.webhooks`: `POST …/api-key`.
+- **Always allowed, even when locked:** `GET` lists/details, `DELETE`, ending or archiving a promo, `GET`/`DELETE` api-key.
+  Existing rows are kept.
+- While locked, paid content stops applying. Promo boosts and VIP multipliers don't count in `awardPurchase`. Customers
+  don't see promos or discount cards. The counter hides VIP and discount cards.
 
 ---
 

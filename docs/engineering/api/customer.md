@@ -67,7 +67,10 @@ All tokens stop working immediately. Errors: `400` (missing confirm).
 
 ### GET /v1/me/memberships
 `200` → `{ items: (MembershipDto & { features: CustomerFeaturesDto })[], totals: { shops, rewardsAvailable } }`, most recently visited first. Closed shops are excluded.
-`features { orderAhead, pickupSlots, serviceTickets, inAppPayments }`: customer-facing entry points enabled at that shop
+`features { orderAhead, pickupSlots, serviceTickets, inAppPayments, promos, discountCards, referrals, vipLevels, birthdayBonus }`: customer-facing entry points enabled at that shop.
+Pricing v2: when a paid loyalty extra is off, the API already hides it. `vip` is `null`, `program.birthdayBonus` and
+`program.referralBonus` are `0`, and membership detail returns `discountCards: []`. Apps hide "Invite a friend" when
+`referralBonus` is 0.
 (same rule as `GET /v1/public/shops/:slug`, see [network.md](network.md)).
 
 ### POST /v1/me/memberships (join a shop)
@@ -86,7 +89,8 @@ New members get the welcome bonus once. `201` (new) / `200` (existing) → `Join
 ```
 
 `referral` is `null` when no code was sent; otherwise `{ applied: false, reason }` with reason
-`invalid` (unknown code or other shop), `own_code`, `already_member` (only new members can use a code), `already_used`.
+`invalid` (unknown code or other shop), `own_code`, `already_member` (only new members can use a code), `already_used`,
+`unavailable` (the shop doesn't have referrals enabled, Plus since Pricing v2: no bonuses, the join still succeeds).
 A bad referral code never blocks the join.
 
 Joinable shops: status `onboarding` or `active`. Errors: `400` (both/neither of merchantId/locationQrCode), `404` (unknown/inactive QR or shop), `409 conflict` (this membership was merged into another member by the shop).
@@ -139,7 +143,8 @@ URL-encode the token. `204` (also when it wasn't registered). Call on sign-out.
 ## Referrals
 
 ### GET /v1/me/memberships/:memberId/referral
-Returns your current unused referral code for this shop (creates one if needed).
+Returns your current unused referral code for this shop (creates one if needed). `402 feature_locked` when the shop
+doesn't have `loyalty.referrals` (Plus, Pricing v2). The same applies to POST.
 ### POST /v1/me/memberships/:memberId/referral
 Mints a fresh code (`201`).
 

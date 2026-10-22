@@ -54,13 +54,13 @@ export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function Ot
               style={[
                 styles.box,
                 {
-                  backgroundColor: c.surface,
-                  borderColor: error ? c.danger : active ? c.brand : c.borderStrong,
-                  borderWidth: error || active ? 2 : 1,
+                  backgroundColor: c.bgSubtle,
+                  borderColor: error ? c.negative : active ? c.fg : "transparent",
+                  borderWidth: error || active ? 2 : 0,
                 },
               ]}
             >
-              <Text variant="keypad">{value[i] ?? ""}</Text>
+              <Text variant="keypad" tabular style={{ fontWeight: "500" }}>{value[i] ?? ""}</Text>
             </View>
           );
         })}
@@ -88,6 +88,6 @@ export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function Ot
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 8, justifyContent: "center" },
-  box: { width: 48, height: 56, borderRadius: radii.sm, alignItems: "center", justifyContent: "center" },
+  box: { width: 48, height: 58, borderRadius: radii.input, alignItems: "center", justifyContent: "center" },
   hidden: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.011, color: "transparent" },
 });

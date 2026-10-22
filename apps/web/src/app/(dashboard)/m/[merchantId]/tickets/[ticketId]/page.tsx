@@ -67,8 +67,8 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
           <Card padding="lg">
             <CardHeader title="Issue" />
             <p className="text-body text-fg">{t.issue}</p>
-            {t.intakeNotes ? <p className="mt-2 border-s-[3px] border-border ps-3 text-body-sm text-fg-muted">{t.intakeNotes}</p> : null}
-            {Object.keys(t.itemDetails).length ? <p className="mt-2 text-body-sm text-fg-muted">{Object.entries(t.itemDetails).map(([k, v]) => `${k}: ${v}`).join(" · ")}</p> : null}
+            {t.intakeNotes ? <p className="mt-2 border-s-[3px] border-line ps-3 text-meta text-fg-muted">{t.intakeNotes}</p> : null}
+            {Object.keys(t.itemDetails).length ? <p className="mt-2 text-meta text-fg-muted">{Object.entries(t.itemDetails).map(([k, v]) => `${k}: ${v}`).join(" · ")}</p> : null}
           </Card>
 
           {!closed && enabled("service.quote_approval") ? (
@@ -91,7 +91,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                   Add line
                 </Button>
               </div>
-              <dl className="mt-3 grid grid-cols-2 gap-1 text-body-sm">
+              <dl className="mt-3 grid grid-cols-2 gap-1 text-meta">
                 <dt className="text-fg-muted">Subtotal</dt><dd className="text-end tabular-nums">{formatMoney(subtotal)}</dd>
                 <dt className="text-fg-muted">HST 13% (estimate)</dt><dd className="text-end tabular-nums">{formatMoney(tax)}</dd>
                 <dt className="text-body-strong">Total</dt><dd className="text-end text-body-strong tabular-nums">{formatMoney(total)}</dd>
@@ -118,14 +118,14 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
           {d.quotes.length ? (
             <Card padding="lg">
               <CardHeader title="Quotes" />
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {d.quotes.map((q) => (
-                  <li key={q.id} className="flex flex-wrap items-center gap-2 py-2 text-body-sm">
+                  <li key={q.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
                     <StatusBadge domain="quote" status={q.status} />
                     <span className="flex-1 tabular-nums text-fg">{formatMoney(q.totalCents)}{q.depositCents ? ` · ${formatMoney(q.depositCents)} deposit${q.depositPaidAt ? " paid" : ""}` : ""}</span>
                     <span className="text-fg-muted">{q.signatureName ? `Signed by ${q.signatureName}` : q.sentAt ? `Sent ${formatDateTime(q.sentAt)}` : "Draft"}</span>
                     {q.status === "draft" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.sendQuote(q.id)); await reload(); }}>Send</Button> : null}
-                    {q.approvalUrl ? <a href={q.approvalUrl} className="text-fg-link underline" target="_blank" rel="noreferrer">Customer link</a> : null}
+                    {q.approvalUrl ? <a href={q.approvalUrl} className="text-fg underline" target="_blank" rel="noreferrer">Customer link</a> : null}
                   </li>
                 ))}
               </ul>
@@ -136,13 +136,13 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
             <Card padding="lg">
               <CardHeader title="Invoice" />
               {d.invoices.length ? (
-                <ul className="divide-y divide-border">
+                <ul className="divide-y divide-line">
                   {d.invoices.map((i) => (
-                    <li key={i.id} className="flex flex-wrap items-center gap-2 py-2 text-body-sm">
+                    <li key={i.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
                       <StatusBadge domain="invoice" status={i.status} />
                       <span className="flex-1 tabular-nums">#{i.number} · {formatMoney(i.totalCents)}{i.depositAppliedCents ? ` (deposit ${formatMoney(i.depositAppliedCents)})` : ""} · due {formatMoney(i.amountDueCents)}</span>
                       {i.status === "open" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.markInvoicePaid(i.id, "card_terminal")); await reload(); }}>Paid at counter</Button> : null}
-                      {i.payUrl ? <a href={i.payUrl} className="text-fg-link underline" target="_blank" rel="noreferrer">Pay link</a> : null}
+                      {i.payUrl ? <a href={i.payUrl} className="text-fg underline" target="_blank" rel="noreferrer">Pay link</a> : null}
                     </li>
                   ))}
                 </ul>
@@ -157,7 +157,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
                 }}>
                   Send invoice from quote
                 </Button>
-              ) : !d.invoices.length ? <p className="text-body-sm text-fg-muted">Invoice once the quote is approved.</p> : null}
+              ) : !d.invoices.length ? <p className="text-meta text-fg-muted">Invoice once the quote is approved.</p> : null}
             </Card>
           ) : null}
         </div>
@@ -167,7 +167,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
             <CardHeader title="Timeline" />
             <Timeline steps={ticketSteps(t.status, copy.ticketStatus, d.events)} />
             {!closed ? (
-              <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+              <div className="mt-2 flex flex-col gap-3 border-t border-line pt-4">
                 <Select label="Update status" placeholder="Pick a status" value={status} onChange={(e) => setStatus(e.target.value)} options={serviceApi.MANUAL_TICKET_STATUSES.filter((s) => s !== t.status).map((s) => ({ value: s, label: copy.ticketStatus[s] ?? s }))} />
                 <TextField label="Note for the customer" optionalLabel value={note} onChange={(e) => setNote(e.target.value)} />
                 <Button disabled={!status} loading={act.busy} onClick={async () => {
@@ -186,7 +186,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
           </Card>
           <Card padding="lg">
             <CardHeader title="Notes" />
-            <ul className="flex flex-col gap-2 text-body-sm">
+            <ul className="flex flex-col gap-2 text-meta">
               {d.events.filter((e) => e.note).map((e) => (
                 <li key={e.id}>
                   <span className="text-fg">{e.note}</span>

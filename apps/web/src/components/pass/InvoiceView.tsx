@@ -48,12 +48,12 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="flex items-center gap-3">
-        <ShopLogo shop={{ name: shop.name, vertical: "other", logoUrl: shop.logoUrl }} size={56} />
+    <div className="flex flex-col gap-6">
+      <header className="flex items-center gap-3 pt-2">
+        <ShopLogo shop={{ name: shop.name, vertical: "other", logoUrl: shop.logoUrl }} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-h3 text-fg">{shop.name}</p>
-          <p className="text-body-sm text-fg-muted">
+          <p className="truncate text-body-strong text-fg">{shop.name}</p>
+          <p className="truncate text-meta text-fg-muted">
             Invoice #{inv.number} · {formatDate(inv.createdAt)}
             {data.ticket ? ` · Ticket #${data.ticket.number}` : ""}
           </p>
@@ -68,19 +68,24 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
         </Banner>
       ) : null}
 
-      <section aria-label="Invoice" className="rounded-lg bg-surface p-4 shadow-sm md:p-6">
-        <table className="w-full text-body-sm">
+      <div className="flex flex-col gap-1">
+        <p className="text-meta text-fg-muted">{inv.status === "paid" ? "Paid" : "Amount due"}</p>
+        <p className="display text-[48px] leading-none tabular-nums text-fg">{formatMoney(inv.status === "paid" ? inv.totalCents - inv.depositAppliedCents : inv.amountDueCents)}</p>
+      </div>
+
+      <section aria-label="Invoice" className="rounded-card border border-line px-4">
+        <table className="w-full text-body">
           <caption className="sr-only">Line items</caption>
           <tbody>
             {inv.lineItems.map((l, i) => (
-              <tr key={i} className="border-b border-border">
-                <td className="py-2 pe-2">{l.description}</td>
-                <td className="py-2 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${l.quantity}` : ""}</td>
-                <td className="py-2 text-end tabular-nums">{formatMoney(l.totalCents)}</td>
+              <tr key={i} className="border-b border-line">
+                <td className="py-3 pe-2">{l.description}</td>
+                <td className="py-3 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${l.quantity}` : ""}</td>
+                <td className="py-3 text-end tabular-nums">{formatMoney(l.totalCents)}</td>
               </tr>
             ))}
           </tbody>
-          <tfoot>
+          <tfoot className="text-meta">
             <tr>
               <td colSpan={2} className="pt-3 text-fg-muted">Subtotal</td>
               <td className="pt-3 text-end tabular-nums">{formatMoney(inv.subtotalCents)}</td>
@@ -90,21 +95,17 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
               <td className="text-end tabular-nums">{formatMoney(inv.taxCents)}</td>
             </tr>
             <tr>
-              <td colSpan={2} className="text-fg-muted">Total</td>
-              <td className="text-end tabular-nums">{formatMoney(inv.totalCents)}</td>
+              <td colSpan={2} className="pt-1 pb-3 text-body-strong text-fg">Total</td>
+              <td className="pt-1 pb-3 text-end text-body-strong tabular-nums">{formatMoney(inv.totalCents)}</td>
             </tr>
             {inv.depositAppliedCents > 0 ? (
               <tr>
-                <td colSpan={2} className="text-success">Deposit paid</td>
-                <td className="text-end tabular-nums text-success">−{formatMoney(inv.depositAppliedCents)}</td>
+                <td colSpan={2} className="pb-3 text-fg-muted">Deposit paid</td>
+                <td className="pb-3 text-end tabular-nums text-fg">−{formatMoney(inv.depositAppliedCents)}</td>
               </tr>
             ) : null}
           </tfoot>
         </table>
-        <div className="mt-4 flex items-baseline justify-between border-t border-border pt-4">
-          <span className="text-title">{inv.status === "paid" ? "Paid" : "Amount due"}</span>
-          <span className="text-h1 tabular-nums">{formatMoney(inv.status === "paid" ? inv.totalCents - inv.depositAppliedCents : inv.amountDueCents)}</span>
-        </div>
       </section>
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
@@ -120,11 +121,11 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
         )
       ) : null}
       {inv.status === "paid" ? (
-        <Button variant="secondary" iconStart={Printer} onClick={() => window.print()}>
+        <Button variant="secondary" size="lg" fullWidth iconStart={Printer} onClick={() => window.print()}>
           Print receipt
         </Button>
       ) : null}
-      <p className="text-caption text-fg-muted">Payments processed securely by Stripe.</p>
+      <p className="text-center text-meta text-fg-muted">Payments processed securely by Stripe.</p>
     </div>
   );
 }

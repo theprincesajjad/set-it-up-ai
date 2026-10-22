@@ -19,19 +19,19 @@ export interface FieldShellProps {
 export function FieldShell({ id, label, hint, error, optionalLabel, required, count, children, hideLabel }: FieldShellProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className={cn("text-label text-fg", hideLabel && "sr-only")}>
+      <label htmlFor={id} className={cn("text-meta-strong text-fg", hideLabel && "sr-only")}>
         {label}
         {optionalLabel && !required ? <span className="font-normal text-fg-muted"> (optional)</span> : null}
       </label>
       {children}
       <div className="flex items-start justify-between gap-3">
         {error ? (
-          <p id={`${id}-error`} className="flex items-start gap-1.5 text-body-sm font-medium text-danger">
-            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <p id={`${id}-error`} className="flex items-start gap-1.5 text-meta font-medium text-negative">
+            <CircleAlert aria-hidden className="mt-px size-4 shrink-0" strokeWidth={1.75} />
             {error}
           </p>
         ) : hint ? (
-          <p id={`${id}-hint`} className="text-body-sm text-fg-muted">
+          <p id={`${id}-hint`} className="text-meta text-fg-muted">
             {hint}
           </p>
         ) : (
@@ -48,9 +48,9 @@ export function describedBy(id: string, error?: string | null, hint?: ReactNode)
 }
 
 export const inputBase =
-  "w-full min-h-12 rounded-sm border bg-surface px-3 text-body text-fg placeholder:text-fg-muted outline-none transition-[border-color] " +
-  "border-border-strong focus:border-2 focus:border-brand focus-visible:focus-ring disabled:bg-surface-sunken disabled:text-on-disabled " +
-  "aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger";
+  "w-full min-h-12 rounded-input border bg-bg px-3.5 text-body text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] duration-150 ease-out " +
+  "border-line hover:border-line-strong/50 focus:border-fg focus:ring-1 focus:ring-fg disabled:bg-bg-subtle disabled:text-fg-subtle " +
+  "aria-[invalid=true]:border-negative aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-negative";
 
 type BaseProps = {
   label: string;

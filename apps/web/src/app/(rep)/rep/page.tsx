@@ -50,12 +50,12 @@ export default function RepToday() {
             {leads.loading && !leads.data ? (
               <Skeleton className="h-24" />
             ) : leads.data?.items.length ? (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {leads.data.items.map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center gap-2 py-2">
                     <div className="min-w-0 flex-1">
                       <Link href={`/rep/leads/${l.id}`} className="text-body-strong text-fg hover:underline">{l.businessName}</Link>
-                      <p className="text-body-sm text-fg-muted">{l.nextActionAt ? formatTime(l.nextActionAt) : ""} {l.address ? `· ${l.address}` : ""}</p>
+                      <p className="text-meta text-fg-muted">{l.nextActionAt ? formatTime(l.nextActionAt) : ""} {l.address ? `· ${l.address}` : ""}</p>
                     </div>
                     <Badge tone={LEAD_STAGE_TONE[l.stage]}>{l.stage.replace("_", " ")}</Badge>
                     {l.address ? <Button size="sm" variant="ghost" iconStart={Navigation} href={`https://maps.google.com/?q=${encodeURIComponent(l.address)}`}>Navigate</Button> : null}
@@ -64,7 +64,7 @@ export default function RepToday() {
                 ))}
               </ul>
             ) : (
-              <p className="text-body-sm text-fg-muted">Nothing due. Add prospects from the pipeline.</p>
+              <p className="text-meta text-fg-muted">Nothing due. Add prospects from the pipeline.</p>
             )}
           </Card>
           <Card padding="lg">
@@ -72,7 +72,7 @@ export default function RepToday() {
             {merchants.loading && !merchants.data ? (
               <Skeleton className="h-24" />
             ) : due.length ? (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {due.map(({ m, c }) => (
                   <li key={`${m.merchantId}-${c.day}`} className="flex flex-wrap items-center gap-3 py-2">
                     <div className="min-w-0 flex-1">
@@ -88,7 +88,7 @@ export default function RepToday() {
             )}
           </Card>
         </div>
-        {mainHood ? <DensityGauge label={`${mainHood.name} density`} value={mainHood.shopCount} target={40} unit="shops" /> : <Skeleton className="h-48 rounded-lg" />}
+        {mainHood ? <DensityGauge label={`${mainHood.name} density`} value={mainHood.shopCount} target={40} unit="shops" /> : <Skeleton className="h-48 rounded-card" />}
       </div>
       <ConfirmDialog open={!!log} onClose={() => setLog(null)} title={`Log day ${log?.day} call`} body={log?.m.name} confirmLabel="Save" onConfirm={async () => {
         await browserApi.rep.checkIn(log!.m.merchantId, { day: log!.day, outcome, notes: note.trim() || undefined });

@@ -13,23 +13,20 @@ export interface EmptyStateProps {
   className?: string;
 }
 
+/** v2: one sentence + one action. A small plain glyph at most, never an icon in a coloured circle. */
 export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", className }: EmptyStateProps) {
   return (
-    <div className={cn("mx-auto flex max-w-[360px] flex-col items-center px-4 py-10 text-center", className)}>
-      {Icon ? (
-        <div className={cn("mb-4 flex size-24 items-center justify-center rounded-full", tone === "danger" ? "bg-danger-subtle text-danger" : "bg-brand-subtle text-fg-brand")}>
-          <Icon aria-hidden className="size-12" strokeWidth={1.75} />
-        </div>
-      ) : null}
-      <h3 className="text-h3 text-fg">{title}</h3>
-      {description ? <p className="mt-2 text-body text-fg-muted">{description}</p> : null}
+    <div className={cn("mx-auto flex max-w-[360px] flex-col items-center px-4 py-12 text-center", className)}>
+      {Icon ? <Icon aria-hidden className={cn("mb-4 size-7", tone === "danger" ? "text-negative" : "text-fg-subtle")} strokeWidth={1.5} /> : null}
+      <h3 className="text-headline text-fg">{title}</h3>
+      {description ? <p className="mt-1.5 text-body text-fg-muted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
       {secondaryAction ? <div className="mt-2">{secondaryAction}</div> : null}
     </div>
   );
 }
 
-/** Same layout as EmptyState with a danger circle and a retry. */
+/** Same layout as EmptyState with a retry. */
 export function ErrorState({ title = "Something went wrong on our end", description = "Try again in a moment.", action, icon = CloudOff, className }: Partial<EmptyStateProps>) {
   return <EmptyState icon={icon} tone="danger" title={title} description={description} action={action} className={className} />;
 }

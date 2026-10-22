@@ -75,12 +75,12 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
 
       {step === "upload" ? (
         <Card padding="lg">
-          <h2 className="text-h3 text-fg">Upload a CSV file</h2>
+          <h2 className="text-body-strong text-fg">Upload a CSV file</h2>
           <p className="mt-1 text-body text-fg-muted">Export your members from your old loyalty app or spreadsheet. We need at least a phone number for each customer. Re-importing the same file never doubles anyone&apos;s balance.</p>
-          <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-strong p-6 text-center hover:bg-canvas-subtle focus-within:focus-ring">
-            <FileUp aria-hidden className="size-8 text-fg-brand" />
+          <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong p-6 text-center hover:bg-bg-subtle focus-within:focus-ring">
+            <FileUp aria-hidden className="size-8 text-fg" />
             <span className="text-body-strong text-fg">Choose a CSV file</span>
-            <span className="text-body-sm text-fg-muted">Up to 20,000 rows</span>
+            <span className="text-meta text-fg-muted">Up to 20,000 rows</span>
             <input
               type="file"
               accept=".csv,text/csv"
@@ -93,7 +93,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
             />
           </label>
           <details className="mt-4">
-            <summary className="cursor-pointer text-label text-fg-link">Or paste CSV text</summary>
+            <summary className="cursor-pointer text-label text-fg">Or paste CSV text</summary>
             <PasteBox onLoad={(t) => load(t, "Pasted data")} />
           </details>
         </Card>
@@ -101,7 +101,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
 
       {step === "map" ? (
         <Card padding="lg">
-          <h2 className="text-h3 text-fg">Match your columns</h2>
+          <h2 className="text-body-strong text-fg">Match your columns</h2>
           <p className="mt-1 text-body text-fg-muted">
             {fileName}: {formatNumber(rows.length - 1)} rows. We guessed the matches; check them.
           </p>
@@ -139,12 +139,12 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       {step === "preview" ? (
         <>
           <Card padding="lg">
-            <h2 className="text-h3 text-fg">Preview</h2>
-            <p className="mt-1 text-body-sm text-fg-muted">
+            <h2 className="text-body-strong text-fg">Preview</h2>
+            <p className="mt-1 text-meta text-fg-muted">
               First {preview.rows.length} of {formatNumber(preview.total)} rows. {preview.invalid ? `${formatNumber(preview.invalid)} rows have no valid mobile number and will be skipped.` : "Every row has a valid mobile number."}
             </p>
             <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-body-sm">
+              <table className="w-full text-meta">
                 <caption className="sr-only">Import preview</caption>
                 <thead className="text-label text-fg-muted">
                   <tr>
@@ -157,7 +157,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
                 </thead>
                 <tbody>
                   {preview.rows.map((r) => (
-                    <tr key={r.row} className={cn("border-t border-border", r.problem && "bg-danger-subtle text-on-danger-subtle")}>
+                    <tr key={r.row} className={cn("border-t border-line", r.problem && "bg-danger-subtle text-on-danger-subtle")}>
                       <td className="px-2 py-2 tabular-nums">{r.row}</td>
                       <td className="px-2 py-2">{r.name || "–"}</td>
                       <td className="px-2 py-2 tabular-nums">{r.problem ? `${r.phone || "–"} · ${r.problem}` : r.phone}</td>
@@ -172,7 +172,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
 
           <Card padding="lg">
             <fieldset>
-              <legend className="text-h3 text-fg">Did these customers agree to get marketing messages from you?</legend>
+              <legend className="text-body-strong text-fg">Did these customers agree to get marketing messages from you?</legend>
               <div className="mt-3 flex flex-col gap-2">
                 {(
                   [
@@ -180,11 +180,11 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
                     ["yes", "Yes, and I have records of it", `Only rows with a "yes" and a past consent date are opted in (${formatNumber(preview.withConsent)} rows). Keep your records: CASL may ask for them.`],
                   ] as const
                 ).map(([v, label, cap]) => (
-                  <label key={v} className={cn("flex cursor-pointer items-start gap-3 rounded-md border p-3", consent === v ? "border-brand bg-brand-subtle" : "border-border")}>
+                  <label key={v} className={cn("flex cursor-pointer items-start gap-3 rounded-input border p-3", consent === v ? "border-brand bg-bg-subtle" : "border-line")}>
                     <input type="radio" name="consent" value={v} checked={consent === v} onChange={() => setConsent(v)} className="mt-1 size-5 accent-[var(--color-brand)]" />
                     <span>
                       <span className="block text-body-strong text-fg">{label}</span>
-                      <span className="block text-body-sm text-fg-muted">{cap}</span>
+                      <span className="block text-meta text-fg-muted">{cap}</span>
                     </span>
                   </label>
                 ))}
@@ -220,9 +220,9 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       {step === "done" && result ? (
         <Card padding="lg">
           <div className="flex items-start gap-3">
-            <CheckCircle2 aria-hidden className="size-8 shrink-0 text-success" />
+            <CheckCircle2 aria-hidden className="size-8 shrink-0 text-positive" />
             <div>
-              <h2 className="text-h3 text-fg">
+              <h2 className="text-body-strong text-fg">
                 {formatNumber(result.membersCreated + result.membersExisting - result.duplicates)} imported, {formatNumber(result.errors.length)} skipped
               </h2>
               <p className="mt-1 text-body text-fg-muted">
@@ -232,7 +232,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
           </div>
           {result.errors.length ? (
             <>
-              <ul className="mt-4 max-h-48 overflow-auto text-body-sm text-fg">
+              <ul className="mt-4 max-h-48 overflow-auto text-meta text-fg">
                 {result.errors.slice(0, 20).map((e) => (
                   <li key={e.row}>
                     Row {e.row}: {e.message}

@@ -35,7 +35,7 @@ export default function CounterSettings() {
     if (kind === "customer") {
       setConfig({ sharedDevice: false, kiosk: false });
       setMode("customer");
-      router.replace("/home");
+      router.replace("/map");
     } else {
       await signOut({ keepQueue: queueState.pendingCount > 0 });
       router.replace("/welcome");

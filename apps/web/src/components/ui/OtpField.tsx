@@ -61,7 +61,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
   const active = Math.min(value.length, length - 1);
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-label text-fg">
+      <label htmlFor={id} className="text-meta-strong text-fg">
         {label}
       </label>
       <div className={cn("relative w-fit", error && "motion-safe:animate-[ll-otp-shake_220ms_ease-in-out]")} onClick={() => inputRef.current?.focus()}>
@@ -90,8 +90,8 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
               <div
                 key={i}
                 className={cn(
-                  "flex h-14 w-11 items-center justify-center rounded-sm border bg-surface text-keypad tabular-nums text-fg sm:w-12",
-                  error ? "border-2 border-danger" : isActive ? "border-2 border-brand" : "border-border-strong",
+                  "flex h-14 w-11 items-center justify-center rounded-input border bg-bg text-keypad tabular-nums text-fg transition-colors sm:w-12",
+                  error ? "border-negative ring-1 ring-negative" : isActive ? "border-fg ring-1 ring-fg" : ch ? "border-line-strong/60" : "border-line",
                 )}
               >
                 {ch || (isActive ? <span className="h-7 w-0.5 bg-fg motion-safe:animate-pulse" /> : null)}
@@ -101,7 +101,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
         </div>
       </div>
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-body-sm font-medium text-danger">
+        <p id={`${id}-error`} role="alert" className="text-meta font-medium text-negative">
           {error}
         </p>
       ) : null}

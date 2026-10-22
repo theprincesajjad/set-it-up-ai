@@ -16,9 +16,9 @@ export function Keypad({ onKey, size = "counter", className, label = "Keypad" }:
           type="button"
           onClick={() => onKey(k)}
           aria-label={k === "back" ? "Delete" : k === "clear" ? "Clear" : k}
-          className={cn("flex items-center justify-center rounded-md border border-border bg-surface text-keypad tabular-nums text-fg transition-colors hover:bg-surface-sunken active:bg-surface-sunken focus-visible:focus-ring", h)}
+          className={cn("flex items-center justify-center rounded-card bg-bg-subtle text-keypad tabular-nums text-fg transition-colors duration-150 ease-out hover:bg-bg-muted active:bg-bg-muted focus-visible:focus-ring", h)}
         >
-          {k === "back" ? <Delete aria-hidden className="size-7" /> : k === "clear" ? <X aria-hidden className="size-7" /> : k}
+          {k === "back" ? <Delete aria-hidden className="size-6" strokeWidth={1.75} /> : k === "clear" ? <X aria-hidden className="size-6" strokeWidth={1.75} /> : k}
         </button>
       ))}
     </div>

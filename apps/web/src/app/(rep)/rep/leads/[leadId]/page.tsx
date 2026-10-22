@@ -68,15 +68,15 @@ export default function LeadPage() {
                   {l.activities.length ? (
                     <ol className="flex flex-col gap-3">
                       {l.activities.map((a) => (
-                        <li key={a.id} className="border-s-2 border-border ps-3">
+                        <li key={a.id} className="border-s-2 border-line ps-3">
                           <p className="text-body-strong text-fg">{a.kind[0]!.toUpperCase() + a.kind.slice(1)}{a.outcome ? `: ${a.outcome}` : ""}</p>
-                          {a.notes ? <p className="text-body-sm text-fg">{a.notes}</p> : null}
+                          {a.notes ? <p className="text-meta text-fg">{a.notes}</p> : null}
                           <p className="text-caption text-fg-muted">{formatDateTime(a.createdAt)}</p>
                         </li>
                       ))}
                     </ol>
                   ) : (
-                    <p className="text-body-sm text-fg-muted">No activity yet.</p>
+                    <p className="text-meta text-fg-muted">No activity yet.</p>
                   )}
                 </Card>
               </div>
@@ -93,8 +93,8 @@ export default function LeadPage() {
                 {l.contactName ? <p className="text-body text-fg">{l.contactName}</p> : null}
                 {l.phone ? <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${l.phone}`}>{formatE164(l.phone)}</Button> : null}
                 {l.email ? <Button variant="ghost" size="sm" iconStart={Mail} href={`mailto:${l.email}`}>{l.email}</Button> : null}
-                {l.currentLoyalty ? <p className="text-body-sm text-fg-muted">Uses today: {l.currentLoyalty}</p> : null}
-                {l.notes ? <p className="text-body-sm text-fg">{l.notes}</p> : null}
+                {l.currentLoyalty ? <p className="text-meta text-fg-muted">Uses today: {l.currentLoyalty}</p> : null}
+                {l.notes ? <p className="text-meta text-fg">{l.notes}</p> : null}
               </Card>
             </div>
           </>

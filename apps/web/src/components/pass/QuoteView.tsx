@@ -83,16 +83,16 @@ export function QuoteView({ token, initial }: { token: string; initial: serviceA
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="flex items-center gap-3">
-        <ShopLogo shop={{ name: shop.name, vertical: "repair_electronics", logoUrl: shop.logoUrl }} size={56} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-h3 text-fg">{shop.name}</p>
-          <p className="text-body-sm text-fg-muted">
-            Ticket #{data.ticket.number} · {itemTitle(data.ticket)}
-          </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-3 pt-2">
+        <div className="flex items-center gap-3">
+          <ShopLogo shop={{ name: shop.name, vertical: "repair_electronics", logoUrl: shop.logoUrl }} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body-strong text-fg">{shop.name}</p>
+            <p className="truncate text-meta text-fg-muted">Ticket #{data.ticket.number}</p>
+          </div>
+          <StatusBadge domain="quote" status={status} />
         </div>
-        <StatusBadge domain="quote" status={status} />
       </header>
 
       {notice ? (
@@ -122,8 +122,8 @@ export function QuoteView({ token, initial }: { token: string; initial: serviceA
       />
 
       {deposit ? (
-        <section aria-labelledby="deposit" className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-sm">
-          <h2 id="deposit" className="text-h3 text-fg">
+        <section aria-labelledby="deposit" className="flex flex-col gap-3">
+          <h2 id="deposit" className="text-headline text-fg">
             Pay your {formatMoney(deposit.amountCents)} deposit
           </h2>
           <PaymentBox paymentIntentId={deposit.paymentIntentId} clientSecret={deposit.clientSecret} amountCents={deposit.amountCents} label={`Pay ${formatMoney(deposit.amountCents)} deposit`} onPaid={paid} />
@@ -136,8 +136,8 @@ export function QuoteView({ token, initial }: { token: string; initial: serviceA
       {q.status === "approved" && depositPaid ? <Banner tone="success">Deposit of {formatMoney(q.depositCents)} paid.</Banner> : null}
 
       {q.status === "approved" || q.status === "declined" ? (
-        <section aria-labelledby="progress" className="rounded-lg bg-surface p-4 shadow-sm">
-          <h2 id="progress" className="mb-3 text-title text-fg">
+        <section aria-labelledby="progress" className="rounded-card border border-line p-4">
+          <h2 id="progress" className="mb-4 text-headline text-fg">
             Repair progress
           </h2>
           <Timeline steps={ticketSteps(data.ticket.status, copy.ticketStatus)} />

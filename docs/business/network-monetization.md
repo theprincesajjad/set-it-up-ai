@@ -2,7 +2,7 @@
 
 Owner: Network Monetization · Status: built, hidden (Phase 3) · Engineering: `docs/engineering/api/ads.md`, `docs/engineering/api/campaigns.md`
 
-The business is the network. Loyalty stays free forever; once a strip has enough shops and customers on one app, we
+The business is the network. Loyalty (and reporting on it) stays free forever; everything else is paid since Pricing v2 ([pricing.md](pricing.md)); once a strip has enough shops and customers on one app, we
 sell attention on that network to the shops on it (sponsored placements) and to the BIA that represents them
 (neighbourhood campaigns). Both only work if customers trust the app, so every rule below is biased toward
 "never feels spammy" over short-term revenue.

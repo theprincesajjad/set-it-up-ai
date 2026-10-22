@@ -9,7 +9,7 @@ import { activityTitle, groupByDay } from "../../lib/activity";
 import { formatMoney } from "../../lib/award";
 import { formatDate, formatTime } from "../../lib/format";
 import { api } from "../../state/api";
-import { Button, Card, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonList, Text } from "../../ui";
+import { Button, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonList, Text } from "../../ui";
 
 type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 
@@ -49,7 +49,7 @@ export default function Activity() {
   const groups = groupByDay(rows);
 
   return (
-    <Screen back={!!params.memberId} title="Activity" largeTitle={!params.memberId}>
+    <Screen back={!!params.memberId} title="Activity" largeTitle={!params.memberId} tabBar={!params.memberId}>
       {memberships.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
           <Chip label="All shops" selected={!shop} onPress={() => setShop(null)} />
@@ -65,23 +65,23 @@ export default function Activity() {
       ) : (
         groups.map((g) => (
           <Section key={g.label} title={g.label}>
-            <Card padded={false} style={{ paddingHorizontal: 16 }}>
+            <View>
               {g.items.map((tx, i) => (
                 <ListRow
                   key={tx.id}
                   divider={i < g.items.length - 1}
-                  leading={<ShopLogo shop={tx.membership.merchant} size={40} />}
+                  leading={<ShopLogo shop={tx.membership.merchant} size={44} />}
                   title={activityTitle(tx, tx.membership.terminology, tx.membership.merchant.name)}
                   subtitle={[tx.membership.merchant.name, formatTime(tx.createdAt), tx.amountCents ? formatMoney(tx.amountCents) : null].filter(Boolean).join(" · ")}
                   trailing={
-                    <Text variant="bodyStrong" color={tx.points > 0 ? "onSuccessSubtle" : "fg"} tabular style={tx.reversed ? { textDecorationLine: "line-through" } : null}>
+                    <Text variant="headline" color={tx.reversed ? "fgSubtle" : tx.points > 0 ? "accentText" : "fgMuted"} tabular style={tx.reversed ? { textDecorationLine: "line-through" } : null}>
                       {`${tx.points > 0 ? "+" : ""}${tx.points}`}
                     </Text>
                   }
                   onPress={() => setOpen(tx)}
                 />
               ))}
-            </Card>
+            </View>
           </Section>
         ))
       )}
@@ -96,13 +96,13 @@ export default function Activity() {
             <Text>{`${open.membership.merchant.name} · ${formatDate(open.createdAt)} ${formatTime(open.createdAt)}`}</Text>
             {open.amountCents ? <Text>{`Purchase ${formatMoney(open.amountCents)}`}</Text> : null}
             {open.breakdown.map((b) => (
-              <Text key={b} variant="bodySm" color="fgMuted">
+              <Text key={b} variant="meta" color="fgMuted">
                 {b}
               </Text>
             ))}
             {open.reversed ? <Text color="fgMuted">This transaction was reversed.</Text> : null}
             <Text variant="caption" color="fgMuted" selectable>{`Transaction ${open.id}`}</Text>
-            <Text variant="bodySm" color="fgMuted">{`Something wrong? Contact ${open.membership.merchant.name}.`}</Text>
+            <Text variant="meta" color="fgMuted">{`Something wrong? Contact ${open.membership.merchant.name}.`}</Text>
           </View>
         ) : null}
       </Sheet>

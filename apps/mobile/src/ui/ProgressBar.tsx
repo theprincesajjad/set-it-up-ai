@@ -7,13 +7,15 @@ export interface ProgressBarProps {
   max: number;
   label?: string;
   valueLabel?: string;
+  /** accent = points / reward progress; brand = neutral progress (black). */
   tone?: "brand" | "accent";
   /** Spoken value, e.g. "6 of 25 members". */
   valueText?: string;
+  height?: number;
 }
 
-/** Height 8, radius full, track ringTrack, fill brand (accent for reward progress). */
-export function ProgressBar({ value, max, label, valueLabel, tone = "brand", valueText }: ProgressBarProps) {
+/** Thin bar: track bgMuted, fill accent (points) or fg. */
+export function ProgressBar({ value, max, label, valueLabel, tone = "brand", valueText, height = 6 }: ProgressBarProps) {
   const { c } = useTheme();
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return (
@@ -27,19 +29,19 @@ export function ProgressBar({ value, max, label, valueLabel, tone = "brand", val
       {label || valueLabel ? (
         <View style={styles.labels}>
           {label ? (
-            <Text variant="label" style={{ flex: 1 }}>
+            <Text variant="meta" color="fgMuted" style={{ flex: 1 }}>
               {label}
             </Text>
           ) : null}
           {valueLabel ? (
-            <Text variant="label" tabular>
+            <Text variant="metaStrong" color={tone === "accent" ? "accentText" : "fg"} tabular>
               {valueLabel}
             </Text>
           ) : null}
         </View>
       ) : null}
-      <View style={[styles.track, { backgroundColor: c.ringTrack }]}>
-        <View style={[styles.fill, { width: `${pct * 100}%`, backgroundColor: tone === "accent" ? c.accent : c.brand }]} />
+      <View style={[styles.track, { height, borderRadius: height / 2, backgroundColor: c.bgMuted }]}>
+        <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: tone === "accent" ? c.accent : c.fg }} />
       </View>
     </View>
   );
@@ -47,6 +49,5 @@ export function ProgressBar({ value, max, label, valueLabel, tone = "brand", val
 
 const styles = StyleSheet.create({
   labels: { flexDirection: "row", alignItems: "center" },
-  track: { height: 8, borderRadius: 4, overflow: "hidden" },
-  fill: { height: 8, borderRadius: 4 },
+  track: { overflow: "hidden" },
 });

@@ -40,24 +40,24 @@ function Board() {
       <PageHeader title="Service tickets" description="Every repair from drop-off to pickup. Customers get a text at each step." actions={<Button iconStart={Plus} href={`${base}/tickets/new`}>New ticket</Button>} />
       <TextField type="search" label="Search tickets" hideLabel placeholder="Ticket #, customer, phone, device" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.loading && !list.data ? (
-        <Skeleton className="h-60 rounded-lg" />
+        <Skeleton className="h-60 rounded-card" />
       ) : items.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {COLUMNS.map((col) => {
             const ts = items.filter((t) => col.statuses.includes(t.status));
             return (
-              <section key={col.title} aria-label={col.title} className="flex flex-col gap-2 rounded-lg bg-canvas-subtle p-3">
+              <section key={col.title} aria-label={col.title} className="flex flex-col gap-2 rounded-card bg-bg-subtle p-3">
                 <h2 className="flex items-center justify-between text-label text-fg">
                   {col.title} <span className="tabular-nums text-fg-muted">{ts.length}</span>
                 </h2>
                 {ts.map((t) => (
-                  <Link key={t.id} href={`${base}/tickets/${t.id}`} className="block rounded-md bg-surface p-3 shadow-sm hover:shadow-md focus-visible:focus-ring">
+                  <Link key={t.id} href={`${base}/tickets/${t.id}`} className="block rounded-input bg-bg p-3 hover:shadow-float focus-visible:focus-ring">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-label text-fg">#{t.number}</span>
                       <StatusBadge domain="ticket" status={t.status} label={copy.ticketStatus[t.status]} />
                     </div>
                     <p className="mt-1 truncate text-body-strong text-fg">{[t.itemDetails.make, t.itemDetails.model].filter(Boolean).join(" ") || t.itemKind}</p>
-                    <p className="truncate text-body-sm text-fg-muted">{t.issue}</p>
+                    <p className="truncate text-meta text-fg-muted">{t.issue}</p>
                     <p className="mt-1 text-caption text-fg-muted">{t.customer?.name ?? "Customer"} · {relativeTime(t.updatedAt)}</p>
                   </Link>
                 ))}

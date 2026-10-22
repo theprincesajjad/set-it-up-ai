@@ -5,13 +5,17 @@ import { typo, useTheme } from "../theme";
 export interface TextProps extends RNTextProps {
   variant?: TextStyleName;
   color?: keyof ColorRoles;
-  /** Raw colour (vertical ink etc.). Prefer `color`. */
+  /** Raw colour (QR card ink etc.). Prefer `color`. */
   rawColor?: string;
   center?: boolean;
   tabular?: boolean;
 }
 
-/** Token-driven text. Weight maps to a Figtree family (Android can't synthesise weights). */
+/**
+ * Token-driven text. Body/UI styles use the system font (SF Pro / Roboto) with
+ * a fontWeight; display styles (largeTitle, displayNumber, mapLabel,
+ * categoryLabel) use Bricolage Grotesque.
+ */
 export function Text({ variant = "body", color = "fg", rawColor, center, tabular, style, ...rest }: TextProps) {
   const { c } = useTheme();
   return (

@@ -7,7 +7,7 @@ export function ShopTabs({ panels }: { panels: { id: string; label: string; coun
   const [tab, setTab] = useState(panels[0]?.id ?? "");
   const active = panels.find((p) => p.id === tab) ?? panels[0];
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <Tabs
         label="Shop"
         value={active?.id ?? ""}
@@ -15,10 +15,10 @@ export function ShopTabs({ panels }: { panels: { id: string; label: string; coun
         items={panels.map((p) => ({
           id: p.id,
           label: p.label,
-          meta: p.count ? <span className="rounded-full bg-neutral-subtle px-1.5 text-caption tabular-nums text-on-neutral-subtle">{p.count}</span> : undefined,
+          meta: p.count ? <span className="text-meta font-normal tabular-nums text-fg-subtle">{p.count}</span> : undefined,
         }))}
       />
-      <div role="tabpanel" aria-label={active?.label} className="flex flex-col gap-3">
+      <div role="tabpanel" aria-label={active?.label} className="flex flex-col gap-5">
         {active?.content}
       </div>
     </div>

@@ -1,37 +1,36 @@
 "use client";
-import { Download, Eye, Upload, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Download, Search, Upload } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
+import { CustomerView } from "@/components/dashboard/customers/CustomerView";
+import { Capsules, Dot, Empty, ErrorLine, PageHeader, SidePanel, SkeletonRows, Table, TableWrap, Td, Th, ToolbarButton, Tr } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Chip, ChipGroup } from "@/components/ui/Chip";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/Layout";
-import { TextField } from "@/components/ui/TextField";
+import { Async } from "@/components/dashboard/PageStates";
 import { BFF_BASE } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate, formatNumber, formatPoints } from "@/lib/format";
-import { formatE164 } from "@/lib/phone";
 import { CONSENT_LABEL, consentState, filterQuery, maskPhone, type CustomerFilter } from "@/lib/dashboard/customers";
+import { useApi } from "@/lib/dashboard/useApi";
 import { relativeTime } from "@/lib/dashboard/time";
 
-const FILTERS: { id: CustomerFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "reward", label: "Reward ready" },
-  { id: "vip", label: "VIP" },
-  { id: "new", label: "New (30 days)" },
-  { id: "at_risk", label: "At risk" },
-  { id: "opted_in", label: "Opted in to messages" },
-  { id: "muted", label: "Muted" },
-];
+type SortKey = "name" | "balance" | "visits" | "last" | "joined";
 
 export default function CustomersPage() {
-  const { api, base, detail, role } = useMerchant();
+  return (
+    <Suspense>
+      <Customers />
+    </Suspense>
+  );
+}
+
+function Customers() {
+  const { api, base, detail, role, enabled } = useMerchant();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const open = params.get("member");
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   const [filter, setFilter] = useState<CustomerFilter>("all");
@@ -41,9 +40,23 @@ export default function CustomersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState<Map<string, string | null>>(new Map());
-  const [revealing, setRevealing] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
+  const [nonce, setNonce] = useState(0);
   const term = detail.program?.terminology ?? "points";
+  const marketing = enabled("marketing.email") || enabled("marketing.sms");
+  const vip = enabled("loyalty.vip_levels");
+
+  const filters = useMemo(() => {
+    const f: { value: CustomerFilter; label: string }[] = [
+      { value: "all", label: "All" },
+      { value: "reward", label: "Reward ready" },
+      { value: "new", label: "New (30 days)" },
+      { value: "at_risk", label: "At risk" },
+    ];
+    if (vip) f.push({ value: "vip", label: "VIP" });
+    if (marketing) f.push({ value: "opted_in", label: "Opted in to messages" }, { value: "muted", label: "Muted" });
+    return f;
+  }, [vip, marketing]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 250);
@@ -71,147 +84,207 @@ export default function CustomersPage() {
     return () => {
       live = false;
     };
-  }, [api, query]);
+  }, [api, query, nonce]);
 
-  const shown = rows;
-  const canReveal = role !== "staff";
-  const reveal = async (c: merchantApi.CustomerSummary) => {
-    setRevealing(c.memberId);
-    try {
-      // Audit-logged on the server (customer.phone_revealed).
-      const r = await api.revealPhone(c.memberId);
-      setRevealed((m) => new Map(m).set(c.memberId, r.phone));
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setRevealing(null);
-    }
-  };
+  const sorted = useMemo(() => {
+    if (!sort) return rows;
+    const v = (c: merchantApi.CustomerSummary): string | number =>
+      sort.key === "name" ? (c.name ?? "").toLowerCase() : sort.key === "balance" ? c.balance : sort.key === "visits" ? c.visitCount : sort.key === "last" ? (c.lastVisitAt ?? "") : c.joinedAt;
+    return [...rows].sort((a, b) => (v(a) < v(b) ? -sort.dir : v(a) > v(b) ? sort.dir : 0));
+  }, [rows, sort]);
+
+  const setOpen = useCallback(
+    (id: string | null) => {
+      const p = new URLSearchParams(params.toString());
+      if (id) p.set("member", id);
+      else p.delete("member");
+      router.replace(`${pathname}${p.size ? `?${p}` : ""}`, { scroll: false });
+    },
+    [params, pathname, router],
+  );
+
   const exportHref = `${BFF_BASE}${api.base}/customers/export.csv?${new URLSearchParams(Object.entries(query).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]) as [string, string][]).toString()}`;
+  const sortTh = (key: SortKey, label: string, align: "start" | "end" = "start", cls?: string) => {
+    const on = sort?.key === key;
+    return (
+      <Th align={align} className={cls} aria-sort={on ? (sort!.dir === 1 ? "ascending" : "descending") : "none"}>
+        <button type="button" onClick={() => setSort((s) => (s?.key === key ? (s.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }))} className={`inline-flex items-center gap-1 hover:text-fg ${on ? "text-fg" : ""}`}>
+          {label}
+          {on ? sort!.dir === 1 ? <ArrowUp aria-hidden className="size-3" /> : <ArrowDown aria-hidden className="size-3" /> : null}
+        </button>
+      </Th>
+    );
+  };
 
-  const columns: Column<merchantApi.CustomerSummary>[] = [
-    {
-      key: "name",
-      header: "Name",
-      mobile: "title",
-      sortValue: (c) => (c.name ?? "").toLowerCase(),
-      cell: (c) => (
-        <span className="flex items-center gap-3">
-          <Avatar name={c.name} id={c.memberId} size={32} />
-          <span className="truncate font-medium">{c.name ?? "No name"}</span>
-          {c.rewardAvailable ? <Badge tone="accent">Reward ready</Badge> : null}
-        </span>
-      ),
-    },
-    {
-      key: "phone",
-      header: "Phone",
-      mobile: "hidden",
-      cell: (c) =>
-        revealed.has(c.memberId) ? (
-          <span className="tabular-nums">{formatE164(revealed.get(c.memberId) ?? null)}</span>
-        ) : !c.phone || !canReveal ? (
-          <span className="tabular-nums">{maskPhone(c.phone)}</span>
-        ) : (
-          <span className="inline-flex items-center gap-2">
-            <span className="tabular-nums">{maskPhone(c.phone)}</span>
-            <button
-              type="button"
-              disabled={revealing === c.memberId}
-              onClick={(e) => {
-                e.stopPropagation();
-                void reveal(c);
-              }}
-              className="inline-flex min-h-11 items-center gap-1 text-body-sm font-medium text-fg-link hover:underline disabled:opacity-60"
-              aria-label={`Reveal phone for ${c.name ?? "member"}`}
-            >
-              <Eye aria-hidden className="size-4" /> Reveal
-            </button>
-          </span>
-        ),
-    },
-    { key: "balance", header: "Balance", align: "end", mobile: "trailing", sortValue: (c) => c.balance, cell: (c) => formatPoints(c.balance, term) },
-    { key: "visits", header: "Visits", align: "end", sortValue: (c) => c.visitCount, cell: (c) => formatNumber(c.visitCount), mobile: "hidden" },
-    { key: "last", header: "Last visit", mobile: "subtitle", sortValue: (c) => c.lastVisitAt ?? "", cell: (c) => (c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet") },
-    { key: "joined", header: "Joined", mobile: "hidden", sortValue: (c) => c.joinedAt, cell: (c) => formatDate(c.joinedAt) },
-    {
-      key: "consent",
-      header: "Messages",
-      mobile: "subtitle",
-      cell: (c) => {
-        const s = consentState(c);
-        return <Badge tone={s === "opted_in" ? "success" : "neutral"}>{CONSENT_LABEL[s]}</Badge>;
-      },
-    },
-    { key: "vip", header: "VIP", mobile: "hidden", cell: (c) => (c.vipLevel ? <Badge tone="brand">{c.vipLevel.name}</Badge> : <span className="text-fg-muted">–</span>) },
-  ];
-
-  const count = total;
+  const filtered = filter !== "all" || !!debounced;
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       <PageHeader
         title="Customers"
-        description={count != null ? `${formatNumber(count)} ${filter === "all" && !debounced ? "members" : "matching"} · Reveals and exports are logged` : "Everyone in your program"}
+        description={total != null ? `${formatNumber(total)} ${filtered ? "matching" : "members"} · Reveals and exports are logged` : "Everyone in your program"}
         actions={
-          role !== "staff" ? (
+          role !== "staff" && (enabled("customers.csv_import") || enabled("customers.csv_export")) ? (
             <>
-              <Button variant="secondary" iconStart={Upload} href={`${base}/customers/import`}>
-                Import
-              </Button>
-              <Button variant="secondary" iconStart={Download} href={exportHref}>
-                Export CSV
-              </Button>
+              {enabled("customers.csv_import") ? (
+                <ToolbarButton icon={Upload} href={`${base}/customers/import`}>
+                  Import
+                </ToolbarButton>
+              ) : null}
+              {enabled("customers.csv_export") ? (
+                <ToolbarButton icon={Download} href={exportHref}>
+                  Export
+                </ToolbarButton>
+              ) : null}
             </>
           ) : undefined
         }
       />
-      <DataTable
-        caption="Customers"
-        columns={columns}
-        rows={shown}
-        rowKey={(c) => c.memberId}
-        loading={loading}
-        error={error}
-        onRowClick={(c) => router.push(`${base}/customers/${c.memberId}`)}
-        hasMore={!!cursor}
-        loadingMore={loadingMore}
-        onLoadMore={async () => {
-          if (!cursor) return;
-          setLoadingMore(true);
-          try {
-            const r = await api.customers({ ...query, cursor });
-            setRows((x) => [...x, ...r.items]);
-            setCursor(r.nextCursor);
-          } catch (e) {
-            setError(errorMessage(e));
-          } finally {
-            setLoadingMore(false);
-          }
-        }}
-        summary={shown.length ? `Showing ${formatNumber(shown.length)}${count != null ? ` of ${formatNumber(count)}` : ""}` : undefined}
-        toolbar={
-          <div className="flex flex-col gap-3">
-            <TextField type="search" label="Search customers" hideLabel placeholder="Search name, last 4 of phone, email or member code" value={q} onChange={(e) => setQ(e.target.value)} />
-            <ChipGroup label="Filters">
-              {FILTERS.map((f) => (
-                <Chip key={f.id} selected={filter === f.id} onClick={() => setFilter(f.id)}>
-                  {f.label}
-                </Chip>
-              ))}
-            </ChipGroup>
-            <p className="text-caption text-fg-muted">
-              <strong className="font-semibold">Messages:</strong> &quot;Opted in&quot; customers said yes to offers and haven&apos;t muted you. They&apos;re the only ones who get promotional email or texts (CASL). &quot;Muted&quot; customers silenced your shop in the app; their points still work.
-            </p>
-          </div>
-        }
-        empty={
-          debounced || filter !== "all" ? (
-            <EmptyState icon={Users} title="No customers match" description="Try another search or filter." action={<Button variant="tonal" onClick={() => { setQ(""); setFilter("all"); }}>Clear filters</Button>} />
-          ) : (
-            <EmptyState icon={Users} title="No customers yet" description="Customers join when they scan your QR stand or give their number at the counter." action={<Button href={`${base}/locations`}>Print your QR stand</Button>} secondaryAction={<Button variant="ghost" href={`${base}/customers/import`}>Import from another app</Button>} />
-          )
-        }
-      />
+
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+        <label className="relative block md:w-[320px]">
+          <span className="sr-only">Search customers</span>
+          <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-muted" strokeWidth={1.75} />
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Name, last 4 of phone, email or code"
+            className="h-9 w-full rounded-input border border-line bg-bg ps-8 pe-3 text-meta text-fg outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-fg"
+          />
+        </label>
+        <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
+      </div>
+
+      {error ? <ErrorLine message={error} onRetry={() => setNonce((n) => n + 1)} /> : null}
+
+      {loading && !rows.length ? (
+        <SkeletonRows rows={8} />
+      ) : !rows.length ? (
+        filtered ? (
+          <Empty className="border-y border-line" action={<button type="button" className="text-meta font-medium text-fg hover:underline" onClick={() => { setQ(""); setFilter("all"); }}>Clear filters</button>}>
+            No customers match.
+          </Empty>
+        ) : (
+          <Empty className="border-y border-line" action={<Link href={`${base}/locations`} className="text-meta font-medium text-fg hover:underline">Print your QR stand</Link>}>
+            No customers yet. They join when they scan your QR stand or give their number at the counter.
+          </Empty>
+        )
+      ) : (
+        <TableWrap className={loading ? "opacity-60 transition-opacity" : undefined}>
+          <Table label="Customers">
+            <thead>
+              <tr>
+                {sortTh("name", "Name")}
+                <Th className="hidden md:table-cell">Phone</Th>
+                {sortTh("balance", "Balance", "end")}
+                {sortTh("visits", "Visits", "end", "hidden sm:table-cell")}
+                {sortTh("last", "Last visit", "start", "hidden md:table-cell")}
+                {sortTh("joined", "Joined", "start", "hidden lg:table-cell")}
+                {marketing ? <Th className="hidden lg:table-cell">Messages</Th> : null}
+                {vip ? <Th className="hidden lg:table-cell">VIP</Th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((c) => {
+                const s = consentState(c);
+                return (
+                  <Tr key={c.memberId} onOpen={() => setOpen(c.memberId)} selected={open === c.memberId} aria-label={c.name ?? "No name"}>
+                    <Td className="max-w-[260px]">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium">{c.name ?? <span className="text-fg-muted">No name</span>}</span>
+                        {c.rewardAvailable ? <Dot tone="accent" className="text-caption font-normal text-fg-muted">Reward ready</Dot> : null}
+                      </span>
+                      <span className="block truncate text-caption font-normal text-fg-muted md:hidden">{c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet"}</span>
+                    </Td>
+                    <Td className="hidden text-fg-muted tabular md:table-cell">{maskPhone(c.phone)}</Td>
+                    <Td align="end">{formatPoints(c.balance, term)}</Td>
+                    <Td align="end" className="hidden sm:table-cell">{formatNumber(c.visitCount)}</Td>
+                    <Td className="hidden text-fg-muted md:table-cell">{c.lastVisitAt ? relativeTime(c.lastVisitAt) : "No visits yet"}</Td>
+                    <Td className="hidden text-fg-muted lg:table-cell">{formatDate(c.joinedAt)}</Td>
+                    {marketing ? (
+                      <Td className="hidden lg:table-cell">
+                        <Dot tone={s === "opted_in" ? "positive" : "neutral"}>{CONSENT_LABEL[s]}</Dot>
+                      </Td>
+                    ) : null}
+                    {vip ? <Td className="hidden text-fg-muted lg:table-cell">{c.vipLevel?.name ?? "–"}</Td> : null}
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </TableWrap>
+      )}
+
+      {rows.length ? (
+        <div className="mt-3 flex items-center justify-between text-meta text-fg-muted">
+          <span className="tabular">
+            Showing {formatNumber(rows.length)}
+            {total != null ? ` of ${formatNumber(total)}` : ""}
+          </span>
+          {cursor ? (
+            <button
+              type="button"
+              disabled={loadingMore}
+              className="font-medium text-fg hover:underline disabled:opacity-50"
+              onClick={async () => {
+                setLoadingMore(true);
+                try {
+                  const r = await api.customers({ ...query, cursor });
+                  setRows((x) => [...x, ...r.items]);
+                  setCursor(r.nextCursor);
+                } catch (e) {
+                  setError(errorMessage(e));
+                } finally {
+                  setLoadingMore(false);
+                }
+              }}
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <CustomerPanel memberId={open} onClose={() => setOpen(null)} onChanged={() => setNonce((n) => n + 1)} />
     </div>
+  );
+}
+
+function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | null; onClose: () => void; onChanged: () => void }) {
+  const { api, base } = useMerchant();
+  const state = useApi(memberId ? () => api.customer(memberId) : null, [api, memberId]);
+  const rewards = useApi(memberId ? () => api.rewards() : null, [api, !!memberId]);
+  const d = state.data && state.data.customer.memberId === memberId ? state.data : null;
+  return (
+    <SidePanel
+      open={!!memberId}
+      onClose={onClose}
+      label="Customer"
+      title={d ? (d.customer.name ?? "No name") : "Customer"}
+      subtitle={d ? `Member since ${formatDate(d.customer.joinedAt)}` : undefined}
+      footer={
+        memberId ? (
+          <Link href={`${base}/customers/${memberId}`} className="text-meta font-medium text-fg-muted hover:text-fg">
+            Open full page
+          </Link>
+        ) : null
+      }
+    >
+      <Async state={{ ...state, data: d }} skeleton={<SkeletonRows rows={6} />}>
+        {(x) => (
+          <CustomerView
+            key={x.customer.memberId}
+            layout="panel"
+            d={x}
+            rewards={rewards.data?.items ?? []}
+            onChange={(n) => state.setData(n)}
+            reload={async () => {
+              await state.reload();
+              onChanged();
+            }}
+          />
+        )}
+      </Async>
+    </SidePanel>
   );
 }

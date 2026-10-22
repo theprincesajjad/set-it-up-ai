@@ -78,7 +78,7 @@ function Profile() {
         <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
         <div className="flex items-end gap-3">
           <TextField label="Brand colour" value={f.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Used as an accent on your shop page." />
-          <input type="color" aria-label="Pick brand colour" value={/^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#1F6A50"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mb-7 h-12 w-14 cursor-pointer rounded-sm border border-border-strong" />
+          <input type="color" aria-label="Pick brand colour" value={/^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#1F6A50"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mb-7 h-12 w-14 cursor-pointer rounded-sm border border-line-strong" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField type="email" label="Email" optionalLabel value={f.email} onChange={(e) => set("email", e.target.value)} />
@@ -182,7 +182,7 @@ function Privacy() {
           Export activity
         </Button>
       </div>
-      <p className="mt-3 text-body-sm text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
+      <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
     </Card>
   );
 }
@@ -197,7 +197,7 @@ function Danger() {
       <Button variant={active ? "danger" : "primary"} onClick={() => setConfirm(true)}>
         {active ? "Pause program" : "Resume program"}
       </Button>
-      <p className="mt-4 text-body-sm text-fg-muted">To close your shop or transfer ownership, email help@localloyalty.example. We&apos;ll give members notice and keep their history.</p>
+      <p className="mt-4 text-meta text-fg-muted">To close your shop or transfer ownership, email help@localloyalty.example. We&apos;ll give members notice and keep their history.</p>
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} title={active ? "Pause your program?" : "Resume your program?"} body={active ? "Customers keep their points and can still redeem." : undefined} confirmLabel={active ? "Pause program" : "Resume program"} danger={active} onConfirm={async () => {
         const p = await api.updateProgram({ active: !active });
         setDetail({ ...detail, program: p });
