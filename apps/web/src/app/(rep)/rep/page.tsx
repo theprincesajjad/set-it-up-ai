@@ -1,15 +1,12 @@
 "use client";
 import { EmptyState, Meter, PageHeader, Panel } from "@/components/dashboard/kit";
-import { Navigation, Phone, PlusCircle } from "lucide-react";
+import { Navigation, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { repApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { ListRow } from "@/components/ui/Card";
 import { DensityBar } from "@/components/dashboard/NetworkGauges";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
@@ -20,7 +17,6 @@ import { longDate } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";
 
-const LEAD_STAGE_TONE: Record<string, "neutral" | "info" | "warning" | "success" | "brand"> = { new: "neutral", contacted: "info", visit_booked: "warning", signed: "brand", activated: "success", lost: "neutral" };
 const OUTCOMES = ["Reached owner: going well", "Reached owner: needs help", "Left a message", "No answer", "Visited in person"];
 
 export default function RepToday() {

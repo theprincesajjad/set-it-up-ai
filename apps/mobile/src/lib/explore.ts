@@ -139,6 +139,18 @@ export interface PinPoint {
   y: number;
   /** Higher keeps its label first (selected > reward ready > member > nearest). */
   priority: number;
+  /** Label width in px when known (defaults to the max). */
+  w?: number;
+  /** Label height in px when known (a long name wraps to two lines). */
+  h?: number;
+}
+
+/** Rough label size for a pin: bold 14 px name (wraps at 160 px, never cut mid-word) + italic 12 px subtitle. */
+export function labelWidth(name: string, subtitle: string): number {
+  return Math.min(160, Math.max(name.length * 7.6, subtitle.length * 6.2) + 8);
+}
+export function labelHeight(name: string): number {
+  return name.length * 7.6 + 8 > 160 ? 54 : 38;
 }
 
 /**
@@ -157,7 +169,8 @@ export function labelPlan(
   const out = new Set<string>();
   const hit = (a: { x1: number; y1: number; x2: number; y2: number }, b: { x1: number; y1: number; x2: number; y2: number }) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
   for (const p of [...points].sort((a, b) => b.priority - a.priority)) {
-    const box = { x1: p.x + r + 2, y1: p.y - labelH / 2, x2: p.x + r + 6 + labelW, y2: p.y + labelH / 2 };
+    const h = p.h ?? labelH;
+    const box = { x1: p.x + r + 2, y1: p.y - h / 2, x2: p.x + r + 6 + (p.w ?? labelW), y2: p.y + h / 2 };
     if (kept.some((k) => hit(k, box))) continue;
     if (avoid.some((a) => hit(a, box))) continue;
     if (bubbles.some((b) => b.id !== p.id && hit(b, box))) continue;

@@ -3,7 +3,6 @@ import { BackLink, PageHeader } from "@/components/dashboard/kit";
 import { useParams } from "next/navigation";
 import { Async } from "@/components/dashboard/PageStates";
 import { QrKitPrint } from "@/components/dashboard/QrKitPrint";
-import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";

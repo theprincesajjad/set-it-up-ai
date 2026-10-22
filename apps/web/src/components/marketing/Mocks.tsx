@@ -97,7 +97,7 @@ export function MapScreen({ rail = true }: { rail?: boolean }) {
     <div className="absolute inset-0">
       {STREETS}
       {MAP_PINS.map((p) => (
-        <div key={p.s.merchant.id} className="absolute" style={{ left: p.x - 22, top: p.y - 22 }}>
+        <div key={p.s.merchant.id} className="absolute" style={{ left: p.x - 17, top: p.y - 17 }}>
           <MapPin shop={p.s} selected={!!p.selected} onSelect={noop} />
         </div>
       ))}

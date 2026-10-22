@@ -13,7 +13,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pressable, StyleSheet, View } from "react-native";
-import { labelPlan, pinPriority, type PinMembership } from "../../lib/explore";
+import { labelHeight, labelPlan, labelWidth, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
 import { useTheme } from "../../theme";
 import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -32,6 +32,8 @@ async function loadStyle(mode: MapMode): Promise<maplibregl.StyleSpecification> 
 
 export interface ExploreMapHandle {
   focus: (lat: number, lng: number) => void;
+  /** Frame these points (after a filter narrows the shops). */
+  fit: (points: { lat: number; lng: number }[]) => void;
 }
 
 type Props = {
@@ -62,6 +64,14 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
 
   useImperativeHandle(ref, () => ({
     focus: (lat, lng) => map.current?.easeTo({ center: [lng, lat], zoom: Math.max(map.current.getZoom(), 15), duration: 320 }),
+    fit: (points) => {
+      const m = map.current;
+      if (!m || points.length === 0) return;
+      if (points.length === 1) return void m.easeTo({ center: [points[0]!.lng, points[0]!.lat], zoom: 16, duration: 320 });
+      const b = new maplibregl.LngLatBounds();
+      for (const p of points) b.extend([p.lng, p.lat]);
+      m.fitBounds(b, { padding: { top: 40, bottom: 40, left: 40, right: 180 }, maxZoom: 16.5, duration: 320 });
+    },
   }));
 
   // Create the map once.
@@ -131,10 +141,10 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     const pts = withCoords.map((s) => {
       const p = m.project([s.location!.lng!, s.location!.lat!]);
       const mem = memberships[s.merchant.id];
-      return { id: s.merchant.id, x: p.x, y: p.y, priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }) };
+      return { id: s.merchant.id, x: p.x, y: p.y, priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }), w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text), h: labelHeight(s.merchant.name) };
     });
     const { width, height } = m.getContainer().getBoundingClientRect();
-    setLabeled(labelPlan(pts, { avoid: [{ x1: 0, y1: 0, x2: width, y2: topInset }, { x1: 0, y1: height - bottomInset, x2: width, y2: height }] }));
+    setLabeled(labelPlan(pts, { avoid: [{ x1: 0, y1: 0, x2: width, y2: topInset }, { x1: 0, y1: height - bottomInset, x2: width, y2: height }, { x1: width - 4, y1: 0, x2: width + 400, y2: height }, { x1: width - 72, y1: height - bottomInset - 64, x2: width, y2: height }] }));
   };
   useEffect(() => {
     if (ready) plan.current();
@@ -169,7 +179,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const dot = document.createElement("div");
-        Object.assign(dot.style, { width: "16px", height: "16px", borderRadius: "8px", background: c.location, border: "3px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" });
+        Object.assign(dot.style, { width: "16px", height: "16px", borderRadius: "50%", boxSizing: "border-box", background: c.location, border: "3px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" });
         mk = new maplibregl.Marker({ element: dot }).setLngLat([p.coords.longitude, p.coords.latitude]).addTo(m);
       },
       () => undefined,

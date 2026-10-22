@@ -14,15 +14,16 @@ export function pinSubtitle(shop: networkApi.ShopListItemDto): string {
 
 /**
  * Corner-style place (foundations.md "Places are objects, not markers"): a small round white
- * bubble holding the shop's object illustration (or its logo), the name in bold black and one
- * italic grey line beside it. My shops get a small accent dot (activity). The bubble's centre is
- * the shop's location (the marker is anchored "left" with a -22px offset).
+ * bubble (34px, 22px object) holding the shop's object illustration (or its logo), the name in
+ * 13px semibold black and one 12px italic grey line beside it, 6px apart. The tap target stays 44px
+ * (invisible). My shops get a small accent dot (activity). The bubble's centre is the shop's
+ * location (the marker is anchored "left" with a -17px offset).
  * `moreCount` > 0: overlapping shops were folded into this pin; a "+N" bubble zooms in on them.
  */
 export function MapPin({ shop, selected, onSelect, showLabel = true, compact = false, moreCount = 0, onExpand }: { shop: networkApi.ShopListItemDto; selected: boolean; onSelect: () => void; showLabel?: boolean; compact?: boolean; moreCount?: number; onExpand?: () => void }) {
   const name = shop.merchant.name;
   const sub = pinSubtitle(shop);
-  const size = compact && !selected ? 36 : 44;
+  const size = compact && !selected ? 28 : 34;
   return (
     <span className="relative flex items-center">
       <button
@@ -33,13 +34,13 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         }}
         aria-pressed={selected}
         aria-label={`${name}${shop.isMember && shop.myBalance != null ? `, ${formatPoints(shop.myBalance, shop.terminology)}` : ""}${shop.hasPromo ? ", has an offer" : ""}`}
-        className="group flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
+        className="group relative flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
       >
-        <span className="flex w-11 shrink-0 justify-center">
+        <span className="relative flex w-[34px] shrink-0 justify-center after:absolute after:-inset-[5px] after:content-['']">
         <span
           className={cn(
             "relative flex shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
-            selected ? "scale-110 ring-2 ring-[#0B0B0C]" : "group-hover:scale-105",
+            selected ? "scale-[1.15] ring-2 ring-[#0B0B0C]" : "group-hover:scale-105",
           )}
           style={{ width: size, height: size }}
         >
@@ -47,15 +48,15 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
             // eslint-disable-next-line @next/next/no-img-element
             <img src={shop.merchant.logoUrl} alt="" className="size-[calc(100%-6px)] rounded-full object-cover" />
           ) : (
-            <CategoryIcon vertical={shop.merchant.vertical} size={Math.round(size * 0.62)} />
+            <CategoryIcon vertical={shop.merchant.vertical} size={Math.round(size * 0.65)} />
           )}
-          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-3 rounded-full border-2 border-[#FFFFFF] bg-accent" /> : null}
+          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-[#FFFFFF] bg-accent" /> : null}
         </span>
         </span>
         {showLabel || selected ? (
-          <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_4px_#fff,0_0_6px_#fff]">
-            <span className="w-full truncate text-[13px] font-bold leading-4 tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
-            <span className="w-full truncate text-[12px] italic leading-4 text-[#6B6B70]">{sub}</span>
+          <span className="flex max-w-[140px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_3px_#fff,0_0_5px_#fff]">
+            <span className="w-full truncate text-[13px] font-semibold leading-[15px] tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
+            <span className="w-full truncate text-[12px] italic leading-[14px] text-[#6B6B70]">{sub}</span>
           </span>
         ) : null}
       </button>
@@ -67,7 +68,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
             onExpand();
           }}
           aria-label={`${moreCount} more ${moreCount === 1 ? "shop" : "shops"} here, zoom in`}
-          className="absolute -start-2 -top-2 z-[1] inline-flex h-5 min-w-5 cursor-pointer items-center justify-center rounded-full bg-[#0B0B0C] px-1 text-[11px] font-bold tabular-nums text-[#FFFFFF] shadow-float focus-visible:focus-ring"
+          className="absolute -start-1.5 -top-1.5 z-[1] inline-flex h-4 min-w-4 cursor-pointer items-center justify-center rounded-full bg-[#0B0B0C] px-1 text-[10px] font-semibold tabular-nums text-[#FFFFFF] after:absolute after:-inset-3 after:content-[''] focus-visible:focus-ring"
         >
           +{moreCount}
         </button>
@@ -76,7 +77,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
   );
 }
 
-/** Count bubble for overlapping shops (none of them mine): a white bubble with the number. Tap zooms in. */
+/** Count bubble for overlapping shops (none of them mine): a small black capsule with the number. Tap zooms in. */
 export function MapCluster({ count, onExpand }: { count: number; onExpand: () => void }) {
   return (
     <button
@@ -86,9 +87,9 @@ export function MapCluster({ count, onExpand }: { count: number; onExpand: () =>
         onExpand();
       }}
       aria-label={`${count} shops here, zoom in`}
-      className="group flex cursor-pointer items-center focus-visible:outline-none"
+      className="group relative flex w-[34px] cursor-pointer items-center justify-center after:absolute after:-inset-[5px] after:content-[''] focus-visible:outline-none"
     >
-      <span className="display inline-flex size-11 items-center justify-center rounded-full bg-[#FFFFFF] text-[17px] tabular-nums text-[#0B0B0C] shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">
+      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border-[1.5px] border-[#FFFFFF] bg-[#0B0B0C] px-1.5 text-[12px] font-semibold tabular-nums text-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">
         {count}
       </span>
     </button>

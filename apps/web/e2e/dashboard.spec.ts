@@ -33,6 +33,16 @@ async function pineconeId(): Promise<string> {
 
 const randPhone = () => `647${String(Math.floor(2000000 + Math.random() * 7999999))}`;
 
+/** Pricing v2: paid features are hidden; a pilot override turns them on for one shop (and is removed after). */
+async function pilot(merchantId: string, keys: string[], on: boolean) {
+  const admin = await apiToken(ADMIN);
+  for (const key of keys) {
+    if (on)
+      await fetch(`${API}/v1/admin/features/${key}/overrides`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${admin}` }, body: JSON.stringify({ merchantId, enabled: true, reason: "e2e pilot" }) });
+    else await fetch(`${API}/v1/admin/features/${key}/overrides/${merchantId}`, { method: "DELETE", headers: { authorization: `Bearer ${admin}` } });
+  }
+}
+
 
 
 test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
@@ -40,13 +50,19 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await expect(page).toHaveURL(/\/m\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { level: 1, name: /Good (morning|afternoon|evening)/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Today at the counter" })).toBeVisible();
-  await expect(page.getByText("ACTIVE MEMBERS", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
+  await expect(page.getByLabel("Key numbers").getByText("Active members")).toBeVisible();
+  // Free plan: paid tools are not in the sidebar; Home carries the one quiet upsell line.
+  const nav = page.getByRole("navigation", { name: "Main" }).first();
+  for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Integrations" })).toBeVisible();
+  await expect(page.getByText("More with Plus")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
   const base = new URL(page.url()).pathname;
   await page.goto(`${base}/setup?step=profile`);
-  await expect(page.getByRole("heading", { name: "Your shop" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your shop", exact: true })).toBeVisible();
   await page.getByLabel("About your shop").fill("Small-batch coffee and fresh croissants on Roncesvalles since 2014.");
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByRole("heading", { name: "Your program" })).toBeVisible();
@@ -91,13 +107,16 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   await signIn(page, OWNER, `/m/${id}/customers`);
   await expect(page.getByRole("heading", { level: 1, name: "Customers" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Customers" }).getByRole("row").nth(1)).toBeVisible();
-  await expect(page.getByText(/Opted in to messages/)).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Filters" }).getByRole("radio", { name: "Reward ready" })).toBeVisible();
+  // Messages consent filters only appear once marketing is on (Pricing v2).
+  await expect(page.getByText(/Opted in to messages/)).toHaveCount(0);
   await page.screenshot({ path: shot("07-customers"), fullPage: true });
   await page.getByRole("table", { name: "Customers" }).getByRole("row").nth(1).click();
-  await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
-  const balanceText = await page.getByText(/^\d+ stamps?$/).first().textContent();
-  const before = Number.parseInt(balanceText ?? "0", 10);
-  await page.getByRole("button", { name: /Adjust stamps/ }).click();
+  const panel = page.getByRole("dialog", { name: "Customer" });
+  await expect(panel.getByRole("heading", { name: "Activity" })).toBeVisible();
+  await expect(page).toHaveURL(/[?&]member=/);
+  const before = Number.parseInt((await panel.getByText(/^\d+$/).first().textContent()) ?? "0", 10);
+  await panel.getByRole("button", { name: /Adjust stamps/ }).click();
   const sheet = page.getByRole("dialog", { name: "Adjust stamps" });
   await sheet.getByLabel("Amount").fill("2");
   await sheet.getByLabel("Reason").selectOption("Missed at the counter");
@@ -105,8 +124,12 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   await page.screenshot({ path: shot("08-customer-adjust"), fullPage: true });
   await sheet.getByRole("button", { name: "Save adjustment" }).click();
   await expect(page.getByText(new RegExp(`Added 2 stamps\\. New balance ${before + 2}`))).toBeVisible();
-  await expect(page.getByRole("cell", { name: /Missed at the counter/ }).first()).toBeVisible();
+  await expect(panel.getByText(/Missed at the counter/).first()).toBeVisible();
   await page.screenshot({ path: shot("09-customer-detail"), fullPage: true });
+  // The full page stays for deep links.
+  await panel.getByRole("link", { name: "Open full page" }).click();
+  await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
+  await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
 });
 
 test("owner: program editor with live preview saves", async ({ page }) => {
@@ -132,9 +155,13 @@ test("owner: program editor with live preview saves", async ({ page }) => {
   await expect(page.getByText("Program saved")).toBeVisible();
 });
 
-test("owner: create and publish a promo", async ({ page }) => {
+test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   const id = await pineconeId();
+  // Locked: the deep link shows a quiet coming-soon page, not the editor.
   await signIn(page, OWNER, `/m/${id}/promos/new`);
+  await expect(page.getByText("Coming with Plus")).toBeVisible();
+  await pilot(id, ["promos.basic", "promos.double_points"], true);
+  await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();
   await page.getByRole("button", { name: "Double points" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Double stamps on slow afternoons");
@@ -149,6 +176,7 @@ test("owner: create and publish a promo", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Double stamps on slow afternoons" })).toBeVisible();
   await expect(page.getByText("Live", { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: shot("12-promo-live"), fullPage: true });
+  await pilot(id, ["promos.basic", "promos.double_points"], false);
 });
 
 test("owner: QR kit print page", async ({ page }) => {
@@ -265,8 +293,12 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   await expect(page.getByText("Coming soon").first()).toBeVisible();
   await page.screenshot({ path: shot("26-billing"), fullPage: true });
   await page.goto(`/m/${id}/integrations`);
-  await expect(page.getByRole("heading", { name: "Square" })).toBeVisible();
+  // Google Business Profile is free; paid connectors collapse into one quiet line.
+  await expect(page.getByRole("heading", { name: "Google Business Profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Square" })).toHaveCount(0);
+  await expect(page.getByText("coming with Plus")).toBeVisible();
   await page.screenshot({ path: shot("27-integrations"), fullPage: true });
+  await pilot(id, ["marketing.email"], true);
   await page.goto(`/m/${id}/messages/new`);
   await expect(page.getByText(/Will go to \d+/)).toBeVisible();
   await page.getByLabel("Subject").fill("New pastries this week");
@@ -276,8 +308,9 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   await page.goto(`/m/${id}/reports`);
   await expect(page.getByRole("heading", { name: "Visits per day" })).toBeVisible();
   await page.screenshot({ path: shot("29-reports"), fullPage: true });
-  await page.getByRole("tab", { name: "Network" }).click();
-  await expect(page.getByText(/Also shop on your street/i)).toBeVisible();
+  // Network overlap is an advanced (paid) report: no tab while locked.
+  await expect(page.getByRole("tab", { name: "Network" })).toHaveCount(0);
+  await pilot(id, ["marketing.email"], false);
 });
 
 test("BIA tools and admin campaign report", async ({ page }) => {
@@ -302,9 +335,10 @@ test.describe("phone width", () => {
   test("owner home and counter at 390px", async ({ page }) => {
     const id = await pineconeId();
     await signIn(page, OWNER, `/m/${id}`);
-    await expect(page.getByRole("navigation", { name: "Main" }).last().getByRole("link", { name: "Counter" })).toBeVisible();
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: shot("32-mobile-home"), fullPage: true });
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Counter" })).toBeVisible();
     await page.goto(`/m/${id}/counter`);
     await expect(page.getByLabel("Phone, last 4 digits or member code")).toBeVisible();
     await page.screenshot({ path: shot("33-mobile-counter"), fullPage: true });

@@ -49,8 +49,8 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
       <NetworkMap items={items} selected={sel?.merchant.id ?? null} onSelect={setSelected} me={state.coords} onFail={onFail} fitAllSignal={fitAll} onBackgroundTap={() => setSelected(null)} />
 
       {/* Top chrome */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-2.5 px-4 pt-[max(12px,env(safe-area-inset-top))] md:px-6 md:pt-5">
-        <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] md:px-6 md:pt-5">
+        <div data-map-obstacle className="pointer-events-auto flex items-center gap-2 md:w-fit md:min-w-[560px]">
           <Link href="/" aria-label="Home" className="chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
             <LogoMark size={22} />
           </Link>
@@ -69,23 +69,26 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
             <SegmentedControl label="View" value={state.view} onChange={state.setView} options={[{ value: "map", label: "Map" }, { value: "list", label: "List" }]} floating />
           </div>
         </div>
-        <div className="pointer-events-auto">
-          <FilterRow state={state} floating />
+        <div className="pointer-events-auto flex">
+          <div data-map-obstacle className="max-w-full">
+            <FilterRow state={state} floating />
+          </div>
         </div>
         {notice ? (
-          <div className="chrome pointer-events-auto flex items-start gap-3 rounded-card px-4 py-3 text-meta text-fg md:max-w-[420px]">
+          <div data-map-obstacle className="chrome pointer-events-auto flex items-start gap-3 rounded-card px-4 py-3 text-meta text-fg md:max-w-[420px]">
             <p className="flex-1">{notice}</p>
             <button type="button" aria-label="Dismiss" onClick={onDismissNotice} className="text-fg-muted hover:text-fg">
               <X aria-hidden className="size-4" />
             </button>
           </div>
         ) : null}
-        {!located.length ? <p className="chrome pointer-events-auto w-fit rounded-full px-4 py-2 text-meta text-fg">nothing here with these filters</p> : null}
+        {!located.length ? <p data-map-obstacle className="chrome pointer-events-auto w-fit rounded-full px-4 py-2 text-meta text-fg">nothing here with these filters</p> : null}
       </div>
 
       {/* Map controls (right) */}
-      <div className={cn("pointer-events-none absolute end-4 z-[2] flex flex-col items-end gap-2.5 transition-[bottom] duration-200 ease-sheet md:end-6", sel ? "bottom-[calc(268px+env(safe-area-inset-bottom))] md:bottom-[136px]" : "bottom-[calc(124px+env(safe-area-inset-bottom))] md:bottom-[136px]")}>
-        <button type="button" aria-label="Show all shops" title="Show all shops" onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto inline-flex size-11 items-center justify-center rounded-full text-fg focus-visible:focus-ring">
+      <div data-map-obstacle className={cn("pointer-events-none absolute end-4 z-[3] flex flex-col items-end gap-2.5 transition-[bottom] duration-200 ease-sheet md:end-6", sel ? "bottom-[calc(252px+env(safe-area-inset-bottom))] md:bottom-[124px]" : "bottom-[calc(112px+env(safe-area-inset-bottom))] md:bottom-[124px]")}>
+        {/* Desktop only: on phones the List switch already gives the overview. */}
+        <button type="button" aria-label="Show all shops" title="Show all shops" onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto hidden size-10 items-center justify-center rounded-full text-fg focus-visible:focus-ring md:inline-flex">
           <Maximize2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
         </button>
         <button
@@ -93,24 +96,25 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
           aria-label={state.coords ? "Sorted by distance from you" : "Use my location"}
           title="Use my location"
           onClick={state.locate}
-          className="pointer-events-auto inline-flex size-12 items-center justify-center rounded-full bg-fg text-bg shadow-float focus-visible:focus-ring"
+          className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-fg text-bg shadow-float focus-visible:focus-ring"
         >
           {state.locating ? <Spinner className="size-5" /> : <LocateFixed aria-hidden className="size-5" strokeWidth={1.75} />}
         </button>
       </div>
 
-      {/* Category rail of objects */}
+      {/* Category rail of objects, on a soft white fade so map labels never read through the captions. */}
       {state.categories.length > 2 ? (
-        <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2] pb-[max(16px,env(safe-area-inset-bottom))] md:pb-6", sel && "max-md:hidden")}>
-          <div role="group" aria-label="Categories" className="no-scrollbar pointer-events-auto mx-auto flex w-fit max-w-full gap-1 overflow-x-auto px-3 pt-2">
+        <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2]", sel && "max-md:hidden")}>
+          <div aria-hidden className="absolute inset-x-0 bottom-0 h-[112px] bg-linear-to-t from-[#FFFFFF] from-35% via-[#FFFFFF]/80 to-[#FFFFFF]/0 dark:from-ll-map-land-dark dark:via-ll-map-land-dark/85 dark:to-transparent" />
+          <div data-map-obstacle role="group" aria-label="Categories" className="no-scrollbar pointer-events-auto relative mx-auto flex w-fit max-w-full gap-0.5 overflow-x-auto px-3 pt-2 pb-[max(22px,env(safe-area-inset-bottom))] md:pb-6">
             {state.categories.map((c) => {
               const on = state.cat === c;
               return (
-                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[58px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
-                  <span className={cn("flex size-12 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-[#0B0B0C]" : "group-hover:scale-105")}>
-                    <CategoryIcon category={c} size={30} />
+                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[54px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
+                  <span className={cn("flex size-10 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-[#0B0B0C]" : "group-hover:scale-105")}>
+                    <CategoryIcon category={c} size={24} />
                   </span>
-                  <span className={cn("display text-category-label lowercase [text-shadow:0_0_3px_#fff,0_0_6px_#fff]", on ? "text-[#0B0B0C]" : "text-[#6B6B70]")}>{categoryLabels[c]}</span>
+                  <span className={cn("display text-[12px] leading-[14px] lowercase", on ? "text-fg" : "text-fg-muted")}>{categoryLabels[c]}</span>
                 </button>
               );
             })}
@@ -129,6 +133,7 @@ function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () 
   const where = s.distanceMetres != null ? formatDistance(s.distanceMetres) : s.location?.address;
   return (
     <section
+      data-map-obstacle
       aria-live="polite"
       aria-label={s.merchant.name}
       className="absolute inset-x-0 bottom-0 z-[3] rounded-t-sheet bg-bg px-4 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] shadow-float motion-safe:animate-sheet-up md:inset-x-auto md:start-6 md:bottom-6 md:w-[380px] md:rounded-sheet md:p-5 md:motion-safe:animate-fade-in"

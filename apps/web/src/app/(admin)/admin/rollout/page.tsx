@@ -1,5 +1,5 @@
 "use client";
-import { Dot, PageHeader, Panel, Section, Segmented, StatusDot, Table, TableWrap, Td, Th } from "@/components/dashboard/kit";
+import { Dot, PageHeader, Section, Segmented, StatusDot, Table, TableWrap, Td, Th } from "@/components/dashboard/kit";
 import { Lock } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";

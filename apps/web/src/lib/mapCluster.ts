@@ -70,30 +70,54 @@ export function densestGroup<T extends { lat: number; lng: number }>(points: T[]
   return best;
 }
 
+export interface Box {
+  x1: number;
+  x2: number;
+  y1: number;
+  y2: number;
+}
+
 /**
- * Which group anchors can show their name label (to the right of the 44px bubble) without
- * overlapping another bubble or an already placed label. Anchors are taken in `groups` order
- * (clusterPins returns them by priority: selected, my shops, offers, the rest).
+ * Which group anchors show their name label (to the right of the bubble), Corner-style:
+ *  - never where it would overlap another bubble, an already placed label, or floating chrome
+ *    (`obstacles`: search capsule, filter row, rail, map buttons, in the same screen coordinates);
+ *  - at most `max` labels at once (the selected pin always gets one), taken in `rank` order
+ *    (default: `groups` order, which clusterPins returns by priority).
  */
-export function labelledAnchors(groups: PinGroup[], points: ClusterInput[], nameOf: (id: string) => string, opts: { bubble?: number; maxLabel?: number; charPx?: number } = {}): Set<string> {
-  const half = (opts.bubble ?? 44) / 2;
-  const maxLabel = opts.maxLabel ?? 150;
-  const charPx = opts.charPx ?? 7.4;
+export function labelledAnchors(
+  groups: PinGroup[],
+  points: ClusterInput[],
+  nameOf: (id: string) => string,
+  opts: { bubble?: number; gap?: number; maxLabel?: number; charPx?: number; obstacles?: Box[]; max?: number; rank?: (id: string) => number; always?: string | null } = {},
+): Set<string> {
+  const half = (opts.bubble ?? 34) / 2;
+  const gap = opts.gap ?? 6;
+  const maxLabel = opts.maxLabel ?? 140;
+  const charPx = opts.charPx ?? 7;
+  const obstacles = opts.obstacles ?? [];
+  const max = opts.max ?? Infinity;
   const at = new Map(points.map((p) => [p.id, p]));
-  type Box = { x1: number; x2: number; y1: number; y2: number };
   const hit = (a: Box, b: Box) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
   const bubbles: { id: string; box: Box }[] = groups.flatMap((g) => {
     const p = at.get(g.anchor);
     return p ? [{ id: g.anchor, box: { x1: p.x - half, x2: p.x + half, y1: p.y - half, y2: p.y + half } }] : [];
   });
+  const order = opts.rank ? [...groups].sort((a, b) => opts.rank!(a.anchor) - opts.rank!(b.anchor)) : groups;
   const placed: Box[] = [];
   const out = new Set<string>();
-  for (const g of groups) {
+  for (const g of order) {
     const p = at.get(g.anchor);
     if (!p) continue;
-    const w = Math.min(maxLabel, Math.max(nameOf(g.anchor).length, 10) * charPx) + 8;
-    const box = { x1: p.x + half, x2: p.x + half + w, y1: p.y - 17, y2: p.y + 17 };
-    if (bubbles.some((b) => b.id !== g.anchor && hit(b.box, box)) || placed.some((b) => hit(b, box))) continue;
+    const forced = g.anchor === opts.always;
+    if (!forced && out.size >= max) continue;
+    const w = Math.min(maxLabel, Math.max(nameOf(g.anchor).length, 10) * charPx) + 4;
+    const box = { x1: p.x + half + gap, x2: p.x + half + gap + w, y1: p.y - 15, y2: p.y + 15 };
+    const self = { x1: p.x - half, x2: p.x + half, y1: p.y - half, y2: p.y + half };
+    const blocked =
+      obstacles.some((o) => hit(o, box) || hit(o, self)) ||
+      bubbles.some((b) => b.id !== g.anchor && hit(b.box, box)) ||
+      placed.some((b) => hit(b, box));
+    if (blocked && !forced) continue;
     placed.push(box);
     out.add(g.anchor);
   }

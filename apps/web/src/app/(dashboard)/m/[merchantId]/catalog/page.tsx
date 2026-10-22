@@ -9,7 +9,6 @@ import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";

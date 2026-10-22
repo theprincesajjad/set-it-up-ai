@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { adminApi } from "@ll/shared";
 import { StageDialog } from "@/components/dashboard/admin/StageDialog";
 import { allowedStages, canConfirmStage, canForceOff, gaugeStatus, groupFeatures, stageEffect } from "@/lib/dashboard/rollout";
-import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
+import { PAID_FEATURES, FREE_FOREVER, type FeatureKey } from "@ll/shared";
+import { IN_PAGE_FEATURES, NAV_FEATURES, buildMerchantNav, canOpen, navUnlocked } from "@/lib/dashboard/nav";
 
 const feat = (over: Partial<adminApi.AdminFeature>): adminApi.AdminFeature => ({
   key: "orders.order_ahead", name: "Order-ahead", description: "", minPlan: "plus", phase: 2, stage: "hidden", defaultStage: "hidden", freeForever: false,
@@ -80,5 +81,25 @@ describe("merchant navigation", () => {
     expect(buildMerchantNav("/m/x", "staff", new Set(["service.tickets"])).map((n) => n.label)).toEqual(["Today", "Counter"]);
     expect(canOpen("staff", "customers")).toBe(false);
     expect(canOpen("manager", "billing")).toBe(false);
+  });
+
+  it("Pricing v2: a free shop sees only loyalty + reporting (plus settings pages) in the sidebar", () => {
+    const keys = buildMerchantNav("/m/x", "owner", new Set(FREE_FOREVER)).map((n) => n.key);
+    expect(keys).toEqual(["home", "counter", "customers", "program", "reports", "locations", "staff", "integrations", "billing", "settings"]);
+    for (const k of ["promos", "discount-cards", "messages", "orders", "tickets", "catalog", "slots", "ads", "campaigns"]) expect(keys).not.toContain(k);
+  });
+
+  it("maps every paid feature key to a nav entry or an in-page section", () => {
+    const covered = new Set<FeatureKey>([...Object.values(NAV_FEATURES).flat(), ...IN_PAGE_FEATURES]);
+    expect(PAID_FEATURES.filter((k) => !covered.has(k))).toEqual([]);
+  });
+
+  it("each paid section appears as soon as any of its keys is on", () => {
+    expect(navUnlocked("promos", new Set(["promos.double_points"]))).toBe(true);
+    expect(navUnlocked("messages", new Set(["marketing.sms"]))).toBe(true);
+    expect(navUnlocked("discount-cards", new Set(["promos.basic"]))).toBe(false);
+    expect(navUnlocked("integrations", new Set())).toBe(true);
+    const plus = buildMerchantNav("/m/x", "owner", new Set(["promos.basic", "discount_cards", "marketing.email"])).map((n) => n.key);
+    expect(plus).toEqual(expect.arrayContaining(["promos", "discount-cards", "messages"]));
   });
 });

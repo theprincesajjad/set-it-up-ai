@@ -12,7 +12,7 @@ import Constants from "expo-constants";
 import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet } from "react-native";
 import RNMapView, { Marker, type Region } from "react-native-maps";
-import { labelPlan, pinPriority, type PinMembership } from "../../lib/explore";
+import { labelHeight, labelPlan, labelWidth, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
 import { useTheme } from "../../theme";
 import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -40,6 +40,8 @@ class MapBoundary extends Component<{ onFail: () => void; children: ReactNode },
 
 export interface ExploreMapHandle {
   focus: (lat: number, lng: number) => void;
+  /** Frame these points (after a filter narrows the shops). */
+  fit: (points: { lat: number; lng: number }[]) => void;
 }
 
 export interface ExploreMapProps {
@@ -73,9 +75,10 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
           x: ((s.location!.lng! - x0) / region.longitudeDelta) * size.width,
           y: ((y0 - s.location!.lat!) / region.latitudeDelta) * size.height,
           priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }),
+          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text), h: labelHeight(s.merchant.name),
         };
       }),
-      { avoid: [{ x1: 0, y1: 0, x2: size.width, y2: topInset }, { x1: 0, y1: size.height - bottomInset, x2: size.width, y2: size.height }] },
+      { avoid: [{ x1: 0, y1: 0, x2: size.width, y2: topInset }, { x1: 0, y1: size.height - bottomInset, x2: size.width, y2: size.height }, { x1: size.width - 4, y1: 0, x2: size.width + 400, y2: size.height }, { x1: size.width - 72, y1: size.height - bottomInset - 64, x2: size.width, y2: size.height }] },
     );
   }, [withCoords, memberships, selectedId, region, size, topInset, bottomInset]);
   // Follow the centre (location / neighbourhood arriving later) until the user pans.
@@ -85,6 +88,14 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
   }, [center.lat, center.lng]);
   useImperativeHandle(ref, () => ({
     focus: (lat, lng) => map.current?.animateToRegion({ latitude: lat, longitude: lng, latitudeDelta: 0.008, longitudeDelta: 0.008 }, 320),
+    fit: (points) => {
+      if (points.length === 0) return;
+      userMoved.current = true;
+      map.current?.fitToCoordinates(
+        points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
+        { edgePadding: { top: 40, bottom: 40, left: 40, right: 180 }, animated: true },
+      );
+    },
   }));
   return (
     <MapBoundary onFail={onFail}>

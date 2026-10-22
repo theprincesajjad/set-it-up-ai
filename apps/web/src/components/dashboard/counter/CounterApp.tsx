@@ -485,9 +485,9 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
               <p id="ok-title" className="text-large-title font-display text-fg">
                 {phase.res.duplicate ? "Already added" : awardSuccess(program, phase.res.pointsEarned)}
               </p>
-              <p className="mt-2 text-title font-normal text-fg-muted">
+              <p className="mt-2 text-title font-normal text-fg tabular">
                 {phase.res.member.name ? `${firstName(phase.res.member.name)} has ` : "Balance "}
-                <span className="font-semibold text-accent-text tabular">{formatPoints(phase.res.balance, program.terminology)}</span>
+                {formatPoints(phase.res.balance, program.terminology)}
                 {phase.res.memberCreated ? " · Welcome to the program" : ""}
               </p>
               {phase.res.rewardsAvailable.length ? <p className="mt-2 text-body text-fg">Reward ready: {phase.res.rewardsAvailable.map((r) => r.name).join(", ")}</p> : phase.res.member.nextReward ? <p className="mt-2 text-body text-fg-muted">{copy.misc.stampsToGo(phase.res.member.nextReward.pointsNeeded, phase.res.member.nextReward.name)}</p> : null}

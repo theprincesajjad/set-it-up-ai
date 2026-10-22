@@ -4,6 +4,7 @@ import { Copy, KeyRound, Plus, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { integrationsApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
+import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Badge } from "@/components/ui/Badge";
@@ -35,7 +36,16 @@ function Secret({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Pricing v2: webhooks, Zapier/Make and the merchant API are Plus (integrations.webhooks). */
 export default function DevelopersPage() {
+  return (
+    <FeatureGate keys={["integrations.webhooks"]} title="Webhooks & API">
+      <Developers />
+    </FeatureGate>
+  );
+}
+
+function Developers() {
   const { api, base, role } = useMerchant();
   const toast = useToast();
   const hooks = useApi(() => api.integrations.webhooks(), [api]);
@@ -54,7 +64,7 @@ export default function DevelopersPage() {
   return (
     <div className="flex flex-col gap-6">
       <BackLink href={`${base}/integrations`}>Integrations</BackLink>
-      <PageHeader title="Webhooks & API" description="Send events to your own systems, Zapier or Make. Free." />
+      <PageHeader title="Webhooks & API" description="Send events to your own systems, Zapier or Make." />
 
       {role === "owner" ? (
         <Panel title="API key" description="For a custom POS or script: award, redeem and look up members." action={key.data?.configured ? <Badge tone="success">Active</Badge> : <Badge>Not set</Badge>}>

@@ -2,6 +2,8 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Lets parallel builds (e.g. two engineers' e2e servers) use separate output dirs: NEXT_DIST_DIR=.next-e2e.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: ["@ll/shared", "@ll/design-tokens"],
   poweredByHeader: false,

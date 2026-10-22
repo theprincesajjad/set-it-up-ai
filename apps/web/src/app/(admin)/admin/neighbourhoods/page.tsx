@@ -1,11 +1,10 @@
 "use client";
-import { PageHeader, Panel, Section, Dot } from "@/components/dashboard/kit";
+import { PageHeader, Section, Dot } from "@/components/dashboard/kit";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { DensityBar } from "@/components/dashboard/NetworkGauges";
@@ -19,7 +18,6 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type NDraft = { id?: string; slug: string; name: string; city: string; status: adminApi.AdminNeighbourhood["status"]; biaName: string; biaContactName: string; biaContactEmail: string; storefrontEstimate: string; centerLat: string; centerLng: string; notes: string };
 type PDraft = { id?: string; name: string; neighbourhoodId: string; threshold: string; windowDays: string; bonusPoints: string; description: string };
-const STATUS_TONE = { scouting: "neutral", pilot: "info", live: "success" } as const;
 
 export default function NeighbourhoodsPage() {
   const hoods = useApi(() => browserApi.admin.neighbourhoods(), []);

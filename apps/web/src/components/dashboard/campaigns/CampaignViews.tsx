@@ -8,7 +8,6 @@ import { campaignsApi, type campaignsApi as C, type networkApi } from "@ll/share
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HBarList } from "@/components/dashboard/Charts";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";

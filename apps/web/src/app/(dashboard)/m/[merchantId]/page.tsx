@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { LineChart } from "@/components/dashboard/Charts";
+import { BarChart, LineChart } from "@/components/dashboard/Charts";
 import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { Empty, Meter, PageHeader, QuietLink, Row, RowList, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -72,7 +72,12 @@ export default function HomePage() {
           />
           <div className="border-t border-line px-5 pb-5 pt-4">
             {daily.data ? (
-              <LineChart title="Visits per day" subtitle={range === "today" ? "Last 7 days" : undefined} valueLabel="Visits" data={series.map((s) => ({ label: s.date, value: s.visits }))} height={160} />
+              // Sparse daily counts read better as bars; a busy shop gets the calmer line.
+              Math.max(0, ...series.map((x) => x.visits)) <= 4 ? (
+                <BarChart title="Visits per day" subtitle={range === "today" ? "Last 7 days" : undefined} valueLabel="Visits" data={series.map((s) => ({ label: s.date, value: s.visits }))} height={160} />
+              ) : (
+                <LineChart title="Visits per day" subtitle={range === "today" ? "Last 7 days" : undefined} valueLabel="Visits" data={series.map((s) => ({ label: s.date, value: s.visits }))} height={160} />
+              )
             ) : (
               <div className="skeleton h-[200px] w-full rounded-sm" />
             )}

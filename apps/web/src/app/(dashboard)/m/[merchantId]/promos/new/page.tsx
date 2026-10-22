@@ -4,7 +4,6 @@ import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMemo } from "react";
 import { PromoEditor } from "@/components/dashboard/PromoEditor";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Button } from "@/components/ui/Button";
 import { emptyPromo } from "@/lib/dashboard/promos";
 
 /** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */

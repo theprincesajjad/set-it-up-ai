@@ -2,7 +2,7 @@ import { categoryLabels, layout, shadows } from "@ll/design-tokens";
 import type { networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../../copy/en-CA";
@@ -139,6 +139,13 @@ export default function Explore() {
     [all, category, openNow, audience, readyOnly, readySet],
   );
   const sel = visible.find((s) => s.merchant.id === selected) ?? null;
+  // A filter that narrows the shops frames what's left (rewards ready may be across the strip).
+  const filterKey = `${category}|${openNow}|${audience}|${readyOnly}`;
+  useEffect(() => {
+    if (filterKey === "all|false|all|false") return;
+    mapRef.current?.fit(visible.filter((s) => s.location?.lat != null && s.location?.lng != null).map((s) => ({ lat: s.location!.lat!, lng: s.location!.lng! })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
   const model = useShopModel(sel?.merchant.slug ?? null);
   useHideTabBar(!!sel);
   const perk = hood.data?.perks[0] ?? null;
@@ -485,11 +492,7 @@ export default function Explore() {
           containerHeight={areaH}
           onDismiss={() => setSelected(null)}
           accessibilityLabel={sel.merchant.name}
-          header={
-            <View style={styles.sheetClose}>
-              <IconButton icon={X} label="Close" variant="secondary" size={32} onPress={() => setSelected(null)} />
-            </View>
-          }
+          corner={<IconButton icon={X} label="Close shop" variant="secondary" size={32} onPress={() => setSelected(null)} />}
         >
           <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}>
             {model.shop.data ? (
@@ -529,6 +532,5 @@ const styles = StyleSheet.create({
   rail: { gap: 6, paddingHorizontal: 12, paddingBottom: 6 },
   railItem: { alignItems: "center", gap: 2, minWidth: 56, paddingTop: 2 },
   railIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  sheetClose: { position: "absolute", right: 12, top: 10, zIndex: 2 },
   listHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 0 },
 });

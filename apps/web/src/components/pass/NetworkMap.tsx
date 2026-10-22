@@ -14,7 +14,7 @@ import type { LngLatBoundsLike, Map as MlMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { networkApi } from "@ll/shared";
-import { clusterPins, densestGroup, labelledAnchors, type PinGroup } from "@/lib/mapCluster";
+import { clusterPins, densestGroup, labelledAnchors, type Box, type PinGroup } from "@/lib/mapCluster";
 import { loadCornerStyle, mapMode, webglAvailable } from "./mapStyle";
 import { MapCluster, MapPin } from "./MapPin";
 
@@ -34,9 +34,22 @@ export interface NetworkMapProps {
 
 const TORONTO: [number, number] = [-79.4, 43.66];
 /** Default room for the floating search + filters (top) and the category rail (bottom). */
-const DEFAULT_PADDING = { top: 140, bottom: 150, left: 40, right: 120 };
+const DEFAULT_PADDING = { top: 150, bottom: 170, left: 30, right: 150 };
+/** Most labelled pins at once (Corner shows a handful of names, the rest are bubbles). */
+const MAX_LABELS = 8;
+
+/** Floating chrome (anything marked data-map-obstacle) in this map's screen coordinates. */
+function chromeObstacles(root: HTMLElement | null): Box[] {
+  if (!root) return [];
+  const r0 = root.getBoundingClientRect();
+  return Array.from(document.querySelectorAll<HTMLElement>("[data-map-obstacle]")).flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return [];
+    return [{ x1: r.left - r0.left - 4, x2: r.right - r0.left + 4, y1: r.top - r0.top - 4, y2: r.bottom - r0.top + 4 }];
+  });
+}
 const DEFAULT_ZOOM = 16;
-const MIN_OPEN_ZOOM = 15.2;
+const MIN_OPEN_ZOOM = 14.6;
 type Located = networkApi.ShopListItemDto & { location: { lat: number; lng: number } };
 
 function boundsOf(ml: typeof import("maplibre-gl"), pts: { lat: number; lng: number }[]): LngLatBoundsLike {
@@ -78,10 +91,20 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
         const p = m.project([s.location.lng, s.location.lat]);
         return { id: s.merchant.id, x: p.x, y: p.y, isMember: s.isMember, hasPromo: s.hasPromo };
       });
-      const g = clusterPins(pts, { radius: 38, selected });
+      const g = clusterPins(pts, { radius: 30, selected });
       setGroups(g);
-      const names = new Map(located.map((s) => [s.merchant.id, s.merchant.name]));
-      setLabels(showLabels ? labelledAnchors(g, pts, (id) => names.get(id) ?? "") : new Set());
+      const byId = new Map(located.map((s) => [s.merchant.id, s]));
+      // Label priority: selected, my shops, open now, live offers, the rest.
+      const rank = (id: string) => {
+        const s = byId.get(id);
+        if (!s) return 9;
+        return id === selected ? 0 : s.isMember ? 1 : s.openNow ? 2 : s.hasPromo ? 3 : 4;
+      };
+      setLabels(
+        showLabels
+          ? labelledAnchors(g, pts, (id) => byId.get(id)?.merchant.name ?? "", { obstacles: chromeObstacles(box.current), max: MAX_LABELS, rank, always: selected })
+          : new Set(selected ? [selected] : []),
+      );
     };
   });
 
@@ -102,8 +125,8 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
       // The Corner basemap (cornerMapStyle on positron) is applied before the first paint: no flash of the stock style.
       const m = new ml.Map({ container: box.current, style: style as never, center: TORONTO, zoom: DEFAULT_ZOOM, attributionControl: false, dragRotate: false, pitchWithRotate: false });
       m.touchZoomRotate.disableRotation();
-      // Attribution stays (OSM/OpenMapTiles licence) as a collapsed (i) in the top-right, clear of the rail.
-      m.addControl(new ml.AttributionControl({ compact: true }), "top-right");
+      // Attribution stays (OSM/OpenMapTiles licence) as a collapsed (i) tucked bottom-left, under the rail.
+      m.addControl(new ml.AttributionControl({ compact: true }), "bottom-left");
       map.current = m;
       m.on("load", () => {
         loaded = true;
@@ -123,7 +146,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
         }
       });
       m.on("click", () => bgTap.current?.());
-      m.on("zoomend", () => {
+      m.on("moveend", () => {
         setZoom(m.getZoom());
         regroupRef.current();
       });
@@ -163,7 +186,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
       let mk = markers.current.get(s.merchant.id);
       if (!mk) {
         const el = document.createElement("div");
-        mk = new ml.Marker({ element: el, anchor: "left", offset: [-22, 0] }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m);
+        mk = new ml.Marker({ element: el, anchor: "left", offset: [-17, 0] }).setLngLat([s.location!.lng!, s.location!.lat!]).addTo(m);
         // The pin inside is the button; the marker wrapper must not be a second (nested) one.
         for (const a of ["role", "aria-label", "tabindex"]) el.removeAttribute(a);
         markers.current.set(s.merchant.id, mk);
@@ -236,7 +259,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
   }, [fitAllSignal]);
 
   return (
-    <div className="absolute inset-0 [&_.maplibregl-ctrl-top-right]:top-[112px]! md:[&_.maplibregl-ctrl-top-right]:top-[124px]!">
+    <div className="absolute inset-0 [&_.maplibregl-ctrl-bottom-left]:z-[4] [&_.maplibregl-ctrl-attrib]:m-1.5! [&_.maplibregl-ctrl-attrib]:scale-90">
       {/* Inline style: maplibre-gl.css sets .maplibregl-map { position: relative } outside Tailwind layers. */}
       <div ref={box} style={{ position: "absolute", inset: 0 }} role="region" aria-label="Map of shops" />
       {Object.entries(els).map(([id, el]) => {

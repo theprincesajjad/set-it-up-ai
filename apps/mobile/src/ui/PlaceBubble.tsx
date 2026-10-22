@@ -45,7 +45,7 @@ export function PlaceBubble({ name, subtitle, accent, vertical, category, photoU
       </View>
       {bare ? null : (
         <View style={styles.label}>
-          <Text variant="placeName" numberOfLines={1} style={[halo, { fontSize: 14, lineHeight: 17, fontWeight: "700" }]}>
+          <Text variant="placeName" numberOfLines={2} style={[halo, { fontSize: 14, lineHeight: 17, fontWeight: "700" }]}>
             {name}
           </Text>
           {subtitle ? (
@@ -62,5 +62,5 @@ export function PlaceBubble({ name, subtitle, accent, vertical, category, photoU
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   bubble: { alignItems: "center", justifyContent: "center" },
-  label: { maxWidth: 150 },
+  label: { maxWidth: 160 },
 });

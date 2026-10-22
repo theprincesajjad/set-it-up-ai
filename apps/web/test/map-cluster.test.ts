@@ -55,4 +55,18 @@ describe("labelledAnchors", () => {
     expect(out.has("b")).toBe(true);
     expect(out.has("c")).toBe(true);
   });
+
+  it("treats floating chrome as an obstacle and caps the number of labels", () => {
+    const pts = [
+      { id: "under-search", x: 40, y: 30 },
+      { id: "mine", x: 40, y: 300 },
+      { id: "x", x: 40, y: 400 },
+      { id: "y", x: 40, y: 500 },
+    ];
+    const groups = pts.map((p) => ({ anchor: p.id, members: [p.id] }));
+    const out = labelledAnchors(groups, pts, () => "Shop", { obstacles: [{ x1: 0, x2: 390, y1: 0, y2: 60 }], max: 2, rank: (id) => (id === "mine" ? 0 : 1) });
+    expect(out.has("under-search")).toBe(false);
+    expect(out.has("mine")).toBe(true);
+    expect(out.size).toBe(2);
+  });
 });

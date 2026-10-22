@@ -16,6 +16,8 @@ export interface DetentSheetProps {
   /** Drag below the lowest detent to dismiss. */
   onDismiss?: () => void;
   accessibilityLabel?: string;
+  /** Drawn on top of everything, top-right (the close button). */
+  corner?: ReactNode;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface DetentSheetProps {
  * + PanResponder, 240 ms spring (foundations § Motion), radius 24, the float
  * shadow. Drag the header; the grabber is also a button that cycles detents.
  */
-export function DetentSheet({ detents, index, onIndexChange, containerHeight, header, children, onDismiss, accessibilityLabel = "Shop" }: DetentSheetProps) {
+export function DetentSheet({ detents, index, onIndexChange, containerHeight, header, children, onDismiss, accessibilityLabel = "Shop", corner }: DetentSheetProps) {
   const { c } = useTheme();
   const maxH = detents[detents.length - 1] ?? 400;
   const offsetFor = (i: number) => maxH - (detents[Math.max(0, Math.min(detents.length - 1, i))] ?? 0);
@@ -88,12 +90,14 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
         {header}
       </View>
       <View style={{ flex: 1 }}>{children}</View>
+      {corner ? <View style={styles.corner}>{corner}</View> : null}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, overflow: "hidden" },
+  corner: { position: "absolute", top: 10, right: 12 },
   grabberHit: { alignItems: "center", justifyContent: "center", height: 22 },
   grabber: { width: layout.grabberWidth, height: layout.grabberHeight, borderRadius: 3 },
 });

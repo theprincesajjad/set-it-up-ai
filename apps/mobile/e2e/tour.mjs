@@ -51,7 +51,7 @@ async function shot(page, name, { settle = 600, fullPage = false } = {}) {
 }
 
 async function step(name, fn) {
-  if (ONLY && !name.startsWith(ONLY)) return;
+  if (ONLY && !ONLY.split(",").some((p) => name.startsWith(p))) return;
   console.log(`▸ ${name}`);
   try {
     await fn();
@@ -213,7 +213,7 @@ await step("explore-map", async () => {
   await shot(cp, "07b-explore-shop-sheet", { settle: 1400 });
   await tap(cp, "Swipe up for rewards and hours");
   await shot(cp, "07c-explore-shop-sheet-full", { settle: 1200 });
-  await cp.getByRole("button", { name: "Close", exact: true }).last().click();
+  await cp.getByRole("button", { name: "Close shop" }).click();
   await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
   await shot(cp, "07e-explore-rewards-ready", { settle: 1400 });
   await cp.getByRole("button", { name: "rewards ready", exact: true }).click();
