@@ -1,7 +1,6 @@
 /**
  * Phone ordering assistant: telephony webhook (Twilio-style) and the merchant's
  * call list with confirm / discard.
- * Docs: docs/engineering/api/phone.md (restaurant pack).
  */
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";

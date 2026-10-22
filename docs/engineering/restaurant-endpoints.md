@@ -20,3 +20,13 @@ Staff: `GET|POST :m/banquet/halls` · `GET|PATCH|DELETE :m/banquet/halls/:hallId
 `GET :m/banquet/bookings/:id` · `POST .../confirm {markDepositPaid?}` · `.../cancel` · `.../complete` · `.../deposit` · `.../catering {cateringEventId}`.
 Customer: `POST /me/banquet/holds` · `GET /me/banquet/bookings[/:id]` · `POST /me/banquet/bookings/:id/cancel`.
 Public: `GET /public/shops/:slug/banquet/halls` · `GET /public/shops/:slug/banquet/availability`.
+
+## Tiffin (restaurant.tiffin, Growth)
+Merchant `/v1/merchants/:merchantId/tiffin`: `GET|POST /plans` · `PATCH|DELETE /plans/:planId` · `GET /menus?from&to&planId` · `PUT /menus` (≤31 days, planId null = shop-wide) · `DELETE /menus/:menuId` ·
+`GET|POST /routes` · `PATCH|DELETE /routes/:routeId` · `PUT /routes/:routeId/stops {subscriptionIds}` · `POST /routes/auto-assign` ·
+`GET /subscribers?status,planId,routeId,unrouted,fulfilment,q,cursor` · `GET|PATCH /subscribers/:subId` · `POST /subscribers/:subId/{pause,resume,cancel,skips}` ·
+`GET /kitchen?date` (servings per plan, menu, delivery/pickup split, dietary notes) · `GET /manifest?date&routeId` · `POST /deliveries/status {ids,status,note}` · `GET /revenue?month=YYYY-MM`.
+Public: `GET /v1/public/shops/:slug/tiffin/plans?lang&menuDays`.
+Customer `/v1/me/tiffin`: `POST|GET /subscriptions` · `GET|PATCH /subscriptions/:subId` · `GET /upcoming?days&subscriptionId` (cutoffAt, canSkip, menu) ·
+`POST /subscriptions/:subId/skips` · `DELETE /subscriptions/:subId/skips/:date` · `POST /subscriptions/:subId/{pause,resume,cancel,retry-payment}`.
+Rules: meal day opens 08:00 Toronto, cutoff = cutoffHours before; skip credit only before cutoff; renewals create a PaymentIntent and send `renewal_due` (customer confirms).

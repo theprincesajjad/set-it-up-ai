@@ -31,7 +31,7 @@ describe("scheduling and channel choice", () => {
     const c = await customer(env, { name: "Aisha Khan" });
     await consent(shop, c.user.id);
     await env.db.update(merchants).set({ email: null }).where(eq(merchants.id, shop.merchant.id));
-    await env.db.update(users).set({ email: "aisha@example.com" }).where(eq(users.id, c.user.id));
+    await env.db.update(users).set({ email: "aisha@example.com", phone: null }).where(eq(users.id, c.user.id));
     await pickedUpOrder(shop, c.user.id);
     expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(1);
     expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(0); // idempotent

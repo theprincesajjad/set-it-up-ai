@@ -121,7 +121,7 @@ describe("preferences", () => {
     const g = await env.app.inject({ method: "GET", url: "/v1/me/notification-prefs", headers: h });
     expect(g.statusCode).toBe(200);
     const items = g.json().items as { type: string; kind: string; channels: Record<string, boolean> }[];
-    expect(items.map((i) => i.type)).toEqual(["points_earned", "reward_ready", "reward_expiring", "redeem_confirmed", "order_ready", "ticket_updated", "quote_sent", "booking_reminder", "passport_progress", "promo_nearby"]);
+    expect(items.map((i) => i.type)).toEqual(["points_earned", "reward_ready", "reward_expiring", "redeem_confirmed", "order_ready", "ticket_updated", "quote_sent", "booking_reminder", "passport_progress", "tiffin_update", "tiffin_menu", "promo_nearby"]);
     expect(items.find((i) => i.type === "points_earned")!.channels).toEqual({ push: true });
     expect(items.find((i) => i.type === "reward_ready")!.channels).toEqual({ push: true, sms: true });
     expect(items.find((i) => i.type === "promo_nearby")).toMatchObject({ kind: "marketing", channels: { push: true } });

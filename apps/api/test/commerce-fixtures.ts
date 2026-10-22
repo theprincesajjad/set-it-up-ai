@@ -29,7 +29,7 @@ export async function deliver(env: TestEnv, event: PaymentsEvent) {
   return env.app.inject({ method: "POST", url: "/v1/webhooks/stripe", headers: { "content-type": "application/json", "stripe-signature": fake(env).sign(payload) }, payload });
 }
 
-export async function call(env: TestEnv, token: string | null, method: "GET" | "POST" | "PATCH" | "DELETE", url: string, payload?: unknown, headers: Record<string, string> = {}) {
+export async function call(env: TestEnv, token: string | null, method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, payload?: unknown, headers: Record<string, string> = {}) {
   const res = await env.app.inject({
     method,
     url,

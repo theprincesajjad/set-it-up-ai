@@ -1,6 +1,5 @@
 /**
  * Review requests: public rating page by token, merchant list, stats and settings.
- * Docs: docs/engineering/api/reviews.md (restaurant pack).
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { whatsappApi } from "@ll/shared";

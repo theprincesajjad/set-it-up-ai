@@ -1,7 +1,6 @@
 /**
  * Festival campaigns: what is coming up for a shop, the full calendar with
  * templates, and "create a draft from this template".
- * Docs: docs/engineering/api/festivals.md (restaurant pack).
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { whatsappApi } from "@ll/shared";

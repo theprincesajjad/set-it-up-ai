@@ -31,7 +31,7 @@ export const TIFFIN_MEAL_HOUR = 8;
 type Unwrapped<T> = T extends z.ZodDefault<infer I> ? I : T;
 /** Like .partial(), but a field that was not sent stays undefined instead of getting its create-time default. */
 function patchOf<S extends z.ZodRawShape>(schema: z.ZodObject<S>): z.ZodObject<{ [K in keyof S]: z.ZodOptional<Unwrapped<S[K]>> }> {
-  const shape = Object.fromEntries(Object.entries(schema.shape).map(([k, v]) => [k, (v instanceof z.ZodDefault ? v.removeDefault() : (v as z.ZodType)).optional()]));
+  const shape = Object.fromEntries(Object.entries(schema.shape).map(([k, v]) => [k, ((v instanceof z.ZodDefault ? v.removeDefault() : v) as unknown as z.ZodType).optional()]));
   return z.object(shape) as never;
 }
 

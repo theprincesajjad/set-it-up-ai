@@ -1,7 +1,6 @@
 /**
  * WhatsApp: Meta webhook (verify + inbound), shop settings, consent, broadcasts,
  * and the public pay page data for WhatsApp orders.
- * Docs: docs/engineering/api/whatsapp.md (restaurant pack).
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { whatsappApi } from "@ll/shared";
