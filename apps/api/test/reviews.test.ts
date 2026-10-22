@@ -37,7 +37,7 @@ describe("scheduling and channel choice", () => {
     expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(0); // idempotent
     const [r] = await env.db.select().from(reviewRequests);
     expect(r).toMatchObject({ merchantId: shop.merchant.id, userId: c.user.id, channel: "email", sentAt: null, rating: null });
-    expect(r!.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(r!.token).toMatch(/^[A-Za-z0-9_-]{16,}$/);
 
     expect(await sendDueReviewRequests(env.ctx)).toBe(0); // too soon
     advance(SEND_DELAY_MS + 60_000);
@@ -123,7 +123,7 @@ describe("scheduling and channel choice", () => {
     const [sub] = await env.db.insert(tiffinSubscriptions).values({ merchantId: shop.merchant.id, planId: plan!.id, userId: t.user.id, startDate: "2026-11-01", priceCents: 9000 }).returning();
     await env.db.insert(tiffinDeliveries).values({ merchantId: shop.merchant.id, subscriptionId: sub!.id, date: "2026-11-03", status: "delivered", deliveredAt: env.clock.now });
     const ev = await customer(env);
-    await env.db.insert(cateringEvents).values({ merchantId: shop.merchant.id, userId: ev.user.id, number: 1, eventDate: "2026-11-01", headcount: 80, status: "completed", approvalToken: "tok1" });
+    await env.db.insert(cateringEvents).values({ merchantId: shop.merchant.id, userId: ev.user.id, number: 1, eventDate: "2026-11-01", headcount: 80, status: "completed", approvalToken: "tok1", updatedAt: env.clock.now });
     const skipped = await customer(env);
     await env.db.insert(cateringEvents).values({ merchantId: shop.merchant.id, userId: skipped.user.id, number: 2, eventDate: "2026-11-30", headcount: 20, status: "confirmed", approvalToken: "tok2" });
     expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(2);
