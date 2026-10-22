@@ -29,6 +29,13 @@
       "when": 1792623946210,
       "tag": "0003_integrations_connectors",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792628971810,
+      "tag": "0004_feature_interest",
+      "breakpoints": true
     }
   ]
 }

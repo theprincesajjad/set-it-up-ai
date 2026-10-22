@@ -522,6 +522,8 @@ export const redemptions = pgTable(
     discountCents: integer("discount_cents"),
     usedAt: ts("used_at"),
     externalRef: text("external_ref"),
+    /** App-issued codes expire if not used (a job voids them and refunds the points). Null = no expiry. */
+    expiresAt: ts("expires_at"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("redemptions_code_uq").on(t.merchantId, t.code), index("redemptions_member_idx").on(t.memberId)],
@@ -770,6 +772,18 @@ export const featureOverrides = pgTable(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.merchantId, t.key] })],
+);
+
+/** "Notify me" interest in a coming-soon (hidden/beta) feature; one row per merchant + feature. */
+export const featureInterest = pgTable(
+  "feature_interest",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    featureKey: text("feature_key").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("feature_interest_uq").on(t.merchantId, t.featureKey), index("feature_interest_key_idx").on(t.featureKey)],
 );
 
 // ---------------------------------------------------------------------------
