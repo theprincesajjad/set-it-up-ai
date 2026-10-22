@@ -4,7 +4,7 @@ import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId,
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 
-type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn">;
+type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"] };
 
 export async function getRolloutStages(db: DbOrTx): Promise<Record<FeatureKey, RolloutStage>> {
   const rows = await db.select().from(featureRollouts);
@@ -33,7 +33,7 @@ export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promi
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
     const stage = stages[key];
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, stage, betaOptIn: merchant.betaOptIn, override: ov.get(key) ?? null });
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, stage, betaOptIn: merchant.betaOptIn, override: ov.get(key) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -91,7 +91,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }

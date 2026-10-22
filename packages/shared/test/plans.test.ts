@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FEATURES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
+import { RESTAURANT_FEATURES, effectivePlan, FEATURES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
 
 describe("plans", () => {
   it("keeps the loyalty program and reporting free forever (Pricing v2)", () => {
@@ -65,11 +65,11 @@ describe("plans", () => {
     }
     // Every paid feature ships hidden; only FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
     for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe("hidden");
-    expect(FEATURE_KEYS.filter((k) => !FREE_FOREVER.includes(k) && !PAID_FEATURES.includes(k)).sort()).toEqual(
+    expect(FEATURE_KEYS.filter((k) => !FREE_FOREVER.includes(k) && !PAID_FEATURES.includes(k) && !RESTAURANT_FEATURES.includes(k)).sort()).toEqual(
       ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "campaigns.neighbourhood", "network.perks"].sort(),
     );
     expect(PLANS.plus.priceCents).toBe(3900);
-    expect(PLANS.pro.priceCents).toBe(7900);
+    expect(PLANS.pro.priceCents).toBe(9900);
   });
   it("treats network perks as a platform lever, not a merchant feature", () => {
     expect(FEATURES["network.perks"].platform).toBe(true);
@@ -106,5 +106,22 @@ describe("points", () => {
   it("normalizes phones", () => {
     expect(normalizePhone("(416) 555-0100")).toBe("+14165550100");
     expect(normalizePhone("12")).toBeNull();
+  });
+});
+
+describe("restaurant pack", () => {
+  it("gates restaurant features by tier, not plan, and includes Café & Retail", () => {
+    expect(isFeatureEnabled("restaurant.tiffin", { plan: "pro", stage: "ga" })).toBe(false);
+    expect(isFeatureEnabled("restaurant.tiffin", { plan: "free", stage: "ga", restaurantTier: "starter" })).toBe(false);
+    expect(isFeatureEnabled("restaurant.tiffin", { plan: "free", stage: "ga", restaurantTier: "growth" })).toBe(true);
+    expect(isFeatureEnabled("restaurant.kds", { plan: "free", stage: "ga", restaurantTier: "growth" })).toBe(false);
+    expect(isFeatureEnabled("restaurant.kds", { plan: "free", stage: "ga", restaurantTier: "pro" })).toBe(true);
+    expect(isFeatureEnabled("orders.order_ahead", { plan: "free", stage: "ga", restaurantTier: "starter" })).toBe(true);
+    expect(effectivePlan("free", "starter")).toBe("plus");
+    expect(effectivePlan("pro", "starter")).toBe("pro");
+    for (const k of RESTAURANT_FEATURES) expect(FEATURES[k].defaultStage).toBe("ga");
+  });
+  it("does not make Plus purchasable just because restaurant features are live", () => {
+    expect(isPlanAvailable("plus", {})).toBe(false);
   });
 });

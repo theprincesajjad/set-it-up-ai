@@ -50,18 +50,18 @@ export const PLANS: Record<PlanId, Plan> = {
   },
   plus: {
     id: "plus",
-    name: "Plus",
+    name: "Café & Retail",
     priceCents: 3900,
     annualPriceCents: 39000,
     blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks and order-ahead.",
-    bestFor: ["Cafés", "Restaurants", "Bakeries", "Retail"],
+    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers"],
     smsPerMonth: 500,
   },
   pro: {
     id: "pro",
-    name: "Pro",
-    priceCents: 7900,
-    annualPriceCents: 79000,
+    name: "Service",
+    priceCents: 9900,
+    annualPriceCents: 99000,
     blurb: "Everything in Plus, plus service tickets, quote approvals, deposits, invoices and scheduling.",
     bestFor: ["Repair", "Auto", "Alterations", "Print shops"],
     smsPerMonth: 1500,
@@ -70,6 +70,57 @@ export const PLANS: Record<PlanId, Plan> = {
 
 /** Platform fee on payments processed in-app (basis points). Free plan has no payments. */
 export const PLATFORM_PAYMENT_FEE_BPS = 75;
+
+// ---------------------------------------------------------------------------
+// Restaurant pack (docs/business/combined-strategy.md): a separate ladder for
+// restaurants. Any tier includes Café & Retail; Growth adds tiffin, catering,
+// pot pre-orders, festival campaigns and WhatsApp; Pro adds banquet, kitchen
+// display, multilingual staff screens and the rest.
+// ---------------------------------------------------------------------------
+export const RESTAURANT_TIERS = ["starter", "growth", "pro"] as const;
+export type RestaurantTier = (typeof RESTAURANT_TIERS)[number];
+export const RESTAURANT_TIER_RANK: Record<RestaurantTier, number> = { starter: 0, growth: 1, pro: 2 };
+
+export interface RestaurantPlan {
+  tier: RestaurantTier;
+  name: string;
+  priceCents: number;
+  annualPriceCents: number;
+  blurb: string;
+  whatsappPerMonth: number;
+}
+
+export const RESTAURANT_PLANS: Record<RestaurantTier, RestaurantPlan> = {
+  starter: { tier: "starter", name: "Restaurant Starter", priceCents: 9900, annualPriceCents: 99000, blurb: "Commission-free ordering, your own ordering page, halal and dietary tags, WhatsApp order updates and review requests.", whatsappPerMonth: 0 },
+  growth: { tier: "growth", name: "Restaurant Growth", priceCents: 19900, annualPriceCents: 199000, blurb: "Everything in Starter plus tiffin subscriptions, catering, biryani pot pre-orders, festival campaigns and WhatsApp ordering and marketing.", whatsappPerMonth: 1000 },
+  pro: { tier: "pro", name: "Restaurant Pro", priceCents: 34900, annualPriceCents: 349000, blurb: "Everything in Growth plus banquet booking, kitchen display, staff screens in your team's language, cash discount pricing, split bills and analytics.", whatsappPerMonth: 3000 },
+};
+
+/** Founding offer: first 20 restaurants per corridor, 50% off for 12 months, then 25% off for life. */
+export const FOUNDING_OFFER = { firstYearPct: 50, lifetimePct: 25, slotsPerCorridor: 20 } as const;
+
+export const ADD_ON_IDS = ["whatsapp_1000", "extra_location", "banquet_module", "phone_ai"] as const;
+export type AddOnId = (typeof ADD_ON_IDS)[number];
+export const ADD_ONS: Record<AddOnId, { id: AddOnId; name: string; priceCents: number; unit: "month" | "pack" }> = {
+  whatsapp_1000: { id: "whatsapp_1000", name: "1,000 WhatsApp messages", priceCents: 4900, unit: "pack" },
+  extra_location: { id: "extra_location", name: "Extra restaurant location", priceCents: 4900, unit: "month" },
+  banquet_module: { id: "banquet_module", name: "Banquet module (Growth)", priceCents: 9900, unit: "month" },
+  phone_ai: { id: "phone_ai", name: "Phone ordering assistant", priceCents: 7900, unit: "month" },
+};
+
+/**
+ * Platform fees on payments (combined strategy). Orders: 0% for shops on a
+ * paid plan or restaurant pack ("commission-free"), 1.5% for Free shops, plus
+ * an optional $0.49 customer service fee. Deposits, invoices and tiffin billing: 1%.
+ * Card processing (Stripe) is passed through at cost on top.
+ */
+export const FEES = {
+  orderBpsFree: 150,
+  orderBpsPaid: 0,
+  customerServiceFeeCents: 49,
+  depositInvoiceBps: 100,
+  tiffinBps: 100,
+} as const;
 
 export const ROLLOUT_STAGES = ["hidden", "beta", "ga"] as const;
 export type RolloutStage = (typeof ROLLOUT_STAGES)[number];
@@ -91,6 +142,9 @@ export interface FeatureDef {
   unlockAtMerchants: number;
   /** Which "phase" of the roadmap introduces it. */
   phase: 1 | 2 | 3;
+  /** Restaurant pack features: enabled by the merchant's restaurant tier, not by plan. */
+  pack?: "restaurant";
+  packTier?: RestaurantTier;
   /**
    * Platform lever (e.g. network perks): configured by admins/BIAs and applied
    * network-wide regardless of a merchant's plan. Not a merchant plan feature,
@@ -144,6 +198,26 @@ export const FEATURE_KEYS = [
   "service.invoices",
   "booking.dropoff_scheduling",
   "staff.permissions",
+  // ---- Restaurant pack (Starter / Growth / Pro), sold separately from Plus/Pro ----
+  "restaurant.commission_free",
+  "restaurant.website",
+  "restaurant.dietary_tags",
+  "restaurant.multilingual_menu",
+  "restaurant.whatsapp_notifications",
+  "restaurant.reviews",
+  "restaurant.tiffin",
+  "restaurant.catering",
+  "restaurant.degh_preorders",
+  "restaurant.festival_campaigns",
+  "restaurant.whatsapp_ordering",
+  "restaurant.whatsapp_marketing",
+  "restaurant.banquet",
+  "restaurant.kds",
+  "restaurant.multilingual_staff",
+  "restaurant.dual_pricing",
+  "restaurant.split_bills",
+  "restaurant.phone_ai",
+  "restaurant.analytics",
   // ---- Network monetization (Phase 3, merchant self-serve, paid per campaign) ----
   "ads.sponsored_listing",
   "ads.sponsored_promo",
@@ -167,6 +241,19 @@ const f = (
   phase,
   unlockAtMerchants,
   defaultStage: minPlan === "free" && phase === 1 ? "ga" : "hidden",
+});
+
+/** Restaurant pack feature: ships "ga" (only reachable by buying the pack). */
+const r = (key: FeatureKey, name: string, description: string, packTier: RestaurantTier): FeatureDef => ({
+  key,
+  name,
+  description,
+  minPlan: "plus",
+  phase: 2,
+  unlockAtMerchants: 0,
+  defaultStage: "ga",
+  pack: "restaurant",
+  packTier,
 });
 
 export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
@@ -216,6 +303,25 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("booking.dropoff_scheduling", "Drop-off scheduling", "Slots and reminders for drop-offs.", "pro", 2, 40),
     f("staff.permissions", "Staff permissions", "Granular roles per staff member.", "pro", 2, 40),
     // ---- Phase 3: paid per campaign ----
+    r("restaurant.commission_free", "Commission-free ordering", "0% platform commission on online orders.", "starter"),
+    r("restaurant.website", "Branded ordering site", "Your own menu and ordering page with your name on it.", "starter"),
+    r("restaurant.dietary_tags", "Halal & dietary tags", "Zabihah halal, halal, vegetarian, vegan, Jain and spice level per item, filterable.", "starter"),
+    r("restaurant.multilingual_menu", "Multilingual menu", "Menu in English, Hindi, Urdu and Punjabi.", "starter"),
+    r("restaurant.whatsapp_notifications", "WhatsApp order updates", "Order confirmations and 'ready' messages on WhatsApp.", "starter"),
+    r("restaurant.reviews", "Review requests", "Ask happy customers for a Google review after pickup.", "starter"),
+    r("restaurant.tiffin", "Tiffin subscriptions", "Weekly and monthly meal plans with skip, pause, family plans, routes and automatic billing.", "growth"),
+    r("restaurant.catering", "Catering & events", "Per-head quotes, deposits, tasting appointments and event timelines.", "growth"),
+    r("restaurant.degh_preorders", "Biryani pot pre-orders", "Reserve full pots for Friday and Sunday with deposits and cut-offs.", "growth"),
+    r("restaurant.festival_campaigns", "Festival campaigns", "Ramadan, Eid, Diwali, Vaisakhi and Navratri campaigns ready to send.", "growth"),
+    r("restaurant.whatsapp_ordering", "WhatsApp ordering", "Customers order in WhatsApp and pay by secure link.", "growth"),
+    r("restaurant.whatsapp_marketing", "WhatsApp marketing", "Send campaigns to opted-in customers on WhatsApp.", "growth"),
+    r("restaurant.banquet", "Banquet hall booking", "Hall calendar, packages and deposits for parties and weddings.", "pro"),
+    r("restaurant.kds", "Kitchen display", "Tickets on a kitchen screen by station, in each cook's language.", "pro"),
+    r("restaurant.multilingual_staff", "Multilingual staff app", "Counter and kitchen screens in Hindi, Urdu and Punjabi.", "pro"),
+    r("restaurant.dual_pricing", "Cash discount pricing", "Show a cash price and a card price (not in Quebec).", "pro"),
+    r("restaurant.split_bills", "Split bills", "Split large family bills by item or evenly.", "pro"),
+    r("restaurant.phone_ai", "Phone ordering assistant", "Takes phone orders in Urdu, Hindi, Punjabi and English.", "pro"),
+    r("restaurant.analytics", "Restaurant analytics", "Dish, tiffin and catering performance.", "pro"),
     f("ads.sponsored_listing", "Sponsored listing", "Top of the neighbourhood feed and search.", "free", 3, 300),
     f("ads.sponsored_promo", "Sponsored promo", "Boost a promo across the network.", "free", 3, 300),
     f("ads.map_pin", "Featured map pin", "Highlighted pin on the network map.", "free", 3, 300),
@@ -232,8 +338,11 @@ export const FREE_FOREVER: readonly FeatureKey[] = FEATURE_KEYS.filter(
   (k) => FEATURES[k].minPlan === "free" && FEATURES[k].phase === 1 && !FEATURES[k].platform,
 );
 
-/** Paid plan features (Plus or Pro), in display order. */
-export const PAID_FEATURES: readonly FeatureKey[] = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan !== "free");
+/** Paid plan features (Plus or Pro), in display order. Restaurant pack features are listed separately. */
+export const PAID_FEATURES: readonly FeatureKey[] = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan !== "free" && !FEATURES[k].pack);
+
+/** Restaurant pack features, in display order. */
+export const RESTAURANT_FEATURES: readonly FeatureKey[] = FEATURE_KEYS.filter((k) => FEATURES[k].pack === "restaurant");
 
 export interface FeatureContext {
   plan: PlanId;
@@ -243,6 +352,8 @@ export interface FeatureContext {
   betaOptIn?: boolean;
   /** Explicit per-merchant override (admin grant), wins over everything except hidden-free. */
   override?: boolean | null;
+  /** The merchant's restaurant pack tier, if they bought it. */
+  restaurantTier?: RestaurantTier | null;
 }
 
 /**
@@ -256,9 +367,16 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (ctx.override === true) return true;
   if (ctx.override === false) return false;
   if (ctx.stage === "hidden") return false;
-  if (PLAN_RANK[ctx.plan] < PLAN_RANK[def.minPlan]) return false;
+  if (def.pack === "restaurant") {
+    if (!ctx.restaurantTier || RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!]) return false;
+  } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan]) return false;
   if (ctx.stage === "beta") return ctx.betaOptIn === true;
   return true;
+}
+
+/** Any restaurant tier includes everything in Café & Retail (ordering, promos, marketing, POS sync). */
+export function effectivePlan(plan: PlanId, restaurantTier?: RestaurantTier | null): PlanId {
+  return restaurantTier && PLAN_RANK[plan] < PLAN_RANK.plus ? "plus" : plan;
 }
 
 /** Is the paid plan itself purchasable yet? True once any feature on it is GA. */
@@ -268,6 +386,6 @@ export function isPlanAvailable(
 ): boolean {
   if (plan === "free") return true;
   return FEATURE_KEYS.some(
-    (k) => FEATURES[k].minPlan === plan && (stages[k] ?? FEATURES[k].defaultStage) !== "hidden",
+    (k) => FEATURES[k].minPlan === plan && !FEATURES[k].pack && (stages[k] ?? FEATURES[k].defaultStage) !== "hidden",
   );
 }

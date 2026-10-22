@@ -74,9 +74,11 @@ export const integrationProvider = pgEnum("integration_provider", [
   "google_business",
   "mailchimp",
   "webhook",
+  "whatsapp",
 ]);
 export const integrationStatus = pgEnum("integration_status", ["pending", "connected", "error", "disconnected"]);
 export const messageChannel = pgEnum("message_channel", ["sms", "email", "push"]);
+export const restaurantTier = pgEnum("restaurant_tier", ["starter", "growth", "pro"]);
 export const messageStatus = pgEnum("message_status", ["draft", "scheduled", "sending", "sent", "failed", "cancelled"]);
 export const orderStatus = pgEnum("order_status", ["pending", "accepted", "preparing", "ready", "picked_up", "cancelled", "refunded"]);
 export const paymentStatus = pgEnum("payment_status", ["unpaid", "requires_action", "authorized", "paid", "refunded", "failed"]);
@@ -227,6 +229,22 @@ export const merchants = pgTable(
     onboardingStep: text("onboarding_step").notNull().default("profile"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeAccountId: text("stripe_account_id"), // Stripe Connect (payments, Plus/Pro)
+    /** Restaurant pack tier (null = not a restaurant pack customer). */
+    restaurantTier: restaurantTier("restaurant_tier"),
+    /** Founding-restaurant offer (50% off year 1, 25% for life). */
+    foundingOffer: boolean("founding_offer").notNull().default(false),
+    /** Languages the shop's menu and staff screens are offered in (BCP-47: en, hi, ur, pa). */
+    languages: jsonb("languages").$type<string[]>().notNull().default(["en"]),
+    /** Cash discount (dual pricing) in basis points off the card price; 0 = off. Not allowed in Quebec. */
+    cashDiscountBps: integer("cash_discount_bps").notNull().default(0),
+    /** Stripe Connect charge mode: destination (platform account) or direct (merchant is merchant of record). */
+    chargeMode: text("charge_mode").notNull().default("destination"),
+    /** WhatsApp Business phone number (E.164) connected for this shop. */
+    whatsappNumber: text("whatsapp_number"),
+    whatsappCreditsUsed: integer("whatsapp_credits_used").notNull().default(0),
+    whatsappCreditsExtra: integer("whatsapp_credits_extra").notNull().default(0),
+    /** Google review link for review requests. */
+    googleReviewUrl: text("google_review_url"),
     /** Stripe Connect account state, synced from account.updated webhooks. */
     stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
@@ -276,6 +294,10 @@ export const merchantStaff = pgTable(
     pinHash: text("pin_hash"),
     /** Granular permissions (Pro). Null = role defaults. */
     permissions: jsonb("permissions").$type<string[]>(),
+    /** Staff app / kitchen ticket language (en, hi, ur, pa). */
+    locale: text("locale").notNull().default("en"),
+    /** Kitchen station this person works (KDS filter), e.g. "tandoor", "curry", "chai". */
+    station: text("station"),
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.merchantId, t.userId] })],
@@ -784,6 +806,8 @@ export const subscriptions = pgTable(
     id: id(),
     merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
     plan: planId("plan").notNull(),
+    /** Set when this subscription is for the restaurant pack. */
+    restaurantTier: restaurantTier("restaurant_tier"),
     status: subscriptionStatus("status").notNull(),
     interval: text("interval").notNull().default("month"),
     stripeSubscriptionId: text("stripe_subscription_id"),
@@ -943,6 +967,19 @@ export const catalogItems = pgTable(
     orderable: boolean("orderable").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
     externalIds: jsonb("external_ids").$type<Record<string, string>>().notNull().default({}),
+    /** Halal / dietary attributes (restaurant pack). */
+    dietary: jsonb("dietary").$type<DietaryTags>().notNull().default({}),
+    /** { hi: { name, description }, ur: {...}, pa: {...} } */
+    translations: jsonb("translations").$type<Translations>().notNull().default({}),
+    /** Only orderable as a pre-order (biryani pots / degh, trays). */
+    preorderOnly: boolean("preorder_only").notNull().default(false),
+    leadTimeHours: integer("lead_time_hours").notNull().default(0),
+    /** How many people it serves (pots, trays, catering). */
+    serves: integer("serves"),
+    /** Kitchen station for KDS routing. */
+    station: text("station"),
+    /** Deposit required for pre-orders, basis points of the item price. */
+    depositBps: integer("deposit_bps").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [index("catalog_items_merchant_idx").on(t.merchantId)],
@@ -977,6 +1014,17 @@ export const orders = pgTable(
     idempotencyKey: text("idempotency_key"),
     paidAt: ts("paid_at"),
     cancelReason: text("cancel_reason"),
+    /** pickup | preorder (degh pots) | tiffin | catering | banquet */
+    kind: text("kind").notNull().default("pickup"),
+    /** app | web | whatsapp | phone | counter */
+    channel: text("channel").notNull().default("app"),
+    depositCents: integer("deposit_cents").notNull().default(0),
+    depositPaidAt: ts("deposit_paid_at"),
+    customerFeeCents: integer("customer_fee_cents").notNull().default(0),
+    cashDiscountCents: integer("cash_discount_cents").notNull().default(0),
+    /** Kitchen display: when the ticket was fired / bumped. */
+    firedAt: ts("fired_at"),
+    bumpedAt: ts("bumped_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -997,6 +1045,10 @@ export const orderItems = pgTable("order_items", {
   unitPriceCents: integer("unit_price_cents").notNull(),
   modifiers: jsonb("modifiers").$type<{ name: string; option: string; priceCents: number }[]>().notNull().default([]),
   categoryId: uuid("category_id"),
+  station: text("station"),
+  /** KDS: queued | cooking | ready */
+  kitchenStatus: text("kitchen_status").notNull().default("queued"),
+  notes: text("notes"),
 });
 
 // ---------------------------------------------------------------------------
@@ -1040,6 +1092,9 @@ export const ticketEvents = pgTable(
   (t) => [index("ticket_events_ticket_idx").on(t.ticketId)],
 );
 
+export type DietaryTags = { halal?: boolean; zabihah?: boolean; vegetarian?: boolean; vegan?: boolean; jain?: boolean; glutenFree?: boolean; spice?: 0 | 1 | 2 | 3; allergens?: string[]; halalCertifier?: string };
+export type Translations = Record<string, { name?: string; description?: string }>;
+
 export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null };
 
 export const quotes = pgTable(
@@ -1079,6 +1134,8 @@ export const invoices = pgTable(
     merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
     userId: uuid("user_id").notNull().references(() => users.id),
     ticketId: uuid("ticket_id").references(() => serviceTickets.id),
+    cateringEventId: uuid("catering_event_id"),
+    hallBookingId: uuid("hall_booking_id"),
     number: integer("number").notNull(),
     lineItems: jsonb("line_items").$type<LineItem[]>().notNull(),
     subtotalCents: integer("subtotal_cents").notNull(),
@@ -1257,4 +1314,333 @@ export const auditLogs = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("audit_logs_merchant_idx").on(t.merchantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Restaurant pack: tiffin, catering, banquet, WhatsApp, reviews, phone, splits
+// ---------------------------------------------------------------------------
+export const tiffinPlans = pgTable(
+  "tiffin_plans",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    translations: jsonb("translations").$type<Translations>().notNull().default({}),
+    /** weekly | monthly */
+    cadence: text("cadence").notNull().default("monthly"),
+    /** Delivery/pickup days, 0=Sun..6=Sat. */
+    daysOfWeek: jsonb("days_of_week").$type<number[]>().notNull().default([1, 2, 3, 4, 5]),
+    mealsPerDay: integer("meals_per_day").notNull().default(1),
+    /** Price per cadence period for one serving, cents. */
+    priceCents: integer("price_cents").notNull(),
+    /** Extra servings (family plans) cost this much each per period. */
+    extraServingCents: integer("extra_serving_cents").notNull().default(0),
+    maxServings: integer("max_servings").notNull().default(6),
+    dietary: jsonb("dietary").$type<DietaryTags>().notNull().default({}),
+    deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
+    pickupAllowed: boolean("pickup_allowed").notNull().default(true),
+    deliveryAllowed: boolean("delivery_allowed").notNull().default(true),
+    /** Skips/pauses must be made this many hours before the meal day. */
+    cutoffHours: integer("cutoff_hours").notNull().default(24),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("tiffin_plans_merchant_idx").on(t.merchantId)],
+);
+
+export const tiffinRoutes = pgTable("tiffin_routes", {
+  id: id(),
+  merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  driverName: text("driver_name"),
+  driverPhone: text("driver_phone"),
+  /** Postal-code prefixes this route covers, e.g. ["L4T", "L4W"]. */
+  areas: jsonb("areas").$type<string[]>().notNull().default([]),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: createdAt(),
+});
+
+export const tiffinSubscriptions = pgTable(
+  "tiffin_subscriptions",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id").notNull().references(() => tiffinPlans.id),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    /** pending (awaiting first payment) | active | paused | past_due | cancelled */
+    status: text("status").notNull().default("pending"),
+    servings: integer("servings").notNull().default(1),
+    /** delivery | pickup */
+    fulfilment: text("fulfilment").notNull().default("delivery"),
+    address: text("address"),
+    addressNotes: text("address_notes"),
+    postalCode: text("postal_code"),
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
+    routeId: uuid("route_id").references(() => tiffinRoutes.id),
+    stopOrder: integer("stop_order"),
+    dietaryNotes: text("dietary_notes"),
+    startDate: date("start_date").notNull(),
+    pausedUntil: date("paused_until"),
+    currentPeriodStart: date("current_period_start"),
+    currentPeriodEnd: date("current_period_end"),
+    nextBillingDate: date("next_billing_date"),
+    /** Price per period for this subscription (plan price + extra servings + delivery), cents. */
+    priceCents: integer("price_cents").notNull(),
+    /** card | pad (pre-authorized debit) */
+    paymentMethod: text("payment_method").notNull().default("card"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeCustomerId: text("stripe_customer_id"),
+    cancelledAt: ts("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("tiffin_subs_merchant_idx").on(t.merchantId, t.status), index("tiffin_subs_user_idx").on(t.userId)],
+);
+
+export const tiffinMenus = pgTable(
+  "tiffin_menus",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id").references(() => tiffinPlans.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    items: jsonb("items").$type<{ name: string; description?: string; dietary?: DietaryTags }[]>().notNull().default([]),
+    notes: text("notes"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("tiffin_menus_uq").on(t.merchantId, t.planId, t.date)],
+);
+
+export const tiffinSkips = pgTable(
+  "tiffin_skips",
+  {
+    subscriptionId: uuid("subscription_id").notNull().references(() => tiffinSubscriptions.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.subscriptionId, t.date] })],
+);
+
+export const tiffinDeliveries = pgTable(
+  "tiffin_deliveries",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    subscriptionId: uuid("subscription_id").notNull().references(() => tiffinSubscriptions.id, { onDelete: "cascade" }),
+    routeId: uuid("route_id").references(() => tiffinRoutes.id),
+    date: date("date").notNull(),
+    servings: integer("servings").notNull().default(1),
+    /** scheduled | skipped | out_for_delivery | delivered | picked_up | missed */
+    status: text("status").notNull().default("scheduled"),
+    stopOrder: integer("stop_order"),
+    deliveredAt: ts("delivered_at"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("tiffin_deliveries_uq").on(t.subscriptionId, t.date), index("tiffin_deliveries_day_idx").on(t.merchantId, t.date)],
+);
+
+export const tiffinCharges = pgTable(
+  "tiffin_charges",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    subscriptionId: uuid("subscription_id").notNull().references(() => tiffinSubscriptions.id, { onDelete: "cascade" }),
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    /** Credit for skipped meals applied to this charge. */
+    creditCents: integer("credit_cents").notNull().default(0),
+    platformFeeCents: integer("platform_fee_cents").notNull().default(0),
+    /** pending | paid | failed | refunded */
+    status: text("status").notNull().default("pending"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeInvoiceId: text("stripe_invoice_id"),
+    paidAt: ts("paid_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("tiffin_charges_period_uq").on(t.subscriptionId, t.periodStart)],
+);
+
+export const cateringEvents = pgTable(
+  "catering_events",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    number: integer("number").notNull(),
+    /** wedding | walima | mehndi | engagement | birthday | aqiqah | corporate | religious | other */
+    eventType: text("event_type").notNull().default("other"),
+    eventDate: date("event_date").notNull(),
+    startTime: text("start_time"),
+    headcount: integer("headcount").notNull(),
+    venueName: text("venue_name"),
+    venueAddress: text("venue_address"),
+    /** delivery | pickup | onsite (staffed) | banquet (our hall) */
+    service: text("service").notNull().default("delivery"),
+    /** inquiry | tasting | quoted | confirmed | completed | cancelled */
+    status: text("status").notNull().default("inquiry"),
+    menu: jsonb("menu").$type<{ catalogItemId?: string; name: string; perHeadCents?: number; quantity?: number; unitPriceCents?: number }[]>().notNull().default([]),
+    perHeadCents: integer("per_head_cents").notNull().default(0),
+    lineItems: jsonb("line_items").$type<LineItem[]>().notNull().default([]),
+    subtotalCents: integer("subtotal_cents").notNull().default(0),
+    taxCents: integer("tax_cents").notNull().default(0),
+    totalCents: integer("total_cents").notNull().default(0),
+    depositBps: integer("deposit_bps").notNull().default(3000),
+    depositCents: integer("deposit_cents").notNull().default(0),
+    dietaryNotes: text("dietary_notes"),
+    notes: text("notes"),
+    tastingAt: ts("tasting_at"),
+    approvalToken: text("approval_token").notNull(),
+    quoteSentAt: ts("quote_sent_at"),
+    approvedAt: ts("approved_at"),
+    signatureName: text("signature_name"),
+    signatureIp: text("signature_ip"),
+    signatureUserAgent: text("signature_user_agent"),
+    depositPaymentIntentId: text("deposit_payment_intent_id"),
+    depositPaidAt: ts("deposit_paid_at"),
+    invoiceId: uuid("invoice_id"),
+    hallBookingId: uuid("hall_booking_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("catering_events_token_uq").on(t.approvalToken), index("catering_events_merchant_idx").on(t.merchantId, t.eventDate)],
+);
+
+export const halls = pgTable("halls", {
+  id: id(),
+  merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  capacity: integer("capacity").notNull(),
+  description: text("description"),
+  /** Room hire per booking, cents. */
+  baseCents: integer("base_cents").notNull().default(0),
+  /** [{ name, perHeadCents, includes: string[] }] */
+  packages: jsonb("packages").$type<{ name: string; perHeadCents: number; includes: string[] }[]>().notNull().default([]),
+  depositBps: integer("deposit_bps").notNull().default(2500),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const hallBookings = pgTable(
+  "hall_bookings",
+  {
+    id: id(),
+    hallId: uuid("hall_id").notNull().references(() => halls.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    eventType: text("event_type").notNull().default("other"),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    headcount: integer("headcount").notNull(),
+    packageName: text("package_name"),
+    /** hold | confirmed | cancelled | completed */
+    status: text("status").notNull().default("hold"),
+    holdExpiresAt: ts("hold_expires_at"),
+    totalCents: integer("total_cents").notNull().default(0),
+    depositCents: integer("deposit_cents").notNull().default(0),
+    depositPaymentIntentId: text("deposit_payment_intent_id"),
+    depositPaidAt: ts("deposit_paid_at"),
+    cateringEventId: uuid("catering_event_id"),
+    notes: text("notes"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("hall_bookings_hall_idx").on(t.hallId, t.startsAt)],
+);
+
+export const whatsappSessions = pgTable(
+  "whatsapp_sessions",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    phone: text("phone").notNull(),
+    userId: uuid("user_id").references(() => users.id),
+    /** browsing | cart | checkout | awaiting_payment | done */
+    state: text("state").notNull().default("browsing"),
+    language: text("language").notNull().default("en"),
+    cart: jsonb("cart").$type<{ catalogItemId: string; quantity: number }[]>().notNull().default([]),
+    orderId: uuid("order_id"),
+    /** WhatsApp customer-service window: free-form replies allowed for 24h after this. */
+    lastInboundAt: ts("last_inbound_at"),
+    marketingOptInAt: ts("marketing_opt_in_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("whatsapp_sessions_uq").on(t.merchantId, t.phone)],
+);
+
+export const reviewRequests = pgTable(
+  "review_requests",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    orderId: uuid("order_id"),
+    /** sms | email | push | whatsapp */
+    channel: text("channel").notNull(),
+    token: text("token").notNull(),
+    /** Private 1–5 rating from our page; 4–5 are sent on to Google. */
+    rating: integer("rating"),
+    feedback: text("feedback"),
+    sentAt: ts("sent_at"),
+    clickedAt: ts("clicked_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("review_requests_token_uq").on(t.token), index("review_requests_merchant_idx").on(t.merchantId)],
+);
+
+export const phoneCalls = pgTable(
+  "phone_calls",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    fromPhone: text("from_phone").notNull(),
+    language: text("language"),
+    transcript: text("transcript"),
+    draftOrder: jsonb("draft_order").$type<{ items: { catalogItemId?: string; name: string; quantity: number }[]; pickupAt?: string; notes?: string }>(),
+    orderId: uuid("order_id"),
+    /** received | drafted | confirmed | failed */
+    status: text("status").notNull().default("received"),
+    providerCallId: text("provider_call_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("phone_calls_merchant_idx").on(t.merchantId, t.createdAt)],
+);
+
+export const orderSplits = pgTable(
+  "order_splits",
+  {
+    id: id(),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    tipCents: integer("tip_cents").notNull().default(0),
+    itemIds: jsonb("item_ids").$type<string[]>().notNull().default([]),
+    /** open | paid */
+    status: text("status").notNull().default("open"),
+    payToken: text("pay_token").notNull(),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    paidAt: ts("paid_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("order_splits_token_uq").on(t.payToken), index("order_splits_order_idx").on(t.orderId)],
+);
+
+export const merchantAddOns = pgTable(
+  "merchant_add_ons",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    addOnId: text("add_on_id").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    /** active | cancelled */
+    status: text("status").notNull().default("active"),
+    stripeSubscriptionItemId: text("stripe_subscription_item_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.merchantId, t.addOnId] })],
 );

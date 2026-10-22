@@ -43,6 +43,13 @@
       "when": 1792660558263,
       "tag": "0005_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792689249767,
+      "tag": "0006_restaurant_pack",
+      "breakpoints": true
     }
   ]
 }

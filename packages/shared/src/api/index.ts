@@ -15,3 +15,7 @@ export * as walletApi from "./wallet.js";
 export * as adsApi from "./ads.js";
 export * as campaignsApi from "./campaigns.js";
 export * from "./common.js";
+export * as tiffinApi from "./tiffin.js";
+export * as restaurantApi from "./restaurant.js";
+export * as whatsappApi from "./whatsapp.js";
+export * as i18nApi from "./i18n.js";
