@@ -180,7 +180,69 @@ export function labelPlan(
   return out;
 }
 
-/** Label priority for a shop pin. */
-export function pinPriority(o: { selected: boolean; rewardReady: boolean; member: boolean; distanceMetres: number | null }): number {
-  return (o.selected ? 1e7 : 0) + (o.rewardReady ? 1e6 : 0) + (o.member ? 1e5 : 0) + (o.distanceMetres == null ? 0 : Math.max(0, 1e4 - o.distanceMetres));
+/** Label priority for a shop pin: selected > reward ready > my shop > open now > nearest. */
+export function pinPriority(o: { selected: boolean; rewardReady: boolean; member: boolean; openNow?: boolean | null; distanceMetres: number | null }): number {
+  return (o.selected ? 1e7 : 0) + (o.rewardReady ? 1e6 : 0) + (o.member ? 1e5 : 0) + (o.openNow ? 5e4 : 0) + (o.distanceMetres == null ? 0 : Math.max(0, 1e4 - o.distanceMetres));
+}
+
+type Rect = { x1: number; y1: number; x2: number; y2: number };
+
+export interface PinCluster {
+  /** The pin the cluster sits on (highest priority member). */
+  id: string;
+  members: string[];
+}
+
+export interface PinPlan {
+  /** Pins drawn with name + subtitle. */
+  labeled: Set<string>;
+  /** Pins not drawn at all: under floating chrome, or folded into a cluster. */
+  hidden: Set<string>;
+  /** Pins drawn as a black count capsule instead of a bubble (members.length > 1). */
+  clusters: Map<string, PinCluster>;
+}
+
+/**
+ * The whole map layout (Corner): chrome is an obstacle for pins too, so a
+ * bubble that would land under the top controls, the rail or the tab bar is
+ * not drawn; bubbles closer than `clusterPx` fold into the higher-priority
+ * one, which becomes a small black count capsule; then at most `maxLabels`
+ * labels are placed without overlapping (labelPlan).
+ */
+export function pinPlan(
+  points: readonly PinPoint[],
+  opts: { chrome?: Rect[]; clusterPx?: number; maxLabels?: number; bubble?: number; labelAvoid?: Rect[] } = {},
+): PinPlan {
+  const { chrome = [], clusterPx = 34, maxLabels = 8, bubble = 40 } = opts;
+  const r = bubble / 2;
+  const hidden = new Set<string>();
+  const inChrome = (p: PinPoint) => chrome.some((c) => p.x + r > c.x1 && p.x - r < c.x2 && p.y + r > c.y1 && p.y - r < c.y2);
+  const visible = [...points].sort((a, b) => b.priority - a.priority).filter((p) => {
+    if (inChrome(p)) {
+      hidden.add(p.id);
+      return false;
+    }
+    return true;
+  });
+  const heads: PinPoint[] = [];
+  const clusters = new Map<string, PinCluster>();
+  for (const p of visible) {
+    const head = heads.find((h) => Math.hypot(h.x - p.x, h.y - p.y) < clusterPx);
+    if (head) {
+      hidden.add(p.id);
+      const c = clusters.get(head.id) ?? { id: head.id, members: [head.id] };
+      c.members.push(p.id);
+      clusters.set(head.id, c);
+    } else heads.push(p);
+  }
+  // A cluster has no label; its count capsule is the label.
+  const labelable = heads.filter((h) => !clusters.has(h.id));
+  const labeled = labelPlan(
+    heads.map((h) => (clusters.has(h.id) ? { ...h, priority: -1 } : h)),
+    { avoid: [...chrome, ...(opts.labelAvoid ?? [])], bubble },
+  );
+  for (const h of heads) if (clusters.has(h.id)) labeled.delete(h.id);
+  // Cap: keep the highest-priority labels only.
+  const keep = new Set(labelable.filter((h) => labeled.has(h.id)).slice(0, maxLabels).map((h) => h.id));
+  return { labeled: keep, hidden, clusters };
 }

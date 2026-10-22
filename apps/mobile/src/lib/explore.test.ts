@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byDistance, exploreSections, filterShops, labelPlan, movedEnough, pinPriority, pinSubtitle, placeKind, stripHeader } from "./explore";
+import { byDistance, exploreSections, filterShops, labelPlan, movedEnough, pinPlan, pinPriority, pinSubtitle, placeKind, stripHeader } from "./explore";
 import { perkHeadline, perkProgress } from "./perks";
 
 const shop = (id: string, vertical: string, o: Partial<{ isMember: boolean; hasPromo: boolean; openNow: boolean | null; distanceMetres: number | null }> = {}) => ({
@@ -71,6 +71,25 @@ describe("pin labels", () => {
     const base = { selected: false, rewardReady: false, member: false, distanceMetres: 100 };
     expect(pinPriority({ ...base, selected: true })).toBeGreaterThan(pinPriority({ ...base, rewardReady: true, member: true }));
     expect(pinPriority({ ...base, member: true, distanceMetres: 900 })).toBeGreaterThan(pinPriority({ ...base, distanceMetres: 10 }));
+  });
+});
+
+describe("pin plan", () => {
+  it("hides pins under chrome, clusters overlapping ones, caps labels", () => {
+    const pts = [
+      { id: "top", x: 100, y: 30, priority: 9 },
+      { id: "a", x: 100, y: 300, priority: 5 },
+      { id: "b", x: 110, y: 310, priority: 4 },
+      ...Array.from({ length: 12 }, (_, i) => ({ id: `p${i}`, x: 40, y: 400 + i * 60, priority: 3 - i * 0.1 })),
+    ];
+    const plan = pinPlan(pts, { chrome: [{ x1: 0, y1: 0, x2: 400, y2: 100 }], maxLabels: 8 });
+    expect(plan.hidden.has("top")).toBe(true);
+    expect(plan.hidden.has("b")).toBe(true);
+    expect(plan.clusters.get("a")?.members).toEqual(["a", "b"]);
+    expect(plan.labeled.has("a")).toBe(false);
+    expect(plan.labeled.size).toBe(8);
+    expect(plan.labeled.has("p0")).toBe(true);
+    expect(plan.labeled.has("p11")).toBe(false);
   });
 });
 

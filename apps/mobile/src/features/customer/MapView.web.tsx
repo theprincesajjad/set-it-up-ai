@@ -13,9 +13,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pressable, StyleSheet, View } from "react-native";
-import { labelHeight, labelPlan, labelWidth, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
+import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitle, type PinMembership, type PinPlan } from "../../lib/explore";
 import { useTheme } from "../../theme";
-import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
+import { ClusterPin, PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
 export const TORONTO = { lat: 43.6532, lng: -79.3832 };
 
@@ -47,16 +47,18 @@ type Props = {
   onFail: () => void;
   topInset: number;
   bottomInset: number;
+  /** Screen rects of floating chrome (container coords): no pin is drawn under them. */
+  chrome: { x1: number; y1: number; x2: number; y2: number }[];
 };
 
-export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset }, ref) {
+export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset, chrome }, ref) {
   const { scheme, c } = useTheme();
   const host = useRef<HTMLElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const userMoved = useRef(false);
   const [ready, setReady] = useState(false);
   const [els, setEls] = useState<Record<string, HTMLElement>>({});
-  const [labeled, setLabeled] = useState<Set<string> | null>(null);
+  const [layout, setLayout] = useState<PinPlan | null>(null);
   const plan = useRef<() => void>(() => undefined);
   const cb = useRef({ onSelect, onRegion, onFail });
   cb.current = { onSelect, onRegion, onFail };
@@ -134,21 +136,37 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
     map.current?.setPadding({ top: topInset, right: 0, bottom: bottomInset, left: 0 });
   }, [topInset, bottomInset, ready]);
 
-  // Which pins carry their name: no two labels overlap (recomputed after every move).
+  // Pins, clusters and labels (lib/explore pinPlan), recomputed after every move.
   plan.current = () => {
     const m = map.current;
     if (!m) return;
     const pts = withCoords.map((s) => {
       const p = m.project([s.location!.lng!, s.location!.lat!]);
       const mem = memberships[s.merchant.id];
-      return { id: s.merchant.id, x: p.x, y: p.y, priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }), w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text), h: labelHeight(s.merchant.name) };
+      return {
+        id: s.merchant.id,
+        x: p.x,
+        y: p.y,
+        priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, openNow: s.openNow, distanceMetres: s.distanceMetres }),
+        w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text),
+        h: labelHeight(s.merchant.name),
+      };
     });
-    const { width, height } = m.getContainer().getBoundingClientRect();
-    setLabeled(labelPlan(pts, { avoid: [{ x1: 0, y1: 0, x2: width, y2: topInset }, { x1: 0, y1: height - bottomInset, x2: width, y2: height }, { x1: width - 4, y1: 0, x2: width + 400, y2: height }, { x1: width - 72, y1: height - bottomInset - 64, x2: width, y2: height }] }));
+    const { width } = m.getContainer().getBoundingClientRect();
+    setLayout(pinPlan(pts, { chrome, labelAvoid: [{ x1: width - 4, y1: -1e4, x2: width + 1e4, y2: 1e4 }] }));
   };
   useEffect(() => {
     if (ready) plan.current();
-  }, [ready, withCoords, selectedId, memberships, topInset, bottomInset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, withCoords, selectedId, memberships, JSON.stringify(chrome)]);
+  const fitIds = (ids: string[]) => {
+    const m = map.current;
+    const pts = withCoords.filter((s) => ids.includes(s.merchant.id));
+    if (!m || pts.length === 0) return;
+    const b = new maplibregl.LngLatBounds();
+    for (const s of pts) b.extend([s.location!.lng!, s.location!.lat!]);
+    m.fitBounds(b, { padding: 80, maxZoom: Math.max(m.getZoom() + 1.5, 17.5), duration: 320 });
+  };
 
   // One DOM marker per shop; the pin itself is rendered with a portal.
   useEffect(() => {
@@ -168,8 +186,11 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   }, [withCoords, ready]);
 
   useEffect(() => {
-    for (const [id, el] of Object.entries(els)) el.style.zIndex = id === selectedId ? "3" : memberships[id] ? "2" : "1";
-  }, [els, selectedId, memberships]);
+    for (const [id, el] of Object.entries(els)) {
+      el.style.zIndex = id === selectedId ? "4" : layout?.clusters.has(id) ? "3" : memberships[id] ? "2" : "1";
+      el.style.display = layout?.hidden.has(id) && id !== selectedId ? "none" : "";
+    }
+  }, [els, selectedId, memberships, layout]);
 
   // "You are here" dot.
   useEffect(() => {
@@ -196,10 +217,17 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
       {withCoords.map((s) => {
         const el = els[s.merchant.id];
         if (!el) return null;
+        const cluster = s.merchant.id !== selectedId ? layout?.clusters.get(s.merchant.id) : undefined;
         return createPortal(
-          <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
-            <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!labeled && !labeled.has(s.merchant.id)} />
-          </Pressable>,
+          cluster ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`${cluster.members.length} shops here. Zoom in`} onPress={() => fitIds(cluster.members)} style={{ width: PIN_WIDTH }}>
+              <ClusterPin count={cluster.members.length} />
+            </Pressable>
+          ) : (
+            <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
+              <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!layout && !layout.labeled.has(s.merchant.id)} />
+            </Pressable>
+          ),
           el,
           s.merchant.id,
         );

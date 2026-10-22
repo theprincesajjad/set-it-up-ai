@@ -3,7 +3,8 @@ import type { networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, type LayoutChangeEvent } from "react-native";
+import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../../copy/en-CA";
 import { useDeviceLocation } from "../../features/customer/location";
@@ -82,6 +83,7 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
 export default function Explore() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const tabSpace = useTabBarSpace();
   const { prefs, updatePrefs } = useSession();
   const profile = useProfile();
@@ -422,7 +424,15 @@ export default function Explore() {
   const center = origin ?? centroid ?? TORONTO;
   const showSearchArea = !sel && !!mapCenter && movedEnough(mapCenter, origin ?? TORONTO);
   const railH = 78;
-  const chromeTop = insets.top + 8 + 44 + 10 + 34;
+  // Floating chrome is an obstacle for pins too (lib/explore pinPlan): the top controls + filter row,
+  // the rail + tab bar (or the shop sheet), and the recenter button.
+  const chromeTop = insets.top + 8 + 44 + 10 + 34 + 8;
+  const bottomChrome = sel ? (detents[detent] ?? peekH) : tabSpace + railH;
+  const chrome = [
+    { x1: -1e4, y1: -1e4, x2: 1e4, y2: chromeTop },
+    { x1: -1e4, y1: areaH - bottomChrome, x2: 1e4, y2: 1e4 },
+    ...(sel ? [] : [{ x1: width - 76, y1: areaH - bottomChrome - 62, x2: 1e4, y2: 1e4 }]),
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }} onLayout={(e: LayoutChangeEvent) => setAreaH(e.nativeEvent.layout.height)}>
@@ -436,8 +446,9 @@ export default function Explore() {
         onSelect={(id) => (id ? select(id) : setSelected(null))}
         onRegion={setMapCenter}
         onFail={() => setMapOk(false)}
-        topInset={chromeTop}
-        bottomInset={sel ? (detents[detent] ?? peekH) + 8 : tabSpace + railH + 8}
+        chrome={chrome}
+        topInset={Math.max(150, chromeTop + 40)}
+        bottomInset={sel ? (detents[detent] ?? peekH) + 24 : Math.max(200, bottomChrome + 40)}
       />
 
       <View style={[styles.top, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
@@ -472,6 +483,19 @@ export default function Explore() {
         ) : null}
       </View>
 
+      {!sel ? (
+        // A soft fade (bg → transparent) behind the rail and tab bar so the map never reads through the captions.
+        <Svg pointerEvents="none" style={[styles.fade, { height: tabSpace + railH + 32 }]} width="100%" height={tabSpace + railH + 32}>
+          <Defs>
+            <LinearGradient id="railFade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
+              <Stop offset="0.35" stopColor={c.bg} stopOpacity={0.85} />
+              <Stop offset="1" stopColor={c.bg} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#railFade)" />
+        </Svg>
+      ) : null}
       {!sel ? (
         <View style={[styles.bottom, { bottom: tabSpace }]} pointerEvents="box-none">
           <View style={styles.recenterRow} pointerEvents="box-none">
@@ -527,6 +551,7 @@ const styles = StyleSheet.create({
   filters: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   searchHere: { height: 40, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   bottom: { position: "absolute", left: 0, right: 0 },
+  fade: { position: "absolute", left: 0, right: 0, bottom: 0 },
   recenterRow: { alignItems: "flex-end", paddingHorizontal: 16, paddingBottom: 6 },
   recenter: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   rail: { gap: 6, paddingHorizontal: 12, paddingBottom: 6 },

@@ -12,9 +12,9 @@ import Constants from "expo-constants";
 import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet } from "react-native";
 import RNMapView, { Marker, type Region } from "react-native-maps";
-import { labelHeight, labelPlan, labelWidth, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
+import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
 import { useTheme } from "../../theme";
-import { PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
+import { ClusterPin, PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
 export const TORONTO = { lat: 43.6532, lng: -79.3832 };
 
@@ -55,34 +55,46 @@ export interface ExploreMapProps {
   onFail: () => void;
   topInset: number;
   bottomInset: number;
+  /** Screen rects of floating chrome (container coords): no pin is drawn under them. */
+  chrome: { x1: number; y1: number; x2: number; y2: number }[];
 }
 
-export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset }, ref) {
+export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset, chrome }, ref) {
   const { scheme } = useTheme();
   const map = useRef<RNMapView>(null);
   const withCoords = useMemo(() => shops.filter((s) => s.location?.lat != null && s.location?.lng != null), [shops]);
   const [region, setRegion] = useState<Region>({ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 });
   const [size, setSize] = useState({ width: 390, height: 800 });
-  // Which pins carry their name: project to screen (linear is fine at street zoom) and drop labels that would overlap.
-  const labeled = useMemo(() => {
+  // Follow the centre (location / neighbourhood arriving later) until the user pans.
+  const userMoved = useRef(false);
+  // Pins, clusters and labels (lib/explore pinPlan): project to screen (linear is fine at street zoom).
+  const layout = useMemo(() => {
     const x0 = region.longitude - region.longitudeDelta / 2;
     const y0 = region.latitude + region.latitudeDelta / 2;
-    return labelPlan(
+    return pinPlan(
       withCoords.map((s) => {
         const mem = memberships[s.merchant.id];
         return {
           id: s.merchant.id,
           x: ((s.location!.lng! - x0) / region.longitudeDelta) * size.width,
           y: ((y0 - s.location!.lat!) / region.latitudeDelta) * size.height,
-          priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, distanceMetres: s.distanceMetres }),
-          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text), h: labelHeight(s.merchant.name),
+          priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, openNow: s.openNow, distanceMetres: s.distanceMetres }),
+          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text),
+          h: labelHeight(s.merchant.name),
         };
       }),
-      { avoid: [{ x1: 0, y1: 0, x2: size.width, y2: topInset }, { x1: 0, y1: size.height - bottomInset, x2: size.width, y2: size.height }, { x1: size.width - 4, y1: 0, x2: size.width + 400, y2: size.height }, { x1: size.width - 72, y1: size.height - bottomInset - 64, x2: size.width, y2: size.height }] },
+      { chrome, labelAvoid: [{ x1: size.width - 4, y1: -1e4, x2: size.width + 1e4, y2: 1e4 }] },
     );
-  }, [withCoords, memberships, selectedId, region, size, topInset, bottomInset]);
-  // Follow the centre (location / neighbourhood arriving later) until the user pans.
-  const userMoved = useRef(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withCoords, memberships, selectedId, region, size, JSON.stringify(chrome)]);
+  const fitIds = (ids: string[]) => {
+    const pts = withCoords.filter((s) => ids.includes(s.merchant.id));
+    userMoved.current = true;
+    map.current?.fitToCoordinates(
+      pts.map((s) => ({ latitude: s.location!.lat!, longitude: s.location!.lng! })),
+      { edgePadding: { top: topInset + 40, bottom: bottomInset + 40, left: 60, right: 160 }, animated: true },
+    );
+  };
   useEffect(() => {
     if (!userMoved.current) map.current?.animateToRegion({ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 0);
   }, [center.lat, center.lng]);
@@ -131,18 +143,40 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
         {withCoords.map((s) => {
           const mem = memberships[s.merchant.id] ?? null;
           const selected = s.merchant.id === selectedId;
-          const bare = !labeled.has(s.merchant.id);
+          if (layout.hidden.has(s.merchant.id) && !selected) return null;
+          const cluster = selected ? undefined : layout.clusters.get(s.merchant.id);
+          const coordinate = { latitude: s.location!.lat!, longitude: s.location!.lng! };
+          const anchor = { x: PIN_ANCHOR_X / PIN_WIDTH, y: 0.5 };
+          if (cluster) {
+            return (
+              <Marker
+                key={`c-${s.merchant.id}-${cluster.members.length}`}
+                coordinate={coordinate}
+                anchor={anchor}
+                tracksViewChanges={false}
+                zIndex={5}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  fitIds(cluster.members);
+                }}
+                accessibilityLabel={`${cluster.members.length} shops here. Zoom in`}
+              >
+                <ClusterPin count={cluster.members.length} />
+              </Marker>
+            );
+          }
+          const bare = !layout.labeled.has(s.merchant.id);
           return (
             <Marker
               // tracksViewChanges is off for performance, so a changed look needs a fresh marker.
               key={`${s.merchant.id}-${selected ? 1 : 0}-${bare ? 1 : 0}`}
-              coordinate={{ latitude: s.location!.lat!, longitude: s.location!.lng! }}
+              coordinate={coordinate}
               onPress={(e) => {
                 e.stopPropagation();
                 onSelect(s.merchant.id);
               }}
               tracksViewChanges={false}
-              anchor={{ x: PIN_ANCHOR_X / PIN_WIDTH, y: 0.5 }}
+              anchor={anchor}
               zIndex={selected ? 10 : mem ? 2 : 1}
               accessibilityLabel={pinLabel(s, mem)}
             >

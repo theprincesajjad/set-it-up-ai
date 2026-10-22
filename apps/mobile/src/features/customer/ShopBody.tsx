@@ -183,8 +183,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   );
 
   return (
-    <View style={{ gap: 20 }}>
-      <View style={{ gap: 12 }}>
+    <View style={{ gap: 18 }}>
+      <View style={{ gap: 8 }}>
         <ShopTile variant="hero" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={kind} muted={m?.muted} />
         <View style={styles.statusRow}>
           {status ? <StatusDot open={status.open} label={status.label.toLowerCase()} /> : null}

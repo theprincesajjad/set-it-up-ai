@@ -1,3 +1,4 @@
+import { nativeFonts } from "@ll/design-tokens";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { formatNumber, unitLabel } from "../lib/award";
 import { formatDistance } from "../lib/format";
@@ -101,7 +102,7 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
         <ShopLogo shop={shop} size={56} />
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none", flexShrink: 1 }}>
+            <Text variant="largeTitle" accessibilityRole="header" numberOfLines={2} style={{ textTransform: "none", flexShrink: 1, fontFamily: nativeFonts.displayBold, fontSize: 26, lineHeight: 30 }}>
               {shop.name}
             </Text>
             {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
@@ -159,5 +160,5 @@ const styles = StyleSheet.create({
   logo: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   divider: { position: "absolute", right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
-  hero: { flexDirection: "row", alignItems: "center", gap: 14 },
+  hero: { flexDirection: "row", alignItems: "center", gap: 12 },
 });
