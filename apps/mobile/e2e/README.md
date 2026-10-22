@@ -12,6 +12,7 @@ cd apps/mobile && EXPO_PUBLIC_API_URL=http://localhost:4300 pnpm export:web && p
 ```
 
 - `tour.mjs` serves `dist-web/` itself (`e2e/serve.mjs`, port `E2E_WEB_PORT`, default 8300). `E2E_API_URL` (default `http://localhost:4300`) and `E2E_CUSTOMER_PHONE` (default `+16475551009`, a seeded customer with four shops) are optional.
-- Setup through the API: an admin override turns on order-ahead for Pinecone Coffee (shows the `features` entry point), and a live Roncesvalles Passport is created with two visits.
+- Setup through the API: an admin override turns on order-ahead for Pinecone Coffee (shows the `features` entry point), and a live Roncesvalles Passport is created with two visits. Pinecone's stamp cooldown is set to 0 and the customer's card is topped up to two free drinks (one redeemed in the app, one at the counter), because the seed's balances are relative to today.
+- `06c-home-progress` signs in the first seeded customer (from `+16475551000`) with shops but no reward ready, to show the closest-reward hero.
 - Map tiles (OpenFreeMap) are fetched with `curl` (machine proxy + CA bundle) and handed to Chromium via `page.route`, cached in the OS temp dir. The "explore-list" step blocks tiles to show the list fallback.
 - The tour mutates the database (awards, a redemption, a kiosk check-in). Reseed before rerunning.

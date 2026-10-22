@@ -154,6 +154,10 @@ expo-camera, expo-location, expo-haptics and AsyncStorage have their own web imp
 - Shop detail shows "Order ahead" when `features.orderAhead`, and "My tickets here" when `features.serviceTickets` (or the member already has tickets there).
 - `usePhase2()` fetches `/v1/me/orders` / `/v1/me/tickets` only when one of my shops has the matching flag; "Orders & tickets" (Profile) and Home "In progress" follow it.
 
+**Home hero.** Points and stamps are different units, so no screen adds balances together (`lib/hero.ts`). The big number is the count of rewards ready now ("3 rewards ready · across 2 shops"). With none ready it shows the closest reward in that shop's unit ("2 stamps to a free pastry · at Hearth & Crumb Bakery", closest = highest % progress). With nothing to work toward it shows the shop count. A member with no shops sees the empty state. My card shows rewards ready (or the shop count). Shop cards keep their own unit.
+
+**Kiosk on a phone.** Under 768 px wide the kiosk uses a compact header (56 px logo, title beside it) and sizes keys to the space left, between 72 px (the counter keypad minimum) and 88 px. The keypad and "Check in" fit on 390x844, and it scrolls only if even 72 px keys don't fit. The tablet layout is unchanged.
+
 **Shop logos.** Pilot shops have no logo (`logoUrl: null`). `ShopLogo` draws coloured initials ("PC", "CK" for The Copper Kettle Pub) on the merchant's `brandColor`, with white or ink text by contrast; without a brand colour it uses the vertical tint. The shop hero without a cover photo is a soft wash of the same colour.
 
 **Social proof.** `memberCount` (null below 10) shows as "39 neighbours are members" in the shop's About tab and in the "Earn here" card for non-members.
@@ -178,8 +182,6 @@ Unit tests cover the pure modules in `src/lib` and `src/api` and run in plain No
 ## Known gaps
 
 - **Web preview only.** Expo web is for QA; native-only behaviour (brightness, push, camera scan, Wallet, safe areas, sheets) is checked on a simulator.
-- **Kiosk on a phone.** The kiosk is laid out for a landscape tablet; on a phone the keypad runs below the fold.
-
 - **In-app card payment.** Orders use "pay at pickup". Quote deposits and invoices open the web pay page (`approvalUrl` / `payUrl`). Native Stripe (`@stripe/stripe-react-native`) is not wired in yet.
 - **No API yet.** Platform news consent (stored on the device only), the notifications inbox, notification category preferences (stored on the device only), and phone-number change.
 - **Neighbourhood perk progress** is derived from the wallet (distinct shops visited inside the perk window), because the API exposes perk rules but not per-member progress.
