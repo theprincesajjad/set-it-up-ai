@@ -175,7 +175,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                       {p.upcomingMenu.map((m) => (
                         <li key={m.date} className="flex gap-3 text-meta">
                           <span className="w-20 shrink-0 text-fg-muted">{date(dayDate(m.date), { weekday: "short", month: "short", day: "numeric" }, "UTC")}</span>
-                          <span className="min-w-0 text-fg">{m.items.map((i) => i.name).join(", ") || t("rc.tm.menuTba")}</span>
+                          <span className="min-w-0 text-fg">{m.items.map((i) => pick({ name: i.name, translations: i.translations }).name).join(", ") || t("rc.tm.menuTba")}</span>
                         </li>
                       ))}
                     </ul>

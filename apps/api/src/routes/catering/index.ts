@@ -110,7 +110,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const merchant = await loadMerchant(ctx.db, merchantId);
     if (!merchant || merchant.status === "closed") throw notFound("Shop");
     const event = await svc.createInquiry(ctx, merchant, user.id, body);
-    return reply.status(201).send(svc.cateringDto(event, ctx.config.publicWebUrl, false));
+    return reply.status(201).send(await svc.myDto(ctx, event));
   });
 
   app.get("/me/catering", async (req) => svc.listMyEvents(ctx, requireUser(req).id));

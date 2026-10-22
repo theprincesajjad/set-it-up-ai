@@ -16,7 +16,7 @@ import { randomToken } from "../lib/crypto.js";
 import { badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
-import { formatLocalDateTime, iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
+import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
 import { requireFeature } from "./features.js";
 import { sendInvoice } from "./invoices.js";
@@ -292,15 +292,22 @@ export async function listEvents(ctx: AppContext, merchant: Merchant, q: z.infer
   };
 }
 
+/** Customer-facing DTO: adds the kitchen's name, slug, logo and brand colour. */
+export async function myDto(ctx: AppContext, e: CateringEvent): Promise<restaurantApi.CateringEventDto> {
+  const brand = (await merchantBrands(ctx.db, [e.merchantId])).get(e.merchantId);
+  return { ...cateringDto(e, ctx.config.publicWebUrl, false), ...brand };
+}
+
 export async function listMyEvents(ctx: AppContext, userId: string) {
   const rows = await ctx.db.select().from(cateringEvents).where(eq(cateringEvents.userId, userId)).orderBy(asc(cateringEvents.eventDate));
-  return { items: rows.map((e) => cateringDto(e, ctx.config.publicWebUrl, false)), nextCursor: null };
+  const brands = await merchantBrands(ctx.db, rows.map((e) => e.merchantId));
+  return { items: rows.map((e) => ({ ...cateringDto(e, ctx.config.publicWebUrl, false), ...brands.get(e.merchantId) })), nextCursor: null };
 }
 
 export async function getMyEvent(ctx: AppContext, userId: string, eventId: string) {
   const [e] = await ctx.db.select().from(cateringEvents).where(and(eq(cateringEvents.id, eventId), eq(cateringEvents.userId, userId))).limit(1);
   if (!e) throw notFound("Catering event");
-  return cateringDto(e, ctx.config.publicWebUrl, false);
+  return myDto(ctx, e);
 }
 
 /** Confirmed events by date range, with guests per day for kitchen capacity. */

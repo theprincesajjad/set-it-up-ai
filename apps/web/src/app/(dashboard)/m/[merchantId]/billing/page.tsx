@@ -2,7 +2,7 @@
 import { Check, CreditCard } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { FEATURES, FEATURE_KEYS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useNetworkShops } from "@/components/dashboard/FeatureTeaser";
 import { Dot, Meter, PageHeader, Panel, Section, Segmented } from "@/components/dashboard/kit";
@@ -20,8 +20,8 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 const HERO: Record<"plus" | "pro", FeatureKey> = { plus: "orders.order_ahead", pro: "service.tickets" };
 const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
-  ["What's the 0.75% fee?", "Only on payments you take in the app with Plus or Pro. The Free plan has no payments and no fees."],
-  ["Why can't I buy Plus yet?", copy.soon.pricingNote],
+  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no payments and no fees.`],
+  [`Why can't I buy ${PLANS.plus.name} yet?`, copy.soon.pricingNote],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
 ];
 

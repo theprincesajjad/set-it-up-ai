@@ -55,6 +55,8 @@ export const menuItemSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).optional(),
   dietary: dietarySchema.optional(),
+  /** Optional hi / ur / pa words for the dish; the public page falls back to `name` and `description`. */
+  translations: translationsSchema.optional(),
 });
 export type MenuItem = z.infer<typeof menuItemSchema>;
 

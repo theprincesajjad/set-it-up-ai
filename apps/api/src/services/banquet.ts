@@ -14,7 +14,7 @@ import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
-import { formatLocalDateTime, iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
+import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
 export type Hall = typeof halls.$inferSelect;
@@ -210,6 +210,16 @@ async function withHallNames(db: DbOrTx, rows: HallBooking[]) {
   return rows.map((r) => bookingDto(r, names.get(r.hallId) ?? null));
 }
 
+/** Customer-facing (/me/banquet/...) DTOs: hall name plus the kitchen's name, slug, logo and brand colour. */
+export async function myBookingDtos(db: DbOrTx, rows: HallBooking[]) {
+  const brands = await merchantBrands(db, rows.map((r) => r.merchantId));
+  return (await withHallNames(db, rows)).map((d) => ({ ...d, ...brands.get(d.merchantId) }));
+}
+
+export async function myBookingDto(db: DbOrTx, b: HallBooking) {
+  return (await myBookingDtos(db, [b]))[0]!;
+}
+
 export async function bookingDtoFor(db: DbOrTx, b: HallBooking) {
   return (await withHallNames(db, [b]))[0]!;
 }
@@ -234,7 +244,7 @@ export async function listBookings(db: DbOrTx, merchantId: string, q: z.infer<ty
 
 export async function listMyBookings(db: DbOrTx, userId: string) {
   const rows = await db.select().from(hallBookings).where(eq(hallBookings.userId, userId)).orderBy(asc(hallBookings.startsAt));
-  return { items: await withHallNames(db, rows), nextCursor: null };
+  return { items: await myBookingDtos(db, rows), nextCursor: null };
 }
 
 // ---------------------------------------------------------------------------

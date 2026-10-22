@@ -66,7 +66,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Integrations" })).toBeVisible();
-  await expect(page.getByText(/More with Plus — promos, texts and POS sync · coming soon/)).toBeVisible();
+  await expect(page.getByText(/More with Café & Retail: promos, texts and POS sync · coming soon/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
@@ -306,7 +306,7 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   // Google Business Profile is free; paid connectors collapse into one quiet line.
   await expect(page.getByRole("heading", { name: "Google Business Profile" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Square" })).toHaveCount(0);
-  await expect(page.getByText("coming with Plus")).toBeVisible();
+  await expect(page.getByText("coming with Café & Retail")).toBeVisible();
   await page.screenshot({ path: shot("27-integrations"), fullPage: true });
   await pilot(id, ["marketing.email"], true);
   await page.goto(`/m/${id}/messages/new`);

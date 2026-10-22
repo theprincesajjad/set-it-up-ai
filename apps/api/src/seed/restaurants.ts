@@ -953,9 +953,9 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   const plans = await db
     .insert(tiffinPlans)
     .values([
-      { merchantId: shree.id, name: "Weekday Lunch Tiffin (weekly)", description: "A four-compartment Gujarati lunch, Monday to Saturday. Pause any week.", cadence: "weekly", daysOfWeek: [1, 2, 3, 4, 5, 6], mealsPerDay: 1, priceCents: 6900, extraServingCents: 5400, maxServings: 4, dietary: { vegetarian: true, spice: 1 }, deliveryFeeCents: 500, cutoffHours: 24, sortOrder: 0, translations: { hi: { name: "सप्ताहिक दोपहर का टिफिन", description: "सोमवार से शनिवार, चार डिब्बों में गुजराती दोपहर का खाना।" } }, createdAt: shree.createdAt },
-      { merchantId: shree.id, name: "Dinner Tiffin, 7 days (monthly)", description: "Dal, shaak, rotli and rice every evening, including Sundays.", cadence: "monthly", daysOfWeek: [0, 1, 2, 3, 4, 5, 6], mealsPerDay: 1, priceCents: 23900, extraServingCents: 19000, maxServings: 5, dietary: { vegetarian: true, spice: 1 }, deliveryFeeCents: 2000, cutoffHours: 24, sortOrder: 1, translations: { hi: { name: "मासिक रात का टिफिन (7 दिन)", description: "हर शाम दाल, सब्ज़ी, रोटी और चावल, रविवार सहित।" } }, createdAt: shree.createdAt },
-      { merchantId: shree.id, name: "Jain Lunch Tiffin (monthly)", description: "No onion, garlic or root vegetables. Monday to Friday.", cadence: "monthly", daysOfWeek: [1, 2, 3, 4, 5], mealsPerDay: 1, priceCents: 21900, extraServingCents: 17500, maxServings: 3, dietary: { vegetarian: true, jain: true, spice: 1 }, deliveryFeeCents: 2000, cutoffHours: 48, sortOrder: 2, translations: { hi: { name: "जैन दोपहर का टिफिन (मासिक)", description: "प्याज़, लहसुन और कंदमूल के बिना। सोमवार से शुक्रवार।" } }, createdAt: shree.createdAt },
+      { merchantId: shree.id, name: "Weekday Lunch Tiffin (weekly)", description: "A four-compartment Gujarati lunch, Monday to Saturday. Pause any week.", cadence: "weekly", daysOfWeek: [1, 2, 3, 4, 5, 6], mealsPerDay: 1, priceCents: 6900, extraServingCents: 5400, maxServings: 4, dietary: { vegetarian: true, spice: 1 }, deliveryFeeCents: 500, cutoffHours: 24, sortOrder: 0, translations: { hi: { name: "सप्ताहिक दोपहर का टिफिन", description: "सोमवार से शनिवार, चार डिब्बों में गुजराती दोपहर का खाना।" }, ur: { name: "ہفتہ وار دوپہر کا ٹفن", description: "پیر سے ہفتہ، چار خانوں میں گجراتی دوپہر کا کھانا۔ کوئی بھی ہفتہ روک سکتے ہیں۔" }, pa: { name: "ਹਫ਼ਤਾਵਾਰੀ ਦੁਪਹਿਰ ਦਾ ਟਿਫ਼ਿਨ", description: "ਸੋਮਵਾਰ ਤੋਂ ਸ਼ਨਿੱਚਰਵਾਰ, ਚਾਰ ਖਾਨਿਆਂ ਵਿੱਚ ਗੁਜਰਾਤੀ ਦੁਪਹਿਰ ਦਾ ਖਾਣਾ। ਕੋਈ ਵੀ ਹਫ਼ਤਾ ਰੋਕ ਸਕਦੇ ਹੋ।" } }, createdAt: shree.createdAt },
+      { merchantId: shree.id, name: "Dinner Tiffin, 7 days (monthly)", description: "Dal, shaak, rotli and rice every evening, including Sundays.", cadence: "monthly", daysOfWeek: [0, 1, 2, 3, 4, 5, 6], mealsPerDay: 1, priceCents: 23900, extraServingCents: 19000, maxServings: 5, dietary: { vegetarian: true, spice: 1 }, deliveryFeeCents: 2000, cutoffHours: 24, sortOrder: 1, translations: { hi: { name: "मासिक रात का टिफिन (7 दिन)", description: "हर शाम दाल, सब्ज़ी, रोटी और चावल, रविवार सहित।" }, ur: { name: "ماہانہ رات کا ٹفن (7 دن)", description: "ہر شام دال، سبزی، روٹی اور چاول، اتوار سمیت۔" }, pa: { name: "ਮਹੀਨਾਵਾਰ ਰਾਤ ਦਾ ਟਿਫ਼ਿਨ (7 ਦਿਨ)", description: "ਹਰ ਸ਼ਾਮ ਦਾਲ, ਸਬਜ਼ੀ, ਰੋਟੀ ਅਤੇ ਚੌਲ, ਐਤਵਾਰ ਸਮੇਤ।" } }, createdAt: shree.createdAt },
+      { merchantId: shree.id, name: "Jain Lunch Tiffin (monthly)", description: "No onion, garlic or root vegetables. Monday to Friday.", cadence: "monthly", daysOfWeek: [1, 2, 3, 4, 5], mealsPerDay: 1, priceCents: 21900, extraServingCents: 17500, maxServings: 3, dietary: { vegetarian: true, jain: true, spice: 1 }, deliveryFeeCents: 2000, cutoffHours: 48, sortOrder: 2, translations: { hi: { name: "जैन दोपहर का टिफिन (मासिक)", description: "प्याज़, लहसुन और कंदमूल के बिना। सोमवार से शुक्रवार।" }, ur: { name: "جین دوپہر کا ٹفن (ماہانہ)", description: "پیاز، لہسن اور زمین کے اندر اگنے والی سبزیوں کے بغیر۔ پیر سے جمعہ۔" }, pa: { name: "ਜੈਨ ਦੁਪਹਿਰ ਦਾ ਟਿਫ਼ਿਨ (ਮਹੀਨਾਵਾਰ)", description: "ਪਿਆਜ਼, ਲਸਣ ਅਤੇ ਜ਼ਮੀਨ ਹੇਠਲੀਆਂ ਸਬਜ਼ੀਆਂ ਤੋਂ ਬਿਨਾਂ। ਸੋਮਵਾਰ ਤੋਂ ਸ਼ੁੱਕਰਵਾਰ।" } }, createdAt: shree.createdAt },
     ])
     .returning();
   const [weekly, dinner, jain] = plans as [(typeof plans)[number], (typeof plans)[number], (typeof plans)[number]];
@@ -977,6 +977,47 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     [{ name: "Undhiyu (seasonal)", description: "Winter vegetables with muthia" }, { name: "Dal" }, { name: "Puri (4)" }, { name: "Jalebi (2)" }, { name: "Masala chaas" }],
     [{ name: "Dudhi chana dal" }, { name: "Gujarati kadhi" }, { name: "Rotli (4)" }, { name: "Bhaat" }, { name: "Chakri" }],
   ];
+
+  // hi / ur / pa words for the rota dishes (shown on the public tiffin page in the customer's language).
+  const DISH_TR: Record<string, Record<"hi" | "ur" | "pa", string>> = {
+    "Bhindi nu shaak": { hi: "भिंडी की सब्ज़ी", ur: "بھنڈی کی سبزی", pa: "ਭਿੰਡੀ ਦੀ ਸਬਜ਼ੀ" },
+    "Dal and rice": { hi: "दाल और चावल", ur: "دال اور چاول", pa: "ਦਾਲ ਅਤੇ ਚੌਲ" },
+    "Rotli (4)": { hi: "रोटली (4)", ur: "روٹلی (4)", pa: "ਰੋਟਲੀ (4)" },
+    "Kachumber salad": { hi: "कचुंबर सलाद", ur: "کچومبر سلاد", pa: "ਕਚੁੰਬਰ ਸਲਾਦ" },
+    "Mohanthal": { hi: "मोहनथाल", ur: "موہن تھال", pa: "ਮੋਹਨਥਾਲ" },
+    "Ringan bateta shaak": { hi: "बैंगन आलू की सब्ज़ी", ur: "بینگن آلو کی سبزی", pa: "ਬੈਂਗਣ ਆਲੂ ਦੀ ਸਬਜ਼ੀ" },
+    "Gujarati kadhi": { hi: "गुजराती कढ़ी", ur: "گجراتی کڑھی", pa: "ਗੁਜਰਾਤੀ ਕੜ੍ਹੀ" },
+    "Bajra rotla": { hi: "बाजरे का रोटला", ur: "باجرے کا روٹلا", pa: "ਬਾਜਰੇ ਦਾ ਰੋਟਲਾ" },
+    "Jeera rice": { hi: "जीरा चावल", ur: "زیرہ چاول", pa: "ਜੀਰਾ ਚੌਲ" },
+    "Papad and chhundo": { hi: "पापड़ और छुंदो", ur: "پاپڑ اور چھندو", pa: "ਪਾਪੜ ਅਤੇ ਛੁੰਦੋ" },
+    "Sev tameta nu shaak": { hi: "सेव टमाटर की सब्ज़ी", ur: "سیو ٹماٹر کی سبزی", pa: "ਸੇਵ ਟਮਾਟਰ ਦੀ ਸਬਜ਼ੀ" },
+    "Toor dal": { hi: "तूर दाल", ur: "ارہر کی دال", pa: "ਤੂਰ ਦਾਲ" },
+    "Thepla (3)": { hi: "थेपला (3)", ur: "تھیپلا (3)", pa: "ਥੇਪਲਾ (3)" },
+    "Vaghareli khichdi": { hi: "वघारेली खिचड़ी", ur: "تڑکے والی کھچڑی", pa: "ਤੜਕੇ ਵਾਲੀ ਖਿਚੜੀ" },
+    "Shrikhand cup": { hi: "श्रीखंड कटोरी", ur: "شری کھنڈ کپ", pa: "ਸ਼੍ਰੀਖੰਡ ਕੱਪ" },
+    "Tindora sambharo": { hi: "टिंडोरा संभारो", ur: "ٹنڈورا سمبھارو", pa: "ਟਿੰਡੋਰਾ ਸੰਭਾਰੋ" },
+    "Mag nu shaak": { hi: "मूंग की सब्ज़ी", ur: "مونگ کی سبزی", pa: "ਮੂੰਗ ਦੀ ਸਬਜ਼ੀ" },
+    "Puri (4)": { hi: "पूरी (4)", ur: "پوری (4)", pa: "ਪੂਰੀ (4)" },
+    "Steamed rice": { hi: "सादा चावल", ur: "سادہ چاول", pa: "ਸਾਦੇ ਚੌਲ" },
+    "Khaman dhokla (3)": { hi: "खमन ढोकला (3)", ur: "کھمن ڈھوکلا (3)", pa: "ਖਮਣ ਢੋਕਲਾ (3)" },
+    "Undhiyu (seasonal)": { hi: "ऊंधियू (मौसमी)", ur: "اُندھیو (موسمی)", pa: "ਊਂਧੀਯੂ (ਮੌਸਮੀ)" },
+    "Dal": { hi: "दाल", ur: "دال", pa: "ਦਾਲ" },
+    "Jalebi (2)": { hi: "जलेबी (2)", ur: "جلیبی (2)", pa: "ਜਲੇਬੀ (2)" },
+    "Masala chaas": { hi: "मसाला छाछ", ur: "مسالہ لسّی", pa: "ਮਸਾਲਾ ਛਾਛ" },
+    "Dudhi chana dal": { hi: "लौकी चना दाल", ur: "لوکی چنے کی دال", pa: "ਲੌਕੀ ਛੋਲਿਆਂ ਦੀ ਦਾਲ" },
+    "Bhaat": { hi: "भात", ur: "بھات", pa: "ਭਾਤ" },
+    "Chakri": { hi: "चकरी", ur: "چکری", pa: "ਚਕਰੀ" },
+  };
+  const DISH_DESC_TR: Record<string, Record<"hi" | "ur" | "pa", string>> = {
+    "A sweet gram flour square": { hi: "बेसन की मीठी बर्फ़ी", ur: "بیسن کی میٹھی برفی", pa: "ਬੇਸਣ ਦੀ ਮਿੱਠੀ ਬਰਫ਼ੀ" },
+    "Winter vegetables with muthia": { hi: "सर्दियों की सब्ज़ियाँ और मुठिया", ur: "سردیوں کی سبزیاں اور مٹھیا", pa: "ਸਿਆਲ ਦੀਆਂ ਸਬਜ਼ੀਆਂ ਅਤੇ ਮੁਠੀਆ" },
+  };
+  const trOf = (name: string, description?: string) => {
+    const n = DISH_TR[name];
+    if (!n) return undefined;
+    const d = description ? DISH_DESC_TR[description] : undefined;
+    return Object.fromEntries((["hi", "ur", "pa"] as const).map((l) => [l, { name: n[l], ...(d ? { description: d[l] } : {}) }]));
+  };
   const veg: DietaryTags = { vegetarian: true };
   const menuRows: (typeof tiffinMenus.$inferInsert)[] = [];
   for (let d = 0; d < 14; d++) {
@@ -985,7 +1026,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     for (const p of [weekly, dinner, jain]) {
       if (!(p.daysOfWeek as number[]).includes(wd)) continue;
       const rota = lunchRota[(d + (p === dinner ? 3 : p === jain ? 1 : 0)) % lunchRota.length]!;
-      const items = rota.map((it) => ({ ...it, dietary: p === jain ? { vegetarian: true, jain: true } : veg }));
+      const items = rota.map((it) => ({ ...it, dietary: p === jain ? { vegetarian: true, jain: true } : veg, translations: trOf(it.name, it.description) }));
       // Jain days drop root-vegetable dishes.
       const filtered = p === jain ? items.filter((i) => !/bateta|Undhiyu|Tindora|Sev tameta/.test(i.name)) : items;
       menuRows.push({ merchantId: shree.id, planId: p.id, date: key, items: filtered, notes: p === jain ? "Jain: no onion, garlic or root vegetables" : null, createdAt: shree.createdAt });

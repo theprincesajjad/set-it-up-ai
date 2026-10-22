@@ -1,7 +1,7 @@
 "use client";
-import { EmptyState, PageHeader, Panel } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { IdCard, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
@@ -50,17 +50,17 @@ function DiscountCardsPage() {
   const blank = (): Draft => ({ name: "", percentOff: "10", amountOff: "", eligibility: "seniors", terms: pharmacy ? "Front-store items only. Not valid on prescriptions or pharmacy services." : "", excluded: [] });
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Discount cards" description="Show-to-save cards customers carry in their wallet." actions={<Button size="sm" iconStart={Plus} onClick={() => setEdit(blank())}>Create a discount card</Button>} />
-      <Async state={cards}>
+    <div className="flex flex-col gap-6">
+      <PageHeader flush title="Discount cards" description="Show-to-save cards customers carry in their wallet." actions={<Button size="sm" iconStart={Plus} onClick={() => setEdit(blank())}>Create a discount card</Button>} />
+      <Async state={cards} skeleton={<SkeletonRows rows={4} />}>
         {(d) =>
           d.items.length ? (
-            <ul className="grid gap-6 md:grid-cols-2">
+            <ul className="grid gap-x-8 gap-y-8 md:grid-cols-2">
               {d.items.map((c) => (
                 <li key={c.id} className="flex flex-col gap-3">
                   <DiscountCard card={c} shop={detail.merchant} live={false} />
-                  <Panel padded={false} className="flex flex-wrap items-center gap-2">
-                    <div className="min-w-40 flex-1">
+                  <div className="flex items-center gap-2 border-y border-line py-1">
+                    <div className="min-w-0 flex-1">
                       <Switch label="Active" checked={c.active} onChange={async (v) => {
                         await act.run(() => api.updateDiscountCard(c.id, { active: v }));
                         await cards.reload();
@@ -68,12 +68,12 @@ function DiscountCardsPage() {
                     </div>
                     <IconButton icon={Pencil} label={`Edit ${c.name}`} onClick={() => setEdit({ id: c.id, name: c.name, percentOff: c.percentOff ? String(c.percentOff) : "", amountOff: c.amountOffCents ? String(c.amountOffCents / 100) : "", eligibility: c.eligibility, terms: c.terms ?? "", excluded: c.excludedCategoryIds })} />
                     <IconButton icon={Trash2} label={`Delete ${c.name}`} onClick={() => setDel(c)} />
-                  </Panel>
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyState icon={IdCard} title="Give your regulars a card to show" description="Seniors' day? Student discount? Customers carry it in the app." action={<Button variant="secondary" size="sm" onClick={() => setEdit(blank())}>Create a discount card</Button>} />
+            <EmptyState title="Give your regulars a card to show" description="Seniors' day? Student discount? Customers carry it in the app." action={<Button variant="secondary" size="sm" onClick={() => setEdit(blank())}>Create a discount card</Button>} />
           )
         }
       </Async>

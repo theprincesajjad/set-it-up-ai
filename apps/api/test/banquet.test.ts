@@ -90,6 +90,13 @@ describe("holds and overlap", () => {
     expect(hold.body.booking).toMatchObject({ status: "hold", totalCents: 565000, depositCents: 141250, packageName: "Walima dinner", hallName: "Zaitoon Hall" });
     expect(hold.body.booking.holdExpiresAt).toBe(new Date(env.clock.now.getTime() + 72 * 3_600_000).toISOString());
     expect(hold.body.deposit).toMatchObject({ amountCents: 141250 });
+    // Customer-facing rows carry the kitchen so the app needn't look it up.
+    const brand = { merchantName: m.merchant.name, merchantSlug: m.merchant.slug };
+    expect(hold.body.booking).toMatchObject(brand);
+    expect((await api(c.token, "GET", "/v1/me/banquet/bookings")).body.items[0]).toMatchObject(brand);
+    expect((await api(c.token, "GET", `/v1/me/banquet/bookings/${hold.body.booking.id}`)).body.booking).toMatchObject(brand);
+    // Staff rows don't.
+    expect((await api(m.ownerToken, "GET", `${m.base}/banquet/bookings/${hold.body.booking.id}`)).body.merchantName).toBeUndefined();
 
     // Overlaps (partial, containing, contained) are refused; touching edges and other days are fine.
     const attempt = (s: string, e: string, token = c2.token, hallId = hall.id) => api(token, "POST", "/v1/me/banquet/holds", { hallId, headcount: 50, startsAt: s, endsAt: e });

@@ -6,7 +6,7 @@ import { PLANS, type integrationsApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
-import { PageHeader, Section, StatusDot, ToolbarButton } from "@/components/dashboard/kit";
+import { PageHeader, Section, SkeletonRows, StatusDot, ToolbarButton } from "@/components/dashboard/kit";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -59,7 +59,7 @@ export default function IntegrationsPage() {
       {status === "connected" ? <Banner tone="success">{provider ? `${provider[0]!.toUpperCase()}${provider.slice(1)} is connected.` : "Connected."} Match your locations and categories below.</Banner> : null}
       {status === "error" ? <Banner tone="danger">{ERRORS[params.get("error") ?? ""] ?? "We couldn't connect that app. Try again."}</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <Async state={list}>
+      <Async state={list} skeleton={<SkeletonRows rows={5} />}>
         {(d) => {
           // Pricing v2: paid connectors (POS, Mailchimp, automation) are listed only when their feature is on,
           // or when a connection already exists (shown as paused).
@@ -154,7 +154,7 @@ export default function IntegrationsPage() {
               ))}
             </ul>
           ) : (
-            <p className="border-y border-line py-4 text-meta text-fg-muted">{unmatched.loading ? "Loading..." : "Nothing waiting. Every POS sale found its customer."}</p>
+            <div className="border-y border-line py-4 text-meta text-fg-muted">{unmatched.loading ? <SkeletonRows rows={1} className="py-0" /> : "Nothing waiting. Every POS sale found its customer."}</div>
           )}
         </Section>
       ) : null}

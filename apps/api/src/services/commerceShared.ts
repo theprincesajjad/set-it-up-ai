@@ -3,7 +3,7 @@
  * notifications, staff permissions (Pro), in-app payment readiness, cursors,
  * money/time formatting.
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { merchantStaff, merchants, messageDeliveries, pushTokens, users, type DbOrTx } from "@ll/db";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -147,6 +147,16 @@ export async function paymentsReady(db: DbOrTx, merchant: Merchant): Promise<boo
 export async function loadMerchant(db: DbOrTx, merchantId: string): Promise<Merchant | null> {
   const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   return m ?? null;
+}
+
+/** Name, slug, logo and brand colour for customer-facing rows (catering events, hall bookings). */
+export async function merchantBrands(db: DbOrTx, merchantIds: string[]) {
+  const map = new Map<string, { merchantName: string; merchantSlug: string; merchantLogoUrl: string | null; merchantBrandColor: string | null }>();
+  const ids = [...new Set(merchantIds)];
+  if (!ids.length) return map;
+  const rows = await db.select({ id: merchants.id, name: merchants.name, slug: merchants.slug, logoUrl: merchants.logoUrl, brandColor: merchants.brandColor }).from(merchants).where(inArray(merchants.id, ids));
+  for (const r of rows) map.set(r.id, { merchantName: r.name, merchantSlug: r.slug, merchantLogoUrl: r.logoUrl, merchantBrandColor: r.brandColor });
+  return map;
 }
 
 // ---------------------------------------------------------------------------

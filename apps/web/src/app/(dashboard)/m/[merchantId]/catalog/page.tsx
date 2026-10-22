@@ -1,12 +1,11 @@
 "use client";
-import { PageHeader, Panel } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, RowList, Section, SkeletonRows, Tag } from "@/components/dashboard/kit";
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { Badge } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -41,45 +40,56 @@ function Catalog() {
   const { api } = useMerchant();
   const state = useApi(() => api.catalog(), [api]);
   const [edit, setEdit] = useState<Draft | null>(null);
+  const [tried, setTried] = useState(false);
   const [newCat, setNewCat] = useState("");
   const act = useAction();
+  const blank: Draft = { name: "", price: "", description: "", categoryId: "", modifiers: "" };
+  const openEdit = (d: Draft) => {
+    setTried(false);
+    act.setError(null);
+    setEdit(d);
+  };
+  const priceCents = edit ? Math.round(Number.parseFloat(edit.price) * 100) : NaN;
+  const nameError = tried && edit && !edit.name.trim() ? "Add a name." : null;
+  const priceError = tried && edit && !(priceCents >= 0) ? "Add a price, like 4.50." : null;
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Menu & catalog" description="What customers can order ahead. Prices are always set here, never by the app." actions={<Button size="sm" iconStart={Plus} onClick={() => setEdit({ name: "", price: "", description: "", categoryId: "", modifiers: "" })}>Add item</Button>} />
-      {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <Async state={state}>
+    <div className="flex flex-col gap-6">
+      <PageHeader flush title="Menu & catalog" description="What customers can order ahead. Prices are always set here, never by the app." actions={<Button size="sm" iconStart={Plus} onClick={() => openEdit(blank)}>Add item</Button>} />
+      {act.error && !edit ? <Banner tone="danger">{act.error}</Banner> : null}
+      <Async state={state} skeleton={<SkeletonRows rows={6} />}>
         {(c) => (
           <>
+            {!c.items.length ? (
+              <EmptyState title="No menu items yet" description="Add what customers can order ahead, with prices and options." action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => openEdit(blank)}>Add item</Button>} />
+            ) : null}
             {[...c.categories, { id: "", name: "No category", earnEligible: true, discountEligible: true }].map((cat) => {
               const items = c.items.filter((i) => (i.categoryId ?? "") === cat.id);
               if (!items.length && !cat.id) return null;
+              if (!items.length && !c.items.length) return null;
               return (
-                <Panel key={cat.id || "none"}>
-                  <h2 className="flex items-center gap-2 text-body-strong text-fg">
-                    {cat.name} {!cat.earnEligible ? <Badge>Doesn&apos;t earn</Badge> : null}
-                  </h2>
-                  <ul className="mt-2 divide-y divide-line">
+                <Section key={cat.id || "none"} title={<span className="flex items-center gap-2">{cat.name} {!cat.earnEligible ? <Tag>Doesn&apos;t earn</Tag> : null}</span>} action={<span className="text-meta tabular text-fg-muted">{items.length} {items.length === 1 ? "item" : "items"}</span>}>
+                  <RowList label={cat.name}>
                     {items.map((i) => (
-                      <li key={i.id} className="flex flex-wrap items-center gap-3 py-2">
+                      <li key={i.id} className="flex items-center gap-3 py-2.5">
                         <div className="min-w-0 flex-1">
-                          <p className="text-body-strong text-fg">{i.name}</p>
-                          <p className="text-meta text-fg-muted">{formatMoney(i.priceCents)}{i.modifiers.length ? ` · ${i.modifiers.map((m) => m.name).join(", ")}` : ""}</p>
+                          <p className="truncate text-body text-fg">{i.name}</p>
+                          <p className="truncate text-meta text-fg-muted tabular">{formatMoney(i.priceCents)}{i.modifiers.length ? ` · ${i.modifiers.map((m) => m.name).join(", ")}` : ""}</p>
                         </div>
-                        <div className="w-40">
+                        <div className="shrink-0">
                           <Switch label="Orderable" checked={i.orderable && i.available} onChange={async (v) => {
                             await act.run(() => api.updateItem(i.id, { orderable: v, available: v }));
                             await state.reload();
                           }} />
                         </div>
-                        <IconButton icon={Pencil} label={`Edit ${i.name}`} onClick={() => setEdit({ id: i.id, name: i.name, price: (i.priceCents / 100).toFixed(2), description: i.description ?? "", categoryId: i.categoryId ?? "", modifiers: i.modifiers.map((m) => `${m.name}: ${m.options.map((o) => `${o.name}${o.priceCents ? ` ${(o.priceCents / 100).toFixed(2)}` : ""}`).join(", ")}`).join("\n") })} />
+                        <IconButton icon={Pencil} size={40} label={`Edit ${i.name}`} onClick={() => openEdit({ id: i.id, name: i.name, price: (i.priceCents / 100).toFixed(2), description: i.description ?? "", categoryId: i.categoryId ?? "", modifiers: i.modifiers.map((m) => `${m.name}: ${m.options.map((o) => `${o.name}${o.priceCents ? ` ${(o.priceCents / 100).toFixed(2)}` : ""}`).join(", ")}`).join("\n") })} />
                       </li>
                     ))}
-                    {!items.length ? <li className="py-2 text-meta text-fg-muted">No items yet.</li> : null}
-                  </ul>
-                </Panel>
+                    {!items.length ? <li className="py-3 text-meta text-fg-muted">No items yet.</li> : null}
+                  </RowList>
+                </Section>
               );
             })}
-            <form className="flex gap-2" onSubmit={async (e) => {
+            <form className="flex items-start gap-2 border-t border-line pt-4" onSubmit={async (e) => {
               e.preventDefault();
               if (!newCat.trim()) return;
               await act.run(() => api.createCatalogCategory({ name: newCat.trim() }));
@@ -95,7 +105,8 @@ function Catalog() {
                 <Button loading={act.busy} onClick={async () => {
                   if (!edit) return;
                   const priceCents = Math.round(Number.parseFloat(edit.price) * 100);
-                  if (!edit.name.trim() || !(priceCents >= 0)) return act.setError("Add a name and price.");
+                  setTried(true);
+                  if (!edit.name.trim() || !(priceCents >= 0)) return;
                   const body = { name: edit.name.trim(), priceCents, description: edit.description.trim() || null, categoryId: edit.categoryId || null, modifiers: parseModifiers(edit.modifiers) };
                   const r = await act.run(() => (edit.id ? api.updateItem(edit.id, body) : api.createItem(body)));
                   if (r) {
@@ -107,11 +118,12 @@ function Catalog() {
             }>
               {edit ? (
                 <div className="flex flex-col gap-4">
-                  <TextField label="Name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-                  <TextField label="Price" inputMode="decimal" prefix="$" value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} />
+                  <TextField label="Name" value={edit.name} error={nameError} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                  <TextField label="Price" inputMode="decimal" prefix="$" error={priceError} value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} />
                   <Select label="Section" placeholder="No category" value={edit.categoryId} onChange={(e) => setEdit({ ...edit, categoryId: e.target.value })} options={c.categories.map((x) => ({ value: x.id, label: x.name }))} />
                   <TextField type="textarea" label="Description" optionalLabel value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} />
                   <TextField type="textarea" label="Options" optionalLabel hint="One group per line: Size: Small, Large 0.75" value={edit.modifiers} onChange={(e) => setEdit({ ...edit, modifiers: e.target.value })} />
+                  {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
                 </div>
               ) : null}
             </Modal>

@@ -27,6 +27,7 @@ import tiffin from "./tiffin/index.js";
 import kitchen from "./kitchen/index.js";
 import catering from "./catering/index.js";
 import banquet from "./banquet/index.js";
+import paymentsPublic from "./payments-public/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -57,4 +58,5 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await kitchen(app, ctx);
   await catering(app, ctx);
   await banquet(app, ctx);
+  await paymentsPublic(app, ctx);
 }

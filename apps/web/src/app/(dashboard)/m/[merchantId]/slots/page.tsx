@@ -1,5 +1,5 @@
 "use client";
-import { PageHeader, Panel, Segmented } from "@/components/dashboard/kit";
+import { ErrorLine, PageHeader, Panel, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { CalendarPlus } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi } from "@ll/shared";
@@ -40,17 +40,17 @@ function Slots() {
     byDay.set(k, [...(byDay.get(k) ?? []), s]);
   }
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Pickup & drop-off" description="Slots come from your opening hours. Customers pick one when they order or book." actions={kinds.length > 1 ? <Segmented label="Kind" value={kind} onChange={setKind} options={kinds} /> : undefined} />
+    <div className="flex flex-col gap-6">
+      <PageHeader flush title="Pickup & drop-off" description="Slots come from your opening hours. Customers pick one when they order or book." actions={kinds.length > 1 ? <Segmented label="Kind" value={kind} onChange={setKind} options={kinds} /> : undefined} />
       <Panel title="Make slots">
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Select label="Location" value={loc} onChange={(e) => setLoc(e.target.value)} options={detail.locations.map((l) => ({ value: l.id, label: l.name }))} />
           <TextField label="Days ahead" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} />
           <TextField label="Slot length" inputMode="numeric" suffix="min" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ""))} />
           <TextField label="Per slot" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value.replace(/\D/g, ""))} />
         </div>
         {act.error ? <Banner tone="danger" className="mt-3">{act.error}</Banner> : null}
-        <Button className="mt-3" iconStart={CalendarPlus} loading={act.busy} onClick={async () => {
+        <Button className="mt-4" iconStart={CalendarPlus} loading={act.busy} onClick={async () => {
           const r = await act.run(() => api.generateSlots({ locationId: loc, kind, startDate: toLocalInput(new Date()).slice(0, 10), days: Number(days) || 7, slotMinutes: Number(mins) || 15, capacity: Number(cap) || 4 }));
           if (r) {
             toast({ message: `${r.created} slots added`, tone: "success" });
@@ -61,11 +61,15 @@ function Slots() {
         </Button>
       </Panel>
       <Panel title="Upcoming bookings">
-        {bookings.data?.items.length ? (
+        {bookings.error && !bookings.data ? (
+          <ErrorLine message={bookings.error} onRetry={bookings.reload} />
+        ) : !bookings.data ? (
+          <SkeletonRows rows={2} />
+        ) : bookings.data.items.length ? (
           <ul className="divide-y divide-line">
             {bookings.data.items.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center gap-3 py-2 text-meta">
-                <span className="min-w-40 flex-1 text-fg">{formatDate(b.startsAt, true)} {formatTime(b.startsAt)} · {b.status}</span>
+                <span className="min-w-40 flex-1 text-fg tabular">{formatDate(b.startsAt, true)} {formatTime(b.startsAt)} · {b.status.replace(/_/g, " ")}</span>
                 {b.status === "booked" ? (
                   <>
                     <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.updateBooking(b.id, "completed")); await bookings.reload(); }}>Done</Button>
@@ -80,6 +84,7 @@ function Slots() {
         )}
       </Panel>
       <Panel title="Slots">
+        {slots.error && !slots.data ? <ErrorLine message={slots.error} onRetry={slots.reload} /> : null}
         {[...byDay.entries()].slice(0, 7).map(([day, list]) => (
           <div key={day} className="mb-3">
             <p className="text-label text-fg">{day}</p>
@@ -92,7 +97,7 @@ function Slots() {
             </div>
           </div>
         ))}
-        {!byDay.size ? <p className="text-meta text-fg-muted">No slots yet. Make some above.</p> : null}
+        {!byDay.size && slots.data ? <p className="text-meta text-fg-muted">No slots yet. Make some above.</p> : null}
       </Panel>
     </div>
   );

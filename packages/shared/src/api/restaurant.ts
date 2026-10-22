@@ -338,6 +338,11 @@ export interface CateringLineDto {
 export interface CateringEventDto {
   id: string;
   merchantId: string;
+  /** Customer-facing (/me/...) responses only: the kitchen this belongs to, so rows don't need a wallet lookup. */
+  merchantName?: string | null;
+  merchantSlug?: string | null;
+  merchantLogoUrl?: string | null;
+  merchantBrandColor?: string | null;
   userId: string;
   number: number;
   customer: { name: string | null; phone: string | null; email: string | null } | null;
@@ -378,6 +383,17 @@ export interface CateringDepositPaymentDto {
   paymentIntentId: string;
   clientSecret: string | null;
   amountCents: number;
+}
+/** GET /public/payments/:paymentIntentId?cs=<clientSecret>: what a PaymentIntent from the app is paying for. */
+export type PaymentIntentKind = "tiffin" | "hall_deposit" | "catering_deposit" | "order";
+export type PaymentIntentViewStatus = "requires_payment" | "processing" | "succeeded" | "canceled";
+export interface PaymentIntentView {
+  merchant: { name: string; slug: string; logoUrl: string | null; brandColor: string | null };
+  description: string;
+  amountCents: number;
+  currency: string;
+  kind: PaymentIntentKind;
+  status: PaymentIntentViewStatus;
 }
 export interface PublicCateringResponse {
   merchant: { name: string; slug: string; logoUrl: string | null; phone: string | null };
@@ -476,6 +492,11 @@ export interface HallBookingDto {
   hallId: string;
   hallName: string | null;
   merchantId: string;
+  /** Customer-facing (/me/...) responses only: the kitchen this belongs to, so rows don't need a wallet lookup. */
+  merchantName?: string | null;
+  merchantSlug?: string | null;
+  merchantLogoUrl?: string | null;
+  merchantBrandColor?: string | null;
   userId: string;
   eventType: CateringEventType;
   startsAt: string;

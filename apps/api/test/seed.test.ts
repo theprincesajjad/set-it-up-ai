@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   catalogItems,
   cateringEvents,
+  featureOverrides,
   halls,
   hallBookings,
   ledgerEntries,
@@ -275,6 +276,35 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     const todays = await env.db.select().from(tiffinDeliveries).where(and(eq(tiffinDeliveries.merchantId, shree), eq(tiffinDeliveries.date, today)));
     expect(todays.length).toBeGreaterThan(5);
     expect(todays.every((d) => d.routeId || subs.find((s) => s.id === d.subscriptionId)!.fulfilment === "pickup")).toBe(true);
+  });
+
+  it("every restaurant-tier shop can take payments locally; Shree's tiffin plans and menus speak hi, ur and pa", async () => {
+    const tiered = await env.db.select().from(merchants).where(sql`${merchants.restaurantTier} is not null`);
+    expect(tiered.length).toBeGreaterThanOrEqual(8);
+    for (const m of tiered) {
+      expect(m).toMatchObject({ stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true });
+      expect(m.stripeAccountId).toMatch(/^acct_demo_/);
+      const [ov] = await env.db.select().from(featureOverrides).where(and(eq(featureOverrides.merchantId, m.id), eq(featureOverrides.key, "payments.in_app")));
+      expect(ov?.enabled).toBe(true);
+    }
+    const shree = await slugToId("shree-thali-and-tiffin");
+    const plans = await env.db.select().from(tiffinPlans).where(eq(tiffinPlans.merchantId, shree));
+    for (const p of plans) {
+      expect(p.translations.hi?.name).toMatch(/[\u0900-\u097F]/);
+      expect(p.translations.ur?.name).toMatch(/[\u0600-\u06FF]/);
+      expect(p.translations.pa?.name).toMatch(/[\u0A00-\u0A7F]/);
+      expect(p.translations.ur?.description && p.translations.pa?.description).toBeTruthy();
+    }
+    const menus = await env.db.select().from(tiffinMenus).where(eq(tiffinMenus.merchantId, shree));
+    expect(menus.length).toBeGreaterThanOrEqual(30);
+    for (const it of menus.flatMap((m) => m.items)) expect(it.translations?.hi?.name && it.translations?.ur?.name && it.translations?.pa?.name).toBeTruthy();
+  });
+
+  it("seeds two unanswered demo review links for Sarson Dhaba (used by the e2e spec)", async () => {
+    const sarson = await slugToId("sarson-dhaba");
+    const rows = await env.db.select().from(reviewRequests).where(and(eq(reviewRequests.merchantId, sarson), inArray(reviewRequests.token, ["demo-review-sarson-5", "demo-review-sarson-low"])));
+    expect(rows.length).toBe(2);
+    expect(rows.every((r) => r.rating === null)).toBe(true);
   });
 
   it("has WhatsApp sessions with opt-ins, phone calls with transcripts and drafts, and rated review requests", async () => {

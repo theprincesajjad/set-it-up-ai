@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import { PLANS } from "@ll/shared";
 import { cn } from "@/lib/cn";
 import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { Meter, PageHeader, QuietLink, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";

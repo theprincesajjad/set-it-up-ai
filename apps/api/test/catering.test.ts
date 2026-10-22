@@ -86,7 +86,12 @@ describe("numbering and inquiries", () => {
     const r = await api(c.token, "POST", "/v1/me/catering", { ...body, merchantId: m.merchant.id });
     expect(r.status).toBe(201);
     expect(r.body).toMatchObject({ number: 1, status: "inquiry", eventType: "walima", headcount: 100, depositBps: 3000, approvalUrl: null });
-    expect((await api(c.token, "GET", "/v1/me/catering")).body.items).toHaveLength(1);
+    expect(r.body).toMatchObject({ merchantName: m.merchant.name, merchantSlug: m.merchant.slug });
+    const mine = await api(c.token, "GET", "/v1/me/catering");
+    expect(mine.body.items).toHaveLength(1);
+    expect(mine.body.items[0]).toMatchObject({ merchantName: m.merchant.name, merchantSlug: m.merchant.slug });
+    expect((await api(c.token, "GET", `/v1/me/catering/${r.body.id}`)).body).toMatchObject({ merchantName: m.merchant.name });
+    expect((await api(m.ownerToken, "GET", `${m.base}/catering/${r.body.id}`)).body.merchantName).toBeUndefined();
     expect((await api(other.token, "GET", "/v1/me/catering")).body.items).toHaveLength(0);
     expect((await api(other.token, "GET", `/v1/me/catering/${r.body.id}`)).status).toBe(404);
     expect((await api(c.token, "POST", "/v1/me/catering", { ...body, merchantId: m.merchant.id, eventDate: "2026-11-01" })).status).toBe(400);

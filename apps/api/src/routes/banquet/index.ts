@@ -123,7 +123,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     await requireFeature(ctx.db, merchant, "restaurant.banquet");
     // A customer can't attach someone else's catering event.
     const r = await svc.createHold(ctx, merchant, user.id, { ...body, customer: null, cateringEventId: null });
-    return reply.status(201).send(r);
+    return reply.status(201).send({ ...r, booking: await svc.myBookingDto(ctx.db, await svc.getMyBooking(ctx.db, user.id, r.booking.id)) });
   });
 
   app.get("/me/banquet/bookings", async (req) => svc.listMyBookings(ctx.db, requireUser(req).id));
@@ -131,11 +131,11 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: { bookingId: string } }>("/me/banquet/bookings/:bookingId", async (req) => {
     const b = await svc.getMyBooking(ctx.db, requireUser(req).id, req.params.bookingId);
     const merchant = await loadMerchant(ctx.db, b.merchantId);
-    return { booking: await bookingOut(b), deposit: merchant ? await svc.depositPayment(ctx, merchant, b) : null };
+    return { booking: await svc.myBookingDto(ctx.db, b), deposit: merchant ? await svc.depositPayment(ctx, merchant, b) : null };
   });
 
   app.post<{ Params: { bookingId: string } }>("/me/banquet/bookings/:bookingId/cancel", async (req) => {
-    return bookingOut(await svc.cancel(ctx, { userId: requireUser(req).id, bookingId: req.params.bookingId }));
+    return svc.myBookingDto(ctx.db, await svc.cancel(ctx, { userId: requireUser(req).id, bookingId: req.params.bookingId }));
   });
 
   // ---------------------------------------------------------------- public
