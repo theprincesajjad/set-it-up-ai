@@ -387,6 +387,46 @@ export interface VisitHookArgs {
 export type VisitHook = (tx: Tx, args: VisitHookArgs) => Promise<{ pointsAwarded?: number; messages?: string[] } | void>;
 export const visitHooks: VisitHook[] = [];
 
+/**
+ * Balance-change listeners run AFTER the ledger transaction commits (wallet pass
+ * updates, customer notifications). They never affect the ledger result: errors
+ * are logged and swallowed. In tests they are awaited so assertions are
+ * deterministic; elsewhere they run in the background so the counter isn't kept waiting.
+ */
+export interface BalanceChange {
+  kind: "award" | "redeem" | "adjust" | "reversal";
+  merchantId: string;
+  memberId: string;
+  userId: string;
+  /** Signed change in the shop's own units (points/stamps). */
+  delta: number;
+  balance: number;
+  previousBalance: number;
+  source: TxSource;
+  at: Date;
+  transactionId: string | null;
+  /** award: messages from perks/campaign hooks ("Passport: 3 of 5 shops visited."). */
+  messages?: string[];
+  /** redeem: the reward. */
+  reward?: { id: string; name: string };
+}
+export type BalanceListener = (ctx: AppContext, change: BalanceChange) => Promise<void>;
+export const balanceListeners: BalanceListener[] = [];
+
+export async function emitBalanceChange(ctx: AppContext, change: BalanceChange): Promise<void> {
+  const run = async () => {
+    for (const l of balanceListeners) {
+      try {
+        await l(ctx, change);
+      } catch (err) {
+        if (ctx.config.env !== "test") console.error("[ledger] balance listener failed", err);
+      }
+    }
+  };
+  if (ctx.config.env === "test") await run();
+  else void run();
+}
+
 export interface AwardArgs {
   merchantId: string;
   /** Provide one of memberId, userId or phone (E.164). */
@@ -423,6 +463,26 @@ export interface AwardResult {
 }
 
 export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<AwardResult> {
+  const r = await awardPurchaseTx(ctx, args);
+  const delta = (r.transaction?.points ?? 0) + r.extraPoints;
+  if (!r.duplicate && (delta !== 0 || r.messages.length))
+    await emitBalanceChange(ctx, {
+      kind: "award",
+      merchantId: r.member.merchantId,
+      memberId: r.member.id,
+      userId: r.member.userId,
+      delta,
+      balance: r.member.balance,
+      previousBalance: r.member.balance - delta,
+      source: args.source,
+      at: ctx.now(),
+      transactionId: r.transaction?.id ?? null,
+      messages: r.messages,
+    });
+  return r;
+}
+
+async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardResult> {
   return ctx.db.transaction(async (tx) => {
     const now = ctx.now();
     const [merchant] = await tx.select().from(merchants).where(eq(merchants.id, args.merchantId)).limit(1);
@@ -682,6 +742,25 @@ export interface RedeemArgs {
 export const REDEMPTION_CODE_TTL_MS = 10 * 60_000;
 
 export async function redeemReward(ctx: AppContext, args: RedeemArgs) {
+  const r = await redeemRewardTx(ctx, args);
+  if (!r.duplicate)
+    await emitBalanceChange(ctx, {
+      kind: "redeem",
+      merchantId: args.merchantId,
+      memberId: r.member.id,
+      userId: r.member.userId,
+      delta: -r.reward.pointsCost,
+      balance: r.member.balance,
+      previousBalance: r.member.balance + r.reward.pointsCost,
+      source: args.source,
+      at: ctx.now(),
+      transactionId: r.redemption.transactionId,
+      reward: { id: r.reward.id, name: r.reward.name },
+    });
+  return r;
+}
+
+async function redeemRewardTx(ctx: AppContext, args: RedeemArgs) {
   return ctx.db.transaction(async (tx) => {
     const now = ctx.now();
     const [reward] = await tx.select().from(rewards).where(and(eq(rewards.id, args.rewardId), eq(rewards.merchantId, args.merchantId))).limit(1);
@@ -734,7 +813,7 @@ export async function adjustPoints(
 ) {
   if (!args.reason.trim()) throw badRequest("A reason is required for manual adjustments");
   if (args.points === 0) throw badRequest("Adjustment cannot be zero");
-  return ctx.db.transaction((tx) =>
+  const r = await ctx.db.transaction((tx) =>
     postTransaction(tx, {
       merchantId: args.merchantId,
       memberId: args.memberId,
@@ -747,10 +826,44 @@ export async function adjustPoints(
       at: ctx.now(),
     }),
   );
+  if (!r.duplicate)
+    await emitBalanceChange(ctx, {
+      kind: "adjust",
+      merchantId: args.merchantId,
+      memberId: r.member.id,
+      userId: r.member.userId,
+      delta: args.points,
+      balance: r.member.balance,
+      previousBalance: r.member.balance - args.points,
+      source: args.source ?? "dashboard",
+      at: ctx.now(),
+      transactionId: r.transaction.id,
+    });
+  return r;
 }
 
 /** Reverse a transaction (refund, mistake). Each transaction can be reversed once. */
 export async function reverseTransaction(
+  ctx: AppContext,
+  args: { merchantId: string; transactionId: string; reason: string; staffUserId?: string | null; source?: TxSource },
+) {
+  const r = await reverseTransactionTx(ctx, args);
+  await emitBalanceChange(ctx, {
+    kind: "reversal",
+    merchantId: args.merchantId,
+    memberId: r.member.id,
+    userId: r.member.userId,
+    delta: r.transaction.points,
+    balance: r.member.balance,
+    previousBalance: r.member.balance - r.transaction.points,
+    source: args.source ?? "dashboard",
+    at: ctx.now(),
+    transactionId: r.transaction.id,
+  });
+  return r;
+}
+
+async function reverseTransactionTx(
   ctx: AppContext,
   args: { merchantId: string; transactionId: string; reason: string; staffUserId?: string | null; source?: TxSource },
 ) {

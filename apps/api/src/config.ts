@@ -22,7 +22,17 @@ export interface Config {
   toast: { clientId?: string; clientSecret?: string; webhookSecret?: string; apiHost: string };
   mailchimp: { clientId?: string; clientSecret?: string };
   google: { walletIssuerId?: string; walletServiceAccountJson?: string; placesApiKey?: string };
-  apple: { passTypeId?: string; teamId?: string; certPem?: string; keyPem?: string; wwdrPem?: string; keyPassphrase?: string };
+  apple: {
+    passTypeId?: string;
+    teamId?: string;
+    certPem?: string;
+    keyPem?: string;
+    wwdrPem?: string;
+    keyPassphrase?: string;
+    /** APNs token auth (.p8 key from Apple Developer → Keys). Preferred; the pass certificate is the fallback. */
+    apnsKeyId?: string;
+    apnsKeyP8?: string;
+  };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -76,6 +86,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       keyPem: env.APPLE_PASS_KEY_PEM,
       wwdrPem: env.APPLE_WWDR_PEM,
       keyPassphrase: env.APPLE_PASS_KEY_PASSPHRASE,
+      apnsKeyId: env.APPLE_APNS_KEY_ID,
+      apnsKeyP8: env.APPLE_APNS_KEY_P8,
     },
   };
 }

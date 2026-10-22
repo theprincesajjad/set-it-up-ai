@@ -734,6 +734,48 @@ export const walletDeviceRegistrations = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Customer notifications (inbox + per-user preferences). See docs/engineering/api/notifications.md
+// ---------------------------------------------------------------------------
+/** Overrides only: a missing row means the type/channel default (services/notifications.ts). */
+export const userNotificationPrefs = pgTable(
+  "user_notification_prefs",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** points_earned | reward_ready | reward_expiring | redeem_confirmed | order_ready | ticket_updated | quote_sent | booking_reminder | promo_nearby | passport_progress */
+    type: text("type").notNull(),
+    channel: text("channel").notNull(), // push | sms | email
+    enabled: boolean("enabled").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("user_notification_prefs_uq").on(t.userId, t.type, t.channel)],
+);
+
+/** Every notification we decided to send a customer (the in-app inbox), whatever channel carried it. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** Deep link payload, e.g. { screen: "shop", merchantId, slug, url: "ll://shop/<slug>" }. */
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+    /** Channels that carried it: ["push", "sms", "email", "wallet"]. */
+    channels: jsonb("channels").$type<string[]>().notNull().default([]),
+    /** Expo push tickets [{ id, token }] awaiting receipt checks (DeviceNotRegistered cleanup). */
+    pushTickets: jsonb("push_tickets").$type<{ id: string; token: string }[]>(),
+    receiptsCheckedAt: ts("receipts_checked_at"),
+    readAt: ts("read_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("notifications_user_idx").on(t.userId, t.createdAt), index("notifications_user_type_idx").on(t.userId, t.type, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
 // Plans, subscriptions and feature rollout
 // ---------------------------------------------------------------------------
 export const subscriptions = pgTable(

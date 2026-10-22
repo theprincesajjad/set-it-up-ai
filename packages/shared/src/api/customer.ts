@@ -323,3 +323,153 @@ export interface DataExportResponse {
   invoices: unknown[];
   messages: { merchantId: string | null; channel: string; kind: string; body: string; createdAt: string }[];
 }
+
+// ---------------------------------------------------------------------------
+// Notifications: inbox + preferences (docs/engineering/api/notifications.md)
+// ---------------------------------------------------------------------------
+export const NOTIFICATION_TYPES = [
+  "points_earned",
+  "reward_ready",
+  "reward_expiring",
+  "redeem_confirmed",
+  "order_ready",
+  "ticket_updated",
+  "quote_sent",
+  "booking_reminder",
+  "promo_nearby",
+  "passport_progress",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export const NOTIFICATION_CHANNELS = ["push", "sms", "email"] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+/** Android notification channel ids the app creates (expo-notifications). */
+export const ANDROID_CHANNELS = {
+  points: { name: "Points and rewards", importance: "default" },
+  orders: { name: "Orders and repairs", importance: "high" },
+  offers: { name: "Offers nearby", importance: "low" },
+} as const;
+export type AndroidChannelId = keyof typeof ANDROID_CHANNELS;
+
+export interface NotificationTypeInfo {
+  type: NotificationType;
+  /** marketing = CASL promotional (needs consent, honours quiet hours 9pm-8am). */
+  kind: "transactional" | "marketing";
+  androidChannel: AndroidChannelId;
+  /** Settings-screen copy. */
+  label: string;
+  description: string;
+  /** Channels this type can use at all (others are never sent, so don't show a toggle). */
+  channels: NotificationChannel[];
+  defaults: Record<NotificationChannel, boolean>;
+}
+
+const t = (
+  type: NotificationType,
+  kind: NotificationTypeInfo["kind"],
+  androidChannel: AndroidChannelId,
+  label: string,
+  description: string,
+  defaults: Partial<Record<NotificationChannel, boolean>>,
+): NotificationTypeInfo => ({
+  type,
+  kind,
+  androidChannel,
+  label,
+  description,
+  channels: (Object.keys(defaults) as NotificationChannel[]).filter((c) => defaults[c] !== undefined),
+  defaults: { push: false, sms: false, email: false, ...defaults },
+});
+
+/** Catalogue (server and app agree on this). Order = settings screen order. */
+export const NOTIFICATION_CATALOG: readonly NotificationTypeInfo[] = [
+  t("points_earned", "transactional", "points", "Points earned", "After a visit or purchase (at most one per shop every 10 minutes).", { push: true }),
+  t("reward_ready", "transactional", "points", "Reward ready", "When you have enough for a reward.", { push: true, sms: true }),
+  t("reward_expiring", "transactional", "points", "Points expiring", "A month before a shop's points expire (only shops that use expiry).", { push: true, sms: true, email: true }),
+  t("redeem_confirmed", "transactional", "points", "Reward redeemed", "Confirmation when you redeem a reward.", { push: true }),
+  t("order_ready", "transactional", "orders", "Orders", "Order accepted, ready for pickup or cancelled.", { push: true, sms: true }),
+  t("ticket_updated", "transactional", "orders", "Repairs and invoices", "Status changes on a repair or service ticket, invoices and payments.", { push: true, sms: true }),
+  t("quote_sent", "transactional", "orders", "Quotes", "When a shop sends you a quote to approve.", { push: true, sms: true, email: true }),
+  t("booking_reminder", "transactional", "orders", "Pickup and drop-off reminders", "Reminders for times you booked.", { push: true, sms: true }),
+  t("passport_progress", "transactional", "points", "Neighbourhood passport", "Progress on neighbourhood challenges and bonuses.", { push: true }),
+  t("promo_nearby", "marketing", "offers", "Offers nearby", "Offers from shops you've joined, when you're close (at most one a day, never 9pm-8am).", { push: true }),
+];
+
+export const notificationInfo = (type: NotificationType): NotificationTypeInfo => NOTIFICATION_CATALOG.find((x) => x.type === type)!;
+
+export interface NotificationPrefDto {
+  type: NotificationType;
+  kind: "transactional" | "marketing";
+  label: string;
+  description: string;
+  /** Only the channels the type supports. */
+  channels: Partial<Record<NotificationChannel, boolean>>;
+}
+
+/** GET /v1/me/notification-prefs (and the PUT response) */
+export interface NotificationPrefsResponse {
+  items: NotificationPrefDto[];
+  quietHours: { start: "21:00"; end: "08:00"; appliesTo: "marketing" };
+}
+
+/** PUT /v1/me/notification-prefs — partial: only the listed type/channel pairs change. */
+export const updateNotificationPrefsBody = z.object({
+  prefs: z
+    .array(z.object({ type: z.enum(NOTIFICATION_TYPES), channel: z.enum(NOTIFICATION_CHANNELS), enabled: z.boolean() }))
+    .min(1)
+    .max(NOTIFICATION_TYPES.length * NOTIFICATION_CHANNELS.length),
+});
+export type UpdateNotificationPrefsBody = z.infer<typeof updateNotificationPrefsBody>;
+
+/** Deep-link payload carried in push `data` and in inbox items. */
+export interface NotificationData {
+  /** Notification type (also used by the app to pick an icon). */
+  type?: NotificationType;
+  notificationId?: string;
+  /** "shop" | "rewards" | "order" | "ticket" | "quote" | "campaign" | "card" | "inbox" */
+  screen?: string;
+  merchantId?: string;
+  slug?: string;
+  orderId?: string;
+  ticketId?: string;
+  quoteId?: string;
+  campaignId?: string;
+  /** App deep link (ll://shop/<slug>, ll://order/<id>, ...) or a web URL for quotes/invoices. */
+  url?: string;
+  [k: string]: unknown;
+}
+
+export interface NotificationDto {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  merchant: { id: string; name: string; slug: string; logoUrl: string | null; brandColor: string | null } | null;
+  data: NotificationData;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** GET /v1/me/notifications?limit=&cursor=&unread=1 */
+export const notificationsQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+  cursor: z.string().optional(),
+  unread: z
+    .union([z.literal("1"), z.literal("true"), z.literal("0"), z.literal("false")])
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
+});
+export type NotificationsQuery = z.infer<typeof notificationsQuery>;
+
+export interface NotificationsResponse {
+  items: NotificationDto[];
+  nextCursor: string | null;
+  unreadCount: number;
+}
+
+/** POST /v1/me/notifications/:id/read and POST /v1/me/notifications/read-all */
+export interface NotificationsReadResponse {
+  unreadCount: number;
+}

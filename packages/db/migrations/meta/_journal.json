@@ -36,6 +36,13 @@
       "when": 1792628971810,
       "tag": "0004_feature_interest",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792660558263,
+      "tag": "0005_notifications",
+      "breakpoints": true
     }
   ]
 }

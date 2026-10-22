@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DIST = process.env.E2E_DIST ?? join(here, "..", "dist-web");
 const PORT = Number(process.env.E2E_WEB_PORT ?? 8300);
 const WEB = `http://localhost:${PORT}`;
-const OUT = join(here, "screenshots");
+const OUT = process.env.E2E_OUT ?? join(here, "screenshots");
 const ONLY = process.argv[2] ?? "";
 /** Seeded customer with four shops and rewards ready (seed prints +16475551000 …). */
 const CUSTOMER = process.env.E2E_CUSTOMER_PHONE ?? "+16475551009";

@@ -12,6 +12,11 @@ export interface WalletShopBalance {
   terminology: string;
   /** Null = points never expire. Otherwise months of inactivity before expiry (disclosed on the pass). */
   expiryMonths: number | null;
+  /** Rewards this balance can redeem right now (shop's own units; never summed across shops on screen). */
+  rewardsReady: number;
+  /** Shop slug for deep links (ll://shop/<slug>). */
+  slug: string;
+  lastVisitAt: string | null;
 }
 
 export interface WalletSummary {
@@ -19,9 +24,19 @@ export interface WalletSummary {
   qrValue: string;
   name: string | null;
   shopCount: number;
+  /**
+   * @deprecated Sums points and stamps across shops, which mixes units. Not shown on the pass any more;
+   * use `rewardsReady` (the v2 headline) and per-shop balances.
+   */
   totalPoints: number;
+  /** Rewards ready across all shops (the pass headline). */
+  rewardsReady: number;
+  /** Ordered: shops with rewards ready first, then most recent visit. */
   shops: WalletShopBalance[];
 }
+
+/** Brand wording for the wallet buttons (Apple / Google brand guidelines). */
+export const WALLET_BUTTON_TEXT = { apple: "Add to Apple Wallet", google: "Add to Google Wallet" } as const;
 
 /** GET /v1/me/wallet */
 export interface WalletStatusResponse {
