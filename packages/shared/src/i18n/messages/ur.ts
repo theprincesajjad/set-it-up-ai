@@ -149,7 +149,7 @@ export const ur: Messages = {
   "rc.ca.perGuestLine": "{n} مہمان × {price}",
   "rc.ca.trayLine": "{n, plural, one {# ٹرے} other {# ٹرے}} × {price}",
   "rc.ca.qtyLine": "{n} × {price} فی عدد",
-  "rc.ca.perGuest": "{price} فی مہمان",
+  "rc.ca.perGuest": "تقریباً {price} فی مہمان، سب شامل",
   "rc.ca.subtotal": "ذیلی میزان",
   "rc.ca.tax": "ٹیکس",
   "rc.ca.total": "کل",

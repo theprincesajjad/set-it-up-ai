@@ -1,14 +1,14 @@
 "use client";
 import {
   BarChart3, Blocks, CalendarClock, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
-  Wrench, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, type LucideIcon, Calculator, Check,
+  Wrench, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, type LucideIcon, Calculator, Check,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
-import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
+import { NAV_GROUP_LABELS, buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
 import { useApi } from "@/lib/dashboard/useApi";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
@@ -21,7 +21,7 @@ const ICONS: Record<string, LucideIcon> = {
   home: Home, counter: Calculator, customers: Users, program: Gift, promos: Megaphone, "discount-cards": IdCard, messages: Mail, reports: BarChart3,
   locations: MapPin, staff: UserCog, integrations: Blocks, billing: CreditCard, settings: Settings, orders: ShoppingBag, catalog: Tag, tickets: Wrench,
   "restaurant-menu": UtensilsCrossed, "restaurant-preorders": Clock, "restaurant-tiffin": Truck, "restaurant-catering": PartyPopper, "restaurant-banquet": Building2,
-  "restaurant-kitchen": ChefHat, "restaurant-whatsapp": MessageCircle, "restaurant-reviews": Star, "restaurant-festivals": Sparkles, "restaurant-phone-orders": Phone,
+  "restaurant-kitchen": ChefHat, "restaurant-whatsapp": MessageCircle, "restaurant-reviews": Star, "restaurant-festivals": Sparkles, "restaurant-phone-orders": Phone, "restaurant-more": Plus,
   slots: CalendarClock, ads: Flag, campaigns: ClipboardList,
 };
 
@@ -112,7 +112,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   const { base, detail, role, features, viewingAs, api } = useMerchant();
   const pathname = usePathname() ?? "";
   const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)));
-  const nav: ShellNavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, group: e.group, exact: e.exact }));
+  const nav: ShellNavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, group: e.group, groupLabel: NAV_GROUP_LABELS[e.group], exact: e.exact }));
   const section = pathname.slice(base.length).split("/")[1] ?? "";
   const sectionKey = section === "" ? "home" : section === "setup" ? "home" : section;
   const allowed = canOpen(role, sectionKey);

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
-import { DietBadges, useDaysLabel } from "../../../../features/restaurant/components";
+import { DietBadges, useDaysLabel, useMoney } from "../../../../features/restaurant/components";
 import { featureOff, rk, useTiffinPlans } from "../../../../features/restaurant/queries";
 import { useLocale } from "../../../../lib/i18n";
 import { LanguageSwitcher } from "../../../../lib/i18n/LanguageSwitcher";
@@ -14,7 +14,8 @@ import { EmptyState, ErrorState, hairline, ListRow, LockedFeature, Screen, Secti
 export default function TiffinPlans() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { c } = useTheme();
-  const { t, money, pick } = useLocale();
+  const { t, pick } = useLocale();
+  const money = useMoney();
   const online = useOnline();
   const q = useTiffinPlans(slug);
   const subs = useQuery({ queryKey: rk.subs, queryFn: () => api.tiffin.subscriptions(), retry: false });

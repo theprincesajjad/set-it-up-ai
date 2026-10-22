@@ -52,6 +52,25 @@ export function DietChips({ dietary, className }: { dietary: Dietary | undefined
   );
 }
 
+const isHalal = (d: Dietary | undefined | null) => !!(d && (d.halal || d.zabihah));
+
+/**
+ * The halal certifier every halal item shares, so a list can say it once ("Halal items certified by X").
+ * Null when there is none, or when halal items name different certifiers (or some name none): then each row shows its own.
+ */
+export function sharedCertifier(items: { dietary?: Dietary | null }[]): string | null {
+  const halal = items.filter((i) => isHalal(i.dietary));
+  const names = new Set(halal.map((i) => i.dietary?.halalCertifier?.trim() ?? ""));
+  const only = names.size === 1 ? [...names][0]! : "";
+  return halal.length && only ? only : null;
+}
+
+/** A row's own certifier: shown only when it is not already said once in the list header. */
+export function rowCertifier(d: Dietary | undefined | null, shared: string | null): string | null {
+  const c = isHalal(d) ? d?.halalCertifier?.trim() : undefined;
+  return c && c !== shared ? c : null;
+}
+
 export const COMMON_ALLERGENS = ["Peanuts", "Tree nuts", "Dairy", "Eggs", "Gluten", "Soy", "Sesame", "Fish", "Shellfish", "Mustard"] as const;
 export const STATION_PRESETS = ["tandoor", "curry", "grill", "chai", "sweets", "fry"] as const;
 

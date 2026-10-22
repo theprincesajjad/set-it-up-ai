@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
-import { ChipGroup, DateField, InfoRow } from "../../features/restaurant/components";
+import { ChipGroup, DateField, InfoRow, useMoney } from "../../features/restaurant/components";
 import { featureOff, rk, useHalls } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { addDays, busyOnDay, dayToDate, fromPerHeadCents, HALL_HOURS, HALL_START_TIMES, holdWindow, overlapsBusy, torontoInstant, torontoToday } from "../../lib/restaurant";
@@ -20,7 +20,8 @@ type Hall = restaurantApi.HallDto;
 export default function Banquet() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { c } = useTheme();
-  const { t, money, number } = useLocale();
+  const { t, number } = useLocale();
+  const money = useMoney();
   const online = useOnline();
   const q = useHalls(slug);
   const [hall, setHall] = useState<Hall | null>(null);
@@ -85,7 +86,8 @@ export default function Banquet() {
 
 /** The day picker (busy days marked), start time, length, package and headcount, then "request hold". */
 function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Hall | null; onClose: () => void }) {
-  const { t, money, time, date } = useLocale();
+  const { t, time, date } = useLocale();
+  const money = useMoney();
   const toast = useToast();
   const qc = useQueryClient();
   const today = torontoToday();

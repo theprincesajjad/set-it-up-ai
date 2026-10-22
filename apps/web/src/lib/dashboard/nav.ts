@@ -6,12 +6,15 @@
  * Every dashboard section that depends on a paid feature lists its keys in NAV_FEATURES and is
  * shown only when at least one of them is enabled for the shop (plan + rollout + admin override).
  */
-import type { FeatureKey } from "@ll/shared";
+import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey } from "@ll/shared";
 
 export type StaffRole = "owner" | "manager" | "staff";
 
-/** Sidebar groups, drawn with a small gap between them (no headings). */
+/** Sidebar groups, drawn with a small gap between them; only the groups in NAV_GROUP_LABELS get a heading. */
 export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop";
+
+/** Small heading over a sidebar group (canvas "Complete your setup" row style: 12px, muted). */
+export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant" };
 
 export interface NavEntry {
   key: string;
@@ -56,19 +59,47 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "integrations.webhooks",
 ];
 
-/** Restaurant pack pages (restaurant-pack-brief.md): `/m/[id]/restaurant/<slug>`; shown when the shop has any `restaurant.*` feature. */
-export const RESTAURANT_NAV: readonly { slug: string; label: string }[] = [
-  { slug: "menu", label: "Menu & dietary" },
-  { slug: "preorders", label: "Pre-orders" },
-  { slug: "tiffin", label: "Tiffin" },
-  { slug: "catering", label: "Catering" },
-  { slug: "banquet", label: "Banquet" },
-  { slug: "kitchen", label: "Kitchen display" },
-  { slug: "whatsapp", label: "WhatsApp" },
-  { slug: "reviews", label: "Reviews" },
-  { slug: "festivals", label: "Festivals" },
-  { slug: "phone-orders", label: "Phone orders" },
+/**
+ * Restaurant pack pages (restaurant-pack-brief.md): `/m/[id]/restaurant/<slug>`. `feature` is the `restaurant.*` key the
+ * page gates on (same key the page's RestaurantGate checks); banquet and phone orders are also unlocked by add-ons, which
+ * the merchant's enabled-features list already folds in. The menu page is "Dietary & languages" so it never reads as a
+ * duplicate of the commerce "Menu & catalog" entry.
+ */
+export const RESTAURANT_NAV: readonly { slug: string; label: string; feature: FeatureKey }[] = [
+  { slug: "menu", label: "Dietary & languages", feature: "restaurant.dietary_tags" },
+  { slug: "preorders", label: "Pre-orders", feature: "restaurant.degh_preorders" },
+  { slug: "tiffin", label: "Tiffin", feature: "restaurant.tiffin" },
+  { slug: "catering", label: "Catering", feature: "restaurant.catering" },
+  { slug: "banquet", label: "Banquet", feature: "restaurant.banquet" },
+  { slug: "kitchen", label: "Kitchen display", feature: "restaurant.kds" },
+  { slug: "whatsapp", label: "WhatsApp", feature: "restaurant.whatsapp_notifications" },
+  { slug: "reviews", label: "Reviews", feature: "restaurant.reviews" },
+  { slug: "festivals", label: "Festivals", feature: "restaurant.festival_campaigns" },
+  { slug: "phone-orders", label: "Phone orders", feature: "restaurant.phone_ai" },
 ];
+
+/** Page listing the restaurant modules a shop has not unlocked (one sidebar entry instead of one per module). */
+export const RESTAURANT_MORE = { slug: "more", label: "More for restaurants" } as const;
+
+/** Add-ons that also unlock a restaurant feature on Growth (ADD_ON_UNLOCKS in plans.ts), by nav slug. */
+const SLUG_ADD_ON: Record<string, AddOnId> = { banquet: "banquet_module", "phone-orders": "phone_ai" };
+
+/** What unlocks a locked restaurant module: the tier that includes it and, where one exists, the add-on. */
+export function restaurantUnlock(slug: string): { name: string; description: string; tier: string; tierPriceCents: number; addOn: { name: string; priceCents: number } | null } {
+  const r = RESTAURANT_NAV.find((x) => x.slug === slug)!;
+  const def = FEATURES[r.feature];
+  const plan = RESTAURANT_PLANS[def.packTier ?? "starter"];
+  const add = SLUG_ADD_ON[slug] ? ADD_ONS[SLUG_ADD_ON[slug]!] : null;
+  return { name: r.label, description: def.description, tier: plan.name, tierPriceCents: plan.priceCents, addOn: add && plan.tier === "pro" ? { name: add.name, priceCents: add.priceCents } : null };
+}
+
+/** Restaurant modules split by entitlement (enabled = merchant's enabled feature keys, add-ons included). */
+export function restaurantModules(enabled: Set<FeatureKey>) {
+  return {
+    unlocked: RESTAURANT_NAV.filter((r) => enabled.has(r.feature)),
+    locked: RESTAURANT_NAV.filter((r) => !enabled.has(r.feature)),
+  };
+}
 
 export const hasRestaurantFeature = (enabled: Set<FeatureKey>) => [...enabled].some((k) => k.startsWith("restaurant."));
 
@@ -110,7 +141,10 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
   ];
   if (hasRestaurantFeature(enabled)) {
     const at = items.findIndex((i) => i.key === "ads");
-    items.splice(at < 0 ? items.length : at, 0, ...RESTAURANT_NAV.map((r): NavEntry => ({ key: `restaurant-${r.slug}`, href: `${base}/restaurant/${r.slug}`, label: r.label, group: "restaurant" })));
+    const { unlocked, locked } = restaurantModules(enabled);
+    const entries = unlocked.map((r): NavEntry => ({ key: `restaurant-${r.slug}`, href: `${base}/restaurant/${r.slug}`, label: r.label, group: "restaurant" }));
+    if (locked.length) entries.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "restaurant" });
+    items.splice(at < 0 ? items.length : at, 0, ...entries);
   }
   return items.filter((i) => navUnlocked(i.key, enabled) && (i.key !== "billing" || role === "owner"));
 }

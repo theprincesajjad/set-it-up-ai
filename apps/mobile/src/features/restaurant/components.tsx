@@ -12,6 +12,21 @@ import { addDays, dayToDate, dietBadges, paymentUrl, torontoToday, weekdayOf, ty
 import { ui, useTheme } from "../../theme";
 import { Badge, Chip, ChevronLeft, ChevronRight, IconButton, Minus, Plus, Text } from "../../ui";
 
+/**
+ * `money` for the app language. In right-to-left text the currency sign would jump to the wrong side of the digits
+ * ("$54" shows as "54$"), so the amount is wrapped in a left-to-right isolate there.
+ */
+export function useMoney() {
+  const { money, isRtl } = useLocale();
+  return (cents: number): string => (isRtl ? `\u2066${money(cents)}\u2069` : money(cents));
+}
+
+/** One-letter weekday heads for hi / pa / en; Urdu has no usable narrow form in CLDR (it falls back to Latin letters), so it gets the short name. */
+export function useWeekdayHead() {
+  const { date, locale } = useLocale();
+  return (dow: number): string => date(dayToDate(addDays("2026-11-01", dow)), { weekday: locale === "ur" ? "short" : "narrow" });
+}
+
 /** Re-renders every `ms` so countdowns tick. */
 export function useNow(ms = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -153,7 +168,8 @@ export function CalendarGrid({ value, onChange, min, max, isDisabled, busy }: { 
   const canPrev = min === undefined || `${month}-01` > min;
   const canNext = max === undefined || addDays(`${month}-01`, count) <= max;
   // Sunday-first weekday initials in the app language (2026-11-01 is a Sunday).
-  const heads = Array.from({ length: 7 }, (_, i) => date(dayToDate(addDays("2026-11-01", i)), { weekday: "narrow" }));
+  const head = useWeekdayHead();
+  const heads = Array.from({ length: 7 }, (_, i) => head(i));
   return (
     <View accessibilityLabel={t("rest.cal.label")} style={[styles.cal, { borderColor: c.line }]}>
       <View style={styles.calHead}>
@@ -165,7 +181,7 @@ export function CalendarGrid({ value, onChange, min, max, isDisabled, busy }: { 
       </View>
       <View style={styles.week}>
         {heads.map((h, i) => (
-          <Text key={i} variant="caption" color="fgSubtle" center style={{ width: CELL }}>
+          <Text key={i} variant="caption" color="fgSubtle" center numberOfLines={1} style={{ width: CELL, fontSize: h.length > 2 ? 9 : 11 }}>
             {h}
           </Text>
         ))}
@@ -266,7 +282,7 @@ const styles = StyleSheet.create({
   day: { width: CELL, height: CELL, borderRadius: CELL / 2, alignItems: "center", justifyContent: "center" },
   dot: { position: "absolute", bottom: 5, width: 4, height: 4, borderRadius: 2 },
   field: { minHeight: 48, borderRadius: 10, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 },
-  dow: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  dow: { flex: 1, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   info: { flexDirection: "row", alignItems: "baseline", gap: 12, paddingVertical: 4 },
 });
 
@@ -283,18 +299,20 @@ export function useDaysLabel() {
   };
 }
 
-/** Seven round weekday marks: on = a day the plan runs. */
+/** Seven weekday marks: on = a day the plan runs. */
 export function WeekdayDots({ days }: { days: number[] }) {
   const { c } = useTheme();
   const { date } = useLocale();
+  const head = useWeekdayHead();
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+    <View style={{ flexDirection: "row", gap: 4 }}>
       {Array.from({ length: 7 }, (_, dow) => {
         const on = days.includes(dow);
+        const h = head(dow);
         return (
           <View key={dow} accessible accessibilityLabel={date(dayToDate(addDays("2026-11-01", dow)), { weekday: "long" })} accessibilityState={{ selected: on }} style={[styles.dow, { backgroundColor: on ? c.fg : c.bgSubtle }]}>
-            <Text style={ui(13, 600, 17)} rawColor={on ? c.bg : c.fgSubtle}>
-              {date(dayToDate(addDays("2026-11-01", dow)), { weekday: "narrow" })}
+            <Text style={ui(h.length > 2 ? 11 : 13, 600, 17)} rawColor={on ? c.bg : c.fgSubtle} numberOfLines={1}>
+              {h}
             </Text>
           </View>
         );

@@ -9,7 +9,7 @@ import { bookingNeedsDeposit, holdLeft } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Banner, Button, ConfirmDialog, hairline, ListRow, Text, useToast } from "../../ui";
-import { StatusBadge, useCountdownText, useNow, usePayment, type Tone } from "./components";
+import { StatusBadge, useCountdownText, useMoney, useNow, usePayment, type Tone } from "./components";
 import { rk } from "./queries";
 
 export const EVENT_TONE: Record<restaurantApi.CateringStatus, Tone> = { inquiry: "neutral", tasting: "info", quoted: "warning", confirmed: "success", completed: "neutral", cancelled: "neutral" };
@@ -18,7 +18,8 @@ export const BOOKING_TONE: Record<restaurantApi.HallBookingStatus, Tone> = { hol
 /** One hall booking: when, the hold countdown, and Pay deposit / Cancel hold. */
 export function BookingRow({ booking, shop, last }: { booking: restaurantApi.HallBookingDto; shop?: string; last: boolean }) {
   const { c } = useTheme();
-  const { t, date, time, money } = useLocale();
+  const { t, date, time } = useLocale();
+  const money = useMoney();
   const qc = useQueryClient();
   const toast = useToast();
   const now = useNow();

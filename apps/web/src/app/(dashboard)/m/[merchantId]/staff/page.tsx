@@ -3,7 +3,7 @@ import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { LOCALE_LIST, type merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { Empty, PageHeader } from "@/components/dashboard/kit";
+import { Empty, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Avatar } from "@/components/ui/Avatar";
@@ -44,56 +44,62 @@ export default function StaffPage() {
   const act = useAction();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <PageHeader flush title="Staff" description="Unlimited staff, always free. Everyone gets their own login and counter PIN." actions={owner ? <Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button> : undefined} />
-      <Async state={state}>
+      <Async state={state} skeleton={<SkeletonRows rows={3} />}>
         {(d) =>
           d.items.length <= 1 && owner ? (
-            <Empty className="border-y border-line">It&apos;s just you so far. Add staff so they can award points with their own login.</Empty>
+            <Empty className="border-y border-line" action={<Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button>}>It&apos;s just you so far. Add staff so they can award points with their own login.</Empty>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
                 {d.items.map((s) => {
                   const self = s.userId === me.user.id;
                   return (
-                    <li key={s.userId} className="flex flex-wrap items-center gap-3 py-3">
-                      <Avatar name={s.name ?? s.email} id={s.userId} size={32} />
-                      <div className="min-w-0 flex-1">
-                        <p className="flex flex-wrap items-center gap-2 text-meta-strong text-fg">
-                          {s.name ?? s.email ?? "Invited"} {self ? <span className="font-normal text-fg-muted">(you)</span> : null}
-                          {!owner || self ? <span className="font-normal text-fg-muted">· {s.role[0]!.toUpperCase() + s.role.slice(1)}</span> : null}
-                        </p>
-                        <p className="text-meta text-fg-muted">
-                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}{s.locale !== "en" ? ` · ${LOCALE_LIST.find((l) => l.code === s.locale)?.englishName ?? s.locale}` : ""}{s.station ? ` · ${s.station} station` : ""}
-                        </p>
+                    <li key={s.userId} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <Avatar name={s.name ?? s.email} id={s.userId} size={32} />
+                        <div className="min-w-0 flex-1">
+                          <p className="flex flex-wrap items-center gap-x-2 text-meta-strong text-fg">
+                            <span className="min-w-0 break-words">{s.name ?? s.email ?? "Invited"}</span>
+                            {self ? <span className="font-normal text-fg-muted">(you)</span> : null}
+                            {!owner || self ? <span className="font-normal text-fg-muted">· {s.role[0]!.toUpperCase() + s.role.slice(1)}</span> : null}
+                          </p>
+                          <p className="break-words text-meta text-fg-muted">{s.phone ? maskPhone(s.phone) : s.email}</p>
+                          <p className="text-meta text-fg-muted tabular">
+                            Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}{s.locale !== "en" ? ` · ${LOCALE_LIST.find((l) => l.code === s.locale)?.englishName ?? s.locale}` : ""}{s.station ? ` · ${s.station} station` : ""}
+                          </p>
+                        </div>
                       </div>
-                      {owner && !self ? (
-                        <label className="shrink-0">
-                          <span className="sr-only">{`Role for ${s.name ?? "staff"}`}</span>
-                          <select value={s.role} onChange={async (e) => {
-                            const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
-                            if (r) await state.reload();
-                          }} className="h-9 rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle">
-                            {ROLES.map((r) => (
-                              <option key={r.value} value={r.value}>
-                                {r.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
-                      <Button variant="ghost" size="sm" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
-                        Language and station
-                      </Button>
-                      {owner || self ? (
-                        <Button variant="secondary" size="sm" onClick={() => setPinFor(s)}>
-                          {s.hasPin ? "Reset PIN" : "Set PIN"}
+                      <div className="flex flex-wrap items-center gap-2 ps-11 sm:justify-end sm:ps-0">
+                        {owner && !self ? (
+                          <label className="shrink-0">
+                            <span className="sr-only">{`Role for ${s.name ?? "staff"}`}</span>
+                            <select value={s.role} onChange={async (e) => {
+                              const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
+                              if (r) await state.reload();
+                            }} className="h-8 rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle">
+                              {ROLES.map((r) => (
+                                <option key={r.value} value={r.value}>
+                                  {r.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
+                        <Button variant="ghost" size="sm" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
+                          Language and station
                         </Button>
-                      ) : null}
-                      {owner && !self ? (
-                        <Button variant="ghost" size="sm" onClick={() => setRemove(s)}>
-                          Remove
-                        </Button>
-                      ) : null}
+                        {owner || self ? (
+                          <Button variant="secondary" size="sm" onClick={() => setPinFor(s)}>
+                            {s.hasPin ? "Reset PIN" : "Set PIN"}
+                          </Button>
+                        ) : null}
+                        {owner && !self ? (
+                          <Button variant="ghost" size="sm" onClick={() => setRemove(s)}>
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
                     </li>
                   );
                 })}

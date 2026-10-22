@@ -12,6 +12,7 @@ import { summarizeDiet } from "../../lib/restaurant";
 import { ui } from "../../theme";
 import { Badge, ListRow, Section, Store, SwitchRow, Text, useToast, Users, UtensilsCrossed } from "../../ui";
 import { useOrderAhead } from "../customer/queries";
+import { useMoney } from "./components";
 import { useHalls, useTiffinPlans, useWhatsappConsent } from "./queries";
 
 type Features = customerApi.CustomerFeaturesDto | undefined;
@@ -51,7 +52,8 @@ export function ShopDietary({ slug, features }: { slug: string; features: Featur
 
 /** Tiffin plans, catering and banquet halls: one row each, only for what the shop offers. */
 export function ShopRestaurantRows({ shop, features }: { shop: networkApi.PublicShopResponse; features: Features }) {
-  const { t, money } = useLocale();
+  const { t } = useLocale();
+  const money = useMoney();
   const slug = shop.merchant.slug;
   const plans = useTiffinPlans(slug, !!features?.tiffin);
   const halls = useHalls(slug, !!features?.banquet);

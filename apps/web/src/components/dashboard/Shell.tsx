@@ -18,6 +18,8 @@ export interface ShellNavItem {
   label: string;
   icon: LucideIcon;
   group?: string;
+  /** Small heading above the group; read from the group's first item. */
+  groupLabel?: string;
   exact?: boolean;
 }
 
@@ -61,8 +63,10 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
   }
   return (
     <nav aria-label="Main" className="flex flex-col gap-4">
-      {groups.map((g, gi) => (
-        <ul key={gi} className="flex flex-col gap-px">
+      {groups.map((g, gi) => {
+        const label = g[0]!.groupLabel;
+        const list = (
+        <ul key={gi} aria-label={label} className="flex flex-col gap-px">
           {g.map((i) => {
             const active = isActive(pathname, i);
             return (
@@ -83,7 +87,18 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
             );
           })}
         </ul>
-      ))}
+        );
+        return label ? (
+          <div key={gi}>
+            <p aria-hidden className="px-2 pb-1 text-[12px] leading-4 text-fg-muted">
+              {label}
+            </p>
+            {list}
+          </div>
+        ) : (
+          list
+        );
+      })}
     </nav>
   );
 }

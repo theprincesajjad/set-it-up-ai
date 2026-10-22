@@ -149,7 +149,7 @@ export const pa: Messages = {
   "rc.ca.perGuestLine": "{n} ਮਹਿਮਾਨ × {price}",
   "rc.ca.trayLine": "{n, plural, one {# ਟ੍ਰੇ} other {# ਟ੍ਰੇਆਂ}} × {price}",
   "rc.ca.qtyLine": "{n} × {price} ਪ੍ਰਤੀ ਨਗ",
-  "rc.ca.perGuest": "{price} ਪ੍ਰਤੀ ਮਹਿਮਾਨ",
+  "rc.ca.perGuest": "ਲਗਭਗ {price} ਪ੍ਰਤੀ ਮਹਿਮਾਨ, ਸਭ ਕੁਝ ਮਿਲਾ ਕੇ",
   "rc.ca.subtotal": "ਉਪ-ਜੋੜ",
   "rc.ca.tax": "ਟੈਕਸ",
   "rc.ca.total": "ਕੁੱਲ",

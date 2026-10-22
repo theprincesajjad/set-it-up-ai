@@ -1,6 +1,5 @@
 "use client";
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/Button";
 import { ErrorLine } from "./kit";
 
 /** Skeleton matching a page header + a few blocks (skeletons, never full-page spinners). */
@@ -34,11 +33,8 @@ export function NoAccess({ title = "This area is for owners and managers", body 
 export function Async<T>({ state, children, skeleton }: { state: { data: T | null; error: string | null; loading: boolean; reload: () => void }; children: (d: T) => ReactNode; skeleton?: ReactNode }) {
   if (state.error && !state.data)
     return (
-      <div className="flex flex-col items-start gap-3 py-6">
-        <ErrorLine message={state.error} />
-        <Button variant="secondary" size="sm" onClick={state.reload}>
-          Try again
-        </Button>
+      <div className="py-4">
+        <ErrorLine message={state.error} onRetry={state.reload} />
       </div>
     );
   if (!state.data) return <>{skeleton ?? <PageSkeleton />}</>;

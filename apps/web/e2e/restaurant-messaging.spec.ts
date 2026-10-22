@@ -1,15 +1,15 @@
 /**
  * Restaurant messaging public pages: the review page (/r/<token>) and the WhatsApp pay link.
  *
- * Review tokens are only ever sent to customers (the API never returns them), so the full star flow needs
- * a token for an unanswered review request on a shop with a Google link: set E2E_REVIEW_TOKEN (and
- * E2E_REVIEW_TOKEN_LOW for the 1-3 star path). Without them those tests skip; the "link doesn't work"
- * and language checks always run.
+ * Review tokens are only ever sent to customers (the API never returns them), so the star flows use the two
+ * unanswered review requests the seed creates for Sarson Dhaba (apps/api/src/seed/restaurants.ts):
+ * demo-review-sarson-5 and demo-review-sarson-low. Each can be answered once per seeded database; override with
+ * E2E_REVIEW_TOKEN / E2E_REVIEW_TOKEN_LOW (e.g. tokens from a reseeded shop) if a previous run already used them.
  */
 import { expect, test } from "@playwright/test";
 
-const TOKEN = process.env.E2E_REVIEW_TOKEN;
-const TOKEN_LOW = process.env.E2E_REVIEW_TOKEN_LOW;
+const TOKEN = process.env.E2E_REVIEW_TOKEN ?? "demo-review-sarson-5";
+const TOKEN_LOW = process.env.E2E_REVIEW_TOKEN_LOW ?? "demo-review-sarson-low";
 
 test.describe("review page", () => {
   test("an unknown link says so plainly, in the chosen language", async ({ page }) => {
@@ -26,7 +26,6 @@ test.describe("review page", () => {
   });
 
   test("5 stars: thanks, then the Google link leads", async ({ page }) => {
-    test.skip(!TOKEN, "set E2E_REVIEW_TOKEN to an unanswered review request");
     await page.goto(`/r/${TOKEN}`);
     await expect(page.getByRole("heading", { name: /How was your visit/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0); // appears after a star is picked
@@ -43,7 +42,6 @@ test.describe("review page", () => {
   });
 
   test("2 stars: the note stays private but the Google link is still offered", async ({ page }) => {
-    test.skip(!TOKEN_LOW, "set E2E_REVIEW_TOKEN_LOW to an unanswered review request");
     await page.goto(`/r/${TOKEN_LOW}`);
     await page.getByRole("radio", { name: "2 out of 5 stars" }).click();
     await page.getByRole("textbox").fill("Waited 40 minutes for a pickup order.");

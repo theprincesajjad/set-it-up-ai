@@ -4,7 +4,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
-import { DateField, InfoRow, StatusBadge, subTone, useCountdownText, useNow, usePayment } from "../../features/restaurant/components";
+import { DateField, InfoRow, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment } from "../../features/restaurant/components";
 import { rk, useInvalidateTiffin, useMySubscription, useUpcoming } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { addDays, canStillSkip, canUndoSkip, countdownParts, dayToDate, deliveryStatusKey, isPostalCode, normalizePostalCode, subscriptionActions, torontoToday } from "../../lib/restaurant";
@@ -24,7 +24,8 @@ const CHARGE_TONE: Record<Charge["status"], "success" | "danger" | "warning" | "
 export default function TiffinSubscription() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { c } = useTheme();
-  const { t, money, date } = useLocale();
+  const { t, date } = useLocale();
+  const money = useMoney();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();

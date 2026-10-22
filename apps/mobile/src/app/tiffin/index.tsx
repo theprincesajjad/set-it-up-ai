@@ -1,13 +1,14 @@
 import { router } from "expo-router";
 import { useRestaurantMine } from "../../features/restaurant/queries";
-import { StatusBadge, subTone } from "../../features/restaurant/components";
+import { StatusBadge, subTone, useMoney } from "../../features/restaurant/components";
 import { useLocale } from "../../lib/i18n";
 import { dayToDate } from "../../lib/restaurant";
 import { Card, EmptyState, ListRow, Screen, Section, SkeletonList, UtensilsCrossed } from "../../ui";
 
 /** My tiffin: every subscription I have, live ones first. */
 export default function MyTiffin() {
-  const { t, date, money } = useLocale();
+  const { t, date } = useLocale();
+  const money = useMoney();
   const mine = useRestaurantMine({ always: true });
   const live = mine.subs.filter((s) => s.status !== "cancelled");
   const ended = mine.subs.filter((s) => s.status === "cancelled");

@@ -153,7 +153,7 @@ export const en = {
   "rc.ca.perGuestLine": "{n} guests × {price}",
   "rc.ca.trayLine": "{n, plural, one {# tray} other {# trays}} × {price}",
   "rc.ca.qtyLine": "{n} at {price} each",
-  "rc.ca.perGuest": "{price} per guest",
+  "rc.ca.perGuest": "about {price} a guest, all in",
   "rc.ca.subtotal": "Subtotal",
   "rc.ca.tax": "Tax",
   "rc.ca.total": "Total",

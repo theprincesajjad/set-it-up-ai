@@ -33,7 +33,7 @@ function Languages() {
   const state = useApi(() => api.menuSettings.languages(), [api]);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush back={{ href: `${base}/restaurant/menu`, label: "Menu & dietary" }} title="Menu languages" description="Pick the languages customers can switch to on your menu. Add the words for each dish on its item sheet." />
+      <PageHeader flush back={{ href: `${base}/restaurant/menu`, label: "Dietary & languages" }} title="Menu languages" description="Pick the languages customers can switch to on your menu. Add the words for each dish on its item sheet." />
       <Loader state={state} rows={4} gate={{ featureKey: "restaurant.multilingual_menu", title: "Menu languages", what: "Show your menu in Hindi, Urdu and Punjabi." }}>
         {(d) => <Form saved={d.languages} canEdit={role === "owner" || role === "manager"} onSaved={(r) => state.setData(r)} />}
       </Loader>

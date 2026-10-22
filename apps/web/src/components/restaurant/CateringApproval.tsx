@@ -154,7 +154,8 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
             </div>
           </dl>
         </div>
-        {e.perHeadCents > 0 ? <p className="text-meta text-fg-muted">{t("rc.ca.perGuest", { price: money(e.perHeadCents) })}</p> : null}
+        {/* Whole quote (dishes, trays, extras, tax) over the guest count, not just the per-head lines. */}
+        {e.headcount > 0 && e.totalCents > 0 ? <p className="text-meta text-fg-muted">{t("rc.ca.perGuest", { price: money(Math.round(e.totalCents / e.headcount)) })}</p> : null}
       </Section>
 
       {hasDeposit && status !== "cancelled" ? (

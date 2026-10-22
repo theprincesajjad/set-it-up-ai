@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../../../api/client";
 import { t as copy } from "../../../../copy/en-CA";
-import { ChipGroup, DateField, DietBadges, InfoRow, StepperRow, useDaysLabel, usePayment, WeekdayDots } from "../../../../features/restaurant/components";
+import { ChipGroup, DateField, DietBadges, InfoRow, StepperRow, useDaysLabel, usePayment, useMoney, WeekdayDots } from "../../../../features/restaurant/components";
 import { rk, useTiffinPlans } from "../../../../features/restaurant/queries";
 import { newIdempotencyKey } from "../../../../lib/ids";
 import { useLocale } from "../../../../lib/i18n";
@@ -17,7 +17,8 @@ import { Banner, Button, EmptyState, ErrorState, Screen, SegmentedControl, Secti
 /** Plan detail: days, servings with the live price, delivery or pickup, the upcoming menu, then the subscribe sheet. */
 export default function TiffinPlanDetail() {
   const { slug, planId } = useLocalSearchParams<{ slug: string; planId: string }>();
-  const { t, money, date, pick } = useLocale();
+  const { t, date, pick } = useLocale();
+  const money = useMoney();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();

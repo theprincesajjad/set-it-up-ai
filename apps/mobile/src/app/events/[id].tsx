@@ -2,7 +2,7 @@ import type { MessageKey } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Linking, StyleSheet, View } from "react-native";
-import { InfoRow, StatusBadge } from "../../features/restaurant/components";
+import { InfoRow, StatusBadge, useMoney } from "../../features/restaurant/components";
 import { EVENT_TONE } from "../../features/restaurant/EventRows";
 import { rk, useShopNames } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
@@ -18,7 +18,8 @@ const STEP_DONE: Record<string, MessageKey> = { inquiry: "rest.cat.step.inquiry"
 export default function EventDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { c } = useTheme();
-  const { t, money, date, time } = useLocale();
+  const { t, date, time } = useLocale();
+  const money = useMoney();
   const online = useOnline();
   const names = useShopNames();
   const q = useQuery({ queryKey: rk.event(id ?? ""), queryFn: () => api.catering.event(id!), enabled: !!id, refetchInterval: 60_000 });

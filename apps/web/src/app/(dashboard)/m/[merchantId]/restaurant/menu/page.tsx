@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { Capsules, EmptyState, ErrorLine, PageHeader, Section, SkeletonRows, Tag } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { DietChips, STATION_PRESETS, stationLabel } from "@/components/dashboard/restaurant/menu";
+import { DietChips, STATION_PRESETS, rowCertifier, sharedCertifier, stationLabel } from "@/components/dashboard/restaurant/menu";
 import { RestaurantGate } from "@/components/dashboard/restaurant/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +33,7 @@ const matches = (i: Item, f: Filter) => {
 
 export default function MenuPage() {
   return (
-    <RestaurantGate featureKey="restaurant.dietary_tags" title="Menu & dietary">
+    <RestaurantGate featureKey="restaurant.dietary_tags" title="Dietary & languages">
       <Menu />
     </RestaurantGate>
   );
@@ -60,6 +60,7 @@ function Menu() {
     const cats = [...(state.data?.categories ?? []), { id: "", name: "No section" }];
     return cats.map((c) => ({ cat: c, items: visible.filter((i) => (i.categoryId ?? "") === c.id) })).filter((g) => g.items.length);
   }, [state.data, visible]);
+  const certifier = useMemo(() => sharedCertifier(items), [items]);
   const sample = useMemo(() => {
     const prices = items.map((i) => i.priceCents).sort((a, b) => a - b);
     return prices[Math.floor(prices.length / 2)] ?? 2400;
@@ -92,7 +93,7 @@ function Menu() {
     <div className="flex flex-col gap-6">
       <PageHeader
         flush
-        title="Menu & dietary"
+        title="Dietary & languages"
         description="Halal, vegetarian and spice tags, Hindi, Urdu and Punjabi names, and degh pre-order details for each dish."
         actions={
           <>
@@ -177,7 +178,10 @@ function Menu() {
                   <input type="checkbox" checked={allVisibleOn} onChange={(e) => setPicked(e.target.checked ? new Set([...picked, ...visible.map((i) => i.id)]) : new Set([...picked].filter((id) => !visible.some((i) => i.id === id))))} className={BOX} />
                   Select all shown
                 </label>
-                <p className="text-meta text-fg-muted tabular">{visible.length} dishes</p>
+                <p className="text-meta text-fg-muted tabular">
+                  {certifier ? `Halal items certified by ${certifier} · ` : ""}
+                  {visible.length} dishes
+                </p>
               </div>
               {groups.map(({ cat, items: rows }) => (
                 <Section key={cat.id || "none"} title={cat.name} className="gap-0">
@@ -188,19 +192,24 @@ function Menu() {
                           <span className="sr-only">Select {i.name}</span>
                           <input type="checkbox" checked={picked.has(i.id)} onChange={(e) => toggle(i.id, e.target.checked)} className={BOX} />
                         </label>
-                        <button type="button" onClick={() => setEdit(i)} aria-label={`Edit ${i.name}`} className="grid min-w-0 flex-1 gap-x-4 gap-y-1 rounded-input px-2 py-1 text-start hover:bg-bg-subtle focus-visible:focus-ring md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_auto]">
+                        <button type="button" onClick={() => setEdit(i)} aria-label={`Edit ${i.name}`} className="grid min-w-0 flex-1 gap-x-4 gap-y-1 rounded-input px-2 py-1 text-start hover:bg-bg-subtle focus-visible:focus-ring md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
                           <span className="min-w-0">
                             <span className="block text-body text-fg">{i.name}</span>
                             <span className="block text-meta text-fg-muted tabular">
                               {formatMoney(i.priceCents)}
                               {cashBps > 0 ? ` · cash ${formatMoney(Math.round(i.priceCents * (1 - cashBps / 10_000)))}` : ""}
+                              {rowCertifier(i.dietary, certifier) ? ` · certified by ${rowCertifier(i.dietary, certifier)}` : ""}
                             </span>
                           </span>
-                          <DietChips dietary={i.dietary} className="self-center" />
-                          <span className="flex flex-wrap items-center gap-1.5 self-center md:justify-end">
-                            {i.preorderOnly ? <Tag>Pre-order{i.serves ? ` · serves ${i.serves}` : ""}</Tag> : null}
-                            {i.station ? <Tag>{stationLabel(i.station)}</Tag> : null}
-                            {missingLangs(i, langList).length ? <Tag>Missing {missingLangs(i, langList).join(", ")}</Tag> : null}
+                          <span className="flex min-w-0 flex-col gap-1 self-center md:items-end">
+                            <DietChips dietary={i.dietary} className="md:justify-end" />
+                            {i.preorderOnly || i.station || missingLangs(i, langList).length ? (
+                              <span className="flex flex-wrap items-center gap-1.5 md:justify-end">
+                                {i.preorderOnly ? <Tag>Pre-order{i.serves ? ` · serves ${i.serves}` : ""}</Tag> : null}
+                                {i.station ? <Tag>{stationLabel(i.station)}</Tag> : null}
+                                {missingLangs(i, langList).length ? <Tag>Missing {missingLangs(i, langList).join(", ")}</Tag> : null}
+                              </span>
+                            ) : null}
                           </span>
                         </button>
                       </li>
