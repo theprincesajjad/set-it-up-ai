@@ -34,6 +34,7 @@ export function splitDto(s: Split, publicWebUrl: string): restaurantApi.SplitDto
     itemIds: s.itemIds,
     status: s.status === "paid" ? "paid" : "open",
     paidAt: s.paidAt ? s.paidAt.toISOString() : null,
+    paidWith: s.status === "paid" ? (s.stripePaymentIntentId ? "card" : "cash") : null,
     payUrl: splitUrl(publicWebUrl, s.payToken),
     payToken: s.payToken,
   };
@@ -198,8 +199,10 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
 export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIntentId: string, outcome: "succeeded" | "failed"): Promise<void> {
   if (outcome === "failed") return; // the guest can retry from the same link
   const [split] = await ctx.db.select().from(orderSplits).where(eq(orderSplits.id, splitId)).limit(1);
-  if (!split || split.status === "paid") return;
-  if (split.stripePaymentIntentId !== paymentIntentId) {
+  if (!split) return;
+  if (split.status === "paid" && split.stripePaymentIntentId === paymentIntentId) return;
+  if (split.status === "paid" || split.stripePaymentIntentId !== paymentIntentId) {
+    // (Also: a share staff already marked paid in cash, then paid by card from the pay link.)
     // Paid with a link whose tip was changed afterwards: give that charge back.
     const [m] = await ctx.db.select({ m: merchants }).from(orders).innerJoin(merchants, eq(merchants.id, orders.merchantId)).where(eq(orders.id, split.orderId)).limit(1);
     if (m) await refundConnectPayment(ctx, m.m, { paymentIntentId, idempotencyKey: `split:${split.id}:stale:${paymentIntentId}`, reason: "Replaced payment" });
@@ -208,22 +211,45 @@ export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIn
   const now = ctx.now();
   const [paid] = await ctx.db.update(orderSplits).set({ status: "paid", paidAt: now }).where(and(eq(orderSplits.id, split.id), eq(orderSplits.status, "open"))).returning();
   if (!paid) return;
-  const all = await splitsOf(ctx, split.orderId);
-  if (!all.every((s) => s.status === "paid")) return;
-  const [order] = await ctx.db.select().from(orders).where(eq(orders.id, split.orderId)).limit(1);
+  await settleOrderIfAllPaid(ctx, split.orderId, now);
+}
+
+/** When every share is paid, mark the order paid, add the tips and total the platform fee on the card shares (cash shares carry none). */
+async function settleOrderIfAllPaid(ctx: AppContext, orderId: string, now: Date): Promise<void> {
+  const all = await splitsOf(ctx, orderId);
+  if (!all.length || !all.every((s) => s.status === "paid")) return;
+  const [order] = await ctx.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   const [merchant] = order ? await ctx.db.select().from(merchants).where(eq(merchants.id, order.merchantId)).limit(1) : [];
   if (!order || !merchant) return;
   const tips = all.reduce((s, r) => s + r.tipCents, 0);
+  const anyCard = all.some((r) => !!r.stripePaymentIntentId);
   await ctx.db
     .update(orders)
     .set({
       paymentStatus: "paid",
-      paymentMethod: "in_app",
+      paymentMethod: anyCard ? "in_app" : "at_pickup",
       paidAt: now,
       tipCents: order.tipCents + tips,
       totalCents: order.totalCents + tips,
-      platformFeeCents: all.reduce((s, r) => s + computeFees({ kind: "order", amountCents: r.amountCents + r.tipCents, plan: merchant.plan, restaurantTier: merchant.restaurantTier }).platformFeeCents, 0),
+      platformFeeCents: all.filter((r) => !!r.stripePaymentIntentId).reduce((s, r) => s + computeFees({ kind: "order", amountCents: r.amountCents + r.tipCents, plan: merchant.plan, restaurantTier: merchant.restaurantTier }).platformFeeCents, 0),
       updatedAt: now,
     })
     .where(eq(orders.id, order.id));
+}
+
+/** Staff: a guest paid their share in cash at the table. Tips are optional. Fees apply to card shares only. */
+export async function markSplitPaidCash(ctx: AppContext, staff: StaffContext, orderId: string, splitId: string, body: z.infer<typeof restaurantApi.markSplitCashBody>): Promise<restaurantApi.OrderSplitsResponse> {
+  const order = await loadOrder(ctx, staff.merchant.id, orderId);
+  if (order.status === "cancelled" || order.status === "refunded") throw conflict(`This order is ${order.status}`);
+  if (order.paymentStatus === "paid" || order.paymentStatus === "refunded") throw conflict("This bill is already paid");
+  const [split] = await ctx.db.select().from(orderSplits).where(and(eq(orderSplits.id, splitId), eq(orderSplits.orderId, order.id))).limit(1);
+  if (!split) throw notFound("Split");
+  if (split.status === "paid") throw conflict("This share is already paid");
+  const now = ctx.now();
+  // Clearing the intent id means a card payment started from the pay link before this is refunded if it completes later (onSplitPayment).
+  const [paid] = await ctx.db.update(orderSplits).set({ status: "paid", paidAt: now, tipCents: body.tipCents, stripePaymentIntentId: null }).where(and(eq(orderSplits.id, split.id), eq(orderSplits.status, "open"))).returning();
+  if (!paid) throw conflict("This share was just paid");
+  await settleOrderIfAllPaid(ctx, order.id, now);
+  const [fresh] = await ctx.db.select().from(orders).where(eq(orders.id, order.id)).limit(1);
+  return summary(ctx, fresh!, await splitsOf(ctx, order.id));
 }

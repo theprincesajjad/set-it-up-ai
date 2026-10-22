@@ -53,7 +53,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
     <div className="flex flex-col gap-6">
       <header className="flex items-center gap-3 pt-2">
         <ShopLogo shop={{ name: shop.name, vertical: "other", logoUrl: shop.logoUrl }} size={40} />
-        <p className="min-w-0 flex-1 truncate text-body-strong text-fg">{shop.name}</p>
+        <p className="min-w-0 flex-1 truncate text-body-strong text-fg"><bdi>{shop.name}</bdi></p>
       </header>
 
       {answered ? (

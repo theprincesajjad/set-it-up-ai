@@ -1,9 +1,9 @@
 "use client";
 import { useParams } from "next/navigation";
-import { PageHeader, StatusDot } from "@/components/dashboard/kit";
+import { PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { EventPage } from "@/components/dashboard/restaurant/catering/EventPage";
-import { EVENT_TYPE_LABEL, STATUS_LABEL } from "@/components/dashboard/restaurant/catering/labels";
+import { EVENT_TYPE_LABEL } from "@/components/dashboard/restaurant/catering/labels";
 import { Loader, TierGate, dayLabel } from "@/components/dashboard/restaurant/common";
 import { useApi } from "@/lib/dashboard/useApi";
 import { formatNumber } from "@/lib/format";
@@ -30,7 +30,6 @@ function Event() {
         back={{ href: `${base}/restaurant/catering`, label: "Catering" }}
         title={e ? `${EVENT_TYPE_LABEL[e.eventType]}${e.customer?.name ? `, ${e.customer.name}` : ""}` : "Catering event"}
         description={e ? `Inquiry #${e.number} · ${dayLabel(e.eventDate)} · ${formatNumber(e.headcount)} guests` : undefined}
-        actions={e ? <StatusDot domain="catering" status={e.status} label={STATUS_LABEL[e.status]} /> : undefined}
       />
       <Loader state={state} gate={GATE} rows={6}>{(ev) => <EventPage event={ev} onChange={(n) => state.setData(n)} />}</Loader>
     </div>

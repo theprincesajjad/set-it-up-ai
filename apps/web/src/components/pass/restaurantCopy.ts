@@ -187,9 +187,9 @@ export const COPY: Record<Locale, RestaurantCopy> = {
 };
 
 /**
- * Replace `{name}` tokens. Values are wrapped in Unicode isolates (FSI ... PDI) so a Latin shop name
+ * Replace `{name}` tokens. The shop name is wrapped in Unicode isolates (FSI ... PDI) so a Latin shop name
  * and its trailing full stop don't scramble inside right-to-left Urdu text.
  */
 export function fill(text: string, vars: Record<string, string | number>): string {
-  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? `\u2068${String(vars[k])}\u2069` : m));
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? (k === "shop" ? `\u2068${vars[k]}\u2069` : String(vars[k])) : m));
 }

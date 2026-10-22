@@ -14,6 +14,9 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { relativeTime } from "@/lib/dashboard/time";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
+const CHANNEL: Record<string, string> = { sms: "Text", whatsapp: "WhatsApp", email: "Email", push: "App push" };
+const channelName = (c: string) => CHANNEL[c] ?? c;
+
 type RatingFilter = "all" | "5" | "4" | "3" | "2" | "1";
 type StatusFilter = "all" | "responded" | "pending";
 
@@ -58,7 +61,7 @@ function Reviews() {
     { key: "customer", header: "Customer", mobile: "title", cell: (r) => <span className="font-medium">{r.customer.name ?? "Customer"}</span> },
     { key: "rating", header: "Rating", mobile: "trailing", sortValue: (r) => r.rating, cell: (r) => (r.rating ? <Stars n={r.rating} /> : <span className="text-fg-muted">No answer yet</span>) },
     { key: "feedback", header: "What they said", mobile: "subtitle", cell: (r) => <span className="line-clamp-1 max-w-[320px] text-fg-muted">{r.feedback ?? (r.responded ? "No comment" : "")}</span> },
-    { key: "channel", header: "Asked by", mobile: "hidden", cell: (r) => r.channel[0]!.toUpperCase() + r.channel.slice(1) },
+    { key: "channel", header: "Asked by", mobile: "hidden", cell: (r) => channelName(r.channel) },
     { key: "when", header: "Asked", mobile: "subtitle", sortValue: (r) => r.sentAt ?? r.createdAt, cell: (r) => (r.sentAt ? relativeTime(r.sentAt) : "Not sent yet") },
     { key: "status", header: "Status", mobile: "hidden", cell: (r) => (r.responded ? <Dot tone="positive">Answered</Dot> : r.clickedAt ? <Dot tone="info">Opened</Dot> : <Dot>Waiting</Dot>) },
   ];
@@ -214,7 +217,7 @@ function AskForReview({ hasLink, onAsked }: { hasLink: boolean; onAsked: () => v
     setError(null);
     try {
       const r = await api.reviews.request(o.id);
-      toast({ message: r.sentAt ? `Asked ${o.customer?.name ?? "the customer"} for a review by ${r.channel}` : "Review request saved", tone: "success" });
+      toast({ message: r.sentAt ? `Asked ${o.customer?.name ?? "the customer"} for a review by ${channelName(r.channel).toLowerCase()}` : "Review request saved", tone: "success" });
       onAsked();
     } catch (e) {
       setError(errorMessage(e));
@@ -270,7 +273,7 @@ function Detail({ review, onClose }: { review: whatsappApi.ReviewDto | null; onC
           {r.rating && r.rating <= 3 ? <Banner tone="info">This stayed private. {r.customer.name ?? "They"} were also offered your Google link. A quick call or message can turn it around.</Banner> : null}
           <DefList
             items={[
-              { label: "Asked by", value: r.channel[0]!.toUpperCase() + r.channel.slice(1) },
+              { label: "Asked by", value: channelName(r.channel) },
               { label: "Sent", value: r.sentAt ? whenTor(r.sentAt) : "Not sent yet" },
               { label: "Opened the page", value: r.clickedAt ? whenTor(r.clickedAt) : "Not yet" },
               { label: "Order", value: r.orderId ? "Linked" : "None" },

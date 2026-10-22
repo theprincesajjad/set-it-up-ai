@@ -4,10 +4,10 @@
  */
 import { API } from "./fixtures";
 
-async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+async function call<T>(method: string, path: string, body?: unknown, token?: string, headers: Record<string, string> = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method,
-    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
@@ -65,5 +65,7 @@ export async function sendQuoteFor(owner: { token: string; id: string }, number:
 export async function publicInquiry(slug: string, over: Record<string, unknown> = {}): Promise<{ number: number }> {
   const date = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 10);
   const phone = `+1416555${String(Math.floor(1000 + Math.random() * 8999))}`;
-  return call("POST", `/v1/public/shops/${slug}/catering/inquiries`, { eventType: "walima", eventDate: date, startTime: "18:00", headcount: 120, service: "delivery", venueName: "Al-Noor Banquet", venueAddress: "55 Eglinton Ave E, Mississauga", dietaryNotes: "Halal. 20 vegetarian guests.", name: "Sana Malik", phone, ...over });
+  // The API caps public inquiries at 10 an hour per IP and trusts X-Forwarded-For, so fixtures use a fresh one.
+  const ip = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+  return call("POST", `/v1/public/shops/${slug}/catering/inquiries`, { eventType: "walima", eventDate: date, startTime: "18:00", headcount: 120, service: "delivery", venueName: "Al-Noor Banquet", venueAddress: "55 Eglinton Ave E, Mississauga", dietaryNotes: "Halal. 20 vegetarian guests.", name: "Sana Malik", phone, ...over }, undefined, { "x-forwarded-for": ip });
 }

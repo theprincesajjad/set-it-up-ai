@@ -241,6 +241,30 @@ describe("locations + team", () => {
     const audits = await env.db.select().from(auditLogs).where(eq(auditLogs.merchantId, merchant.id));
     expect(audits.map((a) => a.action)).toEqual(expect.arrayContaining(["staff.invited", "staff.pin_set", "staff.role_changed", "staff.removed"]));
   });
+
+  it("owners and managers set a member's language and station; /auth/me carries both per membership", async () => {
+    const { merchant, ownerToken } = await createMerchant(env);
+    const mgr = await addStaff(merchant.id, "manager");
+    const cook = await addStaff(merchant.id, "staff");
+    const url = `/v1/merchants/${merchant.id}/team/${cook.user.id}`;
+    const patch = (token: string, payload: object) => env.app.inject({ method: "PATCH", url, headers: auth(token), payload });
+    // New members default to English, no station.
+    const list = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/team`, headers: auth(mgr.token) })).json();
+    expect(list.items.find((s: { userId: string }) => s.userId === cook.user.id)).toMatchObject({ locale: "en", station: null });
+    const set = await patch(mgr.token, { locale: "pa", station: "  tandoor " });
+    expect(set.statusCode).toBe(200);
+    expect(set.json()).toMatchObject({ role: "staff", locale: "pa", station: "tandoor" });
+    const me = (await env.app.inject({ method: "GET", url: "/v1/auth/me", headers: auth(cook.token) })).json();
+    expect(me.merchants[0]).toMatchObject({ merchantId: merchant.id, locale: "pa", station: "tandoor" });
+    // Managers can't touch roles; staff can't edit anyone; bad values and empty bodies are rejected.
+    expect((await patch(mgr.token, { role: "manager" })).statusCode).toBe(403);
+    expect((await patch(cook.token, { locale: "hi" })).statusCode).toBe(403);
+    expect((await patch(ownerToken, { locale: "fr" })).statusCode).toBe(400);
+    expect((await patch(ownerToken, {})).statusCode).toBe(400);
+    // Owners can change role and language together; null clears the station.
+    const both = await patch(ownerToken, { role: "manager", locale: "ur", station: null });
+    expect(both.json()).toMatchObject({ role: "manager", locale: "ur", station: null });
+  });
 });
 
 describe("loyalty program configuration", () => {

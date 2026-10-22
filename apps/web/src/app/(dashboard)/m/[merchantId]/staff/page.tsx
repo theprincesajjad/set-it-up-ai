@@ -1,7 +1,7 @@
 "use client";
 import { UserPlus } from "lucide-react";
 import { useState } from "react";
-import type { merchantApi } from "@ll/shared";
+import { LOCALE_LIST, type merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Empty, PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -11,6 +11,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PhoneField } from "@/components/ui/PhoneField";
+import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -37,6 +38,9 @@ export default function StaffPage() {
   const [pinFor, setPinFor] = useState<merchantApi.StaffMember | null>(null);
   const [pin, setPin] = useState("");
   const [remove, setRemove] = useState<merchantApi.StaffMember | null>(null);
+  const [edit, setEdit] = useState<merchantApi.StaffMember | null>(null);
+  const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
+  const [station, setStation] = useState("");
   const act = useAction();
 
   return (
@@ -59,7 +63,7 @@ export default function StaffPage() {
                           {!owner || self ? <span className="font-normal text-fg-muted">· {s.role[0]!.toUpperCase() + s.role.slice(1)}</span> : null}
                         </p>
                         <p className="text-meta text-fg-muted">
-                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}
+                          {s.phone ? maskPhone(s.phone) : s.email} · Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}{s.locale !== "en" ? ` · ${LOCALE_LIST.find((l) => l.code === s.locale)?.englishName ?? s.locale}` : ""}{s.station ? ` · ${s.station} station` : ""}
                         </p>
                       </div>
                       {owner && !self ? (
@@ -77,6 +81,9 @@ export default function StaffPage() {
                           </select>
                         </label>
                       ) : null}
+                      <Button variant="ghost" size="sm" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
+                        Language and station
+                      </Button>
                       {owner || self ? (
                         <Button variant="secondary" size="sm" onClick={() => setPinFor(s)}>
                           {s.hasPin ? "Reset PIN" : "Set PIN"}
@@ -146,6 +153,23 @@ export default function StaffPage() {
         </div>
       </Modal>
 
+      <ConfirmDialog
+        open={!!edit}
+        onClose={() => setEdit(null)}
+        title={`Language and station for ${edit?.name ?? "staff"}`}
+        body="Their counter app and kitchen screen open in this language and show this station's tickets first."
+        confirmLabel="Save"
+        onConfirm={async () => {
+          await api.setStaffProfile(edit!.userId, { locale, station: station.trim() || null });
+          toast({ message: "Saved", tone: "success" });
+          await state.reload();
+        }}
+      >
+        <div className="flex flex-col gap-4">
+          <Select label="Language" value={locale} onChange={(e) => setLocale(e.target.value as merchantApi.StaffMember["locale"])} options={LOCALE_LIST.map((l) => ({ value: l.code, label: `${l.englishName} (${l.name})` }))} />
+          <TextField label="Kitchen station" optionalLabel hint="For example tandoor, curry or chai. Leave empty to see every station." maxLength={60} value={station} onChange={(e) => setStation(e.target.value)} />
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         open={!!pinFor}
         onClose={() => {

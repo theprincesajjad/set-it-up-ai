@@ -133,6 +133,16 @@ export function ToggleChips<T extends string | number>({ options, value, onChang
   );
 }
 
+/** A plain checkbox with its label beside it (the shared Checkbox has a 48px hit area that crowds tight stacks). */
+export function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode }) {
+  return (
+    <label className="flex min-h-8 cursor-pointer items-start gap-2.5 text-meta text-fg">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--ll-color-fg)]" />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 /** Label over a group of controls (for things that are not one input). */
 export function GroupLabel({ children }: { children: ReactNode }) {
   return <p className="text-meta-strong text-fg">{children}</p>;

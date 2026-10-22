@@ -41,7 +41,7 @@ export function ShopHead({ shop, kicker, href }: { shop: { name: string; logoUrl
     <>
       <ShopLogo shop={{ name: shop.name, vertical: "restaurant", logoUrl: shop.logoUrl ?? null, brandColor: shop.brandColor ?? null }} size={44} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body-strong text-fg">{shop.name}</p>
+        <p className="truncate text-body-strong text-fg"><bdi>{shop.name}</bdi></p>
         {kicker ? <p className="truncate text-meta text-fg-muted">{kicker}</p> : null}
       </div>
     </>

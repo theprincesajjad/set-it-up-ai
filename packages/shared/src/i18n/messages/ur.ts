@@ -417,6 +417,7 @@ export const ur: Messages = {
   // Restaurant pack, mobile customer screens (tiffin, catering, banquet halls, dietary filters, WhatsApp)
   "rest.optional": "اختیاری",
   "rest.save": "محفوظ کریں",
+  "rest.pickDate": "تاریخ منتخب کریں",
   "rest.selected": "منتخب",
   "rest.guests": "{n, plural, one {# مہمان} other {# مہمان}}",
   "rest.perWeek": "فی ہفتہ",
@@ -655,4 +656,18 @@ export const ur: Messages = {
   "rest.bk.payAtShop": "بیعانہ کیسے ادا کرنا ہے، دکان سے پوچھیں۔",
   "rest.bk.empty.title": "کوئی ہال بکنگ نہیں",
   "rest.bk.empty.body": "ہولڈ اور تصدیق شدہ بکنگ یہاں نظر آئیں گی۔",
+
+  // Staff counter tender choice and kitchen screen extras
+  "tender.title": "ادائیگی لیں",
+  "tender.cash": "نقد",
+  "tender.card": "کارڈ",
+  "tender.cashPrice": "نقد قیمت",
+  "tender.cardPrice": "کارڈ قیمت",
+  "tender.saves": "نقد میں {amount} کی بچت",
+  "tender.charge": "{amount} وصول کریں",
+  "tender.addItems": "اشیا شامل کریں",
+  "kitchen.recall": "ٹکٹ {n} واپس لائیں",
+  "kitchen.all": "سب",
+  "kitchen.late": "تاخیر",
+  "kitchen.justBumped": "ابھی مکمل کیے",
 };

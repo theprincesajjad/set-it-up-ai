@@ -226,6 +226,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     team: () => c.get<Items<merchantApi.StaffMember>>(`${b}/team`),
     invite: (body: { email?: string; phone?: string; name?: string; role: merchantApi.StaffRole }) => c.post<merchantApi.StaffMember>(`${b}/team`, body),
     setRole: (userId: string, role: merchantApi.StaffRole) => c.patch<merchantApi.StaffMember>(`${b}/team/${enc(userId)}`, { role }),
+    /** Language and kitchen station for a team member (owner or manager). */
+    setStaffProfile: (userId: string, body: { locale?: merchantApi.StaffMember["locale"]; station?: string | null }) => c.patch<merchantApi.StaffMember>(`${b}/team/${enc(userId)}`, body),
     removeStaff: (userId: string) => c.delete<void>(`${b}/team/${enc(userId)}`),
     setPin: (userId: string, pin: string) => c.put<void>(`${b}/team/${enc(userId)}/pin`, { pin }),
     // Program

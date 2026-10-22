@@ -152,7 +152,7 @@ function WeekEditor({ week, planId, days, existing, canEdit, onSaved }: { week: 
                 placeholder={serves ? "Dal tadka\nJeera rice\nAloo gobi" : ""}
                 value={draft[d]!.text}
                 onChange={(e) => setDraft((c) => ({ ...c, [d]: { ...c[d]!, text: e.target.value } }))}
-                className="min-h-28 w-full resize-y rounded-input border border-line bg-bg px-3 py-2 text-meta text-fg outline-none placeholder:text-fg-subtle focus:border-fg focus:ring-1 focus:ring-fg"
+                className="min-h-40 w-full resize-y rounded-input border border-line bg-bg px-3 py-2 text-meta text-fg outline-none placeholder:text-fg-subtle focus:border-fg focus:ring-1 focus:ring-fg"
               />
               <input
                 aria-label={`Note for ${dayLabel(d)}`}

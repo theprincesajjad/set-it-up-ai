@@ -95,8 +95,7 @@ export default function TiffinPlanDetail() {
   return (
     <Screen
       back
-      title={tr.name}
-      titleCase="as-is"
+      title={t("rest.tiffin.plan")}
       onRefresh={() => q.refetch()}
       refreshing={q.isRefetching}
       footer={
@@ -190,6 +189,7 @@ export default function TiffinPlanDetail() {
         }
       >
         <Text color="fgMuted">{`${tr.name} · ${t("rest.tiffin.servingsCount", { n: servings })} · ${t(mode === "delivery" ? "delivery.title" : "delivery.pickup")}`}</Text>
+        {error ? <Banner variant="danger">{error}</Banner> : null}
         {mode === "delivery" ? (
           <>
             <TextField label={t("delivery.address")} value={address} onChangeText={setAddress} autoComplete="street-address" textContentType="fullStreetAddress" maxLength={300} error={touched && !addressOk ? t("rest.err.address") : null} />
@@ -211,6 +211,7 @@ export default function TiffinPlanDetail() {
         <TextField label={t("rest.tiffin.dietaryNotes")} optionalLabel value={dietaryNotes} onChangeText={setDietaryNotes} maxLength={500} placeholder={t("rest.tiffin.dietaryNotesEg")} />
         <DateField
           label={t("rest.tiffin.startDate")}
+          placeholder={t("rest.pickDate")}
           value={start}
           onChange={setStartDate}
           min={minStart}
@@ -234,7 +235,6 @@ export default function TiffinPlanDetail() {
             {t(plan.cadence === "weekly" ? "rest.tiffin.renewsWeekly" : "rest.tiffin.renewsMonthly")}
           </Text>
         </View>
-        {error ? <Banner variant="danger">{error}</Banner> : null}
       </Sheet>
     </Screen>
   );

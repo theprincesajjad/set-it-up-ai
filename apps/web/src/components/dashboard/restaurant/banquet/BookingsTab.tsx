@@ -9,7 +9,6 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -17,7 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatMoney, formatNumber, formatTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS } from "../catering/labels";
-import { FormGrid, Loader, NumberField, addDaysISO, bpsToPct, dayLabel, todayISO, torontoDay, torontoInstant } from "../common";
+import { CheckRow, FormGrid, Loader, NumberField, addDaysISO, bpsToPct, dayLabel, todayISO, torontoDay, torontoInstant } from "../common";
 import { BOOKING_LABEL, BOOKING_ORDER } from "./labels";
 
 type Gate = { featureKey: "restaurant.banquet"; title: string; what: string };
@@ -162,7 +161,7 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
                       </div>
                     )}
                     {noCard ? <p className="text-meta text-fg-muted">Card payments aren&apos;t set up for your shop yet. If they paid you directly, tick the box below and confirm.</p> : null}
-                    <Checkbox size="sm" checked={receivedOutside} onChange={setReceivedOutside} label={`I received the ${formatMoney(b.depositCents)} deposit in cash or by e-transfer`} />
+                    <CheckRow checked={receivedOutside} onChange={setReceivedOutside} label={`I received the ${formatMoney(b.depositCents)} deposit in cash or by e-transfer`} />
                   </>
                 ) : null}
                 <div><Button size="sm" loading={act.busy} disabled={depositDue && !receivedOutside} onClick={() => void run(() => api.banquet.confirm(b.id, depositDue && receivedOutside), "Booking confirmed")}>Confirm booking</Button></div>

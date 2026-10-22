@@ -93,7 +93,7 @@ export default function CateringInquiry() {
       <LanguageSwitcher />
       <ChipGroup label={t("catering.eventType")} value={type} onChange={setType} options={restaurantApi.CATERING_EVENT_TYPES.map((v) => ({ value: v, label: t(`event.${v}` as MessageKey) }))} />
       {touched && !type ? <Text variant="meta" color="negative">{t("rest.err.eventType")}</Text> : null}
-      <DateField label={t("catering.eventDate")} value={day} onChange={setDay} min={addDays(today, 1)} max={addDays(today, 730)} />
+      <DateField label={t("catering.eventDate")} placeholder={t("rest.pickDate")} value={day} onChange={setDay} min={addDays(today, 1)} max={addDays(today, 730)} />
       {touched && !day ? <Text variant="meta" color="negative">{t("rest.err.eventDate")}</Text> : null}
       <TextField label={t("catering.guests")} value={guests} onChangeText={(v) => setGuests(v.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" placeholder="150" maxLength={4} error={touched && !guestsOk ? t("rest.err.guests") : null} />
       <ChipGroup

@@ -9,13 +9,12 @@ import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import { FormGrid, GroupLabel, MoneyField, NumberField, addDaysISO, bpsToPct, centsToField, copyText, dayLabel, fieldToCents, todayISO, torontoInstant } from "../common";
+import { CheckRow, FormGrid, GroupLabel, MoneyField, NumberField, addDaysISO, bpsToPct, centsToField, copyText, dayLabel, fieldToCents, todayISO, torontoInstant } from "../common";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS, SERVICE_LABEL, SERVICE_OPTIONS, STATUS_LABEL } from "./labels";
 
 type Ev = restaurantApi.CateringEventDto;
@@ -358,8 +357,8 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
       {EDITABLE.includes(st) && !event.approvedAt ? (
         <Section title="Quote" description={hasMenu ? `${formatMoney(event.totalCents)} with ${formatMoney(event.depositCents)} deposit` : "Build the menu first. Then send the quote."}>
           <div className="flex flex-col gap-1">
-            <Checkbox checked={sms} onChange={setSms} label="Text it" size="sm" />
-            <Checkbox checked={email} onChange={setEmail} label="Email it" size="sm" />
+            <CheckRow checked={sms} onChange={setSms} label="Text it" />
+            <CheckRow checked={email} onChange={setEmail} label="Email it" />
           </div>
           <div>
             <Button size="sm" loading={act.busy} disabled={!hasMenu || (!sms && !email)} onClick={() => void doing(() => api.catering.sendQuote(event.id, [...(sms ? (["sms"] as const) : []), ...(email ? (["email"] as const) : [])]), "Quote sent", ev)}>
@@ -395,7 +394,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
             </div>
           ) : !event.invoiceId ? (
             <>
-              <Checkbox checked={sendInvoice} onChange={setSendInvoice} label="Send it to the customer now" size="sm" />
+              <CheckRow checked={sendInvoice} onChange={setSendInvoice} label="Send it to the customer now" />
               <div><Button size="sm" variant="secondary" loading={act.busy} onClick={() => void doing(() => api.catering.invoice(event.id, sendInvoice), "Invoice created", (r) => { setInvoice(r); onChange({ ...event, invoiceId: r.id }); })}>Create balance invoice</Button></div>
             </>
           ) : null}

@@ -199,5 +199,20 @@ export function createEndpoints(c: ApiClient) {
       kioskCheckIn: (merchantId: string, body: staffApi.KioskCheckInBody) =>
         c.post<staffApi.KioskCheckInResponse>(`${counter(merchantId)}/kiosk/check-in`, body, { auth: "staff", idempotencyKey: body.idempotencyKey }),
     },
+
+    /** Restaurant pack, staff side: kitchen display (restaurant.kds) and the counter tender choice (restaurant.dual_pricing). */
+    kitchen: {
+      features: (merchantId: string) => c.get<merchantApi.MerchantFeaturesResponse>(`${m(merchantId)}/features`, { auth: "staff" }),
+      tickets: (merchantId: string, q: { station?: string; lang?: restaurantApi.MenuLang } = {}) =>
+        c.get<restaurantApi.KitchenTicketsResponse>(`${m(merchantId)}/kitchen/tickets`, { query: q, auth: "staff", timeoutMs: 8000 }),
+      setItem: (merchantId: string, itemId: string, status: "cooking" | "ready") =>
+        c.patch<restaurantApi.KitchenTicketDto>(`${m(merchantId)}/kitchen/items/${enc(itemId)}`, { status }, { auth: "staff" }),
+      bump: (merchantId: string, orderId: string) => c.post<restaurantApi.KitchenTicketDto>(`${m(merchantId)}/kitchen/orders/${enc(orderId)}/bump`, {}, { auth: "staff" }),
+      recall: (merchantId: string, orderId: string) => c.post<restaurantApi.KitchenTicketDto>(`${m(merchantId)}/kitchen/orders/${enc(orderId)}/recall`, {}, { auth: "staff" }),
+      dualPricing: (merchantId: string) => c.get<restaurantApi.DualPricingResponse>(`${m(merchantId)}/dual-pricing`, { auth: "staff" }),
+      catalog: (merchantId: string) => c.get<commerceApi.CatalogResponse>(`${m(merchantId)}/catalog`, { auth: "staff" }),
+      counterOrder: (merchantId: string, body: restaurantApi.CounterOrderBody, idempotencyKey: string) =>
+        c.post<commerceApi.OrderDto>(`${m(merchantId)}/orders/counter`, body, { auth: "staff", idempotencyKey }),
+    },
   };
 }

@@ -49,7 +49,7 @@ function Form({ item, onClose, onSaved, stations }: { item: Item; onClose: () =>
   const [flags, setFlags] = useState<DietKey[]>(DIET_OPTIONS.map((o) => o.value).filter((k) => d[k]));
   const [certifier, setCertifier] = useState(d.halalCertifier ?? "");
   const [spice, setSpice] = useState<0 | 1 | 2 | 3>(d.spice ?? 0);
-  const [allergens, setAllergens] = useState<string[]>(d.allergens ?? []);
+  const [allergens, setAllergens] = useState<string[]>(() => (d.allergens ?? []).map((a) => COMMON_ALLERGENS.find((c) => c.toLowerCase() === a.toLowerCase()) ?? a));
   const [customAllergen, setCustomAllergen] = useState("");
   const [tr, setTr] = useState<Tr>(() => initialTr(item));
   const [preorderOnly, setPreorderOnly] = useState(item.preorderOnly ?? false);

@@ -55,6 +55,10 @@ export default function Counter() {
   const [state, dispatch] = useReducer(counterReducer, initialCounterState);
   const [panel, setPanel] = useState<Panel>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Restaurant tools show only when the shop's plan has them (402 / empty list means off).
+  const featuresQ = useQuery({ queryKey: ["counter", "features", config.merchantId ?? "none"], queryFn: () => api.kitchen.features(config.merchantId!), enabled: !!config.merchantId, staleTime: 5 * 60_000 });
+  const on = (k: string) => !!featuresQ.data?.features.find((f) => f.key === k)?.enabled;
+  const restaurantTools = { kds: on("restaurant.kds"), order: on("orders.order_ahead") && featuresQ.data?.features.some((f) => f.key.startsWith("restaurant.") && f.enabled) === true };
   const [queueOpen, setQueueOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -571,6 +575,8 @@ export default function Counter() {
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Counter">
         <ListRow title="Today" subtitle="Visits, points and redemptions" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
         <ListRow title="Waiting to send" subtitle={queueState.pendingCount === 0 ? "Everything's sent" : `${queueState.pendingCount} ${queueState.pendingCount === 1 ? "award" : "awards"} saved on this phone`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
+        {restaurantTools.kds ? <ListRow title="Kitchen" subtitle="Tickets by station, tap to advance, bump" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/kitchen"); }} /> : null}
+        {restaurantTools.order ? <ListRow title="Take payment" subtitle="Ring up an order, cash or card" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/order"); }} /> : null}
         <ListRow title="Counter settings" subtitle="Theme, kiosk, scanner" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
         <ListRow title="Switch location" subtitle={config.locationName ?? "Pick the shop and location"} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
         {config.sharedDevice ? <ListRow title="Lock (switch staff)" chevron minHeight={64} divider={false} onPress={() => { setMenuOpen(false); ctx.lockStaff(); router.replace("/counter/pin"); }} /> : null}

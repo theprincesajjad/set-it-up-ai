@@ -421,6 +421,7 @@ export const en = {
   // Restaurant pack, mobile customer screens (tiffin, catering, banquet halls, dietary filters, WhatsApp)
   "rest.optional": "optional",
   "rest.save": "Save",
+  "rest.pickDate": "Choose a date",
   "rest.selected": "selected",
   "rest.guests": "{n, plural, one {# guest} other {# guests}}",
   "rest.perWeek": "a week",
@@ -659,6 +660,20 @@ export const en = {
   "rest.bk.payAtShop": "Ask the shop how to pay the deposit.",
   "rest.bk.empty.title": "No hall bookings",
   "rest.bk.empty.body": "Holds and confirmed bookings show up here.",
+
+  // Staff counter tender choice and kitchen screen extras
+  "tender.title": "Take payment",
+  "tender.cash": "Cash",
+  "tender.card": "Card",
+  "tender.cashPrice": "Cash price",
+  "tender.cardPrice": "Card price",
+  "tender.saves": "Cash saves {amount}",
+  "tender.charge": "Charge {amount}",
+  "tender.addItems": "Add items",
+  "kitchen.recall": "Recall #{n}",
+  "kitchen.all": "All",
+  "kitchen.late": "Late",
+  "kitchen.justBumped": "Just bumped",
 } as const;
 
 export type MessageKey = keyof typeof en;

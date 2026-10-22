@@ -120,7 +120,7 @@ describe("split bills", () => {
     expect((await env.db.select().from(orders).where(eq(orders.id, tab.id)))[0]!.status).toBe("cancelled");
   });
 
-  it("uses the standard in-app fee only when the shop isn't commission-free; validates tips", async () => {
+  it("validates tips; shares follow the order fee rule from computeFees (0% on a restaurant tier)", async () => {
     const { m, tab } = await table();
     const r = await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "even", ways: 2 });
     const token = r.body.items[0].payToken;
@@ -139,5 +139,43 @@ describe("split bills", () => {
     await env.db.update(merchants).set({ restaurantTier: "starter" }).where(eq(merchants.id, m.merchant.id));
     expect((await call(env, null, "GET", `/v1/public/splits/${r.body.items[0].payToken}`)).status).toBe(402);
     expect((await call(env, null, "POST", `/v1/public/splits/${r.body.items[0].payToken}/pay`, {})).status).toBe(402);
+  });
+});
+
+describe("cash shares", () => {
+  const cashUrl = (m: M, orderId: string, splitId: string) => `${splitsUrl(m, orderId)}/${splitId}/mark-paid-cash`;
+
+  it("staff mark a share paid in cash; the order is paid once every share is, and cash-only stays pay-at-pickup", async () => {
+    const { m, tab } = await table();
+    const r = await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "even", ways: 2 });
+    const [a, b] = r.body.items as { id: string; amountCents: number; payToken: string }[];
+    const one = await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, a!.id), { tipCents: 200 });
+    expect(one.status).toBe(200);
+    expect(one.body).toMatchObject({ paidCents: 3164, orderPaid: false });
+    expect(one.body.items[0]).toMatchObject({ status: "paid", paidWith: "cash", tipCents: 200 });
+    expect((await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, a!.id), {})).status).toBe(409);
+    expect((await call(env, null, "GET", `/v1/public/splits/${a!.payToken}`)).body).toMatchObject({ status: "paid", canPay: false });
+    expect((await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, "00000000-0000-4000-8000-000000000000"), {})).status).toBe(404);
+    const last = await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, b!.id), {});
+    expect(last.body).toMatchObject({ orderPaid: true });
+    const order = (await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders/${tab.id}`)).body;
+    expect(order).toMatchObject({ paymentStatus: "paid", paymentMethod: "at_pickup", tipCents: 200, totalCents: 6528, platformFeeCents: 0 });
+    expect((await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, b!.id), {})).status).toBe(409);
+  });
+
+  it("mixes cash and card, and refunds a card payment that lands after the share was settled in cash", async () => {
+    const { m, tab } = await table();
+    const r = await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "even", ways: 2 });
+    const [a, b] = r.body.items as { id: string; payToken: string }[];
+    const started = await call(env, null, "POST", `/v1/public/splits/${a!.payToken}/pay`, {});
+    await call(env, m.ownerToken, "POST", cashUrl(m, tab.id, a!.id), {});
+    await deliver(env, fake(env).succeedPaymentIntent(started.body.payment.paymentIntentId));
+    expect(fake(env).intents.get(started.body.payment.paymentIntentId)?.refundedCents).toBe(3164);
+    const p = await call(env, null, "POST", `/v1/public/splits/${b!.payToken}/pay`, {});
+    await deliver(env, fake(env).succeedPaymentIntent(p.body.payment.paymentIntentId));
+    const order = (await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders/${tab.id}`)).body;
+    expect(order).toMatchObject({ paymentStatus: "paid", paymentMethod: "in_app" });
+    const list = (await call(env, m.ownerToken, "GET", splitsUrl(m, tab.id))).body;
+    expect(list.items.map((i: { paidWith: string }) => i.paidWith)).toEqual(["cash", "card"]);
   });
 });

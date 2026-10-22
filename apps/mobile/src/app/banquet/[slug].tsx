@@ -150,6 +150,7 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
     >
       <DateField
         label={t("rest.bk.day")}
+        placeholder={t("rest.pickDate")}
         value={day}
         onChange={setDay}
         min={addDays(today, 1)}
@@ -167,7 +168,6 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
           {clash ? <Banner variant="danger">{t("rest.bk.clash")}</Banner> : null}
         </>
       ) : null}
-      <ChipGroup label={t("catering.eventType")} value={type} onChange={setType} options={restaurantApi.CATERING_EVENT_TYPES.map((v) => ({ value: v, label: t(`event.${v}` as MessageKey) }))} />
       <TextField
         label={t("catering.guests")}
         value={guests}
@@ -186,6 +186,7 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
           options={hall.packages.map((p) => ({ value: p.name, label: `${p.name} · ${money(p.perHeadCents)}` }))}
         />
       ) : null}
+      <ChipGroup label={t("catering.eventType")} value={type} onChange={setType} options={restaurantApi.CATERING_EVENT_TYPES.map((v) => ({ value: v, label: t(`event.${v}` as MessageKey) }))} />
       <TextField label={t("catering.message")} optionalLabel value={notes} onChangeText={setNotes} multiline maxLength={4000} />
       {hall ? (
         <View style={{ gap: 2 }}>

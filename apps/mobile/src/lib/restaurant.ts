@@ -314,8 +314,8 @@ export function paymentUrl(webUrl: string, p: { paymentIntentId: string; clientS
  * Tiffin pushes (tiffin_update: out for delivery, delivered, payment failed, renewal; tiffin_menu: tomorrow's menu)
  * carry `subscriptionId` and no `screen`; they open the subscription. Null for anything else.
  */
-export function tiffinRoute(data: { type?: string; screen?: string; subscriptionId?: unknown } | null | undefined): string | null {
+export function tiffinRoute(data: { type?: string; screen?: string; subscriptionId?: unknown; event?: unknown } | null | undefined): string | null {
   const id = typeof data?.subscriptionId === "string" ? data.subscriptionId : "";
   if (!id) return null;
-  return data?.type === "tiffin_update" || data?.type === "tiffin_menu" || data?.screen === "tiffin" ? `/tiffin/${encodeURIComponent(id)}` : null;
+  return data?.type === "tiffin_update" || data?.type === "tiffin_delivery" || data?.type === "tiffin_menu" || data?.screen === "tiffin" ? `/tiffin/${encodeURIComponent(id)}` : null;
 }

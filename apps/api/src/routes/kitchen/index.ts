@@ -118,6 +118,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return reply.status(204).send();
   });
 
+  app.post<{ Params: MerchantParams & { orderId: string; splitId: string } }>("/merchants/:merchantId/orders/:orderId/splits/:splitId/mark-paid-cash", async (req) => {
+    const staff = await staffFor(req, "staff", ["restaurant.split_bills"], "orders.manage");
+    const body = parse(restaurantApi.markSplitCashBody, req.body ?? {});
+    return splits.markSplitPaidCash(ctx, staff, req.params.orderId, req.params.splitId, body);
+  });
+
   // Public pay links (no login; the token is the credential).
   app.get<{ Params: { token: string } }>("/public/splits/:token", async (req) => splits.getPublicSplit(ctx, req.params.token));
 

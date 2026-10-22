@@ -231,7 +231,9 @@ export default function TiffinSubscription() {
                 <Text variant="bodyStrong" tabular>
                   {money(ch.amountCents)}
                 </Text>
-                <StatusBadge tone={CHARGE_TONE[ch.status]}>{t(`rest.charge.${ch.status}` as const)}</StatusBadge>
+                <View style={{ alignSelf: "flex-end" }}>
+                  <StatusBadge tone={CHARGE_TONE[ch.status]}>{t(`rest.charge.${ch.status}` as const)}</StatusBadge>
+                </View>
               </View>
             }
           />
@@ -270,7 +272,7 @@ export default function TiffinSubscription() {
         }
       >
         <Text color="fgMuted">{t("rest.tiffin.pause.body", { n: sub.plan.cutoffHours })}</Text>
-        <DateField label={t("rest.tiffin.resumeOn")} value={pauseUntil} onChange={setPauseUntil} min={addDays(today, 2)} max={addDays(today, 120)} />
+        <DateField label={t("rest.tiffin.resumeOn")} placeholder={t("rest.pickDate")} value={pauseUntil} onChange={setPauseUntil} min={addDays(today, 2)} max={addDays(today, 120)} />
         {error ? <Banner variant="danger">{error}</Banner> : null}
       </Sheet>
 

@@ -10,7 +10,9 @@ import { COPY, fill } from "./restaurantCopy";
 
 /** /pay/order/<orderId>?t=<token>: order summary and card payment for a WhatsApp order. */
 export function OrderPayView({ orderId, token, initial }: { orderId: string; token: string; initial: whatsappApi.WhatsappPayView }) {
-  const { locale, money, number } = useLocale();
+  const { locale, info, number } = useLocale();
+  // Always two decimals on a payment page ($14.00, not $14), unlike the compact shared formatter.
+  const money = (cents: number) => new Intl.NumberFormat(info.bcp47, { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol" }).format(cents / 100);
   const c = COPY[locale];
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
@@ -33,7 +35,7 @@ export function OrderPayView({ orderId, token, initial }: { orderId: string; tok
       <header className="flex items-center gap-3 pt-2">
         <ShopLogo shop={{ name: shop.name, vertical: "other", logoUrl: shop.logoUrl }} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-body-strong text-fg">{shop.name}</p>
+          <p className="truncate text-body-strong text-fg"><bdi>{shop.name}</bdi></p>
           <p className="truncate text-meta text-fg-muted">
             {fill(c.orderNo, { n: number(order.number) })} · {c.status[order.status] ?? order.status}
           </p>

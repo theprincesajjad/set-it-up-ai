@@ -186,6 +186,9 @@ export const createSplitsBody = z.discriminatedUnion("mode", [
 export type CreateSplitsBody = z.input<typeof createSplitsBody>;
 export const paySplitBody = z.object({ tipCents: z.number().int().min(0).max(100_000).default(0) });
 export type PaySplitBody = z.input<typeof paySplitBody>;
+/** POST /merchants/:merchantId/orders/:orderId/splits/:splitId/mark-paid-cash: a guest settled their share in cash at the table. */
+export const markSplitCashBody = z.object({ tipCents: z.number().int().min(0).max(100_000).default(0) });
+export type MarkSplitCashBody = z.input<typeof markSplitCashBody>;
 
 export interface SplitDto {
   id: string;
@@ -196,6 +199,8 @@ export interface SplitDto {
   itemIds: string[];
   status: "open" | "paid";
   paidAt: string | null;
+  /** How a paid share was settled (card = pay link, cash = marked by staff). Null while open. */
+  paidWith?: "card" | "cash" | null;
   /** Share this link with the guest. */
   payUrl: string;
   payToken: string;

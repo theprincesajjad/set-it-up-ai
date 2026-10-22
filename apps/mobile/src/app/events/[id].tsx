@@ -102,7 +102,7 @@ export default function EventDetail() {
         <Section title={t("rest.cat.quote")}>
           <View style={{ paddingTop: 12, gap: 2 }}>
             {e.lineItems.map((l, i) => (
-              <InfoRow key={i} label={l.quantity > 1 ? `${l.description} × ${l.quantity}` : l.description} value={money(l.totalCents)} />
+              <InfoRow key={i} label={l.quantity > 1 && !/[x×]\s*\d/.test(l.description) ? `${l.description} × ${l.quantity}` : l.description} value={money(l.totalCents)} />
             ))}
             <View style={{ height: 8 }} />
             <InfoRow label={t("cart.subtotal")} value={money(e.subtotalCents)} />

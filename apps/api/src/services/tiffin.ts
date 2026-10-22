@@ -20,7 +20,7 @@ import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
-import { decodeCursor, encodeCursor, money } from "./commerceShared.js";
+import { decodeCursor, encodeCursor, money, notifyCustomer } from "./commerceShared.js";
 import { enabledFeaturesFor, requireFeature } from "./features.js";
 import { localDate } from "./messaging.js";
 import { loadPrefs, sendNotification } from "./notifications.js";
@@ -1020,9 +1020,13 @@ export async function setDeliveryStatus(ctx: AppContext, merchantId: string, bod
       .where(eq(tiffinDeliveries.id, d.id));
     updated++;
     const shop = merchant?.name ?? "Your kitchen";
-    if (body.status === "out_for_delivery") await notify(ctx, sub.userId, merchantId, "tiffin_update", "Your tiffin is out for delivery", `${plan.name} from ${shop} is on its way.`, { subscriptionId: sub.id, deliveryId: d.id, date: d.date, event: "out_for_delivery" });
-    else if (body.status === "delivered") await notify(ctx, sub.userId, merchantId, "tiffin_update", "Your tiffin was delivered", `${plan.name} from ${shop} has arrived. Enjoy.`, { subscriptionId: sub.id, deliveryId: d.id, date: d.date, event: "delivered" });
-    else if (body.status === "missed") await notify(ctx, sub.userId, merchantId, "tiffin_update", "We missed your tiffin today", `${shop} couldn't complete today's ${plan.name}. They'll be in touch.`, { subscriptionId: sub.id, deliveryId: d.id, date: d.date, event: "missed" });
+    // notifyCustomer (not sendNotification) so the WhatsApp listener hears it: it expects { type: "tiffin_delivery", status }.
+    const msg =
+      body.status === "out_for_delivery" ? { title: "Your tiffin is out for delivery", body: `${plan.name} from ${shop} is on its way.` }
+      : body.status === "delivered" ? { title: "Your tiffin was delivered", body: `${plan.name} from ${shop} has arrived. Enjoy.` }
+      : body.status === "missed" ? { title: "We missed your tiffin today", body: `${shop} couldn't complete today's ${plan.name}. They'll be in touch.` }
+      : null;
+    if (msg) await notifyCustomer(ctx, { userId: sub.userId, merchantId, ...msg, data: { type: "tiffin_delivery", status: body.status, subscriptionId: sub.id, deliveryId: d.id, date: d.date, event: body.status } });
   }
   return { updated, ignored };
 }
