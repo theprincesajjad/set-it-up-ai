@@ -43,3 +43,5 @@ export * from "./PlaceBubble";
 export * from "./CategoryIcon";
 export * from "./haptics";
 export * from "./motion";
+export * from "./CanvasIcons";
+export * from "./shadow";

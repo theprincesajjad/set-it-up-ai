@@ -4,21 +4,21 @@ import { Redirect, router } from "expo-router";
 import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
 import { useEffect, useRef } from "react";
 import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "../../features/customer/queries";
 import { useTabBarHidden } from "../../features/tabBar";
+import { initials } from "../../lib/award";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Avatar, haptic, History, Map, QrCodeIcon, Wallet, type LucideIcon } from "../../ui";
+import { CardQrIcon, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
 
-const TABS: Record<string, { label: string; icon?: LucideIcon }> = {
-  map: { label: "Map", icon: Map },
-  wallet: { label: "Wallet", icon: Wallet },
-  activity: { label: "Activity", icon: History },
-  you: { label: "Profile" },
-};
+type TabName = "map" | "discover" | "wallet" | "activity";
+const LABELS: Record<TabName, string> = { map: "Map", discover: "Discover", wallet: "Wallet", activity: "Activity" };
+const ORDER: TabName[] = ["map", "discover", "wallet", "activity"];
 
-/** The round black card button: opens My card (QR) as a sheet over the current tab. */
+/**
+ * The round black "my card" button, separate from the capsule and to its right (Corner's "+" button):
+ * 60 pt, QR glyph, opens My card as a sheet over the current tab.
+ */
 function CardButton() {
   const { c } = useTheme();
   return (
@@ -30,45 +30,41 @@ function CardButton() {
         haptic.tap();
         router.push("/card");
       }}
-      style={({ pressed }) => [styles.item, { transform: pressed ? [{ scale: 0.94 }] : undefined }]}
+      style={({ pressed }) => [styles.card, { backgroundColor: c.fg, transform: pressed ? [{ scale: 0.94 }] : undefined }, shadow("0 4px 16px rgba(0,0,0,.24)", { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.24, shadowRadius: 16, elevation: 6 })]}
     >
-      <View style={[styles.card, { backgroundColor: c.fg }]}>
-        <QrCodeIcon size={22} color={c.bg} strokeWidth={1.75} />
-      </View>
+      <CardQrIcon size={24} color={c.bg} />
     </Pressable>
   );
 }
 
 /**
- * Frosted capsule tab bar (foundations § Chrome floats): map · wallet ·
- * [black card button] · activity · avatar. Icons only, labels spoken.
- * BlurView + the 80% chrome fill; it slides away when a screen hides it.
+ * Tab bar (canvas Main/Discover/Wallet artboards): a frosted capsule with map · discover · wallet ·
+ * avatar (activity), and the black card button beside it. Icons only, labels spoken.
+ * BlurView + the 86% chrome fill; it slides away when a screen hides it (Explore's shop sheet).
  */
 function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
   const { c, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
   const { user } = useSession();
   const profile = useProfile();
   const hidden = useTabBarHidden();
+  const bottom = useTabBarBottom();
   const y = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(y, { toValue: hidden ? 140 : 0, duration: 200, useNativeDriver: true }).start();
+    Animated.timing(y, { toValue: hidden ? 140 : 0, duration: 200, useNativeDriver: Platform.OS !== "web" }).start();
   }, [hidden, y]);
-  const bottom = Math.max(insets.bottom, 12);
-  const routes = state.routes.filter((r) => TABS[r.name]);
-  const item = (routeName: string) => {
-    const index = state.routes.findIndex((r) => r.name === routeName);
+  const item = (name: TabName) => {
+    const index = state.routes.findIndex((r) => r.name === name);
     const route = state.routes[index];
-    const tab = TABS[routeName];
-    if (!route || !tab) return null;
+    if (!route) return null;
     const focused = state.index === index;
-    const color = focused ? c.fg : c.fgMuted;
-    const Icon = tab.icon;
+    const color = focused ? c.fg : c.fgSubtle;
+    const sw = focused ? 2 : 1.8;
+    const who = profile.data?.name ?? user?.name;
     return (
       <Pressable
         key={route.key}
         accessibilityRole="tab"
-        accessibilityLabel={tab.label}
+        accessibilityLabel={LABELS[name]}
         accessibilityState={{ selected: focused }}
         onPress={() => {
           if (focused) return;
@@ -77,29 +73,37 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
         }}
         style={styles.item}
       >
-        {Icon ? (
-          <Icon size={24} color={color} strokeWidth={focused ? 2.25 : 1.75} />
-        ) : (
-          <View style={[styles.avatarRing, { borderColor: focused ? c.fg : "transparent" }]}>
-            <Avatar name={profile.data?.name ?? user?.name} size={28} />
+        {name === "map" ? <TabMapIcon color={color} strokeWidth={sw} /> : null}
+        {name === "discover" ? <TabDiscoverIcon color={color} filled={focused} /> : null}
+        {name === "wallet" ? <TabWalletIcon color={color} strokeWidth={sw} /> : null}
+        {name === "activity" ? (
+          <View style={[styles.avatar, { backgroundColor: c.bgMuted, borderColor: focused ? c.fg : "transparent" }]}>
+            <Text allowFontScaling={false} style={styles.avatarText} rawColor={c.fg}>
+              {initials(who).toLowerCase()}
+            </Text>
           </View>
-        )}
+        ) : null}
       </Pressable>
     );
   };
-  if (routes.length === 0) return null;
+  if (!state.routes.some((r) => ORDER.includes(r.name as TabName))) return null;
   return (
     <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom, transform: [{ translateY: y }] }]}>
-      <View accessibilityRole="tablist" style={[styles.capsule, shadows.float.native, isDark ? { shadowOpacity: 0.4 } : null]}>
-        <BlurView intensity={blur.nativeIntensity} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} />
-        {/* Android has no cheap live blur without a blur target: a near-opaque chrome fill instead. */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: Platform.OS === "android" ? c.bg : c.chrome, opacity: Platform.OS === "android" ? 0.96 : 1, borderColor: c.line, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999 }]} />
-        {item("map")}
-        {item("wallet")}
-        <CardButton />
-        {item("activity")}
-        {item("you")}
+      <View accessibilityRole="tablist" style={[styles.capsule, isDark ? { boxShadow: undefined } : null, shadow(shadows.float.css), isDark ? { shadowOpacity: 0.4 } : null]}>
+        <View style={[StyleSheet.absoluteFill, styles.clip]}>
+          {Platform.OS === "ios" ? <BlurView intensity={blur.nativeIntensity} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} /> : null}
+          {/* Android has no cheap live blur without a blur target: a near-opaque fill. Web frosts with backdrop-filter. */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: Platform.OS === "android" ? c.bg : isDark ? "rgba(22,22,24,.86)" : "rgba(255,255,255,.86)", opacity: Platform.OS === "android" ? 0.96 : 1 },
+              Platform.OS === "web" ? ({ backdropFilter: `blur(${blur.chrome}px)` } as object) : null,
+            ]}
+          />
+        </View>
+        {ORDER.map(item)}
       </View>
+      <CardButton />
     </Animated.View>
   );
 }
@@ -110,6 +114,7 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="map" />
+      <Tabs.Screen name="discover" />
       <Tabs.Screen name="wallet" />
       <Tabs.Screen name="activity" />
       <Tabs.Screen name="you" />
@@ -118,9 +123,11 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  host: { position: "absolute", left: 0, right: 0, alignItems: "center" },
-  capsule: { flexDirection: "row", alignItems: "center", height: layout.tabBar, borderRadius: 999, paddingHorizontal: 8, width: 320, maxWidth: "92%", overflow: "hidden" },
-  item: { flex: 1, alignItems: "center", justifyContent: "center", height: layout.tabBar },
-  card: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  avatarRing: { borderRadius: 18, borderWidth: 1.5, padding: 1.5 },
+  host: { position: "absolute", left: 16, right: 16, flexDirection: "row", alignItems: "center", gap: 10 },
+  capsule: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-around", height: layout.tabBar, borderRadius: 999, paddingHorizontal: 8 },
+  clip: { borderRadius: 999, overflow: "hidden" },
+  item: { width: 48, height: 44, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 0 },
+  avatarText: { fontSize: 11, lineHeight: 14, fontWeight: "600" },
+  card: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
 });

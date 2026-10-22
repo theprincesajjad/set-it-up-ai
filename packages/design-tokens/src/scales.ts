@@ -43,7 +43,7 @@ export const layout = {
   /** Table row height. */
   tableRow: 44,
   /** Frosted capsule tab bar height on mobile (excl. safe area). */
-  tabBar: 64,
+  tabBar: 60,
   /** Floating capsule / round chrome button height over the map. */
   chrome: 44,
   /** Top app bar height. */
