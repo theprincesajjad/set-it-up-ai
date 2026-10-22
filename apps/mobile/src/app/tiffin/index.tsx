@@ -3,7 +3,7 @@ import { useRestaurantMine } from "../../features/restaurant/queries";
 import { StatusBadge, subTone } from "../../features/restaurant/components";
 import { useLocale } from "../../lib/i18n";
 import { dayToDate } from "../../lib/restaurant";
-import { Card, EmptyState, ListRow, Screen, Section, SkeletonList, Ticket } from "../../ui";
+import { Card, EmptyState, ListRow, Screen, Section, SkeletonList, UtensilsCrossed } from "../../ui";
 
 /** My tiffin: every subscription I have, live ones first. */
 export default function MyTiffin() {
@@ -27,7 +27,7 @@ export default function MyTiffin() {
       {mine.loading ? (
         <SkeletonList rows={2} rowHeight={64} />
       ) : mine.subs.length === 0 ? (
-        <EmptyState icon={Ticket} title={t("rest.tiffin.mine.empty.title")} body={t("rest.tiffin.mine.empty.body")} />
+        <EmptyState icon={UtensilsCrossed} title={t("rest.tiffin.mine.empty.title")} body={t("rest.tiffin.mine.empty.body")} />
       ) : (
         <>
           {live.length > 0 ? (

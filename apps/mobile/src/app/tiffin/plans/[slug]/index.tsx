@@ -4,10 +4,11 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { DietBadges, useDaysLabel } from "../../../../features/restaurant/components";
 import { featureOff, rk, useTiffinPlans } from "../../../../features/restaurant/queries";
 import { useLocale } from "../../../../lib/i18n";
+import { LanguageSwitcher } from "../../../../lib/i18n/LanguageSwitcher";
 import { api } from "../../../../state/api";
 import { useOnline } from "../../../../state/network";
 import { disp, ui, useTheme } from "../../../../theme";
-import { EmptyState, ErrorState, hairline, ListRow, LockedFeature, Screen, Section, SkeletonList, Store, Text, Ticket } from "../../../../ui";
+import { EmptyState, ErrorState, hairline, ListRow, LockedFeature, Screen, Section, SkeletonList, Store, Text, UtensilsCrossed } from "../../../../ui";
 
 /** Tiffin plans a shop offers (GET /v1/public/shops/:slug/tiffin/plans): name, days, price per period, dietary claims. */
 export default function TiffinPlans() {
@@ -32,10 +33,11 @@ export default function TiffinPlans() {
   return (
     <Screen back title={t("rest.tiffin.plans")} onRefresh={() => q.refetch()} refreshing={q.isRefetching}>
       <Text color="fgMuted">{t("rest.tiffin.intro", { shop: shop.name })}</Text>
+      <LanguageSwitcher />
       {mySubs.length > 0 ? (
         <Section title={t("rest.tiffin.mine")}>
           {mySubs.map((s, i) => (
-            <ListRow key={s.id} leadingIcon={Ticket} title={s.plan.name} subtitle={t(`rest.sub.${s.status}` as const)} chevron divider={i < mySubs.length - 1} onPress={() => router.push(`/tiffin/${s.id}`)} />
+            <ListRow key={s.id} leadingIcon={UtensilsCrossed} title={s.plan.name} subtitle={t(`rest.sub.${s.status}` as const)} chevron divider={i < mySubs.length - 1} onPress={() => router.push(`/tiffin/${s.id}`)} />
           ))}
         </Section>
       ) : null}

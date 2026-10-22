@@ -8,7 +8,6 @@ import { ChipGroup, DateField, DietBadges, InfoRow, StepperRow, useDaysLabel, us
 import { rk, useTiffinPlans } from "../../../../features/restaurant/queries";
 import { newIdempotencyKey } from "../../../../lib/ids";
 import { useLocale } from "../../../../lib/i18n";
-import { LanguageSwitcher } from "../../../../lib/i18n/LanguageSwitcher";
 import { addDays, dayToDate, earliestStart, firstServiceDay, isPostalCode, normalizePostalCode, planFulfilments, planPriceCents, torontoToday, weekdayOf } from "../../../../lib/restaurant";
 import { api } from "../../../../state/api";
 import { useOnline } from "../../../../state/network";
@@ -176,7 +175,6 @@ export default function TiffinPlanDetail() {
           ))
         )}
       </Section>
-      <LanguageSwitcher />
 
       <Sheet
         visible={open}

@@ -10,7 +10,7 @@ import { View } from "react-native";
 import { useLocale } from "../../lib/i18n";
 import { summarizeDiet } from "../../lib/restaurant";
 import { ui } from "../../theme";
-import { Badge, ListRow, Section, ShoppingBag, Store, SwitchRow, Text, Ticket, useToast } from "../../ui";
+import { Badge, ListRow, Section, Store, SwitchRow, Text, useToast, Users, UtensilsCrossed } from "../../ui";
 import { useOrderAhead } from "../customer/queries";
 import { useHalls, useTiffinPlans, useWhatsappConsent } from "./queries";
 
@@ -63,12 +63,12 @@ export function ShopRestaurantRows({ shop, features }: { shop: networkApi.Public
   const rows = [
     tiffin && {
       key: "tiffin",
-      icon: ShoppingBag,
+      icon: UtensilsCrossed,
       title: t("rest.tiffin.plans"),
       subtitle: cheapest !== null ? t("rest.shop.tiffin.from", { price: money(cheapest) }) : t("rest.shop.tiffin.sub"),
       to: `/tiffin/plans/${slug}`,
     },
-    catering && { key: "catering", icon: Ticket, title: t("rest.cat.title"), subtitle: t("rest.shop.catering.sub"), to: `/catering/${slug}` },
+    catering && { key: "catering", icon: Users, title: t("rest.cat.title"), subtitle: t("rest.shop.catering.sub"), to: `/catering/${slug}` },
     banquet && { key: "banquet", icon: Store, title: t("rest.bk.title"), subtitle: t("rest.shop.banquet.sub"), to: `/banquet/${slug}` },
   ].filter(Boolean) as { key: string; icon: typeof Store; title: string; subtitle: string; to: string }[];
   return (

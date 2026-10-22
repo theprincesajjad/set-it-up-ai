@@ -5,7 +5,7 @@ import { BookingRow, EVENT_TONE } from "../../features/restaurant/EventRows";
 import { useRestaurantMine, useShopNames } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { dayToDate } from "../../lib/restaurant";
-import { Card, EmptyState, ListRow, Screen, SegmentedControl, SkeletonList, Store, Ticket } from "../../ui";
+import { Card, EmptyState, ListRow, Screen, SegmentedControl, SkeletonList, Store, Users } from "../../ui";
 import type { MessageKey } from "@ll/shared";
 
 /** My events: catering inquiries and quotes, and hall bookings with their holds. */
@@ -32,7 +32,7 @@ export default function MyEvents() {
         <SkeletonList rows={3} rowHeight={64} />
       ) : tab === "catering" ? (
         events.length === 0 ? (
-          <EmptyState icon={Ticket} title={t("rest.events.empty.title")} body={t("rest.events.empty.body")} />
+          <EmptyState icon={Users} title={t("rest.events.empty.title")} body={t("rest.events.empty.body")} />
         ) : (
           <Card padded={false} style={{ paddingHorizontal: 16 }}>
             {events.map((e, i) => (

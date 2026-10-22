@@ -20,12 +20,13 @@ import {
   Screen,
   Section,
   Shield,
-  ShoppingBag,
   Store,
   Tablet,
   Text,
   Ticket,
   UserPlus,
+  Users,
+  UtensilsCrossed,
   Wallet,
 } from "../../ui";
 
@@ -60,8 +61,8 @@ export default function You() {
       <Section title="Your card">
         <ListRow leadingIcon={Gift} title="Rewards" subtitle="Ready to redeem, every shop, passport" chevron onPress={() => router.push("/rewards")} />
         {phase2.enabled ? <ListRow leadingIcon={Ticket} title="Orders & tickets" chevron onPress={() => router.push("/orders")} /> : null}
-        {restaurant.tiffinEnabled ? <ListRow leadingIcon={ShoppingBag} title={t("rest.tiffin.mine")} subtitle={t("rest.you.tiffin.sub")} chevron onPress={() => router.push("/tiffin")} /> : null}
-        {restaurant.eventsEnabled ? <ListRow leadingIcon={Ticket} title={t("rest.events.title")} subtitle={t("rest.you.events.sub")} chevron onPress={() => router.push("/events")} /> : null}
+        {restaurant.tiffinEnabled ? <ListRow leadingIcon={UtensilsCrossed} title={t("rest.tiffin.mine")} subtitle={t("rest.you.tiffin.sub")} chevron onPress={() => router.push("/tiffin")} /> : null}
+        {restaurant.eventsEnabled ? <ListRow leadingIcon={Users} title={t("rest.events.title")} subtitle={t("rest.you.events.sub")} chevron onPress={() => router.push("/events")} /> : null}
         <ListRow leadingIcon={Wallet} title="Wallet pass" chevron onPress={() => router.push("/card")} divider={!!referralShop} />
         {referralShop ? <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get points at ${referralShop.merchant.name}`} chevron divider={false} onPress={() => router.push("/referrals")} /> : null}
       </Section>
