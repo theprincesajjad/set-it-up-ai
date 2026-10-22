@@ -48,7 +48,7 @@ A separate ladder for restaurants, sweet shops and tiffin kitchens, sold beside 
 
 | Tier | Price | Adds | WhatsApp included |
 | --- | --- | --- | --- |
-| Starter | $99/mo | Commission-free ordering, branded ordering page, halal and dietary tags, multilingual menu, WhatsApp order updates, Google review requests | 0 |
+| Starter | $99/mo | Commission-free ordering, branded ordering page, halal and dietary tags, multilingual menu, WhatsApp order updates, Google review requests | 300 a month (order updates and review requests) |
 | Growth | $199/mo | Everything in Starter, plus tiffin subscriptions, catering and events, biryani pot (degh) pre-orders, festival campaigns, WhatsApp ordering and marketing | 1,000 a month |
 | Pro | $349/mo | Everything in Growth, plus banquet hall booking, kitchen display, multilingual staff screens, cash discount pricing (not in Quebec), split bills, phone ordering assistant, restaurant analytics | 3,000 a month |
 

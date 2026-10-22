@@ -91,7 +91,7 @@ export interface RestaurantPlan {
 }
 
 export const RESTAURANT_PLANS: Record<RestaurantTier, RestaurantPlan> = {
-  starter: { tier: "starter", name: "Restaurant Starter", priceCents: 9900, annualPriceCents: 99000, blurb: "Commission-free ordering, your own ordering page, halal and dietary tags, WhatsApp order updates and review requests.", whatsappPerMonth: 0 },
+  starter: { tier: "starter", name: "Restaurant Starter", priceCents: 9900, annualPriceCents: 99000, blurb: "Commission-free ordering, your own ordering page, halal and dietary tags, WhatsApp order updates and review requests.", whatsappPerMonth: 300 },
   growth: { tier: "growth", name: "Restaurant Growth", priceCents: 19900, annualPriceCents: 199000, blurb: "Everything in Starter plus tiffin subscriptions, catering, biryani pot pre-orders, festival campaigns and WhatsApp ordering and marketing.", whatsappPerMonth: 1000 },
   pro: { tier: "pro", name: "Restaurant Pro", priceCents: 34900, annualPriceCents: 349000, blurb: "Everything in Growth plus banquet booking, kitchen display, staff screens in your team's language, cash discount pricing, split bills and analytics.", whatsappPerMonth: 3000 },
 };

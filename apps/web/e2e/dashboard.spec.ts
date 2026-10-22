@@ -169,7 +169,7 @@ test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   const id = await pineconeId();
   // Locked: the deep link shows a quiet coming-soon page, not the editor.
   await signIn(page, OWNER, `/m/${id}/promos/new`);
-  await expect(page.getByText("Coming with Plus")).toBeVisible();
+  await expect(page.getByText("Coming with Café & Retail")).toBeVisible();
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();

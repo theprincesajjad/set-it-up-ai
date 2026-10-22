@@ -30,3 +30,24 @@ Public: `GET /v1/public/shops/:slug/tiffin/plans?lang&menuDays`.
 Customer `/v1/me/tiffin`: `POST|GET /subscriptions` · `GET|PATCH /subscriptions/:subId` · `GET /upcoming?days&subscriptionId` (cutoffAt, canSkip, menu) ·
 `POST /subscriptions/:subId/skips` · `DELETE /subscriptions/:subId/skips/:date` · `POST /subscriptions/:subId/{pause,resume,cancel,retry-payment}`.
 Rules: meal day opens 08:00 Toronto, cutoff = cutoffHours before; skip credit only before cutoff; renewals create a PaymentIntent and send `renewal_due` (customer confirms).
+
+## WhatsApp (restaurant.whatsapp_notifications Starter / ordering + marketing Growth)
+Merchant `:m/whatsapp`: `GET|PUT /settings` (connection, approved templates, usage) · `DELETE /connection` · `GET /sessions` · `POST /opt-ins {phone|userId,source}` · `POST /opt-outs {phone}` ·
+`POST /broadcasts {templateName, language, params[], segment, dryRun}` (402 `whatsapp_credits_exhausted`; 409 21:00–08:00).
+Customer: `GET|PUT /me/merchants/:merchantId/whatsapp-consent {optIn, language?}`.
+Public: `GET /public/whatsapp/pay/:orderId?t=token` → order summary + Stripe clientSecret. **Web page needed at `/pay/order/:orderId?t=`.**
+
+## Festivals (restaurant.festival_campaigns, Growth)
+`GET :m/festivals/upcoming?days=90` · `GET :m/festivals` · `POST :m/festivals/:festivalId/campaign-drafts {templateId, channel, year?, segment?, subject?, body?, scheduledAt?}`.
+Calendar + templates also importable from `@ll/shared` (`festivals.ts`).
+
+## Reviews (restaurant.reviews, Starter)
+Public: `GET|POST /public/reviews/:token` (`{rating, feedback?}` → `{leadWithGoogle, googleReviewUrl, message}`). **Web page needed at `/r/<token>`** (check the review link path in services/reviews.ts).
+Merchant: `GET :m/reviews?rating&status&cursor` · `GET :m/reviews/stats` · `PUT :m/reviews/settings {googleReviewUrl}` · `POST :m/reviews/requests {orderId}`.
+
+## Phone orders (restaurant.phone_ai, Pro or add-on)
+`GET :m/phone/calls?status&cursor` · `GET :m/phone/calls/:callId` · `POST .../confirm {items?, locationId?, pickupAt?, notes?, paymentMethod?, tipCents?}` · `POST .../discard`.
+
+## Billing (restaurant pack)
+`/billing/restaurant/*` checkout/change/cancel/resume · `GET /billing/add-ons` · `PUT|DELETE /billing/add-ons/:id` · `GET /billing/invoices` · admin `PUT /v1/admin/merchants/:merchantId/charge-mode`.
+Fees: `computeFees({kind, amountCents, plan, restaurantTier, customerServiceFee})` in `apps/api/src/services/fees.ts`. Payments: use `createConnectPayment` / `refundConnectPayment` from `services/payments.ts`.
