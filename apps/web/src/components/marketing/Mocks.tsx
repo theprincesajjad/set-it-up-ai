@@ -165,16 +165,21 @@ export function WalletScreen() {
         <span className="pb-2 text-fg-muted">Rewards</span>
         <span className="pb-2 text-fg-muted">Activity</span>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="px-1 text-[12px] font-semibold text-fg-muted">Rewards ready</span>
-        <ul className="divide-y divide-line rounded-card border border-line px-3">
-          {WALLET.map((w, i) => (
-            <li key={w.name} className={i === 2 ? "border-t-[6px] border-t-bg-subtle" : undefined}>
-              <ShopTile variant="wallet" shop={{ name: w.name, vertical: w.v, brandColor: w.c }} balance={{ value: w.value, terminology: w.t }} rewardReady={w.ready} subtitle={w.sub} className="min-h-[56px] [&_.text-title]:text-[18px]" />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {[
+        { title: "Rewards ready", rows: WALLET.filter((w) => w.ready) },
+        { title: "Your shops", rows: WALLET.filter((w) => !w.ready) },
+      ].map((g) => (
+        <div key={g.title} className="flex flex-col gap-1.5">
+          <span className="px-1 text-[12px] font-semibold text-fg-muted">{g.title}</span>
+          <ul className="divide-y divide-line rounded-card border border-line px-3">
+            {g.rows.map((w) => (
+              <li key={w.name}>
+                <ShopTile variant="wallet" shop={{ name: w.name, vertical: w.v, brandColor: w.c }} balance={{ value: w.value, terminology: w.t }} rewardReady={w.ready} subtitle={w.sub} className="min-h-[56px]" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
