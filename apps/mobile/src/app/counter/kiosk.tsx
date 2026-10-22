@@ -270,5 +270,5 @@ const styles = StyleSheet.create({
   compactHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   compactSub: { flexDirection: "row", alignItems: "center", gap: 12 },
   padArea: { flex: 1, minHeight: MIN_PAD_H },
-  padInner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center" },
+  padInner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "flex-end" },
 });
