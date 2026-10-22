@@ -3,19 +3,25 @@ import { radii, touchTargets } from "@ll/design-tokens";
 import type { staffApi } from "@ll/shared";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { formatMoney, formatPts, lockedRewardCopy, shortName, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
-import { formatTime } from "../../lib/format";
+import { formatMoney, formatPts, lockedRewardCopy, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
+import { formatTime, rewardInSentence } from "../../lib/format";
+import { maskPhone } from "../../lib/phone";
 import type { QueueSnapshot } from "../../lib/offlineQueue";
 import type { ActiveStaff, RecentAward } from "../../state/counter";
 import { useTheme } from "../../theme";
 import {
+  Appear,
   Avatar,
   Badge,
+  CircleAlert,
+  CountUp,
+  DrainBar,
+  Phone,
+  SuccessCheck,
   Banner,
   Button,
   ChevronDown,
   ChevronRight,
-  CircleCheck,
   Clock3,
   Ellipsis,
   Gift,
@@ -32,7 +38,7 @@ export function CounterHeader({ title, staff, onStaff, onMenu, canSwitch }: { ti
   const { c } = useTheme();
   return (
     <View style={[styles.header, { borderBottomColor: c.line }]}>
-      <Text variant="mapLabel" numberOfLines={1} style={{ flex: 1, fontSize: 18, lineHeight: 24, textTransform: "none" }} accessibilityRole="header">
+      <Text variant="headline" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
         {title}
       </Text>
       {staff ? (
@@ -87,7 +93,7 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
           <View style={{ flex: 1 }}>
             <Text variant="title">New customer</Text>
             <Text variant="body" color="fgMuted" tabular>
-              {`...${customer.digits.slice(-4)}`}
+              {`•• ${customer.digits.slice(-4)}`}
             </Text>
           </View>
         </View>
@@ -100,9 +106,12 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
   if (customer.kind === "offline") {
     return (
       <View style={styles.row}>
-        <Avatar name={customer.label} size={56} />
+        {/* No name offline: a phone glyph, not initials of "…1004" (polish-audit C17). */}
+        <View style={[styles.newIcon, { backgroundColor: c.bgMuted }]}>
+          <Phone size={24} color={c.fg} strokeWidth={1.75} />
+        </View>
         <View style={{ flex: 1 }}>
-          <Text variant="title">{customer.label}</Text>
+          <Text variant="title" tabular>{customer.label}</Text>
           <Text variant="meta" color="fgMuted">
             Balance updates when you're back online
           </Text>
@@ -119,12 +128,12 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
         <View style={{ flex: 1 }}>
           <Text variant="title">{shortName(m.name)}</Text>
           <Text variant="body" color="fgMuted" tabular>
-            {m.maskedPhone ?? m.memberCode}
+            {m.maskedPhone ? maskPhone(m.maskedPhone) : m.memberCode}
           </Text>
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text variant="displayNumber" tabular style={{ fontSize: 32, lineHeight: 36 }}>
-            {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance}/${program.stampGoal}` : formatPts(m.balance, m.terminology).split(" ")[0]}
+            {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance} / ${program.stampGoal}` : formatPts(m.balance, m.terminology).split(" ")[0]}
           </Text>
           <Text variant="meta" color="fgMuted">
             {m.terminology}
@@ -137,7 +146,7 @@ export function CustomerCard({ customer, program, vertical, onRedeem, onCode, co
         <Pressable accessibilityRole="button" accessibilityLabel={`Reward ready: ${ready.name}. Redeem`} onPress={onRedeem} style={({ pressed }) => [styles.ready, { borderColor: c.line, backgroundColor: pressed ? c.bgSubtle : c.bg }]}>
           <Gift size={22} color={c.accent} strokeWidth={2} />
           <Text variant="headline" color="accentText" style={{ flex: 1 }}>
-            {`Reward ready: ${ready.name}`}
+            {`Reward ready: ${rewardInSentence(ready.name)}`}
           </Text>
           <ChevronRight size={20} color={c.fgMuted} />
         </Pressable>
@@ -166,6 +175,7 @@ export function AmountDisplay({ cents }: { cents: number }) {
 }
 
 export function UndoButton({ startedAt, onUndo, label = "Undo", busy }: { startedAt: number; onUndo: () => void; label?: string; busy?: boolean }) {
+  const { c } = useTheme();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
@@ -173,10 +183,16 @@ export function UndoButton({ startedAt, onUndo, label = "Undo", busy }: { starte
   }, []);
   const left = undoSecondsLeft(startedAt, now);
   if (left === 0) return null;
+  // "Undo · 8s" with a bar that empties over the window (polish-audit C8).
   return (
-    <Button variant="secondary" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={`${label}, ${left} seconds left`}>
-      {`${label} (${left})`}
-    </Button>
+    <View style={{ gap: 6 }}>
+      <Button variant="secondary" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={`${label}, ${left} seconds left`}>
+        {`${label} · ${left}s`}
+      </Button>
+      <View style={{ paddingHorizontal: 16 }}>
+        <DrainBar startedAt={startedAt} ms={UNDO_SECONDS * 1000} color={c.fgMuted} track={c.bgMuted} height={2} />
+      </View>
+    </View>
   );
 }
 
@@ -193,6 +209,7 @@ export function SuccessCard({
   undoBusy,
   onRedeemNow,
   undoLabel,
+  onNext,
 }: {
   view: SuccessView;
   tone: "success" | "accent";
@@ -201,20 +218,32 @@ export function SuccessCard({
   undoBusy?: boolean;
   onRedeemNow?: () => void;
   undoLabel?: string;
+  /** "Next customer": don't make staff wait for the auto-return (polish-audit C7). */
+  onNext?: () => void;
 }) {
   const { c } = useTheme();
   const heroColor = tone === "accent" ? c.fg : c.accent;
+  // "9 / 10", "1,240 pts", "~9 / 10": count the leading number up from the balance before the award.
+  const m = /^(~?)([\d,]+)(.*)$/.exec(view.hero);
+  const heroStyle = { fontSize: view.hero.length > 7 ? 56 : 72, lineHeight: view.hero.length > 7 ? 64 : 80 };
   return (
     <View style={[styles.success, { backgroundColor: c.bg }]} accessible={false}>
-      <View accessible accessibilityLabel={view.announcement} accessibilityLiveRegion="assertive" style={{ alignItems: "center", gap: 6 }}>
-        {view.offline ? <Clock3 size={40} color={c.fgMuted} strokeWidth={1.75} /> : <CircleCheck size={40} color={c.positive} strokeWidth={1.75} />}
+      <View accessible accessibilityLabel={view.announcement} accessibilityLiveRegion="assertive" style={{ alignItems: "center", gap: 8 }}>
+        {view.offline ? <Clock3 size={44} color={c.fgMuted} strokeWidth={1.75} /> : <SuccessCheck size={48} color={c.positive} />}
         <Text variant="title" center>
           {view.title}
         </Text>
-        {/* "9 / 10" fills the card; a longer "1,240 pts" / "88 stamps" steps down so it stays on one line. */}
-        <Text variant="displayNumber" rawColor={heroColor} center tabular maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: view.hero.length > 7 ? 56 : 72, lineHeight: view.hero.length > 7 ? 64 : 80 }}>
-          {view.hero}
-        </Text>
+        {m && view.count && Number(m[2]!.replace(/,/g, "")) === view.count.to ? (
+          <Text variant="displayNumber" rawColor={heroColor} center tabular maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit style={heroStyle}>
+            {m[1]}
+            <CountUp value={view.count.to} from={view.count.from} variant="displayNumber" rawColor={heroColor} style={heroStyle} />
+            {m[3]}
+          </Text>
+        ) : (
+          <Text variant="displayNumber" rawColor={heroColor} center tabular maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit style={heroStyle}>
+            {view.hero}
+          </Text>
+        )}
         {view.next ? (
           <Text variant="headline" color="fgMuted" center style={{ fontWeight: "400" }}>
             {view.next}
@@ -222,7 +251,7 @@ export function SuccessCard({
         ) : null}
         {view.offline ? (
           <Text variant="bodyStrong" center>
-            Saved. Will send when you're back online.
+            Saved on this phone. It sends when you're back online.
           </Text>
         ) : null}
         {view.messages.map((msg) => (
@@ -238,6 +267,31 @@ export function SuccessCard({
           </Button>
         ) : null}
         {onUndo ? <UndoButton startedAt={startedAt} onUndo={onUndo} busy={undoBusy} label={undoLabel} /> : null}
+        {onNext ? (
+          <Button variant="ghost" size="lg" fullWidth onPress={onNext}>
+            Next customer
+          </Button>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** After an undo or a failure: same frame as success (icon, one line, Next customer), no bordered card (C9). */
+export function NoticeCard({ message, tone, onNext }: { message: string; tone: "neutral" | "danger"; onNext: () => void }) {
+  const { c } = useTheme();
+  return (
+    <View style={[styles.success, { backgroundColor: c.bg }]}>
+      <Appear style={{ alignItems: "center", gap: 12 }}>
+        {tone === "danger" ? <CircleAlert size={44} color={c.negative} strokeWidth={1.75} /> : <RotateCcw size={44} color={c.fgMuted} strokeWidth={1.75} />}
+        <Text variant="title" color={tone === "danger" ? "negative" : "fg"} center accessibilityLiveRegion="polite">
+          {message}
+        </Text>
+      </Appear>
+      <View style={{ alignSelf: "stretch" }}>
+        <Button size="counter" onPress={onNext}>
+          Next customer
+        </Button>
       </View>
     </View>
   );
@@ -258,17 +312,23 @@ export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo:
       </Text>
       {recent.map((r, i) => {
         const left = undoSecondsLeft(r.at, now);
+        // Two lines, never truncated mid-word: what happened, then who and when (polish-audit C12, C19).
         return (
           <View key={r.key} style={[styles.recent, { borderBottomColor: c.line }]}>
-            <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>{`${formatTime(r.at)} · ${r.who} · ${r.label}`}</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="body" numberOfLines={2} style={r.undone ? { textDecorationLine: "line-through", color: c.fgMuted } : null}>
+                {r.label}
+              </Text>
+              <Text variant="meta" color="fgMuted" tabular numberOfLines={1}>{`${r.who} · ${formatTime(r.at)}`}</Text>
+            </View>
             {r.undone ? (
               <Badge tone="neutral">Undone</Badge>
             ) : r.queued ? (
               <Badge tone="warning" icon={Clock3}>
-                Waiting
+                Waiting to send
               </Badge>
             ) : i === 0 && left > 0 ? (
-              <Button variant="secondary" size="sm" onPress={() => onUndo(r)}>{`Undo (${left})`}</Button>
+              <Button variant="secondary" size="sm" onPress={() => onUndo(r)}>{`Undo · ${left}s`}</Button>
             ) : null}
           </View>
         );
@@ -357,7 +417,7 @@ export function RewardPicker({
     >
       {!online ? <Banner variant="warning">Redeem needs internet. Awards still work.</Banner> : null}
       {member && reward ? (
-        <Text variant="headline">{`Uses ${formatPts(reward.pointsCost, member.terminology)} · ${shortName(member.name)} will have ${Math.max(0, member.balance - reward.pointsCost)}`}</Text>
+        <Text color="fgMuted">{`Uses ${formatPts(reward.pointsCost, member.terminology)}. ${shortName(member.name)} will have ${formatPts(Math.max(0, member.balance - reward.pointsCost), member.terminology)} left.`}</Text>
       ) : null}
       {member && !reward
         ? rewards.map((r) => {
@@ -393,6 +453,6 @@ const styles = StyleSheet.create({
   newIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   ready: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 16, minHeight: touchTargets.counter },
   success: { flex: 1, paddingTop: 32, paddingBottom: 4, alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 360 },
-  recent: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth },
+  recent: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   rewardRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 4 },
 });

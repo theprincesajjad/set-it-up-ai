@@ -5,17 +5,18 @@ import { useTheme } from "../../theme";
 import { isApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { formatMoney, shortName } from "../../lib/award";
-import { formatTime } from "../../lib/format";
+import { formatTime, signed } from "../../lib/format";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
-import { Avatar, Badge, Button, EmptyState, ErrorState, Gift, History, ListRow, Plus, Screen, Section, SkeletonList, StatTile, Text, useToast } from "../../ui";
-import { last4 } from "../../lib/phone";
+import { Avatar, Badge, Button, EmptyState, ErrorState, History, ListRow, Screen, Section, Skeleton, StatTile, Text, useToast } from "../../ui";
+import { last4Label } from "../../lib/phone";
 
 /** Today: 2x2 stats + today's activity with the staff initials; Undo where the API allows it. */
 export default function Today() {
   const { c } = useTheme();
-  const { config, online } = useCounter();
+  const { config, online, program } = useCounter();
+  const unit = (program?.terminology ?? "points").toLowerCase();
   const toast = useToast();
   const mId = config.merchantId ?? "";
   const loc = config.locationId ?? undefined;
@@ -37,7 +38,7 @@ export default function Today() {
   return (
     <Screen back title="Today" onRefresh={() => Promise.all([today.refetch(), activity.refetch()])} refreshing={today.isRefetching}>
       {today.isLoading ? (
-        <SkeletonList rows={2} rowHeight={96} />
+        <Skeleton height={176} radius={16} />
       ) : today.data ? (
         // One bordered block, numbers split by hairlines (foundations § Stats), not four cards.
         <View style={[styles.stats, { borderColor: c.line }]}>
@@ -47,7 +48,7 @@ export default function Today() {
             </View>
             <View style={[styles.vrule, { backgroundColor: c.line }]} />
             <View style={styles.stat}>
-              <StatTile label="Points given" value={today.data.pointsIssued} />
+              <StatTile label={`${unit.charAt(0).toUpperCase()}${unit.slice(1)} given`} value={today.data.pointsIssued} />
             </View>
           </View>
           <View style={[styles.hrule, { backgroundColor: c.line }]} />
@@ -66,7 +67,7 @@ export default function Today() {
       )}
       <Section title="Activity">
         {(activity.data?.items ?? []).length === 0 && !activity.isLoading ? (
-          <EmptyState icon={History} title="No visits yet today" body="Awards show up here as you make them." />
+          <EmptyState icon={History} body="No visits yet today. Awards show up here as you make them." />
         ) : (
           <View>
             {(activity.data?.items ?? []).map((a, i, all) => (
@@ -74,15 +75,14 @@ export default function Today() {
                 key={a.transactionId}
                 divider={i < all.length - 1}
                 minHeight={64}
-                // Staff initials when we know who tapped (staff-counter.md § 8); otherwise the kind of entry.
-                leading={a.staffName ? <Avatar name={a.staffName} id={a.staffUserId ?? undefined} size={40} /> : undefined}
-                leadingIcon={a.staffName ? undefined : a.points < 0 ? Gift : Plus}
+                // The row is about the customer: their initials lead; who tapped goes in the meta line (polish-audit C13).
+                leading={<Avatar name={a.name} size={40} />}
                 title={shortName(a.name)}
-                subtitle={[formatTime(a.createdAt), a.maskedPhone ? `...${last4(a.maskedPhone)}` : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "Redeemed" : null].filter(Boolean).join(" · ")}
+                subtitle={[formatTime(a.createdAt), a.maskedPhone ? last4Label(a.maskedPhone) : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "redeemed" : null, a.staffName ? `by ${a.staffName.split(" ")[0]}` : null].filter(Boolean).join(" · ")}
                 trailing={
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : a.points > 0 ? "accentText" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
-                      {`${a.points > 0 ? "+" : ""}${a.points}`}
+                      {signed(a.points)}
                     </Text>
                     {a.reversed ? (
                       <Badge>Undone</Badge>

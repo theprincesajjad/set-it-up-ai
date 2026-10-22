@@ -8,7 +8,7 @@ import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDi
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError, type ApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
-import { AmountDisplay, CounterHeader, CustomerCard, EntryDisplay, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
+import { AmountDisplay, CounterHeader, CustomerCard, EntryDisplay, NoticeCard, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
 import { scanBus } from "../../features/scanBus";
 import {
   activeMultiplier,
@@ -92,7 +92,7 @@ export default function Counter() {
       if (!online) {
         const cached = cachedMember(query);
         if (cached) dispatch({ type: "pick", member: cached });
-        else if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `...${last4(query)}` });
+        else if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `•• ${last4(query)}` });
         else if (query.startsWith("LL:") || /^[A-Z0-9]{8}$/.test(query)) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
         else dispatch({ type: "lookupError", message: "Last-4 search needs internet. Type the full number." });
         return;
@@ -104,7 +104,7 @@ export default function Counter() {
       } catch (e) {
         const err = e as ApiError;
         if (isApiError(err) && err.isRetryable) {
-          if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `...${last4(query)}` });
+          if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `•• ${last4(query)}` });
           else if (query.startsWith("LL:")) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
           else dispatch({ type: "lookupError", message: t("err.network") });
         } else if (isApiError(err) && err.status === 404) {
@@ -181,7 +181,7 @@ export default function Counter() {
   const label = program ? awardButtonLabel(program, { points: estimate, noEarn, multiplier, newCustomer: customer?.kind === "new" }) : "Award";
   const cooldown = member && program ? cooldownWarning(member, program, Date.now()) : null;
 
-  const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `...${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `...${cust.digits.slice(-4)}` : cust.label);
+  const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `•• ${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `•• ${cust.digits.slice(-4)}` : cust.label);
 
   /** quantity > 1: the +2 / +3 chips (two coffees = one visit, quantity × pointsPerVisit). */
   const award = async (quantity = 1) => {
@@ -312,6 +312,15 @@ export default function Counter() {
     }
   };
 
+  /** Back to the keypad now (staff don't wait for the 4 s auto-return). */
+  const nextCustomer = () => {
+    if (returnTimer.current) clearTimeout(returnTimer.current);
+    setPanel(null);
+    setCategoryId(null);
+    setNewName("");
+    dispatch({ type: "reset" });
+  };
+
   const onKey = (k: KeypadKey) => {
     touch();
     if (panel) setPanel(null);
@@ -368,7 +377,7 @@ export default function Counter() {
 
   const customerPane = (() => {
     if (panel?.kind === "redeemSuccess") {
-      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} />;
+      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
     }
     if (state.step === "success") {
       return (
@@ -379,25 +388,17 @@ export default function Counter() {
           undoBusy={undoBusy}
           onUndo={state.transactionId || state.queuedKey ? () => undo({ transactionId: state.transactionId, queuedKey: state.queuedKey, key: recent[0]?.key }) : undefined}
           onRedeemNow={online && state.customer.kind === "member" ? () => { if (returnTimer.current) clearTimeout(returnTimer.current); setRedeemOpen(true); } : undefined}
+          onNext={nextCustomer}
         />
       );
     }
     if (state.step === "notice") {
-      return (
-        <View style={[styles.notice, { borderColor: c.line }]}>
-          <Text variant="title" color={state.tone === "danger" ? "negative" : "fg"} center>
-            {state.message}
-          </Text>
-          <Button variant="secondary" size="counter" onPress={() => dispatch({ type: "reset" })}>
-            Next customer
-          </Button>
-        </View>
-      );
+      return <NoticeCard message={state.message} tone={state.tone} onNext={nextCustomer} />;
     }
     if (state.step === "pick") {
       return (
         <View style={{ gap: 4 }}>
-          <Text variant="metaStrong" color="fgMuted">{`ends in ${state.digits}`}</Text>
+          <Text variant="metaStrong" color="fgMuted" tabular>{`numbers ending in ${state.digits}`}</Text>
           {state.matches.map((m) => (
             <ListRow
               key={m.memberId}
@@ -534,9 +535,9 @@ export default function Counter() {
       </Sheet>
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Counter">
         <ListRow title="Today" subtitle="Visits, points and redemptions" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
-        <ListRow title="Waiting to send" subtitle={`${queueState.pendingCount} queued`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
+        <ListRow title="Waiting to send" subtitle={queueState.pendingCount === 0 ? "Everything's sent" : `${queueState.pendingCount} ${queueState.pendingCount === 1 ? "award" : "awards"} saved on this phone`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
         <ListRow title="Counter settings" subtitle="Theme, kiosk, scanner" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
-        <ListRow title="Switch location" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
+        <ListRow title="Switch location" subtitle={config.locationName ?? "Pick the shop and location"} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
         {config.sharedDevice ? <ListRow title="Lock (switch staff)" chevron minHeight={64} divider={false} onPress={() => { setMenuOpen(false); ctx.lockStaff(); router.replace("/counter/pin"); }} /> : null}
       </Sheet>
     </SafeAreaView>
@@ -546,7 +547,6 @@ export default function Counter() {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   wide: { flex: 1, flexDirection: "row", gap: 24, padding: 24 },
-  notice: { borderRadius: 24, borderWidth: StyleSheet.hairlineWidth * 2, padding: 24, gap: 24, justifyContent: "center", minHeight: 280 },
   banners: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
   nameField: { minHeight: 64, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },
   codeField: { minHeight: 72, borderRadius: 12, borderWidth: 2, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" },

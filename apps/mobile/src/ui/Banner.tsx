@@ -90,7 +90,9 @@ export function OfflineBanner({
     );
   }
   if (!online || (pending ?? 0) > 0) {
-    const label = online ? `Sending · ${pending} waiting` : `Offline · ${pending ?? 0} waiting to send`;
+    const n = pending ?? 0;
+    // Never "0 waiting": offline with nothing queued says what will happen (polish-audit C18).
+    const label = online ? `Sending · ${n} waiting` : n === 0 ? "Offline · awards save on this phone" : `Offline · ${n} waiting to send`;
     return (
       <Banner variant="warning" solid icon={WifiOff} busy={retrying} onPress={onPress}>
         {label}
