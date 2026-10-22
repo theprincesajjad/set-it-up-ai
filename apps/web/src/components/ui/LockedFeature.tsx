@@ -1,5 +1,6 @@
 "use client";
 import { Check, type LucideIcon } from "lucide-react";
+import { PLANS } from "@ll/shared";
 import { useState, type ReactNode } from "react";
 import { Badge, ComingSoonBadge } from "./Badge";
 import { Button } from "./Button";
@@ -10,7 +11,7 @@ export interface LockedFeatureProps {
   title: string;
   /** One line: what it does + why it isn't here yet. */
   description: ReactNode;
-  /** hidden → "Coming soon"; beta → "In beta"; plan → "Available on Plus · $39/mo". */
+  /** hidden → "Coming soon"; beta → "In beta"; plan → "Available on Café & Retail · $39/mo". */
   state?: "hidden" | "beta" | "plan";
   planLabel?: string;
   network?: { current: number; target: number } | null;
@@ -36,7 +37,7 @@ export function LockedFeature({ icon: Icon, title, description, state = "hidden"
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-headline text-fg">{title}</h3>
-            {state === "hidden" ? <ComingSoonBadge /> : state === "beta" ? <Badge tone="info" dot>In beta</Badge> : <Badge tone="neutral">{planLabel ?? "Available on Plus"}</Badge>}
+            {state === "hidden" ? <ComingSoonBadge /> : state === "beta" ? <Badge tone="info" dot>In beta</Badge> : <Badge tone="neutral">{planLabel ?? `Available on ${PLANS.plus.name}`}</Badge>}
           </div>
           <p className="mt-1 text-meta text-fg-muted">{description}</p>
           {network ? (

@@ -346,7 +346,7 @@ export const staffEmail = (shop: string, key: string) => `staff+${shop}-${key}@e
 export const STAFF_LOGINS = STAFF.map((s) => ({ email: staffEmail(s.shop, s.key), shop: s.shop, name: s.name, locale: s.locale, station: s.station }));
 
 /** Paid Plus features the restaurant pack shops need in the demo (hidden at launch, like the pilot shops). */
-const CORRIDOR_FEATURES: FeatureKey[] = ["orders.order_ahead", "orders.pickup_status", "marketing.email", "marketing.sms", "customers.csv_export", "reports.advanced"];
+const CORRIDOR_FEATURES: FeatureKey[] = ["payments.in_app", "orders.order_ahead", "orders.pickup_status", "marketing.email", "marketing.sms", "customers.csv_export", "reports.advanced"];
 
 const CUSTOMER_NAMES = [
   "Ayesha Khan", "Bilal Ahmed", "Fatima Malik", "Usman Raza", "Hira Siddiqui", "Zain Abbasi", "Sana Qureshi", "Omar Farooqi", "Mariam Sheikh", "Hamza Butt",
@@ -477,6 +477,8 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
         whatsappCreditsUsed: s.whatsapp ? (s.tier === "pro" ? 1180 : 412) : 0,
         whatsappCreditsExtra: s.slug === "lahori-karahi-and-bbq" ? 1000 : 0,
         googleReviewUrl: s.tier ? `https://reviews.example.com/g/${s.slug}` : null,
+        // Restaurant-tier shops are fully onboarded on the fake Stripe Connect provider so customers can pay and subscribe locally.
+        ...(s.tier ? { stripeAccountId: `acct_demo_${s.slug}`, stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true } : {}),
       })
       .where(eq(merchants.id, merchant.id));
     if (s.tier) {

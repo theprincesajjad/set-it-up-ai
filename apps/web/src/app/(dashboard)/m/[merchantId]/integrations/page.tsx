@@ -2,7 +2,7 @@
 import { Code2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { integrationsApi } from "@ll/shared";
+import { PLANS, type integrationsApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
@@ -121,7 +121,7 @@ export default function IntegrationsPage() {
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-fg-muted">
                   <span className="text-fg">POS auto-award, Mailchimp, Zapier and webhooks</span>
                   <span aria-hidden>·</span>
-                  <span>coming with Plus</span>
+                  <span>coming with {PLANS.plus.name}</span>
                   <span aria-hidden>·</span>
                   <NotifyLink keys={["integrations.pos_auto_award", "integrations.webhooks"]} />
                 </p>

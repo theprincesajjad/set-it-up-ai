@@ -18,7 +18,7 @@ export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
   "promos.basic": "Post offers like double stamps on a slow afternoon.",
   "discount_cards": "Show-to-save cards for students, seniors or your street.",
   "marketing.email": "Email your opted-in regulars, CASL compliant.",
-  "marketing.sms": "Text your opted-in regulars. 500 texts a month included with Plus.",
+  "marketing.sms": `Text your opted-in regulars. 500 texts a month included with ${PLANS.plus.name}.`,
   "marketing.automations": "\"We miss you\" and \"Your reward is ready\" messages that send themselves.",
   "integrations.pos_auto_award": "Award points automatically from Square, Clover and more.",
   "integrations.webhooks": "Webhooks, Zapier and the merchant API.",

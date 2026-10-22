@@ -1,10 +1,10 @@
 "use client";
 import { Download, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
-import { PageHeader, PageTabs, Panel } from "@/components/dashboard/kit";
+import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +30,7 @@ export default function SettingsPage() {
     ...(role === "owner" ? [{ id: "danger" as const, label: "Danger zone" }] : []),
   ];
   return (
-    <div className="flex max-w-[860px] flex-col gap-6">
+    <div className="flex max-w-[860px] flex-col gap-6 pb-20">
       <PageHeader flush title="Settings" description={detail.merchant.name} />
       <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} />
       <div role="tabpanel">
@@ -40,81 +40,111 @@ export default function SettingsPage() {
   );
 }
 
+type ProfileDraft = { name: string; description: string; logoUrl: string; coverUrl: string; brandColor: string; email: string; website: string; instagram: string };
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const looksLikeUrl = (v: string) => !v.trim() || /^https?:\/\/[^\s.]+\.[^\s]+$/i.test(v.trim());
+
+function profileErrors(f: ProfileDraft, phone: string | null, phoneDigits: string): Partial<Record<keyof ProfileDraft | "phone", string>> {
+  const e: Partial<Record<keyof ProfileDraft | "phone", string>> = {};
+  if (!f.name.trim()) e.name = "Add your shop's name.";
+  if (!HEX.test(f.brandColor)) e.brandColor = "Use a hex colour like #0B0B0C.";
+  if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = "That email doesn't look right.";
+  for (const k of ["logoUrl", "coverUrl", "website"] as const) if (!looksLikeUrl(f[k])) e[k] = "Start with https://";
+  if (phoneDigits.length > 0 && !phone) e.phone = "Enter all 10 digits.";
+  return e;
+}
+
 function Profile() {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const m = detail.merchant;
-  const [f, setF] = useState({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "#0B0B0C", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" });
+  const initial = useMemo<ProfileDraft>(() => ({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "#0B0B0C", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" }), [m]);
+  const initialDigits = m.phone?.replace(/^\+1/, "") ?? "";
+  const [f, setF] = useState<ProfileDraft>(initial);
   const [phone, setPhone] = useState<string | null>(m.phone);
+  const [phoneDigits, setPhoneDigits] = useState(initialDigits);
+  const [tried, setTried] = useState(false);
   const act = useAction();
-  const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+  const set = (k: keyof ProfileDraft, v: string) => setF((x) => ({ ...x, [k]: v }));
+  const errors = profileErrors(f, phone, phoneDigits);
+  const shown = tried ? errors : {};
+  const dirty = (Object.keys(initial) as (keyof ProfileDraft)[]).some((k) => f[k] !== initial[k]) || phoneDigits !== initialDigits;
+  async function save() {
+    setTried(true);
+    if (Object.keys(errors).length) return act.setError("Fix the highlighted fields first.");
+    const body: merchantApi.UpdateProfileBody = { name: f.name.trim(), description: f.description.trim() || null, logoUrl: f.logoUrl.trim() || null, coverUrl: f.coverUrl.trim() || null, brandColor: f.brandColor, email: f.email.trim() || null, phone, website: f.website.trim() || null, instagram: f.instagram.trim() || null };
+    const r = await act.run(() => api.update(body));
+    if (r) {
+      setDetail(r);
+      setTried(false);
+      toast({ message: "Saved", tone: "success" });
+    }
+  }
   return (
-    <Panel>
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!/^#[0-9a-fA-F]{6}$/.test(f.brandColor)) return act.setError("Use a hex colour like #0B0B0C.");
-          const body: merchantApi.UpdateProfileBody = { name: f.name.trim(), description: f.description.trim() || null, logoUrl: f.logoUrl.trim() || null, coverUrl: f.coverUrl.trim() || null, brandColor: f.brandColor, email: f.email.trim() || null, phone, website: f.website.trim() || null, instagram: f.instagram.trim() || null };
-          const r = await act.run(() => api.update(body));
-          if (r) {
-            setDetail(r);
-            toast({ message: "Saved", tone: "success" });
-          }
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: f.brandColor }} size={72} />
-          <div className="flex-1">
-            <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
+    <>
+      <Panel>
+        <form id="profile-form" className="flex flex-col gap-5" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
+          <div className="flex items-start gap-4">
+            <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : "#0B0B0C" }} size={72} />
+            <div className="min-w-0 flex-1">
+              <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
+            </div>
           </div>
-        </div>
-        <TextField label="Shop name" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={120} />
-        <TextField type="textarea" label="About your shop" value={f.description} onChange={(e) => set("description", e.target.value)} maxLength={2000} showCount />
-        <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
-        <div className="flex items-end gap-3">
-          <TextField label="Brand colour" value={f.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Shown only inside your shop avatar." />
-          <input type="color" aria-label="Pick brand colour" value={/^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#0B0B0C"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mb-7 h-12 w-14 cursor-pointer rounded-input border border-line bg-bg p-1" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField type="email" label="Email" optionalLabel value={f.email} onChange={(e) => set("email", e.target.value)} />
-          <PhoneField label="Shop phone" defaultValue={m.phone?.replace(/^\+1/, "") ?? ""} onChangeE164={setPhone} />
-          <TextField type="url" label="Website" optionalLabel value={f.website} onChange={(e) => set("website", e.target.value)} />
-          <TextField label="Instagram" optionalLabel prefix="@" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/^@/, ""))} />
-        </div>
-        {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" loading={act.busy}>
-            Save profile
-          </Button>
-          <Button variant="ghost" iconEnd={ExternalLink} href={`/shops/${m.slug}`}>
-            See your shop page
-          </Button>
-        </div>
-      </form>
-    </Panel>
+          <TextField label="Shop name" value={f.name} error={shown.name} onChange={(e) => set("name", e.target.value)} maxLength={120} />
+          <TextField type="textarea" label="About your shop" value={f.description} onChange={(e) => set("description", e.target.value)} maxLength={2000} showCount />
+          <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <TextField label="Brand colour" value={f.brandColor} error={shown.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Shown only inside your shop avatar." />
+            </div>
+            <input type="color" aria-label="Pick brand colour" value={HEX.test(f.brandColor) ? f.brandColor : "#0B0B0C"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mt-[26px] h-12 w-14 shrink-0 cursor-pointer rounded-input border border-line bg-bg p-1" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField type="email" label="Email" optionalLabel value={f.email} error={shown.email} onChange={(e) => set("email", e.target.value)} />
+            <PhoneField label="Shop phone" value={phoneDigits} onChangeDigits={setPhoneDigits} onChangeE164={setPhone} error={shown.phone} />
+            <TextField type="url" label="Website" optionalLabel value={f.website} error={shown.website} onChange={(e) => set("website", e.target.value)} />
+            <TextField label="Instagram" optionalLabel prefix="@" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/^@/, ""))} />
+          </div>
+          <div>
+            <Button variant="ghost" size="sm" iconEnd={ExternalLink} href={`/shops/${m.slug}`}>
+              See your shop page
+            </Button>
+          </div>
+        </form>
+      </Panel>
+      <SaveBar dirty={dirty} error={act.error} onDiscard={() => { setF(initial); setPhoneDigits(initialDigits); setPhone(m.phone); setTried(false); act.setError(null); }}>
+        <Button type="submit" form="profile-form" size="sm" loading={act.busy}>
+          Save profile
+        </Button>
+      </SaveBar>
+    </>
   );
 }
 
 function HoursTab() {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
-  const [h, setH] = useState(hoursDraft(detail.merchant.hours));
+  const initial = useMemo(() => hoursDraft(detail.merchant.hours), [detail.merchant.hours]);
+  const [h, setH] = useState(initial);
   const act = useAction();
+  const dirty = JSON.stringify(h) !== JSON.stringify(initial);
   return (
-    <Panel title="Opening hours" description={detail.locations.length > 1 ? `For ${detail.locations[0]?.name}. Edit other locations in Locations.` : "Shown on your shop page and the map."}>
-      <HoursEditor value={h} onChange={setH} />
-      {act.error ? <Banner tone="danger" className="mt-3">{act.error}</Banner> : null}
-      <Button className="mt-4" loading={act.busy} onClick={async () => {
-        const r = await act.run(() => api.update({ hours: hoursFromDraft(h) }));
-        if (r) {
-          setDetail(r);
-          toast({ message: "Hours saved", tone: "success" });
-        }
-      }}>
-        Save hours
-      </Button>
-    </Panel>
+    <>
+      <Panel title="Opening hours" description={detail.locations.length > 1 ? `For ${detail.locations[0]?.name}. Edit other locations in Locations.` : "Shown on your shop page and the map."}>
+        <HoursEditor value={h} onChange={setH} />
+      </Panel>
+      <SaveBar dirty={dirty} error={act.error} onDiscard={() => { setH(initial); act.setError(null); }}>
+        <Button size="sm" loading={act.busy} onClick={async () => {
+          const r = await act.run(() => api.update({ hours: hoursFromDraft(h) }));
+          if (r) {
+            setDetail(r);
+            toast({ message: "Hours saved", tone: "success" });
+          }
+        }}>
+          Save hours
+        </Button>
+      </SaveBar>
+    </>
   );
 }
 
@@ -164,7 +194,7 @@ function CounterTab() {
 
 function Privacy() {
   const { api, enabled } = useMerchant();
-  // Pricing v2: CSV export is a Plus feature (customers.csv_export).
+  // Pricing v2: CSV export is a paid feature (customers.csv_export).
   if (!enabled("customers.csv_export"))
     return (
       <Panel title="Your data" description="Your members and their history belong to you.">

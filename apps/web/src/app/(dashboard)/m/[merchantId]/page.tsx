@@ -151,7 +151,7 @@ export default function HomePage() {
 
       {manager && upsellKeys.length === 3 ? (
         <p className="mt-9 border-t border-line pt-4 text-[13px] text-fg-muted">
-          More with Plus — promos, texts and POS sync · coming soon · <NotifyLink keys={[...upsellKeys]} className="text-[13px] no-underline" />
+          More with {PLANS.plus.name}: promos, texts and POS sync · coming soon · <NotifyLink keys={[...upsellKeys]} className="text-[13px] no-underline" />
         </p>
       ) : null}
     </div>

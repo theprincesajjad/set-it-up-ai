@@ -99,6 +99,8 @@ export class FakePayments implements PaymentsProvider {
 
   async getAccountStatus(accountId: string): Promise<ConnectAccountStatus> {
     const a = this.accounts.get(accountId);
+    // Seeded demo shops (apps/api/src/seed/restaurants.ts) carry a fully onboarded `acct_demo_*` account the in-memory map never saw.
+    if (!a && accountId.startsWith("acct_demo_")) return { accountId, chargesEnabled: true, payoutsEnabled: true, detailsSubmitted: true };
     if (!a) return { accountId, chargesEnabled: false, payoutsEnabled: false, detailsSubmitted: false };
     return { accountId, chargesEnabled: a.chargesEnabled, payoutsEnabled: a.payoutsEnabled, detailsSubmitted: a.detailsSubmitted };
   }
