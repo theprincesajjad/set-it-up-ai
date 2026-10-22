@@ -76,6 +76,7 @@ export function llApi(c: ApiClient) {
       appleWalletLink: () => c.get<walletApi.AppleLinkResponse>("/v1/me/wallet/apple/link"),
       order: (orderId: string) => c.get<commerceApi.OrderDto>(`/v1/me/orders/${enc(orderId)}`),
       orders: () => c.get<{ items: commerceApi.OrderDto[]; nextCursor: string | null }>("/v1/me/orders"),
+      campaigns: (q: { lat?: number; lng?: number } = {}) => c.get<{ items: campaignsApi.MyCampaign[] }>("/v1/me/campaigns", { query: q }),
       tickets: () => c.get<{ items: serviceApi.TicketDto[]; nextCursor: string | null }>("/v1/me/tickets"),
     },
     dev: {

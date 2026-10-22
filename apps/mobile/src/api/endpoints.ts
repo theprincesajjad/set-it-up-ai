@@ -106,6 +106,9 @@ export function createEndpoints(c: ApiClient) {
         c.post<serviceApi.ApproveQuoteResponse>(`/v1/me/quotes/${enc(quoteId)}/approve`, { signatureName }),
       declineQuote: (quoteId: string, reason?: string) => c.post<serviceApi.ApproveQuoteResponse>(`/v1/me/quotes/${enc(quoteId)}/decline`, { reason }),
       publicQuote: (token: string) => c.get<serviceApi.PublicQuoteResponse>(`/v1/public/quotes/${enc(token)}`, { auth: "none" }),
+      publicApproveQuote: (token: string, signatureName: string) =>
+        c.post<serviceApi.ApproveQuoteResponse>(`/v1/public/quotes/${enc(token)}/approve`, { signatureName }, { auth: "none" }),
+      publicDeclineQuote: (token: string, reason?: string) => c.post<serviceApi.ApproveQuoteResponse>(`/v1/public/quotes/${enc(token)}/decline`, { reason }, { auth: "none" }),
       payInvoice: (invoiceId: string) => c.post<serviceApi.PayInvoiceResponse>(`/v1/me/invoices/${enc(invoiceId)}/pay`),
     },
 

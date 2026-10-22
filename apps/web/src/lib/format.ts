@@ -63,3 +63,12 @@ export function groupCode(code: string): string {
 export function firstName(name: string | null | undefined): string {
   return (name ?? "").trim().split(/\s+/)[0] ?? "";
 }
+
+/** "3:30:05 pm" (live clocks). */
+export function formatClock(d: Date): string {
+  return d
+    .toLocaleTimeString("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit", second: "2-digit" })
+    .replace(/\./g, "")
+    .replace("a m", "am")
+    .replace("p m", "pm");
+}

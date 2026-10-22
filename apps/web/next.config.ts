@@ -1,9 +1,19 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: ["@ll/shared", "@ll/design-tokens"],
   poweredByHeader: false,
+  turbopack: {
+    rules: {
+      // Workspace TS sources import "./x.js" (NodeNext style); Turbopack has no extensionAlias.
+      "*.ts": {
+        condition: { path: /packages\/(shared|design-tokens)\/src\// },
+        loaders: [path.resolve(process.cwd(), "loaders/ts-js-extension.cjs")],
+      },
+    },
+  },
   reactStrictMode: true,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],

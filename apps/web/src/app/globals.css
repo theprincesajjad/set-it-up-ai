@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "@ll/design-tokens/theme.css";
+
+
+@theme {
+  --animate-otp-shake: ll-otp-shake 220ms ease-in-out;
+  @keyframes ll-otp-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  ::selection {
+    background-color: var(--ll-color-brand-subtle);
+    color: var(--ll-color-on-brand-subtle);
+  }
+}
+
+/* Legal / long-form markdown. */
+@utility prose-ll {
+  color: var(--ll-color-fg);
+  & h1 { font-size: var(--text-h1); line-height: var(--text-h1--line-height); font-weight: 700; margin: 2rem 0 1rem; }
+  & h2 { font-size: var(--text-h2); line-height: var(--text-h2--line-height); font-weight: 700; margin: 2rem 0 0.75rem; }
+  & h3 { font-size: var(--text-h3); line-height: var(--text-h3--line-height); font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  & p, & ul, & ol, & table, & blockquote { margin: 0.75rem 0; }
+  & ul { list-style: disc; padding-inline-start: 1.5rem; }
+  & ol { list-style: decimal; padding-inline-start: 1.5rem; }
+  & li { margin: 0.25rem 0; }
+  & a { color: var(--ll-color-fg-link); text-decoration: underline; }
+  & strong { font-weight: 600; }
+  & blockquote { border-inline-start: 3px solid var(--ll-color-border-strong); padding-inline-start: 1rem; color: var(--ll-color-fg-muted); }
+  & table { width: 100%; border-collapse: collapse; font-size: var(--text-body-sm); display: block; overflow-x: auto; }
+  & th, & td { border: 1px solid var(--ll-color-border); padding: 0.5rem; text-align: start; vertical-align: top; }
+  & th { background: var(--ll-color-surface-sunken); }
+  & code { font-family: var(--font-mono); font-size: 0.9em; }
+  & hr { border-color: var(--ll-color-border); margin: 2rem 0; }
+}

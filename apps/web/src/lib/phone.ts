@@ -52,11 +52,16 @@ export function formatE164(e164: string | null | undefined): string {
  * Backspace over a formatting character should delete the previous digit.
  * Given the previous display value and the new raw input value, return the new digits.
  */
-export function digitsAfterEdit(prevDisplay: string, nextRaw: string): string {
+export function digitsAfterEdit(prevDisplay: string, nextRaw: string, caret?: number | null): string {
   const prevDigits = prevDisplay.replace(/\D/g, "");
   const nextDigits = nextRaw.replace(/\D/g, "");
-  // A deletion that only removed formatting (same digits, shorter string): drop the last digit.
-  if (nextRaw.length < prevDisplay.length && nextDigits === prevDigits) return prevDigits.slice(0, -1);
+  // A deletion that only removed formatting (same digits, shorter string): drop the digit before it.
+  if (nextRaw.length < prevDisplay.length && nextDigits === prevDigits) {
+    const at = caret ?? nextRaw.length;
+    const digitsBefore = nextRaw.slice(0, at).replace(/\D/g, "").length;
+    if (digitsBefore === 0) return prevDigits;
+    return prevDigits.slice(0, digitsBefore - 1) + prevDigits.slice(digitsBefore);
+  }
   return normalizeDigits(nextRaw);
 }
 
