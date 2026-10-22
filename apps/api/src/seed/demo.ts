@@ -155,7 +155,9 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
         instagram: m.instagram,
         email: `hello+${m.slug}@example.com`,
         website: `https://${m.slug}.example.com`,
-        logoUrl: `https://placehold.co/256x256/${m.brandColor.slice(1)}/ffffff/png?text=${encodeURIComponent(m.name.split(" ")[0]!)}`,
+        // No remote placeholder images (they fail offline); apps render coloured initials from brandColor.
+        logoUrl: null,
+        coverUrl: null,
         createdAt: signedAt,
       })
       .where(eq(merchants.id, merchant.id));
