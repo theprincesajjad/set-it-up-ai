@@ -1,4 +1,3 @@
-import { radii } from "@ll/design-tokens";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -9,8 +8,6 @@ import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { WalletPassButton } from "../features/customer/WalletPassButton";
 import { formatPts, groupMemberCode, shortName } from "../lib/award";
-import { rewardsReadyCount } from "../lib/hero";
-import { displayPhone, maskPhone } from "../lib/phone";
 import { api } from "../state/api";
 import { useOnline } from "../state/network";
 import { qk } from "../state/query";
@@ -27,14 +24,13 @@ import { Banner, Button, Chip, CloseGlyph, DiscountCard, hairline, QrCode, Segme
 export default function CardSheet() {
   const { c } = useTheme();
   const { width } = useWindowDimensions();
-  const { user, prefs } = useSession();
+  const { user } = useSession();
   const online = useOnline();
   const toast = useToast();
   const qc = useQueryClient();
   const { card, isError } = useCard();
   const wallet = useWallet();
   const [tab, setTab] = useState<"card" | "discounts">("card");
-  const [reveal, setReveal] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimShop, setClaimShop] = useState<string | null>(null);
   const [claimCode, setClaimCode] = useState("");
@@ -43,10 +39,8 @@ export default function CardSheet() {
   useBrightScreen("my-card");
 
   const memberships = wallet.data?.items ?? [];
-  const readyCount = rewardsReadyCount(memberships);
   const details = useMembershipDetails(memberships.map((m) => m.id));
   const discountCards = details.flatMap((d) => (d.data ? d.data.discountCards.map((dc) => ({ dc, m: d.data!.membership })) : []));
-  const phone = user?.phone ?? prefs.lastPhone;
   // Canvas: a 200 pt code in an 18 pt padded, hairline-bordered tile.
   const qrSize = Math.min(200, Math.round(width * 0.52));
 

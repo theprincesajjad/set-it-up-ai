@@ -13,7 +13,6 @@ import type { ActiveStaff, RecentAward } from "../../state/counter";
 import { disp, ui, useTheme } from "../../theme";
 import {
   Appear,
-  Avatar,
   Badge,
   CircleAlert,
   CountUp,
@@ -24,15 +23,12 @@ import {
   Button,
   ChevronDownGlyph,
   CloseGlyph,
-  ChevronDown,
-  ChevronRight,
   Clock3,
   Ellipsis,
   Gift,
   IconButton,
   RotateCcw,
   Sheet,
-  StampCard,
   Text,
   UserPlus,
 } from "../../ui";

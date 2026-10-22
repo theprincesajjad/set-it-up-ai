@@ -108,6 +108,9 @@ for (const s of SIZES) {
     await shot(page, "wallet-rewards", s.w);
     await page.getByRole("tab", { name: "Settings" }).click();
     await shot(page, "wallet-settings", s.w);
+    await page.goto("/discover");
+    await expect(page.getByRole("heading", { name: "near you" })).toBeVisible();
+    await shot(page, "discover", s.w, false);
 
     await page.goto(`/shops/${slug}`);
     await expect(page.getByRole("heading", { level: 1, name: "Pinecone Coffee Co." })).toBeVisible();

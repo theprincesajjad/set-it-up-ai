@@ -99,9 +99,17 @@ keep the proxy refreshing early (it does) so 401 races stay rare. `/api/ll` refu
 - Join: `GET /v1/public/join/:qr` (server) → `POST /v1/public/join/:qr` → `/api/auth/otp/verify` → `PATCH /v1/me` (name)
   → `POST /v1/me/memberships { locationQrCode, consent?, referralCode? }`. The shop page joins with `/v1/auth/otp/start`
   + `{ merchantId }`. `?ref=` is passed through as `referralCode`.
-- CASL: the checkbox shows `consent.merchant.v1` from ux-copy.md, unticked, and that exact string is sent as
-  `consent.text` (also used when re-granting in Settings). Note the API's suggested `consentText` differs; the web uses
-  the ux-copy wording on purpose.
+- Join page layout follows the design canvas (`docs/design/canvas/Join.dc.html`): brand row, shop, lowercase headline
+  ("get a stamp for today's coffee", `lib/joinCopy.ts`), the +1 phone field, the optional consent, "Text me a code", the
+  privacy line and "Also earning here: …" (nearby shops of other categories) pinned to the bottom.
+- CASL: the checkbox shows `consent.merchant.v2` from ux-copy.md ("Send me offers from {shop} by text or email. Optional.
+  Unsubscribe any time."), unticked, on the phone step, and that exact string is sent as `consent.text` (also used when
+  re-granting in Settings). Once ticked, the sender caption appears under it. The API's suggested `consentText` differs;
+  the web uses the ux-copy wording on purpose.
+- Tab bar (`components/pass/PassTabBar.tsx`, canvas): on `/me` and `/discover`, a frosted capsule map · discover ·
+  wallet · avatar (→ `/me#activity`) and the separate black 60 px "Show my card" circle (opens the card sheet on `/me`,
+  else `/me#card`). `/discover` is the web version of the app's Discover tab (live campaign hero, chips, near-you card,
+  category rows).
 - Pages that need the API are dynamic or ISR with graceful fallbacks, so `next build` works with the API down.
 - `/map` is map-first: `components/pass/ShopMap.tsx` lazy-loads `NetworkMap.tsx` (maplibre-gl, client only, its CSS
   ships with that chunk). Pins (`MapPin.tsx`) are React portals into maplibre markers: round logo or coloured

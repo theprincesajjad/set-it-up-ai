@@ -21,6 +21,6 @@ describe("join copy", () => {
   });
   it("pick varied", () => {
     const s = (id: string, vertical: string) => ({ merchant: { id, vertical } });
-    expect(pickVaried([s("me", "cafe"), s("a", "bakery"), s("b", "bakery"), s("c", "salon")], "me").map((x) => x.merchant.id)).toEqual(["a", "c"]);
+    expect(pickVaried([s("me", "cafe"), s("a", "bakery"), s("b", "bakery"), s("c", "salon"), s("d", "florist"), s("e", "pet")], "me").map((x) => x.merchant.id)).toEqual(["a", "c", "d"]);
   });
 });

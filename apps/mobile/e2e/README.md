@@ -1,6 +1,6 @@
 # Expo web screenshot tour
 
-Renders the app with react-native-web and drives it with Playwright (Chromium from `PLAYWRIGHT_BROWSERS_PATH`; never run `playwright install`) at an iPhone-sized viewport (390x844 @2x). Screenshots go to `e2e/screenshots/` (`01-…` onboarding, `05-…` first explore / empty wallet, `06-…` wallet, `07-…` explore map + shop sheet, `08-…` list, `09-…`/`10-…`/`11-…` shop page, `13` my card … `21-…` dark mode, `30-…` counter mode, `40-…` kiosk).
+Renders the app with react-native-web and drives it with Playwright (Chromium from `PLAYWRIGHT_BROWSERS_PATH`; never run `playwright install`) at an iPhone-sized viewport (390x844 @2x). Screenshots go to `e2e/screenshots/` (`01-…` onboarding, `05-…` first explore / empty wallet, `06-…` wallet, `06d`/`06e` discover, `07-…` explore map + shop sheet (`07b` member sheet, `07f` join sheet), `08-…` list, `09-…`/`10-…`/`11-…` shop page, `13` my card, `17` activity, `17b` points history … `21-…` dark mode, `22` the bell's inbox, `30-…` counter mode (`33`/`33b` member found, +2), `40-…` kiosk). Compare them with the design canvas artboards in `docs/design/canvas/` (`E2E_OUT=<dir>` writes elsewhere while iterating).
 
 Rerun (from the repo root, fresh seed so the OTP limit of 5 codes per phone per hour starts at zero):
 

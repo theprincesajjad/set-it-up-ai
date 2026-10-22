@@ -11,7 +11,6 @@ import { distanceMetres, type customerApi, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { radii } from "@ll/design-tokens";
 import { Linking, Platform, Pressable, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { t } from "../../copy/en-CA";
 import { activityTitle } from "../../lib/activity";
@@ -179,7 +178,6 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const goal = program?.stampGoal || 10;
   const filled = m ? Math.min(Math.max(0, m.balance), goal) : 0;
   const carry = m && isStamps && m.balance > goal ? m.balance - goal : 0;
-  const nextName = m?.nextReward?.name ?? rewardsList.find((r) => !r.affordable)?.name ?? null;
   const readyName = ready[0]?.name ?? null;
 
   // Stamp card (canvas ShopSheet): "10 / 10 stamps" in accent, the reward state right, a 10-column stamp grid

@@ -3,6 +3,7 @@
  * Your card works at 16 shops on Roncesvalles. No app needed." and the "Also earning here…" footer.
  * Pure, unit tested.
  */
+import { verticalCategory } from "@ll/design-tokens";
 import { placeKind } from "./place";
 
 type Program = { earnType: "per_dollar" | "per_visit" | "stamps"; terminology: string; welcomeBonus: number; stampGoal: number };
@@ -54,13 +55,13 @@ export function alsoEarning(others: { vertical: string }[], total: number): stri
   return `Also earning here: ${list}.`;
 }
 
-/** Up to `n` nearby shops with different kinds of place, nearest first (the footer's objects). */
+/** Up to `n` nearby shops whose category objects differ (bakery, salon, repair…), nearest first (the footer). */
 export function pickVaried<T extends { merchant: { id: string; vertical: string } }>(shops: T[], exceptId: string, n = 3): T[] {
-  const seen = new Set<string>();
+  const seen = new Set<string>([verticalCategory(shops.find((s) => s.merchant.id === exceptId)?.merchant.vertical ?? "")]);
   const out: T[] = [];
   for (const s of shops) {
     if (s.merchant.id === exceptId) continue;
-    const k = placeKind(s.merchant.vertical);
+    const k = verticalCategory(s.merchant.vertical);
     if (seen.has(k)) continue;
     seen.add(k);
     out.push(s);

@@ -38,7 +38,7 @@ import { api } from "../../state/api";
 import { useCounter, type RecentAward } from "../../state/counter";
 import { qk } from "../../state/query";
 import { typo, useTheme } from "../../theme";
-import { Banner, Button, Camera, Chip, EmptyState, Keypad, ListRow, OfflineBanner, Plus, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
+import { Banner, Button, Camera, Chip, EmptyState, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
 
 type Panel = { kind: "redeemSuccess"; view: SuccessView; transactionId: string | null; startedAt: number } | null;
 

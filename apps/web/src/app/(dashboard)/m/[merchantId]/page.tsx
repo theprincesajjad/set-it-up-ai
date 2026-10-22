@@ -110,7 +110,7 @@ export default function HomePage() {
           right={today.data ? `${plural(today.data.visitCount, "visit")} · ${formatNumber(today.data.newMembers)} new` : null}
           empty={<>No visits yet today. <QuietLink href={`${base}/locations`}>Print your QR stand</QuietLink></>}
           loading={counterAct.loading && !counterAct.data}
-          rows={todayRows.slice(0, 6).map((a) => ({
+          rows={todayRows.slice(0, 4).map((a) => ({
             key: a.transactionId,
             href: manager ? `${base}/customers?member=${a.memberId}` : undefined,
             title: a.name ?? (a.maskedPhone ? `New member · ${a.maskedPhone.replace(/\*/g, "•")}` : "Member"),

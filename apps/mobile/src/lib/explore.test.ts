@@ -108,3 +108,16 @@ describe("neighbourhood perk", () => {
   });
   it("headline", () => expect(perkHeadline(perk, "Roncesvalles")).toBe("Visit 3 shops on Roncesvalles this month → +50 pts"));
 });
+
+describe("labelPlanSides (canvas: labels flip left when the right is taken)", () => {
+  it("puts a label on the left when another label owns the right side", async () => {
+    const { labelPlanSides } = await import("./explore");
+    const pts = [
+      { id: "a", x: 100, y: 200, priority: 2, w: 120, h: 30 },
+      { id: "b", x: 400, y: 205, priority: 1, w: 120, h: 30 },
+    ];
+    const r = labelPlanSides(pts, { avoid: [{ x1: 450, y1: -1e4, x2: 1e4, y2: 1e4 }] });
+    expect(r.right.has("a")).toBe(true);
+    expect(r.left.has("b")).toBe(true);
+  });
+});
