@@ -102,7 +102,7 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
         <ShopLogo shop={shop} size={56} />
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text variant="largeTitle" accessibilityRole="header" numberOfLines={2} style={{ textTransform: "none", flexShrink: 1, fontFamily: nativeFonts.displayBold, fontSize: 26, lineHeight: 30 }}>
+            <Text variant="largeTitle" accessibilityRole="header" numberOfLines={2} style={{ textTransform: "none", flexShrink: 1, fontFamily: nativeFonts.displayBold, fontSize: 22, lineHeight: 26 }}>
               {shop.name}
             </Text>
             {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}

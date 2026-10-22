@@ -213,7 +213,7 @@ export function pinPlan(
   points: readonly PinPoint[],
   opts: { chrome?: Rect[]; clusterPx?: number; maxLabels?: number; bubble?: number; labelAvoid?: Rect[] } = {},
 ): PinPlan {
-  const { chrome = [], clusterPx = 34, maxLabels = 8, bubble = 40 } = opts;
+  const { chrome = [], clusterPx = 44, maxLabels = 8, bubble = 40 } = opts;
   const r = bubble / 2;
   const hidden = new Set<string>();
   const inChrome = (p: PinPoint) => chrome.some((c) => p.x + r > c.x1 && p.x - r < c.x2 && p.y + r > c.y1 && p.y - r < c.y2);
