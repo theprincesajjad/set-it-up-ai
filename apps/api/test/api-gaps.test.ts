@@ -126,7 +126,18 @@ describe("public member counts and customer features", () => {
     await addMembers(s.merchant.id, 9);
     let page = (await call("GET", `/v1/public/shops/${s.merchant.slug}`)).json();
     expect(page.memberCount).toBeNull();
-    expect(page.features).toEqual({ orderAhead: false, pickupSlots: false, serviceTickets: false, inAppPayments: false });
+    // Pricing v2: promos, discount cards, referrals, VIP and birthday are Plus, hidden at launch.
+    expect(page.features).toEqual({
+      orderAhead: false,
+      pickupSlots: false,
+      serviceTickets: false,
+      inAppPayments: false,
+      promos: false,
+      discountCards: false,
+      referrals: false,
+      vipLevels: false,
+      birthdayBonus: false,
+    });
     let list = (await call("GET", "/v1/network/shops")).json();
     expect(list.items[0].memberCount).toBeNull();
 
@@ -142,7 +153,17 @@ describe("public member counts and customer features", () => {
     const u = await createUser(env.db, { phoneVerifiedAt: new Date() });
     await awardPurchase(env.ctx, { merchantId: s.merchant.id, userId: u.id, source: "staff_app", amountCents: 1000 });
     const wallet = (await call("GET", "/v1/me/memberships", undefined, await tokenFor(env, u))).json();
-    expect(wallet.items[0].features).toEqual({ orderAhead: true, pickupSlots: false, serviceTickets: false, inAppPayments: false });
+    expect(wallet.items[0].features).toEqual({
+      orderAhead: true,
+      pickupSlots: false,
+      serviceTickets: false,
+      inAppPayments: false,
+      promos: false,
+      discountCards: false,
+      referrals: false,
+      vipLevels: false,
+      birthdayBonus: false,
+    });
   });
 });
 

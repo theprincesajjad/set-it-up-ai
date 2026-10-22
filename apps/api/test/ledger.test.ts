@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ledgerEntries, merchantMembers, merchants, networkPerks, promos } from "@ll/db";
+import { ledgerEntries, merchantMembers, merchants, networkPerks, promos, vipLevels } from "@ll/db";
 import { adjustPoints, awardPurchase, ledgerBalance, redeemReward, reverseTransaction } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, nextPhone, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, nextPhone, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -39,8 +39,26 @@ describe("ledger", () => {
     expect(b.member.visitCount).toBe(1);
   });
 
+  it("Pricing v2: paid-locked promo boosts and VIP multipliers don't apply in awardPurchase", async () => {
+    const { merchant } = await createMerchant(env);
+    await env.db.insert(promos).values({ merchantId: merchant.id, title: "Double points", kind: "multiplier", multiplierPct: 200, startsAt: new Date("2026-11-01"), status: "live" });
+    const [gold] = await env.db.insert(vipLevels).values({ merchantId: merchant.id, name: "Gold", thresholdPoints: 0, multiplierPct: 150 }).returning();
+    const phone = nextPhone();
+    // Free shop: the promo and VIP rows exist but are locked → base earn only.
+    const r = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+    expect(r.earn.totalPoints).toBe(10);
+    expect(r.transaction!.promoId).toBeNull();
+    expect(r.member.vipLevelId).toBe(gold!.id); // level kept, just not multiplying
+    // Pilot override on → both apply (10 × 2 promo × 1.5 VIP).
+    await grantFeatures(env, merchant.id, ["promos.double_points", "loyalty.vip_levels"]);
+    const r2 = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+    expect(r2.earn.totalPoints).toBe(30);
+    expect(r2.transaction!.promoId).not.toBeNull();
+  });
+
   it("applies double-points promos and enforces visit cooldown for stamp programs", async () => {
     const { merchant } = await createMerchant(env, { earnType: "stamps" });
+    await grantFeatures(env, merchant.id, ["promos.double_points"]); // Plus (Pricing v2): pilot override
     await env.db.insert(promos).values({ merchantId: merchant.id, title: "Double stamps", kind: "multiplier", multiplierPct: 200, startsAt: new Date("2026-11-01"), status: "live" });
     const phone = nextPhone();
     const r = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, source: "staff_app" });

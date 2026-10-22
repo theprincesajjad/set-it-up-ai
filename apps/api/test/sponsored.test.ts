@@ -4,7 +4,7 @@ import { adCampaigns, adEvents, locations, merchantMembers, promos } from "@ll/d
 import { adsApi } from "@ll/shared";
 import { injectSponsored, interleaveSponsored, selectSponsored } from "../src/services/sponsored.js";
 import { awardPurchase } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -17,6 +17,7 @@ let qr = 0;
 
 async function shopAt(hoodId: string, lat: number, lng: number) {
   const s = await createMerchant(env, { neighbourhoodId: hoodId });
+  await grantFeatures(env, s.merchant.id, ["promos.basic", "promos.double_points"]); // promos are Plus (Pricing v2): pilot shops
   await env.db.insert(locations).values({ merchantId: s.merchant.id, name: "Main", address: "1 Main St", qrCode: `SPQR${qr++}`, lat, lng });
   return s;
 }

@@ -79,7 +79,9 @@ describe("billing", () => {
     const again = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, amountCents: 2000, source: "staff_app" });
     expect(again.member.balance).toBe(100);
     const features = await getMerchantFeatures(env.db, after);
-    expect(features["loyalty.points"].enabled && features["loyalty.rewards_catalog"].enabled && features["promos.basic"].enabled).toBe(true);
+    expect(features["loyalty.points"].enabled && features["loyalty.rewards_catalog"].enabled && features["reports.basic"].enabled).toBe(true);
+    // Pricing v2: promos are Plus (and hidden at launch), so they lock with the rest.
+    expect(features["promos.basic"].enabled).toBe(false);
     expect(features["orders.order_ahead"]).toMatchObject({ enabled: false, lockedReason: "plan" });
     expect((await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/catalog`)).status).toBe(402);
     expect(await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, merchant.id))).toHaveLength(1);

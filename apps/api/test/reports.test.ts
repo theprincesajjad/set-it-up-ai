@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { featureOverrides, ledgerTransactions, merchantMembers, merchantStaff, promos, visits } from "@ll/db";
 import { awardPurchase, redeemReward } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 let env: TestEnv;
 /** A live clock (with an adjustable offset) so DB-default timestamps line up with ctx.now(). */
@@ -95,6 +95,11 @@ describe("reports", () => {
 
   it("promo results with attributed visits and boosted transactions", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
+    const promoReport = () => env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/reports/promos`, headers: auth(ownerToken) });
+    // Pricing v2: promo results need promos (Plus); loyalty reports stay free.
+    expect((await promoReport()).statusCode).toBe(402);
+    expect((await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/reports/overview`, headers: auth(ownerToken) })).statusCode).toBe(200);
+    await grantFeatures(env, merchant.id, ["promos.basic", "promos.double_points"]);
     const [p] = await env.db
       .insert(promos)
       .values({ merchantId: merchant.id, title: "Double points", kind: "multiplier", multiplierPct: 200, startsAt: new Date(env.clock.now.getTime() - DAY), status: "live", viewCount: 40, claimCount: 3 })
@@ -121,7 +126,11 @@ describe("reports", () => {
     // Customers of other shops who aren't my members don't count.
     await awardPurchase(env.ctx, { merchantId: big.merchant.id, phone: nextPhone(), source: "staff_app", amountCents: 500 });
 
-    const r = await env.app.inject({ method: "GET", url: `/v1/merchants/${me.merchant.id}/reports/network-overlap`, headers: auth(me.ownerToken) });
+    const overlap = () => env.app.inject({ method: "GET", url: `/v1/merchants/${me.merchant.id}/reports/network-overlap`, headers: auth(me.ownerToken) });
+    // Pricing v2: network overlap moved to reports.advanced (Plus).
+    expect((await overlap()).statusCode).toBe(402);
+    await grantFeatures(env, me.merchant.id, ["reports.advanced"]);
+    const r = await overlap();
     const body = r.json();
     expect(body).toMatchObject({ myMembers: 7, sharedMembers: 6, avgOtherShops: 1.3, suppressedShops: 1 });
     expect(body.sharedPct).toBeCloseTo(0.857, 2);

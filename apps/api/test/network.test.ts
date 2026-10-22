@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { campaigns, discountCards, featureOverrides, locations, merchantMembers, merchants, neighbourhoods, networkPerks, promos } from "@ll/db";
 import type { networkApi } from "@ll/shared";
 import { awardPurchase } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
 
 // 2026-11-03T15:00Z is Tuesday 10:00 in Toronto.
 let env: TestEnv;
@@ -15,8 +15,16 @@ afterEach(async () => env.close());
 const call = (method: "GET" | "POST", url: string, payload?: unknown, token?: string) =>
   env.app.inject({ method, url, payload: payload as object, headers: token ? { authorization: `Bearer ${token}` } : {} });
 
-async function shop(name: string, lat: number, lng: number, opts: { hood?: string; vertical?: string; hours?: Record<string, [string, string][]>; status?: "onboarding" | "active" | "paused" } = {}) {
+/** Pricing v2: promos and discount cards are Plus. Shops here are pilots (admin overrides) unless `free: true`. */
+const PILOT = ["promos.basic", "promos.double_points", "discount_cards"] as const;
+async function shop(
+  name: string,
+  lat: number,
+  lng: number,
+  opts: { hood?: string; vertical?: string; hours?: Record<string, [string, string][]>; status?: "onboarding" | "active" | "paused"; free?: boolean } = {},
+) {
   const m = await createMerchant(env, { neighbourhoodId: opts.hood });
+  if (!opts.free) await grantFeatures(env, m.merchant.id, [...PILOT]);
   await env.db
     .update(merchants)
     .set({ name, vertical: opts.vertical ?? "cafe", status: opts.status ?? "active", description: `${name} on the strip` })
@@ -167,6 +175,27 @@ describe("public shop page", () => {
     await env.db.update(merchants).set({ status: "closed" }).where(eq(merchants.id, s.merchant.id));
     expect((await call("GET", `/v1/public/shops/${s.merchant.slug}`)).statusCode).toBe(404);
     expect((await call("GET", `/v1/public/shops/nope`)).statusCode).toBe(404);
+  });
+});
+
+describe("Pricing v2: paid content is hidden for shops without the feature", () => {
+  it("hides promos from the feed, map flags and shop page, and discount cards from the shop page", async () => {
+    const free = await shop("Free Cafe", 43.6488, -79.4496, { free: true });
+    await env.db.insert(promos).values({ merchantId: free.merchant.id, title: "Free shop offer", startsAt: new Date("2026-10-01"), status: "live" });
+    await env.db.insert(discountCards).values({ merchantId: free.merchant.id, name: "Seniors 10%", percentOff: 10, eligibility: "seniors" });
+    const feed = (await call("GET", `/v1/network/feed?lat=${ME.lat}&lng=${ME.lng}`)).json();
+    expect(feed.items.filter((i: { sponsored: boolean }) => !i.sponsored)).toHaveLength(0);
+    const list = (await call("GET", "/v1/network/shops")).json();
+    expect(list.items.find((i: networkApi.ShopListItemDto) => i.merchant.id === free.merchant.id)!.hasPromo).toBe(false);
+    const page: networkApi.PublicShopResponse = (await call("GET", `/v1/public/shops/${free.merchant.slug}`)).json();
+    expect(page.promos).toEqual([]);
+    expect(page.discountCards).toEqual([]);
+    expect(page.features).toMatchObject({ promos: false, discountCards: false });
+    // The shop stays listed (network.listing is free) and the rows are kept: an admin override shows them again.
+    await grantFeatures(env, free.merchant.id, ["promos.basic", "discount_cards"]);
+    const again: networkApi.PublicShopResponse = (await call("GET", `/v1/public/shops/${free.merchant.slug}`)).json();
+    expect(again.promos.map((p) => p.title)).toEqual(["Free shop offer"]);
+    expect(again.discountCards).toHaveLength(1);
   });
 });
 

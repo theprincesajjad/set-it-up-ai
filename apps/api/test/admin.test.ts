@@ -55,14 +55,17 @@ describe("admin", () => {
     expect(list.find((f: { key: string }) => f.key === "loyalty.points").freeForever).toBe(true);
 
     // Free-forever features can only be GA.
-    for (const key of ["loyalty.points", "customers.csv_export", "marketing.email"]) {
+    for (const key of ["loyalty.points", "reports.basic", "network.listing"]) {
       for (const stage of ["hidden", "beta"]) {
         const r = await env.app.inject({ method: "PUT", url: `/v1/admin/features/${key}/stage`, headers: auth(adminToken), payload: { stage } });
         expect(r.statusCode).toBe(422);
         expect(r.json().error.code).toBe("free_forever");
       }
     }
-    expect(FREE_FOREVER.length).toBeGreaterThan(20);
+    // Pricing v2: loyalty + reporting (14 keys) are free forever; promos/marketing are paid and can be staged.
+    expect(FREE_FOREVER).toHaveLength(14);
+    expect(FREE_FOREVER).not.toContain("marketing.email");
+    expect((await env.app.inject({ method: "PUT", url: `/v1/admin/features/marketing.email/stage`, headers: auth(adminToken), payload: { stage: "hidden" } })).statusCode).toBe(200);
     expect((await env.app.inject({ method: "PUT", url: `/v1/admin/features/loyalty.points/stage`, headers: auth(adminToken), payload: { stage: "ga" } })).statusCode).toBe(200);
     expect((await env.app.inject({ method: "PUT", url: `/v1/admin/features/nope.nope/stage`, headers: auth(adminToken), payload: { stage: "ga" } })).statusCode).toBe(404);
 
