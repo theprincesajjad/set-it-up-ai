@@ -82,7 +82,8 @@ describe("repair approval flow (Pro)", () => {
     expect(signed).toMatchObject({ signatureName: "Riley Tester", signatureIp: "127.0.0.1", signatureUserAgent: "Mozilla/5.0 (iPhone) TestAgent" });
     expect(signed!.respondedAt).toEqual(env.clock.now);
     const intent = fake(env).intents.get(approved.body.deposit.paymentIntentId)!;
-    expect(intent).toMatchObject({ amountCents: 6780, applicationFeeCents: 51, metadata: { ll_kind: "deposit", ll_id: q.body.id } });
+    // Deposits are 1% (computeFees "deposit"): 6780 x 1% = 68. It was 51 under the old flat 0.75%.
+    expect(intent).toMatchObject({ amountCents: 6780, applicationFeeCents: 68, metadata: { ll_kind: "deposit", ll_id: q.body.id } });
     // Re-approve is idempotent (same deposit intent); decline is refused.
     const again = await call(env, null, "POST", `/v1/public/quotes/${qRow!.approvalToken}/approve`, { signatureName: "Riley Tester" });
     expect(again.body.deposit.paymentIntentId).toBe(intent.id);
@@ -103,7 +104,7 @@ describe("repair approval flow (Pro)", () => {
     // Invoice from approved quote + extras, deposit applied.
     const inv = await call(env, tech.token, "POST", `${base}/tickets/${ticket.id}/invoices`, { extraLineItems: [{ description: "Screen protector", quantity: 1, unitPriceCents: 2000, kind: "part" }] });
     expect(inv.status).toBe(201);
-    expect(inv.body).toMatchObject({ number: 1, status: "open", subtotalCents: 26000, taxCents: 3380, totalCents: 29380, depositAppliedCents: 6780, amountDueCents: 22600, platformFeeCents: 220 });
+    expect(inv.body).toMatchObject({ number: 1, status: "open", subtotalCents: 26000, taxCents: 3380, totalCents: 29380, depositAppliedCents: 6780, amountDueCents: 22600, platformFeeCents: 294 }); // invoices are 1%: 29380 x 1% = 294 (was 220 at 0.75%)
     const [invRow] = await env.db.select().from(invoices).where(eq(invoices.id, inv.body.id));
     expect(inv.body.payUrl).toBe(`${web()}/i/${invRow!.payToken}`);
     expect(lastSms().body).toContain(`${web()}/i/${invRow!.payToken}`);
@@ -118,7 +119,7 @@ describe("repair approval flow (Pro)", () => {
     expect(page.body).toMatchObject({ canPay: true, invoice: { amountDueCents: 22600 }, ticket: { number: 1 } });
     const pay = await call(env, null, "POST", `/v1/public/invoices/${invRow!.payToken}/pay`);
     expect(pay.body.payment.amountCents).toBe(22600);
-    expect(fake(env).intents.get(pay.body.payment.paymentIntentId)!.applicationFeeCents).toBe(169); // 220 total fee - 51 on the deposit
+    expect(fake(env).intents.get(pay.body.payment.paymentIntentId)!.applicationFeeCents).toBe(226); // 294 total fee - 68 already taken on the deposit (was 169 = 220 - 51)
     const ev = fake(env).succeedPaymentIntent(pay.body.payment.paymentIntentId);
     await deliver(env, ev);
     await deliver(env, ev);

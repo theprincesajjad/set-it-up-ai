@@ -151,6 +151,8 @@ export function createEndpoints(c: ApiClient) {
       inquire: (body: restaurantApi.CateringInquiryBody & { merchantId: string }) => c.post<restaurantApi.CateringEventDto>("/v1/me/catering", body),
       events: () => c.get<{ items: restaurantApi.CateringEventDto[]; nextCursor: string | null }>("/v1/me/catering"),
       event: (eventId: string) => c.get<restaurantApi.CateringEventDto>(`/v1/me/catering/${enc(eventId)}`),
+      /** The link in the shop's quote message (/e/<token>). */
+      publicEvent: (token: string) => c.get<restaurantApi.PublicCateringResponse>(`/v1/public/catering/${enc(token)}`, { auth: "none" }),
     },
 
     banquet: {

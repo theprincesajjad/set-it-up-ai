@@ -12,6 +12,10 @@ export function openDeepLink(url: string): void {
     [/^\/order\/([^/?#]+)/, (m) => `/orders/${m[1]}`],
     [/^\/campaign\/([^/?#]+)/, (m) => `/campaigns/${m[1]}`],
     [/^\/(?:q|quote)\/([^/?#]+)/, (m) => `/quote/${m[1]}`],
+    [/^\/tiffin\/([^/?#]+)/, (m) => `/tiffin/${m[1]}`],
+    [/^\/tiffin\/?$/, () => "/tiffin"],
+    [/^\/e\/([^/?#]+)/, (m) => `/e/${m[1]}`],
+    [/^\/events\/([^/?#]+)/, (m) => `/events/${m[1]}`],
   ];
   for (const [re, to] of map) {
     const m = path.match(re);

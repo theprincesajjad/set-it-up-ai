@@ -36,6 +36,7 @@ import type { AppContext } from "../context.js";
 import { createProviders } from "../providers/index.js";
 import { awardPurchase, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
+import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
 
 const DAY = 86400000;
@@ -67,6 +68,8 @@ export interface SeedResult {
   visits: number;
   redemptions: number;
   leads: number;
+  /** Ridgeway Plaza restaurant corridor (own neighbourhood; counts are not included above). */
+  corridor?: { merchants: number; customers: number; visits: number; orders: number };
   credentials: { role: string; email: string; password: string; merchant?: string }[];
   /** Pricing v2: paid features are hidden at launch; these pilot shops get them via admin per-merchant overrides. */
   pilotOverrides: { slug: string; merchant: string; features: FeatureKey[] }[];
@@ -113,6 +116,7 @@ function credentialsList(): SeedResult["credentials"] {
     { role: "admin", email: DEMO_CREDENTIALS.admin.email, password: DEMO_CREDENTIALS.admin.password },
     { role: "rep", email: DEMO_CREDENTIALS.rep.email, password: DEMO_CREDENTIALS.rep.password },
     ...MERCHANTS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: m.name })),
+    ...RESTAURANT_SHOPS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: `${m.name} (${m.tier ? `restaurant ${m.tier}` : "network shop"})` })),
   ];
 }
 
@@ -125,6 +129,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   const [existing] = await db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, "roncesvalles")).limit(1);
   if (existing) {
     log("Demo data already present (neighbourhood 'roncesvalles' exists) — skipping.");
+    // Older dev databases get the Ridgeway Plaza restaurant corridor added (no-op when present).
+    await seedRestaurantCorridor(db, { config: opts.config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
@@ -391,6 +397,9 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   const [{ n: leadCount } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads);
   log(`Leads: ${leadCount}`);
 
+  // ---- Ridgeway Plaza restaurant corridor (restaurant pack demo) ----
+  const corridor = await seedRestaurantCorridor(db, { config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
+
   return {
     skipped: false,
     neighbourhoods: NEIGHBOURHOODS.length,
@@ -399,6 +408,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     visits: visitCount,
     redemptions: redemptionCount,
     leads: Number(leadCount),
+    corridor: { merchants: corridor.merchants, customers: corridor.customers, visits: corridor.visits, orders: corridor.orders },
     credentials: credentialsList(),
     pilotOverrides: pilotList(),
   };

@@ -5,16 +5,17 @@
  */
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orderSplits, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
-import { FEES, rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
+import { rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
 import { bookSlotTx, cancelBookingsForOrder } from "./bookings.js";
 import { decodeCursor, encodeCursor, formatLocalDateTime, iso, loadMerchant, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
 import { getMerchantFeatures, isFeatureOn, requireFeature } from "./features.js";
+import { computeFees } from "./fees.js";
+import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
@@ -268,7 +269,7 @@ function isUniqueViolation(err: unknown): boolean {
 
 async function paymentFor(ctx: AppContext, order: Order) {
   if (order.paymentMethod !== "in_app" || !order.stripePaymentIntentId || order.paymentStatus === "paid" || order.paymentStatus === "refunded") return null;
-  const pi = await getPayments(ctx).retrievePaymentIntent(order.stripePaymentIntentId);
+  const pi = await retrieveConnectPayment(ctx, await merchantOf(ctx, order.merchantId), order.stripePaymentIntentId);
   return { paymentIntentId: pi.id, clientSecret: pi.clientSecret, amountCents: pi.amountCents };
 }
 
@@ -354,15 +355,23 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     throw badRequest("This pre-order needs a deposit by card. Choose pay in app.");
   }
   // Commission-free shops charge the customer a small service fee on card payments instead of a platform commission.
-  const customerFee = inApp && commissionFree ? FEES.customerServiceFeeCents : 0;
-  const total = subtotal - discount + tax.taxCents + body.tipCents + customerFee;
+  // computeFees (services/fees.ts) is the single source of truth: 0% commission on paid plans and restaurant tiers, 1.5% on Free.
+  const saleBeforeFee = subtotal - discount + tax.taxCents + body.tipCents;
+  const fees = computeFees({
+    kind: "order",
+    amountCents: inApp ? (isPreorder ? depositCents : saleBeforeFee) : 0,
+    plan: merchant.plan,
+    restaurantTier: merchant.restaurantTier,
+    customerServiceFee: inApp && commissionFree,
+  });
+  const customerFee = fees.customerFeeCents;
+  const total = saleBeforeFee + customerFee;
   const charge = isPreorder ? depositCents + customerFee : total;
   if (inApp && charge > 0 && charge < MIN_CARD_CHARGE_CENTS) {
     await undoRedemption("Order not placed");
     throw badRequest("This total is too small to pay by card. Choose pay at pickup.");
   }
-  // Commission-free shops pay 0% commission; others keep the standard in-app payment fee.
-  const fee = inApp && !commissionFree ? platformFeeCents(charge) : 0;
+  const fee = fees.platformFeeCents;
   const paymentMethod = inApp ? "in_app" : "at_pickup";
   if (inApp && !accountId) {
     try {
@@ -443,10 +452,10 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   let payment: commerceApi.PlaceOrderResponse["payment"] = null;
   if (inApp && charge > 0 && accountId) {
     try {
-      const pi = await getPayments(ctx).createPaymentIntent({
+      const pi = await createConnectPayment(ctx, merchant, {
         amountCents: charge,
         connectedAccountId: accountId,
-        applicationFeeCents: fee + customerFee,
+        applicationFeeCents: fees.applicationFeeCents,
         description: `${merchant.name} order #${order.number}`,
         metadata: { ll_kind: "order", ll_id: order.id, merchant_id: merchant.id },
         idempotencyKey: `order:${order.id}:pi`,
@@ -538,12 +547,18 @@ async function transition(ctx: AppContext, order: Order, to: OrderStatus, patch:
   return row;
 }
 
+async function merchantOf(ctx: AppContext, merchantId: string) {
+  const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Merchant");
+  return m;
+}
+
 /** Refund the in-app payment (if any) and give back redeemed points. */
 async function unwindPaymentAndRewards(ctx: AppContext, order: Order, reason: string): Promise<Partial<typeof orders.$inferInsert>> {
   const patch: Partial<typeof orders.$inferInsert> = {};
   const depositHeld = order.kind === "preorder" && !!order.depositPaidAt && order.paymentStatus === "authorized";
   if (order.paymentMethod === "in_app" && (order.paymentStatus === "paid" || depositHeld) && order.stripePaymentIntentId) {
-    await getPayments(ctx).refund({ paymentIntentId: order.stripePaymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason });
+    await refundConnectPayment(ctx, await merchantOf(ctx, order.merchantId), { paymentIntentId: order.stripePaymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason });
     patch.paymentStatus = "refunded";
   } else if (order.paymentMethod === "at_pickup" && order.paymentStatus === "paid") {
     patch.paymentStatus = "refunded";
@@ -551,7 +566,7 @@ async function unwindPaymentAndRewards(ctx: AppContext, order: Order, reason: st
   // Split bills: every share already paid goes back to the guest who paid it.
   const paidSplits = await ctx.db.select().from(orderSplits).where(and(eq(orderSplits.orderId, order.id), eq(orderSplits.status, "paid")));
   for (const sp of paidSplits) {
-    if (sp.stripePaymentIntentId) await getPayments(ctx).refund({ paymentIntentId: sp.stripePaymentIntentId, idempotencyKey: `split:${sp.id}:refund`, reason });
+    if (sp.stripePaymentIntentId) await refundConnectPayment(ctx, await merchantOf(ctx, order.merchantId), { paymentIntentId: sp.stripePaymentIntentId, idempotencyKey: `split:${sp.id}:refund`, reason });
   }
   if (paidSplits.length) patch.paymentStatus = "refunded";
   if (order.redemptionId) {
@@ -717,7 +732,7 @@ export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIn
   if (order.paymentStatus === "paid" || order.paymentStatus === "refunded") return;
   if (order.status === "cancelled") {
     // Paid after it was cancelled (e.g. payment raced a cancel): refund right away.
-    await getPayments(ctx).refund({ paymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason: "Order was cancelled" });
+    await refundConnectPayment(ctx, await merchantOf(ctx, order.merchantId), { paymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason: "Order was cancelled" });
     await ctx.db.update(orders).set({ paymentStatus: "refunded", stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
     return;
   }

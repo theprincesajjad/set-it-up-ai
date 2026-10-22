@@ -13,7 +13,8 @@ import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
+import { platformFeeFor } from "./fees.js";
+import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { iso, itemLabel, loadMerchant, money, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { computeTax, merchantProvince } from "./tax.js";
@@ -204,13 +205,12 @@ export async function depositPayment(ctx: AppContext, merchant: Merchant, quote:
   const features = await getMerchantFeatures(ctx.db, merchant);
   if (!features["service.deposits"].enabled || !features["payments.in_app"].enabled || !merchant.stripeAccountId || !merchant.stripeChargesEnabled) return null;
   const accountId = await requirePaymentsReady(ctx.db, merchant);
-  const payments = getPayments(ctx);
   const pi = quote.depositPaymentIntentId
-    ? await payments.retrievePaymentIntent(quote.depositPaymentIntentId)
-    : await payments.createPaymentIntent({
+    ? await retrieveConnectPayment(ctx, merchant, quote.depositPaymentIntentId)
+    : await createConnectPayment(ctx, merchant, {
         amountCents: quote.depositCents,
         connectedAccountId: accountId,
-        applicationFeeCents: platformFeeCents(quote.depositCents),
+        applicationFeeCents: platformFeeFor("deposit", quote.depositCents, merchant),
         description: `${merchant.name} deposit`,
         metadata: { ll_kind: "deposit", ll_id: quote.id, merchant_id: merchant.id, ticket_id: quote.ticketId },
         idempotencyKey: `deposit:${quote.id}`,

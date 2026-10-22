@@ -1,5 +1,7 @@
 import { Globe, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { RestaurantLinks } from "@/components/restaurant/RestaurantLinks";
 import { placeKind } from "@/lib/place";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
@@ -136,6 +138,10 @@ export default async function ShopPage({ params, searchParams }: Props) {
           ))}
         </div>
       ) : null}
+
+      <Suspense fallback={null}>
+        <RestaurantLinks slug={m.slug} locale={locale} features={shop.features} />
+      </Suspense>
 
       {membership ? (
         <div className="flex flex-col gap-4 rounded-card border border-line p-4">

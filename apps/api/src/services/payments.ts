@@ -91,6 +91,12 @@ export async function createConnectPayment(
   return getPayments(ctx).createPaymentIntent({ ...args, connectedAccountId, chargeMode: chargeModeFor(ctx, merchant) });
 }
 
+/** Retrieve a Connect payment; a direct charge lives on the merchant's connected account. */
+export async function retrieveConnectPayment(ctx: AppContext, merchant: Pick<Merchant, "chargeMode" | "stripeAccountId">, paymentIntentId: string): Promise<PaymentIntentInfo> {
+  const direct = chargeModeFor(ctx, merchant) === "direct" && !!merchant.stripeAccountId;
+  return getPayments(ctx).retrievePaymentIntent(paymentIntentId, direct ? { connectedAccountId: merchant.stripeAccountId! } : undefined);
+}
+
 /** Refund a Connect payment: a direct charge refunds on the merchant's account, a destination charge reverses the transfer. */
 export async function refundConnectPayment(
   ctx: AppContext,

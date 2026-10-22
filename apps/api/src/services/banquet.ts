@@ -12,7 +12,8 @@ import type { restaurantApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
+import { platformFeeFor } from "./fees.js";
+import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { formatLocalDateTime, iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
@@ -243,13 +244,12 @@ export async function listMyBookings(db: DbOrTx, userId: string) {
 export async function depositPayment(ctx: AppContext, merchant: Merchant, b: HallBooking): Promise<restaurantApi.CateringDepositPaymentDto | null> {
   if (b.depositCents <= 0 || b.depositPaidAt || b.status !== "hold") return null;
   if (!(await paymentsReady(ctx.db, merchant))) return null;
-  const payments = getPayments(ctx);
   const pi = b.depositPaymentIntentId
-    ? await payments.retrievePaymentIntent(b.depositPaymentIntentId)
-    : await payments.createPaymentIntent({
+    ? await retrieveConnectPayment(ctx, merchant, b.depositPaymentIntentId)
+    : await createConnectPayment(ctx, merchant, {
         amountCents: b.depositCents,
         connectedAccountId: merchant.stripeAccountId!,
-        applicationFeeCents: platformFeeCents(b.depositCents),
+        applicationFeeCents: platformFeeFor("deposit", b.depositCents, merchant),
         description: `${merchant.name} hall deposit`,
         metadata: { ll_kind: "hall_deposit", ll_id: b.id, merchant_id: merchant.id },
         idempotencyKey: `hall_deposit:${b.id}`,

@@ -20,6 +20,7 @@ import { router } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { apiClient } from "../../state/api";
+import { tiffinRoute } from "../../lib/restaurant";
 import { openDeepLink } from "../deepLinks";
 import { registerForPush, type PushResult } from "../push";
 
@@ -51,6 +52,9 @@ export async function registerForCustomerPush(): Promise<PushResult> {
 export function routeForNotification(data: customerApi.NotificationData | undefined | null): string | null {
   const d = data ?? {};
   const s = (k: string) => (typeof d[k] === "string" && (d[k] as string)) || null;
+  // Tiffin pushes carry the subscription id (no `screen`): delivery, billing and tomorrow's menu all open the subscription.
+  const tiffin = tiffinRoute(d);
+  if (tiffin) return tiffin;
   switch (d.screen) {
     case "order":
       return s("orderId") ? `/orders/${s("orderId")}` : null;

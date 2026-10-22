@@ -69,3 +69,8 @@ export function computeFees(input: FeeInput): FeeResult {
     merchantNetCents: amount - platformFeeCents,
   };
 }
+
+/** Platform fee in cents for one payment, from a merchant row (plan + restaurant tier). */
+export function platformFeeFor(kind: FeeKind, amountCents: number, merchant: { plan: PlanId; restaurantTier?: RestaurantTier | null }): number {
+  return computeFees({ kind, amountCents, plan: merchant.plan, restaurantTier: merchant.restaurantTier }).platformFeeCents;
+}

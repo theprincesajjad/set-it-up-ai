@@ -3,7 +3,7 @@ import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { WA_LANGUAGES, LOCALES, type messagingApi, type whatsappApi } from "@ll/shared";
+import { LOCALES, whatsappApi, type messagingApi } from "@ll/shared";
 import { EmptyState, Panel, QuietButton, DefList } from "@/components/dashboard";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -119,7 +119,7 @@ export function Broadcast({ settings, loading, onSetup }: { settings: whatsappAp
               </Banner>
             ) : null}
             <Select label="Template" value={chosen} placeholder="Choose an approved template" options={options} onChange={(e) => { setTemplate(e.target.value); invalidate(); }} />
-            <Select label="Language" value={language} options={WA_LANGUAGES.map((l) => ({ value: l, label: `${LOCALES[l].name} (${LOCALES[l].englishName})` }))} onChange={(e) => { setLanguage(e.target.value as whatsappApi.WaLanguage); invalidate(); }} hint="Must match the language the template was approved in." />
+            <Select label="Language" value={language} options={whatsappApi.WA_LANGUAGES.map((l) => ({ value: l, label: `${LOCALES[l].name} (${LOCALES[l].englishName})` }))} onChange={(e) => { setLanguage(e.target.value as whatsappApi.WaLanguage); invalidate(); }} hint="Must match the language the template was approved in." />
             <fieldset className="flex flex-col gap-3">
               <legend className="text-meta-strong text-fg">Template variables</legend>
               <p className="text-meta text-fg-muted">In order: the first box fills {"{{1}}"}, the second {"{{2}}"}. Use {"{{first_name}}"} and {"{{merchant}}"} and we fill in each customer&apos;s own.</p>

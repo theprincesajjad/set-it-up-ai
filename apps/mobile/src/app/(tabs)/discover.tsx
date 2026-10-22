@@ -11,6 +11,8 @@ import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, useProfile, useWallet } from "../../features/customer/queries";
 import { DISCOVER_MODE_LABELS, DISCOVER_ROWS, discoverMeta, discoverRows, heroCopy, miniMapPoints, shortHood, type DiscoverMode } from "../../lib/discover";
 import { openStatus } from "../../lib/format";
+import { useLocale } from "../../lib/i18n";
+import { shopMatchesHalal } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
@@ -74,14 +76,19 @@ export default function Discover() {
   const [mode, setMode] = useState<DiscoverMode>("forYou");
   const [modeOpen, setModeOpen] = useState(false);
   const [category, setCategory] = useState<VerticalCategory | null>(null);
+  /** Dietary filter: GET /v1/network/shops?halal=1 ("has halal food") or halal=all ("everything is halal"), the shop's own tags. */
+  const [halal, setHalal] = useState<"1" | "all" | null>(null);
+  const [dietOpen, setDietOpen] = useState(false);
+  const { t: tr } = useLocale();
 
   const hoodSlug = prefs.neighbourhoodSlug ?? profile.data?.homeNeighbourhood?.slug ?? null;
   const hood = useQuery({ queryKey: ["hood", hoodSlug ?? ""], queryFn: () => api.network.neighbourhood(hoodSlug!), enabled: !!hoodSlug, staleTime: 30 * 60_000 });
   const live = (campaigns.data?.items ?? []).find((x) => x.status === "live") ?? null;
   const origin = loc.coords ?? (hood.data?.neighbourhood.centerLat != null && hood.data.neighbourhood.centerLng != null ? { lat: hood.data.neighbourhood.centerLat, lng: hood.data.neighbourhood.centerLng } : null);
-  const params = { ...(origin ? { lat: origin.lat, lng: origin.lng } : hoodSlug ? { neighbourhood: hoodSlug } : {}), limit: 100 };
+  const params = { ...(origin ? { lat: origin.lat, lng: origin.lng } : hoodSlug ? { neighbourhood: hoodSlug } : {}), ...(halal ? { halal } : {}), limit: 100 };
   const shops = useQuery({ queryKey: qk.shops(JSON.stringify(params)), queryFn: () => api.network.shops(params) });
-  const all = shops.data?.items ?? [];
+  // TODO(api): the ?halal= param is live on GET /v1/network/shops; this client-side pass only covers servers that ignore it.
+  const all = useMemo(() => (shops.data?.items ?? []).filter((s) => !halal || shopMatchesHalal(s, halal)), [shops.data, halal]);
   const hoodName = shortHood(hood.data?.neighbourhood.name ?? profile.data?.homeNeighbourhood?.name ?? live?.neighbourhood.name ?? null);
   const ready = useMemo(() => new Set((wallet.data?.items ?? []).filter((m) => m.rewardsAvailableCount > 0).map((m) => m.merchant.id)), [wallet.data]);
   const rows = useMemo(() => discoverRows(all, { hood: hoodName, ready, mode, category }), [all, hoodName, ready, mode, category]);
@@ -186,6 +193,7 @@ export default function Discover() {
         {/* Chips: black "for you ▾", grey categories. */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={styles.chips}>
           <Pill label={DISCOVER_MODE_LABELS[mode]} selected={!category} chevron onPress={() => (category ? setCategory(null) : setModeOpen(true))} />
+          <Pill label={halal === "all" ? tr("rest.filter.allHalal") : tr("diet.halal").toLowerCase()} selected={!!halal} chevron onPress={() => setDietOpen(true)} />
           {chips.map((r) => (
             <Pill key={r.id} label={r.chip} selected={category === r.id} onPress={() => setCategory(category === r.id ? null : r.id)} />
           ))}
@@ -254,6 +262,24 @@ export default function Discover() {
         </Defs>
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#discoverFade)" />
       </Svg>
+
+      <Sheet visible={dietOpen} onClose={() => setDietOpen(false)} title={tr("rest.filter.dietary")} scroll={false}>
+        <View>
+          {([null, "1", "all"] as const).map((m, i, arr) => (
+            <ListRow
+              key={String(m)}
+              title={m === null ? tr("rest.filter.any") : m === "1" ? tr("rest.filter.hasHalal") : tr("rest.filter.allHalal")}
+              subtitle={m === null ? undefined : tr("diet.shopClaim")}
+              selected={halal === m}
+              divider={i < arr.length - 1}
+              onPress={() => {
+                setHalal(m);
+                setDietOpen(false);
+              }}
+            />
+          ))}
+        </View>
+      </Sheet>
 
       <Sheet visible={modeOpen} onClose={() => setModeOpen(false)} title="Show" scroll={false}>
         <View>

@@ -44,6 +44,13 @@ export function TodayTab({ goPlans, gate }: { goPlans: () => void; gate: { featu
   );
 }
 
+/** Tags every dish on the menu shares (all vegetarian, all Jain) are said once, not per dish. */
+function sharedWords(menu: tiffinApi.MenuItem[]): string[] {
+  if (menu.length < 2) return [];
+  const sets = menu.map((m) => dietaryWords(m.dietary));
+  return sets[0]!.filter((w) => sets.every((x) => x.includes(w)));
+}
+
 function Kitchen({ d }: { d: tiffinApi.KitchenResponse }) {
   const t = d.totals;
   return (
@@ -74,6 +81,7 @@ function Kitchen({ d }: { d: tiffinApi.KitchenResponse }) {
               </div>
               <div className="min-w-0">
                 <h4 className="text-meta-strong text-fg">Today&apos;s menu</h4>
+                {sharedWords(p.menu).length ? <p className="mt-0.5 text-meta text-fg-muted">Every dish: {sharedWords(p.menu).join(", ").toLowerCase()}</p> : null}
                 {p.menu.length ? (
                   <ul className="mt-1 divide-y divide-line border-y border-line">
                     {p.menu.map((m, i) => (
@@ -81,7 +89,7 @@ function Kitchen({ d }: { d: tiffinApi.KitchenResponse }) {
                         <span className="text-body text-fg">{m.name}</span>
                         {m.description ? <span className="text-meta text-fg-muted">{m.description}</span> : null}
                         <span className="ms-auto flex flex-wrap gap-1">
-                          {dietaryWords(m.dietary).map((w) => (
+                          {dietaryWords(m.dietary).filter((w) => !sharedWords(p.menu).includes(w)).map((w) => (
                             <Tag key={w}>{w}</Tag>
                           ))}
                         </span>

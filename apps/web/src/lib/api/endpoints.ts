@@ -28,6 +28,7 @@ import type {
 import type { FestivalDef, FestivalOccurrence, FestivalTemplate, FestivalTradition } from "@ll/shared";
 import type { ApiClient } from "./client";
 import { restaurantOpsEndpoints } from "./restaurantOps";
+import { publicSplitEndpoints, restaurantKitchenEndpoints } from "./restaurantKitchen";
 
 const enc = encodeURIComponent;
 type Q = Record<string, string | number | boolean | undefined | null>;
@@ -72,6 +73,8 @@ export function llApi(c: ApiClient) {
       review: (token: string) => c.get<whatsappApi.PublicReviewView>(`/v1/public/reviews/${enc(token)}`, { anonymous: true }),
       submitReview: (token: string, body: whatsappApi.ReviewSubmitBody) => c.post<whatsappApi.ReviewSubmitResponse>(`/v1/public/reviews/${enc(token)}`, body, { anonymous: true }),
       whatsappPay: (orderId: string, t: string) => c.get<whatsappApi.WhatsappPayView>(`/v1/public/whatsapp/pay/${enc(orderId)}`, { anonymous: true, query: { t } }),
+      // Split bill guest page (/pay/split/:token)
+      ...publicSplitEndpoints(c),
     },
     me: {
       profile: () => c.get<customerApi.ProfileDto>("/v1/me"),
@@ -200,6 +203,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     base: b,
     // Restaurant pack: tiffin, catering, banquet (restaurantOps.ts)
     ...restaurantOpsEndpoints(c, b),
+    // Restaurant pack ordering: menu settings, pre-orders, kitchen display, split bills (restaurantKitchen.ts)
+    ...restaurantKitchenEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),

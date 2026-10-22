@@ -15,7 +15,7 @@
 import bcrypt from "bcryptjs";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { auditLogs, merchantStaff, merchants, otpCodes, sessions, users } from "@ll/db";
-import { BRAND, authApi, normalizePhone } from "@ll/shared";
+import { BRAND, authApi, normalizeLocale, normalizePhone } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { signAccessToken, type AuthUser } from "../lib/auth.js";
 import { hmacSha256, randomDigits, randomToken, safeEqual, sha256 } from "../lib/crypto.js";
@@ -271,6 +271,8 @@ export async function getMe(ctx: AppContext, authUser: AuthUser): Promise<authAp
       logoUrl: merchants.logoUrl,
       role: merchantStaff.role,
       pinHash: merchantStaff.pinHash,
+      locale: merchantStaff.locale,
+      station: merchantStaff.station,
     })
     .from(merchantStaff)
     .innerJoin(merchants, eq(merchants.id, merchantStaff.merchantId))
@@ -279,7 +281,7 @@ export async function getMe(ctx: AppContext, authUser: AuthUser): Promise<authAp
   return {
     user: authUserDto(user),
     platformRole: user.platformRole,
-    merchants: rows.map(({ pinHash, ...r }) => ({ ...r, logoUrl: r.logoUrl ?? null, hasPin: !!pinHash })),
+    merchants: rows.map(({ pinHash, ...r }) => ({ ...r, logoUrl: r.logoUrl ?? null, hasPin: !!pinHash, locale: normalizeLocale(r.locale) ?? "en" })),
   };
 }
 

@@ -40,7 +40,7 @@ an in-process Postgres (PGlite) and console providers that log SMS, email and pu
 
 ```bash
 pnpm install
-pnpm --filter @ll/api seed     # demo Toronto data (Roncesvalles, Leslieville, the Danforth)
+pnpm --filter @ll/api seed     # demo Toronto data (Roncesvalles, Leslieville, the Danforth) + Ridgeway Plaza restaurant corridor
 pnpm dev:api                    # http://localhost:4000
 pnpm dev:web                    # http://localhost:3000
 pnpm dev:mobile                 # Expo; set EXPO_PUBLIC_API_URL to your machine's IP
@@ -54,6 +54,8 @@ Demo logins (seed):
 | Rep | `rep@localloyalty.example` / `localloyalty-rep` |
 | Shop owner | `owner+<shop-slug>@example.com` / `localloyalty-demo` (e.g. `owner+pinecone-coffee@example.com`) |
 | Counter staff | `staff+pinecone-coffee@example.com` / `localloyalty-demo`, PIN `1234` |
+| Restaurant pack (Ridgeway Plaza, Mississauga) | `owner+<slug>@example.com` / `localloyalty-demo` for `nawab-biryani-house` (Pro), `lahori-karahi-and-bbq`, `shree-thali-and-tiffin`, `zeenat-catering` (Growth), `sarson-dhaba`, `meethi-mithai-and-chai`, `padma-bangladeshi-kitchen`, `jaffna-kottu-house`, `kabul-garden-grill` (Starter), `rangrez-beauty-studio` (salon, network only) |
+| Restaurant staff | `staff+nawab-biryani-house-tandoor@example.com` (Punjabi, tandoor station), `staff+nawab-biryani-house-manager@example.com` (Urdu), also `-curry`, `-rice`; `staff+sarson-dhaba-counter@example.com`, `staff+shree-thali-and-tiffin-kitchen@example.com`, `staff+zeenat-catering-manager@example.com`, `staff+lahori-karahi-and-bbq-manager@example.com`. All `localloyalty-demo`, PIN `1234` |
 | Customer | any seeded phone (e.g. `+16475551000`) — the code is printed by the API and auto-filled in dev |
 
 To run against a real Postgres, set `DATABASE_URL=postgres://…` and run

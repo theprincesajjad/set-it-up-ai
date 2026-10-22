@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
 import { VERTICALS, type Vertical } from "../verticals.js";
+import { LOCALE_CODES } from "../i18n/locales.js";
 import { centsSchema, phoneSchema, uuidSchema } from "./common.js";
 
 // ---------------------------------------------------------------------------
@@ -215,7 +216,18 @@ export const inviteStaffBody = z
     role: staffRoleSchema.default("staff"),
   })
   .refine((b) => b.email || b.phone, { message: "Provide an email or phone number" });
-export const updateStaffBody = z.object({ role: staffRoleSchema });
+/**
+ * PATCH /merchants/:merchantId/team/:userId. `role` is owner-only; `locale` (the language their counter
+ * and kitchen screens open in) and `station` (kitchen station they work, free text; null clears) are
+ * owner or manager.
+ */
+export const updateStaffBody = z
+  .object({
+    role: staffRoleSchema.optional(),
+    locale: z.enum(LOCALE_CODES).optional(),
+    station: z.string().trim().max(60).nullable().optional(),
+  })
+  .refine((b) => b.role !== undefined || b.locale !== undefined || b.station !== undefined, { message: "Provide a role, locale or station to change" });
 export const setPinBody = z.object({ pin: z.string().regex(/^\d{4,6}$/, "PIN must be 4–6 digits") });
 
 export interface StaffMember {
@@ -225,6 +237,10 @@ export interface StaffMember {
   phone: string | null;
   role: StaffRole;
   hasPin: boolean;
+  /** UI language for their counter and kitchen screens: en | hi | ur | pa. */
+  locale: (typeof LOCALE_CODES)[number];
+  /** Kitchen station they work (KDS default filter), e.g. "tandoor". Null = all stations. */
+  station: string | null;
   createdAt: string;
 }
 

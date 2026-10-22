@@ -6,7 +6,7 @@ import { requireStaff } from "../../lib/auth.js";
 import { forbidden } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { createLocation, deactivateLocation, listLocations, rotateLocationQr, updateLocation } from "../../services/merchant-program.js";
-import { inviteStaff, listStaff, removeStaff, setStaffPinFor, updateStaffRole } from "../../services/merchant-staff.js";
+import { inviteStaff, listStaff, removeStaff, setStaffPinFor, updateStaffMember } from "../../services/merchant-staff.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
 
@@ -47,9 +47,11 @@ export default async function registerTeam(app: FastifyInstance, ctx: AppContext
     return inviteStaff(ctx, s.merchant.id, s.user.id, body);
   });
   app.patch("/merchants/:merchantId/team/:userId", async (req: Req<{ userId: string }>) => {
-    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
-    const { role } = parse(merchantApi.updateStaffBody, req.body);
-    return updateStaffRole(ctx, s.merchant.id, s.user.id, req.params.userId, role);
+    // Managers can set a member's language and station; roles stay owner-only.
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    const body = parse(merchantApi.updateStaffBody, req.body);
+    if (body.role !== undefined && s.role !== "owner") throw forbidden("Only owners can change roles");
+    return updateStaffMember(ctx, s.merchant.id, s.user.id, req.params.userId, body);
   });
   app.delete("/merchants/:merchantId/team/:userId", async (req: Req<{ userId: string }>, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "owner");

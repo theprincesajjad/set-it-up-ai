@@ -137,6 +137,12 @@ describe("public member counts and customer features", () => {
       referrals: false,
       vipLevels: false,
       birthdayBonus: false,
+      // Restaurant pack entry points: all off for a shop with no restaurant tier.
+      tiffin: false,
+      catering: false,
+      banquet: false,
+      whatsapp: false,
+      dietaryTags: false,
     });
     let list = (await call("GET", "/v1/network/shops")).json();
     expect(list.items[0].memberCount).toBeNull();
@@ -163,6 +169,11 @@ describe("public member counts and customer features", () => {
       referrals: false,
       vipLevels: false,
       birthdayBonus: false,
+      tiffin: false,
+      catering: false,
+      banquet: false,
+      whatsapp: false,
+      dietaryTags: false,
     });
   });
 });

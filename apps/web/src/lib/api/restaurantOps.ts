@@ -73,6 +73,8 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       revenue: (month?: string) => c.get<tiffinApi.RevenueResponse>(`${t}/revenue`, { query: { month } }),
     },
     catering: {
+      /** The shop's tax line (HST 13%, GST 5%...) from its public menu, for live totals. Null when unavailable. */
+      taxInfo: (slug: string) => c.get<{ tax: { label: string; ratePpm: number } }>(`/v1/public/shops/${enc(slug)}/menu`, { anonymous: true }).then((r) => r.tax, () => null),
       list: (q: Q = {}) => c.get<CateringListResponse>(cat, { query: q }),
       calendar: (from: string, to: string) => c.get<restaurantApi.CateringCalendarResponse>(`${cat}/calendar`, { query: { from, to } }),
       create: (body: CateringStaffInquiryBody) => c.post<restaurantApi.CateringEventDto>(cat, body),

@@ -123,6 +123,10 @@ export interface MerchantMembershipDto {
   logoUrl: string | null;
   /** True when this staff member has a counter PIN set for this merchant. */
   hasPin: boolean;
+  /** This staff member's UI language (merchant_staff.locale: en | hi | ur | pa). Mobile counter and web KDS default to it. */
+  locale: "en" | "hi" | "ur" | "pa";
+  /** Kitchen station they work (merchant_staff.station), or null for all stations. */
+  station: string | null;
 }
 
 /** GET /v1/auth/me */

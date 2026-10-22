@@ -1,7 +1,7 @@
 /** Team management: invite, roles, PINs. Owners only (enforced in routes). */
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { merchantStaff, merchants, users, type DbOrTx } from "@ll/db";
-import { BRAND, type merchantApi } from "@ll/shared";
+import { BRAND, normalizeLocale, type Locale, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
 import { setStaffPin } from "./auth.js";
@@ -10,6 +10,9 @@ import { writeAudit } from "./admin-audit.js";
 import { requirePhone } from "./merchant.js";
 
 type StaffRole = merchantApi.StaffRole;
+
+/** merchant_staff.locale is free text in the DB; the API only ever exposes a supported code. */
+export const localeOrEn = (v: string | null | undefined): Locale => normalizeLocale(v) ?? "en";
 
 /** Find a user by email (case-insensitive) or create one. */
 export async function findOrCreateUserByEmail(db: DbOrTx, email: string, name?: string | null) {
@@ -46,8 +49,8 @@ export async function findOrCreateInvitee(db: DbOrTx, input: { email?: string | 
   throw badRequest("Provide an email or phone number");
 }
 
-function serialize(row: { userId: string; name: string | null; email: string | null; phone: string | null; role: StaffRole; pinHash: string | null; createdAt: Date }): merchantApi.StaffMember {
-  return { userId: row.userId, name: row.name, email: row.email, phone: row.phone, role: row.role, hasPin: !!row.pinHash, createdAt: row.createdAt.toISOString() };
+function serialize(row: { userId: string; name: string | null; email: string | null; phone: string | null; role: StaffRole; pinHash: string | null; locale: string; station: string | null; createdAt: Date }): merchantApi.StaffMember {
+  return { userId: row.userId, name: row.name, email: row.email, phone: row.phone, role: row.role, hasPin: !!row.pinHash, locale: localeOrEn(row.locale), station: row.station, createdAt: row.createdAt.toISOString() };
 }
 
 const staffSelect = {
@@ -57,6 +60,8 @@ const staffSelect = {
   phone: users.phone,
   role: merchantStaff.role,
   pinHash: merchantStaff.pinHash,
+  locale: merchantStaff.locale,
+  station: merchantStaff.station,
   createdAt: merchantStaff.createdAt,
 };
 
@@ -112,14 +117,35 @@ async function ownerCount(db: DbOrTx, merchantId: string, excludingUserId?: stri
 }
 
 export async function updateStaffRole(ctx: AppContext, merchantId: string, actorUserId: string, userId: string, role: StaffRole) {
+  return updateStaffMember(ctx, merchantId, actorUserId, userId, { role });
+}
+
+/** Change a team member's role (owner only, enforced by the route), language and/or kitchen station. */
+export async function updateStaffMember(
+  ctx: AppContext,
+  merchantId: string,
+  actorUserId: string,
+  userId: string,
+  patch: { role?: StaffRole; locale?: Locale; station?: string | null },
+) {
   return ctx.db.transaction(async (tx) => {
     const current = await getStaff(tx, merchantId, userId);
+    const role = patch.role ?? current.role;
     if (current.role === "owner" && role !== "owner" && (await ownerCount(tx, merchantId, userId)) === 0) {
       throw conflict("A shop needs at least one owner. Make someone else an owner first.");
     }
-    await tx.update(merchantStaff).set({ role }).where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, userId)));
-    await writeAudit(tx, { actorUserId, merchantId, action: "staff.role_changed", entity: "user", entityId: userId, data: { from: current.role, to: role } });
-    return serialize({ ...current, role });
+    const set: Partial<typeof merchantStaff.$inferInsert> = {};
+    if (patch.role !== undefined) set.role = role;
+    if (patch.locale !== undefined) set.locale = patch.locale;
+    if (patch.station !== undefined) set.station = patch.station?.trim() ? patch.station.trim() : null;
+    await tx.update(merchantStaff).set(set).where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, userId)));
+    if (patch.role !== undefined && patch.role !== current.role) {
+      await writeAudit(tx, { actorUserId, merchantId, action: "staff.role_changed", entity: "user", entityId: userId, data: { from: current.role, to: role } });
+    }
+    if (patch.locale !== undefined || patch.station !== undefined) {
+      await writeAudit(tx, { actorUserId, merchantId, action: "staff.profile_changed", entity: "user", entityId: userId, data: { locale: set.locale ?? undefined, station: patch.station === undefined ? undefined : (set.station ?? null) } });
+    }
+    return serialize({ ...current, ...set, role });
   });
 }
 

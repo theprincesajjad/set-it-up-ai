@@ -40,7 +40,7 @@ import { getIntegration } from "./integrations.js";
 import { isFeatureOn, requireFeature } from "./features.js";
 import { personalize, resolveAudience, segmentCondition } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
-import { getPayments } from "../providers/payments.js";
+import { retrieveConnectPayment } from "./payments.js";
 import {
   converse,
   detectLanguage,
@@ -532,7 +532,7 @@ export async function getPayView(ctx: AppContext, orderId: string, token: string
   const items = await ctx.db.select().from(orderItems).where(eq(orderItems.orderId, o.id));
   let payment: whatsappApi.WhatsappPayView["payment"] = null;
   if (o.paymentMethod === "in_app" && o.stripePaymentIntentId && o.paymentStatus !== "paid" && o.paymentStatus !== "refunded" && o.status !== "cancelled") {
-    const pi = await getPayments(ctx).retrievePaymentIntent(o.stripePaymentIntentId);
+    const pi = await retrieveConnectPayment(ctx, m!, o.stripePaymentIntentId);
     payment = { paymentIntentId: pi.id, clientSecret: pi.clientSecret, amountCents: pi.amountCents };
   }
   return {

@@ -12,7 +12,8 @@ import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
+import { platformFeeFor } from "./fees.js";
+import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { decodeCursor, encodeCursor, iso, itemLabel, loadMerchant, money, notifyCustomer, paymentsReady, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
 import { requireFeature } from "./features.js";
@@ -94,7 +95,7 @@ export async function createInvoice(ctx: AppContext, staff: StaffContext, ticket
   const depositApplied = quote?.depositPaidAt ? Math.min(quote.depositCents, priced.totalCents) : 0;
   const amountDue = Math.max(0, priced.totalCents - depositApplied);
   // Platform fee applies only to money taken in-app (deposit + balance).
-  const fee = (await paymentsReady(ctx.db, merchant)) ? platformFeeCents(priced.totalCents) : platformFeeCents(depositApplied);
+  const fee = (await paymentsReady(ctx.db, merchant)) ? platformFeeFor("invoice", priced.totalCents, merchant) : platformFeeFor("deposit", depositApplied, merchant);
   const invoice = await ctx.db.transaction(async (tx) => {
     const number = await nextNumber(tx, merchant.id, "invoice");
     const [inv] = await tx
@@ -159,12 +160,11 @@ export async function payInvoice(ctx: AppContext, inv: Invoice): Promise<service
   await requireFeature(ctx.db, merchant, invoiceFeature(inv));
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   if (inv.amountDueCents < 50) throw badRequest("The balance is too small to pay by card; pay at the counter");
-  const payments = getPayments(ctx);
-  const depositFee = platformFeeCents(inv.depositAppliedCents);
-  const fee = Math.min(inv.amountDueCents, Math.max(0, platformFeeCents(inv.totalCents) - depositFee));
+  const depositFee = platformFeeFor("deposit", inv.depositAppliedCents, merchant);
+  const fee = Math.min(inv.amountDueCents, Math.max(0, platformFeeFor("invoice", inv.totalCents, merchant) - depositFee));
   const pi = inv.stripePaymentIntentId
-    ? await payments.retrievePaymentIntent(inv.stripePaymentIntentId)
-    : await payments.createPaymentIntent({
+    ? await retrieveConnectPayment(ctx, merchant, inv.stripePaymentIntentId)
+    : await createConnectPayment(ctx, merchant, {
         amountCents: inv.amountDueCents,
         connectedAccountId: accountId,
         applicationFeeCents: fee,
@@ -184,7 +184,10 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
   const now = ctx.now();
   const patch: Partial<typeof invoices.$inferInsert> = { status: "paid", paidAt: now };
   if (opts.paymentIntentId) patch.stripePaymentIntentId = opts.paymentIntentId;
-  if (!opts.inApp) patch.platformFeeCents = platformFeeCents(inv.depositAppliedCents);
+  if (!opts.inApp) {
+    const m = await loadMerchant(ctx.db, inv.merchantId);
+    patch.platformFeeCents = m ? platformFeeFor("deposit", inv.depositAppliedCents, m) : 0;
+  }
   const [paid] = await ctx.db.update(invoices).set(patch).where(and(eq(invoices.id, inv.id), eq(invoices.status, "open"))).returning();
   if (!paid) {
     const [cur] = await ctx.db.select().from(invoices).where(eq(invoices.id, inv.id)).limit(1);

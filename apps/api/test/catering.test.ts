@@ -285,3 +285,21 @@ describe("edits and cancellation", () => {
     expect((await api(b.ownerToken, "GET", `${b.base}/catering/${ev.id}`)).status).toBe(404);
   });
 });
+
+describe("charge mode", () => {
+  it("a direct-mode merchant's catering deposit is created on the connected account with the 1% deposit fee", async () => {
+    env.ctx.config.stripe.directCharges = true;
+    const m = await restaurant("growth");
+    await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, m.merchant.id));
+    const staff = await staffMember(env, m.merchant.id, "staff");
+    const items = await seedMenu(m.merchant.id);
+    const id = (await api(null, "POST", `/v1/public/shops/${m.merchant.slug}/catering/inquiries`, inquiry)).body.id as string;
+    const base = `${m.base}/catering/${id}`;
+    await api(staff.token, "PUT", `${base}/menu`, menuBody(items));
+    await api(staff.token, "POST", `${base}/send-quote`, {});
+    const [row] = await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, id));
+    const approved = await api(null, "POST", `/v1/public/catering/${row!.approvalToken}/approve`, { signatureName: "Ayesha Khan" });
+    // 44409 x 1% = 444 (computeFees "deposit"), application_fee_amount on the merchant's own account.
+    expect(fake(env).intents.get(approved.body.deposit.paymentIntentId)).toMatchObject({ amountCents: 44409, chargeMode: "direct", applicationFeeCents: 444, connectedAccountId: m.merchant.stripeAccountId });
+  });
+});

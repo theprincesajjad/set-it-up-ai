@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { notifications, tiffinCharges, tiffinDeliveries, tiffinSubscriptions, userNotificationPrefs } from "@ll/db";
+import { merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinSubscriptions, userNotificationPrefs } from "@ll/db";
 import { FEES } from "@ll/shared";
 import { cutoffAt, generateDeliveries, localInstant, mrrOf, rollBilling, runDaily } from "../src/services/tiffin.js";
 import { call, customer, deliver, fake, paidMerchant } from "./commerce-fixtures.js";
@@ -588,5 +588,23 @@ describe("subscribers and revenue", () => {
     expect(rev.body.churnRate).toBe(0);
     const empty = await call(env, k.m.ownerToken, "GET", `${k.base}/revenue?month=2026-10`);
     expect(empty.body).toMatchObject({ mrrCents: 19000 + 12000 + 19500, newThisMonth: 0, churnedThisMonth: 0 });
+  });
+});
+
+describe("charge mode", () => {
+  it("a direct-mode merchant's tiffin charge is created on the connected account with the 1% fee", async () => {
+    env.ctx.config.stripe.directCharges = true;
+    const k = await kitchen();
+    await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, k.m.merchant.id));
+    const { payment } = await join(k, { servings: 2 });
+    // 19000 x 1% (computeFees "tiffin") = 190, taken as application_fee_amount on the merchant's own account.
+    expect(fake(env).intents.get(payment.paymentIntentId)).toMatchObject({ chargeMode: "direct", applicationFeeCents: 190, connectedAccountId: k.m.merchant.stripeAccountId });
+  });
+
+  it("stays a destination charge while STRIPE_DIRECT_CHARGES is off", async () => {
+    const k = await kitchen();
+    await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, k.m.merchant.id));
+    const { payment } = await join(k);
+    expect(fake(env).intents.get(payment.paymentIntentId)).toMatchObject({ chargeMode: "destination" });
   });
 });

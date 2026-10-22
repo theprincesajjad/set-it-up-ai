@@ -5,6 +5,7 @@ import { Linking, StyleSheet, View } from "react-native";
 import { isApiError } from "../../api/client";
 import { CHANNEL_LABELS, groupPrefs, useNotificationPrefs, useSetNotificationPref } from "../../features/customer/inbox";
 import { usePhase2 } from "../../features/customer/queries";
+import { useRestaurantMine } from "../../features/restaurant/queries";
 import { registerForCustomerPush } from "../../features/customer/notifications";
 import { pushPermissionDenied } from "../../features/push";
 import { useSession } from "../../state/session";
@@ -35,6 +36,7 @@ function TypeRows({ item, last, onChange }: { item: customerApi.NotificationPref
 export default function NotificationSettings() {
   const { prefs, updatePrefs } = useSession();
   const phase2 = usePhase2();
+  const restaurant = useRestaurantMine();
   const toast = useToast();
   const q = useNotificationPrefs();
   const set = useSetNotificationPref();
@@ -46,7 +48,7 @@ export default function NotificationSettings() {
   const change = (type: customerApi.NotificationType, channel: customerApi.NotificationChannel, enabled: boolean) =>
     set.mutate({ type, channel, enabled }, { onError: () => toast({ tone: "error", message: "That didn't save. Try again." }) });
   // Orders and repairs only matter once one of your shops offers them.
-  const groups = groupPrefs(q.data?.items ?? []).filter((g) => g.title !== "Orders and repairs" || phase2.enabled);
+  const groups = groupPrefs(q.data?.items ?? []).filter((g) => g.title !== "Orders and repairs" || phase2.enabled || restaurant.tiffinEnabled);
 
   return (
     <Screen back title="Notification settings">

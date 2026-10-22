@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
     return [
       {
         // Token links (quotes, invoices) and signed-in pages must never be indexed or cached by proxies.
-        source: "/:prefix(q|i|o|me|m|rep|admin|bia|dev)/:path*",
+        source: "/:prefix(q|i|e|o|me|m|rep|admin|bia|dev)/:path*",
         headers: [
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
           { key: "Referrer-Policy", value: "no-referrer" },

@@ -57,10 +57,11 @@ describe("order-ahead", () => {
     });
     expect(r.status).toBe(201);
     const o = r.body.order;
-    expect(o).toMatchObject({ number: 1, subtotalCents: 1875, discountCents: 500, taxCents: 179, tipCents: 200, totalCents: 1754, platformFeeCents: 13, paymentStatus: "requires_action", paymentMethod: "in_app" });
+    // Fee rule (computeFees): Plus is a paid plan, so online orders are 0% commission. This was 13 under the old flat 0.75% (1754 x 0.75%).
+    expect(o).toMatchObject({ number: 1, subtotalCents: 1875, discountCents: 500, taxCents: 179, tipCents: 200, totalCents: 1754, platformFeeCents: 0, paymentStatus: "requires_action", paymentMethod: "in_app" });
     expect(o.items[0]).toMatchObject({ unitPriceCents: 600, quantity: 2, modifiers: [{ name: "Size", option: "Large", priceCents: 75 }] });
     expect(r.body.payment).toMatchObject({ amountCents: 1754 });
-    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ applicationFeeCents: 13, connectedAccountId: m.merchant.stripeAccountId });
+    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ applicationFeeCents: 0, connectedAccountId: m.merchant.stripeAccountId });
     expect(await memberBalance(m.merchant.id, c.user.id)).toBe(10); // 60 - 50 redeemed
 
     // Retry with the same key → same order, no second redemption.

@@ -149,15 +149,16 @@ export function Line({ children, className }: { children: ReactNode; className?:
 }
 
 /** Previous / next with the date between, for day and week views. `step` is days (1, 7). */
-export function DateNav({ value, onChange, step = 1, label, text, showToday = true }: { value: string; onChange: (d: string) => void; step?: number; label: string; text?: string; showToday?: boolean }) {
+export function DateNav({ value, onChange, step = 1, unit = "day", label, text, showToday = true }: { value: string; onChange: (d: string) => void; step?: number; unit?: "day" | "month"; label: string; text?: string; showToday?: boolean }) {
+  const shift = (n: number) => (unit === "month" ? addMonthsISO(value, n) : addDaysISO(value, n));
   const btn = "inline-flex size-8 items-center justify-center rounded-input border border-line bg-bg text-fg hover:bg-bg-subtle focus-visible:focus-ring";
   return (
     <div role="group" aria-label={label} className="flex items-center gap-1.5 print:hidden">
-      <button type="button" aria-label="Previous" className={btn} onClick={() => onChange(addDaysISO(value, -step))}>
+      <button type="button" aria-label="Previous" className={btn} onClick={() => onChange(shift(-step))}>
         <ChevronLeft aria-hidden className="size-4" />
       </button>
       <span className="min-w-[8.5rem] px-1 text-center text-meta-strong tabular text-fg">{text ?? dayLabel(value)}</span>
-      <button type="button" aria-label="Next" className={btn} onClick={() => onChange(addDaysISO(value, step))}>
+      <button type="button" aria-label="Next" className={btn} onClick={() => onChange(shift(step))}>
         <ChevronRight aria-hidden className="size-4" />
       </button>
       {showToday ? (

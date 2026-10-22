@@ -124,9 +124,14 @@ export function subscriptionActions(sub: Pick<tiffinApi.MySubscriptionDto, "stat
   };
 }
 
-/** Whether the customer can still change a meal-day: the API says so, and the cutoff has not passed on this phone's clock. */
+/** Whether the customer can still skip a meal-day: the API says so, and the cutoff has not passed on this phone's clock. */
 export function canStillSkip(u: Pick<tiffinApi.UpcomingDelivery, "canSkip" | "cutoffAt" | "status">, now: number = Date.now()): boolean {
   return u.canSkip && u.status === "scheduled" && new Date(u.cutoffAt).getTime() > now;
+}
+
+/** A skipped day can be put back until its cutoff (the skip credit is only given before it). */
+export function canUndoSkip(u: Pick<tiffinApi.UpcomingDelivery, "cutoffAt" | "status">, now: number = Date.now()): boolean {
+  return u.status === "skipped" && new Date(u.cutoffAt).getTime() > now;
 }
 
 /** Message key for a delivery status badge. */
@@ -288,4 +293,29 @@ export function holdLeft(b: Pick<restaurantApi.HallBookingDto, "status" | "holdE
 
 export function bookingNeedsDeposit(b: Pick<restaurantApi.HallBookingDto, "status" | "depositCents" | "depositPaidAt" | "holdExpiresAt">, now: number = Date.now()): boolean {
   return b.status === "hold" && b.depositCents > 0 && !b.depositPaidAt && (!b.holdExpiresAt || new Date(b.holdExpiresAt).getTime() > now);
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+/**
+ * Where a Stripe PaymentIntent is confirmed until the app ships the Stripe SDK: the web pay page
+ * (same pattern as invoices, tickets/[id].tsx). The secret travels in the query because the page has
+ * nothing else to look the intent up by. TODO(web): build /pay/intent/[id] (Payment Element, returns to ll://).
+ */
+export function paymentUrl(webUrl: string, p: { paymentIntentId: string; clientSecret: string }): string {
+  return `${webUrl.replace(/\/+$/, "")}/pay/intent/${encodeURIComponent(p.paymentIntentId)}?cs=${encodeURIComponent(p.clientSecret)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Notification routing
+// ---------------------------------------------------------------------------
+/**
+ * Tiffin pushes (tiffin_update: out for delivery, delivered, payment failed, renewal; tiffin_menu: tomorrow's menu)
+ * carry `subscriptionId` and no `screen`; they open the subscription. Null for anything else.
+ */
+export function tiffinRoute(data: { type?: string; screen?: string; subscriptionId?: unknown } | null | undefined): string | null {
+  const id = typeof data?.subscriptionId === "string" ? data.subscriptionId : "";
+  if (!id) return null;
+  return data?.type === "tiffin_update" || data?.type === "tiffin_menu" || data?.screen === "tiffin" ? `/tiffin/${encodeURIComponent(id)}` : null;
 }

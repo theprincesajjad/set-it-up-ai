@@ -4,6 +4,8 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { usePhase2, useProfile, useWallet } from "../../features/customer/queries";
+import { useRestaurantMine } from "../../features/restaurant/queries";
+import { useLocale } from "../../lib/i18n";
 import { maskPhone } from "../../lib/phone";
 import { useSession } from "../../state/session";
 import {
@@ -11,12 +13,14 @@ import {
   Bell,
   CircleHelp,
   Gift,
+  Globe,
   ConfirmDialog,
   ListRow,
   LogOut,
   Screen,
   Section,
   Shield,
+  ShoppingBag,
   Store,
   Tablet,
   Text,
@@ -31,6 +35,8 @@ export default function You() {
   const profile = useProfile();
   const wallet = useWallet();
   const phase2 = usePhase2();
+  const restaurant = useRestaurantMine();
+  const { t, info } = useLocale();
   const [confirm, setConfirm] = useState(false);
   const name = profile.data?.name ?? user?.name ?? "";
   const phone = profile.data?.phone ?? user?.phone ?? null;
@@ -54,10 +60,13 @@ export default function You() {
       <Section title="Your card">
         <ListRow leadingIcon={Gift} title="Rewards" subtitle="Ready to redeem, every shop, passport" chevron onPress={() => router.push("/rewards")} />
         {phase2.enabled ? <ListRow leadingIcon={Ticket} title="Orders & tickets" chevron onPress={() => router.push("/orders")} /> : null}
+        {restaurant.tiffinEnabled ? <ListRow leadingIcon={ShoppingBag} title={t("rest.tiffin.mine")} subtitle={t("rest.you.tiffin.sub")} chevron onPress={() => router.push("/tiffin")} /> : null}
+        {restaurant.eventsEnabled ? <ListRow leadingIcon={Ticket} title={t("rest.events.title")} subtitle={t("rest.you.events.sub")} chevron onPress={() => router.push("/events")} /> : null}
         <ListRow leadingIcon={Wallet} title="Wallet pass" chevron onPress={() => router.push("/card")} divider={!!referralShop} />
         {referralShop ? <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get points at ${referralShop.merchant.name}`} chevron divider={false} onPress={() => router.push("/referrals")} /> : null}
       </Section>
       <Section title="Settings">
+        <ListRow leadingIcon={Globe} title={t("lang.label")} subtitle={info.name} chevron onPress={() => router.push("/settings/language")} />
         <ListRow leadingIcon={Bell} title="Notifications" chevron onPress={() => router.push("/settings/notifications")} />
         <ListRow leadingIcon={Store} title="Shops & messages" chevron onPress={() => router.push("/settings/shops")} />
         <ListRow leadingIcon={Shield} title="Privacy & data" chevron onPress={() => router.push("/settings/privacy")} />

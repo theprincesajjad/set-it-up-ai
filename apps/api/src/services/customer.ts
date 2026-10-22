@@ -602,6 +602,11 @@ const EXPORT_ALL_FEATURES: CustomerFeatures = {
   referrals: true,
   vipLevels: true,
   birthdayBonus: true,
+  tiffin: true,
+  catering: true,
+  banquet: true,
+  whatsapp: true,
+  dietaryTags: true,
 };
 
 export async function exportData(ctx: AppContext, userId: string): Promise<customerApi.DataExportResponse> {

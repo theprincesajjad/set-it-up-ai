@@ -297,13 +297,14 @@ describe("commission-free ordering and customer fee", () => {
     expect(atPickup.body.order).toMatchObject({ platformFeeCents: 0, customerFeeCents: 0, totalCents: 1130 });
   });
 
-  it("without restaurant.commission_free the standard in-app fee applies and no customer fee is charged", async () => {
+  it("without restaurant.commission_free no customer fee is charged and the platform fee still follows computeFees", async () => {
     const m = await restaurant("starter");
     await grantFeatures(env, m.merchant.id, ["restaurant.commission_free"], false);
     const item = (await call(env, m.ownerToken, "POST", itemsUrl(m), { name: "Samosa chaat", priceCents: 1000 })).body;
     const c = await customer(env);
     const r = await order(m, c.token, item.id, "fee-key-00003");
-    expect(r.body.order).toMatchObject({ platformFeeCents: 8, customerFeeCents: 0, totalCents: 1130 });
-    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ applicationFeeCents: 8 });
+    // A restaurant tier counts as a paid plan, so the platform fee is 0% (computeFees). It was 8 under the old flat 0.75% (1130 x 0.75%).
+    expect(r.body.order).toMatchObject({ platformFeeCents: 0, customerFeeCents: 0, totalCents: 1130 });
+    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ applicationFeeCents: 0 });
   });
 });

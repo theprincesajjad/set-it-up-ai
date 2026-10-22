@@ -14,11 +14,12 @@
  */
 import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinMenus, tiffinPlans, tiffinRoutes, tiffinSkips, tiffinSubscriptions, users, type DbOrTx } from "@ll/db";
-import { FEES, tiffinApi } from "@ll/shared";
+import { tiffinApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments } from "../providers/payments.js";
+import { platformFeeFor } from "./fees.js";
+import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { decodeCursor, encodeCursor, money } from "./commerceShared.js";
 import { enabledFeaturesFor, requireFeature } from "./features.js";
 import { localDate } from "./messaging.js";
@@ -106,8 +107,6 @@ export const foodCents = (sub: Pick<Sub, "priceCents" | "fulfilment">, plan: Pic
 
 /** Credit for skipped meal days: per-meal price x skipped servings (the whole household), rounded once. */
 export const creditFor = (food: number, skippedDays: number, serviceDays: number) => (serviceDays > 0 ? Math.min(food, Math.round((food * skippedDays) / serviceDays)) : 0);
-
-export const platformFee = (amountCents: number) => Math.round((Math.max(0, amountCents) * FEES.tiffinBps) / 10000);
 
 /** Monthly recurring revenue for one subscription (weekly x 52/12). */
 export const mrrOf = (cadence: string, priceCents: number) => (cadence === "weekly" ? Math.round((priceCents * 52) / 12) : priceCents);
@@ -546,6 +545,7 @@ async function ensureCharge(ctx: AppContext, sub: Sub, plan: Plan, periodStart: 
   if (existing) return { charge: existing, created: false };
   const credit = !first && sub.currentPeriodStart && sub.currentPeriodEnd ? await creditForPeriod(ctx.db, sub, plan, sub.currentPeriodStart, sub.currentPeriodEnd) : 0;
   const amount = Math.max(0, sub.priceCents - credit);
+  const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, sub.merchantId)).limit(1);
   const [c] = await ctx.db
     .insert(tiffinCharges)
     .values({
@@ -555,7 +555,7 @@ async function ensureCharge(ctx: AppContext, sub: Sub, plan: Plan, periodStart: 
       periodEnd: periodEndFor(plan.cadence, periodStart),
       amountCents: amount,
       creditCents: credit,
-      platformFeeCents: platformFee(amount),
+      platformFeeCents: merchant ? platformFeeFor("tiffin", amount, merchant) : 0,
       createdAt: ctx.now(),
     })
     .onConflictDoNothing()
@@ -577,7 +577,7 @@ async function startPayment(ctx: AppContext, merchant: Merchant, sub: Sub, charg
     return null;
   }
   if (!merchant.stripeAccountId) throw conflict("This kitchen can't take payments yet");
-  const pi = await getPayments(ctx).createPaymentIntent({
+  const pi = await createConnectPayment(ctx, merchant, {
     amountCents: charge.amountCents,
     connectedAccountId: merchant.stripeAccountId,
     applicationFeeCents: charge.platformFeeCents,
@@ -601,7 +601,8 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
   if (sub.status === "cancelled") {
     // Paid after cancelling (payment raced the cancel): refund it.
     if (paymentIntentId) {
-      await getPayments(ctx).refund({ paymentIntentId, idempotencyKey: `tiffin:${charge.id}:refund`, reason: "Subscription was cancelled" });
+      const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, charge.merchantId)).limit(1);
+      if (m) await refundConnectPayment(ctx, m, { paymentIntentId, idempotencyKey: `tiffin:${charge.id}:refund`, reason: "Subscription was cancelled" });
       await ctx.db.update(tiffinCharges).set({ status: "refunded" }).where(eq(tiffinCharges.id, chargeId));
     }
     return;
@@ -646,7 +647,7 @@ export async function retryPayment(ctx: AppContext, userId: string, subId: strin
   // A pending charge that already has an intent is reused; a failed one gets a fresh attempt.
   let payment: tiffinApi.PaymentIntentRef | null;
   if (charge.status === "pending" && charge.stripePaymentIntentId) {
-    const pi = await getPayments(ctx).retrievePaymentIntent(charge.stripePaymentIntentId);
+    const pi = await retrieveConnectPayment(ctx, merchant, charge.stripePaymentIntentId);
     payment = paymentRef(pi, row.sub);
   } else {
     payment = await startPayment(ctx, merchant, row.sub, charge, ctx.now().getTime());

@@ -45,6 +45,7 @@ import {
   useToast,
   WebsiteGlyph,
 } from "../../ui";
+import { ShopDietary, ShopRestaurantRows, ShopWhatsapp } from "../restaurant/ShopRestaurant";
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
@@ -247,6 +248,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         </Text>
       </View>
 
+      <ShopDietary slug={s.merchant.slug} features={features} />
+
       {paused ? <View style={{ marginTop: 16 }}><Banner variant="neutral">{`This shop has paused its program. Your ${formatPts(m!.balance, term)} are safe.`}</Banner></View> : null}
       <View style={{ marginTop: 20 }}>{balance}</View>
 
@@ -338,6 +341,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             </Section>
           ) : null}
 
+          <ShopRestaurantRows shop={s} features={features} />
+
           {s.promos.length > 0 || discountCards.length > 0 ? (
             <Section title="Offers" rule={false}>
               {s.promos.map((p) => (
@@ -359,6 +364,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           {m && referralsOn ? (
             <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get ${formatPts(m.program!.referralBonus, term)}`} chevron divider={false} onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
           ) : null}
+
+          <ShopWhatsapp shop={s} features={features} />
 
           {m ? (
             <ListRow

@@ -14,7 +14,8 @@ import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
 import { badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
+import { platformFeeFor } from "./fees.js";
+import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { formatLocalDateTime, iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
 import { requireFeature } from "./features.js";
@@ -409,13 +410,12 @@ export async function approveEvent(ctx: AppContext, event: CateringEvent, args: 
 export async function depositPayment(ctx: AppContext, merchant: Merchant, e: CateringEvent): Promise<restaurantApi.CateringDepositPaymentDto | null> {
   if (e.depositCents <= 0 || e.depositPaidAt || !e.approvedAt || e.status !== "quoted") return null;
   if (!(await paymentsReady(ctx.db, merchant))) return null;
-  const payments = getPayments(ctx);
   const pi = e.depositPaymentIntentId
-    ? await payments.retrievePaymentIntent(e.depositPaymentIntentId)
-    : await payments.createPaymentIntent({
+    ? await retrieveConnectPayment(ctx, merchant, e.depositPaymentIntentId)
+    : await createConnectPayment(ctx, merchant, {
         amountCents: e.depositCents,
         connectedAccountId: merchant.stripeAccountId!,
-        applicationFeeCents: platformFeeCents(e.depositCents),
+        applicationFeeCents: platformFeeFor("deposit", e.depositCents, merchant),
         description: `${merchant.name} catering deposit #${e.number}`,
         metadata: { ll_kind: "catering_deposit", ll_id: e.id, merchant_id: merchant.id },
         idempotencyKey: `catering_deposit:${e.id}`,
@@ -479,7 +479,7 @@ export async function convertToInvoice(ctx: AppContext, staff: StaffContext, eve
   const depositApplied = e.depositPaidAt ? Math.min(e.depositCents, e.totalCents) : 0;
   const amountDue = Math.max(0, e.totalCents - depositApplied);
   // Platform fee applies only to money taken in-app (deposit + balance).
-  const fee = (await paymentsReady(ctx.db, merchant)) ? platformFeeCents(e.totalCents) : platformFeeCents(e.depositPaymentIntentId ? depositApplied : 0);
+  const fee = (await paymentsReady(ctx.db, merchant)) ? platformFeeFor("invoice", e.totalCents, merchant) : platformFeeFor("deposit", e.depositPaymentIntentId ? depositApplied : 0, merchant);
   const invoice = await ctx.db.transaction(async (tx) => {
     const number = await nextNumber(tx, merchant.id, "invoice");
     const [inv] = await tx

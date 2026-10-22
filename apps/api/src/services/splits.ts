@@ -12,7 +12,8 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
-import { getPayments, platformFeeCents } from "../providers/payments.js";
+import { computeFees } from "./fees.js";
+import { createConnectPayment, refundConnectPayment } from "./payments.js";
 import { requirePaymentsReady } from "./commerceShared.js";
 import { isFeatureOn, requireFeature } from "./features.js";
 import { MIN_CARD_CHARGE_CENTS } from "./orders.js";
@@ -173,13 +174,14 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
   if (order.status === "cancelled" || order.status === "refunded" || order.paymentStatus === "paid") throw conflict("This bill is closed");
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   const amount = split.amountCents + body.tipCents;
-  const fee = (await isFeatureOn(ctx.db, merchant, "restaurant.commission_free")) ? 0 : platformFeeCents(amount);
+  // Split shares are order payments: same rule as the whole bill (0% paid/restaurant, 1.5% Free). No customer fee on shares.
+  const fees = computeFees({ kind: "order", amountCents: amount, plan: merchant.plan, restaurantTier: merchant.restaurantTier });
   let pi;
   try {
-    pi = await getPayments(ctx).createPaymentIntent({
+    pi = await createConnectPayment(ctx, merchant, {
       amountCents: amount,
       connectedAccountId: accountId,
-      applicationFeeCents: fee,
+      applicationFeeCents: fees.applicationFeeCents,
       description: `${merchant.name} order #${order.number}: ${split.label}`,
       metadata: { ll_kind: "split", ll_id: split.id, merchant_id: merchant.id },
       idempotencyKey: `split:${split.id}:pi:${body.tipCents}`,
@@ -199,7 +201,8 @@ export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIn
   if (!split || split.status === "paid") return;
   if (split.stripePaymentIntentId !== paymentIntentId) {
     // Paid with a link whose tip was changed afterwards: give that charge back.
-    await getPayments(ctx).refund({ paymentIntentId, idempotencyKey: `split:${split.id}:stale:${paymentIntentId}`, reason: "Replaced payment" });
+    const [m] = await ctx.db.select({ m: merchants }).from(orders).innerJoin(merchants, eq(merchants.id, orders.merchantId)).where(eq(orders.id, split.orderId)).limit(1);
+    if (m) await refundConnectPayment(ctx, m.m, { paymentIntentId, idempotencyKey: `split:${split.id}:stale:${paymentIntentId}`, reason: "Replaced payment" });
     return;
   }
   const now = ctx.now();
@@ -211,7 +214,6 @@ export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIn
   const [merchant] = order ? await ctx.db.select().from(merchants).where(eq(merchants.id, order.merchantId)).limit(1) : [];
   if (!order || !merchant) return;
   const tips = all.reduce((s, r) => s + r.tipCents, 0);
-  const commissionFree = await isFeatureOn(ctx.db, merchant, "restaurant.commission_free");
   await ctx.db
     .update(orders)
     .set({
@@ -220,7 +222,7 @@ export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIn
       paidAt: now,
       tipCents: order.tipCents + tips,
       totalCents: order.totalCents + tips,
-      platformFeeCents: commissionFree ? 0 : all.reduce((s, r) => s + platformFeeCents(r.amountCents + r.tipCents), 0),
+      platformFeeCents: all.reduce((s, r) => s + computeFees({ kind: "order", amountCents: r.amountCents + r.tipCents, plan: merchant.plan, restaurantTier: merchant.restaurantTier }).platformFeeCents, 0),
       updatedAt: now,
     })
     .where(eq(orders.id, order.id));

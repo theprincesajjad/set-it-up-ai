@@ -16,7 +16,9 @@ import { useHideTabBar } from "../../features/tabBar";
 import { AUDIENCE_LABELS, byDistance, exploreSections, filterShops, MAP_CATEGORIES, movedEnough, pinSubtitle, stripHeader, type Audience, type MapCategoryId, type PinMembership } from "../../lib/explore";
 import { shortHood } from "../../lib/discover";
 import { formatDistance } from "../../lib/format";
+import { useLocale } from "../../lib/i18n";
 import { perkHeadline, perkProgress } from "../../lib/perks";
+import { shopMatchesHalal } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
@@ -139,6 +141,7 @@ export default function Explore() {
   const { prefs, updatePrefs } = useSession();
   const profile = useProfile();
   const wallet = useWallet();
+  const { t: tr } = useLocale();
   const loc = useDeviceLocation(prefs.locationPrompted);
   const [prompt, setPrompt] = useState(!prefs.locationPrompted);
   const [mapOk, setMapOk] = useState(mapsAvailable());
@@ -152,6 +155,8 @@ export default function Explore() {
   const [category, setCategory] = useState<MapCategoryId>("all");
   const [openNow, setOpenNow] = useState(false);
   const [readyOnly, setReadyOnly] = useState(false);
+  /** Halal food filter: GET /v1/network/shops?halal=1 (the shop's own tags); older servers ignore it, so visible shops are filtered here too. */
+  const [halal, setHalal] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [hoodOpen, setHoodOpen] = useState(false);
@@ -171,6 +176,7 @@ export default function Explore() {
   const params = {
     ...(origin ? { lat: origin.lat, lng: origin.lng } : hoodSlug ? { neighbourhood: hoodSlug } : {}),
     ...(q.trim() ? { q: q.trim() } : {}),
+    ...(halal ? { halal: "1" as const } : {}),
     limit: 100,
   };
   const shops = useQuery({ queryKey: qk.shops(JSON.stringify(params)), queryFn: () => api.network.shops(params) });
@@ -193,14 +199,14 @@ export default function Explore() {
   }, [wallet.data]);
   const readySet = useMemo(() => new Set(Object.entries(memberships).filter(([, m]) => m.rewardsAvailableCount > 0).map(([id]) => id)), [memberships]);
   const visible = useMemo(
-    () => byDistance(filterShops(all, { category, openNow, audience, rewardsReady: readyOnly ? readySet : null })),
-    [all, category, openNow, audience, readyOnly, readySet],
+    () => byDistance(filterShops(all, { category, openNow, audience, rewardsReady: readyOnly ? readySet : null })).filter((s) => !halal || shopMatchesHalal(s, "1")),
+    [all, category, openNow, audience, readyOnly, readySet, halal],
   );
   const sel = visible.find((s) => s.merchant.id === selected) ?? null;
   // A filter that narrows the shops frames what's left (rewards ready may be across the strip).
-  const filterKey = `${category}|${openNow}|${audience}|${readyOnly}`;
+  const filterKey = `${category}|${openNow}|${audience}|${readyOnly}|${halal}`;
   useEffect(() => {
-    if (filterKey === "all|false|all|false") return;
+    if (filterKey === "all|false|all|false|false") return;
     mapRef.current?.fit(visible.filter((s) => s.location?.lat != null && s.location?.lng != null).map((s) => ({ lat: s.location!.lat!, lng: s.location!.lng! })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey]);
@@ -254,6 +260,7 @@ export default function Explore() {
       <MapChip float={float} label={audience === "all" ? "my shops" : AUDIENCE_LABELS[audience]} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={`Show: ${AUDIENCE_LABELS[audience]}`} />
       <MapChip float={float} label="open now" dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
       {readySet.size > 0 ? <MapChip float={float} label="rewards ready" selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
+      <MapChip float={float} label={tr("diet.halal").toLowerCase()} selected={halal} onPress={() => setHalal((v) => !v)} accessibilityLabel={tr("rest.filter.halal.a11y")} />
     </ScrollView>
   );
 
@@ -330,6 +337,7 @@ export default function Explore() {
         setAudience("all");
         setOpenNow(false);
         setReadyOnly(false);
+        setHalal(false);
         setCategory("all");
       }}
     />

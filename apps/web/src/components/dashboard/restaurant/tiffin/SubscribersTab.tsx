@@ -1,0 +1,245 @@
+"use client";
+import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import type { tiffinApi } from "@ll/shared";
+import { Capsules, DefList, Dot, EmptyState, Section, SidePanel as Sheet, type DotTone } from "@/components/dashboard/kit";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
+import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { Banner } from "@/components/ui/Banner";
+import { Button } from "@/components/ui/Button";
+import { DataTable, type Column } from "@/components/ui/DataTable";
+import { Select } from "@/components/ui/Select";
+import { TextField } from "@/components/ui/TextField";
+import { useToast } from "@/components/ui/Toast";
+import { formatDateYear, formatMoney } from "@/lib/format";
+import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { TierTeaser, addDaysISO, dayLabel, dayShort, todayISO } from "../common";
+import { daysText } from "./PlansTab";
+
+type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
+type StatusFilter = "all" | tiffinApi.TiffinSubStatus;
+const STATUS_TONE: Record<tiffinApi.TiffinSubStatus, [DotTone, string]> = {
+  pending: ["info", "Waiting for payment"],
+  active: ["positive", "Active"],
+  paused: ["neutral", "Paused"],
+  past_due: ["negative", "Past due"],
+  cancelled: ["neutral", "Cancelled"],
+};
+const StatusWord = ({ s }: { s: tiffinApi.TiffinSubStatus }) => <Dot tone={STATUS_TONE[s][0]}>{STATUS_TONE[s][1]}</Dot>;
+
+export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: Gate }) {
+  const { api } = useMerchant();
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [planId, setPlanId] = useState("");
+  const [routeId, setRouteId] = useState("");
+  const [fulfilment, setFulfilment] = useState("");
+  const [q, setQ] = useState("");
+  const [dq, setDq] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDq(q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  const plans = useApi(() => api.tiffin.plans(), [api]);
+  const routes = useApi(() => api.tiffin.routes(), [api]);
+  const key = [status, planId, routeId, fulfilment, dq].join("|");
+  const query = { status: status === "all" ? undefined : status, planId: planId || undefined, routeId: routeId === "none" ? undefined : routeId || undefined, unrouted: routeId === "none" ? "true" : undefined, fulfilment: fulfilment || undefined, q: dq || undefined, limit: 50 };
+  const first = useApi(() => api.tiffin.subscribers(query), [api, key]);
+  const [more, setMore] = useState<{ key: string; items: tiffinApi.SubscriberDto[]; cursor: string | null } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [open, setOpen] = useState<tiffinApi.SubscriberDto | null>(null);
+  const extra = more?.key === key ? more : null;
+  const rows = useMemo(() => [...(first.data?.items ?? []), ...(extra?.items ?? [])], [first.data, extra]);
+  const cursor = extra ? extra.cursor : (first.data?.nextCursor ?? null);
+  const loadMore = async () => {
+    if (!cursor) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.tiffin.subscribers({ ...query, cursor });
+      setMore({ key, items: [...(extra?.items ?? []), ...r.items], cursor: r.nextCursor });
+    } catch {
+      /* the list stays as it was; the user can try again */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  const refresh = async () => { setMore(null); await first.reload(); };
+
+  const columns: Column<tiffinApi.SubscriberDto>[] = [
+    { key: "name", header: "Subscriber", mobile: "title", sortValue: (r) => r.customer.name ?? "", cell: (r) => <span className="font-medium">{r.customer.name ?? r.customer.phone ?? "Subscriber"}</span> },
+    { key: "plan", header: "Plan", mobile: "subtitle", sortValue: (r) => r.plan.name, cell: (r) => `${r.plan.name}` },
+    { key: "ful", header: "Meals", mobile: "subtitle", cell: (r) => `${r.servings} × ${r.fulfilment === "delivery" ? `delivery${r.routeName ? `, ${r.routeName}` : ""}` : "pickup"}` },
+    { key: "price", header: "Price", align: "end", mobile: "hidden", sortValue: (r) => r.priceCents, cell: (r) => formatMoney(r.priceCents) },
+    { key: "status", header: "Status", mobile: "trailing", sortValue: (r) => r.status, cell: (r) => <StatusWord s={r.status} /> },
+    { key: "open", header: "Details", mobile: "hidden", align: "end", cell: (r) => <button type="button" aria-label={`Open ${r.customer.name ?? "subscriber"}`} onClick={() => setOpen(r)} className="rounded-sm text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Open</button> },
+  ];
+  const filtered = status !== "all" || planId || routeId || fulfilment || dq;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <TextField type="search" label="Search subscribers" hideLabel placeholder="Name, phone, address or postal code" value={q} onChange={(e) => setQ(e.target.value)} className="min-h-10" />
+        <div className="hidden items-center text-meta text-fg-muted sm:flex"><Search aria-hidden className="me-1.5 size-3.5" />{rows.length}{cursor ? "+" : ""} shown</div>
+      </div>
+      <Capsules<StatusFilter> label="Status" value={status} onChange={setStatus} options={[{ value: "all", label: "All" }, { value: "active", label: "Active" }, { value: "paused", label: "Paused" }, { value: "past_due", label: "Past due" }, { value: "pending", label: "Pending" }, { value: "cancelled", label: "Cancelled" }]} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Select label="Plan" hideLabel value={planId} onChange={(e) => setPlanId(e.target.value)} placeholder="All plans" options={(plans.data?.items ?? []).map((p) => ({ value: p.id, label: p.name }))} className="min-h-10" />
+        <Select label="Route" hideLabel value={routeId} onChange={(e) => setRouteId(e.target.value)} placeholder="All routes" options={[{ value: "none", label: "Delivery, no route yet" }, ...(routes.data?.items ?? []).map((r) => ({ value: r.id, label: r.name }))]} className="min-h-10" />
+        <Select label="Delivery or pickup" hideLabel value={fulfilment} onChange={(e) => setFulfilment(e.target.value)} placeholder="Delivery and pickup" options={[{ value: "delivery", label: "Delivery" }, { value: "pickup", label: "Pickup" }]} className="min-h-10" />
+      </div>
+      {first.status === 402 ? <TierTeaser {...gate} /> : first.status === 403 ? null : (
+        <DataTable
+          caption="Tiffin subscribers"
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.id}
+          loading={first.loading && !first.data}
+          error={first.error && !first.data ? first.error : null}
+          onRetry={() => void first.reload()}
+          onRowClick={setOpen}
+          selectedKey={open?.id}
+          hasMore={!!cursor}
+          onLoadMore={() => void loadMore()}
+          loadingMore={loadingMore}
+          empty={
+            filtered ? (
+              <EmptyState title="Nobody matches those filters" description="Try another status or clear the search." action={<Button size="sm" variant="secondary" onClick={() => { setStatus("all"); setPlanId(""); setRouteId(""); setFulfilment(""); setQ(""); }}>Clear filters</Button>} className="border-0 px-4" />
+            ) : (
+              <EmptyState title="No subscribers yet" description="They show up here when someone signs up on your tiffin page. Share the link with your regulars first." action={<Button size="sm" onClick={goPlans}>Check your plans</Button>} className="border-0 px-4" />
+            )
+          }
+        />
+      )}
+      {open ? <SubscriberSheet sub={open} routes={routes.data?.items ?? []} onClose={() => setOpen(null)} onChanged={(s) => { setOpen(s); void refresh(); }} /> : null}
+    </div>
+  );
+}
+
+function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.SubscriberDto; routes: tiffinApi.RouteDto[]; onClose: () => void; onChanged: (s: tiffinApi.SubscriberDto) => void }) {
+  const { api, role } = useMerchant();
+  const toast = useToast();
+  const act = useAction();
+  const [mode, setMode] = useState<"pause" | "skip" | null>(null);
+  const [until, setUntil] = useState(addDaysISO(todayISO(), 8));
+  const [from, setFrom] = useState("");
+  const [skipDay, setSkipDay] = useState(addDaysISO(todayISO(), 2));
+  const [skipDays, setSkipDays] = useState<string[]>([]);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [reason, setReason] = useState("");
+  const canManage = role === "owner" || role === "manager";
+  const live = sub.status === "active" || sub.status === "past_due" || sub.status === "pending";
+  const run = async (fn: () => Promise<{ subscriber: tiffinApi.SubscriberDto } | tiffinApi.SubscriberDto>, ok: string) => {
+    const r = await act.run(fn);
+    if (!r) return;
+    toast({ message: ok, tone: "success" });
+    setMode(null);
+    onChanged("subscriber" in r ? r.subscriber : r);
+  };
+  const c = sub.customer;
+  return (
+    <>
+      <Sheet
+        open
+        onClose={onClose}
+        label="Subscriber"
+        title={c.name ?? c.phone ?? "Subscriber"}
+        subtitle={[c.phone, c.email].filter(Boolean).join(" · ")}
+        width={480}
+      >
+        <div className="flex flex-col gap-5">
+          {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <StatusWord s={sub.status} />
+            {sub.status === "paused" && sub.pausedUntil ? <span className="text-meta text-fg-muted">Back on {dayLabel(sub.pausedUntil)}</span> : null}
+          </div>
+          <DefList
+            items={[
+              { label: "Plan", value: sub.plan.name },
+              { label: "Days", value: daysText(sub.plan.daysOfWeek) },
+              { label: "Servings", value: sub.servings },
+              { label: "Delivery or pickup", value: sub.fulfilment === "delivery" ? "Delivery" : "Pickup" },
+              ...(sub.fulfilment === "delivery" ? [{ label: "Address", value: [sub.address, sub.postalCode].filter(Boolean).join(", ") || "None" }] : []),
+              ...(sub.addressNotes ? [{ label: "Door notes", value: sub.addressNotes }] : []),
+              ...(sub.dietaryNotes ? [{ label: "Dietary notes", value: sub.dietaryNotes }] : []),
+              { label: "Started", value: dayShort(sub.startDate) },
+            ]}
+          />
+          {sub.fulfilment === "delivery" && canManage ? (
+            <Select
+              label="Route"
+              value={sub.routeId ?? ""}
+              placeholder="Not on a route"
+              options={routes.map((r) => ({ value: r.id, label: r.name }))}
+              onChange={(e) => void run(() => api.tiffin.updateSubscriber(sub.id, { routeId: e.target.value || null }), "Route updated")}
+              hint={sub.stopOrder ? `Stop ${sub.stopOrder} on ${sub.routeName}` : "Move stops around in the Deliveries tab"}
+            />
+          ) : null}
+          <Section title="Billing">
+            <DefList
+              items={[
+                { label: `Price per ${sub.plan.cadence === "monthly" ? "month" : "week"}`, value: formatMoney(sub.priceCents) },
+                { label: "Pays by", value: sub.paymentMethod === "pad" ? "Pre-authorized debit" : "Card" },
+                { label: "Current period", value: sub.currentPeriodStart && sub.currentPeriodEnd ? `${dayShort(sub.currentPeriodStart)} to ${dayShort(sub.currentPeriodEnd)}` : "Not started" },
+                { label: "Next bill", value: sub.nextBillingDate ? dayLabel(sub.nextBillingDate) : "None scheduled" },
+                ...(sub.status === "cancelled" ? [{ label: "Cancelled", value: `${formatDateYear(sub.cancelledAt)}${sub.cancelReason ? `: ${sub.cancelReason}` : ""}` }] : []),
+              ]}
+            />
+            {sub.status === "past_due" ? <p className="mt-2 text-meta text-negative">Last payment failed. Meals are on hold until it goes through; the customer has a retry link.</p> : null}
+          </Section>
+          {sub.status !== "cancelled" ? (
+            <Section title="On their behalf">
+              <div className="flex flex-wrap gap-2">
+                {sub.status === "paused" ? (
+                  <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run(() => api.tiffin.resume(sub.id), "Resumed. Meals restart from the next day before cutoff.")} disabled={!canManage}>Resume</Button>
+                ) : live ? (
+                  <Button size="sm" variant="secondary" onClick={() => setMode(mode === "pause" ? null : "pause")} disabled={!canManage}>Pause</Button>
+                ) : null}
+                {live ? <Button size="sm" variant="secondary" onClick={() => setMode(mode === "skip" ? null : "skip")}>Skip days</Button> : null}
+                {canManage ? <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel subscription</Button> : null}
+              </div>
+              {mode === "pause" ? (
+                <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <TextField type="date" label="Back on" value={until} min={addDaysISO(todayISO(), 1)} onChange={(e) => setUntil(e.target.value)} hint="First day meals go out again" />
+                    <TextField type="date" label="Pause from" optionalLabel value={from} onChange={(e) => setFrom(e.target.value)} hint="Defaults to the first day before cutoff" />
+                  </div>
+                  <div><Button size="sm" loading={act.busy} disabled={!until} onClick={() => void run(() => api.tiffin.pause(sub.id, { until, ...(from ? { from } : {}) }), "Paused")}>Pause meals</Button></div>
+                </div>
+              ) : null}
+              {mode === "skip" ? (
+                <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1"><TextField type="date" label="Day to skip" value={skipDay} min={todayISO()} onChange={(e) => setSkipDay(e.target.value)} /></div>
+                    <Button size="sm" variant="secondary" className="mb-6" onClick={() => skipDay && !skipDays.includes(skipDay) && setSkipDays([...skipDays, skipDay].sort())}>Add day</Button>
+                  </div>
+                  {skipDays.length ? (
+                    <ul className="flex flex-wrap gap-1.5" aria-label="Days to skip">
+                      {skipDays.map((d) => (
+                        <li key={d}><button type="button" aria-label={`Remove ${dayLabel(d)}`} onClick={() => setSkipDays(skipDays.filter((x) => x !== d))} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-meta hover:bg-bg-subtle focus-visible:focus-ring">{dayLabel(d)} <span aria-hidden>×</span></button></li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <p className="text-meta text-fg-muted">Skips before the cutoff earn a credit on the next bill. Later ones are just noted for the kitchen.</p>
+                  <div><Button size="sm" loading={act.busy} disabled={!skipDays.length} onClick={() => void run(async () => { const r = await api.tiffin.skip(sub.id, { dates: skipDays }); setSkipDays([]); return r; }, "Skipped")}>Skip {skipDays.length || ""} {skipDays.length === 1 ? "day" : "days"}</Button></div>
+                </div>
+              ) : null}
+            </Section>
+          ) : null}
+        </div>
+      </Sheet>
+      <ConfirmDialog
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        danger
+        title={`Cancel ${c.name ?? "this"} subscription?`}
+        body="Meals stop and no new bills go out. This can't be undone, though they can sign up again."
+        confirmLabel="Cancel subscription"
+        onConfirm={async () => {
+          const r = await api.tiffin.cancel(sub.id, reason.trim() || undefined);
+          toast({ message: "Subscription cancelled", tone: "success" });
+          onChanged(r);
+        }}
+      >
+        <TextField label="Reason" optionalLabel placeholder="Moved out of the delivery area" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </ConfirmDialog>
+    </>
+  );
+}
