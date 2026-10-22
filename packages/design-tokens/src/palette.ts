@@ -1,110 +1,63 @@
 /**
- * Raw palette. Apps should NOT use these directly in components; use the
- * semantic roles in `colors.ts` (they switch for dark mode and are contrast
- * tested). Raw scales exist for illustration, marketing and charts.
+ * Raw palette (v2, docs/design/foundations.md). Apps should NOT use these in
+ * components; use the semantic roles in `colors.ts` (they switch for dark mode
+ * and are contrast tested). Raw values exist for the map style, illustration
+ * and marketing.
  *
- * Names come from the street:
- *  - pine     : Ontario white pine / shop-door green. Brand primary. Trust, local, calm.
- *  - marigold : sun on a striped awning. Accent for stamps, points, "you earned" moments.
- *  - brick    : Toronto storefront brick. Secondary warm colour for illustration and marketing.
- *  - stone    : warm paper/neutral greys (never blue-grey, never pure black).
- *  - leaf, ochre, cherry, lake : semantic success / warning / danger / info.
+ * Monochrome first. One warm accent (orange), reserved for points and rewards.
+ *  - gray   : cool-neutral greys from pure white to near-black ink.
+ *  - orange : the accent. 500 is fills / large numbers; 700 is accent *text* (AA on white).
+ *  - green / red / blue : positive, negative, the user's own location dot.
+ *  - map    : basemap colours (land, water, parks), light and dark.
  */
 
 export const palette = {
-  pine: {
-    50: "#EEF6F2",
-    100: "#D6EBE1",
-    200: "#AED6C4",
-    300: "#7DBBA0",
-    400: "#4E9C7D",
-    500: "#2F8063",
-    600: "#1F6A50", // brand
-    700: "#195841",
-    800: "#144634",
-    900: "#0F3527",
-    950: "#09221A",
+  gray: {
+    0: "#FFFFFF", // bg (light)
+    50: "#F5F5F4", // bg-subtle (light) / fg (dark)
+    100: "#EDEDEC", // bg-muted (light)
+    150: "#E8E8E6", // line (light)
+    400: "#9A9AA0", // fg-subtle (light)
+    450: "#8A8A90", // line-strong (light): input/checkbox outlines, 3:1
+    500: "#7A7A82", // line-strong (dark)
+    550: "#6E6E76", // fg-subtle (dark)
+    600: "#6B6B70", // fg-muted (light)
+    650: "#A1A1A8", // fg-muted (dark)
+    800: "#2A2A2E", // line (dark)
+    850: "#202023", // bg-muted (dark)
+    900: "#161618", // bg-subtle (dark)
+    950: "#0B0B0C", // fg (light) / bg (dark): ink
   },
-  marigold: {
-    50: "#FFF8E8",
-    100: "#FEEDC6",
-    200: "#FDDA8E",
-    300: "#FBC255",
-    400: "#F5A524", // accent
-    500: "#E08B0B",
-    600: "#B86E06",
-    700: "#8F5408",
-    800: "#6E410C",
-    900: "#4F2F0C",
+  orange: {
+    50: "#FFF1EA", // accent-soft (light)
+    400: "#FF7A45", // accent (dark), accent-text (dark)
+    500: "#FF5A1F", // accent (light): fills, stamps, large numbers
+    600: "#E84E14", // accent hover (light)
+    700: "#C2410C", // accent-text (light): small accent text, 5.2:1 on white
+    950: "#2A1710", // accent-soft (dark)
   },
-  brick: {
-    50: "#FDF2EE",
-    100: "#FADFD5",
-    200: "#F4BBA8",
-    300: "#EB9479",
-    400: "#DD6E4E",
-    500: "#C65334",
-    600: "#A64128",
-    700: "#843421",
-    800: "#63281A",
-    900: "#431C13",
+  green: {
+    500: "#22C55E", // positive (dark)
+    600: "#16A34A", // positive (light)
   },
-  stone: {
-    0: "#FFFFFF",
-    25: "#FDFBF7",
-    50: "#FAF6EF", // "paper" canvas
-    100: "#F3EDE3",
-    200: "#E7DFD2",
-    300: "#D4C9B8",
-    400: "#A99D8B",
-    500: "#857867",
-    600: "#655A4C",
-    700: "#4A4238",
-    800: "#332D26",
-    850: "#29241E",
-    900: "#1F1B16", // ink
-    950: "#16130F",
-    1000: "#0F0D0A",
+  red: {
+    400: "#F87171", // negative (dark)
+    600: "#DC2626", // negative (light)
+    700: "#B91C1C", // destructive hover (light)
   },
-  leaf: {
-    50: "#ECF8EF",
-    100: "#D2EFDA",
-    300: "#7FCB95",
-    400: "#4FB06E",
-    600: "#1D7A3D",
-    700: "#17633A",
-    800: "#124D2D",
-    900: "#0D3820",
+  blue: {
+    400: "#4C8DF8", // location (dark)
+    500: "#2F7BF6", // location (light)
   },
-  ochre: {
-    50: "#FFF6E0",
-    100: "#FDE8B5",
-    300: "#F6C35A",
-    400: "#EBAA2E",
-    600: "#A35A06",
-    700: "#7F4507",
-    800: "#5E3409",
-    900: "#3F2408",
-  },
-  cherry: {
-    50: "#FEF2F1",
-    100: "#FDE0DD",
-    300: "#F59A90",
-    400: "#EE6B5E",
-    600: "#B42318",
-    700: "#932018",
-    800: "#701A14",
-    900: "#4E130F",
-  },
-  lake: {
-    50: "#EEF4FB",
-    100: "#D8E6F6",
-    300: "#8DB7E6",
-    400: "#5F98D9",
-    600: "#1D5FA8",
-    700: "#184E8A",
-    800: "#133D6C",
-    900: "#0E2C4E",
+  map: {
+    land: "#F2F2F0",
+    water: "#E9F0F5",
+    park: "#EEF3EA",
+    road: "#FFFFFF",
+    landDark: "#121214",
+    waterDark: "#0F1820",
+    parkDark: "#141A14",
+    roadDark: "#232327",
   },
 } as const;
 
