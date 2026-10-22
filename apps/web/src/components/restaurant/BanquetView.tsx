@@ -50,7 +50,7 @@ function dayStates(busy: Busy): Map<string, DayState> {
 
 /** /shops/<slug>/banquet: halls, packages, a month availability view, and a booking request. */
 export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn }: { shop: Shop; halls: Hall[]; initialBusy: Record<string, Busy> | null; initialMonth: { y: number; m: number }; signedIn: boolean }) {
-  const { t, money, date, time, number } = useFmt();
+  const { t, money, date, time, number, percent } = useFmt();
   const [hallId, setHallId] = useState(halls[0]?.id ?? "");
   const [month, setMonth] = useState(initialMonth);
   const [busyByHall, setBusyByHall] = useState<Record<string, Busy>>(initialBusy ?? {});
@@ -225,7 +225,7 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn }
                   <Pill tone="ink">{t("rc.bq.capacity", { n: number(h.capacity) })}</Pill>
                 </div>
                 {h.description ? <p className="mt-1 text-body text-fg-muted">{h.description}</p> : null}
-                <p className="mt-2 text-meta text-fg-muted">{[h.baseCents > 0 ? t("rc.bq.base", { price: money(h.baseCents) }) : null, h.depositBps > 0 ? t("rc.bq.deposit", { pct: number(Math.round(h.depositBps / 100)) + "%" }) : null].filter(Boolean).join(" · ")}</p>
+                <p className="mt-2 text-meta text-fg-muted">{[h.baseCents > 0 ? t("rc.bq.base", { price: money(h.baseCents) }) : null, h.depositBps > 0 ? t("rc.bq.deposit", { pct: percent(Math.round(h.depositBps / 100)) }) : null].filter(Boolean).join(" · ")}</p>
                 {h.packages.length ? (
                   <div className="mt-3 border-t border-line pt-3">
                     <p className="text-meta-strong text-fg">{t("rc.bq.packages")}</p>

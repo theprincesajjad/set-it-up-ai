@@ -349,6 +349,8 @@ export const NOTIFICATION_TYPES = [
   "passport_progress",
   "tiffin_update",
   "tiffin_menu",
+  "catering_update",
+  "hall_update",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -406,6 +408,8 @@ export const NOTIFICATION_CATALOG: readonly NotificationTypeInfo[] = [
   t("passport_progress", "transactional", "points", "Neighbourhood passport", "Progress on neighbourhood challenges and bonuses.", { push: true }),
   t("tiffin_update", "transactional", "orders", "Tiffin deliveries and billing", "Your tiffin is out for delivery or delivered, and when a payment fails.", { push: true, sms: true }),
   t("tiffin_menu", "transactional", "orders", "Tomorrow's tiffin menu", "What's cooking for tomorrow, sent the evening before. Off unless you turn it on.", { push: false }),
+  t("catering_update", "transactional", "orders", "Catering and events", "Tasting times, your catering quote, deposit receipts and changes to your event.", { push: true, sms: true }),
+  t("hall_update", "transactional", "orders", "Hall bookings", "Your hall hold, deposit and booking confirmation.", { push: true }),
   t("promo_nearby", "marketing", "offers", "Offers nearby", "Offers from shops you've joined, when you're close (at most one a day, never 9pm-8am).", { push: true }),
 ];
 

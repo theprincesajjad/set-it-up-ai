@@ -112,7 +112,10 @@ export function deepLink(type: NotificationType, merchant: Pick<Merchant, "id" |
   const out: customerApi.NotificationData = { ...data, type };
   const str = (k: string) => (typeof data[k] === "string" ? (data[k] as string) : undefined);
   if (merchant) Object.assign(out, { merchantId: merchant.id, slug: merchant.slug });
+  if (type === "quote_sent" && str("cateringEventId")) return { ...out, screen: "catering" }; // url stays the /e/<token> approval link
   if (type === "quote_sent" && str("url")) return { ...out, screen: "quote" };
+  if (str("cateringEventId")) return { ...out, screen: "catering", url: `ll://events/${str("cateringEventId")}` };
+  if (str("hallBookingId")) return { ...out, screen: "hall", url: `ll://events/${str("hallBookingId")}` };
   if (str("subscriptionId")) return { ...out, screen: "tiffin", url: `ll://tiffin/${str("subscriptionId")}` };
   if (str("orderId")) return { ...out, screen: "order", url: `ll://order/${str("orderId")}` };
   if (str("ticketId")) return { ...out, screen: "ticket", url: str("url") && type !== "ticket_updated" ? str("url") : `ll://ticket/${str("ticketId")}` };
@@ -324,6 +327,18 @@ export function commerceType(dataType: unknown): NotificationType | null {
       return "ticket_updated";
     case "quote_sent":
       return "quote_sent";
+    case "tiffin_delivery":
+      return "tiffin_update";
+    case "catering_tasting":
+    case "catering_confirmed":
+    case "catering_cancelled":
+    case "catering_update":
+      return "catering_update";
+    case "hall_hold":
+    case "hall_confirmed":
+    case "hall_hold_expired":
+    case "hall_update":
+      return "hall_update";
     case "booking_reminder":
       return "booking_reminder";
     default:

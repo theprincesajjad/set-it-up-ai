@@ -31,8 +31,9 @@ const isolate = (s: string) => `\u2066${s}\u2069`;
 /** `useLocale()` with amounts and numbers isolated for RTL. */
 export function useFmt() {
   const l = useLocale();
-  if (l.dir !== "rtl") return l;
-  return { ...l, money: (c: number, cur?: string) => isolate(l.money(c, cur)), number: (n: number) => isolate(l.number(n)) };
+  const rtl = l.dir === "rtl";
+  const wrap = (s: string) => (rtl ? isolate(s) : s);
+  return { ...l, money: (c: number, cur?: string) => wrap(l.money(c, cur)), number: (n: number) => wrap(l.number(n)), percent: (n: number) => wrap(`${l.number(n)}%`) };
 }
 
 export function ShopHead({ shop, kicker, href }: { shop: { name: string; logoUrl?: string | null; brandColor?: string | null }; kicker?: ReactNode; href?: string }) {

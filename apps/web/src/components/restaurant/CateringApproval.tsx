@@ -18,7 +18,7 @@ type Payment = { paymentIntentId: string; clientSecret: string; amountCents: num
 
 /** /e/<token>: review a catering quote, sign with a typed name, then pay the deposit. */
 export function CateringApproval({ token, initial }: { token: string; initial: restaurantApi.PublicCateringResponse }) {
-  const { t, money, date, time, number } = useFmt();
+  const { t, money, date, time, number, percent } = useFmt();
   const [data, setData] = useState(initial);
   const [signature, setSignature] = useState("");
   const [touched, setTouched] = useState(false);
@@ -158,8 +158,8 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
       </Section>
 
       {hasDeposit && status !== "cancelled" ? (
-        <section className="flex flex-col gap-1" aria-label={t("rc.ca.depositDue", { pct: `${number(depositPct)}%` })}>
-          <p className="text-meta text-fg-muted">{e.depositPaidAt ? t("rc.ca.depositPaid") : t("rc.ca.depositDue", { pct: `${number(depositPct)}%` })}</p>
+        <section className="flex flex-col gap-1" aria-label={t("rc.ca.depositDue", { pct: percent(depositPct) })}>
+          <p className="text-meta text-fg-muted">{e.depositPaidAt ? t("rc.ca.depositPaid") : t("rc.ca.depositDue", { pct: percent(depositPct) })}</p>
           <BigNumber tone={e.depositPaidAt ? "muted" : "accent"}>{money(e.depositCents)}</BigNumber>
           <p className="text-meta text-fg-muted">
             {t("rc.ca.balance")}: {money(Math.max(0, e.totalCents - e.depositCents))}

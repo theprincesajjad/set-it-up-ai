@@ -358,7 +358,8 @@ export async function sendQuote(ctx: AppContext, staff: StaffContext, eventId: s
     title: `${merchant.name}: catering quote ready`,
     body: text,
     sms: body.channels.includes("sms"),
-    data: { type: "catering_quote_sent", cateringEventId: e.id, url },
+    // Shape the WhatsApp listener (services/whatsapp.ts notificationFor) expects for a catering quote.
+    data: { type: "quote_sent", cateringEventId: e.id, eventName: `${row!.eventType.replace(/_/g, " ")} on ${row!.eventDate}`, url },
   });
   if (body.channels.includes("email")) await emailCustomer(ctx, merchant.id, e.userId, `${merchant.name}: your catering quote #${row!.number}`, `${text}\n\nThank you,\n${merchant.name}`);
   return row!;
