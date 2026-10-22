@@ -39,7 +39,15 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
 
   await app.register(cors, { origin: ctx.config.env === "production" ? ctx.config.corsOrigins : true, credentials: true });
   if (ctx.config.env !== "test") {
-    await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
+    // Runs after the auth hook so signed-in traffic is limited per user. The
+    // web app's server-side calls all come from one IP, so keying by IP alone
+    // would throttle every dashboard user together.
+    await app.register(rateLimit, {
+      max: 300,
+      timeWindow: "1 minute",
+      hook: "preHandler",
+      keyGenerator: (req) => (req.authUser ? `user:${req.authUser.id}` : `ip:${req.ip}`),
+    });
   }
 
   app.addHook("onRequest", async (req) => {

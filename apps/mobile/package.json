@@ -68,5 +68,12 @@
     "@types/react-dom": "19.3.0",
     "typescript": "~6.0.3",
     "vitest": "^3.2.4"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@types/react-dom"
+      ]
+    }
   }
 }
