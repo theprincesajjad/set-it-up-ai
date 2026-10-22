@@ -133,6 +133,12 @@ export interface CustomerFeatures {
   referrals: boolean;
   vipLevels: boolean;
   birthdayBonus: boolean;
+  /** Restaurant pack entry points. */
+  tiffin: boolean;
+  catering: boolean;
+  banquet: boolean;
+  whatsapp: boolean;
+  dietaryTags: boolean;
 }
 const CUSTOMER_FEATURE_KEYS = {
   orderAhead: "orders.order_ahead",
@@ -144,6 +150,11 @@ const CUSTOMER_FEATURE_KEYS = {
   referrals: "loyalty.referrals",
   vipLevels: "loyalty.vip_levels",
   birthdayBonus: "loyalty.birthday_bonus",
+  tiffin: "restaurant.tiffin",
+  catering: "restaurant.catering",
+  banquet: "restaurant.banquet",
+  whatsapp: "restaurant.whatsapp_notifications",
+  dietaryTags: "restaurant.dietary_tags",
 } as const satisfies Record<keyof CustomerFeatures, FeatureKey>;
 
 /** Batched: one rollout read + one overrides read for any number of merchants. */

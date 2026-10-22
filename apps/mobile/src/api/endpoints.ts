@@ -12,9 +12,12 @@ import type {
   integrationsApi,
   merchantApi,
   networkApi,
+  restaurantApi,
   serviceApi,
   staffApi,
+  tiffinApi,
   walletApi,
+  whatsappApi,
 } from "@ll/shared";
 import type { ApiClient } from "./client";
 
@@ -84,7 +87,7 @@ export function createEndpoints(c: ApiClient) {
     network: {
       neighbourhoods: () => c.get<networkApi.NeighbourhoodsResponse>("/v1/network/neighbourhoods", { auth: "optional" }),
       neighbourhood: (slug: string) => c.get<networkApi.NeighbourhoodDetailResponse>(`/v1/network/neighbourhoods/${enc(slug)}`, { auth: "optional" }),
-      shops: (q: { lat?: number; lng?: number; neighbourhood?: string; vertical?: string; q?: string; radiusMetres?: number; limit?: number; cursor?: string }) =>
+      shops: (q: { lat?: number; lng?: number; neighbourhood?: string; vertical?: string; q?: string; radiusMetres?: number; halal?: "1" | "all"; limit?: number; cursor?: string }) =>
         c.get<networkApi.ShopsResponse>("/v1/network/shops", { query: q, auth: "optional" }),
       feed: (q: { lat?: number; lng?: number; neighbourhood?: string; limit?: number; cursor?: string }) =>
         c.get<networkApi.FeedResponse>("/v1/network/feed", { query: q, auth: "optional" }),
@@ -123,6 +126,47 @@ export function createEndpoints(c: ApiClient) {
         c.post<serviceApi.ApproveQuoteResponse>(`/v1/public/quotes/${enc(token)}/approve`, { signatureName }, { auth: "none" }),
       publicDeclineQuote: (token: string, reason?: string) => c.post<serviceApi.ApproveQuoteResponse>(`/v1/public/quotes/${enc(token)}/decline`, { reason }, { auth: "none" }),
       payInvoice: (invoiceId: string) => c.post<serviceApi.PayInvoiceResponse>(`/v1/me/invoices/${enc(invoiceId)}/pay`),
+    },
+
+    /** Restaurant pack, customer side (docs/engineering/restaurant-endpoints.md). A 402 means the shop has the feature off. */
+    tiffin: {
+      plans: (slug: string, q: { lang?: string; menuDays?: number } = {}) =>
+        c.get<tiffinApi.PublicPlansResponse>(`/v1/public/shops/${enc(slug)}/tiffin/plans`, { query: q, auth: "optional" }),
+      subscribe: (body: tiffinApi.SubscribeBody, idempotencyKey: string) =>
+        c.post<tiffinApi.SubscribeResponse>("/v1/me/tiffin/subscriptions", body, { idempotencyKey }),
+      subscriptions: (status?: string) => c.get<tiffinApi.MySubscriptionsResponse>("/v1/me/tiffin/subscriptions", { query: { status } }),
+      subscription: (subId: string) => c.get<tiffinApi.MySubscriptionDetailResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}`),
+      update: (subId: string, body: tiffinApi.UpdateMySubscriptionBody) => c.patch<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}`, body),
+      upcoming: (q: { days?: number; subscriptionId?: string } = {}) => c.get<tiffinApi.UpcomingResponse>("/v1/me/tiffin/upcoming", { query: q }),
+      skip: (subId: string, dates: string[]) => c.post<tiffinApi.SkipResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}/skips`, { dates }),
+      unskip: (subId: string, date: string) => c.del<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}/skips/${enc(date)}`),
+      pause: (subId: string, body: tiffinApi.PauseBody) => c.post<tiffinApi.PauseResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}/pause`, body),
+      resume: (subId: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}/resume`),
+      cancel: (subId: string, reason?: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}/cancel`, { reason }),
+      retryPayment: (subId: string) => c.post<tiffinApi.RetryPaymentResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}/retry-payment`),
+    },
+
+    catering: {
+      /** Signed in: the event shows up in My events. */
+      inquire: (body: restaurantApi.CateringInquiryBody & { merchantId: string }) => c.post<restaurantApi.CateringEventDto>("/v1/me/catering", body),
+      events: () => c.get<{ items: restaurantApi.CateringEventDto[]; nextCursor: string | null }>("/v1/me/catering"),
+      event: (eventId: string) => c.get<restaurantApi.CateringEventDto>(`/v1/me/catering/${enc(eventId)}`),
+    },
+
+    banquet: {
+      halls: (slug: string) => c.get<{ items: restaurantApi.HallDto[]; nextCursor: string | null }>(`/v1/public/shops/${enc(slug)}/banquet/halls`, { auth: "optional" }),
+      availability: (slug: string, q: { from: string; to: string; hallId?: string }) =>
+        c.get<restaurantApi.HallAvailabilityResponse>(`/v1/public/shops/${enc(slug)}/banquet/availability`, { query: q, auth: "optional" }),
+      hold: (body: restaurantApi.CreateHoldBody) => c.post<restaurantApi.HoldResponse>("/v1/me/banquet/holds", body),
+      bookings: () => c.get<{ items: restaurantApi.HallBookingDto[]; nextCursor: string | null }>("/v1/me/banquet/bookings"),
+      booking: (bookingId: string) => c.get<{ booking: restaurantApi.HallBookingDto; deposit: restaurantApi.CateringDepositPaymentDto | null }>(`/v1/me/banquet/bookings/${enc(bookingId)}`),
+      cancel: (bookingId: string) => c.post<restaurantApi.HallBookingDto>(`/v1/me/banquet/bookings/${enc(bookingId)}/cancel`),
+    },
+
+    whatsapp: {
+      consent: (merchantId: string) => c.get<whatsappApi.WhatsappConsent>(`/v1/me/merchants/${enc(merchantId)}/whatsapp-consent`),
+      setConsent: (merchantId: string, body: { optIn: boolean; language?: whatsappApi.WaLanguage }) =>
+        c.put<whatsappApi.WhatsappConsent>(`/v1/me/merchants/${enc(merchantId)}/whatsapp-consent`, body),
     },
 
     merchant: {

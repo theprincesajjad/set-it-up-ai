@@ -326,4 +326,3 @@ CREATE INDEX "tiffin_subs_merchant_idx" ON "tiffin_subscriptions" USING btree ("
 CREATE INDEX "tiffin_subs_user_idx" ON "tiffin_subscriptions" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "whatsapp_sessions_uq" ON "whatsapp_sessions" USING btree ("merchant_id","phone");
 --> statement-breakpoint
-ALTER TABLE "merchants" ADD COLUMN "preorder_daily_cap" integer;

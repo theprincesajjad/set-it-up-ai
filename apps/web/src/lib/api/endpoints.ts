@@ -23,8 +23,11 @@ import type {
   serviceApi,
   staffApi,
   walletApi,
+  whatsappApi,
 } from "@ll/shared";
+import type { FestivalDef, FestivalOccurrence, FestivalTemplate, FestivalTradition } from "@ll/shared";
 import type { ApiClient } from "./client";
+import { restaurantOpsEndpoints } from "./restaurantOps";
 
 const enc = encodeURIComponent;
 type Q = Record<string, string | number | boolean | undefined | null>;
@@ -65,6 +68,10 @@ export function llApi(c: ApiClient) {
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
       lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
+      // Restaurant pack: review page (/r/:token) and WhatsApp order pay page (/pay/order/:orderId)
+      review: (token: string) => c.get<whatsappApi.PublicReviewView>(`/v1/public/reviews/${enc(token)}`, { anonymous: true }),
+      submitReview: (token: string, body: whatsappApi.ReviewSubmitBody) => c.post<whatsappApi.ReviewSubmitResponse>(`/v1/public/reviews/${enc(token)}`, body, { anonymous: true }),
+      whatsappPay: (orderId: string, t: string) => c.get<whatsappApi.WhatsappPayView>(`/v1/public/whatsapp/pay/${enc(orderId)}`, { anonymous: true, query: { t } }),
     },
     me: {
       profile: () => c.get<customerApi.ProfileDto>("/v1/me"),
@@ -191,6 +198,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
   const b = `/v1/merchants/${enc(merchantId)}`;
   return {
     base: b,
+    // Restaurant pack: tiffin, catering, banquet (restaurantOps.ts)
+    ...restaurantOpsEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
@@ -357,7 +366,52 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     campaigns: () => c.get<Items<campaignsApi.MerchantCampaign>>(`${b}/campaigns`),
     joinCampaign: (id: string) => c.post<campaignsApi.MerchantCampaign>(`${b}/campaigns/${enc(id)}/join`, {}),
     leaveCampaign: (id: string) => c.delete<campaignsApi.MerchantCampaign>(`${b}/campaigns/${enc(id)}/join`),
+    // Restaurant pack messaging: WhatsApp, reviews, festivals, phone orders
+    whatsapp: {
+      settings: () => c.get<whatsappApi.WhatsappSettings>(`${b}/whatsapp/settings`),
+      saveSettings: (body: whatsappApi.WhatsappSettingsBody) => c.put<whatsappApi.WhatsappSettings>(`${b}/whatsapp/settings`, body),
+      disconnect: () => c.delete<void>(`${b}/whatsapp/connection`),
+      sessions: () => c.get<Items<whatsappApi.WhatsappSession>>(`${b}/whatsapp/sessions`),
+      optIn: (body: whatsappApi.OptInBody) => c.post<whatsappApi.WhatsappConsent>(`${b}/whatsapp/opt-ins`, body),
+      optOut: (phone: string) => c.post<whatsappApi.WhatsappConsent>(`${b}/whatsapp/opt-outs`, { phone }),
+      broadcast: (body: whatsappApi.BroadcastBody) => c.post<whatsappApi.BroadcastResult>(`${b}/whatsapp/broadcasts`, body),
+    },
+    reviews: {
+      list: (q: Q = {}) => c.get<PageOf<whatsappApi.ReviewDto>>(`${b}/reviews`, { query: q }),
+      stats: () => c.get<whatsappApi.ReviewStats>(`${b}/reviews/stats`),
+      saveSettings: (googleReviewUrl: string | null) => c.put<{ googleReviewUrl: string | null }>(`${b}/reviews/settings`, { googleReviewUrl }),
+      request: (orderId: string) => c.post<whatsappApi.ReviewDto>(`${b}/reviews/requests`, { orderId }),
+    },
+    festivals: {
+      upcoming: (days = 90) => c.get<FestivalsUpcoming>(`${b}/festivals/upcoming`, { query: { days } }),
+      catalog: () => c.get<Items<FestivalCatalogEntry>>(`${b}/festivals`),
+      createDraft: (festivalId: string, body: whatsappApi.FestivalDraftBody) => c.post<whatsappApi.FestivalDraftResult>(`${b}/festivals/${enc(festivalId)}/campaign-drafts`, body),
+    },
+    phone: {
+      calls: (q: Q = {}) => c.get<PageOf<whatsappApi.PhoneCallDto>>(`${b}/phone/calls`, { query: q }),
+      call: (id: string) => c.get<whatsappApi.PhoneCallDto>(`${b}/phone/calls/${enc(id)}`),
+      confirm: (id: string, body: whatsappApi.ConfirmCallBody = {}) => c.post<{ call: whatsappApi.PhoneCallDto; order: commerceApi.OrderDto }>(`${b}/phone/calls/${enc(id)}/confirm`, body),
+      discard: (id: string) => c.post<whatsappApi.PhoneCallDto>(`${b}/phone/calls/${enc(id)}/discard`, {}),
+    },
   };
+}
+
+/** GET :m/festivals/upcoming (services/festivals.ts UpcomingFestivals). */
+export interface FestivalsUpcoming {
+  today: string;
+  languages: string[];
+  items: (FestivalOccurrence & { templates: { id: string; label: string }[] })[];
+}
+/** GET :m/festivals (services/festivals.ts listFestivalCatalog). */
+export interface FestivalCatalogEntry {
+  id: string;
+  name: string;
+  tradition: FestivalTradition;
+  approximate: boolean;
+  dateNote: string;
+  greeting: FestivalDef["greeting"];
+  dates: FestivalDef["dates"];
+  templates: FestivalTemplate[];
 }
 
 export type MerchantEndpoints = ReturnType<typeof merchantEndpoints>;

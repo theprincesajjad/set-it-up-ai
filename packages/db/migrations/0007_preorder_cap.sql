@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" ADD COLUMN "preorder_daily_cap" integer;

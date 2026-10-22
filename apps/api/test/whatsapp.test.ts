@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { RESTAURANT_PLANS } from "@ll/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, catalogItems, merchantMembers, merchantStaff, merchants, orders, users, whatsappSessions } from "@ll/db";
 import { extractOrderLines } from "../src/lib/menu-match.js";
@@ -321,8 +322,10 @@ describe("24 hour window and credits", () => {
   });
 
   it("stops at the allowance (plan + add-on pack) and refunds a failed send", async () => {
-    const shop = await restaurantShop(env, "starter"); // 0 included
+    const shop = await restaurantShop(env, "starter");
     await connectWhatsapp(env, shop);
+    const included = RESTAURANT_PLANS.starter.whatsappPerMonth;
+    await env.db.update(merchants).set({ whatsappCreditsUsed: included }).where(eq(merchants.id, shop.merchant.id));
     const send = () => sendWhatsApp(env.ctx, shop.merchant, "+14165550125", { template: { name: "order_ready", params: ["a", "1"] } });
     expect(await send()).toMatchObject({ sent: false, reason: "no_credits" });
     await env.db.update(merchants).set({ whatsappCreditsExtra: 2 }).where(eq(merchants.id, shop.merchant.id));
@@ -330,12 +333,12 @@ describe("24 hour window and credits", () => {
     expect((await send()).sent).toBe(true);
     expect(await send()).toMatchObject({ sent: false, reason: "no_credits" });
     const [m] = await env.db.select().from(merchants).where(eq(merchants.id, shop.merchant.id));
-    expect(whatsappUsage(m!)).toMatchObject({ used: 2, allowance: 2, remaining: 0 });
+    expect(whatsappUsage(m!)).toMatchObject({ used: included + 2, allowance: included + 2, remaining: 0 });
 
-    await env.db.update(merchants).set({ whatsappCreditsExtra: 5, whatsappCreditsUsed: 0 }).where(eq(merchants.id, shop.merchant.id));
+    await env.db.update(merchants).set({ whatsappCreditsExtra: 5, whatsappCreditsUsed: included }).where(eq(merchants.id, shop.merchant.id));
     wa(env).failNext = 1;
     expect(await send()).toMatchObject({ sent: false, reason: "send_failed" });
-    expect((await env.db.select().from(merchants).where(eq(merchants.id, shop.merchant.id)))[0]!.whatsappCreditsUsed).toBe(0);
+    expect((await env.db.select().from(merchants).where(eq(merchants.id, shop.merchant.id)))[0]!.whatsappCreditsUsed).toBe(included);
   });
 
   it("monthly reset renews the plan allowance and burns used pack messages once", async () => {

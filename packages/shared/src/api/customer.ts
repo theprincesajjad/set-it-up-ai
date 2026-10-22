@@ -226,6 +226,15 @@ export interface CustomerFeaturesDto {
   referrals: boolean;
   vipLevels: boolean;
   birthdayBonus: boolean;
+  /**
+   * Restaurant pack entry points (absent from older servers: treat as off). Halal and dietary
+   * claims are the shop's own, so `dietaryTags` only says whether the shop has tagged its menu.
+   */
+  tiffin?: boolean;
+  catering?: boolean;
+  banquet?: boolean;
+  whatsapp?: boolean;
+  dietaryTags?: boolean;
 }
 
 export interface WalletResponse {

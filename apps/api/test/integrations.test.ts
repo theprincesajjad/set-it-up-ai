@@ -335,11 +335,11 @@ describe("POS webhook pipeline (Square)", () => {
     const r = await postSquare(squarePaymentUpdated({ eventId: "lost_1", orderId: "LOST_1" }));
     expect(r.json().results[0].status).toBe("ignored");
     const [ev] = await env.db.select().from(webhookEvents).where(eq(webhookEvents.externalId, "lost_1"));
-    expect(ev!.error).toMatch(/paused: it's a Plus feature/);
+    expect(ev!.error).toMatch(/paused: it's a Café & Retail feature/);
     expect(await memberByPhone(m.merchant.id, m.phone!)).toBeNull();
     const sq = (await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/integrations`, headers: auth(m.ownerToken) })).json().items.find((i: { provider: string }) => i.provider === "square");
     expect(sq).toMatchObject({ status: "connected", locked: true });
-    expect(sq.pausedReason).toMatch(/^Paused: POS auto-award is a Plus feature/);
+    expect(sq.pausedReason).toMatch(/^Paused: POS auto-award is a Café & Retail feature/);
     // Re-enabled → awards again; nothing was deleted.
     await grantFeatures(env, m.merchant.id, ["integrations.pos_auto_award"]);
     expect((await postSquare(squarePaymentUpdated({ eventId: "back_1", orderId: "BACK_1" }))).json().results[0].status).toBe("processed");
