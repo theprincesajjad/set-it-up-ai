@@ -24,7 +24,7 @@ export interface ShopFinderProps {
   neighbourhood?: string | null;
 }
 
-/** /map: network shops near you (geolocation), search and vertical filters. A list first; no map tiles (old phones). */
+/** /map: network shops near you. Map first (maplibre, lazy); the list is one tap away and the fallback when the map can't load. */
 export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood }: ShopFinderProps) {
   const [items, setItems] = useState(initial);
   const [q, setQ] = useState("");
@@ -36,7 +36,8 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const first = useRef(true);
-  const [view, setView] = useState<"list" | "map">("list");
+  const [view, setView] = useState<"list" | "map">("map");
+  const [mapFailed, setMapFailed] = useState(false);
 
   useEffect(() => {
     if (first.current) {
@@ -104,7 +105,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
             ))}
           </ChipGroup>
         ) : null}
-        {verticals.length > 1 ? (
+        {verticals.length > 1 && view === "list" ? (
           <ChipGroup label="Type of shop">
             {verticals.map((v) => {
               const Icon = verticalIcon(v);
@@ -119,8 +120,9 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <div id="list" aria-live="polite" aria-busy={loading}>
-        {view === "map" && items.length ? (
-          <ShopMap items={items} me={coords} />
+        {view === "map" && mapFailed ? <Banner tone="info" className="mb-3">The map couldn&apos;t load on this device, so here&apos;s the list.</Banner> : null}
+        {view === "map" && items.length && !mapFailed ? (
+          <ShopMap items={items} me={coords} onFail={() => setMapFailed(true)} />
         ) : loading && !items.length ? (
           <div className="flex flex-col gap-3">
             <SkeletonCard />
@@ -140,6 +142,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
                       {s.openNow === true ? <span className="text-success">Open now</span> : s.openNow === false ? <span>Closed now</span> : null}
                       {s.isMember && s.myBalance != null ? <span>{formatPoints(s.myBalance, s.terminology)}</span> : null}
                       {s.hasPromo ? <Badge tone="accent">Offer</Badge> : null}
+                      {s.memberCount ? <span>{s.memberCount} neighbours are members</span> : null}
                     </span>
                   }
                 />

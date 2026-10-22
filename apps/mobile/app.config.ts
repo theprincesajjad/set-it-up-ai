@@ -81,6 +81,8 @@ const config: ExpoConfig = {
     ["expo-location", { locationWhenInUsePermission: "See shops near you on the map." }],
     ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#1F6A50" }],
   ],
+  // Expo web is a QA/preview target (screenshots in e2e/); the customer web pass is apps/web.
+  web: { bundler: "metro", output: "single", favicon: "./assets/icon.png" },
   experiments: { typedRoutes: false },
   extra: {
     appVariant: variant,

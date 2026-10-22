@@ -6,10 +6,12 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
 import { Platform } from "react-native";
 import { api } from "../state/api";
 import { KEYS, setJson } from "../state/storage";
+import { openDeepLink } from "./deepLinks";
+
+export { openDeepLink };
 
 export function configureNotifications(): () => void {
   Notifications.setNotificationHandler({
@@ -21,28 +23,6 @@ export function configureNotifications(): () => void {
     if (typeof url === "string") openDeepLink(url);
   });
   return () => sub.remove();
-}
-
-/** ll://shop/<slug> → /shop/<slug>, ll://card → /card, etc. */
-export function openDeepLink(url: string): void {
-  const path = url.replace(/^ll:\/\//, "/").replace(/^https?:\/\/[^/]+/, "");
-  const map: [RegExp, (m: RegExpMatchArray) => string][] = [
-    [/^\/shop\/([^/?#]+)/, (m) => `/shop/${m[1]}`],
-    [/^\/s\/([^/?#]+)/, (m) => `/shop/${m[1]}`],
-    [/^\/card/, () => "/card"],
-    [/^\/rewards/, () => "/rewards"],
-    [/^\/ticket\/([^/?#]+)/, (m) => `/tickets/${m[1]}`],
-    [/^\/order\/([^/?#]+)/, (m) => `/orders/${m[1]}`],
-    [/^\/campaign\/([^/?#]+)/, (m) => `/campaigns/${m[1]}`],
-    [/^\/(?:q|quote)\/([^/?#]+)/, (m) => `/quote/${m[1]}`],
-  ];
-  for (const [re, to] of map) {
-    const m = path.match(re);
-    if (m) {
-      router.push(to(m) as never);
-      return;
-    }
-  }
 }
 
 export type PushResult = "registered" | "denied" | "unavailable";

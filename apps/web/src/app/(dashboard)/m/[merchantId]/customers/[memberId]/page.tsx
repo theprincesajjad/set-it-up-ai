@@ -21,10 +21,10 @@ import { useToast } from "@/components/ui/Toast";
 import { newIdempotencyKey } from "@/lib/api/client";
 import { formatDate, formatDateTime, formatDateYear, formatMoney, formatPoints } from "@/lib/format";
 import { CONSENT_LABEL, consentState, maskPhone } from "@/lib/dashboard/customers";
-import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
+import { sourceLabel } from "@/lib/dashboard/labels";
 
 const REASONS = ["Missed at the counter", "Goodwill", "Correction", "Migration fix", "Other"];
-const SOURCE_LABEL: Record<string, string> = { counter: "Counter", kiosk: "Kiosk", dashboard: "Dashboard", import: "Import", pos: "POS", api: "API", order: "Order", invoice: "Invoice", network: "Network", system: "System" };
 
 export default function CustomerDetailPage() {
   const { memberId } = useParams<{ memberId: string }>();
@@ -58,7 +58,7 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
   const active = rewards.filter((r) => r.active).sort((a, b) => a.pointsCost - b.pointsCost);
   const next = active.find((r) => r.pointsCost > c.balance) ?? active[active.length - 1];
   const rewardName = (id: string) => rewards.find((r) => r.id === id)?.name ?? "Reward";
-  const recentCutoff = Date.now() - 90 * 86_400_000;
+  const recentCutoff = useNow() - 90 * 86_400_000;
 
   return (
     <>
@@ -93,7 +93,7 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
                 <p className="text-overline uppercase text-fg-muted">Balance</p>
                 <p className="text-stat tabular-nums text-fg">{formatPoints(c.balance, term, false)}</p>
                 <p className="text-body-sm text-fg-muted">
-                  {c.visitCount} visits · {formatMoney(c.totalSpendCents)} spent · {formatPoints(c.lifetimePoints, term)} lifetime
+                  {c.visitCount} {c.visitCount === 1 ? "visit" : "visits"} · {formatMoney(c.totalSpendCents)} spent · {formatPoints(c.lifetimePoints, term)} lifetime
                 </p>
                 <p className="text-caption text-fg-muted">{program?.expiryDisclosure}</p>
                 {manager ? (
@@ -115,7 +115,7 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
                     <tr>
                       <th scope="col" className="px-2 py-2 text-start">Date</th>
                       <th scope="col" className="px-2 py-2 text-start">Type</th>
-                      <th scope="col" className="px-2 py-2 text-end">{term}</th>
+                      <th scope="col" className="px-2 py-2 text-end capitalize">{term}</th>
                       <th scope="col" className="hidden px-2 py-2 text-end sm:table-cell">Purchase</th>
                       <th scope="col" className="hidden px-2 py-2 text-start md:table-cell">Source</th>
                       <th scope="col" className="px-2 py-2"><span className="sr-only">Actions</span></th>
@@ -135,7 +135,7 @@ function Detail({ d, rewards, onChange, reload }: { d: merchantApi.CustomerDetai
                           {t.points}
                         </td>
                         <td className="hidden px-2 py-2 text-end tabular-nums sm:table-cell">{t.amountCents != null ? formatMoney(t.amountCents) : "–"}</td>
-                        <td className="hidden px-2 py-2 md:table-cell">{SOURCE_LABEL[t.source] ?? t.source}</td>
+                        <td className="hidden px-2 py-2 md:table-cell">{sourceLabel(t.source)}</td>
                         <td className="px-2 py-2 text-end">
                           {manager && !t.reversedAt && t.type !== "reversal" && new Date(t.createdAt).getTime() > recentCutoff ? (
                             <IconButton icon={Undo2} label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} size={40} onClick={() => setReverseTx(t)} />

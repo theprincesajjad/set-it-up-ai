@@ -1,6 +1,8 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { BRAND } from "@ll/shared";
+import { BRAND, type repApi } from "@ll/shared";
+import { browserApi } from "@/lib/api/browser";
+import { errorMessage } from "@/lib/api/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
@@ -25,37 +27,50 @@ const FIELDS: Record<Kind, { key: string; label: string; type?: "email" | "texta
 };
 
 /**
- * "Book a 20-minute visit" (merchants) and "Talk to us" (BIAs).
- * There is no public lead-capture endpoint yet (leads are rep-only: POST /v1/rep/leads),
- * so this opens a pre-filled email to BRAND.supportEmail and confirms.
+ * "Book a 20-minute visit" (merchants) and "Talk to us" (BIAs): POST /v1/public/leads (no auth,
+ * rate limited per IP). The lead lands in the rep pipeline.
  */
 export function ContactForm({ kind }: { kind: Kind }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
     for (const f of FIELDS[kind]) if (!f.optional && !values[f.key]?.trim()) errs[f.key] = `${f.label} is required.`;
-    if (!toE164(phone)) errs.phone = "Enter a 10-digit mobile number.";
+    const e164 = toE164(phone);
+    if (kind === "visit" && !e164) errs.phone = "Enter a 10-digit mobile number.";
+    if (phone && !e164) errs.phone = "Enter a 10-digit mobile number.";
     setErrors(errs);
     if (Object.keys(errs).length) {
       const first = document.querySelector<HTMLElement>("[aria-invalid=true]");
       first?.focus();
       return;
     }
-    const lines = FIELDS[kind].map((f) => `${f.label}: ${values[f.key] ?? ""}`).concat(`Phone: ${phone}`);
-    const subject = kind === "visit" ? `Book a visit: ${values.shop}` : `BIA campaign: ${values.bia}`;
-    window.location.href = `mailto:${BRAND.supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
-    setSent(true);
+    const body: repApi.PublicLeadBody =
+      kind === "visit"
+        ? { kind: "book_visit", businessName: values.shop!.trim(), contactName: values.owner?.trim(), phone: e164 ?? undefined, message: [`Address: ${values.address ?? ""}`, values.bestTime ? `Best time: ${values.bestTime}` : ""].filter(Boolean).join("\n") }
+        : { kind: "bia", businessName: values.bia!.trim(), contactName: values.name?.trim(), email: values.email?.trim(), phone: e164 ?? undefined, message: values.message?.trim() || undefined };
+    setBusy(true);
+    setFailed(null);
+    try {
+      await browserApi.public.lead(body);
+      setSent(true);
+    } catch (err) {
+      setFailed(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (sent)
     return (
       <Banner tone="success" title={kind === "visit" ? "Thanks. A rep will call you within 1 business day." : "Thanks. We'll get back to you within 1 business day."}>
-        If your email app didn&apos;t open, write to {BRAND.supportEmail}.
+        Questions in the meantime? Write to {BRAND.supportEmail}.
       </Banner>
     );
 
@@ -73,7 +88,8 @@ export function ContactForm({ kind }: { kind: Kind }) {
         />
       ))}
       <PhoneField label="Phone" value={phone} onChangeDigits={setPhone} error={errors.phone} />
-      <Button type="submit" size="lg">
+      {failed ? <Banner tone="danger">{failed} You can also write to {BRAND.supportEmail}.</Banner> : null}
+      <Button type="submit" size="lg" loading={busy}>
         {kind === "visit" ? "Book a visit" : "Talk to us"}
       </Button>
     </form>

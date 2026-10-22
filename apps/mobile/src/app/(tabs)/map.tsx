@@ -272,7 +272,10 @@ export default function Explore() {
 
   // ----------------------------------------------------------- map + sheet
   const detents = [PEEK, Math.round(areaH * 0.5), Math.round(areaH - insets.top - 64)];
-  const center = origin ?? TORONTO;
+  // No location or neighbourhood yet: centre on the shops themselves rather than downtown.
+  const located = all.filter((x) => x.location?.lat != null && x.location?.lng != null);
+  const centroid = located.length ? { lat: located.reduce((a, x) => a + x.location!.lat!, 0) / located.length, lng: located.reduce((a, x) => a + x.location!.lng!, 0) / located.length } : null;
+  const center = origin ?? centroid ?? TORONTO;
   const showSearchArea = !!mapCenter && movedEnough(mapCenter, origin ?? TORONTO);
 
   return (

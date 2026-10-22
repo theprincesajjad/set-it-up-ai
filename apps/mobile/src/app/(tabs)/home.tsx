@@ -175,7 +175,7 @@ export default function Home() {
       <PromoCard
         key={`p-${it.promo.id}`}
         promo={it.promo}
-        shop={{ name: it.merchant.name, vertical: it.merchant.vertical, logoUrl: it.merchant.logoUrl, distanceM: it.distanceMetres }}
+        shop={{ name: it.merchant.name, vertical: it.merchant.vertical, logoUrl: it.merchant.logoUrl, brandColor: it.merchant.brandColor, distanceM: it.distanceMetres }}
         onPress={() => router.push(`/shop/${it.merchant.slug}`)}
         joinLabel={it.isMember ? undefined : "Join"}
         onJoin={it.isMember ? undefined : () => setJoining(it)}
@@ -201,51 +201,6 @@ export default function Home() {
         <Text variant="caption" color="fgMuted">
           {t("misc.updatedAgo", { relativeTime: relativeTime(wallet.dataUpdatedAt) })}
         </Text>
-      ) : null}
-
-      {ready.length > 0 ? (
-        <Section title="Rewards ready" action={<Badge tone="accent">{String(ready.length)}</Badge>}>
-          <FlatList
-            horizontal
-            data={ready}
-            keyExtractor={(x) => `${x.m.id}-${x.r.id}`}
-            showsHorizontalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-            renderItem={({ item }) => (
-              <View style={{ width: 300 }}>
-                <RewardCard reward={item.r} balance={item.m.balance} terminology={item.m.terminology} state="available" shopName={item.m.merchant.name} onRedeem={() => setRedeeming({ m: item.m, r: item.r })} />
-              </View>
-            )}
-          />
-        </Section>
-      ) : null}
-
-      {inProgress.length > 0 ? (
-        <Section title="In progress">
-          <Card padded={false} style={{ paddingHorizontal: 16 }}>
-            {inProgress.slice(0, 4).map((row) =>
-              row.kind === "ticket" ? (
-                <ListRow
-                  key={row.x.id}
-                  leadingIcon={Ticket}
-                  title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
-                  subtitle={row.x.merchantName}
-                  trailing={<Badge tone={row.x.status === "quote_sent" ? "warning" : row.x.status === "ready" ? "success" : "info"}>{row.x.status === "quote_sent" ? "Needs your approval" : TICKET_STATUS_LABELS[row.x.status]}</Badge>}
-                  onPress={() => router.push(`/tickets/${row.x.id}`)}
-                />
-              ) : (
-                <ListRow
-                  key={row.x.id}
-                  leadingIcon={Store}
-                  title={`Pickup order #${row.x.number}`}
-                  subtitle={row.x.merchantName}
-                  trailing={<Badge tone={row.x.status === "ready" ? "success" : row.x.status === "pending" ? "warning" : "info"}>{ORDER_STATUS_LABELS[row.x.status]}</Badge>}
-                  onPress={() => router.push(`/orders/${row.x.id}`)}
-                />
-              ),
-            )}
-          </Card>
-        </Section>
       ) : null}
 
       {memberships.length > 0 ? (
@@ -275,6 +230,55 @@ export default function Home() {
         ))}
       </View>
 
+      {ready.length > 0 ? (
+        <Section title="Rewards ready" action={<Badge tone="accent">{String(ready.length)}</Badge>}>
+          <FlatList
+            horizontal
+            style={styles.bleed}
+            contentContainerStyle={styles.bleedContent}
+            data={ready}
+            keyExtractor={(x) => `${x.m.id}-${x.r.id}`}
+            showsHorizontalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+            renderItem={({ item }) => (
+              <View style={{ width: 296 }}>
+                <RewardCard reward={item.r} balance={item.m.balance} terminology={item.m.terminology} vertical={item.m.merchant.vertical} state="available" shopName={item.m.merchant.name} onRedeem={() => setRedeeming({ m: item.m, r: item.r })} />
+              </View>
+            )}
+          />
+        </Section>
+      ) : null}
+
+      {inProgress.length > 0 ? (
+        <Section title="In progress">
+          <Card padded={false} style={{ paddingHorizontal: 16 }}>
+            {inProgress.slice(0, 4).map((row, i, shown) =>
+              row.kind === "ticket" ? (
+                <ListRow
+                  key={row.x.id}
+                  divider={i < shown.length - 1}
+                  leadingIcon={Ticket}
+                  title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
+                  subtitle={row.x.merchantName}
+                  trailing={<Badge tone={row.x.status === "quote_sent" ? "warning" : row.x.status === "ready" ? "success" : "info"}>{row.x.status === "quote_sent" ? "Needs your approval" : TICKET_STATUS_LABELS[row.x.status]}</Badge>}
+                  onPress={() => router.push(`/tickets/${row.x.id}`)}
+                />
+              ) : (
+                <ListRow
+                  key={row.x.id}
+                  divider={i < shown.length - 1}
+                  leadingIcon={Store}
+                  title={`Pickup order #${row.x.number}`}
+                  subtitle={row.x.merchantName}
+                  trailing={<Badge tone={row.x.status === "ready" ? "success" : row.x.status === "pending" ? "warning" : "info"}>{ORDER_STATUS_LABELS[row.x.status]}</Badge>}
+                  onPress={() => router.push(`/orders/${row.x.id}`)}
+                />
+              ),
+            )}
+          </Card>
+        </Section>
+      ) : null}
+
       <Section
         title="My shops"
         action={sorted.length > 0 ? <Button variant="ghost" size="sm" onPress={() => setShowAll((v) => !v)}>{showAll ? "Show less" : `See all ${sorted.length}`}</Button> : undefined}
@@ -296,7 +300,7 @@ export default function Home() {
             <ShopTile
               key={m.id}
               variant="wallet"
-              shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl }}
+              shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }}
               balance={{ value: m.balance, terminology: m.terminology }}
               subtitle={progressLine(m)}
               rewardReady={m.rewardsAvailableCount > 0}
@@ -307,16 +311,18 @@ export default function Home() {
         ) : (
           <FlatList
             horizontal
+            style={styles.bleed}
+            contentContainerStyle={styles.bleedContent}
             data={sorted}
             keyExtractor={(m) => m.id}
             showsHorizontalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
             renderItem={({ item: m }) => (
-              <Card accentEdge={m.rewardsAvailableCount > 0} onPress={() => router.push(`/shop/${m.merchant.slug}`)} accessibilityLabel={`${m.merchant.name}. ${m.balance} ${m.terminology}. ${progressLine(m)}`} style={{ width: 220 }}>
-                <View style={{ gap: 10 }}>
+              <Card accentEdge={m.rewardsAvailableCount > 0} onPress={() => router.push(`/shop/${m.merchant.slug}`)} accessibilityLabel={`${m.merchant.name}. ${m.balance} ${m.terminology}. ${progressLine(m)}`} style={{ width: 228, minHeight: 172 }}>
+                <View style={{ gap: 10, flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <ShopLogo shop={m.merchant} size={40} />
-                    <Text variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
+                    <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
                       {m.merchant.name}
                     </Text>
                   </View>
@@ -352,7 +358,7 @@ export default function Home() {
       {perk && perkState ? <PerkCard headline={perkHeadline(perk, hoodName)} {...perkState} /> : null}
 
       <Section title="Nearby promos">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={[styles.bleedContent, { gap: 8 }]}>
           {FILTERS.map((f) => (
             <Chip key={f.key} label={f.label} selected={filter === f.key} onPress={() => setFilter(f.key)} />
           ))}
@@ -381,7 +387,7 @@ export default function Home() {
         <JoinSheet
           visible
           onClose={() => setJoining(null)}
-          shop={{ id: joining.merchant.id, name: joining.merchant.name, vertical: joining.merchant.vertical, logoUrl: joining.merchant.logoUrl }}
+          shop={{ id: joining.merchant.id, name: joining.merchant.name, vertical: joining.merchant.vertical, logoUrl: joining.merchant.logoUrl, brandColor: joining.merchant.brandColor }}
           onJoined={() => feed.refetch()}
         />
       ) : null}
@@ -424,7 +430,9 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: "center", gap: 8, paddingVertical: 8 },
+  hero: { alignItems: "center", gap: 8, paddingTop: 4, paddingBottom: 4 },
+  bleed: { marginHorizontal: -16 },
+  bleedContent: { paddingHorizontal: 16 },
   pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   shortcuts: { flexDirection: "row", justifyContent: "space-between" },
   shortcut: { flex: 1, alignItems: "center", gap: 6, minHeight: 72 },

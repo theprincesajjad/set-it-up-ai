@@ -40,7 +40,8 @@ export function StampCard({
   const { c, vertical: vfn } = useTheme();
   const { width } = useWindowDimensions();
   const g = Math.max(1, goal);
-  const filled = count > 0 && count % g === 0 ? g : count % g;
+  // Stamps are a balance: a full card is a reward ready; extra stamps carry over to the next card.
+  const filled = Math.min(Math.max(0, count), g);
   const carry = count > g ? count - g : 0;
   const cols = stampColumns(g);
   const slot = Math.max(compact ? 32 : 44, Math.min(56, Math.floor((Math.min(width, 480) - 64 - (cols - 1) * 12) / cols)));
@@ -60,13 +61,13 @@ export function StampCard({
   return (
     <View
       accessible
-      accessibilityLabel={`${filled} of ${g} stamps.${rewardName ? (toGo === 0 ? ` ${rewardName} is ready.` : ` ${toGo} more for a ${reward}.`) : ""}`}
+      accessibilityLabel={`${filled} of ${g} stamps.${toGo === 0 ? ` ${rewardName ?? "Reward"} is ready.` : rewardName ? ` ${toGo} more for a ${reward}.` : ""}${carry > 0 ? ` ${carry} extra carry over.` : ""}`}
       style={{ gap: 12, alignSelf: "stretch" }}
     >
       <View style={styles.head}>
-        {!compact && rewardName ? (
+        {!compact && (rewardName || toGo === 0) ? (
           <Text variant="bodyStrong" style={{ flex: 1 }}>
-            {toGo === 0 ? `${rewardName} is ready` : `${toGo} more for a ${reward}`}
+            {toGo === 0 ? `${rewardName ?? "Reward"} is ready` : `${toGo} more for a ${reward}`}
           </Text>
         ) : (
           <View style={{ flex: 1 }} />
@@ -116,7 +117,7 @@ export function StampCard({
         })}
       </View>
       {carry > 0 && !compact ? (
-        <Text variant="bodySm" color="fgMuted">{`+${carry} on your next card`}</Text>
+        <Text variant="bodySm" color="fgMuted">{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
       ) : null}
     </View>
   );

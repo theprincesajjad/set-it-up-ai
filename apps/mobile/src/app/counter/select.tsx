@@ -10,11 +10,16 @@ import { Avatar, Banner, Button, Card, EmptyState, ListRow, MapPin, Screen, Sect
 /** Pick merchant + location; optionally lock this device to the shop's counter (shared device → PIN switcher). */
 export default function SelectCounter() {
   const { merchants, refreshMe, user, setMode, signOut } = useSession();
-  const { config, setConfig, setDeviceStaff } = useCounter();
+  const { config, setConfig, setDeviceStaff, ready } = useCounter();
   useEffect(() => {
     void refreshMe();
   }, [refreshMe]);
   const merchantId = config.merchantId;
+  // Most staff work at one shop: pick it for them so the next tap is the location.
+  const only = merchants.length === 1 ? merchants[0] : null;
+  useEffect(() => {
+    if (ready && !merchantId && only) setConfig({ merchantId: only.merchantId, merchantName: only.name, locationId: null, locationName: null });
+  }, [ready, merchantId, only, setConfig]);
   const detail = useQuery({ queryKey: ["counter", "select", merchantId ?? ""], queryFn: () => api.merchant.detail(merchantId!), enabled: !!merchantId });
   const locations = (detail.data?.locations ?? []).filter((l) => l.active);
 
@@ -52,9 +57,10 @@ export default function SelectCounter() {
         <>
           <Section title="Shop">
             <Card padded={false} style={{ paddingHorizontal: 16 }}>
-              {merchants.map((m) => (
+              {merchants.map((m, i) => (
                 <ListRow
                   key={m.merchantId}
+                  divider={i < merchants.length - 1}
                   leading={<ShopLogo shop={{ name: m.name, vertical: "other", logoUrl: m.logoUrl }} size={40} />}
                   title={m.name}
                   subtitle={`${m.role.charAt(0).toUpperCase()}${m.role.slice(1)}${m.status === "paused" ? " · Program paused" : ""}`}
@@ -73,8 +79,8 @@ export default function SelectCounter() {
                 <Banner variant="warning">This shop has no active locations. Add one in the dashboard.</Banner>
               ) : (
                 <Card padded={false} style={{ paddingHorizontal: 16 }}>
-                  {locations.map((l) => (
-                    <ListRow key={l.id} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} chevron onPress={() => start(l.id, l.name)} />
+                  {locations.map((l, i) => (
+                    <ListRow key={l.id} divider={i < locations.length - 1} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} chevron onPress={() => start(l.id, l.name)} />
                   ))}
                 </Card>
               )}

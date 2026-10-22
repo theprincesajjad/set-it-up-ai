@@ -60,6 +60,8 @@ export interface FlushResult {
   retrying: number;
   /** The request itself failed (offline). */
   networkError: boolean;
+  /** Items sent in this flush: idempotency key → the server's transaction id (for Undo / the recent strip). */
+  sentKeys: Record<string, string | null>;
 }
 
 export interface QueueSnapshot {
@@ -193,7 +195,7 @@ export class OfflineQueue {
   private async doFlush(send: SendBatch, force: boolean): Promise<FlushResult> {
     await this.load();
     const t = this.now();
-    const result: FlushResult = { sent: 0, failed: 0, retrying: 0, networkError: false };
+    const result: FlushResult = { sent: 0, failed: 0, retrying: 0, networkError: false, sentKeys: {} };
     const due = this.items.filter((i) => i.status === "waiting" && (force || i.nextAttemptAt <= t));
     if (due.length === 0) return result;
 
@@ -248,6 +250,7 @@ export class OfflineQueue {
           } else if (!("error" in r)) {
             sentIds.add(item.id);
             result.sent += 1;
+            result.sentKeys[item.id] = (r as { result?: { transactionId?: string | null } }).result?.transactionId ?? null;
           } else if (isRetryableSyncError(r.error.code)) {
             item.status = "waiting";
             item.attempts += 1;

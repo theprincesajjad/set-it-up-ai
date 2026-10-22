@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, Platform, Pressable, Share, View } from "react-native";
 import { t } from "../../copy/en-CA";
-import { useMembershipDetail, useOrderAhead, usePhase2, useWallet } from "../../features/customer/queries";
+import { useMembershipDetail, usePhase2, useWallet } from "../../features/customer/queries";
 import { JoinSheet, RedeemConfirmSheet } from "../../features/customer/sheets";
 import { formatPts, termWord } from "../../lib/award";
 import { formatDayTime, formatDistance, hoursRows, openStatus } from "../../lib/format";
@@ -43,8 +43,10 @@ import {
   useToast,
   ShoppingBag,
   UserPlus,
+  Users,
 } from "../../ui";
 import { activityTitle } from "../../lib/activity";
+import { displayPhone } from "../../lib/phone";
 
 /** 3. Shop detail. */
 export default function ShopDetail() {
@@ -56,13 +58,12 @@ export default function ShopDetail() {
   const wallet = useWallet();
   const membership = wallet.data?.items.find((m) => m.merchant.slug === slug) ?? null;
   const detail = useMembershipDetail(membership?.id);
-  const menu = useOrderAhead(slug);
   const phase2 = usePhase2();
   const [joining, setJoining] = useState(false);
   const [redeeming, setRedeeming] = useState<customerApi.MemberRewardDto | null>(null);
   const [muting, setMuting] = useState(false);
   const [tab, setTab] = useState<"rewards" | "promos" | "about">("rewards");
-  const { vertical } = useTheme();
+  const { c, vertical } = useTheme();
   const { prefs } = useSession();
   const locState = useDeviceLocation(prefs.locationPrompted);
 
@@ -88,6 +89,10 @@ export default function ShopDetail() {
   const term = m?.terminology ?? program?.terminology ?? "points";
   const paused = m && !m.program;
   const myTickets = phase2.tickets.filter((x) => x.merchantId === s.merchant.id);
+  // Entry points come from the shop's feature flags (GET /v1/public/shops/:slug → features).
+  const orderAhead = !!s.features?.orderAhead;
+  const ticketsOn = !!s.features?.serviceTickets || myTickets.length > 0;
+  const neighbours = s.memberCount != null ? `${s.memberCount.toLocaleString("en-CA")} neighbours are members` : null;
 
   const directions = () => {
     if (!loc) return;
@@ -124,6 +129,7 @@ export default function ShopDetail() {
   return (
     <Screen
       back
+      floatingBack
       refreshing={shop.isRefetching}
       onRefresh={() => Promise.all([shop.refetch(), detail.refetch(), wallet.refetch()])}
       contentStyle={{ paddingHorizontal: 0 }}
@@ -135,7 +141,7 @@ export default function ShopDetail() {
         ) : undefined
       }
     >
-      <ShopTile variant="hero" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, coverUrl: s.merchant.coverUrl }} muted={m?.muted} />
+      <ShopTile variant="hero" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor, coverUrl: s.merchant.coverUrl }} muted={m?.muted} />
       <View style={{ paddingHorizontal: 16, gap: 20, marginTop: -16 }}>
         <View style={{ gap: 8 }}>
           <Text variant="bodySm" color="fgMuted">
@@ -171,7 +177,7 @@ export default function ShopDetail() {
             </View>
             {program?.earnType === "stamps" ? (
               <View style={{ marginTop: 12 }}>
-                <StampCard count={m.balance} goal={program.stampGoal || 10} vertical={s.merchant.vertical} logoUrl={s.merchant.logoUrl} rewardName={m.nextReward?.name ?? null} />
+                <StampCard count={m.balance} goal={program.stampGoal || 10} vertical={s.merchant.vertical} logoUrl={s.merchant.logoUrl} rewardName={m.nextReward?.name ?? rewardsList.find((r) => r.affordable)?.name ?? null} />
               </View>
             ) : m.nextReward ? (
               <Text variant="bodySm" style={{ marginTop: 8 }}>
@@ -190,6 +196,14 @@ export default function ShopDetail() {
             <Text variant="title">Earn here</Text>
             <Text>{earnLine ?? "Show your card at the counter to earn."}</Text>
             {program?.welcomeBonus ? <Text color="fgMuted">{`Get ${formatPts(program.welcomeBonus, term)} when you join.`}</Text> : null}
+            {neighbours ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Users size={16} color={c.fgMuted} />
+                <Text variant="bodySm" color="fgMuted">
+                  {neighbours}
+                </Text>
+              </View>
+            ) : null}
             <Text variant="bodySm" color="fgMuted">
               {program?.expiryDisclosure ?? t("misc.pointsNeverExpire", { terminology: termWord(term) })}
             </Text>
@@ -204,7 +218,7 @@ export default function ShopDetail() {
             onAction={() =>
               router.push({
                 pathname: "/redeem",
-                params: { redemptionId: r.id, code: r.code, rewardName: r.rewardName, createdAt: r.createdAt, memberId: m!.id, shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "", slug: s.merchant.slug },
+                params: { redemptionId: r.id, code: r.code, rewardName: r.rewardName, createdAt: r.createdAt, expiresAt: r.expiresAt ?? "none", memberId: m!.id, shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "", brandColor: s.merchant.brandColor ?? "", slug: s.merchant.slug },
               })
             }
           >
@@ -224,7 +238,7 @@ export default function ShopDetail() {
         />
 
         {tab === "rewards" ? (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 16 }}>
             {rewardsList.length === 0 ? <Text color="fgMuted">This shop hasn't added rewards yet.</Text> : null}
             {[...rewardsList]
               .sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)
@@ -234,19 +248,28 @@ export default function ShopDetail() {
                   reward={r}
                   balance={m?.balance ?? 0}
                   terminology={term}
+                  vertical={s.merchant.vertical}
                   state={m && r.affordable ? "available" : "locked"}
                   disabledReason={online ? null : t("err.redeem.offlineCustomer")}
                   onRedeem={() => setRedeeming(r)}
                 />
               ))}
-            {menu.data || myTickets.length > 0 ? (
+            {orderAhead || ticketsOn ? (
               <Section title="Order and services">
-                {menu.data ? (
+                {orderAhead ? (
                   <Button iconStart={ShoppingBag} size="lg" fullWidth onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)}>
                     Order ahead
                   </Button>
                 ) : null}
-                {myTickets.length > 0 ? <ListRow leadingIcon={Ticket} title="My tickets here" subtitle={`${myTickets.length} repair${myTickets.length === 1 ? "" : "s"}`} chevron onPress={() => router.push("/orders")} /> : null}
+                {ticketsOn ? (
+                  <ListRow
+                    leadingIcon={Ticket}
+                    title="My tickets here"
+                    subtitle={myTickets.length > 0 ? `${myTickets.length} repair${myTickets.length === 1 ? "" : "s"}` : "Drop off at the counter, then track it here"}
+                    chevron
+                    onPress={() => router.push("/orders")}
+                  />
+                ) : null}
               </Section>
             ) : null}
             {m && (m.program?.referralBonus ?? 0) > 0 ? (
@@ -271,7 +294,7 @@ export default function ShopDetail() {
           <View style={{ gap: 12 }}>
             {s.promos.length === 0 && discountCards.length === 0 ? <Text color="fgMuted">No offers right now.</Text> : null}
             {s.promos.map((p) => (
-              <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl }} />
+              <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
             ))}
             {discountCards.map((dc) => (
               <Pressable
@@ -318,7 +341,8 @@ export default function ShopDetail() {
               </Section>
             ) : null}
             {s.merchant.instagram ? <ListRow title="Instagram" subtitle={s.merchant.instagram} chevron onPress={() => Linking.openURL(s.merchant.instagram!.startsWith("http") ? s.merchant.instagram! : `https://instagram.com/${s.merchant.instagram!.replace(/^@/, "")}`)} /> : null}
-            {s.merchant.phone ? <ListRow title="Phone" subtitle={s.merchant.phone} chevron onPress={() => Linking.openURL(`tel:${s.merchant.phone}`)} /> : null}
+            {s.merchant.phone ? <ListRow title="Phone" subtitle={displayPhone(s.merchant.phone)} chevron onPress={() => Linking.openURL(`tel:${s.merchant.phone}`)} /> : null}
+            {neighbours ? <ListRow leadingIcon={Users} title={neighbours} /> : null}
           </View>
         ) : null}
       </View>
@@ -326,7 +350,7 @@ export default function ShopDetail() {
         <JoinSheet
           visible
           onClose={() => setJoining(false)}
-          shop={{ id: s.merchant.id, name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, consentText: s.consentText }}
+          shop={{ id: s.merchant.id, name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor, consentText: s.consentText }}
           welcomeBonus={program?.welcomeBonus}
           terminology={term}
         />

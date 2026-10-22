@@ -109,8 +109,8 @@ export interface PreviewReward {
 }
 
 export type PreviewModel =
-  | { kind: "stamps"; stamps: number; goal: number; rewardName: string; terminology: string; expiry: string; sentence: string; rewards: PreviewReward[]; welcome: string | null }
-  | { kind: "points"; balance: number; goal: number; rewardName: string | null; terminology: string; expiry: string; sentence: string; rewards: PreviewReward[]; welcome: string | null };
+  | { kind: "stamps"; stamps: number; goal: number; rewardName: string; terminology: string; expiry: string; sentence: string; rewards: PreviewReward[]; welcome: string | null; lastEarn: number }
+  | { kind: "points"; balance: number; goal: number; rewardName: string | null; terminology: string; expiry: string; sentence: string; rewards: PreviewReward[]; welcome: string | null; lastEarn: number };
 
 /**
  * What the customer sees with the draft values. `sampleVisits` simulates a regular
@@ -124,12 +124,12 @@ export function previewModel(d: ProgramDraft, rewards: PreviewReward[], sample =
   if (d.earnType === "stamps") {
     const goal = clampStampGoal(d.stampGoal);
     const stamps = Math.min(goal - 1, d.welcomeBonus + sample.visits * Math.max(1, d.pointsPerVisit));
-    return { kind: "stamps", stamps: Math.max(0, stamps), goal, rewardName: active[0]?.name ?? "Free reward", terminology: d.terminology, expiry, sentence, rewards: active, welcome };
+    return { kind: "stamps", stamps: Math.max(0, stamps), goal, rewardName: active[0]?.name ?? "Free reward", terminology: d.terminology, expiry, sentence, rewards: active, welcome, lastEarn: Math.max(1, d.pointsPerVisit) };
   }
   const perVisit = d.earnType === "per_visit" ? d.pointsPerVisit : Math.floor((sample.spendCents / 100) * d.pointsPerDollar);
   const earned = d.welcomeBonus + sample.visits * Math.max(0, perVisit);
   const next = active.find((r) => r.pointsCost > earned) ?? active[active.length - 1];
-  return { kind: "points", balance: earned, goal: next?.pointsCost ?? 0, rewardName: next?.name ?? null, terminology: d.terminology, expiry, sentence, rewards: active, welcome };
+  return { kind: "points", balance: earned, goal: next?.pointsCost ?? 0, rewardName: next?.name ?? null, terminology: d.terminology, expiry, sentence, rewards: active, welcome, lastEarn: Math.max(0, perVisit) };
 }
 
 /** Only changed fields, for PATCH /program. */

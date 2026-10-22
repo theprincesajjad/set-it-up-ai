@@ -74,7 +74,7 @@ export function EntryDisplay({ text, placeholder, error }: { text: string; place
   );
 }
 
-export function CustomerCard({ customer, program, vertical, onRedeem, cooldown }: { customer: CounterCustomer; program: CounterProgram | null; vertical: string; onRedeem?: () => void; cooldown?: string | null }) {
+export function CustomerCard({ customer, program, vertical, onRedeem, onCode, cooldown }: { customer: CounterCustomer; program: CounterProgram | null; vertical: string; onRedeem?: () => void; onCode?: () => void; cooldown?: string | null }) {
   const { c } = useTheme();
   if (customer.kind === "new") {
     return (
@@ -126,7 +126,9 @@ export function CustomerCard({ customer, program, vertical, onRedeem, cooldown }
       {program?.earnType === "stamps" && program.stampGoal > 0 ? (
         <StampCard count={m.balance} goal={program.stampGoal} vertical={vertical} compact />
       ) : null}
-      <Text variant="title">{program?.earnType === "stamps" ? `${m.balance} of ${program.stampGoal} ${m.terminology}` : formatPts(m.balance, m.terminology)}</Text>
+      <Text variant="title" tabular>
+        {program?.earnType === "stamps" && m.balance <= program.stampGoal ? `${m.balance} of ${program.stampGoal} ${m.terminology}` : formatPts(m.balance, m.terminology)}
+      </Text>
       {ready ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`Reward ready: ${ready.name}. Redeem`} onPress={onRedeem}>
           <View style={[styles.ready, { backgroundColor: c.accent }]}>
@@ -139,7 +141,11 @@ export function CustomerCard({ customer, program, vertical, onRedeem, cooldown }
       ) : m.nextReward ? (
         <Text variant="bodySm" color="fgMuted">{`${formatPts(m.nextReward.pointsNeeded, m.terminology)} to ${m.nextReward.name}`}</Text>
       ) : null}
-      {m.openRedemptionCount > 0 ? <Banner variant="info">They have a reward code from the app. Tap Code to confirm it.</Banner> : null}
+      {m.openRedemptionCount > 0 ? (
+        <Banner variant="info" actionLabel={onCode ? "Enter code" : undefined} onAction={onCode}>
+          They have a reward code from the app.
+        </Banner>
+      ) : null}
       {cooldown ? <Banner variant="warning">{cooldown}</Banner> : null}
     </View>
   );
@@ -201,7 +207,8 @@ export function SuccessCard({
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {view.offline ? <Clock3 size={24} color={fg} /> : null}
-          <Text variant="counterHero" rawColor={fg} center maxFontSizeMultiplier={1.4}>
+          {/* "9 / 10" fills the card; a longer "1,240 pts" / "88 stamps" steps down so it stays on one line. */}
+          <Text variant="counterHero" rawColor={fg} center maxFontSizeMultiplier={1.4} numberOfLines={1} adjustsFontSizeToFit style={view.hero.length > 7 ? { fontSize: 52, lineHeight: 60 } : null}>
             {view.hero}
           </Text>
         </View>

@@ -22,7 +22,9 @@ export function useApi<T>(fn: (() => Promise<T>) | null, deps: DependencyList, o
   const [status, setStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(fn !== null);
   const fnRef = useRef(fn);
-  fnRef.current = fn;
+  useEffect(() => {
+    fnRef.current = fn;
+  });
   const seq = useRef(0);
 
   const run = useCallback(async (quiet = false) => {
@@ -77,4 +79,10 @@ export function useAction() {
     }
   }, []);
   return { busy, error, setError, run };
+}
+
+/** Current time, fixed for the component's lifetime (render-pure "now" for display math). */
+export function useNow(): number {
+  const [now] = useState(() => Date.now());
+  return now;
 }

@@ -142,6 +142,11 @@ export function CounterProvider({ children }: { children: ReactNode }) {
     async (force = false) => {
       if (!merchantId) return;
       const res = await queue.flush((mId, events) => api.counter.sync(mId, events), { force });
+      const sent = res.sentKeys ?? {};
+      if (Object.keys(sent).length > 0) {
+        // Recent strip: "Waiting" → sent, with the real transaction id so Undo works from Today.
+        setRecent((prev) => prev.map((r) => (r.queued && r.key in sent ? { ...r, queued: false, transactionId: sent[r.key] ?? null } : r)));
+      }
       if (res.sent > 0) {
         setSentJustNow(res.sent);
         setTimeout(() => setSentJustNow(0), 2000);

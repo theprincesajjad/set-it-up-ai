@@ -20,10 +20,12 @@ import { wireQueryOnlineManager } from "../state/network";
 import { queryClient, queryPersister } from "../state/query";
 import { SessionProvider } from "../state/session";
 import { ThemeProvider } from "../theme";
+import { installWebStyles } from "../theme/webStyles";
 import { ToastProvider } from "../ui";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 wireQueryOnlineManager();
+installWebStyles();
 
 export default function RootLayout() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";

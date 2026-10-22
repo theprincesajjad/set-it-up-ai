@@ -1,6 +1,6 @@
 import { Check, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
-import { BRAND, FEATURES, FEATURE_KEYS, FREE_FOREVER, PLANS, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type FeatureKey, type PlanId } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FREE_FOREVER, PLANS, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type FeatureKey, type PlanId } from "@ll/shared";
 import { Faq } from "@/components/marketing/Faq";
 import { MSection } from "@/components/marketing/Section";
 import { Badge, ComingSoonBadge } from "@/components/ui/Badge";
@@ -28,15 +28,17 @@ const GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
   { title: "Team", match: (k) => k.startsWith("staff.") || k.startsWith("locations.") },
 ];
 
-/** Network size vs the first paid unlock threshold (live; hidden when the API is unavailable). */
-async function networkProgress(): Promise<{ current: number; target: number } | null> {
+const PLUS_TARGET = Math.min(...FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === "plus").map((k) => FEATURES[k].unlockAtMerchants));
+
+/** Real plan availability + network stats from GET /v1/public/plans; shared defaults when the API is down. */
+async function publicPlans(): Promise<{ available: Record<PlanId, boolean>; progress: { current: number; target: number; neighbourhoods: number } | null }> {
   try {
-    const { items } = await publicServerApi().network.neighbourhoods();
-    const current = items.reduce((n, h) => n + h.shopCount, 0);
-    const target = Math.min(...FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === "plus").map((k) => FEATURES[k].unlockAtMerchants));
-    return { current, target };
+    const r = await publicServerApi().public.plans();
+    const available = { free: true, plus: false, pro: false } as Record<PlanId, boolean>;
+    for (const p of r.items) available[p.id] = p.available;
+    return { available, progress: { current: r.network.activeMerchants, target: PLUS_TARGET, neighbourhoods: r.network.neighbourhoods } };
   } catch {
-    return null;
+    return { available: { free: true, plus: isPlanAvailable("plus", {}), pro: isPlanAvailable("pro", {}) }, progress: null };
   }
 }
 
@@ -67,8 +69,8 @@ function PlanCard({ id, available }: { id: PlanId; available: boolean }) {
             {`Start ${plan.name}`}
           </Button>
         ) : (
-          <Button variant="tonal" fullWidth size="lg" href={`mailto:${BRAND.supportEmail}?subject=${encodeURIComponent(`Notify me: ${plan.name}`)}`}>
-            Notify me
+          <Button variant="tonal" fullWidth size="lg" href="/signup">
+            Start free, get notified
           </Button>
         )}
       </div>
@@ -118,9 +120,7 @@ function PlanCard({ id, available }: { id: PlanId; available: boolean }) {
 }
 
 export default async function PricingPage() {
-  const progress = await networkProgress();
-  // No public rollout endpoint yet: availability comes from the shared defaults (admins flip stages server-side).
-  const available = { free: true, plus: isPlanAvailable("plus", {}), pro: isPlanAvailable("pro", {}) };
+  const { available, progress } = await publicPlans();
   const feePct = (PLATFORM_PAYMENT_FEE_BPS / 100).toFixed(2).replace(/0$/, "");
   return (
     <>
@@ -138,7 +138,7 @@ export default async function PricingPage() {
         </div>
         <div className="mx-auto mt-10 flex max-w-3xl flex-col gap-6 px-4 md:px-8">
           <p className="text-body text-fg-muted">{copy.soon.pricingNote}</p>
-          {progress ? <ProgressBar value={Math.min(progress.current, progress.target)} max={progress.target} label="Shops on the network" valueText={`${progress.current} of ${progress.target} shops`} /> : null}
+          {progress ? <ProgressBar value={Math.min(progress.current, progress.target)} max={progress.target} label="Active shops on the network" valueText={`${progress.current} of ${progress.target} shops · ${progress.neighbourhoods} neighbourhoods`} /> : null}
           <p className="text-body text-fg">
             <span className="font-semibold">Payments:</span> In-app payments (Plus and Pro): Stripe&apos;s standard fee plus {feePct}%. The Free plan has no payments and no fees.
           </p>

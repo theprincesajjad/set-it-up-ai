@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { staffApi } from "@ll/shared";
 import {
+  awardQuantity,
+  quantityChips,
   activeMultiplier,
   awardButtonLabel,
   awardRef,
@@ -259,5 +261,25 @@ describe("formatting", () => {
   it("short names", () => {
     expect(shortName("Alex Chen")).toBe("Alex C.");
     expect(shortName(null)).toBe("Customer");
+  });
+});
+
+describe("award quantity (+2 / +3 chips)", () => {
+  it("offers chips for visit and stamp programs only", () => {
+    expect(quantityChips({ earnType: "stamps" })).toEqual([2, 3]);
+    expect(quantityChips({ earnType: "per_visit" })).toEqual([2, 3]);
+    expect(quantityChips({ earnType: "per_dollar" })).toEqual([]);
+    expect(quantityChips(null)).toEqual([]);
+  });
+  it("sends quantity only when > 1, capped at 10, never for per-dollar", () => {
+    expect(awardQuantity({ earnType: "stamps" }, 1)).toEqual({});
+    expect(awardQuantity({ earnType: "stamps" }, 3)).toEqual({ quantity: 3 });
+    expect(awardQuantity({ earnType: "per_visit" }, 25)).toEqual({ quantity: 10 });
+    expect(awardQuantity({ earnType: "per_dollar" }, 3)).toEqual({});
+  });
+  it("a balance past a full card reads as a count", () => {
+    const stamps = { earnType: "stamps" as const, terminology: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10 };
+    expect(successView({ program: stamps, pointsEarned: 2, balance: 14 }).hero).toBe("14 stamps");
+    expect(successView({ program: stamps, pointsEarned: 2, balance: 10 }).hero).toBe("10 / 10");
   });
 });

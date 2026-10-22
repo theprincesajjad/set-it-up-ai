@@ -12,24 +12,58 @@ export interface ShopTileShop {
   name: string;
   vertical: string;
   logoUrl?: string | null;
+  /** Merchant brand colour; tints the initials fallback when there is no logo. */
+  brandColor?: string | null;
   coverUrl?: string | null;
   neighbourhood?: string | null;
   distanceM?: number | null;
 }
 
-/** Logo or vertical placeholder (vertical tint + lucide icon in vertical accent). */
-export function ShopLogo({ shop, size = 48 }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name">; size?: number }) {
+/**
+ * Logo, or coloured initials when the shop has no logo (most pilot shops):
+ * brand colour fill with whichever of white / ink reads better, or the
+ * vertical tint + accent when the shop has no brand colour either.
+ */
+export function ShopLogo({ shop, size = 48, round = false }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name" | "brandColor">; size?: number; round?: boolean }) {
   const { vertical } = useTheme();
-  const v = vertical(shop.vertical);
-  const Icon = verticalIcon(v.icon);
+  const radius = round ? size / 2 : size <= 28 ? radii.xs : size >= 72 ? radii.lg : radii.md;
   if (shop.logoUrl) {
-    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radii.md }} accessibilityIgnoresInvertColors accessibilityLabel={`${shop.name} logo`} />;
+    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radius }} accessibilityIgnoresInvertColors accessibilityLabel={`${shop.name} logo`} />;
   }
+  const v = vertical(shop.vertical);
+  const brand = shop.brandColor && /^#[0-9a-f]{6}$/i.test(shop.brandColor) ? shop.brandColor : null;
+  const bg = brand ?? v.tint;
+  const fg = brand ? readableOn(brand) : v.accent;
+  const letters = shopInitials(shop.name, size < 32 ? 1 : 2);
   return (
-    <View style={[styles.logo, { width: size, height: size, backgroundColor: v.tint }]} accessibilityElementsHidden>
-      <Icon size={Math.round(size / 2)} color={v.accent} />
+    <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Text rawColor={fg} style={{ fontFamily: "Figtree_700Bold", fontSize: Math.round(size * (letters.length > 1 ? 0.38 : 0.46)), lineHeight: Math.round(size * 0.5), letterSpacing: 0.5 }} allowFontScaling={false}>
+        {letters}
+      </Text>
     </View>
   );
+}
+
+const SKIP = new Set(["the", "and", "&", "of", "co", "co.", "inc", "inc.", "ltd", "ltd."]);
+
+/** "Pinecone Coffee Co." → "PC", "The Copper Kettle Pub" → "CK", "Nonna's Table" → "NT". */
+export function shopInitials(name: string, max = 2): string {
+  const words = name.split(/[\s-]+/).filter((w) => w && !SKIP.has(w.toLowerCase()));
+  const letters = (words.length ? words : name.split(/\s+/)).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "").charAt(0)).filter(Boolean);
+  return letters.slice(0, max).join("").toUpperCase() || "?";
+}
+
+function luminance(hex: string): number {
+  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * ch[0]! + 0.7152 * ch[1]! + 0.0722 * ch[2]!;
+}
+
+/** White or ink (#1F1B16), whichever has the higher contrast on `hex`. */
+export function readableOn(hex: string): string {
+  const l = luminance(hex);
+  const white = 1.05 / (l + 0.05);
+  const ink = (l + 0.05) / (luminance("#1F1B16") + 0.05);
+  return white >= ink ? "#FFFFFF" : "#1F1B16";
 }
 
 export interface ShopTileProps {
@@ -50,13 +84,15 @@ export function ShopTile({ shop, variant, balance, subtitle, openLabel, rewardRe
   if (variant === "hero") {
     const v = vertical(shop.vertical);
     const Icon = verticalIcon(v.icon);
+    // No cover photo: a soft wash of the shop's brand colour ties the hero to its initials logo.
+    const brand = shop.brandColor && /^#[0-9a-f]{6}$/i.test(shop.brandColor) ? shop.brandColor : null;
     return (
       <View>
-        <View style={[styles.cover, { backgroundColor: v.tint }]}>
+        <View style={[styles.cover, { backgroundColor: brand ? `${brand}24` : v.tint }]}>
           {shop.coverUrl ? (
             <Image source={{ uri: shop.coverUrl }} style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
           ) : (
-            <Icon size={96} color={v.accent} style={{ opacity: 0.3 }} />
+            <Icon size={96} color={brand ?? v.accent} style={{ opacity: brand ? 0.22 : 0.3 }} />
           )}
         </View>
         <View style={styles.heroLogo}>

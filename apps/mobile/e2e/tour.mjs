@@ -1,0 +1,396 @@
+// Screenshot tour of the Expo app rendered with react-native-web (see e2e/README.md).
+// Usage: node e2e/tour.mjs [only-step-prefix]
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { call, customerToken, login, routeTiles } from "./lib.mjs";
+import { serve } from "./serve.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const DIST = process.env.E2E_DIST ?? join(here, "..", "dist-web");
+const PORT = Number(process.env.E2E_WEB_PORT ?? 8300);
+const WEB = `http://localhost:${PORT}`;
+const OUT = join(here, "screenshots");
+const ONLY = process.argv[2] ?? "";
+/** Seeded customer with four shops and rewards ready (seed prints +16475551000 …). */
+const CUSTOMER = process.env.E2E_CUSTOMER_PHONE ?? "+16475551009";
+const STAFF = "staff+pinecone-coffee@example.com";
+const RONCESVALLES = { latitude: 43.6475, longitude: -79.4487 };
+
+await mkdir(OUT, { recursive: true });
+const server = await serve(DIST, PORT);
+const browser = await chromium.launch();
+const failures = [];
+
+async function newPhone({ scheme = "light", geo = true, storageState } = {}) {
+  const context = await browser.newContext({
+    ...(storageState ? { storageState } : {}),
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    colorScheme: scheme,
+    locale: "en-CA",
+    timezoneId: "America/Toronto",
+    ...(geo ? { geolocation: RONCESVALLES, permissions: ["geolocation"] } : {}),
+  });
+  await routeTiles(context);
+  const page = await context.newPage();
+  page.on("pageerror", (e) => console.log(`  pageerror: ${e.message}`));
+  page.on("console", (m) => {
+    if (m.type() === "error") console.log(`  console.error: ${m.text().slice(0, 240)}`);
+  });
+  return { context, page };
+}
+
+async function shot(page, name, { settle = 600, fullPage = false } = {}) {
+  await page.waitForTimeout(settle);
+  await page.screenshot({ path: join(OUT, `${name}.png`), fullPage });
+  console.log(`  ✓ ${name}.png`);
+}
+
+async function step(name, fn) {
+  if (ONLY && !name.startsWith(ONLY)) return;
+  console.log(`▸ ${name}`);
+  try {
+    await fn();
+  } catch (e) {
+    failures.push(name);
+    console.log(`  ✗ ${name}: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`);
+  }
+}
+
+const tap = (page, text, opts = {}) => page.getByText(text, { exact: true, ...opts }).first().click();
+
+/** Phone OTP sign-in through the real screens. Returns after the code step submits. */
+async function signInByPhone(page, phone, { shots = false } = {}) {
+  await page.goto(`${WEB}/`);
+  await page.getByText("Get started").waitFor();
+  if (shots) await shot(page, "01-welcome");
+  await tap(page, "Get started");
+  const field = page.getByLabel("Mobile number");
+  await field.waitFor();
+  await field.fill(phone.replace(/^\+1/, ""));
+  if (shots) await shot(page, "02-phone");
+  const started = page.waitForResponse((r) => r.url().endsWith("/v1/auth/otp/start"));
+  await page.getByRole("button", { name: "Send code" }).click();
+  const { devCode } = await (await started).json();
+  const otp = page.getByLabel("6-digit code");
+  await otp.waitFor();
+  if (shots) {
+    await otp.fill(devCode.slice(0, 3));
+    await shot(page, "03-code");
+  }
+  await otp.fill(devCode);
+}
+
+// ---------------------------------------------------------------- setup through the API
+let pinecone;
+let campaignId;
+await step("setup", async () => {
+  const owner = await login("owner+pinecone-coffee@example.com");
+  const { items } = await call("GET", "/v1/merchants", undefined, owner);
+  pinecone = items[0];
+  // Turn on order-ahead for the café so the shop page shows the entry point (features flag).
+  const admin = await login("admin@localloyalty.example", "localloyalty-admin");
+  await call("PUT", "/v1/admin/features/orders.order_ahead/overrides", { merchantId: pinecone.id, enabled: true, reason: "mobile e2e" }, admin).catch((e) => console.log(`  (override) ${e.message}`));
+  // A live Roncesvalles Passport with two visits already made, so the campaign page has progress.
+  const hood = (await call("GET", "/v1/network/neighbourhoods")).items.find((h) => h.slug === "roncesvalles");
+  const day = 86_400_000;
+  const camp = await call("POST", "/v1/campaigns", { neighbourhoodId: hood.id, name: "Roncesvalles Passport", kind: "passport", startsAt: new Date(Date.now() - day).toISOString(), endsAt: new Date(Date.now() + 9 * day).toISOString(), description: "Visit five shops on the strip this fall.", goalVisits: 5, bonusPoints: 50, prize: "Win a basket from 12 Roncesvalles shops" }, admin);
+  const slugs = ["nonnas-table", "village-green-grocer", "rise-yoga-studio", "hearth-and-crumb", "dog-eared-books"];
+  const owners = {};
+  for (const slug of slugs) {
+    const t = await login(`owner+${slug}@example.com`);
+    const m = (await call("GET", "/v1/merchants", undefined, t)).items[0];
+    owners[slug] = { token: t, id: m.id };
+    await call("POST", `/v1/campaigns/${camp.id}/merchants`, { merchantId: m.id }, admin);
+  }
+  await call("POST", `/v1/campaigns/${camp.id}/schedule`, {}, admin);
+  campaignId = camp.id;
+  for (const [slug, body] of [["nonnas-table", { amountCents: 3450 }], ["village-green-grocer", { amountCents: 2210 }]]) {
+    await call("POST", `/v1/merchants/${owners[slug].id}/counter/award`, { phone: CUSTOMER, idempotencyKey: `e2e-${slug}-${Date.now()}`, ...body }, owners[slug].token).catch((e) => console.log(`  (award) ${e.message}`));
+  }
+});
+
+// ---------------------------------------------------------------- onboarding (new customer)
+await step("onboarding", async () => {
+  const { context, page } = await newPhone({ geo: false });
+  const phone = `+1647555${String(Math.floor(7000 + Math.random() * 2999))}`;
+  await signInByPhone(page, phone, { shots: true });
+  await page.getByText("What should shops call you?").waitFor();
+  await page.getByLabel("First name").fill("Alex");
+  await shot(page, "04-name-consent");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByText("Hi Alex").waitFor();
+  await shot(page, "05-home-new-member");
+  await context.close();
+});
+
+// ---------------------------------------------------------------- customer with history
+const customer = await newPhone();
+const cp = customer.page;
+/** Signed-in browser state (tokens + prefs in localStorage), reused so each run sends few OTPs (5 per phone per hour). */
+let custState;
+await step("customer-sign-in", async () => {
+  await signInByPhone(cp, CUSTOMER);
+  await cp.getByText(/^Hi /).first().waitFor();
+  custState = await customer.context.storageState();
+});
+
+await step("home", async () => {
+  await cp.goto(`${WEB}/home`);
+  await cp.getByText("My shops").waitFor();
+  // Dismiss the push pre-prompt if it shows (first earn).
+  const notNow = cp.getByText("Not now", { exact: true });
+  if (await notNow.isVisible().catch(() => false)) {
+    await shot(cp, "06b-push-prompt");
+    await notNow.click();
+  }
+  await shot(cp, "06-home", { settle: 1200 });
+  await shot(cp, "06-home-full", { fullPage: true });
+});
+
+await step("explore-map", async () => {
+  await cp.goto(`${WEB}/map`);
+  const allow = cp.getByText("Allow while using", { exact: true });
+  await allow.waitFor({ timeout: 8000 }).catch(() => undefined);
+  if (await allow.isVisible().catch(() => false)) {
+    await shot(cp, "07a-explore-location-prompt");
+    await allow.click();
+  }
+  await cp.locator(".maplibregl-canvas").waitFor({ timeout: 15000 });
+  await cp.waitForTimeout(2500);
+  await shot(cp, "07-explore-map");
+  await cp.getByRole("button", { name: /^Hearth & Crumb Bakery/ }).first().click().catch(() => undefined);
+  await shot(cp, "07b-explore-map-selected", { settle: 1200 });
+  await cp.getByText(/^See all \d+/).first().click();
+  await shot(cp, "07c-explore-half-sheet", { settle: 900 });
+});
+
+await step("explore-list", async () => {
+  // Tiles blocked → the map reports a failure and Explore falls back to the list (same as a phone without maps).
+  const { context, page } = await newPhone({ storageState: custState });
+  await context.unroute(/^https:\/\/tiles\.openfreemap\.org\//);
+  await context.route(/^https:\/\/tiles\.openfreemap\.org\//, (r) => r.abort());
+  await page.goto(`${WEB}/map`);
+  const notNow = page.getByText("Not now", { exact: true });
+  await notNow.waitFor({ timeout: 8000 }).catch(() => undefined);
+  if (await notNow.isVisible().catch(() => false)) await notNow.click();
+  await page.getByText("My shops", { exact: true }).first().waitFor({ timeout: 15000 });
+  await shot(page, "08-explore-list", { settle: 1200 });
+  await context.close();
+});
+
+await step("shop-detail", async () => {
+  await cp.goto(`${WEB}/shop/pinecone-coffee`);
+  await cp.getByText("Your balance").waitFor();
+  await shot(cp, "09-shop-rewards", { settle: 1000 });
+  await cp.mouse.wheel(0, 700);
+  await shot(cp, "09b-shop-rewards-scrolled");
+  await cp.getByRole("tab", { name: "Promos" }).click().catch(() => tap(cp, "Promos"));
+  await shot(cp, "10-shop-promos");
+  await cp.getByRole("tab", { name: "About" }).click().catch(() => tap(cp, "About"));
+  await shot(cp, "11-shop-about");
+  await cp.mouse.wheel(0, 900);
+  await shot(cp, "11b-shop-about-scrolled");
+});
+
+await step("shop-join", async () => {
+  await cp.goto(`${WEB}/shop/bloom-hair-studio`);
+  await cp.getByText("Earn here").waitFor();
+  await shot(cp, "12-shop-not-member", { settle: 1000 });
+  await cp.getByRole("button", { name: "Join — free" }).click();
+  await shot(cp, "12b-join-sheet", { settle: 800 });
+});
+
+await step("card", async () => {
+  await cp.goto(`${WEB}/home`);
+  await cp.getByText("My shops").waitFor();
+  const notNow = cp.getByText("Not now", { exact: true });
+  if (await notNow.isVisible().catch(() => false)) await notNow.click();
+  await cp.getByRole("button", { name: "My card" }).last().click();
+  await cp.getByText("Show this at the counter").first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await shot(cp, "13-my-card", { settle: 1200 });
+});
+
+await step("rewards", async () => {
+  await cp.goto(`${WEB}/rewards`);
+  await cp.getByText("Rewards", { exact: true }).first().waitFor();
+  await shot(cp, "14-rewards-ready", { settle: 1200 });
+  await tap(cp, "All shops");
+  await shot(cp, "14b-rewards-all", { settle: 900 });
+  await tap(cp, "Passport");
+  await shot(cp, "14c-rewards-passport", { settle: 900 });
+});
+
+let redeemCode = null;
+await step("redeem", async () => {
+  await cp.goto(`${WEB}/shop/pinecone-coffee`);
+  await cp.getByText("Your balance").waitFor();
+  await cp.getByRole("button", { name: /^Redeem/ }).first().click();
+  await shot(cp, "15-redeem-confirm", { settle: 800 });
+  const issued = cp.waitForResponse((r) => /\/redeem$/.test(r.url()) && r.request().method() === "POST");
+  await cp.getByRole("button", { name: "Show code to staff" }).click();
+  redeemCode = (await (await issued).json()).redemption?.code ?? null;
+  await cp.getByText(/Waiting for staff/).first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await shot(cp, "16-redeem-code", { settle: 1500 });
+});
+
+await step("activity", async () => {
+  await cp.goto(`${WEB}/activity`);
+  await cp.getByText("Activity", { exact: true }).first().waitFor();
+  await shot(cp, "17-activity", { settle: 1200 });
+});
+
+await step("campaign", async () => {
+  await cp.goto(`${WEB}/campaigns/${campaignId}`);
+  await cp.getByText("Roncesvalles Passport").first().waitFor();
+  await shot(cp, "18-campaign", { settle: 1200 });
+  await cp.mouse.wheel(0, 700);
+  await shot(cp, "18b-campaign-scrolled");
+});
+
+await step("profile-settings", async () => {
+  await cp.goto(`${WEB}/you`);
+  await cp.getByText("Sign out").first().waitFor();
+  await shot(cp, "19-profile", { settle: 900 });
+  for (const [path, name] of [["/settings/profile", "20-settings-profile"], ["/settings/notifications", "20b-settings-notifications"], ["/settings/shops", "20c-settings-shops"], ["/settings/privacy", "20d-settings-privacy"]]) {
+    await cp.goto(`${WEB}${path}`);
+    await shot(cp, name, { settle: 1500 });
+  }
+});
+
+await step("dark-mode", async () => {
+  const { context, page } = await newPhone({ scheme: "dark", storageState: custState });
+  await page.goto(`${WEB}/home`);
+  await page.getByText(/^Hi /).first().waitFor();
+  const notNow = page.getByText("Not now", { exact: true });
+  if (await notNow.isVisible().catch(() => false)) await notNow.click();
+  await shot(page, "21-dark-home", { settle: 1500 });
+  await page.goto(`${WEB}/shop/pinecone-coffee`);
+  await page.getByText("Your balance").waitFor();
+  await shot(page, "21b-dark-shop", { settle: 1000 });
+  await page.goto(`${WEB}/home`);
+  await page.getByRole("button", { name: "My card" }).last().click();
+  await shot(page, "21c-dark-card", { settle: 1500 });
+  await context.close();
+});
+
+// ---------------------------------------------------------------- counter mode (staff)
+const staffPhone = await newPhone({ geo: false });
+const sp = staffPhone.page;
+const keypad = async (page, digits) => {
+  for (const d of digits) await page.locator(`[aria-label="${d}"]`).first().click();
+};
+
+await step("counter-sign-in", async () => {
+  await sp.goto(`${WEB}/welcome`);
+  await tap(sp, "I'm a shop owner or staff");
+  await sp.getByLabel("Email").fill(STAFF);
+  await sp.getByLabel("Password").fill("localloyalty-demo");
+  await shot(sp, "30-counter-sign-in");
+  await sp.getByRole("button", { name: "Sign in", exact: true }).click();
+  await sp.getByText("Counter mode", { exact: true }).first().waitFor();
+  await shot(sp, "31-counter-location-picker", { settle: 1200 });
+  await sp.getByText("412 Roncesvalles Ave").first().click();
+  await sp.getByText("Customer's phone number").waitFor();
+  await shot(sp, "32-counter-keypad", { settle: 800 });
+});
+
+await step("counter-lookup-award", async () => {
+  await keypad(sp, CUSTOMER.slice(2, 9));
+  await shot(sp, "32b-counter-keypad-typing");
+  await keypad(sp, CUSTOMER.slice(9));
+  await sp.getByRole("button", { name: /^Add/ }).first().waitFor();
+  await shot(sp, "33-counter-member-found", { settle: 900 });
+  await sp.getByRole("button", { name: /Add 2 stamps/ }).first().click();
+  await sp.getByText(/^Added 2 stamps/).first().waitFor();
+  await shot(sp, "34-counter-award-success-undo", { settle: 700 });
+  await sp.getByRole("button", { name: /^Undo/ }).first().click();
+  await sp.getByText(/^Undone/).first().waitFor();
+  await shot(sp, "34b-counter-undone", { settle: 500 });
+  await tap(sp, "Next customer");
+});
+
+await step("counter-redeem", async () => {
+  await keypad(sp, CUSTOMER.slice(2));
+  await sp.getByRole("button", { name: /^Add/ }).first().waitFor();
+  await sp.getByRole("button", { name: "Redeem", exact: true }).first().click();
+  await shot(sp, "35-counter-redeem-picker", { settle: 900 });
+  await sp.getByText("Free drink", { exact: true }).first().click();
+  await shot(sp, "35b-counter-redeem-confirm", { settle: 600 });
+  await sp.getByRole("button", { name: "Confirm redeem" }).click();
+  await sp.getByText(/redeemed/i).first().waitFor();
+  await shot(sp, "36-counter-redeem-success", { settle: 700 });
+  await sp.waitForTimeout(4500); // auto-return to the keypad
+});
+
+await step("counter-redeem-code", async () => {
+  if (!redeemCode) {
+    // Running the counter steps on their own: issue a code through the API like the app does.
+    const token = await customerToken(CUSTOMER);
+    const wallet = await call("GET", "/v1/me/memberships", undefined, token);
+    const m = wallet.items.find((x) => x.merchant.slug === "pinecone-coffee");
+    const detail = await call("GET", `/v1/me/memberships/${m.id}`, undefined, token);
+    const r = detail.rewards.find((x) => x.affordable);
+    redeemCode = (await call("POST", `/v1/me/memberships/${m.id}/redeem`, { rewardId: r.id, idempotencyKey: `e2e-${Date.now()}` }, token)).redemption.code;
+  }
+  await sp.getByRole("button", { name: "Code", exact: true }).first().click();
+  await sp.getByLabel("Reward code").fill(redeemCode);
+  await shot(sp, "37-counter-redeem-code", { settle: 600 });
+  await sp.getByRole("button", { name: "Confirm", exact: true }).click();
+  await sp.getByText(/redeemed/i).first().waitFor();
+  await shot(sp, "37b-counter-redeem-code-success", { settle: 600 });
+  await sp.waitForTimeout(4500);
+});
+
+await step("counter-today", async () => {
+  await sp.getByRole("button", { name: "More", exact: true }).click();
+  await shot(sp, "38a-counter-menu", { settle: 600 });
+  await tap(sp, "Today");
+  await sp.getByText("Visits", { exact: true }).first().waitFor();
+  await shot(sp, "38-counter-today", { settle: 1200 });
+  await sp.goBack();
+  await sp.getByText("Customer's phone number").waitFor();
+});
+
+await step("counter-offline", async () => {
+  await staffPhone.context.setOffline(true);
+  await sp.waitForTimeout(1500);
+  await keypad(sp, "6475551004");
+  await sp.getByRole("button", { name: /^Add/ }).first().waitFor({ timeout: 10000 });
+  await shot(sp, "39a-counter-offline-member", { settle: 600 });
+  await sp.getByRole("button", { name: /^Add/ }).first().click();
+  await shot(sp, "39-counter-offline-award", { settle: 700 });
+  await sp.waitForTimeout(4500);
+  await shot(sp, "39b-counter-offline-banner", { settle: 300 });
+  await staffPhone.context.setOffline(false);
+  await sp.getByText(/Back online/).first().waitFor({ timeout: 20000 }).catch(() => undefined);
+  await shot(sp, "39c-counter-back-online", { settle: 200 });
+});
+
+await step("counter-kiosk", async () => {
+  await sp.getByRole("button", { name: "More", exact: true }).click();
+  await tap(sp, "Counter settings");
+  await sp.getByText("Start kiosk mode").waitFor();
+  await shot(sp, "40a-counter-settings", { settle: 600 });
+  await tap(sp, "Start kiosk mode");
+  await sp.getByText("Check in and earn").first().waitFor();
+  await shot(sp, "40-kiosk-phone", { settle: 900 });
+  // The kiosk is a landscape tablet on the counter (staff-counter.md § 7).
+  await sp.setViewportSize({ width: 1180, height: 820 });
+  await shot(sp, "40b-kiosk-tablet", { settle: 900 });
+  await keypad(sp, "6475551009");
+  await shot(sp, "40c-kiosk-tablet-typed", { settle: 500 });
+  await sp.getByRole("button", { name: "Check in", exact: true }).click();
+  await shot(sp, "40d-kiosk-tablet-result", { settle: 1500 });
+  await sp.setViewportSize({ width: 390, height: 844 });
+});
+
+console.log(failures.length ? `\nFailed steps: ${failures.join(", ")}` : "\nAll steps passed.");
+await browser.close();
+server.close();
+process.exit(failures.length ? 1 : 0);
+

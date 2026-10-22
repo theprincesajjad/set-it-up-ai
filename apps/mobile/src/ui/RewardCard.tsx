@@ -5,7 +5,7 @@ import { useTheme } from "../theme";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { Card } from "./Card";
-import { BadgePercent, Coffee, Gift } from "./icons";
+import { BadgePercent, Coffee, Gift, verticalIcon } from "./icons";
 import { ProgressBar } from "./ProgressBar";
 import { Text } from "./Text";
 
@@ -18,12 +18,21 @@ export interface RewardCardProps {
   redeemedAt?: string | null;
   disabledReason?: string | null;
   shopName?: string;
+  /** Shop vertical: a free item shows the shop's own icon (croissant, scissors…) instead of a generic cup. */
+  vertical?: string;
 }
 
 /** system.md § RewardCard. */
-export function RewardCard({ reward, balance, terminology, state, onRedeem, redeemedAt, disabledReason, shopName }: RewardCardProps) {
-  const { c } = useTheme();
-  const Icon = reward.rewardType === "percent_off" || reward.rewardType === "amount_off" ? BadgePercent : reward.rewardType === "free_item" ? Coffee : Gift;
+export function RewardCard({ reward, balance, terminology, state, onRedeem, redeemedAt, disabledReason, shopName, vertical }: RewardCardProps) {
+  const { c, vertical: vfn } = useTheme();
+  const Icon =
+    reward.rewardType === "percent_off" || reward.rewardType === "amount_off"
+      ? BadgePercent
+      : reward.rewardType === "free_item"
+        ? vertical
+          ? verticalIcon(vfn(vertical).icon)
+          : Coffee
+        : Gift;
   const toGo = Math.max(0, reward.pointsCost - balance);
   return (
     <Card accentEdge={state === "available"}>

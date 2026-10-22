@@ -51,7 +51,7 @@ export default function Activity() {
   return (
     <Screen back={!!params.memberId} title="Activity" largeTitle={!params.memberId}>
       {memberships.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
           <Chip label="All shops" selected={!shop} onPress={() => setShop(null)} />
           {memberships.map((m) => (
             <Chip key={m.id} label={m.merchant.name} selected={shop === m.id} onPress={() => setShop(m.id)} />
@@ -66,9 +66,10 @@ export default function Activity() {
         groups.map((g) => (
           <Section key={g.label} title={g.label}>
             <Card padded={false} style={{ paddingHorizontal: 16 }}>
-              {g.items.map((tx) => (
+              {g.items.map((tx, i) => (
                 <ListRow
                   key={tx.id}
+                  divider={i < g.items.length - 1}
                   leading={<ShopLogo shop={tx.membership.merchant} size={40} />}
                   title={activityTitle(tx, tx.membership.terminology, tx.membership.merchant.name)}
                   subtitle={[tx.membership.merchant.name, formatTime(tx.createdAt), tx.amountCents ? formatMoney(tx.amountCents) : null].filter(Boolean).join(" · ")}

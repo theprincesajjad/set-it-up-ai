@@ -62,9 +62,10 @@ export default function ShopsAndMessages() {
         <EmptyState icon={Store} title={t("empty.wallet.title")} body={t("empty.wallet.body")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
-          {items.map((m) => (
+          {items.map((m, i) => (
             <ListRow
               key={m.id}
+              divider={i < items.length - 1}
               leading={<ShopLogo shop={m.merchant} size={40} />}
               title={m.merchant.name}
               subtitle={`${m.muted ? "Muted · " : ""}Offers by text and email: ${m.marketingConsent.granted && !m.muted ? "On" : "Off"}`}

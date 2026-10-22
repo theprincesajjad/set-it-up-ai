@@ -1,11 +1,11 @@
 /**
  * Device storage.
- * - Tokens: expo-secure-store (Keychain / Android Keystore).
+ * - Tokens: expo-secure-store (Keychain / Android Keystore); localStorage on Expo web (secureStore.web.ts).
  * - Everything else (prefs, card cache, offline queue, query cache): AsyncStorage.
  * Every read/write is wrapped so a storage failure never crashes the counter.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "./secureStore";
 import type { StoredTokens, TokenStore } from "../api/client";
 import type { QueueStorage, QueuedEvent } from "../lib/offlineQueue";
 

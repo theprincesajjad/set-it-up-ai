@@ -14,8 +14,9 @@ import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Bell, Button, ConsentCheckbox, Sheet, ShopLogo, Text, useToast } from "../../ui";
+import { Banner, Bell, Button, Card, ConsentCheckbox, Sheet, ShopLogo, Text, useToast } from "../../ui";
 import { registerForPush } from "../push";
+import { observeServerTimestamp } from "../../lib/serverClock";
 
 export function JoinSheet({
   visible,
@@ -27,7 +28,7 @@ export function JoinSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  shop: { id: string; name: string; vertical: string; logoUrl?: string | null; consentText?: string | null };
+  shop: { id: string; name: string; vertical: string; logoUrl?: string | null; brandColor?: string | null; consentText?: string | null };
   welcomeBonus?: number;
   terminology?: string;
   onJoined?: (res: customerApi.JoinResponse) => void;
@@ -105,6 +106,8 @@ export function RedeemConfirmSheet({
     setError(null);
     try {
       const res = await api.me.redeem(membership.id, reward.id, key);
+      // Just issued: createdAt is "now" on the server (clock fallback when the Date header is hidden).
+      if (!res.duplicate) observeServerTimestamp(res.redemption.createdAt);
       void qc.invalidateQueries({ queryKey: qk.wallet });
       void qc.invalidateQueries({ queryKey: qk.membership(membership.id) });
       onClose();
@@ -115,10 +118,12 @@ export function RedeemConfirmSheet({
           code: res.redemption.code,
           rewardName: res.redemption.rewardName,
           createdAt: res.redemption.createdAt,
+          expiresAt: res.redemption.expiresAt ?? "none",
           memberId: membership.id,
           shopName: membership.merchant.name,
           vertical: membership.merchant.vertical,
           logoUrl: membership.merchant.logoUrl ?? "",
+          brandColor: membership.merchant.brandColor ?? "",
           slug: membership.merchant.slug,
         },
       });
@@ -146,9 +151,32 @@ export function RedeemConfirmSheet({
         </>
       }
     >
-      <Text variant="bodyStrong">{membership.merchant.name}</Text>
-      <Text>{`Costs ${formatPts(reward.pointsCost, membership.terminology)}`}</Text>
-      <Text color="fgMuted">{t("misc.balanceAfter", { pts: formatPts(Math.max(0, after), membership.terminology) })}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <ShopLogo shop={membership.merchant} size={40} />
+        <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+          {membership.merchant.name}
+        </Text>
+      </View>
+      <Card tone="sunken">
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row" }}>
+            <Text color="fgMuted" style={{ flex: 1 }}>
+              Uses
+            </Text>
+            <Text variant="bodyStrong" tabular>
+              {formatPts(reward.pointsCost, membership.terminology)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row" }}>
+            <Text color="fgMuted" style={{ flex: 1 }}>
+              Your balance after
+            </Text>
+            <Text variant="bodyStrong" tabular>
+              {formatPts(Math.max(0, after), membership.terminology)}
+            </Text>
+          </View>
+        </View>
+      </Card>
       {reward.description ? <Text variant="bodySm" color="fgMuted">{reward.description}</Text> : null}
       <Text variant="bodySm" color="fgMuted">
         Only tap this at the counter. The code lasts 10 minutes.

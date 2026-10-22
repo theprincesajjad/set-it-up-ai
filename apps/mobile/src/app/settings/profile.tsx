@@ -48,9 +48,16 @@ export default function EditProfile() {
       <TextField label="Name" value={name} onChangeText={setName} autoComplete="name" autoCapitalize="words" />
       <TextField label="Email" optionalLabel hint="For receipts and your data export." value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
       <TextField label="Postal code" optionalLabel value={postal} onChangeText={setPostal} autoCapitalize="characters" placeholder="M6R 2K3" />
-      {profile.data?.birthday ? <Text color="fgMuted">{`Birthday: ${profile.data.birthday.slice(5)}`}</Text> : null}
+      {profile.data?.birthday ? <Text color="fgMuted">{`Birthday: ${formatBirthday(profile.data.birthday)}`}</Text> : null}
       <Text color="fgMuted">{`Phone: ${displayPhone(profile.data?.phone)}. To change your number, contact support.`}</Text>
       {error ? <Banner variant="danger">{error}</Banner> : null}
     </Screen>
   );
+}
+
+/** "2000-11-26" or "--11-26" → "November 26" (we never show or ask for the year). */
+function formatBirthday(iso: string): string {
+  const [m, d] = iso.slice(-5).split("-").map(Number);
+  if (!m || !d) return iso;
+  return new Date(2000, m - 1, d).toLocaleDateString("en-CA", { month: "long", day: "numeric" });
 }

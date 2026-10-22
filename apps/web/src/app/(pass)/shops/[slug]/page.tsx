@@ -103,12 +103,17 @@ export default async function ShopPage({ params, searchParams }: Props) {
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl }}
         subtitle={[verticalLabel(m.vertical), loc?.address, m.neighbourhood?.name].filter(Boolean).join(" · ")}
       />
+      <div className="flex flex-wrap items-center gap-2">
       {status ? (
         <p className={status.open ? "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-success-subtle px-3 text-caption font-semibold text-on-success-subtle" : "inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-neutral-subtle px-3 text-caption font-semibold text-on-neutral-subtle"}>
           <Clock aria-hidden className="size-3.5" />
           {status.label}
         </p>
       ) : null}
+      {shop.memberCount ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-surface-sunken px-3 text-caption font-semibold text-fg">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</p> : null}
+      {shop.features?.orderAhead ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-brand-subtle px-3 text-caption font-semibold text-on-brand-subtle">Order ahead in the app</p> : null}
+      {shop.features?.serviceTickets ? <p className="inline-flex h-7 w-fit items-center rounded-full bg-brand-subtle px-3 text-caption font-semibold text-on-brand-subtle">Repair tracking</p> : null}
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {m.phone || loc?.phone ? (
           <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${m.phone ?? loc?.phone}`}>

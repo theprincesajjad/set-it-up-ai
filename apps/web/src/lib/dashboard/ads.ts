@@ -1,0 +1,2 @@
+export const PLACEMENT_LABEL: Record<string, string> = { feed_top: "Top of the feed", search_top: "Top of search", map_pin: "Featured map pin", promo_boost: "Boosted promo", nearby_push: "Nearby push" };
+export const AD_STATUS_TONE: Record<string, "neutral" | "info" | "success" | "warning" | "danger"> = { draft: "neutral", pending_review: "info", active: "success", paused: "warning", ended: "neutral", rejected: "danger" };

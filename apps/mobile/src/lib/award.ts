@@ -163,6 +163,19 @@ export function awardButtonLabel(program: CounterProgram, opts: { points: number
   return `Award ${formatPts(opts.points, program.terminology)}${suffix}`;
 }
 
+/** Quantity chips for visit / stamp programs ("+2", "+3": two coffees). Per-dollar programs have none. */
+export const MAX_AWARD_QUANTITY = 10;
+export function quantityChips(program: Pick<CounterProgram, "earnType"> | null | undefined): number[] {
+  return program && program.earnType !== "per_dollar" ? [2, 3] : [];
+}
+
+/** The `quantity` body field: only for visit / stamp programs and only when > 1 (API default is 1). */
+export function awardQuantity(program: Pick<CounterProgram, "earnType">, quantity: number): { quantity: number } | Record<string, never> {
+  if (program.earnType === "per_dollar") return {};
+  const q = Math.max(1, Math.min(MAX_AWARD_QUANTITY, Math.floor(quantity)));
+  return q > 1 ? { quantity: q } : {};
+}
+
 // ---------------------------------------------------------------------------
 // Success card
 // ---------------------------------------------------------------------------
@@ -202,7 +215,8 @@ export function successView(input: {
   const tilde = input.offline ? "~" : "";
   let hero: string;
   if (input.balance === null) hero = `+${formatNumber(input.pointsEarned)}`;
-  else if (stamps && program.stampGoal > 0) hero = `${tilde}${formatNumber(input.balance)} / ${formatNumber(program.stampGoal)}`;
+  // "9 / 10" while filling a card; past a full card the balance reads as a count ("14 stamps").
+  else if (stamps && program.stampGoal > 0 && input.balance <= program.stampGoal) hero = `${tilde}${formatNumber(input.balance)} / ${formatNumber(program.stampGoal)}`;
   else hero = `${tilde}${formatPts(input.balance, term)}`;
   const ready = input.rewardsAvailable?.[0];
   let next: string | null = null;

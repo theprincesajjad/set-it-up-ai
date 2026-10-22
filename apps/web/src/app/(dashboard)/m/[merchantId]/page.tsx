@@ -16,8 +16,9 @@ import { PromoCard } from "@/components/ui/PromoCard";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatTile } from "@/components/ui/StatTile";
-import { firstName, formatNumber, formatPoints, formatTime } from "@/lib/format";
-import { useApi } from "@/lib/dashboard/useApi";
+import { firstName, formatNumber, formatTime } from "@/lib/format";
+import { useApi, useNow } from "@/lib/dashboard/useApi";
+import { signedPoints, sourceLabel, typeLabel } from "@/lib/dashboard/labels";
 import { RANGE_OPTIONS, greeting, longDate, pctDelta, rangeFor, relativeTime, type RangeKey } from "@/lib/dashboard/time";
 
 const DISMISS_KEY = "ll.home.teaser.dismissedAt";
@@ -34,6 +35,7 @@ export default function HomePage() {
   const overlap = useApi(manager ? () => api.reports.networkOverlap() : null, [api, manager]);
   const promos = useApi(manager ? () => api.promos("live") : null, [api, manager]);
   const activity = useApi(manager ? () => api.activity({ limit: 6 }) : null, [api, manager]);
+  const now = useNow();
   const [teaserHidden, setTeaserHidden] = useState(true);
   useEffect(() => {
     let hidden = false;
@@ -59,7 +61,7 @@ export default function HomePage() {
   };
   const zero = cur && cur.visits === 0;
   const upsell: FeatureKey = VERTICAL_TEMPLATES[m.vertical].upsellPlan === "pro" ? "service.tickets" : "orders.order_ahead";
-  const justActivated = ob && ob.activatedAt && Date.now() - new Date(ob.activatedAt).getTime() < 7 * 86_400_000;
+  const justActivated = ob && ob.activatedAt && now - new Date(ob.activatedAt).getTime() < 7 * 86_400_000;
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,9 +69,11 @@ export default function HomePage() {
         title={me.user.name ? `${greeting()}, ${firstName(me.user.name)}` : greeting()}
         description={`${longDate()} · ${m.name}`}
         actions={
-          <Button href={`${base}/counter`} iconStart={Calculator} className="hidden md:inline-flex">
-            Open counter
-          </Button>
+          <div className="hidden md:block">
+            <Button href={`${base}/counter`} iconStart={Calculator}>
+              Open counter
+            </Button>
+          </div>
         }
       />
 
@@ -80,7 +84,7 @@ export default function HomePage() {
       {manager ? (
         <section aria-label="Key numbers" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-h3 text-fg">How it's going</h2>
+            <h2 className="text-h3 text-fg">How it&apos;s going</h2>
             <SegmentedControl label="Date range" options={RANGE_OPTIONS} value={range} onChange={setRange} />
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -118,7 +122,7 @@ export default function HomePage() {
             <ul className="divide-y divide-border">
               {today.data.items.slice(0, 5).map((v) => (
                 <li key={v.visitId}>
-                  <ListRow leading={<Avatar name={v.name} id={v.memberId} size={40} />} title={v.name ?? v.maskedPhone ?? "Member"} subtitle={`${formatTime(v.createdAt)} · ${v.source}`} trailing={<span className="tabular-nums text-fg-brand">+{v.points}</span>} />
+                  <ListRow leading={<Avatar name={v.name} id={v.memberId} size={40} />} title={v.name ?? v.maskedPhone ?? "Member"} subtitle={`${formatTime(v.createdAt)} · ${sourceLabel(v.source)}`} trailing={<span className="tabular-nums text-fg-brand">+{v.points}</span>} />
                 </li>
               ))}
             </ul>
@@ -146,7 +150,7 @@ export default function HomePage() {
                   </p>
                 </>
               ) : (
-                <p className="text-body-sm text-fg-muted">As your members visit other shops on the street, you'll see the overlap here. Shops with fewer than 5 shared members stay private.</p>
+                <p className="text-body-sm text-fg-muted">As your members visit other shops on the street, you&apos;ll see the overlap here. Shops with fewer than 5 shared members stay private.</p>
               )
             ) : (
               <Skeleton className="h-24 w-full" />
@@ -190,7 +194,7 @@ export default function HomePage() {
                 <ul className="divide-y divide-border">
                   {activity.data.items.map((a) => (
                     <li key={a.id}>
-                      <ListRow href={`${base}/customers/${a.memberId}`} title={a.customerName ?? "Member"} subtitle={`${a.type.replace(/_/g, " ")} · ${relativeTime(a.createdAt)}`} trailing={<span className={a.points >= 0 ? "tabular-nums text-fg-brand" : "tabular-nums text-fg"}>{a.points >= 0 ? "+" : ""}{formatPoints(a.points, detail.program?.terminology)}</span>} />
+                      <ListRow href={`${base}/customers/${a.memberId}`} title={a.customerName ?? "Member"} subtitle={`${typeLabel(a.type)} · ${relativeTime(a.createdAt)}`} trailing={<span className={a.points >= 0 ? "tabular-nums text-fg-brand" : "tabular-nums text-fg"}>{signedPoints(a.points, detail.program?.terminology)}</span>} />
                     </li>
                   ))}
                 </ul>
@@ -205,8 +209,8 @@ export default function HomePage() {
       ) : null}
 
       {manager && !teaserHidden ? (
-        <div className="relative">
-          <FeatureTeaser featureKey={upsell} />
+        <div className="flex flex-col items-end gap-1">
+          <div className="w-full"><FeatureTeaser featureKey={upsell} /></div>
           <button
             type="button"
             onClick={() => {
@@ -217,7 +221,7 @@ export default function HomePage() {
               }
               setTeaserHidden(true);
             }}
-            className="absolute end-3 top-3 min-h-11 rounded-sm px-2 text-label text-fg-muted hover:text-fg"
+            className="min-h-11 rounded-sm px-2 text-label text-fg-muted hover:text-fg"
           >
             Hide for 30 days
           </button>

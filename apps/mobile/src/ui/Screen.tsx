@@ -1,8 +1,8 @@
-import { layout } from "@ll/design-tokens";
+import { layout, shadows } from "@ll/design-tokens";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { SafeAreaView, type Edge } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { IconButton } from "./IconButton";
 import { ChevronLeft } from "./icons";
@@ -25,12 +25,17 @@ export interface ScreenProps {
   edges?: Edge[];
   contentStyle?: StyleProp<ViewStyle>;
   background?: "canvas" | "surface";
+  /** Full-bleed hero under the status bar with a round back button floating over it (Shop detail). */
+  floatingBack?: boolean;
 }
 
 /** Canvas + safe area + 56 app bar + gutters 16. */
-export function Screen({ children, title, largeTitle, subtitle, back, onBack, trailing, scroll = true, refreshing, onRefresh, footer, banner, edges = ["top"], contentStyle, background = "canvas" }: ScreenProps) {
+export function Screen({ children, title, largeTitle, subtitle, back, onBack, trailing, scroll = true, refreshing, onRefresh, footer, banner, edges = ["top"], contentStyle, background = "canvas", floatingBack }: ScreenProps) {
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace("/")));
   const showBar = back || (title && !largeTitle) || trailing;
+  const barShown = !floatingBack && !!showBar && !(largeTitle && !back);
   const content = (
     <>
       {largeTitle && title ? (
@@ -48,10 +53,10 @@ export function Screen({ children, title, largeTitle, subtitle, back, onBack, tr
     </>
   );
   return (
-    <SafeAreaView edges={edges} style={[styles.root, { backgroundColor: c[background] }]}>
-      {showBar && !(largeTitle && !back) ? (
+    <SafeAreaView edges={floatingBack ? edges.filter((e) => e !== "top") : edges} style={[styles.root, { backgroundColor: c[background] }]}>
+      {barShown ? (
         <View style={styles.bar}>
-          {back ? <IconButton icon={ChevronLeft} label="Back" onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace("/")))} /> : <View style={{ width: 8 }} />}
+          {back ? <IconButton icon={ChevronLeft} label="Back" onPress={goBack} /> : <View style={{ width: 8 }} />}
           <Text variant="title" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
             {!largeTitle ? (title ?? "") : ""}
           </Text>
@@ -61,15 +66,20 @@ export function Screen({ children, title, largeTitle, subtitle, back, onBack, tr
       {banner}
       {scroll ? (
         <ScrollView
-          contentContainerStyle={[styles.content, contentStyle]}
+          contentContainerStyle={[styles.content, !barShown && !floatingBack ? styles.noBar : null, contentStyle]}
           keyboardShouldPersistTaps="handled"
           refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.brand} colors={[c.brand]} /> : undefined}
         >
           {content}
         </ScrollView>
       ) : (
-        <View style={[styles.content, { flex: 1 }, contentStyle]}>{content}</View>
+        <View style={[styles.content, !barShown ? styles.noBar : null, { flex: 1 }, contentStyle]}>{content}</View>
       )}
+      {floatingBack ? (
+        <View style={[styles.floatingBack, { top: insets.top + 8, backgroundColor: c.surface }, shadows.sm.native]}>
+          <IconButton icon={ChevronLeft} label="Back" onPress={goBack} />
+        </View>
+      ) : null}
       {footer ? <View style={[styles.footer, { borderTopColor: c.border, backgroundColor: c[background] }]}>{footer}</View> : null}
     </SafeAreaView>
   );
@@ -96,6 +106,9 @@ const styles = StyleSheet.create({
   bar: { height: layout.appBar, flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 },
   largeTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   content: { paddingHorizontal: layout.gutterMobile, paddingBottom: 32, gap: 24 },
+  /** No app bar: keep the first line off the status bar / notch edge. */
+  noBar: { paddingTop: 16 },
   footer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  floatingBack: { position: "absolute", left: 12, borderRadius: 999 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
 });

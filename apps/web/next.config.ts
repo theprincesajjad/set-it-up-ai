@@ -22,7 +22,11 @@ const nextConfig: NextConfig = {
     return [
       // Spec aliases (docs/design/screens/*) → canonical routes.
       { source: "/shoppers", destination: "/for-shoppers", permanent: true },
-      { source: "/bia", destination: "/for-bias", permanent: true },
+      // OAuth / Stripe return URLs from the API (integrations.md, billing.md, payments.md) → the dashboard.
+      { source: "/dashboard/integrations", has: [{ type: "query", key: "merchantId", value: "(?<mid>[0-9a-f-]+)" }], destination: "/m/:mid/integrations", permanent: false },
+      { source: "/dashboard/billing", has: [{ type: "query", key: "merchant", value: "(?<mid>[0-9a-f-]+)" }], destination: "/m/:mid/billing", permanent: false },
+      { source: "/dashboard/payments", has: [{ type: "query", key: "merchant", value: "(?<mid>[0-9a-f-]+)" }], destination: "/m/:mid/billing", permanent: false },
+      { source: "/dashboard/:path*", destination: "/m", permanent: false },
       { source: "/s/:slug", destination: "/shops/:slug", permanent: false },
       { source: "/card", destination: "/me", permanent: false },
       { source: "/terms", destination: "/legal/terms", permanent: true },
@@ -34,7 +38,7 @@ const nextConfig: NextConfig = {
     return [
       {
         // Token links (quotes, invoices) and signed-in pages must never be indexed or cached by proxies.
-        source: "/:prefix(q|i|o|me)/:path*",
+        source: "/:prefix(q|i|o|me|m|rep|admin|bia|dev)/:path*",
         headers: [
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
           { key: "Referrer-Policy", value: "no-referrer" },

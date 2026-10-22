@@ -100,9 +100,9 @@ test("marketing pages render with live data", async ({ page }) => {
   await page.goto("/neighbourhoods/roncesvalles");
   await expect(page.getByRole("heading", { name: /Welcome to Roncesvalles/ })).toBeVisible();
   await page.goto("/map");
-  await page.getByRole("radio", { name: "Map" }).click();
-  await expect(page.getByRole("group", { name: "Map of shops" })).toBeVisible();
-  await page.screenshot({ path: shot("14-map"), fullPage: true });
+  await page.getByRole("radio", { name: "List" }).click();
+  await expect(page.getByRole("heading", { name: "Shops near you" })).toBeVisible();
+  // The vector map itself (and the 14-map screenshot) is covered by e2e/map.spec.ts.
   await page.goto("/legal/terms");
   await expect(page.getByText("DRAFT: not reviewed by a lawyer and not in effect.")).toBeVisible();
 });

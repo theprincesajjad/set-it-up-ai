@@ -15,6 +15,10 @@ export default function CampaignDetail() {
   const my = mine.data?.items.find((x) => x.id === id) ?? null;
   const pub = useQuery({ queryKey: ["campaign", id], queryFn: () => api.network.campaign(id!), enabled: !!id && !my });
   const cmp = my ?? pub.data;
+  // Campaign merchants carry only name + logo; the strip's shop list adds vertical, brand colour and distance.
+  const hoodSlug = cmp?.neighbourhood.slug;
+  const strip = useQuery({ queryKey: ["campaign-shops", hoodSlug ?? ""], queryFn: () => api.network.shops({ neighbourhood: hoodSlug!, limit: 100 }), enabled: !!hoodSlug, staleTime: 10 * 60_000 });
+  const byId = new Map((strip.data?.items ?? []).map((x) => [x.merchant.id, x]));
   if (mine.isLoading || pub.isLoading) {
     return (
       <Screen back>
@@ -33,7 +37,10 @@ export default function CampaignDetail() {
   const goal = my?.progress.goal ?? cmp.goalVisits;
   const done = my?.progress.visited ?? 0;
   const ended = cmp.status === "ended";
-  const merchants = [...cmp.merchants].sort((a, b) => Number(visited.has(a.id)) - Number(visited.has(b.id)));
+  const brief = (m: (typeof cmp.merchants)[number]) => ({ name: m.name, logoUrl: m.logoUrl, vertical: byId.get(m.id)?.merchant.vertical ?? "other", brandColor: byId.get(m.id)?.merchant.brandColor ?? null });
+  const dist = (id: string) => byId.get(id)?.distanceMetres ?? Number.POSITIVE_INFINITY;
+  // Unvisited first, nearest first (customer-mobile.md § 8).
+  const merchants = [...cmp.merchants].sort((a, b) => Number(visited.has(a.id)) - Number(visited.has(b.id)) || dist(a.id) - dist(b.id) || a.name.localeCompare(b.name));
 
   return (
     <Screen back title={cmp.name}>
@@ -71,7 +78,7 @@ export default function CampaignDetail() {
             return (
               <View key={m.id} style={styles.slot}>
                 <View style={[styles.stamp, { borderColor: v ? c.accent : c.stampEmpty, borderStyle: v ? "solid" : "dashed", opacity: v ? 1 : 0.4 }]}>
-                  <ShopLogo shop={{ ...m, vertical: "other" }} size={48} />
+                  <ShopLogo shop={brief(m)} size={52} round />
                 </View>
                 {v ? (
                   <View style={[styles.visited, { backgroundColor: c.accent }]}>
@@ -89,7 +96,13 @@ export default function CampaignDetail() {
 
       <Section title="Participating shops">
         {merchants.map((m) => (
-          <ShopTile key={m.id} variant="list" shop={{ name: m.name, vertical: "other", logoUrl: m.logoUrl }} subtitle={visited.has(m.id) ? "Visited" : "Not visited yet"} onPress={() => router.push(`/shop/${m.slug}`)} />
+          <ShopTile
+            key={m.id}
+            variant="list"
+            shop={{ ...brief(m), distanceM: byId.get(m.id)?.distanceMetres ?? null }}
+            subtitle={[visited.has(m.id) ? "Visited" : "Not visited yet", byId.get(m.id)?.location?.address].filter(Boolean).join(" · ")}
+            onPress={() => router.push(`/shop/${m.slug}`)}
+          />
         ))}
       </Section>
     </Screen>
@@ -98,8 +111,8 @@ export default function CampaignDetail() {
 
 const styles = StyleSheet.create({
   hero: { height: 140, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
-  slot: { width: 72, alignItems: "center" },
+  grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 16 },
+  slot: { width: "25%", alignItems: "center" },
   stamp: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   visited: { position: "absolute", bottom: -4, paddingHorizontal: 6, borderRadius: 6, transform: [{ rotate: "-8deg" }] },
 });

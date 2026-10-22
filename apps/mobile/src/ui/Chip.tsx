@@ -10,17 +10,19 @@ export interface ChipProps {
   icon?: LucideIcon;
   /** Counter mode: 48 visual height. */
   large?: boolean;
+  /** Spoken label when the visible one is terse ("+2" → "Add 2 stamps"). */
+  accessibilityLabel?: string;
 }
 
 /** Interactive filter chip: height 36 (hit 48), radius full, selected = brandSubtle + check. */
-export function Chip({ label, selected, onPress, icon: Icon, large }: ChipProps) {
+export function Chip({ label, selected, onPress, icon: Icon, large, accessibilityLabel }: ChipProps) {
   const { c } = useTheme();
   const fg = selected ? c.onBrandSubtle : c.fg;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       hitSlop={large ? 8 : 6}
       style={({ pressed }) => [

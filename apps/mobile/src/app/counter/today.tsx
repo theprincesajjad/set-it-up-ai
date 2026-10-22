@@ -8,7 +8,8 @@ import { formatTime } from "../../lib/format";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
-import { Avatar, Badge, Button, Card, EmptyState, ErrorState, History, ListRow, Screen, Section, SkeletonList, StatTile, Text, useToast } from "../../ui";
+import { Avatar, Badge, Button, Card, EmptyState, ErrorState, Gift, History, ListRow, Plus, Screen, Section, SkeletonList, StatTile, Text, useToast } from "../../ui";
+import { last4 } from "../../lib/phone";
 
 /** Today: 2x2 stats + today's activity with the staff initials; Undo where the API allows it. */
 export default function Today() {
@@ -54,21 +55,29 @@ export default function Today() {
           <EmptyState icon={History} title="No visits yet today" body="Awards show up here as you make them." />
         ) : (
           <Card padded={false} style={{ paddingHorizontal: 16 }}>
-            {(activity.data?.items ?? []).map((a) => (
+            {(activity.data?.items ?? []).map((a, i, all) => (
               <ListRow
                 key={a.transactionId}
+                divider={i < all.length - 1}
                 minHeight={64}
-                leading={<Avatar name={a.staffName ?? "?"} id={a.staffUserId ?? undefined} size={40} />}
-                title={`${shortName(a.name)} · ${a.points > 0 ? "+" : ""}${a.points}`}
-                subtitle={[formatTime(a.createdAt), a.maskedPhone, a.amountCents ? formatMoney(a.amountCents) : null, a.type].filter(Boolean).join(" · ")}
+                // Staff initials when we know who tapped (staff-counter.md § 8); otherwise the kind of entry.
+                leading={a.staffName ? <Avatar name={a.staffName} id={a.staffUserId ?? undefined} size={40} /> : undefined}
+                leadingIcon={a.staffName ? undefined : a.points < 0 ? Gift : Plus}
+                title={shortName(a.name)}
+                subtitle={[formatTime(a.createdAt), a.maskedPhone ? `...${last4(a.maskedPhone)}` : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "Redeemed" : null].filter(Boolean).join(" · ")}
                 trailing={
-                  a.reversed ? (
-                    <Badge>Undone</Badge>
-                  ) : a.canUndo ? (
-                    <Button variant="secondary" size="sm" loading={busy === a.transactionId} onPress={() => undo(a.transactionId)}>
-                      Undo
-                    </Button>
-                  ) : null
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : a.points > 0 ? "onSuccessSubtle" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
+                      {`${a.points > 0 ? "+" : ""}${a.points}`}
+                    </Text>
+                    {a.reversed ? (
+                      <Badge>Undone</Badge>
+                    ) : a.canUndo ? (
+                      <Button variant="secondary" size="sm" loading={busy === a.transactionId} onPress={() => undo(a.transactionId)}>
+                        Undo
+                      </Button>
+                    ) : null}
+                  </View>
                 }
               />
             ))}

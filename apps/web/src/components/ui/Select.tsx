@@ -10,14 +10,15 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string | null;
   options: { value: string; label: string }[];
   placeholder?: string;
+  hideLabel?: boolean;
 }
 
 /** Native <select> styled like TextField (system.md "Select"). */
-export function Select({ label, hint, error, options, placeholder, className, ...rest }: SelectProps) {
+export function Select({ label, hint, error, options, placeholder, className, hideLabel, ...rest }: SelectProps) {
   const auto = useId();
   const id = rest.id ?? auto;
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required}>
+    <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required} hideLabel={hideLabel}>
       <div className="relative">
         <select {...rest} id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)} className={cn(inputBase, "appearance-none pe-10", className)}>
           {placeholder ? <option value="">{placeholder}</option> : null}

@@ -153,7 +153,7 @@ function KioskInner() {
       <View style={[styles.root, wide ? { flexDirection: "row" } : null]} onTouchStart={bump}>
         <View style={[styles.left, wide ? { flex: 45 } : null]}>
           <Pressable onPress={onLogoTap} accessibilityLabel={`${shopName} logo`} accessible>
-            <ShopLogo shop={{ name: shopName, vertical: merchant?.merchant.vertical ?? "other", logoUrl: merchant?.merchant.logoUrl }} size={96} />
+            <ShopLogo shop={{ name: shopName, vertical: merchant?.merchant.vertical ?? "other", logoUrl: merchant?.merchant.logoUrl, brandColor: merchant?.merchant.brandColor }} size={96} />
           </Pressable>
           <Text variant="display" style={{ fontSize: 40 * scale, lineHeight: 44 * scale }}>
             Check in and earn
@@ -161,7 +161,7 @@ function KioskInner() {
           <Text variant="bodyLg" style={{ fontSize: 20 * scale, lineHeight: 28 * scale }}>
             {step === "consent" ? "You're new here. One question first." : "Type your mobile number"}
           </Text>
-          <Button variant="ghost" onPress={() => setBigText((b) => !b)}>
+          <Button variant="ghost" style={{ alignSelf: "flex-start", paddingHorizontal: 0 }} onPress={() => setBigText((b) => !b)}>
             {bigText ? "Normal text" : "Bigger text"}
           </Button>
           {!online ? <Banner variant="warning">Offline. Ask staff to add your visit.</Banner> : null}

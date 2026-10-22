@@ -61,6 +61,7 @@ describe("OfflineQueue", () => {
     expect(send.mock.calls[0]?.[1].map((e) => e.idempotencyKey)).toEqual(["a", "c"]);
     expect(send.mock.calls[1]?.[0]).toBe("m2");
     expect(res).toMatchObject({ sent: 3, failed: 0, retrying: 0, networkError: false });
+    expect(Object.keys(res.sentKeys).sort()).toEqual(["a", "b", "c"]);
     expect(q.snapshot().pendingCount).toBe(0);
     expect(q.snapshot().lastSent).toBe(3);
   });

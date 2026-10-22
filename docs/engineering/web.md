@@ -22,12 +22,19 @@ E2E (Playwright, Chromium from `PLAYWRIGHT_BROWSERS_PATH`; `@playwright/test` is
 never run `playwright install`):
 
 ```bash
+mkdir -p apps/api/.pglite
 DATABASE_URL=pglite://./.pglite/e2e PORT=4100 pnpm --filter @ll/api seed
-DATABASE_URL=pglite://./.pglite/e2e PORT=4100 PUBLIC_WEB_URL=http://localhost:3100 pnpm --filter @ll/api start
+# NODE_ENV=test: the API's global rate limit (300/min per socket IP) would otherwise trip, because every
+# SSR + BFF request reaches the API from the web server's one IP.
+NODE_ENV=test DATABASE_URL=pglite://./.pglite/e2e PORT=4100 PUBLIC_WEB_URL=http://localhost:3100 pnpm --filter @ll/api start
 pnpm --filter @ll/web build
 cd apps/web && API_INTERNAL_URL=http://localhost:4100 OTP_AUTOFILL=1 npx next start --port 3100
-cd apps/web && npx playwright test             # screenshots → apps/web/e2e/screenshots/
+cd apps/web && E2E_WEB_URL=http://localhost:3100 E2E_API_URL=http://localhost:4100 npx playwright test
 ```
+
+Specs: `web-pass.spec.ts` (customer pass), `dashboard.spec.ts` (merchant dashboard, web counter, rep, admin rollout,
+BIA; screenshots → `e2e/screenshots/dashboard/`), `map.spec.ts` (vector map; routes tiles through `HTTPS_PROXY`
+when set, falls back to the list otherwise). The dashboard spec resets the rollout stage/override it changes.
 
 `e2e/fixtures.ts` logs in with the seed's demo credentials, enables the Pro features for Fix-It Phone Lab through an
 admin override, finishes fake Stripe Connect onboarding and creates a sent quote with a 25% deposit.
@@ -42,6 +49,7 @@ admin override, finishes fake Stripe Connect onboarding and creates a sent quote
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | build | empty | Enables Stripe Payment Element. Empty → dev "Test payment" button that calls `POST /v1/payments/fake/simulate` |
 | `NEXT_PUBLIC_APP_STORE_URL`, `NEXT_PUBLIC_PLAY_STORE_URL` | build | store home pages | "Get the app" links |
 | `OTP_AUTOFILL` | server runtime | off in production | `1` fills OTP boxes with the API's `devCode` (dev APIs only return it) |
+| `NEXT_PUBLIC_MAP_STYLE_URL` | build | OpenFreeMap positron | MapLibre style for `/map` (free vector tiles, no key). Muted to the paper palette at load |
 
 `NEXT_PUBLIC_*` values are inlined at build time; set them before `next build`.
 The API must set `PUBLIC_WEB_URL` to this site so SMS/QR links (`/j/<code>`, `/q/<token>`, `/i/<token>`) point here.
@@ -95,26 +103,61 @@ keep the proxy refreshing early (it does) so 401 races stay rare. `/api/ll` refu
   `consent.text` (also used when re-granting in Settings). Note the API's suggested `consentText` differs; the web uses
   the ux-copy wording on purpose.
 - Pages that need the API are dynamic or ISR with graceful fallbacks, so `next build` works with the API down.
-- `/map` is a list plus a dependency-free "map" (pins projected from lat/lng onto a decorative background, peek card).
-  Swap in a real tile map later if needed; keep it out of the join path.
+- `/map` is map-first: `components/pass/ShopMap.tsx` lazy-loads `NetworkMap.tsx` (maplibre-gl, client only, its CSS
+  ships with that chunk). Pins (`MapPin.tsx`) are React portals into maplibre markers: round logo or coloured
+  initials with a white ring, marigold balance badge on my shops, pine dot for live promos, selected pin enlarged;
+  labels show on the selected pin and at zoom ≥ 17. Floating category chips + peek card sit over the map.
+  No WebGL, a style/tile error or a 12 s timeout → `onFail` → the list with a notice. Keep it out of the join path.
+- `ShopLogo` always falls back to coloured initials (no logo, or `onError`); same in `ShopTile` hero/list and pins.
+- Marketing "Book a visit" / BIA forms post to `POST /v1/public/leads`; `/pricing` reads `GET /v1/public/plans`
+  (real availability + active merchants); shop pages show `memberCount` ("N neighbours are members") and
+  `features` pills; the redeem code sheet counts down `RedemptionDto.expiresAt`.
 
-## For the dashboard / rep / admin engineer
+## Merchant dashboard, rep console, admin, BIA
 
-- Routes: `src/app/(dashboard)/m/[merchantId]/...` (merchant-dashboard.md uses `/m/...`; `routes.dashboard(id)` in
-  `src/lib/routes.ts` already points there and staff sign-in redirects to it), `src/app/(rep)/rep/...`,
-  `src/app/(admin)/admin/...`. Each group gets its own `layout.tsx` using `AppShell`; guard with
-  `await requireMe(pathname)` from `src/lib/auth/session.ts` and check `me.merchants` / `me.platformRole`.
-- Shell + layout: `AppShell` (sidebar 248 / rail 72 / bottom nav + More sheet, `env="rep"|"admin"` strip),
-  `PageHeader`, `Section`, `Container`.
-- Data: `getServerApi()` in server components; `browserApi` / `browserClient` in client components. Add
-  `merchant`/`rep`/`admin` groups to `src/lib/api/endpoints.ts` (or call `browserClient.get<merchantApi.X>(...)`).
-- Components: `DataTable` (sortable, mobile list rows, cursor "Load more"), `StatTile`, `Tabs`, `SegmentedControl`,
-  `Modal`/`Sheet`, `useToast`, `Banner`, `EmptyState`/`ErrorState`, `Skeleton*`, `Badge`/`StatusBadge` (all status
-  domains mapped), `LockedFeature`, `ProgressBar`, `TextField`/`Select`/`Switch`/`Checkbox`/`PhoneField`, `Avatar`,
-  `ShopTile`/`ShopLogo`, `StampCard`/`PointsRing`/`RewardCard`/`PromoCard` (program-editor preview), `QrCode`
-  (server-side SVG, for the QR kit).
-- Lint enforces semantic token classes (no raw palette / Tailwind default colours) in `src/components/ui`.
-- Payments in dashboard flows: reuse `components/pass/PaymentBox.tsx` (Stripe Element or the dev simulator).
+Routes (all dynamic, `noindex`):
+
+| Area | Routes |
+| --- | --- |
+| Merchant `/m/[merchantId]` | `/` Home (KPIs, daily chart, checklist, activation, today, network overlap, live promos, one LockedFeature) · `/setup` guide · `/counter` web counter · `/customers` (+ `/[memberId]`, `/import`) · `/program` (earn, rewards, bonuses + VIP, categories, expiry, live preview) · `/promos` (+ `/new`, `/[promoId]`) · `/discount-cards` · `/messages` (+ `/new`, `/[messageId]`, `/automations`) · `/reports` · `/locations` (+ `/kit` print page) · `/staff` · `/integrations` (+ `/[provider]`, `/developers` webhooks + API key) · `/billing` (plans, Stripe Connect) · `/settings` · Phase 2: `/orders`, `/catalog`, `/tickets` (+ `/new`, `/[ticketId]`), `/slots` · Phase 3: `/ads` (+ `/new`, `/[adId]` with card payment), `/campaigns` |
+| Rep `/rep` | Today · `/leads` (board + list, `/[leadId]`) · `/new` (done-for-you wizard) · `/merchants` (+ `/[id]`, `/[id]/kit`) · `/earnings` |
+| Admin `/admin` | Network · `/rollout` · `/merchants` (+ `/[id]`) · `/neighbourhoods` (+ perks) · `/users` · `/campaigns` (+ `/[id]`) · `/ads` · `/audit` |
+| BIA `/bia` | campaigns list + `/[campaignId]` (shops, visit-lift report, CSV/print) |
+| Dev | `/dev/checkout/[id]`, `/dev/stripe-onboarding`, `/dev/billing-portal`: FakePayments stand-ins |
+
+- **Guards.** `(dashboard)/m/[merchantId]/layout.tsx` runs `requireMe`, fetches `detail` + `features` server-side and
+  renders `MerchantProvider` + `MerchantShell`. Staff of the shop get their role; platform admins and the shop's rep
+  pass the API's `requireStaff` and see a sticky danger "Viewing as … Changes are logged." banner. Staff role sees only
+  Today + Counter (`lib/dashboard/nav.ts` `canOpen`); billing is owner-only. Rep/admin layouts check `platformRole`;
+  BIA access is decided by `GET /v1/campaigns` (403 → "This area is for BIA managers").
+- **Feature gating.** Nav is built from `GET /features` (`buildMerchantNav`): locked features never appear. Phase 2/3
+  pages wrap in `FeatureGate` (renders the `FeatureTeaser` card when locked). `FeatureTeaser` maps state → LockedFeature:
+  hidden → Coming soon + Notify me (`POST /features/:key/notify`), beta → Try the beta (owner opt-in), plan → See plans.
+- **Data.** Pages are client components: `useMerchant()` gives `api = browserApi.merchant(id)` (all groups in
+  `lib/api/endpoints.ts`: `merchant(id)`, `rep`, `admin`, `campaigns`, `merchants`, `ads`). `useApi(fn, deps, { pollMs })`
+  handles loading/error/reload (orders poll 10 s, tickets/today 30 s); `useAction` wraps writes.
+- **Logic modules (unit-tested in `test/`).** `lib/dashboard/program.ts` (validation mirroring the API, sentence, preview
+  model, PATCH diff, "raises the bar" confirm), `csv.ts` (parse, column guess, preview, canonical CSV; consent columns
+  dropped unless the merchant answers "Yes, and I have records"), `rollout.ts` (free-forever locked to GA, typed key
+  for GA, plain-words effect, gauge status), `counter.ts` (till-style keypad, lookup hints, award labels), `promos.ts`,
+  `customers.ts` (consent column rules, masking), `time.ts` (Toronto ranges, datetime-local ↔ ISO).
+- **Counter.** `components/dashboard/counter/CounterApp.tsx`: lookup (phone / last 4 / member code), new customer
+  with unticked CASL checkbox (exact `consent.merchant.v1` text), per-dollar amount keypad (hardware digits too) or
+  +1/+2/+3 stamp `quantity`, redeem, verify code, undo (timer + recent list `canUndo`). One idempotency key per tap,
+  kept across network-error retries. Keys: `/` search, Enter award, Esc next customer.
+- **QR kit.** `QrKitPrint` renders `public/brand/qr-stand-a6.svg` as JSX with the shop name/street/join URL and the
+  real `QrCode` in the 50 mm slot; `@page` is set per artifact (A6 / A4 / staff script) and `AppShell` hides itself
+  in print. `afterprint` ticks the `qr_kit` setup step.
+- **Components added** to `components/ui` (additive): `DensityGauge`, `Keypad`, `Select hideLabel`, TextField
+  `datetime-local|time|color`, `print:` classes in `AppShell`, `ShopLogo` initials fallback. Dashboard-only pieces live
+  in `components/dashboard/` (shells, charts with "View as table", phone-frame `ProgramPreview`, import wizard, promo
+  editor, campaign views, admin StageDialog/OverridesSheet).
+- **Return URLs.** `next.config.ts` redirects the API's `/dashboard/integrations?merchantId=`, `/dashboard/billing?merchant=`
+  and `/dashboard/payments?merchant=` to `/m/:id/...`. (`/bia` is now the BIA tool; the marketing page is `/for-bias`.)
+- **Known API gaps** (UI degrades gracefully): no way to set `smsReceiptsEnabled` from PATCH /merchants (toggle explains);
+  no "my neighbourhoods" for BIA managers (derived from visible campaigns); no customer-list total / joined-after /
+  consent filters (count from reports overview, New/Opted-in/Muted chips filter loaded rows); phone reveal isn't
+  audit-logged; no "send test to myself" for messages; `AdminFeature.updatedBy` is a user id, not a name.
 
 ## Deploy
 

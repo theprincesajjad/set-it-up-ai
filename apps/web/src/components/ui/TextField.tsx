@@ -65,7 +65,7 @@ type BaseProps = {
 
 export type TextFieldProps = BaseProps &
   (
-    | ({ type?: "text" | "email" | "number" | "search" | "password" | "tel" | "url" | "date" } & Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "prefix">)
+    | ({ type?: "text" | "email" | "number" | "search" | "password" | "tel" | "url" | "date" | "datetime-local" | "time" | "color" } & Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "prefix">)
     | ({ type: "textarea" } & TextareaHTMLAttributes<HTMLTextAreaElement>)
   );
 

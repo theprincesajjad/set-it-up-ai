@@ -356,7 +356,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
           <div className="flex flex-col items-center gap-3">
             <ShopLogo shop={membership.merchant} size={48} />
             <p className="text-h2 text-fg">{active.redemption.rewardName}</p>
-            <RedeemCode code={active.redemption.code} rewardName={membership.merchant.name} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
+            <RedeemCode code={active.redemption.code} rewardName={membership.merchant.name} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
           </div>
         ) : null}
       </Modal>

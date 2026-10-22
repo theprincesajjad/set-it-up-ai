@@ -68,21 +68,29 @@ export function isFeatureOff(e: unknown): boolean {
 }
 
 /**
- * Phase 2 (orders + repair tickets). Shown only when the API returns data:
- * locked features answer 402 and an empty list means nothing to show.
+ * Phase 2 (orders + repair tickets). The wallet's per-shop `features` flags say
+ * where order-ahead / repair tickets are switched on, so the lists are only
+ * fetched when at least one of my shops has them (no probing for 402s).
  */
 export function usePhase2() {
   const { status } = useSession();
-  const orders = useQuery({ queryKey: qk.orders, queryFn: () => api.commerce.orders(), enabled: status === "signedIn", retry: false });
-  const tickets = useQuery({ queryKey: qk.tickets, queryFn: () => api.service.tickets(), enabled: status === "signedIn", retry: false });
-  const orderItems = orders.data?.items ?? [];
-  const ticketItems = tickets.data?.items ?? [];
+  const wallet = useWallet();
+  const shops = wallet.data?.items ?? [];
+  const ordersOn = shops.some((m) => m.features?.orderAhead || m.features?.pickupSlots);
+  const ticketsOn = shops.some((m) => m.features?.serviceTickets);
+  const orders = useQuery({ queryKey: qk.orders, queryFn: () => api.commerce.orders(), enabled: status === "signedIn" && ordersOn, retry: false });
+  const tickets = useQuery({ queryKey: qk.tickets, queryFn: () => api.service.tickets(), enabled: status === "signedIn" && ticketsOn, retry: false });
+  const orderItems = ordersOn ? (orders.data?.items ?? []) : [];
+  const ticketItems = ticketsOn ? (tickets.data?.items ?? []) : [];
   return {
     orders: orderItems,
     tickets: ticketItems,
-    enabled: orderItems.length > 0 || ticketItems.length > 0,
-    loading: orders.isLoading || tickets.isLoading,
-    refetch: () => Promise.all([orders.refetch(), tickets.refetch()]),
+    /** Show "Orders & tickets" entry points: a shop of mine has the feature on, or I already have some. */
+    enabled: ordersOn || ticketsOn || orderItems.length > 0 || ticketItems.length > 0,
+    ordersOn,
+    ticketsOn,
+    loading: (ordersOn && orders.isLoading) || (ticketsOn && tickets.isLoading),
+    refetch: () => Promise.all([ordersOn ? orders.refetch() : null, ticketsOn ? tickets.refetch() : null]),
   };
 }
 

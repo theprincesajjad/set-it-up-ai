@@ -50,6 +50,7 @@ export default function Rewards() {
                     reward={r}
                     balance={d.membership.balance}
                     terminology={d.membership.terminology}
+                    vertical={d.membership.merchant.vertical}
                     state="available"
                     disabledReason={online ? null : t("err.redeem.offlineCustomer")}
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
@@ -70,26 +71,45 @@ export default function Rewards() {
                 subtitle={d.membership.expiryDisclosure}
                 onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)}
               />
-              <FlatList
-                horizontal
-                data={d.rewards}
-                keyExtractor={(r) => r.id}
-                showsHorizontalScrollIndicator={false}
-                ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-                renderItem={({ item: r }) => (
-                  <View style={{ width: 290 }}>
-                    <RewardCard
-                      reward={r}
-                      balance={d.membership.balance}
-                      terminology={d.membership.terminology}
-                      state={r.affordable ? "available" : "locked"}
-                      disabledReason={online ? null : t("err.redeem.offlineCustomer")}
-                      onRedeem={() => setRedeeming({ m: d.membership, r })}
-                    />
-                  </View>
-                )}
-                ListEmptyComponent={<Text color="fgMuted">This shop hasn't added rewards yet.</Text>}
-              />
+              {d.rewards.length <= 1 ? (
+                d.rewards[0] ? (
+                  <RewardCard
+                    reward={d.rewards[0]}
+                    balance={d.membership.balance}
+                    terminology={d.membership.terminology}
+                    vertical={d.membership.merchant.vertical}
+                    state={d.rewards[0].affordable ? "available" : "locked"}
+                    disabledReason={online ? null : t("err.redeem.offlineCustomer")}
+                    onRedeem={() => setRedeeming({ m: d.membership, r: d.rewards[0]! })}
+                  />
+                ) : (
+                  <Text color="fgMuted">This shop hasn't added rewards yet.</Text>
+                )
+              ) : (
+                // Affordable first (references.md § 3); the row bleeds to the screen edge so the next card peeks.
+                <FlatList
+                  horizontal
+                  style={{ marginHorizontal: -16 }}
+                  contentContainerStyle={{ paddingHorizontal: 16 }}
+                  data={[...d.rewards].sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost)}
+                  keyExtractor={(r) => r.id}
+                  showsHorizontalScrollIndicator={false}
+                  ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+                  renderItem={({ item: r }) => (
+                    <View style={{ width: 300 }}>
+                      <RewardCard
+                        reward={r}
+                        balance={d.membership.balance}
+                        terminology={d.membership.terminology}
+                        vertical={d.membership.merchant.vertical}
+                        state={r.affordable ? "available" : "locked"}
+                        disabledReason={online ? null : t("err.redeem.offlineCustomer")}
+                        onRedeem={() => setRedeeming({ m: d.membership, r })}
+                      />
+                    </View>
+                  )}
+                />
+              )}
             </View>
           ))
         : null}

@@ -5,6 +5,7 @@ import type { merchantApi } from "@ll/shared";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/cn";
+import { useNow } from "@/lib/dashboard/useApi";
 
 export const STEP_COPY: Record<merchantApi.OnboardingStepKey, { label: string; action: string; path: string }> = {
   profile: { label: "Shop details", action: "Add details", path: "/settings" },
@@ -72,13 +73,14 @@ export function ChecklistCard({ checklist, base }: { checklist: merchantApi.Onbo
 
 /** First-30-days activation card. */
 export function ActivationCard({ active, target, createdAt }: { active: number; target: number; createdAt: string }) {
-  const days = Math.max(0, 30 - Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000));
+  const now = useNow();
+  const days = Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / 86_400_000));
   return (
     <Card padding="lg">
       <h2 className="text-title text-fg">Your first 25 members</h2>
       <ProgressBar className="mt-3" value={active} max={target} label="Active members" valueText={`${active} of ${target} active members`} />
       <p className="mt-2 text-body-sm text-fg-muted">
-        {days > 0 ? `${days} day${days === 1 ? "" : "s"} left in your first 30. ` : ""}Ask every customer for their number this week. A member counts once they've visited.
+        {days > 0 ? `${days} day${days === 1 ? "" : "s"} left in your first 30. ` : ""}Ask every customer for their number this week. A member counts once they&apos;ve visited.
       </p>
     </Card>
   );

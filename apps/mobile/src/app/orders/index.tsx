@@ -37,9 +37,10 @@ export default function OrdersAndTickets() {
         <EmptyState icon={ShoppingBag} title={t("empty.orders.title")} body={t("empty.orders.body")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
-          {rows.map((r) =>
+          {rows.map((r, i) =>
             r.kind === "order" ? (
               <ListRow
+                divider={i < rows.length - 1}
                 key={r.o.id}
                 leadingIcon={ShoppingBag}
                 title={`Pickup order #${r.o.number}`}
@@ -49,6 +50,7 @@ export default function OrdersAndTickets() {
               />
             ) : (
               <ListRow
+                divider={i < rows.length - 1}
                 key={r.x.id}
                 leadingIcon={r.x.itemKind === "vehicle" ? Wrench : Ticket}
                 title={[r.x.itemDetails.make, r.x.itemDetails.model].filter(Boolean).join(" ") || r.x.issue}

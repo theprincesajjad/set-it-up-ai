@@ -63,6 +63,8 @@ export function llApi(c: ApiClient) {
       payInvoice: (token: string) =>
         c.post<serviceApi.PayInvoiceResponse>(`/v1/public/invoices/${enc(token)}/pay`, {}, { anonymous: true }),
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
+      plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
+      lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
     },
     me: {
       profile: () => c.get<customerApi.ProfileDto>("/v1/me"),

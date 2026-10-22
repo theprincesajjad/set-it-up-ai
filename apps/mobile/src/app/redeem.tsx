@@ -11,16 +11,18 @@ import { useBrightScreen } from "../features/customer/brightness";
 import { useMembershipDetail } from "../features/customer/queries";
 import { groupCode } from "../lib/award";
 import { formatCountdown } from "../lib/format";
+import { secondsLeft } from "../lib/serverClock";
 import { api } from "../state/api";
 import { qk } from "../state/query";
 import { useTheme } from "../theme";
 import { Banner, Button, CircleCheck, ConfirmDialog, QrCode, ShopLogo, Text } from "../ui";
 
-const CODE_TTL_S = 10 * 60;
+/** Legacy fallback when the API didn't send expiresAt: app codes last 10 minutes from createdAt. */
+const CODE_TTL_MS = 10 * 60 * 1000;
 
 /** 6.2 RedeemCode: code + QR + countdown; polls until staff confirm. */
 export default function Redeem() {
-  const p = useLocalSearchParams<{ redemptionId: string; code: string; rewardName: string; createdAt: string; memberId: string; shopName: string; vertical: string; logoUrl?: string; slug?: string }>();
+  const p = useLocalSearchParams<{ redemptionId: string; code: string; rewardName: string; createdAt: string; expiresAt?: string; memberId: string; shopName: string; vertical: string; logoUrl?: string; brandColor?: string; slug?: string }>();
   const { c } = useTheme();
   const qc = useQueryClient();
   useBrightScreen("redeem-code");
@@ -28,15 +30,18 @@ export default function Redeem() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const started = new Date(p.createdAt ?? Date.now()).getTime();
-  const [left, setLeft] = useState(() => Math.max(0, CODE_TTL_S - Math.floor((Date.now() - started) / 1000)));
+  // RedemptionDto.expiresAt, counted down on the server's clock. "none" = this code never expires.
+  const legacy = Date.parse(p.createdAt ?? "");
+  const expiresAt = p.expiresAt === "none" ? null : p.expiresAt || (Number.isNaN(legacy) ? null : new Date(legacy + CODE_TTL_MS).toISOString());
+  const [left, setLeft] = useState<number | null>(() => secondsLeft(expiresAt));
   const detail = useMembershipDetail(p.memberId, { refetchInterval: state === "waiting" ? 3000 : undefined });
   const seenOpen = useRef(false);
 
   useEffect(() => {
-    const id = setInterval(() => setLeft(Math.max(0, CODE_TTL_S - Math.floor((Date.now() - started) / 1000))), 1000);
+    if (!expiresAt) return;
+    const id = setInterval(() => setLeft(secondsLeft(expiresAt)), 1000);
     return () => clearInterval(id);
-  }, [started]);
+  }, [expiresAt]);
 
   // Staff confirmed = the code is no longer in openRedemptions (and we didn't cancel it).
   useEffect(() => {
@@ -52,7 +57,7 @@ export default function Redeem() {
     }
   }, [detail.data, state, p.redemptionId, p.rewardName, qc]);
 
-  // Expired: return the points (the code can't be used any more).
+  // Expired: the server voids it and refunds the points (redemptions.expire job); cancelling too makes it immediate.
   useEffect(() => {
     if (left === 0 && state === "waiting") {
       setState("expired");
@@ -92,7 +97,7 @@ export default function Redeem() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.canvas }]}>
       <View style={styles.body}>
-        <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null }} size={56} />
+        <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null, brandColor: p.brandColor || null }} size={56} />
         <Text variant="h2" center>
           {p.rewardName}
         </Text>
@@ -116,9 +121,13 @@ export default function Redeem() {
             <View style={{ backgroundColor: c.qrBg, padding: 12, borderRadius: radii.md }}>
               <QrCode value={p.code ?? ""} size={160} />
             </View>
-            <Text variant="bodyStrong" rawColor={left <= 60 ? c.onWarningSubtle : c.fg} accessibilityLiveRegion={left <= 60 ? "polite" : "none"}>
-              {`Expires in ${formatCountdown(left)}`}
-            </Text>
+            {left !== null ? (
+              <View style={[styles.timer, { backgroundColor: left <= 60 ? c.warningSubtle : c.surfaceSunken }]}>
+                <Text variant="bodyStrong" tabular rawColor={left <= 60 ? c.onWarningSubtle : c.fg} accessibilityLiveRegion={left <= 60 ? "polite" : "none"}>
+                  {`Expires in ${formatCountdown(left)}`}
+                </Text>
+              </View>
+            ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={[styles.dot, { backgroundColor: c.brand }]} />
               <Text color="fgMuted">Waiting for staff...</Text>
@@ -155,4 +164,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   codeBox: { borderRadius: radii.lg, paddingHorizontal: 24, paddingVertical: 16, minWidth: 220 },
   dot: { width: 10, height: 10, borderRadius: 5 },
+  timer: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
 });

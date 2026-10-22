@@ -17,6 +17,7 @@
  * No React Native imports here: tested in plain Node (client.test.ts).
  */
 import type { authApi } from "@ll/shared";
+import { observeServerDate } from "../lib/serverClock";
 
 export interface StoredTokens {
   accessToken: string;
@@ -228,6 +229,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       if (opts.idempotencyKey) headers["idempotency-key"] = opts.idempotencyKey;
 
       const res = await rawFetch(method, url, { headers, body, timeoutMs, signal: opts.signal });
+      observeServerDate(res.headers?.get?.("date"));
 
       if (res.status === 401 && headers.authorization && !retried) {
         if (usedStaffToken) {

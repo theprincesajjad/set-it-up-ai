@@ -13,6 +13,8 @@ import { scanBus } from "../../features/scanBus";
 import {
   activeMultiplier,
   awardButtonLabel,
+  awardQuantity,
+  quantityChips,
   awardErrorMessage,
   awardRef,
   classifyScan,
@@ -181,10 +183,14 @@ export default function Counter() {
 
   const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `...${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `...${cust.digits.slice(-4)}` : cust.label);
 
-  const award = async () => {
+  /** quantity > 1: the +2 / +3 chips (two coffees = one visit, quantity × pointsPerVisit). */
+  const award = async (quantity = 1) => {
     if (state.step !== "customer" || !program || !merchantId) return;
     touch();
     const cust = state.customer;
+    const qty = awardQuantity(program, quantity);
+    const estimated = estimate * (qty.quantity ?? 1);
+    const tapLabel = qty.quantity ? awardButtonLabel(program, { points: estimated, multiplier, newCustomer: cust.kind === "new" }) : label;
     const key = newIdempotencyKey();
     const amountCents = perDollar ? state.amountCents : undefined;
     const body = {
@@ -192,21 +198,22 @@ export default function Counter() {
       ...(categoryId ? { lines: [{ amountCents: state.amountCents, categoryId }] } : amountCents !== undefined ? { amountCents } : {}),
       ...(config.locationId ? { locationId: config.locationId } : {}),
       ...(cust.kind === "new" && newName.trim() ? { customerName: newName.trim() } : {}),
+      ...qty,
       idempotencyKey: key,
     };
     const baseBalance = cust.kind === "member" ? cust.member.balance : null;
     const optimistic = successView({
       program,
-      pointsEarned: estimate,
-      balance: baseBalance === null ? null : baseBalance + estimate,
-      nextReward: cust.kind === "member" && cust.member.nextReward ? { name: cust.member.nextReward.name, pointsNeeded: Math.max(0, cust.member.nextReward.pointsNeeded - estimate) } : null,
+      pointsEarned: estimated,
+      balance: baseBalance === null ? null : baseBalance + estimated,
+      nextReward: cust.kind === "member" && cust.member.nextReward ? { name: cust.member.nextReward.name, pointsNeeded: Math.max(0, cust.member.nextReward.pointsNeeded - estimated) } : null,
       firstName: cust.kind === "member" ? firstName(cust.member.name) : null,
       offline: !online,
     });
-    const display = { label, who: who(cust), name: cust.kind === "member" ? cust.member.name : null };
+    const display = { label: tapLabel, who: who(cust), name: cust.kind === "member" ? cust.member.name : null };
     const enqueue = async () => {
       await queue.enqueue(merchantId, { type: "award", occurredAt: new Date().toISOString(), ...body } as staffApi.SyncEvent, display);
-      addRecent({ key, transactionId: null, label, who: display.who, at: Date.now(), queued: true });
+      addRecent({ key, transactionId: null, label: tapLabel, who: display.who, at: Date.now(), queued: true });
     };
 
     // Optimistic success in <= 150 ms; the server result replaces it.
@@ -222,7 +229,9 @@ export default function Counter() {
     }
     try {
       const res = await api.counter.award(merchantId, body);
-      const view = successView({ program, pointsEarned: res.pointsEarned + res.extraPoints, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: res.messages, firstName: firstName(res.member.name) });
+      // Title = what staff added ("Added 2 stamps"); bonuses (promo, passport) are listed under it, and the balance includes them.
+      const bonus = res.extraPoints > 0 ? [`Plus ${formatPts(res.extraPoints, program.terminology)} bonus`] : [];
+      const view = successView({ program, pointsEarned: res.pointsEarned, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: [...bonus, ...res.messages], firstName: firstName(res.member.name) });
       dispatch({ type: "awarded", view, customer: { kind: "member", member: res.member }, transactionId: res.transactionId, queuedKey: null, at: Date.now() });
       addRecent({ key, transactionId: res.transactionId, label: view.title, who: who({ kind: "member", member: res.member }), at: Date.now() });
       cacheMembers(`code:${res.member.memberCode}`, [res.member]);
@@ -274,7 +283,7 @@ export default function Counter() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     const view: SuccessView = {
       title: t("ok.counter.redeemed", { reward: res.redemption.reward.name }),
-      hero: program?.earnType === "stamps" && program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPts(res.member.balance, res.member.terminology),
+      hero: program?.earnType === "stamps" && program.stampGoal && res.member.balance <= program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPts(res.member.balance, res.member.terminology),
       next: `${shortName(res.member.name)} has ${formatPts(res.member.balance, res.member.terminology)} left`,
       rewardReady: false,
       offline: false,
@@ -321,34 +330,39 @@ export default function Counter() {
   const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
   const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
 
+  // Display + Scan / Code on top; keypad and the primary button in the thumb zone at the bottom (staff-counter.md § Principles 2).
   const entryPane = (
-    <View style={{ gap: 12 }}>
-      {state.step === "customer" && perDollar ? (
-        <AmountDisplay cents={state.amountCents} />
-      ) : (
-        <EntryDisplay text={entryDisplay(digits)} placeholder={t("counter.placeholder")} error={state.step === "entry" ? state.error : null} />
-      )}
-      {state.step !== "customer" ? (
-        <View style={styles.row}>
-          <Button variant="secondary" size="lg" iconStart={Camera} style={{ flex: 1 }} onPress={() => router.push("/counter/scan")}>
-            {t("counter.scanCard")}
+    <View style={{ gap: 12, flexGrow: 1, justifyContent: "space-between" }}>
+      <View style={{ gap: 12 }}>
+        {state.step === "customer" && perDollar ? (
+          <AmountDisplay cents={state.amountCents} />
+        ) : (
+          <EntryDisplay text={entryDisplay(digits)} placeholder={t("counter.placeholder")} error={state.step === "entry" ? state.error : null} />
+        )}
+        {state.step !== "customer" ? (
+          <View style={styles.row}>
+            <Button variant="secondary" size="lg" iconStart={Camera} style={{ flex: 1 }} onPress={() => router.push("/counter/scan")}>
+              {t("counter.scanCard")}
+            </Button>
+            <Button variant="secondary" size="lg" iconStart={Ticket} style={{ flex: 1 }} onPress={() => setCodeOpen(true)}>
+              {t("counter.enterCode")}
+            </Button>
+          </View>
+        ) : null}
+        {state.step === "entry" && digits.length === 4 ? (
+          <View style={{ alignItems: "center" }}>
+            <Chip large icon={Search} label={t("counter.searchLast4")} onPress={() => dispatch({ type: "lookup", query: digits })} />
+          </View>
+        ) : null}
+      </View>
+      <View style={{ gap: 12 }}>
+        {showKeypad ? <Keypad onKey={onKey} /> : null}
+        {state.step === "entry" || state.step === "lookingUp" ? (
+          <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
+            {t("counter.findCustomer")}
           </Button>
-          <Button variant="secondary" size="lg" iconStart={Ticket} style={{ flex: 1 }} onPress={() => setCodeOpen(true)}>
-            {t("counter.enterCode")}
-          </Button>
-        </View>
-      ) : null}
-      {state.step === "entry" && digits.length === 4 ? (
-        <View style={{ alignItems: "center" }}>
-          <Chip large icon={Search} label={t("counter.searchLast4")} onPress={() => dispatch({ type: "lookup", query: digits })} />
-        </View>
-      ) : null}
-      {showKeypad ? <Keypad onKey={onKey} /> : null}
-      {state.step === "entry" || state.step === "lookingUp" ? (
-        <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
-          {t("counter.findCustomer")}
-        </Button>
-      ) : null}
+        ) : null}
+      </View>
     </View>
   );
 
@@ -400,10 +414,10 @@ export default function Counter() {
     if (state.step === "customer") {
       return (
         <View style={{ gap: 16 }}>
-          <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} />
+          <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} onCode={() => setCodeOpen(true)} />
           {state.customer.kind === "new" ? (
             <View style={[styles.nameField, { borderColor: c.borderStrong, backgroundColor: c.surface }]}>
-              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgMuted} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1 }]} />
+              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgMuted} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
             </View>
           ) : null}
           {perDollar && noEarnCategories.length > 0 ? (
@@ -416,10 +430,16 @@ export default function Counter() {
           ) : null}
           {categoryId ? <Banner variant="info">{`${noEarnCategories.find((x) => x.id === categoryId)?.name ?? "This category"} doesn't earn ${program?.terminology ?? "points"}.`}</Banner> : null}
           {state.error ? <Banner variant="danger">{state.error}</Banner> : null}
-          <Button size="counter" iconStart={Plus} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={award}>
+          <Button size="counter" iconStart={Plus} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={() => award(1)}>
             {label}
           </Button>
           <View style={styles.row}>
+            {/* More row (staff-counter.md § 3): +2 / +3 award several items in one tap. */}
+            {!programPaused
+              ? quantityChips(program).map((q) => (
+                  <Chip key={q} large label={`+${q}`} accessibilityLabel={awardButtonLabel(program!, { points: estimate * q, multiplier, newCustomer: state.customer.kind === "new" }).replace("Add and award", `Add and award ${q}`)} onPress={() => award(q)} />
+                ))
+              : null}
             {member && activeRewards.length > 0 ? (
               <Chip large label="Redeem" onPress={() => setRedeemOpen(true)} />
             ) : null}
@@ -459,10 +479,8 @@ export default function Counter() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: layout.gutterMobile, gap: 16, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          {state.step === "customer" ? customerPane : null}
-          {state.step === "success" || state.step === "notice" || panel ? customerPane : null}
-          {state.step === "pick" ? customerPane : null}
-          {!(state.step === "success" || state.step === "notice" || panel) ? entryPane : null}
+          {state.step === "customer" || state.step === "success" || state.step === "notice" || state.step === "pick" || panel ? customerPane : null}
+          {!(state.step === "success" || state.step === "notice" || panel || (state.step === "customer" && !perDollar)) ? entryPane : null}
           {state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
         </ScrollView>
       )}
@@ -504,7 +522,7 @@ export default function Counter() {
             placeholderTextColor={c.fgMuted}
             accessibilityLabel="Reward code"
             onSubmitEditing={() => verifyCode(code)}
-            style={[typo("code"), { color: c.fg, textAlign: "center", flex: 1 }]}
+            style={[typo("code"), { color: c.fg, textAlign: "center", flex: 1, minWidth: 0 }]}
           />
         </View>
         {codeError ? <Banner variant="danger">{codeError}</Banner> : null}

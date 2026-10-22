@@ -19,6 +19,7 @@ import { cn } from "@/lib/cn";
 import { applyKey, awardLabel, awardSuccess, centsFromKeypad, keypadDisplay, lookupKind, type KeypadKey, type ProgramForCounter } from "@/lib/dashboard/counter";
 import { formatMoney, formatPoints, formatTime, firstName } from "@/lib/format";
 import { formatNanp } from "@/lib/phone";
+import { typeLabel } from "@/lib/dashboard/labels";
 
 type CounterApi = MerchantEndpoints["counter"];
 
@@ -50,6 +51,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
   const [q, setQ] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [cents, setCents] = useState("");
+  const [qty, setQty] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -96,6 +98,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
     setPhase({ kind: "idle" });
     setQ("");
     setCents("");
+    setQty(1);
     setError(null);
     setNewName("");
     setConsent(false);
@@ -136,7 +139,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
       setBusy(true);
       setError(null);
       try {
-        const res = await api.award({ ...ref, ...extra, amountCents: perDollar ? centsFromKeypad(cents) : undefined, locationId }, awardKey.current);
+        const res = await api.award({ ...ref, ...extra, amountCents: perDollar ? centsFromKeypad(cents) : undefined, quantity: perDollar || qty === 1 ? undefined : qty, locationId }, awardKey.current);
         awardKey.current = null;
         setPhase({ kind: "awarded", res, at: Date.now() });
         setNow(Date.now());
@@ -150,7 +153,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
         setBusy(false);
       }
     },
-    [api, cents, locationId, perDollar, program, loadRecent],
+    [api, cents, qty, locationId, perDollar, program, loadRecent],
   );
 
   const redeem = useCallback(
@@ -431,9 +434,19 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
               <p className="mt-2 text-caption text-fg-muted">{member.expiryDisclosure}</p>
 
               <div className="mt-4 flex flex-col gap-3">
-                {perDollar ? <AmountPad cents={cents} setCents={setCents} /> : null}
+                {perDollar ? (
+                  <AmountPad cents={cents} setCents={setCents} />
+                ) : (
+                  <div role="radiogroup" aria-label="How many" className="flex gap-2">
+                    {[1, 2, 3].map((n) => (
+                      <button key={n} type="button" role="radio" aria-checked={qty === n} onClick={() => setQty(n)} className={cn("min-h-12 flex-1 rounded-md border text-title tabular-nums focus-visible:focus-ring", qty === n ? "border-brand bg-brand-subtle text-on-brand-subtle" : "border-border-strong bg-surface text-fg")}>
+                        +{n}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Button size="counter" loading={busy} onClick={() => void award({ memberId: member.memberId })}>
-                  {awardLabel(program, centsFromKeypad(cents))}
+                  {awardLabel(program, centsFromKeypad(cents), qty)}
                 </Button>
               </div>
 
@@ -530,7 +543,7 @@ export function CounterApp({ api, program, shopName, locations, undoSeconds = 30
                       {a.name ?? a.maskedPhone ?? "Member"} {a.reversed ? <Badge tone="neutral">Undone</Badge> : null}
                     </p>
                     <p className="text-caption text-fg-muted">
-                      {formatTime(a.createdAt)} · {a.type.replace(/_/g, " ")}
+                      {formatTime(a.createdAt)} · {typeLabel(a.type)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
                   </div>

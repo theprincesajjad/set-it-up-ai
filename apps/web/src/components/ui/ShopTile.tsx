@@ -1,5 +1,7 @@
+"use client";
 import { BellOff, Gift } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatDistance, formatNumber, unitFor } from "@/lib/format";
 import { Badge, SponsoredBadge } from "./Badge";
@@ -27,23 +29,40 @@ export interface ShopTileProps {
   className?: string;
 }
 
-/** Shop logo, or the vertical placeholder (tint bg + lucide icon in accent). */
-export function ShopLogo({ shop, size = 48, className }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl">; size?: 24 | 40 | 48 | 56 | 72; className?: string }) {
-  const px = { 24: "size-6 rounded-xs", 40: "size-10 rounded-md", 48: "size-12 rounded-md", 56: "size-14 rounded-md", 72: "size-[72px] rounded-lg" }[size];
-  if (shop.logoUrl)
+/** "Pinecone Coffee Co." → "PC"; one word → first two letters. */
+export function shopInitials(name: string): string {
+  const words = name.replace(/['’]/g, "").replace(/[^\p{L}\p{N}\s&]/gu, " ").split(/\s+/).filter((w) => w && !/^(the|and|&|of|co|inc|ltd)$/i.test(w));
+  if (!words.length) return (name.trim()[0] ?? "?").toUpperCase();
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
+/**
+ * Shop logo, or coloured initials on the vertical tint when there's no logo or it fails to load
+ * (onError). Never a blank square.
+ */
+export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl">; size?: 24 | 32 | 40 | 48 | 56 | 72; className?: string; tone?: "tint" | "solid" }) {
+  const [failed, setFailed] = useState(false);
+  const px = { 24: "size-6 rounded-xs text-[10px]", 32: "size-8 rounded-sm text-caption", 40: "size-10 rounded-md text-label", 48: "size-12 rounded-md text-title", 56: "size-14 rounded-md text-title", 72: "size-[72px] rounded-lg text-h3" }[size];
+  if (shop.logoUrl && !failed)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={shop.logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" className={cn("shrink-0 object-cover", px, className)} style={{ background: verticalVar(shop.vertical, "tint") }} />;
+    return <img src={shop.logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("shrink-0 object-cover", px, className)} style={{ background: verticalVar(shop.vertical, "tint") }} />;
   return (
-    <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center", px, className)} style={{ background: verticalVar(shop.vertical, "tint"), color: verticalVar(shop.vertical, "accent") }}>
-      <VerticalGlyph vertical={shop.vertical} className={size <= 24 ? "size-4" : size >= 72 ? "size-9" : "size-6"} />
+    <span
+      aria-hidden
+      className={cn("inline-flex shrink-0 select-none items-center justify-center font-bold tracking-[-0.01em]", px, className)}
+      style={tone === "solid" ? { background: verticalVar(shop.vertical, "accent"), color: verticalVar(shop.vertical, "on-accent") } : { background: verticalVar(shop.vertical, "tint"), color: verticalVar(shop.vertical, "ink") }}
+    >
+      {shopInitials(shop.name)}
     </span>
   );
 }
 
 export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, sponsored, subtitle, href, className }: ShopTileProps) {
+  const [coverFailed, setCoverFailed] = useState(false);
   const name = (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      <span className="truncate">{shop.name}</span>
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="min-w-0 truncate">{shop.name}</span>
       {muted ? (
         <>
           <BellOff aria-hidden className="size-4 shrink-0 text-fg-muted" />
@@ -57,9 +76,9 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
     return (
       <div className={cn("relative", className)}>
         <div className="relative aspect-video w-full overflow-hidden rounded-lg" style={{ background: verticalVar(shop.vertical, "tint") }}>
-          {shop.coverUrl ? (
+          {shop.coverUrl && !coverFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={shop.coverUrl} alt="" className="size-full object-cover" />
+            <img src={shop.coverUrl} alt="" className="size-full object-cover" onError={() => setCoverFailed(true)} />
           ) : (
             <VerticalGlyph vertical={shop.vertical} className="absolute end-6 top-1/2 size-32 -translate-y-1/2 opacity-30" style={{ color: verticalVar(shop.vertical, "accent") }} />
           )}
