@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { errorMessage } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
 import { useLocale } from "../../lib/i18n";
-import { bookingNeedsDeposit, holdLeft } from "../../lib/restaurant";
+import { bookingNeedsDeposit, holdLeft, refundIfCancelled, refundTiers } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Banner, Button, ConfirmDialog, hairline, ListRow, Text, useToast } from "../../ui";
@@ -33,6 +33,9 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
   const lapsed = left?.kind === "passed";
   const needsDeposit = bookingNeedsDeposit(booking, now);
   const status = lapsed ? "cancelled" : booking.status;
+  const paid = !!booking.depositPaidAt && booking.depositCents > 0;
+  const back = refundIfCancelled(booking, now);
+  const tiers = booking.refundPolicy ? refundTiers(booking.refundPolicy) : [];
 
   const payDeposit = async () => {
     setBusy("pay");
@@ -50,10 +53,10 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
   const cancel = async () => {
     setBusy("cancel");
     try {
-      await api.banquet.cancel(booking.id);
+      const r = await api.banquet.cancel(booking.id);
       refresh();
       setConfirm(false);
-      toast({ message: t("rest.bk.cancelled") });
+      toast({ message: r.depositRefundCents > 0 ? t("rest.bk.cancelledRefund", { amount: money(r.depositRefundCents) }) : t("rest.bk.cancelled") });
     } catch (e) {
       setError(errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
       setConfirm(false);
@@ -83,7 +86,28 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
             {booking.depositPaidAt ? t("rest.bk.depositPaid", { amount: money(booking.depositCents) }) : t("rest.bk.depositDue", { amount: money(booking.depositCents) })}
           </Text>
         ) : null}
+        {booking.status === "cancelled" && paid ? (
+          <Text variant="meta" color={booking.depositRefundCents > 0 ? "success" : "fgMuted"}>
+            {booking.depositRefundCents > 0 ? t("rest.bk.refunded", { amount: money(booking.depositRefundCents) }) : t("rest.bk.depositKept")}
+          </Text>
+        ) : null}
+        {(booking.status === "hold" || booking.status === "confirmed") && !lapsed && booking.depositCents > 0 && booking.refundPolicy ? (
+          <View style={{ gap: 2 }} accessible accessibilityLabel={[t("rest.bk.policy.title"), ...tiers.map((x) => t("rest.bk.policy.tier", { pct: x.pct, days: x.days })), tiers.length ? t("rest.bk.policy.after") : t("rest.bk.policy.none")].join(". ")}>
+            <Text variant="meta" color="fgMuted" style={{ fontWeight: "600" }}>{t("rest.bk.policy.title")}</Text>
+            {tiers.map((x) => (
+              <Text key={x.days} variant="meta" color="fgMuted">{t("rest.bk.policy.tier", { pct: x.pct, days: x.days })}</Text>
+            ))}
+            <Text variant="meta" color="fgMuted">{tiers.length ? t("rest.bk.policy.after") : t("rest.bk.policy.none")}</Text>
+          </View>
+        ) : null}
         {error ? <Banner variant="danger">{error}</Banner> : null}
+        {booking.status === "confirmed" && paid ? (
+          <View style={{ flexDirection: "row" }}>
+            <Button size="sm" variant="secondary" onPress={() => setConfirm(true)}>
+              {t("rest.bk.cancelBooking")}
+            </Button>
+          </View>
+        ) : null}
         {booking.status === "hold" && !lapsed ? (
           <View style={{ flexDirection: "row", gap: 8 }}>
             {needsDeposit ? (
@@ -97,7 +121,16 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
           </View>
         ) : null}
       </View>
-      <ConfirmDialog visible={confirm} title={t("rest.bk.cancelHold")} body={t("rest.bk.cancel.body")} confirmLabel={t("rest.bk.cancelHold")} cancelLabel={t("rest.bk.keep")} loading={busy === "cancel"} onCancel={() => setConfirm(false)} onConfirm={cancel} />
+      <ConfirmDialog
+        visible={confirm}
+        title={paid ? t("rest.bk.cancelPaid.title") : t("rest.bk.cancelHold")}
+        body={paid ? (back.cents > 0 ? t("rest.bk.cancelPaid.body", { amount: money(back.cents), pct: back.bps / 100, deposit: money(booking.depositCents) }) : t("rest.bk.cancelPaid.none")) : t("rest.bk.cancel.body")}
+        confirmLabel={paid ? t("rest.bk.cancelBooking") : t("rest.bk.cancelHold")}
+        cancelLabel={t("rest.bk.keep")}
+        loading={busy === "cancel"}
+        onCancel={() => setConfirm(false)}
+        onConfirm={cancel}
+      />
       {last ? null : <View style={{ height: hairline, backgroundColor: c.line }} />}
     </View>
   );

@@ -21,7 +21,7 @@ The source of truth is `packages/shared/src/plans.ts` (`FEATURES`, `FREE_FOREVER
 
 The invariant still holds: a free-forever feature can never be gated. Admins can't hide it, and a test fails if it moves to a paid plan. Before launch we moved the features listed below once. After launch, what is free stays free.
 
-## Plus: $39/mo ($390/yr), 500 SMS/mo included
+## Café & Retail: $39/mo ($390/yr), 500 SMS/mo included
 
 - **Promos:** offers, double-points days, bonus points on items, nearby push promos.
 - **Loyalty extras:** VIP levels, birthday reward, referrals, digital discount cards.
@@ -31,7 +31,7 @@ The invariant still holds: a free-forever feature can never be gated. Admins can
 - **Reports:** advanced reports (retention cohorts, network overlap, promo results).
 - **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
 
-## Pro: $79/mo ($790/yr), 1,500 SMS/mo included
+## Service: $99/mo ($990/yr), 1,500 SMS/mo included
 
 Everything in Plus, plus:
 

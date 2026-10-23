@@ -4,10 +4,10 @@ import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
-import { DateField, InfoRow, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment } from "../../features/restaurant/components";
+import { DateField, InfoRow, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment, useSetup } from "../../features/restaurant/components";
 import { rk, useInvalidateTiffin, useMySubscription, useUpcoming } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
-import { addDays, canStillSkip, canUndoSkip, countdownParts, dayToDate, deliveryStatusKey, isPostalCode, normalizePostalCode, subscriptionActions, torontoToday } from "../../lib/restaurant";
+import { addDays, canStillSkip, canUndoSkip, cardLabel, countdownParts, dayToDate, deliveryStatusKey, isPostalCode, normalizePostalCode, subscriptionActions, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, ui, useTheme } from "../../theme";
@@ -35,7 +35,7 @@ export default function TiffinSubscription() {
   const detail = useMySubscription(id);
   const upcoming = useUpcoming(id);
   const [busyDate, setBusyDate] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"retry" | "resume" | "pause" | "cancel" | "edit" | null>(null);
+  const [busy, setBusy] = useState<"retry" | "resume" | "pause" | "cancel" | "edit" | "card" | null>(null);
   const [pausing, setPausing] = useState(false);
   const [pauseUntil, setPauseUntil] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -44,6 +44,11 @@ export default function TiffinSubscription() {
   const [form, setForm] = useState({ address: "", postalCode: "", addressNotes: "", dietaryNotes: "" });
   const [touched, setTouched] = useState(false);
   const pay = usePayment(() => {
+    invalidate(id);
+    void qc.invalidateQueries({ queryKey: rk.subs });
+  });
+  // "Change card" hands off to the web setup page (no Stripe SDK in the app yet); refresh when the app comes back.
+  const setupCard = useSetup(() => {
     invalidate(id);
     void qc.invalidateQueries({ queryKey: rk.subs });
   });
@@ -101,6 +106,10 @@ export default function TiffinSubscription() {
     run("retry", () => api.tiffin.retryPayment(sub.id), async (r) => {
       if (r.payment) await pay(r.payment);
       else toast({ message: t("rest.tiffin.nothingDue") });
+    });
+  const changeCard = () =>
+    run("card", () => api.tiffin.paymentMethod(sub.id), async (r) => {
+      if (!(await setupCard(r))) setError(t("rest.err.load"));
     });
   const openEdit = () => {
     setForm({ address: sub.address ?? "", postalCode: sub.postalCode ?? "", addressNotes: sub.addressNotes ?? "", dietaryNotes: sub.dietaryNotes ?? "" });
@@ -162,6 +171,20 @@ export default function TiffinSubscription() {
       ) : null}
       {sub.status === "cancelled" ? <Banner variant="neutral">{t("rest.tiffin.cancelledBanner")}</Banner> : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      {sub.status !== "cancelled" ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text variant="bodyStrong" accessibilityLabel={sub.cardOnFile ? t(sub.cardOnFile.type === "pad" ? "rest.tiffin.bankOnFile" : "rest.tiffin.cardOnFile", { card: cardLabel(sub.cardOnFile) }) : undefined}>
+              {sub.cardOnFile ? t(sub.cardOnFile.type === "pad" ? "rest.tiffin.bankOnFile" : "rest.tiffin.cardOnFile", { card: cardLabel(sub.cardOnFile) }) : t("rest.tiffin.cardNone")}
+            </Text>
+            {sub.cardOnFile ? <Text variant="meta" color="fgMuted">{t("rest.tiffin.cardAuto")}</Text> : null}
+          </View>
+          <Button size="sm" variant="secondary" loading={busy === "card"} onPress={changeCard}>
+            {t("rest.tiffin.cardChange")}
+          </Button>
+        </View>
+      ) : null}
 
       {sub.status !== "cancelled" ? (
         <Section title={t("rest.tiffin.nextMeals")}>

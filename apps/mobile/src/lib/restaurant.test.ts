@@ -20,7 +20,11 @@ import {
   isPostalCode,
   normalizePostalCode,
   overlapsBusy,
+  cardLabel,
   paymentUrl,
+  refundIfCancelled,
+  refundTiers,
+  setupUrl,
   planFulfilments,
   planPriceCents,
   shopMatchesHalal,
@@ -201,5 +205,41 @@ describe("payments and notifications", () => {
     expect(tiffinRoute({ type: "tiffin_update" })).toBeNull();
     expect(tiffinRoute({ type: "order_ready", subscriptionId: "x" })).toBeNull();
     expect(tiffinRoute(null)).toBeNull();
+  });
+});
+
+describe("saved card and deposit refunds", () => {
+  it("builds the web setup link for a SetupIntent", () => {
+    expect(setupUrl("https://local.example/", { setupIntentId: "seti_1", clientSecret: "seti_1_secret_x y" })).toBe("https://local.example/pay/setup/seti_1?cs=seti_1_secret_x%20y");
+  });
+
+  it("labels the card on file with a known brand name, the raw name, or just the last four", () => {
+    expect(cardLabel({ brand: "visa", last4: "4242" })).toBe("Visa \u2022\u2022\u2022\u2022 4242");
+    expect(cardLabel({ brand: "Stripe Test Bank", last4: "6789" })).toBe("Stripe Test Bank \u2022\u2022\u2022\u2022 6789");
+    expect(cardLabel({ brand: null, last4: "4242" })).toBe("\u2022\u2022\u2022\u2022 4242");
+    expect(cardLabel({ brand: "mastercard", last4: null })).toBe("Mastercard");
+  });
+
+  const policy = { tiers: [{ minDaysBefore: 14, refundBps: 5000 }, { minDaysBefore: 30, refundBps: 10000 }] };
+  const day = 86_400_000;
+  const startsAt = "2026-12-12T17:00:00Z";
+  const at = (daysBefore: number) => new Date(startsAt).getTime() - daysBefore * day;
+  const booking = { depositCents: 141250, depositPaidAt: "2026-11-03T15:00:00Z", depositRefundedAt: null, startsAt, refundPolicy: policy };
+
+  it("lists the policy tiers largest first, as percentages", () => {
+    expect(refundTiers(policy)).toEqual([{ days: 30, pct: 100 }, { days: 14, pct: 50 }]);
+    expect(refundTiers({ tiers: [] })).toEqual([]);
+  });
+
+  it("works out what cancelling now returns, the same way the server does", () => {
+    expect(refundIfCancelled(booking, at(40))).toEqual({ cents: 141250, bps: 10000 });
+    expect(refundIfCancelled(booking, at(20))).toEqual({ cents: 70625, bps: 5000 });
+    expect(refundIfCancelled(booking, at(5))).toEqual({ cents: 0, bps: 0 });
+  });
+
+  it("returns nothing when the deposit isn't paid, was already refunded, or the hall has no policy", () => {
+    expect(refundIfCancelled({ ...booking, depositPaidAt: null }, at(40)).cents).toBe(0);
+    expect(refundIfCancelled({ ...booking, depositRefundedAt: "2026-11-05T00:00:00Z" }, at(40)).cents).toBe(0);
+    expect(refundIfCancelled({ ...booking, refundPolicy: null }, at(40)).cents).toBe(0);
   });
 });

@@ -69,6 +69,9 @@ export default function EventDetail() {
 
       {approve ? <Banner variant="warning" actionLabel={t("rest.cat.review")} onAction={open}>{t("rest.cat.quoteBanner")}</Banner> : null}
       {e.status === "cancelled" ? <Banner variant="neutral">{t("rest.cat.cancelledBanner")}</Banner> : null}
+      {e.status === "cancelled" && e.depositPaidAt ? (
+        e.depositRefundCents > 0 ? <Banner variant="success">{t("rest.cat.depositRefunded", { amount: money(e.depositRefundCents) })}</Banner> : <Banner variant="neutral">{t("rest.cat.depositKept")}</Banner>
+      ) : null}
 
       {e.status !== "cancelled" ? (
         <Section title={t("rest.cat.where")}>
@@ -109,6 +112,7 @@ export default function EventDetail() {
             <InfoRow label={t("rest.cat.tax")} value={money(e.taxCents)} />
             <InfoRow label={t("cart.total")} value={money(e.totalCents)} strong />
             <InfoRow label={e.depositPaidAt ? t("rest.cat.depositPaid") : t("menu.deposit")} value={money(e.depositCents)} />
+            {e.depositRefundCents > 0 ? <InfoRow label={t("rest.cat.refunded")} value={money(e.depositRefundCents)} /> : null}
             <InfoRow label={t("rest.cat.balance")} value={money(e.balanceCents)} />
           </View>
         </Section>

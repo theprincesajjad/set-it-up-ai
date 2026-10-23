@@ -88,12 +88,13 @@ platformChargeHandlers.push(async (ctx, e) => {
 ## `POST /v1/payments/fake/simulate` (dev/test only)
 Available only when `FakePayments` is active and `NODE_ENV !== production` (else `404`). Generates the event Stripe
 would send and runs it through the same webhook handler.
-Body: `{ action, id }`:
+Body: `{ action, id, paymentMethod? }` (`paymentMethod` picks which test method `succeed_payment` / `succeed_setup` saves, see below):
 
 | action | id | events |
 | --- | --- | --- |
 | `succeed_payment` | PaymentIntent id | `payment_intent.succeeded` |
 | `fail_payment` | PaymentIntent id | `payment_intent.payment_failed` |
+| `succeed_setup` | SetupIntent id | `setup_intent.succeeded` (tiffin "change card") |
 | `complete_checkout` | Checkout Session id | `checkout.session.completed`, `customer.subscription.created` |
 | `complete_onboarding` | Connect account id | `account.updated` (charges + payouts enabled) |
 | `fail_renewal` | Subscription id | `invoice.payment_failed`, `customer.subscription.updated` (past_due) |
@@ -101,3 +102,18 @@ Body: `{ action, id }`:
 
 → `{ events: [{ id, type }] }`. The web dev pages under `/dev/checkout/<id>`, `/dev/stripe-onboarding?account=<id>`
 can call this with a "Pay" / "Finish" button. Tests can also call `FakePayments#sign(payload)` and POST to the webhook.
+
+## Saved payment methods (tiffin renewals)
+- `createPayerCustomer({ userId, merchantId, email, name, connectedAccountId? })`: a Stripe Customer for a person paying a
+  kitchen, on the connected account for direct charges (`connectedAccountId` set) and on the platform for destination
+  charges. Reused per user + kitchen (`tiffin_subscriptions.stripe_customer_id`).
+- `createPaymentIntent({ customerId, setupFutureUsage: "off_session" })`: the first tiffin payment keeps the card on the
+  customer (PAD also records a mandate). The `payment_intent.succeeded` webhook carries `payment_method`; the service saves it
+  on the subscription (`payment_method_id`, display `payment_method_brand` / `payment_method_last4`).
+- `chargeSavedMethod(...)`: `off_session: true, confirm: true`. Never throws for a card problem; it answers with an
+  outcome: `succeeded`, `processing` (PAD, settles by webhook), `authentication_required` (charge stays pending, customer gets
+  `renewal_due` and confirms at `/pay/intent`) or `declined` (charge failed, subscription `past_due`, `payment_failed`).
+- `createSetupIntent` / `retrieveSetupIntent` / `retrievePaymentMethod`: the "change card" flow
+  (`POST /v1/me/tiffin/subscriptions/:subId/payment-method`, page `/pay/setup/<id>?cs=`).
+- Fake provider test methods (`FAKE_PM` in `providers/paymentsFake.ts`): `pm_fake_visa_4242` (default, succeeds),
+  `pm_fake_auth_required` (needs the customer), `pm_fake_declined` (declined), `pm_fake_pad_6789` (PAD, processing).

@@ -117,7 +117,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       </div>
       <ul className="-mt-3 grid gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-3">
         {b.plans.map((p) => {
-          const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2);
+          const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2 && !FEATURES[k].pack);
           const target = Math.min(...feats.map((k) => FEATURES[k].unlockAtMerchants).filter((n) => n > 0), Infinity);
           const price = period === "year" ? p.annualPriceCents : p.priceCents;
           return (
@@ -141,7 +141,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                       {f}
                     </li>
                   ))}
-                  {feats.length > 8 && p.id !== "free" ? <li className="ps-[22px] text-fg-muted">and {feats.length - 8} more: {feats.slice(8).map((k) => FEATURES[k].name.toLowerCase()).join(", ")}</li> : null}
+                  {feats.length > 8 && p.id !== "free" ? <li className="ps-[22px] text-fg-muted">and {feats.length - 8} more: {feats.slice(8).map((k) => FEATURES[k].name).join(", ")}</li> : null}
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 pt-2">
                   {p.id === "free" ? null : p.available ? (

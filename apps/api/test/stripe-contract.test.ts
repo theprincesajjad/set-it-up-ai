@@ -630,7 +630,7 @@ describe("webhook signature verification", () => {
   // different signing secrets, but verifyWebhook accepts exactly one. Connect events (account.updated,
   // direct-charge payment_intent.*) or platform events would 400 depending on which secret is configured.
   // Proposed fix: STRIPE_WEBHOOK_SECRET accepts a comma-separated list and verifyWebhook tries each.
-  it.fails("verifies events signed by either of two configured secrets (BUG: single secret only)", () => {
+  it("verifies events signed by either of two configured secrets", () => {
     const platformSecret = "whsec_platform";
     const connectSecret = "whsec_connect";
     const p = new StripePayments({ stripe: { secretKey: "sk_test_contract", webhookSecret: `${platformSecret},${connectSecret}`, prices: {} } }, makeStripe());

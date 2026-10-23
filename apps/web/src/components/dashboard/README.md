@@ -1,7 +1,7 @@
 # Dashboard primitives
 
 Import from one place: `import { PageHeader, StatBlock, EmptyState } from "@/components/dashboard"`.
-Everything is monochrome, hairline, one accent (points only). Source of truth: `docs/design/canvas/Dashboard.dc.html`
+Everything is monochrome, hairline, one accent (points, plus the "New" order dot, the only status that needs the shop to act now; waiting-on-customer states are info blue). Source of truth: `docs/design/canvas/Dashboard.dc.html`
 and `docs/design/foundations.md` ("Merchant dashboard"). Do not create look-alikes; extend `kit.tsx`.
 
 | Primitive | Use |

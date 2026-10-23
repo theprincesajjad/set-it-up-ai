@@ -111,7 +111,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                 options={(cats.data?.items ?? []).filter((c) => !c.protected && c.earnEligible).map((c) => ({ value: c.id, label: c.name }))}
               />
             ) : null}
-            <Select label="Who sees it" value={d.audience} onChange={(e) => set("audience", e.target.value as PromoDraft["audience"])} disabled={locked} options={[{ value: "network", label: "Everyone on the network map and feed" }, { value: "members", label: "My members only" }, { value: "vip", label: "VIP members only" }]} />
+            <Select label="Who sees it" value={d.audience} onChange={(e) => set("audience", e.target.value as PromoDraft["audience"])} disabled={locked} options={[{ value: "network", label: "Everyone nearby" }, { value: "members", label: "My members only" }, { value: "vip", label: "VIP members only" }]} />
           </div>
         </Panel>
 

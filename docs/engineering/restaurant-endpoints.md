@@ -7,7 +7,7 @@ Staff: `GET :m/catering?status&from&to` (pipeline + counts) · `GET :m/catering/
 `POST :m/catering` (inquiry by phone) · `GET|PATCH :m/catering/:eventId` ·
 `PUT :m/catering/:eventId/menu` `{items[{catalogItemId|name, pricing:"per_head"|"tray", perHeadCents?, quantity?, unitPriceCents?}], extras[], depositBps?}` ·
 `POST :m/catering/:eventId/tasting {tastingAt}` · `POST .../send-quote {channels}` · `POST .../deposit/mark-paid` ·
-`POST .../invoice {send}` · `POST .../complete` · `POST .../cancel {reason?}` · `POST .../hall-booking {hallBookingId}`.
+`POST .../invoice {send}` · `POST .../complete` · `POST .../cancel {reason?, refund?: "full"|"none"|{amountCents}}` (default `none`; refunds a deposit paid in the app, 409 for one recorded by hand; DTO shows `depositRefundCents` / `depositRefundedAt`) · `POST .../hall-booking {hallBookingId}`.
 Customer: `POST|GET /me/catering`, `GET /me/catering/:eventId`.
 Public: `POST /public/shops/:slug/catering/inquiries` · `GET /public/catering/:token` ({merchant, event, canApprove, depositDue}) ·
 `POST /public/catering/:token/approve {signatureName}` → `{event, deposit:{clientSecret,...}|null}`.
@@ -17,8 +17,9 @@ Statuses: inquiry → tasting → quoted → confirmed (deposit paid) → comple
 ## Banquet (restaurant.banquet, Pro or add-on)
 Staff: `GET|POST :m/banquet/halls` · `GET|PATCH|DELETE :m/banquet/halls/:hallId` · `GET :m/banquet/availability?from&to&hallId` ·
 `GET :m/banquet/bookings?status&hallId&from&to` · `POST :m/banquet/bookings` (hold + customer{phone,name}) ·
-`GET :m/banquet/bookings/:id` · `POST .../confirm {markDepositPaid?}` · `.../cancel` · `.../complete` · `.../deposit` · `.../catering {cateringEventId}`.
-Customer: `POST /me/banquet/holds` · `GET /me/banquet/bookings[/:id]` · `POST /me/banquet/bookings/:id/cancel`.
+`GET :m/banquet/bookings/:id` · `POST .../confirm {markDepositPaid?}` · `.../cancel {refund?: "full"|"none"|{amountCents}}` (same rules as catering; also refunds a deposit that landed after a cancel) · `.../complete` · `.../deposit` · `.../catering {cateringEventId}`.
+Halls carry `refundPolicy: {tiers: [{minDaysBefore, refundBps}]}` (default 100% from 30 days, 50% from 14, none after).
+Customer: `POST /me/banquet/holds` · `GET /me/banquet/bookings[/:id]` · `POST /me/banquet/bookings/:id/cancel` (once the deposit is paid in the app, the hall's `refundPolicy` is applied automatically; bookings show `depositRefundCents`, `depositRefundedAt`, `refundPolicy`).
 Public: `GET /public/shops/:slug/banquet/halls` · `GET /public/shops/:slug/banquet/availability`.
 
 ## Tiffin (restaurant.tiffin, Growth)
@@ -29,7 +30,8 @@ Merchant `/v1/merchants/:merchantId/tiffin`: `GET|POST /plans` · `PATCH|DELETE 
 Public: `GET /v1/public/shops/:slug/tiffin/plans?lang&menuDays`.
 Customer `/v1/me/tiffin`: `POST|GET /subscriptions` · `GET|PATCH /subscriptions/:subId` · `GET /upcoming?days&subscriptionId` (cutoffAt, canSkip, menu) ·
 `POST /subscriptions/:subId/skips` · `DELETE /subscriptions/:subId/skips/:date` · `POST /subscriptions/:subId/{pause,resume,cancel,retry-payment}`.
-Rules: meal day opens 08:00 Toronto, cutoff = cutoffHours before; skip credit only before cutoff; renewals create a PaymentIntent and send `renewal_due` (customer confirms).
+`POST /me/tiffin/subscriptions/:subId/payment-method` → `{setupIntentId, clientSecret, methods}` (change the card on file; confirm with Stripe.js or at web page **`/pay/setup/<setupIntentId>?cs=<clientSecret>`**; public status `GET /public/payments/setup/:setupIntentId?cs=`). Customer subscription DTOs carry `cardOnFile: {type, brand, last4} | null`.
+Rules: meal day opens 08:00 Toronto, cutoff = cutoffHours before; skip credit only before cutoff. The first payment saves the card (or PAD mandate); renewals then charge it off-session automatically and send `renewal_paid`. If the bank needs the customer (authentication required) the charge stays pending and `renewal_due` is sent (customer confirms at `/pay/intent`); a decline marks it failed, the subscription `past_due`, and sends `payment_failed`.
 
 ## WhatsApp (restaurant.whatsapp_notifications Starter / ordering + marketing Growth)
 Merchant `:m/whatsapp`: `GET|PUT /settings` (connection, approved templates, usage) · `DELETE /connection` · `GET /sessions` · `POST /opt-ins {phone|userId,source}` · `POST /opt-outs {phone}` ·

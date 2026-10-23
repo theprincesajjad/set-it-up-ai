@@ -308,4 +308,8 @@ export interface BookingDto {
   notes: string | null;
   reminderSentAt: string | null;
   createdAt: string;
+  /** Merchant views only: who booked, and the order or ticket it is for. */
+  customerName?: string | null;
+  orderNumber?: number | null;
+  ticketNumber?: number | null;
 }

@@ -48,7 +48,7 @@ Monochrome first. One warm accent, reserved for points and rewards.
 | `fg-muted` | `#6B6B70` | `#A1A1A8` | secondary text, italic place subtitles |
 | `fg-subtle` | `#9A9AA0` | `#6E6E76` | placeholders, disabled |
 | `line` | `#E8E8E6` | `#2A2A2E` | hairlines (1 px; 0.5 px on retina native) |
-| `accent` | `#FF5A1F` | `#FF7A45` | points, stamps, "reward ready", activity dots — nothing else |
+| `accent` | `#FF5A1F` | `#FF7A45` | points, stamps, "reward ready", activity dots, and in the dashboard one thing that needs the shop to act right now: a **New** order dot. Waiting on a customer (quote sent, invoice open) is info blue, not accent. |
 | `accent-soft` | `#FFF1EA` | `#2A1710` | background behind accent text/badges |
 | `positive` | `#16A34A` | `#22C55E` | "open now" dot, positive deltas |
 | `negative` | `#DC2626` | `#F87171` | closed, errors, destructive |

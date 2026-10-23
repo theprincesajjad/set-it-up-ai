@@ -12,9 +12,9 @@ export default function MoreForRestaurantsPage() {
   const { locked } = restaurantModules(enabledSet(features.features));
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="More for restaurants" description="Tools your plan doesn't include yet. Each one switches on the moment you move to the plan that has it." actions={role === "owner" && locked.length ? <Button href={`${base}/billing`}>See restaurant plans</Button> : undefined} />
+      <PageHeader flush title="More for restaurants" description={locked.length ? "Tools your plan doesn't include yet. Each one switches on the moment you move to the plan that has it." : "Nothing to add. Every restaurant tool is on your plan."} actions={role === "owner" && locked.length ? <Button href={`${base}/billing`}>See restaurant plans</Button> : undefined} />
       {locked.length === 0 ? (
-        <p className="text-body text-fg-muted">Every restaurant tool is on your plan.</p>
+        <p className="text-body text-fg-muted">You can see and use all of them in the tabs above.</p>
       ) : (
         <ul aria-label="Locked restaurant modules" className="max-w-[720px] divide-y divide-line border-y border-line">
           {locked.map((m) => {

@@ -29,6 +29,7 @@ function Ads() {
     { key: "placement", header: "Placement", mobile: "subtitle", cell: (a) => PLACEMENT_LABEL[a.placement] },
     { key: "status", header: "Status", mobile: "trailing", cell: (a) => <StatusDot domain="ad" status={a.status === "active" ? "live" : a.status} /> },
     { key: "dates", header: "Dates", mobile: "subtitle", cell: (a) => `${formatDate(a.startsAt)} to ${formatDate(a.endsAt)}` },
+    { key: "delivery", header: "Seen / clicked", align: "end", mobile: "subtitle", cell: (a) => (a.status === "draft" || a.status === "pending_review" ? "Not live yet" : `${formatNumber(a.impressions)} seen · ${formatNumber(a.clicks)} clicked`) },
     { key: "budget", header: "Budget", align: "end", mobile: "hidden", cell: (a) => `${formatMoney(a.spentCents)} of ${formatMoney(a.budgetCents)}` },
     { key: "visits", header: "Visits", align: "end", mobile: "hidden", cell: (a) => formatNumber(a.attributedVisits) },
     { key: "pay", header: "Payment", mobile: "hidden", cell: (a) => <StatusDot domain="invoice" status={a.paymentStatus === "paid" ? "paid" : "open"} label={a.paymentStatus === "paid" ? "Paid" : a.paymentStatus.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())} /> },

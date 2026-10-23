@@ -368,8 +368,17 @@ export class StripePayments implements PaymentsProvider {
   verifyWebhook(rawBody: string, signatureHeader: string | undefined): PaymentsEvent {
     if (!this.webhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET is not set");
     if (!signatureHeader) throw new Error("Missing signature");
-    const ev = this.stripe.webhooks.constructEvent(rawBody, signatureHeader, this.webhookSecret);
-    return ev as unknown as PaymentsEvent;
+    // The platform and Connect webhook endpoints each have their own signing secret; accept either (comma-separated).
+    const secrets = this.webhookSecret.split(",").map((s) => s.trim()).filter(Boolean);
+    let lastErr: unknown;
+    for (const secret of secrets) {
+      try {
+        return this.stripe.webhooks.constructEvent(rawBody, signatureHeader, secret) as unknown as PaymentsEvent;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
   }
 }
 

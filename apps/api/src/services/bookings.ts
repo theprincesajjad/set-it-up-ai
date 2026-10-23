@@ -5,7 +5,7 @@
  * Slots are generated from a location's opening hours (merchant timezone).
  */
 import { and, asc, desc, eq, gt, gte, isNull, lte, sql } from "drizzle-orm";
-import { bookingSlots, bookings, locations, merchants, orders, serviceTickets, type DbOrTx, type Tx } from "@ll/db";
+import { bookingSlots, bookings, locations, merchants, orders, serviceTickets, users, type DbOrTx, type Tx } from "@ll/db";
 import type { FeatureKey, commerceApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -238,13 +238,16 @@ export async function listMerchantBookings(db: DbOrTx, merchant: Merchant, q: { 
   if (q.to) conds.push(lte(bookingSlots.startsAt, q.to));
   if (q.kind) conds.push(eq(bookingSlots.kind, q.kind));
   const rows = await db
-    .select({ b: bookings, s: bookingSlots })
+    .select({ b: bookings, s: bookingSlots, customerName: users.name, orderNumber: orders.number, ticketNumber: serviceTickets.number })
     .from(bookings)
     .innerJoin(bookingSlots, eq(bookingSlots.id, bookings.slotId))
+    .innerJoin(users, eq(users.id, bookings.userId))
+    .leftJoin(orders, eq(orders.id, bookings.orderId))
+    .leftJoin(serviceTickets, eq(serviceTickets.id, bookings.ticketId))
     .where(and(...conds))
     .orderBy(asc(bookingSlots.startsAt))
     .limit(500);
-  return rows.map((r) => bookingDto(r.b, r.s, merchant.name));
+  return rows.map((r) => ({ ...bookingDto(r.b, r.s, merchant.name), customerName: r.customerName, orderNumber: r.orderNumber ?? null, ticketNumber: r.ticketNumber ?? null }));
 }
 
 export async function getBookingDto(db: DbOrTx, where: { bookingId: string; userId?: string; merchantId?: string }) {

@@ -1,7 +1,15 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  adCampaigns,
+  adEvents,
+  bookingSlots,
+  bookings,
   catalogItems,
+  discountCards,
+  invoices,
+  quotes,
+  serviceTickets,
   cateringEvents,
   featureOverrides,
   halls,
@@ -117,6 +125,76 @@ describe("seedDemo", () => {
 });
 
 const slugToId = async (slug: string) => (await env.db.select({ id: merchants.id }).from(merchants).where(eq(merchants.slug, slug)))[0]!.id;
+
+describe("core modules on the pilot shops", () => {
+  const count = async (table: Parameters<typeof env.db.select>[0] extends never ? never : any, where: any) => Number((await env.db.select({ n: sql<number>`count(*)::int` }).from(table).where(where))[0]!.n);
+
+  it("promos on the pilot shops cover live, scheduled and ended", async () => {
+    for (const slug of ["pinecone-coffee", "hearth-and-crumb"]) {
+      const rows = await env.db.select().from(promos).where(eq(promos.merchantId, await slugToId(slug)));
+      expect(new Set(rows.map((p) => p.status))).toEqual(new Set(["live", "scheduled", "ended"]));
+    }
+    const [ended] = await env.db.select().from(promos).where(eq(promos.title, "Holiday stamp bonus"));
+    expect(ended!.claimCount).toBeGreaterThan(0);
+  });
+
+  it("discount cards, catalog categories and orders in every status", async () => {
+    expect(await count(discountCards, eq(discountCards.merchantId, await slugToId("pinecone-coffee")))).toBeGreaterThanOrEqual(2);
+    expect(await count(discountCards, eq(discountCards.merchantId, await slugToId("hearth-and-crumb")))).toBeGreaterThanOrEqual(1);
+    for (const slug of ["pinecone-coffee", "hearth-and-crumb", "fix-it-phone-lab"]) {
+      const items = await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, await slugToId(slug)));
+      expect(items.length).toBeGreaterThanOrEqual(7);
+      expect(items.every((i) => i.categoryId)).toBe(true);
+    }
+    const os = await env.db.select().from(orders).where(eq(orders.merchantId, await slugToId("pinecone-coffee")));
+    expect(new Set(os.map((o) => o.status))).toEqual(new Set(["pending", "accepted", "preparing", "ready", "picked_up", "cancelled"]));
+    // History is back-dated across the week, nothing is created in the future.
+    expect(Math.max(...os.map((o) => o.createdAt.getTime()))).toBeLessThanOrEqual(Date.now());
+    expect(Date.now() - Math.min(...os.map((o) => o.createdAt.getTime()))).toBeGreaterThan(4 * 86400000);
+  });
+
+  it("slots for the next week with bookings (pickup and drop-off)", async () => {
+    for (const [slug, kind] of [["pinecone-coffee", "pickup"], ["hearth-and-crumb", "pickup"], ["fix-it-phone-lab", "dropoff"]] as const) {
+      const id = await slugToId(slug);
+      const slots = await env.db.select().from(bookingSlots).where(and(eq(bookingSlots.merchantId, id), eq(bookingSlots.kind, kind)));
+      expect(slots.length).toBeGreaterThan(50);
+      expect(Math.max(...slots.map((s) => s.startsAt.getTime()))).toBeGreaterThan(Date.now() + 5 * 86400000);
+      expect(await count(bookings, and(eq(bookings.merchantId, id), eq(bookings.status, "booked")))).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("repair shop tickets span every status with quotes and invoices", async () => {
+    const id = await slugToId("fix-it-phone-lab");
+    const ts = await env.db.select().from(serviceTickets).where(eq(serviceTickets.merchantId, id));
+    expect(new Set(ts.map((t) => t.status))).toEqual(new Set(["intake", "diagnosing", "quote_sent", "approved", "declined", "in_progress", "waiting_parts", "ready", "picked_up", "cancelled"]));
+    expect(Math.max(...ts.map((t) => t.createdAt.getTime()))).toBeLessThanOrEqual(Date.now());
+    const qs = await env.db.select().from(quotes).where(eq(quotes.merchantId, id));
+    expect(new Set(qs.map((q) => q.status))).toEqual(new Set(["sent", "approved", "declined"]));
+    const inv = await env.db.select().from(invoices).where(eq(invoices.merchantId, id));
+    expect(new Set(inv.map((i) => i.status))).toEqual(new Set(["open", "paid"]));
+  });
+
+  it("hearth & crumb runs a draft, a live and an ended ad with delivery numbers", async () => {
+    const ads = await env.db.select().from(adCampaigns).where(eq(adCampaigns.merchantId, await slugToId("hearth-and-crumb")));
+    expect(ads.map((a) => a.status).sort()).toEqual(["active", "draft", "ended"]);
+    for (const a of ads.filter((x) => x.status !== "draft")) {
+      expect(a.impressions).toBeGreaterThan(50);
+      expect(a.clicks).toBeGreaterThan(0);
+      expect(await count(adEvents, eq(adEvents.adCampaignId, a.id))).toBeGreaterThan(50);
+    }
+  });
+
+  it("owners of the shops see the modules through the API", async () => {
+    const login = await env.app.inject({ method: "POST", url: "/v1/auth/login", payload: { email: DEMO_CREDENTIALS.ownerEmail("fix-it-phone-lab"), password: DEMO_CREDENTIALS.ownerPassword } });
+    const headers = { authorization: `Bearer ${login.json().accessToken}` };
+    const id = await slugToId("fix-it-phone-lab");
+    const list = await env.app.inject({ method: "GET", url: `/v1/merchants/${id}/tickets?limit=100`, headers });
+    expect(list.statusCode).toBe(200);
+    expect(list.json().items.length).toBeGreaterThanOrEqual(7);
+    const bk = await env.app.inject({ method: "GET", url: `/v1/merchants/${id}/bookings?kind=dropoff`, headers });
+    expect(bk.json().items[0]).toMatchObject({ customerName: expect.any(String) });
+  });
+});
 
 describe("Ridgeway Plaza restaurant corridor", () => {
   it("creates the Mississauga corridor with every restaurant tier", async () => {
