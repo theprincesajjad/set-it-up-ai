@@ -50,7 +50,7 @@ export function YearCalendar({ today }: { today: string }) {
               <h3 className="text-body-strong text-fg">{name}</h3>
               <div role="grid" aria-label={`${name} ${year} calendar`} className="mt-2 grid grid-cols-7 gap-y-1 text-center text-caption">
                 {DOW.map((d, i) => (
-                  <span key={i} role="columnheader" className="pb-1 text-fg-subtle">{d}</span>
+                  <span key={i} role="columnheader" className="pb-1 text-fg-muted">{d}</span>
                 ))}
                 {cells.map((day, i) => {
                   if (!day) return <span key={i} role="gridcell" />;
@@ -89,7 +89,7 @@ export function YearCalendar({ today }: { today: string }) {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-meta text-fg-subtle">No festivals in the calendar this month.</p>
+                <p className="mt-3 text-meta text-fg-muted">No festivals in the calendar this month.</p>
               )}
             </section>
           );

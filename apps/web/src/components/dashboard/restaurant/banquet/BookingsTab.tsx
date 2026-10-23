@@ -254,7 +254,8 @@ export function NewHoldSheet({ halls, onClose, onCreated }: { halls: restaurantA
   const cateringOn = enabled("restaurant.catering");
   const events = useApi(cateringOn ? () => api.catering.list({ limit: 100 }) : null, [api, cateringOn]);
   const linkable = (events.data?.items ?? []).filter((e) => e.status !== "cancelled" && e.status !== "completed" && !e.hallBookingId);
-  const hall = halls.find((h) => h.id === hallId);
+  // The halls may arrive after the sheet opens: fall back to the first open hall so the form is never stuck on an empty choice.
+  const hall = halls.find((h) => h.id === hallId) ?? halls[0];
   const n = Number(guests) || 0;
   const sub = hall ? hall.baseCents + (hall.packages.find((p) => p.name === pkg)?.perHeadCents ?? 0) * n : 0;
 
@@ -269,7 +270,7 @@ export function NewHoldSheet({ halls, onClose, onCreated }: { halls: restaurantA
     setErrors(e);
     if (Object.keys(e).length) return;
     const r = await act.run(() =>
-      api.banquet.createHold({ hallId, eventType: type, startsAt: torontoInstant(date, start), endsAt: torontoInstant(date, end), headcount: n, packageName: pkg || null, notes: notes.trim() || null, cateringEventId: eventId || null, customer: { phone: phone.trim(), name: name.trim() } }),
+      api.banquet.createHold({ hallId: hall!.id, eventType: type, startsAt: torontoInstant(date, start), endsAt: torontoInstant(date, end), headcount: n, packageName: pkg || null, notes: notes.trim() || null, cateringEventId: eventId || null, customer: { phone: phone.trim(), name: name.trim() } }),
     );
     if (r) {
       toast({ message: "Hall on hold for 72 hours", tone: "success" });
@@ -283,7 +284,7 @@ export function NewHoldSheet({ halls, onClose, onCreated }: { halls: restaurantA
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         {!halls.length ? <Banner tone="warning">You have no open halls. Add one in the Halls tab first.</Banner> : null}
         <FormGrid>
-          <Select label="Hall" value={hallId} onChange={(e) => { setHallId(e.target.value); setPkg(""); }} options={halls.map((h) => ({ value: h.id, label: `${h.name}, seats ${h.capacity}` }))} error={errors.hall} />
+          <Select label="Hall" value={hall?.id ?? ""} onChange={(e) => { setHallId(e.target.value); setPkg(""); }} options={halls.map((h) => ({ value: h.id, label: `${h.name}, seats ${h.capacity}` }))} error={errors.hall} />
           <Select label="Kind of event" value={type} onChange={(e) => setType(e.target.value as restaurantApi.CateringEventType)} options={EVENT_TYPE_OPTIONS} />
         </FormGrid>
         <FormGrid cols={3}>

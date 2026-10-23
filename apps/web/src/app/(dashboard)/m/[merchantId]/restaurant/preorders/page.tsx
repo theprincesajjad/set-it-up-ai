@@ -154,7 +154,7 @@ function OrderTable({ orders, loading }: { orders: restaurantApi.PreorderOrderDt
     },
     { key: "items", header: "What", mobile: "subtitle", cell: (o) => <span className="text-fg-muted">{o.items.map((i) => `${i.quantity} × ${i.name}`).join(", ")}</span> },
     { key: "total", header: "Total", align: "end", mobile: "hidden", sortValue: (o) => o.totalCents, cell: (o) => formatMoney(o.totalCents) },
-    { key: "deposit", header: "Deposit", mobile: "subtitle", cell: (o) => (o.depositCents ? (o.depositPaid ? <Dot tone="positive">{formatMoney(o.depositCents)} paid</Dot> : <Dot tone="info">{formatMoney(o.depositCents)} due</Dot>) : <span className="text-fg-subtle">None</span>) },
+    { key: "deposit", header: "Deposit", mobile: "subtitle", cell: (o) => (o.depositCents ? (o.depositPaid ? <Dot tone="positive">{formatMoney(o.depositCents)} paid</Dot> : <Dot tone="info">{formatMoney(o.depositCents)} due</Dot>) : <span className="text-fg-muted">None</span>) },
     { key: "balance", header: "Balance", align: "end", mobile: "hidden", sortValue: (o) => o.balanceDueCents, cell: (o) => (o.balanceDueCents ? <span className="font-medium">{formatMoney(o.balanceDueCents)}</span> : <span className="text-fg-muted">Paid</span>) },
   ];
   return <DataTable caption="Pre-orders for the day" columns={cols} rows={orders} rowKey={(o) => o.orderId} loading={loading} empty={<span className="text-meta text-fg-muted">No orders for this day yet.</span>} />;

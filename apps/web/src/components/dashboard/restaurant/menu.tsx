@@ -39,7 +39,7 @@ export function dietTags(d: Dietary | undefined | null): string[] {
 export function DietChips({ dietary, className }: { dietary: Dietary | undefined | null; className?: string }) {
   const tags = dietTags(dietary);
   const spice = dietary?.spice ?? 0;
-  if (!tags.length && !spice) return <span className={cn("text-meta text-fg-subtle", className)}>No tags</span>;
+  if (!tags.length && !spice) return <span className={cn("text-meta text-fg-muted", className)}>No tags</span>;
   return (
     <span className={cn("flex flex-wrap items-center gap-1.5", className)}>
       {tags.map((t) => (

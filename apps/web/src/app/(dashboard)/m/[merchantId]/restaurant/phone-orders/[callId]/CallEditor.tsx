@@ -94,12 +94,13 @@ export function CallEditor({ call, catalog, catalogError, onChanged }: { call: w
     }
   }
 
-  const unmatchedPhrases = pending.map((p) => parseUnmatched(p).phrase);
+  // Once the call is an order (or discarded) there is nothing left to match, so the underlines go away.
+  const unmatchedPhrases = editable && !done ? pending.map((p) => parseUnmatched(p).phrase) : [];
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Panel title="What the caller said" description={call.language ? undefined : "The language wasn't detected, so check the wording closely."}>
         {call.transcript ? <Transcript text={call.transcript} phrases={unmatchedPhrases} /> : <p className="text-meta text-fg-muted">There is no transcript for this call. The caller may have hung up before ordering.</p>}
-        {pending.length ? <p className="mt-3 text-meta text-fg-muted">Underlined words didn&apos;t match anything on your menu.</p> : null}
+        {unmatchedPhrases.length ? <p className="mt-3 text-meta text-fg-muted">Underlined words didn&apos;t match anything on your menu.</p> : null}
       </Panel>
 
       <div className="flex min-w-0 flex-col gap-4">

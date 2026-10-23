@@ -15,7 +15,7 @@ export function ShopTabs({ panels }: { panels: { id: string; label: string; coun
         items={panels.map((p) => ({
           id: p.id,
           label: p.label,
-          meta: p.count ? <span className="text-meta font-normal tabular-nums text-fg-subtle">{p.count}</span> : undefined,
+          meta: p.count ? <span className="text-meta font-normal tabular-nums text-fg-muted">{p.count}</span> : undefined,
         }))}
       />
       <div role="tabpanel" aria-label={active?.label} className="flex flex-col gap-5">

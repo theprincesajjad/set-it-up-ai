@@ -225,6 +225,18 @@ export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { 
     const owners = new Map<string, MenuMatchItem>();
     for (const c of cands) if (c.tokens.length > 1 && c.tokens.some((t) => t.length >= 4 && similarity(tok, t) >= 0.85)) owners.set(c.item.id, c.item);
     if (owners.size >= 1) {
+      // "chicken biryani": a distinctive word right after another one narrows the same phrase down ("chicken" and "biryani" are not two orders).
+      const last = partials[partials.length - 1];
+      if (last && last.end === i) {
+        const prev = last.ambiguousWith ?? [last.item];
+        const both = prev.filter((p) => owners.has(p.id));
+        if (both.length) {
+          last.end = i + 1;
+          last.item = both[0]!;
+          last.ambiguousWith = both.length > 1 ? both : undefined;
+          continue;
+        }
+      }
       const list = [...owners.values()];
       partials.push({ start: i, end: i + 1, item: list[0]!, score: 0.8, ambiguousWith: list.length > 1 ? list : undefined });
     }

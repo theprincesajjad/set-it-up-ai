@@ -101,12 +101,12 @@ export function fieldToCents(v: string): number {
 }
 export const bpsToPct = (bps: number) => `${(bps / 100).toFixed(bps % 100 ? 1 : 0)}%`;
 
-export function MoneyField({ label, value, onChange, hint, error, optionalLabel }: { label: string; value: string; onChange: (v: string) => void; hint?: ReactNode; error?: string | null; optionalLabel?: boolean }) {
-  return <TextField label={label} prefix="$" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))} hint={hint} error={error} optionalLabel={optionalLabel} />;
+export function MoneyField({ label, value, onChange, hint, error, optionalLabel, disabled }: { disabled?: boolean; label: string; value: string; onChange: (v: string) => void; hint?: ReactNode; error?: string | null; optionalLabel?: boolean }) {
+  return <TextField label={label} prefix="$" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))} hint={hint} error={error} optionalLabel={optionalLabel} disabled={disabled} />;
 }
 
-export function NumberField({ label, value, onChange, hint, error, suffix }: { label: string; value: string; onChange: (v: string) => void; hint?: ReactNode; error?: string | null; suffix?: string }) {
-  return <TextField label={label} suffix={suffix} inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))} hint={hint} error={error} />;
+export function NumberField({ label, value, onChange, hint, error, suffix, disabled }: { disabled?: boolean; label: string; value: string; onChange: (v: string) => void; hint?: ReactNode; error?: string | null; suffix?: string }) {
+  return <TextField label={label} suffix={suffix} inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))} hint={hint} error={error} disabled={disabled} />;
 }
 
 /* ------------------------------------------------------------- small UI */

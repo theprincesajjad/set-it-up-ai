@@ -103,7 +103,7 @@ function Week({ a, start }: { a: restaurantApi.HallAvailabilityResponse; start: 
                         <li key={x.bookingId} className="text-meta"><Dot tone={tone(x.status)} className="whitespace-normal">{span(x, d)}</Dot><span className="sr-only">{x.status === "confirmed" ? " confirmed" : " on hold"}</span></li>
                       ))}
                     </ul>
-                  ) : <span className="text-meta text-fg-subtle">Free</span>}
+                  ) : <span className="text-meta text-fg-muted">Free</span>}
                 </li>
               );
             })}

@@ -91,7 +91,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
             aria-valuetext={`${bpsToPct(bps)} off for cash`}
             className="mt-3 h-6 w-full cursor-pointer accent-[var(--ll-color-fg)] disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <div className="mt-1 flex justify-between text-caption text-fg-subtle">
+          <div className="mt-1 flex justify-between text-caption text-fg-muted">
             <span>0%</span>
             <span>10%</span>
           </div>

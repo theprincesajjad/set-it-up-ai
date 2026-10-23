@@ -85,6 +85,22 @@ describe("transcript parser (pure)", () => {
     expect(names("one nihari")).toEqual(["1 Beef Nihari"]);
   });
 
+  it("reads two distinctive words in a row as one phrase, not two orders", () => {
+    const long = [
+      { id: "hyd", name: "Hyderabadi Chicken Dum Biryani" },
+      { id: "degh", name: "Chicken Biryani Degh (serves 15)" },
+      { id: "goat", name: "Hyderabadi Goat Dum Biryani" },
+      { id: "tikka", name: "Chicken Tikka" },
+    ];
+    const r = extractOrderLines("two chicken biryani please", long);
+    expect(r.lines).toEqual([]);
+    expect(r.ambiguous).toHaveLength(1);
+    expect(r.ambiguous[0]!.phrase).toBe("chicken biryani");
+    expect(r.ambiguous[0]!.options.map((o) => o.catalogItemId).sort()).toEqual(["degh", "hyd"]);
+    // narrowed to one item: it is a plain line
+    expect(extractOrderLines("one goat biryani", long).lines).toMatchObject([{ catalogItemId: "goat", quantity: 1 }]);
+  });
+
   it("does not match tiny names by accident or fire on fillers", () => {
     expect(names("do you take card? I want to order")).toEqual([]);
     expect(names("two dal")).toEqual(["2 Dal"]);

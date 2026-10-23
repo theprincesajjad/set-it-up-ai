@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { onColor } from "@/lib/shopAvatar";
 
 /** Shop identity: brandColor lives only inside this mark (foundations.md "Shop identity"). */
 export function ShopMark({ name, brandColor, logoUrl, size = 28, className }: { name: string; brandColor?: string | null; logoUrl?: string | null; size?: number; className?: string }) {
@@ -12,11 +13,12 @@ export function ShopMark({ name, brandColor, logoUrl, size = 28, className }: { 
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?";
   const style = { width: size, height: size, fontSize: Math.round(size * 0.4) };
+  const brand = brandColor && /^#[0-9a-f]{6}$/i.test(brandColor) ? brandColor : null;
   if (logoUrl)
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={logoUrl} alt="" style={style} className={cn("shrink-0 rounded-[8px] object-cover", className)} />;
   return (
-    <span aria-hidden style={{ ...style, background: brandColor ?? "var(--ll-color-fg)" }} className={cn("inline-flex shrink-0 items-center justify-center rounded-[8px] font-semibold", brandColor ? "text-white" : "text-bg", className)}>
+    <span aria-hidden style={{ ...style, background: brand ?? "var(--ll-color-fg)", color: brand ? onColor(brand) : undefined }} className={cn("inline-flex shrink-0 items-center justify-center rounded-[8px] font-semibold", !brand && "text-bg", className)}>
       {initials}
     </span>
   );

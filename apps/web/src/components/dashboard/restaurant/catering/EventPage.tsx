@@ -81,7 +81,7 @@ function Details({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }) 
         <FormGrid cols={3}>
           <TextField label="Event date" type="date" disabled={!can} value={f.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
           <TextField label="Start time" type="time" optionalLabel disabled={!can} value={f.startTime} onChange={(e) => set("startTime", e.target.value)} />
-          <NumberField label="Guests" value={f.headcount} onChange={(v) => set("headcount", v)} hint={can && event.menu.length ? "Per-guest lines reprice" : undefined} />
+          <NumberField label="Guests" disabled={!can} value={f.headcount} onChange={(v) => set("headcount", v)} hint={can && event.menu.length ? "Per-guest lines reprice" : undefined} />
         </FormGrid>
         <FormGrid>
           <TextField label="Venue" optionalLabel disabled={!can} value={f.venueName} onChange={(e) => set("venueName", e.target.value)} />
@@ -199,13 +199,13 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
                   <Select label="Priced" value={l.pricing} onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, pricing: e.target.value as Line["pricing"] } : x)))} options={[{ value: "per_head", label: "Per guest" }, { value: "tray", label: "By the tray" }]} />
                   {l.pricing === "per_head" ? (
                     <>
-                      <MoneyField label="Per guest" value={l.perHead} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, perHead: v } : x)))} />
+                      <MoneyField label="Per guest" disabled={!can} value={l.perHead} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, perHead: v } : x)))} />
                       <p className="pb-3 text-meta text-fg-muted">× {formatNumber(headcount)} guests</p>
                     </>
                   ) : (
                     <>
-                      <NumberField label="Trays" value={l.qty} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: v } : x)))} />
-                      <MoneyField label="Per tray" value={l.unit} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unit: v } : x)))} />
+                      <NumberField label="Trays" disabled={!can} value={l.qty} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: v } : x)))} />
+                      <MoneyField label="Per tray" disabled={!can} value={l.unit} onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unit: v } : x)))} />
                     </>
                   )}
                   <IconButton icon={Trash2} label={`Remove ${l.name || "line"}`} size={40} className="mb-3 justify-self-end" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} />
@@ -230,8 +230,8 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
             {extras.map((x) => (
               <li key={x.key} className="grid grid-cols-[1fr_auto] items-end gap-x-3 gap-y-1 py-3 sm:grid-cols-[1fr_6rem_9rem_auto]">
                 <div className="col-span-2 sm:col-span-1"><TextField label="Extra" hideLabel placeholder="Delivery and setup" disabled={!can} value={x.description} onChange={(e) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, description: e.target.value } : y)))} /></div>
-                <NumberField label="Qty" value={x.qty} onChange={(v) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, qty: v } : y)))} />
-                <MoneyField label="Each" value={x.unit} onChange={(v) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, unit: v } : y)))} />
+                <NumberField label="Qty" disabled={!can} value={x.qty} onChange={(v) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, qty: v } : y)))} />
+                <MoneyField label="Each" disabled={!can} value={x.unit} onChange={(v) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, unit: v } : y)))} />
                 {can ? <IconButton icon={Trash2} label={`Remove ${x.description || "extra"}`} size={40} className="mb-3" onClick={() => setExtras((xs) => xs.filter((y) => y.key !== x.key))} /> : null}
               </li>
             ))}
