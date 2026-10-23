@@ -2,14 +2,17 @@
  * Merchant reports. Every query is scoped to one merchant; network overlap
  * only ever returns aggregate counts (never another shop's customers).
  */
-import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, sql, type SQL } from "drizzle-orm";
-import { ledgerTransactions, merchantMembers, merchants, neighbourhoods, promos, redemptions, rewards, users, visits, type DbOrTx } from "@ll/db";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { auditLogs, ledgerTransactions, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, promos, redemptions, rewards, users, visits, type DbOrTx } from "@ll/db";
 import { reportsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest } from "../lib/errors.js";
+import { getMerchantFeatures } from "./features.js";
 import { localParts } from "./ledger.js";
 import { countActiveMembers, iso } from "./merchant.js";
+import { memberRhythms, shopDate } from "./member-stats.js";
 import { localDate } from "./messaging.js";
+import { localDayStart } from "./staff.js";
 
 type Merchant = typeof merchants.$inferSelect;
 const DAY = 86400000;
@@ -260,32 +263,59 @@ export async function rewardPerformance(ctx: AppContext, merchant: Merchant, q: 
 // ---------------------------------------------------------------------------
 // Promo results
 // ---------------------------------------------------------------------------
+/** Does a visit at `at` fall inside the promo's weekdays and hours (shop time)? */
+function inPromoWindow(p: typeof promos.$inferSelect, at: Date, tz: string): boolean {
+  if (!(p.daysOfWeek?.length || p.startTime || p.endTime)) return true;
+  const { dow, hhmm } = localParts(at, tz);
+  return (!p.daysOfWeek?.length || p.daysOfWeek.includes(dow)) && (!p.startTime || hhmm >= p.startTime) && (!p.endTime || hhmm < p.endTime);
+}
+
+/** Local dates in [from, to) whose weekday the promo runs on (all days when it has no weekday rule). */
+function matchingDays(p: typeof promos.$inferSelect, from: Date, to: Date, tz: string): number {
+  let n = 0;
+  const seen = new Set<string>();
+  for (let t = from.getTime(); t < to.getTime() + DAY && seen.size < 400; t += DAY) {
+    const d = localDate(new Date(t), tz);
+    if (seen.has(d)) continue;
+    seen.add(d);
+    const day = new Date(t);
+    // A day counts when it started before `to` and the promo runs on that weekday.
+    if (localDayStart(day, tz).start >= to) continue;
+    if (!p.daysOfWeek?.length || p.daysOfWeek.includes(localParts(day, tz).dow)) n++;
+  }
+  return n;
+}
+
+/** Fewer than this many days of history before a promo and "typical" is not shown. */
+const PROMO_MIN_BASELINE_DAYS = 14;
+const PROMO_BASELINE_DAYS = 28;
+
 export async function promoResults(ctx: AppContext, merchant: Merchant): Promise<reportsApi.PromosReport> {
   const now = ctx.now();
+  const tz = merchant.timezone;
   const list = await ctx.db
     .select()
     .from(promos)
     .where(and(eq(promos.merchantId, merchant.id), ne(promos.status, "draft")))
     .orderBy(desc(promos.startsAt))
     .limit(100);
+  const [first] = await ctx.db.select({ at: sql<Date | null>`min(${visits.createdAt})` }).from(visits).where(eq(visits.merchantId, merchant.id));
+  const firstVisitAt = first?.at ? new Date(first.at) : null;
   const items: reportsApi.PromoResult[] = [];
   for (const p of list) {
     const start = p.startsAt;
     const end = p.endsAt && p.endsAt < now ? p.endsAt : now;
     let attributed = 0;
     let liftPct: number | null = null;
+    let windowDays = 0;
+    let typicalPerDay: number | null = null;
+    let free = 0;
     if (start < end) {
       const vs = await ctx.db
         .select({ at: visits.createdAt })
         .from(visits)
         .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, start), lt(visits.createdAt, end)));
-      const recurring = !!(p.daysOfWeek?.length || p.startTime || p.endTime);
-      attributed = recurring
-        ? vs.filter(({ at }) => {
-            const { dow, hhmm } = localParts(at, merchant.timezone);
-            return (!p.daysOfWeek?.length || p.daysOfWeek.includes(dow)) && (!p.startTime || hhmm >= p.startTime) && (!p.endTime || hhmm < p.endTime);
-          }).length
-        : vs.length;
+      attributed = vs.filter(({ at }) => inPromoWindow(p, at, tz)).length;
       const [base] = await ctx.db
         .select({ n: sql<number>`count(*)::int` })
         .from(visits)
@@ -293,7 +323,27 @@ export async function promoResults(ctx: AppContext, merchant: Merchant): Promise
       const baseline = num(base?.n) / 14;
       const during = vs.length / Math.max(1, (end.getTime() - start.getTime()) / DAY);
       liftPct = baseline > 0 ? Math.round(((during - baseline) / baseline) * 100) : null;
+
+      // Typical: the same weekdays and hours over the 4 weeks before the promo, per matching day.
+      windowDays = matchingDays(p, start, end, tz);
+      const histDays = firstVisitAt ? Math.floor((start.getTime() - firstVisitAt.getTime()) / DAY) : 0;
+      if (histDays >= PROMO_MIN_BASELINE_DAYS) {
+        const baseFrom = new Date(Math.max(start.getTime() - PROMO_BASELINE_DAYS * DAY, firstVisitAt!.getTime()));
+        const baseVisits = await ctx.db
+          .select({ at: visits.createdAt })
+          .from(visits)
+          .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, baseFrom), lt(visits.createdAt, start)));
+        const baseDays = matchingDays(p, baseFrom, start, tz);
+        const inWin = baseVisits.filter(({ at }) => inPromoWindow(p, at, tz)).length;
+        typicalPerDay = baseDays > 0 ? Math.round((inWin / baseDays) * 10) / 10 : 0;
+      }
+      const reds = await ctx.db
+        .select({ at: redemptions.createdAt })
+        .from(redemptions)
+        .where(and(eq(redemptions.merchantId, merchant.id), ne(redemptions.status, "void"), gte(redemptions.createdAt, start), lt(redemptions.createdAt, end)));
+      free = reds.filter(({ at }) => inPromoWindow(p, at, tz)).length;
     }
+    const typicalVisits = typicalPerDay === null ? null : Math.round(typicalPerDay * windowDays);
     const [boosted] = await ctx.db
       .select({ n: sql<number>`count(*)::int` })
       .from(ledgerTransactions)
@@ -310,6 +360,12 @@ export async function promoResults(ctx: AppContext, merchant: Merchant): Promise
       attributedVisits: attributed,
       boostedTransactions: num(boosted?.n),
       liftPct,
+      windowVisits: attributed,
+      windowDays,
+      typicalPerDay,
+      typicalVisits,
+      extraVisits: typicalVisits === null ? null : attributed - typicalVisits,
+      freeItemsGiven: free,
     });
   }
   return { items };
@@ -410,7 +466,9 @@ export async function retention(ctx: AppContext, merchant: Merchant, months: num
   const visitsBy = new Map<string, Set<string>>();
   for (const v of vm) visitsBy.set(v.memberId, (visitsBy.get(v.memberId) ?? new Set()).add(v.month));
   const idx = (mo: string) => monthList.indexOf(mo);
+  const joinerReturn = await joinerReturnReport(ctx, merchant);
   return {
+    joinerReturn,
     months,
     cohorts: monthList.map((cohort) => {
       const cm = members.filter((x) => x.cohort === cohort);
@@ -421,5 +479,285 @@ export async function retention(ctx: AppContext, merchant: Merchant, months: num
       });
       return { cohort, size: cm.length, retention };
     }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Joiners who came back (windows 7, 14, 30 days)
+// ---------------------------------------------------------------------------
+export const JOINER_WINDOWS = [7, 14, 30] as const;
+
+/**
+ * Members who joined in the 4 weeks ending 30 days ago (so every window has fully elapsed), and how
+ * many of them had a second visit within 7, 14 and 30 days of their first (cumulative).
+ */
+export async function joinerReturnReport(ctx: AppContext, merchant: Merchant): Promise<reportsApi.JoinerReturnReport> {
+  const to = new Date(ctx.now().getTime() - 30 * DAY);
+  const from = new Date(to.getTime() - 28 * DAY);
+  const joined = await ctx.db
+    .select({ id: merchantMembers.id })
+    .from(merchantMembers)
+    .where(and(eq(merchantMembers.merchantId, merchant.id), gte(merchantMembers.createdAt, from), lt(merchantMembers.createdAt, to)));
+  const ids = joined.map((j) => j.id);
+  const vs = ids.length
+    ? await ctx.db
+        .select({ memberId: visits.memberId, at: visits.createdAt })
+        .from(visits)
+        .where(and(eq(visits.merchantId, merchant.id), inArray(visits.memberId, ids)))
+        .orderBy(visits.createdAt)
+    : [];
+  const by = new Map<string, Date[]>();
+  for (const v of vs) by.set(v.memberId, [...(by.get(v.memberId) ?? []), v.at]);
+  const gaps = [...by.values()].filter((t) => t.length >= 2).map((t) => (t[1]!.getTime() - t[0]!.getTime()) / DAY);
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    joined: ids.length,
+    windows: JOINER_WINDOWS.map((days) => ({ days, cameBack: gaps.filter((g) => g <= days).length })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Heatmap: weekday x hour (shop time)
+// ---------------------------------------------------------------------------
+export async function heatmap(ctx: AppContext, merchant: Merchant, weeks: number): Promise<reportsApi.HeatmapReport> {
+  const tz = merchant.timezone;
+  const to = ctx.now();
+  const from = new Date(to.getTime() - weeks * 7 * DAY);
+  const rows = await ctx.db
+    .select({
+      dow: sql<number>`(extract(isodow from (${visits.createdAt} at time zone ${tz}))::int - 1)`,
+      hour: sql<number>`extract(hour from (${visits.createdAt} at time zone ${tz}))::int`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(visits)
+    .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, from), lte(visits.createdAt, to)))
+    .groupBy(sql`1`, sql`2`);
+  const matrix = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
+  for (const r of rows) matrix[num(r.dow)]![num(r.hour)] = num(r.n);
+  return { weeks, timezone: tz, matrix, max: Math.max(0, ...matrix.flat()) };
+}
+
+// ---------------------------------------------------------------------------
+// Rewards owed
+// ---------------------------------------------------------------------------
+/** Free rewards members could claim right now. Always an estimate; cost is the shop's own number. */
+export async function rewardsOwed(ctx: AppContext, merchant: Merchant): Promise<reportsApi.RewardsOwedReport> {
+  const [[prog], [cost], [totals]] = await Promise.all([
+    ctx.db.select({ rewardCostCents: loyaltyPrograms.rewardCostCents }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1),
+    ctx.db
+      .select({ min: sql<number | null>`min(${rewards.pointsCost})::int` })
+      .from(rewards)
+      .where(and(eq(rewards.merchantId, merchant.id), eq(rewards.active, true))),
+    ctx.db
+      .select({ stamps: sql<number>`coalesce(sum(${merchantMembers.balance}), 0)::int`, members: sql<number>`count(*)::int` })
+      .from(merchantMembers)
+      .where(and(eq(merchantMembers.merchantId, merchant.id), sql`${merchantMembers.balance} > 0`)),
+  ]);
+  const goal = cost?.min ?? null;
+  let owed = 0;
+  if (goal && goal > 0) {
+    const [o] = await ctx.db
+      .select({ n: sql<number>`coalesce(sum(floor(${merchantMembers.balance}::numeric / ${goal})), 0)::int` })
+      .from(merchantMembers)
+      .where(and(eq(merchantMembers.merchantId, merchant.id), sql`${merchantMembers.balance} >= ${goal}`));
+    owed = num(o?.n);
+  }
+  const rc = prog?.rewardCostCents ?? null;
+  return { rewardsOwed: owed, stampsOutstanding: num(totals?.stamps), members: num(totals?.members), rewardCostCents: rc, estCostCents: rc === null ? null : owed * rc, estimate: true };
+}
+
+// ---------------------------------------------------------------------------
+// Today (home): 7 am / at close
+// ---------------------------------------------------------------------------
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 7);
+const mean1 = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : 0);
+
+export async function today(ctx: AppContext, merchant: Merchant): Promise<reportsApi.TodayReportDto> {
+  const tz = merchant.timezone;
+  const now = ctx.now();
+  const todayStart = localDayStart(now, tz).start;
+  const noon = todayStart.getTime() + 12 * 3600_000;
+  const dayKey = (daysBack: number) => shopDate(new Date(noon - daysBack * DAY), tz);
+  const todayKey = dayKey(0);
+  const yesterdayKey = dayKey(1);
+  const earliest = new Date(todayStart.getTime() - 30 * DAY);
+
+  const [visitRows, newMemberRows, earnRows, redeemRows, wf, [prog], [minCost]] = await Promise.all([
+    ctx.db
+      .select({ d: localDay(visits.createdAt, tz), h: sql<number>`extract(hour from (${visits.createdAt} at time zone ${tz}))::int`, n: sql<number>`count(*)::int` })
+      .from(visits)
+      .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, earliest), lte(visits.createdAt, now)))
+      .groupBy(sql`1`, sql`2`),
+    ctx.db
+      .select({ d: localDay(merchantMembers.createdAt, tz), via: merchantMembers.joinedVia, n: sql<number>`count(*)::int` })
+      .from(merchantMembers)
+      .where(and(eq(merchantMembers.merchantId, merchant.id), gte(merchantMembers.createdAt, new Date(todayStart.getTime() - DAY - 6 * 3600_000))))
+      .groupBy(sql`1`, merchantMembers.joinedVia),
+    ctx.db
+      .select({ staffId: ledgerTransactions.staffUserId, points: ledgerTransactions.points, at: ledgerTransactions.createdAt })
+      .from(ledgerTransactions)
+      .where(
+        and(
+          eq(ledgerTransactions.merchantId, merchant.id),
+          gte(ledgerTransactions.createdAt, todayStart),
+          lte(ledgerTransactions.createdAt, now),
+          sql`${ledgerTransactions.points} > 0 and ${ledgerTransactions.type} in ${EARN_TYPES} and ${ledgerTransactions.reversedAt} is null`,
+        ),
+      ),
+    ctx.db
+      .select({ staffId: ledgerTransactions.staffUserId, type: ledgerTransactions.type, reversesId: ledgerTransactions.reversesTransactionId })
+      .from(ledgerTransactions)
+      .where(and(eq(ledgerTransactions.merchantId, merchant.id), gte(ledgerTransactions.createdAt, todayStart), lte(ledgerTransactions.createdAt, now), isNull(ledgerTransactions.reversedAt), inArray(ledgerTransactions.type, ["redeem", "reversal"]))),
+    getMerchantFeatures(ctx.db, merchant),
+    ctx.db.select({ stampGoal: loyaltyPrograms.stampGoal }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1),
+    ctx.db
+      .select({ min: sql<number | null>`min(${rewards.pointsCost})::int` })
+      .from(rewards)
+      .where(and(eq(rewards.merchantId, merchant.id), eq(rewards.active, true))),
+  ]);
+  void prog;
+  const byDay = new Map<string, number[]>();
+  for (const r of visitRows) {
+    const arr = byDay.get(r.d) ?? Array<number>(24).fill(0);
+    arr[num(r.h)] = num(r.n);
+    byDay.set(r.d, arr);
+  }
+  const dayTotal = (key: string) => (byDay.get(key) ?? []).reduce((a, b) => a + b, 0);
+  const hourOf = (key: string, h: number) => byDay.get(key)?.[h] ?? 0;
+  const sameWeekday = (fromBack: number) => [0, 1, 2, 3].map((k) => dayKey(fromBack + 7 * k));
+  const typicalYesterdayKeys = sameWeekday(8); // 4 same weekdays before yesterday
+  const typicalTodayKeys = sameWeekday(7);
+  const typicalDay = (keys: string[]) => reportsApi.typicalFromWeeks(keys.map(dayTotal)) ?? 0;
+
+  const newBy = (key: string, via?: string) => newMemberRows.filter((r) => r.d === key && (!via || r.via === via)).reduce((a, r) => a + num(r.n), 0);
+
+  // Regulars and slipping come from visit rhythm.
+  const rhythms = await memberRhythms(ctx.db, merchant.id, tz, now);
+  const regularIds = [...rhythms.entries()].filter(([, r]) => r.isRegular).map(([id]) => id);
+  const regularsSeen = regularIds.filter((id) => (rhythms.get(id)!.lastVisitAt?.getTime() ?? 0) >= todayStart.getTime()).length;
+  const slippingIds = [...rhythms.entries()].filter(([, r]) => r.isSlipping).map(([id]) => id);
+
+  const goal = minCost?.min ?? null;
+  const person = {
+    id: merchantMembers.id,
+    name: users.name,
+    phone: users.phone,
+    balance: merchantMembers.balance,
+    lastVisitAt: merchantMembers.lastVisitAt,
+    consentAt: merchantMembers.marketingConsentAt,
+    muted: merchantMembers.muted,
+  };
+  const [waiting, [waitingCount], slippingPeople] = await Promise.all([
+    goal
+      ? ctx.db
+          .select(person)
+          .from(merchantMembers)
+          .innerJoin(users, eq(users.id, merchantMembers.userId))
+          .where(and(eq(merchantMembers.merchantId, merchant.id), gte(merchantMembers.balance, goal), isNull(users.deletedAt)))
+          .orderBy(sql`${merchantMembers.lastVisitAt} desc nulls last`)
+          .limit(4)
+      : Promise.resolve([]),
+    goal
+      ? ctx.db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(merchantMembers)
+          .innerJoin(users, eq(users.id, merchantMembers.userId))
+          .where(and(eq(merchantMembers.merchantId, merchant.id), gte(merchantMembers.balance, goal), isNull(users.deletedAt)))
+      : Promise.resolve([{ n: 0 }]),
+    slippingIds.length
+      ? ctx.db
+          .select(person)
+          .from(merchantMembers)
+          .innerJoin(users, eq(users.id, merchantMembers.userId))
+          .where(and(eq(merchantMembers.merchantId, merchant.id), inArray(merchantMembers.id, slippingIds), isNull(users.deletedAt)))
+      : Promise.resolve([]),
+  ]);
+  const canText = (p: { phone: string | null; consentAt: Date | null; muted: boolean }) => !!p.consentAt && !p.muted && !!p.phone;
+  const slippingSorted = [...slippingPeople].sort((a, b) => (b.lastVisitAt?.getTime() ?? 0) - (a.lastVisitAt?.getTime() ?? 0));
+
+  // Staff: stamps, visits, undone today (counter awards carry staffUserId).
+  const staffIds = [...new Set([...earnRows.map((r) => r.staffId), ...redeemRows.map((r) => r.staffId)].filter((x): x is string => !!x))];
+  const staffNames = staffIds.length ? await ctx.db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, staffIds)) : [];
+  const staff = staffIds
+    .map((id) => {
+      const mine = earnRows.filter((r) => r.staffId === id);
+      const hours = mine.map((r) => Number(localParts(r.at, tz).hhmm.slice(0, 2)));
+      const lo = Math.min(...hours);
+      const hi = Math.max(...hours);
+      return {
+        staffId: id,
+        name: staffNames.find((n) => n.id === id)?.name ?? "Staff",
+        shift: mine.length > 1 && lo !== hi ? `${reportsApi.hourLabel(lo)} to ${reportsApi.hourLabel(hi + 1)}` : null,
+        stamps: mine.reduce((a, r) => a + r.points, 0),
+        visits: mine.length,
+        undone: redeemRows.filter((r) => r.staffId === id && r.type === "reversal").length,
+      };
+    })
+    .sort((a, b) => b.stamps - a.stamps);
+
+  // Promo running today: a live promo whose weekday and hours cover part of today.
+  let promoWindow: reportsApi.TodayReportDto["promoWindow"] = null;
+  if (features["promos.basic"].enabled) {
+    const todayDow = localParts(now, tz).dow;
+    const live = await ctx.db
+      .select()
+      .from(promos)
+      .where(and(eq(promos.merchantId, merchant.id), eq(promos.status, "live"), lte(promos.startsAt, now), or(isNull(promos.endsAt), gte(promos.endsAt, now))))
+      .orderBy(desc(promos.startsAt));
+    const p = live.find((x) => (x.startTime || x.endTime) && (!x.daysOfWeek?.length || x.daysOfWeek.includes(todayDow)));
+    if (p) {
+      const hourSet = HOURS.filter((h) => {
+        const hh = `${String(h).padStart(2, "0")}:00`;
+        return (!p.startTime || hh >= p.startTime.slice(0, 2) + ":00") && (!p.endTime || hh < p.endTime);
+      });
+      const windowVisits = hourSet.reduce((a, h) => a + hourOf(todayKey, h), 0);
+      const typical = Math.round(mean1(typicalTodayKeys.map((k) => hourSet.reduce((a, h) => a + hourOf(k, h), 0))));
+      promoWindow = { promoId: p.id, title: p.title, startTime: p.startTime, endTime: p.endTime, windowVisits, typicalVisits: typical, extraVisits: windowVisits - typical };
+    }
+  }
+
+  // Counter app: online when staff signed in with a PIN today or stamped in the last 30 minutes.
+  const [signin] = await ctx.db
+    .select({ at: auditLogs.createdAt, name: users.name })
+    .from(auditLogs)
+    .leftJoin(users, eq(users.id, auditLogs.actorUserId))
+    .where(and(eq(auditLogs.merchantId, merchant.id), eq(auditLogs.action, "staff_pin.verified"), gte(auditLogs.createdAt, todayStart)))
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(1);
+  const recentStamp = earnRows.some((r) => r.staffId && now.getTime() - r.at.getTime() < 30 * 60_000);
+
+  return {
+    asOf: now.toISOString(),
+    timezone: tz,
+    yesterday: { visits: dayTotal(yesterdayKey), typicalVisits: typicalDay(typicalYesterdayKeys), newMembers: newBy(yesterdayKey), newViaQr: newBy(yesterdayKey, "qr") },
+    today: {
+      visits: dayTotal(todayKey),
+      typicalVisitsFullDay: typicalDay(typicalTodayKeys),
+      newMembers: newBy(todayKey),
+      newViaQr: newBy(todayKey, "qr"),
+      stampsGiven: earnRows.reduce((a, r) => a + r.points, 0),
+      redemptions: redeemRows.filter((r) => r.type === "redeem").length,
+      regularsSeen,
+      regularsTotal: regularIds.length,
+    },
+    hourly: {
+      hours: HOURS,
+      typical: HOURS.map((h) => mean1(typicalTodayKeys.map((k) => hourOf(k, h)))),
+      today: HOURS.map((h) => hourOf(todayKey, h)),
+    },
+    rewardsWaiting: {
+      count: num(waitingCount?.n),
+      goal,
+      members: waiting.map((m) => ({ memberId: m.id, name: m.name, balance: m.balance, lastVisitAt: iso(m.lastVisitAt) })),
+    },
+    slipping: {
+      count: slippingIds.length,
+      canText: slippingPeople.filter(canText).length,
+      members: slippingSorted.slice(0, 3).map((m) => ({ memberId: m.id, name: m.name, usually: rhythms.get(m.id)?.usually ?? null, lastVisitAt: iso(m.lastVisitAt), canText: canText(m) })),
+    },
+    staff,
+    promoWindow,
+    counter: { online: !!signin || recentStamp, staffName: signin?.name ?? null, signedInAt: iso(signin?.at) },
   };
 }

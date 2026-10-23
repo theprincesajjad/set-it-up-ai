@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { merchantCounters, type DbOrTx } from "@ll/db";
 
-export type CounterName = "order" | "ticket" | "invoice" | "catering";
+export type CounterName = "order" | "ticket" | "invoice" | "catering" | "reference";
 
 /**
  * Next human-friendly number for a merchant ("order #12"). Atomic: a single

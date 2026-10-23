@@ -256,6 +256,18 @@ export const merchants = pgTable(
     smsReceiptsEnabled: boolean("sms_receipts_enabled").notNull().default(false),
     /** Public API key hash for the merchant webhook/API integration. */
     apiKeyHash: text("api_key_hash"),
+    /** How this shop gets paid by hand: { etransferEnabled, etransferEmail, instructions, startOnTrust, graceDays, cashEnabled } (tiffin/catering/banquet). */
+    paymentSettings: jsonb("payment_settings").$type<Record<string, unknown>>().notNull().default({}),
+    /** Registered for GST/HST? null = not asked yet (quotes still compute at the provincial rate). */
+    taxRegistered: boolean("tax_registered"),
+    /** GST/HST number (9 digits + RT0001); format-checked only, not verified with the CRA. */
+    taxNumber: text("tax_number"),
+    taxSmallSupplierNote: boolean("tax_small_supplier_note").notNull().default(false),
+    /** Food safety (never blocks selling): food handler certificate expiry, health unit notice, and an opt-in customer badge. */
+    foodHandlerExpiry: date("food_handler_expiry"),
+    healthUnit: text("health_unit"),
+    healthUnitNotifiedOn: date("health_unit_notified_on"),
+    foodHandlerBadge: boolean("food_handler_badge").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1355,6 +1367,8 @@ export const tiffinPlans = pgTable(
     deliveryAllowed: boolean("delivery_allowed").notNull().default(true),
     /** Skips/pauses must be made this many hours before the meal day. */
     cutoffHours: integer("cutoff_hours").notNull().default(24),
+    /** Charged with sales tax when the shop is registered for GST/HST (prepared meals generally are). */
+    taxable: boolean("taxable").notNull().default(true),
     active: boolean("active").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: createdAt(),
@@ -1477,14 +1491,69 @@ export const tiffinCharges = pgTable(
     /** Credit for skipped meals applied to this charge. */
     creditCents: integer("credit_cents").notNull().default(0),
     platformFeeCents: integer("platform_fee_cents").notNull().default(0),
-    /** pending | paid | failed | refunded */
+    /** Sales tax included in amountCents (0 when the shop is not registered or the plan is not taxable). */
+    taxCents: integer("tax_cents").notNull().default(0),
+    /** pending | awaiting (hand-paid, instructions sent) | processing | paid | failed | refunded */
     status: text("status").notNull().default("pending"),
+    /** Code the customer puts in the e-transfer message, e.g. JM-1023 (unique per shop). */
+    referenceCode: text("reference_code"),
+    /** card | pad | etransfer | cash: how a paid charge was settled. */
+    paymentMethod: text("payment_method"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeInvoiceId: text("stripe_invoice_id"),
     paidAt: ts("paid_at"),
+    /** Last day-1 / day-3 reminder sent for an awaiting charge (0, 1 or 3). */
+    reminderStage: integer("reminder_stage").notNull().default(0),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("tiffin_charges_period_uq").on(t.subscriptionId, t.periodStart)],
+  (t) => [uniqueIndex("tiffin_charges_period_uq").on(t.subscriptionId, t.periodStart), uniqueIndex("tiffin_charges_reference_uq").on(t.merchantId, t.referenceCode)],
+);
+
+/**
+ * Append-only ledger of payments recorded by hand (e-transfer, cash, cheque).
+ * One row per receipt; a mistake is voided, never edited. These carry no platform fee.
+ */
+export const manualPayments = pgTable(
+  "manual_payments",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** tiffin_charge | catering_deposit | catering_balance | hall_instalment */
+    subjectType: text("subject_type").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    instalmentIndex: integer("instalment_index"),
+    /** etransfer | cash | cheque | other */
+    method: text("method").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    receivedOn: date("received_on").notNull(),
+    bankReference: text("bank_reference"),
+    note: text("note"),
+    recordedBy: uuid("recorded_by").references(() => users.id),
+    createdAt: createdAt(),
+    voidedAt: ts("voided_at"),
+    voidReason: text("void_reason"),
+    voidedBy: uuid("voided_by").references(() => users.id),
+  },
+  (t) => [index("manual_payments_subject_idx").on(t.subjectType, t.subjectId), index("manual_payments_merchant_idx").on(t.merchantId, t.receivedOn)],
+);
+
+/** Tokenised link for a driver: one route, one day, no login. */
+export const tiffinDriverLinks = pgTable(
+  "tiffin_driver_links",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    routeId: uuid("route_id").notNull().references(() => tiffinRoutes.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    token: text("token").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    createdBy: uuid("created_by").references(() => users.id),
+    lastOpenedAt: ts("last_opened_at"),
+    /** Last "running late" notice, so it goes out at most once per 15 minutes. */
+    lastLateAt: ts("last_late_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("tiffin_driver_links_token_uq").on(t.token), index("tiffin_driver_links_route_idx").on(t.routeId, t.date)],
 );
 
 export const cateringEvents = pgTable(
@@ -1531,10 +1600,19 @@ export const cateringEvents = pgTable(
     depositRefundedAt: ts("deposit_refunded_at"),
     invoiceId: uuid("invoice_id"),
     hallBookingId: uuid("hall_booking_id"),
+    /** Mandatory service charge in basis points of the subtotal; taxed like food (tips are not modelled). */
+    serviceChargeBps: integer("service_charge_bps").notNull().default(0),
+    /** Code the customer puts in the e-transfer message (unique per shop). */
+    referenceCode: text("reference_code"),
+    /** etransfer | cash | cheque | other | card: how the deposit came in, and when. */
+    depositMethod: text("deposit_method"),
+    depositReceivedOn: date("deposit_received_on"),
+    /** First time the customer opened the quote link. */
+    quoteOpenedAt: ts("quote_opened_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("catering_events_token_uq").on(t.approvalToken), index("catering_events_merchant_idx").on(t.merchantId, t.eventDate)],
+  (t) => [uniqueIndex("catering_events_token_uq").on(t.approvalToken), index("catering_events_merchant_idx").on(t.merchantId, t.eventDate), uniqueIndex("catering_events_reference_uq").on(t.merchantId, t.referenceCode)],
 );
 
 export const halls = pgTable("halls", {
@@ -1550,6 +1628,10 @@ export const halls = pgTable("halls", {
   depositBps: integer("deposit_bps").notNull().default(2500),
   /** Applied automatically when a customer cancels after paying the deposit: first tier whose minDaysBefore the event is at least away wins; none after. */
   refundPolicy: jsonb("refund_policy").$type<{ tiers: { minDaysBefore: number; refundBps: number }[] }>().notNull().default({ tiers: [{ minDaysBefore: 30, refundBps: 10000 }, { minDaysBefore: 14, refundBps: 5000 }] }),
+  /** Staged payment template [{ label, bps, dueOffsetDays }]; dueOffsetDays counts back from the event (0 = at hold). */
+  paymentSchedule: jsonb("payment_schedule").$type<{ label: string; bps: number; dueOffsetDays: number }[]>(),
+  /** Confirm a hold automatically when the first instalment is recorded. */
+  autoConfirmOnFirstPayment: boolean("auto_confirm_on_first_payment").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -1579,9 +1661,15 @@ export const hallBookings = pgTable(
     depositRefundedAt: ts("deposit_refunded_at"),
     cateringEventId: uuid("catering_event_id"),
     notes: text("notes"),
+    /** Code the customer puts in the e-transfer message (unique per shop). */
+    referenceCode: text("reference_code"),
+    /** Staged payments [{ label, amountCents, dueOn, paidAt }]; sums to totalCents. */
+    schedule: jsonb("schedule").$type<{ label: string; amountCents: number; dueOn: string; paidAt: string | null }[]>(),
+    /** Last payment-due / hold-expiry notice sent, so the job never repeats itself. */
+    lastReminderKey: text("last_reminder_key"),
     createdAt: createdAt(),
   },
-  (t) => [index("hall_bookings_hall_idx").on(t.hallId, t.startsAt)],
+  (t) => [index("hall_bookings_hall_idx").on(t.hallId, t.startsAt), uniqueIndex("hall_bookings_reference_uq").on(t.merchantId, t.referenceCode)],
 );
 
 export const whatsappSessions = pgTable(

@@ -206,6 +206,7 @@ export const FEATURE_KEYS = [
   "orders.pickup_status",
   "payments.in_app",
   "booking.pickup_slots",
+  "service.rebooking",
   // ---- Pro (everything in Plus, plus) ----
   "service.tickets",
   "service.quote_approval",
@@ -310,6 +311,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
+    f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
     // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
     f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),

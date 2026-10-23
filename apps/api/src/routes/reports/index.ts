@@ -33,6 +33,9 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/merchants/:merchantId/reports/rewards", async (req: Req) => svc.rewardPerformance(ctx, await auth(req), parse(reportsApi.rangeQuery, req.query)));
   app.get("/merchants/:merchantId/reports/promos", async (req: Req) => svc.promoResults(ctx, await auth(req, "promos.basic")));
   app.get("/merchants/:merchantId/reports/network-overlap", async (req: Req) => svc.networkOverlap(ctx, await auth(req, "reports.advanced")));
+  app.get("/merchants/:merchantId/reports/today", async (req: Req) => svc.today(ctx, await auth(req)));
+  app.get("/merchants/:merchantId/reports/heatmap", async (req: Req) => svc.heatmap(ctx, await auth(req), parse(reportsApi.heatmapQuery, req.query).weeks));
+  app.get("/merchants/:merchantId/reports/rewards-owed", async (req: Req) => svc.rewardsOwed(ctx, await auth(req)));
   app.get("/merchants/:merchantId/reports/activation", async (req: Req) => svc.activation(ctx, await auth(req)));
   app.get("/merchants/:merchantId/reports/retention", async (req: Req) => {
     const m = await auth(req, "reports.advanced");
