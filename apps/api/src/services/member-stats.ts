@@ -19,9 +19,10 @@ export interface MemberRhythm {
   usually: string | null;
   isRegular: boolean;
   isSlipping: boolean;
+  lastVisitAt: Date | null;
 }
 
-export const NO_RHYTHM: MemberRhythm = { visits30d: 0, usually: null, isRegular: false, isSlipping: false };
+export const NO_RHYTHM: MemberRhythm = { visits30d: 0, usually: null, isRegular: false, isSlipping: false, lastVisitAt: null };
 
 /**
  * One query: each member's 12 most recent visits plus every visit in the last 60 days.
@@ -68,6 +69,7 @@ export function rhythmOf(times: Date[], timezone: string, now: Date): MemberRhyt
     usually: reportsApi.usuallyLabel(slots),
     isRegular: reportsApi.isRegular(times, now),
     isSlipping: reportsApi.isSlipping(times, now),
+    lastVisitAt: times[0] ?? null,
   };
 }
 

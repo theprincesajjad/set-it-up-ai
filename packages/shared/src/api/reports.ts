@@ -135,6 +135,10 @@ export interface PromoResult {
   liftPct: number | null;
   /** Visits inside the promo's window (days and hours) from `startsAt` until now or `endsAt`. */
   windowVisits: number;
+  /** Days (matching the promo's weekdays) that the window has covered so far. */
+  windowDays: number;
+  /** Mean visits per matching day in the same hours over the 4 weeks before the promo. Null without 2 weeks of history. */
+  typicalPerDay: number | null;
   /**
    * Mean visits in the same weekdays and hours over the 4 weeks before the promo, scaled to the
    * same number of window-days. Null when fewer than 2 weeks of history exist before the promo.
@@ -287,7 +291,7 @@ export interface TodayReportDto {
   asOf: string;
   timezone: string;
   /** typical = mean of the last 4 same weekdays before yesterday. */
-  yesterday: { visits: number; typicalVisits: number };
+  yesterday: { visits: number; typicalVisits: number; newMembers: number; newViaQr: number };
   today: {
     visits: number;
     typicalVisitsFullDay: number;
@@ -336,9 +340,4 @@ export interface JoinerReturnReport {
   joined: number;
   /** Cumulative: members whose first return visit (after the join visit) came within N days. */
   windows: { days: number; cameBack: number }[];
-}
-
-export interface FreeDrinksReport {
-  given: number;
-  estCostCents: number | null;
 }
