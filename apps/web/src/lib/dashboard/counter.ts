@@ -1,4 +1,6 @@
-/** Web counter (staff-counter.md, staff.md): keypad money entry, lookup hints, award labels. */
+/** Web counter (staff-counter.md, staff.md): keypad money entry, lookup hints, award labels, scan-first rules. */
+import type { staffApi } from "@ll/shared";
+
 export type KeypadKey = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "back" | "clear";
 
 /** Amount keypad: digits fill from the right like a till ("1","2","5","0" → $12.50). Max $99,999.99. */
@@ -35,6 +37,8 @@ export interface ProgramForCounter {
   terminology: string;
   /** Stamp programs: stamps per card (the "7 / 10" goal). */
   stampGoal?: number;
+  /** Stamp on scan: a scan or a one-match 4-digit entry stamps without a confirm tap (never for per_dollar). */
+  counterAutoStamp?: boolean;
 }
 
 /** Estimated earn for the button label; the server's breakdown is the truth. */
@@ -79,7 +83,7 @@ export function counterErrorMessage(e: { code?: string; status?: number; message
     case "not_found":
       return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
     case "program_paused":
-      return "Your program is paused. Resume it in Program & rewards to award again.";
+      return "Your program is paused. Resume it in Rewards to award again.";
     default:
       if (e.status === 404) return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
       if (e.status === 409 && e.message) return e.message;
@@ -111,4 +115,105 @@ export function readQueue(raw: string | null): QueuedAward[] {
 /** "Undo · 8s" for the countdown on the success panel. */
 export function undoLabel(secondsLeft: number): string {
   return `Undo · ${Math.max(0, secondsLeft)}s`;
+}
+
+// ---------------------------------------------------------------------------
+// Scan first (cafes-retail.md 7.2): scanner input, 4-digit entry, what happens after a lookup
+// ---------------------------------------------------------------------------
+export const AUTO_RETURN_MS = 3000;
+export const UNDO_WINDOW_MS = 10_000;
+/** USB / Bluetooth scanners type the whole payload within a few ms per character; humans do not. */
+export const SCANNER_MAX_GAP_MS = 80;
+export const SCANNER_MIN_LENGTH = 6;
+const QR_PREFIX = "LL:";
+const MEMBER_CODE = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/;
+
+/** "LL:K7QX2M9P" (a scanned pass QR) or a bare 8-character member code, else null. */
+export function scanPayload(raw: string): string | null {
+  const t = raw.trim().toUpperCase();
+  if (t.startsWith(QR_PREFIX) && t.length > QR_PREFIX.length) return t;
+  return MEMBER_CODE.test(t) ? t : null;
+}
+
+export interface ScannerState {
+  buffer: string;
+  lastAt: number;
+}
+export const EMPTY_SCANNER: ScannerState = { buffer: "", lastAt: 0 };
+
+/**
+ * Feed one key to the keyboard-scanner detector. Characters arriving faster than SCANNER_MAX_GAP_MS build a buffer;
+ * Enter submits it when it is a pass payload. A slow key (a person typing) restarts the buffer.
+ */
+export function feedScanner(state: ScannerState, key: string, at: number): { state: ScannerState; scanned: string | null } {
+  if (key === "Enter") {
+    const scanned = state.buffer.length >= SCANNER_MIN_LENGTH ? scanPayload(state.buffer) : null;
+    return { state: EMPTY_SCANNER, scanned };
+  }
+  if (key.length !== 1) return { state, scanned: null };
+  const fast = state.buffer !== "" && at - state.lastAt <= SCANNER_MAX_GAP_MS;
+  return { state: { buffer: (fast ? state.buffer : "") + key, lastAt: at }, scanned: null };
+}
+
+/** What the counter does with a lookup result. */
+export type LookupOutcome = "none" | "new" | "pick" | "reward" | "stamp" | "confirm";
+
+/**
+ * One match on a stamp program below the goal with Stamp on scan on → stamp now. Two or more → show the list.
+ * A member whose reward is ready is never stamped blindly (redeem, or stamp on purpose). Per-dollar always confirms.
+ */
+export function lookupOutcome(r: { items: staffApi.MemberSummaryDto[]; normalizedPhone: string | null }, program: ProgramForCounter): LookupOutcome {
+  if (r.items.length === 0) return r.normalizedPhone ? "new" : "none";
+  if (r.items.length > 1) return "pick";
+  const m = r.items[0]!;
+  if (isRewardReady(m, program)) return "reward";
+  if (program.counterAutoStamp && program.earnType !== "per_dollar") return "stamp";
+  return "confirm";
+}
+
+export function isRewardReady(m: Pick<staffApi.MemberSummaryDto, "balance" | "rewardsAffordable">, program: ProgramForCounter): boolean {
+  if (m.rewardsAffordable.length > 0) return true;
+  return program.earnType === "stamps" && !!program.stampGoal && m.balance >= program.stampGoal;
+}
+
+/** 1 -> "1st", 5 -> "5th", 12 -> "12th". */
+export function ordinal(n: number): string {
+  const t = n % 100;
+  return `${n}${t >= 11 && t <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+}
+
+/** "5th visit this month". */
+export const visitThisMonth = (n: number) => `${ordinal(Math.max(1, n))} visit this month`;
+
+/** "2 more for a free drink" / "Free drink ready". */
+export function stampsLeft(left: number, rewardName: string): string {
+  const what = /^free /i.test(rewardName) ? `a ${rewardName.toLowerCase()}` : rewardName;
+  return left <= 0 ? `${rewardName} ready` : `${left} more for ${what}`;
+}
+
+/** "in yesterday", "in 2 weeks ago", "in today": the second line of a match row. */
+export function cameInText(iso: string | null | undefined, now: Date): string {
+  if (!iso) return "new member";
+  const days = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
+  if (days === 0) return "in today";
+  if (days === 1) return "in yesterday";
+  if (days < 14) return `in ${days} days ago`;
+  if (days < 60) return `in ${Math.round(days / 7)} weeks ago`;
+  return `in ${Math.round(days / 30)} months ago`;
+}
+
+/** "Two members end in 1034". */
+export function matchesHeading(n: number, digits: string): string {
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+  return `${words[n] ?? n} member${n === 1 ? "" : "s"} end${n === 1 ? "s" : ""} in ${digits}`;
+}
+
+/** "(647) ···-1034" from the API's "(647) ***-1034". */
+export const maskedForRow = (m: string | null | undefined) => (m ?? "").replace(/\*+/g, "···");
+
+/** 4-digit entry: digits only, at most 4. */
+export function pushDigit(entry: string, key: string): string {
+  if (key === "back") return entry.slice(0, -1);
+  if (key === "clear") return "";
+  return /^\d$/.test(key) && entry.length < 4 ? entry + key : entry;
 }

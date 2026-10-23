@@ -29,6 +29,7 @@ import {
   scheduleCampaign,
   updateCampaign,
 } from "../../services/campaigns.js";
+import { neighbourhoodOverview, neighbourhoodReport, reportCsv } from "../../services/neighbourhood-reports.js";
 
 const idParams = z.object({ id: z.uuid() });
 const campaignMerchantParams = z.object({ id: z.uuid(), merchantId: z.uuid() });
@@ -48,6 +49,29 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const user = requireUser(req);
     const { id } = parse(idParams, req.params);
     return { items: await listNeighbourhoodMerchants(ctx, user, id), nextCursor: null };
+  });
+
+  /** BIA overview for one street and period (manager of that neighbourhood, or admin). Aggregates only. */
+  app.get("/neighbourhoods/:id/overview", async (req): Promise<campaignsApi.NeighbourhoodOverview> => {
+    const user = requireUser(req);
+    const { id } = parse(idParams, req.params);
+    return neighbourhoodOverview(ctx, user, id, parse(campaignsApi.periodQuery, req.query));
+  });
+
+  /** Board report for a period: json, or csv as a download. */
+  app.get("/neighbourhoods/:id/report", async (req, reply) => {
+    const user = requireUser(req);
+    const { id } = parse(idParams, req.params);
+    const { format, ...period } = parse(campaignsApi.reportQuery, req.query);
+    const report = await neighbourhoodReport(ctx, user, id, period);
+    if (format === "csv") {
+      const slug = report.neighbourhood.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "street";
+      return reply
+        .header("content-type", "text/csv; charset=utf-8")
+        .header("content-disposition", `attachment; filename="${slug}-board-report-${report.period.from.slice(0, 10)}-to-${report.period.to.slice(0, 10)}.csv"`)
+        .send(reportCsv(report));
+    }
+    return report;
   });
 
   app.get("/campaigns", async (req) => {

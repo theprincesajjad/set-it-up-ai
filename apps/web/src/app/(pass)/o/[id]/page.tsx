@@ -1,6 +1,7 @@
 import { PackageSearch } from "lucide-react";
 import type { Metadata } from "next";
 import { OrderStatus } from "@/components/pass/OrderStatus";
+import { ReservedView } from "@/components/restaurant/ReservedView";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
@@ -32,5 +33,14 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const order = await (await getServerApi()).me.order(id).catch((e: unknown) => (isApiError(e) && e.status === 404 ? ("gone" as const) : ("error" as const)));
   if (order === "gone") return <EmptyState icon={PackageSearch} title="We couldn't find that order" description="It may belong to another account. Check the link in your text." action={<Button variant="secondary" href="/me">My card</Button>} />;
   if (order === "error") return <ErrorState title="Can't load your order right now" description={copy.err.network} action={<Button variant="secondary" href={`/o/${encodeURIComponent(id)}`}>Try again</Button>} />;
+  // A degh pre-order gets the reservation page: pickup code, share with the family, calendar, cancel rule.
+  if (order.kind === "preorder") {
+    const sp = await searchParams;
+    return (
+      <PageFrame locale={await getLocale(sp)}>
+        <ReservedView initial={order} />
+      </PageFrame>
+    );
+  }
   return <OrderStatus initial={order} />;
 }

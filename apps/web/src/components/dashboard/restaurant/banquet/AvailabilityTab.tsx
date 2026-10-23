@@ -1,19 +1,21 @@
 "use client";
 import { useState } from "react";
 import type { restaurantApi } from "@ll/shared";
-import { Dot, EmptyState, Segmented } from "@/components/dashboard/kit";
+import { Capsules, Dot, EmptyState, Segmented, StatBlock } from "@/components/dashboard/kit";
+import Link from "next/link";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { formatNumber, formatTime } from "@/lib/format";
-import { useApi } from "@/lib/dashboard/useApi";
-import { DOW_SHORT, DateNav, Loader, addDaysISO, dayLabel, monthEndISO, monthGrid, monthLabel, monthStartISO, todayISO, torontoInstant, weekStartISO } from "../common";
+import { formatMoney, formatNumber, formatTime } from "@/lib/format";
+import { useApi, useNow } from "@/lib/dashboard/useApi";
+import { holdWord } from "@/lib/restaurant/tcb";
+import { DOW_SHORT, DateNav, Loader, addDaysISO, dayLabel, monthEndISO, monthGrid, monthLabel, monthStartISO, todayISO, torontoDay, torontoInstant, weekStartISO } from "../common";
 
 type Gate = { featureKey: "restaurant.banquet"; title: string; what: string };
 type Busy = restaurantApi.HallAvailabilityResponse["halls"][number]["busy"][number];
 type View = "week" | "month";
-const HEAD = [1, 2, 3, 4, 5, 6, 0];
+const HEAD = [0, 1, 2, 3, 4, 5, 6];
+const ALL = "__all";
 
 /** Busy windows (confirmed bookings and live holds) per hall, by week or by month. */
 export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => void }) {
@@ -24,13 +26,14 @@ export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => 
   const [sel, setSel] = useState<string | null>(null);
   const halls = useApi(() => api.banquet.halls(), [api]);
   const open = (halls.data?.items ?? []).filter((h) => h.active);
-  const monthHall = hallId || open[0]?.id || "";
+  const monthHall = view === "month" && hallId === ALL ? "" : hallId || open[0]?.id || "";
+  const bookings = useApi(() => api.banquet.bookings(), [api]);
   const start = view === "week" ? weekStartISO(anchor) : monthGrid(anchor)[0]!;
   const end = view === "week" ? addDaysISO(start, 6) : monthGrid(anchor).slice(-1)[0]!;
   const from = torontoInstant(start, "00:00");
   const to = torontoInstant(addDaysISO(end, 1), "00:00");
-  const hallFilter = view === "month" ? monthHall : hallId;
-  const state = useApi(halls.data && (view === "week" || monthHall) ? () => api.banquet.availability(from, to, hallFilter || undefined) : null, [api, from, to, hallFilter, halls.data]);
+  const hallFilter = view === "month" ? monthHall : hallId === ALL ? "" : hallId;
+  const state = useApi(halls.data ? () => api.banquet.availability(from, to, hallFilter || undefined) : null, [api, from, to, hallFilter, halls.data]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,9 +46,12 @@ export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => 
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <Segmented<View> label="View" value={view} onChange={(v) => { setView(v); setSel(null); }} options={[{ value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
-                  <div className="w-52">
-                    <Select label="Hall" hideLabel value={view === "month" ? monthHall : hallId} onChange={(e) => setHallId(e.target.value)} placeholder={view === "week" ? "All halls" : undefined} options={open.map((x) => ({ value: x.id, label: x.name }))} className="min-h-9 text-meta" />
-                  </div>
+                  <Capsules<string>
+                    label="Hall"
+                    value={view === "month" ? (hallId === ALL ? ALL : monthHall) : hallId || ALL}
+                    onChange={(v) => { setHallId(v); setSel(null); }}
+                    options={[...open.map((x) => ({ value: x.id, label: `${x.name} · ${formatNumber(x.capacity)}` })), ...(open.length > 1 ? [{ value: ALL, label: "Both halls" }] : [])]}
+                  />
                 </div>
                 <DateNav
                   label={view === "week" ? "Week" : "Month"}
@@ -56,10 +62,11 @@ export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => 
                   onChange={(d) => { setAnchor(d); setSel(null); }}
                 />
               </div>
+              {view === "month" ? <Strip bookings={bookings.data?.items ?? []} /> : null}
               <Loader state={state} gate={gate} rows={5}>
-                {(a) => (view === "week" ? <Week a={a} start={start} /> : <Month a={a} month={monthStartISO(anchor)} sel={sel} setSel={setSel} />)}
+                {(a) => (view === "week" ? <Week a={a} start={start} /> : <Month a={a} month={monthStartISO(anchor)} sel={sel} setSel={setSel} bookings={bookings.data?.items ?? []} />)}
               </Loader>
-              <p className="flex flex-wrap gap-x-4 text-meta text-fg-muted"><Dot tone="positive">Confirmed</Dot><Dot tone="info">On hold, not yet confirmed</Dot></p>
+              <p className="flex flex-wrap gap-x-4 text-meta text-fg-muted"><Dot tone="positive">Confirmed, deposit in</Dot><Dot tone="info">On hold, deposit not in</Dot></p>
             </>
           )
         }
@@ -68,7 +75,7 @@ export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => 
   );
 }
 
-function windowsOn(busy: Busy[], day: string): Busy[] {
+function windowsOn<T extends Busy>(busy: T[], day: string): T[] {
   const a = torontoInstant(day, "00:00");
   const b = torontoInstant(addDaysISO(day, 1), "00:00");
   return busy.filter((x) => x.startsAt < b && x.endsAt > a);
@@ -114,37 +121,121 @@ function Week({ a, start }: { a: restaurantApi.HallAvailabilityResponse; start: 
   );
 }
 
-function Month({ a, month, sel, setSel }: { a: restaurantApi.HallAvailabilityResponse; month: string; sel: string | null; setSel: (d: string) => void }) {
-  const entry = a.halls[0];
-  if (!entry) return null;
+/** Holds about to lapse, deposits to collect, and how many weekend nights are taken (design B1). */
+function Strip({ bookings }: { bookings: restaurantApi.HallBookingDto[] }) {
+  const now = useNow();
+  const live = bookings.filter((b) => b.status === "hold" && b.holdExpiresAt && Date.parse(b.holdExpiresAt) > now);
+  const soon = live.filter((b) => Date.parse(b.holdExpiresAt!) - now <= 48 * 3_600_000).sort((a, b) => a.holdExpiresAt!.localeCompare(b.holdExpiresAt!));
+  const owed = live.filter((b) => !b.depositPaidAt);
+  const owedCents = owed.reduce((s, b) => s + b.depositCents, 0);
+  const month = todayISO().slice(0, 7);
+  const nights = new Set(
+    bookings
+      .filter((b) => (b.status === "confirmed" || b.status === "hold") && torontoDay(b.startsAt).startsWith(month) && [5, 6].includes(new Date(`${torontoDay(b.startsAt)}T12:00:00Z`).getUTCDay()))
+      .map((b) => `${b.hallId}|${torontoDay(b.startsAt)}`),
+  ).size;
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  let weekend = 0;
+  for (let d = 1; d <= new Date(Date.UTC(y, m, 0)).getUTCDate(); d++) if ([5, 6].includes(new Date(Date.UTC(y, m - 1, d)).getUTCDay())) weekend++;
+  const hallCount = new Set(bookings.map((b) => b.hallId)).size || 1;
+  const first = soon[0];
+  return (
+    <StatBlock
+      label="Banquet numbers"
+      cols={3}
+      items={[
+        { label: "Holds expiring in 48 h", value: formatNumber(soon.length), caption: first ? <span className="text-accent-text">{first.hallName ?? "Hall"}, {dayLabel(torontoDay(first.startsAt))}</span> : "None about to lapse" },
+        { label: "Deposits to collect", value: formatMoney(owedCents), caption: owed.length ? <span className="text-location">{owed.length} {owed.length === 1 ? "hold" : "holds"} · e-transfer or card</span> : "Nothing waiting" },
+        { label: "Weekend nights taken this month", value: `${nights} of ${weekend * hallCount}`, caption: `${weekend * hallCount - nights} still open` },
+      ]}
+    />
+  );
+}
+
+function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvailabilityResponse; month: string; sel: string | null; setSel: (d: string) => void; bookings: restaurantApi.HallBookingDto[] }) {
+  const now = useNow();
+  const { base } = useMerchant();
+  if (!a.halls.length) return null;
+  const busyAll = a.halls.flatMap((h) => h.busy.map((b) => ({ ...b, hall: h.hall.name })));
   const grid = monthGrid(month);
   const today = todayISO();
   const selDay = sel ?? (today.startsWith(month.slice(0, 7)) ? today : null);
+  const chip = (x: Busy) => (x.label?.split(" · ")[1] ?? "Booked").replace(/^./, (c) => c.toUpperCase());
+  const selected = selDay ? windowsOn(busyAll, selDay) : [];
   return (
-    <div className="flex flex-col gap-4">
-      <div role="group" aria-label={`${entry.hall.name}, ${monthLabel(month)}`} className="grid grid-cols-7 border-s border-t border-line">
-        {HEAD.map((i) => <div key={i} className="border-e border-b border-line bg-bg-subtle py-1.5 text-center text-caption font-medium text-fg-muted">{DOW_SHORT[i]}</div>)}
-        {grid.map((day) => {
-          const inMonth = day >= month && day <= monthEndISO(month);
-          const w = windowsOn(entry.busy, day);
-          const on = selDay === day;
-          return (
-            <button key={day} type="button" aria-pressed={on} aria-label={`${dayLabel(day)}, ${w.length ? `${w.length} booked` : "free"}`} onClick={() => setSel(day)} className={cn("flex min-h-14 flex-col items-start gap-1 border-e border-b border-line p-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring sm:min-h-[76px] sm:p-2", !inMonth && "bg-bg-subtle/60", on && "bg-bg-muted")}>
-              <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-fg font-medium text-bg" : inMonth ? "text-fg" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
-              {w.length ? <span className="flex flex-wrap gap-1">{w.map((x) => <span key={x.bookingId} aria-hidden className={cn("size-2 rounded-full", x.status === "confirmed" ? "bg-positive" : "bg-location")} />)}</span> : null}
-            </button>
-          );
-        })}
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="min-w-0">
+        <div role="group" aria-label={`${a.halls.map((h) => h.hall.name).join(" and ")}, ${monthLabel(month)}`} className="grid grid-cols-7 overflow-hidden rounded-card border-s border-t border-line">
+          {HEAD.map((i) => <div key={i} className="border-e border-b border-line bg-bg-subtle px-2 py-2 text-start text-meta text-fg-muted">{DOW_SHORT[i]}</div>)}
+          {grid.map((day) => {
+            const inMonth = day >= month && day <= monthEndISO(month);
+            const w = windowsOn(busyAll, day);
+            const on = selDay === day;
+            return (
+              <button key={day} type="button" aria-pressed={on} aria-label={`${dayLabel(day)}, ${w.length ? `${w.length} booked` : "free"}`} onClick={() => setSel(day)} className={cn("flex min-h-16 flex-col items-stretch gap-1 border-e border-b border-line p-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring sm:min-h-[92px] sm:p-2", !inMonth && "bg-bg-subtle/60", on && "bg-bg-muted")}>
+                <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-fg font-medium text-bg" : inMonth ? "text-fg-muted" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
+                {w.map((x) => (
+                  <span key={x.bookingId} className={cn("hidden rounded-[6px] px-1.5 py-1 text-caption leading-tight sm:block", x.status === "confirmed" ? "bg-fg text-bg" : "border border-location bg-location/10 text-location")}>
+                    <span className="block truncate font-medium">{chip(x)}</span>
+                    <span className="block truncate opacity-80">{x.status === "confirmed" ? "Confirmed" : holdWord(x.holdExpiresAt, now)}</span>
+                  </span>
+                ))}
+                {w.length ? <span className="flex gap-1 sm:hidden">{w.map((x) => <span key={x.bookingId} aria-hidden className={cn("size-2 rounded-full", x.status === "confirmed" ? "bg-fg" : "bg-location")} />)}</span> : null}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {selDay ? (
-        <div>
-          <h3 className="text-meta-strong text-fg">{dayLabel(selDay)}</h3>
-          {windowsOn(entry.busy, selDay).length ? (
-            <ul className="mt-1 divide-y divide-line border-y border-line">
-              {windowsOn(entry.busy, selDay).map((x) => <li key={x.bookingId} className="flex items-center justify-between gap-3 py-2 text-meta"><Dot tone={tone(x.status)}>{x.status === "confirmed" ? "Confirmed" : "On hold"}</Dot><span className="tabular text-fg">{span(x, selDay)}</span></li>)}
-            </ul>
-          ) : <p className="mt-1 border-y border-line py-3 text-meta text-fg-muted">{entry.hall.name} is free that day.</p>}
-        </div>
+        <aside aria-label={dayLabel(selDay)} className="min-w-0 rounded-card border border-line p-5">
+          {selected.length ? (
+            selected.map((x) => {
+              const b = bookings.find((y) => y.id === x.bookingId);
+              const left = x.holdExpiresAt ? Math.max(0, Math.floor((Date.parse(x.holdExpiresAt) - now) / 3_600_000)) : null;
+              return (
+                <div key={x.bookingId} className="flex flex-col gap-3 border-b border-line pb-4 last:border-b-0 last:pb-0 [&:not(:first-child)]:pt-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-headline text-fg">{dayLabel(selDay)} · {x.hall}</h3>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-caption", x.status === "confirmed" ? "bg-bg-muted text-fg" : "bg-location/10 text-location")}>{x.status === "confirmed" ? "Confirmed" : "On hold"}</span>
+                  </div>
+                  <p className="text-meta text-fg-muted">{x.label?.replace(/ · /g, " · ")}{b?.packageName ? ` · ${b.packageName}` : ""}</p>
+                  {x.status === "hold" && left !== null ? (
+                    <div className="rounded-card bg-accent/10 px-3 py-2 text-meta">
+                      <p className="font-medium text-accent-text">Hold expires in {left} h</p>
+                      <p className="text-fg-muted">{formatTime(x.holdExpiresAt!)} on {dayLabel(torontoDay(x.holdExpiresAt!))}. The date then opens to other inquiries.</p>
+                    </div>
+                  ) : null}
+                  {b ? (
+                    <>
+                      <dl className="divide-y divide-line border-y border-line text-meta">
+                        <div className="flex justify-between py-2"><dt className="text-fg-muted">Total with tax</dt><dd className="tabular text-body-strong text-fg">{formatMoney(b.totalCents)}</dd></div>
+                      </dl>
+                      {b.schedule.length ? (
+                        <ul className="flex flex-col gap-2">
+                          {b.schedule.map((r, i) => (
+                            <li key={`${r.label}-${i}`} className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-body text-fg">{r.label}</p>
+                                <p className="flex items-center gap-1.5 text-meta text-fg-muted"><span aria-hidden className={`size-1.5 rounded-full ${r.paidAt ? "bg-positive" : "bg-fg-subtle"}`} />{r.paidAt ? `Paid ${dayLabel(r.paidAt.slice(0, 10))}` : `Due ${dayLabel(r.dueOn)}`}</p>
+                              </div>
+                              <span className="tabular text-body text-fg">{formatMoney(r.amountCents)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </>
+                  ) : null}
+                  <div><Link href={`${base}/restaurant/banquet?tab=bookings&booking=${x.bookingId}`} className="inline-flex h-9 items-center rounded-full bg-fg px-4 text-meta font-medium text-bg focus-visible:focus-ring">Open booking</Link></div>
+                </div>
+              );
+            })
+          ) : (
+            <>
+              <h3 className="text-headline text-fg">{dayLabel(selDay)}</h3>
+              <p className="mt-1 text-meta text-fg-muted">Free that day{a.halls.length === 1 ? ` in ${a.halls[0]!.hall.name}` : ""}.</p>
+            </>
+          )}
+        </aside>
       ) : null}
     </div>
   );

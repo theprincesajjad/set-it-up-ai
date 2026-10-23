@@ -253,16 +253,18 @@ export function Loader<T>({ state, children, rows = 4, gate }: { state: ApiState
 /* ------------------------------------------------------------- tab state */
 
 /** Tab id kept in `?tab=` so a refresh or a shared link lands on the same view. */
-export function useTabParam<T extends string>(ids: readonly T[], fallback: T): [T, (t: T) => void] {
+export function useTabParam<T extends string>(ids: readonly T[], fallback: T): [T, (t: T, extra?: string) => void] {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const raw = sp.get("tab");
   const tab = (ids as readonly string[]).includes(raw ?? "") ? (raw as T) : fallback;
   const set = useCallback(
-    (t: T) => {
-      const next = new URLSearchParams(sp.toString());
+    (t: T, extra?: string) => {
+      const next = new URLSearchParams(extra ? "" : sp.toString());
       next.set("tab", t);
+      // Extra query (a filter the next tab starts with), e.g. "status=awaiting".
+      if (extra) for (const [k, v] of new URLSearchParams(extra)) next.set(k, v);
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     },
     [sp, router, pathname],

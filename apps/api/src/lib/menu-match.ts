@@ -23,8 +23,8 @@ export interface ParsedOrder {
   lines: ParsedLine[];
   /** Things the caller asked for that are not on the menu (e.g. "pizza"). */
   unmatched: string[];
-  /** A phrase that fits more than one item ("biryani"): ask which one. */
-  ambiguous: { phrase: string; options: { catalogItemId: string; name: string }[] }[];
+  /** A phrase that fits more than one item ("biryani"): ask which one. `quantity` is what was said ("two biryani" = 2), kept when one is picked. */
+  ambiguous: { phrase: string; quantity: number; options: { catalogItemId: string; name: string }[] }[];
   /** "in 30 minutes" / "in an hour". */
   pickupInMinutes?: number;
   /** "at 6 pm", "tonight": kept as a note, the shop confirms the time. */
@@ -280,7 +280,7 @@ export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { 
   const ambiguous: ParsedOrder["ambiguous"] = [];
   for (const h of chosen) {
     if (h.ambiguousWith) {
-      ambiguous.push({ phrase: tokens.slice(h.start, h.end).join(" "), options: h.ambiguousWith.map((i) => ({ catalogItemId: i.id, name: i.name })) });
+      ambiguous.push({ phrase: tokens.slice(h.start, h.end).join(" "), quantity: qty.get(h) ?? 1, options: h.ambiguousWith.map((i) => ({ catalogItemId: i.id, name: i.name })) });
       continue;
     }
     const q = qty.get(h) ?? 1;

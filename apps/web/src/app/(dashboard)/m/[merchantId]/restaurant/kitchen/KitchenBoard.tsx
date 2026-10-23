@@ -1,20 +1,27 @@
 "use client";
+/**
+ * Kitchen display (restaurant.kds, frame 03). Neutral tickets: a hairline border, and the accent only for a late timer.
+ * A pre-order inside two hours of its fire time is pinned at the top with the FIRE time and a "Start dum" button.
+ * Allergies are a red full-width band. Dish names show in the cook's language with English beneath. The "Sold out" button
+ * takes a dish off the menu, the counter and WhatsApp until the end of the day (or until it is restored).
+ */
 import { Check, ChefHat, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LOCALES, translator, type MessageKey, type restaurantApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { torontoHM } from "@/components/dashboard/restaurant/common";
 import { OrderBadges } from "@/components/dashboard/restaurant/orderBadges";
 import { stationLabel } from "@/components/dashboard/restaurant/menu";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/api/errors";
+import { localeFont } from "@/lib/i18n/fonts";
 import { useApi } from "@/lib/dashboard/useApi";
 
 type Ticket = restaurantApi.KitchenTicketDto;
 type Item = restaurantApi.KitchenItemDto;
 type Lang = restaurantApi.MenuLang;
+type Tr = ReturnType<typeof translator>;
 
 const MENU_LANGS = ["en", "hi", "ur", "pa"] as const satisfies readonly Lang[];
 const POLL_MS = 5000;
@@ -33,18 +40,28 @@ const columnOf = (t: Ticket): ColumnId => {
   return "new";
 };
 /** "tandoor" in the ticket language when we have the word, else the shop's own text. */
-const stationIn = (tr: ReturnType<typeof translator>, s: string) => {
+const stationIn = (tr: Tr, s: string) => {
   const key = `station.${s}` as MessageKey;
   const word = tr(key);
   return word === key || word.startsWith("station.") ? stationLabel(s) : word;
 };
 const NEXT: Record<Item["status"], "cooking" | "ready" | null> = { queued: "cooking", cooking: "ready", ready: null };
 
+/** A ticket is late only once it was fired and has waited longer than LATE_AFTER_S. */
+export const isLate = (t: Pick<Ticket, "firedAt">, ageSeconds: number) => !!t.firedAt && ageSeconds >= LATE_AFTER_S;
+
 export function ageText(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const m = Math.floor(s / 60);
   return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/** "4:30 pm" in Toronto time. */
+export const clock12 = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(/[\u202f\u00a0]/g, " ").replace(/\./g, "").toLowerCase();
+
+/** The label font for one language: its Noto family first, Inter after, so a cook's script never falls back to a box. */
+const scriptStyle = (l: Lang) => localeFont(l).fontFamily;
+const scriptClass = (l: Lang) => localeFont(l).className;
 
 export function KitchenBoard() {
   const { api, base, detail } = useMerchant();
@@ -58,6 +75,7 @@ export function KitchenBoard() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [recent, setRecent] = useState<{ orderId: string; number: number }[]>([]);
   const [full, setFull] = useState(false);
+  const [soldOutOpen, setSoldOutOpen] = useState(false);
 
   // Age is computed from when each poll landed, so the timers tick every second without extra requests.
   const [tick, setTick] = useState(() => Date.now());
@@ -85,7 +103,7 @@ export function KitchenBoard() {
   const dir = LOCALES[shownLang].dir;
   const tr = useMemo(() => translator(shownLang), [shownLang]);
   const tickets = useMemo(() => data?.items ?? [], [data]);
-  const ageOf = (t: Ticket) => t.ageSeconds + Math.max(0, (tick - fetchedAt) / 1000);
+  const ageOf = (t: Ticket) => (t.firedAt ? t.ageSeconds + Math.max(0, (tick - fetchedAt) / 1000) : 0);
 
   const withBusy = useCallback(async (key: string, fn: () => Promise<unknown>) => {
     setBusy((b) => new Set(b).add(key));
@@ -107,7 +125,7 @@ export function KitchenBoard() {
 
   const advance = (t: Ticket, i: Item) => {
     const next = NEXT[i.status];
-    if (!next) return;
+    if (!next || t.pinned) return;
     // Show the change at once; the next poll confirms it.
     state.setData((d) => (d ? { ...d, res: { ...d.res, items: d.res.items.map((x) => (x.orderId === t.orderId ? { ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, status: next } : y)) } : x)) } } : d));
     void withBusy(i.id, () => api.kitchen.setItem(i.id, next));
@@ -117,21 +135,23 @@ export function KitchenBoard() {
     setRecent((r) => [{ orderId: t.orderId, number: t.number }, ...r.filter((x) => x.orderId !== t.orderId)].slice(0, 5));
     void withBusy(t.orderId, () => api.kitchen.bump(t.orderId));
   };
+  const startDum = (t: Ticket) => void withBusy(t.orderId, () => api.kitchen.fire(t.orderId));
   const recall = (r: { orderId: string }) => {
     setRecent((x) => x.filter((y) => y.orderId !== r.orderId));
     void withBusy(r.orderId, () => api.kitchen.recall(r.orderId));
   };
 
   const cols = useMemo(() => COLUMNS.map((c) => ({ ...c, tickets: tickets.filter((t) => columnOf(t) === c.id) })), [tickets]);
-  const lateCount = tickets.filter((t) => ageOf(t) >= LATE_AFTER_S).length;
+  const lateCount = tickets.filter((t) => isLate(t, ageOf(t))).length;
   const stations = data?.stations ?? [];
+  const soldOutCount = data?.soldOutCount ?? 0;
 
   return (
     <div className="fixed inset-0 z-modal flex flex-col bg-bg-subtle text-fg" role="region" aria-label="Kitchen display">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-bg px-4 py-3 md:px-6">
-        <Link href={base} className="inline-flex h-12 items-center gap-2 rounded-full border border-line px-4 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
+        <Link href={base} className="inline-flex h-[38px] items-center gap-2 rounded-full border border-line px-4 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
           <X aria-hidden className="size-4" />
-          Exit
+          <span lang={LOCALES[shownLang].bcp47} style={{ fontFamily: scriptStyle(shownLang) }} className={scriptClass(shownLang)}>{tr("kitchen.exit")}</span>
         </Link>
         <div className="min-w-0">
           <h1 className="display truncate text-headline leading-tight text-fg">kitchen</h1>
@@ -147,26 +167,36 @@ export function KitchenBoard() {
               type="button"
               aria-pressed={station === s}
               onClick={() => setStation(s)}
-              className={cn("inline-flex h-12 shrink-0 items-center rounded-full border px-5 text-body-strong transition-colors focus-visible:focus-ring", station === s ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+              className={cn("inline-flex h-[38px] shrink-0 items-center rounded-full border px-4 text-meta-strong transition-colors focus-visible:focus-ring", station === s ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
             >
-              {s === "all" ? "All" : stationIn(tr, s)}
+              {s === "all" ? tr("kitchen.all") : stationIn(tr, s)}
             </button>
           ))}
           {station !== "all" && !stations.includes(station) ? (
-            <span className="inline-flex h-12 shrink-0 items-center rounded-full border border-fg bg-fg px-5 text-body-strong text-bg">{stationLabel(station)}</span>
+            <span className="inline-flex h-[38px] shrink-0 items-center rounded-full border border-fg bg-fg px-4 text-meta-strong text-bg">{stationLabel(station)}</span>
           ) : null}
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
-          <div role="group" aria-label="Ticket language" className="flex rounded-full border border-line bg-bg p-1">
+          <button
+            type="button"
+            onClick={() => setSoldOutOpen(true)}
+            aria-haspopup="dialog"
+            className="inline-flex h-[38px] items-center rounded-full border border-line bg-bg px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring"
+          >
+            {tr("kitchen.soldOutN", { n: soldOutCount })}
+          </button>
+          <div role="group" aria-label="Ticket language" className="flex h-[46px] items-center gap-0.5 rounded-full border border-line bg-bg p-1">
             {MENU_LANGS.map((l) => (
               <button
                 key={l}
                 type="button"
                 lang={LOCALES[l].bcp47}
                 aria-pressed={shownLang === l}
+                aria-label={LOCALES[l].englishName}
                 onClick={() => setLang(l)}
-                className={cn("inline-flex h-10 min-w-12 items-center justify-center rounded-full px-3 text-meta-strong focus-visible:focus-ring", shownLang === l ? "bg-fg text-bg" : "text-fg hover:bg-bg-subtle")}
+                style={{ fontFamily: scriptStyle(l) }}
+                className={cn("inline-flex h-[38px] min-w-12 items-center justify-center rounded-full px-3 text-meta-strong leading-none focus-visible:focus-ring", scriptClass(l), shownLang === l ? "bg-fg text-bg" : "text-fg hover:bg-bg-subtle")}
               >
                 {LOCALES[l].short}
               </button>
@@ -176,9 +206,9 @@ export function KitchenBoard() {
             type="button"
             aria-label={full ? "Leave full screen" : "Full screen"}
             onClick={() => (document.fullscreenElement ? void document.exitFullscreen() : void document.documentElement.requestFullscreen?.().catch(() => undefined))}
-            className="hidden size-12 items-center justify-center rounded-full border border-line bg-bg hover:bg-bg-subtle focus-visible:focus-ring sm:inline-flex"
+            className="hidden size-[38px] items-center justify-center rounded-full border border-line bg-bg hover:bg-bg-subtle focus-visible:focus-ring sm:inline-flex"
           >
-            {full ? <Minimize2 aria-hidden className="size-5" /> : <Maximize2 aria-hidden className="size-5" />}
+            {full ? <Minimize2 aria-hidden className="size-4" /> : <Maximize2 aria-hidden className="size-4" />}
           </button>
         </div>
       </header>
@@ -205,15 +235,15 @@ export function KitchenBoard() {
           <div className="grid gap-4 p-4 md:h-full md:grid-cols-3 md:gap-0 md:p-0">
             {cols.map((c) => (
               <section key={c.id} aria-label={`${tr(c.key)} tickets`} className={cn("flex min-h-0 min-w-0 flex-col md:border-s md:border-line md:first:border-s-0", !c.tickets.length && "max-md:hidden")}>
-                <h2 className="flex items-baseline justify-between gap-2 px-1 py-0 text-meta-strong uppercase tracking-wide text-fg-muted md:border-b md:border-line md:bg-bg md:px-5 md:py-3">
+                <h2 className="flex items-baseline justify-between gap-2 px-1 py-0 text-meta-strong uppercase tracking-wide text-fg-muted md:px-5 md:pb-2.5 md:pt-4">
                   <span>
                     {tr(c.key)} <span className="tabular text-fg">{c.tickets.length}</span>
                   </span>
                 </h2>
-                <ul className="flex min-h-0 flex-col gap-3 pt-2 md:flex-1 md:overflow-y-auto md:p-3">
+                <ul className="flex min-h-0 flex-col gap-3 pt-2 md:flex-1 md:overflow-y-auto md:px-4 md:pb-4">
                   {c.tickets.map((t) => (
                     <li key={t.orderId}>
-                      <TicketCard ticket={t} age={ageOf(t)} lang={shownLang} dir={dir} tr={tr} busy={busy} onAdvance={advance} onBump={bump} />
+                      <TicketCard ticket={t} age={ageOf(t)} lang={shownLang} dir={dir} tr={tr} busy={busy} onAdvance={advance} onBump={bump} onFire={startDum} />
                     </li>
                   ))}
                 </ul>
@@ -234,54 +264,71 @@ export function KitchenBoard() {
           ))}
         </footer>
       ) : null}
+
+      {soldOutOpen ? <SoldOutSheet lang={shownLang} tr={tr} onClose={() => setSoldOutOpen(false)} onChanged={() => void state.reload()} /> : null}
     </div>
   );
 }
 
-function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump }: { ticket: Ticket; age: number; lang: Lang; dir: "ltr" | "rtl"; tr: ReturnType<typeof translator>; busy: Set<string>; onAdvance: (t: Ticket, i: Item) => void; onBump: (t: Ticket) => void }) {
-  const late = age >= LATE_AFTER_S;
+function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, onFire }: { ticket: Ticket; age: number; lang: Lang; dir: "ltr" | "rtl"; tr: Tr; busy: Set<string>; onAdvance: (t: Ticket, i: Item) => void; onBump: (t: Ticket) => void; onFire: (t: Ticket) => void }) {
+  const late = isLate(t, age);
   const allReady = t.items.every((i) => i.status === "ready");
   const done = t.items.filter((i) => i.status === "ready").length;
+  const hm = clock12;
+  const fireTime = t.fireAt ? hm(t.fireAt) : null;
+  const sub = [t.customerName, t.pickupAt ? tr("kitchen.pickup", { time: hm(t.pickupAt) }) : null].filter(Boolean).join(" · ");
   return (
-    <article aria-label={`Ticket ${t.number}`} className={cn("overflow-hidden rounded-card border-2 bg-bg", late ? "border-accent" : "border-fg")}>
-      <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+    <article aria-label={`Ticket ${t.number}`} className={cn("overflow-hidden rounded-card bg-bg", t.allergyNote ? "border-2 border-negative" : t.pinned ? "border-2 border-fg" : "border border-line")}>
+      <header className="flex items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <p className="display text-[32px] leading-none text-fg tabular">#{t.number}</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <OrderBadges kind={t.kind} channel={t.channel} />
-            {t.pickupAt ? <span className="text-meta text-fg-muted tabular">Pickup {torontoHM(t.pickupAt)}</span> : null}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <p className="display text-[30px] leading-none text-fg tabular">#{t.number}</p>
+            <OrderBadges kind={t.kind === "preorder" ? "preorder" : null} channel={t.channel} />
           </div>
+          {sub ? <p className="mt-1.5 text-meta text-fg-muted tabular">{sub}</p> : null}
         </div>
-        <p
-          className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-accent-soft font-bold text-accent-text" : "bg-bg-subtle font-semibold text-fg")}
-          aria-label={`${Math.floor(age / 60)} minutes${late ? ", late" : ""}`}
-        >
-          {ageText(age)}
-        </p>
+        {t.pinned && fireTime ? (
+          <p className="shrink-0 rounded-full bg-fg px-3 py-1 text-title font-semibold text-bg tabular">{tr("kitchen.fire", { time: fireTime.replace(/ ?[ap]m$/, "") })}</p>
+        ) : (
+          <p
+            className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-accent-soft font-bold text-accent-text" : "bg-bg-subtle font-semibold text-fg")}
+            aria-label={`${Math.floor(age / 60)} minutes${late ? ", late" : ""}`}
+          >
+            {ageText(age)}
+          </p>
+        )}
       </header>
-      <ul>
+      {t.pinned && fireTime && t.pickupAt ? (
+        <p className="bg-fg px-4 py-1.5 text-meta-strong uppercase tracking-wide text-bg tabular">{tr("kitchen.fireBand", { time: fireTime, min: t.cookMinutes, pickup: hm(t.pickupAt) })}</p>
+      ) : null}
+      {t.allergyNote ? (
+        <p role="alert" lang={LOCALES[lang].bcp47} dir={dir} className={cn("bg-negative px-4 py-1.5 text-meta-strong font-bold uppercase tracking-wide text-[#FFFFFF]", scriptClass(lang))} style={{ fontFamily: scriptStyle(lang) }}>
+          {tr("kitchen.allergy", { text: t.allergyNote })}
+        </p>
+      ) : null}
+      <ul className="border-t border-line">
         {t.items.map((i) => {
           const next = NEXT[i.status];
           return (
             <li key={i.id} className="border-b border-line last:border-b-0">
               <button
                 type="button"
-                disabled={!next || busy.has(i.id)}
+                disabled={!next || busy.has(i.id) || t.pinned}
                 onClick={() => onAdvance(t, i)}
-                aria-label={`${i.quantity} ${i.name}, ${i.status === "queued" ? "new" : i.status}${next ? `. Tap to mark ${next}` : ""}`}
+                aria-label={`${i.quantity} ${i.name}, ${i.status === "queued" ? "new" : i.status}${next && !t.pinned ? `. Tap to mark ${next}` : ""}`}
                 className={cn(
-                  "flex min-h-[72px] w-full items-center gap-3 px-4 py-3 text-start transition-colors focus-visible:focus-ring disabled:cursor-default",
-                  i.status === "ready" ? "bg-bg-subtle text-fg-muted" : "bg-bg hover:bg-bg-subtle active:bg-bg-muted",
+                  "flex min-h-[68px] w-full items-center gap-3 px-4 py-3 text-start transition-colors focus-visible:focus-ring disabled:cursor-default",
+                  i.status === "ready" ? "bg-bg-subtle text-fg-muted" : "bg-bg enabled:hover:bg-bg-subtle enabled:active:bg-bg-muted",
                 )}
               >
-                <span className="w-10 shrink-0 text-center text-[28px] font-bold leading-none tabular">{i.quantity}×</span>
-                <span className="min-w-0 flex-1" lang={LOCALES[lang].bcp47} dir={dir}>
-                  <span className={cn("block text-[19px] font-semibold leading-snug", i.status === "ready" && "line-through decoration-2")}>{i.name}</span>
-                  {i.name !== i.nameEn ? <span lang="en" dir="ltr" className="block text-caption text-fg-muted">{i.nameEn}</span> : null}
+                <span className="w-9 shrink-0 text-center text-[24px] font-bold leading-none tabular" dir="ltr">{i.quantity}×</span>
+                <span className={cn("min-w-0 flex-1", scriptClass(lang))} lang={LOCALES[lang].bcp47} dir={dir} style={{ fontFamily: scriptStyle(lang) }}>
+                  <span className={cn("block text-[19px] font-semibold leading-snug", lang === "ur" && "leading-[1.9]", i.status === "ready" && "line-through decoration-2")}>{i.name}</span>
+                  {i.name !== i.nameEn ? <span lang="en" dir="ltr" className="block text-[12px] leading-4 text-fg-muted" style={{ fontFamily: "var(--font-inter), system-ui, sans-serif" }}>{i.nameEn}</span> : null}
                   {i.modifiers.length ? <span className="block text-meta text-fg-muted">{i.modifiers.map((m) => m.option).join(", ")}</span> : null}
-                  {i.notes ? <span className="mt-0.5 block rounded-sm bg-bg-muted px-1.5 py-0.5 text-meta font-medium text-fg">{i.notes}</span> : null}
+                  {i.notes ? <span className="mt-0.5 inline-block rounded-full bg-bg-subtle px-2 py-0.5 text-meta text-fg">{i.notes}</span> : null}
                 </span>
-                <StatusChip status={i.status} tr={tr} />
+                {t.pinned ? <span className="shrink-0 rounded-full border border-line px-3 py-1 text-meta-strong text-fg">{tr("kitchen.new")}</span> : <StatusChip status={i.status} tr={tr} />}
               </button>
             </li>
           );
@@ -289,30 +336,34 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump }: 
       </ul>
       {t.notes ? <p className="border-t border-line bg-bg-subtle px-4 py-2 text-meta font-medium text-fg">{t.notes}</p> : null}
       <footer className="flex items-center gap-3 border-t border-line p-3">
-        <p className="shrink-0 ps-1 text-meta text-fg-muted tabular">
-          {done}/{t.items.length} ready
-        </p>
-        <button
-          type="button"
-          disabled={busy.has(t.orderId)}
-          onClick={() => onBump(t)}
-          className={cn("ms-auto inline-flex h-14 min-w-28 items-center justify-center gap-2 rounded-full px-5 text-headline font-semibold transition-colors focus-visible:focus-ring disabled:opacity-60", allReady ? "bg-fg text-bg hover:bg-brand-hover" : "border-2 border-fg bg-bg text-fg hover:bg-bg-subtle")}
-        >
-          <Check aria-hidden className="size-5" strokeWidth={2.5} />
-          {tr("kitchen.bump")}
-        </button>
+        <p className="shrink-0 ps-1 text-meta text-fg-muted tabular">{tr("kitchen.readyCount", { done, total: t.items.length })}</p>
+        {t.pinned ? (
+          <button type="button" disabled={busy.has(t.orderId)} onClick={() => onFire(t)} className="ms-auto inline-flex h-12 min-w-28 items-center justify-center rounded-full bg-fg px-5 text-title font-semibold text-bg transition-colors hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
+            {tr("kitchen.startDum")}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={busy.has(t.orderId)}
+            onClick={() => onBump(t)}
+            className={cn("ms-auto inline-flex h-12 min-w-28 items-center justify-center gap-2 rounded-full px-5 text-title font-semibold transition-colors focus-visible:focus-ring disabled:opacity-60", allReady ? "bg-fg text-bg hover:bg-brand-hover" : "bg-fg text-bg hover:bg-brand-hover")}
+          >
+            <Check aria-hidden className="size-5" strokeWidth={2.5} />
+            {tr("kitchen.bump")}
+          </button>
+        )}
       </footer>
     </article>
   );
 }
 
-function StatusChip({ status, tr }: { status: Item["status"]; tr: ReturnType<typeof translator> }) {
+function StatusChip({ status, tr }: { status: Item["status"]; tr: Tr }) {
   const label = tr(status === "queued" ? "kitchen.new" : status === "cooking" ? "kitchen.cooking" : "kitchen.ready");
   return (
     <span
       className={cn(
-        "inline-flex h-9 min-w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-meta-strong",
-        status === "queued" && "border-2 border-line-strong text-fg",
+        "inline-flex h-9 min-w-[84px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-meta-strong",
+        status === "queued" && "border border-line text-fg",
         status === "cooking" && "bg-fg text-bg",
         status === "ready" && "border border-line bg-bg text-fg",
       )}
@@ -320,5 +371,82 @@ function StatusChip({ status, tr }: { status: Item["status"]; tr: ReturnType<typ
       {status === "ready" ? <Check aria-hidden className="size-4" strokeWidth={2.5} /> : null}
       {label}
     </span>
+  );
+}
+
+/** The "Sold out (n)" sheet: tap a dish to stop selling it today, or until restored; restore it from here. */
+function SoldOutSheet({ lang, tr, onClose, onChanged }: { lang: Lang; tr: Tr; onClose: () => void; onChanged: () => void }) {
+  const { api } = useMerchant();
+  const state = useApi(() => api.kitchen.soldOut(lang), [api, lang]);
+  const [working, setWorking] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const set = async (id: string, until: restaurantApi.SoldOutBody["until"]) => {
+    setWorking(id);
+    setError(null);
+    try {
+      await api.kitchen.setSoldOut(id, until);
+      await state.reload();
+      onChanged();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setWorking(null);
+    }
+  };
+  const until = (iso: string) => {
+    const d = new Date(iso);
+    return d.getTime() - Date.now() > 3 * 86_400_000 ? "until restored" : `until ${d.toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" })}`;
+  };
+  return (
+    <div className="fixed inset-0 z-modal">
+      <button type="button" aria-label={tr("kitchen.close")} tabIndex={-1} className="absolute inset-0 cursor-default bg-fg/20" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-label={tr("kitchen.soldOutTitle")} lang={LOCALES[lang].bcp47} dir={LOCALES[lang].dir} className={cn("absolute inset-y-0 end-0 flex w-full max-w-[460px] flex-col border-s border-line bg-bg shadow-float", scriptClass(lang))} style={{ fontFamily: scriptStyle(lang) }}>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <h2 className="text-headline text-fg">{tr("kitchen.soldOutTitle")}</h2>
+            <p className="mt-0.5 text-meta text-fg-muted">{tr("kitchen.soldOutHint")}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label={tr("kitchen.close")} className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line hover:bg-bg-subtle focus-visible:focus-ring">
+            <X aria-hidden className="size-4" />
+          </button>
+        </div>
+        {error ? <p role="alert" className="border-b border-line px-5 py-2 text-meta text-negative">{error}</p> : null}
+        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+          {!state.data ? <li className="px-5 py-4 text-meta text-fg-muted">{state.error ?? "Loading..."}</li> : null}
+          {(state.data?.items ?? []).map((i) => (
+            <li key={i.id} className="flex flex-col gap-2 px-5 py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="min-w-0 text-body-strong text-fg">
+                  {i.name}
+                  {i.name !== i.nameEn ? <span lang="en" dir="ltr" className="block text-[12px] font-normal text-fg-muted">{i.nameEn}</span> : null}
+                </p>
+                {i.soldOutUntil ? <p className="shrink-0 text-meta text-negative">{until(i.soldOutUntil)}</p> : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {i.soldOutUntil ? (
+                  <button type="button" disabled={working === i.id} onClick={() => void set(i.id, "restore")} className="inline-flex h-11 items-center rounded-full bg-fg px-5 text-meta-strong text-bg hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
+                    {tr("kitchen.restore")}
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" disabled={working === i.id} onClick={() => void set(i.id, "today")} className="inline-flex h-11 items-center rounded-full border border-line px-5 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-60">
+                      {tr("kitchen.soldOutToday")}
+                    </button>
+                    <button type="button" disabled={working === i.id} onClick={() => void set(i.id, new Date(Date.now() + 365 * 86_400_000).toISOString())} className="inline-flex h-11 items-center rounded-full border border-line px-5 text-meta text-fg-muted hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-60">
+                      {tr("kitchen.soldOutUntilRestored")}
+                    </button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

@@ -60,12 +60,12 @@ export function addDays(dateStr: string, n: number): string {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-function dayKey(dateStr: string): (typeof DAY_KEYS)[number] {
+export function dayKey(dateStr: string): (typeof DAY_KEYS)[number] {
   const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
   return DAY_KEYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]!;
 }
 
-function toMinutes(hhmm: string): number {
+export function toMinutes(hhmm: string): number {
   const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
   if (!match) throw badRequest(`Invalid time "${hhmm}" in opening hours`);
   return Number(match[1]) * 60 + Number(match[2]);
@@ -238,7 +238,7 @@ export async function listMerchantBookings(db: DbOrTx, merchant: Merchant, q: { 
   if (q.to) conds.push(lte(bookingSlots.startsAt, q.to));
   if (q.kind) conds.push(eq(bookingSlots.kind, q.kind));
   const rows = await db
-    .select({ b: bookings, s: bookingSlots, customerName: users.name, orderNumber: orders.number, ticketNumber: serviceTickets.number })
+    .select({ b: bookings, s: bookingSlots, customerName: users.name, customerPhone: users.phone, orderNumber: orders.number, ticketNumber: serviceTickets.number })
     .from(bookings)
     .innerJoin(bookingSlots, eq(bookingSlots.id, bookings.slotId))
     .innerJoin(users, eq(users.id, bookings.userId))
@@ -247,7 +247,7 @@ export async function listMerchantBookings(db: DbOrTx, merchant: Merchant, q: { 
     .where(and(...conds))
     .orderBy(asc(bookingSlots.startsAt))
     .limit(500);
-  return rows.map((r) => ({ ...bookingDto(r.b, r.s, merchant.name), customerName: r.customerName, orderNumber: r.orderNumber ?? null, ticketNumber: r.ticketNumber ?? null }));
+  return rows.map((r) => ({ ...bookingDto(r.b, r.s, merchant.name), customerName: r.customerName, customerPhone: r.customerPhone, orderNumber: r.orderNumber ?? null, ticketNumber: r.ticketNumber ?? null }));
 }
 
 export async function getBookingDto(db: DbOrTx, where: { bookingId: string; userId?: string; merchantId?: string }) {

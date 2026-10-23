@@ -26,7 +26,6 @@ export * from "./PointsRing";
 export * from "./ProgressBar";
 export * from "./PromoCard";
 export * from "./QrCode";
-export * from "./QuoteApproval";
 export * from "./RedeemCode";
 export * from "./RewardCard";
 export * from "./Select";

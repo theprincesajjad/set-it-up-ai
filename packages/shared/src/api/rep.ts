@@ -58,9 +58,13 @@ export const listLeadsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().optional(),
 });
-/** Marketing-site lead forms: "book a visit", "talk to us", BIA enquiry. */
-export const PUBLIC_LEAD_KINDS = ["book_visit", "talk_to_us", "bia"] as const;
+/** Marketing-site lead forms: "book a visit", "talk to us", BIA enquiry, restaurant visit. */
+export const PUBLIC_LEAD_KINDS = ["book_visit", "talk_to_us", "bia", "restaurant"] as const;
 export type PublicLeadKind = (typeof PUBLIC_LEAD_KINDS)[number];
+/** Languages a restaurant owner can ask us to use (the app's four). */
+export const LEAD_LANGUAGES = ["en", "hi", "ur", "pa"] as const;
+/** A BIA lead with a board meeting this close is flagged in the rep inbox. */
+export const BOARD_MEETING_SOON_DAYS = 30;
 /** Per-IP submissions allowed per rolling hour on POST /v1/public/leads. */
 export const PUBLIC_LEAD_RATE_LIMIT_PER_HOUR = 5;
 
@@ -75,8 +79,16 @@ export const publicLeadBody = z
     neighbourhoodSlug: z.string().trim().max(80).optional(),
     message: z.string().trim().max(2000).optional(),
     kind: z.enum(PUBLIC_LEAD_KINDS),
+    /** Restaurants: the language to call or message in. */
+    language: z.enum(LEAD_LANGUAGES).optional(),
+    /** BIA enquiries: the contact's role, the event they have in mind, their next board meeting and member count. */
+    role: z.string().trim().max(120).optional(),
+    eventDate: z.iso.date().optional(),
+    boardMeetingAt: z.iso.date().optional(),
+    memberCount: z.number().int().min(1).max(5000).optional(),
   })
-  .refine((b) => !!b.email || !!b.phone, { message: "Give an email or phone number so we can reply", path: ["email"] });
+  .refine((b) => !!b.email || !!b.phone, { message: "Give an email or phone number so we can reply", path: ["email"] })
+  .refine((b) => b.kind !== "restaurant" || !!b.phone, { message: "Restaurants need a phone number: we call, text or WhatsApp", path: ["phone"] });
 export type PublicLeadBody = z.infer<typeof publicLeadBody>;
 export interface PublicLeadResponse {
   id: string;
@@ -107,6 +119,12 @@ export interface Lead {
   merchantId: string | null;
   nextActionAt: string | null;
   notes: string | null;
+  /** From the marketing forms: restaurants' preferred language, BIA role, event date, next board meeting (YYYY-MM-DD) and member count. */
+  language: (typeof LEAD_LANGUAGES)[number] | null;
+  contactRole: string | null;
+  eventDate: string | null;
+  boardMeetingAt: string | null;
+  memberCount: number | null;
   activityCount: number;
   lastActivityAt: string | null;
   createdAt: string;

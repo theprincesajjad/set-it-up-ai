@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { staffApi } from "@ll/shared";
 import {
+  cameInText,
+  carryOverLine,
+  decideMember,
+  isRewardReady,
+  matchesHeading,
+  maskedRow,
+  ordinal,
+  stampsLeft,
+  visitThisMonth,
   awardQuantity,
   quantityChips,
   activeMultiplier,
@@ -283,5 +292,68 @@ describe("award quantity (+2 / +3 chips)", () => {
     const stamps = { earnType: "stamps" as const, terminology: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10 };
     expect(successView({ program: stamps, pointsEarned: 2, balance: 14 }).hero).toBe("14 stamps");
     expect(successView({ program: stamps, pointsEarned: 2, balance: 10 }).hero).toBe("10 / 10");
+  });
+});
+
+describe("scan first: what a lookup does", () => {
+  const auto: CounterProgram = { ...stamps, counterAutoStamp: true };
+  const res = (items: staffApi.MemberSummaryDto[], over: Partial<staffApi.LookupResponse> = {}): staffApi.LookupResponse => ({ matchedBy: "last4", items, normalizedPhone: null, ...over });
+  const look = (r: staffApi.LookupResponse, program: CounterProgram | null) => counterReducer({ step: "lookingUp", digits: "1034", query: "1034" }, { type: "lookupResult", res: r, digits: "1034", program });
+
+  it("decides per member: reward ready never auto-stamps; auto-stamp only for stamp and visit programs", () => {
+    expect(decideMember(member({ balance: 4 }), auto)).toBe("stamp");
+    expect(decideMember(member({ balance: 4 }), stamps)).toBe("confirm");
+    expect(decideMember(member({ balance: 4 }), { ...perDollar, counterAutoStamp: true })).toBe("confirm");
+    expect(decideMember(member({ balance: 10 }), auto)).toBe("reward");
+    expect(decideMember(member({ balance: 3, rewardsAffordable: [{ id: "r", name: "Free drink", pointsCost: 3 }] }), auto)).toBe("reward");
+    expect(decideMember(member({ balance: 4 }), { ...perVisit, counterAutoStamp: true })).toBe("stamp");
+    expect(isRewardReady(member({ balance: 9 }), stamps)).toBe(false);
+    expect(isRewardReady(member({ balance: 10 }), stamps)).toBe(true);
+  });
+
+  it("one match with Stamp on scan on goes straight to stamping (no Find, no confirm)", () => {
+    expect(look(res([member({ balance: 4 })]), auto)).toMatchObject({ step: "stamping", member: { balance: 4 } });
+    expect(look(res([member({ balance: 4 })]), stamps).step).toBe("customer");
+    expect(look(res([member({ balance: 11 })]), auto).step).toBe("reward");
+    // A scanned card (member_code) decides the same way.
+    expect(look(res([member({ balance: 4 })], { matchedBy: "member_code" }), auto).step).toBe("stamping");
+  });
+
+  it("two matches show the list; a tap on a row then stamps, redeems or confirms", () => {
+    const two = [member({ memberId: "a", balance: 7 }), member({ memberId: "b", balance: 3 })];
+    const s = look(res(two), auto);
+    expect(s).toMatchObject({ step: "pick" });
+    expect(counterReducer(s, { type: "pick", member: two[1]!, program: auto })).toMatchObject({ step: "stamping", member: { memberId: "b" } });
+    expect(counterReducer(s, { type: "pick", member: two[0]!, program: stamps }).step).toBe("customer");
+    expect(counterReducer(s, { type: "pick", member: member({ balance: 12 }), program: auto }).step).toBe("reward");
+    // Older callers (no program) keep the confirm panel.
+    expect(counterReducer(s, { type: "pick", member: two[0]! }).step).toBe("customer");
+  });
+
+  it("no one ends in those digits says so, and an unknown phone still offers Add and award", () => {
+    expect(look(res([]), auto)).toEqual({ step: "nomatch", digits: "1034" });
+    expect(look(res([], { matchedBy: "phone", normalizedPhone: "+16475550199" }), auto)).toMatchObject({ step: "customer", customer: { kind: "new" } });
+    expect(counterReducer({ step: "nomatch", digits: "1034" }, { type: "toEntry" })).toEqual({ step: "entry", digits: "", error: null });
+  });
+
+  it("without a program the older flow is unchanged (last-4 always lists)", () => {
+    expect(counterReducer({ step: "lookingUp", digits: "1034", query: "1034" }, { type: "lookupResult", res: res([member()]), digits: "1034" }).step).toBe("pick");
+  });
+});
+
+describe("scan-first copy", () => {
+  it("matches the frames", () => {
+    expect(matchesHeading(2, "1034")).toBe("Two members end in 1034");
+    expect(visitThisMonth(5)).toBe("5th visit this month");
+    expect(ordinal(11)).toBe("11th");
+    expect(ordinal(22)).toBe("22nd");
+    expect(stampsLeft(2, "Free drink")).toBe("2 more for a free drink");
+    expect(stampsLeft(0, "Free drink")).toBe("Free drink ready");
+    expect(maskedRow("(647) ***-1034")).toBe("(647) ···-1034");
+    const now = new Date("2026-10-23T15:00:00Z");
+    expect(cameInText("2026-10-22T15:00:00Z", now)).toBe("in yesterday");
+    expect(cameInText("2026-10-09T15:00:00Z", now)).toBe("in 2 weeks ago");
+    expect(carryOverLine("Fatima Tremblay", 11, 10, "stamps")).toBe("Fatima has 11 stamps. 1 carries over after redeeming.");
+    expect(carryOverLine(null, 10, 10, "stamps")).toBe("They have 10 stamps. A fresh card starts after redeeming.");
   });
 });

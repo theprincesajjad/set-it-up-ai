@@ -22,7 +22,8 @@ import { parseCsvObjects, toCsv } from "./csv.js";
 import { adjustPoints, ensureMember, findOrCreateCustomerByPhone, postTransaction, reverseTransaction } from "./ledger.js";
 import { writeAudit } from "./admin-audit.js";
 import { iso, normalizePhone } from "./merchant.js";
-import { NO_RHYTHM, memberRhythms, monthStart, shopDate, rhythmSegmentIds, type MemberRhythm } from "./member-stats.js";
+import { monthStart } from "./staff.js";
+import { NO_RHYTHM, memberRhythms, shopDate, rhythmSegmentIds, type MemberRhythm } from "./member-stats.js";
 
 // ---------------------------------------------------------------------------
 // Cursor helpers (opaque offset cursors)

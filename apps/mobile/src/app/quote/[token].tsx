@@ -18,7 +18,7 @@ export default function QuoteByToken() {
   const [error, setError] = useState<string | null>(null);
   if (q.isLoading) return <Screen back><SkeletonList rows={3} /></Screen>;
   if (!q.data) return <Screen back><ErrorState message="This link doesn't work anymore. Contact the shop." /></Screen>;
-  const { merchant, ticket, quote } = q.data;
+  const { merchant, ticket, quote, event, taxLabel, terms, promisedAt } = q.data;
   const title = [ticket.itemDetails.make, ticket.itemDetails.model].filter(Boolean).join(" ") || ticket.issue;
   const respond = async (kind: "approve" | "decline", name?: string) => {
     setBusy(kind);
@@ -43,6 +43,10 @@ export default function QuoteByToken() {
         ticketNumber={ticket.number}
         shopName={merchant.name}
         shopPhone={merchant.phone}
+        event={event}
+        taxLabel={taxLabel}
+        terms={terms}
+        promisedAt={promisedAt}
         defaultName={user?.name}
         busy={busy}
         error={error}

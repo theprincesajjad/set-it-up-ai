@@ -12,7 +12,8 @@ import { writeAudit } from "./admin-audit.js";
 import { requirePhone } from "./merchant.js";
 
 const HOUR = 3_600_000;
-const KIND_LABEL: Record<repApi.PublicLeadKind, string> = { book_visit: "Book a visit", talk_to_us: "Talk to us", bia: "BIA enquiry" };
+const KIND_LABEL: Record<repApi.PublicLeadKind, string> = { book_visit: "Book a visit", talk_to_us: "Talk to us", bia: "BIA enquiry", restaurant: "Restaurant visit" };
+const LANGUAGE_LABEL: Record<(typeof repApi.LEAD_LANGUAGES)[number], string> = { en: "English", hi: "Hindi", ur: "Urdu", pa: "Punjabi" };
 /** Per-context so tests (one ctx each) don't share counters. */
 const hitsByCtx = new WeakMap<AppContext, Map<string, number[]>>();
 
@@ -48,9 +49,14 @@ export async function createPublicLead(ctx: AppContext, body: repApi.PublicLeadB
       contactName: body.contactName ?? null,
       email: body.email ?? null,
       phone,
-      vertical: body.vertical ?? null,
+      vertical: body.kind === "restaurant" ? (body.vertical ?? "restaurant") : (body.vertical ?? null),
       neighbourhoodId: hood?.id ?? null,
       notes,
+      language: body.language ?? null,
+      contactRole: body.role ?? null,
+      eventDate: body.eventDate ?? null,
+      boardMeetingAt: body.boardMeetingAt ?? null,
+      memberCount: body.memberCount ?? null,
       stage: "new",
       assignedRepId: null,
       createdAt: now,
@@ -65,6 +71,11 @@ export async function createPublicLead(ctx: AppContext, body: repApi.PublicLeadB
     body.email ? `Email: ${body.email}` : null,
     phone ? `Phone: ${phone}` : null,
     body.vertical ? `Vertical: ${body.vertical}` : null,
+    body.language ? `Language: ${LANGUAGE_LABEL[body.language]}` : null,
+    body.role ? `Role: ${body.role}` : null,
+    body.eventDate ? `Event date: ${body.eventDate}` : null,
+    body.boardMeetingAt ? `Next board meeting: ${body.boardMeetingAt}` : null,
+    body.memberCount ? `BIA members: ${body.memberCount}` : null,
     body.neighbourhoodSlug ? `Neighbourhood: ${hood?.name ?? body.neighbourhoodSlug}` : null,
     body.message ? `\n${body.message}` : null,
     `\nLead ${lead!.id} (unassigned, stage "new" in the rep console)`,

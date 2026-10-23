@@ -4,7 +4,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
-import { DateField, InfoRow, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment, useSetup } from "../../features/restaurant/components";
+import { DateField, InfoRow, ManualDueCard, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment, useSetup } from "../../features/restaurant/components";
 import { rk, useInvalidateTiffin, useMySubscription, useUpcoming } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { addDays, canStillSkip, canUndoSkip, cardLabel, countdownParts, dayToDate, deliveryStatusKey, isPostalCode, normalizePostalCode, subscriptionActions, torontoToday } from "../../lib/restaurant";
@@ -15,7 +15,7 @@ import { Banner, Button, Card, ConfirmDialog, EmptyState, ErrorState, hairline, 
 
 type Charge = import("@ll/shared").tiffinApi.ChargeDto;
 
-const CHARGE_TONE: Record<Charge["status"], "success" | "danger" | "warning" | "neutral"> = { paid: "success", failed: "danger", pending: "warning", refunded: "neutral" };
+const CHARGE_TONE: Record<Charge["status"], "success" | "danger" | "warning" | "neutral" | "info"> = { paid: "success", failed: "danger", pending: "warning", awaiting: "info", refunded: "neutral" };
 
 /**
  * My tiffin subscription: next meals with cutoff countdowns and Skip / Undo, pause until a date, resume,
@@ -60,6 +60,14 @@ export default function TiffinSubscription() {
   const charges = detail.data.charges;
   const meals = (upcoming.data?.items ?? []).filter((u) => u.subscriptionId === sub.id);
   const act = subscriptionActions(sub, today);
+  const byHand = sub.paymentMethod === "etransfer" || sub.paymentMethod === "cash";
+  const awaiting = byHand && sub.latestCharge?.status === "awaiting";
+  const chargeWord = (ch: Charge) =>
+    ch.status === "awaiting"
+      ? t(sub.paymentMethod === "cash" ? "tcb.row.awaitingCash" : "tcb.row.awaitingEtransfer")
+      : ch.status === "paid" && ch.paidMethod && ch.paidMethod !== "card" && ch.paidMethod !== "pad"
+        ? t("tcb.row.paidBy", { method: t(`tcb.m.${ch.paidMethod}` as const), date: ch.receivedOn ? date(dayToDate(ch.receivedOn), { day: "numeric", month: "short" }) : "" }).trim()
+        : t(`rest.charge.${ch.status}` as const);
   const per = t(sub.plan.cadence === "weekly" ? "rest.perWeek" : "rest.perMonth");
   const fail = (e: unknown) => setError(isApiError(e) && e.code === "cutoff_passed" ? t("rest.tiffin.cutoffPassed") : errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
   const run = async <T,>(key: NonNullable<typeof busy>, fn: () => Promise<T>, then?: (r: T) => void) => {
@@ -154,12 +162,13 @@ export default function TiffinSubscription() {
         </View>
       </View>
 
-      {sub.status === "past_due" ? (
+      {awaiting && sub.manual && sub.status !== "cancelled" ? <ManualDueCard manual={sub.manual} shop={sub.merchant.name} cash={sub.paymentMethod === "cash"} dueOn={sub.latestCharge?.periodStart} /> : null}
+      {sub.status === "past_due" && !byHand ? (
         <Banner variant="danger" actionLabel={t("rest.tiffin.retry")} onAction={retry} busy={busy === "retry"}>
           {t("rest.tiffin.pastDue")}
         </Banner>
       ) : null}
-      {sub.status === "pending" ? (
+      {sub.status === "pending" && !byHand ? (
         <Banner variant="warning" actionLabel={t("rest.tiffin.payNow")} onAction={retry} busy={busy === "retry"}>
           {t("rest.tiffin.pendingPay")}
         </Banner>
@@ -172,7 +181,14 @@ export default function TiffinSubscription() {
       {sub.status === "cancelled" ? <Banner variant="neutral">{t("rest.tiffin.cancelledBanner")}</Banner> : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      {sub.status !== "cancelled" ? (
+      {sub.status !== "cancelled" && byHand ? (
+        <View style={{ gap: 2 }}>
+          <Text variant="bodyStrong">{t("tcb.manage.payMethod")}</Text>
+          <Text variant="meta" color="fgMuted">{t("tcb.manage.byHand", { method: t(`tcb.pay.${sub.paymentMethod}` as const), shop: sub.merchant.name })}</Text>
+        </View>
+      ) : null}
+
+      {sub.status !== "cancelled" && !byHand ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text variant="bodyStrong" accessibilityLabel={sub.cardOnFile ? t(sub.cardOnFile.type === "pad" ? "rest.tiffin.bankOnFile" : "rest.tiffin.cardOnFile", { card: cardLabel(sub.cardOnFile) }) : undefined}>
@@ -237,7 +253,7 @@ export default function TiffinSubscription() {
           ) : null}
           {act.canResume && sub.status !== "active" ? <ListRow title={t("tiffin.resume")} chevron onPress={() => run("resume", () => api.tiffin.resume(sub.id), () => toast({ tone: "success", message: t("rest.tiffin.resumed") }))} /> : null}
           {act.canEdit ? <ListRow title={delivery ? t("rest.tiffin.changeAddress") : t("rest.tiffin.changeNotes")} subtitle={delivery ? [sub.address, sub.postalCode].filter(Boolean).join(", ") : undefined} chevron onPress={openEdit} /> : null}
-          {act.canRetry && sub.status === "past_due" ? <ListRow title={t("rest.tiffin.retry")} subtitle={t("rest.tiffin.retry.sub")} chevron onPress={retry} /> : null}
+          {act.canRetry && sub.status === "past_due" && !byHand ? <ListRow title={t("rest.tiffin.retry")} subtitle={t("rest.tiffin.retry.sub")} chevron onPress={retry} /> : null}
           {act.canCancel ? <ListRow title={t("rest.tiffin.cancel")} danger divider={false} onPress={() => setCancelling(true)} /> : null}
         </Section>
       ) : null}
@@ -256,7 +272,7 @@ export default function TiffinSubscription() {
                   {money(ch.amountCents)}
                 </Text>
                 <View style={{ alignSelf: "flex-end" }}>
-                  <StatusBadge tone={CHARGE_TONE[ch.status]}>{t(`rest.charge.${ch.status}` as const)}</StatusBadge>
+                  <StatusBadge tone={CHARGE_TONE[ch.status]}>{chargeWord(ch)}</StatusBadge>
                 </View>
               </View>
             }

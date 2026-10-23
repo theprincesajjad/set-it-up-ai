@@ -2,6 +2,7 @@
 import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { LOCALE_LIST, type merchantApi } from "@ll/shared";
+import { StaffScheduleSheet } from "@/components/dashboard/calendar/StaffScheduleSheet";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Empty, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -26,7 +27,7 @@ const ROLES: { value: merchantApi.StaffRole; label: string; desc: string }[] = [
 ];
 
 export default function StaffPage() {
-  const { api, role, me } = useMerchant();
+  const { api, role, me, enabled } = useMerchant();
   const toast = useToast();
   const state = useApi(() => api.team(), [api]);
   const owner = role === "owner";
@@ -39,6 +40,7 @@ export default function StaffPage() {
   const [pin, setPin] = useState("");
   const [remove, setRemove] = useState<merchantApi.StaffMember | null>(null);
   const [edit, setEdit] = useState<merchantApi.StaffMember | null>(null);
+  const [schedule, setSchedule] = useState<merchantApi.StaffMember | null>(null);
   const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
   const [station, setStation] = useState("");
   const act = useAction();
@@ -86,6 +88,11 @@ export default function StaffPage() {
                             </select>
                           </label>
                         ) : null}
+                        {enabled("booking.appointments") && role !== "staff" ? (
+                          <Button variant="ghost" size="sm" onClick={() => setSchedule(s)}>
+                            Hours and services
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
                           Language and station
                         </Button>
@@ -108,6 +115,7 @@ export default function StaffPage() {
         }
       </Async>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+      <StaffScheduleSheet open={!!schedule} onClose={() => setSchedule(null)} member={schedule} />
 
       <Modal
         open={invite}

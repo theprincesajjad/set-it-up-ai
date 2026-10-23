@@ -25,14 +25,17 @@ test.describe("review page", () => {
     await expect(page.getByRole("heading", { name: "This payment link doesn't work anymore" })).toBeVisible();
   });
 
-  test("5 stars: thanks, then the Google link leads", async ({ page }) => {
+  test("5 stars: the same two options as any other rating, then thanks", async ({ page }) => {
     await page.goto(`/r/${TOKEN}`);
     await expect(page.getByRole("heading", { name: /How was your visit/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0); // appears after a star is picked
+    // Both choices are on the page before a star is picked, at the same weight (Google's policy: ask everyone the same way).
+    await expect(page.getByRole("button", { name: "Send to the restaurant" })).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Also leave a public Google review" })).toBeVisible();
     await page.getByRole("radio", { name: "5 out of 5 stars" }).click();
     await page.getByRole("textbox").fill("Best karahi on the street.");
-    await page.getByRole("button", { name: "Send" }).click();
-    const google = page.getByRole("link", { name: "Leave a Google review" });
+    await page.getByRole("button", { name: "Send to the restaurant" }).click();
+    await expect(page.getByRole("heading", { name: /reads every answer/ })).toBeVisible();
+    const google = page.getByRole("link", { name: "Also leave a public Google review" });
     await expect(google).toBeVisible();
     await expect(google).toHaveAttribute("href", /^https:\/\//);
     // Answered once: a reload shows the stored rating, not the picker.
@@ -41,12 +44,13 @@ test.describe("review page", () => {
     await expect(page.getByRole("img", { name: "5 out of 5 stars" })).toBeVisible();
   });
 
-  test("2 stars: the note stays private but the Google link is still offered", async ({ page }) => {
+  test("2 stars: the same page, the same thanks and the same Google button", async ({ page }) => {
     await page.goto(`/r/${TOKEN_LOW}`);
+    await expect(page.getByRole("link", { name: "Also leave a public Google review" })).toBeVisible();
     await page.getByRole("radio", { name: "2 out of 5 stars" }).click();
     await page.getByRole("textbox").fill("Waited 40 minutes for a pickup order.");
-    await page.getByRole("button", { name: "Send" }).click();
-    await expect(page.getByText(/will read this and may reach out/)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Leave a Google review too" })).toBeVisible();
+    await page.getByRole("button", { name: "Send to the restaurant" }).click();
+    await expect(page.getByRole("heading", { name: /reads every answer/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Also leave a public Google review" })).toBeVisible();
   });
 });

@@ -107,7 +107,7 @@ describe("public plans", () => {
     expect(body.items[0]).toMatchObject({ id: "free", available: true, features: [] });
     expect(body.items[1].available).toBe(false);
     expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead")).toMatchObject({ stage: "hidden", name: "Order-ahead" });
-    expect(body.network).toEqual({ activeMerchants: 1, neighbourhoods: 1 });
+    expect(body.network).toEqual({ activeMerchants: 1, neighbourhoods: 1, members: 0, multiShopMemberPct: 0, liveStreets: 1 });
     expect(JSON.stringify(body)).not.toContain("Test Shop");
 
     await env.db.insert(featureRollouts).values({ key: "orders.order_ahead", stage: "beta" });

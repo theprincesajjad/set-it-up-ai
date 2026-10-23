@@ -3,7 +3,7 @@
 import { Tag } from "@/components/dashboard/kit";
 
 const KIND: Record<string, string> = { preorder: "Pre-order", tiffin: "Tiffin", catering: "Catering", banquet: "Banquet" };
-const CHANNEL: Record<string, string> = { whatsapp: "WhatsApp", phone: "Phone", counter: "Counter" };
+const CHANNEL: Record<string, string> = { whatsapp: "WhatsApp", phone: "Phone", counter: "Counter", web: "Web link" };
 
 export function orderBadgeLabels(kind: string | null | undefined, channel: string | null | undefined): string[] {
   const out: string[] = [];

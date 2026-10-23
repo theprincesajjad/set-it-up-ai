@@ -14,6 +14,17 @@ export const CHANNELS = ["email", "sms", "push"] as const;
 export const channelSchema = z.enum(CHANNELS);
 export type Channel = z.infer<typeof channelSchema>;
 
+/** Quiet hours for promotional texts, shop time: nothing goes out from 21:00 until 08:00 (see QUIET_HOURS in the API). */
+export const QUIET_HOURS_LABEL = "8 am to 9 pm";
+
+/**
+ * What the server adds to every promotional text (CASL: who is sending, where, and how to stop). The dashboard shows
+ * this exact line under the message box and counts it towards the length. Server prefixes it with "— ".
+ */
+export function smsFooterText(merchantName: string, address?: string | null): string {
+  return `${merchantName}${address ? `, ${address}` : ""}. Reply STOP to unsubscribe.`;
+}
+
 /** SMS body limit before the server adds "— <Shop>. Reply STOP to opt out." */
 export const SMS_MAX_BODY = 320;
 export const EMAIL_MAX_BODY = 10_000;
@@ -23,10 +34,17 @@ export const MESSAGE_VARIABLES = ["{{first_name}}", "{{name}}", "{{balance}}", "
 /** Inbound SMS keywords that withdraw consent everywhere (incl. French for Canada). */
 export const STOP_KEYWORDS = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "ARRET", "ARRÊT", "OPTOUT", "OPT-OUT"] as const;
 
+/** "Lapsed" default for the Messages audience chips and the win-back automation. */
+export const LAPSED_DEFAULT_DAYS = 21;
+
 export const segmentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("all") }),
-  /** No visit in the last N days (incl. members who never visited and joined more than N days ago). */
-  z.object({ kind: z.literal("lapsed"), days: z.number().int().min(1).max(3650).default(30) }),
+  /** No visit in the last N days (incl. members who never visited and joined more than N days ago). Cafés default to 21. */
+  z.object({ kind: z.literal("lapsed"), days: z.number().int().min(1).max(3650).default(LAPSED_DEFAULT_DAYS) }),
+  /** Café regulars: 3+ visits in the last 30 days (reportsApi.isRegular). */
+  z.object({ kind: z.literal("regulars") }),
+  /** Regulars who are overdue against their own rhythm (reportsApi.isSlipping). */
+  z.object({ kind: z.literal("slipping") }),
   /** Any VIP level, or one level. */
   z.object({ kind: z.literal("vip"), vipLevelId: uuidSchema.optional() }),
   /** Balance covers at least one active reward. */
@@ -90,6 +108,12 @@ export interface Message {
   sentAt: string | null;
   recipientCount: number;
   createdAt: string;
+  /**
+   * Distinct recipients who visited the shop within 7 days after `sentAt`. Null until sent.
+   * Still counting while `cameIn7dFinal` is false (fewer than 7 days since the send).
+   */
+  cameIn7d: number | null;
+  cameIn7dFinal: boolean;
 }
 export interface MessageDetail extends Message {
   stats: { queued: number; sent: number; delivered: number; failed: number };
@@ -147,6 +171,8 @@ export interface Automation {
   days: number | null;
   /** Total messages sent by this automation. */
   sentCount: number;
+  /** People messaged in the last 30 days, and how many of them came in within 7 days of it. */
+  last30Days: { messaged: number; cameIn7d: number };
   /** Feature gate state: false → show upsell (marketing.automations is Plus). */
   available: boolean;
 }

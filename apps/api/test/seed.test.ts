@@ -1,6 +1,10 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  appointments,
+  staffHours,
+  staffServices,
+  services as serviceRows,
   adCampaigns,
   adEvents,
   bookingSlots,
@@ -37,6 +41,9 @@ import {
   users,
   visits,
   whatsappSessions,
+  manualPayments,
+  tiffinDriverLinks,
+  tiffinCharges,
 } from "@ll/db";
 import { DEMO_CREDENTIALS, seedDemo } from "../src/seed.js";
 import { ledgerBalance } from "../src/services/ledger.js";
@@ -295,10 +302,10 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     expect(new Set(numbers).size).toBe(numbers.length);
   });
 
-  it("Zeenat caters six events across statuses, including a confirmed walima for 300 and a quoted mehndi", async () => {
+  it("Zeenat caters seven events across statuses, including a confirmed walima for 300 and a quoted mehndi", async () => {
     const z = await slugToId("zeenat-catering");
     const evs = await env.db.select().from(cateringEvents).where(eq(cateringEvents.merchantId, z));
-    expect(evs.length).toBe(6);
+    expect(evs.length).toBe(7);
     expect(new Set(evs.map((e) => e.status))).toEqual(new Set(["confirmed", "quoted", "inquiry", "tasting", "completed", "cancelled"]));
     const walima = evs.find((e) => e.eventType === "walima")!;
     expect(walima).toMatchObject({ headcount: 300, status: "confirmed" });
@@ -308,7 +315,16 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     const mehndi = evs.find((e) => e.eventType === "mehndi")!;
     expect(mehndi).toMatchObject({ status: "quoted", depositPaidAt: null });
     expect(mehndi.quoteSentAt).not.toBeNull();
-    expect(new Set(evs.map((e) => e.approvalToken)).size).toBe(6);
+    expect(new Set(evs.map((e) => e.approvalToken)).size).toBe(7);
+    // Hand-recorded money: the walima deposit came by e-transfer (ledger row, method and date), with a 10% taxed service charge;
+    // one quote was sent days ago and not opened; another is approved and waiting for an e-transfer.
+    expect(walima).toMatchObject({ depositMethod: "etransfer", serviceChargeBps: 1000 });
+    expect(walima.referenceCode).toMatch(/^[A-Z]{2}-\d{4}$/);
+    const ledger = await env.db.select().from(manualPayments).where(eq(manualPayments.merchantId, z));
+    expect(ledger.filter((l) => l.subjectType === "catering_deposit").map((l) => l.method)).toEqual(["etransfer", "etransfer"]);
+    expect(ledger.some((l) => l.subjectType === "catering_balance" && l.method === "cheque")).toBe(true);
+    expect(mehndi.quoteOpenedAt).toBeNull();
+    expect(evs.some((e) => e.status === "quoted" && e.approvedAt && !e.depositPaidAt)).toBe(true);
     // Catering-only shop: no counter menu orders other than catering trays.
     const zOrders = await env.db.select().from(orders).where(eq(orders.merchantId, z));
     expect(zOrders.every((o) => o.kind === "catering")).toBe(true);
@@ -354,6 +370,18 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     const todays = await env.db.select().from(tiffinDeliveries).where(and(eq(tiffinDeliveries.merchantId, shree), eq(tiffinDeliveries.date, today)));
     expect(todays.length).toBeGreaterThan(5);
     expect(todays.every((d) => d.routeId || subs.find((s) => s.id === d.subscriptionId)!.fulfilment === "pickup")).toBe(true);
+    // E-transfer subscribers: some recorded (ledger row, reference, no platform fee), some awaiting; a driver link for Route A today.
+    const charges = await env.db.select().from(tiffinCharges).where(eq(tiffinCharges.merchantId, shree));
+    const byHand = charges.filter((c) => c.paymentMethod === "etransfer" || c.paymentMethod === "cash");
+    expect(byHand.length).toBeGreaterThanOrEqual(6);
+    expect(byHand.every((c) => c.referenceCode && c.platformFeeCents === 0)).toBe(true);
+    expect(byHand.filter((c) => c.status === "awaiting").length).toBe(3);
+    const ledger = await env.db.select().from(manualPayments).where(eq(manualPayments.merchantId, shree));
+    expect(ledger.length).toBe(byHand.filter((c) => c.status === "paid").length);
+    expect(new Set(byHand.map((c) => c.referenceCode)).size).toBe(byHand.length);
+    const [link] = await env.db.select().from(tiffinDriverLinks).where(eq(tiffinDriverLinks.merchantId, shree));
+    expect(link).toMatchObject({ date: routes.length ? link!.date : "", token: expect.stringMatching(/^drv-/) });
+    expect(routes.some((r) => r.id === link!.routeId)).toBe(true);
   });
 
   it("every restaurant-tier shop can take payments locally; Shree's tiffin plans and menus speak hi, ur and pa", async () => {
@@ -417,5 +445,57 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     expect(Number(v[0]!.n)).toBeGreaterThan(80);
     const salon = await slugToId("rangrez-beauty-studio");
     expect(members.some((m) => m.merchantId === salon)).toBe(true);
+  });
+});
+
+describe("seedDemo: appointment salons", () => {
+  const slugId = async (slug: string) => (await env.db.select({ id: merchants.id }).from(merchants).where(eq(merchants.slug, slug)))[0]!.id;
+
+  it("seeds Bloom Hair Studio with three stylists, six services and a day with visits in every state", async () => {
+    const bloom = await slugId("bloom-hair-studio");
+    const svc = await env.db.select().from(serviceRows).where(eq(serviceRows.merchantId, bloom));
+    expect(svc).toHaveLength(6);
+    expect(svc.find((s) => s.name.startsWith("Highlights"))).toMatchObject({ priceFrom: true, depositCents: 4000, durationMin: 120 });
+    const hours = await env.db.select().from(staffHours).where(eq(staffHours.merchantId, bloom));
+    expect(new Set(hours.map((h) => h.userId)).size).toBe(3);
+    const overrides = await env.db.select().from(featureOverrides).where(and(eq(featureOverrides.merchantId, bloom), eq(featureOverrides.key, "booking.appointments")));
+    expect(overrides[0]!.enabled).toBe(true);
+    const [shop] = await env.db.select().from(merchants).where(eq(merchants.id, bloom));
+    expect(shop).toMatchObject({ noShowFeeCents: 2500, cancelWindowHours: 24 });
+    const visits = await env.db.select().from(appointments).where(eq(appointments.merchantId, bloom));
+    expect(visits.length).toBeGreaterThan(20);
+    expect(new Set(visits.map((v) => v.status)).has("completed")).toBe(true);
+    // Past visits went through checkout: an invoice, a tip to the stylist, points earned.
+    const inv = await env.db.select().from(invoices).where(and(eq(invoices.merchantId, bloom), sql`${invoices.appointmentId} is not null`));
+    expect(inv.length).toBeGreaterThan(5);
+    expect(inv.every((i) => i.status === "paid" && i.tipStaffId && i.tipCents > 0)).toBe(true);
+    expect(inv.some((i) => i.pointsEarned > 0)).toBe(true);
+    // Nobody has two overlapping active visits (the database would have refused).
+    const active = visits.filter((v) => ["booked", "arrived", "in_service"].includes(v.status) && v.staffId).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+    for (const [i, v] of active.entries()) {
+      const next = active.slice(i + 1).find((o) => o.staffId === v.staffId);
+      if (next) expect(next.startsAt.getTime()).toBeGreaterThanOrEqual(v.endsAt.getTime());
+    }
+  });
+
+  it("seeds Rangrez Beauty Studio with threading, henna and bridal in four languages, and a bridal group", async () => {
+    const rangrez = await slugId("rangrez-beauty-studio");
+    const svc = await env.db.select().from(serviceRows).where(eq(serviceRows.merchantId, rangrez));
+    expect(svc.map((s) => s.name)).toEqual(expect.arrayContaining(["Eyebrow threading", "Henna, both hands", "Bridal henna, full", "Bridal makeup and hair"]));
+    expect(svc.find((s) => s.name === "Eyebrow threading")!.translations).toMatchObject({ hi: { name: "आइब्रो थ्रेडिंग" }, ur: { name: "آئی برو تھریڈنگ" }, pa: { name: "ਆਈਬ੍ਰੋ ਥ੍ਰੈਡਿੰਗ" } });
+    const assigned = await env.db.select().from(staffServices).where(eq(staffServices.merchantId, rangrez));
+    expect(assigned.length).toBeGreaterThan(5);
+    const visits = await env.db.select().from(appointments).where(eq(appointments.merchantId, rangrez));
+    const groups = visits.filter((v) => v.groupId);
+    expect(groups).toHaveLength(2);
+    expect(new Set(groups.map((g) => g.groupId)).size).toBe(1);
+    expect(groups.every((g) => g.depositCents > 0 && g.depositPaidAt)).toBe(true);
+  });
+
+  it("is idempotent: seeding again adds nothing", async () => {
+    const before = await env.db.select({ n: sql<number>`count(*)::int` }).from(appointments);
+    await seedDemo(env.db, { customers: 30, days: 45, config: env.ctx.config });
+    const after = await env.db.select({ n: sql<number>`count(*)::int` }).from(appointments);
+    expect(after[0]!.n).toBe(before[0]!.n);
   });
 });

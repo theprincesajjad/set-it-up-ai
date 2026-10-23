@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RESTAURANT_FEATURES, effectivePlan, FEATURES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
+import { RESTAURANT_FEATURES, effectivePlan, FEATURES, FEES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
 
 describe("plans", () => {
   it("keeps the loyalty program and reporting free forever (Pricing v2)", () => {
@@ -48,6 +48,7 @@ describe("plans", () => {
       "orders.pickup_status",
       "payments.in_app",
       "booking.pickup_slots",
+      "booking.appointments",
     ];
     for (const k of plus) {
       expect(FEATURES[k].minPlan, k).toBe("plus");
@@ -88,6 +89,23 @@ describe("plans", () => {
     expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "beta", betaOptIn: true })).toBe(true);
     expect(isPlanAvailable("plus", {})).toBe(false);
     expect(isPlanAvailable("plus", { "orders.order_ahead": "ga" })).toBe(true);
+  });
+});
+
+describe("appointments pricing", () => {
+  it("puts appointments on Café & Retail (plus), hidden at launch, never free", () => {
+    expect(PLANS.plus.name).toBe("Café & Retail");
+    expect(FEATURES["booking.appointments"].minPlan).toBe("plus");
+    expect(FREE_FOREVER).not.toContain("booking.appointments");
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga" })).toBe(false);
+    expect(isFeatureEnabled("booking.appointments", { plan: "plus", stage: "ga" })).toBe(true);
+    expect(isFeatureEnabled("booking.appointments", { plan: "pro", stage: "ga" })).toBe(true);
+    expect(isFeatureEnabled("booking.appointments", { plan: "plus", stage: "hidden" })).toBe(false);
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "hidden", override: true })).toBe(true);
+  });
+  it("takes no platform fee on in-person checkout through the calendar", () => {
+    expect(FEES.appointmentCheckoutBps).toBe(0);
+    expect(FEES.depositInvoiceBps).toBe(100);
   });
 });
 

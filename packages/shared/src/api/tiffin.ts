@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { centsSchema, uuidSchema } from "./common.js";
+import type { AcceptedMethods, ManualInstructions } from "./payments-manual.js";
 
 const isoDate = z.iso.date();
 const isoMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -16,7 +17,8 @@ export const TIFFIN_CADENCES = ["weekly", "monthly"] as const;
 export type TiffinCadence = (typeof TIFFIN_CADENCES)[number];
 export const TIFFIN_FULFILMENTS = ["delivery", "pickup"] as const;
 export type TiffinFulfilment = (typeof TIFFIN_FULFILMENTS)[number];
-export const TIFFIN_PAYMENT_METHODS = ["card", "pad"] as const;
+/** card and pad go through Stripe; etransfer and cash are recorded by the kitchen by hand (no platform fee). */
+export const TIFFIN_PAYMENT_METHODS = ["card", "pad", "etransfer", "cash"] as const;
 export type TiffinPaymentMethod = (typeof TIFFIN_PAYMENT_METHODS)[number];
 export const TIFFIN_SUB_STATUSES = ["pending", "active", "paused", "past_due", "cancelled"] as const;
 export type TiffinSubStatus = (typeof TIFFIN_SUB_STATUSES)[number];
@@ -57,6 +59,8 @@ export const menuItemSchema = z.object({
   dietary: dietarySchema.optional(),
   /** Optional hi / ur / pa words for the dish; the public page falls back to `name` and `description`. */
   translations: translationsSchema.optional(),
+  /** Pieces per serving, e.g. 4 for "Rotli (4)"; the kitchen prep list multiplies it by servings. Parsed from the "(4)" suffix when saved. */
+  perServing: z.number().int().min(1).max(99).optional(),
 });
 export type MenuItem = z.infer<typeof menuItemSchema>;
 
@@ -82,6 +86,8 @@ export const createPlanBody = z.object({
   deliveryAllowed: z.boolean().default(true),
   /** Skips and pauses close this many hours before the meal day starts (8:00 Toronto). */
   cutoffHours: z.number().int().min(0).max(168).default(24),
+  /** Sales tax applies (when the shop is registered for GST/HST). */
+  taxable: z.boolean().default(true),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
 });
@@ -105,6 +111,7 @@ export interface PlanDto {
   pickupAllowed: boolean;
   deliveryAllowed: boolean;
   cutoffHours: number;
+  taxable: boolean;
   active: boolean;
   sortOrder: number;
   /** Subscribers who are not cancelled (merchant lists only). */
@@ -191,6 +198,10 @@ export const listSubscribersQuery = z.object({
   routeId: uuidSchema.optional(),
   unrouted: z.enum(["true", "false"]).optional(),
   fulfilment: z.enum(TIFFIN_FULFILMENTS).optional(),
+  /** Only subscribers paying this way. */
+  payment: z.enum(TIFFIN_PAYMENT_METHODS).optional(),
+  /** Only subscribers with a hand-paid charge waiting to be recorded, or a pending first payment. */
+  awaiting: z.enum(["true", "false"]).optional(),
   q: z.string().trim().max(80).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().optional(),
@@ -220,7 +231,20 @@ export interface ChargeDto {
   amountCents: number;
   creditCents: number;
   platformFeeCents: number;
-  status: "pending" | "paid" | "failed" | "refunded";
+  /** Sales tax included in amountCents. */
+  taxCents: number;
+  /** awaiting = paid by hand (e-transfer or cash) and not recorded yet. */
+  status: "pending" | "awaiting" | "paid" | "failed" | "refunded";
+  /** Code to put in the e-transfer message (hand-paid charges). */
+  referenceCode: string | null;
+  /** How a paid charge was settled. */
+  paidMethod: TiffinPaymentMethod | "cheque" | "other" | null;
+  /** Hand-recorded money above what was due (flag for the owner; nothing is credited automatically). */
+  overpaidCents: number;
+  /** Date the money arrived (hand-recorded), YYYY-MM-DD. */
+  receivedOn: string | null;
+  /** What is still owed after part payments (0 once paid). */
+  remainingCents: number;
   /** A bank debit (PAD) is in flight: status stays "pending" until it clears (days). */
   processing?: boolean;
   paidAt: string | null;
@@ -255,6 +279,12 @@ export interface SubscriptionDto {
 /** Merchant view of a subscriber. */
 export interface SubscriberDto extends SubscriptionDto {
   customer: { id: string; name: string | null; phone: string | null; email: string | null };
+  /** Hand-paid charges still to record, and the oldest one's date (ISO). */
+  awaitingCents: number;
+  awaitingSince: string | null;
+  /** The charge to record a payment against, when one is awaiting. */
+  awaitingChargeId: string | null;
+  awaitingReferenceCode: string | null;
 }
 /** GET /tiffin/subscribers/:subId/charges: one subscriber's billing periods, newest first (max 24). */
 export interface SubscriberChargesResponse {
@@ -296,6 +326,21 @@ export interface KitchenResponse {
   date: string;
   plans: KitchenPlanRow[];
   totals: { servings: number; subscribers: number; deliveryServings: number; pickupServings: number; skippedServings: number };
+  /** Meals handed over today (delivered or picked up) out of those going out. */
+  delivered: number;
+  outForDelivery: number;
+  /** Per route: stops done / total for the day. */
+  routes: { id: string | null; name: string; done: number; total: number; driver: string | null }[];
+  /** Dishes to cook today: packs (servings) and pieces when the menu says "(4)". */
+  prep: { dish: string; packs: number; pieces: number | null }[];
+  /** Hand-paid charges waiting to be recorded. */
+  awaiting: { count: number; cents: number };
+  /** Subscribers with no route yet, and past due: for the Needs you list. */
+  unrouted: number;
+  pastDue: number;
+  /** Earliest skip cutoff among the next meal day's plans (ISO), or null. */
+  nextCutoffAt: string | null;
+  nextMealDate: string | null;
 }
 
 export interface ManifestStop {
@@ -348,6 +393,13 @@ export interface RevenueResponse {
   creditsCents: number;
   platformFeeCents: number;
   byPlan: { planId: string; planName: string; activeSubscribers: number; mrrCents: number }[];
+  /** Money that came in this month by how it was paid (card, pad, etransfer, cash). */
+  collectedByMethod: { method: TiffinPaymentMethod; cents: number; count: number }[];
+  awaitingCents: number;
+  awaitingCount: number;
+  pastDueCents: number;
+  /** Bank debits (PAD) in flight. */
+  inFlightCents: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +416,10 @@ export interface PublicPlansResponse {
   plans: PublicPlanDto[];
   /** Pre-authorized debit is on for this platform. */
   padEnabled: boolean;
+  /** Methods this kitchen offers (card and bank debit need its Stripe account). */
+  accepted: AcceptedMethods;
+  /** E-transfer details to show before the customer chooses it. */
+  etransfer: { email: string; instructions: string } | null;
 }
 
 export const subscribeBody = z
@@ -403,8 +459,10 @@ export interface PaymentIntentRef {
 export interface SubscribeResponse {
   subscription: SubscriptionDto;
   charge: ChargeDto;
-  /** null when nothing is due (a free first period). */
+  /** null when nothing is due (a free first period) or the customer pays by hand. */
   payment: PaymentIntentRef | null;
+  /** Instructions for an e-transfer or cash subscription; null for card and bank debit. */
+  manual: ManualInstructions | null;
 }
 
 /** The saved payment method renewals are charged to automatically. */
@@ -440,6 +498,8 @@ export interface MySubscriptionDto extends SubscriptionDto {
   latestCharge: ChargeDto | null;
   /** Skip days still in the future. */
   skips: string[];
+  /** Instructions for the charge that is awaiting an e-transfer, else null. */
+  manual: ManualInstructions | null;
 }
 export interface MySubscriptionsResponse {
   items: MySubscriptionDto[];
@@ -485,4 +545,53 @@ export interface PauseResponse {
 export interface RetryPaymentResponse {
   charge: ChargeDto;
   payment: PaymentIntentRef | null;
+}
+
+// ---------------------------------------------------------------------------
+// Driver link (tokenised, no login)
+// ---------------------------------------------------------------------------
+export const createDriverLinkBody = z.object({ date: isoDate.optional() });
+export const sendDriverLinksBody = z.object({ routeIds: z.array(uuidSchema).min(1).max(50), channel: z.enum(["whatsapp", "sms"]).default("sms"), date: isoDate.optional() });
+export const driverStopBody = z.object({ status: z.enum(["delivered", "missed"]), note: z.string().trim().max(300).optional() });
+export const driverLateBody = z.object({ minutes: z.number().int().min(5).max(180) });
+export const lateNoticeBody = z.object({ routeId: uuidSchema.optional(), minutes: z.number().int().min(5).max(180), date: isoDate.optional() });
+export const markAllOutBody = z.object({ routeId: uuidSchema.optional(), date: isoDate.optional() });
+
+export interface DriverLinkResponse {
+  url: string;
+  token: string;
+  expiresAt: string;
+}
+export interface DriverStop {
+  deliveryId: string;
+  order: number | null;
+  customerName: string | null;
+  phone: string | null;
+  address: string | null;
+  postalCode: string | null;
+  addressNotes: string | null;
+  dietaryNotes: string | null;
+  servings: number;
+  planName: string;
+  status: TiffinDeliveryStatus;
+}
+export interface DriverRunResponse {
+  shop: { name: string; phone: string | null };
+  route: { name: string; driverName: string | null };
+  date: string;
+  stops: DriverStop[];
+  progress: { done: number; total: number };
+  /** Next time "running late" can be sent (ISO), null when it can go now. */
+  lateAvailableAt: string | null;
+}
+export interface SendDriverLinksResponse {
+  sent: { routeId: string; to: string; channel: "sms" | "whatsapp" }[];
+  skipped: { routeId: string; reason: string }[];
+}
+export interface DriverLateResponse {
+  notified: number;
+  nextAvailableAt: string;
+}
+export interface MarkAllOutResponse {
+  updated: number;
 }

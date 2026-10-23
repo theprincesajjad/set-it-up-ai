@@ -27,10 +27,14 @@ import type {
   walletApi,
   whatsappApi,
 } from "@ll/shared";
-import type { FestivalDef, FestivalOccurrence, FestivalTemplate, FestivalTradition } from "@ll/shared";
+import type { FestivalDef, FestivalOccurrence, FestivalRelevance, FestivalTemplate, FestivalTradition } from "@ll/shared";
 import type { ApiClient } from "./client";
 import { restaurantOpsEndpoints } from "./restaurantOps";
+import { restaurantDeskEndpoints } from "./restaurantDesk";
 import { publicSplitEndpoints, restaurantKitchenEndpoints } from "./restaurantKitchen";
+import { restaurantWebEndpoints } from "./restaurantWeb";
+import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
+import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
 
 const enc = encodeURIComponent;
 type Q = Record<string, string | number | boolean | undefined | null>;
@@ -58,7 +62,6 @@ export function llApi(c: ApiClient) {
       joinInfo: (qrCode: string) => c.get<networkApi.JoinInfoResponse>(`/v1/public/join/${enc(qrCode)}`, { anonymous: true }),
       joinStart: (qrCode: string, body: networkApi.PublicJoinBody) =>
         c.post<networkApi.PublicJoinResponse>(`/v1/public/join/${enc(qrCode)}`, body, { anonymous: true }),
-      quote: (token: string) => c.get<serviceApi.PublicQuoteResponse>(`/v1/public/quotes/${enc(token)}`, { anonymous: true }),
       approveQuote: (token: string, signatureName: string) =>
         c.post<serviceApi.ApproveQuoteResponse>(`/v1/public/quotes/${enc(token)}/approve`, { signatureName }, { anonymous: true }),
       declineQuote: (token: string, reason?: string) =>
@@ -66,10 +69,14 @@ export function llApi(c: ApiClient) {
       quoteDeposit: (token: string) =>
         c.post<{ deposit: serviceApi.DepositPaymentDto | null }>(`/v1/public/quotes/${enc(token)}/deposit`, {}, { anonymous: true }),
       invoice: (token: string) => c.get<serviceApi.PublicInvoiceResponse>(`/v1/public/invoices/${enc(token)}`, { anonymous: true }),
-      payInvoice: (token: string) =>
-        c.post<serviceApi.PayInvoiceResponse>(`/v1/public/invoices/${enc(token)}/pay`, {}, { anonymous: true }),
+      // Repair status page, quote (with preview), invoice pay with tip, drop-off slots (serviceOps.ts)
+      ...publicServiceEndpoints(c),
+      // Appointment booking: services, policy and availability (appointments.ts)
+      ...publicAppointmentEndpoints(c),
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
+      /** Founding offer spots per corridor (restaurants page and pricing). */
+      foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/founding", { anonymous: true, next: { revalidate: 300 } }),
       lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
       // Restaurant pack: review page (/r/:token) and WhatsApp order pay page (/pay/order/:orderId)
       review: (token: string) => c.get<whatsappApi.PublicReviewView>(`/v1/public/reviews/${enc(token)}`, { anonymous: true }),
@@ -114,6 +121,10 @@ export function llApi(c: ApiClient) {
       orders: () => c.get<{ items: commerceApi.OrderDto[]; nextCursor: string | null }>("/v1/me/orders"),
       campaigns: (q: { lat?: number; lng?: number } = {}) => c.get<{ items: campaignsApi.MyCampaign[] }>("/v1/me/campaigns", { query: q }),
       tickets: () => c.get<{ items: serviceApi.TicketDto[]; nextCursor: string | null }>("/v1/me/tickets"),
+      // Drop-off bookings: book, list, cancel (serviceOps.ts)
+      ...myBookingEndpoints(c),
+      // Appointments: book, list, move, cancel (appointments.ts)
+      ...myAppointmentEndpoints(c),
     },
     merchants: {
       mine: () => c.get<PageOf<merchantApi.MyMerchant>>("/v1/merchants"),
@@ -189,6 +200,12 @@ export function llApi(c: ApiClient) {
       addMerchant: (id: string, merchantId: string) => c.post<campaignsApi.Campaign>(`/v1/campaigns/${enc(id)}/merchants`, { merchantId }),
       removeMerchant: (id: string, merchantId: string) => c.delete<campaignsApi.Campaign>(`/v1/campaigns/${enc(id)}/merchants/${enc(merchantId)}`),
       report: (id: string) => c.get<campaignsApi.CampaignReport>(`/v1/campaigns/${enc(id)}/report`),
+      /** BIA overview for one street (`from`/`to` are ISO instants; `to` is exclusive; default the last 30 days). */
+      overview: (neighbourhoodId: string, q: { from?: string; to?: string } = {}) => c.get<campaignsApi.NeighbourhoodOverview>(`/v1/neighbourhoods/${enc(neighbourhoodId)}/overview`, { query: q }),
+      /** Board report for a period. */
+      periodReport: (neighbourhoodId: string, q: { from?: string; to?: string } = {}) => c.get<campaignsApi.NeighbourhoodReport>(`/v1/neighbourhoods/${enc(neighbourhoodId)}/report`, { query: q }),
+      /** The same report as a CSV download (raw response). */
+      periodReportCsv: (neighbourhoodId: string, q: { from?: string; to?: string } = {}) => c.request<Response>(`/v1/neighbourhoods/${enc(neighbourhoodId)}/report`, { query: { ...q, format: "csv" }, raw: true }),
     },
     ads: {
       rateCard: () => c.get<adsApi.AdRateCardResponse>("/v1/ads/rate-card", { anonymous: true }),
@@ -203,6 +220,23 @@ export function llApi(c: ApiClient) {
 
 export type LlApi = ReturnType<typeof llApi>;
 
+/** Counter calls under /v1/merchants/:id/counter; `headers` ride on every call (staff PIN token). */
+function counterEndpoints(c: ApiClient, b: string, headers?: Record<string, string>) {
+  const h = headers ? { headers } : {};
+  return {
+    lookup: (q: string) => c.get<staffApi.LookupResponse>(`${b}/counter/lookup`, { query: { q }, ...h }),
+    award: (body: Omit<staffApi.AwardBody, "idempotencyKey">, idempotencyKey: string) =>
+      c.post<staffApi.AwardResponse>(`${b}/counter/award`, { ...body, idempotencyKey }, { idempotencyKey, ...h }),
+    redeem: (body: Omit<staffApi.RedeemBody, "idempotencyKey">, idempotencyKey: string) =>
+      c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redeem`, { ...body, idempotencyKey }, { idempotencyKey, ...h }),
+    verify: (code: string) => c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redemptions/verify`, { code }, h),
+    today: (locationId?: string) => c.get<staffApi.TodayResponse>(`${b}/counter/today`, { query: { locationId }, ...h }),
+    activity: (q: Q = {}) => c.get<staffApi.ActivityResponse>(`${b}/counter/activity`, { query: q, ...h }),
+    undo: (transactionId: string, reason = "Undo at counter") =>
+      c.post<staffApi.UndoResponse>(`${b}/counter/transactions/${enc(transactionId)}/undo`, { reason }, h),
+  };
+}
+
 function merchantEndpoints(c: ApiClient, merchantId: string) {
   const b = `/v1/merchants/${enc(merchantId)}`;
   return {
@@ -211,6 +245,14 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...restaurantOpsEndpoints(c, b),
     // Restaurant pack ordering: menu settings, pre-orders, kitchen display, split bills (restaurantKitchen.ts)
     ...restaurantKitchenEndpoints(c, b),
+    // Repair and drop-off operations: board summary, phone approval, photos, invoices, rebooking, drop-off settings (serviceOps.ts)
+    ...serviceOpsEndpoints(c, b),
+    // Appointment calendar, price list, staff hours, checkout (appointments.ts)
+    ...appointmentEndpoints(c, b),
+    // Restaurant desk: Home, busy mode, phone lookup and balance reminders (restaurantDesk.ts)
+    ...restaurantDeskEndpoints(c, b),
+    // Restaurant customer pages, owner side: halal certification, private feedback actions (restaurantWeb.ts)
+    ...restaurantWebEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
@@ -263,6 +305,7 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     deletePromo: (id: string) => c.delete<void>(`${b}/promos/${enc(id)}`),
     // Customers
     customers: (q: Q = {}) => c.get<merchantApi.ListCustomersResponse>(`${b}/customers`, { query: q }),
+    customerSegmentCounts: () => c.get<merchantApi.CustomerSegmentCounts>(`${b}/customers/segment-counts`),
     revealPhone: (memberId: string) => c.post<merchantApi.RevealPhoneResponse>(`${b}/customers/${enc(memberId)}/reveal-phone`, {}),
     customer: (memberId: string) => c.get<merchantApi.CustomerDetail>(`${b}/customers/${enc(memberId)}`),
     updateCustomer: (memberId: string, body: { notes?: string | null; tags?: string[] }) => c.patch<merchantApi.CustomerDetail>(`${b}/customers/${enc(memberId)}`, body),
@@ -273,18 +316,11 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       c.post<{ transaction: merchantApi.LedgerTransactionView; balance: number }>(`${b}/activity/${enc(transactionId)}/reverse`, { reason }),
     importCustomers: (body: { csv: string; dryRun: boolean; sourceName?: string }) => c.post<merchantApi.ImportCustomersResult>(`${b}/customers/import`, body),
     // Counter (staff.md)
-    counter: {
-      lookup: (q: string) => c.get<staffApi.LookupResponse>(`${b}/counter/lookup`, { query: { q } }),
-      award: (body: Omit<staffApi.AwardBody, "idempotencyKey">, idempotencyKey: string) =>
-        c.post<staffApi.AwardResponse>(`${b}/counter/award`, { ...body, idempotencyKey }, { idempotencyKey }),
-      redeem: (body: Omit<staffApi.RedeemBody, "idempotencyKey">, idempotencyKey: string) =>
-        c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redeem`, { ...body, idempotencyKey }, { idempotencyKey }),
-      verify: (code: string) => c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redemptions/verify`, { code }),
-      today: (locationId?: string) => c.get<staffApi.TodayResponse>(`${b}/counter/today`, { query: { locationId } }),
-      activity: (q: Q = {}) => c.get<staffApi.ActivityResponse>(`${b}/counter/activity`, { query: q }),
-      undo: (transactionId: string, reason = "Undo at counter") =>
-        c.post<staffApi.UndoResponse>(`${b}/counter/transactions/${enc(transactionId)}/undo`, { reason }),
-    },
+    counter: counterEndpoints(c, b),
+    /** The same counter calls made as the staff member who signed in with a PIN (BFF swaps the bearer for counter paths only). */
+    counterAs: (staffToken: string) => counterEndpoints(c, b, { "x-counter-staff-token": staffToken }),
+    /** POST staff-pin/verify: a 4-digit PIN identifies the staff member at a shared counter. */
+    verifyStaffPin: (body: authApi.StaffPinVerifyBody) => c.post<authApi.StaffPinVerifyResponse>(`${b}/staff-pin/verify`, body),
     // Reports
     reports: {
       overview: (q: Q = {}) => c.get<reportsApi.OverviewReport>(`${b}/reports/overview`, { query: q }),
@@ -294,6 +330,9 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       promos: () => c.get<reportsApi.PromosReport>(`${b}/reports/promos`),
       networkOverlap: () => c.get<reportsApi.NetworkOverlapReport>(`${b}/reports/network-overlap`),
       activation: () => c.get<reportsApi.ActivationReport>(`${b}/reports/activation`),
+      today: () => c.get<reportsApi.TodayReportDto>(`${b}/reports/today`),
+      heatmap: (weeks = 4) => c.get<reportsApi.HeatmapReport>(`${b}/reports/heatmap`, { query: { weeks } }),
+      rewardsOwed: () => c.get<reportsApi.RewardsOwedReport>(`${b}/reports/rewards-owed`),
       retention: (months = 6) => c.get<reportsApi.RetentionReport>(`${b}/reports/retention`, { query: { months } }),
     },
     // Messaging
@@ -368,7 +407,7 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     createQuote: (ticketId: string, body: serviceApi.CreateQuoteBody) => c.post<serviceApi.QuoteDto>(`${b}/tickets/${enc(ticketId)}/quotes`, body),
     sendQuote: (quoteId: string) => c.post<serviceApi.QuoteDto>(`${b}/quotes/${enc(quoteId)}/send`, {}),
     createInvoice: (ticketId: string, body: serviceApi.CreateInvoiceBody) => c.post<serviceApi.InvoiceDto>(`${b}/tickets/${enc(ticketId)}/invoices`, body),
-    markInvoicePaid: (id: string, method: "cash" | "card_terminal" | "other") => c.post<serviceApi.InvoiceDto>(`${b}/invoices/${enc(id)}/mark-paid`, { method }),
+    markInvoicePaid: (id: string, method: "cash" | "card_terminal" | "etransfer" | "cheque" | "other") => c.post<serviceApi.InvoiceDto>(`${b}/invoices/${enc(id)}/mark-paid`, { method }),
     // Phase 3: ads + campaigns
     ads: (q: Q = {}) => c.get<PageOf<adsApi.AdCampaign>>(`${b}/ads`, { query: q }),
     ad: (id: string) => c.get<adsApi.AdCampaign>(`${b}/ads/${enc(id)}`),
@@ -385,6 +424,11 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       saveSettings: (body: whatsappApi.WhatsappSettingsBody) => c.put<whatsappApi.WhatsappSettings>(`${b}/whatsapp/settings`, body),
       disconnect: () => c.delete<void>(`${b}/whatsapp/connection`),
       sessions: () => c.get<Items<whatsappApi.WhatsappSession>>(`${b}/whatsapp/sessions`),
+      messages: (sessionId: string) => c.get<restaurantApi.ChatMessagesResponse>(`${b}/whatsapp/sessions/${enc(sessionId)}/messages`),
+      sendMessage: (sessionId: string, text: string) => c.post<restaurantApi.ChatMessageDto>(`${b}/whatsapp/sessions/${enc(sessionId)}/messages`, { text }),
+      takeOver: (sessionId: string) => c.post<restaurantApi.ChatMessagesResponse>(`${b}/whatsapp/sessions/${enc(sessionId)}/takeover`, {}),
+      release: (sessionId: string) => c.post<restaurantApi.ChatMessagesResponse>(`${b}/whatsapp/sessions/${enc(sessionId)}/release`, {}),
+      guest: (sessionId: string) => c.get<restaurantApi.ChatGuestPanel>(`${b}/whatsapp/sessions/${enc(sessionId)}/guest`),
       optIn: (body: whatsappApi.OptInBody) => c.post<whatsappApi.WhatsappConsent>(`${b}/whatsapp/opt-ins`, body),
       optOut: (phone: string) => c.post<whatsappApi.WhatsappConsent>(`${b}/whatsapp/opt-outs`, { phone }),
       broadcast: (body: whatsappApi.BroadcastBody) => c.post<whatsappApi.BroadcastResult>(`${b}/whatsapp/broadcasts`, body),
@@ -398,6 +442,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     festivals: {
       upcoming: (days = 90) => c.get<FestivalsUpcoming>(`${b}/festivals/upcoming`, { query: { days } }),
       catalog: () => c.get<Items<FestivalCatalogEntry>>(`${b}/festivals`),
+      setDateOverride: (festivalId: string, body: restaurantApi.FestivalDateOverrideBody) => c.put<{ festivalId: string; year: number; start: string; moved: boolean; shiftedMessages: number }>(`${b}/festivals/${enc(festivalId)}/date-override`, body),
+      setCuisines: (cuisines: string[]) => c.put<{ cuisines: string[] }>(`${b}/festivals/preferences`, { cuisines }),
       createDraft: (festivalId: string, body: whatsappApi.FestivalDraftBody) => c.post<whatsappApi.FestivalDraftResult>(`${b}/festivals/${enc(festivalId)}/campaign-drafts`, body),
     },
     phone: {
@@ -413,7 +459,10 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
 export interface FestivalsUpcoming {
   today: string;
   languages: string[];
-  items: (FestivalOccurrence & { templates: { id: string; label: string }[] })[];
+  /** The shop's cuisine tags; empty means not set (nothing is hidden). */
+  cuisines: string[];
+  cuisineOptions: { id: string; label: string }[];
+  items: (FestivalOccurrence & { templates: { id: string; label: string }[]; relevance: FestivalRelevance; sendStatus: restaurantApi.FestivalSendStatus[] })[];
 }
 /** GET :m/festivals (services/festivals.ts listFestivalCatalog). */
 export interface FestivalCatalogEntry {

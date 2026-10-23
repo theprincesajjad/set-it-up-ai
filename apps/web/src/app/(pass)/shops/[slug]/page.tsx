@@ -1,7 +1,10 @@
-import { Globe, Navigation, Phone } from "lucide-react";
+import { Globe, MessageCircle, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { HalalBlock } from "@/components/restaurant/HalalBlock";
+import { PopularRow } from "@/components/restaurant/PopularRow";
 import { RestaurantLinks } from "@/components/restaurant/RestaurantLinks";
+import { WeekendPots } from "@/components/restaurant/WeekendPots";
 import { placeKind } from "@/lib/place";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
@@ -28,7 +31,9 @@ import { openStatus, weekRows } from "@/lib/hours";
 import { howYouEarn } from "@/lib/program";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
-import { translator } from "@ll/shared";
+import { translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
+import { publicRestaurantApi } from "@/lib/restaurant/server";
+import { whatsappChatUrl } from "@/lib/restaurant/share";
 
 export const dynamic = "force-dynamic";
 
@@ -105,11 +110,41 @@ export default async function ShopPage({ params, searchParams }: Props) {
   };
   const joinInfo: networkApi.JoinInfoResponse | null = loc ? { qrCode: "", merchant: m, location: loc, program, rewards: shop.rewards.slice(0, 3), consentText: shop.consentText } : null;
 
-  const quick = [
-    m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: t("shop.call"), icon: Phone } : null,
-    loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
-    m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
-  ].filter((x): x is { href: string; label: string; icon: typeof Phone } => !!x);
+  // Restaurant pack shops lead with food: halal block, order buttons, this weekend's pots, most ordered, rewards last (frame 10).
+  const f = shop.features;
+  const maybeRestaurant = !!(f?.dietaryTags || f?.tiffin || f?.catering || f?.banquet || f?.whatsapp);
+  const rest: restaurantWebApi.PublicRestaurantResponse | null = maybeRestaurant ? await publicRestaurantApi().restaurant(slug).catch(() => null) : null;
+  let restMenu: commerceApi.PublicMenuResponse | null = null;
+  if (rest && (rest.popular.length || rest.features.preorder)) restMenu = await publicRestaurantApi().menu(slug, { lang: locale }).catch(() => null);
+  const menuItems = restMenu ? [...restMenu.categories.flatMap((c) => c.items), ...restMenu.uncategorized] : [];
+  const popularItems = rest ? rest.popular.map((id) => menuItems.find((i) => i.id === id)).filter((i): i is commerceApi.CatalogItemDto => !!i) : [];
+  const base = `/shops/${encodeURIComponent(m.slug)}`;
+  const preorderHref = rest?.preorderItems.length === 1 ? `${base}/preorder/${rest.preorderItems[0]!.id}` : `${base}/menu#cat-degh`;
+  const phone = m.phone ?? loc?.phone ?? null;
+
+  const quick = (
+    rest
+      ? [
+          phone ? { href: `tel:${phone}`, label: t("shop.call"), icon: Phone } : null,
+          loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
+          rest.whatsappNumber ? { href: whatsappChatUrl(rest.whatsappNumber), label: t("rs.whatsapp"), icon: MessageCircle } : m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
+        ]
+      : [
+          m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: t("shop.call"), icon: Phone } : null,
+          loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
+          m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
+        ]
+  ).filter((x): x is { href: string; label: string; icon: typeof Phone } => !!x);
+  const quickRow = quick.length ? (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${quick.length}, minmax(0, 1fr))` }}>
+      {quick.map((q) => (
+        <a key={q.label} href={q.href} {...(/^https?:/.test(q.href) ? { rel: "noopener noreferrer" } : {})} className="flex h-16 flex-col items-center justify-center gap-1 rounded-card bg-bg-subtle text-meta-strong text-fg transition-colors hover:bg-bg-muted active:bg-bg-muted focus-visible:focus-ring">
+          <q.icon aria-hidden className="size-5" strokeWidth={1.75} />
+          {q.label}
+        </a>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
@@ -124,23 +159,48 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
           {shop.memberCount ? <span className="text-fg-muted">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</span> : null}
-          {shop.features?.orderAhead ? <span className="text-fg-muted">{t("shop.orderAheadInApp")}</span> : null}
+          {rest ? (rest.quotedWaitMin ? <span className="text-fg-muted">{t("rs.pickupWait", { min: rest.quotedWaitMin })}</span> : null) : shop.features?.orderAhead ? <span className="text-fg-muted">{t("shop.orderAheadInApp")}</span> : null}
           {shop.features?.serviceTickets ? <span className="text-fg-muted">Repair tracking</span> : null}
         </div>
       ) : null}
-      {quick.length ? (
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${quick.length}, minmax(0, 1fr))` }}>
-          {quick.map((q) => (
-            <a key={q.label} href={q.href} {...(/^https?:/.test(q.href) ? { rel: "noopener noreferrer" } : {})} className="flex h-16 flex-col items-center justify-center gap-1 rounded-card bg-bg-subtle text-meta-strong text-fg transition-colors hover:bg-bg-muted active:bg-bg-muted focus-visible:focus-ring">
-              <q.icon aria-hidden className="size-5" strokeWidth={1.75} />
-              {q.label}
-            </a>
-          ))}
+      {rest?.halalCertification ? <HalalBlock cert={rest.halalCertification} variant="shop" /> : null}
+      {rest && (rest.features.pickup || rest.features.preorder) ? (
+        <div className="flex flex-col gap-3">
+          {rest.features.pickup && rest.acceptingOrders ? (
+            <Button size="lg" fullWidth href={`${base}/menu`}>
+              {t("rs.orderPickup")}
+            </Button>
+          ) : null}
+          {rest.features.preorder ? (
+            <Button size="lg" variant="secondary" fullWidth href={preorderHref}>
+              {t("rs.preorderDegh")}
+            </Button>
+          ) : null}
+          {rest.features.pickup && !rest.acceptingOrders ? <p className="text-center text-meta text-fg-muted">{t("rs.notTakingOrders")}</p> : null}
         </div>
       ) : null}
+      {shop.features?.appointments ? (
+        <div className="flex flex-col gap-2">
+          <Button size="lg" fullWidth href={`${base}/book`}>
+            {t("bk.shop.book")}
+          </Button>
+          <p className="text-center text-meta text-fg-muted">{t("bk.shop.bookSub")}</p>
+        </div>
+      ) : null}
+      {shop.features?.dropoffScheduling ? (
+        <div className="flex flex-col gap-2">
+          <Button size="lg" fullWidth variant={shop.features?.appointments ? "secondary" : "primary"} href={`${base}/dropoff`}>
+            {t("sv.d.link")}
+          </Button>
+          <p className="text-center text-meta text-fg-muted">{t("sv.d.linkSub")}</p>
+        </div>
+      ) : null}
+      {quickRow}
+      {rest ? <WeekendPots weekend={rest.weekend} items={rest.preorderItems} /> : null}
+      {rest ? <PopularRow slug={m.slug} items={popularItems} /> : null}
 
       <Suspense fallback={null}>
-        <RestaurantLinks slug={m.slug} locale={locale} features={shop.features} />
+        <RestaurantLinks slug={m.slug} locale={locale} features={shop.features} skipMenu={!!rest?.features.pickup} />
       </Suspense>
 
       {membership ? (
@@ -271,7 +331,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         </ListGroup>
       ) : null}
 
-      {!membership && joinInfo ? (
+      {!membership && joinInfo && !rest ? (
         <StickyJoin label={copy.action.join(m.name)} />
       ) : null}
     </LocaleScope>

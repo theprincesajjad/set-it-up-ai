@@ -192,5 +192,14 @@ export function formatLocalDateTime(d: Date, timeZone: string): string {
 export function itemLabel(itemKind: string, details: Record<string, string>): string {
   const name = [details.year, details.make, details.model].filter(Boolean).join(" ").trim();
   if (name) return name;
+  // Several items on one ticket (alterations, dry cleaning): itemDetails.items is a JSON list.
+  if (details.items) {
+    try {
+      const list = JSON.parse(details.items) as { description?: string }[];
+      if (Array.isArray(list) && list.length) return list.length === 1 ? (list[0]!.description ?? "your item") : `${list.length} items`;
+    } catch {
+      /* not JSON: fall through */
+    }
+  }
   return itemKind === "vehicle" ? "your vehicle" : itemKind === "garment" ? "your garment" : itemKind === "device" ? "your device" : "your item";
 }

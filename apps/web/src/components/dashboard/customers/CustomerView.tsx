@@ -16,14 +16,24 @@ import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { newIdempotencyKey } from "@/lib/api/client";
+import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatDateYear, formatMoney, formatNumber, formatPoints } from "@/lib/format";
 import { formatE164 } from "@/lib/phone";
-import { CONSENT_LABEL, consentState, maskPhone } from "@/lib/dashboard/customers";
+import { CONSENT_LABEL, consentState, maskPhone, usuallyAround } from "@/lib/dashboard/customers";
 import { useAction, useNow } from "@/lib/dashboard/useApi";
 import { sourceLabel } from "@/lib/dashboard/labels";
 
 const JOINED_VIA: Record<string, string> = { qr: "QR scan", counter: "Counter", staff_app: "Counter", web_counter: "Counter", import: "Import", web: "Web", app: "App", referral: "Referral", pos: "POS" };
+
+const CONSENT_SOURCE: Record<string, string> = { counter: "at the counter", counter_staff: "at the counter", qr: "on the QR join page", join: "on the join page", web: "on the web", app: "in the app", wallet: "in the wallet", import: "by import" };
+
+/** "Agreed Sep 3 at the counter", or null when no consent is on file (nothing is shown then). */
+export function consentLine(c: { marketingConsentAt: string | null; marketingConsentSource: string | null }): string | null {
+  if (!c.marketingConsentAt) return null;
+  const src = c.marketingConsentSource ? (CONSENT_SOURCE[c.marketingConsentSource] ?? c.marketingConsentSource.replace(/_/g, " ")) : null;
+  return `Agreed ${formatDate(c.marketingConsentAt)}${src ? ` ${src}` : ""}`;
+}
 
 const REASONS = ["Missed at the counter", "Goodwill", "Correction", "Migration fix", "Other"];
 
@@ -87,6 +97,98 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
     </div>
   );
 
+  const goalN = program?.earnType === "stamps" ? program.stampGoal : goal;
+  const ready = active.find((r) => r.pointsCost <= c.balance) ?? null;
+  const [acting, setActing] = useState(false);
+  const panelSummary = (
+    <div className="flex flex-col gap-4">
+      {goalN > 0 ? (
+        <div className="rounded-[14px] bg-bg-subtle px-4 py-3.5">
+          <p className="text-[15px] font-semibold text-fg tabular">
+            {`${Math.min(c.balance, goalN)} of ${goalN} ${term} · `}
+            {c.rewardAvailable ? "reward ready" : `${Math.max(0, goalN - c.balance)} to ${active[0] ? (/^free /i.test(active[0].name) ? `a ${active[0].name.toLowerCase()}` : active[0].name) : "the next reward"}`}
+          </p>
+          <div role="progressbar" aria-label="Progress to the next reward" aria-valuemin={0} aria-valuemax={goalN} aria-valuenow={Math.min(c.balance, goalN)} className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-bg-muted">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, Math.round((c.balance / goalN) * 100))}%` }} />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="text-meta text-fg-muted">Balance</p>
+          <p className="mt-1 font-display text-[32px] font-extrabold leading-9 text-accent-text tabular">{formatPoints(c.balance, term)}</p>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          loading={acting}
+          className="h-10 rounded-full px-4 text-[14px]"
+          onClick={async () => {
+            setActing(true);
+            try {
+              const r = await api.counter.award({ memberId: c.memberId, quantity: 1 }, newIdempotencyKey("panel-stamp"));
+              toast({ message: r.duplicate ? "Already added" : `Added 1 ${term.replace(/s$/, "")}. ${formatPoints(r.balance, term)}.`, tone: "success" });
+              await reload();
+            } catch (e) {
+              toast({ message: errorMessage(e), tone: "error" });
+            } finally {
+              setActing(false);
+            }
+          }}
+        >
+          {program?.earnType === "per_dollar" ? "Add visit" : `Add ${term.replace(/s$/, "")}`}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!ready || acting}
+          className="h-10 rounded-full px-4 text-[14px]"
+          onClick={async () => {
+            if (!ready) return;
+            setActing(true);
+            try {
+              await api.counter.redeem({ memberId: c.memberId, rewardId: ready.id }, newIdempotencyKey("panel-redeem"));
+              toast({ message: `${ready.name} redeemed`, tone: "success" });
+              await reload();
+            } catch (e) {
+              toast({ message: errorMessage(e), tone: "error" });
+            } finally {
+              setActing(false);
+            }
+          }}
+        >
+          Redeem
+        </Button>
+        {manager ? (
+          <Button variant="secondary" size="sm" className="h-10 rounded-full px-4 text-[14px]" onClick={() => setAdjustOpen(true)}>
+            Adjust
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const consent = consentLine(c);
+  const panelDetails = (
+    <div>
+      <DefList
+        items={[
+          { label: "Joined", value: `${formatDate(c.joinedAt)}${c.joinedVia ? `, ${(JOINED_VIA[c.joinedVia] ?? c.joinedVia.replace(/_/g, " ")).toLowerCase()}` : ""}` },
+          { label: "Visits, 30 days", value: formatNumber(c.visits30d) },
+          { label: "Usually comes in", value: usuallyAround(c.usually) ?? "Not enough visits yet" },
+          ...(marketing ? [{ label: "Texts", value: consent ?? "No consent on file" }] : []),
+          { label: "Email", value: c.email ?? "None" },
+        ]}
+      />
+      {/* The record: exactly what they agreed to, and when. Only shown when one exists. */}
+      {marketing && consent && d.customer.marketingConsentText ? (
+        <p className="mt-2 text-caption font-normal text-fg-muted">
+          They saw: &ldquo;{d.customer.marketingConsentText}&rdquo; ({formatDateTime(d.customer.marketingConsentAt)})
+        </p>
+      ) : null}
+    </div>
+  );
+
   const details = (
     <DefList
       items={[
@@ -97,19 +199,21 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
         { label: "Spent", value: formatMoney(c.totalSpendCents) },
         { label: "Lifetime", value: formatPoints(c.lifetimePoints, term) },
         { label: "Joined", value: `${formatDateYear(c.joinedAt)}${c.joinedVia ? ` · ${JOINED_VIA[c.joinedVia] ?? c.joinedVia.replace(/_/g, " ")}` : ""}` },
+        { label: "Visits, 30 days", value: formatNumber(c.visits30d) },
+        ...(c.usually ? [{ label: "Usually comes in", value: usuallyAround(c.usually) }] : []),
         ...(c.vipLevel ? [{ label: "VIP level", value: c.vipLevel.name }] : []),
         ...(marketing
-          ? [{ label: "Messages", value: <Dot tone={s === "opted_in" ? "positive" : "neutral"}>{CONSENT_LABEL[s]}</Dot> }]
+          ? [{ label: "Messages", value: <Dot tone={s === "opted_in" ? "positive" : "neutral"}>{CONSENT_LABEL[s]}</Dot> }, ...(consent ? [{ label: "Agreed", value: consent }] : [])]
           : []),
       ]}
     />
   );
 
   const ledger = (
-    <Section title="Activity" description="Every change to this balance, newest first.">
+    <Section title={layout === "panel" ? "Recent" : "Activity"} description={layout === "panel" ? undefined : "Every change to this balance, newest first."}>
       {d.transactions.length ? (
         <ul aria-label="Ledger history" className="divide-y divide-line border-y border-line">
-          {d.transactions.map((t) => (
+          {d.transactions.slice(0, layout === "panel" ? 5 : undefined).map((t) => (
             <li key={t.id} className="flex min-h-12 items-center gap-3 py-2">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-meta text-fg">
@@ -229,8 +333,8 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
       ) : null}
       {layout === "panel" ? (
         <div className="flex flex-col gap-6">
-          {summary}
-          {details}
+          {panelSummary}
+          {panelDetails}
           {ledger}
           {redemptions}
           {notesBlock}

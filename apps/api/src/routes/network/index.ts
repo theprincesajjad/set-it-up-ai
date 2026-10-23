@@ -3,7 +3,7 @@ import { networkApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { parse } from "../../lib/validate.js";
 import { requireUuid } from "../../services/customer.js";
-import { feed, getNeighbourhood, joinInfo, listNeighbourhoods, listShops, publicPlans, publicShop, startQrJoin, trackPromo } from "../../services/network.js";
+import { feed, foundingCorridors, getNeighbourhood, joinInfo, listNeighbourhoods, listShops, publicPlans, publicShop, startQrJoin, trackPromo } from "../../services/network.js";
 
 /**
  * Public network routes (no auth; optional bearer token personalises results).
@@ -26,6 +26,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: { slug: string } }>("/public/shops/:slug", async (req) => publicShop(ctx, req.params.slug));
 
   app.get("/public/plans", async () => publicPlans(ctx));
+
+  /** Founding offer spots per corridor (marketing site; cacheable for five minutes). */
+  app.get("/public/restaurants/founding", async (_req, reply) => {
+    reply.header("cache-control", "public, max-age=300");
+    return foundingCorridors(ctx);
+  });
 
   app.get<{ Params: { qrCode: string } }>("/public/join/:qrCode", async (req) => joinInfo(ctx, req.params.qrCode));
 

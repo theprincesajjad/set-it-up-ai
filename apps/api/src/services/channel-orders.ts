@@ -44,6 +44,8 @@ export interface ChannelOrderArgs {
   locationId?: string;
   pickupAt?: Date | null;
   notes?: string | null;
+  /** Guest allergy (kitchen ticket band). */
+  allergyNote?: string | null;
   tipCents?: number;
   idempotencyKey: string;
 }
@@ -64,6 +66,7 @@ export async function placeChannelOrder(ctx: AppContext, merchant: Merchant, a: 
     items: a.lines.map((l) => ({ catalogItemId: l.catalogItemId, quantity: l.quantity, modifiers: [] })),
     pickupAt: a.pickupAt ? a.pickupAt.toISOString() : null,
     notes: a.notes ?? null,
+    allergyNote: a.allergyNote ?? null,
     tipCents: a.tipCents ?? 0,
     kind: "pickup",
     paymentMethod,

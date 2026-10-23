@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-/** Web menu. Ordering stays in the mobile app; this page is for looking, filtering and finding the app. */
+/** Web menu: look, filter, add to the cart and order for pickup. Degh pre-orders open their own page. */
 export default async function ShopMenuPage({ params, searchParams }: Props) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
@@ -46,6 +46,8 @@ export default async function ShopMenuPage({ params, searchParams }: Props) {
   } catch (e) {
     menu = isApiError(e) && (e.status === 402 || e.status === 404) ? "none" : "error";
   }
+  // Wait, whether the shop is taking orders, which entry points are on (non-restaurant shops have none: ordering stays open).
+  const restaurant = menu === "none" || menu === "error" ? null : await publicRestaurantApi().restaurant(slug).catch(() => null);
   return (
     <PageFrame locale={locale}>
       {menu === "error" ? (
@@ -53,7 +55,7 @@ export default async function ShopMenuPage({ params, searchParams }: Props) {
       ) : menu === "none" ? (
         <EmptyState title={t("rc.mn.noMenu")} description={t("rc.mn.noMenuBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       ) : (
-        <MenuBrowser shop={shop} menu={menu} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
+        <MenuBrowser shop={shop} menu={menu} restaurant={restaurant} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
       )}
     </PageFrame>
   );

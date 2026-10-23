@@ -6,17 +6,21 @@
  * live holds on the same hall, with the hall row locked so two requests can't
  * both win the same slot.
  */
-import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
-import { cateringEvents, hallBookings, halls, type DbOrTx } from "@ll/db";
-import { restaurantApi } from "@ll/shared";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { cateringEvents, hallBookings, halls, users, type DbOrTx } from "@ll/db";
+import { paymentsManualApi, restaurantApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
+import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { paidInApp, refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
 import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { computeTax, merchantProvince } from "./tax.js";
+import { addLedger, assertNotFuture, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor } from "./manual-payments.js";
+import { localDate } from "./messaging.js";
+import { inQuietHours } from "./notifications.js";
 
 export type Hall = typeof halls.$inferSelect;
 export type HallBooking = typeof hallBookings.$inferSelect;
@@ -26,6 +30,19 @@ export const HOLD_HOURS = 72;
 const HOLD_MS = HOLD_HOURS * 3_600_000;
 const MAX_EVENT_MS = 48 * 3_600_000;
 const MIN_CARD_CENTS = 50;
+
+type Step = { label: string; bps: number; dueOffsetDays: number };
+
+/** The hall's staged-payment template; a hall without one gets deposit at hold, then two thirds / one third of the rest at 14 and 7 days. */
+export function scheduleTemplate(h: Pick<Hall, "paymentSchedule" | "depositBps">): Step[] {
+  if (h.paymentSchedule?.length) return h.paymentSchedule;
+  const rest = 10_000 - h.depositBps;
+  const second = Math.round((rest * 2) / 3);
+  return [
+    { label: "Deposit to hold the date", bps: h.depositBps, dueOffsetDays: 0 },
+    ...(rest > 0 ? [{ label: "Second payment", bps: second, dueOffsetDays: 14 }, { label: "Final payment", bps: rest - second, dueOffsetDays: 7 }] : []),
+  ].filter((x) => x.bps > 0);
+}
 
 export const hallDto = (h: Hall): restaurantApi.HallDto => ({
   id: h.id,
@@ -37,6 +54,8 @@ export const hallDto = (h: Hall): restaurantApi.HallDto => ({
   packages: h.packages,
   depositBps: h.depositBps,
   refundPolicy: h.refundPolicy,
+  paymentSchedule: scheduleTemplate(h),
+  autoConfirmOnFirstPayment: h.autoConfirmOnFirstPayment,
   active: h.active,
   createdAt: h.createdAt.toISOString(),
 });
@@ -62,6 +81,8 @@ export const bookingDto = (b: HallBooking, hallName: string | null = null, refun
   refundPolicy,
   cateringEventId: b.cateringEventId,
   notes: b.notes,
+  referenceCode: b.referenceCode,
+  schedule: b.schedule ?? [],
   createdAt: b.createdAt.toISOString(),
 });
 
@@ -79,13 +100,19 @@ export async function listHalls(db: DbOrTx, merchantId: string, opts: { activeOn
   return { items: rows.map(hallDto), nextCursor: null };
 }
 
+function checkTemplate(steps: Step[] | null | undefined) {
+  if (steps && steps.reduce((s, x) => s + x.bps, 0) !== 10_000) throw badRequest("The payment steps must add up to 100%");
+}
+
 export async function createHall(db: DbOrTx, merchantId: string, body: z.infer<typeof restaurantApi.createHallBody>) {
-  const [h] = await db.insert(halls).values({ merchantId, ...body, description: body.description ?? null }).returning();
+  checkTemplate(body.paymentSchedule);
+  const [h] = await db.insert(halls).values({ merchantId, ...body, paymentSchedule: body.paymentSchedule ?? null, description: body.description ?? null }).returning();
   return hallDto(h!);
 }
 
 export async function updateHall(db: DbOrTx, merchantId: string, hallId: string, body: z.infer<typeof restaurantApi.updateHallBody>) {
   await getHall(db, merchantId, hallId);
+  checkTemplate(body.paymentSchedule);
   const patch = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
   if (!Object.keys(patch).length) return hallDto(await getHall(db, merchantId, hallId));
   const [h] = await db.update(halls).set(patch).where(eq(halls.id, hallId)).returning();
@@ -106,21 +133,31 @@ export async function deleteHall(db: DbOrTx, merchantId: string, hallId: string)
 /** Bookings that currently block a hall: confirmed, or a hold that hasn't lapsed. */
 const blocking = (now: Date) => or(eq(hallBookings.status, "confirmed"), and(eq(hallBookings.status, "hold"), gt(hallBookings.holdExpiresAt, now)))!;
 
-export async function availability(ctx: AppContext, merchantId: string, q: { from: Date; to: Date; hallId?: string; activeOnly?: boolean }): Promise<restaurantApi.HallAvailabilityResponse> {
+export async function availability(ctx: AppContext, merchantId: string, q: { from: Date; to: Date; hallId?: string; activeOnly?: boolean; detail?: boolean }): Promise<restaurantApi.HallAvailabilityResponse> {
   if (q.to <= q.from) throw badRequest("'to' must be after 'from'");
   const hs = (await listHalls(ctx.db, merchantId, { activeOnly: q.activeOnly })).items.filter((h) => !q.hallId || h.id === q.hallId);
   if (q.hallId && !hs.length) throw notFound("Hall");
   const busy = hs.length
     ? await ctx.db
-        .select()
+        .select({ b: hallBookings, who: users.name })
         .from(hallBookings)
+        .innerJoin(users, eq(users.id, hallBookings.userId))
         .where(and(inArray(hallBookings.hallId, hs.map((h) => h.id)), blocking(ctx.now()), lt(hallBookings.startsAt, q.to), gt(hallBookings.endsAt, q.from)))
         .orderBy(asc(hallBookings.startsAt))
     : [];
   return {
     halls: hs.map((hall) => ({
       hall,
-      busy: busy.filter((b) => b.hallId === hall.id).map((b) => ({ bookingId: b.id, status: b.status as restaurantApi.HallBookingStatus, startsAt: b.startsAt.toISOString(), endsAt: b.endsAt.toISOString() })),
+      busy: busy
+        .filter(({ b }) => b.hallId === hall.id)
+        .map(({ b, who }) => ({
+          bookingId: b.id,
+          status: b.status as restaurantApi.HallBookingStatus,
+          startsAt: b.startsAt.toISOString(),
+          endsAt: b.endsAt.toISOString(),
+          // Staff see who and what; the public calendar only sees that the room is busy.
+          ...(q.detail ? { label: `${who ?? "Customer"} · ${b.eventType.replace(/_/g, " ")} · ${b.headcount}`, holdExpiresAt: iso(b.holdExpiresAt) } : {}),
+        })),
     })),
   };
 }
@@ -159,9 +196,14 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
       }
     }
     const subtotal = hall.baseCents + (pkg?.perHeadCents ?? 0) * body.headcount;
-    const totalCents = subtotal + computeTax(subtotal, await merchantProvince(tx, merchant)).taxCents;
-    let depositCents = Math.round((totalCents * hall.depositBps) / 10_000);
+    const totalCents = subtotal + (merchant.taxRegistered === false ? 0 : computeTax(subtotal, await merchantProvince(tx, merchant)).taxCents);
+    // Staged payments: the hall's template (default 25% at hold, then two payments before the event) turned into dated amounts that add up to the total.
+    const eventDay = localDate(startsAt, merchant.timezone || "America/Toronto");
+    const schedule = restaurantApi.buildHallSchedule(totalCents, scheduleTemplate(hall), eventDay, localDate(now, merchant.timezone || "America/Toronto"));
+    let depositCents = hall.paymentSchedule?.length && schedule[0] ? schedule[0].amountCents : Math.round((totalCents * hall.depositBps) / 10_000);
     if (depositCents > 0 && depositCents < MIN_CARD_CENTS) depositCents = Math.min(totalCents, MIN_CARD_CENTS);
+    if (!hall.paymentSchedule?.length && schedule[0] && schedule[0].amountCents !== depositCents) schedule[0] = { ...schedule[0], amountCents: depositCents };
+    const referenceCode = await newReferenceCode(tx, merchant.id, userId);
     const [b] = await tx
       .insert(hallBookings)
       .values({
@@ -177,6 +219,8 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
         holdExpiresAt: new Date(Math.min(now.getTime() + HOLD_MS, startsAt.getTime())),
         totalCents,
         depositCents,
+        referenceCode,
+        schedule: fixScheduleSum(schedule, totalCents),
         cateringEventId: event?.id ?? null,
         notes: body.notes ?? null,
         createdAt: now,
@@ -194,6 +238,20 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
     data: { type: "hall_hold", hallBookingId: booking.b.id },
   });
   return { booking: bookingDto(booking.b, booking.hallName, booking.refundPolicy), deposit: await depositPayment(ctx, merchant, booking.b) };
+}
+
+/** The schedule rows always add up to the booking total to the cent (the last row takes any rounding left over). */
+function fixScheduleSum(rows: restaurantApi.HallScheduleRow[], total: number): restaurantApi.HallScheduleRow[] {
+  if (!rows.length) return rows;
+  const head = rows.slice(0, -1);
+  const last = rows[rows.length - 1]!;
+  return [...head, { ...last, amountCents: total - head.reduce((s, r) => s + r.amountCents, 0) }];
+}
+
+/** Mark instalment `i` paid on `dateIso` (a calendar day or ISO instant). */
+function withInstalmentPaid(schedule: restaurantApi.HallScheduleRow[] | null, i: number, dateIso: string): restaurantApi.HallScheduleRow[] | null {
+  if (!schedule?.[i]) return schedule;
+  return schedule.map((r, k) => (k === i && !r.paidAt ? { ...r, paidAt: dateIso } : r));
 }
 
 export async function getBooking(db: DbOrTx, merchantId: string, bookingId: string): Promise<HallBooking> {
@@ -226,7 +284,11 @@ export async function myBookingDto(db: DbOrTx, b: HallBooking) {
 }
 
 export async function bookingDtoFor(db: DbOrTx, b: HallBooking) {
-  return (await withHallNames(db, [b]))[0]!;
+  const dto = (await withHallNames(db, [b]))[0]!;
+  const payments = await ledgerDtos(db, "hall_instalment", b.id);
+  const merchant = await loadMerchant(db, b.merchantId);
+  const next = (b.schedule ?? []).find((r) => !r.paidAt);
+  return { ...dto, payments, manual: merchant && next && b.status !== "cancelled" ? manualInstructions(merchant, next.amountCents, b.referenceCode) : null };
 }
 
 export async function listBookings(db: DbOrTx, merchantId: string, q: z.infer<typeof restaurantApi.listHallBookingsQuery>) {
@@ -316,7 +378,7 @@ export async function confirm(ctx: AppContext, merchantId: string, bookingId: st
   if (b.holdExpiresAt && b.holdExpiresAt <= ctx.now()) throw new HttpError(409, "hold_expired", "This hold has expired. Create a new one.");
   const paid = !!b.depositPaidAt || b.depositCents === 0;
   if (!paid && !body.markDepositPaid) throw conflict("The deposit hasn't been paid yet");
-  const updated = await confirmBooking(ctx, b, b.depositPaidAt || b.depositCents === 0 ? {} : { depositPaidAt: ctx.now() });
+  const updated = await confirmBooking(ctx, b, b.depositPaidAt || b.depositCents === 0 ? {} : { depositPaidAt: ctx.now(), schedule: withInstalmentPaid(b.schedule, 0, ctx.now().toISOString()) });
   if (!updated) throw conflict("Booking was just updated. Refresh and try again.");
   await notifyConfirmed(ctx, updated);
   return updated;
@@ -338,7 +400,7 @@ export async function onHallDeposit(ctx: AppContext, bookingId: string, paymentI
     if (marked && marked.status === "hold") await notifyDepositProcessing(ctx, marked);
     return;
   }
-  const patch = { depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId, depositProcessingAt: null };
+  const patch = { depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId, depositProcessingAt: null, schedule: withInstalmentPaid(b.schedule, 0, ctx.now().toISOString()) };
   if (b.status !== "hold") {
     // Paid after the hold lapsed or was cancelled: record it so staff can refund.
     await ctx.db.update(hallBookings).set(patch).where(eq(hallBookings.id, b.id));
@@ -401,6 +463,90 @@ export async function complete(ctx: AppContext, merchantId: string, bookingId: s
   if (b.status !== "confirmed") throw conflict(`Only confirmed bookings can be completed (this one is ${b.status})`);
   const [row] = await ctx.db.update(hallBookings).set({ status: "completed" }).where(eq(hallBookings.id, b.id)).returning();
   return row!;
+}
+
+// ---------------------------------------------------------------------------
+// Staged payments recorded by hand
+// ---------------------------------------------------------------------------
+/**
+ * Record an instalment received by e-transfer, cash or cheque: a ledger row (hall_instalment) and the instalment marked
+ * paid once its ledger total covers it. Instalment 0 is the deposit: it sets depositPaidAt, and confirms a hold when the
+ * hall is set to confirm on the first payment. Bookings made before schedules existed get one built from the hall template.
+ */
+export async function recordPayment(ctx: AppContext, staff: StaffContext, bookingId: string, body: z.infer<typeof paymentsManualApi.recordPaymentBody>): Promise<HallBooking> {
+  const merchant = staff.merchant;
+  const b0 = await getBooking(ctx.db, merchant.id, bookingId);
+  if (b0.status === "cancelled" || b0.status === "completed") throw conflict(`Booking is ${b0.status}`);
+  const today = todayFor(ctx, merchant);
+  assertNotFuture(body.receivedOn, today);
+  const hall = await getHall(ctx.db, merchant.id, b0.hallId);
+  const tz = merchant.timezone || "America/Toronto";
+  let schedule = b0.schedule ?? fixScheduleSum(restaurantApi.buildHallSchedule(b0.totalCents, scheduleTemplate(hall), localDate(b0.startsAt, tz), localDate(b0.createdAt, tz)), b0.totalCents);
+  if (!b0.schedule && b0.depositPaidAt && schedule[0]) schedule = withInstalmentPaid(schedule, 0, b0.depositPaidAt.toISOString())!;
+  const index = body.instalmentIndex ?? Math.max(0, schedule.findIndex((r) => !r.paidAt));
+  const row = schedule[index];
+  if (!row) throw badRequest("That payment step doesn't exist on this booking", { instalmentIndex: index });
+  if (row.paidAt) throw conflict(`"${row.label}" is already paid`);
+  await addLedger(ctx, staff, ctx.db, { subjectType: "hall_instalment", subjectId: b0.id, instalmentIndex: index, body });
+  const paidForRow = (await liveLedger(ctx.db, "hall_instalment", b0.id)).filter((l) => l.instalmentIndex === index).reduce((s, l) => s + l.amountCents, 0);
+  const covered = paidForRow >= row.amountCents;
+  const nextSchedule = covered ? schedule.map((r, k) => (k === index ? { ...r, paidAt: body.receivedOn } : r)) : schedule;
+  const patch: Partial<typeof hallBookings.$inferInsert> = { schedule: nextSchedule, ...(index === 0 && covered ? { depositPaidAt: new Date(`${body.receivedOn}T12:00:00Z`) } : {}) };
+  let [b] = await ctx.db.update(hallBookings).set(patch).where(eq(hallBookings.id, b0.id)).returning();
+  if (index === 0 && covered && b!.status === "hold" && hall.autoConfirmOnFirstPayment) {
+    const confirmed = await confirmBooking(ctx, b!, {});
+    if (confirmed) {
+      b = confirmed;
+      await notifyConfirmed(ctx, confirmed);
+    }
+  }
+  if (body.sendReceipt) {
+    await notifyCustomer(ctx, { userId: b0.userId, merchantId: merchant.id, title: `${merchant.name}: payment received`, body: `${merchant.name} received ${receiptLine(body.amountCents, body.method, body.receivedOn)} for your hall booking on ${formatLocalDateTime(b0.startsAt, tz)}.${covered ? "" : " The rest of this payment is still due."} Thank you.`, sms: false, data: { type: "hall_payment", hallBookingId: b0.id } });
+  }
+  return b!;
+}
+
+/**
+ * Job: payment-due notices (an instalment due within 3 days, once per instalment) and hold-expiry notices (24 h and 4 h
+ * before the hold lapses). `lastReminderKey` makes every notice go out once; quiet hours (21:00 to 08:00) wait for the next run.
+ */
+export async function sendBanquetReminders(ctx: AppContext): Promise<number> {
+  const now = ctx.now();
+  const rows = await ctx.db.select().from(hallBookings).where(inArray(hallBookings.status, ["hold", "confirmed"])).limit(1000);
+  let sent = 0;
+  for (const b of rows) {
+    const merchant = await loadMerchant(ctx.db, b.merchantId);
+    if (!merchant || inQuietHours(now, merchant.timezone || "America/Toronto")) continue;
+    const today = localDate(now, merchant.timezone || "America/Toronto");
+    let key: string | null = null;
+    let title = "";
+    let text = "";
+    if (b.status === "hold" && b.holdExpiresAt) {
+      const left = b.holdExpiresAt.getTime() - now.getTime();
+      if (left > 0 && left <= 4 * 3_600_000) key = "hold4";
+      else if (left > 0 && left <= 24 * 3_600_000) key = "hold24";
+      if (key) {
+        title = `${merchant.name}: your hold ends soon`;
+        text = `Your hold on the hall for ${formatLocalDateTime(b.startsAt, merchant.timezone)} ends ${formatLocalDateTime(b.holdExpiresAt, merchant.timezone)}. Pay the ${money(b.depositCents)} deposit to keep the date${b.referenceCode ? ` (reference ${b.referenceCode})` : ""}.`;
+      }
+    }
+    if (!key && b.schedule) {
+      const i = b.schedule.findIndex((r) => !r.paidAt);
+      const r = b.schedule[i];
+      // The deposit of a live hold is covered by the hold notices above.
+      if (r && i > 0 && Date.parse(`${r.dueOn}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`) <= 3 * 86_400_000) {
+        key = `due:${i}`;
+        title = `${merchant.name}: a hall payment is due`;
+        text = `${r.label}: ${money(r.amountCents)} is due ${r.dueOn} for your hall booking on ${formatLocalDateTime(b.startsAt, merchant.timezone)}.${b.referenceCode ? ` Reference ${b.referenceCode}.` : ""}`;
+      }
+    }
+    if (!key || b.lastReminderKey === key) continue;
+    const marked = await ctx.db.update(hallBookings).set({ lastReminderKey: key }).where(and(eq(hallBookings.id, b.id), or(isNull(hallBookings.lastReminderKey), sql`${hallBookings.lastReminderKey} <> ${key}`))).returning({ id: hallBookings.id });
+    if (!marked.length) continue;
+    await notifyCustomer(ctx, { userId: b.userId, merchantId: merchant.id, title, body: text, sms: false, data: { type: "hall_payment_due", hallBookingId: b.id, key } });
+    sent++;
+  }
+  return sent;
 }
 
 // ---------------------------------------------------------------------------

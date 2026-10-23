@@ -1,11 +1,13 @@
 "use client";
 /**
- * Split bill sheet for one order (restaurant.split_bills): even N ways or by items, then one pay link per
- * guest with a copy button and the paid state. Shares are made by the API (the cents always add up).
+ * Split bill sheet for one order (restaurant.split_bills, frame 02): even N ways, or by items with a dish given to one guest
+ * or shared by several, and a payment method per guest (pay link, card at the table, cash). The shares are made by the API
+ * with the same rule as the preview here (restaurantApi.splitCents: the odd cent goes to the first guest, so the shares always
+ * add up to the bill). A cash or table-card share is marked paid by staff; a link share is paid by the guest.
  */
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Check, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { commerceApi, restaurantApi } from "@ll/shared";
+import { restaurantApi, type commerceApi } from "@ll/shared";
 import { Dot, ErrorLine, Meter, Segmented, SidePanel as Sheet, SkeletonRows } from "../kit";
 import { useMerchant } from "../MerchantContext";
 import { CopyButton } from "./shared";
@@ -16,48 +18,99 @@ import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type Mode = "even" | "items";
+type Tender = restaurantApi.SplitTender;
 export const splitLink = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/pay/split/${token}`;
+
+const TENDER_LABEL: Record<Tender, string> = { link: "Pay link", card: "Card at table", cash: "Cash" };
+const TENDERS: Tender[] = ["link", "card", "cash"];
+const CHIP_COLORS = "bg-fg text-bg border-fg";
 
 /** Can this order still be split? Open pay-at-pickup bills only (the API enforces the same). */
 export const canSplit = (o: Pick<commerceApi.OrderDto, "status" | "paymentMethod" | "paymentStatus" | "kind">) =>
   o.paymentMethod === "at_pickup" && o.kind !== "preorder" && o.paymentStatus !== "paid" && o.paymentStatus !== "refunded" && o.status !== "cancelled" && o.status !== "refunded";
 
+/** One assignable row of the bill: a whole order line, or one unit of a line with two or fewer units. */
+export interface SplitRow {
+  ref: string;
+  label: string;
+  priceCents: number;
+  note?: string;
+}
+
+/** Lines of one or two units are split into one row per unit ("Chicken Tikka (1 of 2)"); bigger lines stay one shared row. */
+export function splitRows(items: commerceApi.OrderDto["items"]): SplitRow[] {
+  const rows: SplitRow[] = [];
+  for (const i of items) {
+    if (i.quantity <= 2) {
+      for (let u = 1; u <= i.quantity; u++) rows.push({ ref: i.quantity === 1 ? i.id : `${i.id}:${u}`, label: i.quantity === 1 ? i.name : `${i.name} (${u} of ${i.quantity})`, priceCents: i.unitPriceCents });
+    } else rows.push({ ref: i.id, label: `${i.name} × ${i.quantity}`, priceCents: i.unitPriceCents, note: `${formatMoney(i.unitPriceCents)} each, shared` });
+  }
+  return rows;
+}
+
 export function SplitSheet({ order, onClose, onChanged }: { order: commerceApi.OrderDto | null; onClose: () => void; onChanged?: () => void }) {
   return order ? <Body key={order.id} order={order} onClose={onClose} onChanged={onChanged} /> : null;
 }
 
+/** "1 pay link, 1 card, 1 cash" for the button. */
+export function tenderSummary(tenders: Tender[]): string {
+  const n = (t: Tender) => tenders.filter((x) => x === t).length;
+  return [n("link") ? `${n("link")} pay ${n("link") === 1 ? "link" : "links"}` : "", n("card") ? `${n("card")} card` : "", n("cash") ? `${n("cash")} cash` : ""].filter(Boolean).join(", ");
+}
+
 function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onClose: () => void; onChanged?: () => void }) {
-  const { api } = useMerchant();
+  const { api, detail } = useMerchant();
   const act = useAction();
   const state = useApi(() => api.splits.list(order.id), [api, order.id], { pollMs: 8000 });
   const [mode, setMode] = useState<Mode>("even");
   const [ways, setWays] = useState(2);
-  const [guests, setGuests] = useState(2);
-  const [assign, setAssign] = useState<Record<string, number>>({});
+  const [guests, setGuests] = useState(3);
+  const [names, setNames] = useState<string[]>([]);
+  const [tenders, setTenders] = useState<Tender[]>([]);
+  const [assign, setAssign] = useState<Record<string, number[]>>({});
   const [replacing, setReplacing] = useState(false);
+  const [tips, setTips] = useState<Record<string, string>>({});
+
+  const rows = useMemo(() => splitRows(order.items), [order.items]);
+  const count = mode === "even" ? ways : guests;
+  const nameOf = (g: number) => names[g]?.trim() || `Guest ${g + 1}`;
+  const tenderOf = (g: number): Tender => tenders[g] ?? "link";
+
+  // Each row starts on guest 1; keep assignments inside the guest list when it shrinks.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAssign((a) => Object.fromEntries(rows.map((r) => [r.ref, (a[r.ref] ?? [0]).filter((g) => g < guests).length ? (a[r.ref] ?? [0]).filter((g) => g < guests) : [0]])));
+  }, [rows, guests]);
+
+  const refsByGuest = useMemo(() => Array.from({ length: guests }, (_, g) => rows.filter((r) => (assign[r.ref] ?? [0]).includes(g)).map((r) => r.ref)), [rows, assign, guests]);
+  const emptyGuest = mode === "items" && refsByGuest.some((r) => r.length === 0);
+  const shares = useMemo(() => {
+    try {
+      if (mode === "even") return restaurantApi.splitCents(order.totalCents, new Array<number>(ways).fill(1));
+      if (emptyGuest) return Array.from({ length: guests }, () => 0);
+      return restaurantApi.splitByItems(order.totalCents, order.items.map((i) => ({ id: i.id, quantity: i.quantity, unitPriceCents: i.unitPriceCents })), refsByGuest);
+    } catch {
+      return Array.from({ length: count }, () => 0);
+    }
+  }, [mode, ways, guests, order, refsByGuest, emptyGuest, count]);
+  /** Each guest's food before tax: a shared dish counts 1/k of its price for each guest. */
+  const food = useMemo(() => {
+    const out = Array.from({ length: guests }, () => 0);
+    for (const r of rows) {
+      const owners = assign[r.ref] ?? [0];
+      for (const g of owners) if (g < guests) out[g]! += r.priceCents / owners.length;
+    }
+    return out.map(Math.round);
+  }, [rows, assign, guests]);
 
   const existing = state.data?.items ?? [];
   const showResult = existing.length > 0 && !replacing;
   const anyPaid = existing.some((s) => s.status === "paid");
 
-  // Each order line starts on guest 1; fill in new lines as they appear.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAssign((a) => Object.fromEntries(order.items.map((i) => [i.id, Math.min(a[i.id] ?? 0, guests - 1)])));
-  }, [order.items, guests]);
-
-  const shares = useMemo(() => {
-    if (mode === "even") return even(order.totalCents, ways);
-    const w = Array.from({ length: guests }, (_, g) => order.items.filter((i) => assign[i.id] === g).reduce((s, i) => s + i.unitPriceCents * i.quantity, 0));
-    return w.some((x) => x > 0) ? alloc(order.totalCents, w) : w;
-  }, [mode, ways, guests, assign, order]);
-  const emptyGuest = mode === "items" && Array.from({ length: guests }, (_, g) => order.items.some((i) => assign[i.id] === g)).includes(false);
-
   async function create() {
-    const body: restaurantApi.CreateSplitsBody =
-      mode === "even"
-        ? { mode: "even", ways }
-        : { mode: "items", splits: Array.from({ length: guests }, (_, g) => ({ label: `Guest ${g + 1}`, itemIds: order.items.filter((i) => assign[i.id] === g).map((i) => i.id) })) };
+    const labels = Array.from({ length: count }, (_, g) => nameOf(g));
+    const ts = Array.from({ length: count }, (_, g) => tenderOf(g));
+    const body: restaurantApi.CreateSplitsBody = mode === "even" ? { mode: "even", ways, labels, tenders: ts } : { mode: "items", splits: refsByGuest.map((itemIds, g) => ({ label: labels[g], itemIds, tender: ts[g] })) };
     const r = await act.run(() => api.splits.create(order.id, body));
     if (r) {
       state.setData(r);
@@ -75,9 +128,40 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
       onChanged?.();
     }
   }
+  async function markPaid(splitId: string, tender: "cash" | "card") {
+    const tip = Math.round(Number.parseFloat((tips[splitId] ?? "").replace(/[^0-9.]/g, "")) * 100);
+    const r = await act.run(() => api.splits.markPaid(order.id, splitId, { tender, tipCents: Number.isFinite(tip) ? tip : 0 }));
+    if (r) {
+      state.setData(r);
+      onChanged?.();
+    }
+  }
+  async function changeTender(splitId: string, tender: Tender) {
+    const r = await act.run(() => api.splits.setTender(order.id, splitId, tender));
+    if (r) state.setData(r);
+  }
+
+  const subtitle = `${formatMoney(order.totalCents)} with tax · ${showResult ? existing.length : count} guests`;
 
   return (
-    <Sheet open onClose={onClose} title={`Split bill · order #${order.number}`} subtitle={`${formatMoney(order.totalCents)} including tax and tip`} label="Split bill" width={500}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={`Split bill · order #${order.number}`}
+      subtitle={subtitle}
+      label="Split bill"
+      width={520}
+      footer={
+        state.data && !showResult ? (
+          <>
+            {replacing ? <Button variant="ghost" onClick={() => setReplacing(false)}>Keep current split</Button> : null}
+            <Button className="w-full sm:w-auto" loading={act.busy} disabled={emptyGuest} onClick={create}>
+              Create split: {tenderSummary(Array.from({ length: count }, (_, g) => tenderOf(g)))}
+            </Button>
+          </>
+        ) : undefined
+      }
+    >
       <div className="flex flex-col gap-5">
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         {state.error && !state.data ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
@@ -99,15 +183,43 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
                     <p className="min-w-0 truncate text-body-strong text-fg">{s.label}</p>
                     <p className="text-body-strong tabular text-fg">{formatMoney(s.amountCents)}</p>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    {s.status === "paid" ? <Dot tone="positive">Paid{s.tipCents ? ` · ${formatMoney(s.tipCents)} tip` : ""}</Dot> : <Dot tone="neutral">Waiting to pay</Dot>}
-                    {s.status === "open" ? <CopyButton text={splitLink(s.payToken)} label="Copy link" /> : null}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {s.status === "paid" ? <Dot tone="positive">Paid {s.paidWith === "cash" ? "in cash" : s.tender === "card" ? "by card at the table" : "by card"}{s.tipCents ? ` · ${formatMoney(s.tipCents)} tip` : ""}</Dot> : <Dot tone="neutral">Waiting · {TENDER_LABEL[s.tender]}</Dot>}
+                    {s.status === "open" ? (
+                      <label className="inline-flex items-center gap-1.5 text-meta text-fg-muted">
+                        <span className="sr-only">How {s.label} pays</span>
+                        <select value={s.tender} onChange={(e) => void changeTender(s.id, e.target.value as Tender)} className="h-8 rounded-input border border-line bg-bg px-2 text-meta text-fg focus-visible:focus-ring">
+                          {TENDERS.map((t) => (
+                            <option key={t} value={t}>{TENDER_LABEL[t]}</option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                   </div>
-                  {s.status === "open" ? <p className="break-all font-mono text-caption text-fg-muted">/pay/split/{s.payToken}</p> : null}
+                  {s.status === "open" && s.tender === "link" ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CopyButton text={splitLink(s.payToken)} label="Copy link" />
+                      <a className="inline-flex h-8 items-center rounded-input border border-line px-3 text-meta font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring" target="_blank" rel="noopener noreferrer" href={`https://wa.me/?text=${encodeURIComponent(`Your share of the bill at ${detail.merchant.name}: ${splitLink(s.payToken)}`)}`}>
+                        Send on WhatsApp
+                      </a>
+                      <span className="break-all font-mono text-caption text-fg-muted">/pay/split/{s.payToken}</span>
+                    </div>
+                  ) : null}
+                  {s.status === "open" && s.tender !== "link" ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 text-meta text-fg-muted">
+                        Tip $
+                        <input inputMode="decimal" aria-label={`Tip for ${s.label}`} value={tips[s.id] ?? ""} onChange={(e) => setTips({ ...tips, [s.id]: e.target.value })} placeholder="0" className="h-8 w-16 rounded-input border border-line bg-bg px-2 text-meta text-fg tabular focus-visible:focus-ring" />
+                      </label>
+                      <Button size="sm" iconStart={Check} loading={act.busy} onClick={() => void markPaid(s.id, s.tender === "card" ? "card" : "cash")}>
+                        Mark paid {s.tender === "card" ? "by card" : "in cash"}
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
-            <p className="text-meta text-fg-muted">Send each guest their own link. Each one pays by card and can add a tip. The order is marked paid when every share is.</p>
+            <p className="text-meta text-fg-muted">A guest on a pay link pays by card and can add a tip. Cash and card at the table are marked paid here. The order is marked paid when every share is.</p>
             {!anyPaid && !state.data.orderPaid ? (
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setReplacing(true)}>
@@ -124,57 +236,70 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
         {state.data && !showResult ? (
           <>
             <Segmented label="Split by" value={mode} onChange={setMode} options={[{ value: "even", label: "Evenly" }, { value: "items", label: "By items" }]} />
-            {mode === "even" ? (
-              <Stepper label="Ways" value={ways} min={2} max={30} onChange={setWays} />
-            ) : (
-              <>
-                <Stepper label="Guests" value={guests} min={2} max={12} onChange={setGuests} />
-                <ul className="divide-y divide-line border-y border-line" aria-label="Order items">
-                  {order.items.map((i) => (
-                    <li key={i.id} className="flex items-center gap-3 py-2">
+            <Stepper label={mode === "even" ? "Ways" : "Guests"} value={count} min={2} max={mode === "even" ? 30 : 12} onChange={mode === "even" ? setWays : setGuests} />
+            <div className="grid gap-2 sm:grid-cols-3" aria-label="Guest names">
+              {Array.from({ length: Math.min(count, 12) }, (_, g) => (
+                <input key={g} aria-label={`Name of guest ${g + 1}`} placeholder={`Guest ${g + 1}`} value={names[g] ?? ""} maxLength={60} onChange={(e) => setNames((n) => Object.assign([...n], { [g]: e.target.value }))} className="h-9 rounded-input border border-line bg-bg px-3 text-meta text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
+              ))}
+            </div>
+
+            {mode === "items" ? (
+              <ul className="divide-y divide-line border-y border-line" aria-label="Order items">
+                {rows.map((r) => {
+                  const owners = assign[r.ref] ?? [0];
+                  return (
+                    <li key={r.ref} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-body text-fg">
-                          {i.quantity} × {i.name}
-                        </p>
-                        <p className="text-meta text-fg-muted tabular">{formatMoney(i.lineTotalCents)}</p>
+                        <p className="truncate text-body text-fg">{r.label}</p>
+                        <p className="text-meta text-fg-muted tabular">{r.note ?? (owners.length > 1 ? `${formatMoney(r.priceCents)} · shared` : formatMoney(r.priceCents))}</p>
                       </div>
-                      <label className="shrink-0">
-                        <span className="sr-only">Guest for {i.name}</span>
-                        <select value={assign[i.id] ?? 0} onChange={(e) => setAssign({ ...assign, [i.id]: Number(e.target.value) })} className="h-10 rounded-input border border-line bg-bg px-3 text-meta focus-visible:focus-ring">
-                          {Array.from({ length: guests }, (_, g) => (
-                            <option key={g} value={g}>
-                              Guest {g + 1}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <div role="group" aria-label={`Who has ${r.label}`} className="flex flex-wrap gap-1.5">
+                        {Array.from({ length: guests }, (_, g) => {
+                          const on = owners.includes(g);
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => setAssign({ ...assign, [r.ref]: on ? (owners.length > 1 ? owners.filter((x) => x !== g) : owners) : [...owners, g].sort((a, b) => a - b) })}
+                              className={cn("inline-flex h-7 max-w-[88px] items-center truncate rounded-full border px-2.5 text-caption font-medium focus-visible:focus-ring", on ? CHIP_COLORS : "border-line text-fg-muted hover:bg-bg-subtle")}
+                            >
+                              {nameOf(g)}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </li>
-                  ))}
-                </ul>
-              </>
-            )}
+                  );
+                })}
+              </ul>
+            ) : null}
+
             <div aria-label="Each share" className="rounded-card border border-line">
-              <p className="border-b border-line px-4 py-2 text-meta text-fg-muted">Each pays, with their share of tax and tip</p>
               <ul className="divide-y divide-line">
-                {shares.map((c, i) => (
-                  <li key={i} className="flex items-center justify-between px-4 py-2.5 text-body">
-                    <span>Guest {i + 1}</span>
-                    <span className="tabular font-medium">{formatMoney(c)}</span>
+                {Array.from({ length: count }, (_, g) => (
+                  <li key={g} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-body-strong text-fg">{nameOf(g)}</p>
+                      {mode === "items" ? <p className="text-meta text-fg-muted tabular">{formatMoney(food[g] ?? 0)} + tax</p> : null}
+                    </div>
+                    <label className="shrink-0">
+                      <span className="sr-only">How {nameOf(g)} pays</span>
+                      <select value={tenderOf(g)} onChange={(e) => setTenders((t) => Object.assign(Array.from({ length: count }, (_, i) => t[i] ?? "link"), { [g]: e.target.value }))} className="h-8 rounded-full border border-line bg-bg px-3 text-meta text-fg focus-visible:focus-ring">
+                        {TENDERS.map((t) => (
+                          <option key={t} value={t}>{TENDER_LABEL[t]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <span className="w-20 shrink-0 text-end text-title tabular font-semibold text-fg">{formatMoney(shares[g] ?? 0)}</span>
                   </li>
                 ))}
               </ul>
+              <p className="border-t border-line bg-bg-subtle px-4 py-2.5 text-meta text-fg-muted">
+                Odd cents go to the first guest so the shares add to {formatMoney(order.totalCents)}. Tip is added per guest when they pay.
+              </p>
             </div>
-            {emptyGuest ? <p className="text-meta text-fg-muted">Every guest needs at least one item.</p> : null}
-            <div className="flex flex-wrap gap-2">
-              <Button loading={act.busy} disabled={emptyGuest} onClick={create}>
-                Create {mode === "even" ? ways : guests} pay links
-              </Button>
-              {replacing ? (
-                <Button variant="ghost" onClick={() => setReplacing(false)}>
-                  Keep current split
-                </Button>
-              ) : null}
-            </div>
+            {emptyGuest ? <p className="text-meta text-negative">Every guest needs at least one item.</p> : null}
           </>
         ) : null}
       </div>
@@ -191,7 +316,7 @@ function Stepper({ label, value, min, max, onChange }: { label: string; value: n
         <button type="button" aria-label={`Fewer ${label.toLowerCase()}`} disabled={value <= min} onClick={() => onChange(value - 1)} className={b}>
           <Minus aria-hidden className="size-4" />
         </button>
-        <output aria-live="polite" className={cn("w-8 text-center text-title tabular")}>{value}</output>
+        <output aria-live="polite" className="w-8 text-center text-title tabular">{value}</output>
         <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={value >= max} onClick={() => onChange(value + 1)} className={b}>
           <Plus aria-hidden className="size-4" />
         </button>
@@ -199,19 +324,3 @@ function Stepper({ label, value, min, max, onChange }: { label: string; value: n
     </div>
   );
 }
-
-/** Same cent-splitting rule as the API, so the preview matches what the guests are charged. */
-function alloc(total: number, weights: number[]): number[] {
-  const sum = weights.reduce((a, b) => a + b, 0);
-  if (sum <= 0) return weights.map(() => 0);
-  const exact = weights.map((w) => (total * w) / sum);
-  const out = exact.map(Math.floor);
-  let left = total - out.reduce((a, b) => a + b, 0);
-  for (const { i } of exact.map((e, i) => ({ i, r: e - Math.floor(e) })).sort((a, b) => b.r - a.r || a.i - b.i)) {
-    if (left <= 0) break;
-    out[i]!++;
-    left--;
-  }
-  return out;
-}
-const even = (total: number, n: number) => alloc(total, new Array<number>(n).fill(1));

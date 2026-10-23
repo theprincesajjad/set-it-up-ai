@@ -10,6 +10,7 @@ import { featureLocked } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import * as bookingsSvc from "../../services/bookings.js";
 import * as catalog from "../../services/catalog.js";
+import * as dropoffSvc from "../../services/dropoff.js";
 import { requirePermission, type StaffPermission } from "../../services/commerceShared.js";
 import { getMerchantFeatures, requireFeature } from "../../services/features.js";
 import * as ordersSvc from "../../services/orders.js";
@@ -141,6 +142,29 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const body = parse(commerceApi.updateBookingBody, req.body);
     await bookingsSvc.setBookingStatus(ctx.db, staff.merchant, req.params.bookingId, body.status);
     return bookingsSvc.getBookingDto(ctx.db, { bookingId: req.params.bookingId, merchantId: staff.merchant.id });
+  });
+
+  // ---------------------------------------------------------------- rolling drop-off slots (settings; slots follow Locations hours)
+  app.get<{ Params: MerchantParams }>("/merchants/:merchantId/dropoff-settings", async (req) => {
+    const staff = await staffFor(req, "staff", ["booking.dropoff_scheduling"]);
+    return dropoffSvc.dropoffSettings(staff.merchant);
+  });
+
+  app.put<{ Params: MerchantParams }>("/merchants/:merchantId/dropoff-settings", async (req) => {
+    const staff = await staffFor(req, "manager", ["booking.dropoff_scheduling"], "bookings.manage");
+    const body = parse(commerceApi.updateDropoffSettingsBody, req.body ?? {});
+    return dropoffSvc.updateDropoffSettings(ctx, staff.merchant, body);
+  });
+
+  app.post<{ Params: MerchantParams }>("/merchants/:merchantId/dropoff-settings/block", async (req) => {
+    const staff = await staffFor(req, "manager", ["booking.dropoff_scheduling"], "bookings.manage");
+    const body = parse(commerceApi.blockDropoffDayBody, req.body);
+    return dropoffSvc.blockDropoffDay(ctx, staff.merchant, body.date);
+  });
+
+  app.delete<{ Params: MerchantParams & { date: string } }>("/merchants/:merchantId/dropoff-settings/block/:date", async (req) => {
+    const staff = await staffFor(req, "manager", ["booking.dropoff_scheduling"], "bookings.manage");
+    return dropoffSvc.unblockDropoffDay(ctx, staff.merchant, parse(commerceApi.blockDropoffDayBody, { date: req.params.date }).date);
   });
 
   // ---------------------------------------------------------------- customer orders

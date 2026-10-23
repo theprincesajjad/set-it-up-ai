@@ -23,6 +23,7 @@ import { onDepositPayment } from "./quotes.js";
 import { onSplitPayment } from "./splits.js";
 import { onCateringDeposit } from "./catering.js";
 import { onHallDeposit } from "./banquet.js";
+import { onCardSaved as onAppointmentCardSaved, onDeposit as onAppointmentDeposit } from "./appointments-booking.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -227,15 +228,22 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
     });
   else if (kind === "catering_deposit") await onCateringDeposit(ctx, id, String(pi.id), outcome);
   else if (kind === "hall_deposit") await onHallDeposit(ctx, id, String(pi.id), outcome);
+  else if (kind === "appointment_deposit")
+    await onAppointmentDeposit(ctx, id, String(pi.id), outcome, {
+      paymentMethodId: typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null),
+      customerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
+    });
 }
 
 /** setup_intent.succeeded: a customer saved a payment method ("change card"). */
 async function onSetupIntent(ctx: AppContext, si: Obj) {
   const kind = si.metadata?.ll_kind as string | undefined;
   const id = si.metadata?.ll_id as string | undefined;
-  if (kind !== "tiffin_setup" || !id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+  if ((kind !== "tiffin_setup" && kind !== "appointment_setup") || !id || !/^[0-9a-f-]{36}$/i.test(id)) return;
   const pm = typeof si.payment_method === "string" ? si.payment_method : si.payment_method?.id;
-  if (pm) await onTiffinSetup(ctx, id, String(si.id), String(pm));
+  if (!pm) return;
+  if (kind === "appointment_setup") await onAppointmentCardSaved(ctx, id, String(si.id), String(pm));
+  else await onTiffinSetup(ctx, id, String(si.id), String(pm));
 }
 
 /** Apply one event. Exported for the dev simulator; webhooks go through processWebhookEvent. */

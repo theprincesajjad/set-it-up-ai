@@ -1,25 +1,27 @@
 "use client";
-import { BackLink, PageHeader, Panel, StatusDot } from "@/components/dashboard/kit";
-import { Plus, Send, Trash2 } from "lucide-react";
+import { Phone, Printer } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { serviceApi, type serviceApi as S } from "@ll/shared";
+import { LOCALES, type Locale, type serviceApi as S } from "@ll/shared";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
+import { BackLink, PageHeader, StatusDot } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
+import { ApproveByPhoneDialog } from "@/components/dashboard/service/ApproveByPhoneDialog";
+import { CustomerPanel } from "@/components/dashboard/service/CustomerPanel";
+import { IntakePanel } from "@/components/dashboard/service/IntakePanel";
+import { InvoicePanel } from "@/components/dashboard/service/InvoicePanel";
+import { QuoteBuilder, linesFromQuote } from "@/components/dashboard/service/QuoteBuilder";
+import { QuotePanel } from "@/components/dashboard/service/QuotePanel";
+import { StatusPanel } from "@/components/dashboard/service/StatusPanel";
 import { Banner } from "@/components/ui/Banner";
-import { Button, IconButton } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
-import { Select } from "@/components/ui/Select";
-import { TextField } from "@/components/ui/TextField";
-import { Timeline, ticketSteps } from "@/components/ui/Timeline";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
-import { formatDateTime, formatMoney } from "@/lib/format";
-import { useAction, useApi } from "@/lib/dashboard/useApi";
-
-type Line = { description: string; quantity: string; unit: string; kind: "labour" | "part" | "fee" | "other" };
-const HST = 0.13;
+import { isApiError } from "@/lib/api/errors";
+import { deviceTitle, dueText } from "@/lib/dashboard/tickets";
+import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
+import { formatMoney } from "@/lib/format";
 
 export default function TicketPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
@@ -35,169 +37,187 @@ export default function TicketPage() {
   );
 }
 
+function printTag(t: S.TicketDto, shop: string) {
+  const w = window.open("", "_blank", "width=420,height=520");
+  if (!w) return;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  w.document.write(`<!doctype html><title>Tag #${t.number}</title><body style="font-family:system-ui;padding:24px"><p style="margin:0;color:#666">${esc(shop)}</p><h1 style="font-size:64px;margin:4px 0">#${t.number}</h1><p style="font-size:22px;margin:0">${esc(deviceTitle(t))}</p><p style="margin:8px 0">${esc(t.customer?.name ?? "")} ${esc(t.customer?.phone ?? "")}</p><p style="margin:0;color:#666">${esc(t.issue)}</p>${t.shelfLocation ? `<p style="font-size:28px;margin-top:16px">Shelf ${esc(t.shelfLocation)}</p>` : ""}</body>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
 function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: (d: S.TicketDetailResponse) => void; reload: () => Promise<void> }) {
-  const { api, enabled } = useMerchant();
+  const { api, enabled, detail } = useMerchant();
   const toast = useToast();
   const t = d.ticket;
   const act = useAction();
-  const [status, setStatus] = useState<string>("");
-  const [note, setNote] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ description: "", quantity: "1", unit: "", kind: "part" }, { description: "Labour", quantity: "1", unit: "", kind: "labour" }]);
-  const [diagnosis, setDiagnosis] = useState("");
-  const [deposit, setDeposit] = useState("0");
-  const [internal, setInternal] = useState("");
-  const [visible, setVisible] = useState(false);
-  const subtotal = lines.reduce((s, l) => s + Math.round((Number.parseFloat(l.unit) || 0) * 100) * (Number.parseInt(l.quantity, 10) || 0), 0);
-  const tax = Math.round(subtotal * HST);
-  const total = subtotal + tax;
-  const latest = d.quotes[0];
-  const openInvoice = d.invoices.find((i) => i.status === "open" || i.status === "draft");
+  const phoneAct = useAction();
+  const now = new Date(useNow());
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const [revising, setRevising] = useState(false);
+  const [capError, setCapError] = useState<string | null>(null);
+  const latest = d.quotes.find((q) => q.status !== "superseded") ?? null;
+  const approved = d.quotes.find((q) => q.status === "approved") ?? null;
   const closed = t.status === "picked_up" || t.status === "cancelled";
+  const canQuote = !closed && enabled("service.quote_approval");
+  const showBuilder = canQuote && (!latest || latest.status === "declined" || latest.status === "expired" || revising);
+  const first = t.customer?.name?.trim().split(/\s+/)[0] ?? "customer";
+  const lang = (t.customer?.language ?? "en") as Locale;
+  const checkedIn = d.events.find((e) => e.status === "intake")?.createdAt ?? t.createdAt;
+  const due = dueText(t, now);
+  const sub = [t.customer?.name ?? "Customer", t.customer?.phone, lang !== "en" ? `speaks ${LOCALES[lang].englishName}` : null, d.customerSummary ? `${d.customerSummary.visits} ${d.customerSummary.visits === 1 ? "visit" : "visits"}` : null, due].filter(Boolean).join(" · ");
 
   return (
     <>
-      <PageHeader title={`#${t.number} · ${[t.itemDetails.make, t.itemDetails.model].filter(Boolean).join(" ") || t.itemKind}`} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="ticket" status={t.status} label={copy.ticketStatus[t.status]} />{t.customer?.name ?? "Customer"}{t.customer?.phone ? ` · ${t.customer.phone}` : ""}</span>} />
-      {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <Panel title="Issue">
-            <p className="text-body text-fg">{t.issue}</p>
-            {t.intakeNotes ? <p className="mt-2 border-s-[3px] border-line ps-3 text-meta text-fg-muted">{t.intakeNotes}</p> : null}
-            {Object.keys(t.itemDetails).length ? <p className="mt-2 text-meta text-fg-muted">{Object.entries(t.itemDetails).map(([k, v]) => `${k}: ${v}`).join(" · ")}</p> : null}
-          </Panel>
-
-          {!closed && enabled("service.quote_approval") ? (
-            <Panel title={latest && latest.status !== "superseded" ? "New quote (replaces the current one)" : "Quote"} description="Totals are recalculated by the server. Customers approve on their phone with a typed signature.">
-              <TextField type="textarea" label="Diagnosis" optionalLabel value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
-              <div className="mt-4 flex flex-col gap-2">
-                {lines.map((l, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_64px_96px_40px] items-end gap-2 sm:grid-cols-[1fr_120px_64px_96px_40px]">
-                    <TextField label={i === 0 ? "Description" : `Line ${i + 1}`} hideLabel={i > 0} value={l.description} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} />
-                    <div className="hidden sm:block">
-                      <Select hideLabel={i > 0} label="Type" value={l.kind} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, kind: e.target.value as Line["kind"] } : x)))} options={[{ value: "part", label: "Part" }, { value: "labour", label: "Labour" }, { value: "fee", label: "Fee" }, { value: "other", label: "Other" }]} />
-                    </div>
-                    <TextField label="Qty" hideLabel={i > 0} inputMode="numeric" value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, quantity: e.target.value.replace(/\D/g, "") } : x)))} />
-                    <TextField label="Price" hideLabel={i > 0} inputMode="decimal" prefix="$" value={l.unit} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))} />
-                    <IconButton icon={Trash2} label={`Remove line ${i + 1}`} size={40} onClick={() => setLines(lines.filter((_, j) => j !== i))} />
-                  </div>
-                ))}
-                <Button variant="ghost" size="sm" iconStart={Plus} className="self-start" onClick={() => setLines([...lines, { description: "", quantity: "1", unit: "", kind: "part" }])}>
-                  Add line
-                </Button>
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-1 text-meta">
-                <dt className="text-fg-muted">Subtotal</dt><dd className="text-end tabular-nums">{formatMoney(subtotal)}</dd>
-                <dt className="text-fg-muted">HST 13% (estimate)</dt><dd className="text-end tabular-nums">{formatMoney(tax)}</dd>
-                <dt className="text-body-strong">Total</dt><dd className="text-end text-body-strong tabular-nums">{formatMoney(total)}</dd>
-              </dl>
-              {enabled("service.deposits") ? (
-                <Select label="Deposit on approval" className="mt-3" value={deposit} onChange={(e) => setDeposit(e.target.value)} options={[{ value: "0", label: "No deposit" }, { value: "25", label: `25% (${formatMoney(Math.round(total * 0.25))})` }, { value: "50", label: `50% (${formatMoney(Math.round(total * 0.5))})` }]} />
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button iconStart={Send} loading={act.busy} onClick={async () => {
-                  const li = lines.filter((l) => l.description.trim() && l.unit).map((l) => ({ description: l.description.trim(), quantity: Number(l.quantity) || 1, unitPriceCents: Math.round(Number.parseFloat(l.unit) * 100), kind: l.kind }));
-                  if (!li.length) return act.setError("Add at least one priced line.");
-                  const q = await act.run(() => api.createQuote(t.id, { diagnosis: diagnosis.trim() || null, lineItems: li, depositPercent: Number(deposit) || undefined, send: true }));
-                  if (q) {
-                    toast({ message: "Quote sent by text", tone: "success" });
-                    await reload();
-                  }
-                }}>
-                  Send quote
-                </Button>
-              </div>
-            </Panel>
-          ) : null}
-
-          {d.quotes.length ? (
-            <Panel title="Quotes">
-              <ul className="divide-y divide-line">
-                {d.quotes.map((q) => (
-                  <li key={q.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
-                    <StatusDot domain="quote" status={q.status} />
-                    <span className="flex-1 tabular-nums text-fg">{formatMoney(q.totalCents)}{q.depositCents ? ` · ${formatMoney(q.depositCents)} deposit${q.depositPaidAt ? " paid" : ""}` : ""}</span>
-                    <span className="text-fg-muted">{q.signatureName ? `Signed by ${q.signatureName}` : q.sentAt ? `Sent ${formatDateTime(q.sentAt)}` : "Draft"}</span>
-                    {q.status === "draft" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.sendQuote(q.id)); await reload(); }}>Send</Button> : null}
-                    {q.approvalUrl ? <a href={q.approvalUrl} className="text-fg underline" target="_blank" rel="noreferrer">Customer link</a> : null}
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-          ) : null}
-
-          {enabled("service.invoices") ? (
-            <Panel title="Invoice">
-              {d.invoices.length ? (
-                <ul className="divide-y divide-line">
-                  {d.invoices.map((i) => (
-                    <li key={i.id} className="flex flex-wrap items-center gap-2 py-2 text-meta">
-                      <StatusDot domain="invoice" status={i.status} />
-                      <span className="flex-1 tabular-nums">#{i.number} · {formatMoney(i.totalCents)}{i.depositAppliedCents ? ` (deposit ${formatMoney(i.depositAppliedCents)})` : ""} · due {formatMoney(i.amountDueCents)}</span>
-                      {i.status === "open" ? <Button size="sm" variant="secondary" onClick={async () => { await act.run(() => api.markInvoicePaid(i.id, "card_terminal")); await reload(); }}>Paid at counter</Button> : null}
-                      {i.payUrl ? <a href={i.payUrl} className="text-fg underline" target="_blank" rel="noreferrer">Pay link</a> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {!openInvoice && d.quotes.some((q) => q.status === "approved") ? (
-                <Button className="mt-3" loading={act.busy} onClick={async () => {
-                  const r = await act.run(() => api.createInvoice(t.id, { fromQuote: true, send: true }));
-                  if (r) {
-                    toast({ message: "Invoice sent", tone: "success" });
-                    await reload();
-                  }
-                }}>
-                  Send invoice from quote
-                </Button>
-              ) : !d.invoices.length ? <p className="text-meta text-fg-muted">Invoice once the quote is approved.</p> : null}
-            </Panel>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <Panel title="Timeline">
-            <Timeline steps={ticketSteps(t.status, copy.ticketStatus, d.events)} />
-            {!closed ? (
-              <div className="mt-2 flex flex-col gap-3 border-t border-line pt-4">
-                <Select label="Update status" placeholder="Pick a status" value={status} onChange={(e) => setStatus(e.target.value)} options={serviceApi.MANUAL_TICKET_STATUSES.filter((s) => s !== t.status).map((s) => ({ value: s, label: copy.ticketStatus[s] ?? s }))} />
-                <TextField label="Note for the customer" optionalLabel value={note} onChange={(e) => setNote(e.target.value)} />
-                <Button disabled={!status} loading={act.busy} onClick={async () => {
-                  const r = await act.run(() => api.setTicketStatus(t.id, { status: status as S.TicketStatusBody["status"], note: note.trim() || null, allowUnpaid: false }));
+      <PageHeader
+        title={`#${t.number} ${deviceTitle(t)}`}
+        description={
+          <span className="flex flex-col gap-1">
+            <span className="flex flex-wrap items-center gap-2"><StatusDot domain="ticket" status={t.status} label={copy.ticketStatus[t.status]} /></span>
+            <span>{sub}</span>
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" iconStart={Printer} onClick={() => printTag(t, detail.merchant.name)}>Print tag</Button>
+            {t.customer?.phone ? <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${t.customer.phone}`}>Call {first}</Button> : null}
+            {!closed && t.status !== "ready" ? (
+              <Button
+                size="sm"
+                loading={act.busy}
+                onClick={async () => {
+                  const r = await act.run(() => api.setTicketStatus(t.id, { status: "ready", notify: true, allowUnpaid: false }));
                   if (r) {
                     onChange(r);
-                    setStatus("");
-                    setNote("");
-                    toast({ message: "Updated. The customer was notified.", tone: "success" });
+                    toast({ message: `Marked ready. ${first} was texted.`, tone: "success" });
                   }
-                }}>
-                  Update
-                </Button>
-              </div>
+                }}
+              >
+                Mark ready
+              </Button>
             ) : null}
-          </Panel>
-          <Panel title="Notes">
-            <ul className="flex flex-col gap-2 text-meta">
-              {d.events.filter((e) => e.note).map((e) => (
-                <li key={e.id}>
-                  <span className="text-fg">{e.note}</span>
-                  <span className="block text-caption text-fg-muted">{formatDateTime(e.createdAt)}{e.visibleToCustomer ? " · customer can see" : " · internal"}</span>
-                </li>
-              ))}
-            </ul>
-            <form className="mt-3 flex flex-col gap-2" onSubmit={async (e) => {
-              e.preventDefault();
-              if (!internal.trim()) return;
-              await act.run(() => api.addTicketEvent(t.id, { note: internal.trim(), visibleToCustomer: visible }));
-              setInternal("");
+          </div>
+        }
+      />
+      {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+      {t.lienEligible && t.status === "ready" ? (
+        <Banner tone="info" title="Ready for 60 days or more">
+          {t.lienNoticeSentAt ? "You recorded a notice before sale on this ticket." : "You can start your notice before sale under the Repair and Storage Liens Act. We have not sent anything and we never sell on your behalf. Ask your lawyer which steps apply."}
+        </Banner>
+      ) : null}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <IntakePanel ticket={t} checkedInAt={checkedIn} />
+          {latest && !revising && latest.status !== "declined" && latest.status !== "expired" ? (
+            <QuotePanel
+              quote={latest}
+              customerName={t.customer?.name ?? ""}
+              now={now}
+              busy={act.busy}
+              canAct={!closed}
+              onResend={async () => {
+                const r = await act.run(() => api.sendQuote(latest.id));
+                if (r) {
+                  toast({ message: `Quote texted to ${first}`, tone: "success" });
+                  await reload();
+                }
+              }}
+              onApproveByPhone={() => setPhoneOpen(true)}
+              onPreview={() => window.open(`${latest.approvalUrl}?preview=1`, "_blank", "noopener")}
+              onRevise={() => setRevising(true)}
+            />
+          ) : null}
+          {latest && (latest.status === "declined" || latest.status === "expired") && !revising ? (
+            <QuotePanel quote={latest} customerName={t.customer?.name ?? ""} now={now} busy={act.busy} canAct={!closed} onResend={() => undefined} onApproveByPhone={() => setPhoneOpen(true)} onPreview={() => undefined} onRevise={() => setRevising(true)} />
+          ) : null}
+          {showBuilder ? (
+            <QuoteBuilder
+              key={revising ? latest?.id : "new"}
+              ticketId={t.id}
+              revising={revising || !!latest}
+              initialLines={revising && latest ? linesFromQuote(latest) : undefined}
+              initialDiagnosis={revising ? (latest?.diagnosis ?? "") : undefined}
+              onCancel={revising ? () => setRevising(false) : undefined}
+              onSent={async () => {
+                setRevising(false);
+                await reload();
+              }}
+            />
+          ) : null}
+          {enabled("service.invoices") ? (
+            <InvoicePanel
+              invoices={d.invoices}
+              hasApprovedQuote={!!approved}
+              busy={act.busy}
+              error={capError}
+              canAct={!closed || t.status === "ready"}
+              onCreate={async () => {
+                setCapError(null);
+                const r = await act.run(async () => {
+                  try {
+                    return await api.createInvoice(t.id, { fromQuote: true, send: true });
+                  } catch (e) {
+                    // Over the approved quote by more than 10%: say so next to the invoice, not as a generic error.
+                    if (isApiError(e) && e.code === "over_estimate") {
+                      setCapError(e.message);
+                      return undefined;
+                    }
+                    throw e;
+                  }
+                });
+                if (r) {
+                  toast({ message: "Invoice sent", tone: "success" });
+                  await reload();
+                }
+              }}
+              onMarkPaid={async (id) => {
+                await act.run(() => api.markInvoicePaid(id, "card_terminal"));
+                await reload();
+              }}
+            />
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-6">
+          <StatusPanel
+            ticket={t}
+            events={d.events}
+            busy={act.busy}
+            onUpdate={async (v) => {
+              const r = await act.run(() => api.setTicketStatus(t.id, { status: v.status as S.TicketStatusBody["status"], note: v.note, notify: v.notify, allowUnpaid: false }));
+              if (r) {
+                onChange(r);
+                toast({ message: v.notify ? "Updated. The customer was notified." : "Updated.", tone: "success" });
+              }
+              return !!r;
+            }}
+            onNote={async (note, visible) => {
+              await act.run(() => api.addTicketEvent(t.id, { note, visibleToCustomer: visible }));
               await reload();
-            }}>
-              <TextField label="Add a note" hideLabel placeholder="Add a note" value={internal} onChange={(e) => setInternal(e.target.value)} />
-              <Checkbox label="Customer can see this" checked={visible} onChange={setVisible} />
-              <Button type="submit" variant="secondary" className="self-start">Add note</Button>
-            </form>
-          </Panel>
+            }}
+          />
+          <CustomerPanel ticket={t} summary={d.customerSummary} quote={latest} />
         </div>
       </div>
+      {latest ? (
+        <ApproveByPhoneDialog
+          open={phoneOpen}
+          onClose={() => setPhoneOpen(false)}
+          defaultName={t.customer?.name ?? ""}
+          defaultPhone={t.customer?.phone ?? ""}
+          totalLabel={formatMoney(latest.totalCents)}
+          busy={phoneAct.busy}
+          error={phoneAct.error}
+          onConfirm={async (v) => {
+            const r = await phoneAct.run(() => api.serviceOps.authorizeByPhone(latest.id, { name: v.name, phone: v.phone || null, note: v.note || null }));
+            if (r) {
+              setPhoneOpen(false);
+              toast({ message: `Approved by phone, ${v.name}`, tone: "success" });
+              await reload();
+            }
+          }}
+        />
+      ) : null}
     </>
   );
 }

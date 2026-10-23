@@ -7,7 +7,6 @@ import { and, desc, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
 import { visits, type DbOrTx } from "@ll/db";
 import { reportsApi } from "@ll/shared";
 import { localParts } from "./ledger.js";
-import { localDayStart } from "./staff.js";
 
 const DAY = 86_400_000;
 
@@ -77,10 +76,4 @@ export function rhythmOf(times: Date[], timezone: string, now: Date): MemberRhyt
 export async function rhythmSegmentIds(db: DbOrTx, merchantId: string, timezone: string, now: Date, segment: "regulars" | "slipping"): Promise<string[]> {
   const all = await memberRhythms(db, merchantId, timezone, now);
   return [...all.entries()].filter(([, r]) => (segment === "regulars" ? r.isRegular : r.isSlipping)).map(([id]) => id);
-}
-
-/** Start (UTC instant) of the shop-local calendar month containing `now`. */
-export function monthStart(now: Date, timezone: string): Date {
-  const first = `${shopDate(now, timezone).slice(0, 7)}-01`;
-  return localDayStart(new Date(`${first}T12:00:00Z`), timezone).start;
 }

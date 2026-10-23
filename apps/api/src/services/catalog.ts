@@ -1,12 +1,13 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
 import { and, asc, eq } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
-import { restaurantApi, type commerceApi, type FeatureKey } from "@ll/shared";
+import { restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import type { AppContext } from "../context.js";
 import { paymentsReady } from "./commerceShared.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
+import { publicCertification } from "./halal.js";
 import { merchantProvince, taxLabel } from "./tax.js";
 
 type Item = typeof catalogItems.$inferSelect;
@@ -29,7 +30,7 @@ export function itemDto(i: Item, restaurant = false): commerceApi.CatalogItemDto
     sortOrder: i.sortOrder,
     createdAt: i.createdAt.toISOString(),
     ...(restaurant
-      ? { dietary: i.dietary, translations: i.translations, preorderOnly: i.preorderOnly, leadTimeHours: i.leadTimeHours, serves: i.serves, depositBps: i.depositBps, station: i.station }
+      ? { dietary: i.dietary, translations: i.translations, preorderOnly: i.preorderOnly, leadTimeHours: i.leadTimeHours, serves: i.serves, depositBps: i.depositBps, station: i.station, options: i.options ?? null, cookMinutes: i.cookMinutes, recipe: i.recipe ?? null, soldOutUntil: i.soldOutUntil ? i.soldOutUntil.toISOString() : null }
       : {}),
   };
 }
@@ -72,6 +73,8 @@ const RESTAURANT_ITEM_FIELDS: { keys: readonly (keyof commerceApi.UpdateCatalogI
   { keys: ["translations"], feature: "restaurant.multilingual_menu" },
   { keys: ["preorderOnly", "leadTimeHours", "serves", "depositBps"], feature: "restaurant.degh_preorders" },
   { keys: ["station"], feature: "restaurant.kds" },
+  { keys: ["cookMinutes", "recipe"], feature: "restaurant.degh_preorders" },
+  { keys: ["options"], feature: "restaurant.dietary_tags" },
 ];
 
 async function gateRestaurantFields(db: DbOrTx, merchantId: string, body: commerceApi.UpdateCatalogItemBody) {
@@ -112,6 +115,9 @@ export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<t
       serves: body.serves ?? null,
       depositBps: body.depositBps ?? 0,
       station: body.station ?? null,
+      cookMinutes: body.cookMinutes ?? 0,
+      recipe: body.recipe ?? null,
+      options: body.options ?? null,
     })
     .returning();
   return itemDto(row!, restaurant || !!(await isRestaurantShop(db, merchantId)));
@@ -127,10 +133,11 @@ export async function updateItem(db: DbOrTx, merchantId: string, itemId: string,
   assertModifiers(body.modifiers);
   await gateRestaurantFields(db, merchantId, body);
   const patch: Partial<typeof catalogItems.$inferInsert> = {};
-  for (const k of ["name", "description", "priceCents", "categoryId", "imageUrl", "modifiers", "available", "orderable", "sortOrder", "translations", "preorderOnly", "leadTimeHours", "serves", "depositBps", "station"] as const) {
+  for (const k of ["name", "description", "priceCents", "categoryId", "imageUrl", "modifiers", "available", "orderable", "sortOrder", "translations", "preorderOnly", "leadTimeHours", "serves", "depositBps", "station", "options", "cookMinutes", "recipe"] as const) {
     if (body[k] !== undefined) (patch as Record<string, unknown>)[k] = body[k];
   }
   if (body.dietary !== undefined) patch.dietary = normaliseDietary(body.dietary);
+  if (body.soldOutUntil !== undefined) patch.soldOutUntil = body.soldOutUntil ? new Date(body.soldOutUntil) : null;
   if (!Object.keys(patch).length) throw badRequest("Nothing to update");
   const [row] = await db.update(catalogItems).set(patch).where(and(eq(catalogItems.id, itemId), eq(catalogItems.merchantId, merchantId))).returning();
   if (!row) throw notFound("Catalog item");
@@ -172,7 +179,7 @@ export const cashPriceCents = (priceCents: number, bps: number) => Math.round((p
  * Public menu: only available + orderable items. Caller checks orders.order_ahead.
  * Restaurant extras (lang, dietary filters, cash price) apply only when the shop has those features.
  */
-export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantApi.PublicMenuQuery = { halal: false, veg: false }): Promise<commerceApi.PublicMenuResponse> {
+export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantApi.PublicMenuQuery = { halal: false, veg: false, without: [] }, now: Date = new Date()): Promise<commerceApi.PublicMenuResponse> {
   const [catalog, locs, features, province, payInApp] = await Promise.all([
     getCatalog(db, merchant.id),
     db.select().from(locations).where(and(eq(locations.merchantId, merchant.id), eq(locations.active, true))).orderBy(asc(locations.createdAt)),
@@ -184,16 +191,28 @@ export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantAp
   const langOn = features["restaurant.multilingual_menu"].enabled;
   const dualOn = features["restaurant.dual_pricing"].enabled && merchant.cashDiscountBps > 0;
   const lang: restaurantApi.MenuLang = langOn && q.lang && (merchant.languages as string[]).includes(q.lang) ? q.lang : "en";
-  let items = catalog.items.filter((i) => i.available && i.orderable);
+  // Sold out (the kitchen's 86 button) hides a dish until the time it was set to.
+  let items = catalog.items.filter((i) => i.available && i.orderable && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > now.getTime()));
   if (dietOn) items = items.filter((i) => matchesDiet({ dietary: i.dietary ?? {} }, q));
+  if (dietOn && q.without?.length) items = items.filter((i) => !restaurantWebApi.dishAllergens(i.dietary?.allergens).some((a) => q.without.includes(a)));
+  const shopCert = dietOn ? publicCertification(merchant.halalCertification, merchant, now) : null;
+  const shopCertifier = merchant.halalCertification?.certifier.trim().toLowerCase() ?? null;
   items = items.map((i) => {
     const out = { ...i };
     // The dietary/translation/preorder keys exist only for restaurant-tier shops (see itemDto).
     if (!dietOn) delete out.dietary;
+    // The shop-level certificate speaks for every dish; a dish names a certifier only when it is someone else.
+    else if (out.dietary?.halalCertifier && out.dietary.halalCertifier.trim().toLowerCase() === shopCertifier) {
+      const { halalCertifier: _drop, ...rest } = out.dietary;
+      out.dietary = rest;
+    }
     if (!langOn) delete out.translations;
     if (lang !== "en") {
       const t = i.translations?.[lang];
-      if (t?.name) out.name = t.name;
+      if (t?.name) {
+        out.nameEn = i.name;
+        out.name = t.name;
+      }
       if (t?.description) out.description = t.description;
     }
     if (dualOn) out.cashPriceCents = cashPriceCents(i.priceCents, merchant.cashDiscountBps);
@@ -210,6 +229,7 @@ export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantAp
     pickupSlots: features["booking.pickup_slots"].enabled,
     ...(langOn ? { lang, languages: merchant.languages as restaurantApi.MenuLang[] } : {}),
     ...(dualOn ? { dualPricing: { cashDiscountBps: merchant.cashDiscountBps } } : {}),
+    ...(dietOn ? { halalCertification: shopCert } : {}),
   };
 }
 

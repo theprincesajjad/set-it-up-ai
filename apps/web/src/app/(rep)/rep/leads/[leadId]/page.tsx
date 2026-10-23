@@ -13,7 +13,8 @@ import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { boardMeetingSoon, leadLanguageName } from "@/lib/leads";
 import { formatE164 } from "@/lib/phone";
 import { fromLocalInput, toLocalInput } from "@/lib/dashboard/time";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
@@ -90,6 +91,16 @@ export default function LeadPage() {
                 {l.phone ? <Button variant="secondary" size="sm" iconStart={Phone} href={`tel:${l.phone}`}>{formatE164(l.phone)}</Button> : null}
                 {l.email ? <Button variant="ghost" size="sm" iconStart={Mail} href={`mailto:${l.email}`}>{l.email}</Button> : null}
                 {l.currentLoyalty ? <p className="text-meta text-fg-muted">Uses today: {l.currentLoyalty}</p> : null}
+                {leadLanguageName(l.language) ? <p className="text-meta text-fg">Speaks {leadLanguageName(l.language)}. Call or message in that language.</p> : null}
+                {l.contactRole ? <p className="text-meta text-fg-muted">Role: {l.contactRole}</p> : null}
+                {l.memberCount ? <p className="text-meta text-fg-muted">BIA members: {l.memberCount}</p> : null}
+                {l.eventDate ? <p className="text-meta text-fg-muted">Event: {formatDate(`${l.eventDate}T12:00:00`, true)}</p> : null}
+                {l.boardMeetingAt ? (
+                  <p className="text-meta text-fg">
+                    Next board meeting: {formatDate(`${l.boardMeetingAt}T12:00:00`, true)}
+                    {boardMeetingSoon(l) ? <Badge tone="accent" className="ms-2">Within 30 days: the report deadline is close</Badge> : null}
+                  </p>
+                ) : null}
                 {l.notes ? <p className="text-meta text-fg">{l.notes}</p> : null}
               </Panel>
             </div>

@@ -149,7 +149,7 @@ describe("public review page", () => {
     expect((await req(env, null, "GET", "/v1/public/reviews/nope")).status).toBe(404);
   });
 
-  it("4-5 stars lead with Google", async () => {
+  it("4-5 stars get the same two options as every other rating", async () => {
     const { token } = await pending();
     const r = await req(env, null, "POST", `/v1/public/reviews/${token}`, { rating: 5, feedback: "Best biryani" });
     expect(r.status).toBe(200);
@@ -159,11 +159,11 @@ describe("public review page", () => {
     expect(env.ctx.providers.outbox.email).toHaveLength(0); // no alert for happy customers
   });
 
-  it("1-3 stars stay private and notify the shop, but the Google link is still offered", async () => {
+  it("1-3 stars notify the shop privately and are offered the same Google link at the same weight", async () => {
     const { token, shop, c } = await pending();
     await env.db.update(merchants).set({ email: "owner@biryani.example" }).where(eq(merchants.id, shop.merchant.id));
     const r = await req(env, null, "POST", `/v1/public/reviews/${token}`, { rating: 2, feedback: "Cold on arrival" });
-    expect(r.body).toMatchObject({ rating: 2, leadWithGoogle: false, googleReviewUrl: "https://g.page/r/test-biryani/review" });
+    expect(r.body).toMatchObject({ rating: 2, leadWithGoogle: true, googleReviewUrl: "https://g.page/r/test-biryani/review" });
     const mail = env.ctx.providers.outbox.email.filter((e) => e.to === "owner@biryani.example");
     expect(mail).toHaveLength(1);
     expect(mail[0]!.subject).toBe("2-star feedback at Biryani House");

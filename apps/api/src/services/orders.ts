@@ -15,6 +15,8 @@ import { decodeCursor, encodeCursor, formatLocalDateTime, iso, loadMerchant, not
 import { nextNumber } from "./counters.js";
 import { getMerchantFeatures, isFeatureOn, requireFeature } from "./features.js";
 import { computeFees } from "./fees.js";
+import { busyActive, quotedWaitMinutes } from "./busyMode.js";
+import { assertPreorderCapacity, overrideLeadHours } from "./preorderPlanning.js";
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
@@ -60,6 +62,7 @@ export function orderDto(o: Order, items: OrderItem[], merchantName: string, cus
     status: o.status,
     pickupAt: iso(o.pickupAt),
     notes: o.notes,
+    allergyNote: o.allergyNote,
     subtotalCents: o.subtotalCents,
     discountCents: o.discountCents,
     taxCents: o.taxCents,
@@ -106,15 +109,31 @@ async function itemsFor(db: DbOrTx, orderIds: string[]): Promise<Map<string, Ord
   return map;
 }
 
+/**
+ * When a pre-order can still be cancelled for a refund: `preorder_cancel_cutoff_hours` before pickup, or the notice
+ * period of its dishes when the shop has not set one. Null for other orders or orders with no pickup time.
+ */
+export async function cancelFreeUntil(db: DbOrTx, order: Pick<Order, "id" | "kind" | "pickupAt">, merchant: Pick<Merchant, "preorderCancelCutoffHours">): Promise<Date | null> {
+  if (order.kind !== "preorder" || !order.pickupAt) return null;
+  let hours = merchant.preorderCancelCutoffHours;
+  if (hours == null) {
+    const rows = await db.select({ lead: catalogItems.leadTimeHours }).from(orderItems).innerJoin(catalogItems, eq(catalogItems.id, orderItems.catalogItemId)).where(eq(orderItems.orderId, order.id));
+    hours = Math.max(0, ...rows.map((r) => r.lead));
+  }
+  return new Date(order.pickupAt.getTime() - hours * 3_600_000);
+}
+
 export async function loadOrderDto(db: DbOrTx, order: Order, withCustomer = false): Promise<commerceApi.OrderDto> {
-  const [m] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, order.merchantId)).limit(1);
+  const [m] = await db.select({ name: merchants.name, slug: merchants.slug, preorderCancelCutoffHours: merchants.preorderCancelCutoffHours }).from(merchants).where(eq(merchants.id, order.merchantId)).limit(1);
   const items = (await itemsFor(db, [order.id])).get(order.id) ?? [];
   let customer: { name: string | null; phone: string | null } | undefined;
   if (withCustomer) {
     const [u] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, order.userId)).limit(1);
     customer = u ?? { name: null, phone: null };
   }
-  return orderDto(order, items, m?.name ?? "", customer);
+  const [loc] = order.locationId ? await db.select({ address: locations.address, city: locations.city }).from(locations).where(eq(locations.id, order.locationId)).limit(1) : [];
+  const until = m ? await cancelFreeUntil(db, order, m) : null;
+  return { ...orderDto(order, items, m?.name ?? "", customer), ...(m ? { merchantSlug: m.slug } : {}), shopAddress: loc ? [loc.address, loc.city].filter(Boolean).join(", ") : null, cancelFreeUntil: until ? until.toISOString() : null };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +156,34 @@ export interface PricedLine {
   depositBps: number;
 }
 
+/**
+ * Resolve a dish's option picks (size, spice, add-ons) to priced modifier rows. The first option of a required single
+ * group is the default, so clients that know nothing about options (older app, WhatsApp) still get the listed price.
+ * A group with priceMode "absolute" sets the dish price: its row carries the difference from the listed price.
+ */
+export function applyItemOptions(item: Pick<typeof catalogItems.$inferSelect, "name" | "priceCents" | "options">, optionIds: string[]): { name: string; option: string; priceCents: number }[] {
+  const groups = item.options?.groups ?? [];
+  if (!groups.length) {
+    if (optionIds.length) throw badRequest(`${item.name} has no options`);
+    return [];
+  }
+  if (new Set(optionIds).size !== optionIds.length) throw badRequest(`Each option for ${item.name} can be picked once`);
+  const picks = new Map<string, { id: string; name: string; priceCents: number }[]>();
+  for (const id of optionIds) {
+    const g = groups.find((x) => x.options.some((o) => o.id === id));
+    if (!g) throw badRequest(`"${id}" isn't an option for ${item.name}`);
+    picks.set(g.id, [...(picks.get(g.id) ?? []), g.options.find((o) => o.id === id)!]);
+  }
+  const out: { name: string; option: string; priceCents: number }[] = [];
+  for (const g of groups) {
+    let chosen = picks.get(g.id) ?? [];
+    if (g.type === "single" && chosen.length > 1) throw badRequest(`Pick one ${g.name} for ${item.name}`);
+    if (g.required && !chosen.length) chosen = [g.options.find((o) => o.default) ?? g.options[0]!];
+    for (const o of chosen) out.push({ name: g.name, option: o.name, priceCents: g.priceMode === "absolute" ? o.priceCents - item.priceCents : o.priceCents });
+  }
+  return out;
+}
+
 /** Price an order from the catalog. Throws 400 for unknown/unavailable items or modifiers. */
 export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<typeof commerceApi.placeOrderBody>["items"]): Promise<PricedLine[]> {
   const ids = [...new Set(input.map((i) => i.catalogItemId))];
@@ -148,6 +195,8 @@ export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<
     const item = byId.get(line.catalogItemId);
     if (!item) throw badRequest("An item in your order isn't on this menu");
     if (!item.available || !item.orderable) throw new HttpError(409, "item_unavailable", `${item.name} isn't available right now`, { catalogItemId: item.id });
+    // 86 button (kitchen): sold out until a set time.
+    if (item.soldOutUntil && item.soldOutUntil.getTime() > Date.now()) throw new HttpError(409, "item_sold_out", `${item.name} is sold out right now`, { catalogItemId: item.id, soldOutUntil: item.soldOutUntil.toISOString() });
     const seen = new Set<string>();
     const mods = line.modifiers.map((sel) => {
       const group = item.modifiers.find((g) => g.name.toLowerCase() === sel.name.toLowerCase());
@@ -158,6 +207,7 @@ export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<
       if (!opt) throw badRequest(`"${sel.option}" isn't a ${group.name} option for ${item.name}`);
       return { name: group.name, option: opt.name, priceCents: opt.priceCents };
     });
+    mods.push(...applyItemOptions(item, line.optionIds ?? []));
     const unit = item.priceCents + mods.reduce((s, m) => s + m.priceCents, 0);
     const cat = item.categoryId ? catById.get(item.categoryId) : undefined;
     return {
@@ -189,6 +239,13 @@ export type OrderFiredHook = (ctx: AppContext, orderId: string) => Promise<void>
 export const orderFiredHooks: OrderFiredHook[] = [];
 async function fireOrder(ctx: AppContext, orderId: string) {
   for (const h of orderFiredHooks) await h(ctx, orderId);
+}
+
+/** Called after an order is cancelled (services/preorderWaitlist.ts frees pots for the wait list). Must not throw. */
+export type OrderCancelledHook = (ctx: AppContext, order: Order) => Promise<void>;
+export const orderCancelledHooks: OrderCancelledHook[] = [];
+async function afterCancelled(ctx: AppContext, order: Order) {
+  for (const h of orderCancelledHooks) await h(ctx, order).catch((e) => ctx.config.env !== "test" && console.error("[orderCancelledHook]", e));
 }
 
 const MAX_PREORDER_AHEAD_MS = 60 * 24 * 60 * 60 * 1000;
@@ -300,19 +357,23 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     if (pickupAt.getTime() > now.getTime() + (isPreorder ? MAX_PREORDER_AHEAD_MS : MAX_PICKUP_AHEAD_MS)) throw badRequest("Pickup time is too far ahead");
   }
 
+  // Busy mode: an ASAP order gets the longer quoted pickup time while the kitchen is busy.
+  if (!isPreorder && !body.slotId && !pickupAt && busyActive(merchant, now)) pickupAt = new Date(now.getTime() + quotedWaitMinutes(merchant, now) * 60_000);
+
   const lines = await priceItems(ctx.db, merchant.id, body.items);
   const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
 
   let potsRequested = 0;
   let depositBase = 0;
   if (isPreorder) {
-    const leadHours = Math.max(0, ...lines.map((l) => l.leadTimeHours));
+    // Eid-style date overrides can ask for more notice than the dish itself (desi2: services/preorderPlanning.ts).
+    const leadHours = Math.max(0, overrideLeadHours(merchant, pickupAt!) ?? 0, ...lines.map((l) => l.leadTimeHours));
     const earliest = new Date(now.getTime() + leadHours * 3_600_000);
     if (pickupAt!.getTime() < earliest.getTime()) {
       throw new HttpError(409, "preorder_lead_time", `These items need ${leadHours} hours' notice. Earliest pickup is ${formatLocalDateTime(earliest, merchant.timezone)}.`, { leadTimeHours: leadHours, earliestPickupAt: earliest.toISOString() });
     }
     potsRequested = lines.filter((l) => l.preorderOnly).reduce((s, l) => s + l.quantity, 0);
-    depositBase = lines.reduce((s, l) => s + Math.round((l.lineTotalCents * l.depositBps) / 10_000), 0);
+    depositBase = lines.reduce((s, l) => s + (l.lineTotalCents * l.depositBps) / 10_000, 0);
   } else {
     const po = lines.find((l) => l.preorderOnly);
     if (po) throw new HttpError(409, "preorder_only", `${po.name} is pre-order only. Place it as a pre-order with a pickup day.`, { catalogItemId: po.catalogItemId });
@@ -348,7 +409,8 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   const tax = computeTax(subtotal - discount, province);
   const commissionFree = await isFeatureOn(ctx.db, merchant, "restaurant.commission_free");
   // Pre-orders pay the deposit online (none configured: everything is paid at pickup).
-  const depositCents = isPreorder ? Math.min(depositBase, subtotal - discount) : 0;
+  // The deposit is a share of the whole bill, tax included ("30% deposit" on the confirmation page).
+  const depositCents = isPreorder && depositBase > 0 && subtotal > 0 ? Math.min(Math.round((depositBase / subtotal) * (subtotal - discount + tax.taxCents)), subtotal - discount + tax.taxCents) : 0;
   const inApp = isPreorder ? depositCents > 0 : body.paymentMethod === "in_app";
   if (isPreorder && depositCents > 0 && body.paymentMethod === "at_pickup") {
     await undoRedemption("Order not placed");
@@ -385,15 +447,8 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   let order: Order;
   try {
     order = await ctx.db.transaction(async (tx) => {
-      if (isPreorder && potsRequested > 0 && merchant.preorderDailyCap != null) {
-        const day = localDateKey(pickupAt!, merchant.timezone);
-        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`preorder:${merchant.id}:${day}`}))`);
-        const booked = await potsBookedOn(tx, merchant, day);
-        if (booked + potsRequested > merchant.preorderDailyCap) {
-          const remaining = Math.max(0, merchant.preorderDailyCap - booked);
-          throw new HttpError(409, "preorder_full", remaining ? `Only ${remaining} pot${remaining === 1 ? "" : "s"} left for that day.` : "That day is fully booked. Pick another day.", { remaining, date: day });
-        }
-      }
+      // Daily, weekday, Eid-override and per-hour pot caps (services/preorderPlanning.ts).
+      if (isPreorder) await assertPreorderCapacity(tx, merchant, pickupAt!, potsRequested);
       const number = await nextNumber(tx, merchant.id, "order");
       const [o] = await tx
         .insert(orders)
@@ -405,6 +460,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
           status: "pending",
           pickupAt,
           notes: body.notes ?? null,
+          allergyNote: body.allergyNote?.trim() || null,
           subtotalCents: subtotal,
           discountCents: discount,
           taxCents: tax.taxCents,
@@ -415,6 +471,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
           paymentStatus: inApp ? (total === 0 ? "paid" : "requires_action") : "unpaid",
           paidAt: inApp && total === 0 ? now : null,
           kind: body.kind,
+          channel: body.channel ?? "app",
           depositCents,
           customerFeeCents: customerFee,
           redemptionId: redemption?.id ?? null,
@@ -497,8 +554,13 @@ export async function listMerchantOrders(db: DbOrTx, merchant: Merchant, q: z.in
     .limit(q.limit + 1);
   const page = rows.slice(0, q.limit);
   const items = await itemsFor(db, page.map((r) => r.o.id));
+  // Split bills show on the order card ("Split three ways: Asif card, Sana link, Zain cash").
+  const splitRows = page.length ? await db.select({ orderId: orderSplits.orderId, label: orderSplits.label, tender: orderSplits.tender, status: orderSplits.status, createdAt: orderSplits.createdAt }).from(orderSplits).where(inArray(orderSplits.orderId, page.map((r) => r.o.id))) : [];
   return {
-    items: page.map((r) => orderDto(r.o, items.get(r.o.id) ?? [], merchant.name, { name: r.name, phone: r.phone })),
+    items: page.map((r) => ({
+      ...orderDto(r.o, items.get(r.o.id) ?? [], merchant.name, { name: r.name, phone: r.phone }),
+      splits: splitRows.filter((s) => s.orderId === r.o.id).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((s) => ({ label: s.label, tender: (s.tender === "cash" || s.tender === "card" ? s.tender : "link") as "link" | "card" | "cash", status: (s.status === "paid" ? "paid" : "open") as "open" | "paid" })),
+    })),
     nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.o) : null,
   };
 }
@@ -628,6 +690,7 @@ export async function updateOrderStatus(ctx: AppContext, staff: StaffContext, or
     const patch = await unwindPaymentAndRewards(ctx, order, "cancelled");
     updated = await transition(ctx, order, "cancelled", { ...patch, cancelReason: body.reason.trim() });
     await cancelBookingsForOrder(ctx.db, order.id);
+    await afterCancelled(ctx, updated);
     await notifyCustomer(ctx, {
       userId: order.userId,
       merchantId: merchant.id,
@@ -708,10 +771,19 @@ export async function refundOrder(ctx: AppContext, staff: StaffContext, orderId:
 /** Customer cancels before the shop accepts. */
 export async function cancelMyOrder(ctx: AppContext, userId: string, orderId: string, reason?: string | null) {
   const order = await getMyOrder(ctx.db, userId, orderId);
-  if (order.status !== "pending") throw conflict("The shop has already started this order. Call them to cancel.");
+  if (order.kind === "preorder") {
+    // Free until the cutoff, then the deposit is kept (the pot is already ordered). The shop can still cancel and refund.
+    if (order.status !== "pending" && order.status !== "accepted") throw conflict("This pre-order can't be cancelled any more. Call the shop.");
+    const merchant = await merchantOf(ctx, order.merchantId);
+    const until = await cancelFreeUntil(ctx.db, order, merchant);
+    if (until && ctx.now() > until) {
+      throw new HttpError(409, "cancel_cutoff", `Free cancellation ended ${formatLocalDateTime(until, merchant.timezone)}. The deposit is kept because the shop has started cooking. Call ${merchant.name} if something has changed.`, { cancelFreeUntil: until.toISOString() });
+    }
+  } else if (order.status !== "pending") throw conflict("The shop has already started this order. Call them to cancel.");
   const patch = await unwindPaymentAndRewards(ctx, order, "cancelled");
   const updated = await transition(ctx, order, "cancelled", { ...patch, cancelReason: reason?.trim() || "Cancelled by customer" });
   await cancelBookingsForOrder(ctx.db, order.id);
+  await afterCancelled(ctx, updated);
   return loadOrderDto(ctx.db, updated);
 }
 

@@ -17,6 +17,24 @@
 
 export type FestivalTradition = "islamic" | "hindu" | "sikh" | "national";
 
+/** Who a festival is for. Religion, region or language, and country tags; a shop's cuisines map onto these. */
+export const COMMUNITIES = ["muslim", "hindu", "sikh", "jain", "punjabi", "gujarati", "bengali", "tamil", "hyderabadi", "south_indian", "north_indian", "pakistani", "indian", "bangladeshi", "sri_lankan", "afghan"] as const;
+export type Community = (typeof COMMUNITIES)[number];
+
+/** What an owner picks to describe the kitchen; each maps to the communities that celebrate with it. */
+export const CUISINES: readonly { id: string; label: string; communities: readonly Community[] }[] = [
+  { id: "hyderabadi", label: "Hyderabadi", communities: ["muslim", "hyderabadi", "south_indian", "indian"] },
+  { id: "pakistani", label: "Pakistani", communities: ["muslim", "pakistani"] },
+  { id: "punjabi", label: "Punjabi", communities: ["sikh", "hindu", "punjabi", "north_indian", "indian"] },
+  { id: "north_indian", label: "North Indian", communities: ["hindu", "north_indian", "indian"] },
+  { id: "south_indian", label: "South Indian", communities: ["hindu", "south_indian", "tamil", "indian"] },
+  { id: "gujarati", label: "Gujarati", communities: ["hindu", "jain", "gujarati", "indian"] },
+  { id: "bangladeshi", label: "Bangladeshi", communities: ["muslim", "bengali", "bangladeshi"] },
+  { id: "sri_lankan", label: "Sri Lankan and Tamil", communities: ["tamil", "hindu", "sri_lankan"] },
+  { id: "afghan", label: "Afghan", communities: ["muslim", "afghan"] },
+  { id: "mithai", label: "Mithai and chai", communities: ["hindu", "sikh", "muslim", "indian", "pakistani"] },
+];
+
 export interface FestivalTemplate {
   id: string;
   label: string;
@@ -49,6 +67,10 @@ export interface FestivalDef {
   approximate: boolean;
   /** Shown next to approximate dates. */
   dateNote: string;
+  /** Communities this festival is mainly for (a match leads the shop's list). */
+  communities: readonly Community[];
+  /** Communities that sometimes mark it (a match keeps it on the list, lower down). */
+  alsoFor: readonly Community[];
   /** Start date per year (end date when it spans days). */
   dates: Record<string, { start: string; end?: string }>;
   templates: FestivalTemplate[];
@@ -70,7 +92,7 @@ const t = (id: string, label: string, subject: string, body: string, sms: string
   whatsappTemplateName,
 });
 
-export const FESTIVALS: readonly FestivalDef[] = [
+const RAW_FESTIVALS: readonly Omit<FestivalDef, "communities" | "alsoFor">[] = [
   {
     id: "ramadan",
     name: "Ramadan",
@@ -584,7 +606,51 @@ export const FESTIVALS: readonly FestivalDef[] = [
   },
 ];
 
+const AUDIENCE: Record<string, { communities: Community[]; alsoFor?: Community[] }> = {
+  ramadan: { communities: ["muslim"] },
+  chaand_raat: { communities: ["muslim"] },
+  eid_al_fitr: { communities: ["muslim"] },
+  eid_al_adha: { communities: ["muslim"] },
+  muharram: { communities: ["muslim"] },
+  ashura: { communities: ["muslim"] },
+  mawlid: { communities: ["muslim"] },
+  diwali: { communities: ["hindu", "sikh", "jain"], alsoFor: ["indian"] },
+  holi: { communities: ["hindu"], alsoFor: ["north_indian"] },
+  vaisakhi: { communities: ["sikh", "punjabi"], alsoFor: ["north_indian"] },
+  navratri: { communities: ["hindu", "gujarati"] },
+  dussehra: { communities: ["hindu"] },
+  raksha_bandhan: { communities: ["hindu"] },
+  lohri: { communities: ["sikh", "punjabi"] },
+  karva_chauth: { communities: ["north_indian"], alsoFor: ["hindu"] },
+  gurpurab: { communities: ["sikh"], alsoFor: ["punjabi"] },
+  pakistan_independence: { communities: ["pakistani"] },
+  india_independence: { communities: ["indian"] },
+  bangladesh_victory: { communities: ["bangladeshi"], alsoFor: ["bengali"] },
+};
+
+export const FESTIVALS: readonly FestivalDef[] = RAW_FESTIVALS.map((f) => ({ ...f, communities: AUDIENCE[f.id]?.communities ?? [], alsoFor: AUDIENCE[f.id]?.alsoFor ?? [] }));
+
 export const FESTIVAL_YEARS = [2026, 2027, 2028] as const;
+
+/** The communities a set of cuisine ids belongs to (unknown ids are ignored). */
+export function communitiesForCuisines(cuisines: readonly string[]): Community[] {
+  const out = new Set<Community>();
+  for (const id of cuisines) for (const c of CUISINES.find((x) => x.id === id)?.communities ?? []) out.add(c);
+  return [...out];
+}
+
+export type FestivalRelevance = "high" | "some" | "low";
+/**
+ * How much a festival matters for a shop with these cuisines: "high" when it is mainly for one of the shop's communities,
+ * "some" when it sometimes is, "low" otherwise. A shop with no cuisines set gets "some" for everything (nothing is hidden).
+ */
+export function festivalRelevance(f: Pick<FestivalDef, "communities" | "alsoFor">, cuisines: readonly string[]): FestivalRelevance {
+  const mine = communitiesForCuisines(cuisines);
+  if (!mine.length) return "some";
+  if (f.communities.some((c) => mine.includes(c))) return "high";
+  if (f.alsoFor.some((c) => mine.includes(c))) return "some";
+  return "low";
+}
 
 export function getFestival(id: string): FestivalDef | undefined {
   return FESTIVALS.find((f) => f.id === id);
@@ -613,6 +679,22 @@ export interface FestivalOccurrence {
   /** Whole days from `from` to the start date (negative once started). */
   daysUntil: number;
   sends: FestivalSendDate[];
+  /** The owner moved this date (festival_overrides); `calendarStartDate` is what the calendar says. */
+  moved?: boolean;
+  calendarStartDate?: string;
+}
+
+/** Owner-moved dates: { [festivalId]: { [year]: "YYYY-MM-DD" } }. */
+export type FestivalOverrides = Record<string, Record<string, string>>;
+
+/** The start and end of one occurrence with the owner's moved date applied (the end moves by the same number of days). */
+export function resolveFestivalDates(f: Pick<FestivalDef, "id" | "dates">, year: string, overrides?: FestivalOverrides): { start: string; end?: string; moved: boolean; calendarStart: string } | null {
+  const d = f.dates[year];
+  if (!d) return null;
+  const moved = overrides?.[f.id]?.[year];
+  if (!moved || moved === d.start) return { start: d.start, ...(d.end ? { end: d.end } : {}), moved: false, calendarStart: d.start };
+  const delta = daysBetween(d.start, moved);
+  return { start: moved, ...(d.end ? { end: addDays(d.end, delta) } : {}), moved: true, calendarStart: d.start };
 }
 
 const DAY_MS = 86_400_000;
@@ -634,10 +716,11 @@ export function sendDates(f: FestivalDef, start: string): FestivalSendDate[] {
  * Festivals that are under way on `from`, start in [from, to] (YYYY-MM-DD, inclusive), or have a
  * recommended send in that window. Sorted by start date.
  */
-export function festivalOccurrences(from: string, to: string): FestivalOccurrence[] {
+export function festivalOccurrences(from: string, to: string, overrides?: FestivalOverrides): FestivalOccurrence[] {
   const out: FestivalOccurrence[] = [];
   for (const f of FESTIVALS) {
-    for (const [year, d] of Object.entries(f.dates)) {
+    for (const year of Object.keys(f.dates)) {
+      const d = resolveFestivalDates(f, year, overrides)!;
       const end = d.end ?? d.start;
       const sends = sendDates(f, d.start);
       const underway = d.start <= from && end >= from;
@@ -656,6 +739,7 @@ export function festivalOccurrences(from: string, to: string): FestivalOccurrenc
         greeting: f.greeting,
         daysUntil: daysBetween(from, d.start),
         sends,
+        ...(d.moved ? { moved: true, calendarStartDate: d.calendarStart } : {}),
       });
     }
   }

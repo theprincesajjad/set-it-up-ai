@@ -8,9 +8,11 @@
  */
 import { z } from "zod";
 import { centsSchema, uuidSchema } from "./common.js";
-import { dietaryTagsSchema, tenderSchema, translationsSchema, type DietaryTagsInput } from "./restaurant.js";
+import { dietaryTagsSchema, recipeSchema, tenderSchema, translationsSchema, type DietaryTagsInput } from "./restaurant.js";
+import { itemOptionsSchema, type ItemOptionsDto, type PublicHalalCertification } from "./restaurant-web.js";
 
 const isoDateTime = z.iso.datetime({ offset: true });
+type restaurantRecipe = z.infer<typeof recipeSchema>;
 const isoDate = z.iso.date();
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,13 @@ export const createCatalogItemBody = z.object({
   depositBps: z.number().int().min(0).max(10_000).optional(),
   /** Kitchen station (restaurant.kds), e.g. "tandoor". */
   station: z.string().trim().min(1).max(40).nullish(),
+  /** Degh: minutes from fire to ready, and the per-pot recipe behind "what to cook and buy" (estimates). */
+  cookMinutes: z.number().int().min(0).max(24 * 60).optional(),
+  recipe: recipeSchema.nullish(),
+  /** 86: sold out until this time (null = back on). Hidden from menus and refused at checkout. */
+  soldOutUntil: isoDateTime.nullish(),
+  /** Size, spice and add-on groups (web ordering). Needs restaurant.degh_preorders or restaurant.dietary_tags. */
+  options: itemOptionsSchema.nullish(),
 });
 export type CreateCatalogItemBody = z.input<typeof createCatalogItemBody>;
 
@@ -91,6 +100,13 @@ export interface CatalogItemDto {
   serves?: number | null;
   depositBps?: number;
   station?: string | null;
+  cookMinutes?: number;
+  recipe?: restaurantRecipe | null;
+  soldOutUntil?: string | null;
+  /** Restaurant-pack shops only: option groups; absent when the dish has none. */
+  options?: ItemOptionsDto | null;
+  /** Public menu in hi / ur / pa: the shop's own (English) name, shown beneath the translated one. */
+  nameEn?: string;
   /** Public menu: card price is priceCents; set when the shop shows a cash price (restaurant.dual_pricing). */
   cashPriceCents?: number;
 }
@@ -124,6 +140,8 @@ export interface PublicMenuResponse {
   languages?: ("en" | "hi" | "ur" | "pa")[];
   /** Present when the shop shows both prices. */
   dualPricing?: { cashDiscountBps: number };
+  /** Restaurant-pack shops with a halal certificate on file; items carry `dietary.halalCertifier` only when it differs. */
+  halalCertification?: PublicHalalCertification | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +157,8 @@ export const orderItemInput = z.object({
   quantity: z.number().int().min(1).max(50),
   /** One option per modifier group, by name: [{ name: "Size", option: "Large" }]. Prices come from the server. */
   modifiers: z.array(z.object({ name: z.string().min(1), option: z.string().min(1) })).max(20).default([]),
+  /** Restaurant pack: ids from the dish's `options` groups (size, spice, add-ons). Prices come from the server. */
+  optionIds: z.array(z.string().min(1).max(40)).max(30).optional(),
 });
 
 export const placeOrderBody = z.object({
@@ -153,8 +173,12 @@ export const placeOrderBody = z.object({
   /** Redeem one of the customer's rewards at this merchant against the order. */
   redeemRewardId: uuidSchema.nullish(),
   notes: z.string().max(500).nullish(),
+  /** Restaurants: "Any allergy?" (optional). Shown as a red band on the kitchen ticket. */
+  allergyNote: z.string().trim().max(200).nullish(),
   /** pickup (default) or preorder: degh pots with lead time and deposit (restaurant.degh_preorders). */
   kind: z.enum(["pickup", "preorder"]).default("pickup"),
+  /** Where the order came from. The web ordering pages send "web". */
+  channel: z.enum(["app", "web"]).optional(),
   /** in_app = card via Stripe (payments.in_app); at_pickup = pay at the counter. */
   paymentMethod: z.enum(["in_app", "at_pickup"]).default("in_app"),
   /** Required. Retries with the same key return the same order. */
@@ -206,6 +230,10 @@ export interface OrderDto {
   status: OrderStatus;
   pickupAt: string | null;
   notes: string | null;
+  /** Restaurants: guest allergy (kitchen ticket band). */
+  allergyNote?: string | null;
+  /** Restaurants, staff order list: how a split bill stands (who pays how), empty when not split. */
+  splits?: { label: string; tender: "link" | "card" | "cash"; status: "open" | "paid" }[];
   subtotalCents: number;
   discountCents: number;
   taxCents: number;
@@ -236,6 +264,11 @@ export interface OrderDto {
   cashDiscountCents: number;
   firedAt: string | null;
   bumpedAt: string | null;
+  /** Single-order reads only: shop slug and address for the confirmation page. */
+  merchantSlug?: string;
+  shopAddress?: string | null;
+  /** Pre-orders: the customer can cancel for a refund until this instant (null: no deposit rule). */
+  cancelFreeUntil?: string | null;
 }
 
 /** POST /v1/me/orders */
@@ -280,6 +313,21 @@ export type CreateBookingBody = z.input<typeof createBookingBody>;
 
 export const updateBookingBody = z.object({ status: z.enum(["completed", "no_show", "cancelled"]) });
 
+/** Rolling drop-off slots: how long a slot is, how many drop-offs fit in one, how many days stay open. */
+export const updateDropoffSettingsBody = z.object({
+  slotMinutes: z.number().int().min(10).max(120).optional(),
+  capacity: z.number().int().min(1).max(20).optional(),
+  daysAhead: z.number().int().min(1).max(30).optional(),
+});
+export const blockDropoffDayBody = z.object({ date: isoDate });
+export interface DropoffSettingsDto {
+  slotMinutes: number;
+  capacity: number;
+  daysAhead: number;
+  /** Local dates (YYYY-MM-DD) closed for drop-offs. */
+  blockedDates: string[];
+}
+
 export interface SlotDto {
   id: string;
   merchantId: string;
@@ -310,6 +358,7 @@ export interface BookingDto {
   createdAt: string;
   /** Merchant views only: who booked, and the order or ticket it is for. */
   customerName?: string | null;
+  customerPhone?: string | null;
   orderNumber?: number | null;
   ticketNumber?: number | null;
 }

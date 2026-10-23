@@ -59,13 +59,13 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await signIn(page, OWNER);
   await expect(page).toHaveURL(/\/m\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { level: 1, name: /Good (morning|afternoon|evening)/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Today at the counter" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
-  await expect(page.getByLabel("Key numbers").getByText("Active members")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /by hour/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slipping away" })).toBeVisible();
+  await expect(page.getByText(/New members/).first()).toBeVisible();
   // Free plan: paid tools are not in the sidebar; Home carries the one quiet upsell line.
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "Integrations" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "POS & integrations" })).toBeVisible();
   await expect(page.getByText(/More with Café & Retail: promos, texts and POS sync · coming soon/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
@@ -340,7 +340,7 @@ test("BIA tools and admin campaign report", async ({ page }) => {
   await page.getByRole("button", { name: "Add shop" }).click();
   await expect(page.getByRole("heading", { name: /Participating shops \(1\)/ })).toBeVisible();
   await page.screenshot({ path: shot("30-campaign-detail"), fullPage: true });
-  await page.goto("/bia");
+  await page.goto("/bia/campaigns");
   await expect(page.getByRole("heading", { level: 1, name: "Neighbourhood campaigns" })).toBeVisible();
   await page.screenshot({ path: shot("31-bia"), fullPage: true });
 });

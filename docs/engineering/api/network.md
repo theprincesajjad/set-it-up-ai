@@ -78,11 +78,21 @@ Errors: `404`.
 
 ## GET /v1/public/plans
 Pricing page data, no auth, no merchant data. `200` → `PublicPlansResponse`:
-`{ items: PublicPlanDto[], network: { activeMerchants, neighbourhoods } }`.
+`{ items: PublicPlanDto[], network: { activeMerchants, neighbourhoods, members, multiShopMemberPct, liveStreets } }`.
 Each plan: `{ id, name, priceCents, annualPriceCents, blurb, bestFor, smsPerMonth, available, features }` where
 `available = isPlanAvailable(plan, rollout stages)` (Free is always `true`; a paid plan once any of its features leaves `hidden`)
 and `features` lists that plan's paid features `{ key, name, description, stage: "hidden"|"beta"|"ga" }` (empty for Free).
 `network.activeMerchants` = merchants with status `active`; `network.neighbourhoods` = neighbourhoods with status `pilot` or `live`.
+`network.members` = shoppers with a membership at an active shop; `network.multiShopMemberPct` = share (0 to 100, 1 decimal) of
+them who belong to two or more active shops; `network.liveStreets` = pilot or live neighbourhoods with at least one active shop.
+Counts only, never ids. The marketing landing page (`LiveProof`) shows them only when `activeMerchants >= 10`, so tiny numbers
+are never presented as proof.
+
+## GET /v1/public/restaurants/founding
+Founding-offer spots per corridor, no auth, `Cache-Control: public, max-age=300`. `200` → `{ corridors: [{ slug, name, taken, total }] }`:
+one entry per pilot or live neighbourhood that has restaurant-pack shops (`merchants.restaurantTier` set, or `foundingOffer` true),
+`taken` = non-closed shops with `merchants.foundingOffer` (capped at `total`), `total` = `FOUNDING_OFFER.slotsPerCorridor` (20).
+Used by the restaurants page founding strip (hidden when this call fails or no corridor has a spot) and the pricing founding line.
 
 ## No-download join from the counter QR (< 30 seconds)
 

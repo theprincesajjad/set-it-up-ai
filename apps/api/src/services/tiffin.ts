@@ -16,11 +16,16 @@
  *    method on the subscription. If the bank wants the customer (authentication
  *    required) the charge stays pending and they confirm at /pay/intent
  *    (renewal_due); a decline marks it failed and the subscription past due.
+ *  - Hand-paid subscriptions (paymentMethod etransfer | cash) never touch Stripe: each period's charge
+ *    is "awaiting" with a reference code, the kitchen records the money (manual_payments ledger, no
+ *    platform fee), and a daily reminder job nudges the customer and, after the grace days, marks the
+ *    subscription past due. Sales tax is added to a charge only when the shop says it is registered.
  */
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
-import { merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinMenus, tiffinPlans, tiffinRoutes, tiffinSkips, tiffinSubscriptions, users, type DbOrTx } from "@ll/db";
-import { tiffinApi } from "@ll/shared";
+import { manualPayments, merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinMenus, tiffinPlans, tiffinRoutes, tiffinSkips, tiffinSubscriptions, users, type DbOrTx } from "@ll/db";
+import { salesTaxBps, tiffinApi, type paymentsManualApi } from "@ll/shared";
+import type { StaffContext } from "../lib/auth.js";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
@@ -30,7 +35,9 @@ import { chargeConnectSavedMethod, chargeModeFor, createConnectPayment, refundCo
 import { decodeCursor, encodeCursor, money, notifyCustomer } from "./commerceShared.js";
 import { enabledFeaturesFor, requireFeature } from "./features.js";
 import { localDate } from "./messaging.js";
-import { loadPrefs, sendNotification } from "./notifications.js";
+import { inQuietHours, loadPrefs, sendNotification } from "./notifications.js";
+import { acceptedMethods, addLedger, assertNotFuture, etransferOffer, liveLedger, manualInstructions, newReferenceCode, receiptLine, settingsOf, stripeReady, todayFor, voidLedger } from "./manual-payments.js";
+import { merchantProvince } from "./tax.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Plan = typeof tiffinPlans.$inferSelect;
@@ -122,6 +129,8 @@ export const mrrOf = (cadence: string, priceCents: number) => (cadence === "week
 // DTOs
 // ---------------------------------------------------------------------------
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
+/** etransfer and cash are collected by the kitchen by hand, outside Stripe. */
+export const isManualMethod = (m: string) => m === "etransfer" || m === "cash";
 
 export function planDto(p: Plan, subscriberCount?: number): tiffinApi.PlanDto {
   return {
@@ -140,6 +149,7 @@ export function planDto(p: Plan, subscriberCount?: number): tiffinApi.PlanDto {
     pickupAllowed: p.pickupAllowed,
     deliveryAllowed: p.deliveryAllowed,
     cutoffHours: p.cutoffHours,
+    taxable: p.taxable,
     active: p.active,
     sortOrder: p.sortOrder,
     ...(subscriberCount !== undefined ? { subscriberCount } : {}),
@@ -154,6 +164,12 @@ export function chargeDto(c: Charge): tiffinApi.ChargeDto {
     amountCents: c.amountCents,
     creditCents: c.creditCents,
     platformFeeCents: c.platformFeeCents,
+    taxCents: c.taxCents,
+    referenceCode: c.referenceCode,
+    paidMethod: c.status === "paid" || c.status === "refunded" ? ((c.paymentMethod ?? null) as tiffinApi.ChargeDto["paidMethod"]) : null,
+    receivedOn: c.receivedOn,
+    remainingCents: c.status === "paid" || c.status === "refunded" ? 0 : Math.max(0, c.amountCents - c.paidCents),
+    overpaidCents: Math.max(0, c.paidCents - c.amountCents),
     // "processing" is an internal state (PAD debit in flight); callers see a pending charge with processing: true.
     status: (c.status === "processing" ? "pending" : c.status) as tiffinApi.ChargeDto["status"],
     ...(c.status === "processing" ? { processing: true } : {}),
@@ -276,6 +292,13 @@ export async function deletePlan(db: DbOrTx, merchantId: string, planId: string)
 // ---------------------------------------------------------------------------
 // Menus
 // ---------------------------------------------------------------------------
+/** "Rotli (4)" means 4 pieces per serving: remember the 4 so the prep list can total pieces. */
+const PER_SERVING_RE = /\((\d{1,2})\)\s*$/;
+const withPerServing = <T extends { name: string; perServing?: number }>(i: T): T => {
+  if (i.perServing) return i;
+  const m = PER_SERVING_RE.exec(i.name);
+  return m && Number(m[1]) > 0 ? { ...i, perServing: Number(m[1]) } : i;
+};
 const menuDto = (m: MenuRow): tiffinApi.MenuDto => ({ id: m.id, planId: m.planId, date: m.date, items: m.items, notes: m.notes });
 
 export async function putMenus(db: DbOrTx, merchantId: string, body: z.output<typeof tiffinApi.putMenusBody>): Promise<tiffinApi.MenusResponse> {
@@ -286,6 +309,7 @@ export async function putMenus(db: DbOrTx, merchantId: string, body: z.output<ty
   }
   const out: MenuRow[] = [];
   for (const m of body.menus) {
+    m.items = m.items.map(withPerServing);
     // The unique index treats NULL plan ids as distinct, so upsert by hand.
     const where = and(eq(tiffinMenus.merchantId, merchantId), eq(tiffinMenus.date, m.date), m.planId ? eq(tiffinMenus.planId, m.planId) : isNull(tiffinMenus.planId));
     const [cur] = await db.select().from(tiffinMenus).where(where).limit(1);
@@ -556,8 +580,15 @@ async function ensureCharge(ctx: AppContext, sub: Sub, plan: Plan, periodStart: 
   const [existing] = await ctx.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, sub.id), eq(tiffinCharges.periodStart, periodStart))).limit(1);
   if (existing) return { charge: existing, created: false };
   const credit = !first && sub.currentPeriodStart && sub.currentPeriodEnd ? await creditForPeriod(ctx.db, sub, plan, sub.currentPeriodStart, sub.currentPeriodEnd) : 0;
-  const amount = Math.max(0, sub.priceCents - credit);
+  const subtotal = Math.max(0, sub.priceCents - credit);
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, sub.merchantId)).limit(1);
+  // Tax only for a shop that says it is registered for GST/HST (and a taxable plan): a subscriber agreed to a price, so an unset status adds nothing.
+  const bps = merchant?.taxRegistered === true && plan.taxable ? salesTaxBps({ province: await merchantProvince(ctx.db, merchant), taxRegistered: true }) : 0;
+  const taxCents = Math.round((subtotal * bps) / 10_000);
+  const amount = subtotal + taxCents;
+  const manual = isManualMethod(sub.paymentMethod);
+  // The platform fee is a share of the sale before tax (tax is passed through); hand-recorded payments carry none.
+  const platformFeeCents = merchant ? platformFeeFor(manual ? "manual" : "tiffin", subtotal, merchant) : 0;
   const [c] = await ctx.db
     .insert(tiffinCharges)
     .values({
@@ -567,7 +598,9 @@ async function ensureCharge(ctx: AppContext, sub: Sub, plan: Plan, periodStart: 
       periodEnd: periodEndFor(plan.cadence, periodStart),
       amountCents: amount,
       creditCents: credit,
-      platformFeeCents: merchant ? platformFeeFor("tiffin", amount, merchant) : 0,
+      taxCents,
+      platformFeeCents,
+      ...(manual && amount > 0 ? { status: "awaiting", referenceCode: await newReferenceCode(ctx.db, sub.merchantId, sub.userId), paymentMethod: sub.paymentMethod } : {}),
       createdAt: ctx.now(),
     })
     .onConflictDoNothing()
@@ -686,7 +719,10 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
   if (!charge || charge.status === "paid" || charge.status === "refunded") return;
   const [sub] = await ctx.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, charge.subscriptionId)).limit(1);
   const now = ctx.now();
-  await ctx.db.update(tiffinCharges).set({ status: "paid", paidAt: now, ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}) }).where(eq(tiffinCharges.id, chargeId));
+  await ctx.db
+    .update(tiffinCharges)
+    .set({ status: "paid", paidAt: now, ...(sub && !isManualMethod(sub.paymentMethod) ? { paymentMethod: sub.paymentMethod } : {}), ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}) })
+    .where(eq(tiffinCharges.id, chargeId));
   if (!sub) return;
   if (sub.status === "cancelled") {
     // Paid after cancelling (payment raced the cancel): refund it.
@@ -702,13 +738,18 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
     const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, charge.merchantId)).limit(1);
     if (m) await saveMethod(ctx, m, sub.id, paid.paymentMethodId);
   }
+  await advanceSubscription(ctx, charge, sub);
+}
+
+/** A paid charge moves the subscription into its period and out of pending / past due. */
+async function advanceSubscription(ctx: AppContext, charge: Charge, sub: Sub): Promise<void> {
   const advance = !sub.currentPeriodStart || charge.periodStart >= sub.currentPeriodStart;
   await ctx.db
     .update(tiffinSubscriptions)
     .set({
       ...(sub.status === "pending" || sub.status === "past_due" ? { status: "active" } : {}),
       ...(advance ? { currentPeriodStart: charge.periodStart, currentPeriodEnd: charge.periodEnd, nextBillingDate: addDays(charge.periodEnd, 1) } : {}),
-      updatedAt: now,
+      updatedAt: ctx.now(),
     })
     .where(eq(tiffinSubscriptions.id, sub.id));
 }
@@ -795,6 +836,7 @@ export async function retryPayment(ctx: AppContext, userId: string, subId: strin
 export async function myPaymentMethodSetup(ctx: AppContext, userId: string, subId: string): Promise<tiffinApi.PaymentMethodSetupResponse> {
   const { sub } = await mySubRow(ctx.db, userId, subId);
   if (sub.status === "cancelled") throw conflict("This subscription is cancelled");
+  if (isManualMethod(sub.paymentMethod)) throw conflict("You pay this kitchen by hand, so there is no card to change.");
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, sub.merchantId)).limit(1);
   if (!merchant?.stripeAccountId) throw conflict("This kitchen can't take payments yet");
   const payments = getPayments(ctx);
@@ -850,6 +892,17 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
     try {
       const { charge, created } = await ensureCharge(ctx, sub, plan, sub.nextBillingDate!, false);
       if (charge.status === "paid" || charge.status === "refunded") continue;
+      if (isManualMethod(sub.paymentMethod)) {
+        // Hand-paid: no Stripe. A fully credited period settles itself; otherwise tell the customer how to pay, once.
+        if (charge.amountCents <= 0 && charge.status !== "paid") {
+          await settleCharge(ctx, charge.id, null);
+          settled++;
+        } else if (created) {
+          charged++;
+          await notifyManualDue(ctx, merchant, sub, plan, charge, "renewal_due");
+        }
+        continue;
+      }
       if (charge.stripePaymentIntentId || charge.status === "failed") continue; // already out for payment
       const forPeriod = `${money(charge.amountCents)} for ${plan.name} from ${charge.periodStart}${charge.creditCents ? `, after ${money(charge.creditCents)} credit for skipped days` : ""}`;
       // A saved method is charged without the customer; a free period (under the card minimum) settles below like before.
@@ -985,8 +1038,36 @@ export async function runDaily(ctx: AppContext): Promise<{ resumed: number; bill
 // ---------------------------------------------------------------------------
 // Merchant: subscribers
 // ---------------------------------------------------------------------------
-function subscriberDto(r: { sub: Sub; plan: Plan; route: Route | null; user: Pick<User, "id" | "name" | "phone" | "email"> }): tiffinApi.SubscriberDto {
-  return { ...subDto(r.sub, r.plan, r.route), customer: { id: r.user.id, name: r.user.name, phone: r.user.phone, email: r.user.email } };
+interface AwaitingInfo {
+  cents: number;
+  since: Date;
+  chargeId: string;
+  referenceCode: string | null;
+}
+
+function subscriberDto(r: { sub: Sub; plan: Plan; route: Route | null; user: Pick<User, "id" | "name" | "phone" | "email"> }, awaiting?: AwaitingInfo): tiffinApi.SubscriberDto {
+  return {
+    ...subDto(r.sub, r.plan, r.route),
+    customer: { id: r.user.id, name: r.user.name, phone: r.user.phone, email: r.user.email },
+    awaitingCents: awaiting?.cents ?? 0,
+    awaitingSince: awaiting ? awaiting.since.toISOString() : null,
+    awaitingChargeId: awaiting?.chargeId ?? null,
+    awaitingReferenceCode: awaiting?.referenceCode ?? null,
+  };
+}
+
+/** Hand-paid charges still to record for these subscriptions: what is owed, since when, and the charge to record against. */
+async function awaitingFor(db: DbOrTx, subIds: string[]): Promise<Map<string, AwaitingInfo>> {
+  const out = new Map<string, AwaitingInfo>();
+  if (!subIds.length) return out;
+  const rows = await db.select().from(tiffinCharges).where(and(inArray(tiffinCharges.subscriptionId, subIds), eq(tiffinCharges.status, "awaiting"))).orderBy(asc(tiffinCharges.createdAt));
+  for (const c of rows) {
+    const e = out.get(c.subscriptionId);
+    const owed = Math.max(0, c.amountCents - c.paidCents);
+    if (!e) out.set(c.subscriptionId, { cents: owed, since: c.createdAt, chargeId: c.id, referenceCode: c.referenceCode });
+    else out.set(c.subscriptionId, { ...e, cents: e.cents + owed, chargeId: c.id, referenceCode: c.referenceCode });
+  }
+  return out;
 }
 
 export async function listSubscribers(db: DbOrTx, merchantId: string, q: z.output<typeof tiffinApi.listSubscribersQuery>): Promise<tiffinApi.SubscribersResponse> {
@@ -1000,6 +1081,8 @@ export async function listSubscribers(db: DbOrTx, merchantId: string, q: z.outpu
   if (q.routeId) conds.push(eq(tiffinSubscriptions.routeId, q.routeId));
   if (q.unrouted === "true") conds.push(isNull(tiffinSubscriptions.routeId), eq(tiffinSubscriptions.fulfilment, "delivery"));
   if (q.fulfilment) conds.push(eq(tiffinSubscriptions.fulfilment, q.fulfilment));
+  if (q.payment) conds.push(eq(tiffinSubscriptions.paymentMethod, q.payment));
+  if (q.awaiting === "true") conds.push(or(eq(tiffinSubscriptions.status, "pending"), sql`exists (select 1 from tiffin_charges c where c.subscription_id = ${tiffinSubscriptions.id} and c.status = 'awaiting')`)!);
   if (q.q) {
     const like = `%${q.q.replace(/[%_\\]/g, "\\$&")}%`;
     conds.push(or(sql`${users.name} ilike ${like}`, sql`${users.phone} ilike ${like}`, sql`${users.email} ilike ${like}`, sql`${tiffinSubscriptions.address} ilike ${like}`, sql`${tiffinSubscriptions.postalCode} ilike ${like}`)!);
@@ -1016,7 +1099,8 @@ export async function listSubscribers(db: DbOrTx, merchantId: string, q: z.outpu
     .orderBy(desc(tiffinSubscriptions.createdAt), desc(tiffinSubscriptions.id))
     .limit(q.limit + 1);
   const page = rows.slice(0, q.limit);
-  return { items: page.map(subscriberDto), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.sub) : null };
+  const awaiting = await awaitingFor(db, page.map((r) => r.sub.id));
+  return { items: page.map((r) => subscriberDto(r, awaiting.get(r.sub.id))), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.sub) : null };
 }
 
 async function subscriberById(db: DbOrTx, merchantId: string, subId: string): Promise<tiffinApi.SubscriberDto> {
@@ -1029,7 +1113,7 @@ async function subscriberById(db: DbOrTx, merchantId: string, subId: string): Pr
     .where(and(eq(tiffinSubscriptions.id, subId), eq(tiffinSubscriptions.merchantId, merchantId)))
     .limit(1);
   if (!r) throw notFound("Subscription");
-  return subscriberDto(r);
+  return subscriberDto(r, (await awaitingFor(db, [r.sub.id])).get(r.sub.id));
 }
 
 export const getSubscriber = subscriberById;
@@ -1142,7 +1226,75 @@ export async function kitchen(ctx: AppContext, merchantId: string, date: string)
   for (const p of plans) if (p.active && !rows.has(p.id)) rowFor(p);
   const list = plans.map((p) => rows.get(p.id)).filter((r): r is tiffinApi.KitchenPlanRow => !!r && (r.servings > 0 || r.skippedServings > 0 || plans.find((p) => p.id === r.planId)?.active === true));
   const sum = (k: "servings" | "subscribers" | "deliveryServings" | "pickupServings" | "skippedServings") => list.reduce((a, r) => a + r[k], 0);
-  return { date, plans: list, totals: { servings: sum("servings"), subscribers: sum("subscribers"), deliveryServings: sum("deliveryServings"), pickupServings: sum("pickupServings"), skippedServings: sum("skippedServings") } };
+  const totals = { servings: sum("servings"), subscribers: sum("subscribers"), deliveryServings: sum("deliveryServings"), pickupServings: sum("pickupServings"), skippedServings: sum("skippedServings") };
+  return { date, plans: list, totals, ...(await kitchenExtras(ctx, merchantId, date, list, plans)) };
+}
+
+const DISH_SUFFIX_RE = /\s*\(\d{1,2}\)\s*$/;
+
+/** Today-screen numbers: handed over, route progress, prep list, money waiting, who needs the kitchen, the next cutoff. */
+async function kitchenExtras(ctx: AppContext, merchantId: string, date: string, list: tiffinApi.KitchenPlanRow[], plans: Plan[]) {
+  const dels = await ctx.db
+    .select({ d: tiffinDeliveries, route: { id: tiffinRoutes.id, name: tiffinRoutes.name, driver: tiffinRoutes.driverName }, fulfilment: tiffinSubscriptions.fulfilment, subRoute: tiffinSubscriptions.routeId })
+    .from(tiffinDeliveries)
+    .innerJoin(tiffinSubscriptions, eq(tiffinSubscriptions.id, tiffinDeliveries.subscriptionId))
+    .leftJoin(tiffinRoutes, eq(tiffinRoutes.id, tiffinDeliveries.routeId))
+    .where(and(eq(tiffinDeliveries.merchantId, merchantId), eq(tiffinDeliveries.date, date), ne(tiffinDeliveries.status, "skipped")));
+  const isDone = (st: string) => st === "delivered" || st === "picked_up";
+  const byRoute = new Map<string, { id: string | null; name: string; done: number; total: number; driver: string | null }>();
+  for (const r of dels) {
+    const key = r.fulfilment === "pickup" ? "pickup" : (r.route?.id ?? "none");
+    const e = byRoute.get(key) ?? { id: r.fulfilment === "pickup" ? null : (r.route?.id ?? null), name: r.fulfilment === "pickup" ? "Pickup" : (r.route?.name ?? "No route yet"), done: 0, total: 0, driver: r.route?.driver ?? null };
+    e.total++;
+    if (isDone(r.d.status)) e.done++;
+    byRoute.set(key, e);
+  }
+  const prepMap = new Map<string, { dish: string; packs: number; pieces: number | null }>();
+  for (const row of list) {
+    if (row.servings <= 0) continue;
+    for (const item of row.menu) {
+      const dish = item.name.replace(DISH_SUFFIX_RE, "").trim();
+      const per = withPerServing(item).perServing ?? null;
+      const e = prepMap.get(dish.toLowerCase()) ?? { dish, packs: 0, pieces: null as number | null };
+      e.packs += row.servings;
+      if (per) e.pieces = (e.pieces ?? 0) + per * row.servings;
+      prepMap.set(dish.toLowerCase(), e);
+    }
+  }
+  const [aw] = await ctx.db
+    .select({ n: sql<number>`count(*)::int`, cents: sql<number>`coalesce(sum(${tiffinCharges.amountCents} - ${tiffinCharges.paidCents}), 0)::int` })
+    .from(tiffinCharges)
+    .where(and(eq(tiffinCharges.merchantId, merchantId), eq(tiffinCharges.status, "awaiting")));
+  const [need] = await ctx.db
+    .select({
+      unrouted: sql<number>`count(*) filter (where ${tiffinSubscriptions.routeId} is null and ${tiffinSubscriptions.fulfilment} = 'delivery' and ${tiffinSubscriptions.status} in ('active','pending'))::int`,
+      pastDue: sql<number>`count(*) filter (where ${tiffinSubscriptions.status} = 'past_due')::int`,
+    })
+    .from(tiffinSubscriptions)
+    .where(eq(tiffinSubscriptions.merchantId, merchantId));
+  // The soonest skip cutoff still open: the next meal day of each active plan.
+  let nextCutoff: { at: Date; date: string } | null = null;
+  const now = ctx.now();
+  for (const p of plans.filter((x) => x.active)) {
+    for (let d = todayOf(ctx), i = 0; i < 14; d = addDays(d, 1), i++) {
+      if (!p.daysOfWeek.includes(dowOf(d))) continue;
+      const at = cutoffAt(p, d);
+      if (at.getTime() < now.getTime()) continue;
+      if (!nextCutoff || at < nextCutoff.at) nextCutoff = { at, date: d };
+      break;
+    }
+  }
+  return {
+    delivered: dels.filter((r) => isDone(r.d.status)).length,
+    outForDelivery: dels.filter((r) => r.d.status === "out_for_delivery").length,
+    routes: [...byRoute.values()].sort((a, b) => (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || a.name.localeCompare(b.name)),
+    prep: [...prepMap.values()].sort((a, b) => b.packs - a.packs || a.dish.localeCompare(b.dish)),
+    awaiting: { count: Number(aw?.n ?? 0), cents: Number(aw?.cents ?? 0) },
+    unrouted: Number(need?.unrouted ?? 0),
+    pastDue: Number(need?.pastDue ?? 0),
+    nextCutoffAt: nextCutoff ? nextCutoff.at.toISOString() : null,
+    nextMealDate: nextCutoff?.date ?? null,
+  };
 }
 
 export async function manifest(ctx: AppContext, merchantId: string, date: string, routeId?: string): Promise<tiffinApi.ManifestResponse> {
@@ -1275,6 +1427,28 @@ export async function revenue(ctx: AppContext, merchantId: string, month?: strin
     .select({ amount: sql<number>`coalesce(sum(${tiffinCharges.amountCents}), 0)::int`, credit: sql<number>`coalesce(sum(${tiffinCharges.creditCents}), 0)::int`, fee: sql<number>`coalesce(sum(${tiffinCharges.platformFeeCents}), 0)::int` })
     .from(tiffinCharges)
     .where(and(eq(tiffinCharges.merchantId, merchantId), eq(tiffinCharges.status, "paid"), gte(tiffinCharges.paidAt, startAt), lt(tiffinCharges.paidAt, endAt)));
+  const methodRows = await ctx.db
+    .select({ method: sql<string>`coalesce(${tiffinCharges.paymentMethod}, 'card')`, cents: sql<number>`coalesce(sum(${tiffinCharges.amountCents}), 0)::int`, n: sql<number>`count(*)::int` })
+    .from(tiffinCharges)
+    .where(and(eq(tiffinCharges.merchantId, merchantId), eq(tiffinCharges.status, "paid"), gte(tiffinCharges.paidAt, startAt), lt(tiffinCharges.paidAt, endAt)))
+    .groupBy(sql`coalesce(${tiffinCharges.paymentMethod}, 'card')`);
+  const [owed] = await ctx.db
+    .select({
+      awaitingCents: sql<number>`coalesce(sum(${tiffinCharges.amountCents} - ${tiffinCharges.paidCents}) filter (where ${tiffinCharges.status} = 'awaiting'), 0)::int`,
+      awaitingCount: sql<number>`count(*) filter (where ${tiffinCharges.status} = 'awaiting')::int`,
+      inFlight: sql<number>`coalesce(sum(${tiffinCharges.amountCents}) filter (where ${tiffinCharges.status} = 'processing'), 0)::int`,
+    })
+    .from(tiffinCharges)
+    .where(eq(tiffinCharges.merchantId, merchantId));
+  const [late] = await ctx.db
+    .select({ cents: sql<number>`coalesce(sum(${tiffinCharges.amountCents} - ${tiffinCharges.paidCents}), 0)::int` })
+    .from(tiffinCharges)
+    .innerJoin(tiffinSubscriptions, eq(tiffinSubscriptions.id, tiffinCharges.subscriptionId))
+    .where(and(eq(tiffinCharges.merchantId, merchantId), inArray(tiffinCharges.status, ["awaiting", "failed"]), eq(tiffinSubscriptions.status, "past_due")));
+  const methodOrder = tiffinApi.TIFFIN_PAYMENT_METHODS as readonly string[];
+  const collectedByMethod = methodRows
+    .map((r) => ({ method: r.method as tiffinApi.TiffinPaymentMethod, cents: Number(r.cents), count: Number(r.n) }))
+    .sort((a, b) => methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method));
   const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
   return {
     month: m,
@@ -1290,6 +1464,11 @@ export async function revenue(ctx: AppContext, merchantId: string, month?: strin
     creditsCents: Number(paid?.credit ?? 0),
     platformFeeCents: Number(paid?.fee ?? 0),
     byPlan: [...byPlan.values()],
+    collectedByMethod,
+    awaitingCents: Number(owed?.awaitingCents ?? 0),
+    awaitingCount: Number(owed?.awaitingCount ?? 0),
+    pastDueCents: Number(late?.cents ?? 0),
+    inFlightCents: Number(owed?.inFlight ?? 0),
   };
 }
 
@@ -1310,6 +1489,8 @@ export async function publicPlans(ctx: AppContext, merchant: Merchant, q: z.outp
   return {
     shop: { id: merchant.id, name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl, phone: merchant.phone },
     padEnabled: !!ctx.config.tiffin?.padEnabled,
+    accepted: acceptedMethods(merchant, !!ctx.config.tiffin?.padEnabled),
+    etransfer: etransferOffer(merchant),
     plans: plans.map((p) => ({
       ...localized(planDto(p), q.lang),
       upcomingMenu: dateRange(today, to)
@@ -1332,10 +1513,14 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   if (body.fulfilment === "delivery" && !plan.deliveryAllowed) throw badRequest("This plan is pickup only");
   if (body.fulfilment === "pickup" && !plan.pickupAllowed) throw badRequest("This plan is delivery only");
   if (body.paymentMethod === "pad" && !ctx.config.tiffin?.padEnabled) throw badRequest("Pre-authorized debit isn't available yet. Pay by card.");
+  const manual = isManualMethod(body.paymentMethod);
+  if (body.paymentMethod === "etransfer" && !etransferOffer(merchant)) throw badRequest("This kitchen doesn't take e-transfers. Choose another way to pay.");
+  if (body.paymentMethod === "cash" && !settingsOf(merchant).cashEnabled) throw badRequest("This kitchen doesn't take cash payments for subscriptions. Choose another way to pay.");
   const today = todayOf(ctx);
   if (body.startDate < today) throw badRequest("The start date is in the past");
   if (body.startDate > addDays(today, 60)) throw badRequest("Start within the next 60 days");
-  if (!merchant.stripeAccountId || !merchant.stripeChargesEnabled) throw conflict("This kitchen can't take payments yet");
+  // A kitchen that takes e-transfer or cash needs no Stripe account; card and bank debit do.
+  if (!manual && !stripeReady(merchant)) throw conflict("This kitchen can't take payments yet");
   const [dupe] = await ctx.db
     .select({ id: tiffinSubscriptions.id })
     .from(tiffinSubscriptions)
@@ -1352,7 +1537,8 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
       merchantId: merchant.id,
       planId: plan.id,
       userId,
-      status: "pending",
+      // Hand-paid subscribers wait for the kitchen to record the first payment, unless the kitchen starts them on trust.
+      status: manual && settingsOf(merchant).startOnTrust ? "active" : "pending",
       servings: body.servings,
       fulfilment: body.fulfilment,
       address: body.fulfilment === "delivery" ? (body.address ?? null) : null,
@@ -1373,7 +1559,7 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   const { charge } = await ensureCharge(ctx, sub, plan, body.startDate, true);
   let payment: tiffinApi.PaymentIntentRef | null;
   try {
-    payment = await startPayment(ctx, merchant, sub, charge);
+    payment = manual ? null : await startPayment(ctx, merchant, sub, charge);
   } catch (err) {
     await ctx.db.delete(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, sub.id));
     if (err instanceof HttpError) throw err;
@@ -1381,10 +1567,31 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   }
   const row = (await loadSubRow(ctx.db, sub.id))!;
   const [fresh] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, charge.id)).limit(1);
-  return { subscription: subDto(row.sub, row.plan, row.route), charge: chargeDto(fresh!), payment };
+  if (manual && fresh!.amountCents <= 0) await settleCharge(ctx, fresh!.id, null);
+  else if (manual) await notifyManualDue(ctx, merchant, row.sub, row.plan, fresh!, "payment_due");
+  const [settledCharge] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, charge.id)).limit(1);
+  const [freshSub] = await ctx.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, row.sub.id)).limit(1);
+  return { subscription: subDto(freshSub ?? row.sub, row.plan, row.route), charge: chargeDto(settledCharge!), payment, manual: manual ? manualFor(merchant, row.sub.paymentMethod, settledCharge!) : null };
 }
 
-async function myDto(ctx: AppContext, row: SubRow, merchant: Pick<Merchant, "id" | "name" | "slug" | "logoUrl">): Promise<tiffinApi.MySubscriptionDto> {
+/** What the customer needs to pay by hand: the shop's e-transfer email and the charge's reference code (cash gets plain words). */
+function manualFor(merchant: Pick<Merchant, "paymentSettings" | "stripeAccountId" | "stripeChargesEnabled" | "name">, method: string, charge: Pick<Charge, "amountCents" | "referenceCode" | "status" | "paidCents">): paymentsManualApi.ManualInstructions | null {
+  if (charge.status !== "awaiting" || !charge.referenceCode) return null;
+  const due = Math.max(0, charge.amountCents - charge.paidCents);
+  if (method === "cash") return { email: "", amountCents: due, referenceCode: charge.referenceCode, instructions: `Pay ${merchant.name} in cash and mention reference ${charge.referenceCode}.` };
+  return manualInstructions(merchant, due, charge.referenceCode);
+}
+
+/** Tell the customer how to pay a hand-paid charge (once per charge; reminders come from remindManualCharges). */
+async function notifyManualDue(ctx: AppContext, merchant: Merchant, sub: Sub, plan: Plan, charge: Charge, event: "payment_due" | "renewal_due"): Promise<void> {
+  const how = manualFor(merchant, sub.paymentMethod, charge);
+  if (!how) return;
+  const where = sub.paymentMethod === "cash" ? how.instructions : `Send an Interac e-transfer of ${money(how.amountCents)} to ${how.email} and put ${how.referenceCode} in the message.`;
+  await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", `How to pay for your tiffin`, `${merchant.name}, ${plan.name} from ${charge.periodStart}: ${where}`, { subscriptionId: sub.id, chargeId: charge.id, event, referenceCode: how.referenceCode });
+}
+
+type MyMerchant = Pick<Merchant, "id" | "name" | "slug" | "logoUrl" | "paymentSettings" | "stripeAccountId" | "stripeChargesEnabled">;
+async function myDto(ctx: AppContext, row: SubRow, merchant: MyMerchant): Promise<tiffinApi.MySubscriptionDto> {
   const today = todayOf(ctx);
   const [latest] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.subscriptionId, row.sub.id)).orderBy(desc(tiffinCharges.periodStart)).limit(1);
   const skips = await ctx.db.select({ date: tiffinSkips.date }).from(tiffinSkips).where(and(eq(tiffinSkips.subscriptionId, row.sub.id), gte(tiffinSkips.date, today))).orderBy(asc(tiffinSkips.date));
@@ -1397,12 +1604,13 @@ async function myDto(ctx: AppContext, row: SubRow, merchant: Pick<Merchant, "id"
     nextDelivery: next ? { date: next.date, status: next.status as tiffinApi.TiffinDeliveryStatus } : null,
     latestCharge: latest ? chargeDto(latest) : null,
     skips: skips.map((s) => s.date),
+    manual: latest && isManualMethod(row.sub.paymentMethod) ? manualFor(merchant, row.sub.paymentMethod, latest) : null,
   };
 }
 
 async function myRows(ctx: AppContext, userId: string, extra: ReturnType<typeof and>[] = []) {
   const rows = await ctx.db
-    .select({ sub: tiffinSubscriptions, plan: tiffinPlans, route: tiffinRoutes, merchant: { id: merchants.id, name: merchants.name, slug: merchants.slug, logoUrl: merchants.logoUrl } })
+    .select({ sub: tiffinSubscriptions, plan: tiffinPlans, route: tiffinRoutes, merchant: { id: merchants.id, name: merchants.name, slug: merchants.slug, logoUrl: merchants.logoUrl, paymentSettings: merchants.paymentSettings, stripeAccountId: merchants.stripeAccountId, stripeChargesEnabled: merchants.stripeChargesEnabled } })
     .from(tiffinSubscriptions)
     .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
     .innerJoin(merchants, eq(merchants.id, tiffinSubscriptions.merchantId))
@@ -1522,4 +1730,146 @@ export async function myUpdate(ctx: AppContext, userId: string, subId: string, b
     await autoAssignRoute(ctx.db, { ...u!, routeId: null, stopOrder: null });
   }
   return myDtoById(ctx, userId, subId);
+}
+
+// ---------------------------------------------------------------------------
+// Hand-recorded payments (e-transfer, cash, cheque): record, void, awaiting list, reminders
+// ---------------------------------------------------------------------------
+async function loadMerchantCharge(db: DbOrTx, merchantId: string, chargeId: string): Promise<Charge> {
+  const [c] = await db.select().from(tiffinCharges).where(and(eq(tiffinCharges.id, chargeId), eq(tiffinCharges.merchantId, merchantId))).limit(1);
+  if (!c) throw notFound("Charge");
+  return c;
+}
+
+/**
+ * The kitchen marks money received. Rules: only awaiting / pending / failed charges; a charge that is already paid answers
+ * 409 with the existing record (no double pay). Paying less than is due keeps the charge awaiting with the remainder;
+ * paying more is stored and flagged (overpaidCents), never credited automatically. Full payment sets the charge paid
+ * (paidAt = the date received), activates a pending or past-due subscription and sends one receipt. No platform fee.
+ */
+export async function recordPayment(ctx: AppContext, staff: StaffContext, chargeId: string, body: z.output<typeof paymentsManualApi.recordPaymentBody>): Promise<tiffinApi.ChargeDto> {
+  assertNotFuture(body.receivedOn, todayFor(ctx, staff.merchant));
+  const merchantId = staff.merchant.id;
+  const outcome = await ctx.db.transaction(async (tx) => {
+    const [c] = await tx.select().from(tiffinCharges).where(and(eq(tiffinCharges.id, chargeId), eq(tiffinCharges.merchantId, merchantId))).for("update").limit(1);
+    if (!c) throw notFound("Charge");
+    if (c.status === "paid" || c.status === "refunded") {
+      const existing = (await liveLedger(tx, "tiffin_charge", c.id)).at(-1);
+      throw new HttpError(409, "already_paid", "This charge is already marked paid.", { chargeId: c.id, payment: existing ? { id: existing.id, method: existing.method, amountCents: existing.amountCents, receivedOn: existing.receivedOn } : null });
+    }
+    if (c.status === "processing") throw conflict("A bank debit for this charge is still processing. Wait for it to clear.");
+    const ledger = await addLedger(ctx, staff, tx, { subjectType: "tiffin_charge", subjectId: c.id, body });
+    const paidCents = c.paidCents + ledger.amountCents;
+    const full = paidCents >= c.amountCents;
+    const [row] = await tx
+      .update(tiffinCharges)
+      .set(
+        full
+          ? { status: "paid", paidAt: new Date(`${body.receivedOn}T12:00:00Z`), paymentMethod: body.method, receivedOn: body.receivedOn, paidCents }
+          : { status: "awaiting", paymentMethod: body.method, receivedOn: body.receivedOn, paidCents },
+      )
+      .where(eq(tiffinCharges.id, c.id))
+      .returning();
+    return { charge: row!, full };
+  });
+  const { charge, full } = outcome;
+  const row = await loadSubRow(ctx.db, charge.subscriptionId);
+  if (row && full) await advanceSubscription(ctx, charge, row.sub);
+  if (row && body.sendReceipt && row.sub.status !== "cancelled") {
+    const left = Math.max(0, charge.amountCents - charge.paidCents);
+    await notify(ctx, row.sub.userId, row.sub.merchantId, "tiffin_update", full ? "Payment received" : "Part payment received", `${staff.merchant.name} received ${receiptLine(body.amountCents, body.method, body.receivedOn)} for ${row.plan.name}.${full ? " Thank you." : ` ${money(left)} is still due.`}`, {
+      subscriptionId: row.sub.id,
+      chargeId: charge.id,
+      event: "payment_receipt",
+    });
+  }
+  return chargeDto(charge);
+}
+
+/** Undo a recorded payment (a mistake): the ledger row is voided, the charge reopens as awaiting. */
+export async function voidPayment(ctx: AppContext, staff: StaffContext, chargeId: string, body: z.output<typeof paymentsManualApi.voidPaymentBody>): Promise<tiffinApi.ChargeDto> {
+  const charge = await loadMerchantCharge(ctx.db, staff.merchant.id, chargeId);
+  await voidLedger(ctx, staff, "tiffin_charge", charge.id, body.reason, body.paymentId);
+  const live = await liveLedger(ctx.db, "tiffin_charge", charge.id);
+  const paidCents = live.reduce((s, l) => s + l.amountCents, 0);
+  const last = live.at(-1);
+  const wasPaid = charge.status === "paid";
+  const [row] = await ctx.db
+    .update(tiffinCharges)
+    .set({ status: paidCents >= charge.amountCents ? "paid" : "awaiting", paidCents, paidAt: paidCents >= charge.amountCents ? charge.paidAt : null, receivedOn: last?.receivedOn ?? null, paymentMethod: last?.method ?? charge.paymentMethod })
+    .where(eq(tiffinCharges.id, charge.id))
+    .returning();
+  // A subscription that only became active because of this payment goes back to waiting (unless the kitchen starts people on trust).
+  if (wasPaid && row!.status === "awaiting") {
+    const sub = await loadSubRow(ctx.db, charge.subscriptionId);
+    const [other] = await ctx.db.select({ id: tiffinCharges.id }).from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, charge.subscriptionId), eq(tiffinCharges.status, "paid"))).limit(1);
+    if (sub && sub.sub.status === "active" && !other && !settingsOf(staff.merchant).startOnTrust) await ctx.db.update(tiffinSubscriptions).set({ status: "pending", updatedAt: ctx.now() }).where(eq(tiffinSubscriptions.id, sub.sub.id));
+  }
+  return chargeDto(row!);
+}
+
+export async function awaitingList(ctx: AppContext, merchantId: string): Promise<paymentsManualApi.AwaitingResponse> {
+  const rows = await ctx.db
+    .select({ c: tiffinCharges, plan: tiffinPlans.name, customer: users.name })
+    .from(tiffinCharges)
+    .innerJoin(tiffinSubscriptions, eq(tiffinSubscriptions.id, tiffinCharges.subscriptionId))
+    .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
+    .innerJoin(users, eq(users.id, tiffinSubscriptions.userId))
+    .where(and(eq(tiffinCharges.merchantId, merchantId), eq(tiffinCharges.status, "awaiting"), ne(tiffinSubscriptions.status, "cancelled")))
+    .orderBy(asc(tiffinCharges.createdAt));
+  const today = todayOf(ctx);
+  const items = rows.map(({ c, plan, customer }) => ({
+    chargeId: c.id,
+    subscriptionId: c.subscriptionId,
+    customerName: customer,
+    planName: plan,
+    referenceCode: c.referenceCode,
+    amountCents: c.amountCents,
+    remainingCents: Math.max(0, c.amountCents - c.paidCents),
+    periodStart: c.periodStart,
+    since: c.createdAt.toISOString(),
+    ageDays: Math.max(0, Math.round((parseYmd(today).getTime() - parseYmd(localDate(c.createdAt, TZ)).getTime()) / DAY_MS)),
+  }));
+  return { items, totalCents: items.reduce((s, i) => s + i.remainingCents, 0) };
+}
+
+/**
+ * Daily pass over hand-paid charges still awaiting: a reminder on day 1 and day 3 (skipped between 21:00 and 08:00, the next
+ * run sends it), then after the kitchen's grace days an active subscription goes past due (deliveries stop, as for a failed card).
+ * Idempotent: reminderStage records what was sent.
+ */
+export async function remindManualCharges(ctx: AppContext): Promise<{ reminded: number; pastDue: number }> {
+  const rows = await ctx.db
+    .select({ c: tiffinCharges, sub: tiffinSubscriptions, plan: tiffinPlans, merchant: merchants })
+    .from(tiffinCharges)
+    .innerJoin(tiffinSubscriptions, eq(tiffinSubscriptions.id, tiffinCharges.subscriptionId))
+    .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
+    .innerJoin(merchants, eq(merchants.id, tiffinCharges.merchantId))
+    .where(and(eq(tiffinCharges.status, "awaiting"), inArray(tiffinSubscriptions.status, ["pending", "active", "paused", "past_due"])));
+  const today = todayOf(ctx);
+  let reminded = 0;
+  let pastDue = 0;
+  for (const { c, sub, plan, merchant } of rows) {
+    try {
+      const age = Math.round((parseYmd(today).getTime() - parseYmd(localDate(c.createdAt, TZ)).getTime()) / DAY_MS);
+      const stage = age >= 3 ? 3 : age >= 1 ? 1 : 0;
+      if (stage > c.reminderStage && !inQuietHours(ctx.now(), merchant.timezone || TZ)) {
+        const how = manualFor(merchant, sub.paymentMethod, c);
+        if (how) {
+          const where = sub.paymentMethod === "cash" ? how.instructions : `Send ${money(how.amountCents)} by e-transfer to ${how.email} with ${how.referenceCode} in the message.`;
+          await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", stage === 3 ? "Your tiffin payment is still due" : "A reminder to pay for your tiffin", `${merchant.name}, ${plan.name}: ${where}`, { subscriptionId: sub.id, chargeId: c.id, event: "payment_reminder", referenceCode: how.referenceCode, stage });
+          await ctx.db.update(tiffinCharges).set({ reminderStage: stage }).where(eq(tiffinCharges.id, c.id));
+          reminded++;
+        }
+      }
+      if (sub.status === "active" && age >= settingsOf(merchant).graceDays) {
+        await ctx.db.update(tiffinSubscriptions).set({ status: "past_due", updatedAt: ctx.now() }).where(and(eq(tiffinSubscriptions.id, sub.id), eq(tiffinSubscriptions.status, "active")));
+        pastDue++;
+        await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin is on hold", `${merchant.name} hasn't received your payment for ${plan.name}, so meals are on hold. Pay and they'll start again once it's recorded.`, { subscriptionId: sub.id, chargeId: c.id, event: "payment_failed" });
+      }
+    } catch (err) {
+      if (ctx.config.env !== "test") console.error("[tiffin remind]", c.id, err);
+    }
+  }
+  return { reminded, pastDue };
 }

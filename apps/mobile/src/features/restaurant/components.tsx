@@ -5,12 +5,12 @@
  */
 import { spiceKey, type MessageKey } from "@ll/shared";
 import { useEffect, useRef, useState } from "react";
-import { AppState, Linking, Pressable, StyleSheet, View } from "react-native";
+import { AppState, Linking, Pressable, Share, StyleSheet, View } from "react-native";
 import { WEB_URL } from "../../config";
 import { useLocale } from "../../lib/i18n";
 import { addDays, dayToDate, dietBadges, paymentUrl, setupUrl, torontoToday, weekdayOf, type CountdownParts, type DietaryLike } from "../../lib/restaurant";
 import { ui, useTheme } from "../../theme";
-import { Badge, Chip, ChevronLeft, ChevronRight, IconButton, Minus, Plus, Text } from "../../ui";
+import { Badge, Button, Chip, ChevronLeft, ChevronRight, IconButton, Minus, Plus, Text } from "../../ui";
 
 /**
  * `money` for the app language. In right-to-left text the currency sign would jump to the wrong side of the digits
@@ -342,3 +342,33 @@ export function StatusBadge({ tone, children }: { tone: "success" | "danger" | "
 
 export type Tone = "success" | "danger" | "warning" | "neutral" | "info";
 export const subTone = (s: string): Tone => (s === "active" ? "success" : s === "past_due" ? "danger" : s === "pending" ? "warning" : s === "paused" ? "info" : "neutral");
+
+/**
+ * What to send and where for a hand-paid charge (design M3): the amount, the shop's e-transfer email and the reference code to put
+ * in the message. The app has no clipboard module, so the two buttons open the share sheet, whose first action is Copy.
+ */
+export function ManualDueCard({ manual, shop, cash, dueOn }: { manual: { email: string; amountCents: number; referenceCode: string; instructions: string }; shop: string; cash?: boolean; dueOn?: string | null }) {
+  const { t, date } = useLocale();
+  const money = useMoney();
+  const { c } = useTheme();
+  const byCash = cash || !manual.email;
+  return (
+    <View accessible accessibilityLabel={t("tcb.due.title")} style={{ gap: 8, padding: 16, borderRadius: 16, backgroundColor: c.bgSubtle }}>
+      <Text variant="bodyStrong">{dueOn ? t("tcb.due.titleOn", { date: date(dayToDate(dueOn), { weekday: "short", day: "numeric", month: "short" }) }) : t("tcb.due.title")}</Text>
+      <Text variant="meta" color="fgMuted">
+        {byCash ? t("tcb.due.cash", { shop, amount: money(manual.amountCents), ref: manual.referenceCode }) : t("tcb.due.send", { amount: money(manual.amountCents), email: manual.email, ref: manual.referenceCode })}
+      </Text>
+      {!byCash && manual.instructions ? <Text variant="meta" color="fgMuted">{manual.instructions}</Text> : null}
+      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+        {!byCash ? (
+          <Button size="sm" variant="secondary" onPress={() => void Share.share({ message: manual.email })}>
+            {t("tcb.due.copyEmail")}
+          </Button>
+        ) : null}
+        <Button size="sm" variant="secondary" onPress={() => void Share.share({ message: manual.referenceCode })}>
+          {t("tcb.due.copyRef")}
+        </Button>
+      </View>
+    </View>
+  );
+}

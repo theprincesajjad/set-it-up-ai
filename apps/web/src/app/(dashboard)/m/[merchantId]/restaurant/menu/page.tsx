@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { DualPricing } from "./DualPricing";
+import { HalalCertification } from "./HalalCertification";
 import { ItemSheet } from "./ItemSheet";
 
 type Item = commerceApi.CatalogItemDto;
@@ -40,9 +41,11 @@ export default function MenuPage() {
 }
 
 function Menu() {
-  const { api, base, enabled } = useMerchant();
+  const { api, base, enabled, role } = useMerchant();
   const toast = useToast();
   const state = useApi(() => api.catalog(), [api]);
+  // The shop-level halal certificate (owner only). Dishes name a certifier only when it differs from this one.
+  const certState = useApi(role === "owner" ? () => api.halalCertification.get() : null, [api, role]);
   const dual = useApi(enabled("restaurant.dual_pricing") ? () => api.menuSettings.dualPricing() : null, [api]);
   const langs = useApi(enabled("restaurant.multilingual_menu") ? () => api.menuSettings.languages() : null, [api]);
   const [q, setQ] = useState("");
@@ -60,7 +63,8 @@ function Menu() {
     const cats = [...(state.data?.categories ?? []), { id: "", name: "No section" }];
     return cats.map((c) => ({ cat: c, items: visible.filter((i) => (i.categoryId ?? "") === c.id) })).filter((g) => g.items.length);
   }, [state.data, visible]);
-  const certifier = useMemo(() => sharedCertifier(items), [items]);
+  const shopCertifier = certState.data?.halalCertification?.certifier ?? null;
+  const certifier = useMemo(() => shopCertifier ?? sharedCertifier(items), [items, shopCertifier]);
   const sample = useMemo(() => {
     const prices = items.map((i) => i.priceCents).sort((a, b) => a - b);
     return prices[Math.floor(prices.length / 2)] ?? 2400;
@@ -109,6 +113,7 @@ function Menu() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+      {role === "owner" ? <HalalCertification state={certState} /> : <p className="text-meta text-fg-muted">The owner manages the halal certificate. Halal claims are the owner&apos;s own.</p>}
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-4">
@@ -179,7 +184,7 @@ function Menu() {
                   Select all shown
                 </label>
                 <p className="text-meta text-fg-muted tabular">
-                  {certifier ? `Halal items certified by ${certifier} · ` : ""}
+                  {!shopCertifier && certifier ? `Halal items certified by ${certifier} · ` : ""}
                   {visible.length} dishes
                 </p>
               </div>
@@ -217,7 +222,7 @@ function Menu() {
                   </ul>
                 </Section>
               ))}
-              <p className="text-caption text-fg-muted">Halal and dietary tags are your own claims. Customers see who certified an item only when you name them.</p>
+              <p className="text-caption text-fg-muted">Halal and dietary tags are your own claims. A dish shows a certifier only when you name one that differs from your shop certificate.</p>
             </>
           )}
         </div>
@@ -235,7 +240,7 @@ function Menu() {
         </aside>
       </div>
 
-      <ItemSheet item={edit} onClose={() => setEdit(null)} onSaved={() => void state.reload()} stations={stations} />
+      <ItemSheet item={edit} onClose={() => setEdit(null)} onSaved={() => void state.reload()} stations={stations} shopCertifier={shopCertifier} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 
 export const revalidate = 3600;
 
-const STATIC = ["/", "/for-shoppers", "/for-bias", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility"];
+const STATIC = ["/", "/for-shoppers", "/for-restaurants", "/for-bias", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

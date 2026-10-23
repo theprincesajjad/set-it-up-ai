@@ -2,7 +2,7 @@
  * Program editor logic (merchant-dashboard.md §5): validation that mirrors the API,
  * the plain-language sentence, the live-preview model and the PATCH diff.
  */
-import type { merchantApi } from "@ll/shared";
+import { VERTICAL_TEMPLATES, type merchantApi, type Vertical } from "@ll/shared";
 import { formatMoney } from "@/lib/format";
 
 export type EarnType = "per_dollar" | "per_visit" | "stamps";
@@ -21,11 +21,15 @@ export interface ProgramDraft {
   /** null = never expire (default, recommended). */
   expiryMonths: number | null;
   visitCooldownMinutes: number;
+  /** Stamp on scan (never applies to per_dollar). */
+  counterAutoStamp: boolean;
+  /** What one reward costs the shop, in cents (optional; Reports estimates rewards owed with it). */
+  rewardCostCents: number | null;
 }
 
 export const DRAFT_KEYS: (keyof ProgramDraft)[] = [
   "name", "earnType", "pointsPerDollar", "pointsPerVisit", "minSpendCents", "stampGoal", "terminology",
-  "welcomeBonus", "birthdayBonus", "referralBonus", "expiryMonths", "visitCooldownMinutes",
+  "welcomeBonus", "birthdayBonus", "referralBonus", "expiryMonths", "visitCooldownMinutes", "counterAutoStamp", "rewardCostCents",
 ];
 
 export const MIN_EXPIRY_MONTHS = 12;
@@ -47,7 +51,57 @@ export function draftFromProgram(p: merchantApi.LoyaltyProgram): ProgramDraft {
     referralBonus: p.referralBonus,
     expiryMonths: p.expiryMonths,
     visitCooldownMinutes: p.visitCooldownMinutes,
+    counterAutoStamp: p.counterAutoStamp,
+    rewardCostCents: p.rewardCostCents,
   };
+}
+
+/** The three ways to earn a stamp, as the Rewards page words them (cafes-retail.md 7.3). */
+export type EarnMode = "visit" | "purchase" | "dollar";
+
+export function earnModeOf(d: Pick<ProgramDraft, "earnType" | "minSpendCents">): EarnMode {
+  if (d.earnType === "per_dollar") return "dollar";
+  return d.minSpendCents > 0 ? "purchase" : "visit";
+}
+
+/** One per visit / one per purchase over a minimum (default $5) / points per dollar. Stamps stay stamps. */
+export function setEarnMode(d: ProgramDraft, mode: EarnMode): ProgramDraft {
+  if (mode === "dollar") return { ...changeEarnType(d, "per_dollar"), minSpendCents: 0, counterAutoStamp: false };
+  const base = d.earnType === "per_visit" ? d : changeEarnType(d, "stamps");
+  return { ...base, minSpendCents: mode === "purchase" ? d.minSpendCents || 500 : 0 };
+}
+
+/** "A weekly regular earns it in about 10 weeks." (one stamp a week, so the goal in weeks). */
+export function weeklyRegularSentence(goal: number, perVisit: number): string {
+  const weeks = Math.max(1, Math.ceil(goal / Math.max(1, perVisit)));
+  return `A weekly regular earns it in about ${weeks} weeks.`;
+}
+
+/** Preset chips for step 3: the vertical template's rewards first, then a few common ones, then Custom. */
+export function rewardPresets(vertical: string): { label: string; name: string; rewardType: merchantApi.Reward["rewardType"]; value: number }[] {
+  const t = VERTICAL_TEMPLATES[vertical as Vertical];
+  const base = (t?.rewards ?? []).map((r) => ({ label: r.name, name: r.name, rewardType: r.rewardType, value: r.value }));
+  const extra =
+    vertical === "cafe"
+      ? [{ label: "Free pastry", name: "Free pastry", rewardType: "free_item" as const, value: 0 }, { label: "$5 off", name: "$5 off", rewardType: "amount_off" as const, value: 500 }]
+      : vertical === "bakery"
+        ? [{ label: "Free coffee", name: "Free coffee", rewardType: "free_item" as const, value: 0 }, { label: "$5 off", name: "$5 off", rewardType: "amount_off" as const, value: 500 }]
+        : [{ label: "$5 off", name: "$5 off", rewardType: "amount_off" as const, value: 500 }];
+  const seen = new Set<string>();
+  return [...base, ...extra].filter((p) => (seen.has(p.name) ? false : (seen.add(p.name), true))).concat([{ label: "Custom", name: "", rewardType: "custom", value: 0 }]);
+}
+
+/** Verticals where the "categories that don't earn" table applies (pharmacy rx, grocery lottery and tobacco, retail gift cards). */
+export const CATEGORY_VERTICALS: readonly string[] = ["pharmacy", "grocery", "retail"];
+
+/**
+ * Show the no-earn categories table for pharmacy, grocery and retail, or for any shop whose POS has synced categories.
+ * Cafés and bakeries never see it (their stored categories are kept).
+ */
+export function categoriesVisible(vertical: string, categories: Pick<merchantApi.Category, "externalIds">[], posConnected: boolean): boolean {
+  if (vertical === "cafe" || vertical === "bakery") return false;
+  if (CATEGORY_VERTICALS.includes(vertical)) return true;
+  return posConnected && categories.some((c) => Object.keys(c.externalIds ?? {}).length > 0);
 }
 
 /** Switching earn type picks sensible companions (stamps use "stamps" wording and a 10-stamp card). */

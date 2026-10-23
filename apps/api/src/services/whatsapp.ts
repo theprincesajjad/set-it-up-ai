@@ -26,9 +26,9 @@
  * Message delivery rows: message_deliveries.channel has no "whatsapp" value yet, so sends are
  * counted in the credits and summarised in audit_logs; the fake provider records them in tests.
  */
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { auditLogs, catalogItems, integrations, merchantCategories, merchants, orderItems, orders, users, webhookEvents, whatsappSessions } from "@ll/db";
-import { ADD_ONS, BRAND, RESTAURANT_PLANS, whatsappApi } from "@ll/shared";
+import { and, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { auditLogs, catalogItems, integrations, merchantCategories, merchants, orderItems, orders, users, webhookEvents, whatsappMessages, whatsappSessions } from "@ll/db";
+import { ADD_ONS, BRAND, RESTAURANT_PLANS, whatsappApi, type restaurantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { sha256 } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
@@ -272,9 +272,29 @@ export async function listSessions(ctx: AppContext, merchantId: string, limit = 
 }
 
 // ---------------------------------------------------------------------------
+// Chat log (the inbox reads these)
+// ---------------------------------------------------------------------------
+export async function recordChatMessage(
+  ctx: AppContext,
+  merchantId: string,
+  session: Pick<Session, "id"> | null,
+  m: { direction: "in" | "out"; kind: "text" | "template" | "order_summary"; body: string; sender?: string | null; sentByUserId?: string | null; providerMessageId?: string | null },
+): Promise<void> {
+  if (!session) return;
+  try {
+    await ctx.db.insert(whatsappMessages).values({ merchantId, sessionId: session.id, direction: m.direction, kind: m.kind, body: m.body, sender: m.sender ?? null, sentByUserId: m.sentByUserId ?? null, providerMessageId: m.providerMessageId ?? null, createdAt: ctx.now() });
+  } catch (err) {
+    // The log must never break a send.
+    if (ctx.config.env !== "test") console.error("[whatsapp chat log]", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Sending
 // ---------------------------------------------------------------------------
 export interface Outgoing {
+  /** Who is speaking, for the inbox: the ordering assistant, a person at the shop, or an automatic notification (default). */
+  sender?: "assistant" | "staff" | "system";
   /** Free-form text, used inside the 24 hour window. */
   text?: string;
   /** Approved template, used outside the window (counts a credit). */
@@ -300,12 +320,14 @@ export async function sendWhatsApp(ctx: AppContext, merchant: Merchant, phone: s
     const provider = getWhatsApp(ctx);
     if (msg.text && windowOpen(session, ctx.now())) {
       const r = await provider.sendText({ phoneNumberId: sender.phoneNumberId, to, body: msg.text });
+      await recordChatMessage(ctx, merchant.id, session, { direction: "out", kind: "text", body: msg.text, sender: msg.sender ?? "system", providerMessageId: r.id });
       return { sent: true, via: "text", id: r.id };
     }
     if (!msg.template) return { sent: false, reason: "outside_window" };
     if (!(await reserveCredits(ctx, merchant, 1))) return { sent: false, reason: "no_credits" };
     try {
       const r = await provider.sendTemplate({ phoneNumberId: sender.phoneNumberId, to, template: msg.template.name, language: msg.language ?? session?.language ?? "en", params: msg.template.params });
+      await recordChatMessage(ctx, merchant.id, session, { direction: "out", kind: "template", body: msg.text ?? `${msg.template.name}: ${msg.template.params.join(", ")}`, sender: msg.sender ?? "system", providerMessageId: r.id });
       return { sent: true, via: "template", id: r.id };
     } catch (err) {
       await refundCredits(ctx, merchant.id, 1);
@@ -395,7 +417,7 @@ export async function buildMenu(ctx: AppContext, merchant: Merchant): Promise<Me
     .select({ item: catalogItems, category: merchantCategories.name })
     .from(catalogItems)
     .leftJoin(merchantCategories, eq(merchantCategories.id, catalogItems.categoryId))
-    .where(and(eq(catalogItems.merchantId, merchant.id), eq(catalogItems.available, true), eq(catalogItems.orderable, true), eq(catalogItems.preorderOnly, false)));
+    .where(and(eq(catalogItems.merchantId, merchant.id), eq(catalogItems.available, true), eq(catalogItems.orderable, true), eq(catalogItems.preorderOnly, false), or(isNull(catalogItems.soldOutUntil), lte(catalogItems.soldOutUntil, ctx.now()))));
   const sorted = rows.sort((a, b) => (a.category ?? "~").localeCompare(b.category ?? "~") || a.item.sortOrder - b.item.sortOrder || a.item.name.localeCompare(b.item.name));
   const items: MenuViewItem[] = sorted.map((r, i) => ({
     id: r.item.id,
@@ -460,7 +482,7 @@ export async function handleWebhook(ctx: AppContext, body: unknown): Promise<Web
 }
 
 async function reply(ctx: AppContext, merchant: Merchant, session: Session, texts: string[]): Promise<void> {
-  for (const text of texts.filter(Boolean)) await sendWhatsApp(ctx, merchant, session.phone, { text }, session);
+  for (const text of texts.filter(Boolean)) await sendWhatsApp(ctx, merchant, session.phone, { text, sender: "assistant" }, session);
 }
 
 /** One inbound customer message for a shop: update the window, run the conversation, send replies, act. */
@@ -477,8 +499,9 @@ export async function processInbound(ctx: AppContext, merchant: Merchant, msg: I
     lang = guess && shopLangs.includes(guess) ? guess : asLang(shopLangs[0]);
     session = (await ctx.db.update(whatsappSessions).set({ language: lang }).where(eq(whatsappSessions.id, session.id)).returning())[0]!;
   }
+  await recordChatMessage(ctx, merchant.id, session, { direction: "in", kind: "text", body: msg.text || "(attachment)", sender: "guest", providerMessageId: msg.id });
   if (!msg.text) {
-    await reply(ctx, merchant, session, [strings(lang).unknown]);
+    if (!session.takenOverAt) await reply(ctx, merchant, session, [strings(lang).unknown]);
     return;
   }
 
@@ -488,13 +511,15 @@ export async function processInbound(ctx: AppContext, merchant: Merchant, msg: I
 
   // Shops without WhatsApp ordering only honour STOP / START.
   if (!orderingOn && !out.action) return;
+  // A person has taken the chat over: the assistant stays quiet (STOP / START still work).
+  if (session.takenOverAt && out.action?.type !== "opt_out" && out.action?.type !== "opt_in") return;
 
   let replies = out.replies;
   if (created && replies.length === 1 && replies[0] === strings(lang).unknown) replies = [strings(out.language).greeting(merchant.name)];
   session = (
     await ctx.db
       .update(whatsappSessions)
-      .set({ state: out.state, language: out.language, cart: out.cart, updatedAt: now })
+      .set({ state: out.state, language: out.language, cart: out.cart, updatedAt: now, ...(out.allergyNote ? { allergyNote: out.allergyNote } : {}) })
       .where(eq(whatsappSessions.id, session.id))
       .returning()
   )[0]!;
@@ -509,10 +534,21 @@ async function checkout(ctx: AppContext, merchant: Merchant, session: Session, n
   const lang = asLang(session.language);
   try {
     const key = `wa:${session.id}:${sha256(`${session.orderId ?? "first"}:${JSON.stringify(session.cart)}`).slice(0, 24)}`;
-    const res = await placeChannelOrder(ctx, merchant, { phone: session.phone, name, channel: "whatsapp", lines: session.cart, paymentMethod: "in_app", idempotencyKey: key });
+    const res = await placeChannelOrder(ctx, merchant, { phone: session.phone, name, channel: "whatsapp", lines: session.cart, paymentMethod: "in_app", allergyNote: session.allergyNote, idempotencyKey: key });
     const awaiting = !!res.payment && res.order.paymentStatus !== "paid";
     const payUrl = awaiting ? orderPayUrl(ctx, res.order.id) : null;
-    await ctx.db.update(whatsappSessions).set({ orderId: res.order.id, userId: res.userId, cart: [], state: awaiting ? "awaiting_payment" : "done", updatedAt: ctx.now() }).where(eq(whatsappSessions.id, session.id));
+    await ctx.db.update(whatsappSessions).set({ orderId: res.order.id, userId: res.userId, cart: [], allergyNote: null, state: awaiting ? "awaiting_payment" : "done", updatedAt: ctx.now() }).where(eq(whatsappSessions.id, session.id));
+    // The summary card in the inbox: what the assistant built and the pay link.
+    const summary: restaurantApi.OrderSummaryBody = {
+      orderNumber: res.order.number,
+      lines: res.order.items.map((i) => ({ quantity: i.quantity, name: i.name, totalCents: i.lineTotalCents })),
+      subtotalCents: res.order.subtotalCents,
+      taxCents: res.order.taxCents,
+      totalCents: res.order.totalCents,
+      depositCents: res.order.depositCents,
+      payUrl,
+    };
+    await recordChatMessage(ctx, merchant.id, session, { direction: "out", kind: "order_summary", body: JSON.stringify(summary), sender: "assistant" });
     await reply(ctx, merchant, session, [orderPlacedText(lang, { number: res.order.number, totalCents: res.order.totalCents, payUrl, shop: merchant.name })]);
   } catch (err) {
     await ctx.db.update(whatsappSessions).set({ state: "cart", updatedAt: ctx.now() }).where(eq(whatsappSessions.id, session.id));

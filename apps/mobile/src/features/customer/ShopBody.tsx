@@ -36,6 +36,7 @@ import {
   ListRow,
   PromoCard,
   Section,
+  Scissors,
   ShareGlyph,
   ShoppingBag,
   ShopLogo,
@@ -49,6 +50,7 @@ import { ShopDietary, ShopRestaurantRows, ShopWhatsapp } from "../restaurant/Sho
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
+import { useLocale } from "../../lib/i18n";
 
 export function useShopModel(slug: string | null | undefined) {
   const shop = useQuery({ queryKey: qk.shop(slug ?? ""), queryFn: () => api.network.shop(slug!), enabled: !!slug });
@@ -126,6 +128,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const [joining, setJoining] = useState(false);
   const [redeeming, setRedeeming] = useState<customerApi.MemberRewardDto | null>(null);
   const [muting, setMuting] = useState(false);
+  const { t: tr } = useLocale();
   const s = model.shop.data as networkApi.PublicShopResponse | undefined;
   if (!s) return null;
 
@@ -140,6 +143,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const myTickets = phase2.tickets.filter((x) => x.merchantId === s.merchant.id);
   const orderAhead = !!features?.orderAhead;
   const ticketsOn = !!features?.serviceTickets || myTickets.length > 0;
+  const dropoffOn = !!features?.dropoffScheduling;
+  const appointmentsOn = !!features?.appointments;
   const referralsOn = features?.referrals !== false && (m?.program?.referralBonus ?? 0) > 0;
   const neighbours = s.memberCount != null ? `${s.memberCount.toLocaleString("en-CA")} neighbours are members` : null;
   const dist = locState.coords && loc?.lat != null && loc.lng != null ? distanceMetres(locState.coords, { lat: loc.lat, lng: loc.lng }) : null;
@@ -325,9 +330,11 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <View style={{ gap: 18, marginTop: 24 }}>
-          {orderAhead || ticketsOn ? (
+          {orderAhead || ticketsOn || dropoffOn || appointmentsOn ? (
             <Section title="Order and services">
-              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title="Order ahead" subtitle="Pick up at the counter, pay there" chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
+              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title="Order ahead" subtitle="Pick up at the counter, pay there" chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn} /> : null}
+              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr("bk.shop.book")} subtitle={tr("bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
+              {dropoffOn ? <ListRow leadingIcon={Ticket} title={tr("sv.d.link")} subtitle={tr("sv.d.linkSub")} chevron onPress={() => router.push(`/dropoff/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
               {ticketsOn ? (
                 <ListRow
                   leadingIcon={Ticket}

@@ -10,6 +10,8 @@ import { browserClient } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { dayDate, eventLabel, serviceLabel } from "@/lib/restaurant/util";
+import { cn } from "@/lib/cn";
+import { ManualDue } from "./ManualDue";
 import { BigNumber, FactList, Heading, Section, ShopHead, useFmt } from "./ui";
 
 const api = restaurantCustomerApi(browserClient);
@@ -28,6 +30,10 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
   const [offline, setOffline] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const { merchant: shop, event: e } = data;
+  // How they will pay the deposit: card or bank debit when the shop has Stripe, Interac e-transfer when the shop takes it.
+  const pay = data.pay ?? { card: true, etransfer: false };
+  const [payWith, setPayWith] = useState<"card" | "etransfer">(pay.card ? "card" : "etransfer");
+  const [manual, setManual] = useState(data.manual);
 
   const dayLabel = date(dayDate(e.eventDate), { weekday: "long", month: "long", day: "numeric", year: "numeric" }, "UTC");
   const whenLabel = e.startTime ? t("rc.ca.when", { date: dayLabel, time: time(new Date(`${e.eventDate}T${e.startTime}:00Z`), "UTC") }) : dayLabel;
@@ -47,11 +53,12 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
     setBusy(true);
     setError(null);
     try {
-      const r = await api.catering.approve(token, name.trim());
+      const r = await api.catering.approve(token, name.trim(), payWith === "etransfer" && pay.etransfer ? "etransfer" : "card");
       setData((d) => ({ ...d, event: r.event, canApprove: false, depositDue: r.event.status === "quoted" && r.event.depositCents > 0 && !r.event.depositPaidAt }));
+      setManual(r.manual);
       if (r.deposit?.clientSecret) {
         setPayment({ paymentIntentId: r.deposit.paymentIntentId, clientSecret: r.deposit.clientSecret, amountCents: r.deposit.amountCents });
-      } else if (r.event.status === "quoted" && r.event.depositCents > 0 && !r.event.depositPaidAt) {
+      } else if (r.event.status === "quoted" && r.event.depositCents > 0 && !r.event.depositPaidAt && !r.manual) {
         setOffline(true);
       }
     } catch (err) {
@@ -81,12 +88,17 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
   const confirmed = status === "confirmed" || status === "completed";
   const showForm = data.canApprove && !approved;
   const owes = !confirmed && status === "quoted" && approved && hasDeposit && !e.depositPaidAt;
+  const cancelTiers = data.cancellationTiers;
+  const policy = cancelTiers?.length
+    ? [...cancelTiers.map((x) => t("tcb.q.policyTier", { pct: percent(x.refundBps / 100), days: number(x.minDaysBefore) })), t("tcb.q.policyNone")].join(", ")
+    : null;
 
   // Menu lines: strip the API's English "(per guest)" / "(tray)" suffix and show the maths in the viewer's language.
   const lines = e.lineItems.map((l) => {
     const perGuest = /\s\(per guest\)$/.test(l.description);
     const tray = /\s\(tray\)$/.test(l.description);
-    const name = l.description.replace(/\s\((per guest|tray)\)$/, "");
+    const serviceLine = e.serviceChargeBps > 0 && l.description.startsWith("Service charge");
+    const name = serviceLine ? `${t("tcb.q.service", { pct: percent(e.serviceChargeBps / 100) })}${data.event.tax?.registered === false ? "" : ` (${t("tcb.q.serviceTax")})`}` : l.description.replace(/\s\((per guest|tray)\)$/, "");
     const detail = perGuest ? t("rc.ca.perGuestLine", { n: number(l.quantity), price: money(l.unitPriceCents) }) : tray ? t("rc.ca.trayLine", { n: l.quantity, price: money(l.unitPriceCents) }) : l.quantity > 1 ? t("rc.ca.qtyLine", { n: number(l.quantity), price: money(l.unitPriceCents) }) : null;
     return { name, detail, total: l.totalCents };
   });
@@ -145,7 +157,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
               <dd className="tabular-nums">{money(e.subtotalCents)}</dd>
             </div>
             <div className="flex justify-between py-0.5">
-              <dt className="text-fg-muted">{t("rc.ca.tax")}</dt>
+              <dt className="text-fg-muted">{e.tax?.registered === false ? t("tcb.q.taxNone") : t("rc.ca.tax")}{e.tax?.registered && e.tax.number ? ` · ${t("tcb.q.taxNumber", { no: e.tax.number })}` : ""}</dt>
               <dd className="tabular-nums">{money(e.taxCents)}</dd>
             </div>
             <div className="flex justify-between pt-1 text-body-strong text-fg">
@@ -155,7 +167,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
           </dl>
         </div>
         {/* Whole quote (dishes, trays, extras, tax) over the guest count, not just the per-head lines. */}
-        {e.headcount > 0 && e.totalCents > 0 ? <p className="text-meta text-fg-muted">{t("rc.ca.perGuest", { price: money(Math.round(e.totalCents / e.headcount)) })}</p> : null}
+        {e.headcount > 0 && e.totalCents > 0 ? <p className="text-meta text-fg-muted">{t("tcb.q.perGuestIncl", { price: money(Math.round(e.totalCents / e.headcount)) })}</p> : null}
       </Section>
 
       {hasDeposit && status !== "cancelled" ? (
@@ -169,6 +181,9 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
       ) : null}
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
+
+      {hasDeposit && pay.etransfer && (showForm || (owes && !payment)) && !manual ? <PayWith pay={pay} value={payWith} onChange={setPayWith} shop={shop.name} /> : null}
+      {owes && manual && !payment ? <ManualDue manual={manual} shop={shop.name} /> : null}
 
       {showForm ? (
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
@@ -185,7 +200,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
             required
           />
           <Button type="submit" size="lg" fullWidth loading={busy}>
-            {hasDeposit ? t("rc.ca.approvePay", { amount: money(e.depositCents) }) : t("rc.ca.approve")}
+            {hasDeposit ? (payWith === "etransfer" && pay.etransfer ? t("tcb.q.approveEt", { amount: money(e.depositCents) }) : t("rc.ca.approvePay", { amount: money(e.depositCents) })) : t("rc.ca.approve")}
           </Button>
         </form>
       ) : null}
@@ -199,7 +214,14 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
         </Section>
       ) : null}
 
-      {owes && !payment && !offline ? (
+      {hasDeposit && status !== "cancelled" ? (
+        <section aria-label={t("tcb.q.cancelTitle")} className="flex flex-col gap-1">
+          <h3 className="text-meta-strong text-fg">{t("tcb.q.cancelTitle")}</h3>
+          <p className="text-meta text-fg-muted">{policy ? t("tcb.q.cancelPolicy", { policy, shop: shop.name }) : t("tcb.q.cancelAsk", { shop: shop.name })}</p>
+        </section>
+      ) : null}
+
+      {owes && !payment && !offline && !manual ? (
         <Button size="lg" fullWidth loading={busy} onClick={() => approve(e.signatureName ?? "")}>
           {t("rc.ca.resume", { amount: money(e.depositCents) })}
         </Button>
@@ -215,6 +237,26 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
           {t("rc.callShop", { shop: shop.name })}
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+/** Pick how to pay the deposit before signing: card or bank debit (confirmed straight away) or Interac e-transfer (the shop confirms). */
+function PayWith({ pay, value, onChange, shop }: { pay: { card: boolean; etransfer: boolean }; value: "card" | "etransfer"; onChange: (v: "card" | "etransfer") => void; shop: string }) {
+  const { t } = useFmt();
+  if (!pay.card) return null;
+  const opts = [
+    { v: "card" as const, title: t("tcb.q.payCard"), body: t("tcb.q.payCardBody") },
+    { v: "etransfer" as const, title: t("tcb.q.payEt"), body: t("tcb.pay.etransferBody", { shop }) },
+  ];
+  return (
+    <div role="radiogroup" aria-label={t("rc.ca.depositDue", { pct: "" }).trim()} className="flex flex-col gap-3">
+      {opts.map((o) => (
+        <button key={o.v} type="button" role="radio" aria-checked={value === o.v} onClick={() => onChange(o.v)} className={cn("flex w-full flex-col gap-1 rounded-card border p-4 text-start focus-visible:focus-ring", value === o.v ? "border-2 border-fg" : "border-line hover:bg-bg-subtle")}>
+          <span className="text-body-strong text-fg">{o.title}</span>
+          <span className="text-meta text-fg-muted">{o.body}</span>
+        </button>
+      ))}
     </div>
   );
 }

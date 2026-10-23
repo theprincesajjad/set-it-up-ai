@@ -1,6 +1,8 @@
 "use client";
 import { Suspense } from "react";
 import { PageHeader, PageTabs } from "@/components/dashboard/kit";
+import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { Button } from "@/components/ui/Button";
 import { PageSkeleton } from "@/components/dashboard/PageStates";
 import { TierGate, useTabParam } from "@/components/dashboard/restaurant/common";
 import { DeliveriesTab } from "@/components/dashboard/restaurant/tiffin/DeliveriesTab";
@@ -28,18 +30,29 @@ export default function TiffinPage() {
 
 function Tiffin() {
   const [tab, setTab] = useTabParam(TABS, "today");
+  const { base } = useMerchant();
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader flush className="print:hidden" title="Tiffin" description="Today's count for the kitchen, the delivery run, and the people who subscribe." />
+      <PageHeader flush className="print:hidden" title="Tiffin" description="Today's count for the kitchen, the delivery run, and the people who subscribe." actions={<Button size="sm" variant="secondary" href={`${base}/restaurant/payments`}>How you get paid</Button>} />
       <PageTabs<Tab> label="Tiffin views" value={tab} onChange={setTab} className="print:hidden" items={TABS.map((t) => ({ id: t, label: LABELS[t] }))} />
       <div role="tabpanel" aria-label={LABELS[tab]}>
-        {tab === "today" ? <TodayTab goPlans={() => setTab("plans")} gate={GATE} /> : null}
+        {tab === "today" ? (
+          <TodayTab
+            goPlans={() => setTab("plans")}
+            gate={GATE}
+            go={(to) => {
+              if (to === "subscribers-awaiting") setTab("subscribers", "status=awaiting");
+              else if (to === "subscribers-past-due") setTab("subscribers", "status=past_due");
+              else setTab(to);
+            }}
+          />
+        ) : null}
         {tab === "deliveries" ? <DeliveriesTab goRoutes={() => setTab("routes")} gate={GATE} /> : null}
         {tab === "subscribers" ? <SubscribersTab goPlans={() => setTab("plans")} gate={GATE} /> : null}
         {tab === "plans" ? <PlansTab gate={GATE} /> : null}
         {tab === "menus" ? <MenusTab goPlans={() => setTab("plans")} gate={GATE} /> : null}
         {tab === "routes" ? <RoutesTab gate={GATE} /> : null}
-        {tab === "revenue" ? <RevenueTab gate={GATE} /> : null}
+        {tab === "revenue" ? <RevenueTab gate={GATE} openAwaiting={() => setTab("subscribers", "status=awaiting")} /> : null}
       </div>
     </div>
   );

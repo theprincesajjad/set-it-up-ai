@@ -36,6 +36,19 @@ export function RestaurantSection({ children }: { children: ReactNode }) {
           })}
         </ul>
       </nav>
+      {/* The sidebar has one "Catering & banquet" entry; on those two pages a small switch moves between them. */}
+      {(pathname.startsWith(`${base}/restaurant/catering`) || pathname.startsWith(`${base}/restaurant/banquet`)) && unlocked.some((r) => r.slug === "catering") && unlocked.some((r) => r.slug === "banquet") ? (
+        <div role="group" aria-label="Catering and banquet" className="hidden gap-1.5 lg:flex">
+          {(["catering", "banquet"] as const).map((slug) => {
+            const on = pathname.startsWith(`${base}/restaurant/${slug}`);
+            return (
+              <Link key={slug} href={`${base}/restaurant/${slug}`} aria-current={on ? "page" : undefined} className={cn("inline-flex h-8 items-center rounded-full border px-3.5 text-meta-strong focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+                {slug === "catering" ? "Catering" : "Banquet halls"}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
       {children}
     </div>
   );

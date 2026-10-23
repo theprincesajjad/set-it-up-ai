@@ -8,7 +8,7 @@ import { staffApi } from "@ll/shared";
 
 /** Web counter for shops with a laptop / tablet browser at the till (same API as the app's counter mode). */
 export default function CounterPage() {
-  const { api, detail, base, role } = useMerchant();
+  const { api, detail, base, role, me } = useMerchant();
   const program = detail.program;
   if (!program)
     return (
@@ -19,7 +19,7 @@ export default function CounterPage() {
   return (
     <div>
       <PageHeader title="Counter" description={`${detail.merchant.name}${role === "staff" ? ` · Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : ""}`} />
-      <CounterApp queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
+      <CounterApp signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
     </div>
   );
 }

@@ -30,6 +30,7 @@ The invariant still holds: a free-forever feature can never be gated. Admins can
 - **Integrations:** POS auto-award (Square, Clover, Shopify, Lightspeed, Toast), Mailchimp, outgoing webhooks, Zapier/Make and the merchant REST API.
 - **Reports:** advanced reports (retention cohorts, network overlap, promo results).
 - **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
+- **Appointments:** the staff-column calendar, services and prices, staff hours and time off, online booking with a deposit or a card on file, walk-ins, reminders and no-show protection, and checkout with a tip for the stylist (`booking.appointments`). Founder default until told otherwise: salons, barbers, threading, henna and bridal artists buy Café & Retail at $39, with no per-chair charge.
 
 ## Service: $99/mo ($990/yr), 1,500 SMS/mo included
 
@@ -79,9 +80,14 @@ Card processing (Stripe's standard rate) is passed through at cost on every paym
 | Online orders, Free plan | 1.5% |
 | Optional customer service fee on orders | $0.49, only if the restaurant turns it on |
 | Deposits (catering, banquet, quotes) and invoices | 1% |
+| Online appointment deposits and no-show fees | 1% |
+| Appointment checkout taken through the calendar (counter or pay link) | 0% (card processing at cost) |
 | Tiffin subscription billing | 1% |
+| Payments you record by hand (Interac e-transfer, cash, cheque) | 0% |
 
-One function computes all of these: `computeFees()` in `apps/api/src/services/fees.ts`. Delivery apps commonly keep 15 to 30% of an order; a Growth restaurant doing $5,000 a month in online orders pays $199 flat instead of roughly $750 to $1,500 in commission. The pricing page and the billing screen both show this table.
+Payments you record by hand carry no platform fee: the 1% stays on card and bank debit taken in the app, where we do the work. A tiffin kitchen, caterer or hall that takes e-transfer or cash can sign customers up without a Stripe account. The fee on a taxed tiffin charge is a share of the price before tax. One function computes all of these: `computeFees()` in `apps/api/src/services/fees.ts`. Delivery apps commonly keep 15 to 30% of an order; a Growth restaurant doing $5,000 a month in online orders pays $199 flat instead of roughly $750 to $1,500 in commission. The pricing page and the billing screen both show this table.
+
+Appointments: checkout taken through the calendar, at the counter or by the pay link texted from it, carries no platform fee (`FEES.appointmentCheckoutBps = 0`, kind `appointment_checkout`; card processing at cost). On a $60 service with a tip, 1% plus Stripe would sit above Square's 2.5% in person, so only the online deposit at booking (and a no-show fee charged to a saved card) pays the 1%. Check Stripe Canada's current rate before publishing any comparison. Source: `docs/research/service-businesses.md` section 4.4 (founder default: appointments inside Café & Retail, 0% on in-person checkout).
 
 Note: every payment path now uses `computeFees()`. Café & Retail and Service shops pay 0% on online orders (was 0.75%) and 1% on quote deposits and invoices (was 0.75%).
 

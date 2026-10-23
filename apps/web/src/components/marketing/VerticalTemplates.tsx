@@ -8,14 +8,14 @@ import { StampCard } from "@/components/ui/StampCard";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { copy } from "@/copy/en-CA";
 import { howYouEarn } from "@/lib/program";
+import { ChipLink } from "./ChipLink";
 
 const SHOWN: { v: Vertical; label: string }[] = [
   { v: "cafe", label: "cafés" },
   { v: "bakery", label: "bakeries" },
-  { v: "pharmacy", label: "pharmacies" },
-  { v: "repair_electronics", label: "repair" },
-  { v: "repair_auto", label: "auto" },
   { v: "salon", label: "salons" },
+  { v: "repair_electronics", label: "repair" },
+  { v: "pharmacy", label: "pharmacies" },
 ];
 
 /** "Built for your kind of shop": the default template per vertical, previewed with the real card. */
@@ -31,6 +31,8 @@ export function VerticalTemplates() {
             {s.label}
           </Chip>
         ))}
+        {/* Restaurants have their own kit and plans: this chip leaves the page instead of previewing a shop template. */}
+        <ChipLink href="/for-restaurants">restaurants</ChipLink>
       </ChipGroup>
       <div className="grid items-center gap-10 rounded-sheet border border-line p-6 md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
         <div>
@@ -39,7 +41,7 @@ export function VerticalTemplates() {
             {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${rewardInSentence(reward?.name ?? "a reward")}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${rewardInSentence(reward?.name ?? "a reward")}`}
           </p>
           <p className="mt-4 text-body text-fg-muted">
-            Welcome bonus: {formatPoints(t.welcomeBonus, t.terminology, false)}. Change anything in your dashboard.
+            Welcome bonus: {formatPoints(t.welcomeBonus, t.terminology, false)}. Change anything later in your dashboard. {copy.landing.verticals.restaurantsNote}
           </p>
           {v === "pharmacy" ? <p className="mt-4 border-s-2 border-line ps-3 text-meta text-fg-muted">Front-store points only. {copy.misc.pharmacyRule}</p> : null}
           {t.categories.some((c) => !c.earnEligible) && v !== "pharmacy" ? (

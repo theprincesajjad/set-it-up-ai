@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
 import { DietaryPills } from "./dietary";
+import { ManualDue, PayOptions, offeredMethods } from "./ManualDue";
 import { BigNumber, ChoiceRow, FieldLabel, Heading, Pill, ShopHead, Stepper, useFmt } from "./ui";
 
 const api = restaurantCustomerApi(browserClient);
@@ -37,7 +38,8 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
   const [addressNotes, setAddressNotes] = useState("");
   const [dietNotes, setDietNotes] = useState("");
   const [start, setStart] = useState(addDays(todayIso(), 1));
-  const [method, setMethod] = useState<tiffinApi.TiffinPaymentMethod>("card");
+  const methods = offeredMethods(data.accepted ?? { card: true, pad: data.padEnabled, etransfer: false, cash: false });
+  const [method, setMethod] = useState<tiffinApi.TiffinPaymentMethod>(methods[0] ?? "card");
   const [errors, setErrors] = useState<Partial<Record<"address" | "postal" | "start", string>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
     setPlanId(p.id);
     setServings((s) => Math.min(s, p.maxServings));
     setFulfilment(p.deliveryAllowed ? "delivery" : "pickup");
+    setMethod((m) => (methods.includes(m) ? m : (methods[0] ?? "card")));
     setError(null);
   }
 
@@ -77,7 +80,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
         paymentMethod: method,
       });
       setResult(r);
-      if (!r.payment) setPaid("yes");
+      if (!r.payment && !r.manual) setPaid("yes");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -107,7 +110,17 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
     return (
       <div className="flex flex-col gap-6">
         <ShopHead shop={shop} href={`/shops/${encodeURIComponent(shop.slug)}`} />
-        {paid === "yes" ? (
+        {result.manual ? (
+          <section className="flex flex-col gap-4" aria-label={t("tcb.pay.doneTitle", { shop: shop.name })}>
+            <CircleCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
+            <Heading level={2}>{t("tcb.pay.doneTitle", { shop: shop.name })}</Heading>
+            <ManualDue manual={result.manual} shop={shop.name} method={result.subscription.paymentMethod} />
+            <p className="text-body text-fg-muted">{t("tcb.pay.doneBody", { shop: shop.name })}</p>
+            <Button size="lg" fullWidth href="/me/tiffin">
+              {t("rc.tf.manage")}
+            </Button>
+          </section>
+        ) : paid === "yes" ? (
           <section className="flex flex-col gap-3 rounded-sheet bg-bg-subtle p-5" aria-label={t("rc.tf.doneTitle")}>
             <CircleCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
             <Heading level={2}>{t("rc.tf.doneTitle")}</Heading>
@@ -228,25 +241,11 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                     ) : null}
                     <TextField type="textarea" label={`${t("rc.tf.dietNotes")} (${t("rc.optional")})`} value={dietNotes} onChange={(e) => setDietNotes(e.target.value)} maxLength={500} rows={2} />
                     <TextField type="date" label={t("rc.tf.startDate")} min={todayIso()} value={start} onChange={(e) => setStart(e.target.value)} error={errors.start} required />
-                    {data.padEnabled ? (
-                      <div className="flex flex-col gap-2">
-                        <FieldLabel>{t("rc.tf.payment")}</FieldLabel>
-                        <ChoiceRow
-                          label={t("rc.tf.payment")}
-                          value={method}
-                          onChange={setMethod}
-                          options={[
-                            { value: "card", label: t("rc.tf.card") },
-                            { value: "pad", label: t("rc.tf.pad") },
-                          ]}
-                        />
-                      </div>
-                    ) : null}
-
+                    <PayOptions shop={shop.name} methods={methods} value={method} onChange={setMethod} etransfer={data.etransfer ?? null} amountCents={price} />
                     {error ? <Banner tone="danger">{error}</Banner> : null}
                     {signedIn ? (
                       <Button type="submit" size="lg" fullWidth loading={busy}>
-                        {t("rc.tf.subscribeFor", { price: money(price) })}
+                        {method === "etransfer" || method === "cash" ? t("tcb.pay.subscribeManual", { amount: money(price) }) : t("rc.tf.subscribeFor", { price: money(price) })}
                       </Button>
                     ) : (
                       <p className="text-center text-meta text-fg-muted">{t("auth.inline.subscribe")}</p>

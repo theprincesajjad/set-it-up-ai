@@ -1,86 +1,65 @@
 "use client";
-import { Copy, Plus, X } from "lucide-react";
+/**
+ * Menus: every plan against every day of the week in one grid (design T4). A cell is one dish per line; words after " - "
+ * become the dish's description. Saving writes one tiffin_menus row per (plan, date) for the cells you changed, a row for
+ * "every plan" appears only when a shop-wide menu exists, and "Copy last week" fills all plans. Translations are counted,
+ * never required: the counter links to a sheet to add Hindi, Urdu and Punjabi names.
+ */
+import { Copy } from "lucide-react";
 import { useState } from "react";
-import type { tiffinApi } from "@ll/shared";
-import { EmptyState, ErrorLine, SaveBar, SkeletonRows } from "@/components/dashboard/kit";
-import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { tiffinApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
+import { EmptyState, ErrorLine, SaveBar, SidePanel as Sheet, SkeletonRows, Tag } from "@/components/dashboard/kit";
+import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { cn } from "@/lib/cn";
-import { SPICE_LABELS, SpiceDots } from "../menu";
-import { DateNav, Loader, addDaysISO, dayLabel, dowOf, dayShort, todayISO, weekStartISO } from "../common";
+import { cleanItems, fromText, toText, translated } from "@/lib/restaurant/tcb";
+import { DOW_SHORT, DateNav, Loader, addDaysISO, dayShort, dietaryWords, dowOf, todayISO, weekStartISO } from "../common";
+import { daysText } from "./PlansTab";
 
 type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
-const ALL = "__all";
+const SHOP = "__shop";
+const LANGS = [
+  { code: "hi", label: "Hindi", dir: "ltr" },
+  { code: "ur", label: "Urdu", dir: "rtl" },
+  { code: "pa", label: "Punjabi", dir: "ltr" },
+] as const;
+const CHUNK = 31;
 
-/**
- * One dish row in the editor. Maps 1:1 onto tiffinApi.MenuItem (name, description, dietary), so what is saved is the same
- * shape the kitchen, manifest and public page already read; dietary fields and translations the editor doesn't show are kept.
- */
-type Dish = { key: string; name: string; description: string; dietary: NonNullable<tiffinApi.MenuItem["dietary"]>; translations?: tiffinApi.MenuItem["translations"] };
-type Draft = { dishes: Dish[]; notes: string };
-const MAX_DISHES = 30;
-
-let dishSeq = 0;
-const newDish = (over: Partial<Dish> = {}): Dish => ({ key: `d${++dishSeq}`, name: "", description: "", dietary: {}, ...over });
-const toDishes = (items: tiffinApi.MenuItem[]): Dish[] => items.map((i) => newDish({ name: i.name, description: i.description ?? "", dietary: i.dietary ?? {}, translations: i.translations }));
-function fromDishes(dishes: Dish[]): tiffinApi.MenuItem[] {
-  return dishes
-    .filter((d) => d.name.trim())
-    .slice(0, MAX_DISHES)
-    .map((d) => {
-      const description = d.description.trim();
-      const dietary = Object.fromEntries(Object.entries(d.dietary).filter(([, v]) => v !== undefined && v !== false && v !== 0)) as Dish["dietary"];
-      return { name: d.name.trim().slice(0, 120), ...(description ? { description: description.slice(0, 500) } : {}), ...(Object.keys(dietary).length ? { dietary } : {}), ...(d.translations ? { translations: d.translations } : {}) };
-    });
-}
-/** Comparable form of a day's dishes (keys and empty rows dropped), for the dirty check. */
-const sig = (dishes: Dish[]) => JSON.stringify(fromDishes(dishes));
-const FLAGS = [["vegetarian", "Veg"], ["vegan", "Vegan"], ["jain", "Jain"]] as const;
-
-const DISH_INPUT = "h-9 w-full min-w-0 rounded-input border border-line bg-bg px-3 text-meta text-fg outline-none placeholder:text-fg-subtle read-only:bg-bg-subtle focus:border-fg focus:ring-1 focus:ring-fg";
-const chip = (on: boolean) => cn("inline-flex h-7 items-center rounded-full border px-2.5 text-caption transition-colors focus-visible:focus-ring disabled:cursor-default", on ? "border-fg bg-fg text-bg" : "border-line text-fg-muted hover:border-line-strong hover:text-fg");
-
-/** Week editor per plan: a row per dish (name, optional description, dietary chips), copy last week, save the week in one go. */
 export function MenusTab({ goPlans, gate }: { goPlans: () => void; gate: Gate }) {
   const { api, role } = useMerchant();
   const plans = useApi(() => api.tiffin.plans(), [api]);
-  const [planKey, setPlanKey] = useState<string>("");
   const [week, setWeek] = useState(weekStartISO(todayISO()));
   const [version, setVersion] = useState(0);
-  const sel = planKey || plans.data?.items[0]?.id || ALL;
-  const planId = sel === ALL ? null : sel;
   const to = addDaysISO(week, 6);
-  const curKey = `${sel}:${week}:${version}`;
-  const menus = useApi(plans.data ? async () => ({ key: curKey, items: (await api.tiffin.menus({ from: week, to, ...(planId ? { planId } : {}) })).items }) : null, [api, plans.data, curKey]);
+  const key = `${week}:${version}`;
+  const menus = useApi(plans.data ? async () => ({ key, items: (await api.tiffin.menus({ from: week, to })).items }) : null, [api, plans.data, key]);
   const canEdit = role === "owner" || role === "manager";
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <Loader state={plans} gate={gate}>
         {(p) =>
           p.items.length === 0 ? (
             <EmptyState title="Make a plan first" description="Menus belong to a plan, so customers see what's cooking for the plan they are on." action={<Button size="sm" onClick={goPlans}>Create a plan</Button>} />
           ) : (
             <>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="w-full sm:w-72">
-                  <Select label="Plan" value={sel} onChange={(e) => setPlanKey(e.target.value)} options={[...p.items.map((x) => ({ value: x.id, label: x.name })), { value: ALL, label: "Every plan (shop-wide menu)" }]} className="min-h-10" />
-                </div>
-                <div className="pb-1.5"><DateNav label="Week" value={week} step={7} text={`${dayShort(week)} to ${dayShort(to)}`} onChange={(d) => setWeek(weekStartISO(d))} /></div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Plans">
+                {p.items.filter((x) => x.active).map((pl) => (
+                  <button key={pl.id} type="button" onClick={goPlans} className="rounded-card border border-line p-4 text-start hover:bg-bg-subtle focus-visible:focus-ring">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="text-body-strong text-fg">{pl.name}</span>
+                      <span className="tabular text-body-strong text-fg">{formatMoney(pl.priceCents)} / {pl.cadence === "monthly" ? "mo" : "wk"}</span>
+                    </span>
+                    <span className="mt-1 block text-meta text-fg-muted">{daysText(pl.daysOfWeek)} · {pl.mealsPerDay} {pl.mealsPerDay === 1 ? "meal" : "meals"} · cutoff {pl.cutoffHours} h · {pl.subscriberCount ?? 0} subscribers</span>
+                    <span className="mt-2 flex flex-wrap gap-1">{dietaryWords(pl.dietary).map((w) => <Tag key={w}>{w}</Tag>)}</span>
+                  </button>
+                ))}
               </div>
-              {sel === ALL ? <p className="text-meta text-fg-muted">The shop-wide menu is used for any plan that has no menu of its own that day.</p> : null}
-              {menus.data && menus.data.key === curKey ? (
-                <WeekEditor
-                  key={curKey}
-                  week={week}
-                  planId={planId}
-                  days={p.items.find((x) => x.id === sel)?.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6]}
-                  existing={menus.data.items.filter((m) => m.planId === planId)}
-                  canEdit={canEdit}
-                  onSaved={() => setVersion((v) => v + 1)}
-                />
+              {menus.data && menus.data.key === key ? (
+                <Grid key={key} week={week} setWeek={setWeek} to={to} plans={p.items.filter((x) => x.active)} existing={menus.data.items} canEdit={canEdit} onSaved={() => setVersion((v) => v + 1)} />
               ) : menus.error ? (
                 <ErrorLine message={menus.error} onRetry={() => void menus.reload()} />
               ) : (
@@ -94,125 +73,171 @@ export function MenusTab({ goPlans, gate }: { goPlans: () => void; gate: Gate })
   );
 }
 
-function WeekEditor({ week, planId, days, existing, canEdit, onSaved }: { week: string; planId: string | null; days: number[]; existing: tiffinApi.MenuDto[]; canEdit: boolean; onSaved: () => void }) {
+type Cell = { text: string };
+const cellKey = (planId: string | null, date: string) => `${planId ?? SHOP}|${date}`;
+
+function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: string; setWeek: (d: string) => void; to: string; plans: tiffinApi.PlanDto[]; existing: tiffinApi.MenuDto[]; canEdit: boolean; onSaved: () => void }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(week, i));
-  const byDate = new Map(existing.map((m) => [m.date, m]));
-  const initial = (): Record<string, Draft> => Object.fromEntries(dates.map((d) => [d, { dishes: toDishes(byDate.get(d)?.items ?? []), notes: byDate.get(d)?.notes ?? "" }]));
-  const [base] = useState(initial);
-  const [draft, setDraft] = useState<Record<string, Draft>>(base);
-  const dirtyDates = dates.filter((d) => sig(draft[d]!.dishes) !== sig(base[d]!.dishes) || draft[d]!.notes !== base[d]!.notes);
-  const filled = dates.filter((d) => fromDishes(draft[d]!.dishes).length).length;
-  const setDay = (d: string, f: (cur: Draft) => Draft) => setDraft((c) => ({ ...c, [d]: f(c[d]!) }));
-  const setDish = (d: string, key: string, patch: Partial<Dish>) => setDay(d, (cur) => ({ ...cur, dishes: cur.dishes.map((x) => (x.key === key ? { ...x, ...patch } : x)) }));
+  const byKey = new Map(existing.map((m) => [cellKey(m.planId, m.date), m]));
+  const hasShop = existing.some((m) => m.planId === null);
+  const [showShop, setShowShop] = useState(hasShop);
+  const [base] = useState<Record<string, Cell>>(() => Object.fromEntries(existing.map((m) => [cellKey(m.planId, m.date), { text: toText(m.items) }])));
+  const [draft, setDraft] = useState<Record<string, Cell>>(base);
+  const [words, setWords] = useState(false);
+  const textOf = (k: string) => draft[k]?.text ?? "";
+  const changed = [...new Set([...Object.keys(base), ...Object.keys(draft)])].filter((k) => (base[k]?.text ?? "").trim() !== (draft[k]?.text ?? "").trim());
+  const rows: { id: string | null; name: string; days: number[] | null }[] = [...plans.map((p) => ({ id: p.id as string | null, name: p.name, days: p.daysOfWeek })), ...(showShop ? [{ id: null, name: "Every plan", days: null }] : [])];
+  const all = existing.flatMap((m) => m.items);
+  const done = all.filter(translated).length;
 
+  const setCell = (k: string, text: string) => setDraft((c) => ({ ...c, [k]: { text } }));
   const copyLast = async () => {
-    const prev = await act.run(() => api.tiffin.menus({ from: addDaysISO(week, -7), to: addDaysISO(week, -1), ...(planId ? { planId } : {}) }));
+    const prev = await act.run(() => api.tiffin.menus({ from: addDaysISO(week, -7), to: addDaysISO(week, -1) }));
     if (!prev) return;
-    const rows = prev.items.filter((m) => m.planId === planId);
-    if (!rows.length) return toast({ message: "Nothing on last week's menu to copy.", tone: "neutral" });
+    if (!prev.items.length) return toast({ message: "Nothing on last week's menu to copy.", tone: "neutral" });
+    if (prev.items.some((m) => m.planId === null)) setShowShop(true);
     setDraft((cur) => {
       const next = { ...cur };
-      for (const m of rows) {
-        const d = addDaysISO(m.date, 7);
-        if (next[d]) next[d] = { dishes: toDishes(m.items), notes: m.notes ?? "" };
-      }
+      for (const m of prev.items) next[cellKey(m.planId, addDaysISO(m.date, 7))] = { text: toText(m.items) };
       return next;
     });
-    toast({ message: `Copied ${rows.length} ${rows.length === 1 ? "day" : "days"} from last week. Save to keep them.`, tone: "success" });
+    toast({ message: `Copied ${prev.items.length} ${prev.items.length === 1 ? "day" : "days"} from last week for every plan. Save to keep them.`, tone: "success" });
   };
   const save = async () => {
     const r = await act.run(async () => {
       const puts: tiffinApi.PutMenusBody["menus"] = [];
-      for (const d of dirtyDates) {
-        const dr = draft[d]!;
-        const items = fromDishes(dr.dishes);
-        if (items.length) puts.push({ planId, date: d, items, notes: dr.notes.trim() || null });
-        else if (byDate.get(d)) await api.tiffin.deleteMenu(byDate.get(d)!.id);
+      for (const k of changed) {
+        const [pid, date] = k.split("|") as [string, string];
+        const planId = pid === SHOP ? null : pid;
+        const prev = byKey.get(k);
+        const items = cleanItems(fromText(textOf(k), prev?.items ?? []));
+        if (items.length) puts.push({ planId, date, items, notes: prev?.notes ?? null });
+        else if (prev) await api.tiffin.deleteMenu(prev.id);
       }
-      if (puts.length) await api.tiffin.putMenus({ menus: puts });
+      for (let i = 0; i < puts.length; i += CHUNK) await api.tiffin.putMenus({ menus: puts.slice(i, i + CHUNK) });
       return true;
     });
     if (r) {
-      toast({ message: "Menu saved", tone: "success" });
+      toast({ message: "Menus saved", tone: "success" });
       onSaved();
     }
   };
   return (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-meta text-fg-muted">Add a row per dish. Tag it veg, vegan, Jain or spice level so customers can see what is in their tiffin.</p>
-        {canEdit ? <Button size="sm" variant="secondary" iconStart={Copy} loading={act.busy && !dirtyDates.length} onClick={() => void copyLast()}>Copy last week</Button> : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <DateNav label="Week" value={week} step={7} text={`${dayShort(week)} to ${dayShort(to)}`} onChange={(d) => setWeek(weekStartISO(d))} />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden text-meta text-fg-muted sm:inline">Hindi, Urdu, Punjabi names:</span>
+          <button type="button" onClick={() => setWords(true)} className="inline-flex h-8 items-center rounded-full border border-line px-3 text-meta text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+            {done} of {all.length} {all.length === 1 ? "dish" : "dishes"} translated
+          </button>
+          {canEdit ? <Button size="sm" variant="secondary" iconStart={Copy} loading={act.busy && !changed.length} onClick={() => void copyLast()}>Copy last week</Button> : null}
+          {canEdit && !showShop ? <Button size="sm" variant="ghost" onClick={() => setShowShop(true)}>Add a shop-wide row</Button> : null}
+        </div>
       </div>
-      {filled === 0 && !dirtyDates.length ? <p className="border-y border-line py-3 text-meta text-fg-muted">No menu for this week yet. Add today&apos;s dishes, like Dal tadka, Jeera rice, Aloo gobi, or copy last week and change what&apos;s different.</p> : null}
-      <div className="divide-y divide-line border-y border-line">
-        {dates.map((d) => {
-          const serves = days.includes(dowOf(d));
-          const dr = draft[d]!;
-          return (
-            <section key={d} aria-label={dayLabel(d)} className={cn("flex flex-col gap-2 py-4", !serves && "opacity-60")}>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <h3 className="text-meta-strong text-fg">
-                  {dayLabel(d)}
-                  {!serves ? <span className="ms-2 text-caption font-normal text-fg-muted">No meals</span> : null}
-                </h3>
-                <input
-                  aria-label={`Note for ${dayLabel(d)}`}
-                  readOnly={!canEdit}
-                  placeholder="Note, e.g. extra spicy day"
-                  value={dr.notes}
-                  onChange={(e) => setDay(d, (cur) => ({ ...cur, notes: e.target.value }))}
-                  className="h-8 w-full rounded-input border border-line bg-bg px-3 text-meta text-fg outline-none placeholder:text-fg-subtle focus:border-fg focus:ring-1 focus:ring-fg sm:w-64"
-                />
-              </div>
-              <ul className="flex flex-col gap-2">
-                {dr.dishes.map((x, n) => {
-                  const spice = x.dietary.spice ?? 0;
-                  return (
-                    <li key={x.key} className="grid items-center gap-x-2 gap-y-1.5 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_auto]">
-                      <input aria-label={`Dish ${n + 1} name, ${dayLabel(d)}`} readOnly={!canEdit} maxLength={120} placeholder="Dish, e.g. Dal tadka" value={x.name} onChange={(e) => setDish(d, x.key, { name: e.target.value })} className={DISH_INPUT} />
-                      <input aria-label={`Dish ${n + 1} description, ${dayLabel(d)} (optional)`} readOnly={!canEdit} maxLength={500} placeholder="Description (optional)" value={x.description} onChange={(e) => setDish(d, x.key, { description: e.target.value })} className={DISH_INPUT} />
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {FLAGS.map(([flag, label]) => (
-                          <button
-                            key={flag}
-                            type="button"
-                            disabled={!canEdit}
-                            aria-pressed={!!x.dietary[flag]}
-                            onClick={() => setDish(d, x.key, { dietary: { ...x.dietary, [flag]: !x.dietary[flag], ...(flag === "vegan" && !x.dietary.vegan ? { vegetarian: true } : {}) } })}
-                            className={chip(!!x.dietary[flag])}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                        <button type="button" disabled={!canEdit} aria-pressed={spice > 0} aria-label={`Spice level: ${SPICE_LABELS[spice]}. Tap to change.`} onClick={() => setDish(d, x.key, { dietary: { ...x.dietary, spice: ((spice + 1) % 4) as 0 | 1 | 2 | 3 } })} className={cn(chip(spice > 0), "gap-1.5")}>
-                          Spice
-                          {spice > 0 ? <SpiceDots level={spice} className={spice > 0 ? "[&>span]:bg-bg" : ""} /> : null}
-                        </button>
-                        {canEdit ? (
-                          <button type="button" aria-label={`Remove dish ${n + 1}, ${dayLabel(d)}`} onClick={() => setDay(d, (cur) => ({ ...cur, dishes: cur.dishes.filter((y) => y.key !== x.key) }))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
-                            <X aria-hidden className="size-4" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              {canEdit && dr.dishes.length < MAX_DISHES ? (
-                <div>
-                  <Button size="sm" variant="ghost" iconStart={Plus} onClick={() => setDay(d, (cur) => ({ ...cur, dishes: [...cur.dishes, newDish()] }))}>Add dish</Button>
+      <p className="text-meta text-fg-muted">One dish per line. Add words after &quot; - &quot; for a description, like &quot;Dal tadka - made with toor dal&quot;. Put the pieces per serving in brackets, like &quot;Rotli (4)&quot;, so the kitchen sheet counts them.</p>
+      <div role="table" aria-label="Menus by plan and day" className="overflow-hidden rounded-card border border-line">
+        <div role="row" className="hidden grid-cols-[9rem_repeat(7,minmax(0,1fr))] border-b border-line bg-bg-subtle md:grid">
+          <div role="columnheader" className="px-3 py-2.5 text-meta text-fg-muted">Plan</div>
+          {dates.map((d) => (
+            <div key={d} role="columnheader" className="px-3 py-2.5 text-meta text-fg-muted">{DOW_SHORT[dowOf(d)]} {Number(d.slice(8))}</div>
+          ))}
+        </div>
+        {rows.map((row) => (
+          <div key={row.id ?? SHOP} role="row" className="grid border-b border-line last:border-b-0 md:grid-cols-[9rem_repeat(7,minmax(0,1fr))]">
+            <div role="rowheader" className="px-3 pt-3 md:py-3">
+              <p className="text-body-strong text-fg">{row.name}</p>
+              <p className="text-caption text-fg-subtle">dishes + notes</p>
+            </div>
+            {dates.map((d) => {
+              const closed = row.days ? !row.days.includes(dowOf(d)) : false;
+              const k = cellKey(row.id, d);
+              return (
+                <div key={d} role="cell" className={cn("min-w-0 border-line px-3 py-2 md:border-s", closed && "bg-bg-subtle")}>
+                  <p className="text-caption text-fg-muted md:hidden">{DOW_SHORT[dowOf(d)]} {Number(d.slice(8))}</p>
+                  {closed ? (
+                    <p className="py-2 text-meta text-fg-muted">Closed</p>
+                  ) : (
+                    <textarea
+                      aria-label={`${row.name}, ${DOW_SHORT[dowOf(d)]} ${Number(d.slice(8))}`}
+                      readOnly={!canEdit}
+                      rows={4}
+                      value={textOf(k)}
+                      onChange={(e) => setCell(k, e.target.value)}
+                      className="w-full min-w-0 resize-y rounded-input border border-transparent bg-transparent px-1.5 py-1 text-meta leading-5 text-fg outline-none placeholder:text-fg-subtle hover:border-line focus:border-fg focus:bg-bg focus:ring-1 focus:ring-fg"
+                      placeholder="Dal tadka"
+                    />
+                  )}
                 </div>
-              ) : null}
-            </section>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
-      <SaveBar dirty={dirtyDates.length > 0} error={act.error} message={`${dirtyDates.length} ${dirtyDates.length === 1 ? "day" : "days"} changed`} onDiscard={() => setDraft(base)}>
+      <SaveBar dirty={changed.length > 0} error={act.error} message={`${changed.length} ${changed.length === 1 ? "day" : "days"} changed`} onDiscard={() => setDraft(base)}>
         <Button size="sm" loading={act.busy} onClick={() => void save()}>Save week</Button>
       </SaveBar>
+      {words ? <WordsSheet existing={existing} canEdit={canEdit} onClose={() => setWords(false)} onSaved={() => { setWords(false); onSaved(); }} /> : null}
     </>
+  );
+}
+
+/** Add Hindi, Urdu and Punjabi names for the week's dishes that have none. Optional: customers see the English name otherwise. */
+function WordsSheet({ existing, canEdit, onClose, onSaved }: { existing: tiffinApi.MenuDto[]; canEdit: boolean; onClose: () => void; onSaved: () => void }) {
+  const { api } = useMerchant();
+  const toast = useToast();
+  const act = useAction();
+  const names = [...new Map(existing.flatMap((m) => m.items).filter((i) => !translated(i)).map((i) => [i.name.toLowerCase(), i])).values()];
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const set = (name: string, lang: string, v: string) => setVals((c) => ({ ...c, [`${name.toLowerCase()}|${lang}`]: v }));
+  const save = async () => {
+    const r = await act.run(async () => {
+      const menus: tiffinApi.PutMenusBody["menus"] = [];
+      for (const m of existing) {
+        let touched = false;
+        const items = m.items.map((i) => {
+          const tr = { ...(i.translations ?? {}) };
+          for (const l of LANGS) {
+            const v = vals[`${i.name.toLowerCase()}|${l.code}`]?.trim();
+            if (v) {
+              tr[l.code] = { ...(tr[l.code] ?? {}), name: v };
+              touched = true;
+            }
+          }
+          return { ...i, translations: tr };
+        });
+        if (touched) menus.push({ planId: m.planId, date: m.date, items, notes: m.notes });
+      }
+      for (let i = 0; i < menus.length; i += CHUNK) await api.tiffin.putMenus({ menus: menus.slice(i, i + CHUNK) });
+      return menus.length;
+    });
+    if (r !== undefined) {
+      toast({ message: r ? "Names saved" : "Nothing to save", tone: r ? "success" : "neutral" });
+      if (r) onSaved();
+    }
+  };
+  return (
+    <Sheet open onClose={onClose} label="Translate dishes" title="Names in Hindi, Urdu and Punjabi" subtitle="Optional. Customers see the English name until you add one." width={480}
+      footer={canEdit && names.length ? <Button size="sm" loading={act.busy} onClick={() => void save()}>Save names</Button> : undefined}>
+      {names.length === 0 ? (
+        <p className="text-meta text-fg-muted">Every dish this week has all three names.</p>
+      ) : (
+        <ul className="flex flex-col gap-5">
+          {names.map((i) => (
+            <li key={i.name} className="flex flex-col gap-2">
+              <p className="text-body-strong text-fg">{i.name}</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {LANGS.map((l) => (
+                  <TextField key={l.code} label={l.label} dir={l.dir} lang={l.code} readOnly={!canEdit} value={vals[`${i.name.toLowerCase()}|${l.code}`] ?? i.translations?.[l.code]?.name ?? ""} onChange={(e) => set(i.name, l.code, e.target.value)} />
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Sheet>
   );
 }

@@ -28,6 +28,9 @@ import kitchen from "./kitchen/index.js";
 import catering from "./catering/index.js";
 import banquet from "./banquet/index.js";
 import paymentsPublic from "./payments-public/index.js";
+import restaurantDesk from "./restaurantDesk/index.js";
+import appointments from "./appointments/index.js";
+import restaurantWeb from "./restaurant-web/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -59,4 +62,7 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await catering(app, ctx);
   await banquet(app, ctx);
   await paymentsPublic(app, ctx);
+  await restaurantDesk(app, ctx);
+  await appointments(app, ctx);
+  await restaurantWeb(app, ctx);
 }

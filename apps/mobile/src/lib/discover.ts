@@ -131,3 +131,24 @@ export function miniMapPoints(origin: { lat: number; lng: number }, shops: { id:
     return { id: p.id, x: Math.round(box.w / 2 + x), y: Math.round(box.h / 2 + y) };
   });
 }
+
+/**
+ * The one line under a shop on Discover: my progress first ("your 7 / 10"), then a live promo
+ * window ("2× stamps till 4 pm"), then a perk, then the category with distance and open status.
+ */
+export function shopSubtitle(
+  s: DiscoverShop,
+  status: { open: boolean; label: string } | null,
+  opts: { progress?: { n: number; goal: number } | null; promoLine?: string | null; perk?: string | null } = {},
+): string {
+  if (opts.progress && opts.progress.goal > 0) return `your ${Math.min(opts.progress.n, opts.progress.goal)} / ${opts.progress.goal}`;
+  if (opts.promoLine) return opts.promoLine;
+  if (opts.perk) return opts.perk;
+  return discoverMeta(s, status);
+}
+
+/** "2× stamps till 4 pm" for a live multiplier window ending at `endHour` (24 h). */
+export function promoWindowLine(multiplier: number, noun: string, endHour: number): string {
+  const h = endHour % 12 === 0 ? 12 : endHour % 12;
+  return `${multiplier}× ${noun} till ${h} ${endHour >= 12 && endHour < 24 ? "pm" : "am"}`;
+}

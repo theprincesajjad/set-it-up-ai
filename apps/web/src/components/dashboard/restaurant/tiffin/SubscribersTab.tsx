@@ -1,7 +1,9 @@
 "use client";
 import { Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { tiffinApi } from "@ll/shared";
+import { RecordPaymentPanel } from "../RecordPaymentPanel";
 import { Capsules, DefList, Dot, EmptyState, Section, SidePanel as Sheet, type DotTone } from "@/components/dashboard/kit";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -17,7 +19,7 @@ import { TierTeaser, addDaysISO, dayLabel, dayShort, todayISO } from "../common"
 import { daysText } from "./PlansTab";
 
 type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
-type StatusFilter = "all" | tiffinApi.TiffinSubStatus;
+type StatusFilter = "all" | "awaiting" | tiffinApi.TiffinSubStatus;
 const STATUS_TONE: Record<tiffinApi.TiffinSubStatus, [DotTone, string]> = {
   pending: ["info", "Waiting for payment"],
   active: ["positive", "Active"],
@@ -25,14 +27,21 @@ const STATUS_TONE: Record<tiffinApi.TiffinSubStatus, [DotTone, string]> = {
   past_due: ["negative", "Past due"],
   cancelled: ["neutral", "Cancelled"],
 };
-const StatusWord = ({ s }: { s: tiffinApi.TiffinSubStatus }) => <Dot tone={STATUS_TONE[s][0]}>{STATUS_TONE[s][1]}</Dot>;
+const PAY_LABEL: Record<tiffinApi.TiffinPaymentMethod, string> = { card: "Card", pad: "Bank debit (PAD)", etransfer: "E-transfer", cash: "Cash" };
+/** A hand-paid subscriber with money to record reads "Awaiting e-transfer" (info blue: waiting on the customer). */
+const waiting = (r: Pick<tiffinApi.SubscriberDto, "awaitingCents" | "status" | "paymentMethod">) => r.status !== "cancelled" && r.status !== "paused" && (r.awaitingCents > 0 || (r.status === "pending" && (r.paymentMethod === "etransfer" || r.paymentMethod === "cash")));
+const StatusWord = ({ s, r }: { s: tiffinApi.TiffinSubStatus; r?: tiffinApi.SubscriberDto }) =>
+  r && waiting(r) && s !== "past_due" ? <Dot tone="info">{r.paymentMethod === "cash" ? "Awaiting cash" : "Awaiting e-transfer"}</Dot> : <Dot tone={STATUS_TONE[s][0]}>{STATUS_TONE[s][1]}</Dot>;
 
 export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: Gate }) {
   const { api } = useMerchant();
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const sp = useSearchParams();
+  const fromUrl = sp.get("status");
+  const [status, setStatus] = useState<StatusFilter>((["awaiting", "active", "paused", "past_due", "cancelled"] as const).find((x) => x === fromUrl) ?? "all");
   const [planId, setPlanId] = useState("");
   const [routeId, setRouteId] = useState("");
   const [fulfilment, setFulfilment] = useState("");
+  const [payment, setPayment] = useState("");
   const [q, setQ] = useState("");
   const [dq, setDq] = useState("");
   useEffect(() => {
@@ -41,8 +50,9 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
   }, [q]);
   const plans = useApi(() => api.tiffin.plans(), [api]);
   const routes = useApi(() => api.tiffin.routes(), [api]);
-  const key = [status, planId, routeId, fulfilment, dq].join("|");
-  const query = { status: status === "all" ? undefined : status, planId: planId || undefined, routeId: routeId === "none" ? undefined : routeId || undefined, unrouted: routeId === "none" ? "true" : undefined, fulfilment: fulfilment || undefined, q: dq || undefined, limit: 50 };
+  const everyone = useApi(() => api.tiffin.subscribers({ limit: 200 }), [api]);
+  const key = [status, planId, routeId, fulfilment, payment, dq].join("|");
+  const query = { status: status === "all" || status === "awaiting" ? undefined : status, awaiting: status === "awaiting" ? "true" : undefined, payment: payment || undefined, planId: planId || undefined, routeId: routeId === "none" ? undefined : routeId || undefined, unrouted: routeId === "none" ? "true" : undefined, fulfilment: fulfilment || undefined, q: dq || undefined, limit: 50 };
   const first = useApi(() => api.tiffin.subscribers(query), [api, key]);
   const [more, setMore] = useState<{ key: string; items: tiffinApi.SubscriberDto[]; cursor: string | null } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -62,25 +72,41 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
       setLoadingMore(false);
     }
   };
-  const refresh = async () => { setMore(null); await first.reload(); };
+  const refresh = async () => { setMore(null); await Promise.all([first.reload(), everyone.reload()]); };
+  const all = everyone.data?.items ?? [];
+  const count = (f: (r: tiffinApi.SubscriberDto) => boolean) => (everyone.data ? all.filter(f).length : null);
 
   const columns: Column<tiffinApi.SubscriberDto>[] = [
     { key: "name", header: "Subscriber", mobile: "title", sortValue: (r) => r.customer.name ?? "", cell: (r) => <span className="font-medium">{r.customer.name ?? r.customer.phone ?? "Subscriber"}</span> },
     { key: "plan", header: "Plan", mobile: "subtitle", sortValue: (r) => r.plan.name, cell: (r) => `${r.plan.name}` },
     { key: "ful", header: "Meals", mobile: "subtitle", cell: (r) => `${r.servings} × ${r.fulfilment === "delivery" ? `delivery${r.routeName ? `, ${r.routeName}` : ""}` : "pickup"}` },
-    { key: "price", header: "Price", align: "end", mobile: "hidden", sortValue: (r) => r.priceCents, cell: (r) => formatMoney(r.priceCents) },
-    { key: "status", header: "Status", mobile: "trailing", sortValue: (r) => r.status, cell: (r) => <StatusWord s={r.status} /> },
+    { key: "pays", header: "Pays by", mobile: "hidden", sortValue: (r) => r.paymentMethod, cell: (r) => PAY_LABEL[r.paymentMethod] },
+    { key: "due", header: "Next due", mobile: "hidden", sortValue: (r) => r.nextBillingDate ?? "", cell: (r) => (r.nextBillingDate && r.status !== "cancelled" ? dayShort(r.nextBillingDate) : "None") },
+    { key: "status", header: "Status", mobile: "trailing", sortValue: (r) => r.status, cell: (r) => <StatusWord s={r.status} r={r} /> },
     { key: "open", header: "Details", mobile: "hidden", align: "end", cell: (r) => <button type="button" aria-label={`Open ${r.customer.name ?? "subscriber"}`} onClick={() => setOpen(r)} className="rounded-sm text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Open</button> },
   ];
-  const filtered = status !== "all" || planId || routeId || fulfilment || dq;
+  const filtered = status !== "all" || planId || routeId || fulfilment || payment || dq;
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
         <TextField type="search" label="Search subscribers" hideLabel placeholder="Name, phone, address or postal code" value={q} onChange={(e) => setQ(e.target.value)} className="min-h-10" />
         <div className="hidden items-center text-meta text-fg-muted sm:flex"><Search aria-hidden className="me-1.5 size-3.5" />{rows.length}{cursor ? "+" : ""} shown</div>
       </div>
-      <Capsules<StatusFilter> label="Status" value={status} onChange={setStatus} options={[{ value: "all", label: "All" }, { value: "active", label: "Active" }, { value: "paused", label: "Paused" }, { value: "past_due", label: "Past due" }, { value: "pending", label: "Pending" }, { value: "cancelled", label: "Cancelled" }]} />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <Capsules<StatusFilter>
+        label="Status"
+        value={status}
+        onChange={setStatus}
+        options={[
+          { value: "all", label: "All", count: everyone.data ? all.length : null },
+          { value: "active", label: "Active", count: count((r) => r.status === "active") },
+          { value: "paused", label: "Paused", count: count((r) => r.status === "paused") },
+          { value: "awaiting", label: "Awaiting payment", count: count(waiting), tone: "info" },
+          { value: "past_due", label: "Past due", count: count((r) => r.status === "past_due"), tone: "negative" },
+          { value: "cancelled", label: "Cancelled", count: count((r) => r.status === "cancelled") },
+        ]}
+      />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Select label="Pays by" hideLabel value={payment} onChange={(e) => setPayment(e.target.value)} placeholder="Pays by: any" options={(["card", "pad", "etransfer", "cash"] as const).map((m) => ({ value: m, label: PAY_LABEL[m] }))} className="min-h-10" />
         <Select label="Plan" hideLabel value={planId} onChange={(e) => setPlanId(e.target.value)} placeholder="All plans" options={(plans.data?.items ?? []).map((p) => ({ value: p.id, label: p.name }))} className="min-h-10" />
         <Select label="Route" hideLabel value={routeId} onChange={(e) => setRouteId(e.target.value)} placeholder="All routes" options={[{ value: "none", label: "Delivery, no route yet" }, ...(routes.data?.items ?? []).map((r) => ({ value: r.id, label: r.name }))]} className="min-h-10" />
         <Select label="Delivery or pickup" hideLabel value={fulfilment} onChange={(e) => setFulfilment(e.target.value)} placeholder="Delivery and pickup" options={[{ value: "delivery", label: "Delivery" }, { value: "pickup", label: "Pickup" }]} className="min-h-10" />
@@ -101,7 +127,7 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
           loadingMore={loadingMore}
           empty={
             filtered ? (
-              <EmptyState title="Nobody matches those filters" description="Try another status or clear the search." action={<Button size="sm" variant="secondary" onClick={() => { setStatus("all"); setPlanId(""); setRouteId(""); setFulfilment(""); setQ(""); }}>Clear filters</Button>} className="border-0 px-4" />
+              <EmptyState title="Nobody matches those filters" description="Try another status or clear the search." action={<Button size="sm" variant="secondary" onClick={() => { setStatus("all"); setPlanId(""); setRouteId(""); setFulfilment(""); setPayment(""); setQ(""); }}>Clear filters</Button>} className="border-0 px-4" />
             ) : (
               <EmptyState title="No subscribers yet" description="They show up here when someone signs up on your tiffin page. Share the link with your regulars first." action={<Button size="sm" onClick={goPlans}>Check your plans</Button>} className="border-0 px-4" />
             )
@@ -115,15 +141,19 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
 
 const CHARGE_TONE: Record<tiffinApi.ChargeDto["status"], [DotTone, string]> = {
   pending: ["info", "Pending"],
+  awaiting: ["info", "Awaiting payment"],
   paid: ["positive", "Paid"],
   failed: ["negative", "Failed"],
   refunded: ["neutral", "Refunded"],
 };
 
 /** One subscriber's billing periods, newest first: period, amount, skip credit, status and the day it was paid. */
-function Charges({ sub }: { sub: tiffinApi.SubscriberDto }) {
+function Charges({ sub, canVoid, onVoided }: { sub: tiffinApi.SubscriberDto; canVoid: boolean; onVoided: () => void }) {
   const { api } = useMerchant();
-  const state = useApi(() => api.tiffin.subscriberCharges(sub.id), [api, sub.id, sub.status, sub.currentPeriodStart]);
+  const toast = useToast();
+  const state = useApi(() => api.tiffin.subscriberCharges(sub.id), [api, sub.id, sub.status, sub.currentPeriodStart, sub.awaitingCents]);
+  const [voiding, setVoiding] = useState<tiffinApi.ChargeDto | null>(null);
+  const [why, setWhy] = useState("");
   const items = state.data?.items ?? [];
   return (
     <Section title="Charges">
@@ -156,13 +186,36 @@ function Charges({ sub }: { sub: tiffinApi.SubscriberDto }) {
                   <td className="py-2 pe-2 text-end tabular-nums">{formatMoney(c.amountCents)}</td>
                   <td className="py-2 pe-2 text-end tabular-nums text-fg-muted">{c.creditCents ? `-${formatMoney(c.creditCents)}` : "None"}</td>
                   <td className="py-2 pe-2"><Dot tone={CHARGE_TONE[c.status][0]}>{CHARGE_TONE[c.status][1]}</Dot></td>
-                  <td className="py-2 text-end tabular-nums text-fg-muted">{c.paidAt ? formatDateYear(c.paidAt) : "Not yet"}</td>
+                  <td className="py-2 text-end tabular-nums text-fg-muted">
+                    {c.paidAt ? `${formatDateYear(c.paidAt)}${c.paidMethod && c.paidMethod !== "card" && c.paidMethod !== "pad" ? ` · ${c.paidMethod === "etransfer" ? "e-transfer" : c.paidMethod}` : ""}` : c.referenceCode ? c.referenceCode : "Not yet"}
+                    {canVoid && c.status === "paid" && c.paidMethod && c.paidMethod !== "card" && c.paidMethod !== "pad" ? (
+                      <button type="button" onClick={() => setVoiding(c)} className="ms-2 rounded-sm text-fg-muted underline underline-offset-4 hover:text-fg focus-visible:focus-ring">Void</button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={!!voiding}
+        onClose={() => setVoiding(null)}
+        danger
+        title="Void this payment?"
+        body="The charge reopens as awaiting payment and the receipt stays in the ledger as voided. Use this for a mistake, such as recording the wrong person."
+        confirmLabel="Void payment"
+        onConfirm={async () => {
+          if (!voiding) return;
+          await api.tiffin.voidPayment(voiding.id, why.trim() || "Recorded by mistake");
+          toast({ message: "Payment voided. The charge is open again.", tone: "success" });
+          setWhy("");
+          onVoided();
+          void state.reload();
+        }}
+      >
+        <TextField label="Reason" value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Recorded the wrong person" />
+      </ConfirmDialog>
     </Section>
   );
 }
@@ -177,6 +230,7 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
   const [skipDay, setSkipDay] = useState(addDaysISO(todayISO(), 2));
   const [skipDays, setSkipDays] = useState<string[]>([]);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [reason, setReason] = useState("");
   const canManage = role === "owner" || role === "manager";
   const live = sub.status === "active" || sub.status === "past_due" || sub.status === "pending";
@@ -188,8 +242,31 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
     onChanged("subscriber" in r ? r.subscriber : r);
   };
   const c = sub.customer;
+  const awaitingCharge = useApi(() => (sub.awaitingChargeId ? api.tiffin.subscriberCharges(sub.id) : Promise.resolve(null)), [api, sub.id, sub.awaitingChargeId]);
+  const due = awaitingCharge.data?.items.find((x) => x.id === sub.awaitingChargeId) ?? null;
+  const payee = useApi(() => api.settings.payment(), [api]);
   return (
     <>
+      {recording && due ? (
+        <RecordPaymentPanel
+          subtitle={`${c.name ?? "Subscriber"} · ${sub.plan.name} · ${sub.servings} ${sub.servings === 1 ? "serving" : "servings"}`}
+          rows={[
+            { label: "Period", value: `${dayShort(due.periodStart)} to ${dayShort(due.periodEnd)}` },
+            { label: "Amount due", value: <strong>{formatMoney(due.remainingCents)}</strong> },
+            ...(sub.paymentMethod === "etransfer" && payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
+            ...(due.referenceCode ? [{ label: "Reference in message", value: <strong>{due.referenceCode}</strong> }] : []),
+          ]}
+          amountCents={due.remainingCents}
+          defaultMethod={sub.paymentMethod === "cash" ? "cash" : "etransfer"}
+          onClose={() => setRecording(false)}
+          onRecord={async (body) => {
+            const r = await api.tiffin.recordPayment(due.id, body);
+            const fresh = await api.tiffin.subscriber(sub.id);
+            onChanged(fresh);
+            return r;
+          }}
+        />
+      ) : null}
       <Sheet
         open
         onClose={onClose}
@@ -201,9 +278,14 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
         <div className="flex flex-col gap-5">
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <StatusWord s={sub.status} />
+            <StatusWord s={sub.status} r={sub} />
             {sub.status === "paused" && sub.pausedUntil ? <span className="text-meta text-fg-muted">Back on {dayLabel(sub.pausedUntil)}</span> : null}
           </div>
+          {sub.awaitingCents > 0 && due ? (
+            <Banner tone="info" action={<Button size="sm" onClick={() => setRecording(true)}>Record payment</Button>}>
+              Waiting for {formatMoney(sub.awaitingCents)}{sub.awaitingReferenceCode ? ` (${sub.awaitingReferenceCode})` : ""}. Check your bank, then record it.
+            </Banner>
+          ) : null}
           <DefList
             items={[
               { label: "Plan", value: sub.plan.name },
@@ -230,7 +312,7 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
             <DefList
               items={[
                 { label: `Price per ${sub.plan.cadence === "monthly" ? "month" : "week"}`, value: formatMoney(sub.priceCents) },
-                { label: "Pays by", value: sub.paymentMethod === "pad" ? "Pre-authorized debit" : "Card" },
+                { label: "Pays by", value: PAY_LABEL[sub.paymentMethod] },
                 { label: "Current period", value: sub.currentPeriodStart && sub.currentPeriodEnd ? `${dayShort(sub.currentPeriodStart)} to ${dayShort(sub.currentPeriodEnd)}` : "Not started" },
                 { label: "Next bill", value: sub.nextBillingDate ? dayLabel(sub.nextBillingDate) : "None scheduled" },
                 ...(sub.status === "cancelled" ? [{ label: "Cancelled", value: `${formatDateYear(sub.cancelledAt)}${sub.cancelReason ? `: ${sub.cancelReason}` : ""}` }] : []),
@@ -238,7 +320,7 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
             />
             {sub.status === "past_due" ? <p className="mt-2 text-meta text-negative">Last payment failed. Meals are on hold until it goes through; the customer has a retry link.</p> : null}
           </Section>
-          <Charges sub={sub} />
+          <Charges sub={sub} canVoid={canManage} onVoided={() => void api.tiffin.subscriber(sub.id).then(onChanged)} />
           {sub.status !== "cancelled" ? (
             <Section title="On their behalf">
               <div className="flex flex-wrap gap-2">

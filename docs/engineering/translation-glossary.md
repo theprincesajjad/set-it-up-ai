@@ -78,6 +78,14 @@ One term per concept. Use the left column's meaning, not a new synonym.
 | visit | विज़िट | وزٹ | ਵਿਜ਼ਿਟ |
 | thanks | शुक्रिया | شکریہ | ਧੰਨਵਾਦ |
 | date | तारीख़ | تاریخ | ਤਾਰੀਖ਼ |
+| e-transfer (Interac) | ई-ट्रांसफ़र | ای ٹرانسفر | ਈ-ਟ੍ਰਾਂਸਫ਼ਰ |
+| reference code (to put in the message) | रेफ़रेंस कोड | ریفرنس کوڈ | ਰੈਫ਼ਰੈਂਸ ਕੋਡ |
+| awaiting payment (waiting on the customer) | भुगतान का इंतज़ार | ادائیگی کا انتظار | ਭੁਗਤਾਨ ਦੀ ਉਡੀਕ |
+| cash | नकद | نقد | ਨਕਦ |
+| cheque | चेक | چیک | ਚੈੱਕ |
+| service charge | सर्विस चार्ज | سروس چارج | ਸਰਵਿਸ ਚਾਰਜ |
+| tax (HST/GST) | टैक्स | ٹیکس | ਟੈਕਸ |
+| driver run, stop | रूट, स्टॉप | روٹ، سٹاپ | ਰੂਟ, ਸਟਾਪ |
 | name | नाम | نام | ਨਾਂ |
 | page | पेज | صفحہ | ਪੰਨਾ |
 | halal, zabihah | हलाल, ज़बीहा | حلال، ذبیحہ | ਹਲਾਲ, ਜ਼ਬੀਹਾ |
@@ -142,6 +150,13 @@ Punjabi
 - ਭੁਗਤਾਨ is the noun for payment (replaces ਅਦਾਇਗੀ, which is Urdu-derived and was mixed in). "Pay {amount}" is "{amount} ਭਰੋ".
 - Save is "ਸੇਵ ਕਰੋ"; "ਸੰਭਾਲੋ" means manage or look after. The old catalog used ਸੰਭਾਲੋ for both.
 - ਗ਼ਲਤ and ਖ਼ਾਲੀ keep their nukta; ਫ਼ੋਨ, ਫ਼ੀਸ, ਮੁਫ਼ਤ keep theirs.
+
+## Marketing site (`mkt.*`)
+
+`mkt.nav.*` and `mkt.rest.*` carry the translated nav labels, hero line and contact form of `/for-restaurants` (the rest of the
+marketing site is English only in v1; see docs/research/landing-and-network.md 7.3). They follow the glossary above. BIA is written
+as an acronym in the local script (बीआईए, بی آئی اے, ਬੀਆਈਏ) because no everyday word exists. The thanks line promises a reply "within 1
+business day", a fixed number allowed by the style rules. A native speaker has not yet reviewed these 26 strings per language.
 
 ## Reason codes used below
 

@@ -62,4 +62,6 @@ export interface Providers {
   payments?: import("./payments.js").PaymentsProvider;
   /** WhatsApp Cloud API. Optional: use getWhatsApp(ctx) from ./whatsapp.js, which falls back to the fake. */
   whatsapp?: import("./whatsapp.js").WhatsAppProvider;
+  /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
+  storage?: import("./storage.js").StorageProvider;
 }

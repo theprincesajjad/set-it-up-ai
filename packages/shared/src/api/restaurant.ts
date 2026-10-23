@@ -1,5 +1,8 @@
 // Contracts for the restaurant pack: restaurant. Owned by the restaurant build team.
 import { z } from "zod";
+import { splitItemRef, splitTenderSchema, type PreorderPlanLine, type PreorderRulesResponse, type PreorderShopping, type SplitTender } from "./restaurantDesk.js";
+import { canonicalAllergen, type PriorityAllergen } from "./restaurant-web.js";
+import type { ManualInstructions, ManualPaymentDto } from "./payments-manual.js";
 export const _placeholder = z.never().optional();
 
 // ===========================================================================
@@ -42,6 +45,12 @@ export const publicMenuQuery = z.object({
   halal: queryFlag,
   veg: queryFlag,
   maxSpice: z.coerce.number().int().min(0).max(3).optional(),
+  /** "peanut,tree_nut": hide dishes that contain any of these priority allergens (the shop's own tags; shared kitchen, so no promise of zero traces). */
+  without: z
+    .string()
+    .max(200)
+    .optional()
+    .transform((v) => [...new Set((v ?? "").split(",").map((x) => canonicalAllergen(x)).filter((x): x is PriorityAllergen => !!x))]),
 });
 export type PublicMenuQuery = z.infer<typeof publicMenuQuery>;
 
@@ -84,6 +93,8 @@ export interface PreorderOrderDto {
   customerPhone: string | null;
   pickupAt: string;
   notes: string | null;
+  channel: string;
+  allergyNote: string | null;
   totalCents: number;
   depositCents: number;
   depositPaid: boolean;
@@ -97,10 +108,19 @@ export interface PreorderDayDto {
   cap: number | null;
   remaining: number | null;
   prep: PreorderPrepLine[];
+  /** Per dish: pots, fire time, estimated rice and meat (desi2). */
+  plan: PreorderPlanLine[];
+  /** Estimated shopping list for the day (sum of per-pot recipes x pots); null when no dish on the day has a recipe. */
+  shopping: PreorderShopping | null;
+  /** Guests waiting for this day. */
+  waitlist: number;
   orders: PreorderOrderDto[];
 }
 export interface PreordersResponse {
   days: PreorderDayDto[];
+  /** Pot cap for every date in the range (weekday cap, Eid override or the daily cap), null = no cap. */
+  caps: { date: string; cap: number | null; note: string | null }[];
+  rules: PreorderRulesResponse;
 }
 
 // ===========================================================================
@@ -137,16 +157,27 @@ export interface KitchenTicketDto {
   orderStatus: string;
   pickupAt: string | null;
   notes: string | null;
-  firedAt: string;
+  /** Null until the ticket is fired (a pinned pre-order waiting for "Start dum"). */
+  firedAt: string | null;
   bumpedAt: string | null;
   ageSeconds: number;
   items: KitchenItemDto[];
+  customerName: string | null;
+  /** Guest allergy: shown as a full-width band. */
+  allergyNote: string | null;
+  /** Pre-orders: when to start (pickup minus the longest cook time) and how long the dish takes. */
+  fireAt: string | null;
+  cookMinutes: number;
+  /** A pre-order inside its pin window that has not been fired yet. */
+  pinned: boolean;
 }
 export interface KitchenTicketsResponse {
   station: string | null;
   lang: MenuLang;
   /** Stations that have items on open tickets. */
   stations: string[];
+  /** Dishes currently sold out (the "Sold out (n)" button). */
+  soldOutCount: number;
   items: KitchenTicketDto[];
 }
 
@@ -169,6 +200,17 @@ export const counterOrderBody = z.object({
   /** Credit points to an existing customer by phone. */
   customerPhone: z.string().min(7).max(20).optional(),
   notes: z.string().max(500).nullish(),
+  /** Where the order came from: the counter (default) or a phone call taken by hand. */
+  channel: z.enum(["counter", "phone"]).default("counter"),
+  /** Caller or guest name for the ticket ("Phone order · Imran"). */
+  customerName: z.string().trim().max(80).nullish(),
+  /** Guest allergy: a red band on the kitchen ticket. */
+  allergyNote: z.string().trim().max(200).nullish(),
+  /** "preorder" books pots for a pickup day (needs pickupAt); the default is a pickup order for now. */
+  kind: z.enum(["pickup", "preorder"]).default("pickup"),
+  pickupAt: z.iso.datetime({ offset: true }).nullish(),
+  /** Pre-order deposit was taken by hand (cash or card at the counter). */
+  depositCollected: z.boolean().default(false),
 });
 export type CounterOrderBody = z.input<typeof counterOrderBody>;
 
@@ -176,11 +218,20 @@ export type CounterOrderBody = z.input<typeof counterOrderBody>;
 // Splits (restaurant.split_bills): even or by item, one pay link per guest
 // ===========================================================================
 export const createSplitsBody = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("even"), ways: z.number().int().min(2).max(30), labels: z.array(z.string().trim().min(1).max(60)).max(30).optional() }),
+  z.object({
+    mode: z.literal("even"),
+    ways: z.number().int().min(2).max(30),
+    labels: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
+    /** How each guest pays, in order (default: pay link). */
+    tenders: z.array(splitTenderSchema).max(30).optional(),
+  }),
   z.object({
     mode: z.literal("items"),
-    /** Every order line must be in exactly one split. */
-    splits: z.array(z.object({ label: z.string().trim().min(1).max(60).optional(), itemIds: z.array(z.uuid()).min(1).max(50) })).min(2).max(30),
+    /** Every unit on the bill must be given to at least one guest; a unit given to several is shared equally. */
+    splits: z
+      .array(z.object({ label: z.string().trim().min(1).max(60).optional(), itemIds: z.array(splitItemRef).min(1).max(100), tender: splitTenderSchema.optional() }))
+      .min(2)
+      .max(30),
   }),
 ]);
 export type CreateSplitsBody = z.input<typeof createSplitsBody>;
@@ -197,6 +248,8 @@ export interface SplitDto {
   amountCents: number;
   tipCents: number;
   itemIds: string[];
+  /** link (pay link), card (counter terminal) or cash. */
+  tender: SplitTender;
   status: "open" | "paid";
   paidAt: string | null;
   /** How a paid share was settled (card = pay link, cash = marked by staff). Null while open. */
@@ -222,6 +275,8 @@ export interface PublicSplitResponse {
   tipCents: number;
   status: "open" | "paid";
   paidAt: string | null;
+  /** How this guest pays: the link, or card / cash at the table. */
+  tender: SplitTender;
   canPay: boolean;
   lines: { name: string; quantity: number }[];
 }
@@ -296,6 +351,8 @@ export const cateringMenuBody = z.object({
   extras: z.array(cateringExtraLine).max(30).default([]),
   /** Deposit in basis points of the total (default 3000 = 30%). */
   depositBps: z.number().int().min(0).max(10_000).optional(),
+  /** Mandatory service charge in bps of the subtotal (taxed like food); omit to keep the current one. */
+  serviceChargeBps: z.number().int().min(0).max(3000).optional(),
 });
 export type CateringMenuBody = z.input<typeof cateringMenuBody>;
 
@@ -315,8 +372,23 @@ export const updateCateringBody = z
 
 export const cateringTastingBody = z.object({ tastingAt: z.iso.datetime({ offset: true }) });
 export const cateringSendQuoteBody = z.object({ channels: z.array(z.enum(["sms", "email"])).min(1).default(["sms", "email"]) });
-export const cateringApproveBody = z.object({ signatureName: z.string().trim().min(2).max(120) });
-export const cateringMarkDepositBody = z.object({ method: z.enum(["cash", "etransfer", "cheque", "other"]).default("other"), note: z.string().max(300).nullish() });
+export const cateringApproveBody = z.object({
+  signatureName: z.string().trim().min(2).max(120),
+  /** How the customer will pay the deposit: "etransfer" skips the card payment and returns e-transfer instructions. */
+  payWith: z.enum(["card", "etransfer"]).default("card"),
+});
+export const cateringMarkDepositBody = z.object({
+  method: z.enum(["cash", "etransfer", "cheque", "other"]).default("other"),
+  note: z.string().max(300).nullish(),
+  /** Default: the deposit amount on the quote. */
+  amountCents: z.number().int().min(1).max(100_000_000).optional(),
+  /** Default: today. Can't be in the future. */
+  receivedOn: z.iso.date().optional(),
+  bankReference: z.string().trim().max(60).nullish(),
+  sendReceipt: z.boolean().default(true),
+});
+/** Mandatory service charge on a quote, in basis points of the subtotal (taxed like food); 0 = none. */
+export const cateringServiceChargeBody = z.object({ serviceChargeBps: z.number().int().min(0).max(3000) });
 export const cateringInvoiceBody = z.object({ send: z.boolean().default(true) });
 /** Merchant's choice for a paid deposit when cancelling: all of it, none (default), or part. Only deposits paid in the app can be refunded. */
 export const depositRefundChoice = z.union([z.enum(["full", "none"]), z.object({ amountCents: z.number().int().min(1).max(100_000_000) })]);
@@ -376,6 +448,22 @@ export interface CateringEventDto {
   signatureIp?: string | null;
   signatureUserAgent?: string | null;
   depositPaidAt: string | null;
+  /** How the deposit came in (etransfer, cash, cheque, other, card) and the date the money arrived. */
+  depositMethod: string | null;
+  depositReceivedOn: string | null;
+  /** Code for the e-transfer message (set once the quote is sent). */
+  referenceCode: string | null;
+  /** Mandatory service charge (bps of the subtotal) and its amount; taxed. */
+  serviceChargeBps: number;
+  serviceChargeCents: number;
+  /** First time the customer opened the quote link; null = not opened yet. */
+  quoteOpenedAt: string | null;
+  /** Staff view: other confirmed events or hall bookings on the same date (a non-blocking note, never a block). */
+  dateClashes?: number;
+  /** Hand-recorded payments, newest last (staff view only). */
+  payments?: ManualPaymentDto[];
+  /** GST/HST status shown on the quote: registered (with number), small supplier, or not set. */
+  tax?: { registered: boolean | null; number: string | null; label: string };
   /** Deposit returned on cancel (0 = none) and when. */
   depositRefundCents: number;
   depositRefundedAt: string | null;
@@ -406,10 +494,31 @@ export interface PublicCateringResponse {
   event: CateringEventDto;
   canApprove: boolean;
   depositDue: boolean;
+  /** E-transfer instructions when the shop takes them and a deposit is due; null otherwise. */
+  manual: ManualInstructions | null;
+  /** How this shop can be paid right now (card needs its Stripe account; e-transfer needs the shop's settings). */
+  pay: { card: boolean; etransfer: boolean };
+  /** The linked hall's own refund policy (only when this event is booked into a hall), shown before signing; null otherwise. */
+  cancellationTiers: { minDaysBefore: number; refundBps: number }[] | null;
 }
 export interface ApproveCateringResponse {
   event: CateringEventDto;
   deposit: CateringDepositPaymentDto | null;
+  /** E-transfer instructions for the deposit (when chosen and the shop takes them). */
+  manual: ManualInstructions | null;
+}
+/** Money tiles and the 8-week strip on the catering pipeline. */
+export interface CateringSummary {
+  /** Total of quotes sent and not yet approved or declined. */
+  openQuotesCents: number;
+  /** Deposits on approved quotes still to collect. */
+  depositsToCollectCents: number;
+  /** Balances (after deposit and recorded payments) on events in the next 14 days. */
+  balancesDue14dCents: number;
+  bookedNext8wEvents: number;
+  bookedNext8wCents: number;
+  /** Eight Monday-less weeks from today: events confirmed vs quoted or in tasting. */
+  weeks: { start: string; confirmed: number; pending: number }[];
 }
 export interface CateringCalendarResponse {
   items: CateringEventDto[];
@@ -456,6 +565,35 @@ export const hallPackage = z.object({
   perHeadCents: z.number().int().min(0).max(1_000_000),
   includes: z.array(z.string().trim().min(1).max(200)).max(40).default([]),
 });
+/** Staged payment template: bps of the total due `dueOffsetDays` before the event (0 = when the date is held). Must sum to 10000. */
+export const hallScheduleStep = z.object({ label: z.string().trim().min(1).max(60), bps: z.number().int().min(1).max(10_000), dueOffsetDays: z.number().int().min(0).max(730) });
+export const DEFAULT_HALL_SCHEDULE = [
+  { label: "Deposit to hold the date", bps: 2500, dueOffsetDays: 0 },
+  { label: "Second payment", bps: 5000, dueOffsetDays: 14 },
+  { label: "Final payment", bps: 2500, dueOffsetDays: 7 },
+] as const;
+export interface HallScheduleRow {
+  label: string;
+  amountCents: number;
+  dueOn: string;
+  paidAt: string | null;
+}
+/** Splits a total across schedule steps with the last step taking the rounding, so the rows sum to the total to the cent. */
+export function buildHallSchedule(totalCents: number, steps: readonly { label: string; bps: number; dueOffsetDays: number }[], eventDate: string, today: string): HallScheduleRow[] {
+  const sum = steps.reduce((s, x) => s + x.bps, 0);
+  const rows: HallScheduleRow[] = [];
+  let allocated = 0;
+  steps.forEach((st, i) => {
+    const last = i === steps.length - 1;
+    const amountCents = last ? totalCents - allocated : Math.round((totalCents * st.bps) / (sum || 10_000));
+    allocated += amountCents;
+    const due = new Date(`${eventDate}T12:00:00Z`);
+    due.setUTCDate(due.getUTCDate() - st.dueOffsetDays);
+    const dueOn = st.dueOffsetDays === 0 ? today : due.toISOString().slice(0, 10) < today ? today : due.toISOString().slice(0, 10);
+    rows.push({ label: st.label, amountCents, dueOn, paidAt: null });
+  });
+  return rows;
+}
 export const createHallBody = z.object({
   name: z.string().trim().min(1).max(120),
   capacity: z.number().int().min(1).max(5000),
@@ -464,6 +602,8 @@ export const createHallBody = z.object({
   packages: z.array(hallPackage).max(20).default([]),
   depositBps: z.number().int().min(0).max(10_000).default(2500),
   refundPolicy: hallRefundPolicy.default(DEFAULT_HALL_REFUND_POLICY),
+  paymentSchedule: z.array(hallScheduleStep).min(1).max(8).nullish(),
+  autoConfirmOnFirstPayment: z.boolean().default(false),
   active: z.boolean().default(true),
 });
 /** Explicit optional fields (not createHallBody.partial()): a partial of defaulted fields would reset them on every PATCH. */
@@ -475,6 +615,8 @@ export const updateHallBody = z.object({
   packages: z.array(hallPackage).max(20).optional(),
   depositBps: z.number().int().min(0).max(10_000).optional(),
   refundPolicy: hallRefundPolicy.optional(),
+  paymentSchedule: z.array(hallScheduleStep).min(1).max(8).nullish(),
+  autoConfirmOnFirstPayment: z.boolean().optional(),
   active: z.boolean().optional(),
 });
 
@@ -518,6 +660,8 @@ export interface HallDto {
   packages: { name: string; perHeadCents: number; includes: string[] }[];
   depositBps: number;
   refundPolicy: HallRefundPolicy;
+  paymentSchedule: { label: string; bps: number; dueOffsetDays: number }[];
+  autoConfirmOnFirstPayment: boolean;
   active: boolean;
   createdAt: string;
 }
@@ -549,12 +693,20 @@ export interface HallBookingDto {
   refundPolicy: HallRefundPolicy | null;
   cateringEventId: string | null;
   notes: string | null;
+  /** Code for the e-transfer message. */
+  referenceCode: string | null;
+  /** Staged payments; sums to totalCents. Empty for bookings made before schedules existed. */
+  schedule: HallScheduleRow[];
+  /** Hand-recorded payments (staff view only). */
+  payments?: ManualPaymentDto[];
+  /** E-transfer instructions for the next unpaid instalment (when the shop takes e-transfer). */
+  manual?: ManualInstructions | null;
   createdAt: string;
 }
 /** POST .../banquet/bookings/:id/cancel (staff). Customers send no body: the hall's policy applies. */
 export const cancelHallBookingBody = z.object({ refund: depositRefundChoice.default("none") });
 export interface HallAvailabilityResponse {
-  halls: { hall: HallDto; busy: { bookingId: string; status: HallBookingStatus; startsAt: string; endsAt: string }[] }[];
+  halls: { hall: HallDto; busy: { bookingId: string; status: HallBookingStatus; startsAt: string; endsAt: string; label?: string; holdExpiresAt?: string | null }[] }[];
 }
 export interface HoldResponse {
   booking: HallBookingDto;
@@ -562,3 +714,5 @@ export interface HoldResponse {
 }
 
 export const linkHallBookingBody = z.object({ hallBookingId: z.uuid() });
+
+export * from "./restaurantDesk.js";

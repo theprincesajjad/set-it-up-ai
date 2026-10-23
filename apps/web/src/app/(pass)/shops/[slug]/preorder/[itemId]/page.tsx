@@ -1,0 +1,87 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { translator, type commerceApi, type restaurantApi } from "@ll/shared";
+import { PageFrame } from "@/components/restaurant/PageFrame";
+import { PreorderView } from "@/components/restaurant/PreorderView";
+import { Button } from "@/components/ui/Button";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
+import { isApiError } from "@/lib/api/errors";
+import { getMe } from "@/lib/auth/session";
+import { getLocale } from "@/lib/i18n/server";
+import { addDays, todayIso } from "@/lib/restaurant/util";
+import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
+
+export const dynamic = "force-dynamic";
+
+type Props = { params: Promise<{ slug: string; itemId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const s = await loadShopBrief(slug);
+    return { title: `Pre-order a degh · ${s.name}`, description: `Reserve a degh at ${s.name}: pick the size, the day and a pickup window.`, robots: { index: false, follow: true } };
+  } catch {
+    return { title: "Pre-order a degh" };
+  }
+}
+
+/** Pre-order a degh: size, spice, add-ons, a day with pots left, a pickup window, a 30% deposit by card or Apple Pay. */
+export default async function PreorderPage({ params, searchParams }: Props) {
+  const [{ slug, itemId }, sp] = await Promise.all([params, searchParams]);
+  const locale = await getLocale(sp);
+  const t = translator(locale);
+  const here = `/shops/${encodeURIComponent(slug)}/preorder/${encodeURIComponent(itemId)}`;
+  const retry = <Button variant="secondary" href={here}>{t("rc.tryAgain")}</Button>;
+  let shop;
+  try {
+    shop = await loadShopBrief(slug);
+  } catch (e) {
+    if (isApiError(e) && e.status === 404) notFound();
+    return (
+      <PageFrame locale={locale}>
+        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
+      </PageFrame>
+    );
+  }
+  const api = publicRestaurantApi();
+  let menu: commerceApi.PublicMenuResponse;
+  try {
+    menu = await api.menu(slug, { lang: locale });
+  } catch (e) {
+    if (isApiError(e) && (e.status === 402 || e.status === 404)) notFound();
+    return (
+      <PageFrame locale={locale}>
+        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
+      </PageFrame>
+    );
+  }
+  const item = [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized].find((i) => i.id === itemId);
+  if (!item || !item.preorderOnly) notFound();
+
+  const today = todayIso();
+  let availability: restaurantApi.PreorderAvailabilityResponse | null = null;
+  let unavailable = false;
+  try {
+    availability = await api.availability(slug, { itemId, from: today, to: addDays(today, 13) });
+  } catch (e) {
+    if (isApiError(e) && (e.status === 402 || e.status === 404)) unavailable = true;
+    else
+      return (
+        <PageFrame locale={locale}>
+          <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
+        </PageFrame>
+      );
+  }
+  if (unavailable || !availability)
+    return (
+      <PageFrame locale={locale}>
+        <EmptyState title={t("rs.pre.unavailable")} description={t("rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+      </PageFrame>
+    );
+  const [restaurant, me] = await Promise.all([api.restaurant(slug).catch(() => null), getMe()]);
+  return (
+    <PageFrame locale={locale} className="flex flex-col gap-6 pb-10">
+      <PreorderView shop={shop} menu={menu} item={item} availability={availability} restaurant={restaurant} signedIn={!!me} userName={me?.user.name ?? ""} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
+    </PageFrame>
+  );
+}

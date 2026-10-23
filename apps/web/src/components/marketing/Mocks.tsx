@@ -38,11 +38,11 @@ function fake(id: string, name: string, vertical: string, o: Partial<networkApi.
 }
 
 /** A phone: black bezel, white screen, a 9:41 status bar. */
-export function PhoneFrame({ children, className, tone = "bg" }: { children: ReactNode; className?: string; tone?: "bg" | "map" }) {
+export function PhoneFrame({ children, className, tone = "bg", height = 620 }: { children: ReactNode; className?: string; tone?: "bg" | "map"; /** Screen height in px: shorter on pages where the default leaves empty space. */ height?: number }) {
   return (
     // A picture of the app in light mode: tokens forced light so dark pages don't half-invert it (polish-audit W21).
     <div aria-hidden inert data-theme="light" className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-[#0B0B0C] p-[9px] ring-1 ring-line text-fg", className)}>
-      <div className={cn("relative h-[620px] overflow-hidden rounded-[43px]", tone === "map" ? "bg-ll-map-land" : "bg-bg")}>
+      <div style={{ height }} className={cn("relative overflow-hidden rounded-[43px]", tone === "map" ? "bg-ll-map-land" : "bg-bg")}>
         <div className="absolute inset-x-0 top-0 z-[5] flex h-11 items-center justify-between px-7 text-[13px] font-semibold text-[#0B0B0C]">
           <span>9:41</span>
           <span className="absolute start-1/2 top-2.5 h-[26px] w-[88px] -translate-x-1/2 rounded-full bg-[#0B0B0C]" />

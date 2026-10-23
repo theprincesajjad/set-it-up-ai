@@ -45,6 +45,7 @@ import {
   type ConsentInput,
 } from "./ledger.js";
 import { enabledFeaturesByMerchantId } from "./features.js";
+import { shopDate } from "./member-stats.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -274,6 +275,10 @@ async function doAward(
     });
   }
   const member = await memberSummary(ctx.db, staff.merchant.id, result.member.id);
+  const [monthVisits] = await ctx.db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(visits)
+    .where(and(eq(visits.memberId, result.member.id), gte(visits.createdAt, monthStart(ctx.now(), staff.merchant.timezone))));
   const pointsEarned = result.transaction?.points ?? 0;
   const receiptQueued = !result.duplicate && pointsEarned > 0 ? await queueReceipt(ctx, staff.merchant, result.member, pointsEarned, member.terminology) : false;
   return {
@@ -292,6 +297,7 @@ async function doAward(
       rewardsAvailable: result.rewardsAvailable,
       messages: result.messages,
       receiptQueued,
+      visitsThisMonth: Number(monthVisits?.n ?? 0),
     },
   };
 }
@@ -453,6 +459,11 @@ export function localDayStart(at: Date, timeZone: string): { date: string; start
   let start = guess - tzOffsetMs(new Date(guess), timeZone);
   start = guess - tzOffsetMs(new Date(start), timeZone);
   return { date, start: new Date(start) };
+}
+
+/** Start (UTC instant) of the shop-local calendar month containing `at`. */
+export function monthStart(at: Date, timeZone: string): Date {
+  return localDayStart(new Date(`${shopDate(at, timeZone).slice(0, 7)}-01T12:00:00Z`), timeZone).start;
 }
 
 export async function today(ctx: AppContext, staff: StaffContext, locationId?: string): Promise<staffApi.TodayResponse> {

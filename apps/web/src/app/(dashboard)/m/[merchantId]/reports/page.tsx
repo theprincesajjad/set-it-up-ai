@@ -1,8 +1,9 @@
 "use client";
-import { Check, Download } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { Download } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { BarChart, HBarList, WeekdayBars } from "@/components/dashboard/Charts";
+import { HBarList } from "@/components/dashboard/Charts";
+import { Heatmap } from "@/components/dashboard/reports/Heatmap";
 import { Empty, ErrorLine, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -11,195 +12,160 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { reportsApi } from "@ll/shared";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
+import { rewardNoun } from "@/lib/dashboard/home";
+import { cameBackShare, joinersTitle, owedDetail, owedHeadline } from "@/lib/dashboard/reports";
+import { promoWhen } from "@/lib/dashboard/promos";
 import { pctDelta, rangeFor, type RangeKey } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";
 
-type Tab = "overview" | "visits" | "members" | "rewards" | "promos" | "network" | "advanced";
+type Tab = "overview" | "retention" | "rewards" | "promos" | "network";
+type Range = "week" | "4w" | "12w";
+const RANGE_DAYS: Record<Range, number> = { week: 7, "4w": 28, "12w": 84 };
+const RANGE_LABEL: Record<Range, string> = { week: "last week", "4w": "previous 4 weeks", "12w": "previous 12 weeks" };
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 const promoCols: Column<reportsApi.PromoResult>[] = [
   { key: "promo", header: "Promo", mobile: "title", cell: (x) => <span className="font-medium">{x.title}</span> },
-  { key: "views", header: "Views", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.views)} views` },
-  { key: "claims", header: "Redemptions", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.claims)} redeemed` },
-  { key: "visits", header: "Visits", align: "end", mobile: "hidden", cell: (x) => formatNumber(x.attributedVisits) },
-  { key: "lift", header: "Lift", align: "end", mobile: "trailing", cell: (x) => (x.liftPct == null ? "–" : `${x.liftPct > 0 ? "+" : ""}${Math.round(x.liftPct)}%`) },
+  { key: "window", header: "Visits in window", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.windowVisits)} in the window` },
+  { key: "typical", header: "Typical", align: "end", mobile: "hidden", cell: (x) => (x.typicalVisits == null ? "Not enough history" : formatNumber(x.typicalVisits)) },
+  { key: "extra", header: "Extra visits", align: "end", mobile: "trailing", cell: (x) => (x.extraVisits == null ? "–" : `${x.extraVisits > 0 ? "+" : ""}${x.extraVisits}`) },
+  { key: "free", header: "Free items given", align: "end", mobile: "hidden", cell: (x) => formatNumber(x.freeItemsGiven) },
 ];
 
 export default function ReportsPage() {
-  const { api, role, enabled, detail } = useMerchant();
+  const { api, base, role, enabled, detail } = useMerchant();
   const term = detail.program?.terminology ?? "points";
   const [tab, setTab] = useState<Tab>("overview");
-  const [range, setRange] = useState<Exclude<RangeKey, "today">>("30d");
-  const [compare, setCompare] = useState(false);
-  const r = rangeFor(range);
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  const prevFrom = new Date(new Date(r.from).getTime() - days * 86_400_000).toISOString();
+  const [range, setRange] = useState<Range>("4w");
+  const days = RANGE_DAYS[range];
+  const r = rangeFor(days === 7 ? "7d" : days === 28 ? "30d" : "90d");
+  const from = new Date(Date.now() - days * 86_400_000).toISOString();
   const manager = role !== "staff";
-  const overview = useApi(manager ? () => api.reports.overview({ from: r.from, to: r.to }) : null, [api, range]);
-  const daily = useApi(manager ? () => api.reports.daily({ from: r.from, to: r.to }) : null, [api, range]);
-  const prevDaily = useApi(manager && compare ? () => api.reports.daily({ from: prevFrom, to: r.from }) : null, [api, range, compare]);
-  const top = useApi(manager && (tab === "visits" || tab === "members") ? () => api.reports.topCustomers({ from: r.from, to: r.to, by: tab === "visits" ? "visits" : "spend", limit: 10 }) : null, [api, range, tab]);
-  const rewards = useApi(manager && tab === "rewards" ? () => api.reports.rewards({ from: r.from, to: r.to }) : null, [api, range, tab]);
-  // Pricing v2: promo results need promos (Plus); network overlap is reports.advanced (Plus).
+  const advanced = enabled("reports.advanced");
   const promosOn = enabled("promos.basic");
-  const overlapOn = enabled("reports.advanced");
-  const promos = useApi(manager && tab === "promos" && promosOn ? () => api.reports.promos() : null, [api, tab]);
-  const overlap = useApi(manager && tab === "network" && overlapOn ? () => api.reports.networkOverlap() : null, [api, tab]);
-  const activation = useApi(manager && tab === "members" ? () => api.reports.activation() : null, [api, tab]);
-  const retention = useApi(manager && tab === "advanced" && enabled("reports.advanced") ? () => api.reports.retention(6) : null, [api, tab]);
+  const posOn = enabled("integrations.pos_auto_award");
+  const overview = useApi(manager ? () => api.reports.overview({ from, to: r.to }) : null, [api, range]);
+  const heat = useApi(manager ? () => api.reports.heatmap(Math.max(1, Math.round(days / 7))) : null, [api, range]);
+  const owed = useApi(manager ? () => api.reports.rewardsOwed() : null, [api]);
+  const retention = useApi(manager && advanced ? () => api.reports.retention(6) : null, [api, advanced]);
+  const overlap = useApi(manager && advanced ? () => api.reports.networkOverlap() : null, [api, advanced]);
+  const rewards = useApi(manager && tab === "rewards" ? () => api.reports.rewards({ from, to: r.to }) : null, [api, range, tab]);
+  const promos = useApi(manager && promosOn && tab === "promos" ? () => api.reports.promos() : null, [api, tab, promosOn]);
+  const livePromos = useApi(manager && promosOn && tab === "overview" ? () => api.promos("live") : null, [api, tab, promosOn]);
   if (!manager) return <NoAccess />;
 
-  const series = daily.data?.series ?? [];
-  const prev = prevDaily.data?.series ?? [];
   const c = overview.data?.current;
   const p = overview.data?.previous;
+  const noun = rewardNoun(detail.merchant.vertical);
   const d = (cur?: number, pr?: number) => {
     if (cur == null || pr == null) return null;
     const x = pctDelta(cur, pr);
-    return x === null ? null : ({ good: x > 0 ? true : x < 0 ? false : null, text: `${x > 0 ? "+" : ""}${x}%`, context: `vs ${r.label}` } satisfies StatItem["delta"]);
+    return x === null ? null : ({ good: x > 0 ? true : x < 0 ? false : null, text: `${x > 0 ? "+" : ""}${x}%`, context: `vs ${RANGE_LABEL[range]}` } satisfies StatItem["delta"]);
   };
   const exportBtn = (name: string, rows: (string | number)[][]) => (
     <QuietButton onClick={() => downloadCsv(name, rows)}>
       <Download aria-hidden className="size-3.5" /> Export CSV
     </QuietButton>
   );
-  const weekday = [0, 0, 0, 0, 0, 0, 0];
-  for (const s of series) weekday[new Date(`${s.date}T12:00:00Z`).getUTCDay()]! += s.visits;
+  const joiners = retention.data?.joinerReturn ?? null;
+  const back = joiners ? cameBackShare(joiners, 14) : null;
+  const slowPromo = (livePromos.data?.items ?? []).find((x) => x.startTime && x.endTime);
+  const heatNote = slowPromo ? `The glow at ${promoWhen(slowPromo).toLowerCase()} is the ${slowPromo.title} promo.` : undefined;
+  const cost = owed.data;
+  const dayRange = range === "week" ? "This week" : range === "4w" ? "4 weeks" : "12 weeks";
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Reports" description="Loyalty reports are free forever. Customer names are only shown for your own shop." actions={<Segmented label="Date range" value={range} onChange={setRange} options={[{ value: "7d", label: "7 days" }, { value: "30d", label: "30 days" }, { value: "90d", label: "90 days" }]} />} />
+      <PageHeader flush title="Reports" description="Loyalty reports are free. Customer names appear only for your own shop." actions={<Segmented label="Date range" value={range} onChange={setRange} options={[{ value: "week", label: "This week" }, { value: "4w", label: "4 weeks" }, { value: "12w", label: "12 weeks" }]} />} />
       <PageTabs<Tab>
         label="Report"
         value={tab}
         onChange={setTab}
         items={[
           { id: "overview", label: "Overview" },
-          { id: "visits", label: "Visits" },
-          { id: "members", label: "Members" },
-          { id: "rewards", label: "Rewards" },
           // Pricing v2: paid reports appear only once the shop has them (no teaser tabs).
+          ...(advanced ? [{ id: "retention" as const, label: "Retention" }] : []),
+          { id: "rewards", label: "Rewards" },
           ...(promosOn ? [{ id: "promos" as const, label: "Promos" }] : []),
-          ...(overlapOn ? [{ id: "network" as const, label: "Network" }, { id: "advanced" as const, label: "Retention" }] : []),
+          ...(advanced ? [{ id: "network" as const, label: "Network" }] : []),
         ]}
       />
 
       {overview.error && !overview.data ? <ErrorLine message={overview.error} onRetry={overview.reload} /> : null}
-      {daily.error && !daily.data ? <ErrorLine message={daily.error} onRetry={daily.reload} /> : null}
 
       {tab === "overview" ? (
         <>
           <StatBlock
-            cols={3}
+            label={`Key numbers, ${dayRange.toLowerCase()}`}
             loading={!c}
             items={[
               { label: "Visits", value: c ? formatNumber(c.visits) : "–", delta: d(c?.visits, p?.visits) },
-              { label: "Active members", value: c ? formatNumber(c.activeMembers) : "–", delta: d(c?.activeMembers, p?.activeMembers) },
               { label: "New members", value: c ? formatNumber(c.newMembers) : "–", delta: d(c?.newMembers, p?.newMembers) },
-              { label: "Redemption rate", value: c ? pct(c.redemptionRate) : "–", caption: "Goal: 20% a month" },
-              { label: "Spend by members", value: c ? formatMoney(c.revenueFromMembersCents) : "–", caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit` : undefined },
-              { label: "Came back", value: c ? pct(c.repeatRate) : "–", caption: "Active members with 2+ visits" },
+              back && back.pct != null
+                ? { label: "Came back within 14 days", value: `${back.pct}%`, caption: back.caption }
+                : { label: "Came back", value: c ? pct(c.repeatRate) : "–", caption: "Active members with 2+ visits" },
+              {
+                label: `${noun[0]!.toUpperCase()}${noun.slice(1)}s given`,
+                value: c ? formatNumber(c.redemptions) : "–",
+                caption: c && cost?.rewardCostCents != null ? `about ${formatMoney(c.redemptions * cost.rewardCostCents).replace(/\.00$/, "")} at cost (estimate)` : "Set your cost in Rewards for an estimate",
+              },
             ]}
           />
-          <Panel>
-            {daily.data ? (
-              <BarChart
-                title="Visits per day"
-                valueLabel="Visits"
-                compareLabel={compare ? "Previous period" : undefined}
-                data={series.map((s, i) => ({ label: s.date, value: s.visits, compare: compare ? prev[i]?.visits : undefined }))}
-                action={
-                  <>
-                    <QuietButton aria-pressed={compare} onClick={() => setCompare((v) => !v)} className={compare ? "text-fg" : undefined}>
-                      <span aria-hidden className={cn("inline-flex size-4 items-center justify-center rounded-[4px] border", compare ? "border-fg bg-fg text-bg" : "border-line-strong")}>{compare ? <Check className="size-3" strokeWidth={3} /> : null}</span>
-                      Compare<span className="hidden sm:inline"> to previous period</span>
-                    </QuietButton>
-                    {exportBtn("visits-per-day.csv", [["date", "visits", "new_members", "points_issued", "points_redeemed", "revenue"], ...series.map((s) => [s.date, s.visits, s.newMembers, s.pointsIssued, s.pointsRedeemed, (s.revenueCents / 100).toFixed(2)])])}
-                  </>
-                }
-              />
-            ) : (
-              <SkeletonRows rows={6} />
-            )}
-          </Panel>
-          {daily.data ? (
-            <Panel>
-              <BarChart title="New members per day" valueLabel="New members" data={series.map((s) => ({ label: s.date, value: s.newMembers }))} height={120} />
-            </Panel>
-          ) : null}
-          {overview.data ? <LiabilityCard l={overview.data.pointsLiability} term={term} /> : null}
-        </>
-      ) : null}
-
-      {tab === "visits" ? (
-        <>
-          <Panel title={"Busiest days"} description={"Total visits by weekday in this range"} action={exportBtn("visits-by-weekday.csv", [["weekday", "visits"], ...["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w, i) => [w, weekday[i]!])])}>
-            <WeekdayBars counts={weekday} />
-          </Panel>
-          <Panel title={"Most frequent visitors"}>
-            {top.data ? <HBarList rows={top.data.items.map((t) => ({ key: t.memberId, label: `${t.name ?? "Member"}${t.phoneLast4 ? ` ···${t.phoneLast4}` : ""}`, value: t.visits }))} /> : <SkeletonRows rows={5} />}
-          </Panel>
-        </>
-      ) : null}
-
-      {tab === "members" ? (
-        <>
-          {activation.data ? (
-            <Panel title={"Activation"} description={activation.data.activatedAt ? `Activated ${formatDate(activation.data.activatedAt)}` : `${activation.data.daysSinceSignup} days since you joined`}>
-              <ProgressBar value={activation.data.activeMembers} max={activation.data.target} label="Members with a visit" valueText={`${activation.data.activeMembers} of ${activation.data.target}`} />
-            </Panel>
-          ) : null}
-          <Panel title={"Top customers by spend"} action={top.data ? exportBtn("top-customers.csv", [["name", "last4", "visits", "spend", "points_earned", "balance"], ...top.data.items.map((t) => [t.name ?? "", t.phoneLast4 ?? "", t.visits, (t.spendCents / 100).toFixed(2), t.pointsEarned, t.balance])]) : null}>
-            {top.data ? <HBarList format={(n) => formatMoney(n)} rows={top.data.items.map((t) => ({ key: t.memberId, label: t.name ?? "Member", value: t.spendCents, hint: `${t.visits} visits` }))} /> : <SkeletonRows rows={5} />}
-          </Panel>
-        </>
-      ) : null}
-
-      {tab === "rewards" ? (
-        <Panel title={"Redemptions by reward"} action={rewards.data ? exportBtn("rewards.csv", [["reward", "cost", "redemptions", "members", "points_spent", "discount"], ...rewards.data.items.map((x) => [x.name, x.pointsCost, x.redemptions, x.uniqueMembers, x.pointsSpent, (x.discountCents / 100).toFixed(2)])]) : null}>
-          {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <Empty className="py-2">Not enough data yet. Check back after a week of visits.</Empty>) : <SkeletonRows rows={5} />}
-        </Panel>
-      ) : null}
-
-      {tab === "promos" && promosOn ? (
-        <Section title="Promo results" description="Visits during each promo compared with the 14 days before.">
-          {promos.data ? (
-            promos.data.items.length ? (
-              <DataTable
-                caption="Promo results"
-                rowKey={(x) => x.promoId}
-                rows={promos.data.items}
-                columns={promoCols}
-              />
-            ) : (
-              <Empty className="py-2">Results show up once a promo goes live.</Empty>
-            )
-          ) : (
-            <SkeletonRows rows={5} />
-          )}
-        </Section>
-      ) : null}
-
-      {tab === "network" && overlapOn ? (
-        overlap.data ? (
-          <>
+          {posOn ? (
             <StatBlock
+              label="Spend by members"
+              cols={2}
               items={[
-                { label: "Also shop on your street", value: pct(overlap.data.sharedPct), caption: `${formatNumber(overlap.data.sharedMembers)} of ${formatNumber(overlap.data.myMembers)} members, last ${overlap.data.windowDays} days` },
-                { label: "Other shops they visit", value: overlap.data.avgOtherShops.toFixed(1), caption: "On average" },
+                { label: "Spend by members", value: c ? formatMoney(c.revenueFromMembersCents) : "–", caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit, from your POS` : undefined },
+                { label: "Redemption rate", value: c ? pct(c.redemptionRate) : "–", caption: "Members who redeemed" },
               ]}
             />
-            <Panel title={`Overlap on ${overlap.data.neighbourhood?.name ?? "your street"}`} description="Aggregated: no customer is ever identified. Shops with fewer than 5 shared members aren't listed.">
-              {overlap.data.shops.length ? <HBarList rows={overlap.data.shops.map((s) => ({ key: s.merchantId, label: s.name, value: s.sharedMembers, hint: overlap.data!.myMembers ? `${Math.round((s.sharedMembers / overlap.data!.myMembers) * 100)}%` : undefined }))} /> : <p className="text-meta text-fg-muted">Not enough shared customers yet{overlap.data.suppressedShops ? ` (${overlap.data.suppressedShops} shops below the privacy threshold)` : ""}.</p>}
-            </Panel>
-          </>
-        ) : (
-          <SkeletonRows rows={6} />
-        )
+          ) : null}
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+            {heat.data ? <Heatmap data={heat.data} note={heatNote} /> : <div className="skeleton h-[360px] w-full rounded-card" />}
+            <div className="flex flex-col gap-4">
+              {cost ? (
+                <section aria-label="Rewards owed" className="rounded-card border border-line p-6">
+                  <p className="text-[13px] text-fg-muted">Rewards owed right now</p>
+                  <p className="mt-1 font-display text-[32px] font-bold leading-10 tracking-[-0.01em] text-fg">{owedHeadline(cost, noun)}</p>
+                  <p className="mt-2 text-[13px] leading-5 text-fg-muted">{owedDetail(cost, term, noun)}</p>
+                  <Link href={`${base}/program`} className="mt-2 inline-block text-[13px] font-medium text-fg underline underline-offset-4">Edit cost in Rewards</Link>
+                </section>
+              ) : null}
+              {joiners && joiners.joined > 0 ? (
+                <section aria-label="Joiners who came back" className="rounded-card border border-line p-6">
+                  <p className="text-[13px] text-fg-muted">{joinersTitle(joiners)}</p>
+                  <ul className="mt-3">
+                    {joiners.windows.map((w) => (
+                      <li key={w.days} className="flex items-center justify-between border-t border-line py-2.5 text-[14px] first:border-t">
+                        <span className="text-fg">Within {w.days} days</span>
+                        <span className="tabular font-medium text-fg">{w.cameBack} of {joiners.joined}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              {advanced && overlap.data && overlap.data.shops.length ? (
+                <section aria-label="Your members also visit" className="rounded-card border border-line p-6">
+                  <p className="text-[13px] text-fg-muted">Your members also visit (opt-in network)</p>
+                  <p className="mt-2 text-[14px] font-medium leading-6 text-fg">
+                    {overlap.data.shops.slice(0, 3).map((x) => `${x.name} ${overlap.data!.myMembers ? Math.round((x.sharedMembers / overlap.data!.myMembers) * 100) : 0}%`).join(" · ")}
+                  </p>
+                  <p className="mt-3 text-[12px] text-fg-muted">Shops see totals only, never each other&apos;s customers.</p>
+                </section>
+              ) : null}
+            </div>
+          </div>
+        </>
       ) : null}
 
-      {tab === "advanced" ? (
-        enabled("reports.advanced") ? (
+      {tab === "retention" && advanced ? (
+        <>
+          {joiners ? (
+            <Panel title="Joiners who came back" description={joinersTitle(joiners)}>
+              <StatBlock bare cols={3} items={joiners.windows.map((w) => ({ label: `Within ${w.days} days`, value: `${w.cameBack} of ${joiners.joined}`, caption: joiners.joined ? pct(w.cameBack / joiners.joined) : undefined }))} />
+            </Panel>
+          ) : null}
           <Panel title={"Retention by join month"} description="Share of each month's new members who visited again.">
             {retention.data ? (
               <div className="overflow-x-auto">
@@ -227,7 +193,48 @@ export default function ReportsPage() {
               <SkeletonRows rows={5} />
             )}
           </Panel>
-        ) : null
+        </>
+      ) : null}
+
+      {tab === "rewards" ? (
+        <>
+          <Panel title={"Redemptions by reward"} action={rewards.data ? exportBtn("rewards.csv", [["reward", "cost", "redemptions", "members", "points_spent", "discount"], ...rewards.data.items.map((x) => [x.name, x.pointsCost, x.redemptions, x.uniqueMembers, x.pointsSpent, (x.discountCents / 100).toFixed(2)])]) : null}>
+            {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <Empty className="py-2">Not enough data yet. Check back after a week of visits.</Empty>) : <SkeletonRows rows={5} />}
+          </Panel>
+          {overview.data ? <LiabilityCard l={overview.data.pointsLiability} term={term} /> : null}
+        </>
+      ) : null}
+
+      {tab === "promos" && promosOn ? (
+        <Section title="Promo results" description="Visits in each promo's weekdays and hours, against the same hours in the four weeks before it started.">
+          {promos.data ? (
+            promos.data.items.length ? (
+              <DataTable caption="Promo results" rowKey={(x) => x.promoId} rows={promos.data.items} columns={promoCols} />
+            ) : (
+              <Empty className="py-2">Results show up once a promo goes live.</Empty>
+            )
+          ) : (
+            <SkeletonRows rows={5} />
+          )}
+        </Section>
+      ) : null}
+
+      {tab === "network" && advanced ? (
+        overlap.data ? (
+          <>
+            <StatBlock
+              items={[
+                { label: "Also shop on your street", value: pct(overlap.data.sharedPct), caption: `${formatNumber(overlap.data.sharedMembers)} of ${formatNumber(overlap.data.myMembers)} members, last ${overlap.data.windowDays} days` },
+                { label: "Other shops they visit", value: overlap.data.avgOtherShops.toFixed(1), caption: "On average" },
+              ]}
+            />
+            <Panel title={`Overlap on ${overlap.data.neighbourhood?.name ?? "your street"}`} description="Aggregated: no customer is ever identified. Shops with fewer than 5 shared members aren't listed.">
+              {overlap.data.shops.length ? <HBarList rows={overlap.data.shops.map((s) => ({ key: s.merchantId, label: s.name, value: s.sharedMembers, hint: overlap.data!.myMembers ? `${Math.round((s.sharedMembers / overlap.data!.myMembers) * 100)}%` : undefined }))} /> : <p className="text-meta text-fg-muted">Not enough shared customers yet{overlap.data.suppressedShops ? ` (${overlap.data.suppressedShops} shops below the privacy threshold)` : ""}.</p>}
+            </Panel>
+          </>
+        ) : (
+          <SkeletonRows rows={6} />
+        )
       ) : null}
     </div>
   );

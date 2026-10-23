@@ -16,7 +16,7 @@ import { browserApi } from "@/lib/api/browser";
 import { formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
-type NDraft = { id?: string; slug: string; name: string; city: string; status: adminApi.AdminNeighbourhood["status"]; biaName: string; biaContactName: string; biaContactEmail: string; storefrontEstimate: string; centerLat: string; centerLng: string; notes: string };
+type NDraft = { id?: string; slug: string; name: string; city: string; status: adminApi.AdminNeighbourhood["status"]; biaName: string; biaContactName: string; biaContactEmail: string; storefrontEstimate: string; biaMemberCount: string; centerLat: string; centerLng: string; notes: string };
 type PDraft = { id?: string; name: string; neighbourhoodId: string; threshold: string; windowDays: string; bonusPoints: string; description: string };
 
 export default function NeighbourhoodsPage() {
@@ -26,7 +26,7 @@ export default function NeighbourhoodsPage() {
   const [p, setP] = useState<PDraft | null>(null);
   const [delN, setDelN] = useState<adminApi.AdminNeighbourhood | null>(null);
   const act = useAction();
-  const blankN = (): NDraft => ({ slug: "", name: "", city: "Toronto", status: "scouting", biaName: "", biaContactName: "", biaContactEmail: "", storefrontEstimate: "", centerLat: "", centerLng: "", notes: "" });
+  const blankN = (): NDraft => ({ slug: "", name: "", city: "Toronto", status: "scouting", biaName: "", biaContactName: "", biaContactEmail: "", storefrontEstimate: "", biaMemberCount: "", centerLat: "", centerLng: "", notes: "" });
   const nul = (v: string) => (v.trim() ? v.trim() : null);
   const num = (v: string) => (v.trim() ? Number(v) : null);
   return (
@@ -48,7 +48,7 @@ export default function NeighbourhoodsPage() {
                   <DensityBar label="Shops live" value={h.merchants} target={h.storefrontEstimate ?? 40} unit="shops" />
                   <p className="text-meta text-fg-muted">{formatNumber(h.activatedMerchants)} activated{h.biaContactName ? ` · BIA: ${h.biaContactName}` : ""}</p>
                   <div className="mt-auto flex gap-2">
-                    <Button variant="secondary" size="sm" aria-label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "" })}>Edit</Button>
+                    <Button variant="secondary" size="sm" aria-label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", biaMemberCount: h.biaMemberCount?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "" })}>Edit</Button>
                     {h.merchants === 0 ? <Button variant="ghost" size="sm" onClick={() => setDelN(h)}>Delete</Button> : null}
                   </div>
                 </div>
@@ -81,7 +81,7 @@ export default function NeighbourhoodsPage() {
           <Button variant="secondary" onClick={() => setN(null)}>Cancel</Button>
           <Button loading={act.busy} onClick={async () => {
             if (!n) return;
-            const body = { slug: n.slug.trim(), name: n.name.trim(), city: n.city.trim(), status: n.status, biaName: nul(n.biaName), biaContactName: nul(n.biaContactName), biaContactEmail: nul(n.biaContactEmail), storefrontEstimate: num(n.storefrontEstimate), centerLat: num(n.centerLat), centerLng: num(n.centerLng), notes: nul(n.notes) };
+            const body = { slug: n.slug.trim(), name: n.name.trim(), city: n.city.trim(), status: n.status, biaName: nul(n.biaName), biaContactName: nul(n.biaContactName), biaContactEmail: nul(n.biaContactEmail), storefrontEstimate: num(n.storefrontEstimate), biaMemberCount: num(n.biaMemberCount), centerLat: num(n.centerLat), centerLng: num(n.centerLng), notes: nul(n.notes) };
             const r = await act.run(() => (n.id ? browserApi.admin.updateNeighbourhood(n.id, body) : browserApi.admin.createNeighbourhood(body)));
             if (r) { setN(null); await hoods.reload(); }
           }}>Save</Button>
@@ -97,6 +97,7 @@ export default function NeighbourhoodsPage() {
             <TextField label="BIA contact" optionalLabel value={n.biaContactName} onChange={(e) => setN({ ...n, biaContactName: e.target.value })} />
             <TextField type="email" label="BIA email" optionalLabel value={n.biaContactEmail} onChange={(e) => setN({ ...n, biaContactEmail: e.target.value })} />
             <TextField label="Storefronts" optionalLabel inputMode="numeric" value={n.storefrontEstimate} onChange={(e) => setN({ ...n, storefrontEstimate: e.target.value.replace(/\D/g, "") })} />
+            <TextField label="BIA members" optionalLabel inputMode="numeric" hint="The “of 74” on the BIA overview" value={n.biaMemberCount} onChange={(e) => setN({ ...n, biaMemberCount: e.target.value.replace(/\D/g, "") })} />
             <TextField label="Centre latitude" optionalLabel inputMode="decimal" value={n.centerLat} onChange={(e) => setN({ ...n, centerLat: e.target.value })} />
             <TextField label="Centre longitude" optionalLabel inputMode="decimal" value={n.centerLng} onChange={(e) => setN({ ...n, centerLng: e.target.value })} />
             <div className="sm:col-span-2"><TextField type="textarea" label="Notes" optionalLabel value={n.notes} onChange={(e) => setN({ ...n, notes: e.target.value })} /></div>

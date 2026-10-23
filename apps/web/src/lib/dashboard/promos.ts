@@ -89,3 +89,76 @@ export function promoBody(d: PromoDraft): Record<string, unknown> {
 }
 
 export const STATUS_ACTION: Partial<Record<merchantApi.PromoStatus, string>> = { live: "Publish now", scheduled: "Schedule", ended: "End now", archived: "Archive", draft: "Move to drafts" };
+
+// ---------------------------------------------------------------------------
+// Café & retail: templates and the results table (cafes-retail.md 7.6)
+// ---------------------------------------------------------------------------
+export type PromoTemplateKey = "slow_afternoons" | "bring_friend" | "add_pastry" | "quiet_mondays";
+
+export interface PromoTemplate {
+  key: PromoTemplateKey;
+  title: string;
+  blurb: string;
+  /** The job it does, as a label on the card. */
+  job: string;
+  /** Feature that must be on for the card to show. */
+  needs?: "loyalty.referrals";
+  draft: Partial<PromoDraft>;
+}
+
+/** Four templates; each pre-fills the editor (rule, hours, weekdays). Bring a friend needs `loyalty.referrals`. */
+export const PROMO_TEMPLATES: PromoTemplate[] = [
+  { key: "slow_afternoons", title: "Slow afternoons", blurb: "Double stamps weekdays 2 to 4 pm", job: "Fills the dead zone", draft: { kind: "multiplier", title: "Double stamps on slow afternoons", body: "Double stamps weekdays 2 to 4 pm.", multiplier: "2", daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", endsLocal: "" } },
+  { key: "bring_friend", title: "Bring a friend", blurb: "Both of you get a stamp on their first visit", job: "Brings new members", needs: "loyalty.referrals", draft: { kind: "offer", title: "Bring a friend", body: "Bring a friend. Both of you get a stamp on their first visit.", endsLocal: "" } },
+  { key: "add_pastry", title: "Add a pastry", blurb: "Bonus stamp with any pastry and drink", job: "Raises the ticket", draft: { kind: "bonus_points", title: "Add a pastry", body: "Bonus stamp with any pastry and drink.", bonusPoints: "1", endsLocal: "" } },
+  { key: "quiet_mondays", title: "Quiet Mondays", blurb: "Free upsize every Monday", job: "Fixes your slowest day", draft: { kind: "offer", title: "Quiet Mondays", body: "Free upsize every Monday.", daysOfWeek: [1], endsLocal: "" } },
+];
+
+export function templateDraft(key: string | null | undefined, now = new Date()): PromoDraft {
+  const t = PROMO_TEMPLATES.find((x) => x.key === key);
+  return { ...emptyPromo(now), ...(t?.draft ?? {}) };
+}
+
+export const templatesFor = (referrals: boolean) => PROMO_TEMPLATES.filter((t) => !t.needs || referrals);
+
+const DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+const hr = (t: string) => {
+  const h = Number(t.slice(0, 2));
+  const m = t.slice(3, 5);
+  return { n: `${h % 12 === 0 ? 12 : h % 12}${m && m !== "00" ? `:${m}` : ""}`, ap: h >= 12 && h < 24 ? "pm" : "am" };
+};
+
+/** "Weekdays 2 to 4 pm", "Tuesdays, all day", "Oct 1 to 12, all day" (no weekday rule: the dates). */
+export function promoWhen(p: Pick<merchantApi.Promo, "daysOfWeek" | "startTime" | "endTime" | "startsAt" | "endsAt">): string {
+  const days = [...(p.daysOfWeek ?? [])].sort();
+  const key = days.join(",");
+  let dayLabel: string;
+  if (key === "1,2,3,4,5") dayLabel = "Weekdays";
+  else if (key === "0,6") dayLabel = "Weekends";
+  else if (key === "0,1,2,3,4,5,6") dayLabel = "Every day";
+  else if (days.length === 1) dayLabel = DAY_NAMES[days[0]!]!;
+  else if (days.length) dayLabel = days.map((d) => DAY_NAMES[d]!.slice(0, 3)).join(", ");
+  else {
+    const fmt = (iso: string, withMonth: boolean) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", ...(withMonth ? { month: "short" as const } : {}), day: "numeric" }).format(new Date(iso));
+    if (p.endsAt) {
+      const sameMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", month: "short" }).format(new Date(p.startsAt)) === new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", month: "short" }).format(new Date(p.endsAt));
+      dayLabel = `${fmt(p.startsAt, true)} to ${fmt(p.endsAt, !sameMonth)}`;
+    } else dayLabel = "Every day";
+  }
+  if (!p.startTime && !p.endTime) return `${dayLabel}, all day`;
+  const a = hr(p.startTime ?? "00:00");
+  const b = hr(p.endTime ?? "24:00");
+  return `${dayLabel} ${a.ap === b.ap ? `${a.n} to ${b.n} ${b.ap}` : `${a.n} ${a.ap} to ${b.n} ${b.ap}`}`;
+}
+
+/** The status line under a promo's name: "Live · until Oct 29", "Live · no end date", "Ended Oct 12". */
+export function promoStatusLine(p: Pick<merchantApi.Promo, "status" | "endsAt" | "startsAt">): string {
+  const d = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" }).format(new Date(iso));
+  if (p.status === "live") return p.endsAt ? `Live · until ${d(p.endsAt)}` : "Live · no end date";
+  if (p.status === "ended") return `Ended ${d(p.endsAt ?? p.startsAt)}`;
+  if (p.status === "scheduled") return `Starts ${d(p.startsAt)}`;
+  return p.status[0]!.toUpperCase() + p.status.slice(1);
+}
+
+/** "+22", "-3", "0": the Extra visits cell. */
+export const signedVisits = (n: number) => (n > 0 ? `+${n}` : String(n));

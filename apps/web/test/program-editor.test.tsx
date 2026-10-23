@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
-import { changeEarnType, diffProgram, expiryDisclosure, previewModel, programSentence, raisesTheBar, validateProgram, type ProgramDraft } from "@/lib/dashboard/program";
+import { categoriesVisible, changeEarnType, diffProgram, earnModeOf, expiryDisclosure, previewModel, programSentence, raisesTheBar, rewardPresets, setEarnMode, validateProgram, weeklyRegularSentence, type ProgramDraft } from "@/lib/dashboard/program";
 
-const stamps: ProgramDraft = { name: "Café rewards", earnType: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10, terminology: "stamps", welcomeBonus: 1, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 30 };
+const stamps: ProgramDraft = { name: "Café rewards", earnType: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10, terminology: "stamps", welcomeBonus: 1, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 30, counterAutoStamp: true, rewardCostCents: null };
 const points: ProgramDraft = { ...stamps, earnType: "per_dollar", pointsPerDollar: 1, terminology: "points", welcomeBonus: 0 };
 const drink = { name: "Free drink", pointsCost: 10, rewardType: "free_item" as const, value: 0 };
 
@@ -87,5 +87,65 @@ describe("<ProgramPreview>", () => {
   it("shows a points ring for per-dollar programs", () => {
     render(<ProgramPreview model={previewModel(points, [{ ...drink, name: "$5 off", pointsCost: 100 }])} shop={shop} />);
     expect(screen.getByRole("img", { name: /72 of 100 points/ })).toBeTruthy();
+  });
+});
+
+describe("Rewards in three steps", () => {
+  it("maps the three earn choices onto the program", () => {
+    expect(earnModeOf(stamps)).toBe("visit");
+    expect(earnModeOf({ ...stamps, minSpendCents: 500 })).toBe("purchase");
+    expect(earnModeOf(points)).toBe("dollar");
+    const purchase = setEarnMode(stamps, "purchase");
+    expect(purchase).toMatchObject({ earnType: "stamps", minSpendCents: 500 });
+    expect(setEarnMode(purchase, "visit").minSpendCents).toBe(0);
+    // Points per dollar turns Stamp on scan off (the amount has to be typed).
+    expect(setEarnMode(stamps, "dollar")).toMatchObject({ earnType: "per_dollar", counterAutoStamp: false, terminology: "points" });
+    // Back to stamps keeps stamp wording and a 6 to 12 goal.
+    expect(setEarnMode({ ...points, stampGoal: 0 }, "visit")).toMatchObject({ earnType: "stamps", terminology: "stamps", stampGoal: 10 });
+  });
+
+  it("says how long a weekly regular takes", () => {
+    expect(weeklyRegularSentence(10, 1)).toBe("A weekly regular earns it in about 10 weeks.");
+    expect(weeklyRegularSentence(10, 2)).toBe("A weekly regular earns it in about 5 weeks.");
+  });
+
+  it("offers the vertical template's reward first, then common ones, then Custom", () => {
+    const cafe = rewardPresets("cafe").map((p) => p.label);
+    expect(cafe[0]).toBe("Free drink");
+    expect(cafe).toEqual(["Free drink", "Free pastry", "$5 off", "Custom"]);
+    expect(rewardPresets("bakery")[0]!.label).toBe("Free pastry");
+    expect(rewardPresets("pharmacy").at(-1)!.label).toBe("Custom");
+    expect(rewardPresets("cafe").find((p) => p.label === "$5 off")).toMatchObject({ rewardType: "amount_off", value: 500 });
+  });
+
+  it("shows the no-earn categories only for pharmacy, grocery and retail, or a POS with synced categories", () => {
+    expect(categoriesVisible("cafe", [], false)).toBe(false);
+    expect(categoriesVisible("bakery", [{ externalIds: { square: "1" } }], true)).toBe(false);
+    expect(categoriesVisible("pharmacy", [], false)).toBe(true);
+    expect(categoriesVisible("grocery", [], false)).toBe(true);
+    expect(categoriesVisible("retail", [], false)).toBe(true);
+    expect(categoriesVisible("bookstore", [{ externalIds: {} }], true)).toBe(false);
+    expect(categoriesVisible("bookstore", [{ externalIds: { square: "9" } }], true)).toBe(true);
+    expect(categoriesVisible("bookstore", [{ externalIds: { square: "9" } }], false)).toBe(false);
+  });
+
+  it("sends Stamp on scan and the reward cost in the PATCH diff", () => {
+    expect(diffProgram(stamps, { ...stamps, counterAutoStamp: false, rewardCostCents: 400 })).toEqual({ counterAutoStamp: false, rewardCostCents: 400 });
+  });
+});
+
+describe("<ProgramPreview> wallet pass", () => {
+  const shop = { name: "Pinecone Coffee", vertical: "cafe", logoUrl: null };
+  it("draws the pass with a FREE last cell and updates live", async () => {
+    const { rerender } = render(<ProgramPreview model={previewModel(stamps, [drink])} shop={shop} defaultView="pass" />);
+    expect(screen.getByRole("img", { name: /7 of 10 stamps\. 3 more for a free drink/ })).toBeTruthy();
+    expect(screen.getByText("7 / 10")).toBeTruthy();
+    expect(screen.getByText("Free")).toBeTruthy();
+    expect(screen.getByText("Add to Apple Wallet")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Wallet pass" })).toBeTruthy();
+    rerender(<ProgramPreview model={previewModel({ ...stamps, stampGoal: 8 }, [drink])} shop={shop} defaultView="pass" />);
+    expect(screen.getByText("7 / 8")).toBeTruthy();
+    await userEvent.click(screen.getByRole("radio", { name: "Counter" }));
+    expect(screen.getByText("Added 1 stamp")).toBeTruthy();
   });
 });

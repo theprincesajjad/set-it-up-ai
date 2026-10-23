@@ -13,6 +13,7 @@ import { browserApi, browserClient } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
+import { ManualDue } from "./ManualDue";
 import { Heading, Pill, ShopHead, useFmt } from "./ui";
 
 const api = restaurantCustomerApi(browserClient);
@@ -102,8 +103,12 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
   const [setup, setSetup] = useState<tiffinApi.PaymentMethodSetupResponse | null>(null);
 
   const cancelled = sub.status === "cancelled";
-  const needsPayment = sub.status === "past_due" || sub.status === "pending" || sub.latestCharge?.status === "failed";
-  const statusLabel: Record<Sub["status"], string> = { pending: t("rc.tm.pending"), active: t("tiffin.active"), paused: t("tiffin.paused"), past_due: t("rc.tm.pastDue"), cancelled: t("rc.tm.cancelled") };
+  const byHand = sub.paymentMethod === "etransfer" || sub.paymentMethod === "cash";
+  // Hand-paid subscriptions have nothing to retry: they pay the kitchen and the kitchen records it.
+  const needsPayment = !byHand && (sub.status === "past_due" || sub.status === "pending" || sub.latestCharge?.status === "failed");
+  const awaiting = byHand && sub.latestCharge?.status === "awaiting";
+  const awaitingWord = t(sub.paymentMethod === "cash" ? "tcb.row.awaitingCash" : "tcb.row.awaitingEtransfer");
+  const statusLabel: Record<Sub["status"], string> = { pending: awaiting ? awaitingWord : t("rc.tm.pending"), active: t("tiffin.active"), paused: t("tiffin.paused"), past_due: awaiting ? awaitingWord : t("rc.tm.pastDue"), cancelled: t("rc.tm.cancelled") };
   const cadence = t(sub.plan.cadence === "weekly" ? "rc.tf.weekly" : "rc.tf.monthly");
 
   async function run(key: string, fn: () => Promise<string | void>) {
@@ -132,7 +137,9 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
     }
   }
 
-  const chargeStatus: Record<tiffinApi.ChargeDto["status"], string> = { paid: t("rc.tm.chargePaid"), pending: t("rc.tm.chargePending"), failed: t("rc.tm.chargeFailed"), refunded: t("rc.tm.chargeRefunded") };
+  const methodWord = (m: string | null) => (m ? t(`tcb.m.${m}` as MessageKey) : "");
+  const chargeStatus = (c: tiffinApi.ChargeDto) =>
+    c.status === "awaiting" ? awaitingWord : c.status === "paid" && c.paidMethod && c.paidMethod !== "card" && c.paidMethod !== "pad" ? t("tcb.row.paidBy", { method: methodWord(c.paidMethod), date: c.receivedOn ? date(dayDate(c.receivedOn), { month: "short", day: "numeric" }, "UTC") : "" }).trim() : ({ paid: t("rc.tm.chargePaid"), pending: t("rc.tm.chargePending"), failed: t("rc.tm.chargeFailed"), refunded: t("rc.tm.chargeRefunded") } as const)[c.status as "paid" | "pending" | "failed" | "refunded"];
 
   return (
     <article className="flex flex-col gap-4 rounded-card border border-line p-4" aria-label={sub.plan.name}>
@@ -155,6 +162,10 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
       </div>
 
       {note ? <Banner tone={note.tone}>{note.text}</Banner> : null}
+
+      {awaiting && sub.manual && !cancelled ? (
+        <ManualDue manual={sub.manual} shop={sub.merchant.name} method={sub.paymentMethod} dueOn={sub.latestCharge?.periodStart} partial={sub.latestCharge && sub.latestCharge.remainingCents < sub.latestCharge.amountCents ? sub.latestCharge.remainingCents : undefined} />
+      ) : null}
 
       {needsPayment && !cancelled ? (
         payment ? (
@@ -191,7 +202,13 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
         )
       ) : null}
 
-      {!cancelled ? (
+      {!cancelled && byHand ? (
+        <section aria-label={t("tcb.manage.payMethod")} className="border-t border-line pt-3">
+          <p className="text-meta text-fg-muted">{t("tcb.manage.byHand", { method: t(`tcb.pay.${sub.paymentMethod}` as MessageKey), shop: sub.merchant.name })}</p>
+        </section>
+      ) : null}
+
+      {!cancelled && !byHand ? (
         <section aria-label={t("rc.tm.cardOnFile")} className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between gap-3">
             <p className="min-w-0 text-meta text-fg-muted">
@@ -392,9 +409,10 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
                 <li key={c.id} className="flex items-center justify-between gap-3 border-t border-line py-2.5 first:border-t-0">
                   <div className="min-w-0">
                     <p className="text-body tabular-nums text-fg">{money(c.amountCents - c.creditCents)}</p>
+                    {c.taxCents > 0 ? <p className="text-caption text-fg-muted">{t("tcb.tax.incl", { amount: money(c.taxCents) })}</p> : null}
                     <p className="text-meta text-fg-muted">{t("rc.tm.chargePeriod", { from: date(dayDate(c.periodStart), { month: "short", day: "numeric" }, "UTC"), to: date(dayDate(c.periodEnd), { month: "short", day: "numeric" }, "UTC") })}</p>
                   </div>
-                  <Pill>{chargeStatus[c.status]}</Pill>
+                  <Pill>{chargeStatus(c)}</Pill>
                 </li>
               ))}
             </ul>

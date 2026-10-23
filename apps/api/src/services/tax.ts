@@ -8,6 +8,7 @@
  */
 import { eq } from "drizzle-orm";
 import { neighbourhoods, type DbOrTx } from "@ll/db";
+import { salesTaxBps } from "@ll/shared";
 
 export interface TaxComponent {
   label: string;
@@ -75,4 +76,14 @@ export async function merchantProvince(db: DbOrTx, merchant: { neighbourhoodId: 
   if (!merchant.neighbourhoodId) return DEFAULT_PROVINCE;
   const [n] = await db.select({ province: neighbourhoods.province }).from(neighbourhoods).where(eq(neighbourhoods.id, merchant.neighbourhoodId)).limit(1);
   return n?.province && PROVINCIAL_TAX[n.province.toUpperCase()] ? n.province.toUpperCase() : DEFAULT_PROVINCE;
+}
+
+/**
+ * Tax for a merchant's quote or invoice: the province's rate, or nothing when the shop says it is not registered
+ * for GST/HST (a small supplier). `taxRegistered` is the merchant tax setting; null/undefined means "not asked yet".
+ */
+export async function merchantTax(db: DbOrTx, merchant: { neighbourhoodId: string | null; taxRegistered?: boolean | null }, taxableCents: number): Promise<TaxResult & { label: string }> {
+  const province = await merchantProvince(db, merchant);
+  if (salesTaxBps({ province, taxRegistered: merchant.taxRegistered }) === 0) return { province, taxCents: 0, lines: [], label: "No tax (not registered)" };
+  return { ...computeTax(taxableCents, province), label: taxLabel(province).label };
 }

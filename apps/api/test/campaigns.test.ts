@@ -71,6 +71,11 @@ describe("campaigns: access and gating", () => {
     expect(byManager.json().error.code).toBe("feature_locked");
     const merchantView = await env.app.inject({ method: "GET", url: `/v1/merchants/${s.shops[0]!.merchant.id}/campaigns`, headers: auth(s.shops[0]!.ownerToken) });
     expect(merchantView.statusCode).toBe(402);
+    // The list is the probe the BIA console uses to show its "coming soon" state.
+    const listed = await env.app.inject({ method: "GET", url: "/v1/campaigns", headers: t.manager });
+    expect(listed.statusCode).toBe(402);
+    expect(listed.json().error.code).toBe("feature_locked");
+    expect((await env.app.inject({ method: "GET", url: "/v1/campaigns", headers: t.admin })).statusCode).toBe(200);
     const byAdmin = await env.app.inject({ method: "POST", url: "/v1/campaigns", headers: t.admin, payload: campaignBody(s.hood.id) });
     expect(byAdmin.statusCode).toBe(201);
   });

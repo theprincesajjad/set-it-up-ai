@@ -6,15 +6,15 @@
  * Every dashboard section that depends on a paid feature lists its keys in NAV_FEATURES and is
  * shown only when at least one of them is enabled for the shop (plan + rollout + admin override).
  */
-import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey } from "@ll/shared";
+import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, type PlanId } from "@ll/shared";
 
 export type StaffRole = "owner" | "manager" | "staff";
 
 /** Sidebar groups, drawn with a small gap between them; only the groups in NAV_GROUP_LABELS get a heading. */
-export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop";
+export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop" | "r-today" | "r-sell" | "r-menu" | "r-talk" | "r-loyalty" | "r-more";
 
 /** Small heading over a sidebar group (canvas "Complete your setup" row style: 12px, muted). */
-export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant" };
+export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant", "r-today": "today", "r-sell": "sell ahead", "r-menu": "menu", "r-talk": "talk to guests", "r-loyalty": "loyalty" };
 
 export interface NavEntry {
   key: string;
@@ -22,6 +22,8 @@ export interface NavEntry {
   label: string;
   group: NavGroup;
   exact?: boolean;
+  /** Restaurants: a count shown after the label (new orders, calls to check, chats waiting). */
+  badge?: "orders" | "phone" | "whatsapp";
 }
 
 /**
@@ -36,6 +38,11 @@ export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
   orders: ["orders.order_ahead", "orders.pickup_status", "payments.in_app"],
   tickets: ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices"],
   catalog: ["orders.order_ahead"],
+  calendar: ["booking.appointments"],
+  invoices: ["service.invoices"],
+  rebooking: ["service.rebooking"],
+  // Appointment services for salons; the same table is the repair shop's price list.
+  services: ["booking.appointments", "service.tickets"],
   slots: ["booking.pickup_slots", "booking.dropoff_scheduling"],
   ads: ["ads.sponsored_listing", "ads.sponsored_promo", "ads.map_pin"],
   campaigns: ["campaigns.neighbourhood"],
@@ -65,7 +72,7 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
  * the merchant's enabled-features list already folds in. The menu page is "Dietary & languages" so it never reads as a
  * duplicate of the commerce "Menu & catalog" entry.
  */
-export const RESTAURANT_NAV: readonly { slug: string; label: string; feature: FeatureKey }[] = [
+export const RESTAURANT_NAV: readonly { slug: string; label: string; feature: FeatureKey; /** Works on every tier (phone orders: the manual path). */ alwaysOn?: boolean }[] = [
   { slug: "menu", label: "Dietary & languages", feature: "restaurant.dietary_tags" },
   { slug: "preorders", label: "Pre-orders", feature: "restaurant.degh_preorders" },
   { slug: "tiffin", label: "Tiffin", feature: "restaurant.tiffin" },
@@ -75,7 +82,7 @@ export const RESTAURANT_NAV: readonly { slug: string; label: string; feature: Fe
   { slug: "whatsapp", label: "WhatsApp", feature: "restaurant.whatsapp_notifications" },
   { slug: "reviews", label: "Reviews", feature: "restaurant.reviews" },
   { slug: "festivals", label: "Festivals", feature: "restaurant.festival_campaigns" },
-  { slug: "phone-orders", label: "Phone orders", feature: "restaurant.phone_ai" },
+  { slug: "phone-orders", label: "Phone orders", feature: "restaurant.phone_ai", alwaysOn: true },
 ];
 
 /** Page listing the restaurant modules a shop has not unlocked (one sidebar entry instead of one per module). */
@@ -96,8 +103,8 @@ export function restaurantUnlock(slug: string): { name: string; description: str
 /** Restaurant modules split by entitlement (enabled = merchant's enabled feature keys, add-ons included). */
 export function restaurantModules(enabled: Set<FeatureKey>) {
   return {
-    unlocked: RESTAURANT_NAV.filter((r) => enabled.has(r.feature)),
-    locked: RESTAURANT_NAV.filter((r) => !enabled.has(r.feature)),
+    unlocked: RESTAURANT_NAV.filter((r) => r.alwaysOn || enabled.has(r.feature)),
+    locked: RESTAURANT_NAV.filter((r) => !r.alwaysOn && !enabled.has(r.feature)),
   };
 }
 
@@ -113,31 +120,81 @@ export function navUnlocked(key: string, enabled: Set<FeatureKey>): boolean {
   return !keys || keys.some((k) => enabled.has(k));
 }
 
-export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>): NavEntry[] {
+/**
+ * Verticals whose first-run path is the loyalty card, counter and messages (cafés, bakeries, retail, grocery,
+ * pharmacy, florists, pet shops). Their sidebar hides the service, pickup-slot and ordering sections unless the
+ * shop is on Pro or a restaurant tier.
+ */
+export const LOYALTY_FIRST_VERTICALS: readonly string[] = ["cafe", "bakery", "bookstore", "retail", "grocery", "pharmacy", "florist", "pet"];
+/** Discount cards (show-to-save front-store cards) only make sense for these. */
+export const DISCOUNT_CARD_VERTICALS: readonly string[] = ["pharmacy", "grocery", "retail"];
+/** Appointment businesses (staff calendar) and drop-off repair businesses (tickets). */
+export const APPOINTMENT_VERTICALS: readonly string[] = ["salon", "barber", "spa"];
+export const REPAIR_VERTICALS: readonly string[] = ["repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"];
+/** Sections a loyalty-first shop only sees on Pro or a restaurant tier. */
+const PRO_ONLY_FOR_LOYALTY_FIRST: readonly string[] = ["tickets", "slots", "orders", "catalog"];
+
+/** What the sidebar needs to know about the shop beyond its enabled features. */
+export interface ShopNavContext {
+  vertical?: string;
+  plan?: PlanId;
+  /** Current rollout stage per feature key; ads and street campaigns stay hidden until their stage is "ga". */
+  stages?: Partial<Record<FeatureKey, string>>;
+}
+
+/** Is the whole Phase 3 section live (any of its keys at stage ga)? Unknown stages count as live (no gate). */
+function stageGa(key: string, stages: ShopNavContext["stages"]): boolean {
+  if (!stages) return true;
+  return (NAV_FEATURES[key] ?? []).some((k) => stages[k] === "ga");
+}
+
+/** Vertical and rollout gating on top of feature gating (cafes-retail.md 7.8). Pure; `shop` omitted = feature gating only. */
+export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNavContext): boolean {
+  if (!navUnlocked(key, enabled)) return false;
+  if (!shop) return true;
+  // Salons, barbers and spas live in the calendar: no repair tickets unless they also bought the Service plan. Repair shops get no calendar.
+  if (key === "tickets" && shop.vertical && APPOINTMENT_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
+  if (key === "calendar" && shop.vertical && REPAIR_VERTICALS.includes(shop.vertical)) return false;
+  if ((key === "ads" || key === "campaigns") && !stageGa(key, shop.stages)) return false;
+  if (key === "discount-cards" && shop.vertical && !DISCOUNT_CARD_VERTICALS.includes(shop.vertical)) return false;
+  if (PRO_ONLY_FOR_LOYALTY_FIRST.includes(key) && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical)) {
+    return shop.plan === "pro" || hasRestaurantFeature(enabled);
+  }
+  return true;
+}
+
+export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
   const home: NavEntry = { key: "home", href: base, label: role === "staff" ? "Today" : "Home", group: "main", exact: true };
   const counter: NavEntry = { key: "counter", href: `${base}/counter`, label: "Counter", group: "main" };
-  if (role === "staff") return [home, counter];
+  // Front-desk staff run the day from the calendar (appointment shops), so it is the one extra section they get.
+  const calendar: NavEntry = { key: "calendar", href: `${base}/calendar`, label: "Calendar", group: "commerce" };
+  if (role === "staff") return [home, counter, ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : [])];
+  // Restaurants get one sidebar grouped by when it is used (restaurantNav below); everyone else keeps the flat list.
+  if (hasRestaurantFeature(enabled)) return buildRestaurantNav(base, role, enabled, shop);
 
   const items: NavEntry[] = [
     home,
     counter,
     { key: "customers", href: `${base}/customers`, label: "Customers", group: "loyalty" },
-    { key: "program", href: `${base}/program`, label: "Program & rewards", group: "loyalty" },
+    { key: "program", href: `${base}/program`, label: "Rewards", group: "loyalty" },
     { key: "promos", href: `${base}/promos`, label: "Promos", group: "loyalty" },
     { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "loyalty" },
     { key: "messages", href: `${base}/messages`, label: "Messages", group: "loyalty" },
     { key: "reports", href: `${base}/reports`, label: "Reports", group: "loyalty" },
     { key: "orders", href: `${base}/orders`, label: "Orders", group: "commerce" },
-    { key: "tickets", href: `${base}/tickets`, label: "Service tickets", group: "commerce" },
+    { key: "tickets", href: `${base}/tickets`, label: "Tickets", group: "commerce" },
+    { key: "invoices", href: `${base}/invoices`, label: "Invoices", group: "commerce" },
+    calendar,
+    { key: "services", href: `${base}/services`, label: enabled.has("service.tickets") && !enabled.has("booking.appointments") ? "Price list" : "Services & prices", group: "commerce" },
     { key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "commerce" },
-    { key: "slots", href: `${base}/slots`, label: "Pickup & drop-off", group: "commerce" },
+    { key: "rebooking", href: `${base}/rebooking`, label: "Rebooking", group: "commerce" },
+    { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "commerce" },
     { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
     { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
-    { key: "integrations", href: `${base}/integrations`, label: "Integrations", group: "shop" },
+    { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
     { key: "billing", href: `${base}/billing`, label: "Billing & plans", group: "shop" },
-    { key: "settings", href: `${base}/settings`, label: "Settings", group: "shop" },
   ];
   if (hasRestaurantFeature(enabled)) {
     const at = items.findIndex((i) => i.key === "ads");
@@ -146,12 +203,56 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
     if (locked.length) entries.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "restaurant" });
     items.splice(at < 0 ? items.length : at, 0, ...entries);
   }
-  return items.filter((i) => navUnlocked(i.key, enabled) && (i.key !== "billing" || role === "owner"));
+  return items.filter((i) => navVisible(i.key, enabled, shop) && (i.key !== "billing" || role === "owner"));
+}
+
+/**
+ * Restaurant sidebar (docs/research/desi-restaurants.md, frame 01): five groups by when you use them. Locked modules fold into
+ * "More for restaurants". Catering and banquet share one entry; the Menu & catalog and pickup-slot sections give way to
+ * "Menu & dietary", and the service sections stay out of a restaurant's way.
+ */
+function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
+  const { unlocked, locked } = restaurantModules(enabled);
+  const has = (slug: string) => unlocked.some((r) => r.slug === slug);
+  const r = (slug: string, label: string, group: NavGroup, badge?: NavEntry["badge"], href?: string): NavEntry => ({ key: `restaurant-${slug}`, href: href ?? `${base}/restaurant/${slug}`, label, group, ...(badge ? { badge } : {}) });
+  const out: NavEntry[] = [{ key: "home", href: base, label: "Home", group: "r-today", exact: true }];
+  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "r-today", badge: "orders" });
+  if (has("kitchen")) out.push(r("kitchen", "Kitchen display", "r-today"));
+  if (has("phone-orders")) out.push(r("phone-orders", "Phone orders", "r-today", "phone"));
+  if (has("preorders")) out.push(r("preorders", "Pre-orders", "r-sell"));
+  if (has("catering")) out.push(r("catering", "Catering & banquet", "r-sell"));
+  else if (has("banquet")) out.push(r("banquet", "Catering & banquet", "r-sell"));
+  if (has("tiffin")) out.push(r("tiffin", "Tiffin", "r-sell"));
+  if (has("menu")) out.push(r("menu", "Menu & dietary", "r-menu"));
+  if (has("whatsapp")) out.push(r("whatsapp", "WhatsApp", "r-talk", "whatsapp"));
+  if (has("reviews")) out.push(r("reviews", "Reviews", "r-talk"));
+  if (has("festivals")) out.push(r("festivals", "Festivals", "r-talk"));
+  const loyalty: NavEntry[] = [
+    { key: "customers", href: `${base}/customers`, label: "Customers", group: "r-loyalty" },
+    { key: "program", href: `${base}/program`, label: "Program & rewards", group: "r-loyalty" },
+    { key: "promos", href: `${base}/promos`, label: "Promos", group: "r-loyalty" },
+    { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "r-loyalty" },
+    { key: "messages", href: `${base}/messages`, label: "Messages", group: "r-loyalty" },
+    { key: "reports", href: `${base}/reports`, label: "Reports", group: "r-loyalty" },
+  ];
+  out.push(...loyalty.filter((i) => navVisible(i.key, enabled, shop)));
+  if (locked.length) out.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "r-more" });
+  const tools: NavEntry[] = [
+    { key: "counter", href: `${base}/counter`, label: "Counter", group: "shop" },
+    { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
+    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
+    { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
+    { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
+    { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
+    { key: "billing", href: `${base}/billing`, label: "Billing & plans", group: "shop" },
+  ];
+  out.push(...tools.filter((i) => navVisible(i.key, enabled, shop) && (i.key !== "billing" || role === "owner")));
+  return out;
 }
 
 /** Which nav keys a role may open directly (route guard for staff deep links). */
 export function canOpen(role: StaffRole, key: string): boolean {
-  if (role === "staff") return key === "home" || key === "counter";
+  if (role === "staff") return key === "home" || key === "counter" || key === "calendar";
   if (key === "billing") return role === "owner";
   return true;
 }

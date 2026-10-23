@@ -8,8 +8,9 @@ import { StampCard } from "@/components/ui/StampCard";
 import { formatNumber, formatPoints, rewardInSentence } from "@/lib/format";
 import type { PreviewModel } from "@/lib/dashboard/program";
 import { Segmented } from "./kit";
+import { WalletPassPreview } from "./program/WalletPassPreview";
 
-export type PreviewView = "wallet" | "shop" | "counter";
+export type PreviewView = "pass" | "wallet" | "shop" | "counter";
 
 /** 320 x 640 phone: hairline device, white screen, no heavy bezel or shadow. */
 export function PhoneFrame({ children, label }: { children: ReactNode; label: string }) {
@@ -45,8 +46,8 @@ function progressSubtitle(model: PreviewModel): string {
 }
 
 /** Renders the real (v2) customer components with the draft program: wallet, shop page, counter success. */
-export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { model: PreviewModel; shop: Shop; view?: PreviewView; onViewChange?: (v: PreviewView) => void }) {
-  const [inner, setInner] = useState<PreviewView>("wallet");
+export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defaultView = "wallet" }: { model: PreviewModel; shop: Shop; view?: PreviewView; onViewChange?: (v: PreviewView) => void; defaultView?: PreviewView }) {
+  const [inner, setInner] = useState<PreviewView>(defaultView);
   const view = viewProp ?? inner;
   const setView = onViewChange ?? setInner;
   const header = (
@@ -76,13 +77,24 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
           label="Preview"
           value={view}
           onChange={setView}
-          options={[
-            { value: "wallet", label: "Wallet" },
-            { value: "shop", label: "Shop page" },
-            { value: "counter", label: "Counter success" },
-          ]}
+          options={
+            defaultView === "pass"
+              ? [
+                  { value: "pass", label: "Wallet pass" },
+                  { value: "counter", label: "Counter" },
+                  { value: "shop", label: "Shop page" },
+                ]
+              : [
+                  { value: "wallet", label: "Wallet" },
+                  { value: "shop", label: "Shop page" },
+                  { value: "counter", label: "Counter success" },
+                ]
+          }
         />
       </div>
+      {view === "pass" ? (
+        <WalletPassPreview model={model} shop={shop} />
+      ) : (
       <PhoneFrame label={`Customer preview: ${view}`}>
         {view === "wallet" ? (
           <div className="flex flex-col gap-3">
@@ -122,6 +134,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange }: { 
           </div>
         ) : null}
       </PhoneFrame>
+      )}
     </div>
   );
 }

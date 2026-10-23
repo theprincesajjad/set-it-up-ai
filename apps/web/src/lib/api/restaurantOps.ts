@@ -4,7 +4,7 @@
  * `api.catering.get(id)`, `api.banquet.halls()`. Contracts: @ll/shared tiffinApi / restaurantApi,
  * routes: docs/engineering/restaurant-endpoints.md.
  */
-import type { restaurantApi, tiffinApi } from "@ll/shared";
+import type { paymentsManualApi, restaurantApi, tiffinApi } from "@ll/shared";
 import type { ApiClient } from "./client";
 
 const enc = encodeURIComponent;
@@ -15,6 +15,8 @@ export interface CateringListResponse {
   items: restaurantApi.CateringEventDto[];
   nextCursor: string | null;
   counts: Partial<Record<restaurantApi.CateringStatus, number>>;
+  /** Money tiles and the 8-week strip. */
+  summary: restaurantApi.CateringSummary;
 }
 /** POST :m/catering: the public inquiry body (a staff member enters it by phone). */
 export type CateringStaffInquiryBody = restaurantApi.CateringInquiryBody & { name: string; phone: string; email?: string | null };
@@ -26,6 +28,8 @@ export interface HallBody {
   packages?: { name: string; perHeadCents: number; includes?: string[] }[];
   depositBps?: number;
   refundPolicy?: restaurantApi.HallRefundPolicy;
+  paymentSchedule?: { label: string; bps: number; dueOffsetDays: number }[] | null;
+  autoConfirmOnFirstPayment?: boolean;
   active?: boolean;
 }
 export interface HallBookingsResponse {
@@ -73,6 +77,22 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       manifest: (date?: string, routeId?: string) => c.get<tiffinApi.ManifestResponse>(`${t}/manifest`, { query: { date, routeId } }),
       setDeliveryStatus: (body: tiffinApi.SetDeliveryStatusBody) => c.post<tiffinApi.SetDeliveryStatusResponse>(`${t}/deliveries/status`, body),
       revenue: (month?: string) => c.get<tiffinApi.RevenueResponse>(`${t}/revenue`, { query: { month } }),
+      awaiting: () => c.get<paymentsManualApi.AwaitingResponse>(`${t}/awaiting`),
+      recordPayment: (chargeId: string, body: paymentsManualApi.RecordPaymentBody) => c.post<tiffinApi.ChargeDto>(`${t}/charges/${enc(chargeId)}/record-payment`, body),
+      voidPayment: (chargeId: string, reason: string) => c.post<tiffinApi.ChargeDto>(`${t}/charges/${enc(chargeId)}/void-payment`, { reason }),
+      driverLink: (routeId: string, date?: string) => c.post<tiffinApi.DriverLinkResponse>(`${t}/routes/${enc(routeId)}/driver-link`, date ? { date } : {}),
+      sendDriverLinks: (routeIds: string[], channel: "sms" | "whatsapp", date?: string) => c.post<tiffinApi.SendDriverLinksResponse>(`${t}/driver-links/send`, { routeIds, channel, ...(date ? { date } : {}) }),
+      markAllOut: (body: { routeId?: string; date?: string } = {}) => c.post<tiffinApi.MarkAllOutResponse>(`${t}/deliveries/mark-all-out`, body),
+      lateNotice: (body: { routeId?: string; minutes: number; date?: string }) => c.post<{ notified: number }>(`${t}/deliveries/late-notice`, body),
+    },
+    /** Shop-level settings shared by tiffin, catering and banquet. */
+    settings: {
+      payment: () => c.get<paymentsManualApi.PaymentSettingsDto>(`${b}/payment-settings`),
+      savePayment: (body: paymentsManualApi.PaymentSettingsBody) => c.put<paymentsManualApi.PaymentSettingsDto>(`${b}/payment-settings`, body),
+      tax: () => c.get<paymentsManualApi.TaxSettingsDto>(`${b}/tax-settings`),
+      saveTax: (body: paymentsManualApi.TaxSettingsBody) => c.put<paymentsManualApi.TaxSettingsDto>(`${b}/tax-settings`, body),
+      foodSafety: () => c.get<paymentsManualApi.FoodSafetyDto>(`${b}/food-safety`),
+      saveFoodSafety: (body: paymentsManualApi.FoodSafetyBody) => c.put<paymentsManualApi.FoodSafetyDto>(`${b}/food-safety`, body),
     },
     catering: {
       /** The shop's tax line (HST 13%, GST 5%...) from its public menu, for live totals. Null when unavailable. */
@@ -85,7 +105,9 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       setMenu: (id: string, body: restaurantApi.CateringMenuBody) => c.put<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/menu`, body),
       tasting: (id: string, tastingAt: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/tasting`, { tastingAt }),
       sendQuote: (id: string, channels: ("sms" | "email")[]) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/send-quote`, { channels }),
-      markDepositPaid: (id: string, method: "cash" | "etransfer" | "cheque" | "other" = "other") => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/deposit/mark-paid`, { method }),
+      markDepositPaid: (id: string, method: "cash" | "etransfer" | "cheque" | "other" | paymentsManualApi.RecordPaymentBody = "other") =>
+        c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/deposit/mark-paid`, typeof method === "string" ? { method } : method),
+      recordBalance: (id: string, body: paymentsManualApi.RecordPaymentBody) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/balance/record-payment`, body),
       invoice: (id: string, send: boolean) => c.post<restaurantApi.CateringInvoiceDto>(`${cat}/${enc(id)}/invoice`, { send }),
       complete: (id: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/complete`, {}),
       /** `refund` applies to a deposit paid in the app: "full", "none" (default) or { amountCents }. */
@@ -104,6 +126,7 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       confirm: (id: string, markDepositPaid = false) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/confirm`, { markDepositPaid }),
       cancel: (id: string, refund?: restaurantApi.DepositRefundChoice) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/cancel`, refund ? { refund } : {}),
       complete: (id: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/complete`, {}),
+      recordPayment: (id: string, body: paymentsManualApi.RecordPaymentBody) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/payments`, body),
       deposit: (id: string) => c.post<restaurantApi.HoldResponse>(`${bq}/bookings/${enc(id)}/deposit`, {}),
       linkCatering: (id: string, cateringEventId: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/catering`, { cateringEventId }),
     },

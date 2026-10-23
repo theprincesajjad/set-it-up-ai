@@ -65,7 +65,15 @@
     ".next-rqa/types/**/*.ts",
     ".next-rqa/dev/types/**/*.ts",
     ".next-rqa-tc/types/**/*.ts",
-    ".next-rqa-tc/dev/types/**/*.ts"
+    ".next-rqa-tc/dev/types/**/*.ts",
+    ".next-mkt/types/**/*.ts",
+    ".next-mkt/dev/types/**/*.ts",
+    ".next-cafe/types/**/*.ts",
+    ".next-cafe/dev/types/**/*.ts",
+    ".next-desi1/types/**/*.ts",
+    ".next-desi1/dev/types/**/*.ts",
+    ".next-tcb/types/**/*.ts",
+    ".next-tcb/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

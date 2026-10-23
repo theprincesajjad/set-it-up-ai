@@ -1,5 +1,7 @@
 # Commerce API (Plus: catalog, order-ahead, pickup slots, bookings)
 
+Staff-column appointments (stylists, services, deposits, no-show fee) are documented in `appointments.md`; these slots and bookings stay for pickup and drop-off.
+
 Contract: `packages/shared/src/api/commerce.ts` (`commerceApi`). Code: `apps/api/src/routes/commerce/`,
 `services/catalog.ts`, `services/orders.ts`, `services/bookings.ts`, `services/tax.ts`, `services/counters.ts`,
 `services/commerceShared.ts`, `jobs/commerce.ts`. Public menu/slots: see `public.md`. Payments: see `payments.md`.

@@ -3,7 +3,7 @@
  * templates, and "create a draft from this template".
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { whatsappApi } from "@ll/shared";
+import { restaurantApi, whatsappApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
@@ -26,6 +26,18 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
       const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
       await requireFeature(ctx.db, s.merchant, "restaurant.festival_campaigns");
       return { items: svc.listFestivalCatalog() };
+    });
+
+    // The owner moves a lunar date by a day or two (moon sighting); planned sends follow.
+    app.put("/merchants/:merchantId/festivals/:festivalId/date-override", async (req: Req<{ festivalId: string }>) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      return svc.setDateOverride(ctx, s.merchant, req.params.festivalId, parse(restaurantApi.festivalDateOverrideBody, req.body));
+    });
+
+    // Which kind of food the shop serves, so festivals are ranked for its community.
+    app.put("/merchants/:merchantId/festivals/preferences", async (req: Req) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      return svc.setCuisines(ctx, s.merchant, parse(restaurantApi.festivalPreferencesBody, req.body).cuisines);
     });
 
     app.post("/merchants/:merchantId/festivals/:festivalId/campaign-drafts", async (req: Req<{ festivalId: string }>, reply) => {

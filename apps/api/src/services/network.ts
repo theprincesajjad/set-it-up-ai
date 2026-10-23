@@ -10,7 +10,7 @@
  *  - Public shop page and QR join: "onboarding" or "active" (a shop seeds its
  *    first members while onboarding).
  */
-import { and, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, ilike, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import {
   campaigns,
   catalogItems,
@@ -26,7 +26,7 @@ import {
   rewards,
   type DbOrTx,
 } from "@ll/db";
-import { FEATURE_KEYS, FEATURES, PLAN_IDS, PLANS, distanceMetres, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, FOUNDING_OFFER, PLAN_IDS, PLANS, distanceMetres, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
 import { customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
@@ -436,11 +436,21 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
 // Public plans (pricing page)
 // ---------------------------------------------------------------------------
 export async function publicPlans(ctx: AppContext): Promise<networkApi.PublicPlansResponse> {
-  const [stages, [active], [hoods]] = await Promise.all([
+  const [stages, [active], [hoods], [people], [streets]] = await Promise.all([
     getRolloutStages(ctx.db),
     ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(eq(merchants.status, "active")),
     ctx.db.select({ n: sql<number>`count(*)::int` }).from(neighbourhoods).where(inArray(neighbourhoods.status, ["pilot", "live"])),
+    // Shoppers with a membership at an active shop, and how many hold two or more. Counts only, never ids.
+    ctx.db
+      .select({ members: sql<number>`count(*)::int`, multi: sql<number>`count(*) filter (where t.n >= 2)::int` })
+      .from(sql`(select ${merchantMembers.userId} as user_id, count(*) as n from ${merchantMembers} inner join ${merchants} on ${merchants.id} = ${merchantMembers.merchantId} where ${merchants.status} = 'active' group by ${merchantMembers.userId}) t`),
+    ctx.db
+      .select({ n: sql<number>`count(distinct ${neighbourhoods.id})::int` })
+      .from(neighbourhoods)
+      .innerJoin(merchants, and(eq(merchants.neighbourhoodId, neighbourhoods.id), eq(merchants.status, "active")))
+      .where(inArray(neighbourhoods.status, ["pilot", "live"])),
   ]);
+  const members = Number(people?.members ?? 0);
   return {
     items: PLAN_IDS.map((id) => {
       const p = PLANS[id];
@@ -459,8 +469,27 @@ export async function publicPlans(ctx: AppContext): Promise<networkApi.PublicPla
             : FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === id).map((k) => ({ key: k, name: FEATURES[k].name, description: FEATURES[k].description, stage: stages[k] })),
       };
     }),
-    network: { activeMerchants: Number(active?.n ?? 0), neighbourhoods: Number(hoods?.n ?? 0) },
+    network: {
+      activeMerchants: Number(active?.n ?? 0),
+      neighbourhoods: Number(hoods?.n ?? 0),
+      members,
+      multiShopMemberPct: members ? Math.round((Number(people?.multi ?? 0) / members) * 1000) / 10 : 0,
+      liveStreets: Number(streets?.n ?? 0),
+    },
   };
+}
+
+/** Founding spots per corridor: pilot or live neighbourhoods that have restaurants, and how many hold the founding offer. */
+export async function foundingCorridors(ctx: AppContext): Promise<networkApi.FoundingResponse> {
+  const rows = await ctx.db
+    .select({ slug: neighbourhoods.slug, name: neighbourhoods.name, taken: sql<number>`count(*) filter (where ${merchants.foundingOffer})::int` })
+    .from(neighbourhoods)
+    .innerJoin(merchants, and(eq(merchants.neighbourhoodId, neighbourhoods.id), ne(merchants.status, "closed")))
+    .where(and(inArray(neighbourhoods.status, ["pilot", "live"]), or(isNotNull(merchants.restaurantTier), eq(merchants.foundingOffer, true))))
+    .groupBy(neighbourhoods.slug, neighbourhoods.name)
+    .orderBy(neighbourhoods.name);
+  const total = FOUNDING_OFFER.slotsPerCorridor;
+  return { corridors: rows.map((r) => ({ slug: r.slug, name: r.name, taken: Math.min(Number(r.taken), total), total })) };
 }
 
 async function resolveQr(db: DbOrTx, qrCode: string): Promise<{ merchant: Merchant; location: Location }> {

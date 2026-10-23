@@ -14,6 +14,7 @@ import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { RecordPaymentPanel } from "../RecordPaymentPanel";
 import { CheckRow, FormGrid, GroupLabel, MoneyField, NumberField, addDaysISO, bpsToPct, centsToField, copyText, dayLabel, fieldToCents, todayISO, torontoInstant } from "../common";
 import { NO_REFUND, RefundChoice, refundBody, refundedText, type RefundState } from "../RefundChoice";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS, SERVICE_LABEL, SERVICE_OPTIONS, STATUS_LABEL } from "./labels";
@@ -118,7 +119,7 @@ let seq = 0;
 const nk = () => `l${++seq}`;
 
 function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }) {
-  const { api, detail } = useMerchant();
+  const { api, detail, base } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const can = editable(event);
@@ -126,13 +127,14 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
   const tax = useApi(() => api.catering.taxInfo(detail.merchant.slug), [api, detail.merchant.slug]);
   const fromEvent = () => ({
     lines: event.menu.map<Line>((m) => ({ key: nk(), catalogItemId: m.catalogItemId, name: m.name, pricing: m.perHeadCents != null ? "per_head" : "tray", perHead: centsToField(m.perHeadCents), qty: String(m.quantity ?? 1), unit: centsToField(m.unitPriceCents) })),
-    extras: event.lineItems.slice(event.menu.length).map<Extra>((l) => ({ key: nk(), description: l.description, qty: String(l.quantity), unit: centsToField(l.unitPriceCents) })),
+    extras: event.lineItems.slice(event.menu.length).filter((l) => !l.description.startsWith("Service charge")).map<Extra>((l) => ({ key: nk(), description: l.description, qty: String(l.quantity), unit: centsToField(l.unitPriceCents) })),
     deposit: String(event.depositBps / 100),
+    service: event.serviceChargeBps ? String(event.serviceChargeBps / 100) : "",
   });
   const [state, setState] = useState(fromEvent);
   const [saved, setSaved] = useState(() => JSON.stringify(strip(fromEvent())));
   const [pick, setPick] = useState("");
-  const { lines, extras, deposit } = state;
+  const { lines, extras, deposit, service } = state;
   const headcount = event.headcount;
   const dirty = JSON.stringify(strip(state)) !== saved;
 
@@ -148,13 +150,19 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
 
   const totals = useMemo(() => {
     const lineTotal = (l: Line) => (l.pricing === "per_head" ? fieldToCents(l.perHead) * headcount : (Number(l.qty) || 0) * fieldToCents(l.unit));
-    const sub = lines.reduce((s, l) => s + lineTotal(l), 0) + extras.reduce((s, x) => s + (Number(x.qty) || 0) * fieldToCents(x.unit), 0);
-    const rate = tax.data?.ratePpm ?? (event.subtotalCents > 0 ? Math.round((event.taxCents / event.subtotalCents) * 1_000_000) : null);
-    const taxC = rate == null ? null : Math.round((sub * rate) / 1_000_000);
-    const total = sub + (taxC ?? 0);
+    const food = lines.reduce((s, l) => s + lineTotal(l), 0) + extras.reduce((s, x) => s + (Number(x.qty) || 0) * fieldToCents(x.unit), 0);
+    // A mandatory service charge is taxed like food (tips are not modelled on quotes).
+    const svcBps = Math.round((Number(service) || 0) * 100);
+    const svcC = food > 0 ? Math.round((food * svcBps) / 10_000) : 0;
+    const sub = food;
+    const taxable = food + svcC;
+    const notRegistered = event.tax?.registered === false;
+    const rate = notRegistered ? 0 : (tax.data?.ratePpm ?? (event.subtotalCents > 0 ? Math.round((event.taxCents / event.subtotalCents) * 1_000_000) : null));
+    const taxC = rate == null ? null : Math.round((taxable * rate) / 1_000_000);
+    const total = taxable + (taxC ?? 0);
     const bps = Math.round((Number(deposit) || 0) * 100);
-    return { sub, taxC, total, bps, dep: Math.round((total * bps) / 10_000), lineTotal, label: tax.data?.label ?? "Tax" };
-  }, [lines, extras, deposit, headcount, tax.data, event.subtotalCents, event.taxCents]);
+    return { sub, svcC, svcBps, taxC, total, bps, dep: Math.round((total * bps) / 10_000), lineTotal, label: notRegistered ? "No HST charged (small supplier)" : (tax.data?.label ?? "Tax") };
+  }, [lines, extras, deposit, service, headcount, tax.data, event.subtotalCents, event.taxCents, event.tax?.registered]);
 
   const save = async () => {
     const body: restaurantApi.CateringMenuBody = {
@@ -165,6 +173,7 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
       })),
       extras: extras.filter((x) => x.description.trim()).map((x) => ({ description: x.description.trim(), quantity: Math.max(1, Number(x.qty) || 1), unitPriceCents: fieldToCents(x.unit) })),
       depositBps: Math.min(10_000, totals.bps),
+      serviceChargeBps: Math.min(3000, totals.svcBps),
     };
     const r = await act.run(() => api.catering.setMenu(event.id, body));
     if (r) {
@@ -174,7 +183,7 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
     }
   };
 
-  const perGuest = headcount ? Math.round(totals.sub / headcount) : 0;
+  const perGuest = headcount ? Math.round(totals.total / headcount) : 0;
   return (
     <Panel
       title="Menu and pricing"
@@ -183,6 +192,11 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
     >
       <div className="flex flex-col gap-5">
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+        {event.tax?.registered === null ? (
+          <Banner tone="warning" title="Set your tax status" action={<Button size="sm" variant="secondary" href={`${base}/restaurant/payments`}>Set it</Button>}>
+            Quotes still add tax, but say &quot;tax status not set&quot; until you tell us if you are registered for GST/HST.
+          </Banner>
+        ) : null}
         {lines.length === 0 && !can ? <p className="text-meta text-fg-muted">No menu was built for this event.</p> : null}
         {lines.length === 0 && can ? (
           <EmptyState title="No dishes yet" description={`Pick from your menu below, or add a custom line. ${formatNumber(headcount)} guests so far.`} className="border-0 border-b py-3" />
@@ -243,15 +257,18 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
           <div className="sm:order-2">
             <GroupLabel>Totals</GroupLabel>
             <dl className="mt-1 divide-y divide-line border-y border-line text-meta" aria-live="polite">
-              <Total label="Subtotal" value={formatMoney(totals.sub)} />
+              <Total label="Subtotal" value={formatMoney(totals.sub)} muted />
+              {totals.svcBps > 0 ? <Total label={`Service charge ${bpsToPct(totals.svcBps)}${event.tax?.registered === false ? "" : " (tax applies)"}`} value={formatMoney(totals.svcC)} muted /> : null}
               <Total label={totals.label} value={totals.taxC == null ? "Added when you save" : formatMoney(totals.taxC)} muted />
               <Total label="Total" value={formatMoney(totals.total)} strong />
               <Total label={`Deposit (${bpsToPct(totals.bps)})`} value={formatMoney(totals.dep)} />
               <Total label="Balance after deposit" value={formatMoney(totals.total - totals.dep)} muted />
             </dl>
-            <p className="mt-1 text-meta text-fg-muted">About {formatMoney(perGuest)} a guest before tax. {dirty ? "Estimate until you save." : null}</p>
+            <p className="mt-1 text-meta text-fg-muted">About {formatMoney(perGuest)} a guest, tax included. {dirty ? "Estimate until you save." : null}</p>
+            {event.tax ? <p className="mt-0.5 text-meta text-fg-muted">{event.tax.label}.{event.tax.registered === null ? " Set your tax status in How you get paid." : ""}</p> : null}
           </div>
-          <div className="sm:order-1">
+          <div className="flex flex-col gap-3 sm:order-1">
+            <TextField label="Service charge" suffix="%" inputMode="decimal" optionalLabel disabled={!can} value={service} onChange={(e) => setState((s) => ({ ...s, service: e.target.value.replace(/[^0-9.]/g, "") }))} hint="A mandatory charge on top of food, such as 10%. It is taxed. Tips are not added here." />
             <TextField label="Deposit to confirm" suffix="%" inputMode="decimal" disabled={!can} value={deposit} onChange={(e) => setState((s) => ({ ...s, deposit: e.target.value.replace(/[^0-9.]/g, "") }))} hint="Share of the total due when the customer approves" />
           </div>
         </div>
@@ -260,8 +277,8 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
   );
 }
 
-function strip(s: { lines: Line[]; extras: Extra[]; deposit: string }) {
-  return { lines: s.lines.map((l) => ({ ...l, key: "" })), extras: s.extras.map((x) => ({ ...x, key: "" })), deposit: s.deposit };
+function strip(s: { lines: Line[]; extras: Extra[]; deposit: string; service: string }) {
+  return { lines: s.lines.map((l) => ({ ...l, key: "" })), extras: s.extras.map((x) => ({ ...x, key: "" })), deposit: s.deposit, service: s.service };
 }
 
 function lineFor(it: commerceApi.CatalogItemDto, headcount: number): Line {
@@ -297,7 +314,8 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
   const [tTime, setTTime] = useState("17:00");
   const [sms, setSms] = useState(true);
   const [email, setEmail] = useState(true);
-  const [method, setMethod] = useState<"cash" | "etransfer" | "cheque" | "other">("etransfer");
+  const [recording, setRecording] = useState<"deposit" | "balance" | null>(null);
+  const payee = useApi(() => api.settings.payment(), [api]);
   const [sendInvoice, setSendInvoice] = useState(true);
   const [invoice, setInvoice] = useState<restaurantApi.CateringInvoiceDto | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -329,9 +347,10 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
   const steps: { label: string; value: string }[] = [
     { label: "Inquiry", value: "Received" },
     { label: "Tasting", value: event.tastingAt ? formatDateTime(event.tastingAt) : "Not booked" },
-    { label: "Quote", value: event.quoteSentAt ? `Sent ${formatDateTime(event.quoteSentAt)}` : "Not sent" },
+    { label: "Quote", value: event.quoteSentAt ? `Sent ${formatDateTime(event.quoteSentAt)}${event.quoteOpenedAt ? `, opened ${formatDateTime(event.quoteOpenedAt)}` : st === "quoted" ? ", not opened yet" : ""}` : "Not sent" },
     { label: "Approval", value: event.approvedAt ? `${event.signatureName ?? "Customer"}, ${formatDateTime(event.approvedAt)}` : "Waiting" },
-    { label: "Deposit", value: event.depositPaidAt ? `${formatMoney(event.depositCents)} paid ${formatDateTime(event.depositPaidAt)}` : event.depositCents ? `${formatMoney(event.depositCents)} due` : "None" },
+    { label: "Deposit", value: event.depositPaidAt ? `${formatMoney(event.depositCents)} paid${event.depositMethod === "etransfer" ? " by e-transfer" : event.depositMethod && event.depositMethod !== "card" ? ` by ${event.depositMethod}` : ""} ${event.depositReceivedOn ? dayLabel(event.depositReceivedOn) : formatDateTime(event.depositPaidAt)}` : event.depositCents ? `${formatMoney(event.depositCents)} due${event.approvedAt ? ", awaiting" : ""}` : "None" },
+    ...(event.referenceCode ? [{ label: "Reference", value: event.referenceCode }] : []),
     ...(event.depositRefundCents > 0 ? [{ label: "Refund", value: refundedText(event.depositRefundCents, event.depositRefundedAt, formatDateTime) ?? "" }] : []),
   ];
   // Only a deposit paid by card in the app can be refunded here; one marked received by hand is returned directly.
@@ -348,6 +367,8 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
         <DefList className="border-t-0" items={[...steps, { label: "Event", value: `${dayLabel(event.eventDate)}${event.startTime ? `, ${event.startTime}` : ""}` }, { label: "Guests", value: formatNumber(event.headcount) }, { label: "Service", value: SERVICE_LABEL[event.service] }, ...(event.totalCents ? [{ label: "Total", value: formatMoney(event.totalCents) }, { label: "Balance", value: formatMoney(event.depositPaidAt ? event.balanceCents : event.totalCents) }] : [])]} />
       </div>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+      {event.dateClashes ? <Banner tone="warning" title="Another booking that day">{event.dateClashes === 1 ? "A confirmed event or hall booking" : `${event.dateClashes} confirmed events or hall bookings`} is on {dayLabel(event.eventDate)}. You can still go ahead.</Banner> : null}
+      <PaymentsCard event={event} payee={payee.data ?? null} onRecord={setRecording} />
 
       {(st === "inquiry" || st === "tasting") ? (
         <Section title="Tasting" description={event.tastingAt ? `Booked for ${formatDateTime(event.tastingAt)}` : "Optional. Have them try the biryani before they commit."}>
@@ -383,11 +404,25 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
         </Section>
       ) : null}
 
-      {st === "quoted" && event.approvedAt && !event.depositPaidAt ? (
-        <Section title="Deposit" description={`${event.signatureName ?? "The customer"} approved. They can pay ${formatMoney(event.depositCents)} online, or you can record it if they paid you directly.`}>
-          <Select label="Paid by" value={method} onChange={(e) => setMethod(e.target.value as typeof method)} options={[{ value: "etransfer", label: "Interac e-Transfer" }, { value: "cash", label: "Cash" }, { value: "cheque", label: "Cheque" }, { value: "other", label: "Other" }]} />
-          <div><Button size="sm" loading={act.busy} onClick={() => void doing(() => api.catering.markDepositPaid(event.id, method), "Deposit recorded. The event is confirmed.", ev)}>Mark {formatMoney(event.depositCents)} deposit paid</Button></div>
-        </Section>
+      {recording ? (
+        <RecordPaymentPanel
+          title={recording === "deposit" ? "Record the deposit" : "Record a payment"}
+          subtitle={`${EVENT_TYPE_LABEL[event.eventType]}${event.customer?.name ? `, ${event.customer.name}` : ""} · #${event.number}`}
+          rows={[
+            { label: recording === "deposit" ? `Deposit (${bpsToPct(event.depositBps)})` : "Balance", value: <strong>{formatMoney(recording === "deposit" ? Math.max(0, event.depositCents - event.payments!.filter((p) => p.subjectType === "catering_deposit" && !p.voidedAt).reduce((a, p) => a + p.amountCents, 0)) : event.balanceCents)}</strong> },
+            ...(payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
+            ...(event.referenceCode ? [{ label: "Reference in message", value: <strong>{event.referenceCode}</strong> }] : []),
+          ]}
+          amountCents={recording === "deposit" ? Math.max(1, event.depositCents - event.payments!.filter((p) => p.subjectType === "catering_deposit" && !p.voidedAt).reduce((a, p) => a + p.amountCents, 0)) : Math.max(1, event.balanceCents)}
+          note={recording === "deposit" ? "Check the deposit in your bank first. Marking it paid confirms the event." : "Check the payment in your bank first. A fully paid balance marks the invoice paid."}
+          onClose={() => setRecording(null)}
+          onRecord={async (body) => {
+            const r = recording === "deposit" ? await api.catering.markDepositPaid(event.id, body) : await api.catering.recordBalance(event.id, body);
+            onChange(r);
+            return r;
+          }}
+          successMessage={recording === "deposit" ? "Deposit recorded" : "Payment recorded"}
+        />
       ) : null}
 
       {st === "confirmed" || st === "completed" ? (
@@ -450,5 +485,56 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
         {refundable ? <RefundChoice depositCents={event.depositCents} value={refund} onChange={setRefund} hint="If you took the deposit by e-transfer or cash, keep it here and return it yourself. The app can only refund card payments." /> : event.depositPaidAt && event.depositRefundCents === 0 ? <p className="mt-3 text-meta text-fg-muted">The deposit is not refunded automatically.</p> : null}
       </ConfirmDialog>
     </>
+  );
+}
+
+const METHOD_WORD: Record<string, string> = { etransfer: "e-transfer", cash: "cash", cheque: "cheque", other: "other", card: "card" };
+
+/** The payments ledger (design C2): deposit and balance, what the customer was told, and a Record payment button. */
+function PaymentsCard({ event, payee, onRecord }: { event: Ev; payee: { etransferEnabled: boolean; etransferEmail: string | null } | null; onRecord: (k: "deposit" | "balance") => void }) {
+  const st = event.status;
+  if (!event.totalCents || st === "cancelled" || st === "inquiry" || st === "tasting") return null;
+  const dep = (event.payments ?? []).filter((p) => p.subjectType === "catering_deposit");
+  const bal = (event.payments ?? []).filter((p) => p.subjectType === "catering_balance");
+  const live = (xs: typeof dep) => xs.filter((p) => !p.voidedAt);
+  const depositDue = st === "quoted" && !!event.approvedAt && !event.depositPaidAt && event.depositCents > 0;
+  const balanceDue = (st === "confirmed" || st === "completed") && event.balanceCents > 0;
+  const told = payee?.etransferEnabled && payee.etransferEmail && event.referenceCode && depositDue;
+  return (
+    <section aria-label="Payments" className="rounded-card border border-line p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-headline text-fg">Payments</h2>
+        {depositDue || balanceDue ? <Button size="sm" variant="secondary" onClick={() => onRecord(depositDue ? "deposit" : "balance")}>Record payment</Button> : null}
+      </div>
+      <ul className="mt-3 divide-y divide-line border-t border-line">
+        <li className="flex items-start justify-between gap-3 py-3">
+          <div className="min-w-0">
+            <p className="text-body-strong text-fg">Deposit ({bpsToPct(event.depositBps)})</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-meta text-fg-muted">
+              <span aria-hidden className={`size-1.5 rounded-full ${event.depositPaidAt ? "bg-positive" : depositDue ? "bg-location" : "bg-fg-subtle"}`} />
+              {event.depositPaidAt ? `Paid${event.depositMethod ? ` by ${METHOD_WORD[event.depositMethod] ?? event.depositMethod}` : ""}${event.depositReceivedOn ? ` ${dayLabel(event.depositReceivedOn)}` : ""}` : depositDue ? `Awaiting${event.referenceCode ? ` e-transfer · reference ${event.referenceCode}` : ""}` : "After the customer approves"}
+            </p>
+            {live(dep).map((p) => (
+              <p key={p.id} className="ps-3 text-caption text-fg-muted">{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</p>
+            ))}
+          </div>
+          <p className="shrink-0 text-body tabular text-fg">{formatMoney(event.depositCents)}</p>
+        </li>
+        <li className="flex items-start justify-between gap-3 py-3">
+          <div className="min-w-0">
+            <p className="text-body-strong text-fg">Balance</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-meta text-fg-muted">
+              <span aria-hidden className={`size-1.5 rounded-full ${event.balanceCents === 0 && event.depositPaidAt ? "bg-positive" : "bg-fg-subtle"}`} />
+              {event.balanceCents === 0 && event.depositPaidAt ? "Paid in full" : event.invoiceId ? "Invoice sent" : "Invoice after the event"}
+            </p>
+            {live(bal).map((p) => (
+              <p key={p.id} className="ps-3 text-caption text-fg-muted">{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</p>
+            ))}
+          </div>
+          <p className="shrink-0 text-body tabular text-fg">{formatMoney(Math.max(0, event.totalCents - event.depositCents))}</p>
+        </li>
+      </ul>
+      {told ? <Banner tone="info" className="mt-3">Customer was told to send {formatMoney(event.depositCents)} to {payee!.etransferEmail} with {event.referenceCode} in the message.</Banner> : null}
+    </section>
   );
 }

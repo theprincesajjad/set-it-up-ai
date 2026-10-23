@@ -48,6 +48,7 @@ admin override, finishes fake Stripe Connect onboarding and creates a sent quote
 | `NEXT_PUBLIC_SITE_URL` | build + runtime | `http://localhost:3000` | Canonical URL: metadataBase, sitemap, robots, JSON-LD |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | build | empty | Enables Stripe Payment Element. Empty → dev "Test payment" button that calls `POST /v1/payments/fake/simulate` |
 | `NEXT_PUBLIC_APP_STORE_URL`, `NEXT_PUBLIC_PLAY_STORE_URL` | build | store home pages | "Get the app" links |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | build | `BRAND.whatsappNumber` (a placeholder) | "Message us on WhatsApp" buttons (`wa.me/<digits>`); set the real number before launch |
 | `OTP_AUTOFILL` | server runtime | off in production | `1` fills OTP boxes with the API's `devCode` (dev APIs only return it) |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | build | OpenFreeMap positron | MapLibre style for `/map` (free vector tiles, no key). Muted to the paper palette at load |
 
@@ -63,7 +64,7 @@ apps/web/
   src/proxy.ts              refreshes stale sessions before pages render (server components can't set cookies)
   src/app/
     layout.tsx, globals.css Figtree + Fraunces via next/font, tokens theme, ToastProvider
-    (marketing)/            /, /for-shoppers, /for-bias, /pricing, /neighbourhoods(/[slug]), /signup, /login,
+    (marketing)/            /, /for-shoppers, /for-restaurants, /for-bias (+ /sample-report, /one-pager), /pricing, /neighbourhoods(/[slug]), /signup, /login,
                             /legal/[terms|privacy|rewards] (SSG from docs/legal/*.md, DRAFT banner), /accessibility
     (pass)/                 single column (480): /j/[code] + /join/[code], /me, /shops/[slug], /map,
                             /q/[token], /i/[token], /o/[id], /c/[id]
@@ -137,7 +138,7 @@ Routes (all dynamic, `noindex`):
 | Merchant `/m/[merchantId]` | `/` Home (KPIs, daily chart, checklist, activation, today, network overlap, live promos, one LockedFeature) · `/setup` guide · `/counter` web counter · `/customers` (+ `/[memberId]`, `/import`) · `/program` (earn, rewards, bonuses + VIP, categories, expiry, live preview) · `/promos` (+ `/new`, `/[promoId]`) · `/discount-cards` · `/messages` (+ `/new`, `/[messageId]`, `/automations`) · `/reports` · `/locations` (+ `/kit` print page) · `/staff` · `/integrations` (+ `/[provider]`, `/developers` webhooks + API key) · `/billing` (plans, Stripe Connect) · `/settings` · Phase 2: `/orders`, `/catalog`, `/tickets` (+ `/new`, `/[ticketId]`), `/slots` · Phase 3: `/ads` (+ `/new`, `/[adId]` with card payment), `/campaigns` |
 | Rep `/rep` | Today · `/leads` (board + list, `/[leadId]`) · `/new` (done-for-you wizard) · `/merchants` (+ `/[id]`, `/[id]/kit`) · `/earnings` |
 | Admin `/admin` | Network · `/rollout` · `/merchants` (+ `/[id]`) · `/neighbourhoods` (+ perks) · `/users` · `/campaigns` (+ `/[id]`) · `/ads` · `/audit` |
-| BIA `/bia` | campaigns list + `/[campaignId]` (shops, visit-lift report, CSV/print) |
+| BIA `/bia` | Overview (stats, visits per week, campaigns, shops, board report, unlock gates), `/campaigns` (+ `/[campaignId]`: shops, report, CSV/print), `/shops`, `/reports` (+ `/print`, one Letter page); a street switcher when you manage more than one |
 | Dev | `/dev/checkout/[id]`, `/dev/stripe-onboarding`, `/dev/billing-portal`: FakePayments stand-ins |
 
 - **Guards.** `(dashboard)/m/[merchantId]/layout.tsx` runs `requireMe`, fetches `detail` + `features` server-side and

@@ -21,13 +21,13 @@ export async function restaurantOfferings(slug: string, features?: object | null
 }
 
 /** Rows on the shop page that link to Menu, Tiffin, Catering and Banquet. Renders nothing for shops without them. */
-export async function RestaurantLinks({ slug, locale, features }: { slug: string; locale: Locale; features?: object | null }) {
+export async function RestaurantLinks({ slug, locale, features, skipMenu = false }: { slug: string; locale: Locale; features?: object | null; /** The shop page already has an "Order for pickup" button: leave the Menu row out. */ skipMenu?: boolean }) {
   const t = translator(locale);
   const o = await restaurantOfferings(slug, features).catch(() => null);
   if (!o) return null;
   const base = `/shops/${encodeURIComponent(slug)}`;
   const rows = [
-    o.menu ? { href: `${base}/menu`, icon: UtensilsCrossed, title: t("rc.links.menu"), sub: t("rc.links.menuSub") } : null,
+    o.menu && !skipMenu ? { href: `${base}/menu`, icon: UtensilsCrossed, title: t("rc.links.menu"), sub: t("rc.links.menuSub") } : null,
     o.tiffin ? { href: `${base}/tiffin`, icon: Soup, title: t("rc.links.tiffin"), sub: t("rc.links.tiffinSub") } : null,
     o.catering ? { href: `${base}/catering`, icon: CalendarDays, title: t("rc.links.catering"), sub: t("rc.links.cateringSub") } : null,
     o.banquet ? { href: `${base}/banquet`, icon: Warehouse, title: t("rc.links.banquet"), sub: t("rc.links.banquetSub") } : null,

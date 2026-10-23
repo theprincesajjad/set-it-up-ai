@@ -37,6 +37,7 @@ map or not), sorted by name — for campaign shop pickers. → `{ items: Neighbo
 Errors: `400` malformed id, `401`, `403` (not that neighbourhood's manager), `404` neighbourhood.
 
 ### `GET /v1/campaigns`
+BIA managers get `402 feature_locked` while `campaigns.neighbourhood` is hidden (admins always pass). The BIA console probes this list to show its "coming soon" state.
 Query: `neighbourhoodId?`, `status?`, `limit`, `cursor`. → `{ items: Campaign[], nextCursor }`.
 Managers see only their neighbourhoods. Errors: `401`, `403` (not a manager / other neighbourhood).
 
@@ -77,7 +78,18 @@ Before the start (admins any time). → `Campaign`. Errors: `409`.
 | `newMembers` / `baselineNewMembers` | new memberships at participating shops |
 | `participants` / `completions` | customers with progress / who reached `goalVisits` |
 | `bonusPointsIssued` | network-funded campaign bonus points |
+| `returnedWithin30d` / `returnedWithin30dPct` | **Came back within 30 days** (below). `null` until `returnWindowEndsAt` has passed |
+| `returnWindowEndsAt` | `campaign.endsAt` + 30 days; the UI shows "Available {date}" until then |
+| `baselineReturnedWithin30d` / `baselineReturnedWithin30dPct` | the same measure for the same-length window before the campaign, for context |
 | `perMerchant[]` | `merchantId, name, visits, baselineVisits, uniqueCustomers, newMembers` |
+
+**Came back within 30 days (definition).** Unique customers with at least one recorded visit at a participating shop in
+the campaign window (`startsAt` to `endsAt`) who have another recorded visit at **any shop in the neighbourhood** in the
+30 days after `endsAt`. The percentage is that count over `uniqueCustomers`, one decimal. The baseline runs the same
+measure on the window of the same length before the campaign (its 30 days overlap the event, which makes the baseline
+generous and the lift conservative). It is the first measure of the OBIAA / TABIA study's "conversion rate" indicator
+(event visitors converted to regular visitors), which the study found no data source for. The count is computed inside
+the query; no customer id leaves the database and none is in any response. The report footer and `/for-bias` state it.
 
 ---
 
@@ -130,3 +142,34 @@ Every recorded visit (`ledger.awardPurchase`) at a participating shop during a s
 3. If `multiplierPct > 100`: posts `campaign_bonus` of `floor(base × (multiplierPct/100 − 1))` where base is the visit's earn
    (idempotency key `campaign:<campaign>:visit:<visit>`).
 4. Marks `completedAt` when distinct shops reach `goalVisits` (prize draw entry) and returns a message for the counter screen.
+
+
+---
+
+## Neighbourhood overview and period report (BIA console)
+
+Auth: that neighbourhood's manager or an admin (same checks as `GET /v1/admin/neighbourhoods/:id/merchants`: `403` for anyone
+else, `404` for an unknown neighbourhood). Aggregates only: no response carries a customer id, name, phone or email (tests
+assert the JSON keys). `from` / `to` are ISO dates or datetimes, `to` exclusive; default is the 30 days to now; a period is
+at most 366 days (`400` otherwise). The prior period is the same length immediately before.
+
+### `GET /v1/neighbourhoods/:id/overview?from&to`
+→ `NeighbourhoodOverview`:
+
+| Field | Meaning |
+| --- | --- |
+| `period`, `prior` | `{ from, to }` ISO instants |
+| `shops` | `live` = shops with status `active`, `members` = `neighbourhoods.biaMemberCount` (admin-entered, `null` until set), `joinedInPeriod` = shops created in the period |
+| `activeMembers` | `value` = distinct shoppers with a visit at any non-closed shop on the street in the period, `delta` = change in people vs the prior period |
+| `multiShopPct` | `value` = share (0 to 100, 1 decimal) of those shoppers who visited two or more shops in the period, `deltaPoints` vs prior |
+| `visits` | `value` = visits at the shops in `shopsTable` (so it equals the sum of the table), `deltaPct` vs prior (`null` when prior is 0) |
+| `weekly[]` | 12 weeks (Mondays, Toronto) ending with the week that holds the period end: `weekStart`, `visits`, `campaignIds` of scheduled/live/ended campaigns running that week |
+| `shopsTable[]` | every non-closed shop: `id, name, status, activated, visits, newMembers` in the period |
+| `gates` | `liveMonths` (whole months since the first shop activated), `activeShops` (status `active`), `activeCustomers` (visit in the last 30 days), `multiShopPct` (of those), and `thresholds` = `campaignsApi.UNLOCK_PER_NEIGHBOURHOOD` (6 months, 20 shops, 1,500 shoppers, 25%; docs/business/network-monetization.md) |
+
+### `GET /v1/neighbourhoods/:id/report?from&to&format=json|csv`
+The board report for a period. `json` (default) → `NeighbourhoodReport { neighbourhood, period, prior, generatedAt, overview,
+campaigns[] }` where `campaigns` are scheduled/live/ended campaigns running in the period, each with its `CampaignReport`.
+`csv` → `text/csv` attachment (`<street>-board-report-<from>-to-<to>.csv`): key numbers, one row per campaign, one row per
+shop; cells that start with `= + @ -` are prefixed so a spreadsheet never runs a name as a formula. PDF is the browser's print
+on `/bia/reports/print?n=<neighbourhoodId>&from&to&label` (print stylesheet, one Letter page); there is no PDF dependency.

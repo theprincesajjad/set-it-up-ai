@@ -1,12 +1,12 @@
 "use client";
-import { EmptyState, PageHeader, Panel, StatTile, StatusDot } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, Panel, StatusDot } from "@/components/dashboard/kit";
 import { ArrowLeft, Download, Plus, Printer, Trash2, Trophy, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { campaignsApi, type campaignsApi as C, type networkApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { HBarList } from "@/components/dashboard/Charts";
+import { ReportSummary } from "@/components/marketing/ReportMock";
 import { Async } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
+import { campaignReportRows } from "@/lib/reportCsv";
 import { addDays, fromLocalInput, toLocalInput } from "@/lib/dashboard/time";
 import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
 
@@ -28,9 +29,10 @@ export function liftText(r: Pick<C.CampaignReport, "visitLiftPct" | "visits" | "
   return `${r.visitLiftPct >= 0 ? "+" : ""}${r.visitLiftPct.toFixed(1)}% visits vs the same days before`;
 }
 
-export function CampaignList({ base, neighbourhoods, isAdmin }: { base: string; neighbourhoods: networkApi.NeighbourhoodDto[]; isAdmin: boolean }) {
-  const list = useApi(() => browserApi.campaigns.list({ limit: 100 }), []);
-  const [create, setCreate] = useState(false);
+export function CampaignList({ base, neighbourhoods, isAdmin, neighbourhoodId }: { base: string; neighbourhoods: networkApi.NeighbourhoodDto[]; isAdmin: boolean; /** Show one street's campaigns (the BIA console's selected street). */ neighbourhoodId?: string }) {
+  const list = useApi(() => browserApi.campaigns.list({ limit: 100, neighbourhoodId }), [neighbourhoodId]);
+  // "New campaign" from the overview lands here with ?new=1 and opens the form.
+  const [create, setCreate] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("new") === "1");
   const hoodName = (id: string) => neighbourhoods.find((n) => n.id === id)?.name ?? "Neighbourhood";
   return (
     <div className="flex flex-col gap-4">
@@ -58,16 +60,16 @@ export function CampaignList({ base, neighbourhoods, isAdmin }: { base: string; 
           )
         }
       </Async>
-      <CampaignForm open={create} onClose={() => setCreate(false)} neighbourhoods={neighbourhoods} isAdmin={isAdmin} onSaved={() => void list.reload()} base={base} />
+      <CampaignForm open={create} onClose={() => setCreate(false)} neighbourhoods={neighbourhoods} isAdmin={isAdmin} onSaved={() => void list.reload()} base={base} defaultNeighbourhoodId={neighbourhoodId} />
     </div>
   );
 }
 
-function CampaignForm({ open, onClose, neighbourhoods, isAdmin, onSaved, base, campaign }: { open: boolean; onClose: () => void; neighbourhoods: networkApi.NeighbourhoodDto[]; isAdmin: boolean; onSaved: (c: C.Campaign) => void; base: string; campaign?: C.Campaign }) {
+function CampaignForm({ open, onClose, neighbourhoods, isAdmin, onSaved, base, campaign, defaultNeighbourhoodId }: { open: boolean; onClose: () => void; neighbourhoods: networkApi.NeighbourhoodDto[]; isAdmin: boolean; onSaved: (c: C.Campaign) => void; base: string; campaign?: C.Campaign; defaultNeighbourhoodId?: string }) {
   const pkg = campaignsApi.CAMPAIGN_PACKAGES;
   const [kind, setKind] = useState<C.CampaignKind>(campaign?.kind ?? "passport");
   const [f, setF] = useState(() => ({
-    neighbourhoodId: campaign?.neighbourhoodId ?? neighbourhoods[0]?.id ?? "",
+    neighbourhoodId: campaign?.neighbourhoodId ?? defaultNeighbourhoodId ?? neighbourhoods[0]?.id ?? "",
     name: campaign?.name ?? "",
     description: campaign?.description ?? "",
     start: toLocalInput(campaign?.startsAt ?? addDays(new Date().toISOString(), 7)),
@@ -166,27 +168,14 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
                   {r && started ? <p className="text-meta text-fg-muted">{formatNumber(r.visits)} visits at participating shops vs {formatNumber(r.baselineVisits)} in the {formatDate(r.baselineWindow.startsAt)}–{formatDate(r.baselineWindow.endsAt)} baseline.</p> : null}
                 </div>
               </div>
-              {r ? (
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
-                  <StatTile label="Customers" value={formatNumber(r.uniqueCustomers)} caption={`${formatNumber(r.baselineUniqueCustomers)} before`} />
-                  <StatTile label="New members" value={formatNumber(r.newMembers)} caption={`${formatNumber(r.baselineNewMembers)} before`} />
-                  <StatTile label="Took part" value={formatNumber(r.participants)} caption={`${formatNumber(r.completions)} completed`} />
-                  <StatTile label="Bonus points" value={formatNumber(r.bonusPointsIssued)} caption="Network-funded" />
-                </div>
-              ) : null}
-              {r?.perMerchant.length ? (
-                <>
-                  <h3 className="text-body-strong text-fg">Visits by shop</h3>
-                  <HBarList rows={r.perMerchant.map((m) => ({ key: m.merchantId, label: m.name, value: m.visits, hint: `${m.baselineVisits} before` }))} />
-                </>
-              ) : null}
+              {r ? <ReportSummary report={r} goal={x.goalVisits} tiles="full" /> : null}
               {r ? (
                 <div className="flex flex-wrap gap-2 print:hidden">
-                  <Button variant="secondary" iconStart={Download} onClick={() => downloadCsv(`${x.name}-report.csv`, [["shop", "visits", "baseline_visits", "customers", "new_members"], ...r.perMerchant.map((m) => [m.name, m.visits, m.baselineVisits, m.uniqueCustomers, m.newMembers]), [], ["total", r.visits, r.baselineVisits, r.uniqueCustomers, r.newMembers], ["lift_pct", r.visitLiftPct ?? ""]])}>Export CSV</Button>
+                  <Button variant="secondary" iconStart={Download} onClick={() => downloadCsv(`${x.name}-report.csv`, campaignReportRows(r))}>Export CSV</Button>
                   <Button variant="ghost" iconStart={Printer} onClick={() => window.print()}>Print or save PDF</Button>
                 </div>
               ) : null}
-              <p className="text-caption text-fg-muted">Aggregates only. No customer is identified in this report.</p>
+              <p className="text-caption text-fg-muted">Aggregates only. No customer is identified in this report. “Came back within 30 days” counts customers who visited a participating shop during the campaign and visit any shop on the street in the 30 days after it ends.</p>
             </Panel>
 
             <Panel title={`Participating shops (${x.merchants.length})`}>

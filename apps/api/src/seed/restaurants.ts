@@ -14,7 +14,7 @@
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
-import type { FeatureKey, Vertical } from "@ll/shared";
+import { restaurantApi, type FeatureKey, type Vertical } from "@ll/shared";
 import {
   catalogItems,
   cateringEvents,
@@ -22,6 +22,7 @@ import {
   hallBookings,
   halls,
   ledgerTransactions,
+  manualPayments,
   merchantAddOns,
   merchantCategories,
   merchantCounters,
@@ -42,6 +43,7 @@ import {
   subscriptions,
   tiffinCharges,
   tiffinDeliveries,
+  tiffinDriverLinks,
   tiffinMenus,
   tiffinPlans,
   tiffinRoutes,
@@ -52,6 +54,8 @@ import {
   whatsappSessions,
   type Db,
   type DietaryTags,
+  type HalalCertification,
+  type ItemOptions,
   type Translations,
 } from "@ll/db";
 import { loadConfig, type Config } from "../config.js";
@@ -60,6 +64,7 @@ import { createProviders } from "../providers/index.js";
 import { awardPurchase, findOrCreateCustomerByPhone, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { computeTax } from "../services/tax.js";
+import { seedRestaurantDesk } from "./restaurantsDesk.js";
 
 const DAY = 86400000;
 const MIN = 60000;
@@ -113,6 +118,8 @@ interface DishTags {
   al?: string[];
   /** Not halal even when the shop is (e.g. nothing today); leave unset normally. */
   noHalal?: boolean;
+  /** Per-dish certifier override: a dish certified by someone other than the shop's certifier. */
+  cert?: string;
 }
 interface Dish {
   name: string;
@@ -127,6 +134,8 @@ interface Dish {
   /** Pre-order only: lead hours, serves, deposit bps. */
   pre?: { lead: number; serves: number; dep: number };
   category?: string;
+  /** Size, spice and add-on groups for web ordering. */
+  opts?: ItemOptions;
 }
 
 interface Shop {
@@ -145,7 +154,7 @@ interface Shop {
   languages: string[];
   founding?: boolean;
   /** Halal claim by the shop itself (never claimed for them by us). */
-  halal?: { zabihah: boolean; certifier?: string };
+  halal?: { zabihah: boolean; certifier?: string; cert?: SeedCert };
   cashDiscountBps?: number;
   preorderDailyCap?: number;
   whatsapp?: string;
@@ -167,10 +176,27 @@ const NAWAB_CERT = "Crescent Halal Council";
 const LAHORI_CERT = "Al-Amanah Halal Certification";
 const AFGHAN_CERT = "Safa Halal Certification";
 
+/** The shop's own certificate (fictional certifiers). `validInDays` is relative to today so the demo always has one expiring soon. */
+interface SeedCert {
+  certificateNo: string;
+  scope: HalalCertification["scope"];
+  slaughter: HalalCertification["slaughter"];
+  validUntil?: string;
+  validInDays?: number;
+}
+
+const SPICE_GROUP = { id: "spice", name: "Spice", type: "single", required: false, priceMode: "delta", options: [{ id: "mild", name: "Mild", priceCents: 0 }, { id: "medium", name: "Medium", priceCents: 0, default: true }, { id: "hot", name: "Hot", priceCents: 0 }] } as const;
+const PLATE_ADDONS = { id: "extras", name: "Add to your plate", type: "multi", required: false, priceMode: "delta", options: [{ id: "raita", name: "Raita cup", priceCents: 249 }, { id: "salan", name: "Mirchi ka salan cup", priceCents: 349 }] } as const;
+const DEGH_ADDONS = { id: "pot", name: "Add to the pot", type: "multi", required: false, priceMode: "delta", options: [{ id: "raita", name: "Raita, 1 L", priceCents: 800 }, { id: "salan", name: "Mirchi ka salan, 1 L", priceCents: 1400 }, { id: "naan", name: "Garlic naan × 20", priceCents: 3000, note: "Baked fresh at pickup" }, { id: "kheer", name: "Kheer tray, serves 10", priceCents: 4500 }, { id: "plates", name: "Plates, spoons and napkins × 15", priceCents: 1200 }] } as const;
+/** Full degh is the listed price; half is its own price. */
+const degh = (fullCents: number, halfCents: number, o: { halfServes?: number; fullServes?: number } = {}): ItemOptions =>
+  ({ groups: [{ id: "size", name: "Size", type: "single", required: true, priceMode: "absolute", options: [{ id: "full", name: "Full degh", priceCents: fullCents, serves: o.fullServes ?? 15 }, { id: "half", name: "Half degh", priceCents: halfCents, serves: o.halfServes ?? 8 }] }, SPICE_GROUP, DEGH_ADDONS] }) as unknown as ItemOptions;
+const plate: ItemOptions = { groups: [SPICE_GROUP, PLATE_ADDONS] } as unknown as ItemOptions;
+
 const nawabMenu: Dish[] = [
-  { name: "Hyderabadi Chicken Dum Biryani", desc: "Basmati and bone-in chicken sealed and slow-cooked on dum, with mirchi ka salan and raita.", price: 1899, station: "rice", tags: { spice: 2, al: ["dairy"] }, tr: ["हैदराबादी चिकन दम बिरयानी", "حیدرآبادی چکن دم بریانی", "ਹੈਦਰਾਬਾਦੀ ਚਿਕਨ ਦਮ ਬਿਰਯਾਨੀ"], trd: ["धीमी आँच पर दम पर पकी बासमती और मसालेदार चिकन, मिर्ची का सालन और रायते के साथ।", "ہلکی آنچ پر دم پر پکی باسمتی اور مسالہ دار چکن، مرچی کا سالن اور رائتے کے ساتھ۔", "ਹੌਲੀ ਅੱਗ ਤੇ ਦਮ ਤੇ ਪੱਕੇ ਬਾਸਮਤੀ ਚੌਲ ਤੇ ਮਸਾਲੇਦਾਰ ਚਿਕਨ, ਮਿਰਚੀ ਦੇ ਸਾਲਣ ਤੇ ਰਾਇਤੇ ਨਾਲ।"] },
-  { name: "Hyderabadi Goat Dum Biryani", desc: "Bone-in goat marinated overnight, layered with saffron rice and sealed with dough.", price: 2299, station: "rice", tags: { spice: 3, al: ["dairy"] }, tr: ["हैदराबादी मटन दम बिरयानी", "حیدرآبادی مٹن دم بریانی", "ਹੈਦਰਾਬਾਦੀ ਮਟਨ ਦਮ ਬਿਰਯਾਨੀ"], trd: ["रात भर मैरिनेट किया हुआ बकरे का मांस, केसर वाले चावल की परतों के साथ।", "رات بھر میرینیٹ کیا ہوا بکرے کا گوشت، زعفرانی چاولوں کی تہوں کے ساتھ۔", "ਰਾਤ ਭਰ ਮਸਾਲੇ ਵਿੱਚ ਰੱਖਿਆ ਬੱਕਰੇ ਦਾ ਮੀਟ, ਕੇਸਰ ਵਾਲੇ ਚੌਲਾਂ ਦੀਆਂ ਪਰਤਾਂ ਨਾਲ।"] },
-  { name: "Vegetable Dum Biryani", desc: "Seasonal vegetables and paneer on dum with fried onion and mint.", price: 1699, station: "rice", tags: { veg: true, spice: 1, al: ["dairy"] }, tr: ["वेज दम बिरयानी", "ویج دم بریانی", "ਵੈਜ ਦਮ ਬਿਰਯਾਨੀ"] },
+  { name: "Hyderabadi Chicken Dum Biryani", desc: "Basmati and bone-in chicken sealed and slow-cooked on dum, with mirchi ka salan and raita.", price: 1899, station: "rice", tags: { spice: 2, al: ["dairy"] }, tr: ["हैदराबादी चिकन दम बिरयानी", "حیدرآبادی چکن دم بریانی", "ਹੈਦਰਾਬਾਦੀ ਚਿਕਨ ਦਮ ਬਿਰਯਾਨੀ"], trd: ["धीमी आँच पर दम पर पकी बासमती और मसालेदार चिकन, मिर्ची का सालन और रायते के साथ।", "ہلکی آنچ پر دم پر پکی باسمتی اور مسالہ دار چکن، مرچی کا سالن اور رائتے کے ساتھ۔", "ਹੌਲੀ ਅੱਗ ਤੇ ਦਮ ਤੇ ਪੱਕੇ ਬਾਸਮਤੀ ਚੌਲ ਤੇ ਮਸਾਲੇਦਾਰ ਚਿਕਨ, ਮਿਰਚੀ ਦੇ ਸਾਲਣ ਤੇ ਰਾਇਤੇ ਨਾਲ।"], opts: plate },
+  { name: "Hyderabadi Goat Dum Biryani", desc: "Bone-in goat marinated overnight, layered with saffron rice and sealed with dough.", price: 2299, station: "rice", tags: { spice: 3, al: ["dairy"] }, tr: ["हैदराबादी मटन दम बिरयानी", "حیدرآبادی مٹن دم بریانی", "ਹੈਦਰਾਬਾਦੀ ਮਟਨ ਦਮ ਬਿਰਯਾਨੀ"], trd: ["रात भर मैरिनेट किया हुआ बकरे का मांस, केसर वाले चावल की परतों के साथ।", "رات بھر میرینیٹ کیا ہوا بکرے کا گوشت، زعفرانی چاولوں کی تہوں کے ساتھ۔", "ਰਾਤ ਭਰ ਮਸਾਲੇ ਵਿੱਚ ਰੱਖਿਆ ਬੱਕਰੇ ਦਾ ਮੀਟ, ਕੇਸਰ ਵਾਲੇ ਚੌਲਾਂ ਦੀਆਂ ਪਰਤਾਂ ਨਾਲ।"], opts: plate },
+  { name: "Vegetable Dum Biryani", desc: "Seasonal vegetables and paneer on dum with fried onion and mint.", price: 1699, station: "rice", tags: { veg: true, spice: 1, al: ["dairy"] }, tr: ["वेज दम बिरयानी", "ویج دم بریانی", "ਵੈਜ ਦਮ ਬਿਰਯਾਨੀ"], opts: plate },
   { name: "Mirchi ka Salan", desc: "Green chillies in a peanut, sesame and tamarind gravy.", price: 799, station: "curry", tags: { veg: true, vegan: true, gf: true, spice: 2, al: ["peanuts", "sesame"] }, tr: ["मिर्ची का सालन", "مرچی کا سالن", "ਮਿਰਚੀ ਦਾ ਸਾਲਣ"] },
   { name: "Bagara Baingan", desc: "Baby aubergines in a tangy peanut and coconut gravy.", price: 999, station: "curry", tags: { veg: true, vegan: true, gf: true, spice: 2, al: ["peanuts", "sesame"] }, tr: ["बघारे बैंगन", "بگھارے بیگن", "ਬਘਾਰੇ ਬੈਂਗਣ"] },
   { name: "Haleem", desc: "Slow-cooked wheat, lentils and beef, topped with fried onion, lemon and ginger.", price: 1499, station: "curry", tags: { spice: 2, al: ["wheat"] }, tr: ["हलीम", "حلیم", "ਹਲੀਮ"] },
@@ -183,9 +209,9 @@ const nawabMenu: Dish[] = [
   { name: "Double ka Meetha", desc: "Hyderabadi bread pudding with saffron, cardamom and nuts.", price: 699, tags: { veg: true, al: ["wheat", "dairy", "nuts"] }, tr: ["डबल का मीठा", "ڈبل کا میٹھا", "ਡਬਲ ਦਾ ਮਿੱਠਾ"] },
   { name: "Qubani ka Meetha", desc: "Stewed apricots with cream and almonds.", price: 799, tags: { veg: true, gf: true, al: ["dairy", "nuts"] }, tr: ["खुबानी का मीठा", "خوبانی کا میٹھا", "ਖੁਬਾਨੀ ਦਾ ਮਿੱਠਾ"] },
   { name: "Irani Chai", desc: "Milky, sweet and strong, the Hyderabad café way.", price: 399, tags: { veg: true, gf: true, al: ["dairy"] }, tr: ["ईरानी चाय", "ایرانی چائے", "ਇਰਾਨੀ ਚਾਹ"] },
-  { name: "Chicken Biryani Degh (serves 15)", desc: "A full sealed pot for family gatherings. 24 hours notice.", price: 18900, station: "rice", tags: { spice: 2, al: ["dairy"] }, pre: { lead: 24, serves: 15, dep: 3000 }, tr: ["चिकन बिरयानी देग (15 लोगों के लिए)", "چکن بریانی دیگ (15 افراد کے لیے)", "ਚਿਕਨ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"] },
-  { name: "Goat Biryani Degh (serves 15)", desc: "Full pot of goat dum biryani with salan and raita. 48 hours notice.", price: 26900, station: "rice", tags: { spice: 3, al: ["dairy"] }, pre: { lead: 48, serves: 15, dep: 3000 }, tr: ["मटन बिरयानी देग (15 लोगों के लिए)", "مٹن بریانی دیگ (15 افراد کے لیے)", "ਮਟਨ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"] },
-  { name: "Vegetable Biryani Degh (serves 15)", price: 15900, station: "rice", tags: { veg: true, spice: 1, al: ["dairy"] }, pre: { lead: 24, serves: 15, dep: 3000 }, tr: ["वेज बिरयानी देग (15 लोगों के लिए)", "ویج بریانی دیگ (15 افراد کے لیے)", "ਵੈਜ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"] },
+  { name: "Chicken Biryani Degh (serves 15)", desc: "A full sealed pot for family gatherings. 24 hours notice.", price: 18900, station: "rice", tags: { spice: 2, al: ["dairy"] }, pre: { lead: 24, serves: 15, dep: 3000 }, tr: ["चिकन बिरयानी देग (15 लोगों के लिए)", "چکن بریانی دیگ (15 افراد کے لیے)", "ਚਿਕਨ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"], opts: degh(18900, 9900) },
+  { name: "Goat Biryani Degh (serves 15)", desc: "Full pot of goat dum biryani with salan and raita. 48 hours notice.", price: 26900, station: "rice", tags: { spice: 3, al: ["dairy"] }, pre: { lead: 48, serves: 15, dep: 3000 }, tr: ["मटन बिरयानी देग (15 लोगों के लिए)", "مٹن بریانی دیگ (15 افراد کے لیے)", "ਮਟਨ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"], opts: degh(26900, 14900) },
+  { name: "Vegetable Biryani Degh (serves 15)", price: 15900, station: "rice", tags: { veg: true, spice: 1, al: ["dairy"] }, pre: { lead: 24, serves: 15, dep: 3000 }, tr: ["वेज बिरयानी देग (15 लोगों के लिए)", "ویج بریانی دیگ (15 افراد کے لیے)", "ਵੈਜ ਬਿਰਯਾਨੀ ਦੇਗ (15 ਜਣਿਆਂ ਲਈ)"], opts: degh(15900, 8900) },
 ];
 
 const lahoriMenu: Dish[] = [
@@ -196,14 +222,14 @@ const lahoriMenu: Dish[] = [
   { name: "Chicken Tikka Boti (8 pc)", price: 1599, tags: { spice: 2, gf: true, al: ["dairy"] } },
   { name: "Beef Nihari", desc: "Overnight shank stew served with ginger, green chili and a kulcha.", price: 1699, tags: { spice: 2, al: ["wheat"] } },
   { name: "Siri Paye", desc: "Slow-cooked trotters and head, a Lahori Sunday breakfast.", price: 1599, tags: { spice: 2 } },
-  { name: "Lahori Fried Fish", desc: "Spiced basa fillets fried in a gram flour batter.", price: 1899, tags: { spice: 2, al: ["fish"] } },
+  { name: "Lahori Fried Fish", desc: "Spiced basa fillets fried in a gram flour batter.", price: 1899, tags: { spice: 2, al: ["fish"], cert: "Coastal Seafood Halal Services" } },
   { name: "Tandoori Naan", price: 249, tags: { veg: true, al: ["wheat"] } },
   { name: "Sweet Lassi", price: 549, tags: { veg: true, gf: true, al: ["dairy"] } },
   { name: "Falooda", desc: "Rose syrup, vermicelli, basil seeds and kulfi.", price: 799, tags: { veg: true, al: ["dairy", "nuts", "wheat"] } },
   { name: "Gajar ka Halwa", price: 599, tags: { veg: true, gf: true, al: ["dairy", "nuts"] } },
-  { name: "Chicken Karahi Degh (serves 20)", desc: "A full degh for walima, aqiqah or Friday gatherings. 48 hours notice, 30% deposit.", price: 24900, tags: { spice: 2, gf: true, al: ["dairy"] }, pre: { lead: 48, serves: 20, dep: 3000 } },
+  { name: "Chicken Karahi Degh (serves 20)", desc: "A full degh for walima, aqiqah or Friday gatherings. 48 hours notice, 30% deposit.", price: 24900, tags: { spice: 2, gf: true, al: ["dairy"] }, pre: { lead: 48, serves: 20, dep: 3000 }, opts: { groups: [DEGH_ADDONS] } as unknown as ItemOptions },
   { name: "Mutton Pulao Degh (serves 20)", price: 32900, tags: { spice: 1, gf: true }, pre: { lead: 48, serves: 20, dep: 3000 } },
-  { name: "Zarda Degh (serves 20)", desc: "Sweet saffron rice with nuts and khoya.", price: 14900, tags: { veg: true, gf: true, al: ["dairy", "nuts"] }, pre: { lead: 48, serves: 20, dep: 3000 } },
+  { name: "Zarda Degh (serves 20)", desc: "Sweet saffron rice with nuts and khoya.", price: 14900, tags: { veg: true, gf: true, al: ["dairy", "nuts"] }, pre: { lead: 48, serves: 20, dep: 3000 }, opts: { groups: [DEGH_ADDONS] } as unknown as ItemOptions },
   { name: "BBQ Tray: Seekh, Boti and Chapli (serves 12)", price: 17900, tags: { spice: 2, al: ["wheat", "dairy"] }, pre: { lead: 48, serves: 12, dep: 3000 } },
 ];
 
@@ -317,15 +343,15 @@ export interface CorridorShop {
 }
 
 const SHOPS: Shop[] = [
-  { slug: "nawab-biryani-house", name: "Nawab Biryani House", vertical: "restaurant", tier: "pro", address: "Ridgeway Plaza, Unit 1, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5961, lng: -79.6489, hours: week("11:00", "23:00"), description: "Hyderabadi dum biryani, haleem and tandoor. Noor Hall seats 250 for weddings and walimas.", brandColor: "#8C2F1B", instagram: "nawabbiryanihouse", languages: ["en", "ur", "hi"], founding: true, halal: { zabihah: true, certifier: NAWAB_CERT }, cashDiscountBps: 300, whatsapp: "+19055550101", menu: nawabMenu, orderPlan: { n: 38, mix: { pickup: 40, counter: 33, whatsapp: 10, phone: 9, preorder: 8 } }, visitWeight: 6, ticket: [1800, 7500], reward: { name: "Free Double ka Meetha", pointsCost: 300 }, joinedDaysAgo: 62 },
-  { slug: "lahori-karahi-and-bbq", name: "Lahori Karahi & BBQ", vertical: "restaurant", tier: "growth", address: "Ridgeway Plaza, Unit 4, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5963, lng: -79.6484, hours: week("12:00", "00:00"), description: "Wok-cooked karahi, charcoal BBQ and degh for weddings and Fridays. Pre-order degh 48 hours ahead.", brandColor: "#B3541E", instagram: "lahorikarahibbq", languages: ["en", "ur", "pa"], halal: { zabihah: true, certifier: LAHORI_CERT }, preorderDailyCap: 12, whatsapp: "+19055550102", menu: lahoriMenu, orderPlan: { n: 24, mix: { pickup: 33, counter: 20, whatsapp: 27, preorder: 20 } }, visitWeight: 5, ticket: [1700, 6500], joinedDaysAgo: 58 },
+  { slug: "nawab-biryani-house", name: "Nawab Biryani House", vertical: "restaurant", tier: "pro", address: "Ridgeway Plaza, Unit 1, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5961, lng: -79.6489, hours: week("11:00", "23:00"), description: "Hyderabadi dum biryani, haleem and tandoor. Noor Hall seats 250 for weddings and walimas.", brandColor: "#8C2F1B", instagram: "nawabbiryanihouse", languages: ["en", "ur", "hi"], founding: true, halal: { zabihah: true, certifier: NAWAB_CERT, cert: { certificateNo: "CHC-20418", scope: "all_meat", slaughter: "zabihah", validUntil: "2027-03-14" } }, cashDiscountBps: 300, preorderDailyCap: 12, whatsapp: "+19055550101", menu: nawabMenu, orderPlan: { n: 38, mix: { pickup: 40, counter: 33, whatsapp: 10, phone: 9, preorder: 8 } }, visitWeight: 6, ticket: [1800, 7500], reward: { name: "Free Double ka Meetha", pointsCost: 300 }, joinedDaysAgo: 62 },
+  { slug: "lahori-karahi-and-bbq", name: "Lahori Karahi & BBQ", vertical: "restaurant", tier: "growth", address: "Ridgeway Plaza, Unit 4, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5963, lng: -79.6484, hours: week("12:00", "00:00"), description: "Wok-cooked karahi, charcoal BBQ and degh for weddings and Fridays. Pre-order degh 48 hours ahead.", brandColor: "#B3541E", instagram: "lahorikarahibbq", languages: ["en", "ur", "pa"], halal: { zabihah: true, certifier: LAHORI_CERT, cert: { certificateNo: "AAH-7731", scope: "all_meat", slaughter: "zabihah", validInDays: 23 } }, preorderDailyCap: 12, whatsapp: "+19055550102", menu: lahoriMenu, orderPlan: { n: 24, mix: { pickup: 33, counter: 20, whatsapp: 27, preorder: 20 } }, visitWeight: 5, ticket: [1700, 6500], joinedDaysAgo: 58 },
   { slug: "shree-thali-and-tiffin", name: "Shree Gujarati Thali & Tiffin", vertical: "restaurant", tier: "growth", address: "Ridgeway Plaza, Unit 7, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5959, lng: -79.6478, hours: week("10:30", "21:00", { sun: ["11:00", "20:00"] }), description: "Pure vegetarian Gujarati thali, farsan and daily tiffin delivery to Mississauga and Brampton. Jain meals on request.", brandColor: "#D98E04", instagram: "shreethalitiffin", languages: ["en", "hi"], founding: true, menu: thaliMenu, orderPlan: { n: 18, mix: { pickup: 55, counter: 25, tiffin: 20 } }, visitWeight: 4, ticket: [1400, 4800], reward: { name: "Free Shrikhand", pointsCost: 150 }, joinedDaysAgo: 55 },
   { slug: "sarson-dhaba", name: "Sarson Dhaba", vertical: "restaurant", tier: "starter", address: "Ridgeway Plaza, Unit 9, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5957, lng: -79.6472, hours: week("11:00", "22:00"), description: "Punjabi dhaba food: sarson da saag in winter, kulcha, dal makhani and lassi by the glass.", brandColor: "#2E7D32", instagram: "sarsondhaba", languages: ["en", "pa", "hi"], menu: dhabaMenu, orderPlan: { n: 22, mix: { pickup: 50, counter: 50 } }, visitWeight: 6, ticket: [1200, 4800], reward: { name: "Free Masala Chai", pointsCost: 150 }, joinedDaysAgo: 50 },
   { slug: "meethi-mithai-and-chai", name: "Meethi Mithai & Chai", vertical: "bakery", tier: "starter", address: "Ridgeway Plaza, Unit 11, 3250 Ridgecrest Blvd", postalCode: "L5R 3K2", lat: 43.5955, lng: -79.6469, hours: week("09:00", "21:00"), description: "Fresh jalebi, laddu and kaju katli, plus kadak chai all day. Diwali and Eid boxes by pre-order.", brandColor: "#C2185B", instagram: "meethimithaichai", languages: ["en", "hi", "pa"], founding: true, menu: mithaiMenu, orderPlan: { n: 18, mix: { pickup: 50, counter: 32, preorder: 18 } }, visitWeight: 6, ticket: [500, 4500], joinedDaysAgo: 52 },
   { slug: "padma-bangladeshi-kitchen", name: "Padma Bangladeshi Kitchen", vertical: "restaurant", tier: "starter", address: "Ridgeway Plaza, Unit 14, 3250 Ridgecrest Blvd", postalCode: "L5V 1P4", lat: 43.5953, lng: -79.6463, hours: week("11:30", "22:00", { closedMon: true }), description: "Home-style Bangladeshi: kacchi on Fridays, hilsa when it is in, and fuchka by the plate.", brandColor: "#006A4E", instagram: "padmabdkitchen", languages: ["en"], halal: { zabihah: false }, menu: padmaMenu, orderPlan: { n: 10, mix: { pickup: 55, counter: 45 } }, visitWeight: 3, ticket: [1500, 5200], joinedDaysAgo: 45 },
   { slug: "jaffna-kottu-house", name: "Jaffna Kottu House", vertical: "restaurant", tier: "starter", address: "Ridgeway Plaza, Unit 16, 3250 Ridgecrest Blvd", postalCode: "L5V 1P4", lat: 43.5951, lng: -79.6458, hours: week("12:00", "23:00"), description: "Sri Lankan and Jaffna Tamil: kottu on the griddle, crab curry, hoppers and lamprais.", brandColor: "#7A1F5C", instagram: "jaffnakottuhouse", languages: ["en"], menu: kottuMenu, orderPlan: { n: 10, mix: { pickup: 60, counter: 40 } }, visitWeight: 3, ticket: [1400, 5500], joinedDaysAgo: 44 },
-  { slug: "kabul-garden-grill", name: "Kabul Garden Grill", vertical: "restaurant", tier: "starter", address: "Ridgeway Plaza, Unit 18, 3250 Ridgecrest Blvd", postalCode: "L4Z 2B6", lat: 43.5949, lng: -79.6452, hours: week("11:30", "22:30"), description: "Halal Afghan grill: kabuli pulao, mantu, charcoal kabobs and fresh naan.", brandColor: "#5D4037", instagram: "kabulgardengrill", languages: ["en", "ur"], halal: { zabihah: true, certifier: AFGHAN_CERT }, menu: afghanMenu, orderPlan: { n: 10, mix: { pickup: 60, counter: 40 } }, visitWeight: 3, ticket: [1800, 6000], joinedDaysAgo: 40 },
-  { slug: "zeenat-catering", name: "Zeenat Catering Co.", vertical: "restaurant", tier: "growth", address: "Ridgeway Plaza, Unit 21, 3250 Ridgecrest Blvd", postalCode: "L4Z 2B6", lat: 43.5947, lng: -79.6447, hours: week("09:00", "18:00", { sun: null }), description: "Halal wedding, walima and mehndi catering for 50 to 500 guests across Peel and Halton. Tastings by appointment.", brandColor: "#1B5E7B", instagram: "zeenatcatering", languages: ["en", "ur", "hi"], halal: { zabihah: true, certifier: AFGHAN_CERT }, menu: caterMenu, orderPlan: { n: 4, mix: { catering: 100 } }, visitWeight: 0, ticket: [2000, 8000], joinedDaysAgo: 48 },
+  { slug: "kabul-garden-grill", name: "Kabul Garden Grill", vertical: "restaurant", tier: "starter", address: "Ridgeway Plaza, Unit 18, 3250 Ridgecrest Blvd", postalCode: "L4Z 2B6", lat: 43.5949, lng: -79.6452, hours: week("11:30", "22:30"), description: "Halal Afghan grill: kabuli pulao, mantu, charcoal kabobs and fresh naan.", brandColor: "#5D4037", instagram: "kabulgardengrill", languages: ["en", "ur"], halal: { zabihah: true, certifier: AFGHAN_CERT, cert: { certificateNo: "SHC-0592", scope: "all_meat", slaughter: "zabihah", validInDays: 301 } }, menu: afghanMenu, orderPlan: { n: 10, mix: { pickup: 60, counter: 40 } }, visitWeight: 3, ticket: [1800, 6000], joinedDaysAgo: 40 },
+  { slug: "zeenat-catering", name: "Zeenat Catering Co.", vertical: "restaurant", tier: "growth", address: "Ridgeway Plaza, Unit 21, 3250 Ridgecrest Blvd", postalCode: "L4Z 2B6", lat: 43.5947, lng: -79.6447, hours: week("09:00", "18:00", { sun: null }), description: "Halal wedding, walima and mehndi catering for 50 to 500 guests across Peel and Halton. Tastings by appointment.", brandColor: "#1B5E7B", instagram: "zeenatcatering", languages: ["en", "ur", "hi"], halal: { zabihah: true, certifier: AFGHAN_CERT, cert: { certificateNo: "SHC-0644", scope: "some_dishes", slaughter: "unspecified", validInDays: 118 } }, menu: caterMenu, orderPlan: { n: 4, mix: { catering: 100 } }, visitWeight: 0, ticket: [2000, 8000], joinedDaysAgo: 48 },
   { slug: "rangrez-beauty-studio", name: "Rangrez Beauty Studio", vertical: "salon", tier: null, address: "Ridgeway Plaza, Unit 24, 3250 Ridgecrest Blvd", postalCode: "L4Z 2B6", lat: 43.5945, lng: -79.6442, hours: week("10:00", "20:00", { sun: ["11:00", "17:00"] }), description: "Bridal henna, threading, facials and hair. Walk-ins welcome on weekdays.", brandColor: "#AD1457", instagram: "rangrezbeauty", languages: ["en", "hi", "ur", "pa"], menu: [], visitWeight: 4, ticket: [2500, 22000], joinedDaysAgo: 42 },
 ];
 
@@ -477,6 +503,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
         whatsappCreditsUsed: s.whatsapp ? (s.tier === "pro" ? 1180 : 412) : 0,
         whatsappCreditsExtra: s.slug === "lahori-karahi-and-bbq" ? 1000 : 0,
         googleReviewUrl: s.tier ? `https://reviews.example.com/g/${s.slug}` : null,
+        halalCertification: s.halal?.cert && s.halal.certifier ? ({ certifier: s.halal.certifier, certificateNo: s.halal.cert.certificateNo, scope: s.halal.cert.scope, slaughter: s.halal.cert.slaughter, validUntil: s.halal.cert.validUntil ?? addDays(today, s.halal.cert.validInDays ?? 365) } satisfies HalalCertification) : null,
         // Restaurant-tier shops are fully onboarded on the fake Stripe Connect provider so customers can pay and subscribe locally.
         ...(s.tier ? { stripeAccountId: `acct_demo_${s.slug}`, stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true } : {}),
       })
@@ -494,6 +521,17 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   const shree = shop("shree-thali-and-tiffin");
   const dhaba = shop("sarson-dhaba");
   const zeenat = shop("zeenat-catering");
+  // How the demo kitchens get paid by hand (Interac e-transfer), their tax status and food safety dates.
+  const demoRef = new Map<string, number>();
+  const refFor = (merchantId: string, name: string) => {
+    const n = (demoRef.get(merchantId) ?? 0) + 1;
+    demoRef.set(merchantId, n);
+    const parts = name.replace(/[^A-Za-z\s]/g, "").trim().split(/\s+/);
+    return `${((parts[0]?.[0] ?? "L") + (parts.length > 1 ? parts[parts.length - 1]![0]! : (parts[0]?.[1] ?? "L"))).toUpperCase()}-${1000 + n}`;
+  };
+  await db.update(merchants).set({ paymentSettings: { etransferEnabled: true, etransferEmail: "pay@shreethali.ca", instructions: "Auto-deposit is on, no security question. Please put your reference code in the message.", cashEnabled: true, graceDays: 3, startOnTrust: true, cardEnabled: true, padEnabled: true }, foodHandlerExpiry: addDays(today, 41), healthUnit: "Peel", healthUnitNotifiedOn: addDays(today, -400) }).where(eq(merchants.id, shree.id));
+  await db.update(merchants).set({ paymentSettings: { etransferEnabled: true, etransferEmail: "pay@zeenatcatering.ca", instructions: "Zeenat confirms once it lands, usually within a day.", cashEnabled: false, graceDays: 3, startOnTrust: false, cardEnabled: true, padEnabled: true }, taxRegistered: true, taxNumber: "848213907RT0001", foodHandlerExpiry: addDays(today, 210), healthUnit: "Peel" }).where(eq(merchants.id, zeenat.id));
+  await db.update(merchants).set({ paymentSettings: { etransferEnabled: true, etransferEmail: "events@nawabbiryani.ca", instructions: "Put your reference code in the message.", cashEnabled: false, graceDays: 3, startOnTrust: false, cardEnabled: true, padEnabled: true }, taxRegistered: true, taxNumber: "793114052RT0001" }).where(eq(merchants.id, nawab.id));
   log(`Restaurant corridor: ${shops.length} shops in Ridgeway Plaza`);
 
   // ---- Add-ons, staff ----
@@ -517,9 +555,11 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
       if (sh.s.halal) {
         base.halal = true;
         base.zabihah = sh.s.halal.zabihah;
-        if (sh.s.halal.certifier) base.halalCertifier = sh.s.halal.certifier;
+        // The shop-level certificate speaks for every dish; a dish names a certifier only when it is someone else.
+        if (!sh.s.halal.cert && sh.s.halal.certifier) base.halalCertifier = sh.s.halal.certifier;
       }
       const t = d.tags ?? {};
+      if (t.cert) base.halalCertifier = t.cert;
       const dietary: DietaryTags = { ...base, ...(t.veg ? { vegetarian: true } : {}), ...(t.vegan ? { vegan: true } : {}), ...(t.jain ? { jain: true } : {}), ...(t.gf ? { glutenFree: true } : {}), ...(t.spice !== undefined ? { spice: t.spice } : {}), allergens: t.al ?? [] };
       const translations: Translations = {};
       if (d.tr && d.tr[0]) {
@@ -543,6 +583,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
         serves: d.pre?.serves ?? null,
         station: sh.s.tier === "pro" ? (d.station ?? null) : null,
         depositBps: d.pre?.dep ?? 0,
+        options: d.opts ?? null,
         createdAt: sh.createdAt,
       };
     });
@@ -634,7 +675,9 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     const tax = computeTax(subtotal - cashDiscount, "ON").taxCents;
     const tip = opts2.tipPct ? Math.round((subtotal * opts2.tipPct) / 100 / 25) * 25 : 0;
     const total = subtotal - cashDiscount + tax + tip;
-    const depositCents = opts2.deposit ? lines.reduce((s, l) => s + Math.round((l.item.price * l.qty * (l.item.dish.pre?.dep ?? 0)) / 10000), 0) : 0;
+    // The deposit is a share of the bill with tax (30% of the total before any tip).
+    const depositShare = lines.reduce((s, l) => s + (l.item.price * l.qty * (l.item.dish.pre?.dep ?? 0)) / 10000, 0);
+    const depositCents = opts2.deposit && subtotal > 0 ? Math.round((depositShare / subtotal) * (subtotal - cashDiscount + tax)) : 0;
     const { at, ...rest } = o;
     const row: typeof orders.$inferInsert = {
       id,
@@ -871,8 +914,12 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     if (!sh.s.menu.length) continue;
     const done = completedByShop.get(sh.id) ?? [];
     const n = sh.id === dhaba.id ? Math.min(14, done.length) : Math.min(sh.s.tier === "pro" ? 10 : 5, done.length);
+    const asked = new Set<string>();
     for (let k = 0; k < n; k++) {
       const o = done[(k * 2) % done.length]!;
+      // One ask per guest per shop (the product never asks twice inside 14 days).
+      if (asked.has(o.userId)) continue;
+      asked.add(o.userId);
       const rating = R.chance(0.75) ? R.pick([5, 5, 5, 4, 4]) : R.pick([2, 3, 3, 4]);
       const answered = R.chance(0.85);
       reviewRows.push({
@@ -897,6 +944,13 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
       const o = demoDone[demoDone.length - 1 - i]!;
       reviewRows.push({ merchantId: dhaba.id, userId: o.userId, orderId: o.id, channel: "sms", token, rating: null, feedback: null, sentAt: minutesAgo(90), clickedAt: null, createdAt: minutesAgo(90) });
     }
+  }
+  // Nawab: two unread private answers (1 and 3 stars) for the "read first" list on the Reviews page.
+  const nawabAsked = new Set(reviewRows.filter((r) => r.merchantId === nawab.id).map((r) => r.userId));
+  const nawabFresh = (completedByShop.get(nawab.id) ?? []).filter((o) => !nawabAsked.has(o.userId)).slice(-2);
+  for (const [i, o] of nawabFresh.entries()) {
+    const low = [{ rating: 1, feedback: "Biryani was cold when I picked up, waited 25 minutes after the time you gave me." }, { rating: 3, feedback: "Naan was great, haleem too salty." }][i]!;
+    reviewRows.push({ merchantId: nawab.id, userId: o.userId, orderId: o.id, channel: "whatsapp", token: `rv-nawab-private-${i}`, rating: low.rating, feedback: low.feedback, sentAt: minutesAgo(300 - i * 60), clickedAt: minutesAgo(280 - i * 60), createdAt: minutesAgo(300 - i * 60) });
   }
   await db.insert(reviewRequests).values(reviewRows);
 
@@ -1039,7 +1093,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   const subSpec: { status: string; plan: number; servings: number; fulfilment: "delivery" | "pickup"; startAgo: number; skips?: number[]; pausedUntil?: number; method?: string }[] = [];
   const statuses = ["active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "active", "paused", "paused", "paused", "past_due", "pending", "cancelled", "active", "active"];
   for (const [i, status] of statuses.entries()) {
-    subSpec.push({ status, plan: i % 3 === 2 ? 2 : i % 3, servings: i % 7 === 0 ? 2 : i % 11 === 0 ? 3 : 1, fulfilment: i % 8 === 5 ? "pickup" : "delivery", startAgo: [3, 9, 16, 24, 31, 38, 45, 52, 55, 14, 20, 28, 35, 42, 6, 11, 18, 33, 40, 26, 47, 1, 50, 8, 22][i]!, skips: i % 3 === 0 && status === "active" ? [1, 3].slice(0, 1 + (i % 2)) : undefined, pausedUntil: status === "paused" ? 6 + i : undefined, method: i % 4 === 0 ? "pad" : "card" });
+    subSpec.push({ status, plan: i % 3 === 2 ? 2 : i % 3, servings: i % 7 === 0 ? 2 : i % 11 === 0 ? 3 : 1, fulfilment: i % 8 === 5 ? "pickup" : "delivery", startAgo: [3, 9, 16, 24, 31, 38, 45, 52, 55, 14, 20, 28, 35, 42, 6, 11, 18, 33, 40, 26, 47, 1, 50, 8, 22][i]!, skips: i % 3 === 0 && status === "active" ? [1, 3].slice(0, 1 + (i % 2)) : undefined, pausedUntil: status === "paused" ? 6 + i : undefined, method: [1, 10, 15, 21, 6, 13].includes(i) ? "etransfer" : i === 11 ? "cash" : i % 4 === 0 ? "pad" : "card" });
   }
   const subRows: (typeof tiffinSubscriptions.$inferInsert & { id: string })[] = [];
   const chargeRows: (typeof tiffinCharges.$inferInsert)[] = [];
@@ -1128,8 +1182,45 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
       }
     }
   }
+  // Hand-paid subscribers (e-transfer and cash): some recorded, some still awaiting, each with a reference code (platform fee 0).
+  const manualPaid: (typeof manualPayments.$inferInsert)[] = [];
+  const recorded = new Set([1, 10, 15, 11]);
+  const waiting = new Set([6, 13, 21]);
+  for (const [i, row] of subRows.entries()) {
+    if (row.paymentMethod !== "etransfer" && row.paymentMethod !== "cash") continue;
+    for (const ch of chargeRows.filter((x) => x.subscriptionId === row.id)) {
+      const current = ch.periodStart === row.currentPeriodStart || row.status === "pending";
+      ch.referenceCode = refFor(shree.id, customers[i]!.name);
+      ch.platformFeeCents = 0;
+      ch.paymentMethod = row.paymentMethod;
+      if (waiting.has(i) && current) {
+        ch.status = "awaiting";
+        ch.paidAt = null;
+        ch.createdAt = ago(i === 21 ? 0 : 1);
+      } else if (ch.status === "paid" || recorded.has(i)) {
+        ch.status = "paid";
+        const on = addDays(ch.periodStart, 0);
+        ch.paidAt = new Date(`${on}T15:00:00Z`);
+        ch.paidCents = ch.amountCents;
+        ch.receivedOn = on;
+        manualPaid.push({ merchantId: shree.id, subjectType: "tiffin_charge", subjectId: randomUUID(), method: row.paymentMethod, amountCents: ch.amountCents, receivedOn: on, bankReference: row.paymentMethod === "etransfer" ? `C1${10000 + ((i * 7919) % 80000)}Ab` : null, note: null, recordedBy: shree.ownerId, createdAt: new Date(`${on}T15:00:00Z`) });
+        (manualPaid[manualPaid.length - 1] as { chargeRef?: typeof ch }).chargeRef = ch;
+      }
+    }
+  }
   await db.insert(tiffinSubscriptions).values(subRows);
+  // Charges need ids to hang ledger rows on.
+  for (const ch of chargeRows) (ch as { id?: string }).id = randomUUID();
+  for (const m of manualPaid) {
+    const ref = (m as { chargeRef?: { id?: string } }).chargeRef;
+    m.subjectId = ref?.id ?? m.subjectId;
+    delete (m as { chargeRef?: unknown }).chargeRef;
+  }
   await db.insert(tiffinCharges).values(chargeRows);
+  if (manualPaid.length) await db.insert(manualPayments).values(manualPaid);
+  await db.insert(merchantCounters).values({ merchantId: shree.id, name: "reference", value: demoRef.get(shree.id) ?? 0 }).onConflictDoNothing();
+  // Today's driver link for Route A (opens at /d/<token>, expires at midnight).
+  await db.insert(tiffinDriverLinks).values({ merchantId: shree.id, routeId: routes[0]!.id, date: today, token: "drv-shree-route-a-today-7kq2xa", expiresAt: new Date(`${addDays(today, 1)}T03:59:59Z`), createdBy: shree.ownerId, lastOpenedAt: minutesAgo(40), createdAt: ago(0, 11) });
   if (skipRows.length) await db.insert(tiffinSkips).values(skipRows);
   for (let i = 0; i < deliveryRows.length; i += 150) await db.insert(tiffinDeliveries).values(deliveryRows.slice(i, i + 150));
 
@@ -1161,18 +1252,20 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   const cNext = (id: string) => (cNo.set(id, (cNo.get(id) ?? 0) + 1), cNo.get(id)!);
   const tok = (slug: string, n: number) => `ce-${slug}-${n}-${R.int(100000, 999999)}`;
   const zItem = (name: string) => itemByName(zeenat, name);
-  interface Cat { sh: (typeof shops)[number]; user: number; type: string; inDays: number; start: string; head: number; venue: string; addr: string; service: string; status: string; perHead: number; extras: { description: string; quantity: number; unitPriceCents: number }[]; menu: { name: string; perHeadCents?: number; quantity?: number; unitPriceCents?: number; catalogItemId?: string }[]; dietary?: string; notes?: string; sent?: number; approved?: boolean; depositPaid?: boolean; tasting?: number; bps?: number }
+  interface Cat { sh: (typeof shops)[number]; user: number; type: string; inDays: number; start: string; head: number; venue: string; addr: string; service: string; status: string; perHead: number; extras: { description: string; quantity: number; unitPriceCents: number }[]; menu: { name: string; perHeadCents?: number; quantity?: number; unitPriceCents?: number; catalogItemId?: string }[]; dietary?: string; notes?: string; sent?: number; approved?: boolean; depositPaid?: boolean; tasting?: number; bps?: number; /** service charge, bps of food */ svc?: number; /** deposit recorded by hand: method */ paidBy?: "etransfer" | "cash" | "cheque"; /** balance recorded by hand */ balanceBy?: "etransfer" | "cash" | "cheque"; opened?: boolean }
   const cats: Cat[] = [
-    { sh: zeenat, user: 4, type: "walima", inDays: 21, start: "19:00", head: 300, venue: "Grand Meridian Banquet Hall", addr: "5500 Meridian Gate, Mississauga ON", service: "onsite", status: "confirmed", perHead: 2800, extras: [{ description: "Service staff and setup (8 servers, 2 chefs)", quantity: 1, unitPriceCents: 120000 }], menu: [{ name: "Walima Dinner Package (per guest)", perHeadCents: 2800, catalogItemId: zItem("Walima Dinner Package (per guest)").id }], dietary: "Zabihah only. 12 guests with nut allergies, keep kheer nut-free.", notes: "Bride's family prefers dinner service at 8 pm sharp.", sent: 14, approved: true, depositPaid: true },
+    { sh: zeenat, user: 4, type: "walima", inDays: 21, start: "19:00", head: 300, venue: "Grand Meridian Banquet Hall", addr: "5500 Meridian Gate, Mississauga ON", service: "onsite", status: "confirmed", svc: 1000, paidBy: "etransfer", perHead: 2800, extras: [{ description: "Service staff and setup (8 servers, 2 chefs)", quantity: 1, unitPriceCents: 120000 }], menu: [{ name: "Walima Dinner Package (per guest)", perHeadCents: 2800, catalogItemId: zItem("Walima Dinner Package (per guest)").id }], dietary: "Zabihah only. 12 guests with nut allergies, keep kheer nut-free.", notes: "Bride's family prefers dinner service at 8 pm sharp.", sent: 14, approved: true, depositPaid: true },
     { sh: zeenat, user: 7, type: "mehndi", inDays: 35, start: "18:30", head: 150, venue: "Rose Garden Hall", addr: "88 Orchard Terrace, Brampton ON", service: "delivery", status: "quoted", perHead: 2400, extras: [{ description: "Live chai and jalebi counter", quantity: 1, unitPriceCents: 45000 }], menu: [{ name: "Mehndi Night Package (per guest)", perHeadCents: 2400, catalogItemId: zItem("Mehndi Night Package (per guest)").id }], notes: "Family asked to add a dessert table. Quote sent, waiting to hear back.", sent: 2 },
     { sh: zeenat, user: 10, type: "wedding", inDays: 62, start: "18:00", head: 400, venue: "Event venue not chosen yet", addr: "", service: "onsite", status: "inquiry", perHead: 0, extras: [], menu: [], notes: "Asked for a Pakistani wedding menu with a live BBQ station. Callback requested." },
     { sh: zeenat, user: 13, type: "aqiqah", inDays: 9, start: "13:00", head: 80, venue: "Home, Mississauga", addr: "41 Brookview Rd, Mississauga ON", service: "delivery", status: "tasting", perHead: 0, extras: [{ description: "Aqiqah package, goat for 40 guests", quantity: 2, unitPriceCents: 79900 }], menu: [{ name: "Aqiqah Package (goat for 40)", quantity: 2, unitPriceCents: 79900, catalogItemId: zItem("Aqiqah Package (goat for 40)").id }], tasting: 3, notes: "Tasting booked in 3 days." },
-    { sh: zeenat, user: 15, type: "corporate", inDays: -14, start: "12:00", head: 120, venue: "Peel Tech Park, Building C", addr: "700 Innovation Dr, Mississauga ON", service: "delivery", status: "completed", perHead: 1699, extras: [{ description: "Disposable cutlery and chafing dishes", quantity: 1, unitPriceCents: 18000 }], menu: [{ name: "Corporate Lunch Box", perHeadCents: 1699, catalogItemId: zItem("Corporate Lunch Box").id }], dietary: "20 vegetarian, 8 halal-only (all food halal)", sent: 28, approved: true, depositPaid: true },
+    { sh: zeenat, user: 15, type: "corporate", inDays: -14, start: "12:00", head: 120, venue: "Peel Tech Park, Building C", addr: "700 Innovation Dr, Mississauga ON", service: "delivery", status: "completed", perHead: 1699, extras: [{ description: "Disposable cutlery and chafing dishes", quantity: 1, unitPriceCents: 18000 }], menu: [{ name: "Corporate Lunch Box", perHeadCents: 1699, catalogItemId: zItem("Corporate Lunch Box").id }], dietary: "20 vegetarian, 8 halal-only (all food halal)", sent: 28, approved: true, depositPaid: true, paidBy: "etransfer", balanceBy: "cheque", opened: true },
+    { sh: zeenat, user: 18, type: "engagement", inDays: 8, start: "17:30", head: 90, venue: "Family home, Oakville", addr: "17 Glenashton Dr, Oakville ON", service: "delivery", status: "quoted", perHead: 2200, extras: [{ description: "Delivery and setup", quantity: 1, unitPriceCents: 15000 }], menu: [{ name: "Walima Dinner Package (per guest)", perHeadCents: 2200, catalogItemId: zItem("Walima Dinner Package (per guest)").id }], notes: "Approved the quote. Will send the deposit by e-transfer.", sent: 4, approved: true, opened: true },
     { sh: zeenat, user: 16, type: "birthday", inDays: -6, start: "17:00", head: 60, venue: "Community centre hall", addr: "12 Lakeshore Gate, Mississauga ON", service: "pickup", status: "cancelled", perHead: 2100, extras: [], menu: [{ name: "Eid Lunch Tray: Biryani and Korma (serves 10)", quantity: 6, unitPriceCents: 15900, catalogItemId: zItem("Eid Lunch Tray: Biryani and Korma (serves 10)").id }], notes: "Cancelled by the host. Deposit not taken.", sent: 20 },
   ];
   const evIds: string[] = [];
   for (const c of cats) {
-    const lines = [...(c.perHead ? [{ description: `${c.menu[0]?.name ?? "Catering"} x ${c.head}`, quantity: c.head, unitPriceCents: c.perHead }] : []), ...c.extras];
+    const lines: { description: string; quantity: number; unitPriceCents: number; kind?: "fee" }[] = [...(c.perHead ? [{ description: `${c.menu[0]?.name ?? "Catering"} x ${c.head}`, quantity: c.head, unitPriceCents: c.perHead }] : []), ...c.extras];
+    if (c.svc) lines.push({ description: `Service charge ${c.svc / 100}% (tax applies)`, quantity: 1, unitPriceCents: Math.round((lines.reduce((x, l) => x + l.quantity * l.unitPriceCents, 0) * c.svc) / 10_000), kind: "fee" });
     const t = evTotals(lines);
     const bps = c.bps ?? 3000;
     const id = randomUUID();
@@ -1209,17 +1302,29 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
       signatureIp: c.approved ? "203.0.113.24" : null,
       signatureUserAgent: c.approved ? "Mozilla/5.0 (demo)" : null,
       depositPaidAt: c.depositPaid ? new Date(sentAt!.getTime() + 2 * DAY + 3600_000) : null,
+      serviceChargeBps: c.svc ?? 0,
+      referenceCode: c.sent && c.sh.s.slug === "zeenat-catering" ? refFor(c.sh.id, lc(c.user).name) : null,
+      depositMethod: c.depositPaid ? (c.paidBy ?? null) : null,
+      depositReceivedOn: c.depositPaid && c.paidBy ? new Date(sentAt!.getTime() + 2 * DAY + 3600_000).toISOString().slice(0, 10) : null,
+      quoteOpenedAt: c.sent && (c.opened || c.status === "confirmed" || c.status === "completed") ? new Date(sentAt!.getTime() + 3600_000) : null,
       createdAt: ago(c.sent ? c.sent + 3 : 5),
       updatedAt: ago(c.sent ? Math.max(c.sent - 2, 0) : 2),
     });
   }
   // Nawab: a banquet event for a confirmed hall booking.
   const hallPkg = noor!.packages[1]!;
+  // Staged payments (25% at hold, 50% 14 days before, 25% 7 days before) with an e-transfer reference.
+  const sched = (total: number, inDays: number) => restaurantApi.buildHallSchedule(total, restaurantApi.DEFAULT_HALL_SCHEDULE, addDays(today, inDays), today);
+  const confirmedSched = sched(hallTotal, 28).map((r, k) => (k === 0 ? { ...r, amountCents: Math.round(hallTotal * 0.25), paidAt: bnqAt.toISOString().slice(0, 10) } : r));
+  confirmedSched[confirmedSched.length - 1]!.amountCents = hallTotal - confirmedSched.slice(0, -1).reduce((x, r) => x + r.amountCents, 0);
+  confirmedSched[1]!.amountCents = Math.round(hallTotal * 0.5);
+  confirmedSched[2]!.amountCents = hallTotal - confirmedSched[0]!.amountCents - confirmedSched[1]!.amountCents;
+  const holdTotal = noor!.baseCents + 4200 * 120 + computeTax(noor!.baseCents + 4200 * 120, "ON").taxCents;
   const bookings = await db
     .insert(hallBookings)
     .values([
-      { hallId: noor!.id, merchantId: nawab.id, userId: lc(9).id, eventType: "wedding", startsAt: ahead(28, 22), endsAt: ahead(29, 3), headcount: 220, packageName: "Gold", status: "confirmed", totalCents: hallTotal, depositCents: Math.round(hallTotal * 0.25), depositPaidAt: bnqAt, notes: "Walima reception. Stage and bridal suite requested.", createdAt: ago(8) },
-      { hallId: noor!.id, merchantId: nawab.id, userId: lc(19).id, eventType: "engagement", startsAt: ahead(44, 22), endsAt: ahead(45, 2), headcount: 120, packageName: "Silver", status: "hold", holdExpiresAt: ahead(5, 16), totalCents: noor!.baseCents + 4200 * 120 + computeTax(noor!.baseCents + 4200 * 120, "ON").taxCents, depositCents: 0, notes: "Holding the date while the family confirms.", createdAt: ago(2) },
+      { hallId: noor!.id, merchantId: nawab.id, userId: lc(9).id, eventType: "wedding", startsAt: ahead(28, 22), endsAt: ahead(29, 3), headcount: 220, packageName: "Gold", status: "confirmed", totalCents: hallTotal, depositCents: Math.round(hallTotal * 0.25), depositPaidAt: bnqAt, referenceCode: refFor(nawab.id, lc(9).name), schedule: confirmedSched, notes: "Walima reception. Stage and bridal suite requested.", createdAt: ago(8) },
+      { hallId: noor!.id, merchantId: nawab.id, userId: lc(19).id, eventType: "engagement", startsAt: ahead(44, 22), endsAt: ahead(45, 2), headcount: 120, packageName: "Silver", status: "hold", holdExpiresAt: ahead(5, 16), totalCents: noor!.baseCents + 4200 * 120 + computeTax(noor!.baseCents + 4200 * 120, "ON").taxCents, depositCents: 0, referenceCode: refFor(nawab.id, lc(19).name), schedule: sched(holdTotal, 44), notes: "Holding the date while the family confirms.", createdAt: ago(2) },
       { hallId: noor!.id, merchantId: nawab.id, userId: lc(21).id, eventType: "walima", startsAt: ago(12, 22), endsAt: ago(11, 2), headcount: 180, packageName: "Platinum", status: "completed", totalCents: 250000 + 7500 * 180 + computeTax(250000 + 7500 * 180, "ON").taxCents, depositCents: 400000, depositPaidAt: ago(40), createdAt: ago(45) },
       { hallId: noor!.id, merchantId: nawab.id, userId: lc(23).id, eventType: "birthday", startsAt: ahead(16, 22), endsAt: ahead(17, 1), headcount: 90, packageName: "Silver", status: "cancelled", totalCents: 0, depositCents: 0, notes: "Cancelled, date conflict.", createdAt: ago(10) },
     ])
@@ -1230,7 +1335,18 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   const bt = evTotals(banquetLines);
   cateringRows.push({ id: banquetEv, merchantId: nawab.id, userId: lc(9).id, number: cNext(nawab.id), eventType: "walima", eventDate: addDays(today, 28), startTime: "18:00", headcount: 220, venueName: "Noor Hall", venueAddress: nawab.s.address, service: "banquet", status: "confirmed", menu: [{ name: "Gold package", perHeadCents: hallPkg.perHeadCents }], perHeadCents: hallPkg.perHeadCents, lineItems: banquetLines, subtotalCents: bt.subtotal, taxCents: bt.tax, totalCents: bt.total, depositBps: 2500, depositCents: Math.round((bt.total * 2500) / 10000), dietaryNotes: "Zabihah. Separate vegetarian counter for 30 guests.", notes: "Linked to the Noor Hall booking.", approvalToken: tok(nawab.s.slug, 1), quoteSentAt: ago(8), approvedAt: ago(6), signatureName: lc(9).name, signatureIp: "203.0.113.31", signatureUserAgent: "Mozilla/5.0 (demo)", depositPaidAt: bnqAt, hallBookingId: bkConfirmed.id, createdAt: ago(9), updatedAt: ago(5) });
   await db.insert(cateringEvents).values(cateringRows);
+  // The ledger for hand-recorded money on Zeenat's events (deposits, and a balance paid by cheque).
+  const catLedger: (typeof manualPayments.$inferInsert)[] = [];
+  for (const [k, c] of cats.entries()) {
+    const row = cateringRows[k]!;
+    if (c.depositPaid && c.paidBy) catLedger.push({ merchantId: c.sh.id, subjectType: "catering_deposit", subjectId: row.id!, method: c.paidBy, amountCents: row.depositCents ?? 0, receivedOn: row.depositReceivedOn!, bankReference: c.paidBy === "etransfer" ? `CAr${4100 + k * 311}` : null, note: null, recordedBy: c.sh.ownerId, createdAt: row.depositPaidAt ?? undefined });
+    if (c.balanceBy) catLedger.push({ merchantId: c.sh.id, subjectType: "catering_balance", subjectId: row.id!, method: c.balanceBy, amountCents: (row.totalCents ?? 0) - (row.depositCents ?? 0), receivedOn: addDays(today, c.inDays + 1), bankReference: null, note: "Cheque picked up after the event", recordedBy: c.sh.ownerId });
+  }
+  if (catLedger.length) await db.insert(manualPayments).values(catLedger);
+  await db.insert(merchantCounters).values({ merchantId: zeenat.id, name: "reference", value: demoRef.get(zeenat.id) ?? 0 }).onConflictDoNothing();
   await db.update(hallBookings).set({ cateringEventId: banquetEv }).where(eq(hallBookings.id, bkConfirmed.id));
+  await db.insert(manualPayments).values({ merchantId: nawab.id, subjectType: "hall_instalment", subjectId: bkConfirmed.id, instalmentIndex: 0, method: "etransfer", amountCents: Math.round(hallTotal * 0.25), receivedOn: bnqAt.toISOString().slice(0, 10), bankReference: "CAq8821", recordedBy: nawab.ownerId, createdAt: bnqAt });
+  await db.insert(merchantCounters).values({ merchantId: nawab.id, name: "reference", value: demoRef.get(nawab.id) ?? 0 }).onConflictDoNothing();
   for (const [merchantId, n] of cNo) await db.insert(merchantCounters).values({ merchantId, name: "catering", value: n }).onConflictDoNothing();
 
   // ---- Campaigns (festival and wedding season) ----
@@ -1246,6 +1362,10 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   // ---- Corridor profile details: tag a few regulars ----
   const regular = await db.select({ id: merchantMembers.id }).from(merchantMembers).where(eq(merchantMembers.merchantId, nawab.id)).limit(4);
   if (regular.length) await db.update(merchantMembers).set({ tags: ["regular", "degh buyer"], notes: "Orders goat biryani degh for family Fridays" }).where(eq(merchantMembers.id, regular[0]!.id));
+
+  // Restaurant desk demo data: cuisines, caps, recipes, tomorrow's pots, wait list, busy history, chat thread (seed/restaurantsDesk.ts).
+  clock.now = realStart;
+  await seedRestaurantDesk(ctx, log);
 
   log(`Corridor customers: ${customers.length}, visits: ${visitCount}, redemptions: ${redemptionCount}, orders: ${orderCount}`);
   return { skipped: false, merchants: shops.length, customers: customers.length, visits: visitCount, redemptions: redemptionCount, orders: orderCount };

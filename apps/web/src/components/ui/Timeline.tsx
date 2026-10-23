@@ -10,7 +10,7 @@ export interface TimelineStep {
   at?: string | null;
   note?: ReactNode;
   photos?: string[];
-  /** Expanded content (e.g. QuoteApproval on the quote_sent step). */
+  /** Expanded content. */
   children?: ReactNode;
 }
 

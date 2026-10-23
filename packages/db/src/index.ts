@@ -39,7 +39,9 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
   const { migrate } = await import("drizzle-orm/pglite/migrator");
-  const client = new PGlite(dataDir);
+  // btree_gist backs the appointments overlap guard (an exclusion constraint on staff_id + time range).
+  const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
+  const client = await PGlite.create({ ...(dataDir ? { dataDir } : {}), extensions: { btree_gist } });
   const db = drizzle(client, { schema });
   await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
   // The pglite and postgres-js drizzle instances share the same query API.

@@ -21,6 +21,8 @@ export interface ShellNavItem {
   /** Small heading above the group; read from the group's first item. */
   groupLabel?: string;
   exact?: boolean;
+  /** A count after the label (restaurants: new orders in accent, calls and chats waiting in muted text). */
+  badge?: { count: number; accent?: boolean };
 }
 
 export interface ShellProps {
@@ -35,6 +37,8 @@ export interface ShellProps {
   topActions?: ReactNode;
   search?: CommandSearch;
   searchPlaceholder?: string;
+  /** Phones: a pill tab bar at the bottom that mirrors the sidebar items (BIA console). */
+  bottomTabs?: boolean;
   children: ReactNode;
 }
 
@@ -82,6 +86,11 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
                 >
                   <i.icon aria-hidden className={cn("size-4 shrink-0", active ? "text-fg" : "text-fg-muted")} strokeWidth={1.75} />
                   <span className="truncate">{i.label}</span>
+                  {i.badge && i.badge.count > 0 ? (
+                    <span aria-label={`${i.badge.count} waiting`} className={cn("ms-auto shrink-0 text-[12px] font-medium leading-4 tabular", i.badge.accent ? "text-accent-text" : "text-fg-muted")}>
+                      {i.badge.count}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );
@@ -103,7 +112,7 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
   );
 }
 
-export function Shell({ nav, header, footer, notice, mobileTitle, topActions, search, searchPlaceholder = "Search", children }: ShellProps) {
+export function Shell({ nav, header, footer, notice, mobileTitle, topActions, search, searchPlaceholder = "Search", bottomTabs, children }: ShellProps) {
   const pathname = usePathname() ?? "";
   const [drawer, setDrawer] = useState(false);
   const [cmd, setCmd] = useState(false);
@@ -181,12 +190,30 @@ export function Shell({ nav, header, footer, notice, mobileTitle, topActions, se
           </button>
           {topActions}
         </header>
-        <main id="main" className="mx-auto w-full max-w-[1200px] px-4 pb-16 pt-6 md:px-8 md:pt-8 print:max-w-none print:p-0">
+        <main id="main" className={cn("mx-auto w-full max-w-[1200px] px-4 pt-6 md:px-8 md:pt-8 print:max-w-none print:p-0", bottomTabs ? "pb-28 lg:pb-16" : "pb-16")}>
           {notice}
           {children}
         </main>
       </div>
       </div>
+
+      {bottomTabs ? (
+        <nav aria-label="Sections" className="fixed inset-x-4 bottom-4 z-sticky mx-auto flex max-w-md items-center justify-between rounded-full border border-line bg-bg p-1.5 shadow-float lg:hidden print:hidden">
+          {nav.map((i) => {
+            const active = isActive(pathname, i);
+            return (
+              <Link
+                key={i.href}
+                href={i.href}
+                aria-current={active ? "page" : undefined}
+                className={cn("inline-flex h-10 flex-1 items-center justify-center rounded-full px-2 text-meta-strong transition-colors focus-visible:focus-ring", active ? "bg-fg text-bg" : "text-fg-muted hover:text-fg")}
+              >
+                {i.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
 
       {drawer ? (
         <div className="fixed inset-0 z-modal lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">

@@ -51,6 +51,8 @@ export interface ConverseOutput {
   cart: CartLine[];
   replies: string[];
   action: ConverseAction;
+  /** Set when the guest told us an allergy in this message. */
+  allergyNote?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +94,7 @@ interface Strings {
   help: string;
   awaiting(n: number): string;
   noItemNumber(n: number): string;
+  allergyNoted(text: string): string;
 }
 
 const STRINGS: Record<WaLang, Strings> = {
@@ -102,7 +105,7 @@ const STRINGS: Record<WaLang, Strings> = {
     cartEmpty: "Your cart is empty. Reply MENU to see what we have.",
     cartHeader: "Your cart:",
     total: (a) => `Subtotal: ${a} (tax is added at checkout)`,
-    cartHint: "Reply CHECKOUT to order, \"remove <item>\" to change, or CLEAR to start over.",
+    cartHint: "Reply CHECKOUT to order, \"remove <item>\" to change, or CLEAR to start over. Any allergy? Reply ALLERGY and what to avoid.",
     removed: (n) => `Removed ${n}.`,
     cleared: "Cart cleared.",
     unknown: "Sorry, we did not catch that. Reply MENU for the menu, CART for your cart, or HELP.",
@@ -114,6 +117,7 @@ const STRINGS: Record<WaLang, Strings> = {
     help: "MENU: see the menu. CART: your cart. CHECKOUT: place the order. CLEAR: empty the cart. LANGUAGE HI, UR, PA or EN. STOP: no more messages.",
     awaiting: (n) => `Your order #${n} is waiting for payment. Use the link we sent, or reply MENU to start a new order.`,
     noItemNumber: (n) => `There is no item ${n} on the menu. Reply MENU to see the numbers.`,
+    allergyNoted: (t) => `Noted: ${t}. We will tell the kitchen.`,
   },
   hi: {
     greeting: (s) => `${s} में आपका स्वागत है। मेन्यू देखने के लिए MENU लिखें, या सीधे बताएँ, जैसे "add 2 biryani"।`,
@@ -122,7 +126,7 @@ const STRINGS: Record<WaLang, Strings> = {
     cartEmpty: "आपका कार्ट खाली है। MENU लिखकर मेन्यू देखें।",
     cartHeader: "आपका कार्ट:",
     total: (a) => `कुल: ${a} (टैक्स चेकआउट पर जुड़ेगा)`,
-    cartHint: "ऑर्डर के लिए CHECKOUT लिखें, बदलने के लिए \"remove <आइटम>\", या CLEAR।",
+    cartHint: "ऑर्डर के लिए CHECKOUT लिखें, बदलने के लिए \"remove <आइटम>\", या CLEAR। कोई एलर्जी? ALLERGY लिखकर बताएँ।",
     removed: (n) => `${n} हटा दिया।`,
     cleared: "कार्ट खाली कर दिया।",
     unknown: "माफ़ कीजिए, समझ नहीं आया। MENU, CART या HELP लिखें।",
@@ -134,6 +138,7 @@ const STRINGS: Record<WaLang, Strings> = {
     help: "MENU: मेन्यू। CART: कार्ट। CHECKOUT: ऑर्डर। CLEAR: कार्ट खाली। LANGUAGE HI, UR, PA, EN। STOP: संदेश बंद।",
     awaiting: (n) => `आपका ऑर्डर #${n} भुगतान का इंतज़ार कर रहा है। भेजे गए लिंक से भुगतान करें, या नए ऑर्डर के लिए MENU लिखें।`,
     noItemNumber: (n) => `मेन्यू में आइटम ${n} नहीं है। नंबर देखने के लिए MENU लिखें।`,
+    allergyNoted: (t) => `नोट कर लिया: ${t}। हम रसोई को बता देंगे।`,
   },
   ur: {
     greeting: (s) => `${s} میں خوش آمدید۔ مینو دیکھنے کے لیے MENU لکھیں، یا سیدھا بتائیں، جیسے "add 2 biryani"۔`,
@@ -142,7 +147,7 @@ const STRINGS: Record<WaLang, Strings> = {
     cartEmpty: "آپ کا کارٹ خالی ہے۔ MENU لکھ کر مینو دیکھیں۔",
     cartHeader: "آپ کا کارٹ:",
     total: (a) => `کل: ${a} (ٹیکس چیک آؤٹ پر شامل ہو گا)`,
-    cartHint: "آرڈر کے لیے CHECKOUT لکھیں، تبدیلی کے لیے \"remove <آئٹم>\"، یا CLEAR۔",
+    cartHint: "آرڈر کے لیے CHECKOUT لکھیں، تبدیلی کے لیے \"remove <آئٹم>\"، یا CLEAR۔ کوئی الرجی؟ ALLERGY لکھ کر بتائیں۔",
     removed: (n) => `${n} ہٹا دیا۔`,
     cleared: "کارٹ خالی کر دیا۔",
     unknown: "معذرت، سمجھ نہیں آیا۔ MENU، CART یا HELP لکھیں۔",
@@ -154,6 +159,7 @@ const STRINGS: Record<WaLang, Strings> = {
     help: "MENU: مینو۔ CART: کارٹ۔ CHECKOUT: آرڈر۔ CLEAR: کارٹ خالی۔ LANGUAGE HI, UR, PA, EN۔ STOP: پیغامات بند۔",
     awaiting: (n) => `آپ کا آرڈر #${n} ادائیگی کا منتظر ہے۔ بھیجے گئے لنک سے ادائیگی کریں، یا نئے آرڈر کے لیے MENU لکھیں۔`,
     noItemNumber: (n) => `مینو میں آئٹم ${n} نہیں ہے۔ نمبر دیکھنے کے لیے MENU لکھیں۔`,
+    allergyNoted: (t) => `نوٹ کر لیا: ${t}۔ ہم باورچی خانے کو بتا دیں گے۔`,
   },
   pa: {
     greeting: (s) => `${s} ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ। ਮੀਨੂ ਦੇਖਣ ਲਈ MENU ਲਿਖੋ, ਜਾਂ ਸਿੱਧਾ ਦੱਸੋ, ਜਿਵੇਂ "add 2 biryani"।`,
@@ -162,7 +168,7 @@ const STRINGS: Record<WaLang, Strings> = {
     cartEmpty: "ਤੁਹਾਡਾ ਕਾਰਟ ਖਾਲੀ ਹੈ। MENU ਲਿਖ ਕੇ ਮੀਨੂ ਦੇਖੋ।",
     cartHeader: "ਤੁਹਾਡਾ ਕਾਰਟ:",
     total: (a) => `ਕੁੱਲ: ${a} (ਟੈਕਸ ਚੈੱਕਆਊਟ ਤੇ ਜੁੜੇਗਾ)`,
-    cartHint: "ਆਰਡਰ ਲਈ CHECKOUT ਲਿਖੋ, ਬਦਲਣ ਲਈ \"remove <ਆਈਟਮ>\", ਜਾਂ CLEAR।",
+    cartHint: "ਆਰਡਰ ਲਈ CHECKOUT ਲਿਖੋ, ਬਦਲਣ ਲਈ \"remove <ਆਈਟਮ>\", ਜਾਂ CLEAR। ਕੋਈ ਐਲਰਜੀ? ALLERGY ਲਿਖ ਕੇ ਦੱਸੋ।",
     removed: (n) => `${n} ਹਟਾ ਦਿੱਤਾ।`,
     cleared: "ਕਾਰਟ ਖਾਲੀ ਕਰ ਦਿੱਤਾ।",
     unknown: "ਮਾਫ਼ ਕਰਨਾ, ਸਮਝ ਨਹੀਂ ਆਇਆ। MENU, CART ਜਾਂ HELP ਲਿਖੋ।",
@@ -174,6 +180,7 @@ const STRINGS: Record<WaLang, Strings> = {
     help: "MENU: ਮੀਨੂ। CART: ਕਾਰਟ। CHECKOUT: ਆਰਡਰ। CLEAR: ਕਾਰਟ ਖਾਲੀ। LANGUAGE HI, UR, PA, EN। STOP: ਸੁਨੇਹੇ ਬੰਦ।",
     awaiting: (n) => `ਤੁਹਾਡਾ ਆਰਡਰ #${n} ਭੁਗਤਾਨ ਦੀ ਉਡੀਕ ਵਿੱਚ ਹੈ। ਭੇਜੇ ਲਿੰਕ ਨਾਲ ਭੁਗਤਾਨ ਕਰੋ, ਜਾਂ ਨਵੇਂ ਆਰਡਰ ਲਈ MENU ਲਿਖੋ।`,
     noItemNumber: (n) => `ਮੀਨੂ ਵਿੱਚ ਆਈਟਮ ${n} ਨਹੀਂ ਹੈ। ਨੰਬਰ ਦੇਖਣ ਲਈ MENU ਲਿਖੋ।`,
+    allergyNoted: (t) => `ਨੋਟ ਕਰ ਲਿਆ: ${t}। ਅਸੀਂ ਰਸੋਈ ਨੂੰ ਦੱਸ ਦਿਆਂਗੇ।`,
   },
 };
 
@@ -320,6 +327,13 @@ export function converse(input: ConverseInput): ConverseOutput {
   }
 
   const byNumber = new Map(input.menu.items.map((i) => [i.number, i]));
+
+  // "allergy nuts and sesame": goes on the order and shows as a red band on the kitchen ticket.
+  const allergy = /^(?:allergy|allergic|allergies|الرجی|एलर्जी|ਐਲਰਜੀ)\s+(.+)$/.exec(norm);
+  if (allergy) {
+    const note = text.replace(/^\S+\s+/, "").trim().slice(0, 200);
+    return out([s.allergyNoted(note)], { allergyNote: note });
+  }
 
   // "remove biryani"
   const rm = /^(?:remove|delete|hatao|हटाओ|हटाएं|ہٹاؤ|ਹਟਾਓ)\s+(.+)$/.exec(norm);

@@ -1,4 +1,4 @@
-import type { serviceApi } from "@ll/shared";
+import type { MessageKey, serviceApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -7,8 +7,10 @@ import { errorMessage, isApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { formatMoney, formatPts } from "../../lib/award";
 import { formatDate } from "../../lib/format";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
+import { disp } from "../../theme";
 import { useSession } from "../../state/session";
 import { Badge, Banner, Button, Card, ErrorState, QuoteApproval, Screen, Section, SkeletonList, Text, TICKET_STATUS_LABELS, Timeline, useToast } from "../../ui";
 
@@ -23,6 +25,7 @@ export default function TicketDetail() {
   const qc = useQueryClient();
   const toast = useToast();
   const { user } = useSession();
+  const { t: tr } = useLocale();
   const q = useQuery({ queryKey: qk.ticket(id ?? ""), queryFn: () => api.service.ticket(id!), enabled: !!id, refetchInterval: 30_000 });
   const [busy, setBusy] = useState<"approve" | "decline" | "pay" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +78,12 @@ export default function TicketDetail() {
   return (
     <Screen back title={`Ticket #${ticket.number}`} onRefresh={() => q.refetch()} refreshing={q.isRefetching}>
       <View style={{ gap: 4 }}>
-        <Text variant="h2">{title}</Text>
-        <Text color="fgMuted">{`${ticket.merchantName} · #${ticket.number} · Dropped off ${formatDate(ticket.createdAt)}`}</Text>
-        <Badge tone={ticket.status === "quote_sent" ? "warning" : ticket.status === "ready" ? "success" : "info"}>{ticket.status === "quote_sent" ? "Needs approval" : TICKET_STATUS_LABELS[ticket.status]}</Badge>
-        <Text variant="bodySm" color="fgMuted">{ticket.issue}</Text>
+        <Text variant="caption" color="fgMuted">{tr("sv.t.kicker", { shop: ticket.merchantName, n: ticket.number })}</Text>
+        {/* One big status word: is it ready? */}
+        <Text style={disp(34, 800, 38)} accessibilityRole="header">{tr(`sv.step.${ticket.status}` as MessageKey)}</Text>
+        <Text color="fgMuted">{`${title}, ${ticket.issue}.`}</Text>
+        <Text variant="caption" color="fgMuted">{`Dropped off ${formatDate(ticket.createdAt)}`}</Text>
+        {ticket.status === "quote_sent" ? <Badge tone="warning">{TICKET_STATUS_LABELS.quote_sent ?? "Needs approval"}</Badge> : null}
       </View>
       {deposit && quote?.approvalUrl ? (
         <Banner variant="warning" actionLabel="Pay deposit" onAction={() => Linking.openURL(quote.approvalUrl!)}>

@@ -70,6 +70,8 @@ export interface CounterProgram {
   minSpendCents: number;
   stampGoal: number;
   active?: boolean;
+  /** Stamp on scan: a scan or a one-match 4-digit entry stamps without a confirm tap (never for per_dollar). */
+  counterAutoStamp?: boolean;
 }
 
 export interface PromoLike {
@@ -195,6 +197,10 @@ export interface SuccessView {
   announcement: string;
   /** The hero's leading number and where it counts up from (the balance before this award). */
   count?: { from: number; to: number };
+  /** Scan-first stamped screen: who, how many visits this month (shop time), and the balance after. */
+  name?: string | null;
+  visitsThisMonth?: number | null;
+  balance?: number | null;
 }
 
 export function successView(input: {
@@ -206,6 +212,8 @@ export function successView(input: {
   offline?: boolean;
   messages?: string[];
   firstName?: string | null;
+  fullName?: string | null;
+  visitsThisMonth?: number | null;
 }): SuccessView {
   const { program } = input;
   const term = program.terminology;
@@ -234,7 +242,7 @@ export function successView(input: {
   const who = input.firstName ? `${input.firstName} now has ` : "Balance ";
   const announcement = [title, input.balance !== null ? `${who}${formatPts(input.balance, term)}.` : "", next ?? ""].filter(Boolean).join(". ");
   const count = input.balance === null ? { from: 0, to: input.pointsEarned } : { from: Math.max(0, input.balance - input.pointsEarned), to: input.balance };
-  return { title, hero, next, rewardReady: !!ready, offline: !!input.offline, messages: input.messages ?? [], announcement, count };
+  return { title, hero, next, rewardReady: !!ready, offline: !!input.offline, messages: input.messages ?? [], announcement, count, name: input.fullName ?? null, visitsThisMonth: input.visitsThisMonth ?? null, balance: input.balance };
 }
 
 export const UNDO_SECONDS = 10;
@@ -370,6 +378,12 @@ export type CounterCustomer =
 
 export type CounterState =
   | { step: "entry"; digits: string; error: string | null }
+  /** Scan first: one match, Stamp on scan on, below the goal. The screen awards at once, then dispatches "awarded". */
+  | { step: "stamping"; member: staffApi.MemberSummaryDto }
+  /** Goal reached: Redeem, or stamp on purpose and keep the reward. */
+  | { step: "reward"; member: staffApi.MemberSummaryDto }
+  /** Four digits that match nobody. */
+  | { step: "nomatch"; digits: string }
   | { step: "lookingUp"; digits: string; query: string }
   | { step: "pick"; digits: string; matches: staffApi.MemberSummaryDto[] }
   | { step: "customer"; customer: CounterCustomer; amountCents: number; noEarn: boolean; error: string | null; submitting: boolean }
@@ -379,17 +393,36 @@ export type CounterState =
 export type CounterAction =
   | { type: "key"; key: string }
   | { type: "lookup"; query?: string }
-  | { type: "lookupResult"; res: staffApi.LookupResponse; digits: string }
+  /** `program` switches on the scan-first rules (auto-stamp, reward ready, no match); without it the older confirm flow applies. */
+  | { type: "lookupResult"; res: staffApi.LookupResponse; digits: string; program?: CounterProgram | null }
   | { type: "lookupOffline"; phone?: string; memberCode?: string; label: string }
   | { type: "lookupError"; message: string }
-  | { type: "pick"; member: staffApi.MemberSummaryDto }
+  | { type: "pick"; member: staffApi.MemberSummaryDto; program?: CounterProgram | null }
   | { type: "identified"; customer: CounterCustomer }
   | { type: "toggleNoEarn" }
   | { type: "submit" }
   | { type: "awardError"; message: string }
   | { type: "awarded"; view: SuccessView; customer: CounterCustomer; transactionId: string | null; queuedKey: string | null; at: number }
   | { type: "notice"; tone: "neutral" | "danger"; message: string }
+  /** Back to an empty keypad (from a no-match or a cancelled stamp). */
+  | { type: "toEntry" }
   | { type: "reset" };
+
+/** The reward is ready: an affordable reward, or a full stamp card. */
+export function isRewardReady(m: Pick<staffApi.MemberSummaryDto, "balance" | "rewardsAffordable">, program: Pick<CounterProgram, "earnType" | "stampGoal"> | null | undefined): boolean {
+  if (m.rewardsAffordable.length > 0) return true;
+  return program?.earnType === "stamps" && !!program.stampGoal && m.balance >= program.stampGoal;
+}
+
+/**
+ * What the counter does for one identified member (cafes-retail.md 7.2): a ready reward is never stamped blindly;
+ * Stamp on scan stamps stamp and visit programs at once; per-dollar programs and "off" ask for one confirm tap.
+ */
+export function decideMember(m: Pick<staffApi.MemberSummaryDto, "balance" | "rewardsAffordable">, program: Pick<CounterProgram, "earnType" | "stampGoal" | "counterAutoStamp"> | null | undefined): "reward" | "stamp" | "confirm" {
+  if (isRewardReady(m, program)) return "reward";
+  if (program?.counterAutoStamp && program.earnType !== "per_dollar") return "stamp";
+  return "confirm";
+}
 
 export const initialCounterState: CounterState = { step: "entry", digits: "", error: null };
 
@@ -422,6 +455,20 @@ export function counterReducer(state: CounterState, action: CounterAction): Coun
     }
     case "lookupResult": {
       const { res } = action;
+      if (action.program !== undefined) {
+        // Scan first: one match decides on its own; two or more show the list; none says so.
+        if (res.items.length === 1) {
+          const m = res.items[0]!;
+          const d = decideMember(m, action.program);
+          if (d === "reward") return { step: "reward", member: m };
+          if (d === "stamp") return { step: "stamping", member: m };
+          return { step: "customer", customer: { kind: "member", member: m }, amountCents: 0, noEarn: false, error: null, submitting: false };
+        }
+        if (res.items.length > 1) return { step: "pick", digits: action.digits, matches: res.items.slice(0, 5) };
+        if (res.normalizedPhone) return { step: "customer", customer: { kind: "new", phone: res.normalizedPhone, digits: action.digits }, amountCents: 0, noEarn: false, error: null, submitting: false };
+        if (res.matchedBy === "last4") return { step: "nomatch", digits: action.digits };
+        return { step: "notice", tone: "danger", message: "This QR code isn't active. Ask the customer to show their number." };
+      }
       if (res.items.length === 1 && res.matchedBy !== "last4") {
         return { step: "customer", customer: { kind: "member", member: res.items[0]! }, amountCents: 0, noEarn: false, error: null, submitting: false };
       }
@@ -445,8 +492,16 @@ export function counterReducer(state: CounterState, action: CounterAction): Coun
       };
     case "lookupError":
       return { step: "entry", digits: state.step === "lookingUp" ? state.digits : "", error: action.message };
-    case "pick":
+    case "toEntry":
+      return { step: "entry", digits: "", error: null };
+    case "pick": {
+      if (action.program !== undefined) {
+        const d = decideMember(action.member, action.program);
+        if (d === "reward") return { step: "reward", member: action.member };
+        if (d === "stamp") return { step: "stamping", member: action.member };
+      }
       return { step: "customer", customer: { kind: "member", member: action.member }, amountCents: 0, noEarn: false, error: null, submitting: false };
+    }
     case "identified":
       return { step: "customer", customer: action.customer, amountCents: 0, noEarn: false, error: null, submitting: false };
     case "toggleNoEarn":
@@ -474,4 +529,53 @@ export function awardRef(customer: CounterCustomer): { phone?: string; memberCod
   if (customer.kind === "member") return { memberId: customer.member.memberId };
   if (customer.kind === "new") return { phone: customer.phone };
   return customer.memberCode ? { memberCode: customer.memberCode } : { phone: customer.phone };
+}
+
+// ---------------------------------------------------------------------------
+// Scan-first copy (cafes-retail.md 7.2)
+// ---------------------------------------------------------------------------
+export const AUTO_RETURN_SECONDS = 3;
+export const SCAN_UNDO_SECONDS = 10;
+
+/** 1 -> "1st", 5 -> "5th", 12 -> "12th". */
+export function ordinal(n: number): string {
+  const t = n % 100;
+  return `${n}${t >= 11 && t <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+}
+
+/** "5th visit this month". */
+export const visitThisMonth = (n: number) => `${ordinal(Math.max(1, n))} visit this month`;
+
+/** "2 more for a free drink", or "Free drink ready". */
+export function stampsLeft(left: number, rewardName: string): string {
+  const what = /^free /i.test(rewardName) ? `a ${rewardName.toLowerCase()}` : rewardName;
+  return left <= 0 ? `${rewardName} ready` : `${left} more for ${what}`;
+}
+
+/** "Two members end in 1034". */
+export function matchesHeading(n: number, digits: string): string {
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+  return `${words[n] ?? n} member${n === 1 ? "" : "s"} end${n === 1 ? "s" : ""} in ${digits}`;
+}
+
+/** "in yesterday", "in 2 weeks ago": the second line of a match row. */
+export function cameInText(iso: string | null | undefined, now: Date): string {
+  if (!iso) return "new member";
+  const days = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
+  if (days === 0) return "in today";
+  if (days === 1) return "in yesterday";
+  if (days < 14) return `in ${days} days ago`;
+  if (days < 60) return `in ${Math.round(days / 7)} weeks ago`;
+  return `in ${Math.round(days / 30)} months ago`;
+}
+
+/** "(647) ···-1034" from the API's "(647) ***-1034". */
+export const maskedRow = (m: string | null | undefined) => (m ?? "").replace(/\*+/g, "···");
+
+/** Carry-over line on the reward screen: "Fatima has 11 stamps. 1 carries over after redeeming." */
+export function carryOverLine(name: string | null, balance: number, rewardCost: number, terminology: string): string {
+  const who = firstName(name) ?? "They";
+  const has = firstName(name) ? "has" : "have";
+  const carry = balance - rewardCost;
+  return `${who} ${has} ${formatPts(balance, terminology)}. ${carry > 0 ? `${carry} carries over after redeeming.` : "A fresh card starts after redeeming."}`;
 }

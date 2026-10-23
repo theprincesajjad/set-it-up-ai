@@ -112,12 +112,14 @@ export interface StatItem {
   delta?: { text: string; good: boolean | null; /** "vs previous 30 days", hidden on phones. */ context?: string } | null;
   caption?: ReactNode;
   href?: string;
+  /** Small dot before the label: "the shop must act" (accent), "waiting on a customer" (info), a problem (negative). */
+  dot?: DotTone;
 }
 
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
-export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 }) {
+export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5 }) {
   const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
-  const cols = n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
+  const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   return (
     <dl aria-label={label} className={cn("grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
       {items.map((s, idx) => {
@@ -125,7 +127,10 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
         const span = idx === items.length - 1 && items.length % 2 === 1 ? "col-span-2 lg:col-span-1" : "";
         const body = (
           <>
-            <dt className="text-meta text-fg-muted">{s.label}</dt>
+            <dt className="flex items-center gap-1.5 text-meta text-fg-muted">
+              {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent", info: "bg-location" }[s.dot])} /> : null}
+              {s.label}
+            </dt>
             <dd className="mt-1.5 text-[30px] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
               {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
             </dd>
@@ -269,7 +274,7 @@ export function Meter({ value, max, label, className, tone = "fg" }: { value: nu
 /* --------------------------------------------------------------- filters */
 
 /** Filter capsules row (Stripe / Square). Active = muted fill, never colour. */
-export function Capsules<T extends string>({ options, value, onChange, label, className }: { options: { value: T; label: string; count?: number | null }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
+export function Capsules<T extends string>({ options, value, onChange, label, className }: { options: { value: T; label: string; count?: number | null; /** Colour of the word while not selected: waiting on a customer (info) or a problem (negative). */ tone?: "info" | "negative" }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
   return (
     <div role="radiogroup" aria-label={label} className={cn("flex flex-wrap gap-1.5", className)}>
       {options.map((o) => {
@@ -283,7 +288,7 @@ export function Capsules<T extends string>({ options, value, onChange, label, cl
             onClick={() => onChange(o.value)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-meta transition-colors focus-visible:focus-ring",
-              on ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle",
+              on ? "border-fg bg-fg font-medium text-bg" : cn("border-line bg-bg hover:bg-bg-subtle", o.tone === "info" ? "text-location" : o.tone === "negative" ? "text-negative" : "text-fg"),
             )}
           >
             {o.label}

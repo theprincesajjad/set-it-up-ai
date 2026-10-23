@@ -17,6 +17,7 @@ import { TextField } from "@/components/ui/TextField";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate } from "@/lib/format";
+import { boardMeetingSoon, leadLanguageName } from "@/lib/leads";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";
 
@@ -38,6 +39,7 @@ export default function LeadsPage() {
     { key: "name", header: "Business", mobile: "title", sortValue: (l) => l.businessName, cell: (l) => <span className="font-medium">{l.businessName}</span> },
     { key: "stage", header: "Stage", mobile: "trailing", cell: (l) => <Badge>{STAGE_LABEL[l.stage]}</Badge> },
     { key: "vertical", header: "Type", mobile: "subtitle", cell: (l) => (l.vertical ? verticalLabel(l.vertical) : "–") },
+    { key: "extra", header: "Language / board", mobile: "hidden", cell: (l) => [leadLanguageName(l.language), l.boardMeetingAt ? `Board ${formatDate(`${l.boardMeetingAt}T12:00:00`)}${boardMeetingSoon(l) ? " (soon)" : ""}` : null].filter(Boolean).join(" · ") || "–" },
     { key: "next", header: "Next action", mobile: "subtitle", sortValue: (l) => l.nextActionAt ?? "~", cell: (l) => (l.nextActionAt ? formatDate(l.nextActionAt, true) : "–") },
     { key: "acts", header: "Activity", align: "end", mobile: "hidden", cell: (l) => l.activityCount },
   ];
@@ -67,6 +69,13 @@ export default function LeadsPage() {
                       <p className="text-meta-strong text-fg">{l.businessName}</p>
                       <p className="text-meta text-fg-muted">{[l.vertical ? verticalLabel(l.vertical) : null, l.contactName].filter(Boolean).join(" · ") || "No details yet"}</p>
                       {l.nextActionAt ? <p className="mt-1 text-caption text-fg-muted">Next: {formatDate(l.nextActionAt, true)}</p> : null}
+                      {leadLanguageName(l.language) ? <p className="mt-1 text-caption text-fg-muted">Speaks {leadLanguageName(l.language)}</p> : null}
+                      {l.boardMeetingAt ? (
+                        <p className="mt-1 text-caption text-fg-muted">
+                          Board meets {formatDate(`${l.boardMeetingAt}T12:00:00`)}
+                          {boardMeetingSoon(l) ? <Badge tone="accent" className="ms-1.5 h-5">Within 30 days</Badge> : null}
+                        </p>
+                      ) : null}
                     </Link>
                   ))}
                 </section>

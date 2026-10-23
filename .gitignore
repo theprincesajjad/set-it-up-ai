@@ -12,3 +12,4 @@ coverage/
 .pglite/
 *.tsbuildinfo
 __pycache__/
+apps/api/data/

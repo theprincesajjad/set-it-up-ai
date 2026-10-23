@@ -5,9 +5,9 @@
  * Flow: draft → sent (public link /q/<token>) → approved | declined | expired.
  * A new quote on the same ticket supersedes any draft/sent one.
  */
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
-import { merchantCategories, quotes, serviceTickets, type DbOrTx, type LineItem } from "@ll/db";
-import type { serviceApi } from "@ll/shared";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
+import { merchantCategories, quotes, serviceTickets, type DbOrTx, type LineItem, type QuoteAuthorization } from "@ll/db";
+import { maxAuthorizedCents, t, type serviceApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -17,8 +17,9 @@ import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { iso, itemLabel, loadMerchant, money, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
-import { computeTax, merchantProvince } from "./tax.js";
-import { TERMINAL_TICKET_STATUSES, addTicketEvent, getMerchantTicket, setTicketStatusRaw, type Ticket } from "./tickets.js";
+import { customerLocale, withLang } from "./service-messages.js";
+import { merchantTax } from "./tax.js";
+import { TERMINAL_TICKET_STATUSES, addTicketEvent, ensureStatusToken, getMerchantTicket, setTicketStatusRaw, type Ticket } from "./tickets.js";
 
 export type Quote = typeof quotes.$inferSelect;
 type Merchant = NonNullable<Awaited<ReturnType<typeof loadMerchant>>>;
@@ -48,6 +49,9 @@ export function quoteDto(q: Quote, publicWebUrl: string, forStaff: boolean): ser
     declineReason: q.declineReason,
     depositPaidAt: iso(q.depositPaidAt),
     createdAt: q.createdAt.toISOString(),
+    firstViewedAt: iso(q.firstViewedAt),
+    authorizedBy: q.authorizedBy ?? null,
+    maxAuthorizedCents: maxAuthorizedCents(q.totalCents),
   };
 }
 
@@ -58,10 +62,20 @@ export async function priceLineItems(db: DbOrTx, merchant: Merchant, input: z.in
     const found = await db.select({ id: merchantCategories.id }).from(merchantCategories).where(and(eq(merchantCategories.merchantId, merchant.id), inArray(merchantCategories.id, catIds)));
     if (found.length !== catIds.length) throw badRequest("Unknown category on a line item");
   }
-  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null }));
+  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null, ...(l.serviceId ? { serviceId: l.serviceId } : {}) }));
   const subtotalCents = lineItems.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0);
-  const tax = computeTax(subtotalCents, await merchantProvince(db, merchant));
-  return { lineItems, subtotalCents, taxCents: tax.taxCents, totalCents: subtotalCents + tax.taxCents };
+  if (subtotalCents < 0) throw badRequest("Credits can't be more than the lines they apply to");
+  // Tax comes from the shop's province and tax registration, never from the client.
+  const tax = await merchantTax(db, merchant, subtotalCents);
+  return { lineItems, subtotalCents, taxCents: tax.taxCents, totalCents: subtotalCents + tax.taxCents, taxLines: tax.lines.map((l) => ({ label: l.label, cents: l.cents })), taxLabel: tax.label };
+}
+
+/** Totals for a quote that is still being built: the server's tax and deposit, and the 10% cap the customer will be shown. */
+export async function previewQuote(db: DbOrTx, merchant: Merchant, body: z.infer<typeof serviceApi.previewQuoteBody>): Promise<serviceApi.QuotePreviewResponse> {
+  if (!body.lineItems.length) return { subtotalCents: 0, taxCents: 0, taxLabel: (await merchantTax(db, merchant, 0)).label, taxLines: [], totalCents: 0, depositCents: 0, maxAuthorizedCents: 0 };
+  const priced = await priceLineItems(db, merchant, body.lineItems);
+  const depositCents = Math.min(priced.totalCents, Math.max(0, body.depositCents ?? (body.depositPercent ? Math.round((priced.totalCents * body.depositPercent) / 100) : 0)));
+  return { subtotalCents: priced.subtotalCents, taxCents: priced.taxCents, taxLabel: priced.taxLabel, taxLines: priced.taxLines, totalCents: priced.totalCents, depositCents, maxAuthorizedCents: maxAuthorizedCents(priced.totalCents) };
 }
 
 export async function getMerchantQuote(db: DbOrTx, merchantId: string, quoteId: string): Promise<Quote> {
@@ -126,14 +140,15 @@ export async function sendQuote(ctx: AppContext, staff: StaffContext, quoteId: s
   } else if (quote.expiresAt && quote.expiresAt <= now) {
     throw new HttpError(409, "quote_expired", "This quote has expired. Create a new one.");
   }
-  const url = `${ctx.config.publicWebUrl}/q/${updated.approvalToken}`;
+  const locale = await customerLocale(ctx.db, ticket.userId);
+  const url = withLang(`${ctx.config.publicWebUrl}/q/${updated.approvalToken}`, locale);
   const item = itemLabel(ticket.itemKind, ticket.itemDetails);
-  const deposit = updated.depositCents > 0 ? ` (${money(updated.depositCents)} deposit on approval)` : "";
+  const deposit = updated.depositCents > 0 ? t(locale, "sv.msg.depositClause", { amount: money(updated.depositCents) }) : "";
   await notifyCustomer(ctx, {
     userId: ticket.userId,
     merchantId: merchant.id,
-    title: `${merchant.name}: quote ready`,
-    body: `Your quote for ${item} (ticket #${ticket.number}) is ${money(updated.totalCents)}${deposit}. Review and approve: ${url}`,
+    title: t(locale, "sv.msg.quoteReadyTitle", { shop: merchant.name }),
+    body: t(locale, "sv.msg.quoteReady", { item, n: ticket.number, total: money(updated.totalCents), deposit, url }),
     data: { type: "quote_sent", ticketId: ticket.id, quoteId: updated.id, url },
   });
   return quoteDto(updated, ctx.config.publicWebUrl, true);
@@ -183,7 +198,7 @@ export async function respondToQuote(ctx: AppContext, quote: Quote, args: Respon
     .update(quotes)
     .set(
       args.action === "approve"
-        ? { status: "approved", respondedAt: now, signatureName, signatureIp: args.ip ?? null, signatureUserAgent: args.userAgent?.slice(0, 500) ?? null }
+        ? { status: "approved", respondedAt: now, signatureName, signatureIp: args.ip ?? null, signatureUserAgent: args.userAgent?.slice(0, 500) ?? null, authorizedBy: { method: "link" as const, name: signatureName!, at: now.toISOString() } }
         : { status: "declined", respondedAt: now, declineReason: args.reason?.trim() || null, signatureIp: args.ip ?? null, signatureUserAgent: args.userAgent?.slice(0, 500) ?? null },
     )
     .where(and(eq(quotes.id, quote.id), eq(quotes.status, "sent")))
@@ -299,4 +314,63 @@ export async function getMyQuote(db: DbOrTx, userId: string, quoteId: string): P
     .limit(1);
   if (!row || row.q.status === "draft") throw notFound("Quote");
   return row.q;
+}
+
+// ---------------------------------------------------------------------------
+// "Opened" signal and phone approval
+// ---------------------------------------------------------------------------
+/**
+ * Public link opened by the customer: stamp the first time only (conditional update, so two tabs or a retry never move it)
+ * and leave an internal timeline note for staff. Staff previews never call this.
+ */
+export async function markQuoteViewed(ctx: AppContext, quote: Quote): Promise<Quote> {
+  if (quote.firstViewedAt || quote.status === "draft") return quote;
+  const [row] = await ctx.db.update(quotes).set({ firstViewedAt: ctx.now() }).where(and(eq(quotes.id, quote.id), isNull(quotes.firstViewedAt))).returning();
+  if (!row) return { ...quote, firstViewedAt: quote.firstViewedAt };
+  await addTicketEvent(ctx.db, quote.ticketId, { note: "Quote opened by the customer", visibleToCustomer: false });
+  return row;
+}
+
+/**
+ * The customer said yes by phone. Records who, their number and when (name, date, time and phone are what Ontario's
+ * auto-repair rules ask for on a spoken authorisation, and we keep them for every kind of ticket). Idempotent: a second
+ * call on an approved quote returns it unchanged. A draft, sent or expired quote can be approved this way.
+ */
+export async function authorizeQuoteByPhone(ctx: AppContext, staff: StaffContext, quoteId: string, body: z.infer<typeof serviceApi.authorizeQuoteByPhoneBody>) {
+  const merchant = staff.merchant;
+  const quote = await getMerchantQuote(ctx.db, merchant.id, quoteId);
+  if (quote.status === "approved") return { quote: quoteDto(quote, ctx.config.publicWebUrl, true), ticketStatus: (await getMerchantTicket(ctx.db, merchant.id, quote.ticketId)).status, deposit: null };
+  if (quote.status !== "draft" && quote.status !== "sent" && quote.status !== "expired") throw conflict(quote.status === "superseded" ? "This quote was replaced by a newer one" : `This quote was already ${quote.status}`);
+  const ticket = await getMerchantTicket(ctx.db, merchant.id, quote.ticketId);
+  if (TERMINAL_TICKET_STATUSES.includes(ticket.status)) throw conflict(`Ticket is ${ticket.status.replace("_", " ")}`);
+  const now = ctx.now();
+  const auth: QuoteAuthorization = { method: "phone", name: body.name.trim(), phone: body.phone?.trim() || null, note: body.note?.trim() || null, at: now.toISOString(), staffId: staff.user.id };
+  const [updated] = await ctx.db
+    .update(quotes)
+    .set({ status: "approved", respondedAt: now, signatureName: auth.name, sentAt: quote.sentAt ?? now, authorizedBy: auth })
+    .where(and(eq(quotes.id, quote.id), inArray(quotes.status, ["draft", "sent", "expired"])))
+    .returning();
+  if (!updated) throw conflict("This quote was just updated. Refresh and try again.");
+  await ctx.db.update(quotes).set({ status: "superseded" }).where(and(eq(quotes.ticketId, ticket.id), eq(quotes.merchantId, merchant.id), inArray(quotes.status, ["draft", "sent"]), ne(quotes.id, quote.id)));
+  const local = new Intl.DateTimeFormat("en-CA", { timeZone: merchant.timezone, dateStyle: "medium", timeStyle: "short" }).format(now);
+  const newTicket = await setTicketStatusRaw(ctx.db, now, ticket, "approved", {
+    note: `Approved by phone, ${auth.name}, ${local}${auth.phone ? `, ${auth.phone}` : ""}${auth.note ? `. ${auth.note}` : ""} (${money(quote.totalCents)})`,
+    visibleToCustomer: true,
+    actorUserId: staff.user.id,
+  });
+  // A deposit, if one is due, is paid from the same link as always; the text carries it.
+  const locale = await customerLocale(ctx.db, ticket.userId);
+  const url = withLang(`${ctx.config.publicWebUrl}/q/${updated.approvalToken}`, locale);
+  const deposit = await depositPayment(ctx, merchant, updated).catch(() => null);
+  const depositDue = updated.depositCents > 0 && !updated.depositPaidAt;
+  await notifyCustomer(ctx, {
+    userId: ticket.userId,
+    merchantId: merchant.id,
+    title: t(locale, "sv.msg.quoteReadyTitle", { shop: merchant.name }),
+    body: depositDue
+      ? t(locale, "sv.msg.phoneApprovedDeposit", { name: auth.name, shop: merchant.name, n: ticket.number, amount: money(updated.depositCents), url })
+      : t(locale, "sv.msg.phoneApproved", { name: auth.name, shop: merchant.name, n: ticket.number, url: withLang(`${ctx.config.publicWebUrl}/t/${(await ensureStatusToken(ctx.db, ticket)).statusToken}`, locale) }),
+    data: { type: "quote_sent", ticketId: ticket.id, quoteId: updated.id, url },
+  });
+  return { quote: quoteDto(updated, ctx.config.publicWebUrl, true), ticketStatus: newTicket.status, deposit };
 }

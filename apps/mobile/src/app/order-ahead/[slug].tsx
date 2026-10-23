@@ -1,4 +1,4 @@
-import type { commerceApi } from "@ll/shared";
+import { halalBanner, type commerceApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
@@ -15,11 +15,20 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { Banner, Button, Card, Chip, EmptyState, ErrorState, IconButton, ListRow, LockedFeature, Minus, Plus, Screen, Section, Sheet, ShoppingBag, SkeletonList, Text, TextField } from "../../ui";
 
+/** The shop's halal block above the menu: what the owner stated, once, instead of a certifier on every dish. */
+function HalalNote({ cert, date }: { cert: NonNullable<commerceApi.PublicMenuResponse["halalCertification"]>; date: ReturnType<typeof useLocale>["date"] }) {
+  const { t } = useLocale();
+  const b = halalBanner(cert, t, (d) => date(`${d}T12:00:00Z`, { month: "short", year: "numeric" }, "UTC"));
+  return (
+    <Banner variant="neutral">{[b.title, b.sub, b.note].filter(Boolean).join(". ")}</Banner>
+  );
+}
+
 /** Order-ahead (Phase 2, orders.order_ahead): menu → cart → pickup time → place order → tracker. */
 export default function OrderAhead() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const qc = useQueryClient();
-  const { t: tr, money, pick, time } = useLocale();
+  const { t: tr, money, pick, time, date } = useLocale();
   const menu = useOrderAhead(slug);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [item, setItem] = useState<commerceApi.CatalogItemDto | null>(null);
@@ -103,6 +112,7 @@ export default function OrderAhead() {
       }
     >
       <LanguageSwitcher />
+      {m.halalCertification ? <HalalNote cert={m.halalCertification} date={date} /> : null}
       <Text color="fgMuted">{`Pick up at ${location?.name ?? m.merchant.name}${location?.address ? `, ${location.address}` : ""}. Pay at pickup.`}</Text>
       {sections.length === 0 ? <EmptyState icon={ShoppingBag} title="Nothing to order right now" body="Check back later." /> : null}
       {sections.map((sec) => (

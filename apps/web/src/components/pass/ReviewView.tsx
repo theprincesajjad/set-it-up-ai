@@ -6,14 +6,17 @@ import { Banner } from "@/components/ui/Banner";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { TextField } from "@/components/ui/TextField";
-import { browserApi } from "@/lib/api/browser";
+import { browserApi, browserClient } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { useLocale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
+import { restaurantCustomerApi } from "@/lib/restaurant/api";
+
+const restaurantApi = restaurantCustomerApi(browserClient);
 
 /**
- * /r/<token>: one-tap rating, optional private note, then the Google review link. The link is always
- * offered when the shop has one (Google's policy: never gate reviews on the rating) and leads for 4 and 5 stars.
+ * /r/<token>: one-tap rating, an optional private note, and two equal buttons: send to the restaurant, or leave a public Google
+ * review. Both show at every rating, in the same place and weight (Google's policy: ask every guest the same way, never gate by rating).
  */
 export function ReviewView({ token, initial }: { token: string; initial: whatsappApi.PublicReviewView }) {
   const { number, t, rich } = useLocale();
@@ -26,7 +29,6 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
   const url = done?.googleReviewUrl ?? initial.googleReviewUrl;
   const answered = done !== null || initial.alreadyResponded;
   const finalRating = done?.rating ?? initial.rating ?? rating;
-  const lead = finalRating >= 4;
 
   async function submit() {
     if (!rating) return;
@@ -41,9 +43,10 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
     }
   }
 
+  // Same button, same weight, whatever the rating. Opening it is counted once so the owner can see how many guests used it.
   const google = url ? (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: lead ? "primary" : "secondary", size: "lg", fullWidth: true })}>
-      {lead ? t("review.googleLead") : t("review.googleAlso")}
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={() => void restaurantApi.reviewGoogleOpened(token).catch(() => undefined)} className={buttonClasses({ variant: "secondary", size: "lg", fullWidth: true })}>
+      {t("review.google")}
     </a>
   ) : null;
 
@@ -57,7 +60,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
       {answered ? (
         <section aria-live="polite" className="flex flex-col gap-4">
           <Stars value={finalRating} readOnly label={(n) => t("review.stars", { n: number(n) })} />
-          <h1 className="text-title text-fg [text-wrap:balance]">{done ? rich(lead ? "review.thanksHigh" : "review.thanksLow", { shop: shop.name }) : t("review.alreadyRated", { n: number(finalRating) })}</h1>
+          <h1 className="text-title text-fg [text-wrap:balance]">{done ? rich("review.thanks", { shop: shop.name }) : t("review.alreadyRated", { n: number(finalRating) })}</h1>
           {google}
         </section>
       ) : (
@@ -67,21 +70,20 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
             <p className="mt-1 text-body text-fg-muted">{t("review.sub")}</p>
           </div>
           <Stars value={rating} onChange={setRating} label={(n) => t("review.stars", { n: number(n) })} />
-          {rating ? (
-            <form
-              className="flex flex-col gap-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void submit();
-              }}
-            >
-              <TextField type="textarea" label={t("review.feedbackLabel")} hint={rich("review.feedbackHint", { shop: shop.name })} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} optionalLabel={false} autoFocus />
-              {error ? <Banner tone="danger">{error}</Banner> : null}
-              <Button type="submit" size="lg" fullWidth loading={busy}>
-                {t("review.send")}
-              </Button>
-            </form>
-          ) : null}
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            <TextField type="textarea" label={t("review.feedbackLabel")} hint={rich("review.feedbackHint", { shop: shop.name })} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} optionalLabel={false} rows={3} />
+            {error ? <Banner tone="danger">{error}</Banner> : null}
+            <Button type="submit" size="lg" fullWidth loading={busy} disabled={!rating}>
+              {t("review.sendPrivate")}
+            </Button>
+            {google}
+          </form>
         </section>
       )}
     </div>

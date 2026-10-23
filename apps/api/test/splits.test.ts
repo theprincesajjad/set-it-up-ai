@@ -78,7 +78,8 @@ describe("split bills", () => {
 
     // Every line must be assigned once.
     expect((await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "items", splits: [{ itemIds: [id(karahi.id)] }, { itemIds: [id(naan.id)] }] })).status).toBe(400);
-    expect((await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "items", splits: [{ itemIds: [id(karahi.id), id(naan.id)] }, { itemIds: [id(naan.id), id(lassi.id)] }] })).status).toBe(400);
+    // A dish given to two guests is shared between them (the old "one split per item" rule is gone), but an item that is on nobody's bill is not allowed.
+    expect((await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "items", splits: [{ itemIds: [id(karahi.id), id(naan.id)] }, { itemIds: [id(karahi.id)] }] })).status).toBe(400);
     expect((await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "items", splits: [{ itemIds: ["00000000-0000-4000-8000-000000000000"] }, { itemIds: [id(karahi.id), id(naan.id), id(lassi.id)] }] })).status).toBe(400);
 
     const r = await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), {

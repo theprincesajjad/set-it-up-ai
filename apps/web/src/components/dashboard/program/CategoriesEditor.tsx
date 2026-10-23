@@ -10,13 +10,16 @@ import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { copy } from "@/copy/en-CA";
 import { errorMessage } from "@/lib/api/errors";
+import { categoriesVisible } from "@/lib/dashboard/program";
 
 /** Categories that don't earn (merchant-dashboard.md §5.4). Regulated ones are locked with an explanation. */
 export function CategoriesEditor({ categories, onChange }: { categories: merchantApi.Category[]; onChange: (c: merchantApi.Category[]) => void }) {
-  const { api, detail } = useMerchant();
+  const { api, detail, enabled } = useMerchant();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [why, setWhy] = useState<string | null>(null);
+  // Compliance for pharmacy, grocery and retail (or a connected POS with synced categories). Cafés never see it; their stored categories stay.
+  if (!categoriesVisible(detail.merchant.vertical, categories, enabled("integrations.pos_auto_award"))) return null;
   const replace = (c: merchantApi.Category) => onChange(categories.some((x) => x.id === c.id) ? categories.map((x) => (x.id === c.id ? c : x)) : [...categories, c]);
   const set = async (c: merchantApi.Category, body: Partial<merchantApi.Category>) => {
     setError(null);

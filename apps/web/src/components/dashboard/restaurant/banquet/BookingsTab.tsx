@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { restaurantApi } from "@ll/shared";
 import { Capsules, DefList, Dot, EmptyState, Section, SidePanel as Sheet, type DotTone } from "@/components/dashboard/kit";
+import { useSearchParams } from "next/navigation";
+import { RecordPaymentPanel } from "../RecordPaymentPanel";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PaymentBox } from "@/components/pass/PaymentBox";
@@ -17,7 +19,7 @@ import { formatDateTime, formatMoney, formatNumber, formatTime } from "@/lib/for
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS } from "../catering/labels";
 import { NO_REFUND, RefundChoice, refundBody, refundedText, type RefundState } from "../RefundChoice";
-import { CheckRow, FormGrid, Loader, NumberField, addDaysISO, bpsToPct, dayLabel, todayISO, torontoDay, torontoInstant } from "../common";
+import { FormGrid, Loader, NumberField, addDaysISO, bpsToPct, dayLabel, todayISO, torontoDay, torontoInstant } from "../common";
 import { BOOKING_LABEL, BOOKING_ORDER } from "./labels";
 
 type Gate = { featureKey: "restaurant.banquet"; title: string; what: string };
@@ -63,7 +65,8 @@ export function BookingsTab({ gate, goHalls, holding, onNewHold, onHoldClose }: 
   const halls = useApi(() => api.banquet.halls(), [api]);
   const [filter, setFilter] = useState<Filter>("all");
   const [hallId, setHallId] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const sp = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(sp.get("booking"));
   const all = state.data?.items ?? [];
   const sorted = [...all].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const rows = sorted.filter((b) => (filter === "all" || b.status === filter) && (!hallId || b.hallId === hallId));
@@ -118,7 +121,8 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
   const toast = useToast();
   const act = useAction();
   const left = useHoldLeft(b.status === "hold" ? b.holdExpiresAt : null);
-  const [receivedOutside, setReceivedOutside] = useState(false);
+  const [recording, setRecording] = useState<number | null>(null);
+  const payee = useApi(() => api.settings.payment(), [api]);
   const [pay, setPay] = useState<{ paymentIntentId: string; clientSecret: string; amountCents: number } | null>(null);
   const [noCard, setNoCard] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -144,6 +148,23 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
   };
   return (
     <>
+      {recording !== null && b.schedule[recording] ? (
+        <RecordPaymentPanel
+          subtitle={`${b.hallName ?? "Hall"}, ${EVENT_TYPE_LABEL[b.eventType].toLowerCase()} · ${when(b)}`}
+          rows={[
+            { label: b.schedule[recording]!.label, value: <strong>{formatMoney(b.schedule[recording]!.amountCents)}</strong> },
+            ...(payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
+            ...(b.referenceCode ? [{ label: "Reference in message", value: <strong>{b.referenceCode}</strong> }] : []),
+          ]}
+          amountCents={b.schedule[recording]!.amountCents}
+          note={recording === 0 ? "Check the deposit in your bank first. Recording it marks the first payment as in, then you can confirm the booking." : "Check the payment in your bank first."}
+          onClose={() => setRecording(null)}
+          onRecord={async (body) => {
+            await api.banquet.recordPayment(b.id, { ...body, instalmentIndex: recording });
+            await reload();
+          }}
+        />
+      ) : null}
       <Sheet open onClose={onClose} label="Hall booking" title={`${b.hallName ?? "Hall"}, ${EVENT_TYPE_LABEL[b.eventType].toLowerCase()}`} subtitle={when(b)} width={480}>
         <div className="flex flex-col gap-5">
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -159,28 +180,59 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
             { label: "Package", value: b.packageName ?? "Room only" },
             { label: "Total with tax", value: formatMoney(b.totalCents) },
             { label: "Deposit", value: b.depositPaidAt ? `${formatMoney(b.depositCents)} paid ${formatDateTime(b.depositPaidAt)}` : `${formatMoney(b.depositCents)} due` },
+            ...(b.referenceCode ? [{ label: "Reference", value: b.referenceCode }] : []),
             ...(b.depositRefundCents > 0 ? [{ label: "Refund", value: refundedText(b.depositRefundCents, b.depositRefundedAt, formatDateTime) ?? "" }] : []),
             ...(b.refundPolicy ? [{ label: "Customer cancels", value: policyText(b.refundPolicy) }] : []),
             ...(b.notes ? [{ label: "Notes", value: b.notes }] : []),
           ]} />
 
+          {b.schedule.length && b.status !== "cancelled" ? (
+            <Section title="Payment schedule" description={b.schedule.every((r) => r.paidAt) ? "Paid in full." : undefined}>
+              <ul className="divide-y divide-line border-y border-line">
+                {b.schedule.map((r, i) => {
+                  const due = !r.paidAt;
+                  const first = due && b.schedule.findIndex((x) => !x.paidAt) === i;
+                  return (
+                    <li key={`${r.label}-${i}`} className="flex items-start justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-body-strong text-fg">{r.label} ({bpsToPct(Math.round((r.amountCents / Math.max(1, b.totalCents)) * 10_000))})</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-meta text-fg-muted">
+                          <span aria-hidden className={`size-1.5 rounded-full ${r.paidAt ? "bg-positive" : i === 0 && hold ? "bg-accent" : "bg-fg-subtle"}`} />
+                          {r.paidAt ? `Paid ${dayLabel(r.paidAt.slice(0, 10))}` : i === 0 && hold ? "Due before the hold ends" : `Due ${dayLabel(r.dueOn)}`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-body tabular text-fg">{formatMoney(r.amountCents)}</span>
+                        {first && live && !left?.lapsed ? <button type="button" onClick={() => setRecording(i)} className="rounded-sm text-meta font-medium text-fg underline underline-offset-4 hover:no-underline focus-visible:focus-ring">Record payment</button> : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {b.manual && live ? <Banner tone="info" className="mt-3">Customer was told to send {formatMoney(b.manual.amountCents)} to {b.manual.email} with {b.manual.referenceCode} in the message.</Banner> : null}
+              {b.payments?.length ? (
+                <ul className="mt-2 text-caption text-fg-muted">
+                  {b.payments.filter((p) => !p.voidedAt).map((p) => <li key={p.id}>{formatMoney(p.amountCents)} by {p.method === "etransfer" ? "e-transfer" : p.method}, {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</li>)}
+                </ul>
+              ) : null}
+            </Section>
+          ) : null}
+
           {hold && !left?.lapsed ? (
-            <Section title="Deposit" description={depositDue ? `${formatMoney(b.depositCents)} locks in the date.` : "No deposit due."}>
+            <Section title="Deposit" description={depositDue ? `${formatMoney(b.depositCents)} locks in the date.` : "Deposit is in."}>
               <div className="flex flex-col gap-3">
                 {depositDue ? (
-                  <>
-                    {pay ? (
-                      <PaymentBox paymentIntentId={pay.paymentIntentId} clientSecret={pay.clientSecret} amountCents={pay.amountCents} label={`Take ${formatMoney(pay.amountCents)} deposit`} onPaid={async () => { toast({ message: "Deposit taken", tone: "success" }); setPay(null); await reload(); }} />
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="secondary" loading={act.busy} onClick={async () => { const r = await act.run(() => api.banquet.deposit(b.id)); if (r?.deposit?.clientSecret) setPay({ paymentIntentId: r.deposit.paymentIntentId, clientSecret: r.deposit.clientSecret, amountCents: r.deposit.amountCents }); else if (r) setNoCard(true); }}>Take deposit by card</Button>
-                      </div>
-                    )}
-                    {noCard ? <p className="text-meta text-fg-muted">Card payments aren&apos;t set up for your shop yet. If they paid you directly, tick the box below and confirm.</p> : null}
-                    <CheckRow checked={receivedOutside} onChange={setReceivedOutside} label={`I received the ${formatMoney(b.depositCents)} deposit in cash or by e-transfer`} />
-                  </>
+                  pay ? (
+                    <PaymentBox paymentIntentId={pay.paymentIntentId} clientSecret={pay.clientSecret} amountCents={pay.amountCents} label={`Take ${formatMoney(pay.amountCents)} deposit`} onPaid={async () => { toast({ message: "Deposit taken", tone: "success" }); setPay(null); await reload(); }} />
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" loading={act.busy} onClick={async () => { const r = await act.run(() => api.banquet.deposit(b.id)); if (r?.deposit?.clientSecret) setPay({ paymentIntentId: r.deposit.paymentIntentId, clientSecret: r.deposit.clientSecret, amountCents: r.deposit.amountCents }); else if (r) setNoCard(true); }}>Take deposit by card</Button>
+                      <Button size="sm" variant="secondary" onClick={() => setRecording(0)}>Record deposit received</Button>
+                    </div>
+                  )
                 ) : null}
-                <div><Button size="sm" loading={act.busy} disabled={depositDue && !receivedOutside} onClick={() => void run(() => api.banquet.confirm(b.id, depositDue && receivedOutside), "Booking confirmed")}>Confirm booking</Button></div>
+                {noCard ? <p className="text-meta text-fg-muted">Card payments aren&apos;t set up for your shop yet. Record the deposit once they have paid you by e-transfer or cash.</p> : null}
+                <div><Button size="sm" loading={act.busy} disabled={depositDue} onClick={() => void run(() => api.banquet.confirm(b.id, false), "Booking confirmed")}>Confirm booking</Button></div>
               </div>
             </Section>
           ) : null}

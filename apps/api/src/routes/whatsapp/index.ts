@@ -3,7 +3,7 @@
  * and the public pay page data for WhatsApp orders.
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { whatsappApi } from "@ll/shared";
+import { restaurantApi, whatsappApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser } from "../../lib/auth.js";
 import { forbidden } from "../../lib/errors.js";
@@ -11,6 +11,7 @@ import { parse } from "../../lib/validate.js";
 import { verifyHubSignature, verifyWebhookChallenge } from "../../providers/whatsapp.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/whatsapp.js";
+import * as inbox from "../../services/whatsappInbox.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
@@ -62,7 +63,39 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/merchants/:merchantId/whatsapp/sessions", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
     await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
-    return { items: await svc.listSessions(ctx, s.merchant.id) };
+    return { items: await inbox.listInbox(ctx, s.merchant.id) };
+  });
+
+  // ---- Inbox: one chat, a reply from a person, take over from the assistant, the guest panel ----
+  app.get("/merchants/:merchantId/whatsapp/sessions/:sessionId/messages", async (req: Req<{ sessionId: string }>) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    return inbox.messagesFor(ctx, s.merchant, req.params.sessionId);
+  });
+
+  app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/messages", async (req: Req<{ sessionId: string }>, reply) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    const body = parse(restaurantApi.sendChatMessageBody, req.body);
+    return reply.status(201).send(await inbox.sendFromStaff(ctx, s, req.params.sessionId, body.text));
+  });
+
+  app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/takeover", async (req: Req<{ sessionId: string }>) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    return inbox.takeOver(ctx, s, req.params.sessionId);
+  });
+
+  app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/release", async (req: Req<{ sessionId: string }>) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    return inbox.release(ctx, s, req.params.sessionId);
+  });
+
+  app.get("/merchants/:merchantId/whatsapp/sessions/:sessionId/guest", async (req: Req<{ sessionId: string }>) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    return inbox.guestPanel(ctx, s.merchant, req.params.sessionId);
   });
 
   // ---- Consent ----

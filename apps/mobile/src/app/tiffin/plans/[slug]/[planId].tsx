@@ -33,7 +33,7 @@ export default function TiffinPlanDetail() {
   const [addressNotes, setAddressNotes] = useState("");
   const [dietaryNotes, setDietaryNotes] = useState("");
   const [startDate, setStartDate] = useState<string | null>(null);
-  const [method, setMethod] = useState<"card" | "pad">("card");
+  const [method, setMethod] = useState<"card" | "pad" | "etransfer" | "cash" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
@@ -59,6 +59,11 @@ export default function TiffinPlanDetail() {
   const postalOk = mode === "pickup" || isPostalCode(postal);
   const addressOk = mode === "pickup" || address.trim().length >= 3;
   const valid = postalOk && addressOk;
+  // Methods this kitchen takes: card and bank debit need its Stripe account; e-transfer and cash are recorded by the kitchen by hand.
+  const accepted = q.data.accepted ?? { card: true, pad: q.data.padEnabled, etransfer: false, cash: false };
+  const methods = (["card", "pad", "etransfer", "cash"] as const).filter((m) => accepted[m]);
+  const chosen = method && methods.includes(method) ? method : (methods[0] ?? "card");
+  const byHand = chosen === "etransfer" || chosen === "cash";
 
   const submit = async () => {
     setTouched(true);
@@ -74,7 +79,7 @@ export default function TiffinPlanDetail() {
           ...(mode === "delivery" ? { address: address.trim(), postalCode: postal.trim().toUpperCase(), ...(addressNotes.trim() ? { addressNotes: addressNotes.trim() } : {}) } : {}),
           ...(dietaryNotes.trim() ? { dietaryNotes: dietaryNotes.trim() } : {}),
           startDate: start,
-          paymentMethod: method,
+          paymentMethod: chosen,
         },
         idemKey,
       );
@@ -83,7 +88,7 @@ export default function TiffinPlanDetail() {
       toast({ tone: "success", message: t("rest.tiffin.subscribed", { plan: tr.name }) });
       router.replace(`/tiffin/${res.subscription.id}`);
       // The card is confirmed on the web pay page; the subscription screen shows "pay now" if it is not finished.
-      if (res.payment) await pay(res.payment);
+      if (res.payment && !res.manual) await pay(res.payment);
     } catch (e) {
       if (isApiError(e) && e.status < 500) setIdemKey(newIdempotencyKey());
       setError(errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
@@ -183,7 +188,7 @@ export default function TiffinPlanDetail() {
         title={t("rest.tiffin.subscribe")}
         footer={
           <Button size="lg" fullWidth loading={submitting} onPress={submit}>
-            {`${t("rest.tiffin.subscribeAndPay")} · ${money(total)}`}
+            {byHand ? t("tcb.pay.subscribeManual", { amount: money(total) }) : `${t("rest.tiffin.subscribeAndPay")} · ${money(total)}`}
           </Button>
         }
       >
@@ -217,16 +222,19 @@ export default function TiffinPlanDetail() {
           max={addDays(today, 60)}
           hint={plan.daysOfWeek.includes(weekdayOf(start)) ? null : t("rest.tiffin.firstMeal", { date: date(dayToDate(firstServiceDay(plan.daysOfWeek, start)), { weekday: "long", day: "numeric", month: "short" }) })}
         />
-        {q.data.padEnabled ? (
-          <ChipGroup
-            label={t("rest.tiffin.payWith")}
-            value={method}
-            onChange={setMethod}
-            options={[
-              { value: "card", label: t("rest.tiffin.card") },
-              { value: "pad", label: t("rest.tiffin.pad") },
-            ]}
-          />
+        {methods.length > 1 || byHand ? (
+          <>
+            <ChipGroup
+              label={t("tcb.pay.title")}
+              value={chosen}
+              onChange={setMethod}
+              options={methods.map((m) => ({ value: m, label: t(`tcb.pay.${m}` as const) }))}
+            />
+            <Text variant="meta" color="fgMuted">{t(`tcb.pay.${chosen}Body` as const, { shop: q.data.shop.name })}</Text>
+            {chosen === "etransfer" && q.data.etransfer ? (
+              <Banner variant="info">{`${t("tcb.pay.after")}. ${t("tcb.pay.sendTo", { amount: money(total), email: q.data.etransfer.email })}${q.data.etransfer.instructions ? ` ${q.data.etransfer.instructions}` : ""}`}</Banner>
+            ) : null}
+          </>
         ) : null}
         <View style={{ gap: 2 }}>
           <InfoRow label={t("rest.tiffin.dueToday")} value={money(total)} strong />

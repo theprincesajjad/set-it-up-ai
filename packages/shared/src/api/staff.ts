@@ -199,6 +199,8 @@ export interface AwardResponse {
   messages: string[];
   /** Whether an SMS receipt was queued (merchant setting on, member not muted). */
   receiptQueued: boolean;
+  /** This member's visits at the shop in the current calendar month (shop time), including this one. */
+  visitsThisMonth: number;
 }
 
 /** POST .../counter/redeem and POST .../counter/redemptions/verify */

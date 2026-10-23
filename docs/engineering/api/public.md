@@ -8,8 +8,8 @@ Tokens in links are 192-bit random (`quotes.approval_token`, `invoices.pay_token
 so the web pages should not be indexed (`noindex`). Paid features are still gated: a locked merchant returns
 `402 feature_locked`. Unknown tokens/slugs → `404`. Drafts are never public.
 
-Other `/v1/public/...` routes are documented by their owning area: `GET /v1/public/shops/:slug`, `GET /v1/public/plans`
-and the QR join in [network.md](network.md) (`networkApi`); `POST /v1/public/leads` in [rep.md](rep.md) (`repApi.publicLeadBody`).
+Other `/v1/public/...` routes are documented by their owning area: `GET /v1/public/shops/:slug`, `GET /v1/public/plans`,
+`GET /v1/public/restaurants/founding` and the QR join in [network.md](network.md) (`networkApi`); `POST /v1/public/leads` in [rep.md](rep.md) (`repApi.publicLeadBody`).
 
 Web routes the SMS links point to: `${PUBLIC_WEB_URL}/q/<approvalToken>` and `${PUBLIC_WEB_URL}/i/<payToken>`.
 

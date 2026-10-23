@@ -3,13 +3,13 @@
  * entry points (tiffin, catering, banquet halls) and the WhatsApp updates switch. Everything shows only when the
  * shop's `features` flags say so; halal and dietary claims are the shop's own and are labelled that way.
  */
-import { spiceKey, type customerApi, type networkApi } from "@ll/shared";
+import { halalBanner, spiceKey, type customerApi, type networkApi } from "@ll/shared";
 import { router } from "expo-router";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { useLocale } from "../../lib/i18n";
 import { summarizeDiet } from "../../lib/restaurant";
-import { ui } from "../../theme";
+import { ui, useTheme } from "../../theme";
 import { Badge, ListRow, Section, Store, SwitchRow, Text, useToast, Users, UtensilsCrossed } from "../../ui";
 import { useOrderAhead } from "../customer/queries";
 import { useMoney } from "./components";
@@ -19,31 +19,57 @@ type Features = customerApi.CustomerFeaturesDto | undefined;
 
 /** Halal / zabihah / vegetarian / spice badges from what the shop tagged on its menu and plans. */
 export function ShopDietary({ slug, features }: { slug: string; features: Features }) {
-  const { t } = useLocale();
+  const { t, date } = useLocale();
   const menuOn = !!features?.dietaryTags && !!features.orderAhead;
   const menu = useOrderAhead(menuOn ? slug : null);
   const plans = useTiffinPlans(slug, !!features?.tiffin);
+  const cert = menu.data?.halalCertification ?? null;
+  const banner = useMemo(() => (cert ? halalBanner(cert, t, (d) => date(`${d}T12:00:00Z`, { month: "short", year: "numeric" }, "UTC")) : null), [cert, t, date]);
   const summary = useMemo(() => {
     const items = menu.data ? [...menu.data.categories.flatMap((c) => c.items), ...menu.data.uncategorized] : [];
     const list = [...items.map((i) => i.dietary), ...(plans.data?.plans ?? []).map((p) => p.dietary)];
     return summarizeDiet(list);
   }, [menu.data, plans.data]);
   const badges: string[] = [];
-  if (summary.zabihah) badges.push(t("diet.zabihah"));
-  if (summary.halal) badges.push(summary.halal === "all" ? t("rest.diet.halalAll") : t("rest.diet.halalSome"));
+  // With a shop-level certificate the banner below says it once (scope, slaughter, certifier, expiry); dish tags only add the rest.
+  if (!banner && summary.zabihah) badges.push(t("diet.zabihah"));
+  if (!banner && summary.halal) badges.push(summary.halal === "all" ? t("rest.diet.halalAll") : t("rest.diet.halalSome"));
   if (summary.veg) badges.push(summary.veg === "all" ? t("rest.diet.vegAll") : t("rest.diet.vegSome"));
   if (summary.maxSpice !== null && summary.maxSpice > 0) badges.push(t("rest.diet.spiceUpTo", { level: t(spiceKey(summary.maxSpice)) }));
-  if (badges.length === 0) return null;
+  if (badges.length === 0 && !banner) return null;
   return (
     <View style={{ marginTop: 12, gap: 6 }}>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        {badges.map((b) => (
-          <Badge key={b}>{b}</Badge>
-        ))}
-      </View>
-      {summary.halal ? (
+      {banner ? <HalalBanner banner={banner} /> : null}
+      {badges.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {badges.map((b) => (
+            <Badge key={b}>{b}</Badge>
+          ))}
+        </View>
+      ) : null}
+      {!banner && summary.halal ? (
         <Text style={ui(12, 400, 16)} color="fgMuted">
           {[summary.certifiers.length ? t("diet.certifiedBy", { certifier: summary.certifiers.join(", ") }) : null, t("diet.shopClaim")].filter(Boolean).join(". ").replace(/\.\.$/, ".")}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** The shop's halal block: what the owner stated, once. Past its date it says so and names no certifier. */
+export function HalalBanner({ banner }: { banner: ReturnType<typeof halalBanner> }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ gap: 2, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: c.bgSubtle }} accessibilityRole="summary">
+      <Text style={ui(14, 600, 20)}>{banner.title}</Text>
+      {banner.sub ? (
+        <Text style={ui(12, 400, 16)} color="fgMuted">
+          {banner.sub}
+        </Text>
+      ) : null}
+      {banner.note ? (
+        <Text style={ui(12, 400, 16)} color="fgMuted">
+          {banner.note}
         </Text>
       ) : null}
     </View>

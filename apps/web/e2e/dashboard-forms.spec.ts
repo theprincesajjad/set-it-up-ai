@@ -189,7 +189,7 @@ test.describe("slots and tickets", () => {
     const fresh = await api<{ ticket: { id: string; number: number } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone: "+16475551050", name: "Dana Whitfield" }, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 11" }, issue: `Speaker muffled ${run}` }, token);
     await signIn(page, "fix-it-phone-lab");
     await page.goto(`/m/${id}/tickets`);
-    await expect(page.getByRole("heading", { name: "Service tickets", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tickets", level: 1 })).toBeVisible();
     await page.getByRole("link", { name: new RegExp(`#${fresh.ticket.number}.*Speaker muffled ${run}`) }).click();
     await expect(page.getByRole("heading", { level: 1, name: new RegExp(`#${fresh.ticket.number}`) })).toBeVisible();
     await expect(page.getByRole("button", { name: "Update", exact: true })).toBeDisabled();

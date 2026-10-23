@@ -2,6 +2,27 @@
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 
+/** Just the toggle, for rows that carry their own title and hint (Rewards "At the counter"). */
+export function SwitchControl({ checked, onChange, ariaLabel, disabled, id }: { checked: boolean; onChange: (v: boolean) => void; ariaLabel: string; disabled?: boolean; id?: string }) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring disabled:opacity-50",
+        checked ? "bg-fg" : "bg-bg-muted",
+      )}
+    >
+      <span className={cn("inline-block size-[27px] rounded-full bg-[#FFFFFF] shadow-[0_2px_4px_rgba(0,0,0,0.15),0_0_0_0.5px_rgba(0,0,0,0.04)] transition-transform duration-200 ease-out", checked ? "translate-x-[22px]" : "translate-x-[2px]")} />
+    </button>
+  );
+}
+
 /** For settings that apply immediately. iOS proportions (51 × 31), black when on. Label on the left describes the on-state. */
 export function Switch({ checked, onChange, label, description, disabled, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean; /** When the visible label is short ("Mute this shop"), the full spoken name. */ ariaLabel?: string }) {
   const id = useId();

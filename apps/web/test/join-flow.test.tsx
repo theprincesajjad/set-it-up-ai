@@ -39,7 +39,7 @@ function makeDeps(over: Partial<JoinDeps> = {}): JoinDeps {
   };
 }
 
-const CONSENT = "Send me offers from Pinecone Coffee Co. by text or email. Optional. Unsubscribe any time.";
+const CONSENT = "Text me offers from Pinecone Coffee Co. (optional). Not ticked for you. Reply STOP any time. Your stamps work either way.";
 
 async function enterPhone(digits = "4165550123") {
   fireEvent.change(screen.getByLabelText("Mobile number"), { target: { value: digits } });

@@ -10,8 +10,8 @@
  * The parser (`parseTranscript`) is pure: it matches menu item names and their
  * translations (hi/ur/pa), reads quantities and a pickup hint. No live AI dependency.
  */
-import { and, desc, eq, lt, or } from "drizzle-orm";
-import { catalogItems, merchants, phoneCalls } from "@ll/db";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { catalogItems, merchants, orders, phoneCalls } from "@ll/db";
 import { whatsappApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
@@ -19,20 +19,25 @@ import { extractOrderLines, type MenuMatchItem, type ParsedOrder } from "../lib/
 import { placeChannelOrder, normalizePhone } from "./channel-orders.js";
 import { decodeCursor, encodeCursor } from "./commerceShared.js";
 import { isFeatureOn, requireFeature } from "./features.js";
+import { memberByPhone, usualFor } from "./usual.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Call = typeof phoneCalls.$inferSelect;
-type Draft = NonNullable<Call["draftOrder"]> & { unmatched?: string[]; ambiguous?: { phrase: string; options: string[] }[] };
+type DraftAmbiguous = { phrase: string; quantity?: number; options: ({ catalogItemId: string; name: string } | string)[] };
+type Draft = NonNullable<Call["draftOrder"]> & { unmatched?: string[]; ambiguous?: DraftAmbiguous[] };
+
+/** Matches below this score are flagged for a look before confirming. */
+const SURE_SCORE = 0.9;
 
 /** Pure: transcript + menu -> draft order. `now` anchors "in 30 minutes". */
 export function parseTranscript(transcript: string, menu: MenuMatchItem[], now: Date): { draft: Draft; parsed: ParsedOrder } {
   const parsed = extractOrderLines(transcript, menu);
   const draft: Draft = {
-    items: parsed.lines.map((l) => ({ catalogItemId: l.catalogItemId, name: l.name, quantity: l.quantity })),
+    items: parsed.lines.map((l) => ({ catalogItemId: l.catalogItemId, name: l.name, quantity: l.quantity, ...(l.score < SURE_SCORE ? { uncertain: true } : {}) })),
     ...(parsed.pickupInMinutes ? { pickupAt: new Date(now.getTime() + parsed.pickupInMinutes * 60_000).toISOString() } : {}),
     ...(parsed.pickupNote ? { notes: parsed.pickupNote } : {}),
     unmatched: parsed.unmatched,
-    ambiguous: parsed.ambiguous.map((a) => ({ phrase: a.phrase, options: a.options.map((o) => o.name) })),
+    ambiguous: parsed.ambiguous.map((a) => ({ phrase: a.phrase, quantity: a.quantity, options: a.options })),
   };
   return { draft, parsed };
 }
@@ -66,11 +71,51 @@ export function callDto(c: Call): whatsappApi.PhoneCallDto {
     language: c.language,
     transcript: c.transcript,
     draftOrder: d ? { items: d.items, ...(d.pickupAt ? { pickupAt: d.pickupAt } : {}), ...(d.notes ? { notes: d.notes } : {}) } : null,
-    unmatched: [...(d?.unmatched ?? []), ...(d?.ambiguous ?? []).map((a) => `${a.phrase} (${a.options.join(" or ")}?)`)],
+    unmatched: d?.unmatched ?? [],
+    // Calls saved before options carried ids hold plain names: the screen matches those against the menu.
+    ambiguous: (d?.ambiguous ?? []).map((a) => ({ phrase: a.phrase, quantity: a.quantity ?? 1, options: a.options.map((o) => (typeof o === "string" ? { catalogItemId: "", name: o } : o)) })),
     orderId: c.orderId,
     status: c.status,
     createdAt: c.createdAt.toISOString(),
   };
+}
+
+const formatPhone = (p: string) => {
+  const d = p.replace(/\D/g, "");
+  return d.length === 11 && d.startsWith("1") ? `+1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}` : p;
+};
+
+/** Add who is calling, their usual and what we understood (English, built from the draft, not a translation of the audio). */
+async function enrich(ctx: AppContext, merchant: Merchant, calls: Call[]): Promise<whatsappApi.PhoneCallDto[]> {
+  const tz = merchant.timezone;
+  const nums = [...new Set(calls.map((c) => c.orderId).filter((x): x is string => !!x))];
+  const numbers = new Map<string, number>();
+  if (nums.length) for (const o of await ctx.db.select({ id: orders.id, number: orders.number }).from(orders).where(inArray(orders.id, nums))) numbers.set(o.id, o.number);
+  const members = new Map<string, Awaited<ReturnType<typeof memberByPhone>>>();
+  const usuals = new Map<string, string | null>();
+  const out: whatsappApi.PhoneCallDto[] = [];
+  for (const c of calls) {
+    if (!members.has(c.fromPhone)) {
+      const m = await memberByPhone(ctx.db, merchant.id, c.fromPhone);
+      members.set(c.fromPhone, m);
+      usuals.set(c.fromPhone, m ? ((await usualFor(ctx.db, merchant.id, m.userId, ctx.now()))?.text ?? null) : null);
+    }
+    const m = members.get(c.fromPhone) ?? null;
+    const dto = callDto(c);
+    const d = c.draftOrder as Draft | null;
+    const parts = (d?.items ?? []).map((i) => `${i.quantity} × ${i.name}`);
+    for (const a of dto.ambiguous) parts.push(`${a.quantity} × ${a.phrase} (which one?)`);
+    const when = d?.pickupAt ? `pickup ${new Intl.DateTimeFormat("en-CA", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(new Date(d.pickupAt)).replace(/\u202f/g, " ").toLowerCase().replace(/\./g, "")}` : d?.notes ?? null;
+    out.push({
+      ...dto,
+      orderNumber: c.orderId ? (numbers.get(c.orderId) ?? null) : null,
+      callerName: m?.name ?? null,
+      member: m ? { id: m.memberId, name: m.name, visits: m.visits } : null,
+      usualText: usuals.get(c.fromPhone) ?? null,
+      understood: parts.length ? [parts.join(", "), when].filter(Boolean).join(" · ") : null,
+    });
+  }
+  return out;
 }
 
 export interface IncomingCall {
@@ -142,7 +187,7 @@ export async function listCalls(ctx: AppContext, merchant: Merchant, q: { status
     .orderBy(desc(phoneCalls.createdAt), desc(phoneCalls.id))
     .limit(q.limit + 1);
   const page = rows.slice(0, q.limit);
-  return { items: page.map(callDto), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!) : null };
+  return { items: await enrich(ctx, merchant, page), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!) : null };
 }
 
 async function loadCall(ctx: AppContext, merchantId: string, id: string): Promise<Call> {
@@ -153,7 +198,7 @@ async function loadCall(ctx: AppContext, merchantId: string, id: string): Promis
 
 export async function getCall(ctx: AppContext, merchant: Merchant, id: string) {
   await requireFeature(ctx.db, merchant, "restaurant.phone_ai");
-  return callDto(await loadCall(ctx, merchant.id, id));
+  return (await enrich(ctx, merchant, [await loadCall(ctx, merchant.id, id)]))[0]!;
 }
 
 export async function confirmCall(ctx: AppContext, merchant: Merchant, id: string, input: whatsappApi.ConfirmCallBody) {
@@ -163,9 +208,16 @@ export async function confirmCall(ctx: AppContext, merchant: Merchant, id: strin
   if (call.status === "confirmed") throw conflict("This call was already confirmed");
   if (call.status === "discarded") throw conflict("This call was discarded");
   const draft = call.draftOrder as Draft | null;
+  // Confirming the draft as it stands needs every uncertain item settled first; staff who send their own item list have checked it.
+  if (!body.items && ((draft?.ambiguous?.length ?? 0) > 0 || (draft?.items ?? []).some((i) => (i as { uncertain?: boolean }).uncertain))) {
+    throw new HttpError(409, "call_needs_review", "Check the item the assistant wasn't sure about before confirming this order.");
+  }
   const lines = (body.items ?? draft?.items ?? []).filter((i): i is { catalogItemId: string; name: string; quantity: number } => !!i.catalogItemId);
   if (!lines.length) throw badRequest("There are no matched items to order. Add items from the menu first.");
   const pickup = body.pickupAt ?? draft?.pickupAt;
+  // The note names the caller (member name, else their number). The provider's call id stays internal.
+  const member = await memberByPhone(ctx.db, merchant.id, call.fromPhone);
+  const caller = member?.name?.trim() || formatPhone(call.fromPhone);
   try {
     const res = await placeChannelOrder(ctx, merchant, {
       phone: call.fromPhone,
@@ -174,12 +226,12 @@ export async function confirmCall(ctx: AppContext, merchant: Merchant, id: strin
       paymentMethod: body.paymentMethod,
       locationId: body.locationId,
       pickupAt: pickup ? new Date(pickup) : null,
-      notes: [body.notes ?? draft?.notes, `Phone order, call ${call.providerCallId ?? call.id}`].filter(Boolean).join(" | ").slice(0, 500),
+      notes: [body.notes ?? draft?.notes, `Phone order · ${caller}`].filter(Boolean).join(" | ").slice(0, 500),
       tipCents: body.tipCents,
       idempotencyKey: `phone:${call.id}`,
     });
     const [updated] = await ctx.db.update(phoneCalls).set({ status: "confirmed", orderId: res.order.id }).where(eq(phoneCalls.id, call.id)).returning();
-    return { call: callDto(updated!), order: res.order };
+    return { call: { ...callDto(updated!), orderNumber: res.order.number, callerName: member?.name ?? null }, order: res.order };
   } catch (err) {
     if (err instanceof HttpError) throw err;
     await ctx.db.update(phoneCalls).set({ status: "failed" }).where(eq(phoneCalls.id, call.id));

@@ -37,6 +37,8 @@ import { createProviders } from "../providers/index.js";
 import { awardPurchase, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { CORE_SHOP_FEATURES, seedCoreModules } from "./core.js";
+import { seedServiceOps } from "./serviceOps.js";
+import { seedAppointmentSalons } from "./appointments.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
 
@@ -135,6 +137,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     const skipClock = { now: new Date() };
     await seedCoreModules(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { seed: opts.seed, log });
     await seedRestaurantCorridor(db, { config: opts.config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
+    await seedAppointmentSalons(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+    await seedServiceOps(db, { log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
@@ -228,6 +232,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   log(`Pilot overrides (Plus features hidden at launch): ${DEMO_PILOT_SHOPS.join(", ")} get ${DEMO_PILOT_FEATURES.join(", ")}`);
   await db.insert(promos).values([
     { merchantId: byslug("pinecone-coffee"), title: "Two-stamp Tuesdays", body: "Every Tuesday, every drink earns double stamps.", kind: "multiplier", multiplierPct: 200, daysOfWeek: [2], startsAt: new Date(historyStart.getTime() + 10 * DAY), status: "live", audience: "network", viewCount: 412, claimCount: 0 },
+    { merchantId: byslug("pinecone-coffee"), title: "Double stamps on slow afternoons", body: "Weekdays 2 to 4 pm, every drink earns double stamps.", kind: "multiplier", multiplierPct: 200, daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", startsAt: new Date(historyStart.getTime() + 30 * DAY), status: "live", audience: "network", viewCount: 0, claimCount: 0 },
     { merchantId: byslug("hearth-and-crumb"), title: "Pączki Saturday", body: "Fresh pączki every Saturday until they're gone.", kind: "offer", daysOfWeek: [6], startTime: "08:00", endTime: "12:00", startsAt: new Date(historyStart.getTime() + 5 * DAY), status: "live", audience: "network", viewCount: 260, claimCount: 41 },
     { merchantId: byslug("dog-eared-books"), title: "Weekend reader bonus", body: "50 bonus points on any purchase this weekend.", kind: "bonus_points", bonusPoints: 50, startsAt: new Date(nowReal.getTime() - 20 * DAY), endsAt: new Date(nowReal.getTime() - 18 * DAY), status: "ended", audience: "members", viewCount: 95, claimCount: 12 },
     { merchantId: byslug("village-apothecary"), title: "Seniors Day: 10% off front store", body: "First Tuesday of the month. Not valid on prescriptions or pharmacy services.", kind: "discount", percentOff: 10, daysOfWeek: [2], startsAt: new Date(historyStart.getTime() + 15 * DAY), status: "live", audience: "network", viewCount: 150, claimCount: 33 },
@@ -408,6 +413,12 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
 
   // ---- Ridgeway Plaza restaurant corridor (restaurant pack demo) ----
   const corridor = await seedRestaurantCorridor(db, { config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
+
+  // ---- Appointment salons: Bloom Hair Studio (Roncesvalles) and Rangrez Beauty Studio (Ridgeway Plaza) ----
+  clock.now = new Date();
+  await seedAppointmentSalons(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+  await seedServiceOps(db, { log });
+  clock.now = new Date();
 
   return {
     skipped: false,

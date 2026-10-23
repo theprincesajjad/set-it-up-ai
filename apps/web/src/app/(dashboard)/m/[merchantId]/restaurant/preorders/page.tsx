@@ -1,45 +1,67 @@
 "use client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import type { restaurantApi } from "@ll/shared";
-import { DataTable, Dot, EmptyState, Meter, PageHeader, Panel, RowList, Row, Section, StatBlock, type Column } from "@/components/dashboard";
+import { DataTable, Dot, ErrorLine, PageHeader, StatBlock, type Column } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { DOW_SHORT, addDaysISO, dayLabel, dowOf, todayISO, torontoHM, weekStartISO } from "@/components/dashboard/restaurant/common";
-import { RestaurantGate, formatPhone } from "@/components/dashboard/restaurant/shared";
+import { CopyButton, RestaurantGate, formatPhone } from "@/components/dashboard/restaurant/shared";
+import { TakeOrderSheet } from "@/components/dashboard/restaurant/TakeOrderSheet";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { NumberField } from "@/components/dashboard/restaurant/common";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { capsInWords, channelMix, depositInWords, fireInWords, noticeInWords, pickupsInWords } from "@/lib/restaurant/preorders";
+import { RecipeSheet, RulesSheet, WaitlistSheet } from "./Sheets";
 
 export default function PreordersPage() {
   return (
     <RestaurantGate featureKey="restaurant.degh_preorders" title="Pre-orders">
-      <Preorders />
+      <Suspense>
+        <Preorders />
+      </Suspense>
     </RestaurantGate>
   );
 }
 
+const CHANNEL_LABEL: Record<string, string> = { counter: "Counter", phone: "Phone", whatsapp: "WhatsApp", web: "Web link", app: "App" };
+
 function Preorders() {
   const { api, role } = useMerchant();
+  const params = useSearchParams();
   const today = todayISO();
-  const [week, setWeek] = useState(weekStartISO(today));
+  const [week, setWeek] = useState(weekStartISO(params.get("from") && params.get("rules") ? (params.get("from") as string) : today));
   const [picked, setDay] = useState<string | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(params.get("rules") === "open");
+  const [recipes, setRecipes] = useState(false);
+  const [waitlist, setWaitlist] = useState(false);
+  const [phoneOrder, setPhoneOrder] = useState(false);
   const from = week;
   const to = addDaysISO(week, 6);
   const state = useApi(() => api.preorders.list({ from, to }), [api, from, to], { pollMs: 30_000 });
-  const settings = useApi(() => api.preorders.settings(), [api]);
+  const catalog = useApi(() => api.catalog(), [api]);
+  const canEdit = role === "owner" || role === "manager";
 
-  const byDate = new Map((state.data?.days ?? []).map((d) => [d.date, d]));
+  const byDate = useMemo(() => new Map((state.data?.days ?? []).map((d) => [d.date, d])), [state.data]);
+  const capOf = useMemo(() => new Map((state.data?.caps ?? []).map((c) => [c.date, c])), [state.data]);
   // Until a day is picked, open on today, or the first day this week that has pots when today is empty.
   const busyDays = (state.data?.days ?? []).filter((d) => d.pots > 0);
   const firstBusy = (busyDays.find((d) => d.date >= today) ?? busyDays[0])?.date;
   const day = picked ?? (byDate.get(today)?.pots ? today : firstBusy ?? (today >= from && today <= to ? today : from));
   const strip = Array.from({ length: 7 }, (_, i) => addDaysISO(week, i));
   const cur = byDate.get(day);
-  const cap = cur?.cap ?? settings.data?.preorderDailyCap ?? null;
+  const cap = cur?.cap ?? capOf.get(day)?.cap ?? null;
+  const note = capOf.get(day)?.note ?? null;
+  const potItems = useMemo(() => (catalog.data?.items ?? []).filter((i) => i.preorderOnly && i.available), [catalog.data]);
+  const orders = cur?.orders ?? [];
+  const balance = orders.reduce((a, o) => a + o.balanceDueCents, 0);
+  const deposits = orders.filter((o) => o.depositPaid && o.status !== "picked_up").reduce((a, o) => a + o.depositCents, 0);
+  const totals = orders.filter((o) => o.depositPaid && o.status !== "picked_up").reduce((a, o) => a + o.totalCents, 0);
+  const waitingThisWeek = [...(state.data?.days ?? [])].reduce((a, d) => a + d.waitlist, 0);
+  const waitingDay = [...(state.data?.days ?? [])].find((d) => d.waitlist > 0);
 
   const move = (n: number) => {
     setWeek(addDaysISO(week, n * 7));
@@ -48,48 +70,55 @@ function Preorders() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Pre-orders" description="Pots of biryani, haleem and nihari booked ahead. See what to cook and who owes a balance." />
+      <PageHeader
+        flush
+        title="Pre-orders"
+        description="Pots and trays booked ahead. See what to cook, what to buy and who still owes a balance."
+        actions={
+          <>
+            <Button size="md" variant="secondary" onClick={() => setRulesOpen(true)}>Rules and caps</Button>
+            <Button size="md" onClick={() => setPhoneOrder(true)}>Take a phone pre-order</Button>
+          </>
+        }
+      />
 
       <section aria-label="Pick a day" className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-meta-strong text-fg tabular">{dayLabel(week).replace(/^\w+, /, "")} to {dayLabel(to).replace(/^\w+, /, "")}</p>
           <div className="flex items-center gap-1.5 print:hidden">
             <button type="button" aria-label="Previous week" onClick={() => move(-1)} className="inline-flex size-8 items-center justify-center rounded-input border border-line hover:bg-bg-subtle focus-visible:focus-ring">
-              <ChevronLeft aria-hidden className="size-4" />
+              <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
             </button>
             <button type="button" onClick={() => { setWeek(weekStartISO(today)); setDay(today); }} className="inline-flex h-8 items-center rounded-input px-2.5 text-meta font-medium text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
               Today
             </button>
             <button type="button" aria-label="Next week" onClick={() => move(1)} className="inline-flex size-8 items-center justify-center rounded-input border border-line hover:bg-bg-subtle focus-visible:focus-ring">
-              <ChevronRight aria-hidden className="size-4" />
+              <ChevronRight aria-hidden className="size-4 rtl:rotate-180" />
             </button>
           </div>
         </div>
         <div role="group" aria-label="Days of the week" className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {strip.map((d) => {
             const v = byDate.get(d);
+            const dayCap = v?.cap ?? capOf.get(d)?.cap ?? null;
+            const pots = v?.pots ?? 0;
             const sel = d === day;
-            const full = v?.cap != null && v.pots >= v.cap;
+            const hot = dayCap != null && pots / Math.max(1, dayCap) >= 0.85;
             return (
               <button
                 key={d}
                 type="button"
                 aria-pressed={sel}
-                aria-label={`${dayLabel(d)}: ${v?.pots ?? 0} ${v?.pots === 1 ? "pot" : "pots"}${v?.cap != null ? ` of ${v.cap}` : ""}`}
+                aria-label={`${dayLabel(d)}: ${pots} ${pots === 1 ? "pot" : "pots"}${dayCap != null ? ` of ${dayCap}` : ""}`}
                 onClick={() => setDay(d)}
-                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[96px] sm:p-3", sel ? "border-fg bg-fg text-bg" : "border-line bg-bg hover:bg-bg-subtle")}
+                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[88px] sm:p-3", sel ? "border-fg bg-fg text-bg" : "border-line bg-bg hover:bg-bg-subtle")}
               >
-                <span>
-                  <span className={cn("block text-caption", sel ? "text-bg/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
-                  <span className="block text-headline tabular">{Number(d.slice(8))}</span>
-                </span>
-                <span className="flex flex-col gap-1">
-                  <span className={cn("text-caption tabular", sel ? "text-bg/80" : full ? "font-medium text-fg" : "text-fg-muted")}>
-                    {v?.pots ?? 0}
-                    {v?.cap != null ? `/${v.cap}` : ""}
-                    <span className="hidden sm:inline"> {v?.pots === 1 ? "pot" : "pots"}</span>
-                  </span>
-                  {v?.cap != null ? <span className={cn("block h-1 overflow-hidden rounded-full", sel ? "bg-bg/25" : "bg-bg-muted")}><span className={cn("block h-full rounded-full", sel ? "bg-bg" : "bg-fg")} style={{ width: `${Math.min(100, (v.pots / v.cap) * 100)}%` }} /></span> : null}
+                <span className={cn("block text-caption", sel ? "text-bg/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
+                <span className="block text-headline tabular">{Number(d.slice(8))}</span>
+                <span className={cn("block text-caption tabular", sel ? "text-bg/80" : hot ? "font-medium text-accent-text" : "text-fg-muted")}>
+                  {pots}
+                  {dayCap != null ? ` of ${dayCap}` : ""}
+                  <span className="hidden sm:inline"> {pots === 1 && dayCap == null ? "pot" : "pots"}</span>
                 </span>
               </button>
             );
@@ -97,102 +126,197 @@ function Preorders() {
         </div>
       </section>
 
-      {state.error && !state.data ? <Banner tone="danger" action={<Button size="sm" variant="ghost" onClick={() => void state.reload()}>Try again</Button>}>{state.error}</Banner> : null}
+      {state.error && !state.data ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
 
       <StatBlock
         label={`Pots on ${dayLabel(day)}`}
         loading={state.loading && !state.data}
         items={[
-          { label: "Pots booked", value: cur?.pots ?? 0, caption: cap != null ? `of ${cap} a day` : "No daily cap" },
-          { label: "Pots left", value: cap != null ? Math.max(0, cap - (cur?.pots ?? 0)) : "Open", caption: cap != null && (cur?.pots ?? 0) >= cap ? "Full" : undefined },
-          { label: "Orders", value: cur?.orders.length ?? 0 },
-          { label: "Balances due", value: formatMoney((cur?.orders ?? []).reduce((a, o) => a + o.balanceDueCents, 0)), caption: "At pickup" },
+          { label: `Pots booked, ${dayLabel(day).replace(",", "")}`, value: cap != null ? `${cur?.pots ?? 0} of ${cap}` : cur?.pots ?? 0, caption: note ? note : cap == null ? "No daily cap" : undefined },
+          { label: "Pots left", value: cap != null ? Math.max(0, cap - (cur?.pots ?? 0)) : "Open", caption: cap != null && (cur?.pots ?? 0) >= cap ? "Full" : cap != null && cap - (cur?.pots ?? 0) <= 2 ? <span className="text-accent-text">Almost gone</span> : undefined },
+          { label: "Orders", value: orders.length, caption: channelMix(orders) || undefined },
+          { label: "Balances due at pickup", value: formatMoney(balance), caption: deposits ? `Deposits held: ${formatMoney(deposits)}${totals ? ` (${Math.round((deposits / totals) * 100)}%)` : ""}` : undefined },
         ]}
       />
-      {cap != null ? <Meter value={cur?.pots ?? 0} max={cap} label={`${cur?.pots ?? 0} of ${cap} pots booked on ${dayLabel(day)}`} tone={(cur?.pots ?? 0) >= cap ? "accent" : "fg"} className="-mt-3" /> : null}
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-8">
-          <Section title="Prep list" description={`What to cook for ${dayLabel(day)}.`}>
-            {cur?.prep.length ? (
-              <RowList label="Prep list">
-                {cur.prep.map((p) => (
-                  <Row key={`${p.catalogItemId}-${p.name}`} title={p.name} meta={p.serves ? `Serves ${p.serves} in all` : undefined} trailing={<span className="text-title font-semibold">× {p.quantity}</span>} />
-                ))}
-              </RowList>
-            ) : (
-              <EmptyState title="Nothing to cook for this day" description="Pre-orders for this day will show up here as customers book." />
-            )}
-          </Section>
-
-          <Section title="Orders" description="Pickup time, deposit and what's left to pay.">
-            <OrderTable orders={cur?.orders ?? []} loading={state.loading && !state.data} />
-          </Section>
+          <CookAndBuy day={day} plan={cur?.plan ?? []} shopping={cur?.shopping ?? null} loading={state.loading && !state.data} onRecipes={() => setRecipes(true)} />
+          <OrdersForDay day={day} orders={orders} loading={state.loading && !state.data} onChanged={() => void state.reload()} />
         </div>
-
-        <aside className="xl:sticky xl:top-4">
-          <CapForm cap={settings.data?.preorderDailyCap ?? null} loaded={!!settings.data} canEdit={role === "owner" || role === "manager"} onSaved={() => { void settings.reload(); void state.reload(); }} />
+        <aside className="flex min-w-0 flex-col gap-8">
+          <RulesCard rules={state.data?.rules ?? null} items={potItems} onEdit={() => setRulesOpen(true)} />
+          <section aria-labelledby="wl-h">
+            <h2 id="wl-h" className="mb-3 text-[15px] font-semibold text-fg">Wait list</h2>
+            <div className="flex flex-col gap-3 rounded-card border border-line p-5">
+              <p className="text-meta text-fg-muted">When a day is full, guests join a wait list. A cancel frees a pot and we message the first in line on WhatsApp or text, once.</p>
+              <button type="button" onClick={() => setWaitlist(true)} className="h-10 rounded-full border border-line px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+                {waitingThisWeek ? `${waitingThisWeek} ${waitingThisWeek === 1 ? "person" : "people"} waiting${waitingDay ? ` for ${dayLabel(waitingDay.date).split(",")[0]}` : ""}` : "No one is waiting this week"}
+              </button>
+            </div>
+          </section>
         </aside>
       </div>
+
+      {rulesOpen ? <RulesSheet rules={state.data?.rules ?? { preorderDailyCap: null, capByWeekday: {}, perHourCap: null, overrides: [] }} canEdit={canEdit} draft={params.get("rules") === "open" && params.get("from") ? { label: params.get("label") ?? "", from: params.get("from") ?? "", to: params.get("to") ?? params.get("from") ?? "" } : null} onClose={() => setRulesOpen(false)} onSaved={() => void state.reload()} /> : null}
+      {recipes ? <RecipeSheet onClose={() => setRecipes(false)} onSaved={() => { void state.reload(); void catalog.reload(); }} /> : null}
+      {waitlist ? <WaitlistSheet from={from} to={to} onClose={() => setWaitlist(false)} /> : null}
+      <TakeOrderSheet open={phoneOrder} mode="preorder" onClose={() => setPhoneOrder(false)} onPlaced={() => void state.reload()} />
     </div>
   );
 }
 
-function OrderTable({ orders, loading }: { orders: restaurantApi.PreorderOrderDto[]; loading: boolean }) {
-  const cols: Column<restaurantApi.PreorderOrderDto>[] = [
-    { key: "time", header: "Pickup", mobile: "trailing", sortValue: (o) => o.pickupAt, cell: (o) => <span className="font-medium tabular">{torontoHM(o.pickupAt)}</span> },
-    {
-      key: "who",
-      header: "Order",
-      mobile: "title",
-      cell: (o) => (
-        <span className="block min-w-0">
-          <span className="block font-medium">#{o.number} · {o.customerName ?? "Customer"}</span>
-          {o.customerPhone ? <span className="block text-caption text-fg-muted">{formatPhone(o.customerPhone)}</span> : null}
-        </span>
-      ),
-    },
-    { key: "items", header: "What", mobile: "subtitle", cell: (o) => <span className="text-fg-muted">{o.items.map((i) => `${i.quantity} × ${i.name}`).join(", ")}</span> },
-    { key: "total", header: "Total", align: "end", mobile: "hidden", sortValue: (o) => o.totalCents, cell: (o) => formatMoney(o.totalCents) },
-    { key: "deposit", header: "Deposit", mobile: "subtitle", cell: (o) => (o.depositCents ? (o.depositPaid ? <Dot tone="positive">{formatMoney(o.depositCents)} paid</Dot> : <Dot tone="info">{formatMoney(o.depositCents)} due</Dot>) : <span className="text-fg-muted">None</span>) },
-    { key: "balance", header: "Balance", align: "end", mobile: "hidden", sortValue: (o) => o.balanceDueCents, cell: (o) => (o.balanceDueCents ? <span className="font-medium">{formatMoney(o.balanceDueCents)}</span> : <span className="text-fg-muted">Paid</span>) },
+function CookAndBuy({ day, plan, shopping, loading, onRecipes }: { day: string; plan: restaurantApi.PreorderPlanLine[]; shopping: restaurantApi.PreorderShopping | null; loading: boolean; onRecipes: () => void }) {
+  const missing = plan.filter((p) => !p.hasRecipe);
+  const cols: Column<restaurantApi.PreorderPlanLine>[] = [
+    { key: "dish", header: "Dish", mobile: "title", cell: (p) => <span className="font-medium">{p.name.replace(/\s*\(serves.*\)/i, "")}</span> },
+    { key: "pots", header: "Pots", align: "end", mobile: "trailing", cell: (p) => <span className="tabular">{p.pots}</span> },
+    { key: "fire", header: "Fire at", mobile: "subtitle", cell: (p) => <span className="tabular">{p.fireAt ? fireInWords(p.fireAt) : <span className="text-fg-muted">Set cook time</span>}</span> },
+    { key: "rice", header: "Rice", mobile: "subtitle", cell: (p) => <span className="tabular">{p.riceKg != null ? `${p.riceKg} kg` : "–"}</span> },
+    { key: "meat", header: "Meat", mobile: "subtitle", cell: (p) => <span className="tabular">{p.meatKg != null ? `${p.meatKg} kg${p.meatKind && !p.name.toLowerCase().includes(p.meatKind) ? ` ${p.meatKind}` : ""}` : "–"}</span> },
+    { key: "pickups", header: "Pickups", mobile: "subtitle", cell: (p) => <span className="tabular">{pickupsInWords(p.firstPickupAt, p.lastPickupAt)}</span> },
   ];
-  return <DataTable caption="Pre-orders for the day" columns={cols} rows={orders} rowKey={(o) => o.orderId} loading={loading} empty={<span className="text-meta text-fg-muted">No orders for this day yet.</span>} />;
+  return (
+    <section aria-labelledby="cook-h" className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 id="cook-h" className="text-[15px] font-semibold text-fg">What to cook and buy</h2>
+          <p className="mt-0.5 text-[13px] text-fg-muted">From your per-pot recipes. Quantities are estimates, not measured.</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={onRecipes}>Edit recipes</Button>
+      </div>
+      <DataTable
+        caption={`What to cook on ${dayLabel(day)}`}
+        columns={cols}
+        rows={plan}
+        rowKey={(p) => p.catalogItemId ?? p.name}
+        loading={loading}
+        empty={<span className="text-meta text-fg-muted">Nothing to cook for this day yet. Pre-orders show up here as guests book.</span>}
+      />
+      {plan.length && missing.length ? (
+        <Banner tone="neutral" action={<Button size="sm" variant="secondary" onClick={onRecipes}>Add per-pot recipes</Button>}>
+          {missing.length === plan.length ? "Add per-pot recipes to see rice, meat and the shopping list." : `No recipe yet for ${missing.map((m) => m.name.replace(/\s*\(serves.*\)/i, "")).join(", ")}.`}
+        </Banner>
+      ) : null}
+      {shopping ? (
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-bg-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-body text-fg">
+            <span className="font-semibold">Shopping list for {dayLabel(day).split(",")[0]} (estimate):</span> {shopping.items.map((i) => `${i.name} ${i.qty} ${i.unit}`).join(" · ")}
+          </p>
+          <CopyButton text={`Order for ${dayLabel(day)} (estimate from our recipes): ${shopping.text}`} label="Copy for supplier" />
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
-function CapForm({ cap, loaded, canEdit, onSaved }: { cap: number | null; loaded: boolean; canEdit: boolean; onSaved: () => void }) {
+function OrdersForDay({ day, orders, loading, onChanged }: { day: string; orders: restaurantApi.PreorderOrderDto[]; loading: boolean; onChanged: () => void }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
-  const [v, setV] = useState("");
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setV(cap == null ? "" : String(cap));
-  }, [cap]);
-  const next = v.trim() === "" ? null : Number(v);
-  const bad = next !== null && (!Number.isInteger(next) || next < 1 || next > 1000);
+  const [working, setWorking] = useState<string | null>(null);
+  const remind = async (o: restaurantApi.PreorderOrderDto) => {
+    setWorking(o.orderId);
+    const r = await act.run(() => api.orderTools.remindBalance(o.orderId));
+    setWorking(null);
+    if (!r) return;
+    if (r.sent) toast({ message: `Reminder sent to ${o.customerName ?? "the guest"} on ${r.channel === "whatsapp" ? "WhatsApp" : "text"}`, tone: "success" });
+    else toast({ message: r.reason === "too_soon" ? "They were reminded a few hours ago." : r.reason === "no_consent" ? "No consent to message this guest. Call them instead." : r.reason === "no_phone" ? "There is no phone number on this order." : "Nothing is due on this order.", tone: "neutral" });
+    onChanged();
+  };
+  const handedOver = async (o: restaurantApi.PreorderOrderDto) => {
+    setWorking(o.orderId);
+    const r = await act.run(async () => {
+      if (o.status === "pending") await api.setOrderStatus(o.orderId, { status: "accepted" });
+      if (o.status !== "ready") await api.setOrderStatus(o.orderId, { status: "ready" });
+      return api.setOrderStatus(o.orderId, { status: "picked_up" });
+    });
+    setWorking(null);
+    if (r) {
+      toast({ message: `#${r.number} handed over`, tone: "success" });
+      onChanged();
+    }
+  };
+  const cols: Column<restaurantApi.PreorderOrderDto>[] = [
+    { key: "time", header: "Pickup", mobile: "trailing", sortValue: (o) => o.pickupAt, cell: (o) => <span className="font-medium tabular">{formatClock(o.pickupAt)}</span> },
+    {
+      key: "who",
+      header: "Guest",
+      mobile: "title",
+      cell: (o) => (
+        <span className="block min-w-0">
+          <span className="block font-medium">{o.customerName ?? formatPhone(o.customerPhone)}</span>
+          {o.allergyNote ? <span className="block text-caption font-medium text-negative">Allergy: {o.allergyNote}</span> : null}
+        </span>
+      ),
+    },
+    { key: "items", header: "What", mobile: "subtitle", cell: (o) => <span className="text-fg">{o.items.map((i) => `${i.quantity} ${i.name.replace(/\s*\(serves.*\)/i, "")}`).join(", ")}</span> },
+    { key: "channel", header: "Channel", mobile: "subtitle", cell: (o) => <span className="text-fg-muted">{CHANNEL_LABEL[o.channel] ?? o.channel}</span> },
+    {
+      key: "balance",
+      header: "Balance",
+      mobile: "subtitle",
+      sortValue: (o) => o.balanceDueCents,
+      cell: (o) => (o.balanceDueCents ? <span className="font-medium tabular">{formatMoney(o.balanceDueCents)} due</span> : <span className="text-positive">Paid</span>),
+    },
+    {
+      key: "act",
+      header: "",
+      align: "end",
+      mobile: "hidden",
+      cell: (o) =>
+        o.status === "picked_up" ? (
+          <Dot tone="neutral">Picked up</Dot>
+        ) : o.balanceDueCents > 0 ? (
+          <Button size="sm" variant="secondary" loading={working === o.orderId} onClick={() => void remind(o)}>Remind</Button>
+        ) : (
+          <Button size="sm" variant="secondary" loading={working === o.orderId} onClick={() => void handedOver(o)}>Handed over</Button>
+        ),
+    },
+  ];
   return (
-    <Panel
-      title="Daily cap"
-      description="The most pots you'll cook on one day. Customers see a day as full once it's reached."
-      footer={
-        <div className="flex justify-end">
-          <Button size="sm" disabled={!canEdit || !loaded || bad || next === cap} loading={act.busy} onClick={async () => {
-            const r = await act.run(() => api.preorders.saveSettings(next));
-            if (r) {
-              toast({ message: r.preorderDailyCap ? `Cap set to ${r.preorderDailyCap} pots a day` : "Daily cap removed", tone: "success" });
-              onSaved();
-            }
-          }}>
-            Save cap
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-3">
-        {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-        <NumberField label="Pots per day" suffix="pots" value={v} onChange={setV} hint={canEdit ? "Leave empty for no cap." : "Only owners and managers can change this."} error={bad ? "Use a whole number from 1 to 1,000." : null} />
+    <section aria-labelledby="ord-h" className="flex flex-col gap-3">
+      <div>
+        <h2 id="ord-h" className="text-[15px] font-semibold text-fg">Orders for {dayLabel(day).split(",")[0]}</h2>
+        <p className="mt-0.5 text-[13px] text-fg-muted">Pickup time, deposit and what is left to pay</p>
       </div>
-    </Panel>
+      {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+      <DataTable caption="Pre-orders for the day" columns={cols} rows={orders} rowKey={(o) => o.orderId} loading={loading} empty={<span className="text-meta text-fg-muted">No orders for this day yet.</span>} />
+    </section>
+  );
+}
+
+const formatClock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "pm" : "am"}`);
+
+function RulesCard({ rules, items, onEdit }: { rules: restaurantApi.PreorderRulesResponse | null; items: { name: string; leadTimeHours?: number; depositBps?: number }[]; onEdit: () => void }) {
+  const rows = rules
+    ? [
+        { label: "Daily pots", value: capsInWords(rules) },
+        { label: "Pickup crowding", value: rules.perHourCap ? `Max ${rules.perHourCap} pots per hour` : "No limit per hour" },
+        { label: "Notice", value: noticeInWords(items.map((i) => ({ name: i.name, leadTimeHours: i.leadTimeHours ?? 0 }))) },
+        { label: "Deposit", value: depositInWords(items.map((i) => ({ depositBps: i.depositBps ?? 0 }))) },
+        ...rules.overrides.map((o) => ({ label: `${o.label}, ${new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${o.from}T12:00:00Z`))}${o.to !== o.from ? ` to ${new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${o.to}T12:00:00Z`))}` : ""}`, value: `${o.cap} pots${o.leadHours != null ? `, cut-off ${o.leadHours} h` : ""}` })),
+      ]
+    : [];
+  return (
+    <section aria-labelledby="rules-h">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 id="rules-h" className="text-[15px] font-semibold text-fg">Rules for guests</h2>
+        <button type="button" onClick={onEdit} className="text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Edit</button>
+      </div>
+      <dl className="rounded-card border border-line">
+        {rows.length ? (
+          rows.map((r, i) => (
+            <div key={`${r.label}-${i}`} className={cn("px-5 py-3", i > 0 && "border-t border-line")}>
+              <dt className="text-meta text-fg-muted">{r.label}</dt>
+              <dd className="mt-0.5 text-body font-medium text-fg">{r.value}</dd>
+            </div>
+          ))
+        ) : (
+          <div className="skeleton m-5 h-24 rounded-sm" />
+        )}
+      </dl>
+      <p className="mt-2 text-caption text-fg-muted">Dates follow moon sighting. Confirm Eid locally before you announce it.</p>
+    </section>
   );
 }

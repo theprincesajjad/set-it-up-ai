@@ -13,6 +13,7 @@ import * as catalog from "../../services/catalog.js";
 import { requirePermission, type StaffPermission } from "../../services/commerceShared.js";
 import { requireFeature } from "../../services/features.js";
 import * as kitchen from "../../services/kitchen.js";
+import * as planning from "../../services/preorderPlanning.js";
 import * as splits from "../../services/splits.js";
 
 type MerchantParams = { merchantId: string };
@@ -52,13 +53,13 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // ---------------------------------------------------------------- degh pre-orders
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/settings", async (req) => {
     const staff = await staffFor(req, "staff", ["restaurant.degh_preorders"]);
-    return { preorderDailyCap: staff.merchant.preorderDailyCap };
+    return planning.rulesDto(staff.merchant);
   });
 
   app.put<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/settings", async (req) => {
     const staff = await staffFor(req, "manager", []);
-    const body = parse(restaurantApi.preorderSettingsBody, req.body);
-    return catalog.setPreorderCap(ctx, staff.merchant, body.preorderDailyCap);
+    // Daily cap, weekday caps, per-hour cap and Eid-style date overrides in one body (every field optional).
+    return planning.saveRules(ctx, staff.merchant, parse(restaurantApi.preorderRulesBody, req.body));
   });
 
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/preorders", async (req) => {
@@ -100,6 +101,17 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return kitchen.fireTicketNow(ctx, staff, req.params.orderId);
   });
 
+  // ---------------------------------------------------------------- sold out (the 86 button)
+  app.get<{ Params: MerchantParams }>("/merchants/:merchantId/kitchen/sold-out", async (req) => {
+    const staff = await staffFor(req, "staff", []);
+    return kitchen.listSoldOut(ctx, staff, parse(restaurantApi.kitchenTicketsQuery.pick({ lang: true }), req.query).lang);
+  });
+
+  app.patch<{ Params: MerchantParams & { itemId: string } }>("/merchants/:merchantId/kitchen/sold-out/:itemId", async (req) => {
+    const staff = await staffFor(req, "staff", [], "orders.manage");
+    return kitchen.setSoldOut(ctx, staff, req.params.itemId, parse(restaurantApi.soldOutBody, req.body).until);
+  });
+
   // ---------------------------------------------------------------- split bills
   app.get<{ Params: MerchantParams & { orderId: string } }>("/merchants/:merchantId/orders/:orderId/splits", async (req) => {
     const staff = await staffFor(req, "staff", ["restaurant.split_bills"]);
@@ -116,6 +128,19 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const staff = await staffFor(req, "staff", ["restaurant.split_bills"], "orders.manage");
     await splits.deleteSplits(ctx, staff, req.params.orderId);
     return reply.status(204).send();
+  });
+
+  app.patch<{ Params: MerchantParams & { orderId: string; splitId: string } }>("/merchants/:merchantId/orders/:orderId/splits/:splitId", async (req) => {
+    const staff = await staffFor(req, "staff", ["restaurant.split_bills"], "orders.manage");
+    const body = parse(restaurantApi.splitTenderBody, req.body);
+    return splits.setSplitTender(ctx, staff, req.params.orderId, req.params.splitId, body.tender);
+  });
+
+  // A guest paid at the table: card (terminal) or cash. No Stripe intent is created for either.
+  app.post<{ Params: MerchantParams & { orderId: string; splitId: string } }>("/merchants/:merchantId/orders/:orderId/splits/:splitId/mark-paid", async (req) => {
+    const staff = await staffFor(req, "staff", ["restaurant.split_bills"], "orders.manage");
+    const body = parse(restaurantApi.markSplitPaidBody, req.body);
+    return splits.markSplitPaid(ctx, staff, req.params.orderId, req.params.splitId, body);
   });
 
   app.post<{ Params: MerchantParams & { orderId: string; splitId: string } }>("/merchants/:merchantId/orders/:orderId/splits/:splitId/mark-paid-cash", async (req) => {

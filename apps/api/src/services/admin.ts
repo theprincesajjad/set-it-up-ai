@@ -231,6 +231,7 @@ const serializeHood = (h: HoodRow, c?: { n: number; activated: number }): adminA
   biaContactEmail: h.biaContactEmail,
   biaContactPhone: h.biaContactPhone,
   storefrontEstimate: h.storefrontEstimate,
+  biaMemberCount: h.biaMemberCount,
   notes: h.notes,
   merchants: num(c?.n),
   activatedMerchants: num(c?.activated),

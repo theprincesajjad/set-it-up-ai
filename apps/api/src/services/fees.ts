@@ -6,12 +6,15 @@
  *             1.5% (FEES.orderBpsFree) for Free shops. Optional $0.49 customer service fee.
  *  - deposit / invoice: 1% (FEES.depositInvoiceBps), every plan.
  *  - tiffin:  1% (FEES.tiffinBps), every plan.
+ *  - manual:  0%. Payments a shop records by hand (e-transfer, cash, cheque) never carry a platform fee.
+ *  - appointment_checkout: checkout taken through the appointment calendar (counter or in person),
+ *             0% (FEES.appointmentCheckoutBps), every plan. Online deposits at booking use "deposit" (1%).
  * Card processing (Stripe) is passed through at cost on top and is not computed here.
  * Money is integer cents; fees round to the nearest cent.
  */
 import { FEES, effectivePlan, type PlanId, type RestaurantTier } from "@ll/shared";
 
-export const FEE_KINDS = ["order", "deposit", "invoice", "tiffin"] as const;
+export const FEE_KINDS = ["order", "deposit", "invoice", "tiffin", "appointment_checkout", "manual"] as const;
 export type FeeKind = (typeof FEE_KINDS)[number];
 
 export interface FeeInput {
@@ -49,7 +52,9 @@ const bpsFee = (amountCents: number, bps: number) => Math.round((Math.max(0, amo
 
 /** Basis points the platform takes for a payment kind on this plan/tier. */
 export function platformFeeBpsFor(kind: FeeKind, plan: PlanId, restaurantTier?: RestaurantTier | null): number {
+  if (kind === "manual") return 0;
   if (kind === "order") return effectivePlan(plan, restaurantTier) === "free" ? FEES.orderBpsFree : FEES.orderBpsPaid;
+  if (kind === "appointment_checkout") return FEES.appointmentCheckoutBps;
   return kind === "tiffin" ? FEES.tiffinBps : FEES.depositInvoiceBps;
 }
 

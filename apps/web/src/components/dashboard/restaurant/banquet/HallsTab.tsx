@@ -71,6 +71,12 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
   const [partDays, setPartDays] = useState(startTiers[1] ? String(startTiers[1].minDaysBefore) : "");
   const [partPct, setPartPct] = useState(startTiers[1] ? String(startTiers[1].refundBps / 100) : "50");
   const [pkgs, setPkgs] = useState<Pkg[]>((hall?.packages ?? []).map((p) => ({ key: `p${++seq}`, name: p.name, perHead: centsToField(p.perHeadCents), includes: p.includes.join("\n") })));
+  // Staged payments: each step is a share of the total due some days before the event (0 days = when the date is held).
+  const [steps, setSteps] = useState<{ key: string; label: string; pct: string; days: string }[]>(() =>
+    (hall?.paymentSchedule?.length ? hall.paymentSchedule : restaurantApi.DEFAULT_HALL_SCHEDULE).map((x) => ({ key: `s${++seq}`, label: x.label, pct: String(x.bps / 100), days: String(x.dueOffsetDays) })),
+  );
+  const [autoConfirm, setAutoConfirm] = useState(hall?.autoConfirmOnFirstPayment ?? false);
+  const stepPct = steps.reduce((n, x) => n + (Number(x.pct) || 0), 0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState(false);
   const setPkg = (key: string, patch: Partial<Pkg>) => setPkgs((l) => l.map((p) => (p.key === key ? { ...p, ...patch } : p)));
@@ -80,6 +86,8 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
     if (!name.trim()) e.name = "Give the hall a name";
     if (!(Number(capacity) >= 1)) e.capacity = "How many does it seat?";
     if (pkgs.some((p) => !p.name.trim())) e.pkgs = "Every package needs a name";
+    if (Math.abs(stepPct - 100) > 0.001) e.steps = "The payment steps must add up to 100%";
+    else if (steps.some((x) => !x.label.trim())) e.steps = "Give every payment step a name";
     const tiers = [{ d: fullDays, p: fullPct }, { d: partDays, p: partPct }].filter((t) => t.d.trim() !== "").map((t) => ({ minDaysBefore: Number(t.d), refundBps: Math.round((Number(t.p) || 0) * 100) }));
     if (tiers.some((t) => t.refundBps > 10_000)) e.refund = "A refund can't be more than 100%";
     else if (new Set(tiers.map((t) => t.minDaysBefore)).size !== tiers.length) e.refund = "Use a different number of days for each tier";
@@ -88,6 +96,8 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
     const body = {
       name: name.trim(), capacity: Number(capacity), description: description.trim() || null, baseCents: fieldToCents(base),
       depositBps: Math.min(10_000, Math.round((Number(deposit) || 0) * 100)), active, refundPolicy: { tiers },
+      paymentSchedule: steps.map((x) => ({ label: x.label.trim(), bps: Math.round((Number(x.pct) || 0) * 100), dueOffsetDays: Math.max(0, Number(x.days) || 0) })),
+      autoConfirmOnFirstPayment: autoConfirm,
       packages: pkgs.map((p) => ({ name: p.name.trim(), perHeadCents: fieldToCents(p.perHead), includes: p.includes.split("\n").map((x) => x.trim()).filter(Boolean) })),
     };
     const r = await act.run(() => (hall ? api.banquet.updateHall(hall.id, body) : api.banquet.createHall(body)));
@@ -135,6 +145,21 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
               </FormGrid>
               {errors.refund ? <p className="text-meta text-negative">{errors.refund}</p> : <p className="text-meta text-fg-muted">Customers see: {policyText({ tiers: [{ d: fullDays, p: fullPct }, { d: partDays, p: partPct }].filter((t) => t.d.trim() !== "").map((t) => ({ minDaysBefore: Number(t.d), refundBps: Math.round((Number(t.p) || 0) * 100) })) })}.</p>}
             </div>
+          </Section>
+          <Section title="Payment schedule" description="A new booking copies these steps with dates. The first step is due when the date is held; change them for one booking later if you need to.">
+            <ul className="flex flex-col gap-2">
+              {steps.map((x, i) => (
+                <li key={x.key} className="grid grid-cols-[1fr_5.5rem_6.5rem_auto] items-end gap-2">
+                  <TextField label="Step" hideLabel={i > 0} value={x.label} onChange={(e) => setSteps((l) => l.map((y) => (y.key === x.key ? { ...y, label: e.target.value } : y)))} />
+                  <TextField label="Share" hideLabel={i > 0} suffix="%" inputMode="decimal" value={x.pct} onChange={(e) => setSteps((l) => l.map((y) => (y.key === x.key ? { ...y, pct: e.target.value.replace(/[^0-9.]/g, "") } : y)))} />
+                  <TextField label="Days before" hideLabel={i > 0} inputMode="numeric" value={x.days} onChange={(e) => setSteps((l) => l.map((y) => (y.key === x.key ? { ...y, days: e.target.value.replace(/\D/g, "") } : y)))} />
+                  <IconButton icon={Trash2} label={`Remove ${x.label || "step"}`} size={40} className="mb-3" onClick={() => setSteps((l) => (l.length > 1 ? l.filter((y) => y.key !== x.key) : l))} />
+                </li>
+              ))}
+            </ul>
+            <p className={`mt-1 text-meta ${errors.steps || Math.abs(stepPct - 100) > 0.001 ? "text-negative" : "text-fg-muted"}`}>{errors.steps ?? `Adds up to ${stepPct}%.`}</p>
+            <div className="mt-1"><Button variant="ghost" size="sm" iconStart={Plus} onClick={() => setSteps((l) => [...l, { key: `s${++seq}`, label: "Payment", pct: "0", days: "7" }])}>Add a step</Button></div>
+            <Switch label="Confirm when the first payment is recorded" description="Off by default: you confirm each hold yourself once you have checked the money." checked={autoConfirm} onChange={setAutoConfirm} />
           </Section>
           <Switch label="Open for holds" description="Turn off to stop new bookings without deleting the hall" checked={active} onChange={setActive} />
           <Section title="Packages" description="A per-guest price on top of the room fee. Walima dinner, mehndi night, nikah lunch.">

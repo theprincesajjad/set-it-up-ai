@@ -8,23 +8,25 @@
  * paid SMS) > email (CASL consent) > push (app installed).
  *
  * Public page by token: the customer rates 1-5 and may leave private feedback.
- * Google policy: we never gate or hide the Google review link on the rating. The
- * Google link is always returned; 4 and 5 stars simply lead with it
- * (`leadWithGoogle`), while 1-3 stars also notify the shop privately.
+ * Google policy: ask every customer the same way. The page and the answer carry the same two
+ * options (private note to the shop, public Google review) at the same weight for every rating,
+ * and the payload is identical but for the rating. Ratings of 3 or less also notify the shop,
+ * who reads them first and replies in the guest's language (reply, free chai, mark handled).
  *
  * review_requests.orderId holds the completed thing's id (order, tiffin delivery or
  * catering event). There is no FK, so one table serves all three.
  */
 import { and, count, desc, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
-import { cateringEvents, merchantMembers, merchantStaff, merchants, orders, pushTokens, reviewRequests, tiffinDeliveries, tiffinSubscriptions, users } from "@ll/db";
-import { BRAND, whatsappApi } from "@ll/shared";
+import { cateringEvents, merchantMembers, merchantStaff, merchants, orders, pushTokens, redemptions, reviewRequests, rewards, tiffinDeliveries, tiffinSubscriptions, users } from "@ll/db";
+import { BRAND, restaurantWebApi, whatsappApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
-import { randomToken } from "../lib/crypto.js";
-import { badRequest, notFound } from "../lib/errors.js";
+import { randomCode, randomToken } from "../lib/crypto.js";
+import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import { decodeCursor, encodeCursor } from "./commerceShared.js";
 import { isFeatureOn, requireFeature } from "./features.js";
 import { smsAllowance, withFooter } from "./messaging.js";
-import { canSendTransactional, getSession, sendWhatsAppNotification } from "./whatsapp.js";
+import { ensureMember } from "./ledger.js";
+import { canSendTransactional, getSession, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
 import { writeAudit } from "./admin-audit.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -204,14 +206,12 @@ export async function getPublicReview(ctx: AppContext, token: string): Promise<w
 export async function submitReview(ctx: AppContext, token: string, input: whatsappApi.ReviewSubmitBody): Promise<whatsappApi.ReviewSubmitResponse> {
   const body = whatsappApi.reviewSubmitBody.parse(input);
   const { req, merchant } = await byToken(ctx, token);
+  // The same answer for every rating (Google's policy against selective asking): only `rating` differs.
   const respond = (rating: number): whatsappApi.ReviewSubmitResponse => ({
     rating,
-    leadWithGoogle: rating >= 4,
+    leadWithGoogle: true,
     googleReviewUrl: merchant.googleReviewUrl,
-    message:
-      rating >= 4
-        ? `Thank you. If you have a minute, a Google review helps ${merchant.name} a lot.`
-        : `Thank you for telling us. ${merchant.name} will read this and may reach out. You are also welcome to leave a public Google review.`,
+    message: merchant.googleReviewUrl ? `Thank you. ${merchant.name} reads every answer. You are also welcome to leave a public Google review.` : `Thank you. ${merchant.name} reads every answer.`,
   });
   // One rating per request; a repeat submit (double tap, refresh) returns the stored answer.
   if (req.rating != null) return respond(req.rating);
@@ -243,9 +243,21 @@ async function notifyLowRating(ctx: AppContext, merchant: Merchant, req: Request
 }
 
 // ---------------------------------------------------------------------------
+// Google link tap (public)
+// ---------------------------------------------------------------------------
+/** The guest tapped the Google button. Recorded once; never changes what they are shown. */
+export async function markGoogleOpened(ctx: AppContext, token: string): Promise<{ ok: true }> {
+  const { req } = await byToken(ctx, token);
+  if (!req.googleClickedAt) await ctx.db.update(reviewRequests).set({ googleClickedAt: ctx.now() }).where(eq(reviewRequests.id, req.id));
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Merchant list and stats
 // ---------------------------------------------------------------------------
-function dto(r: Request, customer: { id: string; name: string | null } | null): whatsappApi.ReviewDto {
+type Ctx = { name: string | null; phone: string | null; locale: string | null; orderNumber: number | null; orderChannel: string | null };
+
+function dto(r: Request, customer: { id: string; name: string | null } | null, c?: Ctx): whatsappApi.ReviewDto {
   return {
     id: r.id,
     orderId: r.orderId,
@@ -257,20 +269,30 @@ function dto(r: Request, customer: { id: string; name: string | null } | null): 
     responded: r.rating != null,
     clickedAt: r.clickedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
+    googleOpenedAt: r.googleClickedAt?.toISOString() ?? null,
+    handledAt: r.handledAt?.toISOString() ?? null,
+    reply: r.repliedAt && r.replyBody ? { channel: r.replyChannel ?? "", body: r.replyBody, at: r.repliedAt.toISOString() } : null,
+    orderNumber: c?.orderNumber ?? null,
+    orderChannel: c?.orderChannel ?? null,
+    customerLanguage: c?.locale ? c.locale.slice(0, 2).toLowerCase() : null,
+    customerPhone: c?.phone ?? null,
   };
 }
 
-export async function listReviews(ctx: AppContext, merchant: Merchant, q: { rating?: number; status?: "responded" | "pending"; limit: number; cursor?: string }) {
+export async function listReviews(ctx: AppContext, merchant: Merchant, q: { rating?: number; maxRating?: number; handled?: "0" | "1"; status?: "responded" | "pending"; limit: number; cursor?: string }) {
   await requireFeature(ctx.db, merchant, "restaurant.reviews");
   const c = decodeCursor(q.cursor);
   const rows = await ctx.db
-    .select({ r: reviewRequests, name: users.name })
+    .select({ r: reviewRequests, name: users.name, phone: users.phone, locale: users.locale, orderNumber: orders.number, orderChannel: orders.channel })
     .from(reviewRequests)
     .innerJoin(users, eq(users.id, reviewRequests.userId))
+    .leftJoin(orders, and(eq(orders.id, reviewRequests.orderId), eq(orders.merchantId, reviewRequests.merchantId)))
     .where(
       and(
         eq(reviewRequests.merchantId, merchant.id),
         q.rating ? eq(reviewRequests.rating, q.rating) : undefined,
+        q.maxRating ? lte(reviewRequests.rating, q.maxRating) : undefined,
+        q.handled === "0" ? isNull(reviewRequests.handledAt) : q.handled === "1" ? isNotNull(reviewRequests.handledAt) : undefined,
         q.status === "responded" ? isNotNull(reviewRequests.rating) : q.status === "pending" ? isNull(reviewRequests.rating) : undefined,
         c ? or(lt(reviewRequests.createdAt, c.createdAt), and(eq(reviewRequests.createdAt, c.createdAt), lt(reviewRequests.id, c.id))) : undefined,
       ),
@@ -278,26 +300,36 @@ export async function listReviews(ctx: AppContext, merchant: Merchant, q: { rati
     .orderBy(desc(reviewRequests.createdAt), desc(reviewRequests.id))
     .limit(q.limit + 1);
   const page = rows.slice(0, q.limit);
-  return { items: page.map((x) => dto(x.r, { id: x.r.userId, name: x.name })), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.r) : null };
+  return { items: page.map((x) => dto(x.r, { id: x.r.userId, name: x.name }, x)), nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.r) : null };
 }
 
 export async function reviewStats(ctx: AppContext, merchant: Merchant): Promise<whatsappApi.ReviewStats> {
   await requireFeature(ctx.db, merchant, "restaurant.reviews");
   const rows = await ctx.db
-    .select({ rating: reviewRequests.rating, sent: sql<number>`count(${reviewRequests.sentAt})::int`, opened: sql<number>`count(${reviewRequests.clickedAt})::int`, n: count() })
+    .select({
+      rating: reviewRequests.rating,
+      sent: sql<number>`count(${reviewRequests.sentAt})::int`,
+      opened: sql<number>`count(${reviewRequests.clickedAt})::int`,
+      google: sql<number>`count(${reviewRequests.googleClickedAt})::int`,
+      unhandled: sql<number>`count(*) filter (where ${reviewRequests.handledAt} is null)::int`,
+      n: count(),
+    })
     .from(reviewRequests)
     .where(eq(reviewRequests.merchantId, merchant.id))
     .groupBy(reviewRequests.rating);
   const distribution = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-  let requested = 0, sent = 0, opened = 0, responded = 0, sum = 0;
+  const toRead = { "1": 0, "2": 0, "3": 0 };
+  let requested = 0, sent = 0, opened = 0, googleOpened = 0, responded = 0, sum = 0;
   for (const r of rows) {
     requested += r.n;
     sent += r.sent;
     opened += r.opened;
+    googleOpened += r.google;
     if (r.rating != null) {
       responded += r.n;
       sum += r.rating * r.n;
       distribution[String(r.rating) as keyof typeof distribution] += r.n;
+      if (r.rating <= 3) toRead[String(r.rating) as keyof typeof toRead] += r.unhandled;
     }
   }
   return {
@@ -308,8 +340,108 @@ export async function reviewStats(ctx: AppContext, merchant: Merchant): Promise<
     averageRating: responded ? Number((sum / responded).toFixed(2)) : null,
     distribution,
     opened,
+    googleOpened,
+    privateToRead: toRead["1"] + toRead["2"] + toRead["3"],
+    privateToReadByRating: toRead,
     googleReviewUrl: merchant.googleReviewUrl,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Private feedback: mark handled, reply in the guest's language, offer a free chai
+// ---------------------------------------------------------------------------
+async function ownReview(ctx: AppContext, merchant: Merchant, reviewId: string): Promise<Request> {
+  const [r] = await ctx.db.select().from(reviewRequests).where(and(eq(reviewRequests.id, reviewId), eq(reviewRequests.merchantId, merchant.id))).limit(1);
+  if (!r) throw notFound("Review");
+  return r;
+}
+
+async function reviewDto(ctx: AppContext, merchantId: string, id: string): Promise<whatsappApi.ReviewDto> {
+  const [x] = await ctx.db
+    .select({ r: reviewRequests, name: users.name, phone: users.phone, locale: users.locale, orderNumber: orders.number, orderChannel: orders.channel })
+    .from(reviewRequests)
+    .innerJoin(users, eq(users.id, reviewRequests.userId))
+    .leftJoin(orders, and(eq(orders.id, reviewRequests.orderId), eq(orders.merchantId, reviewRequests.merchantId)))
+    .where(and(eq(reviewRequests.id, id), eq(reviewRequests.merchantId, merchantId)))
+    .limit(1);
+  return dto(x!.r, { id: x!.r.userId, name: x!.name }, x!);
+}
+
+/** Mark private feedback handled (idempotent). */
+export async function markHandled(ctx: AppContext, merchant: Merchant, actorUserId: string, reviewId: string): Promise<whatsappApi.ReviewDto> {
+  await requireFeature(ctx.db, merchant, "restaurant.reviews");
+  const r = await ownReview(ctx, merchant, reviewId);
+  if (r.rating == null) throw badRequest("This guest hasn't answered yet");
+  if (!r.handledAt) {
+    await ctx.db.update(reviewRequests).set({ handledAt: ctx.now() }).where(eq(reviewRequests.id, r.id));
+    await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "review.handled", entity: "review_request", entityId: r.id });
+  }
+  return reviewDto(ctx, merchant.id, r.id);
+}
+
+/**
+ * Reply to private feedback. WhatsApp only inside the 24 hour window (else 409 window_closed: the dashboard then opens
+ * the owner's own WhatsApp with the text ready); SMS spends a credit; email always works with an address.
+ * A sent reply marks the feedback handled.
+ */
+export async function replyToReview(ctx: AppContext, merchant: Merchant, actorUserId: string, reviewId: string, input: restaurantWebApi.ReviewReplyBody): Promise<restaurantWebApi.ReviewReplyResponse> {
+  await requireFeature(ctx.db, merchant, "restaurant.reviews");
+  const body = restaurantWebApi.reviewReplyBody.parse(input);
+  const r = await ownReview(ctx, merchant, reviewId);
+  if (r.rating == null) throw badRequest("This guest hasn't answered yet");
+  const [user] = await ctx.db.select({ phone: users.phone, email: users.email }).from(users).where(eq(users.id, r.userId)).limit(1);
+  if (body.channel === "email") {
+    if (!user?.email) throw new HttpError(409, "no_contact", "We don't have an email address for this guest.");
+    await ctx.providers.email.send({ to: user.email, subject: `${merchant.name}: thank you for telling us`, text: `${body.body}\n\n${merchant.name}` });
+  } else {
+    if (!user?.phone) throw new HttpError(409, "no_contact", "We don't have a phone number for this guest.");
+    if (body.channel === "sms") {
+      if (!(await reserveSms(ctx, merchant))) throw new HttpError(409, "no_credits", "You have used this month's text messages. Use WhatsApp or email.");
+      await ctx.providers.sms.send(user.phone, `${body.body}\n— ${merchant.name}`);
+    } else {
+      const out = await sendWhatsApp(ctx, merchant, user.phone, { text: body.body });
+      if (!out.sent) {
+        if (out.reason === "outside_window") throw new HttpError(409, "window_closed", "WhatsApp only lets you reply within 24 hours of the guest's last message. Open WhatsApp to message them yourself, or use text or email.");
+        if (out.reason === "no_sender") throw new HttpError(409, "whatsapp_not_connected", "Connect your WhatsApp number first, or open WhatsApp on your phone.");
+        throw new HttpError(502, "send_failed", "We couldn't send that. Try again, or message the guest yourself.");
+      }
+    }
+  }
+  const now = ctx.now();
+  await ctx.db.update(reviewRequests).set({ replyChannel: body.channel, replyBody: body.body, repliedAt: now, handledAt: r.handledAt ?? now }).where(eq(reviewRequests.id, r.id));
+  await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "review.replied", entity: "review_request", entityId: r.id, data: { channel: body.channel } });
+  return { sent: true, channel: body.channel };
+}
+
+const CHAI_REWARD = "Free chai (thank-you)";
+const CHAI_TTL_MS = 30 * 24 * 60 * 60_000;
+
+/** A one-use free chai for this guest: a redemption code the counter can honour, valid 30 days. Asking twice returns the same code. */
+export async function offerFreeChai(ctx: AppContext, merchant: Merchant, actorUserId: string, reviewId: string): Promise<restaurantWebApi.ReviewOfferResponse> {
+  await requireFeature(ctx.db, merchant, "restaurant.reviews");
+  const r = await ownReview(ctx, merchant, reviewId);
+  if (r.rating == null) throw badRequest("This guest hasn't answered yet");
+  if (r.offerRedemptionId) {
+    const [red] = await ctx.db.select().from(redemptions).where(eq(redemptions.id, r.offerRedemptionId)).limit(1);
+    if (red) return { redemptionId: red.id, code: red.code, expiresAt: (red.expiresAt ?? new Date(red.createdAt.getTime() + CHAI_TTL_MS)).toISOString() };
+  }
+  const now = ctx.now();
+  let [reward] = await ctx.db.select().from(rewards).where(and(eq(rewards.merchantId, merchant.id), eq(rewards.name, CHAI_REWARD))).limit(1);
+  // Inactive so it never shows in the rewards catalog; it costs no points, so nothing moves through the ledger.
+  reward ??= (await ctx.db.insert(rewards).values({ merchantId: merchant.id, name: CHAI_REWARD, description: "One-use free chai offered with a reply to private feedback.", pointsCost: 0, rewardType: "custom", value: 0, active: false }).returning())[0]!;
+  const { member } = await ctx.db.transaction((tx) => ensureMember(ctx, tx, { merchantId: merchant.id, userId: r.userId, joinedVia: "app" }));
+  let red: typeof redemptions.$inferSelect | undefined;
+  for (let i = 0; i < 5 && !red; i++) {
+    [red] = await ctx.db
+      .insert(redemptions)
+      .values({ merchantId: merchant.id, memberId: member.id, rewardId: reward.id, code: randomCode(6), status: "issued", expiresAt: new Date(now.getTime() + CHAI_TTL_MS), createdAt: now })
+      .onConflictDoNothing()
+      .returning();
+  }
+  if (!red) throw new HttpError(500, "offer_failed", "We couldn't create the offer. Try again.");
+  await ctx.db.update(reviewRequests).set({ offerRedemptionId: red.id }).where(eq(reviewRequests.id, r.id));
+  await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "review.chai_offered", entity: "review_request", entityId: r.id, data: { redemptionId: red.id } });
+  return { redemptionId: red.id, code: red.code, expiresAt: red.expiresAt!.toISOString() };
 }
 
 export async function saveReviewSettings(ctx: AppContext, merchant: Merchant, actorUserId: string, body: { googleReviewUrl: string | null }) {

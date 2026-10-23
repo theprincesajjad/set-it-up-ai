@@ -5,17 +5,24 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
-import { Capsules, Dot, Empty, ErrorLine, PageHeader, SidePanel, SkeletonRows, Table, TableWrap, Td, Th, ToolbarButton, Tr } from "@/components/dashboard/kit";
+import { Capsules, Empty, ErrorLine, PageHeader, SidePanel, SkeletonRows, Table, TableWrap, Td, Th, ToolbarButton, Tr } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { BFF_BASE } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
-import { formatDate, formatNumber, formatPoints } from "@/lib/format";
-import { CONSENT_LABEL, consentState, filterQuery, maskPhone, type CustomerFilter } from "@/lib/dashboard/customers";
+import { formatDate, formatNumber } from "@/lib/format";
+import { filterFromSegment, filterQuery, type CustomerFilter } from "@/lib/dashboard/customers";
 import { useApi } from "@/lib/dashboard/useApi";
 import { relativeTime } from "@/lib/dashboard/time";
+import { cn } from "@/lib/cn";
 
-type SortKey = "name" | "balance" | "visits" | "last" | "joined";
+/** "today", "yesterday", "22 days ago": the Last visit column. */
+function lastVisitText(iso: string, now = Date.now()): string {
+  const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  return days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+type SortKey = "name" | "balance" | "visits" | "last";
 
 export default function CustomersPage() {
   return (
@@ -35,7 +42,7 @@ function Customers() {
   const open = params.get("member");
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [filter, setFilter] = useState<CustomerFilter>("all");
+  const [filter, setFilter] = useState<CustomerFilter>(() => filterFromSegment(params.get("segment")));
   const [rows, setRows] = useState<merchantApi.CustomerSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,20 +52,25 @@ function Customers() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [nonce, setNonce] = useState(0);
   const term = detail.program?.terminology ?? "points";
-  const marketing = enabled("marketing.email") || enabled("marketing.sms");
+  const goal = detail.program?.earnType === "stamps" ? detail.program.stampGoal : 0;
   const vip = enabled("loyalty.vip_levels");
+  const counts = useApi(() => api.customerSegmentCounts(), [api, nonce]);
 
+  // Regulars and slipping away come from each person's own rhythm; counts are exact and come from the server.
   const filters = useMemo(() => {
-    const f: { value: CustomerFilter; label: string }[] = [
-      { value: "all", label: "All" },
-      { value: "reward", label: "Reward ready" },
-      { value: "new", label: "New (30 days)" },
-      { value: "at_risk", label: "At risk" },
+    const c = counts.data;
+    const f: { value: CustomerFilter; label: string; count?: number | null }[] = [
+      { value: "all", label: "All", count: c?.all },
+      { value: "regulars", label: "Regulars", count: c?.regulars },
+      { value: "slipping", label: "Slipping away", count: c?.slipping },
+      { value: "reward", label: "Reward ready", count: c?.rewardReady },
+      { value: "new", label: "New this month", count: c?.newThisMonth },
+      { value: "birthday", label: "Birthday this month", count: c?.birthdayMonth },
+      { value: "can_text", label: "Can text", count: c?.canText },
     ];
     if (vip) f.push({ value: "vip", label: "VIP" });
-    if (marketing) f.push({ value: "opted_in", label: "Opted in to messages" }, { value: "muted", label: "Muted" });
     return f;
-  }, [vip, marketing]);
+  }, [vip, counts.data]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 250);
@@ -91,7 +103,7 @@ function Customers() {
   const sorted = useMemo(() => {
     if (!sort) return rows;
     const v = (c: merchantApi.CustomerSummary): string | number =>
-      sort.key === "name" ? (c.name ?? "").toLowerCase() : sort.key === "balance" ? c.balance : sort.key === "visits" ? c.visitCount : sort.key === "last" ? (c.lastVisitAt ?? "") : c.joinedAt;
+      sort.key === "name" ? (c.name ?? "").toLowerCase() : sort.key === "balance" ? c.balance : sort.key === "visits" ? c.visits30d : (c.lastVisitAt ?? "");
     return [...rows].sort((a, b) => (v(a) < v(b) ? -sort.dir : v(a) > v(b) ? sort.dir : 0));
   }, [rows, sort]);
 
@@ -123,7 +135,7 @@ function Customers() {
     <div>
       <PageHeader
         title="Customers"
-        description={total != null ? `${formatNumber(total)} ${filtered ? "matching" : "members"} · Reveals and exports are logged` : "Everyone in your program"}
+        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} members · ${formatNumber(counts.data.canText)} can be texted · phone numbers are masked and reveals are logged` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : "members"} · phone numbers are masked and reveals are logged` : "Everyone in your program"}
         actions={
           role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>
@@ -142,18 +154,7 @@ function Customers() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
-        <label className="relative block md:w-[320px]">
-          <span className="sr-only">Search customers</span>
-          <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-muted" strokeWidth={1.75} />
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Name, last 4 of phone, email or code"
-            className="h-9 w-full rounded-input border border-line bg-bg ps-8 pe-3 text-meta text-fg outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-fg"
-          />
-        </label>
+      <div className="mb-5">
         <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
       </div>
 
@@ -177,41 +178,30 @@ function Customers() {
             <thead>
               <tr>
                 {sortTh("name", "Name")}
-                <Th className="hidden md:table-cell">Phone</Th>
-                {sortTh("balance", "Balance", "end")}
-                {sortTh("visits", "Visits", "end", "hidden sm:table-cell")}
+                {sortTh("balance", term.charAt(0).toUpperCase() + term.slice(1))}
+                {sortTh("visits", "Visits (30 d)", "start", "hidden sm:table-cell")}
                 {sortTh("last", "Last visit", "start", "hidden md:table-cell")}
-                {sortTh("joined", "Joined", "start", "hidden lg:table-cell")}
-                {marketing ? <Th className="hidden lg:table-cell">Messages</Th> : null}
-                {vip ? <Th className="hidden lg:table-cell">VIP</Th> : null}
+                <Th className="hidden lg:table-cell">Usually</Th>
+                <Th className="hidden md:table-cell">Texts</Th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((c) => {
-                const s = consentState(c);
-                return (
-                  <Tr key={c.memberId} onOpen={() => setOpen(c.memberId)} selected={open === c.memberId} aria-label={c.name ?? "No name"}>
-                    <Td className="max-w-[260px]">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate font-medium">{c.name ?? <span className="text-fg-muted">No name</span>}</span>
-                        {c.rewardAvailable ? <Dot tone="accent" className="text-caption font-normal text-fg-muted">Reward ready</Dot> : null}
-                      </span>
-                      <span className="block truncate text-caption font-normal text-fg-muted md:hidden">{c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet"}</span>
-                    </Td>
-                    <Td className="hidden text-fg-muted tabular md:table-cell">{maskPhone(c.phone)}</Td>
-                    <Td align="end">{formatPoints(c.balance, term)}</Td>
-                    <Td align="end" className="hidden sm:table-cell">{formatNumber(c.visitCount)}</Td>
-                    <Td className="hidden text-fg-muted md:table-cell">{c.lastVisitAt ? relativeTime(c.lastVisitAt) : "No visits yet"}</Td>
-                    <Td className="hidden text-fg-muted lg:table-cell">{formatDate(c.joinedAt)}</Td>
-                    {marketing ? (
-                      <Td className="hidden lg:table-cell">
-                        <Dot tone={s === "opted_in" ? "positive" : "neutral"}>{CONSENT_LABEL[s]}</Dot>
-                      </Td>
-                    ) : null}
-                    {vip ? <Td className="hidden text-fg-muted lg:table-cell">{c.vipLevel?.name ?? "–"}</Td> : null}
-                  </Tr>
-                );
-              })}
+              {sorted.map((c) => (
+                <Tr key={c.memberId} onOpen={() => setOpen(c.memberId)} selected={open === c.memberId} aria-label={c.name ?? "No name"}>
+                  <Td className="max-w-[260px]">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium">{c.name ?? <span className="text-fg-muted">No name</span>}</span>
+                      {c.rewardAvailable ? <span role="img" aria-label="Reward ready" title="Reward ready" className="size-1.5 shrink-0 rounded-full bg-accent" /> : null}
+                    </span>
+                    <span className="block truncate text-caption font-normal text-fg-muted md:hidden">{c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet"}</span>
+                  </Td>
+                  <Td className={cn("tabular", c.rewardAvailable && "text-accent-text")}>{goal ? `${formatNumber(c.balance)} / ${goal}` : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</Td>
+                  <Td className="hidden tabular sm:table-cell">{formatNumber(c.visits30d)}</Td>
+                  <Td className={cn("hidden md:table-cell", c.isSlipping ? "text-negative" : undefined)}>{c.lastVisitAt ? lastVisitText(c.lastVisitAt) : <span className="text-fg-muted">No visits yet</span>}</Td>
+                  <Td className="hidden text-fg-muted lg:table-cell">{c.usually ?? "–"}</Td>
+                  <Td className={cn("hidden md:table-cell", c.marketingConsent && c.phone ? "text-positive" : "text-fg-muted")}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "No consent"}</Td>
+                </Tr>
+              ))}
             </tbody>
           </Table>
         </TableWrap>

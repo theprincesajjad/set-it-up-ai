@@ -31,8 +31,13 @@ Any lead field plus `stage`. → `LeadDetail`. Stage changes are audit-logged.
 Body `{ kind, outcome?, notes?, stage?, nextActionAt? }` → `201 LeadDetail`. A call/email/visit on a `new` lead moves it to `contacted`.
 
 ### `POST /v1/public/leads` (no auth) — marketing-site lead forms
-Body `publicLeadBody { businessName, contactName?, email?, phone?, vertical?, neighbourhoodSlug?, message?, kind }`,
-`kind: "book_visit" | "talk_to_us" | "bia"` (`PUBLIC_LEAD_KINDS`). At least one of `email` / `phone` is required.
+Body `publicLeadBody { businessName, contactName?, email?, phone?, vertical?, neighbourhoodSlug?, message?, kind, language?, role?, eventDate?, boardMeetingAt?, memberCount? }`,
+`kind: "book_visit" | "talk_to_us" | "bia" | "restaurant"` (`PUBLIC_LEAD_KINDS`). At least one of `email` / `phone` is required;
+a `restaurant` lead needs a `phone` (restaurants are reached by call, text or WhatsApp). `language` is one of `en | hi | ur | pa`
+(the restaurant's preferred language; stored on `leads.language`); `role`, `eventDate` (YYYY-MM-DD), `boardMeetingAt` (YYYY-MM-DD)
+and `memberCount` are for BIA enquiries and stored on `leads.contactRole / eventDate / boardMeetingAt / memberCount`. All of them
+come back on `Lead`; the rep inbox shows the language and board date and flags a board meeting within
+`BOARD_MEETING_SOON_DAYS` (30) days. A `restaurant` lead defaults `vertical` to `restaurant`.
 Creates an **unassigned** lead in stage `new` (shows up for every rep; the first rep to touch it claims it).
 `neighbourhoodSlug` is resolved to `neighbourhoodId` (unknown slugs are kept in `notes`); `kind` and `message` are stored
 in `notes` (prefixed `[website: <kind>]`). Emails `BRAND.supportEmail` via the email provider (a mail failure doesn't fail the form).

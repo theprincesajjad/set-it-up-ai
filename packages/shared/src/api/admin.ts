@@ -106,6 +106,8 @@ const neighbourhoodFields = {
   biaContactEmail: z.email().nullable(),
   biaContactPhone: phoneSchema.nullable(),
   storefrontEstimate: z.number().int().min(0).max(100000).nullable(),
+  /** How many members the BIA has (the "of 74" on its overview). */
+  biaMemberCount: z.number().int().min(0).max(100000).nullable(),
   notes: nullableText(5000),
 };
 export const createNeighbourhoodBody = z.object(neighbourhoodFields).partial().required({ slug: true, name: true });
@@ -125,6 +127,7 @@ export interface AdminNeighbourhood {
   biaContactEmail: string | null;
   biaContactPhone: string | null;
   storefrontEstimate: number | null;
+  biaMemberCount: number | null;
   notes: string | null;
   merchants: number;
   activatedMerchants: number;

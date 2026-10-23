@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" ADD COLUMN "dropoff_blocked_dates" jsonb DEFAULT '[]'::jsonb NOT NULL;

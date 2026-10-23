@@ -5,6 +5,7 @@
  */
 import type {
   adsApi,
+  appointmentsApi,
   authApi,
   campaignsApi,
   commerceApi,
@@ -103,11 +104,26 @@ export function createEndpoints(c: ApiClient) {
       click: (adId: string) => c.post<adsApi.TrackResponse>(`/v1/ads/${enc(adId)}/click`),
     },
 
+    /** Appointments (booking.appointments): book a stylist and a time, with a deposit or a card on file. */
+    appointments: {
+      services: (slug: string) => c.get<appointmentsApi.PublicServicesResponse>(`/v1/public/shops/${enc(slug)}/services`, { auth: "optional" }),
+      availability: (slug: string, q: { serviceIds: string[]; staffId: string; from: string; to: string }) =>
+        c.get<appointmentsApi.AvailabilityResponse>(`/v1/public/shops/${enc(slug)}/availability`, { query: { serviceIds: q.serviceIds.join(","), staffId: q.staffId, from: q.from, to: q.to }, auth: "optional" }),
+      mine: () => c.get<appointmentsApi.MyAppointmentsResponse>("/v1/me/appointments"),
+      get: (id: string) => c.get<appointmentsApi.MyAppointmentResponse>(`/v1/me/appointments/${enc(id)}`),
+      book: (body: appointmentsApi.CreateMyAppointmentBody) => c.post<appointmentsApi.CreateMyAppointmentResponse>("/v1/me/appointments", body),
+      cancel: (id: string) => c.post<appointmentsApi.MyAppointmentChangeResponse>(`/v1/me/appointments/${enc(id)}/cancel`, {}),
+      reschedule: (id: string, body: appointmentsApi.RescheduleMyAppointmentBody) => c.post<appointmentsApi.MyAppointmentChangeResponse>(`/v1/me/appointments/${enc(id)}/reschedule`, body),
+    },
+
     commerce: {
       /** 402 feature_locked when order-ahead isn't enabled for the shop: the app hides the entry point. */
       menu: (slug: string) => c.get<commerceApi.PublicMenuResponse>(`/v1/public/shops/${enc(slug)}/menu`, { auth: "optional" }),
-      slots: (slug: string, q: { kind?: "pickup"; locationId?: string; from?: string; to?: string } = {}) =>
+      slots: (slug: string, q: { kind?: commerceApi.SlotKind; locationId?: string; from?: string; to?: string } = {}) =>
         c.get<{ items: commerceApi.SlotDto[] }>(`/v1/public/shops/${enc(slug)}/slots`, { query: q, auth: "optional" }),
+      /** Drop-off bookings (booking.dropoff_scheduling): book a time to bring an item in, and cancel it. */
+      bookSlot: (body: commerceApi.CreateBookingBody) => c.post<commerceApi.BookingDto>("/v1/me/bookings", body),
+      cancelBooking: (bookingId: string) => c.post<commerceApi.BookingDto>(`/v1/me/bookings/${enc(bookingId)}/cancel`),
       placeOrder: (body: commerceApi.PlaceOrderBody) =>
         c.post<commerceApi.PlaceOrderResponse>("/v1/me/orders", body, { idempotencyKey: body.idempotencyKey }),
       orders: (cursor?: string) => c.get<{ items: commerceApi.OrderDto[]; nextCursor: string | null }>("/v1/me/orders", { query: { cursor, limit: 50 } }),

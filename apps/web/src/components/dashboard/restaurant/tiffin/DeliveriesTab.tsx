@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, Phone, Route as RouteIcon } from "lucide-react"
 import { useMemo, useState } from "react";
 import type { tiffinApi } from "@ll/shared";
 import { Dot, EmptyState, type DotTone } from "@/components/dashboard/kit";
+import { Select } from "@/components/ui/Select";
+import { TextField } from "@/components/ui/TextField";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { cn } from "@/lib/cn";
-import { DateNav, Loader, todayISO } from "../common";
+import { DateNav, Loader, copyText, todayISO } from "../common";
 
 const TONE: Record<tiffinApi.TiffinDeliveryStatus, [DotTone, string]> = {
   scheduled: ["neutral", "To go out"],
@@ -20,6 +22,16 @@ const TONE: Record<tiffinApi.TiffinDeliveryStatus, [DotTone, string]> = {
   missed: ["negative", "Missed"],
   skipped: ["neutral", "Skipped"],
 };
+/** "Open driver link": makes today's link and opens it in a new tab. */
+function DriverLinkButton({ routeId, date }: { routeId: string; date: string }) {
+  const { api } = useMerchant();
+  const act = useAction();
+  return (
+    <Button size="sm" variant="secondary" loading={act.busy} onClick={async () => { const r = await act.run(() => api.tiffin.driverLink(routeId, date)); if (r) window.open(r.url, "_blank", "noopener"); }}>
+      Open driver link
+    </Button>
+  );
+}
 const FINAL: tiffinApi.TiffinDeliveryStatus[] = ["delivered", "picked_up", "skipped"];
 
 type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
@@ -33,6 +45,20 @@ export function DeliveriesTab({ goRoutes, gate }: { goRoutes: () => void; gate: 
   const state = useApi(() => api.tiffin.manifest(date), [api, date]);
   const act = useAction();
   const clear = () => setPicked(new Set());
+  const markOut = async (routeId?: string) => {
+    const r = await act.run(() => api.tiffin.markAllOut({ routeId, date }));
+    if (!r) return;
+    toast({ message: r.updated ? `${r.updated} ${r.updated === 1 ? "meal" : "meals"} marked out for delivery` : "Nothing left to send out", tone: r.updated ? "success" : "neutral" });
+    await state.reload();
+  };
+  const sendLinks = async () => {
+    const ids = (state.data?.routes ?? []).flatMap((r) => (r.route ? [r.route.id] : []));
+    if (!ids.length) return;
+    const r = await act.run(() => api.tiffin.sendDriverLinks(ids, "whatsapp", date));
+    if (!r) return;
+    const why = r.skipped[0]?.reason === "quiet_hours" ? "It's quiet hours (9 pm to 8 am), so nothing was sent." : "Add a driver phone on the Routes tab to send it.";
+    toast({ message: r.sent.length ? `Sent ${r.sent.length} driver ${r.sent.length === 1 ? "link" : "links"}${r.skipped.length ? `, ${r.skipped.length} skipped` : ""}` : why, tone: r.sent.length ? "success" : "neutral" });
+  };
 
   const setStatus = async (status: "out_for_delivery" | "delivered" | "picked_up" | "missed", ids = [...picked]) => {
     if (!ids.length) return;
@@ -70,9 +96,14 @@ export function DeliveriesTab({ goRoutes, gate }: { goRoutes: () => void; gate: 
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DateNav label="Delivery day" value={date} onChange={(d) => { setDate(d); clear(); }} />
-        <Button size="sm" variant="secondary" iconStart={RouteIcon} loading={act.busy} onClick={() => void autoAssign()}>
-          Auto-assign routes
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" iconStart={RouteIcon} loading={act.busy} onClick={() => void autoAssign()}>
+            Auto-assign routes
+          </Button>
+          <Button size="sm" loading={act.busy} onClick={() => void sendLinks()} disabled={!state.data?.routes.some((r) => r.route)}>
+            Send driver links
+          </Button>
+        </div>
       </div>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <Loader state={state} gate={gate} rows={5}>
@@ -87,11 +118,14 @@ export function DeliveriesTab({ goRoutes, gate }: { goRoutes: () => void; gate: 
               />
             );
           return (
-            <div className="flex flex-col gap-8 pb-16">
-              {d.routes.map((r) => (
-                <Run key={r.route?.id ?? "none"} r={r} picked={picked} toggle={toggle} toggleAll={() => toggleAll(r.stops)} move={(i, dir) => void move(r, i, dir)} busy={act.busy} />
-              ))}
-              {d.pickups.length ? <Run r={{ route: null, stops: d.pickups }} pickup picked={picked} toggle={toggle} toggleAll={() => toggleAll(d.pickups)} busy={act.busy} /> : null}
+            <div className="grid gap-8 pb-16 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="flex min-w-0 flex-col gap-8">
+                {d.routes.map((r) => (
+                  <Run key={r.route?.id ?? "none"} r={r} date={date} onMarkOut={r.route ? () => void markOut(r.route!.id) : undefined} picked={picked} toggle={toggle} toggleAll={() => toggleAll(r.stops)} move={(i, dir) => void move(r, i, dir)} busy={act.busy} />
+                ))}
+                {d.pickups.length ? <Run r={{ route: null, stops: d.pickups }} date={date} pickup picked={picked} toggle={toggle} toggleAll={() => toggleAll(d.pickups)} busy={act.busy} /> : null}
+              </div>
+              <DriverRail routes={d.routes.flatMap((r) => (r.route ? [r.route] : []))} date={date} onSent={() => void state.reload()} />
             </div>
           );
         }}
@@ -115,7 +149,54 @@ export function DeliveriesTab({ goRoutes, gate }: { goRoutes: () => void; gate: 
   );
 }
 
-function Run({ r, pickup, picked, toggle, toggleAll, move, busy }: { r: tiffinApi.ManifestRoute; pickup?: boolean; picked: Set<string>; toggle: (id: string) => void; toggleAll: () => void; move?: (index: number, dir: -1 | 1) => void; busy: boolean }) {
+/** Driver link (open, send, copy) and the "running late" notice for the day (design T3). */
+function DriverRail({ routes, date }: { routes: NonNullable<tiffinApi.ManifestRoute["route"]>[]; date: string; onSent: () => void }) {
+  const { api } = useMerchant();
+  const toast = useToast();
+  const act = useAction();
+  const [routeId, setRouteId] = useState("");
+  const [link, setLink] = useState<{ routeId: string; url: string } | null>(null);
+  const [minutes, setMinutes] = useState("20");
+  const route = routes.find((r) => r.id === routeId) ?? routes[0];
+  if (!route) return null;
+  const url = link?.routeId === route.id ? link.url : null;
+  const make = async () => {
+    const r = await act.run(() => api.tiffin.driverLink(route.id, date));
+    if (r) setLink({ routeId: route.id, url: r.url });
+    return r?.url ?? null;
+  };
+  return (
+    <aside className="flex min-w-0 flex-col gap-4 print:hidden" aria-label="Driver link and late run">
+      <section className="rounded-card border border-line p-5">
+        <h3 className="text-headline text-fg">Driver link</h3>
+        <p className="mt-1 text-meta text-fg-muted">{route.driverName ?? "The driver"} opens this on a phone. No login, no app install, expires at midnight.</p>
+        {routes.length > 1 ? <Select label="Route" hideLabel className="mt-3" value={route.id} onChange={(e) => setRouteId(e.target.value)} options={routes.map((r) => ({ value: r.id, label: r.name }))} /> : <p className="mt-3 text-meta-strong text-fg">{route.name}</p>}
+        {url ? <p className="mt-2 break-all rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg-muted">{url.replace(/^https?:\/\//, "")}</p> : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {url ? (
+            <>
+              <Button size="sm" onClick={async () => { const ok = await act.run(() => api.tiffin.sendDriverLinks([route.id], "whatsapp", date)); if (ok) toast({ message: ok.sent.length ? "Sent to the driver" : ok.skipped[0]?.reason === "no_phone" ? "Add the driver's phone on the Routes tab first" : "Not sent: quiet hours", tone: ok.sent.length ? "success" : "neutral" }); }}>Send on WhatsApp</Button>
+              <Button size="sm" variant="secondary" onClick={async () => toast({ message: (await copyText(url)) ? "Link copied" : "Couldn't copy. Select the link and copy it.", tone: "neutral" })}>Copy</Button>
+            </>
+          ) : (
+            <Button size="sm" loading={act.busy} onClick={() => void make()}>Create link</Button>
+          )}
+        </div>
+        {act.error ? <p className="mt-2 text-meta text-negative">{act.error}</p> : null}
+      </section>
+      <section className="rounded-card border border-line p-5">
+        <h3 className="text-headline text-fg">Late run</h3>
+        <p className="mt-1 text-meta text-fg-muted">Texts &quot;running {minutes} minutes late&quot; to every stop still to go.</p>
+        <div className="mt-3 flex items-end gap-2">
+          <div className="w-24"><TextField label="Minutes" hideLabel inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))} suffix="min" /></div>
+          <Button size="sm" variant="secondary" loading={act.busy} disabled={Number(minutes) < 5} onClick={async () => { const r = await act.run(() => api.tiffin.lateNotice({ minutes: Number(minutes), date })); if (r) toast({ message: r.notified ? `Told ${r.notified} ${r.notified === 1 ? "stop" : "stops"}` : "Nobody left to tell", tone: r.notified ? "success" : "neutral" }); }}>Send late notice</Button>
+        </div>
+      </section>
+    </aside>
+  );
+}
+
+function Run({ r, date, onMarkOut, pickup, picked, toggle, toggleAll, move, busy }: { r: tiffinApi.ManifestRoute; date: string; onMarkOut?: () => void; pickup?: boolean; picked: Set<string>; toggle: (id: string) => void; toggleAll: () => void; move?: (index: number, dir: -1 | 1) => void; busy: boolean }) {
   const stops = useMemo(() => r.stops, [r.stops]);
   const open = stops.filter((s) => !FINAL.includes(s.status)).length;
   const title = pickup ? "Pickup at the counter" : (r.route?.name ?? "Not on a route yet");
@@ -141,6 +222,12 @@ function Run({ r, pickup, picked, toggle, toggleAll, move, busy }: { r: tiffinAp
             <button type="button" onClick={toggleAll} className="rounded-sm text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">
               Select open
             </button>
+          ) : null}
+          {r.route ? (
+            <>
+              <DriverLinkButton routeId={r.route.id} date={date} />
+              {onMarkOut ? <Button size="sm" variant="secondary" disabled={busy || !stops.some((s) => s.status === "scheduled")} onClick={onMarkOut}>Mark all out</Button> : null}
+            </>
           ) : null}
         </div>
       </div>

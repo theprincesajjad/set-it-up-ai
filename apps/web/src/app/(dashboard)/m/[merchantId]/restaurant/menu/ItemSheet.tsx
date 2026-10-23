@@ -36,12 +36,12 @@ function initialTr(item: Item): Tr {
 }
 
 /** Right-side sheet for one item's restaurant fields: dietary, translations, pre-order, station. */
-export function ItemSheet({ item, onClose, onSaved, stations }: { item: Item | null; onClose: () => void; onSaved: () => void; stations: string[] }) {
+export function ItemSheet({ item, onClose, onSaved, stations, shopCertifier = null }: { item: Item | null; onClose: () => void; onSaved: () => void; stations: string[]; /** The shop-level certifier: a dish only names its own when it is someone else. */ shopCertifier?: string | null }) {
   // Remount per item so the form starts from that item's values.
-  return item ? <Form key={item.id} item={item} onClose={onClose} onSaved={onSaved} stations={stations} /> : null;
+  return item ? <Form key={item.id} item={item} onClose={onClose} onSaved={onSaved} stations={stations} shopCertifier={shopCertifier} /> : null;
 }
 
-function Form({ item, onClose, onSaved, stations }: { item: Item; onClose: () => void; onSaved: () => void; stations: string[] }) {
+function Form({ item, onClose, onSaved, stations, shopCertifier }: { item: Item; onClose: () => void; onSaved: () => void; stations: string[]; shopCertifier: string | null }) {
   const { api, enabled } = useMerchant();
   const toast = useToast();
   const act = useAction();
@@ -128,7 +128,15 @@ function Form({ item, onClose, onSaved, stations }: { item: Item; onClose: () =>
             <ToggleChips label="Dietary tags" options={DIET_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} value={flags} onChange={(v) => setFlags(normaliseFlags(v, flags))} />
           </div>
           {halalish ? (
-            <TextField label="Halal certifier" optionalLabel value={certifier} maxLength={120} onChange={(e) => setCertifier(e.target.value)} placeholder="e.g. HMA, ISNA" hint="Shown to customers as you give it. We don't check or vouch for halal claims." />
+            <TextField
+              label={shopCertifier ? "Different certifier for this dish" : "Halal certifier"}
+              optionalLabel
+              value={certifier}
+              maxLength={120}
+              onChange={(e) => setCertifier(e.target.value)}
+              placeholder={shopCertifier ? "Leave empty to use your shop certificate" : "e.g. HMA, ISNA"}
+              hint={shopCertifier ? `Only if this dish is certified by someone other than ${shopCertifier}. Shown to customers as you give it.` : "Shown to customers as you give it. We don't check or vouch for halal claims. Add your shop certificate above to say it once."}
+            />
           ) : null}
           <div className="flex flex-col gap-2">
             <GroupLabel>Spice</GroupLabel>

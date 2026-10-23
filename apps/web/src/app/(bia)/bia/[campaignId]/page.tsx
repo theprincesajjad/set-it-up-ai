@@ -1,9 +1,7 @@
-"use client";
-import { useParams } from "next/navigation";
-import { BiaGate } from "@/components/dashboard/campaigns/BiaGate";
-import { CampaignDetail } from "@/components/dashboard/campaigns/CampaignViews";
+import { redirect } from "next/navigation";
 
-export default function BiaCampaignPage() {
-  const { campaignId } = useParams<{ campaignId: string }>();
-  return <BiaGate>{(hoods) => <CampaignDetail id={campaignId} base="/bia" neighbourhoods={hoods} isAdmin={false} />}</BiaGate>;
+/** Campaign links from before the console had an overview: /bia/<id> now lives at /bia/campaigns/<id>. */
+export default async function LegacyCampaignRedirect({ params }: { params: Promise<{ campaignId: string }> }) {
+  const { campaignId } = await params;
+  redirect(`/bia/campaigns/${encodeURIComponent(campaignId)}`);
 }

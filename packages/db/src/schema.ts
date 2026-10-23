@@ -23,7 +23,9 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -193,6 +195,8 @@ export const neighbourhoods = pgTable(
     biaContactEmail: text("bia_contact_email"),
     biaContactPhone: text("bia_contact_phone"),
     storefrontEstimate: integer("storefront_estimate"),
+    /** How many members the BIA has (the "of 74" on its overview). Entered by an admin. */
+    biaMemberCount: integer("bia_member_count"),
     notes: text("notes"),
     createdAt: createdAt(),
   },
@@ -239,6 +243,23 @@ export const merchants = pgTable(
     cashDiscountBps: integer("cash_discount_bps").notNull().default(0),
     /** Max degh pots (pre-order-only units) per pickup day; null = no cap. */
     preorderDailyCap: integer("preorder_daily_cap"),
+    /** Pre-order planning (desi2): pots per weekday { mon: 12, ... } (falls back to preorderDailyCap), pots per pickup hour, and date overrides such as Eid. */
+    preorderCapByWeekday: jsonb("preorder_cap_by_weekday").$type<Partial<Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", number>>>().notNull().default({}),
+    preorderPerHourCap: integer("preorder_per_hour_cap"),
+    preorderOverrides: jsonb("preorder_overrides").$type<{ from: string; to: string; cap: number; leadHours?: number; label: string }[]>().notNull().default([]),
+    /** Busy mode: minutes added to every quoted wait while busy_until is in the future. */
+    busyAddMinutes: integer("busy_add_minutes").notNull().default(0),
+    busyUntil: ts("busy_until"),
+    /** Cuisine / community tags (hyderabadi, punjabi, gujarati, ...) used to rank festivals for the shop. */
+    cuisines: jsonb("cuisines").$type<string[]>().notNull().default([]),
+    /** Moved lunar dates: { [festivalId]: { [year]: "YYYY-MM-DD" } }. */
+    festivalOverrides: jsonb("festival_overrides").$type<Record<string, Record<string, string>>>().notNull().default({}),
+    /** Shop-level halal certification, exactly as the owner states it (we never verify or badge). */
+    halalCertification: jsonb("halal_certification").$type<HalalCertification>(),
+    /** Which expiry reminders went out for the certificate's validUntil (60 and 30 days before). */
+    halalReminders: jsonb("halal_reminders").$type<{ validUntil: string; d60?: string; d30?: string }>(),
+    /** Pre-orders cancel free until this many hours before pickup; null = the item's notice period. */
+    preorderCancelCutoffHours: integer("preorder_cancel_cutoff_hours"),
     /** Stripe Connect charge mode: destination (platform account) or direct (merchant is merchant of record). */
     chargeMode: text("charge_mode").notNull().default("destination"),
     /** WhatsApp Business phone number (E.164) connected for this shop. */
@@ -249,6 +270,8 @@ export const merchants = pgTable(
     googleReviewUrl: text("google_review_url"),
     /** Drop-off terms shown and acknowledged at intake (repair, alterations). Null = no terms step. */
     intakeTerms: text("intake_terms"),
+    /** Days of warranty the shop gives on a repair (shown on the customer status page); null = none stated. */
+    warrantyDays: integer("warranty_days"),
     /** Tip picker on invoices: null = by vertical default (on for salon-type shops, off for repair). */
     tipsEnabled: boolean("tips_enabled"),
     tipPresets: jsonb("tip_presets").$type<number[]>().notNull().default([15, 20, 25]),
@@ -258,6 +281,8 @@ export const merchants = pgTable(
     dropoffSlotMinutes: integer("dropoff_slot_minutes").notNull().default(30),
     dropoffCapacity: integer("dropoff_capacity").notNull().default(3),
     dropoffDaysAhead: integer("dropoff_days_ahead").notNull().default(14),
+    /** Local dates (YYYY-MM-DD) the shop is closed for drop-offs; rolling slot generation skips them. */
+    dropoffBlockedDates: jsonb("dropoff_blocked_dates").$type<string[]>().notNull().default([]),
     /** Stripe Connect account state, synced from account.updated webhooks. */
     stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
@@ -265,6 +290,10 @@ export const merchants = pgTable(
     smsCreditsUsed: integer("sms_credits_used").notNull().default(0),
     /** Send a transactional SMS receipt after each counter award (off by default; costs SMS). */
     smsReceiptsEnabled: boolean("sms_receipts_enabled").notNull().default(false),
+    /** Appointments: free cancel and reschedule until this many hours before the visit; later changes and no-shows can be charged the fee. */
+    cancelWindowHours: integer("cancel_window_hours").notNull().default(24),
+    /** Appointments: no-show / late-cancel fee in cents (0 = none). Charged to the card the customer saved when booking. */
+    noShowFeeCents: integer("no_show_fee_cents").notNull().default(0),
     /** Public API key hash for the merchant webhook/API integration. */
     apiKeyHash: text("api_key_hash"),
     /** How this shop gets paid by hand: { etransferEnabled, etransferEmail, instructions, startOnTrust, graceDays, cashEnabled } (tiffin/catering/banquet). */
@@ -1009,6 +1038,14 @@ export const catalogItems = pgTable(
     station: text("station"),
     /** Deposit required for pre-orders, basis points of the item price. */
     depositBps: integer("deposit_bps").notNull().default(0),
+    /** Degh: minutes from fire to ready (the kitchen fires at pickup minus this). */
+    cookMinutes: integer("cook_minutes").notNull().default(0),
+    /** Per-pot recipe for the pre-order shopping list (estimates, not measured). */
+    recipe: jsonb("recipe").$type<{ riceKg?: number; meatKg?: number; meatKind?: string; extras?: { name: string; qty: number; unit: string }[] }>(),
+    /** 86 button: hidden from menus and refused at checkout until this time. */
+    soldOutUntil: ts("sold_out_until"),
+    /** Size / spice / add-on groups for web ordering: the server prices from these ids. */
+    options: jsonb("options").$type<ItemOptions>(),
     createdAt: createdAt(),
   },
   (t) => [index("catalog_items_merchant_idx").on(t.merchantId)],
@@ -1056,6 +1093,10 @@ export const orders = pgTable(
     /** Kitchen display: when the ticket was fired / bumped. */
     firedAt: ts("fired_at"),
     bumpedAt: ts("bumped_at"),
+    /** Guest allergy, shown as a full-width band on the kitchen ticket. */
+    allergyNote: text("allergy_note"),
+    /** Last "balance due at pickup" reminder sent to the guest (one per few hours). */
+    balanceRemindedAt: ts("balance_reminded_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1141,6 +1182,13 @@ export const ticketEvents = pgTable(
 export type DietaryTags = { halal?: boolean; zabihah?: boolean; vegetarian?: boolean; vegan?: boolean; jain?: boolean; glutenFree?: boolean; spice?: 0 | 1 | 2 | 3; allergens?: string[]; halalCertifier?: string };
 export type Translations = Record<string, { name?: string; description?: string }>;
 
+/** Halal certification as the owner states it. `certifier` is printed only when present. */
+export type HalalCertification = { certifier: string; certificateNo?: string; scope: "all_meat" | "some_dishes"; slaughter: "zabihah" | "machine" | "unspecified"; validUntil?: string; fileUrl?: string };
+
+/** One group on a dish: single (radio) or multi (checkboxes). A "single" group with priceMode "absolute" sets the dish's price (size). */
+export type ItemOptionGroup = { id: string; name: string; type: "single" | "multi"; required: boolean; priceMode: "delta" | "absolute"; options: { id: string; name: string; priceCents: number; serves?: number; note?: string; default?: boolean }[] };
+export type ItemOptions = { groups: ItemOptionGroup[] };
+
 export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null };
 
 /** How a quote was approved: customer link, phone call (name, phone, time recorded), or at the counter. */
@@ -1208,6 +1256,8 @@ export const invoices = pgTable(
     /** Voluntary tip added at payment: not taxed, never earns points. */
     tipCents: integer("tip_cents").notNull().default(0),
     tipStaffId: uuid("tip_staff_id").references(() => users.id),
+    /** Appointments: the visit this invoice bills (checkout through the calendar). */
+    appointmentId: uuid("appointment_id"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("invoices_pay_token_uq").on(t.payToken), index("invoices_merchant_idx").on(t.merchantId)],
@@ -1269,6 +1319,146 @@ export const rebookingNudges = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("rebooking_nudges_merchant_idx").on(t.merchantId, t.userId, t.serviceId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Appointments (Café & Retail: booking.appointments): salons, barbers, nails, threading, henna, bridal
+// ---------------------------------------------------------------------------
+/** A price-list entry. Backs appointment services (kind "appointment") and any shop's canned lines (kind "repair_line"). */
+export const services = pgTable(
+  "services",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** appointment | repair_line */
+    kind: text("kind").notNull().default("appointment"),
+    name: text("name").notNull(),
+    description: text("description"),
+    durationMin: integer("duration_min").notNull().default(30),
+    priceCents: integer("price_cents").notNull().default(0),
+    priceFrom: boolean("price_from").notNull().default(false),
+    depositCents: integer("deposit_cents").notNull().default(0),
+    bufferMin: integer("buffer_min").notNull().default(0),
+    /** A merchant category, so no-earn categories keep working. */
+    categoryId: uuid("category_id").references(() => merchantCategories.id, { onDelete: "set null" }),
+    rebookAfterDays: integer("rebook_after_days"),
+    taxable: boolean("taxable").notNull().default(true),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    translations: jsonb("translations").$type<Translations>().notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("services_merchant_kind_idx").on(t.merchantId, t.kind, t.active)],
+);
+
+/** Which staff do which service, with optional per-person duration and price. No rows for a service = anyone can. */
+export const staffServices = pgTable(
+  "staff_services",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+    durationMin: integer("duration_min"),
+    priceCents: integer("price_cents"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.serviceId] }), index("staff_services_merchant_idx").on(t.merchantId)],
+);
+
+/** Weekly working hours in the shop's local time. Several rows per day are split shifts. */
+export const staffHours = pgTable(
+  "staff_hours",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").notNull().references(() => locations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** 0 = Sunday ... 6 = Saturday */
+    weekday: smallint("weekday").notNull(),
+    startsLocal: time("starts_local").notNull(),
+    endsLocal: time("ends_local").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("staff_hours_merchant_user_idx").on(t.merchantId, t.userId, t.weekday)],
+);
+
+export const staffTimeOff = pgTable(
+  "staff_time_off",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    reason: text("reason"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("staff_time_off_merchant_user_idx").on(t.merchantId, t.userId, t.startsAt)],
+);
+
+export type AppointmentItemRow = { serviceId: string | null; name: string; durationMin: number; priceCents: number };
+
+/**
+ * One visit with one stylist. The migration adds a Postgres exclusion constraint (btree_gist) so a staff
+ * member can't hold two overlapping active appointments: staff_id WITH =, tstzrange(starts_at, ends_at) WITH &&
+ * where status is booked, arrived or in_service. A violation surfaces as 409 slot_taken.
+ */
+export const appointments = pgTable(
+  "appointments",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").notNull().references(() => locations.id),
+    /** The customer (null for a named walk-in with no phone). */
+    userId: uuid("user_id").references(() => users.id),
+    customerName: text("customer_name"),
+    staffId: uuid("staff_id").references(() => users.id),
+    /** The client asked for this stylist by name. */
+    requestedStaff: boolean("requested_staff").notNull().default(false),
+    /** online | staff | walk_in */
+    source: text("source").notNull().default("staff"),
+    items: jsonb("items").$type<AppointmentItemRow[]>().notNull().default([]),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    /** booked | arrived | in_service | completed | no_show | cancelled */
+    status: text("status").notNull().default("booked"),
+    /** A bridal party shares one group. */
+    groupId: uuid("group_id"),
+    notes: text("notes"),
+    clientNote: text("client_note"),
+    depositCents: integer("deposit_cents").notNull().default(0),
+    depositPaymentIntentId: text("deposit_payment_intent_id"),
+    depositProcessingAt: ts("deposit_processing_at"),
+    depositPaidAt: ts("deposit_paid_at"),
+    /** Card on file for the no-show fee (saved by the deposit payment or a SetupIntent). */
+    stripeCustomerId: text("stripe_customer_id"),
+    cardSetupIntentId: text("card_setup_intent_id"),
+    paymentMethodId: text("payment_method_id"),
+    noShowFeeCents: integer("no_show_fee_cents"),
+    feeChargedAt: ts("fee_charged_at"),
+    cancelledAt: ts("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    arrivedAt: ts("arrived_at"),
+    startedAt: ts("started_at"),
+    completedAt: ts("completed_at"),
+    invoiceId: uuid("invoice_id"),
+    reminder24SentAt: ts("reminder_24_sent_at"),
+    reminder2SentAt: ts("reminder_2_sent_at"),
+    rebookNudgeSentAt: ts("rebook_nudge_sent_at"),
+    /** An online booking waiting for its deposit or card; unpaid holds are cancelled after this. */
+    holdExpiresAt: ts("hold_expires_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("appointments_merchant_starts_idx").on(t.merchantId, t.startsAt),
+    index("appointments_merchant_staff_starts_idx").on(t.merchantId, t.staffId, t.startsAt),
+    index("appointments_user_starts_idx").on(t.userId, t.startsAt),
+  ],
 );
 
 /** Per-merchant counters for human-friendly order/ticket/invoice numbers. */
@@ -1363,6 +1553,13 @@ export const leads = pgTable(
     merchantId: uuid("merchant_id").references(() => merchants.id),
     nextActionAt: ts("next_action_at"),
     notes: text("notes"),
+    /** From the marketing forms: a restaurant's preferred language (en | hi | ur | pa). */
+    language: text("language"),
+    /** BIA enquiries: the contact's role, the event date, the next board meeting and the BIA's member count. */
+    contactRole: text("contact_role"),
+    eventDate: date("event_date"),
+    boardMeetingAt: date("board_meeting_at"),
+    memberCount: integer("member_count"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1562,6 +1759,9 @@ export const tiffinCharges = pgTable(
     paidAt: ts("paid_at"),
     /** Last day-1 / day-3 reminder sent for an awaiting charge (0, 1 or 3). */
     reminderStage: integer("reminder_stage").notNull().default(0),
+    /** Hand-recorded money received so far (ledger sum minus voids) and the date the last receipt arrived. */
+    paidCents: integer("paid_cents").notNull().default(0),
+    receivedOn: date("received_on"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("tiffin_charges_period_uq").on(t.subscriptionId, t.periodStart), uniqueIndex("tiffin_charges_reference_uq").on(t.merchantId, t.referenceCode)],
@@ -1745,6 +1945,11 @@ export const whatsappSessions = pgTable(
     /** WhatsApp customer-service window: free-form replies allowed for 24h after this. */
     lastInboundAt: ts("last_inbound_at"),
     marketingOptInAt: ts("marketing_opt_in_at"),
+    /** A person took the chat over: the ordering assistant stays quiet until released. */
+    takenOverAt: ts("taken_over_at"),
+    takenOverBy: uuid("taken_over_by").references(() => users.id),
+    /** "ALLERGY nuts" said in the chat; goes onto the order. */
+    allergyNote: text("allergy_note"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1766,6 +1971,16 @@ export const reviewRequests = pgTable(
     feedback: text("feedback"),
     sentAt: ts("sent_at"),
     clickedAt: ts("clicked_at"),
+    /** The guest tapped the public Google review button. */
+    googleClickedAt: ts("google_clicked_at"),
+    /** The owner has dealt with this private feedback (replied, called or decided to leave it). */
+    handledAt: ts("handled_at"),
+    /** The owner's reply (channel: whatsapp | sms | email) and when it went out. */
+    replyChannel: text("reply_channel"),
+    replyBody: text("reply_body"),
+    repliedAt: ts("replied_at"),
+    /** One-use free-chai redemption offered with the reply. */
+    offerRedemptionId: uuid("offer_redemption_id"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("review_requests_token_uq").on(t.token), index("review_requests_merchant_idx").on(t.merchantId)],
@@ -1798,6 +2013,8 @@ export const orderSplits = pgTable(
     amountCents: integer("amount_cents").notNull(),
     tipCents: integer("tip_cents").notNull().default(0),
     itemIds: jsonb("item_ids").$type<string[]>().notNull().default([]),
+    /** How this guest pays: link (pay link) | card (counter terminal) | cash. Null = link. */
+    tender: text("tender"),
     /** open | paid */
     status: text("status").notNull().default("open"),
     payToken: text("pay_token").notNull(),
@@ -1806,6 +2023,81 @@ export const orderSplits = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("order_splits_token_uq").on(t.payToken), index("order_splits_order_idx").on(t.orderId)],
+);
+
+/** Guests waiting for a full day: one message when a pot frees up (desi2). */
+export const preorderWaitlist = pgTable(
+  "preorder_waitlist",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id").references(() => catalogItems.id),
+    /** Shop-local pickup day, YYYY-MM-DD. */
+    date: date("date", { mode: "string" }).notNull(),
+    userId: uuid("user_id").references(() => users.id),
+    phone: text("phone").notNull(),
+    name: text("name"),
+    /** CASL: the wording the guest agreed to when joining. */
+    consentText: text("consent_text").notNull(),
+    createdAt: createdAt(),
+    notifiedAt: ts("notified_at"),
+  },
+  (t) => [uniqueIndex("preorder_waitlist_uq").on(t.merchantId, t.date, t.phone), index("preorder_waitlist_day_idx").on(t.merchantId, t.date)],
+);
+
+/** Messages in a WhatsApp chat (inbound, outbound, assistant summaries) for the inbox. */
+export const whatsappMessages = pgTable(
+  "whatsapp_messages",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull().references(() => whatsappSessions.id, { onDelete: "cascade" }),
+    /** in | out */
+    direction: text("direction").notNull(),
+    /** text | template | order_summary */
+    kind: text("kind").notNull().default("text"),
+    body: text("body").notNull(),
+    /** assistant | staff | system (outbound) */
+    sender: text("sender"),
+    sentByUserId: uuid("sent_by_user_id").references(() => users.id),
+    providerMessageId: text("provider_message_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("whatsapp_messages_session_idx").on(t.sessionId, t.createdAt)],
+);
+
+/** Busy-mode history: when the kitchen added minutes to every quote, and for how long. */
+export const busyModeEvents = pgTable(
+  "busy_mode_events",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    addMinutes: integer("add_minutes").notNull(),
+    startedAt: ts("started_at").notNull(),
+    until: ts("until"),
+    endedAt: ts("ended_at"),
+    byUserId: uuid("by_user_id").references(() => users.id),
+  },
+  (t) => [index("busy_mode_events_merchant_idx").on(t.merchantId, t.startedAt)],
+);
+
+/** Festival messages the owner scheduled or saved as drafts, so the planner can show what is already set. */
+export const festivalSends = pgTable(
+  "festival_sends",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    festivalId: text("festival_id").notNull(),
+    year: integer("year").notNull(),
+    templateId: text("template_id").notNull(),
+    channel: text("channel").notNull(),
+    /** draft | scheduled */
+    status: text("status").notNull().default("draft"),
+    scheduledAt: ts("scheduled_at"),
+    messageId: uuid("message_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("festival_sends_merchant_idx").on(t.merchantId, t.festivalId, t.year)],
 );
 
 export const merchantAddOns = pgTable(

@@ -9,9 +9,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError, type ApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { AmountDisplay, AwardButton, CounterHeader, CounterSecondary, CustomerCard, EntryDisplay, NoticeCard, QuantityChips, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
+import { DigitBoxes, MatchList, NoMatch, RewardReadyScreen, ScanFooter, ScanKeypad, ScanViewfinder, StampedScreen, UndoToast } from "../../features/counter/ScanFirst";
 import { scanBus } from "../../features/scanBus";
 import {
   activeMultiplier,
+  AUTO_RETURN_SECONDS,
   awardButtonLabel,
   awardQuantity,
   quantityChips,
@@ -28,10 +30,12 @@ import {
   normalizeRedeemInput,
   shortName,
   shouldQueueAward,
+  termWord,
   successView,
   type CounterCustomer,
   type SuccessView,
 } from "../../lib/award";
+import { formatTime } from "../../lib/format";
 import { newIdempotencyKey } from "../../lib/ids";
 import { last4, toE164 } from "../../lib/phone";
 import { api } from "../../state/api";
@@ -71,11 +75,18 @@ export default function Counter() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [qty, setQty] = useState(1);
+  /** Typing a full phone number (to add a new member) instead of the last 4 digits. */
+  const [phoneMode, setPhoneMode] = useState(false);
+  /** The latest stamp: its Undo toast outlives the 3 s auto-return (10 s in all). */
+  const [lastStamp, setLastStamp] = useState<{ at: number; name: string | null; transactionId: string | null; queuedKey: string | null; key: string } | null>(null);
+  const stamping = useRef<string | null>(null);
   // Each customer starts at +1.
   useEffect(() => {
     if (state.step !== "customer") setQty(1);
   }, [state.step]);
   const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const rewards = useQuery({ queryKey: qk.counterRewards(merchantId), queryFn: () => api.merchant.rewards(merchantId), enabled: !!merchantId, staleTime: 5 * 60_000 });
   const promos = useQuery({ queryKey: qk.counterPromos(merchantId), queryFn: () => api.merchant.promos(merchantId), enabled: !!merchantId, staleTime: 5 * 60_000 });
@@ -92,8 +103,9 @@ export default function Counter() {
     if (returnTimer.current) clearTimeout(returnTimer.current);
     returnTimer.current = setTimeout(() => {
       setPanel(null);
+      setPhoneMode(false);
       dispatch({ type: "reset" });
-    }, 4000);
+    }, AUTO_RETURN_SECONDS * 1000);
   }, []);
 
   // ---------------------------------------------------------------- lookup
@@ -111,7 +123,7 @@ export default function Counter() {
       try {
         const res = await api.counter.lookup(merchantId, query);
         if (res.items.length) cacheMembers(query, res.items);
-        dispatch({ type: "lookupResult", res, digits });
+        dispatch({ type: "lookupResult", res, digits, program: program ?? null });
       } catch (e) {
         const err = e as ApiError;
         if (isApiError(err) && err.isRetryable) {
@@ -123,17 +135,22 @@ export default function Counter() {
         } else dispatch({ type: "lookupError", message: isApiError(err) ? err.message : t("err.server") });
       }
     },
-    [online, merchantId, cacheMembers, cachedMember],
+    [online, merchantId, cacheMembers, cachedMember, program],
   );
 
   useEffect(() => {
     if (state.step === "lookingUp") void lookup(state.query, state.digits);
   }, [state, lookup]);
 
-  // Full 10 digits auto-searches (no extra tap).
+  // The 4th digit looks up straight away (no Find press); a full 10-digit number does the same in phone mode.
   useEffect(() => {
-    if (state.step === "entry" && state.digits.length === 10 && toE164(state.digits)) dispatch({ type: "lookup" });
-  }, [state]);
+    if (state.step !== "entry") return;
+    if (!phoneMode && state.digits.length === 4) dispatch({ type: "lookup" });
+    else if (phoneMode && state.digits.length === 10 && toE164(state.digits)) dispatch({ type: "lookup" });
+  }, [state, phoneMode]);
+
+  // Stamp on scan: the screen awards the moment one member is identified.
+  const stampsToday = useQuery({ queryKey: ["counter", "stamps-today", merchantId], queryFn: () => api.counter.today(merchantId, config.locationId ?? undefined), enabled: !!merchantId && online, staleTime: 30_000, refetchInterval: 60_000 });
 
   // Scanned card / code from the camera screen.
   const verifyCode = useCallback(
@@ -165,23 +182,28 @@ export default function Counter() {
     [online, merchantId],
   );
 
-  useEffect(
-    () =>
-      scanBus.subscribe((data) => {
-        touch();
-        const s = classifyScan(data);
-        if (s.kind === "member") dispatch({ type: "lookup", query: `LL:${s.memberCode}` });
-        else if (s.kind === "phone") {
-          dispatch({ type: "reset" });
-          const e164 = toE164(s.digits);
-          if (e164) dispatch({ type: "lookup", query: e164 });
-        } else if (s.kind === "redeem") {
-          setCode(s.code);
-          void verifyCode(s.code);
-        } else toast({ tone: "error", message: t("err.qr.invalid") });
-      }),
+  const handleScan = useCallback(
+    (data: string) => {
+      touch();
+      const s = classifyScan(data);
+      // A scan only starts a lookup from the idle keypad; a card held in view during a stamp is ignored.
+      const idle = stateRef.current.step === "entry";
+      if (s.kind === "member") {
+        if (!idle && stateRef.current.step !== "success") return;
+        dispatch({ type: "reset" });
+        dispatch({ type: "lookup", query: `LL:${s.memberCode}` });
+      } else if (s.kind === "phone") {
+        dispatch({ type: "reset" });
+        const e164 = toE164(s.digits);
+        if (e164) dispatch({ type: "lookup", query: e164 });
+      } else if (s.kind === "redeem") {
+        setCode(s.code);
+        void verifyCode(s.code);
+      } else toast({ tone: "error", message: t("err.qr.invalid") });
+    },
     [toast, verifyCode, touch],
   );
+  useEffect(() => scanBus.subscribe(handleScan), [handleScan]);
 
   // ---------------------------------------------------------------- award
   const customer = state.step === "customer" ? state.customer : null;
@@ -195,18 +217,26 @@ export default function Counter() {
   const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `•• ${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `•• ${cust.digits.slice(-4)}` : cust.label);
 
   /** quantity > 1: the +2 / +3 chips (two coffees = one visit, quantity × pointsPerVisit). */
-  const award = async (quantity = 1) => {
-    if (state.step !== "customer" || !program || !merchantId) return;
+  const award = (quantity = 1) => {
+    if (state.step !== "customer") return Promise.resolve();
+    return awardFor(state.customer, { quantity, amountCents: state.amountCents });
+  };
+
+  /** One award for an identified customer: from the confirm panel, from Stamp on scan, or "Stamp instead" on a ready reward. */
+  const awardFor = async (cust: CounterCustomer, opts: { quantity?: number; amountCents?: number; fromScan?: boolean } = {}) => {
+    if (!program || !merchantId) return;
     touch();
-    const cust = state.customer;
+    const quantity = opts.quantity ?? 1;
+    const amount = opts.amountCents ?? 0;
     const qty = awardQuantity(program, quantity);
-    const estimated = estimate * (qty.quantity ?? 1);
-    const tapLabel = qty.quantity ? awardButtonLabel(program, { points: estimated, multiplier, newCustomer: cust.kind === "new" }) : label;
+    const unitEstimate = estimatePoints({ program, amountCents: amount, noEarn, multiplier, vipMultiplierPct: cust.kind === "member" ? cust.member.vip?.multiplierPct : undefined });
+    const estimated = unitEstimate * (qty.quantity ?? 1);
+    const tapLabel = awardButtonLabel(program, { points: estimated, noEarn, multiplier, newCustomer: cust.kind === "new" });
     const key = newIdempotencyKey();
-    const amountCents = perDollar ? state.amountCents : undefined;
+    const amountCents = perDollar ? amount : undefined;
     const body = {
       ...awardRef(cust),
-      ...(categoryId ? { lines: [{ amountCents: state.amountCents, categoryId }] } : amountCents !== undefined ? { amountCents } : {}),
+      ...(categoryId ? { lines: [{ amountCents: amount, categoryId }] } : amountCents !== undefined ? { amountCents } : {}),
       ...(config.locationId ? { locationId: config.locationId } : {}),
       ...(cust.kind === "new" && newName.trim() ? { customerName: newName.trim() } : {}),
       ...qty,
@@ -230,6 +260,7 @@ export default function Counter() {
     // Optimistic success in <= 150 ms; the server result replaces it.
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     dispatch({ type: "awarded", view: optimistic, customer: cust, transactionId: null, queuedKey: online ? null : key, at: Date.now() });
+    setLastStamp({ at: Date.now(), name: display.name, transactionId: null, queuedKey: online ? null : key, key });
     setCategoryId(null);
     setNewName("");
     if (!online) {
@@ -242,8 +273,9 @@ export default function Counter() {
       const res = await api.counter.award(merchantId, body);
       // Title = what staff added ("Added 2 stamps"); bonuses (promo, passport) are listed under it, and the balance includes them.
       const bonus = res.extraPoints > 0 ? [`Plus ${formatPts(res.extraPoints, program.terminology)} bonus`] : [];
-      const view = successView({ program, pointsEarned: res.pointsEarned, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: [...bonus, ...res.messages], firstName: firstName(res.member.name) });
+      const view = successView({ program, pointsEarned: res.pointsEarned, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: [...bonus, ...res.messages], firstName: firstName(res.member.name), fullName: res.member.name, visitsThisMonth: res.visitsThisMonth });
       dispatch({ type: "awarded", view, customer: { kind: "member", member: res.member }, transactionId: res.transactionId, queuedKey: null, at: Date.now() });
+      setLastStamp({ at: Date.now(), name: res.member.name, transactionId: res.transactionId, queuedKey: null, key });
       addRecent({ key, transactionId: res.transactionId, label: view.title, who: who({ kind: "member", member: res.member }), at: Date.now() });
       cacheMembers(`code:${res.member.memberCode}`, [res.member]);
       AccessibilityInfo.announceForAccessibility(view.announcement);
@@ -256,11 +288,30 @@ export default function Counter() {
         scheduleReturn();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-        dispatch({ type: "identified", customer: cust });
-        dispatch({ type: "awardError", message: awardErrorMessage(isApiError(e) ? e : {}, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology }) });
+        const message = awardErrorMessage(isApiError(e) ? e : {}, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology });
+        if (opts.fromScan) {
+          // Stamped on scan and refused (cooldown, paused): say so and go back to scan. Never a second stamp.
+          dispatch({ type: "notice", tone: "danger", message });
+          scheduleReturn();
+        } else {
+          dispatch({ type: "identified", customer: cust });
+          dispatch({ type: "awardError", message });
+        }
       }
     }
   };
+
+  // Stamp on scan: one member identified, below the goal, setting on. One award per identification, never two.
+  useEffect(() => {
+    if (state.step !== "stamping") {
+      stamping.current = null;
+      return;
+    }
+    if (stamping.current === state.member.memberId) return;
+    stamping.current = state.member.memberId;
+    void awardFor({ kind: "member", member: state.member }, { fromScan: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // ---------------------------------------------------------------- undo
   const undo = async (target: { transactionId: string | null; queuedKey: string | null; key?: string }) => {
@@ -288,6 +339,13 @@ export default function Counter() {
     }
   };
   const undoRecent = (r: RecentAward) => undo({ transactionId: r.transactionId, queuedKey: r.queued ? r.key : null, key: r.key });
+  /** Undo from the toast: still there after the screen returned to scan, for 10 s from the stamp. */
+  const undoLast = async () => {
+    if (!lastStamp) return;
+    const t = lastStamp;
+    setLastStamp(null);
+    await undo({ transactionId: t.transactionId, queuedKey: t.queuedKey, key: t.key });
+  };
 
   // ---------------------------------------------------------------- redeem
   const showRedeemSuccess = (res: staffApi.CounterRedemptionResponse) => {
@@ -307,7 +365,7 @@ export default function Counter() {
     scheduleReturn();
   };
 
-  const redeemMember = state.step === "customer" && state.customer.kind === "member" ? state.customer.member : state.step === "success" && state.customer.kind === "member" ? state.customer.member : null;
+  const redeemMember = state.step === "reward" ? state.member : state.step === "customer" && state.customer.kind === "member" ? state.customer.member : state.step === "success" && state.customer.kind === "member" ? state.customer.member : null;
   const redeem = async (rewardId: string) => {
     if (!redeemMember) return;
     setRedeemBusy(true);
@@ -326,6 +384,7 @@ export default function Counter() {
   /** Back to the keypad now (staff don't wait for the 4 s auto-return). */
   const nextCustomer = () => {
     if (returnTimer.current) clearTimeout(returnTimer.current);
+    setPhoneMode(false);
     setPanel(null);
     setCategoryId(null);
     setNewName("");
@@ -347,13 +406,43 @@ export default function Counter() {
   if (config.kiosk) return <Redirect href="/counter/kiosk" />;
 
   const wide = width >= 768;
+  const idleStep = state.step === "entry" || state.step === "lookingUp";
   const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
   const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
+
+  const autoHint = program?.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. Stamps on scan." : "Wallet pass, app, or printed QR.";
+  const onScanKey = (k: string) => {
+    touch();
+    if (k === "clear") dispatch({ type: "key", key: "clear" });
+    else dispatch({ type: "key", key: k });
+  };
+  // Scan first (cafes-retail.md 7.2): the camera in the main screen, the last 4 digits second, then Redeem a code.
+  const scanPane = (
+    <View style={{ gap: 14, flexGrow: 1 }}>
+      <ScanViewfinder onScan={handleScan} hint={autoHint} />
+      <Text style={{ textAlign: "center", fontSize: 14, lineHeight: 19 }} rawColor={c.fgMuted}>
+        or type the last 4 digits of their phone
+      </Text>
+      <DigitBoxes digits={digits} />
+      {state.step === "entry" && state.error ? (
+        <Text variant="meta" rawColor={c.negative} center>
+          {state.error}
+        </Text>
+      ) : null}
+      <ScanKeypad onKey={onScanKey} disabled={state.step === "lookingUp"} />
+      <ScanFooter online={online} stampsToday={stampsToday.data?.pointsIssued ?? null} terminology={program?.terminology ?? "stamps"} onCode={() => setCodeOpen(true)} />
+    </View>
+  );
 
   // Display + Scan / Code on top; keypad and the primary button in the thumb zone at the bottom (staff-counter.md § Principles 2).
   const entryPane = (
     <View style={{ gap: 12, flexGrow: 1, justifyContent: "space-between" }}>
       <View style={{ gap: 12 }}>
+        {phoneMode ? (
+          <Button variant="ghost" size="lg" onPress={() => { setPhoneMode(false); dispatch({ type: "toEntry" }); }}>
+            Back to scan
+          </Button>
+        ) : null}
         {state.step === "customer" && perDollar ? (
           <AmountDisplay cents={state.amountCents} />
         ) : (
@@ -387,8 +476,39 @@ export default function Counter() {
   );
 
   const customerPane = (() => {
+    if (state.step === "stamping") {
+      return (
+        <View style={{ alignItems: "center", gap: 12, paddingVertical: 48 }} accessibilityLiveRegion="polite">
+          <Text variant="title" center>
+            {`Adding a ${program ? termWord(program.terminology, 1) : "stamp"} for ${firstName(state.member.name) ?? "them"}`}
+          </Text>
+        </View>
+      );
+    }
+    if (state.step === "nomatch") {
+      return <NoMatch digits={state.digits} onTryAgain={nextCustomer} onNew={() => { setPhoneMode(true); dispatch({ type: "toEntry" }); }} />;
+    }
+    if (state.step === "reward") {
+      const m = state.member;
+      return (
+        <RewardReadyScreen
+          member={m}
+          program={program ?? { earnType: "stamps", terminology: m.terminology, pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: m.nextReward?.pointsCost ?? 10 }}
+          busy={redeemBusy || state.step !== "reward"}
+          onRedeem={() => {
+            if (m.rewardsAffordable.length === 1) void redeem(m.rewardsAffordable[0]!.id);
+            else setRedeemOpen(true);
+          }}
+          onStamp={() => void awardFor({ kind: "member", member: m }, { fromScan: true })}
+          onBack={nextCustomer}
+        />
+      );
+    }
     if (panel?.kind === "redeemSuccess") {
       return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
+    }
+    if (state.step === "success" && program && program.earnType !== "per_dollar" && state.view.name !== undefined && !panel) {
+      return <StampedScreen view={state.view} program={program} onNext={nextCustomer} />;
     }
     if (state.step === "success") {
       return (
@@ -405,6 +525,9 @@ export default function Counter() {
     }
     if (state.step === "notice") {
       return <NoticeCard message={state.message} tone={state.tone} onNext={nextCustomer} />;
+    }
+    if (state.step === "pick" && program) {
+      return <MatchList digits={state.digits} items={state.matches} program={program} now={new Date()} onPick={(m) => dispatch({ type: "pick", member: m, program })} onNew={() => { setPhoneMode(true); dispatch({ type: "toEntry" }); }} />;
     }
     if (state.step === "pick") {
       return (
@@ -489,6 +612,8 @@ export default function Counter() {
     return wide ? <EmptyState icon={Search} title={t("empty.counter")} /> : null;
   })();
 
+  const leftPane = idleStep ? (phoneMode ? entryPane : scanPane) : state.step === "customer" && perDollar ? entryPane : null;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={["top", "bottom"]} onTouchStart={touch}>
       <CounterHeader
@@ -509,11 +634,12 @@ export default function Counter() {
           <Banner variant="danger" onPress={() => setQueueOpen(true)}>{`${queueState.failedCount} ${queueState.failedCount === 1 ? "award needs" : "awards need"} attention. Tap to see.`}</Banner>
         ) : null}
         {programPaused ? <Banner variant="neutral">{t("err.award.programPaused")}</Banner> : null}
+        {lastStamp ? <UndoToast at={lastStamp.at} name={lastStamp.name} time={formatTime(lastStamp.at)} busy={undoBusy} onUndo={() => void undoLast()} /> : null}
       </View>
 
       {wide ? (
         <View style={[styles.wide]}>
-          <View style={{ flex: 4 }}>{entryPane}</View>
+          <View style={{ flex: 4 }}>{leftPane}</View>
           <View style={{ flex: 6, gap: 16 }}>
             <View style={{ flex: 1 }}>{customerPane}</View>
             <RecentStrip recent={recent} onUndo={undoRecent} />
@@ -521,9 +647,9 @@ export default function Counter() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: state.step === "customer" ? 20 : layout.gutterMobile, paddingBottom: state.step === "customer" ? 30 : layout.gutterMobile, gap: 16, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          {state.step === "customer" || state.step === "success" || state.step === "notice" || state.step === "pick" || panel ? customerPane : null}
-          {!(state.step === "success" || state.step === "notice" || panel || (state.step === "customer" && !perDollar)) ? entryPane : null}
-          {state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
+          {!idleStep || panel ? customerPane : null}
+          {!panel ? leftPane : null}
+          {state.step === "entry" && !phoneMode ? null : state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
         </ScrollView>
       )}
 

@@ -21,7 +21,11 @@ export function restaurantKitchenEndpoints(c: ApiClient, b: string) {
     preorders: {
       list: (q: { from?: string; to?: string } = {}) => c.get<restaurantApi.PreordersResponse>(`${b}/preorders`, { query: q }),
       settings: () => c.get<restaurantApi.PreorderSettingsResponse>(`${b}/preorders/settings`),
-      saveSettings: (preorderDailyCap: number | null) => c.put<restaurantApi.PreorderSettingsResponse>(`${b}/preorders/settings`, { preorderDailyCap }),
+      /** Daily cap only (older callers). */
+      saveSettings: (preorderDailyCap: number | null) => c.put<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`, { preorderDailyCap }),
+      rules: () => c.get<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`),
+      waitlist: (q: { from?: string; to?: string } = {}) => c.get<{ items: restaurantApi.WaitlistEntryDto[] }>(`${b}/preorders/waitlist`, { query: q }),
+      saveRules: (body: restaurantApi.PreorderRulesBody) => c.put<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`, body),
     },
     kitchen: {
       tickets: (q: { station?: string; lang?: restaurantApi.MenuLang } = {}) => c.get<restaurantApi.KitchenTicketsResponse>(`${b}/kitchen/tickets`, { query: q }),
@@ -29,11 +33,15 @@ export function restaurantKitchenEndpoints(c: ApiClient, b: string) {
       bump: (orderId: string) => c.post<unknown>(`${b}/kitchen/orders/${enc(orderId)}/bump`, {}),
       recall: (orderId: string) => c.post<unknown>(`${b}/kitchen/orders/${enc(orderId)}/recall`, {}),
       fire: (orderId: string) => c.post<unknown>(`${b}/kitchen/orders/${enc(orderId)}/fire`, {}),
+      soldOut: (lang?: restaurantApi.MenuLang) => c.get<restaurantApi.SoldOutResponse>(`${b}/kitchen/sold-out`, { query: { lang } }),
+      setSoldOut: (itemId: string, until: restaurantApi.SoldOutBody["until"]) => c.patch<restaurantApi.SoldOutItemDto>(`${b}/kitchen/sold-out/${enc(itemId)}`, { until }),
     },
     splits: {
       list: (orderId: string) => c.get<restaurantApi.OrderSplitsResponse>(`${b}/orders/${enc(orderId)}/splits`),
       create: (orderId: string, body: restaurantApi.CreateSplitsBody) => c.post<restaurantApi.OrderSplitsResponse>(`${b}/orders/${enc(orderId)}/splits`, body),
       remove: (orderId: string) => c.delete<void>(`${b}/orders/${enc(orderId)}/splits`),
+      markPaid: (orderId: string, splitId: string, body: restaurantApi.MarkSplitPaidBody) => c.post<restaurantApi.OrderSplitsResponse>(`${b}/orders/${enc(orderId)}/splits/${enc(splitId)}/mark-paid`, body),
+      setTender: (orderId: string, splitId: string, tender: restaurantApi.SplitTender) => c.patch<restaurantApi.OrderSplitsResponse>(`${b}/orders/${enc(orderId)}/splits/${enc(splitId)}`, { tender }),
     },
   };
 }

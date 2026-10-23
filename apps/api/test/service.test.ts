@@ -46,7 +46,7 @@ describe("repair approval flow (Pro)", () => {
     const detail = await intake(m, tech.token);
     const ticket = detail.ticket;
     expect(ticket).toMatchObject({ number: 1, status: "intake", itemKind: "device", customer: { name: "Riley Tester", phone: "+14165550199" } });
-    expect(detail.events).toEqual([expect.objectContaining({ status: "intake", note: "Checked in", visibleToCustomer: true })]);
+    expect(detail.events).toEqual([expect.objectContaining({ status: "intake", note: expect.stringContaining("Checked in"), visibleToCustomer: true })]);
     const [cust] = await env.db.select().from(users).where(eq(users.phone, "+14165550199"));
     await env.db.insert(pushTokens).values({ userId: cust!.id, token: "ExponentPushToken[riley]", platform: "android" });
     const custToken = await tokenFor(env, cust!);

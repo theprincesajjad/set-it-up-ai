@@ -6,7 +6,7 @@
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { merchants } from "@ll/db";
-import { restaurantApi } from "@ll/shared";
+import { paymentsManualApi, restaurantApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { notFound } from "../../lib/errors.js";
@@ -74,8 +74,13 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/deposit/mark-paid", async (req) => {
     const staff = await staffFor(req);
-    parse(restaurantApi.cateringMarkDepositBody, req.body ?? {});
-    return out(await svc.markDepositPaid(ctx, staff, req.params.eventId));
+    return out(await svc.markDepositPaid(ctx, staff, req.params.eventId, parse(restaurantApi.cateringMarkDepositBody, req.body ?? {})));
+  });
+
+  /** Balance after the deposit, taken by e-transfer, cash or cheque. */
+  app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/balance/record-payment", async (req) => {
+    const staff = await staffFor(req);
+    return out(await svc.recordBalancePayment(ctx, staff, req.params.eventId, parse(paymentsManualApi.recordPaymentBody, req.body)));
   });
 
   app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/invoice", async (req, reply) => {
@@ -134,17 +139,24 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     await requireFeature(ctx.db, merchant, "restaurant.catering");
     return {
       merchant: { name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl, phone: merchant.phone },
-      event: svc.cateringDto(event, ctx.config.publicWebUrl, false),
+      event: { ...svc.cateringDto(event, ctx.config.publicWebUrl, false), tax: await svc.taxNote(ctx, merchant) },
       canApprove: event.status === "quoted" && !event.approvedAt,
       depositDue: event.status === "quoted" && !!event.approvedAt && event.depositCents > 0 && !event.depositPaidAt,
+      manual: svc.manualForEvent(merchant, event),
+      pay: await svc.payOptions(ctx, merchant),
+      cancellationTiers: await svc.cancellationTiers(ctx.db, event),
     };
   }
 
-  app.get<{ Params: { token: string } }>("/public/catering/:token", async (req) => publicView(req.params.token));
+  app.get<{ Params: { token: string } }>("/public/catering/:token", async (req) => {
+    const view = await publicView(req.params.token);
+    await svc.markQuoteOpened(ctx, await svc.getEventByToken(ctx.db, req.params.token));
+    return view;
+  });
 
   app.post<{ Params: { token: string } }>("/public/catering/:token/approve", async (req) => {
     const body = parse(restaurantApi.cateringApproveBody, req.body);
     const event = await svc.getEventByToken(ctx.db, req.params.token);
-    return svc.approveEvent(ctx, event, { signatureName: body.signatureName, ip: req.ip, userAgent: req.headers["user-agent"] ?? null });
+    return svc.approveEvent(ctx, event, { signatureName: body.signatureName, payWith: body.payWith, ip: req.ip, userAgent: req.headers["user-agent"] ?? null });
   });
 }

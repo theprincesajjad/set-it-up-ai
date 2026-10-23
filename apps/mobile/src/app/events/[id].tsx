@@ -112,6 +112,7 @@ export default function EventDetail() {
             <InfoRow label={t("rest.cat.tax")} value={money(e.taxCents)} />
             <InfoRow label={t("cart.total")} value={money(e.totalCents)} strong />
             <InfoRow label={e.depositPaidAt ? t("rest.cat.depositPaid") : t("menu.deposit")} value={money(e.depositCents)} />
+            {e.referenceCode && !e.depositPaidAt ? <InfoRow label={t("tcb.q.reference")} value={e.referenceCode} /> : null}
             {e.depositRefundCents > 0 ? <InfoRow label={t("rest.cat.refunded")} value={money(e.depositRefundCents)} /> : null}
             <InfoRow label={t("rest.cat.balance")} value={money(e.balanceCents)} />
           </View>

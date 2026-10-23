@@ -150,7 +150,7 @@ describe("SMS (Plus) and push", () => {
     const ok = await env.app.inject({ method: "POST", url: base, headers: auth(s.ownerToken), payload });
     expect(ok.statusCode).toBe(201);
     expect(ok.json().recipientCount).toBe(2); // Alice + Noemail; not muted/no-consent
-    expect(env.ctx.providers.outbox.sms.at(-1)!.body).toBe("Fresh croissants today!\n— Test Shop. Reply STOP to opt out.");
+    expect(env.ctx.providers.outbox.sms.at(-1)!.body).toBe("Fresh croissants today!\n— Test Shop. Reply STOP to unsubscribe.");
     const usage = (await env.app.inject({ method: "GET", url: `${base}/sms-usage`, headers: auth(s.ownerToken) })).json();
     expect(usage).toMatchObject({ used: 2, allowance: 500, remaining: 498, resetsOn: "2026-12-01" });
 

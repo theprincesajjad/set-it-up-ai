@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverMeta, discoverRows, heroCopy, miniMapPoints, shortHood } from "./discover";
+import { promoWindowLine, shopSubtitle, discoverMeta, discoverRows, heroCopy, miniMapPoints, shortHood } from "./discover";
 
 const shop = (id: string, vertical: string, d: number | null, isMember = false) => ({ merchant: { id, slug: id, name: id, vertical }, distanceMetres: d, openNow: null, isMember });
 
@@ -52,5 +52,13 @@ describe("mini map spacing", () => {
   it("pushes a shop that is on top of the dot out to minR", () => {
     const [p] = miniMapPoints({ lat: 43.6475, lng: -79.4487 }, [{ id: "a", lat: 43.6475, lng: -79.4487 }], { w: 300, h: 132, minR: 36 });
     expect(Math.round(Math.hypot(p!.x - 150, p!.y - 66))).toBeGreaterThanOrEqual(35);
+  });
+
+  it("subtitle priority: progress, promo, perk, category", () => {
+    const sh = shop("a", "cafe", 140);
+    expect(shopSubtitle(sh, null, { progress: { n: 7, goal: 10 }, promoLine: "x" })).toBe("your 7 / 10");
+    expect(shopSubtitle(sh, null, { promoLine: promoWindowLine(2, "stamps", 16), perk: "p" })).toBe("2× stamps till 4 pm");
+    expect(shopSubtitle(sh, null, { perk: "10% off for students" })).toBe("10% off for students");
+    expect(shopSubtitle(sh, null)).toBe("café · 140 m");
   });
 });

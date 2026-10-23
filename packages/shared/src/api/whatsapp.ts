@@ -20,7 +20,7 @@ export type WaLanguage = (typeof WA_LANGUAGES)[number];
 export const waLanguageSchema = z.enum(WA_LANGUAGES);
 
 /** Notification kinds with a pre-approved template. Param order is fixed (Meta numbered variables). */
-export const WA_NOTIFICATION_KINDS = ["order_confirmed", "order_ready", "tiffin_delivery", "catering_quote", "review_request"] as const;
+export const WA_NOTIFICATION_KINDS = ["order_confirmed", "order_ready", "tiffin_delivery", "catering_quote", "review_request", "balance_reminder", "waitlist_open"] as const;
 export type WaNotificationKind = (typeof WA_NOTIFICATION_KINDS)[number];
 
 /** Template names the shop must get approved (names are ours; wording is theirs to submit in Meta Business Manager). */
@@ -30,6 +30,8 @@ export const WA_TEMPLATE_NAMES: Record<WaNotificationKind, { name: string; param
   tiffin_delivery: { name: "tiffin_delivery", params: ["merchant", "status"], example: "{{1}}: your tiffin is {{2}}." },
   catering_quote: { name: "catering_quote", params: ["merchant", "event", "link"], example: "{{1}}: your quote for {{2}} is ready. Review and approve it here: {{3}}" },
   review_request: { name: "review_request", params: ["merchant", "link"], example: "Thanks for choosing {{1}}. How was it? Tell us in one tap: {{2}}" },
+  balance_reminder: { name: "balance_reminder", params: ["merchant", "order_number", "amount", "pickup"], example: "{{1}}: a reminder that {{3}} is left to pay for order #{{2}} at pickup ({{4}})." },
+  waitlist_open: { name: "waitlist_open", params: ["merchant", "date"], example: "{{1}}: a pot opened up for {{2}}. Order now before it goes: reply YES and we will send the link." },
 };
 
 export const whatsappSettingsBody = z.object({
@@ -120,6 +122,11 @@ export interface WhatsappSession {
   /** Free-form replies are allowed until this time. */
   windowOpenUntil: string | null;
   optedIn: boolean;
+  /** Inbox row: the guest's name when we know them, the last message, and what they are waiting on. */
+  name?: string | null;
+  preview?: string | null;
+  lastMessageAt?: string | null;
+  takenOver?: boolean;
 }
 
 /** Customer-facing pay page data for a WhatsApp order (public, token protected). */
@@ -182,6 +189,10 @@ export const reviewSettingsBody = z.object({
 
 export const listReviewsQuery = z.object({
   rating: z.coerce.number().int().min(1).max(5).optional(),
+  /** Private feedback to read first: answers rated this or lower (use 3). */
+  maxRating: z.coerce.number().int().min(1).max(5).optional(),
+  /** "0" = not handled yet, "1" = handled. */
+  handled: z.enum(["0", "1"]).optional(),
   /** responded | pending */
   status: z.enum(["responded", "pending"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
@@ -201,7 +212,7 @@ export interface PublicReviewView {
 
 export interface ReviewSubmitResponse {
   rating: number;
-  /** Lead with the Google button (4 and 5 stars). 1-3 star replies stay private but the link is still offered. */
+  /** Deprecated: always true. Every rating gets the same two options at the same weight (Google's policy). Removed after one release. */
   leadWithGoogle: boolean;
   googleReviewUrl: string | null;
   message: string;
@@ -219,6 +230,17 @@ export interface ReviewDto {
   responded: boolean;
   clickedAt: string | null;
   createdAt: string;
+  /** The guest tapped the Google review button on the page. */
+  googleOpenedAt?: string | null;
+  /** Owner follow-up on private feedback. */
+  handledAt?: string | null;
+  reply?: { channel: string; body: string; at: string } | null;
+  /** Order context (null when the ask came from a tiffin delivery or catering event). */
+  orderNumber?: number | null;
+  orderChannel?: string | null;
+  /** hi | ur | pa | en, from the guest's own language setting. */
+  customerLanguage?: string | null;
+  customerPhone?: string | null;
 }
 
 export interface ReviewStats {
@@ -231,6 +253,11 @@ export interface ReviewStats {
   distribution: Record<"1" | "2" | "3" | "4" | "5", number>;
   /** Opened the review page. */
   opened: number;
+  /** Tapped the Google review button. */
+  googleOpened?: number;
+  /** Answers of 3 stars or fewer the owner has not handled yet, and how many at each rating. */
+  privateToRead?: number;
+  privateToReadByRating?: Record<"1" | "2" | "3", number>;
   googleReviewUrl: string | null;
 }
 
@@ -241,6 +268,8 @@ export const phoneDraftItem = z.object({
   catalogItemId: uuidSchema.optional(),
   name: z.string().min(1).max(200),
   quantity: z.number().int().min(1).max(50),
+  /** The assistant is not sure of this match: staff check it before confirming. */
+  uncertain: z.boolean().optional(),
 });
 
 export const listCallsQuery = z.object({
@@ -265,10 +294,21 @@ export interface PhoneCallDto {
   fromPhone: string;
   language: string | null;
   transcript: string | null;
-  draftOrder: { items: { catalogItemId?: string; name: string; quantity: number }[]; pickupAt?: string; notes?: string } | null;
+  draftOrder: { items: { catalogItemId?: string; name: string; quantity: number; uncertain?: boolean }[]; pickupAt?: string; notes?: string } | null;
   /** Items the parser heard but could not match to the menu. */
   unmatched: string[];
+  /** A heard phrase that fits several dishes ("biryani"): the spoken quantity is kept so a pick keeps it. */
+  ambiguous: { phrase: string; quantity: number; options: { catalogItemId: string; name: string }[] }[];
   orderId: string | null;
+  /** Order number once confirmed. */
+  orderNumber?: number | null;
   status: string;
   createdAt: string;
+  /** Matched member name, else null. The caller's number is `fromPhone`. */
+  callerName?: string | null;
+  member?: { id: string; name: string | null; visits: number } | null;
+  /** The member's usual order as one line, e.g. "2 Nihari, 4 Plain Naan". */
+  usualText?: string | null;
+  /** What we understood, in English, built from the draft (not a machine translation of the audio). */
+  understood?: string | null;
 }

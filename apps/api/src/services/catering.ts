@@ -7,8 +7,8 @@
  * Money is integer cents; tax comes from services/tax.ts (merchant province).
  */
 import { and, asc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
-import { cateringEvents, catalogItems, hallBookings, invoices, messageDeliveries, users, type DbOrTx } from "@ll/db";
-import type { restaurantApi } from "@ll/shared";
+import { cateringEvents, catalogItems, hallBookings, halls, invoices, messageDeliveries, users, type DbOrTx } from "@ll/db";
+import { paymentsManualApi, salesTaxBps, type restaurantApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -24,12 +24,17 @@ import { sendInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
 import { computeTax, merchantProvince } from "./tax.js";
+import { addLedger, assertNotFuture, etransferOffer, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor } from "./manual-payments.js";
+import { markInvoicePaid } from "./invoices.js";
 
 export type CateringEvent = typeof cateringEvents.$inferSelect;
 type Merchant = NonNullable<Awaited<ReturnType<typeof loadMerchant>>>;
 type MenuLine = CateringEvent["menu"][number];
 
 export const DEFAULT_DEPOSIT_BPS = 3000;
+/** The mandatory service charge is a line item with this prefix (taxed like food; kind "fee" so it prints with the extras). */
+export const SERVICE_CHARGE_PREFIX = "Service charge";
+const isServiceLine = (l: { description: string }) => l.description.startsWith(SERVICE_CHARGE_PREFIX);
 const MIN_CARD_CENTS = 50;
 
 // ---------------------------------------------------------------------------
@@ -67,6 +72,12 @@ export function cateringDto(e: CateringEvent, publicWebUrl: string, forStaff: bo
     signatureName: e.signatureName,
     ...(forStaff ? { signatureIp: e.signatureIp, signatureUserAgent: e.signatureUserAgent } : {}),
     depositPaidAt: iso(e.depositPaidAt),
+    depositMethod: e.depositMethod ?? (e.depositPaidAt && e.depositPaymentIntentId ? "card" : null),
+    depositReceivedOn: e.depositReceivedOn,
+    referenceCode: e.referenceCode,
+    serviceChargeBps: e.serviceChargeBps,
+    serviceChargeCents: e.lineItems.filter(isServiceLine).reduce((s, l) => s + l.quantity * l.unitPriceCents, 0),
+    quoteOpenedAt: iso(e.quoteOpenedAt),
     depositRefundCents: e.depositRefundCents,
     depositRefundedAt: iso(e.depositRefundedAt),
     invoiceId: e.invoiceId,
@@ -86,7 +97,20 @@ async function customersFor(db: DbOrTx, userIds: string[]) {
 
 export async function staffDto(ctx: AppContext, e: CateringEvent) {
   const c = await customersFor(ctx.db, [e.userId]);
-  return cateringDto(e, ctx.config.publicWebUrl, true, c.get(e.userId));
+  const dto = cateringDto(e, ctx.config.publicWebUrl, true, c.get(e.userId));
+  const payments = await ledgerDtos(ctx.db, ["catering_deposit", "catering_balance"], e.id);
+  const balancePaid = payments.filter((p) => p.subjectType === "catering_balance" && !p.voidedAt).reduce((s, p) => s + p.amountCents, 0);
+  const merchant = await loadMerchant(ctx.db, e.merchantId);
+  return { ...dto, balanceCents: Math.max(0, dto.balanceCents - balancePaid), payments, dateClashes: await dateClashCount(ctx.db, e), ...(merchant ? { tax: await taxNote(ctx, merchant) } : {}) };
+}
+
+/** "HST 13% on 123456789RT0001", "No HST charged (small supplier)" or "tax status not set": what the quote and approval page say. */
+export async function taxNote(ctx: AppContext, m: Merchant): Promise<NonNullable<restaurantApi.CateringEventDto["tax"]>> {
+  const province = await merchantProvince(ctx.db, m);
+  const bps = salesTaxBps({ province, taxRegistered: m.taxRegistered });
+  const rate = `${+(bps / 100).toFixed(3)}%`;
+  const label = m.taxRegistered === false ? "No HST charged (small supplier)" : m.taxRegistered === true ? `Tax ${rate}${m.taxNumber ? `, GST/HST no. ${m.taxNumber}` : ""}` : `Tax ${rate}, tax status not set`;
+  return { registered: m.taxRegistered, number: m.taxNumber, label };
 }
 
 export async function getMerchantEvent(db: DbOrTx, merchantId: string, eventId: string): Promise<CateringEvent> {
@@ -211,7 +235,7 @@ export interface Priced {
 }
 
 /** Totals for a menu: per-head lines × headcount, trays × quantity, extras, tax, deposit. */
-export async function priceMenu(db: DbOrTx, merchant: Merchant, headcount: number, menu: MenuLine[], extras: { description: string; quantity: number; unitPriceCents: number }[], depositBps: number): Promise<Priced> {
+export async function priceMenu(db: DbOrTx, merchant: Merchant, headcount: number, menu: MenuLine[], extras: { description: string; quantity: number; unitPriceCents: number }[], depositBps: number, serviceChargeBps = 0): Promise<Priced> {
   const lineItems: Priced["lineItems"] = [];
   let perHeadCents = 0;
   for (const m of menu) {
@@ -223,8 +247,15 @@ export async function priceMenu(db: DbOrTx, merchant: Merchant, headcount: numbe
     }
   }
   for (const x of extras) lineItems.push({ description: x.description, quantity: x.quantity, unitPriceCents: x.unitPriceCents, kind: "fee" });
+  // A mandatory service charge is part of the sale: it counts toward the subtotal and is taxed (tips are never modelled here).
+  const beforeCharge = lineItems.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0);
+  if (serviceChargeBps > 0 && beforeCharge > 0) {
+    const pct = `${+(serviceChargeBps / 100).toFixed(2)}%`;
+    lineItems.push({ description: `${SERVICE_CHARGE_PREFIX} ${pct}${merchant.taxRegistered === false ? "" : " (tax applies)"}`, quantity: 1, unitPriceCents: Math.round((beforeCharge * serviceChargeBps) / 10_000), kind: "fee" });
+  }
   const subtotalCents = lineItems.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0);
-  const taxCents = computeTax(subtotalCents, await merchantProvince(db, merchant)).taxCents;
+  // A merchant that says it is not registered for GST/HST charges no tax; unset still computes at the provincial rate (labelled "tax status not set").
+  const taxCents = merchant.taxRegistered === false ? 0 : computeTax(subtotalCents, await merchantProvince(db, merchant)).taxCents;
   const totalCents = subtotalCents + taxCents;
   let depositCents = Math.round((totalCents * depositBps) / 10_000);
   // Card deposits under the Stripe minimum are rounded up (never above the total).
@@ -249,10 +280,11 @@ export async function setMenu(ctx: AppContext, staff: StaffContext, eventId: str
   const e = await getMerchantEvent(ctx.db, merchant.id, eventId);
   assertEditable(e);
   const menu = await resolveMenu(ctx.db, merchant, e.headcount, body.items);
-  const priced = await priceMenu(ctx.db, merchant, e.headcount, menu, body.extras, body.depositBps ?? e.depositBps);
+  const serviceChargeBps = body.serviceChargeBps ?? e.serviceChargeBps;
+  const priced = await priceMenu(ctx.db, merchant, e.headcount, menu, body.extras, body.depositBps ?? e.depositBps, serviceChargeBps);
   const [row] = await ctx.db
     .update(cateringEvents)
-    .set({ ...reopenPatch(e), menu: priced.menu, perHeadCents: priced.perHeadCents, lineItems: priced.lineItems, subtotalCents: priced.subtotalCents, taxCents: priced.taxCents, totalCents: priced.totalCents, depositBps: priced.depositBps, depositCents: priced.depositCents, updatedAt: ctx.now() })
+    .set({ ...reopenPatch(e), serviceChargeBps, menu: priced.menu, perHeadCents: priced.perHeadCents, lineItems: priced.lineItems, subtotalCents: priced.subtotalCents, taxCents: priced.taxCents, totalCents: priced.totalCents, depositBps: priced.depositBps, depositCents: priced.depositCents, updatedAt: ctx.now() })
     .where(eq(cateringEvents.id, e.id))
     .returning();
   return row!;
@@ -267,8 +299,8 @@ export async function updateEvent(ctx: AppContext, staff: StaffContext, eventId:
   if (changesMoney || (body.eventDate && body.eventDate !== e.eventDate)) Object.assign(patch, reopenPatch(e));
   if (changesMoney && e.menu.length) {
     // Per-head lines follow the new headcount; trays and extras stay as the staff set them.
-    const extras = e.lineItems.filter((l) => l.kind === "fee");
-    const priced = await priceMenu(ctx.db, merchant, body.headcount!, e.menu, extras, e.depositBps);
+    const extras = e.lineItems.filter((l) => l.kind === "fee" && !isServiceLine(l));
+    const priced = await priceMenu(ctx.db, merchant, body.headcount!, e.menu, extras, e.depositBps, e.serviceChargeBps);
     Object.assign(patch, { perHeadCents: priced.perHeadCents, lineItems: priced.lineItems, subtotalCents: priced.subtotalCents, taxCents: priced.taxCents, totalCents: priced.totalCents, depositCents: priced.depositCents });
   }
   const [row] = await ctx.db.update(cateringEvents).set(patch).where(eq(cateringEvents.id, e.id)).returning();
@@ -292,6 +324,7 @@ export async function listEvents(ctx: AppContext, merchant: Merchant, q: z.infer
     items: page.map((e) => cateringDto(e, ctx.config.publicWebUrl, true, customers.get(e.userId))),
     nextCursor: rows.length > q.limit ? Buffer.from(String(offset + q.limit)).toString("base64url") : null,
     counts: Object.fromEntries(counts.map((c) => [c.status, c.n])) as Record<string, number>,
+    summary: await pipelineSummary(ctx, merchant),
   };
 }
 
@@ -358,7 +391,8 @@ export async function sendQuote(ctx: AppContext, staff: StaffContext, eventId: s
   if (!["inquiry", "tasting", "quoted"].includes(e.status) || e.approvedAt) throw conflict(`Can't send a quote for an event that is ${e.status}`);
   if (!e.lineItems.length) throw badRequest("Build the menu before sending a quote");
   const now = ctx.now();
-  const [row] = await ctx.db.update(cateringEvents).set({ status: "quoted", quoteSentAt: now, updatedAt: now }).where(eq(cateringEvents.id, e.id)).returning();
+  const referenceCode = e.referenceCode ?? (await newReferenceCode(ctx.db, merchant.id, e.userId));
+  const [row] = await ctx.db.update(cateringEvents).set({ status: "quoted", quoteSentAt: now, quoteOpenedAt: null, referenceCode, updatedAt: now }).where(eq(cateringEvents.id, e.id)).returning();
   const url = `${ctx.config.publicWebUrl}/e/${row!.approvalToken}`;
   const dep = row!.depositCents > 0 ? ` (${money(row!.depositCents)} deposit to confirm)` : "";
   const text = `Your catering quote #${row!.number} for ${row!.headcount} guests on ${row!.eventDate} is ${money(row!.totalCents)}${dep}. Review and approve: ${url}`;
@@ -393,6 +427,8 @@ export interface ApproveArgs {
   signatureName: string;
   ip?: string | null;
   userAgent?: string | null;
+  /** "etransfer" returns instructions instead of starting a card payment. */
+  payWith?: "card" | "etransfer";
 }
 
 export async function approveEvent(ctx: AppContext, event: CateringEvent, args: ApproveArgs): Promise<restaurantApi.ApproveCateringResponse> {
@@ -402,7 +438,7 @@ export async function approveEvent(ctx: AppContext, event: CateringEvent, args: 
   const signatureName = args.signatureName.trim();
   if (event.approvedAt && ["quoted", "confirmed"].includes(event.status)) {
     // Idempotent re-approve: hand back the deposit payment if still due.
-    return { event: cateringDto(event, ctx.config.publicWebUrl, false), deposit: await depositPayment(ctx, merchant, event) };
+    return approvalResponse(ctx, merchant, event, args.payWith);
   }
   if (event.status !== "quoted") throw conflict(event.status === "cancelled" ? "This event was cancelled" : "This quote is no longer open for approval");
   if (signatureName.length < 2) throw badRequest("Type your full name to sign");
@@ -414,7 +450,14 @@ export async function approveEvent(ctx: AppContext, event: CateringEvent, args: 
     .where(and(eq(cateringEvents.id, event.id), eq(cateringEvents.status, "quoted")))
     .returning();
   if (!updated) throw conflict("This quote was just updated. Refresh and try again.");
-  return { event: cateringDto(updated, ctx.config.publicWebUrl, false), deposit: await depositPayment(ctx, merchant, updated) };
+  return approvalResponse(ctx, merchant, updated, args.payWith);
+}
+
+async function approvalResponse(ctx: AppContext, merchant: Merchant, e: CateringEvent, payWith: "card" | "etransfer" = "card"): Promise<restaurantApi.ApproveCateringResponse> {
+  const manual = manualForEvent(merchant, e);
+  // Choosing e-transfer (when the shop takes it) never creates a card payment.
+  const deposit = payWith === "etransfer" && manual ? null : await depositPayment(ctx, merchant, e);
+  return { event: cateringDto(e, ctx.config.publicWebUrl, false), deposit, manual };
 }
 
 /** Deposit PaymentIntent for an approved event, or null when none is due / in-app payments aren't set up. */
@@ -491,15 +534,125 @@ async function notifyDepositReceived(ctx: AppContext, e: CateringEvent) {
   });
 }
 
-/** Deposit taken outside the app (cash, e-transfer): staff marks it received. */
-export async function markDepositPaid(ctx: AppContext, staff: StaffContext, eventId: string): Promise<CateringEvent> {
+/**
+ * Deposit taken outside the app (e-transfer, cash, cheque): staff records it. It writes a ledger row (method, date, amount,
+ * bank reference), keeps the method on the event, and confirms the event once the deposit is covered. Amount defaults to the
+ * deposit on the quote and the date to today; the date can't be in the future. Hand-recorded money carries no platform fee,
+ * and (as before) can't be refunded from here.
+ */
+export async function markDepositPaid(ctx: AppContext, staff: StaffContext, eventId: string, input: z.infer<typeof restaurantApi.cateringMarkDepositBody> = { method: "other", sendReceipt: true }): Promise<CateringEvent> {
   const e = await getMerchantEvent(ctx.db, staff.merchant.id, eventId);
   if (e.depositPaidAt) return e;
   if (e.status !== "quoted" || !e.approvedAt) throw conflict("The customer must approve the quote before the deposit can be recorded");
-  const updated = await confirmWithDeposit(ctx, e, {});
+  const today = todayFor(ctx, staff.merchant);
+  const body = paymentsManualApi.recordPaymentBody.parse({
+    method: input.method,
+    amountCents: input.amountCents ?? Math.max(1, e.depositCents),
+    receivedOn: input.receivedOn ?? today,
+    bankReference: input.bankReference ?? null,
+    note: input.note ?? null,
+    sendReceipt: input.sendReceipt,
+  });
+  assertNotFuture(body.receivedOn, today);
+  const ledger = await addLedger(ctx, staff, ctx.db, { subjectType: "catering_deposit", subjectId: e.id, body });
+  const paid = (await liveLedger(ctx.db, "catering_deposit", e.id)).reduce((s, l) => s + l.amountCents, 0);
+  if (e.depositCents > 0 && paid < e.depositCents) return e; // part payment: stays quoted until the deposit is covered
+  const updated = await confirmWithDeposit(ctx, e, { depositMethod: ledger.method, depositReceivedOn: ledger.receivedOn });
   if (!updated) throw conflict("Event was just updated. Refresh and try again.");
-  await notifyDepositReceived(ctx, updated);
+  if (body.sendReceipt) await notifyDepositReceived(ctx, updated);
   return updated;
+}
+
+/** Balance after the deposit, taken by hand: ledger row, and the balance invoice (if one is open) is marked paid when covered. */
+export async function recordBalancePayment(ctx: AppContext, staff: StaffContext, eventId: string, input: z.infer<typeof paymentsManualApi.recordPaymentBody>): Promise<CateringEvent> {
+  const e = await getMerchantEvent(ctx.db, staff.merchant.id, eventId);
+  if (e.status !== "confirmed" && e.status !== "completed") throw conflict("Only a confirmed event has a balance to record");
+  assertNotFuture(input.receivedOn, todayFor(ctx, staff.merchant));
+  const due = Math.max(0, e.totalCents - (e.depositPaidAt ? e.depositCents : 0));
+  const already = (await liveLedger(ctx.db, "catering_balance", e.id)).reduce((s, l) => s + l.amountCents, 0);
+  if (already >= due) throw conflict("The balance is already covered");
+  await addLedger(ctx, staff, ctx.db, { subjectType: "catering_balance", subjectId: e.id, body: input });
+  if (already + input.amountCents >= due && e.invoiceId) {
+    const [inv] = await ctx.db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, e.invoiceId)).limit(1);
+    if (inv?.status === "open") await markInvoicePaid(ctx, staff, e.invoiceId, { method: input.method === "cash" ? "cash" : input.method === "etransfer" ? "etransfer" : input.method === "cheque" ? "cheque" : "other", note: input.bankReference ? `ref ${input.bankReference}` : (input.note ?? null) });
+  }
+  if (input.sendReceipt) {
+    await notifyCustomer(ctx, { userId: e.userId, merchantId: staff.merchant.id, title: `${staff.merchant.name}: payment received`, body: `${staff.merchant.name} received ${receiptLine(input.amountCents, input.method, input.receivedOn)} for catering #${e.number}. Thank you.`, sms: false, data: { type: "catering_payment", cateringEventId: e.id } });
+  }
+  return getMerchantEvent(ctx.db, staff.merchant.id, e.id);
+}
+
+/** Public quote view: the e-transfer instructions for the deposit, when the shop takes them. */
+export function manualForEvent(merchant: Merchant, e: CateringEvent): restaurantApi.PublicCateringResponse["manual"] {
+  if (e.status !== "quoted" || !e.approvedAt || e.depositPaidAt || e.depositCents <= 0) return null;
+  return manualInstructions(merchant, e.depositCents, e.referenceCode);
+}
+
+/** What the customer may choose for the deposit: card and bank debit need the shop's Stripe account; e-transfer needs its settings. */
+export async function payOptions(ctx: AppContext, merchant: Merchant): Promise<{ card: boolean; etransfer: boolean }> {
+  return { card: await paymentsReady(ctx.db, merchant), etransfer: !!etransferOffer(merchant) };
+}
+
+/** The refund tiers of the hall this event is booked into, so the customer sees the shop's policy before signing. */
+export async function cancellationTiers(db: DbOrTx, e: CateringEvent): Promise<{ minDaysBefore: number; refundBps: number }[] | null> {
+  if (!e.hallBookingId) return null;
+  const [row] = await db
+    .select({ policy: halls.refundPolicy })
+    .from(hallBookings)
+    .innerJoin(halls, eq(halls.id, hallBookings.hallId))
+    .where(eq(hallBookings.id, e.hallBookingId))
+    .limit(1);
+  return row ? [...row.policy.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore) : null;
+}
+
+/** Stamp the first time the customer opens the quote link (feeds "sent 2 days ago, not opened"). */
+export async function markQuoteOpened(ctx: AppContext, e: CateringEvent): Promise<void> {
+  if (e.quoteOpenedAt) return;
+  await ctx.db.update(cateringEvents).set({ quoteOpenedAt: ctx.now() }).where(and(eq(cateringEvents.id, e.id), sql`${cateringEvents.quoteOpenedAt} is null`));
+}
+
+/** Other confirmed events or hall bookings on the same date (for a non-blocking "date clash" note). */
+export async function dateClashCount(db: DbOrTx, e: CateringEvent): Promise<number> {
+  const [ev] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(cateringEvents)
+    .where(and(eq(cateringEvents.merchantId, e.merchantId), eq(cateringEvents.eventDate, e.eventDate), eq(cateringEvents.status, "confirmed"), sql`${cateringEvents.id} <> ${e.id}`));
+  const [hb] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(hallBookings)
+    .where(and(eq(hallBookings.merchantId, e.merchantId), eq(hallBookings.status, "confirmed"), sql`(${hallBookings.startsAt} at time zone 'America/Toronto')::date = ${e.eventDate}::date`, e.hallBookingId ? sql`${hallBookings.id} <> ${e.hallBookingId}` : undefined));
+  return Number(ev?.n ?? 0) + Number(hb?.n ?? 0);
+}
+
+/** Pipeline money tiles and the 8-week strip (staff list response). */
+export async function pipelineSummary(ctx: AppContext, merchant: Merchant): Promise<restaurantApi.CateringSummary> {
+  const rows = await ctx.db.select().from(cateringEvents).where(and(eq(cateringEvents.merchantId, merchant.id), inArray(cateringEvents.status, ["inquiry", "tasting", "quoted", "confirmed"])));
+  const today = localDate(ctx.now(), merchant.timezone);
+  const day = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+  const in14 = day(today, 14);
+  const balancePaid = new Map<string, number>();
+  const ids = rows.filter((r) => r.status === "confirmed").map((r) => r.id);
+  if (ids.length) for (const l of await ledgerDtos(ctx.db, "catering_balance", ids)) if (!l.voidedAt) balancePaid.set(l.subjectId, (balancePaid.get(l.subjectId) ?? 0) + l.amountCents);
+  const weeks = Array.from({ length: 8 }, (_, i) => ({ start: day(today, i * 7), confirmed: 0, pending: 0 }));
+  let openQuotesCents = 0;
+  let depositsToCollectCents = 0;
+  let balancesDue14dCents = 0;
+  for (const e of rows) {
+    if (e.status === "quoted") {
+      openQuotesCents += e.totalCents;
+      if (e.approvedAt && !e.depositPaidAt) depositsToCollectCents += e.depositCents;
+    }
+    if (e.status === "confirmed") {
+      if (e.eventDate >= today && e.eventDate <= in14) balancesDue14dCents += Math.max(0, e.totalCents - (e.depositPaidAt ? e.depositCents : 0) - (balancePaid.get(e.id) ?? 0));
+    }
+    const wk = weeks.findIndex((w, i) => e.eventDate >= w.start && (i === 7 ? e.eventDate < day(w.start, 7) : e.eventDate < weeks[i + 1]!.start));
+    if (wk >= 0) {
+      if (e.status === "confirmed") weeks[wk]!.confirmed++;
+      else if (e.status === "quoted" || e.status === "tasting") weeks[wk]!.pending++;
+    }
+  }
+  const booked = rows.filter((e) => e.status === "confirmed" && e.eventDate >= today && e.eventDate < day(today, 56));
+  return { openQuotesCents, depositsToCollectCents, balancesDue14dCents, bookedNext8wEvents: booked.length, bookedNext8wCents: booked.reduce((s, e) => s + e.totalCents, 0), weeks };
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,8 @@
 Contract: `packages/shared/src/api/service.ts` (`serviceApi`). Code: `apps/api/src/routes/service/`,
 `services/tickets.ts`, `services/quotes.ts`, `services/invoices.ts`. Public approve/pay pages: `public.md`.
 
+Appointments for salons (calendar, services, online booking) are a separate Café & Retail feature: see `appointments.md`. The price list (`services` table, `kind = repair_line`) is shared.
+
 Money is integer cents (CAD); tax per province (`services/tax.ts`, default ON HST 13%). Errors use the standard
 envelope. Lists return `{ items, nextCursor }`.
 

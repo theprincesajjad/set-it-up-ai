@@ -245,7 +245,26 @@ export interface PublicPlansResponse {
     activeMerchants: number;
     /** Neighbourhoods with status pilot or live. */
     neighbourhoods: number;
+    /** Shoppers with a membership at any active shop. */
+    members: number;
+    /** Share (0 to 100, one decimal) of those shoppers who belong to two or more active shops. */
+    multiShopMemberPct: number;
+    /** Pilot or live neighbourhoods with at least one active shop: streets where the card works today. */
+    liveStreets: number;
   };
+}
+
+/** GET /v1/public/restaurants/founding: founding spots per corridor (cached 300 s). */
+export interface FoundingCorridorDto {
+  slug: string;
+  name: string;
+  /** Restaurants holding the founding offer on this corridor. */
+  taken: number;
+  /** FOUNDING_OFFER.slotsPerCorridor. */
+  total: number;
+}
+export interface FoundingResponse {
+  corridors: FoundingCorridorDto[];
 }
 
 /** GET /v1/public/join/:qrCode */

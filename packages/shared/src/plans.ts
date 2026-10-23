@@ -208,6 +208,7 @@ export const FEATURE_KEYS = [
   "orders.pickup_status",
   "payments.in_app",
   "booking.pickup_slots",
+  "booking.appointments",
   "service.rebooking",
   // ---- Pro (everything in Plus, plus) ----
   "service.tickets",

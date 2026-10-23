@@ -142,7 +142,8 @@ describe("holds and overlap", () => {
     expect((await api(m.ownerToken, "POST", `${m.base}/banquet/bookings`, { hallId: hall.id, headcount: 80, ...slot(20) })).status).toBe(400);
     const q = `from=${encodeURIComponent(day(1, 0))}&to=${encodeURIComponent(day(31, 0))}`;
     const av = await api(m.ownerToken, "GET", `${m.base}/banquet/availability?${q}`);
-    expect(av.body.halls[0].busy).toEqual([{ bookingId: r.body.booking.id, status: "hold", startsAt: day(12, 17), endsAt: day(12, 23) }]);
+    // Staff see who and what (label) and when a hold lapses; the public calendar stays bare.
+    expect(av.body.halls[0].busy).toEqual([expect.objectContaining({ bookingId: r.body.booking.id, status: "hold", startsAt: day(12, 17), endsAt: day(12, 23), label: expect.stringContaining("·"), holdExpiresAt: expect.any(String) })]);
     const pub = await api(null, "GET", `/v1/public/shops/${m.merchant.slug}/banquet/availability?${q}&hallId=${hall.id}`);
     expect(pub.body.halls[0].busy).toHaveLength(1);
     expect(JSON.stringify(pub.body)).not.toContain("userId");

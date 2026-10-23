@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnreadCount } from "../../features/customer/inbox";
 import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, useProfile, useWallet } from "../../features/customer/queries";
-import { DISCOVER_MODE_LABELS, DISCOVER_ROWS, discoverMeta, discoverRows, heroCopy, miniMapPoints, shortHood, type DiscoverMode } from "../../lib/discover";
+import { DISCOVER_MODE_LABELS, DISCOVER_ROWS, discoverRows, shopSubtitle, heroCopy, miniMapPoints, shortHood, type DiscoverMode } from "../../lib/discover";
 import { openStatus } from "../../lib/format";
 import { useLocale } from "../../lib/i18n";
 import { shopMatchesHalal } from "../../lib/restaurant";
@@ -91,6 +91,7 @@ export default function Discover() {
   const all = useMemo(() => (shops.data?.items ?? []).filter((s) => !halal || shopMatchesHalal(s, halal)), [shops.data, halal]);
   const hoodName = shortHood(hood.data?.neighbourhood.name ?? profile.data?.homeNeighbourhood?.name ?? live?.neighbourhood.name ?? null);
   const ready = useMemo(() => new Set((wallet.data?.items ?? []).filter((m) => m.rewardsAvailableCount > 0).map((m) => m.merchant.id)), [wallet.data]);
+  const goalOf = useMemo(() => new Map((wallet.data?.items ?? []).filter((m) => m.program?.earnType === "stamps" && m.nextReward).map((m) => [m.merchant.id, m.nextReward!.pointsCost] as const)), [wallet.data]);
   const rows = useMemo(() => discoverRows(all, { hood: hoodName, ready, mode, category }), [all, hoodName, ready, mode, category]);
   // Chip order follows the canvas (coffee · bakeries · services · repair …); only categories with shops.
   const chips = CHIP_ORDER.map((id) => DISCOVER_ROWS.find((r) => r.id === id)!).filter((r) => all.some((s) => verticalCategory(s.merchant.vertical) === r.id));
@@ -124,7 +125,7 @@ export default function Discover() {
           {s.merchant.name.toLowerCase()}
         </Text>
         <Text style={[ui(12, 400, 16), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
-          {discoverMeta(s, status)}
+          {shopSubtitle(s, status, { progress: s.isMember && s.myBalance != null ? goalOf.get(s.merchant.id) ? { n: s.myBalance, goal: goalOf.get(s.merchant.id)! } : null : null })}
         </Text>
       </Pressable>
     );

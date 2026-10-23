@@ -11,7 +11,7 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
   await expect(page.getByText("Pinecone Coffee Co.").first()).toBeVisible();
   // CASL: optional, unticked, offered with the phone (canvas Join).
-  const consent = page.getByLabel("Send me offers from Pinecone Coffee Co. by text or email. Optional. Unsubscribe any time.");
+  const consent = page.getByLabel("Text me offers from Pinecone Coffee Co. (optional). Not ticked for you. Reply STOP any time. Your stamps work either way.");
   await expect(consent).not.toBeChecked();
   await page.screenshot({ path: shot("01-join-phone"), fullPage: true });
 

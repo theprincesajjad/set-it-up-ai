@@ -170,6 +170,19 @@ export interface CampaignReport {
   participants: number;
   completions: number;
   bonusPointsIssued: number;
+  /**
+   * "Came back within 30 days": unique customers with a recorded visit at a participating shop during the campaign
+   * who have another recorded visit at any shop in the neighbourhood in the 30 days after it ends. Null until
+   * `returnWindowEndsAt` has passed (the UI shows "Available {date}"). Aggregates only.
+   */
+  returnedWithin30d: number | null;
+  /** Share of `uniqueCustomers`, one decimal. Null with `returnedWithin30d`, or when nobody visited. */
+  returnedWithin30dPct: number | null;
+  /** Campaign end plus 30 days. */
+  returnWindowEndsAt: string;
+  /** The same measure for the same-length window before the campaign, for context. Null while the main measure is. */
+  baselineReturnedWithin30d: number | null;
+  baselineReturnedWithin30dPct: number | null;
   perMerchant: {
     merchantId: string;
     name: string;
@@ -209,4 +222,101 @@ export interface NeighbourhoodMerchant {
   activated: boolean;
   activatedAt: string | null;
   logoUrl: string | null;
+}
+
+/**
+ * Per-street unlock gates for neighbourhood campaigns (docs/business/network-monetization.md): the strip has been live
+ * this long, has this many active shops, this many active shoppers (a visit in the last 30 days) and this share of
+ * those shoppers visit two or more shops. One constant for the BIA overview, `selectSponsored` and campaign creation.
+ */
+export const UNLOCK_PER_NEIGHBOURHOOD = { liveMonths: 6, activeShops: 20, activeCustomers: 1500, multiShopPct: 25 } as const;
+export type UnlockThresholds = { liveMonths: number; activeShops: number; activeCustomers: number; multiShopPct: number };
+
+// ---------------------------------------------------------------------------
+// BIA overview and period report (aggregates only: no customer id, name, phone or email in any response)
+// ---------------------------------------------------------------------------
+/** The longest period the overview and report accept. */
+export const MAX_REPORT_DAYS = 366;
+
+/** `from` and `to` are ISO dates or datetimes; `to` is exclusive. Default: the last 30 days. */
+export const periodQuery = z
+  .object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() })
+  .refine((q) => !q.from || !q.to || q.to > q.from, { message: "to must be after from", path: ["to"] })
+  .refine((q) => !q.from || !q.to || q.to.getTime() - q.from.getTime() <= MAX_REPORT_DAYS * 86_400_000, { message: `A period is at most ${MAX_REPORT_DAYS} days`, path: ["to"] });
+export const reportQuery = z
+  .object({ from: z.coerce.date().optional(), to: z.coerce.date().optional(), format: z.enum(["json", "csv"]).default("json") })
+  .refine((q) => !q.from || !q.to || q.to > q.from, { message: "to must be after from", path: ["to"] })
+  .refine((q) => !q.from || !q.to || q.to.getTime() - q.from.getTime() <= MAX_REPORT_DAYS * 86_400_000, { message: `A period is at most ${MAX_REPORT_DAYS} days`, path: ["to"] });
+
+export interface PeriodRange {
+  from: string;
+  to: string;
+}
+
+export interface NeighbourhoodShopRow {
+  id: string;
+  name: string;
+  status: NeighbourhoodMerchant["status"];
+  /** Reached the activation threshold. */
+  activated: boolean;
+  /** Visits in the period. */
+  visits: number;
+  /** Members who joined this shop in the period. */
+  newMembers: number;
+}
+
+/** GET /v1/neighbourhoods/:id/overview?from&to (neighbourhood manager or admin). */
+export interface NeighbourhoodOverview {
+  period: PeriodRange;
+  /** The same length immediately before `period`. */
+  prior: PeriodRange;
+  shops: {
+    /** Shops with status "active". */
+    live: number;
+    /** The BIA's own member count (neighbourhoods.biaMemberCount), null until an admin enters it. */
+    members: number | null;
+    /** Shops created in the period. */
+    joinedInPeriod: number;
+  };
+  /** Distinct shoppers with a visit at any shop on the street in the period; delta is the change in people. */
+  activeMembers: { value: number; delta: number };
+  /** Share (0 to 100, one decimal) of those shoppers who visited two or more shops in the period; delta in points. */
+  multiShopPct: { value: number; deltaPoints: number };
+  /** Visits at the shops in `shopsTable` (so the stat is the sum of the table); delta against the prior period, null when that was 0. */
+  visits: { value: number; deltaPct: number | null };
+  /** Up to 12 weeks ending with the week that contains the period end, oldest first. `campaignIds` are the campaigns running that week. */
+  weekly: { weekStart: string; visits: number; campaignIds: string[] }[];
+  shopsTable: NeighbourhoodShopRow[];
+  gates: {
+    /** Whole months since the first shop on the street activated. */
+    liveMonths: number;
+    activeShops: number;
+    /** Distinct shoppers with a visit in the last 30 days. */
+    activeCustomers: number;
+    /** Share (0 to 100) of those who visited two or more shops in the last 30 days. */
+    multiShopPct: number;
+    thresholds: UnlockThresholds;
+  };
+}
+
+export interface NeighbourhoodReportCampaign {
+  id: string;
+  name: string;
+  kind: CampaignKind;
+  status: CampaignStatus;
+  startsAt: string;
+  endsAt: string;
+  shops: number;
+  report: CampaignReport;
+}
+
+/** GET /v1/neighbourhoods/:id/report?from&to&format=json: the board report for a period. */
+export interface NeighbourhoodReport {
+  neighbourhood: { id: string; name: string };
+  period: PeriodRange;
+  prior: PeriodRange;
+  generatedAt: string;
+  overview: NeighbourhoodOverview;
+  /** Campaigns that ran inside the period (scheduled, live or ended). */
+  campaigns: NeighbourhoodReportCampaign[];
 }

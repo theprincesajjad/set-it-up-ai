@@ -128,9 +128,10 @@ export function WalletButtons({ os, onApple, onGoogle, appleHref, googleHref, bu
   const showGoogle = os !== "ios" && available.google !== false;
   if (!showApple && !showGoogle) return null;
   return (
-    <div className={cn("flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center", className)}>
-      {showApple ? <AddToAppleWalletButton onClick={onApple} href={appleHref} loading={busy === "apple"} disabled={busy === "google"} /> : null}
-      {showGoogle ? <AddToGoogleWalletButton onClick={onGoogle} href={googleHref} loading={busy === "google"} disabled={busy === "apple"} /> : null}
+    // Both offered: stacked, the same size and weight (neither is the "default"). One alone keeps its natural size.
+    <div className={cn("flex flex-col items-stretch gap-3", !(showApple && showGoogle) && "sm:flex-row sm:justify-center", className)}>
+      {showApple ? <AddToAppleWalletButton onClick={onApple} href={appleHref} loading={busy === "apple"} disabled={busy === "google"} fullWidth={showApple && showGoogle} /> : null}
+      {showGoogle ? <AddToGoogleWalletButton onClick={onGoogle} href={googleHref} loading={busy === "google"} disabled={busy === "apple"} fullWidth={showApple && showGoogle} /> : null}
     </div>
   );
 }

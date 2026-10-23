@@ -126,6 +126,10 @@ export interface CustomerFeatures {
   orderAhead: boolean;
   pickupSlots: boolean;
   serviceTickets: boolean;
+  /** Customers can book a drop-off time (booking.dropoff_scheduling). */
+  dropoffScheduling: boolean;
+  /** Customers can book a stylist and a time (booking.appointments). */
+  appointments: boolean;
   inAppPayments: boolean;
   /** Paid (Plus): promos in the feed / shop page, discount cards, referrals, VIP levels, birthday points. */
   promos: boolean;
@@ -144,6 +148,8 @@ const CUSTOMER_FEATURE_KEYS = {
   orderAhead: "orders.order_ahead",
   pickupSlots: "booking.pickup_slots",
   serviceTickets: "service.tickets",
+  dropoffScheduling: "booking.dropoff_scheduling",
+  appointments: "booking.appointments",
   inAppPayments: "payments.in_app",
   promos: "promos.basic",
   discountCards: "discount_cards",

@@ -1,7 +1,7 @@
 "use client";
 import { BiaGate } from "@/components/dashboard/campaigns/BiaGate";
-import { CampaignList } from "@/components/dashboard/campaigns/CampaignViews";
+import { Overview } from "@/components/dashboard/bia/Overview";
 
-export default function BiaPage() {
-  return <BiaGate>{(hoods) => <CampaignList base="/bia" neighbourhoods={hoods} isAdmin={false} />}</BiaGate>;
+export default function BiaOverviewPage() {
+  return <BiaGate>{(_hoods, hood) => <Overview hood={hood} />}</BiaGate>;
 }

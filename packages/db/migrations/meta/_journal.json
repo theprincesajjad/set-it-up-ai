@@ -78,6 +78,27 @@
       "when": 1792723098704,
       "tag": "0010_cafe_counter_auto_stamp",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792723624372,
+      "tag": "0011_appts",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792723952448,
+      "tag": "0012_repair_warranty_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792724086118,
+      "tag": "0013_catchup_pending_schema",
+      "breakpoints": true
     }
   ]
 }

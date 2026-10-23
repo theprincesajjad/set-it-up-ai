@@ -13,6 +13,7 @@
  * timestamps the services stamp with the database clock are back-dated afterwards. Runs on its own RNG so
  * the existing demo history (customers, visits) stays byte-identical. Guarded: a second run does nothing.
  */
+import { deflateSync } from "node:zlib";
 import { and, asc, eq, gt, inArray, like, sql } from "drizzle-orm";
 import type { FeatureKey } from "@ll/shared";
 import {
@@ -44,7 +45,8 @@ import { createBooking, generateSlots, listSlots, zonedToUtc } from "../services
 import { createItem } from "../services/catalog.js";
 import { createInvoice, markInvoicePaid } from "../services/invoices.js";
 import { placeOrder, updateOrderStatus } from "../services/orders.js";
-import { createQuote, respondToQuote, getMerchantQuote } from "../services/quotes.js";
+import { authorizeQuoteByPhone, createQuote, getMerchantQuote, markQuoteViewed, respondToQuote } from "../services/quotes.js";
+import { getStorage } from "../providers/storage.js";
 import { addNote, createTicket, setTicketStatus } from "../services/tickets.js";
 
 const DAY = 86_400_000;
@@ -53,7 +55,7 @@ const MIN = 60_000;
 /** Features switched on (admin overrides, like the other pilot features) for the shops below. */
 const ORDER_FEATURES: FeatureKey[] = ["orders.order_ahead", "orders.pickup_status", "booking.pickup_slots"];
 const AD_FEATURES: FeatureKey[] = ["ads.sponsored_listing", "ads.sponsored_promo", "ads.map_pin"];
-const SERVICE_FEATURES: FeatureKey[] = ["service.tickets", "service.quote_approval", "service.invoices", "booking.dropoff_scheduling", "booking.pickup_slots", "orders.order_ahead", "orders.pickup_status"];
+const SERVICE_FEATURES: FeatureKey[] = ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices", "service.rebooking", "booking.dropoff_scheduling", "booking.pickup_slots", "orders.order_ahead", "orders.pickup_status"];
 export const CORE_SHOP_FEATURES: Record<string, FeatureKey[]> = {
   "pinecone-coffee": ORDER_FEATURES,
   "hearth-and-crumb": [...ORDER_FEATURES, ...AD_FEATURES],
@@ -70,6 +72,36 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   return { next, int: (min: number, max: number) => min + Math.floor(next() * (max - min + 1)), pick: <T>(arr: readonly T[]) => arr[Math.floor(next() * arr.length)]! };
+}
+
+/** A small solid-colour PNG, so intake photos in the demo are real stored files (CRC and zlib from node, no dependency). */
+function solidPng(r: number, g: number, b: number, size = 96): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const x of buf) c = crcTable[(c ^ x) & 0xff]! ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([len, body, sum]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: size }, () => [r, g, b]).flat())]);
+  const raw = Buffer.concat(Array.from({ length: size }, () => row));
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 
 interface ItemSeed {
@@ -305,12 +337,18 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
   setClock(realNow);
 
   // ---- Service tickets, quotes and invoices at the repair shop ----
+  // Drop-off terms, a stated warranty and rolling drop-off settings for the repair shop. The staff context holds the row, so refresh it too.
+  const TERMS = "We back up nothing: please save your data before you drop off. We call before any work beyond the quote. Items not collected within 60 days are handled under Ontario's Repair and Storage Liens Act.";
+  await db.update(merchants).set({ intakeTerms: TERMS, warrantyDays: 90, dropoffSlotMinutes: 30, dropoffCapacity: 3, dropoffDaysAhead: 14 }).where(eq(merchants.id, repair.id));
+  Object.assign(repair.row, { intakeTerms: TERMS, warrantyDays: 90 });
   const repairCats = await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, repair.id));
   const repairsCat = repairCats.find((c) => c.name === "Repairs")?.id ?? null;
   const dropoffSlots = await listSlots(db, repair.id, { kind: "dropoff", onlyAvailable: true });
   const labour = (cents: number, what = "Labour") => ({ description: what, quantity: 1, unitPriceCents: cents, kind: "labour" as const, categoryId: repairsCat });
   const part = (cents: number, what: string) => ({ description: what, quantity: 1, unitPriceCents: cents, kind: "part" as const, categoryId: repairsCat });
-  type Plan = { dev: number; daysAgo: number; hour: number; stage: "intake" | "diagnosing" | "quote_sent" | "approved" | "in_progress" | "waiting_parts" | "ready" | "picked_up" | "declined" | "cancelled"; lines?: Parameters<typeof createQuote>[3]["lineItems"]; diagnosis?: string; promisedIn?: number; slot?: number };
+  type Plan = { dev: number; daysAgo: number; hour: number; stage: "intake" | "diagnosing" | "quote_sent" | "approved" | "in_progress" | "waiting_parts" | "ready" | "picked_up" | "declined" | "cancelled"; lines?: Parameters<typeof createQuote>[3]["lineItems"]; diagnosis?: string; promisedIn?: number; slot?: number;
+    /** Everything below is optional and only fills in what the new repair screens show. */
+    minute?: number; photos?: number; checks?: string[]; shelf?: string; assign?: boolean; locale?: "pa" | "hi" | "ur"; viewed?: boolean; phone?: boolean; depositPct?: number; readyDaysAgo?: number; ladder?: number };
   const plans: Plan[] = [
     { dev: 0, daysAgo: 0, hour: 9, stage: "intake", slot: 3 },
     { dev: 1, daysAgo: 1, hour: 11, stage: "diagnosing", slot: 7 },
@@ -323,13 +361,22 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
     { dev: 8, daysAgo: 5, hour: 10, stage: "declined", lines: [part(24000, "Logic board repair"), labour(9000)], diagnosis: "Corrosion on the board. Repair is possible but costs more than the phone is worth." },
     { dev: 9, daysAgo: 1, hour: 15, stage: "approved", lines: [part(4500, "Speaker module"), labour(3500)], diagnosis: "Speaker mesh is clogged and the driver is torn.", promisedIn: 2 },
     { dev: 3, daysAgo: 4, hour: 17, stage: "cancelled" },
+    // Fix-It Phone Lab as in the design: a quote opened but not approved, one approved by phone with the deposit paid, an
+    // overdue repair, and a phone that has sat ready for six days with an open invoice and the day-3 reminder sent.
+    { dev: 2, daysAgo: 1, hour: 9, minute: 5, stage: "quote_sent", lines: [part(12900, "Charging port assembly"), labour(8000), { description: "Diagnostic fee (credited)", quantity: 1, unitPriceCents: -3000, kind: "fee" as const, categoryId: null }], diagnosis: "The charging port is packed with debris and one pin is bent. Cleaning will not hold. Replace the port assembly. Your data is not affected.", promisedIn: 4, photos: 3, checks: ["Data-loss notice given", "Charger left with it"], assign: true, locale: "pa", viewed: true, depositPct: 25 },
+    { dev: 9, daysAgo: 2, hour: 10, minute: 12, stage: "approved", lines: [part(3500, "Speaker module"), labour(4500)], diagnosis: "Speaker mesh is clogged and the driver is torn.", promisedIn: 0, photos: 2, assign: true, phone: true, depositPct: 25, checks: ["Water indicator: clear"] },
+    { dev: 3, daysAgo: 4, hour: 11, minute: 20, stage: "in_progress", lines: [part(12000, "Display flex cable"), labour(7000)], diagnosis: "Flex cable is damaged. Replace it.", promisedIn: -1, assign: true },
+    { dev: 5, daysAgo: 8, hour: 13, minute: 30, stage: "ready", lines: [part(12900, "Battery replacement"), labour(2500)], diagnosis: "Battery at 71% health. New cell fitted and tested.", readyDaysAgo: 6, ladder: 3, assign: true, shelf: "B3" },
   ];
   const ticketIds: { id: string; userId: string; at: Date; end: Date }[] = [];
   for (const [i, p] of plans.entries()) {
     const cust = customer(20 + i);
     const dev = DEVICES[p.dev]!;
-    const at = toronto(p.daysAgo, p.hour, R.int(0, 40));
+    const at = toronto(p.daysAgo, p.hour, p.minute ?? R.int(0, 40));
     setClock(at);
+    if (p.locale) await db.update(users).set({ locale: p.locale }).where(eq(users.id, cust.id));
+    const photoUrls: string[] = [];
+    for (let k = 0; k < (p.photos ?? 0); k++) photoUrls.push((await getStorage(ctx).put({ merchantId: repair.id, contentType: "image/png", body: solidPng(...([[188, 190, 196], [150, 154, 164], [216, 218, 222]][k % 3] as [number, number, number])) })).url);
     const created = await createTicket(ctx, repair.staff, {
       customer: { phone: cust.phone!, name: cust.name },
       locationId: repair.locationId,
@@ -337,9 +384,12 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
       itemDetails: { make: dev.make, model: dev.model },
       issue: dev.issue,
       intakeNotes: i % 3 === 0 ? "Left a passcode on the sticky note. Backup done by customer." : null,
-      photos: [],
+      photos: photoUrls,
       promisedAt: p.promisedIn === undefined ? null : new Date(realNow.getTime() + p.promisedIn * DAY).toISOString(),
-      assignedStaffId: null,
+      assignedStaffId: p.assign ? repair.staff.user.id : null,
+      intakeChecklist: p.checks ?? [],
+      termsAccepted: !!repair.row.intakeTerms,
+      shelfLocation: p.shelf ?? null,
     });
     const tid = created.ticket.id;
     let t = at;
@@ -356,13 +406,19 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
       await status("diagnosing", "Testing the battery and charge port");
     } else if (p.lines) {
       tick(60);
-      const q = await createQuote(ctx, repair.staff, tid, { diagnosis: p.diagnosis ?? null, lineItems: p.lines, depositPercent: 0, expiresInDays: 7, send: true });
+      const q = await createQuote(ctx, repair.staff, tid, { diagnosis: p.diagnosis ?? null, lineItems: p.lines, depositPercent: p.depositPct ?? 0, expiresInDays: 7, send: true });
+      if (p.viewed) {
+        tick(40);
+        await markQuoteViewed(ctx, await getMerchantQuote(db, repair.id, q.id));
+      }
       if (p.stage !== "quote_sent") {
         tick(120);
         const quote = await getMerchantQuote(db, repair.id, q.id);
         if (p.stage === "declined") await respondToQuote(ctx, quote, { action: "decline", reason: "Too expensive for an old phone", ip: "203.0.113.7", userAgent: "seed" });
         else {
-          await respondToQuote(ctx, quote, { action: "approve", signatureName: cust.name ?? "Customer", ip: "203.0.113.7", userAgent: "seed" });
+          if (p.phone) await authorizeQuoteByPhone(ctx, repair.staff, quote.id, { name: cust.name ?? "Customer", phone: cust.phone, note: "Said yes on the phone, wants it by tomorrow" });
+          else await respondToQuote(ctx, quote, { action: "approve", signatureName: cust.name ?? "Customer", ip: "203.0.113.7", userAgent: "seed" });
+          if (p.depositPct) await db.update(quotes).set({ depositPaidAt: t }).where(eq(quotes.id, quote.id));
           if (p.stage !== "approved") {
             tick(180);
             await status("in_progress", "Parts are in, starting the repair");
@@ -376,6 +432,7 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
             await status("ready", "All done and tested");
             tick(10);
             const inv = await createInvoice(ctx, repair.staff, tid, { fromQuote: true, extraLineItems: [], send: true });
+            if (p.readyDaysAgo !== undefined) await db.update(serviceTickets).set({ readyAt: new Date(realNow.getTime() - p.readyDaysAgo * DAY), pickupReminderDay: p.ladder ?? 0 }).where(eq(serviceTickets.id, tid));
             if (p.stage === "picked_up") {
               tick(24 * 60);
               await markInvoicePaid(ctx, repair.staff, inv.id, { method: i % 2 ? "cash" : "card_terminal", note: null });

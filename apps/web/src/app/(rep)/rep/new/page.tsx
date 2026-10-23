@@ -33,7 +33,7 @@ const EMPTY: Draft = { name: "", address: "", city: "Toronto", postalCode: "", p
 function templateDraft(v: Vertical): { draft: ProgramDraft; rewards: { name: string; pointsCost: number; rewardType: merchantApi.Reward["rewardType"]; value: number }[] } {
   const t = VERTICAL_TEMPLATES[v];
   return {
-    draft: { name: `${t.label} rewards`, earnType: t.earnType, pointsPerDollar: t.pointsPerDollar, pointsPerVisit: t.pointsPerVisit, minSpendCents: 0, stampGoal: t.stampGoal, terminology: t.terminology, welcomeBonus: t.welcomeBonus, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 0 },
+    draft: { name: `${t.label} rewards`, earnType: t.earnType, pointsPerDollar: t.pointsPerDollar, pointsPerVisit: t.pointsPerVisit, minSpendCents: 0, stampGoal: t.stampGoal, terminology: t.terminology, welcomeBonus: t.welcomeBonus, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 0, counterAutoStamp: (v === "cafe" || v === "bakery") && t.earnType !== "per_dollar", rewardCostCents: null },
     rewards: t.rewards,
   };
 }

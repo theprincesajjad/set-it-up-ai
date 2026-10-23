@@ -1,7 +1,7 @@
 "use client";
 import { CircleHelp, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { sessionApi } from "@/lib/api/browser";
 
 function initials(s: string | null) {
@@ -16,7 +16,7 @@ function initials(s: string | null) {
 }
 
 /** Sidebar footer: help + extra links + signed-in user with sign out. */
-export function AccountMenu({ name, email, links = [] }: { name: string | null; email: string | null; links?: { href: string; label: string }[] }) {
+export function AccountMenu({ name, email, links = [] }: { name: string | null; email: string | null; links?: { href: string; label: string; icon?: ReactNode }[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const row = "flex h-8 items-center gap-2.5 rounded-[8px] px-2 text-[14px] text-fg hover:bg-bg-muted/60 focus-visible:focus-ring";
@@ -28,7 +28,7 @@ export function AccountMenu({ name, email, links = [] }: { name: string | null; 
       {links.map((l) => (
         <a key={l.href} href={l.href} className={row}>
           <span aria-hidden className="inline-flex size-4 items-center justify-center text-fg-muted">
-            ↗
+            {l.icon ?? "↗"}
           </span>
           {l.label}
         </a>

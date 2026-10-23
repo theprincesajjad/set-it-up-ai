@@ -34,7 +34,7 @@ An override wins over stage and plan (`isFeatureEnabled`). Audit: `feature.overr
 
 ## Neighbourhoods (BIA info)
 - `GET /v1/admin/neighbourhoods` → `{ items: AdminNeighbourhood[] }` (incl. `merchants`, `activatedMerchants`)
-- `POST /v1/admin/neighbourhoods` body `{ slug (a-z0-9-), name, city?, province?, status (scouting|pilot|live)?, centerLat?, centerLng?, radiusMetres?, biaName?, biaContactName?, biaContactEmail?, biaContactPhone?, storefrontEstimate?, notes? }` → `201` · `409` slug taken
+- `POST /v1/admin/neighbourhoods` body `{ slug (a-z0-9-), name, city?, province?, status (scouting|pilot|live)?, centerLat?, centerLng?, radiusMetres?, biaName?, biaContactName?, biaContactEmail?, biaContactPhone?, storefrontEstimate?, biaMemberCount? (the "of 74" on the BIA overview), notes? }` → `201` · `409` slug taken
 - `PATCH /v1/admin/neighbourhoods/:neighbourhoodId` partial → `AdminNeighbourhood`
 - `DELETE /v1/admin/neighbourhoods/:neighbourhoodId` → `204` · `409` if it still has merchants
 

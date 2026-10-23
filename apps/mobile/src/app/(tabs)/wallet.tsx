@@ -162,12 +162,22 @@ export default function Wallet() {
             </View>
           ) : null}
         </View>
+        {isReady ? (
+          <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
+            Show card
+          </Text>
+        ) : m.program?.earnType === "stamps" && next ? (
+          <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
+            {`${m.balance} / ${next.pointsCost}`}
+          </Text>
+        ) : (
         <View style={styles.bal}>
           <CountUp value={m.balance} format={formatNumber} style={disp(20, 800, 24)} color={isReady ? "accent" : "fg"} />
           <Text style={ui(12, 400, 15)} rawColor={c.fgMuted}>
             {unit}
           </Text>
         </View>
+        )}
       </Pressable>
     );
   };
@@ -262,13 +272,13 @@ export default function Wallet() {
           <>
             {ready.length > 0 ? (
               <View>
-                {section("ready now")}
+                {section("Reward ready")}
                 {ready.map((m, i) => shopRow(m, i, ready.length))}
               </View>
             ) : null}
             {rest.length > 0 ? (
               <View>
-                {section(ready.length > 0 ? "earning" : "your shops")}
+                {section("Your shops")}
                 {rest.map((m, i) => shopRow(m, i, rest.length))}
               </View>
             ) : null}

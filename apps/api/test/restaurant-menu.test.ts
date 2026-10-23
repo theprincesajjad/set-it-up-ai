@@ -217,15 +217,15 @@ describe("degh pre-orders", () => {
     const pickupAt = "2026-11-06T22:00:00.000Z"; // Fri 5 p.m. Toronto
     const r = await place(m, c.token, [...items, { catalogItemId: naan.id, quantity: 2 }], { pickupAt });
     expect(r.status).toBe(201);
-    // 18000 + 600 = 18600; HST 2418; deposit 30% of the pot = 5400; $0.49 customer fee on the card charge.
-    expect(r.body.order).toMatchObject({ kind: "preorder", subtotalCents: 18600, taxCents: 2418, customerFeeCents: 49, platformFeeCents: 0, depositCents: 5400, totalCents: 21067, paymentStatus: "requires_action", balanceDueCents: 21067 });
-    expect(r.body.payment.amountCents).toBe(5449);
-    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ amountCents: 5449, applicationFeeCents: 49 });
+    // 18000 + 600 = 18600; HST 2418; deposit 30% of the pot with its HST = 18000 x 1.13 x 0.3 = 6102; $0.49 customer fee on the card charge.
+    expect(r.body.order).toMatchObject({ kind: "preorder", subtotalCents: 18600, taxCents: 2418, customerFeeCents: 49, platformFeeCents: 0, depositCents: 6102, totalCents: 21067, paymentStatus: "requires_action", balanceDueCents: 21067 });
+    expect(r.body.payment.amountCents).toBe(6151);
+    expect(fake(env).intents.get(r.body.payment.paymentIntentId)).toMatchObject({ amountCents: 6151, applicationFeeCents: 49 });
 
     // Deposit lands: order is confirmed with the balance due at pickup.
     await deliver(env, fake(env).succeedPaymentIntent(r.body.payment.paymentIntentId));
     const mine = await call(env, c.token, "GET", `/v1/me/orders/${r.body.order.id}`);
-    expect(mine.body).toMatchObject({ paymentStatus: "authorized", balanceDueCents: 21067 - 5449 });
+    expect(mine.body).toMatchObject({ paymentStatus: "authorized", balanceDueCents: 21067 - 6151 });
     expect(mine.body.depositPaidAt).toBeTruthy();
     const queue = await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders`);
     expect(queue.body.items.map((o: { id: string }) => o.id)).toContain(r.body.order.id);
@@ -241,7 +241,7 @@ describe("degh pre-orders", () => {
     await deliver(env, fake(env).succeedPaymentIntent(r2.body.payment.paymentIntentId));
     const cancel = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/orders/${r2.body.order.id}/status`, { status: "cancelled", reason: "Out of lamb" });
     expect(cancel.body.paymentStatus).toBe("refunded");
-    expect(fake(env).intents.get(r2.body.payment.paymentIntentId)?.refundedCents).toBe(5449);
+    expect(fake(env).intents.get(r2.body.payment.paymentIntentId)?.refundedCents).toBe(6151);
   });
 
   it("caps pots per pickup day and lists pre-orders by day for prep", async () => {

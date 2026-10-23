@@ -141,6 +141,13 @@ The PRD's original idea of **commission-only student interns is not allowed.** M
 - ☐ Refunds, disputes and chargebacks: the merchant agreement allocates them to the merchant. The platform fee is not refunded on chargebacks unless counsel advises otherwise.
 - ☐ Deposits on repair quotes must be clearly refundable or non-refundable, disclosed before payment.
 
+### 9.1 GST/HST and food safety (tiffin, catering, banquet)
+
+- ☐ Each restaurant says whether it is registered for GST/HST (Settings, How you get paid). Registered shops charge tax on prepared meals, including a mandatory service charge (tips are not taxed and are not on quotes) and print their number; small suppliers under $30,000 in sales over four quarters in a row may charge none, and the quote says "No HST charged (small supplier)". We check the number's format only and never verify it with the CRA. **VERIFY meal taxability and the small supplier rules with an accountant** (CRA RC4022).
+- ☐ Interac e-transfer is recorded by the shop by hand: there is no Interac API. The record panel says to check the bank first, the ledger is append-only (a mistake is voided with a reason, never edited), and every record and void is in the audit trail. We never ask an owner to click a link in an email. Fake "e-transfer received" emails are a known scam.
+- ☐ Food handler certification and the public health unit notice are the shop's own responsibility. We keep optional reminder dates, never block selling, never say a kitchen is approved, and show a "Certified food handler" badge only when the owner turns it on. Peel no longer runs its own course; point owners to a Ministry-approved provider.
+- ☐ Reminders for a late hand payment follow the quiet rule (nothing from 21:00 to 08:00) and are transactional about a subscription the customer chose.
+
 ## 10. Quebec (only if expanding)
 
 - ☐ **Law 25** (the Act respecting the protection of personal information in the private sector):

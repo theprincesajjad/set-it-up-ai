@@ -6,13 +6,16 @@
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { merchants } from "@ll/db";
-import { tiffinApi, uuidSchema } from "@ll/shared";
+import { paymentsManualApi, tiffinApi, uuidSchema } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/tiffin.js";
+import * as driver from "../../services/tiffin-driver.js";
+import registerDriver from "./driver.js";
+import registerSettings from "./settings.js";
 import { z } from "zod";
 
 type M = { merchantId: string };
@@ -115,6 +118,35 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return svc.merchantSkip(ctx, staff.merchant.id, uid(req.params.subId), parse(tiffinApi.skipBody, req.body));
   });
 
+  // ------------------------------------------------------------ merchant: hand-recorded payments
+  app.get<{ Params: M }>(`${base}/awaiting`, async (req) => svc.awaitingList(ctx, (await staffFor(req, "staff")).merchant.id));
+  app.post<{ Params: M & { chargeId: string } }>(`${base}/charges/:chargeId/record-payment`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return svc.recordPayment(ctx, staff, uid(req.params.chargeId), parse(paymentsManualApi.recordPaymentBody, req.body));
+  });
+  app.post<{ Params: M & { chargeId: string } }>(`${base}/charges/:chargeId/void-payment`, async (req) => {
+    const staff = await staffFor(req, "manager");
+    return svc.voidPayment(ctx, staff, uid(req.params.chargeId), parse(paymentsManualApi.voidPaymentBody, req.body));
+  });
+
+  // ------------------------------------------------------------ merchant: driver links, mark all out, late notice
+  app.post<{ Params: M & { routeId: string } }>(`${base}/routes/:routeId/driver-link`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return driver.createDriverLink(ctx, staff, uid(req.params.routeId), parse(tiffinApi.createDriverLinkBody, req.body ?? {}));
+  });
+  app.post<{ Params: M }>(`${base}/driver-links/send`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return driver.sendDriverLinks(ctx, staff, parse(tiffinApi.sendDriverLinksBody, req.body));
+  });
+  app.post<{ Params: M }>(`${base}/deliveries/mark-all-out`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return driver.markAllOut(ctx, staff, parse(tiffinApi.markAllOutBody, req.body ?? {}));
+  });
+  app.post<{ Params: M }>(`${base}/deliveries/late-notice`, async (req) => {
+    const staff = await staffFor(req, "staff");
+    return driver.merchantLateNotice(ctx, staff, parse(tiffinApi.lateNoticeBody, req.body));
+  });
+
   // ------------------------------------------------------------ merchant: kitchen, manifest, revenue
   app.get<{ Params: M }>(`${base}/kitchen`, async (req) => {
     const staff = await staffFor(req, "staff");
@@ -162,4 +194,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/resume", async (req) => svc.myResume(ctx, requireUser(req).id, uid(req.params.subId)));
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/cancel", async (req) => svc.myCancel(ctx, requireUser(req).id, uid(req.params.subId), parse(tiffinApi.cancelBody, req.body ?? {})));
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/retry-payment", async (req) => svc.retryPayment(ctx, requireUser(req).id, uid(req.params.subId)));
+
+  await registerDriver(app, ctx);
+  await registerSettings(app, ctx);
 }

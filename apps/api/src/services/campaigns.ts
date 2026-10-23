@@ -234,6 +234,8 @@ export async function markCampaignPaid(ctx: AppContext, id: string, paid: boolea
 }
 
 export async function listCampaigns(ctx: AppContext, user: AuthUser, q: { neighbourhoodId?: string; status?: string; limit: number; cursor?: string }) {
+  // The BIA console probes this list: a 402 while campaigns are hidden is what shows its "coming soon" state.
+  await requireCampaignsRolledOut(ctx.db, user);
   const conds = [];
   if (user.platformRole !== "admin") {
     const mine = await managedNeighbourhoodIds(ctx.db, user.id);
@@ -481,6 +483,30 @@ if (!visitHooks.includes(campaignVisitHook)) visitHooks.push(campaignVisitHook);
 // ---------------------------------------------------------------------------
 // BIA report (aggregates only)
 // ---------------------------------------------------------------------------
+const RETURN_WINDOW_DAYS = 30;
+
+/**
+ * "Came back within 30 days": unique customers with a visit at a participating shop in [from, to) who have another
+ * visit at any shop in the neighbourhood in the 30 days from `to`. Customer ids stay inside these queries.
+ */
+async function returnedStats(db: DbOrTx, participantIds: string[], hoodShopIds: string[], from: Date, to: Date): Promise<{ customers: number; returned: number }> {
+  if (!participantIds.length || !hoodShopIds.length || from >= to) return { customers: 0, returned: 0 };
+  const after = new Date(to.getTime() + RETURN_WINDOW_DAYS * DAY_MS);
+  const eventUsers = db
+    .select({ userId: visits.userId })
+    .from(visits)
+    .where(and(inArray(visits.merchantId, participantIds), gte(visits.createdAt, from), lt(visits.createdAt, to)))
+    .groupBy(visits.userId);
+  const [[c], [r]] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int` }).from(eventUsers.as("eu")),
+    db
+      .select({ n: sql<number>`count(distinct ${visits.userId})::int` })
+      .from(visits)
+      .where(and(inArray(visits.merchantId, hoodShopIds), gte(visits.createdAt, to), lt(visits.createdAt, after), inArray(visits.userId, eventUsers))),
+  ]);
+  return { customers: Number(c?.n ?? 0), returned: Number(r?.n ?? 0) };
+}
+
 export async function campaignReport(ctx: AppContext, c: CampaignRow): Promise<campaignsApi.CampaignReport> {
   const db = ctx.db;
   const now = ctx.now();
@@ -532,6 +558,20 @@ export async function campaignReport(ctx: AppContext, c: CampaignRow): Promise<c
       .where(and(eq(ledgerTransactions.campaignId, c.id), eq(ledgerTransactions.type, "campaign_bonus"))),
   ]);
 
+  // Came back within 30 days: null until the 30 days after the campaign have passed.
+  const returnWindowEndsAt = new Date(c.endsAt.getTime() + RETURN_WINDOW_DAYS * DAY_MS);
+  let ret: { customers: number; returned: number } | null = null;
+  let retBase: { customers: number; returned: number } | null = null;
+  if (now >= returnWindowEndsAt) {
+    const hoodShops = (await db.select({ id: merchants.id }).from(merchants).where(eq(merchants.neighbourhoodId, c.neighbourhoodId))).map((m) => m.id);
+    const fullLen = c.endsAt.getTime() - c.startsAt.getTime();
+    [ret, retBase] = await Promise.all([
+      returnedStats(db, ids, hoodShops, c.startsAt, c.endsAt),
+      returnedStats(db, ids, hoodShops, new Date(c.startsAt.getTime() - fullLen), c.startsAt),
+    ]);
+  }
+  const pctOf = (x: { customers: number; returned: number } | null) => (x && x.customers > 0 ? Math.round((x.returned / x.customers) * 1000) / 10 : null);
+
   const visitLiftPct = before.total.visits > 0 ? Math.round(((during.total.visits - before.total.visits) / before.total.visits) * 1000) / 10 : null;
   return {
     campaignId: c.id,
@@ -547,6 +587,11 @@ export async function campaignReport(ctx: AppContext, c: CampaignRow): Promise<c
     participants: Number(progress[0]?.participants ?? 0),
     completions: Number(progress[0]?.completions ?? 0),
     bonusPointsIssued: Number(bonus[0]?.pts ?? 0),
+    returnedWithin30d: ret ? ret.returned : null,
+    returnedWithin30dPct: pctOf(ret),
+    returnWindowEndsAt: returnWindowEndsAt.toISOString(),
+    baselineReturnedWithin30d: retBase ? retBase.returned : null,
+    baselineReturnedWithin30dPct: pctOf(retBase),
     perMerchant: ms.map((m) => ({
       merchantId: m.id,
       name: m.name,

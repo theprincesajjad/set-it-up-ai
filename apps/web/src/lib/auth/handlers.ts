@@ -31,6 +31,15 @@ export interface ForwardResult {
   cookies: CookieSpec[];
 }
 
+/**
+ * A counter staff token (the `accessToken` from POST staff-pin/verify) the browser may send, for counter calls only,
+ * so awards are attributed to the staff member who typed their PIN. Never applies to any other path.
+ */
+export function counterStaffToken(req: Request, apiPath: string): string | null {
+  const t = req.headers.get("x-counter-staff-token");
+  return t && /^\/v1\/merchants\/[0-9a-f-]{36}\/counter\//i.test(apiPath) ? t : null;
+}
+
 const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user-agent", "accept-language"];
 const PASS_RESPONSE_HEADERS = ["content-type", "content-disposition", "cache-control", "last-modified", "etag"];
 
@@ -65,10 +74,12 @@ export async function forwardToApi(
 
   let cookies: CookieSpec[] = [];
   let res: Response;
+  const staffToken = counterStaffToken(req, apiPath);
   try {
-    res = await call(jar.get(ACCESS_COOKIE)?.value);
+    // A PIN token that expired answers 401 and the counter asks for the PIN again; the shop's own session is not rotated for it.
+    res = await call(staffToken ?? jar.get(ACCESS_COOKIE)?.value);
     const rt = jar.get(REFRESH_COOKIE)?.value;
-    if (res.status === 401 && rt) {
+    if (res.status === 401 && rt && !staffToken) {
       const fresh = await refreshSession(rt, fetchImpl);
       if (fresh) {
         cookies = sessionCookies(fresh);

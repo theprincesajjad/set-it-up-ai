@@ -1,6 +1,6 @@
 "use client";
 import {
-  BarChart3, Blocks, CalendarClock, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
+  BarChart3, Blocks, CalendarClock, CalendarDays, Tags, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
   Wrench, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, type LucideIcon, Calculator, Check,
 } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +22,7 @@ const ICONS: Record<string, LucideIcon> = {
   locations: MapPin, staff: UserCog, integrations: Blocks, billing: CreditCard, settings: Settings, orders: ShoppingBag, catalog: Tag, tickets: Wrench,
   "restaurant-menu": UtensilsCrossed, "restaurant-preorders": Clock, "restaurant-tiffin": Truck, "restaurant-catering": PartyPopper, "restaurant-banquet": Building2,
   "restaurant-kitchen": ChefHat, "restaurant-whatsapp": MessageCircle, "restaurant-reviews": Star, "restaurant-festivals": Sparkles, "restaurant-phone-orders": Phone, "restaurant-more": Plus,
-  slots: CalendarClock, ads: Flag, campaigns: ClipboardList,
+  slots: CalendarClock, ads: Flag, campaigns: ClipboardList, calendar: CalendarDays, services: Tags,
 };
 
 /** Merchant switcher (avatar + name) with a small popover listing the owner's other shops. */
@@ -111,8 +111,16 @@ function SetupProgress() {
 export function MerchantShell({ me, children }: { me: authApi.MeResponse; children: ReactNode }) {
   const { base, detail, role, features, viewingAs, api } = useMerchant();
   const pathname = usePathname() ?? "";
-  const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)));
-  const nav: ShellNavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, group: e.group, groupLabel: NAV_GROUP_LABELS[e.group], exact: e.exact }));
+  const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)), {
+    vertical: detail.merchant.vertical,
+    plan: features.plan,
+    stages: Object.fromEntries(features.features.map((f) => [f.key, f.stage])),
+  });
+  // Restaurants: counts after Orders, Phone orders and WhatsApp (new orders in accent; the others are waiting on someone, so muted).
+  const isRestaurant = entries.some((e) => e.badge);
+  const badges = useApi(isRestaurant ? () => api.restaurantBadges() : null, [api, isRestaurant], { pollMs: 30_000 });
+  const badgeFor = (b: (typeof entries)[number]["badge"]) => (b && badges.data ? { count: badges.data[b], accent: b === "orders" } : undefined);
+  const nav: ShellNavItem[] = entries.map((e) => ({ href: e.href, label: e.label, icon: ICONS[e.key] ?? Store, group: e.group, groupLabel: NAV_GROUP_LABELS[e.group], exact: e.exact, badge: badgeFor(e.badge) }));
   const section = pathname.slice(base.length).split("/")[1] ?? "";
   const sectionKey = section === "" ? "home" : section === "setup" ? "home" : section;
   const allowed = canOpen(role, sectionKey);
@@ -128,7 +136,11 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
     [api, base, role],
   );
 
-  const links = me.platformRole === "admin" ? [{ href: "/admin", label: "Admin" }] : me.platformRole === "rep" ? [{ href: "/rep", label: "Rep console" }] : [];
+  // Settings lives in the account menu so the sidebar stays at the sections a café uses every week.
+  const links = [
+    ...(role !== "staff" ? [{ href: `${base}/settings`, label: "Settings", icon: <Settings aria-hidden className="size-4" strokeWidth={1.75} /> }] : []),
+    ...(me.platformRole === "admin" ? [{ href: "/admin", label: "Admin" }] : me.platformRole === "rep" ? [{ href: "/rep", label: "Rep console" }] : []),
+  ];
 
   return (
     <Shell

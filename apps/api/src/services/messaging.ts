@@ -7,9 +7,10 @@
  *  - promotional recipients = members with marketing_consent_at set AND muted = false
  *  - every message carries the merchant name and an opt-out
  */
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   auditLogs,
+  locations,
   loyaltyPrograms,
   merchantMembers,
   merchants,
@@ -18,6 +19,7 @@ import {
   pushTokens,
   rewards,
   users,
+  visits,
   type DbOrTx,
 } from "@ll/db";
 import { FEATURES, PLANS, messagingApi } from "@ll/shared";
@@ -27,6 +29,10 @@ import { hmacSha256, safeEqual } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { postTransaction } from "./ledger.js";
+import { rhythmSegmentIds } from "./member-stats.js";
+import { inQuietHours } from "./notifications.js";
+import { addPassMessage, hasWalletPass, notifyPassUpdate } from "./wallet.js";
+import { localDayStart } from "./staff.js";
 import { writeAudit } from "./admin-audit.js";
 import { iso } from "./merchant.js";
 import { decodeCursor, encodeCursor } from "./merchant-customers.js";
@@ -57,9 +63,20 @@ export function unsubscribeUrl(ctx: AppContext, memberId: string): string {
   return `${ctx.config.publicApiUrl.replace(/\/$/, "")}/v1/public/messaging/unsubscribe?m=${memberId}&t=${unsubscribeToken(ctx, memberId)}`;
 }
 
+/** The shop's street address (first active location), printed in every promotional text. */
+export async function merchantAddress(db: DbOrTx, merchantId: string): Promise<string | null> {
+  const [l] = await db
+    .select({ address: locations.address })
+    .from(locations)
+    .where(and(eq(locations.merchantId, merchantId), eq(locations.active, true)))
+    .orderBy(locations.createdAt)
+    .limit(1);
+  return l?.address ?? null;
+}
+
 /** Footer required by CASL: identifies the sender and gives a working opt-out. */
-export function withFooter(ctx: AppContext, channel: Channel, merchantName: string, body: string, memberId: string): string {
-  if (channel === "sms") return `${body}\n— ${merchantName}. Reply STOP to opt out.`;
+export function withFooter(ctx: AppContext, channel: Channel, merchantName: string, body: string, memberId: string, address?: string | null): string {
+  if (channel === "sms") return `${body}\n— ${messagingApi.smsFooterText(merchantName, address)}`;
   if (channel === "push") return `${body} (${merchantName} · mute this shop in the app to stop offers)`;
   return `${body}\n\n—\nSent by ${merchantName} via Local Loyalty because you opted in to offers from them.\nUnsubscribe: ${unsubscribeUrl(ctx, memberId)}`;
 }
@@ -108,6 +125,12 @@ export async function segmentCondition(db: DbOrTx, merchantId: string, segment: 
     case "lapsed": {
       const since = new Date(now.getTime() - segment.days * 86400000);
       return and(base, or(lt(merchantMembers.lastVisitAt, since), and(isNull(merchantMembers.lastVisitAt), lt(merchantMembers.createdAt, since))))!;
+    }
+    case "regulars":
+    case "slipping": {
+      const [m] = await db.select({ tz: merchants.timezone }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+      const ids = await rhythmSegmentIds(db, merchantId, m?.tz ?? "America/Toronto", now, segment.kind);
+      return ids.length ? and(base, inArray(merchantMembers.id, ids))! : and(base, sql`false`)!;
     }
     case "vip":
       return and(base, segment.vipLevelId ? eq(merchantMembers.vipLevelId, segment.vipLevelId) : isNotNull(merchantMembers.vipLevelId))!;
@@ -193,7 +216,7 @@ export async function previewAudience(ctx: AppContext, merchant: Merchant, chann
 // Delivery
 // ---------------------------------------------------------------------------
 /** Atomically reserve SMS credits. Returns false if the monthly allowance would be exceeded. */
-async function reserveSmsCredits(db: DbOrTx, merchant: Merchant, n: number): Promise<boolean> {
+export async function reserveSmsCredits(db: DbOrTx, merchant: Merchant, n: number): Promise<boolean> {
   if (n === 0) return true;
   const allowance = smsAllowance(merchant);
   const r = await db
@@ -215,13 +238,15 @@ interface DeliverArgs {
   body: string;
   messageId: string;
   recipients: Recipient[];
+  /** Street address for the SMS footer (looked up once per send). */
+  address?: string | null;
 }
 
 /** Send to recipients and log a delivery row per address. SMS credits must already be reserved. */
 async function deliver(ctx: AppContext, a: DeliverArgs): Promise<number> {
   let sent = 0;
   for (const r of a.recipients) {
-    const text = withFooter(ctx, a.channel, a.merchant.name, personalize(a.body, r, a.merchant.name, a.terminology), r.memberId);
+    const text = withFooter(ctx, a.channel, a.merchant.name, personalize(a.body, r, a.merchant.name, a.terminology), r.memberId, a.address);
     const subject = a.subject ? personalize(a.subject, r, a.merchant.name, a.terminology) : null;
     for (const to of r.to) {
       let status = "sent";
@@ -262,6 +287,15 @@ async function programTerminology(db: DbOrTx, merchantId: string): Promise<strin
   return p?.t ?? "points";
 }
 
+/** The next 08:00 in shop time (end of quiet hours), strictly after `at`. */
+export function nextQuietEnd(at: Date, timeZone: string): Date {
+  const dayStart = localDayStart(at, timeZone).start.getTime();
+  const today8 = new Date(dayStart + 8 * 3600_000);
+  if (today8 > at) return today8;
+  // Midday tomorrow lands on tomorrow's date whatever the DST shift, so its local midnight is the day to count from.
+  return new Date(localDayStart(new Date(dayStart + 36 * 3600_000), timeZone).start.getTime() + 8 * 3600_000);
+}
+
 /**
  * Send a campaign now. Claims the message (draft/scheduled → sending) so a
  * concurrent job run can't double-send, checks the feature and SMS credits,
@@ -287,6 +321,11 @@ export async function sendCampaign(ctx: AppContext, merchantId: string, messageI
     if (merchant.status === "paused" || merchant.status === "closed") throw conflict("This shop is paused; messages can't be sent");
     const channel = claimed.channel;
     await requireChannel(ctx.db, merchant, channel);
+    // Promotional texts never go out in quiet hours (21:00 to 08:00 shop time): queue until 08:00.
+    if (channel === "sms" && inQuietHours(ctx.now(), merchant.timezone)) {
+      const [queued] = await ctx.db.update(messages).set({ status: "scheduled", scheduledAt: nextQuietEnd(ctx.now(), merchant.timezone) }).where(eq(messages.id, messageId)).returning();
+      return queued!;
+    }
     const segment = messagingApi.segmentSchema.parse(claimed.segment);
     const audience = await resolveAudience(ctx.db, merchantId, channel, await segmentCondition(ctx.db, merchantId, segment, ctx.now()));
     if (channel === "sms" && !(await reserveSmsCredits(ctx.db, merchant, audience.recipients.length))) {
@@ -300,6 +339,7 @@ export async function sendCampaign(ctx: AppContext, merchantId: string, messageI
       body: claimed.body,
       messageId,
       recipients: audience.recipients,
+      address: channel === "sms" ? await merchantAddress(ctx.db, merchantId) : null,
     });
     const [done] = await ctx.db
       .update(messages)
@@ -329,7 +369,32 @@ export function serializeMessage(m: MessageRow): messagingApi.Message {
     sentAt: iso(m.sentAt),
     recipientCount: m.recipientCount,
     createdAt: m.createdAt.toISOString(),
+    cameIn7d: null,
+    cameIn7dFinal: false,
   };
+}
+
+/**
+ * Distinct recipients of each sent message who visited the shop within 7 days after it went out.
+ * Result = "came in", never opens. `final` once 7 full days have passed.
+ */
+export async function cameIn7dFor(ctx: AppContext, merchantId: string, rows: MessageRow[]): Promise<Map<string, { n: number; final: boolean }>> {
+  const sent = rows.filter((r) => r.sentAt && !r.automation);
+  const out = new Map<string, { n: number; final: boolean }>();
+  if (!sent.length) return out;
+  const found = await ctx.db
+    .select({ id: messageDeliveries.messageId, n: sql<number>`count(distinct ${messageDeliveries.userId})::int` })
+    .from(messageDeliveries)
+    .innerJoin(messages, eq(messages.id, messageDeliveries.messageId))
+    .innerJoin(
+      visits,
+      and(eq(visits.userId, messageDeliveries.userId), eq(visits.merchantId, merchantId), gt(visits.createdAt, messages.sentAt), lte(visits.createdAt, sql`${messages.sentAt} + interval '7 days'`)),
+    )
+    .where(and(inArray(messageDeliveries.messageId, sent.map((r) => r.id)), inArray(messageDeliveries.status, ["sent", "delivered"])))
+    .groupBy(messageDeliveries.messageId);
+  const by = new Map(found.map((f) => [f.id, Number(f.n)]));
+  for (const r of sent) out.set(r.id, { n: by.get(r.id) ?? 0, final: r.sentAt!.getTime() + 7 * 86400000 <= ctx.now().getTime() });
+  return out;
 }
 
 async function getCampaign(db: DbOrTx, merchantId: string, id: string) {
@@ -347,7 +412,10 @@ export async function listCampaigns(ctx: AppContext, merchantId: string, q: { st
     .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(q.limit + 1)
     .offset(offset);
-  return { items: rows.slice(0, q.limit).map(serializeMessage), nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null };
+  const page = rows.slice(0, q.limit);
+  const came = await cameIn7dFor(ctx, merchantId, page);
+  const items = page.map((m) => ({ ...serializeMessage(m), cameIn7d: came.get(m.id)?.n ?? null, cameIn7dFinal: came.get(m.id)?.final ?? false }));
+  return { items, nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null };
 }
 
 export async function getCampaignDetail(ctx: AppContext, merchant: Merchant, id: string): Promise<messagingApi.MessageDetail> {
@@ -360,10 +428,13 @@ export async function getCampaignDetail(ctx: AppContext, merchant: Merchant, id:
   const by = Object.fromEntries(stats.map((s) => [s.status, Number(s.n)]));
   const terminology = await programTerminology(ctx.db, merchant.id);
   const sample = personalize(m.body, { name: "Alex Smith", balance: 120 }, merchant.name, terminology);
+  const came = (await cameIn7dFor(ctx, merchant.id, [m])).get(m.id);
   return {
     ...serializeMessage(m),
+    cameIn7d: came?.n ?? null,
+    cameIn7dFinal: came?.final ?? false,
     stats: { queued: by.queued ?? 0, sent: by.sent ?? 0, delivered: by.delivered ?? 0, failed: by.failed ?? 0 },
-    preview: withFooter(ctx, m.channel, merchant.name, sample, "00000000-0000-0000-0000-000000000000"),
+    preview: withFooter(ctx, m.channel, merchant.name, sample, "00000000-0000-0000-0000-000000000000", m.channel === "sms" ? await merchantAddress(ctx.db, merchant.id) : null),
   };
 }
 
@@ -407,7 +478,7 @@ export async function sendTestToSelf(ctx: AppContext, merchant: Merchant, actorU
 
   const terminology = await programTerminology(ctx.db, merchant.id);
   const personal = { name: me?.name ?? null, balance: membership?.balance ?? 0 };
-  const text = withFooter(ctx, m.channel, merchant.name, personalize(m.body, personal, merchant.name, terminology), membership?.id ?? "00000000-0000-0000-0000-000000000000");
+  const text = withFooter(ctx, m.channel, merchant.name, personalize(m.body, personal, merchant.name, terminology), membership?.id ?? "00000000-0000-0000-0000-000000000000", m.channel === "sms" ? await merchantAddress(ctx.db, merchant.id) : null);
   const subject = `[Test] ${m.subject ? personalize(m.subject, personal, merchant.name, terminology) : merchant.name}`;
   let sent = 0;
   for (const addr of to) {
@@ -520,7 +591,7 @@ const AUTOMATION_META: Record<messagingApi.AutomationKind, { label: string; desc
     description: "Message members who haven't visited in a while (once per lapse).",
     subject: "We miss you at {{merchant}}",
     body: "Hi {{first_name}}, it's been a while! You have {{balance}} {{terminology}} waiting at {{merchant}}. Come say hi this week.",
-    days: 30,
+    days: messagingApi.LAPSED_DEFAULT_DAYS,
   },
   reward_ready: {
     label: "Reward ready",
@@ -565,6 +636,24 @@ export async function listAutomations(ctx: AppContext, merchant: Merchant): Prom
         .groupBy(messageDeliveries.messageId)
     : [];
   const sent = new Map(counts.map((c) => [c.id, Number(c.n)]));
+  // People messaged in the last 30 days by each automation, and who came in within 7 days of it.
+  const since = new Date(ctx.now().getTime() - 30 * 86400000);
+  const recent = rows.length
+    ? await ctx.db
+        .select({ id: messageDeliveries.messageId, userId: messageDeliveries.userId, at: messageDeliveries.createdAt })
+        .from(messageDeliveries)
+        .where(and(inArray(messageDeliveries.messageId, rows.map((r) => r.id)), inArray(messageDeliveries.status, ["sent", "delivered"]), gte(messageDeliveries.createdAt, since)))
+    : [];
+  const userIds = [...new Set(recent.map((r) => r.userId))];
+  const theirVisits = userIds.length
+    ? await ctx.db.select({ userId: visits.userId, at: visits.createdAt }).from(visits).where(and(eq(visits.merchantId, merchant.id), inArray(visits.userId, userIds), gte(visits.createdAt, since)))
+    : [];
+  const last30 = (id: string | undefined) => {
+    const mine = recent.filter((r) => r.id === id);
+    const people = new Set(mine.map((r) => r.userId));
+    const came = new Set(mine.filter((r) => theirVisits.some((v) => v.userId === r.userId && v.at > r.at && v.at.getTime() <= r.at.getTime() + 7 * 86400000)).map((r) => r.userId));
+    return { messaged: people.size, cameIn7d: came.size };
+  };
   return messagingApi.AUTOMATION_KINDS.map((kind) => {
     const meta = AUTOMATION_META[kind];
     const row = rows.find((r) => r.automation === kind);
@@ -580,6 +669,7 @@ export async function listAutomations(ctx: AppContext, merchant: Merchant): Prom
       body: row?.body ?? meta.body,
       days: kind === "win_back" ? (cfg.days ?? meta.days) : null,
       sentCount: row ? (sent.get(row.id) ?? 0) : 0,
+      last30Days: last30(row?.id),
       available: features["marketing.automations"].enabled,
     };
   });
@@ -623,7 +713,7 @@ async function automationCandidates(ctx: AppContext, merchant: Merchant, row: Me
     sql`not exists (select 1 from message_deliveries d where d.message_id = ${row.id} and d.user_id = ${merchantMembers.userId} and d.created_at >= ${since instanceof Date ? sql`${since.toISOString()}::timestamptz` : since})`;
   switch (row.automation as messagingApi.AutomationKind) {
     case "win_back": {
-      const since = new Date(now.getTime() - (cfg.days ?? 30) * 86400000);
+      const since = new Date(now.getTime() - (cfg.days ?? messagingApi.LAPSED_DEFAULT_DAYS) * 86400000);
       return and(base, isNotNull(merchantMembers.lastVisitAt), lt(merchantMembers.lastVisitAt, since), notSentSince(sql`${merchantMembers.lastVisitAt}`))!;
     }
     case "reward_ready": {
@@ -651,6 +741,31 @@ async function automationCandidates(ctx: AppContext, merchant: Merchant, row: Me
   }
 }
 
+/**
+ * "Free drink ready": update the member's Apple and Google Wallet pass (the balance already says
+ * the reward is ready; a Google Wallet message adds a notification). Not marketing, so consent
+ * is not needed. One delivery row per member records it so each visit is announced once.
+ */
+async function deliverRewardReadyToWallet(ctx: AppContext, merchant: Merchant, msg: MessageRow, where: SQL): Promise<number> {
+  const rows = await ctx.db
+    .select({ memberId: merchantMembers.id, userId: merchantMembers.userId, name: users.name, balance: merchantMembers.balance })
+    .from(merchantMembers)
+    .innerJoin(users, eq(users.id, merchantMembers.userId))
+    .where(and(where, isNull(users.deletedAt)));
+  const terminology = await programTerminology(ctx.db, merchant.id);
+  let sent = 0;
+  for (const r of rows) {
+    if (!(await hasWalletPass(ctx, r.userId))) continue;
+    const text = personalize(msg.body, r, merchant.name, terminology);
+    await addPassMessage(ctx, r.userId, { id: `reward-ready-${msg.id}-${r.memberId}-${ctx.now().getTime()}`, header: personalize(msg.subject ?? "Reward ready", r, merchant.name, terminology), body: text });
+    await notifyPassUpdate(ctx, r.userId, { force: true });
+    await ctx.db.insert(messageDeliveries).values({ messageId: msg.id, userId: r.userId, merchantId: merchant.id, channel: "push", to: "wallet pass", body: text, kind: "transactional", status: "sent", createdAt: ctx.now() });
+    sent++;
+  }
+  if (sent) await ctx.db.update(messages).set({ recipientCount: sql`${messages.recipientCount} + ${sent}`, sentAt: ctx.now() }).where(eq(messages.id, msg.id));
+  return sent;
+}
+
 /** One pass over every enabled automation. Returns messages sent. */
 export async function runAutomations(ctx: AppContext): Promise<number> {
   const rows = await ctx.db
@@ -665,6 +780,12 @@ export async function runAutomations(ctx: AppContext): Promise<number> {
     if (!features[msg.channel === "sms" ? "marketing.sms" : "marketing.email"].enabled) continue;
     const where = await automationCandidates(ctx, merchant, msg);
     if (!where) continue;
+    // Reward ready is a wallet pass update (lock screen), not a message: no consent or channel needed.
+    if (msg.automation === "reward_ready" && msg.channel === "push") {
+      total += await deliverRewardReadyToWallet(ctx, merchant, msg, where);
+      continue;
+    }
+    if (msg.channel === "sms" && inQuietHours(ctx.now(), merchant.timezone)) continue;
     const audience = await resolveAudience(ctx.db, merchant.id, msg.channel, where);
     let recipients = audience.recipients;
     if (!recipients.length) continue;
@@ -682,6 +803,7 @@ export async function runAutomations(ctx: AppContext): Promise<number> {
       body: msg.body,
       messageId: msg.id,
       recipients,
+      address: msg.channel === "sms" ? await merchantAddress(ctx.db, merchant.id) : null,
     });
     await ctx.db
       .update(messages)

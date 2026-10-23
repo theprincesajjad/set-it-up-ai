@@ -9,7 +9,7 @@ export const LOCALE_COOKIE = "ll_lang";
  * Variables that hold Latin runs (shop and customer names, brand, amounts, phone numbers, countdowns). In a right-to-left locale `t()` wraps
  * them in a first-strong isolate so "Sarson Dhaba." or "$12.50" can't reorder the Urdu around them; `rich()` wraps them in <bdi>.
  */
-const LATIN_VARS = new Set(["shop", "name", "amount", "price", "certifier", "phone", "brand", "sender", "street", "reward", "time"]);
+const LATIN_VARS = new Set(["shop", "name", "amount", "price", "certifier", "phone", "brand", "sender", "street", "reward", "time", "tax", "total", "balance", "fee", "link", "address", "code"]);
 const FSI = "\u2068";
 const PDI = "\u2069";
 

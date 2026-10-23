@@ -8,6 +8,8 @@
  * - NEXT_PUBLIC_SITE_URL: canonical URL of this site (sitemap, OG, metadataBase). Default http://localhost:3000.
  * - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: enables Stripe Elements. Without it the dev fake-payment path is shown.
  * - NEXT_PUBLIC_APP_STORE_URL / NEXT_PUBLIC_PLAY_STORE_URL: "Get the app" links.
+ * - NEXT_PUBLIC_WHATSAPP_NUMBER: the WhatsApp number behind the "Message us on WhatsApp" buttons (digits, international
+ *   format). Read in lib/marketing/whatsapp.ts; BRAND.whatsappNumber is the placeholder default.
  */
 const DEFAULT_API = "http://localhost:4000";
 

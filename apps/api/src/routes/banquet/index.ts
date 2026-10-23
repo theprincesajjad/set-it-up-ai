@@ -6,7 +6,7 @@
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { halls, merchants } from "@ll/db";
-import { restaurantApi } from "@ll/shared";
+import { paymentsManualApi, restaurantApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { badRequest, notFound } from "../../lib/errors.js";
@@ -60,7 +60,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/banquet/availability", async (req) => {
     const staff = await staffFor(req);
     const q = parse(restaurantApi.hallAvailabilityQuery, req.query);
-    return svc.availability(ctx, staff.merchant.id, { from: new Date(q.from), to: new Date(q.to), hallId: q.hallId });
+    return svc.availability(ctx, staff.merchant.id, { from: new Date(q.from), to: new Date(q.to), hallId: q.hallId, detail: true });
   });
 
   // ---------------------------------------------------------------- bookings (staff)
@@ -87,6 +87,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post<{ Params: BookingParams }>("/merchants/:merchantId/banquet/bookings/:bookingId/confirm", async (req) => {
     const staff = await staffFor(req);
     return bookingOut(await svc.confirm(ctx, staff.merchant.id, req.params.bookingId, parse(restaurantApi.confirmHallBookingBody, req.body ?? {})));
+  });
+
+  /** Record an instalment taken by e-transfer, cash or cheque (instalmentIndex defaults to the first unpaid one). */
+  app.post<{ Params: BookingParams }>("/merchants/:merchantId/banquet/bookings/:bookingId/payments", async (req) => {
+    const staff = await staffFor(req);
+    return bookingOut(await svc.recordPayment(ctx, staff, req.params.bookingId, parse(paymentsManualApi.recordPaymentBody, req.body)));
   });
 
   app.post<{ Params: BookingParams }>("/merchants/:merchantId/banquet/bookings/:bookingId/cancel", async (req) => {
