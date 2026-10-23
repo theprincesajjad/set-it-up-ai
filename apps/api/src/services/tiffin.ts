@@ -1491,6 +1491,8 @@ export async function publicPlans(ctx: AppContext, merchant: Merchant, q: z.outp
     padEnabled: !!ctx.config.tiffin?.padEnabled,
     accepted: acceptedMethods(merchant, !!ctx.config.tiffin?.padEnabled),
     etransfer: etransferOffer(merchant),
+    taxApplies: merchant.taxRegistered === true,
+    certifiedFoodHandler: merchant.foodHandlerBadge && !!merchant.foodHandlerExpiry && merchant.foodHandlerExpiry >= todayOf(ctx),
     plans: plans.map((p) => ({
       ...localized(planDto(p), q.lang),
       upcomingMenu: dateRange(today, to)

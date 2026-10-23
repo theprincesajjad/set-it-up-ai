@@ -73,7 +73,9 @@
     ".next-desi1/types/**/*.ts",
     ".next-desi1/dev/types/**/*.ts",
     ".next-tcb/types/**/*.ts",
-    ".next-tcb/dev/types/**/*.ts"
+    ".next-tcb/dev/types/**/*.ts",
+    ".next-appts/types/**/*.ts",
+    ".next-appts/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -420,6 +420,10 @@ export interface PublicPlansResponse {
   accepted: AcceptedMethods;
   /** E-transfer details to show before the customer chooses it. */
   etransfer: { email: string; instructions: string } | null;
+  /** The kitchen charges sales tax on taxable plans (it said it is registered for GST/HST): show "+ tax". */
+  taxApplies: boolean;
+  /** Shown only when the owner turned the badge on and the certificate has not expired. */
+  certifiedFoodHandler: boolean;
 }
 
 export const subscribeBody = z

@@ -165,12 +165,13 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                     {tr.description ? <p className="mt-1 text-body text-fg-muted">{tr.description}</p> : null}
                   </div>
                   <div className="shrink-0 text-end">
-                    <p className="display text-title tabular-nums text-fg">{money(price)}</p>
+                    <p className="display text-title tabular-nums text-fg">{data.taxApplies && p.taxable ? t("tcb.tax.plus", { amount: money(price) }) : money(price)}</p>
                     <p className="text-meta text-fg-muted">{t("rc.tf.perCadence", { cadence: cadence(p) })}</p>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   <Pill>{dayNames(p)}</Pill>
+                  {data.certifiedFoodHandler ? <Pill>{t("tcb.badge.certified")}</Pill> : null}
                   <Pill>{t("rc.tf.mealsPerDay", { n: p.mealsPerDay })}</Pill>
                   {p.deliveryAllowed && !p.pickupAllowed ? <Pill>{t("rc.tf.deliveryOnly")}</Pill> : null}
                   {p.pickupAllowed && !p.deliveryAllowed ? <Pill>{t("rc.tf.pickupOnly")}</Pill> : null}

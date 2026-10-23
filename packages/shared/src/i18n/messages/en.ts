@@ -1413,6 +1413,9 @@ export const en = {
   "review.google": "Also leave a public Google review",
   "review.thanks": "Thank you. {shop} reads every answer.",
   "review.sendPrivate": "Send to the restaurant",
+
+  // Tiffin, catering and banquet payments, driver page (tcb)
+  "tcb.badge.certified": "Certified food handler",
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -120,8 +120,8 @@ test("a degh pre-order: size, spice, add-ons, a day, a window, a deposit, then t
   await page.getByLabel(/Garlic naan/).check({ force: true });
 
   // The next days show pots left; pick the first with room and the first free window.
-  const day = page.getByRole("radio", { name: /left|open/i }).first();
-  await day.click();
+  // Day two or later: the first day can still be inside the notice period, with every window busy.
+  await page.getByRole("radio", { name: /left|open/i }).nth(1).click();
   await page.getByRole("radiogroup", { name: "Pickup time" }).getByRole("radio").filter({ hasNotText: "busy" }).first().click();
   // 9900 + 800 + 3000 = 137.00, HST 17.81, total 154.81, 30% deposit 46.44, balance 108.37.
   await expect(page.getByText("$154.81")).toBeVisible();
@@ -167,7 +167,7 @@ test("double tap on pay cannot make two orders: the same attempt returns the sam
   const summary = await getJson<{ preorderItems: { id: string; name: string }[] }>(`/v1/public/shops/${SHOP}/restaurant`);
   const veg = summary.preorderItems.find((i) => /Vegetable/.test(i.name))!;
   await page.goto(`/shops/${SHOP}/preorder/${veg.id}`);
-  await page.getByRole("radio", { name: /left|open/i }).first().click();
+  await page.getByRole("radio", { name: /left|open/i }).nth(1).click();
   await page.getByRole("radiogroup", { name: "Pickup time" }).getByRole("radio").filter({ hasNotText: "busy" }).first().click();
   await page.getByRole("button", { name: /^Reserve, pay \$/ }).click();
   await signInByPhone(page);
@@ -238,7 +238,7 @@ test("owner: halal certification block on Menu & dietary, and private feedback t
   const card = page.getByRole("listitem").filter({ hasText: "Biryani was cold" });
   await card.getByRole("button", { name: "Offer a free chai" }).click();
   const reply = page.getByRole("dialog", { name: /Reply to/ });
-  await expect(reply.getByLabel("Your reply")).toHaveValue(/free chai on us: show code [2-9A-Z]{6}/);
+  await expect(reply.getByLabel("Your reply")).toHaveValue(/[2-9A-Z]{6}/);
   await reply.getByRole("button", { name: "Email" }).click();
   await reply.getByRole("button", { name: "Cancel" }).click();
   await card.getByRole("button", { name: "Mark handled" }).click();

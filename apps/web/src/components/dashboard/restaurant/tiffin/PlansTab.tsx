@@ -104,6 +104,7 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
   const [delivery, setDelivery] = useState(plan?.deliveryAllowed ?? true);
   const [pickup, setPickup] = useState(plan?.pickupAllowed ?? true);
   const [active, setActive] = useState(plan?.active ?? true);
+  const [taxable, setTaxable] = useState(plan?.taxable ?? true);
   const [flags, setFlags] = useState<Flag[]>(FLAGS.filter((f) => plan?.dietary?.[f.value]).map((f) => f.value));
   const [spice, setSpice] = useState(String(plan?.dietary?.spice ?? 0));
   const [certifier, setCertifier] = useState(plan?.dietary?.halalCertifier ?? "");
@@ -135,7 +136,7 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
       name: name.trim(), description: description.trim() || null, translations, cadence, daysOfWeek: [...days].sort(),
       mealsPerDay: Number(meals) || 1, priceCents: fieldToCents(price), extraServingCents: fieldToCents(extra),
       maxServings: Number(maxServings) || 1, dietary, deliveryFeeCents: fieldToCents(deliveryFee), pickupAllowed: pickup,
-      deliveryAllowed: delivery, cutoffHours: Number(cutoff) || 0, active,
+      deliveryAllowed: delivery, cutoffHours: Number(cutoff) || 0, active, taxable,
     };
     const r = await act.run(() => (plan ? api.tiffin.updatePlan(plan.id, body) : api.tiffin.createPlan(body)));
     if (r) {
@@ -188,6 +189,7 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
             {delivery ? <div className="pb-2"><MoneyField label={`Delivery fee per ${per}`} value={deliveryFee} onChange={setDeliveryFee} /></div> : null}
             <Switch label="Pickup" description="Customer collects at the shop" checked={pickup} onChange={setPickup} />
             <Switch label="Open for new sign-ups" checked={active} onChange={setActive} />
+            <Switch label="Add sales tax to this plan" description="Applies when your shop is registered for GST/HST (see How you get paid). Prepared meals are generally taxable." checked={taxable} onChange={setTaxable} />
           </div>
           <div className="flex flex-col gap-1.5">
             <GroupLabel>Dietary tags</GroupLabel>

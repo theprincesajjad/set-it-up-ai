@@ -1409,4 +1409,7 @@ export const hi: Messages = {
   "review.google": "Google पर सार्वजनिक रिव्यू भी दें",
   "review.thanks": "शुक्रिया। {shop} हर जवाब पढ़ता है।",
   "review.sendPrivate": "रेस्टोरेंट को भेजें",
+
+  // Tiffin, catering and banquet payments, driver page (tcb)
+  "tcb.badge.certified": "प्रमाणित फ़ूड हैंडलर",
 };
