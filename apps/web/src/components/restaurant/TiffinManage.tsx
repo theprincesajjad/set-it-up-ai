@@ -140,7 +140,7 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
         <div className="min-w-0 flex-1">
           <ShopHead shop={sub.merchant} href={`/shops/${encodeURIComponent(sub.merchant.slug)}/tiffin`} />
         </div>
-        <Pill tone={sub.status === "active" ? "accent" : "neutral"}>{statusLabel[sub.status]}</Pill>
+        <Pill>{statusLabel[sub.status]}</Pill>
       </div>
       <div>
         <Heading level={2} className="break-words">

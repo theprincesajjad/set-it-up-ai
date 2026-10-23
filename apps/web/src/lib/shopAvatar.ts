@@ -17,6 +17,6 @@ export function onColor(hex: string): "#FFFFFF" | "#0B0B0C" {
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   };
   const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return L > 0.4 ? "#0B0B0C" : "#FFFFFF";
+  return L > 0.179 ? "#0B0B0C" : "#FFFFFF"; // crossover where black and white text have equal contrast
 }
 

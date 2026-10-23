@@ -105,7 +105,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
       ) : null}
       {status === "confirmed" && !confirming ? (
         <section className="flex flex-col gap-2 rounded-sheet bg-bg-subtle p-5" aria-label={t("rc.ca.confirmedTitle")}>
-          <CalendarCheck aria-hidden className="size-7 text-accent-text" strokeWidth={1.5} />
+          <CalendarCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
           <Heading level={2}>{t("rc.ca.confirmedTitle")}</Heading>
           <p className="text-body text-fg">{t("rc.ca.confirmedBody", { shop: shop.name, type: typeLabel, date: dayLabel })}</p>
           <p className="text-meta text-fg-muted">{hasDeposit && e.depositPaidAt ? t("rc.ca.confirmedPaid", { amount: money(e.depositCents) }) : t("rc.ca.confirmedNoDeposit")}</p>

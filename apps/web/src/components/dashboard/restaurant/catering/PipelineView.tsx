@@ -77,7 +77,7 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                             ))}
                           </ul>
                         ) : (
-                          <p className="py-3 text-meta text-fg-subtle">Nothing here</p>
+                          <p className="py-3 text-meta text-fg-muted">Nothing here</p>
                         )}
                       </section>
                     );

@@ -157,7 +157,7 @@ export function MenuBrowser({ shop, menu, appStoreUrl, playStoreUrl }: { shop: S
                           {p.description ? <p className="text-meta text-fg-muted">{p.description}</p> : null}
                           {badges.length || d.spice || i.preorderOnly || i.serves ? (
                             <div className="flex flex-wrap items-center gap-1.5">
-                              {i.preorderOnly ? <Pill tone="accent">{t("menu.preorder")}</Pill> : null}
+                              {i.preorderOnly ? <Pill>{t("menu.preorder")}</Pill> : null}
                               {badges.map((b) => (
                                 <Pill key={b}>{b}</Pill>
                               ))}

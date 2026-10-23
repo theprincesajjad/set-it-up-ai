@@ -108,7 +108,7 @@ function Plot({ data, format, height, kind, title }: PlotProps) {
         {title}: {data.length} days, total {format(total)}, highest {format(raw)}.
       </figcaption>
       <div className="flex gap-3">
-        <div aria-hidden className="flex w-6 shrink-0 flex-col justify-between text-end text-caption font-normal text-fg-subtle tabular" style={{ height: H }}>
+        <div aria-hidden className="flex w-6 shrink-0 flex-col justify-between text-end text-caption font-normal text-fg-muted tabular" style={{ height: H }}>
           <span className="-mt-1.5">{format(max)}</span>
           <span>{format(max / 2)}</span>
           <span className="-mb-1.5">0</span>
@@ -149,7 +149,7 @@ function Plot({ data, format, height, kind, title }: PlotProps) {
               {h.compare != null ? <span className="text-fg-muted tabular"> · {format(h.compare)}</span> : null}
             </div>
           ) : null}
-          <div aria-hidden className="mt-1.5 flex justify-between text-caption font-normal text-fg-subtle">
+          <div aria-hidden className="mt-1.5 flex justify-between text-caption font-normal text-fg-muted">
             <span>{data[0] ? shortDate(data[0].label) : ""}</span>
             {data.length > 6 ? <span>{shortDate(data[Math.floor(data.length / 2)]!.label)}</span> : null}
             <span>{data.length > 1 ? shortDate(data[data.length - 1]!.label) : ""}</span>

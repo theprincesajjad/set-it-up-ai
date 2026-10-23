@@ -190,7 +190,7 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn, 
           <Heading level={2}>{t("rc.bq.heldTitle")}</Heading>
           <p className="text-body text-fg-muted">{done.payment ? t("rc.bq.heldBody", { hall: b.hallName ?? hall?.name ?? "", date: when }) : t("rc.bq.heldNoPay", { hall: b.hallName ?? hall?.name ?? "", date: when })}</p>
           {b.holdExpiresAt ? <p className="text-meta text-fg-muted">{t("rc.bq.heldUntil", { when: date(b.holdExpiresAt, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })}</p> : null}
-          {b.depositCents > 0 ? <BigNumber tone="accent" className="text-[32px]">{money(b.depositCents)}</BigNumber> : null}
+          {b.depositCents > 0 ? <BigNumber tone={done.payment && !done.paid ? "accent" : "fg"} className="text-[32px]">{money(b.depositCents)}</BigNumber> : null}
         </section>
         {done.paid ? <Banner tone="success">{t("rc.ca.confirmedPaid", { amount: money(b.depositCents) })}</Banner> : null}
         {done.payment ? (

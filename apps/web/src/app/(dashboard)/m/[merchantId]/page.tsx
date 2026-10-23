@@ -81,7 +81,7 @@ export default function HomePage() {
               { label: "Visits", value: cur ? formatNumber(cur.visits) : "–", delta: delta("visits"), href: `${base}/reports` },
               { label: "Rewards redeemed", value: cur ? formatNumber(cur.redemptions) : "–", caption: cur && cur.visits > 0 ? `${Math.round((cur.redemptions / cur.visits) * 100)}% of visits` : undefined, href: `${base}/reports` },
               ov && ov.myMembers > 0
-                ? { label: "Members who also shop the street", value: `${Math.round(ov.sharedPct)}%`, caption: `${formatNumber(ov.sharedMembers)} of ${formatNumber(ov.myMembers)}`, href: `${base}/reports` }
+                ? { label: "Members who also shop the street", value: `${Math.round(ov.sharedPct * 100)}%`, caption: `${formatNumber(ov.sharedMembers)} of ${formatNumber(ov.myMembers)}`, href: `${base}/reports` }
                 : { label: "New members", value: cur ? formatNumber(cur.newMembers) : "–", delta: delta("newMembers"), href: `${base}/customers` },
             ]}
           />
@@ -213,7 +213,7 @@ function DailyBars({ data }: { data: { date: string; value: number }[] }) {
           <div key={d.date} title={`${shortDate(d.date)}: ${d.value}`} className={cn("flex-1 rounded-t-[3px]", i === data.length - 1 ? "bg-accent" : "bg-fg")} style={{ height: `${Math.round((d.value / max) * 140)}px` }} />
         ))}
       </div>
-      <div aria-hidden className="mt-1.5 flex justify-between text-[11px] text-fg-subtle">
+      <div aria-hidden className="mt-1.5 flex justify-between text-[11px] text-fg-muted">
         <span>{first ? shortDate(first) : ""}</span>
         <span>{mid ? shortDate(mid) : ""}</span>
         <span>{last ? shortDate(last) : ""}</span>

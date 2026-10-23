@@ -91,7 +91,7 @@ export function CateringInquiryForm({ shop }: { shop: Shop }) {
           <CircleCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
           <Heading level={2}>{t("rc.cq.sentTitle")}</Heading>
           <div>
-            <BigNumber tone="accent" className="text-[32px]">{t("rc.cq.ref", { n: done.receipt.number })}</BigNumber>
+            <BigNumber className="text-[32px]">{t("rc.cq.ref", { n: done.receipt.number })}</BigNumber>
           </div>
           <p className="text-body text-fg">{done.summary}</p>
           <p className="text-body text-fg-muted">{t("rc.cq.sentBody", { name: done.name, shop: shop.name, phone: done.phone })}</p>

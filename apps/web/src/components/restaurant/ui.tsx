@@ -92,7 +92,7 @@ export function ChiliDots({ level }: { level: number }) {
   return (
     <span role="img" aria-label={`${t("spice.label")}: ${t(spiceKey(level))}`} title={t(spiceKey(level))} className="inline-flex items-center gap-[3px]">
       {[1, 2, 3].map((i) => (
-        <span key={i} aria-hidden className={cn("size-[7px] rounded-full", i <= level ? "bg-accent" : "bg-bg-muted")} />
+        <span key={i} aria-hidden className={cn("size-[7px] rounded-full", i <= level ? "bg-fg" : "bg-bg-muted")} />
       ))}
     </span>
   );

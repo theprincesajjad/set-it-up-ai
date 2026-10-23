@@ -14,7 +14,7 @@ export async function PassFooter() {
           <LogoMark size={16} />
           <span>{t("auth.footer.part", { brand: BRAND.name })}</span>
         </Link>
-        <p className="flex gap-3 text-meta text-fg-subtle">
+        <p className="flex gap-3 text-meta text-fg-muted">
           <Link href="/legal/terms" className="hover:text-fg">
             {t("auth.footer.terms")}
           </Link>
