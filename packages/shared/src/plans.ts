@@ -53,8 +53,8 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Café & Retail",
     priceCents: 3900,
     annualPriceCents: 39000,
-    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks and order-ahead.",
-    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers"],
+    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks, order-ahead and appointment booking.",
+    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers"],
     smsPerMonth: 500,
   },
   pro: {
@@ -135,6 +135,8 @@ export const FEES = {
   customerServiceFeeCents: 49,
   depositInvoiceBps: 100,
   tiffinBps: 100,
+  /** Checkout taken through the appointment calendar (counter or in person): 0%, card processing at cost. Online deposits still pay depositInvoiceBps. */
+  appointmentCheckoutBps: 0,
 } as const;
 
 export const ROLLOUT_STAGES = ["hidden", "beta", "ga"] as const;
@@ -311,6 +313,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
+    f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios.", "plus", 2, 100),
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
     // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),

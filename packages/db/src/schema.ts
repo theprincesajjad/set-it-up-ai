@@ -247,6 +247,17 @@ export const merchants = pgTable(
     whatsappCreditsExtra: integer("whatsapp_credits_extra").notNull().default(0),
     /** Google review link for review requests. */
     googleReviewUrl: text("google_review_url"),
+    /** Drop-off terms shown and acknowledged at intake (repair, alterations). Null = no terms step. */
+    intakeTerms: text("intake_terms"),
+    /** Tip picker on invoices: null = by vertical default (on for salon-type shops, off for repair). */
+    tipsEnabled: boolean("tips_enabled"),
+    tipPresets: jsonb("tip_presets").$type<number[]>().notNull().default([15, 20, 25]),
+    /** Send rebooking nudges automatically (service.rebooking). Off = the owner taps Send. */
+    rebookAuto: boolean("rebook_auto").notNull().default(false),
+    /** Rolling drop-off slots: slot length, drop-offs per slot, days kept open. */
+    dropoffSlotMinutes: integer("dropoff_slot_minutes").notNull().default(30),
+    dropoffCapacity: integer("dropoff_capacity").notNull().default(3),
+    dropoffDaysAhead: integer("dropoff_days_ahead").notNull().default(14),
     /** Stripe Connect account state, synced from account.updated webhooks. */
     stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
@@ -1092,10 +1103,25 @@ export const serviceTickets = pgTable(
     status: ticketStatus("status").notNull().default("intake"),
     assignedStaffId: uuid("assigned_staff_id").references(() => users.id),
     promisedAt: ts("promised_at"),
+    /** Condition chips ticked at intake ("Cracked screen", "Stains"). */
+    intakeChecklist: jsonb("intake_checklist").$type<string[]>().notNull().default([]),
+    /** When the customer accepted the shop's drop-off terms (null = no terms or not accepted). */
+    termsAcceptedAt: ts("terms_accepted_at"),
+    shelfLocation: text("shelf_location"),
+    /** Set when status becomes ready; drives pickup reminders and "ready N days". */
+    readyAt: ts("ready_at"),
+    /** Public status link token (/t/<token>), created with the ticket. */
+    statusToken: text("status_token"),
+    /** Last pickup-reminder ladder day sent (0 = none; 3, 7, 30, 60). */
+    pickupReminderDay: integer("pickup_reminder_day").notNull().default(0),
+    /** 60 days after ready and still uncollected: shown to staff, never acted on automatically. */
+    lienEligibleAt: ts("lien_eligible_at"),
+    /** Staff recorded that they sent the notice required before sale (their decision, their paperwork). */
+    lienNoticeSentAt: ts("lien_notice_sent_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("service_tickets_merchant_idx").on(t.merchantId, t.status), index("service_tickets_user_idx").on(t.userId)],
+  (t) => [index("service_tickets_merchant_idx").on(t.merchantId, t.status), index("service_tickets_user_idx").on(t.userId), uniqueIndex("service_tickets_status_token_uq").on(t.statusToken)],
 );
 
 export const ticketEvents = pgTable(
@@ -1115,7 +1141,10 @@ export const ticketEvents = pgTable(
 export type DietaryTags = { halal?: boolean; zabihah?: boolean; vegetarian?: boolean; vegan?: boolean; jain?: boolean; glutenFree?: boolean; spice?: 0 | 1 | 2 | 3; allergens?: string[]; halalCertifier?: string };
 export type Translations = Record<string, { name?: string; description?: string }>;
 
-export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null };
+export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null };
+
+/** How a quote was approved: customer link, phone call (name, phone, time recorded), or at the counter. */
+export type QuoteAuthorization = { method: "link" | "phone" | "counter"; name: string; phone?: string | null; note?: string | null; at: string; staffId?: string | null };
 
 export const quotes = pgTable(
   "quotes",
@@ -1144,6 +1173,9 @@ export const quotes = pgTable(
     /** Deposit bank debit in flight (payment_intent.processing); cleared on success or failure. */
     depositProcessingAt: ts("deposit_processing_at"),
     depositPaidAt: ts("deposit_paid_at"),
+    /** First time the customer opened the public link (the "opened, not approved" call-now signal). */
+    firstViewedAt: ts("first_viewed_at"),
+    authorizedBy: jsonb("authorized_by").$type<QuoteAuthorization>(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("quotes_token_uq").on(t.approvalToken), index("quotes_ticket_idx").on(t.ticketId)],
@@ -1173,6 +1205,9 @@ export const invoices = pgTable(
     paymentProcessingAt: ts("payment_processing_at"),
     paidAt: ts("paid_at"),
     pointsEarned: integer("points_earned").notNull().default(0),
+    /** Voluntary tip added at payment: not taxed, never earns points. */
+    tipCents: integer("tip_cents").notNull().default(0),
+    tipStaffId: uuid("tip_staff_id").references(() => users.id),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("invoices_pay_token_uq").on(t.payToken), index("invoices_merchant_idx").on(t.merchantId)],
@@ -1211,6 +1246,29 @@ export const bookings = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("bookings_slot_idx").on(t.slotId)],
+);
+
+/**
+ * Rebooking nudges (service.rebooking): one row per message sent, skip or snooze for a customer and service.
+ * "Due" is computed from completed work and services.rebookAfterDays; this table is what stops repeat sends.
+ */
+export const rebookingNudges = pgTable(
+  "rebooking_nudges",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    serviceId: uuid("service_id").notNull(),
+    /** sent | skipped | snoozed */
+    action: text("action").notNull(),
+    channel: text("channel"),
+    /** For snoozed: hide the row until this time. */
+    until: ts("until"),
+    /** Set when the customer booked or paid for the service after this nudge. */
+    convertedAt: ts("converted_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("rebooking_nudges_merchant_idx").on(t.merchantId, t.userId, t.serviceId, t.createdAt)],
 );
 
 /** Per-merchant counters for human-friendly order/ticket/invoice numbers. */

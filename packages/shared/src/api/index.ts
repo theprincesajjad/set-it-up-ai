@@ -19,3 +19,4 @@ export * as tiffinApi from "./tiffin.js";
 export * as restaurantApi from "./restaurant.js";
 export * as whatsappApi from "./whatsapp.js";
 export * as i18nApi from "./i18n.js";
+export * as paymentsManualApi from "./payments-manual.js";

@@ -583,7 +583,7 @@ export async function today(ctx: AppContext, merchant: Merchant): Promise<report
   const yesterdayKey = dayKey(1);
   const earliest = new Date(todayStart.getTime() - 30 * DAY);
 
-  const [visitRows, newMemberRows, earnRows, redeemRows, wf, [prog], [minCost]] = await Promise.all([
+  const [visitRows, newMemberRows, earnRows, redeemRows, features, [minCost]] = await Promise.all([
     ctx.db
       .select({ d: localDay(visits.createdAt, tz), h: sql<number>`extract(hour from (${visits.createdAt} at time zone ${tz}))::int`, n: sql<number>`count(*)::int` })
       .from(visits)
@@ -610,13 +610,11 @@ export async function today(ctx: AppContext, merchant: Merchant): Promise<report
       .from(ledgerTransactions)
       .where(and(eq(ledgerTransactions.merchantId, merchant.id), gte(ledgerTransactions.createdAt, todayStart), lte(ledgerTransactions.createdAt, now), isNull(ledgerTransactions.reversedAt), inArray(ledgerTransactions.type, ["redeem", "reversal"]))),
     getMerchantFeatures(ctx.db, merchant),
-    ctx.db.select({ stampGoal: loyaltyPrograms.stampGoal }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1),
     ctx.db
       .select({ min: sql<number | null>`min(${rewards.pointsCost})::int` })
       .from(rewards)
       .where(and(eq(rewards.merchantId, merchant.id), eq(rewards.active, true))),
   ]);
-  void prog;
   const byDay = new Map<string, number[]>();
   for (const r of visitRows) {
     const arr = byDay.get(r.d) ?? Array<number>(24).fill(0);
