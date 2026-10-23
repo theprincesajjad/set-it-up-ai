@@ -35,15 +35,28 @@ import type {
 } from "./payments.js";
 import { PLATFORM_CHARGE_MARKER } from "./payments.js";
 
+/** Stripe product tax code: software as a service, business use. */
+const SAAS_TAX_CODE = "txcd_10103001";
+
+/** One item of a schedule phase, as sent to subscriptionSchedules.update. */
+interface PhaseItem {
+  price: string;
+  quantity: number;
+  metadata?: Record<string, string>;
+}
+
 export class StripePayments implements PaymentsProvider {
   readonly name = "stripe" as const;
   readonly stripe: Stripe;
   private readonly webhookSecret?: string;
+  /** STRIPE_AUTOMATIC_TAX: Stripe Tax on our own subscription checkouts and the prices created for tier / add-on changes. */
+  private readonly automaticTax: boolean;
 
   constructor(config: Pick<Config, "stripe">, client?: Stripe) {
     if (!config.stripe.secretKey && !client) throw new Error("STRIPE_SECRET_KEY is not set");
     this.stripe = client ?? new Stripe(config.stripe.secretKey!, { appInfo: { name: "Local Loyalty" }, maxNetworkRetries: 2 });
     this.webhookSecret = config.stripe.webhookSecret;
+    this.automaticTax = !!config.stripe.automaticTax;
   }
 
   async createConnectedAccount(args: { merchantId: string; email?: string | null; businessName: string }) {
@@ -221,7 +234,9 @@ export class StripePayments implements PaymentsProvider {
             currency: "cad",
             unit_amount: args.unitAmountCents,
             recurring: { interval: args.interval },
-            product_data: { name: args.productName },
+            // Stripe Tax needs to know whether the price includes tax; ours are tax-exclusive, tax is added on top.
+            ...(this.automaticTax ? { tax_behavior: "exclusive" as const } : {}),
+            product_data: { name: args.productName, ...(this.automaticTax ? { tax_code: SAAS_TAX_CODE } : {}) },
           },
         };
     const s = await this.stripe.checkout.sessions.create({
@@ -233,6 +248,8 @@ export class StripePayments implements PaymentsProvider {
       cancel_url: args.cancelUrl,
       metadata,
       subscription_data: { metadata },
+      // GST/HST through Stripe Tax. It needs a billing address; an existing customer's address and name are saved from this form.
+      ...(this.automaticTax ? { automatic_tax: { enabled: true }, billing_address_collection: "required" as const, customer_update: { address: "auto" as const, name: "auto" as const } } : {}),
       // Stripe rejects discounts + allow_promotion_codes together; the founding coupon wins.
       ...(args.couponId ? { discounts: [{ coupon: args.couponId }] } : { allow_promotion_codes: true }),
     });
@@ -267,9 +284,59 @@ export class StripePayments implements PaymentsProvider {
       recurring: { interval },
       lookup_key: key,
       transfer_lookup_key: true,
-      product_data: { name },
+      ...(this.automaticTax ? { tax_behavior: "exclusive" as const } : {}),
+      product_data: { name, ...(this.automaticTax ? { tax_code: SAAS_TAX_CODE } : {}) },
     });
     return created.id;
+  }
+
+  /**
+   * The schedule that manages a subscription (founding offer: 50% for a year, then 25%), or null. Stripe rejects
+   * item changes made directly on such a subscription, and a later phase would overwrite them, so every item
+   * change has to go through the schedule's phases.
+   */
+  private async scheduleFor(sub: Stripe.Subscription): Promise<Stripe.SubscriptionSchedule | null> {
+    const ref = (sub as { schedule?: string | { id: string } | null }).schedule;
+    if (!ref) return null;
+    const schedule = await this.stripe.subscriptionSchedules.retrieve(typeof ref === "string" ? ref : ref.id);
+    return schedule.status === "active" || schedule.status === "not_started" ? schedule : null;
+  }
+
+  /**
+   * Apply an item change to the current and future phases of a schedule, keeping each phase's dates, coupons,
+   * proration setting and tax setting. Past phases are dropped (Stripe allows that). The update takes effect on the
+   * subscription right away, with prorations for the current phase.
+   */
+  private async updateSchedulePhases(schedule: Stripe.SubscriptionSchedule, edit: (items: PhaseItem[]) => PhaseItem[], metadata?: Record<string, string>): Promise<void> {
+    const current = schedule.current_phase;
+    const now = Math.floor(Date.now() / 1000);
+    const live = schedule.phases.filter((p) => (current ? p.end_date > current.start_date : p.end_date > now));
+    const phases = live.map((p, i) => {
+      const items = edit(
+        p.items.map((it) => ({
+          price: typeof it.price === "string" ? it.price : it.price.id,
+          quantity: it.quantity ?? 1,
+          ...(it.metadata && Object.keys(it.metadata).length ? { metadata: { ...it.metadata } } : {}),
+        })),
+      );
+      const discounts = (p.discounts ?? []).flatMap((d) => (d.coupon ? [{ coupon: typeof d.coupon === "string" ? d.coupon : d.coupon.id }] : []));
+      return {
+        // The first kept phase has to say where it started; later ones follow the end of the one before.
+        ...(i === 0 ? { start_date: p.start_date } : {}),
+        end_date: p.end_date,
+        items,
+        ...(discounts.length ? { discounts } : {}),
+        ...(p.proration_behavior ? { proration_behavior: p.proration_behavior } : {}),
+        ...(p.automatic_tax ? { automatic_tax: { enabled: !!p.automatic_tax.enabled } } : {}),
+        ...(metadata || (p.metadata && Object.keys(p.metadata).length) ? { metadata: { ...(p.metadata ?? {}), ...(metadata ?? {}) } } : {}),
+      };
+    });
+    await this.stripe.subscriptionSchedules.update(schedule.id, { end_behavior: "release", phases, proration_behavior: "create_prorations" });
+  }
+
+  /** Prices that add-on items are on right now. */
+  private addOnPriceIds(sub: Stripe.Subscription): Set<string> {
+    return new Set(sub.items.data.filter((i) => i.metadata?.add_on_id).map((i) => i.price.id));
   }
 
   async changeSubscriptionTier(args: { subscriptionId: string; tier: RestaurantTier; interval: BillingInterval; unitAmountCents: number; productName: string }): Promise<SubscriptionSnapshot> {
@@ -277,9 +344,17 @@ export class StripePayments implements PaymentsProvider {
     const base = sub.items.data.find((i) => !i.metadata?.add_on_id);
     if (!base) throw new Error("Subscription has no plan item");
     const price = await this.priceFor(`ll_restaurant_${args.tier}`, args.unitAmountCents, args.interval, args.productName);
+    const metadata = { ...sub.metadata, restaurant_tier: args.tier };
+    const schedule = await this.scheduleFor(sub);
+    if (schedule) {
+      const addOnPrices = this.addOnPriceIds(sub);
+      await this.updateSchedulePhases(schedule, (items) => items.map((it) => (it.metadata?.add_on_id || addOnPrices.has(it.price) ? it : { ...it, price })), { restaurant_tier: args.tier });
+      // The webhook reads the tier from the subscription's metadata, so keep that in step too (metadata is not schedule-managed).
+      return toSnapshot(await this.stripe.subscriptions.update(args.subscriptionId, { metadata }));
+    }
     const updated = await this.stripe.subscriptions.update(args.subscriptionId, {
       items: [{ id: base.id, price }],
-      metadata: { ...sub.metadata, restaurant_tier: args.tier },
+      metadata,
       proration_behavior: "create_prorations",
     });
     return toSnapshot(updated);
@@ -287,6 +362,17 @@ export class StripePayments implements PaymentsProvider {
 
   async addSubscriptionItem(args: { subscriptionId: string; addOnId: AddOnId; quantity: number; interval: BillingInterval; unitAmountCents: number; name: string }) {
     const price = await this.priceFor(`ll_addon_${args.addOnId}`, args.unitAmountCents, args.interval, args.name);
+    const sub = await this.stripe.subscriptions.retrieve(args.subscriptionId);
+    const schedule = await this.scheduleFor(sub);
+    if (schedule) {
+      const item: PhaseItem = { price, quantity: args.quantity, metadata: { add_on_id: args.addOnId } };
+      await this.updateSchedulePhases(schedule, (items) => [...items.filter((it) => it.metadata?.add_on_id !== args.addOnId), item]);
+      // The phase update creates the subscription item; find its id for later quantity changes and removal.
+      const after = await this.stripe.subscriptions.retrieve(args.subscriptionId);
+      const created = after.items.data.find((i) => i.metadata?.add_on_id === args.addOnId) ?? after.items.data.find((i) => i.price.id === price);
+      if (!created) throw new Error(`Add-on ${args.addOnId} did not appear on the subscription after the schedule update`);
+      return { itemId: created.id };
+    }
     const item = await this.stripe.subscriptionItems.create({
       subscription: args.subscriptionId,
       price,
@@ -297,11 +383,27 @@ export class StripePayments implements PaymentsProvider {
     return { itemId: item.id };
   }
 
-  async updateSubscriptionItem(args: { itemId: string; quantity: number }) {
+  /** The schedule and a phase-item matcher for one existing add-on item, or null when the subscription is not schedule-managed. */
+  private async scheduledAddOn(subscriptionId: string | undefined, itemId: string, addOnId?: AddOnId) {
+    if (!subscriptionId) return null;
+    const sub = await this.stripe.subscriptions.retrieve(subscriptionId);
+    const schedule = await this.scheduleFor(sub);
+    if (!schedule) return null;
+    const item = sub.items.data.find((i) => i.id === itemId);
+    const id = addOnId ?? item?.metadata?.add_on_id;
+    const priceId = item?.price.id;
+    return { schedule, matches: (it: PhaseItem) => (!!id && it.metadata?.add_on_id === id) || (!!priceId && it.price === priceId) };
+  }
+
+  async updateSubscriptionItem(args: { itemId: string; quantity: number; subscriptionId?: string; addOnId?: AddOnId }) {
+    const sched = await this.scheduledAddOn(args.subscriptionId, args.itemId, args.addOnId);
+    if (sched) return this.updateSchedulePhases(sched.schedule, (items) => items.map((it) => (sched.matches(it) ? { ...it, quantity: args.quantity } : it)));
     await this.stripe.subscriptionItems.update(args.itemId, { quantity: args.quantity, proration_behavior: "create_prorations" });
   }
 
-  async removeSubscriptionItem(itemId: string) {
+  async removeSubscriptionItem(itemId: string, opts: { subscriptionId?: string; addOnId?: AddOnId } = {}) {
+    const sched = await this.scheduledAddOn(opts.subscriptionId, itemId, opts.addOnId);
+    if (sched) return this.updateSchedulePhases(sched.schedule, (items) => items.filter((it) => !sched.matches(it)));
     await this.stripe.subscriptionItems.del(itemId, { proration_behavior: "create_prorations" });
   }
 
@@ -340,11 +442,13 @@ export class StripePayments implements PaymentsProvider {
     if (!first) return;
     const items = first.items.map((i) => ({ price: typeof i.price === "string" ? i.price : i.price.id, quantity: i.quantity ?? 1 }));
     const interval = (await this.stripe.subscriptions.retrieve(subscriptionId)).items.data[0]?.price.recurring?.interval;
+    // Phases written here replace the ones copied from the subscription, so say again that tax is automatic.
+    const tax = this.automaticTax ? { automatic_tax: { enabled: true } } : {};
     await this.stripe.subscriptionSchedules.update(sched.id, {
       end_behavior: "release",
       phases: [
-        { items, start_date: first.start_date, duration: interval === "year" ? { interval: "year", interval_count: 1 } : { interval: "month", interval_count: 12 }, discounts: [{ coupon: yearOne }], proration_behavior: "none" },
-        { items, duration: interval === "year" ? { interval: "year", interval_count: 1 } : { interval: "month", interval_count: 1 }, discounts: [{ coupon: lifetime }], proration_behavior: "none" },
+        { items, start_date: first.start_date, duration: interval === "year" ? { interval: "year", interval_count: 1 } : { interval: "month", interval_count: 12 }, discounts: [{ coupon: yearOne }], proration_behavior: "none", ...tax },
+        { items, duration: interval === "year" ? { interval: "year", interval_count: 1 } : { interval: "month", interval_count: 1 }, discounts: [{ coupon: lifetime }], proration_behavior: "none", ...tax },
       ],
     });
   }

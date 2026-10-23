@@ -324,6 +324,7 @@ export function commerceType(dataType: unknown): NotificationType | null {
     case "invoice_sent":
     case "invoice_paid":
     case "deposit_paid":
+    case "deposit_processing":
       return "ticket_updated";
     case "quote_sent":
       return "quote_sent";
@@ -331,11 +332,13 @@ export function commerceType(dataType: unknown): NotificationType | null {
       return "tiffin_update";
     case "catering_tasting":
     case "catering_confirmed":
+    case "catering_deposit_processing":
     case "catering_cancelled":
     case "catering_update":
       return "catering_update";
     case "hall_hold":
     case "hall_confirmed":
+    case "hall_deposit_processing":
     case "hall_hold_expired":
     case "hall_cancelled":
     case "hall_update":

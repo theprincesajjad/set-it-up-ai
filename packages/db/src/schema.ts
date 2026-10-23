@@ -1006,6 +1006,8 @@ export const orders = pgTable(
     platformFeeCents: integer("platform_fee_cents").notNull().default(0),
     paymentStatus: paymentStatus("payment_status").notNull().default("unpaid"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
+    /** payment_intent.processing (bank debit in flight, takes days): set while unpaid, cleared when it succeeds or fails. */
+    paymentProcessingAt: ts("payment_processing_at"),
     redemptionId: uuid("redemption_id"),
     pointsEarned: integer("points_earned").notNull().default(0),
     readyAt: ts("ready_at"),
@@ -1123,6 +1125,8 @@ export const quotes = pgTable(
     signatureUserAgent: text("signature_user_agent"),
     declineReason: text("decline_reason"),
     depositPaymentIntentId: text("deposit_payment_intent_id"),
+    /** Deposit bank debit in flight (payment_intent.processing); cleared on success or failure. */
+    depositProcessingAt: ts("deposit_processing_at"),
     depositPaidAt: ts("deposit_paid_at"),
     createdAt: createdAt(),
   },
@@ -1149,6 +1153,8 @@ export const invoices = pgTable(
     status: invoiceStatus("status").notNull().default("draft"),
     payToken: text("pay_token").notNull(),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
+    /** Bank debit in flight (payment_intent.processing); cleared on success or failure. */
+    paymentProcessingAt: ts("payment_processing_at"),
     paidAt: ts("paid_at"),
     pointsEarned: integer("points_earned").notNull().default(0),
     createdAt: createdAt(),
@@ -1513,6 +1519,8 @@ export const cateringEvents = pgTable(
     signatureIp: text("signature_ip"),
     signatureUserAgent: text("signature_user_agent"),
     depositPaymentIntentId: text("deposit_payment_intent_id"),
+    /** Deposit bank debit in flight (payment_intent.processing); cleared on success or failure. */
+    depositProcessingAt: ts("deposit_processing_at"),
     depositPaidAt: ts("deposit_paid_at"),
     /** Deposit returned to the customer on cancel (cents, 0 = none) and when. */
     depositRefundCents: integer("deposit_refund_cents").notNull().default(0),
@@ -1560,6 +1568,8 @@ export const hallBookings = pgTable(
     totalCents: integer("total_cents").notNull().default(0),
     depositCents: integer("deposit_cents").notNull().default(0),
     depositPaymentIntentId: text("deposit_payment_intent_id"),
+    /** Deposit bank debit in flight (payment_intent.processing); cleared on success or failure. */
+    depositProcessingAt: ts("deposit_processing_at"),
     depositPaidAt: ts("deposit_paid_at"),
     depositRefundCents: integer("deposit_refund_cents").notNull().default(0),
     depositRefundedAt: ts("deposit_refunded_at"),

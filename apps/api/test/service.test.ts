@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { invoices, merchantMembers, pushTokens, quotes, users } from "@ll/db";
+import { invoices, merchantMembers, notifications, pushTokens, quotes, users } from "@ll/db";
 import { onInvoicePayment } from "../src/services/invoices.js";
 import { expireQuotes } from "../src/services/quotes.js";
 import { createTestEnv, tokenFor, type TestEnv } from "./helpers.js";
@@ -89,9 +89,22 @@ describe("repair approval flow (Pro)", () => {
     expect(again.body.deposit.paymentIntentId).toBe(intent.id);
     expect((await call(env, null, "POST", `/v1/public/quotes/${qRow!.approvalToken}/decline`, {})).status).toBe(409);
 
+    // Deposit debit in flight (PAD): not received yet, customer told once, then it bounces, goes in flight again and clears.
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    const [flying] = await env.db.select().from(quotes).where(eq(quotes.id, q.body.id));
+    expect(flying).toMatchObject({ depositPaidAt: null, depositProcessingAt: env.clock.now });
+    const processingNotes = await env.db.select().from(notifications).where(eq(notifications.userId, cust!.id));
+    expect(processingNotes.filter((n) => n.title.endsWith("deposit payment is processing"))).toHaveLength(1);
+    await deliver(env, fake(env).failPaymentIntent(intent.id, { code: "account_closed" }));
+    expect((await env.db.select().from(quotes).where(eq(quotes.id, q.body.id)))[0]).toMatchObject({ depositPaidAt: null, depositProcessingAt: null });
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    expect((await env.db.select().from(quotes).where(eq(quotes.id, q.body.id)))[0]!.depositProcessingAt).toBeTruthy();
+
     // Deposit paid (webhook).
     await deliver(env, fake(env).succeedPaymentIntent(intent.id));
     const [paidQ] = await env.db.select().from(quotes).where(eq(quotes.id, q.body.id));
+    expect(paidQ!.depositProcessingAt).toBeNull();
     expect(paidQ!.depositPaidAt).toBeTruthy();
 
     // Work progresses; customer is told.
@@ -120,6 +133,14 @@ describe("repair approval flow (Pro)", () => {
     const pay = await call(env, null, "POST", `/v1/public/invoices/${invRow!.payToken}/pay`);
     expect(pay.body.payment.amountCents).toBe(22600);
     expect(fake(env).intents.get(pay.body.payment.paymentIntentId)!.applicationFeeCents).toBe(226); // 294 total fee - 68 already taken on the deposit (was 169 = 220 - 51)
+    // Balance by bank debit: the invoice stays open and is marked processing (the same intent is handed back), a bounce clears it.
+    await deliver(env, fake(env).processPaymentIntent(pay.body.payment.paymentIntentId));
+    expect((await env.db.select().from(invoices).where(eq(invoices.id, inv.body.id)))[0]).toMatchObject({ status: "open", paymentProcessingAt: env.clock.now });
+    const payAgain = await call(env, null, "POST", `/v1/public/invoices/${invRow!.payToken}/pay`);
+    expect(payAgain.body.payment.paymentIntentId).toBe(pay.body.payment.paymentIntentId);
+    await deliver(env, fake(env).failPaymentIntent(pay.body.payment.paymentIntentId, { code: "account_closed" }));
+    expect((await env.db.select().from(invoices).where(eq(invoices.id, inv.body.id)))[0]).toMatchObject({ status: "open", paymentProcessingAt: null });
+    await deliver(env, fake(env).processPaymentIntent(pay.body.payment.paymentIntentId));
     const ev = fake(env).succeedPaymentIntent(pay.body.payment.paymentIntentId);
     await deliver(env, ev);
     await deliver(env, ev);

@@ -242,8 +242,9 @@ export interface PaymentsProvider {
   changeSubscriptionTier(args: { subscriptionId: string; tier: RestaurantTier; interval: BillingInterval; unitAmountCents: number; productName: string }): Promise<SubscriptionSnapshot>;
   /** Add-ons are subscription items on the restaurant subscription. */
   addSubscriptionItem(args: { subscriptionId: string; addOnId: AddOnId; quantity: number; interval: BillingInterval; unitAmountCents: number; name: string }): Promise<{ itemId: string }>;
-  updateSubscriptionItem(args: { itemId: string; quantity: number }): Promise<void>;
-  removeSubscriptionItem(itemId: string): Promise<void>;
+  /** Pass subscriptionId (and addOnId) so a schedule-managed subscription is changed through its schedule. */
+  updateSubscriptionItem(args: { itemId: string; quantity: number; subscriptionId?: string; addOnId?: AddOnId }): Promise<void>;
+  removeSubscriptionItem(itemId: string, opts?: { subscriptionId?: string; addOnId?: AddOnId }): Promise<void>;
   /** Founding offer: 50% off for 12 months, then 25% off for life, as a two-phase schedule on the subscription. */
   scheduleFoundingOffer(subscriptionId: string): Promise<void>;
   /** Stripe coupon id for the first phase of the founding offer (created on demand). */

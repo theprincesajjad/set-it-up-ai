@@ -219,17 +219,38 @@ export async function depositPayment(ctx: AppContext, merchant: Merchant, quote:
   return { paymentIntentId: pi.id, clientSecret: pi.clientSecret, amountCents: pi.amountCents };
 }
 
-export async function onDepositPayment(ctx: AppContext, quoteId: string, paymentIntentId: string, outcome: "succeeded" | "failed") {
+export async function onDepositPayment(ctx: AppContext, quoteId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing") {
   const [quote] = await ctx.db.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1);
   if (!quote) return;
   if (quote.depositPaymentIntentId && quote.depositPaymentIntentId !== paymentIntentId) return;
+  if (outcome === "processing") {
+    // A bank debit in flight: the deposit isn't received yet, and the same PaymentIntent is reused so it can't be charged twice.
+    if (quote.depositPaidAt || quote.depositProcessingAt) return;
+    const [marked] = await ctx.db.update(quotes).set({ depositProcessingAt: ctx.now() }).where(and(eq(quotes.id, quote.id), isNull(quotes.depositProcessingAt), isNull(quotes.depositPaidAt))).returning({ id: quotes.id });
+    if (!marked) return;
+    await addTicketEvent(ctx.db, quote.ticketId, { note: `Deposit of ${money(quote.depositCents)} is processing. Bank debits can take a few business days.`, visibleToCustomer: true });
+    const [ticket] = await ctx.db.select().from(serviceTickets).where(eq(serviceTickets.id, quote.ticketId)).limit(1);
+    const merchant = await loadMerchant(ctx.db, quote.merchantId);
+    if (ticket && merchant) {
+      await notifyCustomer(ctx, {
+        userId: ticket.userId,
+        merchantId: merchant.id,
+        title: `${merchant.name}: deposit payment is processing`,
+        body: `Your ${money(quote.depositCents)} deposit for ticket #${ticket.number} is processing. We'll let you know when ${merchant.name} receives it.`,
+        sms: false,
+        data: { type: "deposit_processing", ticketId: ticket.id, quoteId: quote.id },
+      });
+    }
+    return;
+  }
   if (outcome === "failed") {
+    if (quote.depositProcessingAt) await ctx.db.update(quotes).set({ depositProcessingAt: null }).where(eq(quotes.id, quote.id));
     await addTicketEvent(ctx.db, quote.ticketId, { note: "Deposit payment failed", visibleToCustomer: false });
     return;
   }
   const [updated] = await ctx.db
     .update(quotes)
-    .set({ depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId })
+    .set({ depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId, depositProcessingAt: null })
     .where(and(eq(quotes.id, quote.id), isNull(quotes.depositPaidAt)))
     .returning();
   if (!updated) return;

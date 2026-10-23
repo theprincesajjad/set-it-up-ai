@@ -221,6 +221,8 @@ export interface ChargeDto {
   creditCents: number;
   platformFeeCents: number;
   status: "pending" | "paid" | "failed" | "refunded";
+  /** A bank debit (PAD) is in flight: status stays "pending" until it clears (days). */
+  processing?: boolean;
   paidAt: string | null;
   createdAt: string;
 }

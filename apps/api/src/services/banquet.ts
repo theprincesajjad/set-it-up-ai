@@ -6,7 +6,7 @@
  * live holds on the same hall, with the hall row locked so two requests can't
  * both win the same slot.
  */
-import { and, asc, eq, gt, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { cateringEvents, hallBookings, halls, type DbOrTx } from "@ll/db";
 import { restaurantApi } from "@ll/shared";
 import type { z } from "zod";
@@ -282,6 +282,19 @@ async function confirmBooking(ctx: AppContext, b: HallBooking, patch: Partial<ty
   return row ?? null;
 }
 
+async function notifyDepositProcessing(ctx: AppContext, b: HallBooking) {
+  const merchant = await loadMerchant(ctx.db, b.merchantId);
+  if (!merchant) return;
+  await notifyCustomer(ctx, {
+    userId: b.userId,
+    merchantId: merchant.id,
+    title: `${merchant.name}: deposit payment is processing`,
+    body: `Your ${money(b.depositCents)} deposit for the hall on ${formatLocalDateTime(b.startsAt, merchant.timezone)} is processing. Bank debits can take a few business days. We'll confirm once ${merchant.name} receives it.`,
+    sms: false,
+    data: { type: "hall_deposit_processing", hallBookingId: b.id },
+  });
+}
+
 async function notifyConfirmed(ctx: AppContext, b: HallBooking) {
   const merchant = await loadMerchant(ctx.db, b.merchantId);
   if (!merchant) return;
@@ -310,11 +323,22 @@ export async function confirm(ctx: AppContext, merchantId: string, bookingId: st
 }
 
 /** Stripe webhook (ll_kind hall_deposit): deposit paid → confirmed, unless the hold was already released or lost the slot. */
-export async function onHallDeposit(ctx: AppContext, bookingId: string, paymentIntentId: string, outcome: "succeeded" | "failed") {
+export async function onHallDeposit(ctx: AppContext, bookingId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing") {
   const [b] = await ctx.db.select().from(hallBookings).where(eq(hallBookings.id, bookingId)).limit(1);
-  if (!b || outcome === "failed" || b.depositPaidAt) return;
+  if (!b || b.depositPaidAt) return;
   if (b.depositPaymentIntentId && b.depositPaymentIntentId !== paymentIntentId) return;
-  const patch = { depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId };
+  if (outcome === "failed") {
+    // A debit that was processing and bounced: the deposit is unpaid again and the customer can retry while the hold lasts.
+    if (b.depositProcessingAt) await ctx.db.update(hallBookings).set({ depositProcessingAt: null }).where(eq(hallBookings.id, b.id));
+    return;
+  }
+  if (outcome === "processing") {
+    if (b.depositProcessingAt) return;
+    const [marked] = await ctx.db.update(hallBookings).set({ depositProcessingAt: ctx.now() }).where(and(eq(hallBookings.id, b.id), isNull(hallBookings.depositProcessingAt), isNull(hallBookings.depositPaidAt))).returning();
+    if (marked && marked.status === "hold") await notifyDepositProcessing(ctx, marked);
+    return;
+  }
+  const patch = { depositPaidAt: ctx.now(), depositPaymentIntentId: paymentIntentId, depositProcessingAt: null };
   if (b.status !== "hold") {
     // Paid after the hold lapsed or was cancelled: record it so staff can refund.
     await ctx.db.update(hallBookings).set(patch).where(eq(hallBookings.id, b.id));

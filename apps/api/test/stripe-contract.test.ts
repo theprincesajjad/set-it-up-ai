@@ -40,6 +40,12 @@ let port = 0;
 let calls: Recorded[] = [];
 let coupons = new Set<string>();
 let subscriptionInterval: "month" | "year" = "month";
+/** When set, SUB_ID is managed by a founding-offer schedule (two phases: 50% now, 25% after). */
+let scheduleManaged = false;
+/** The add-on item the fixture Stripe currently has on the schedule-managed subscription (a schedule update creates it). */
+let scheduleAddOn: { addOnId: string; price: string; quantity: number } | null = null;
+/** When set, a confirming off-session PaymentIntent answers `processing` (a PAD debit in flight). */
+let offSessionProcessing = false;
 /** When set, a confirming PaymentIntent create answers with this Stripe card error. */
 let offSessionFailure: { code: string; decline_code?: string; type?: string } | null = null;
 
@@ -53,6 +59,9 @@ function respond(r: Recorded): { status: number; body: unknown } {
     const f = offSessionFailure;
     const pi = { id: "pi_failed_fixture", object: "payment_intent", client_secret: "pi_failed_fixture_secret", status: "requires_payment_method", amount: Number(form.amount), metadata: {}, last_payment_error: { code: f.code } };
     return { status: f.type === "rate_limit_error" ? 429 : 402, body: { error: { type: f.type ?? "card_error", code: f.code, decline_code: f.decline_code, message: "Your card was declined.", payment_intent: pi } } };
+  }
+  if (path === "/v1/payment_intents" && method === "POST" && form.confirm === "true" && offSessionProcessing) {
+    return { status: 200, body: { id: "pi_processing_fixture", object: "payment_intent", client_secret: "pi_processing_fixture_secret", status: "processing", amount: Number(form.amount), application_fee_amount: Number(form.application_fee_amount ?? 0), metadata: {} } };
   }
   if (path === "/v1/payment_intents" && method === "POST") {
     return { status: 200, body: { id: "pi_fixture", object: "payment_intent", client_secret: "pi_fixture_secret", status: form.confirm === "true" ? "succeeded" : "requires_payment_method", amount: Number(form.amount), application_fee_amount: Number(form.application_fee_amount ?? 0), metadata: {} } };
@@ -78,7 +87,32 @@ function respond(r: Recorded): { status: number; body: unknown } {
       body: { id: "sub_sched_fixture", object: "subscription_schedule", phases: [{ start_date: 1_800_000_000, items: [{ price: "price_tier_fixture", quantity: 1 }] }] },
     };
   }
-  if (path.startsWith("/v1/subscription_schedules/") && method === "POST") return { status: 200, body: { id: "sub_sched_fixture", object: "subscription_schedule" } };
+  if (path === "/v1/subscription_schedules/sub_sched_fixture" && method === "GET") {
+    const items = (): unknown[] => [
+      { price: "price_tier_fixture", quantity: 1, metadata: {} },
+      ...(scheduleAddOn ? [{ price: scheduleAddOn.price, quantity: scheduleAddOn.quantity, metadata: { add_on_id: scheduleAddOn.addOnId } }] : []),
+    ];
+    return {
+      status: 200,
+      body: {
+        id: "sub_sched_fixture",
+        object: "subscription_schedule",
+        status: "active",
+        end_behavior: "release",
+        current_phase: { start_date: 1_700_000_000, end_date: 1_900_000_000 },
+        phases: [
+          { start_date: 1_700_000_000, end_date: 1_900_000_000, items: items(), discounts: [{ coupon: "founding_year_one" }], proration_behavior: "none", metadata: {} },
+          { start_date: 1_900_000_000, end_date: 2_000_000_000, items: items(), discounts: [{ coupon: "founding_lifetime" }], proration_behavior: "none", metadata: {} },
+        ],
+      },
+    };
+  }
+  if (path.startsWith("/v1/subscription_schedules/") && method === "POST") {
+    // A phase update creates, changes or drops the add-on item on the subscription.
+    const idx = Object.keys(form).map((k) => k.match(/^phases\[0\]\[items\]\[(\d+)\]\[metadata\]\[add_on_id\]$/)).find(Boolean);
+    scheduleAddOn = idx ? { addOnId: form[idx[0]]!, price: form[`phases[0][items][${idx[1]}][price]`]!, quantity: Number(form[`phases[0][items][${idx[1]}][quantity]`]) } : null;
+    return { status: 200, body: { id: "sub_sched_fixture", object: "subscription_schedule" } };
+  }
   if (path === `/v1/subscriptions/${SUB_ID}` && method === "GET") {
     return {
       status: 200,
@@ -88,7 +122,16 @@ function respond(r: Recorded): { status: number; body: unknown } {
         status: "active",
         cancel_at_period_end: false,
         metadata: { merchant_id: "m1" },
-        items: { object: "list", data: [{ id: "si_base", object: "subscription_item", metadata: {}, price: { id: "price_tier_fixture", recurring: { interval: subscriptionInterval } }, current_period_end: 1_900_000_000 }] },
+        schedule: scheduleManaged ? "sub_sched_fixture" : null,
+        items: {
+          object: "list",
+          data: [
+            { id: "si_base", object: "subscription_item", metadata: {}, price: { id: "price_tier_fixture", recurring: { interval: subscriptionInterval } }, current_period_end: 1_900_000_000 },
+            ...(scheduleManaged && scheduleAddOn
+              ? [{ id: "si_sched_addon", object: "subscription_item", metadata: { add_on_id: scheduleAddOn.addOnId }, quantity: scheduleAddOn.quantity, price: { id: scheduleAddOn.price, recurring: { interval: subscriptionInterval } }, current_period_end: 1_900_000_000 }]
+              : []),
+          ],
+        },
       },
     };
   }
@@ -125,7 +168,7 @@ afterAll(async () => {
 function makeStripe(): Stripe {
   return new Stripe("sk_test_contract", { host: "127.0.0.1", port, protocol: "http", maxNetworkRetries: 0, appInfo: { name: "Local Loyalty" } });
 }
-const makeProvider = () => new StripePayments({ stripe: { secretKey: "sk_test_contract", webhookSecret: WHSEC, prices: {} } }, makeStripe());
+const makeProvider = (extra: { automaticTax?: boolean } = {}) => new StripePayments({ stripe: { secretKey: "sk_test_contract", webhookSecret: WHSEC, prices: {}, ...extra } }, makeStripe());
 
 const only = (method: string, path: string | RegExp) =>
   calls.filter((c) => c.method === method && (typeof path === "string" ? c.path === path : path.test(c.path)));
@@ -140,6 +183,9 @@ beforeEach(() => {
   coupons = new Set();
   subscriptionInterval = "month";
   offSessionFailure = null;
+  scheduleManaged = false;
+  scheduleAddOn = null;
+  offSessionProcessing = false;
 });
 
 // ---------------------------------------------------------------------------

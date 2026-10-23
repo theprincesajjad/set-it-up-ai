@@ -438,20 +438,44 @@ export async function depositPayment(ctx: AppContext, merchant: Merchant, e: Cat
 async function confirmWithDeposit(ctx: AppContext, e: CateringEvent, patch: Partial<typeof cateringEvents.$inferInsert>): Promise<CateringEvent | null> {
   const [row] = await ctx.db
     .update(cateringEvents)
-    .set({ ...patch, depositPaidAt: ctx.now(), status: "confirmed", updatedAt: ctx.now() })
+    .set({ ...patch, depositPaidAt: ctx.now(), depositProcessingAt: null, status: "confirmed", updatedAt: ctx.now() })
     .where(and(eq(cateringEvents.id, e.id), eq(cateringEvents.status, "quoted"), sql`${cateringEvents.depositPaidAt} is null`, sql`${cateringEvents.approvedAt} is not null`))
     .returning();
   return row ?? null;
 }
 
 /** Stripe webhook (ll_kind catering_deposit): deposit paid → confirmed. */
-export async function onCateringDeposit(ctx: AppContext, eventId: string, paymentIntentId: string, outcome: "succeeded" | "failed") {
+export async function onCateringDeposit(ctx: AppContext, eventId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing") {
   const [e] = await ctx.db.select().from(cateringEvents).where(eq(cateringEvents.id, eventId)).limit(1);
-  if (!e || outcome === "failed") return;
+  if (!e) return;
   if (e.depositPaymentIntentId && e.depositPaymentIntentId !== paymentIntentId) return;
+  if (outcome === "failed") {
+    // A debit that was processing and bounced: the deposit is unpaid again and the customer can retry.
+    if (e.depositProcessingAt && !e.depositPaidAt) await ctx.db.update(cateringEvents).set({ depositProcessingAt: null, updatedAt: ctx.now() }).where(eq(cateringEvents.id, e.id));
+    return;
+  }
+  if (outcome === "processing") {
+    if (e.depositPaidAt || e.depositProcessingAt) return;
+    const [marked] = await ctx.db.update(cateringEvents).set({ depositProcessingAt: ctx.now(), updatedAt: ctx.now() }).where(and(eq(cateringEvents.id, e.id), sql`${cateringEvents.depositProcessingAt} is null`, sql`${cateringEvents.depositPaidAt} is null`)).returning();
+    if (marked) await notifyDepositProcessing(ctx, marked);
+    return;
+  }
   const updated = await confirmWithDeposit(ctx, e, { depositPaymentIntentId: paymentIntentId });
   if (!updated) return;
   await notifyDepositReceived(ctx, updated);
+}
+
+async function notifyDepositProcessing(ctx: AppContext, e: CateringEvent) {
+  const merchant = await loadMerchant(ctx.db, e.merchantId);
+  if (!merchant) return;
+  await notifyCustomer(ctx, {
+    userId: e.userId,
+    merchantId: merchant.id,
+    title: `${merchant.name}: deposit payment is processing`,
+    body: `Your ${money(e.depositCents)} deposit is processing. Bank debits can take a few business days. We'll confirm your event on ${e.eventDate} once ${merchant.name} receives it.`,
+    sms: false,
+    data: { type: "catering_deposit_processing", cateringEventId: e.id },
+  });
 }
 
 async function notifyDepositReceived(ctx: AppContext, e: CateringEvent) {

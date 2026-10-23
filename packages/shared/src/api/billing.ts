@@ -216,4 +216,9 @@ export interface ChargeModeResponse {
   chargeMode: "destination" | "direct";
   /** Direct charges only take effect while STRIPE_DIRECT_CHARGES is on. */
   directChargesEnabled: boolean;
+  /**
+   * Tiffin subscriptions whose saved customer / card were cleared because the mode changed (they live on the old
+   * account); each customer is asked to re-add their card at the next renewal. 0 when the mode did not change.
+   */
+  tiffinSubscriptionsReset: number;
 }

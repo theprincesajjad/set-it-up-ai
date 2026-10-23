@@ -564,7 +564,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "bangladesh_victory",
     name: "Bangladesh Victory Day",
-    greeting: { en: "Happy Victory Day", hi: "बांग्लादेश विजय दिवस की शुभकामनाएँ", ur: "یومِ فتح مبارک", pa: "ਬੰਗਲਾਦੇਸ਼ ਵਿਜੈ ਦਿਵਸ ਦੀਆਂ ਵਧਾਈਆਂ" },
+    greeting: { en: "Happy Victory Day", hi: "बांग्लादेश विजय दिवस की शुभकामनाएँ", ur: "بنگلہ دیش یومِ فتح مبارک", pa: "ਬੰਗਲਾਦੇਸ਼ ਵਿਜੈ ਦਿਵਸ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "national",
     approximate: false,
     dateNote: FIXED_NOTE,

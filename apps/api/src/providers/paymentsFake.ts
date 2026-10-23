@@ -292,6 +292,15 @@ export class FakePayments implements PaymentsProvider {
     return this.event("payment_intent.succeeded", this.intentObject(i), i.chargeMode === "direct" ? i.connectedAccountId : undefined);
   }
 
+  /** Simulate a bank debit (PAD) going in flight: the payment_intent.processing event. Succeed or fail it later. */
+  processPaymentIntent(id: string): PaymentsEvent {
+    const i = this.intents.get(id);
+    if (!i) throw new Error(`Unknown fake payment intent ${id}`);
+    i.status = "processing";
+    i.lastErrorCode = null;
+    return this.event("payment_intent.processing", this.intentObject(i), i.chargeMode === "direct" ? i.connectedAccountId : undefined);
+  }
+
   failPaymentIntent(id: string, opts: { code?: string } = {}): PaymentsEvent {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);

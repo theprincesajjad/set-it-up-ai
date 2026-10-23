@@ -196,8 +196,8 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
 }
 
 /** Webhook: a split's PaymentIntent succeeded or failed. */
-export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIntentId: string, outcome: "succeeded" | "failed"): Promise<void> {
-  if (outcome === "failed") return; // the guest can retry from the same link
+export async function onSplitPayment(ctx: AppContext, splitId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing"): Promise<void> {
+  if (outcome !== "succeeded") return; // failed: the guest can retry from the same link. processing: the share stays open until it clears.
   const [split] = await ctx.db.select().from(orderSplits).where(eq(orderSplits.id, splitId)).limit(1);
   if (!split) return;
   if (split.status === "paid" && split.stripePaymentIntentId === paymentIntentId) return;

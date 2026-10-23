@@ -161,11 +161,20 @@ describe("deposit and confirmation", () => {
     expect(intent).toMatchObject({ amountCents: 141250, metadata: { ll_kind: "hall_deposit", ll_id: id } });
     // Fetching again hands back the same intent.
     expect((await api(c.token, "GET", `/v1/me/banquet/bookings/${id}`)).body.deposit.paymentIntentId).toBe(intent.id);
+    // Bank debit in flight: still a hold (customer told once), a bounce clears the marker, then the debit clears.
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    expect((await env.db.select().from(hallBookings).where(eq(hallBookings.id, id)))[0]).toMatchObject({ status: "hold", depositPaidAt: null, depositProcessingAt: env.clock.now });
+    const heard = await env.db.select().from(notifications).where(and(eq(notifications.type, "hall_update"), eq(notifications.userId, c.user.id)));
+    expect(heard.filter((n) => n.title.endsWith("deposit payment is processing"))).toHaveLength(1);
+    await deliver(env, fake(env).failPaymentIntent(intent.id, { code: "account_closed" }));
+    expect((await env.db.select().from(hallBookings).where(eq(hallBookings.id, id)))[0]).toMatchObject({ status: "hold", depositProcessingAt: null });
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
     const ev = fake(env).succeedPaymentIntent(intent.id);
     await deliver(env, ev);
     await deliver(env, ev);
     const [row] = await env.db.select().from(hallBookings).where(eq(hallBookings.id, id));
-    expect(row).toMatchObject({ status: "confirmed", depositPaidAt: env.clock.now, holdExpiresAt: null });
+    expect(row).toMatchObject({ status: "confirmed", depositPaidAt: env.clock.now, depositProcessingAt: null, holdExpiresAt: null });
     expect((await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${id}/complete`)).body.status).toBe("completed");
   });
 

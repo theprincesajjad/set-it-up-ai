@@ -27,6 +27,48 @@ const memberBalance = async (merchantId: string, userId: string) => {
   return rows.find((r) => r.merchantId === merchantId)?.balance ?? 0;
 };
 
+describe("payment processing (bank debit in flight)", () => {
+  async function placeInApp(key: string) {
+    const m = await paidMerchant(env, { plan: "plus" });
+    const { latte } = await menu(m);
+    const c = await customer(env);
+    const placed = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: m.merchant.id, locationId: m.location.id, items: [{ catalogItemId: latte.id, quantity: 1 }], idempotencyKey: key });
+    return { m, c, order: placed.body.order, pi: placed.body.payment.paymentIntentId as string };
+  }
+  const row = async (id: string) => (await env.db.select().from(orders).where(eq(orders.id, id)))[0]!;
+
+  it("marks the order processing without paying it, never charges twice, and pays when the debit clears", async () => {
+    const { m, c, order, pi } = await placeInApp("proc-0001");
+    expect((await deliver(env, fake(env).processPaymentIntent(pi))).statusCode).toBe(200);
+    expect(await row(order.id)).toMatchObject({ paymentStatus: "unpaid", paymentProcessingAt: env.clock.now, paidAt: null });
+    // Still out of the kitchen queue, and no new PaymentIntent is created for it: the customer gets the same one back.
+    expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders`)).body.items).toHaveLength(0);
+    expect((await call(env, c.token, "GET", `/v1/me/orders/${order.id}`)).body.payment?.paymentIntentId ?? pi).toBe(pi);
+    expect(fake(env).intents.size).toBe(1);
+    // A replayed or second processing event changes nothing.
+    env.clock.now = new Date(env.clock.now.getTime() + 60_000);
+    await deliver(env, fake(env).processPaymentIntent(pi));
+    expect((await row(order.id)).paymentProcessingAt).toEqual(new Date(env.clock.now.getTime() - 60_000));
+    // The debit clears.
+    await deliver(env, fake(env).succeedPaymentIntent(pi));
+    expect(await row(order.id)).toMatchObject({ paymentStatus: "paid", paymentProcessingAt: null });
+    expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders`)).body.items).toHaveLength(1);
+  });
+
+  it("a debit that fails after processing reverts the order to failed and clears the marker", async () => {
+    const { order, pi } = await placeInApp("proc-0002");
+    await deliver(env, fake(env).processPaymentIntent(pi));
+    expect((await row(order.id)).paymentProcessingAt).toBeTruthy();
+    await deliver(env, fake(env).failPaymentIntent(pi, { code: "account_closed" }));
+    expect(await row(order.id)).toMatchObject({ paymentStatus: "failed", paymentProcessingAt: null });
+    // A late processing event for an order that already paid does not mark it processing again.
+    const paid = await placeInApp("proc-0003");
+    await deliver(env, fake(env).succeedPaymentIntent(paid.pi));
+    await deliver(env, fake(env).processPaymentIntent(paid.pi));
+    expect(await row(paid.order.id)).toMatchObject({ paymentStatus: "paid", paymentProcessingAt: null });
+  });
+});
+
 describe("tax", () => {
   it("Ontario HST 13% rounds half-up; Quebec stacks GST + QST", () => {
     expect(computeTax(1375, "ON").taxCents).toBe(179);

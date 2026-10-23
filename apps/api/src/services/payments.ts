@@ -18,7 +18,7 @@ import { isRestaurantObject, onRestaurantCheckoutCompleted, onRestaurantInvoiceP
 import { requireFeature } from "./features.js";
 import { onInvoicePayment } from "./invoices.js";
 import { onOrderPayment } from "./orders.js";
-import { onTiffinPayment, onTiffinSetup } from "./tiffin.js";
+import { onTiffinPayment, onTiffinSetup, resetSavedMethodsForChargeModeChange } from "./tiffin.js";
 import { onDepositPayment } from "./quotes.js";
 import { onSplitPayment } from "./splits.js";
 import { onCateringDeposit } from "./catering.js";
@@ -132,11 +132,15 @@ export async function setChargeMode(ctx: AppContext, actorId: string, merchantId
   const [before] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!before) throw notFound("Merchant");
   if (chargeMode === "direct" && !before.stripeAccountId) throw conflict("Connect a Stripe account before switching to direct charges.");
+  let tiffinSubscriptionsReset = 0;
   if (before.chargeMode !== chargeMode) {
     await ctx.db.update(merchants).set({ chargeMode, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
-    await ctx.db.insert(auditLogs).values({ merchantId, actorUserId: actorId, action: "billing.charge_mode_changed", entity: "merchant", entityId: merchantId, data: { from: before.chargeMode, to: chargeMode } });
+    // Saved tiffin customers and payment methods live on the old account (platform vs the merchant's connected account).
+    // Reset on any stored change, not only an effective one: the STRIPE_DIRECT_CHARGES flag can be switched on later.
+    tiffinSubscriptionsReset = await resetSavedMethodsForChargeModeChange(ctx, merchantId);
+    await ctx.db.insert(auditLogs).values({ merchantId, actorUserId: actorId, action: "billing.charge_mode_changed", entity: "merchant", entityId: merchantId, data: { from: before.chargeMode, to: chargeMode, tiffinSubscriptionsReset } });
   }
-  return { merchantId, chargeMode, directChargesEnabled: !!ctx.config.stripe.directCharges };
+  return { merchantId, chargeMode, directChargesEnabled: !!ctx.config.stripe.directCharges, tiffinSubscriptionsReset };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -201,7 +205,7 @@ async function onAccountUpdated(ctx: AppContext, account: Obj) {
     .where(eq(merchants.stripeAccountId, String(account.id)));
 }
 
-async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | "failed", eventId: string) {
+async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | "failed" | "processing", eventId: string) {
   if (pi.metadata?.[PLATFORM_CHARGE_MARKER] === "true") {
     if (outcome === "succeeded") {
       await runPlatformHandlers(ctx, { metadata: { ...pi.metadata }, paymentIntentId: String(pi.id), checkoutSessionId: null, amountCents: typeof pi.amount === "number" ? pi.amount : null, stripeEventId: eventId });
@@ -259,6 +263,8 @@ export async function applyPaymentsEvent(ctx: AppContext, event: PaymentsEvent):
       return onBillingInvoiceFailed(ctx, obj);
     case "payment_intent.succeeded":
       return onPaymentIntent(ctx, obj, "succeeded", event.id);
+    case "payment_intent.processing":
+      return onPaymentIntent(ctx, obj, "processing", event.id);
     case "payment_intent.payment_failed":
       return onPaymentIntent(ctx, obj, "failed", event.id);
     case "setup_intent.succeeded":

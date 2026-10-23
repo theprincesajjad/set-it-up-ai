@@ -718,14 +718,20 @@ export async function cancelMyOrder(ctx: AppContext, userId: string, orderId: st
 // ---------------------------------------------------------------------------
 // Payment webhooks
 // ---------------------------------------------------------------------------
-export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIntentId: string, outcome: "succeeded" | "failed"): Promise<void> {
+export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing"): Promise<void> {
   const [order] = await ctx.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!order) return;
   if (order.stripePaymentIntentId && order.stripePaymentIntentId !== paymentIntentId) return;
   const now = ctx.now();
+  if (outcome === "processing") {
+    // A bank debit (PAD) in flight: not paid yet, and the same PaymentIntent is reused, so it can't be charged twice.
+    if (order.paymentStatus === "paid" || order.paymentStatus === "refunded" || order.paymentProcessingAt) return;
+    await ctx.db.update(orders).set({ paymentProcessingAt: now, updatedAt: now }).where(eq(orders.id, order.id));
+    return;
+  }
   if (outcome === "failed") {
     if (order.paymentStatus !== "paid" && order.paymentStatus !== "refunded" && !order.depositPaidAt) {
-      await ctx.db.update(orders).set({ paymentStatus: "failed", updatedAt: now }).where(eq(orders.id, order.id));
+      await ctx.db.update(orders).set({ paymentStatus: "failed", paymentProcessingAt: null, updatedAt: now }).where(eq(orders.id, order.id));
     }
     return;
   }
@@ -733,14 +739,14 @@ export async function onOrderPayment(ctx: AppContext, orderId: string, paymentIn
   if (order.status === "cancelled") {
     // Paid after it was cancelled (e.g. payment raced a cancel): refund right away.
     await refundConnectPayment(ctx, await merchantOf(ctx, order.merchantId), { paymentIntentId, idempotencyKey: `order:${order.id}:refund`, reason: "Order was cancelled" });
-    await ctx.db.update(orders).set({ paymentStatus: "refunded", stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
+    await ctx.db.update(orders).set({ paymentStatus: "refunded", stripePaymentIntentId: paymentIntentId, paymentProcessingAt: null, updatedAt: now }).where(eq(orders.id, order.id));
     return;
   }
   if (order.kind === "preorder" && order.depositCents > 0) {
     // Deposit only: "authorized" means the deposit is in and the balance is due at pickup.
-    await ctx.db.update(orders).set({ paymentStatus: "authorized", depositPaidAt: now, stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
+    await ctx.db.update(orders).set({ paymentStatus: "authorized", depositPaidAt: now, stripePaymentIntentId: paymentIntentId, paymentProcessingAt: null, updatedAt: now }).where(eq(orders.id, order.id));
     return;
   }
-  await ctx.db.update(orders).set({ paymentStatus: "paid", paidAt: now, stripePaymentIntentId: paymentIntentId, updatedAt: now }).where(eq(orders.id, order.id));
+  await ctx.db.update(orders).set({ paymentStatus: "paid", paidAt: now, stripePaymentIntentId: paymentIntentId, paymentProcessingAt: null, updatedAt: now }).where(eq(orders.id, order.id));
   await fireOrder(ctx, order.id);
 }

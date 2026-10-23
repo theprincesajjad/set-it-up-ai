@@ -4,7 +4,7 @@
  * (/i/<payToken>) or marked paid at the counter. On payment the customer
  * earns points through ledger.awardPurchase (idempotency key `invoice:<id>`).
  */
-import { and, desc, eq, inArray, lt, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
 import { invoices, serviceTickets, type DbOrTx, type LineItem } from "@ll/db";
 import type { FeatureKey, serviceApi } from "@ll/shared";
 import type { z } from "zod";
@@ -182,7 +182,7 @@ export async function payInvoice(ctx: AppContext, inv: Invoice): Promise<service
 /** Mark paid, award points once, log on the ticket, thank the customer. */
 export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts: { inApp: boolean; paymentIntentId?: string; actorUserId?: string | null; note?: string }): Promise<Invoice> {
   const now = ctx.now();
-  const patch: Partial<typeof invoices.$inferInsert> = { status: "paid", paidAt: now };
+  const patch: Partial<typeof invoices.$inferInsert> = { status: "paid", paidAt: now, paymentProcessingAt: null };
   if (opts.paymentIntentId) patch.stripePaymentIntentId = opts.paymentIntentId;
   if (!opts.inApp) {
     const m = await loadMerchant(ctx.db, inv.merchantId);
@@ -244,11 +244,19 @@ export async function voidInvoice(ctx: AppContext, staff: StaffContext, invoiceI
   return invoiceDto(row!, ctx.config.publicWebUrl);
 }
 
-export async function onInvoicePayment(ctx: AppContext, invoiceId: string, paymentIntentId: string, outcome: "succeeded" | "failed") {
+export async function onInvoicePayment(ctx: AppContext, invoiceId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing") {
   const [inv] = await ctx.db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
   if (!inv) return;
   if (inv.stripePaymentIntentId && inv.stripePaymentIntentId !== paymentIntentId) return;
+  if (outcome === "processing") {
+    // A bank debit in flight: the invoice stays open (the same PaymentIntent is reused, so no second charge) until it clears.
+    if (inv.status !== "open" || inv.paymentProcessingAt) return;
+    const [marked] = await ctx.db.update(invoices).set({ paymentProcessingAt: ctx.now() }).where(and(eq(invoices.id, inv.id), isNull(invoices.paymentProcessingAt))).returning({ id: invoices.id });
+    if (marked && inv.ticketId) await addTicketEvent(ctx.db, inv.ticketId, { note: `Payment for invoice #${inv.number} is processing. Bank debits can take a few business days.`, visibleToCustomer: true });
+    return;
+  }
   if (outcome === "failed") {
+    if (inv.paymentProcessingAt) await ctx.db.update(invoices).set({ paymentProcessingAt: null }).where(eq(invoices.id, inv.id));
     if (inv.ticketId) await addTicketEvent(ctx.db, inv.ticketId, { note: `Payment for invoice #${inv.number} failed`, visibleToCustomer: false });
     return;
   }

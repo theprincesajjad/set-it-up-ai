@@ -200,6 +200,16 @@ describe("quote → signature → deposit → invoice", () => {
     expect((await api(staff.token, "POST", `${base}/invoice`, {})).status).toBe(409); // not confirmed yet
     expect((await api(staff.token, "GET", `${m.base}/catering/calendar?from=2026-12-01&to=2026-12-31`)).body.items).toHaveLength(0);
 
+    // Deposit by bank debit: processing keeps the event quoted (customer told once), a bounce clears it, then the debit clears.
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+    expect((await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, id)))[0]).toMatchObject({ status: "quoted", depositPaidAt: null, depositProcessingAt: env.clock.now });
+    const processingNotes = await env.db.select().from(notifications).where(and(eq(notifications.type, "catering_update"), eq(notifications.userId, (await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, id)))[0]!.userId)));
+    expect(processingNotes.filter((n) => n.title.endsWith("deposit payment is processing"))).toHaveLength(1);
+    await deliver(env, fake(env).failPaymentIntent(intent.id, { code: "account_closed" }));
+    expect((await env.db.select().from(cateringEvents).where(eq(cateringEvents.id, id)))[0]).toMatchObject({ status: "quoted", depositProcessingAt: null });
+    await deliver(env, fake(env).processPaymentIntent(intent.id));
+
     // Deposit webhook (delivered twice) confirms the event.
     const ev = fake(env).succeedPaymentIntent(intent.id);
     await deliver(env, ev);

@@ -154,7 +154,9 @@ export function chargeDto(c: Charge): tiffinApi.ChargeDto {
     amountCents: c.amountCents,
     creditCents: c.creditCents,
     platformFeeCents: c.platformFeeCents,
-    status: c.status as tiffinApi.ChargeDto["status"],
+    // "processing" is an internal state (PAD debit in flight); callers see a pending charge with processing: true.
+    status: (c.status === "processing" ? "pending" : c.status) as tiffinApi.ChargeDto["status"],
+    ...(c.status === "processing" ? { processing: true } : {}),
     paidAt: iso(c.paidAt),
     createdAt: c.createdAt.toISOString(),
   };
@@ -591,7 +593,8 @@ async function startPayment(ctx: AppContext, merchant: Merchant, sub: Sub, charg
   const customerId = await ensurePayerCustomer(ctx, merchant, sub);
   const pi = await createConnectPayment(ctx, merchant, {
     ...chargeArgs(merchant, sub, charge),
-    idempotencyKey: `tiffin:${charge.id}:pi${attempt ? `:${attempt}` : ""}`,
+    // A charge re-created after the merchant switched to direct charges is a different request (other account), so another key.
+    idempotencyKey: `tiffin:${charge.id}:pi${attempt ? `:${attempt}` : ""}${chargeModeFor(ctx, merchant) === "direct" ? ":direct" : ""}`,
     customerId,
     setupFutureUsage: "off_session",
   });
@@ -608,6 +611,35 @@ function chargeArgs(merchant: Merchant, sub: Sub, charge: Charge) {
     metadata: { ll_kind: "tiffin", ll_id: charge.id, merchant_id: merchant.id, subscription_id: sub.id },
     ...(sub.paymentMethod === "pad" ? { paymentMethodTypes: ["acss_debit"] } : {}),
   };
+}
+
+/**
+ * The merchant's charge mode changed (destination <-> direct): saved Stripe customers and payment methods live on the
+ * old account (the platform or the connected account) and can't be charged on the new one. Clear them for every live
+ * subscription that has one, and drop the unpaid PaymentIntent of a pending charge, which also lives on the old account.
+ * The next renewal then takes the renewal_due path (a new intent on the new account, and the customer is asked to
+ * confirm it and re-add their card, which is kept for the renewals after). Returns how many subscriptions were reset.
+ * A payment already processing is left alone: its debit settles on the old account and the webhook still lands.
+ */
+export async function resetSavedMethodsForChargeModeChange(ctx: AppContext, merchantId: string): Promise<number> {
+  const reset = await ctx.db
+    .update(tiffinSubscriptions)
+    .set({ stripeCustomerId: null, paymentMethodId: null, paymentMethodBrand: null, paymentMethodLast4: null, setupIntentId: null, updatedAt: ctx.now() })
+    .where(
+      and(
+        eq(tiffinSubscriptions.merchantId, merchantId),
+        ne(tiffinSubscriptions.status, "cancelled"),
+        or(sql`${tiffinSubscriptions.stripeCustomerId} is not null`, sql`${tiffinSubscriptions.paymentMethodId} is not null`, sql`${tiffinSubscriptions.setupIntentId} is not null`),
+      ),
+    )
+    .returning({ id: tiffinSubscriptions.id });
+  if (reset.length) {
+    await ctx.db
+      .update(tiffinCharges)
+      .set({ stripePaymentIntentId: null })
+      .where(and(inArray(tiffinCharges.subscriptionId, reset.map((r) => r.id)), eq(tiffinCharges.status, "pending")));
+  }
+  return reset.length;
 }
 
 /**
@@ -682,10 +714,11 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
 }
 
 /** Webhook entry (payment_intent.* with ll_kind "tiffin"). */
-export async function onTiffinPayment(ctx: AppContext, chargeId: string, paymentIntentId: string, outcome: "succeeded" | "failed", pi?: PaidWith): Promise<void> {
+export async function onTiffinPayment(ctx: AppContext, chargeId: string, paymentIntentId: string, outcome: "succeeded" | "failed" | "processing", pi?: PaidWith): Promise<void> {
   const [charge] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, chargeId)).limit(1);
   if (!charge) return;
   if (outcome === "succeeded") return settleCharge(ctx, chargeId, paymentIntentId, pi);
+  if (outcome === "processing") return markProcessing(ctx, charge, paymentIntentId);
   if (charge.status === "paid" || charge.status === "refunded") return;
   if (charge.stripePaymentIntentId && charge.stripePaymentIntentId !== paymentIntentId) return; // an older attempt
   // An off-session attempt that needs the customer: the charge stays pending and they confirm it (renewal_due was sent).
@@ -693,6 +726,30 @@ export async function onTiffinPayment(ctx: AppContext, chargeId: string, payment
   // Already failed by the off-session charge itself; the webhook is the same news.
   if (charge.status === "failed" && charge.stripePaymentIntentId === paymentIntentId) return;
   await failCharge(ctx, charge, paymentIntentId);
+}
+
+/**
+ * A PAD debit is in flight (payment_intent.processing, takes days): the charge is neither paid nor failed. The subscription
+ * keeps its status, nothing else is charged for the period (the same PaymentIntent is kept, rollBilling skips charges that
+ * already have one, and retry-payment refuses while it's processing). A later success settles it, a failure fails it normally.
+ */
+async function markProcessing(ctx: AppContext, charge: Charge, paymentIntentId: string): Promise<void> {
+  if (charge.status !== "pending") return; // paid / refunded / failed already, or processing and this is a replay
+  if (charge.stripePaymentIntentId && charge.stripePaymentIntentId !== paymentIntentId) return; // an older attempt
+  const [marked] = await ctx.db.update(tiffinCharges).set({ status: "processing", stripePaymentIntentId: paymentIntentId }).where(and(eq(tiffinCharges.id, charge.id), eq(tiffinCharges.status, "pending"))).returning();
+  if (!marked) return;
+  await notifyProcessing(ctx, marked);
+}
+
+async function notifyProcessing(ctx: AppContext, charge: Charge): Promise<void> {
+  const row = await loadSubRow(ctx.db, charge.subscriptionId);
+  if (!row || row.sub.status === "cancelled") return;
+  const [merchant] = await ctx.db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, row.sub.merchantId)).limit(1);
+  await notify(ctx, row.sub.userId, row.sub.merchantId, "tiffin_update", "Your tiffin payment is processing", `${merchant?.name ?? "Your kitchen"} is collecting ${money(charge.amountCents)} for ${row.plan.name} from your bank account. Bank debits can take a few business days. We'll let you know when it clears.`, {
+    subscriptionId: row.sub.id,
+    chargeId: charge.id,
+    event: "payment_processing",
+  });
 }
 
 /** A charge that didn't go through: mark it failed, an active subscription past due, and tell the customer. */
@@ -714,8 +771,10 @@ async function failCharge(ctx: AppContext, charge: Charge, paymentIntentId: stri
 export async function retryPayment(ctx: AppContext, userId: string, subId: string): Promise<tiffinApi.RetryPaymentResponse> {
   const row = await mySubRow(ctx.db, userId, subId);
   if (row.sub.status !== "past_due" && row.sub.status !== "pending" && row.sub.status !== "active") throw conflict(`A ${row.sub.status} subscription has nothing to pay`);
-  const [charge] = await ctx.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, subId), inArray(tiffinCharges.status, ["failed", "pending"]))).orderBy(desc(tiffinCharges.periodStart)).limit(1);
+  const [charge] = await ctx.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, subId), inArray(tiffinCharges.status, ["failed", "pending", "processing"]))).orderBy(desc(tiffinCharges.periodStart)).limit(1);
   if (!charge) throw conflict("Nothing is due");
+  // A bank debit is already on its way: paying again would charge the period twice.
+  if (charge.status === "processing") throw conflict("Your bank payment is still processing. It can take a few business days.");
   const merchant = (await ctx.db.select().from(merchants).where(eq(merchants.id, row.sub.merchantId)).limit(1))[0]!;
   // A pending charge that already has an intent is reused; a failed one gets a fresh attempt.
   let payment: tiffinApi.PaymentIntentRef | null;
@@ -795,8 +854,8 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
       const forPeriod = `${money(charge.amountCents)} for ${plan.name} from ${charge.periodStart}${charge.creditCents ? `, after ${money(charge.creditCents)} credit for skipped days` : ""}`;
       // A saved method is charged without the customer; a free period (under the card minimum) settles below like before.
       if (sub.paymentMethodId && sub.stripeCustomerId && merchant.stripeAccountId && charge.amountCents >= MIN_CHARGE_CENTS) {
-        const r = await chargeConnectSavedMethod(ctx, merchant, { ...chargeArgs(merchant, sub, charge), idempotencyKey: `tiffin:${charge.id}:off`, customerId: sub.stripeCustomerId, paymentMethodId: sub.paymentMethodId });
-        await ctx.db.update(tiffinCharges).set({ stripePaymentIntentId: r.intent.id, status: "pending" }).where(eq(tiffinCharges.id, charge.id));
+        const r = await chargeConnectSavedMethod(ctx, merchant, { ...chargeArgs(merchant, sub, charge), idempotencyKey: `tiffin:${charge.id}:off${chargeModeFor(ctx, merchant) === "direct" ? ":direct" : ""}`, customerId: sub.stripeCustomerId, paymentMethodId: sub.paymentMethodId });
+        await ctx.db.update(tiffinCharges).set({ stripePaymentIntentId: r.intent.id, status: r.outcome === "processing" ? "processing" : "pending" }).where(eq(tiffinCharges.id, charge.id));
         charged++;
         if (r.outcome === "succeeded") {
           await settleCharge(ctx, charge.id, r.intent.id, { paymentMethodId: sub.paymentMethodId, customerId: sub.stripeCustomerId });
@@ -805,7 +864,10 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
           await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin renewal needs you", `${forPeriod}. Your bank wants you to confirm this payment.`, { subscriptionId: sub.id, chargeId: charge.id, event: "renewal_due", reason: "authentication_required" });
         } else if (r.outcome === "declined") {
           await failCharge(ctx, { ...charge, status: "pending" }, r.intent.id);
-        } // processing (PAD): the webhook settles it when the debit clears.
+        } else if (r.outcome === "processing") {
+          // PAD: the debit clears in days; the webhook settles it (or fails it). Tell the customer it's on its way.
+          await notifyProcessing(ctx, { ...charge, status: "processing" });
+        }
         continue;
       }
       const ref = await startPayment(ctx, merchant, sub, charge);

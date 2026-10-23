@@ -130,7 +130,7 @@ export async function attachAddOn(ctx: AppContext, merchant: Merchant, id: AddOn
   let itemId = existing?.status === "active" ? existing.stripeSubscriptionItemId : null;
   if (itemId) {
     if (existing!.quantity === quantity) return addOnDto(id, existing, tier);
-    await payments.updateSubscriptionItem({ itemId, quantity });
+    await payments.updateSubscriptionItem({ itemId, quantity, subscriptionId: live.stripeSubscriptionId!, addOnId: id });
   } else {
     ({ itemId } = await payments.addSubscriptionItem({
       subscriptionId: live.stripeSubscriptionId!,
@@ -156,7 +156,11 @@ export async function detachAddOn(ctx: AppContext, merchant: Merchant, id: AddOn
   const [existing] = await ctx.db.select().from(merchantAddOns).where(and(eq(merchantAddOns.merchantId, merchant.id), eq(merchantAddOns.addOnId, id)));
   const tier = (await currentRestaurantSubscription(ctx, merchant.id))?.restaurantTier ?? null;
   if (!existing || existing.status !== "active") throw conflict(`${ADD_ONS[id].name} isn't on your plan.`);
-  if (existing.stripeSubscriptionItemId) await getPayments(ctx).removeSubscriptionItem(existing.stripeSubscriptionItemId);
+  if (existing.stripeSubscriptionItemId) {
+    // A founding subscription is managed by a schedule, so the provider needs the subscription to remove the item through it.
+    const live = await currentRestaurantSubscription(ctx, merchant.id);
+    await getPayments(ctx).removeSubscriptionItem(existing.stripeSubscriptionItemId, { subscriptionId: live?.stripeSubscriptionId ?? undefined, addOnId: id });
+  }
   const [row] = await ctx.db
     .update(merchantAddOns)
     .set({ status: "cancelled", stripeSubscriptionItemId: null })
