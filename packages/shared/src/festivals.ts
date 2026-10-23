@@ -111,7 +111,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "chaand_raat",
     name: "Chaand Raat",
-    greeting: { en: "Chaand Raat Mubarak", hi: "चांद रात मुबारक", ur: "چاند رات مبارک", pa: "ਚੰਨ ਰਾਤ ਮੁਬਾਰਕ" },
+    greeting: { en: "Chaand Raat Mubarak", hi: "चाँद रात मुबारक", ur: "چاند رات مبارک", pa: "ਚੰਨ ਰਾਤ ਮੁਬਾਰਕ" },
     tradition: "islamic",
     approximate: true,
     dateNote: ISLAMIC_NOTE,
@@ -173,7 +173,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "eid_al_adha",
     name: "Eid al-Adha",
-    greeting: { en: "Eid Mubarak", hi: "ईद अल-अज़हा मुबारक", ur: "عید الاضحیٰ مبارک", pa: "ਈਦ ਮੁਬਾਰਕ" },
+    greeting: { en: "Eid Mubarak", hi: "ईद-उल-अज़हा मुबारक", ur: "عید الاضحیٰ مبارک", pa: "ਈਦ ਮੁਬਾਰਕ" },
     tradition: "islamic",
     approximate: true,
     dateNote: ISLAMIC_NOTE,
@@ -260,7 +260,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "mawlid",
     name: "Mawlid (Eid Milad un Nabi)",
-    greeting: { en: "Eid Milad un Nabi Mubarak", hi: "ईद मिलादुन्नबी मुबारक", ur: "عید میلاد النبی مبارک", pa: "ਈਦ ਮਿਲਾਦ ਉਨ ਨਬੀ ਮੁਬਾਰਕ" },
+    greeting: { en: "Eid Milad un Nabi Mubarak", hi: "ईद मिलादुन्नबी मुबारक", ur: "عید میلاد النبی مبارک", pa: "ਈਦ ਮਿਲਾਦ-ਉਨ-ਨਬੀ ਮੁਬਾਰਕ" },
     tradition: "islamic",
     approximate: true,
     dateNote: ISLAMIC_NOTE,
@@ -285,7 +285,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "diwali",
     name: "Diwali",
-    greeting: { en: "Happy Diwali", hi: "दीपावली की शुभकामनाएं", ur: "دیوالی مبارک", pa: "ਦੀਵਾਲੀ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Diwali", hi: "दिवाली की शुभकामनाएँ", ur: "دیوالی مبارک", pa: "ਦੀਵਾਲੀ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -322,7 +322,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "holi",
     name: "Holi",
-    greeting: { en: "Happy Holi", hi: "होली की शुभकामनाएं", pa: "ਹੋਲੀ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Holi", hi: "होली की शुभकामनाएँ", pa: "ਹੋਲੀ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -347,7 +347,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "vaisakhi",
     name: "Vaisakhi",
-    greeting: { en: "Happy Vaisakhi", hi: "वैसाखी की बधाई", pa: "ਵੈਸਾਖੀ ਦੀਆਂ ਵਧਾਈਆਂ" },
+    greeting: { en: "Happy Vaisakhi", hi: "बैसाखी की बधाई", pa: "ਵਿਸਾਖੀ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "sikh",
     approximate: false,
     dateNote: FIXED_NOTE,
@@ -372,7 +372,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "navratri",
     name: "Navratri",
-    greeting: { en: "Happy Navratri", hi: "नवरात्रि की शुभकामनाएं", pa: "ਨਰਾਤਿਆਂ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Navratri", hi: "नवरात्रि की शुभकामनाएँ", pa: "ਨਰਾਤਿਆਂ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -397,7 +397,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "dussehra",
     name: "Dussehra",
-    greeting: { en: "Happy Dussehra", hi: "दशहरा की शुभकामनाएं", pa: "ਦੁਸਹਿਰੇ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Dussehra", hi: "दशहरे की शुभकामनाएँ", pa: "ਦੁਸਹਿਰੇ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -422,7 +422,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "raksha_bandhan",
     name: "Raksha Bandhan",
-    greeting: { en: "Happy Raksha Bandhan", hi: "रक्षा बंधन की शुभकामनाएं", pa: "ਰੱਖੜੀ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Raksha Bandhan", hi: "रक्षाबंधन की शुभकामनाएँ", pa: "ਰੱਖੜੀ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -472,7 +472,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "karva_chauth",
     name: "Karva Chauth",
-    greeting: { en: "Happy Karva Chauth", hi: "करवा चौथ की शुभकामनाएं", pa: "ਕਰਵਾ ਚੌਥ ਦੀਆਂ ਮੁਬਾਰਕਾਂ" },
+    greeting: { en: "Happy Karva Chauth", hi: "करवा चौथ की शुभकामनाएँ", pa: "ਕਰਵਾ ਚੌਥ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "hindu",
     approximate: true,
     dateNote: HINDU_NOTE,
@@ -497,7 +497,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "gurpurab",
     name: "Guru Nanak Gurpurab",
-    greeting: { en: "Happy Gurpurab", hi: "गुरपर्व की बधाई", pa: "ਗੁਰਪੁਰਬ ਦੀਆਂ ਲੱਖ ਲੱਖ ਵਧਾਈਆਂ" },
+    greeting: { en: "Happy Gurpurab", hi: "गुरुपर्व की बधाई", pa: "ਗੁਰਪੁਰਬ ਦੀਆਂ ਲੱਖ ਲੱਖ ਵਧਾਈਆਂ" },
     tradition: "sikh",
     approximate: true,
     dateNote: SIKH_NOTE,
@@ -522,7 +522,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "pakistan_independence",
     name: "Pakistan Independence Day",
-    greeting: { en: "Happy Independence Day", ur: "یوم آزادی مبارک", hi: "पाकिस्तान स्वतंत्रता दिवस मुबारक", pa: "ਆਜ਼ਾਦੀ ਦਿਵਸ ਮੁਬਾਰਕ" },
+    greeting: { en: "Happy Independence Day", ur: "یوم آزادی مبارک", hi: "यौम-ए-आज़ादी मुबारक", pa: "ਆਜ਼ਾਦੀ ਦਿਵਸ ਮੁਬਾਰਕ" },
     tradition: "national",
     approximate: false,
     dateNote: FIXED_NOTE,
@@ -543,7 +543,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "india_independence",
     name: "India Independence Day",
-    greeting: { en: "Happy Independence Day", hi: "स्वतंत्रता दिवस की शुभकामनाएं", pa: "ਆਜ਼ਾਦੀ ਦਿਵਸ ਦੀਆਂ ਵਧਾਈਆਂ", ur: "یوم آزادی مبارک" },
+    greeting: { en: "Happy Independence Day", hi: "स्वतंत्रता दिवस की शुभकामनाएँ", pa: "ਆਜ਼ਾਦੀ ਦਿਵਸ ਦੀਆਂ ਵਧਾਈਆਂ", ur: "یوم آزادی مبارک" },
     tradition: "national",
     approximate: false,
     dateNote: FIXED_NOTE,
@@ -564,7 +564,7 @@ export const FESTIVALS: readonly FestivalDef[] = [
   {
     id: "bangladesh_victory",
     name: "Bangladesh Victory Day",
-    greeting: { en: "Happy Victory Day", hi: "बांग्लादेश विजय दिवस", ur: "بنگلہ دیش یوم فتح", pa: "ਬੰਗਲਾਦੇਸ਼ ਵਿਜੈ ਦਿਵਸ" },
+    greeting: { en: "Happy Victory Day", hi: "बांग्लादेश विजय दिवस की शुभकामनाएँ", ur: "یومِ فتح مبارک", pa: "ਬੰਗਲਾਦੇਸ਼ ਵਿਜੈ ਦਿਵਸ ਦੀਆਂ ਵਧਾਈਆਂ" },
     tradition: "national",
     approximate: false,
     dateNote: FIXED_NOTE,

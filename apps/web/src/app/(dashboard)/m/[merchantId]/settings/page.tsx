@@ -33,9 +33,10 @@ export default function SettingsPage() {
     <div className="flex max-w-[860px] flex-col gap-6 pb-20">
       <PageHeader flush title="Settings" description={detail.merchant.name} />
       <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} />
-      <div role="tabpanel">
-        {tab === "profile" ? <Profile /> : tab === "hours" ? <HoursTab /> : tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}
-      </div>
+      {/* Profile and Hours stay mounted so an unsaved draft survives a tab switch; only the active tab shows its save bar. */}
+      <div role="tabpanel" hidden={tab !== "profile"}><Profile active={tab === "profile"} /></div>
+      <div role="tabpanel" hidden={tab !== "hours"}><HoursTab active={tab === "hours"} /></div>
+      {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
     </div>
   );
 }
@@ -54,7 +55,7 @@ function profileErrors(f: ProfileDraft, phone: string | null, phoneDigits: strin
   return e;
 }
 
-function Profile() {
+function Profile({ active }: { active: boolean }) {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const m = detail.merchant;
@@ -112,7 +113,7 @@ function Profile() {
           </div>
         </form>
       </Panel>
-      <SaveBar dirty={dirty} error={act.error} onDiscard={() => { setF(initial); setPhoneDigits(initialDigits); setPhone(m.phone); setTried(false); act.setError(null); }}>
+      <SaveBar dirty={dirty && active} error={act.error} onDiscard={() => { setF(initial); setPhoneDigits(initialDigits); setPhone(m.phone); setTried(false); act.setError(null); }}>
         <Button type="submit" form="profile-form" size="sm" loading={act.busy}>
           Save profile
         </Button>
@@ -121,7 +122,7 @@ function Profile() {
   );
 }
 
-function HoursTab() {
+function HoursTab({ active }: { active: boolean }) {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const initial = useMemo(() => hoursDraft(detail.merchant.hours), [detail.merchant.hours]);
@@ -133,7 +134,7 @@ function HoursTab() {
       <Panel title="Opening hours" description={detail.locations.length > 1 ? `For ${detail.locations[0]?.name}. Edit other locations in Locations.` : "Shown on your shop page and the map."}>
         <HoursEditor value={h} onChange={setH} />
       </Panel>
-      <SaveBar dirty={dirty} error={act.error} onDiscard={() => { setH(initial); act.setError(null); }}>
+      <SaveBar dirty={dirty && active} error={act.error} onDiscard={() => { setH(initial); act.setError(null); }}>
         <Button size="sm" loading={act.busy} onClick={async () => {
           const r = await act.run(() => api.update({ hours: hoursFromDraft(h) }));
           if (r) {

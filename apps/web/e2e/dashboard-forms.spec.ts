@@ -48,8 +48,14 @@ test.describe("settings", () => {
     await about.fill(`${original} Edited ${run}.`);
     await expect(saveBar(page)).toBeVisible();
     await expect(saveBar(page).getByText("You have unsaved changes")).toBeVisible();
+    // An unsaved draft survives a trip to another tab (and that tab has no save bar of its own).
+    await page.getByRole("tab", { name: "Hours" }).click();
+    await expect(saveBar(page)).toHaveCount(0);
+    await page.getByRole("tab", { name: "Shop profile" }).click();
+    await expect(about).toHaveValue(`${original} Edited ${run}.`);
+    await expect(saveBar(page)).toBeVisible();
     await page.getByLabel(/^Email/).fill("not-an-email");
-    await page.getByLabel("Brand colour").fill("orange");
+    await page.getByRole("textbox", { name: "Brand colour", exact: true }).fill("orange");
     await page.getByLabel(/^Website/).fill("hearth.example");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("That email doesn't look right.")).toBeVisible();
@@ -63,7 +69,7 @@ test.describe("settings", () => {
     await expect(saveBar(page)).toHaveCount(0);
     await expect(about).toHaveValue(original);
     await expect(page.getByLabel(/^Email/)).toHaveValue(email);
-    await expect(page.getByLabel("Brand colour")).toHaveValue(/^#[0-9A-Fa-f]{6}$/);
+    await expect(page.getByRole("textbox", { name: "Brand colour", exact: true })).toHaveValue(/^#[0-9A-Fa-f]{6}$/);
     await expect(page.getByText("That email doesn't look right.")).toHaveCount(0);
 
     // A valid edit saves, the bar goes away and the value survives a reload.
@@ -86,24 +92,24 @@ test.describe("settings", () => {
     await signIn(page, "hearth-and-crumb");
     await page.goto(`/m/${id}/settings`);
     await page.getByRole("tab", { name: "Hours" }).click();
-    const monOpen = page.getByLabel("Monday opens");
-    const before = await monOpen.inputValue();
-    await monOpen.fill("06:15");
+    const tueOpen = page.getByLabel("Tuesday opens");
+    const before = await tueOpen.inputValue();
+    await tueOpen.fill("06:15");
     await expect(saveBar(page)).toBeVisible();
     await saveBar(page).getByRole("button", { name: "Discard" }).click();
     await expect(saveBar(page)).toHaveCount(0);
-    await expect(monOpen).toHaveValue(before);
+    await expect(tueOpen).toHaveValue(before);
 
-    await monOpen.fill("06:15");
+    await tueOpen.fill("06:15");
     await page.getByRole("button", { name: "Save hours" }).click();
     await expect(page.getByText("Hours saved")).toBeVisible();
     await expect(saveBar(page)).toHaveCount(0);
     await page.reload();
     await page.getByRole("tab", { name: "Hours" }).click();
-    await expect(page.getByLabel("Monday opens")).toHaveValue("06:15");
+    await expect(page.getByLabel("Tuesday opens")).toHaveValue("06:15");
     // Restore through the API so reruns start from the seed's hours.
     const detail = await api<{ merchant: { hours: Record<string, [string, string][]> } }>("GET", `/v1/merchants/${id}`, undefined, token);
-    const hours = { ...detail.merchant.hours, mon: detail.merchant.hours.mon!.map(([, c]) => [before, c] as [string, string]) };
+    const hours = { ...detail.merchant.hours, tue: detail.merchant.hours.tue!.map(([, c]) => [before, c] as [string, string]) };
     await api("PATCH", `/v1/merchants/${id}`, { hours }, token);
   });
 });
@@ -120,12 +126,15 @@ test.describe("promos and discount cards", () => {
     await page.getByRole("button", { name: /Publish now|Schedule/ }).click();
     await expect(page.getByText(/title/i).filter({ hasText: /add|enter|give|need/i }).first()).toBeVisible();
     const title = `Rye bread Friday ${run}`;
-    await page.getByLabel("Title").fill(title);
-    await page.getByLabel("Description").fill("Fresh rye with caraway, warm from 8.");
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
+    await page.getByRole("textbox", { name: /^Description/ }).fill("Fresh rye with caraway, warm from 8.");
     await page.getByRole("button", { name: "1 week" }).click();
     await page.getByRole("button", { name: "Publish now" }).click();
-    await page.waitForURL(new RegExp(`/m/${id}/promos$`));
-    await expect(page.getByText(title)).toBeVisible();
+    // Publishing opens the promo's own page (results, with the live status).
+    await page.waitForURL(new RegExp(`/m/${id}/promos/[0-9a-f-]+$`));
+    await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await page.goto(`/m/${id}/promos`);
     await page.getByRole("tab", { name: /Live/ }).click();
     await expect(page.getByText(title)).toBeVisible();
   });
