@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cateringEvents, hallBookings, merchants } from "@ll/db";
+import { and } from "drizzle-orm";
+import { cateringEvents, hallBookings, merchants, notifications } from "@ll/db";
 import { expireHolds } from "../src/services/banquet.js";
 import { jobs } from "../src/jobs/index.js";
 import { createTestEnv, tokenFor, type TestEnv } from "./helpers.js";
@@ -262,5 +263,167 @@ describe("catering link", () => {
     expect((await api(growth.ownerToken, "POST", `${growth.base}/catering/${ev.id}/hall-booking`, { hallBookingId: r.body.booking.id })).status).toBe(402);
     const bb = await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${r.body.booking.id}/catering`, { cateringEventId: ev.id });
     expect(bb.body.cateringEventId).toBe(ev.id);
+  });
+});
+
+describe("deposit refunds on cancel", () => {
+  /** A confirmed booking on Dec 12 whose 25% deposit (141250) was paid in the app. */
+  async function paidBooking(hallExtra: object = {}) {
+    const { m, hall } = await setup();
+    if (Object.keys(hallExtra).length) await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, hallExtra);
+    const c = await customer(env);
+    const hold = await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, packageName: "Walima dinner", ...slot() });
+    await deliver(env, fake(env).succeedPaymentIntent(hold.body.deposit.paymentIntentId));
+    return { m, hall, c, id: hold.body.booking.id as string, intentId: hold.body.deposit.paymentIntentId as string };
+  }
+  const row = async (id: string) => (await env.db.select().from(hallBookings).where(eq(hallBookings.id, id)))[0]!;
+  const notices = async (userId: string) => (await env.db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.type, "hall_update")))).filter((n) => n.data.type === "hall_cancelled");
+  const DEPOSIT = 141250;
+
+  it("halls carry a refund policy (default 100% from 30 days, 50% from 14) that a PATCH of other fields keeps", async () => {
+    const m = await restaurant();
+    const hall = (await api(m.ownerToken, "POST", `${m.base}/banquet/halls`, hallBody)).body;
+    expect(hall.refundPolicy).toEqual({ tiers: [{ minDaysBefore: 30, refundBps: 10000 }, { minDaysBefore: 14, refundBps: 5000 }] });
+    const strict = { tiers: [{ minDaysBefore: 60, refundBps: 7500 }] };
+    expect((await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, { refundPolicy: strict })).body.refundPolicy).toEqual(strict);
+    // Regression: a PATCH used to reset every defaulted field (packages, deposit %, active).
+    const after = await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, { active: false });
+    expect(after.body).toMatchObject({ active: false, depositBps: 2500, refundPolicy: strict, packages: [{ name: "Walima dinner" }] });
+    expect((await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, { refundPolicy: { tiers: [] } })).body.refundPolicy).toEqual({ tiers: [] });
+    expect((await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, { refundPolicy: { tiers: [{ minDaysBefore: 7, refundBps: 5000 }, { minDaysBefore: 7, refundBps: 0 }] } })).status).toBe(400);
+    expect((await api(m.ownerToken, "PATCH", `${m.base}/banquet/halls/${hall.id}`, { refundPolicy: { tiers: [{ minDaysBefore: 7, refundBps: 10001 }] } })).status).toBe(400);
+  });
+
+  it("staff cancel: none by default, full, or part; recorded, shown in the DTOs, and the customer is told", async () => {
+    const none = await paidBooking();
+    const a = await api(none.m.ownerToken, "POST", `${none.m.base}/banquet/bookings/${none.id}/cancel`);
+    expect(a.body).toMatchObject({ status: "cancelled", depositRefundCents: 0, depositRefundedAt: null });
+    expect(fake(env).refunds).toHaveLength(0);
+    expect((await notices(none.c.user.id))[0]!.body).toContain("will be in touch about your deposit");
+
+    const full = await paidBooking();
+    const b = await api(full.m.ownerToken, "POST", `${full.m.base}/banquet/bookings/${full.id}/cancel`, { refund: "full" });
+    expect(b.body).toMatchObject({ status: "cancelled", depositRefundCents: DEPOSIT, depositRefundedAt: env.clock.now.toISOString(), hallName: "Zaitoon Hall" });
+    expect(fake(env).refunds.at(-1)).toMatchObject({ paymentIntentId: full.intentId, amountCents: DEPOSIT });
+    expect((await row(full.id))).toMatchObject({ depositRefundCents: DEPOSIT, depositRefundedAt: env.clock.now });
+    expect((await notices(full.c.user.id))[0]!.body).toContain("being refunded");
+    const mine = await api(full.c.token, "GET", `/v1/me/banquet/bookings/${full.id}`);
+    expect(mine.body.booking).toMatchObject({ status: "cancelled", depositRefundCents: DEPOSIT, refundPolicy: { tiers: expect.any(Array) } });
+
+    const part = await paidBooking();
+    expect((await api(part.m.ownerToken, "POST", `${part.m.base}/banquet/bookings/${part.id}/cancel`, { refund: { amountCents: DEPOSIT + 1 } })).status).toBe(400);
+    expect((await row(part.id)).status).toBe("confirmed");
+    const c = await api(part.m.ownerToken, "POST", `${part.m.base}/banquet/bookings/${part.id}/cancel`, { refund: { amountCents: 50000 } });
+    expect(c.body).toMatchObject({ status: "cancelled", depositRefundCents: 50000 });
+    expect(fake(env).refunds.at(-1)).toMatchObject({ amountCents: 50000 });
+  });
+
+  it("staff can't refund a hold with no deposit or a deposit recorded by hand; a failed refund cancels nothing", async () => {
+    const { m, hall } = await setup();
+    const c = await customer(env);
+    const hold = (await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, ...slot() })).body.booking;
+    expect((await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${hold.id}/cancel`, { refund: "full" })).status).toBe(409);
+    expect((await row(hold.id)).status).toBe("hold");
+
+    const h2 = (await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, ...slot(14) })).body.booking;
+    await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${h2.id}/confirm`, { markDepositPaid: true });
+    const manual = await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${h2.id}/cancel`, { refund: "full" });
+    expect(manual.status).toBe(409);
+    expect(manual.body.error.message).toContain("outside the app");
+    expect((await row(h2.id)).status).toBe("confirmed");
+
+    const p = await paidBooking();
+    const provider = fake(env);
+    const real = provider.refund.bind(provider);
+    provider.refund = async () => {
+      throw new Error("Stripe is down");
+    };
+    const failed = await api(p.m.ownerToken, "POST", `${p.m.base}/banquet/bookings/${p.id}/cancel`, { refund: "full" });
+    expect(failed.status).toBe(502);
+    expect(await row(p.id)).toMatchObject({ status: "confirmed", depositRefundCents: 0 });
+    provider.refund = real;
+    // The customer's own cancel is held to the same rule.
+    provider.refund = async () => {
+      throw new Error("Stripe is down");
+    };
+    expect((await api(p.c.token, "POST", `/v1/me/banquet/bookings/${p.id}/cancel`)).status).toBe(502);
+    expect((await row(p.id)).status).toBe("confirmed");
+  });
+
+  it("a deposit that landed after the booking was cancelled can still be refunded by staff, once", async () => {
+    const { m, hall } = await setup();
+    const c = await customer(env);
+    const hold = await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, packageName: "Walima dinner", ...slot() });
+    const id = hold.body.booking.id;
+    await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${id}/cancel`);
+    await deliver(env, fake(env).succeedPaymentIntent(hold.body.deposit.paymentIntentId));
+    expect(await row(id)).toMatchObject({ status: "cancelled", depositPaidAt: env.clock.now, depositRefundCents: 0 });
+    const out = await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${id}/cancel`, { refund: "full" });
+    expect(out.status).toBe(200);
+    expect(out.body).toMatchObject({ status: "cancelled", depositRefundCents: DEPOSIT });
+    expect(fake(env).refunds).toHaveLength(1);
+    expect((await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${id}/cancel`, { refund: "full" })).status).toBe(409); // already refunded
+    expect((await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${id}/cancel`)).status).toBe(200); // plain re-cancel is a no-op
+    expect(fake(env).refunds).toHaveLength(1);
+  });
+
+  it("customer cancel before the deposit needs no refund", async () => {
+    const { hall } = await setup();
+    const c = await customer(env);
+    const hold = (await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, ...slot() })).body.booking;
+    const out = await api(c.token, "POST", `/v1/me/banquet/bookings/${hold.id}/cancel`);
+    expect(out.body).toMatchObject({ status: "cancelled", depositRefundCents: 0, depositRefundedAt: null });
+    expect(fake(env).refunds).toHaveLength(0);
+    expect(await notices(c.user.id)).toHaveLength(0); // their own cancel, nothing to add
+  });
+
+  it("customer cancel after the deposit follows the hall policy: full >= 30 days, 50% >= 14 days, none after", async () => {
+    // Event Dec 12 17:00Z. Now is Nov 3 15:00Z: 39 days out.
+    const early = await paidBooking();
+    const a = await api(early.c.token, "POST", `/v1/me/banquet/bookings/${early.id}/cancel`);
+    expect(a.body).toMatchObject({ status: "cancelled", depositRefundCents: DEPOSIT });
+    expect(fake(env).refunds.at(-1)).toMatchObject({ paymentIntentId: early.intentId, amountCents: DEPOSIT });
+    expect((await notices(early.c.user.id))[0]!.body).toContain("being refunded");
+
+    // Nov 20: 22 days out.
+    const mid = await paidBooking();
+    env.clock.now = new Date("2026-11-20T15:00:00Z");
+    const mc = { ...mid.c, token: await tokenFor(env, mid.c.user) };
+    const b = await api(mc.token, "POST", `/v1/me/banquet/bookings/${mid.id}/cancel`);
+    expect(b.body).toMatchObject({ status: "cancelled", depositRefundCents: Math.round(DEPOSIT / 2), depositRefundedAt: env.clock.now.toISOString() });
+    expect(fake(env).refunds.at(-1)).toMatchObject({ amountCents: Math.round(DEPOSIT / 2) });
+
+    // Dec 5: 7 days out, nothing back.
+    env.clock.now = new Date("2026-11-03T15:00:00Z");
+    const late = await paidBooking();
+    env.clock.now = new Date("2026-12-05T15:00:00Z");
+    const refundsBefore = fake(env).refunds.length;
+    const lc = await tokenFor(env, late.c.user);
+    const c = await api(lc, "POST", `/v1/me/banquet/bookings/${late.id}/cancel`);
+    expect(c.body).toMatchObject({ status: "cancelled", depositRefundCents: 0, depositRefundedAt: null });
+    expect(fake(env).refunds).toHaveLength(refundsBefore);
+    expect((await notices(late.c.user.id))).toHaveLength(0);
+  });
+
+  it("uses the hall's own policy, and an empty policy never refunds", async () => {
+    const generous = await paidBooking({ refundPolicy: { tiers: [{ minDaysBefore: 0, refundBps: 10000 }] } });
+    env.clock.now = new Date("2026-12-12T10:00:00Z"); // seven hours before it starts
+    const gc = await tokenFor(env, generous.c.user);
+    expect((await api(gc, "POST", `/v1/me/banquet/bookings/${generous.id}/cancel`)).body).toMatchObject({ depositRefundCents: DEPOSIT });
+
+    env.clock.now = new Date("2026-11-03T15:00:00Z");
+    const never = await paidBooking({ refundPolicy: { tiers: [] } });
+    const nc = await tokenFor(env, never.c.user);
+    expect((await api(nc, "POST", `/v1/me/banquet/bookings/${never.id}/cancel`)).body).toMatchObject({ status: "cancelled", depositRefundCents: 0 });
+  });
+
+  it("a deposit recorded by hand can't be refunded automatically on a customer cancel", async () => {
+    const { m, hall } = await setup();
+    const c = await customer(env);
+    const hold = (await api(c.token, "POST", "/v1/me/banquet/holds", { hallId: hall.id, headcount: 100, ...slot() })).body.booking;
+    await api(m.ownerToken, "POST", `${m.base}/banquet/bookings/${hold.id}/confirm`, { markDepositPaid: true });
+    const out = await api(c.token, "POST", `/v1/me/banquet/bookings/${hold.id}/cancel`);
+    expect(out.body).toMatchObject({ status: "cancelled", depositRefundCents: 0 });
+    expect(fake(env).refunds).toHaveLength(0);
   });
 });

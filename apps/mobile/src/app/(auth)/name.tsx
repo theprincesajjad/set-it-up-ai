@@ -1,4 +1,4 @@
-import { BRAND, customerApi, type networkApi } from "@ll/shared";
+import { BRAND, customerApi, t as translate, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -6,9 +6,8 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { radii } from "@ll/design-tokens";
 import { errorMessage } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { firstName, formatPts } from "../../lib/award";
-import { MONTH_NAMES } from "../../lib/format";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
@@ -33,6 +32,7 @@ const pickerStyles = StyleSheet.create({
 });
 
 export default function NameStep() {
+  const { t, locale, date } = useLocale();
   const { join, returning } = useLocalSearchParams<{ join?: string; returning?: string }>();
   const { user, updatePrefs, refreshMe } = useSession();
   const qc = useQueryClient();
@@ -65,7 +65,11 @@ export default function NameStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.name]);
 
-  const nameError = touched && !first.trim() ? t("err.form.required", { fieldLabel: "First name" }) : null;
+  const nameError = touched && !first.trim() ? t("auth.err.required", { field: t("auth.join.firstName") }) : null;
+  const monthNames = Array.from({ length: 12 }, (_, i) => date(new Date(Date.UTC(2000, i, 15)), { month: "long" }, "UTC"));
+  // CASL: what the customer reads is what we send. The API's English sentence in English; the faithful translation otherwise.
+  const shopConsentText = shop ? (locale === "en" ? shop.consentText : translate(locale, "auth.consent.merchantApp", { shop: shop.merchant.name, brand: BRAND.name })) : "";
+  const bonusText = (n: number, program: { earnType?: string; terminology: string } | null | undefined) => (locale === "en" ? formatPts(n, program?.terminology ?? "points") : t(program?.earnType === "stamps" ? "auth.unit.stamps" : "auth.unit.points", { n }));
 
   const finish = async () => {
     setTouched(true);
@@ -80,17 +84,17 @@ export default function NameStep() {
         void refreshMe();
       }
       if (join && shop) {
-        const res = await api.me.join({ locationQrCode: join, ...(shopConsent ? { consent: { text: shop.consentText } } : {}) });
+        const res = await api.me.join({ locationQrCode: join, ...(shopConsent ? { consent: { text: shopConsentText } } : {}) });
         await qc.invalidateQueries({ queryKey: qk.wallet });
         setJoined(res);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         setTimeout(() => router.replace("/map"), 1500);
         return;
       }
-      toast({ message: t("ok.joined", { firstName: first.trim() }), tone: "success" });
+      toast({ message: t("auth.joined.title", { name: first.trim() }), tone: "success" });
       router.replace("/map");
     } catch (e) {
-      setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setSaving(false);
     }
@@ -106,8 +110,8 @@ export default function NameStep() {
         ) : null}
         <Text variant="largeTitle" center accessibilityLiveRegion="polite" style={{ textTransform: "none" }}>
           {joined.bonusPoints > 0
-            ? t("ok.joinedBonus", { bonus: formatPts(joined.bonusPoints, m.terminology), shop: m.merchant.name })
-            : t("ok.joined", { firstName: firstName(user?.name) ?? first })}
+            ? t("auth.joined.bonusTitle", { bonus: bonusText(joined.bonusPoints, m.program ? { earnType: m.program.earnType, terminology: m.terminology } : { terminology: m.terminology }), shop: m.merchant.name.replace(/\.$/, "") })
+            : t("auth.joined.title", { name: firstName(user?.name) ?? first })}
         </Text>
       </Screen>
     );
@@ -120,37 +124,37 @@ export default function NameStep() {
       contentStyle={{ paddingTop: 52 }}
       footer={
         <Button size="lg" fullWidth loading={saving} onPress={finish}>
-          {t("action.done")}
+          {t("auth.m.done")}
         </Button>
       }
     >
       {!isReturning ? (
         <>
           <Text variant="largeTitle" accessibilityRole="header">
-            What's your name?
+            {t("auth.m.name.title")}
           </Text>
-          <TextField label="First name" value={first} onChangeText={setFirst} autoComplete="given-name" textContentType="givenName" autoCapitalize="words" error={nameError} onBlur={() => setTouched(true)} />
-          <TextField label="Last name" optionalLabel value={last} onChangeText={setLast} autoComplete="family-name" textContentType="familyName" autoCapitalize="words" />
+          <TextField label={t("auth.join.firstName")} value={first} onChangeText={setFirst} autoComplete="given-name" textContentType="givenName" autoCapitalize="words" error={nameError} onBlur={() => setTouched(true)} />
+          <TextField label={t("auth.m.name.last")} optionalLabel value={last} onChangeText={setLast} autoComplete="family-name" textContentType="familyName" autoCapitalize="words" />
           <View style={{ gap: 6 }}>
             <Text variant="metaStrong" color="fgMuted">
-              Birthday{" "}
+              {t("auth.m.name.birthday")}{" "}
               <Text variant="metaStrong" color="fgSubtle">
-                (optional)
+                {t("auth.m.name.optional")}
               </Text>
             </Text>
             {/* Picker fields look like inputs (radius 10, 52 tall), not capsules (polish-audit M7). */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <PickerField label={month ? (MONTH_NAMES[month - 1] ?? "Month") : "Month"} placeholder={!month} a11y={`Birthday month: ${month ? MONTH_NAMES[month - 1] : "not set"}`} onPress={() => setPicker("month")} />
-              <PickerField label={day ? String(day) : "Day"} placeholder={!day} a11y={`Birthday day: ${day ?? "not set"}`} onPress={() => setPicker("day")} />
+              <PickerField label={month ? (monthNames[month - 1] ?? t("auth.m.name.month")) : t("auth.m.name.month")} placeholder={!month} a11y={`${t("auth.m.name.birthdayMonth")}: ${month ? monthNames[month - 1] : t("auth.m.name.notSet")}`} onPress={() => setPicker("month")} />
+              <PickerField label={day ? String(day) : t("auth.m.name.day")} placeholder={!day} a11y={`${t("auth.m.name.birthdayDay")}: ${day ?? t("auth.m.name.notSet")}`} onPress={() => setPicker("day")} />
             </View>
             <Text variant="meta" color="fgMuted">
-              For a birthday treat at shops that offer one. We never ask for the year.
+              {t("auth.m.name.birthdayHint")}
             </Text>
           </View>
         </>
       ) : (
         <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
-          {shop ? `Join ${shop.merchant.name}` : "Join this shop"}
+          {shop ? t("auth.join.joinShop", { shop: shop.merchant.name }) : t("auth.m.name.joinThis")}
         </Text>
       )}
 
@@ -162,21 +166,21 @@ export default function NameStep() {
               {shop.merchant.name}
             </Text>
           </View>
-          {shop.program?.welcomeBonus ? <Text color="fgMuted">{`Get ${formatPts(shop.program.welcomeBonus, shop.program.terminology)} when you join.`}</Text> : null}
-          <ConsentCheckbox text={shop.consentText} checked={shopConsent} onChange={setShopConsent} caption={t("consent.merchant.caption.v1", { shop: shop.merchant.name })} />
+          {shop.program?.welcomeBonus ? <Text color="fgMuted">{t("auth.m.name.welcomeBonus", { bonus: bonusText(shop.program.welcomeBonus, shop.program) })}</Text> : null}
+          <ConsentCheckbox text={shopConsentText} checked={shopConsent} onChange={setShopConsent} caption={t("auth.consent.caption", { sender: shop.merchant.name, brand: BRAND.name })} />
         </Card>
       ) : !isReturning ? (
         <Card>
-          <ConsentCheckbox text={t("consent.global.v1")} checked={globalConsent} onChange={setGlobalConsent} caption={t("consent.global.caption")} />
-          <ConsentCheckbox text={t("consent.platform.v1", { brand: BRAND.name })} checked={platformConsent} onChange={setPlatformConsent} />
+          <ConsentCheckbox text={t("auth.consent.global")} checked={globalConsent} onChange={setGlobalConsent} caption={t("auth.consent.globalCaption")} />
+          <ConsentCheckbox text={t("auth.consent.platform", { brand: BRAND.name })} checked={platformConsent} onChange={setPlatformConsent} />
         </Card>
       ) : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <Sheet visible={picker !== null} onClose={() => setPicker(null)} title={picker === "month" ? "Birthday month" : "Birthday day"}>
+      <Sheet visible={picker !== null} onClose={() => setPicker(null)} title={picker === "month" ? t("auth.m.name.birthdayMonth") : t("auth.m.name.birthdayDay")}>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {picker === "month"
-            ? MONTH_NAMES.map((name, i) => (
+            ? monthNames.map((name, i) => (
                 <Chip
                   key={name}
                   label={name}

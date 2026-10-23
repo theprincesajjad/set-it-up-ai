@@ -12,13 +12,13 @@ import { PLATFORM_PAYMENT_FEE_BPS, type billingApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { conflict, notFound } from "../lib/errors.js";
-import { PLATFORM_CHARGE_MARKER, getPayments, type ChargeMode, type CreatePaymentIntentArgs, type PaymentIntentInfo, type PaymentsEvent, type PlatformChargeResult } from "../providers/payments.js";
+import { PLATFORM_CHARGE_MARKER, getPayments, type ChargeMode, type CreatePaymentIntentArgs, type OffSessionResult, type PaymentIntentInfo, type PaymentsEvent, type PlatformChargeResult, type SavedMethodScope } from "../providers/payments.js";
 import { onBillingInvoiceFailed, onCheckoutCompleted, onSubscriptionEvent } from "./billing.js";
 import { isRestaurantObject, onRestaurantCheckoutCompleted, onRestaurantInvoicePaid, onRestaurantSubscriptionEvent } from "./billing-restaurant.js";
 import { requireFeature } from "./features.js";
 import { onInvoicePayment } from "./invoices.js";
 import { onOrderPayment } from "./orders.js";
-import { onTiffinPayment } from "./tiffin.js";
+import { onTiffinPayment, onTiffinSetup } from "./tiffin.js";
 import { onDepositPayment } from "./quotes.js";
 import { onSplitPayment } from "./splits.js";
 import { onCateringDeposit } from "./catering.js";
@@ -89,6 +89,25 @@ export async function createConnectPayment(
   const connectedAccountId = args.connectedAccountId ?? merchant.stripeAccountId;
   if (!connectedAccountId) throw new Error("Merchant has no connected Stripe account");
   return getPayments(ctx).createPaymentIntent({ ...args, connectedAccountId, chargeMode: chargeModeFor(ctx, merchant) });
+}
+
+/** Where a customer's saved payment methods live for this merchant: its connected account for direct charges, the platform otherwise. */
+export function savedMethodScope(ctx: Pick<AppContext, "config">, merchant: Pick<Merchant, "chargeMode" | "stripeAccountId">): SavedMethodScope {
+  return { chargeMode: chargeModeFor(ctx, merchant), connectedAccountId: merchant.stripeAccountId };
+}
+
+/**
+ * Charge a customer's saved method off-session (`off_session: true, confirm: true`), honouring the merchant's charge
+ * mode like createConnectPayment. A card problem comes back as an outcome (authentication_required / declined), not a throw.
+ */
+export async function chargeConnectSavedMethod(
+  ctx: AppContext,
+  merchant: Pick<Merchant, "chargeMode" | "stripeAccountId">,
+  args: Omit<CreatePaymentIntentArgs, "connectedAccountId" | "chargeMode" | "customerId"> & { connectedAccountId?: string; customerId: string; paymentMethodId: string },
+): Promise<OffSessionResult> {
+  const connectedAccountId = args.connectedAccountId ?? merchant.stripeAccountId;
+  if (!connectedAccountId) throw new Error("Merchant has no connected Stripe account");
+  return getPayments(ctx).chargeSavedMethod({ ...args, connectedAccountId, chargeMode: chargeModeFor(ctx, merchant) });
 }
 
 /** Retrieve a Connect payment; a direct charge lives on the merchant's connected account. */
@@ -196,9 +215,23 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
   else if (kind === "deposit") await onDepositPayment(ctx, id, String(pi.id), outcome);
   else if (kind === "invoice") await onInvoicePayment(ctx, id, String(pi.id), outcome);
   else if (kind === "split") await onSplitPayment(ctx, id, String(pi.id), outcome);
-  else if (kind === "tiffin") await onTiffinPayment(ctx, id, String(pi.id), outcome);
+  else if (kind === "tiffin")
+    await onTiffinPayment(ctx, id, String(pi.id), outcome, {
+      paymentMethodId: typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null),
+      customerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
+      errorCode: pi.last_payment_error?.code ?? null,
+    });
   else if (kind === "catering_deposit") await onCateringDeposit(ctx, id, String(pi.id), outcome);
   else if (kind === "hall_deposit") await onHallDeposit(ctx, id, String(pi.id), outcome);
+}
+
+/** setup_intent.succeeded: a customer saved a payment method ("change card"). */
+async function onSetupIntent(ctx: AppContext, si: Obj) {
+  const kind = si.metadata?.ll_kind as string | undefined;
+  const id = si.metadata?.ll_id as string | undefined;
+  if (kind !== "tiffin_setup" || !id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+  const pm = typeof si.payment_method === "string" ? si.payment_method : si.payment_method?.id;
+  if (pm) await onTiffinSetup(ctx, id, String(si.id), String(pm));
 }
 
 /** Apply one event. Exported for the dev simulator; webhooks go through processWebhookEvent. */
@@ -228,6 +261,8 @@ export async function applyPaymentsEvent(ctx: AppContext, event: PaymentsEvent):
       return onPaymentIntent(ctx, obj, "succeeded", event.id);
     case "payment_intent.payment_failed":
       return onPaymentIntent(ctx, obj, "failed", event.id);
+    case "setup_intent.succeeded":
+      return onSetupIntent(ctx, obj);
     case "account.updated":
       return onAccountUpdated(ctx, obj);
     default:

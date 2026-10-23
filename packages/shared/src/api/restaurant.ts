@@ -318,7 +318,10 @@ export const cateringSendQuoteBody = z.object({ channels: z.array(z.enum(["sms",
 export const cateringApproveBody = z.object({ signatureName: z.string().trim().min(2).max(120) });
 export const cateringMarkDepositBody = z.object({ method: z.enum(["cash", "etransfer", "cheque", "other"]).default("other"), note: z.string().max(300).nullish() });
 export const cateringInvoiceBody = z.object({ send: z.boolean().default(true) });
-export const cateringCancelBody = z.object({ reason: z.string().trim().max(1000).nullish() });
+/** Merchant's choice for a paid deposit when cancelling: all of it, none (default), or part. Only deposits paid in the app can be refunded. */
+export const depositRefundChoice = z.union([z.enum(["full", "none"]), z.object({ amountCents: z.number().int().min(1).max(100_000_000) })]);
+export type DepositRefundChoice = z.infer<typeof depositRefundChoice>;
+export const cateringCancelBody = z.object({ reason: z.string().trim().max(1000).nullish(), refund: depositRefundChoice.default("none") });
 
 export const listCateringQuery = z.object({
   status: z.enum(CATERING_STATUSES).optional(),
@@ -373,6 +376,9 @@ export interface CateringEventDto {
   signatureIp?: string | null;
   signatureUserAgent?: string | null;
   depositPaidAt: string | null;
+  /** Deposit returned on cancel (0 = none) and when. */
+  depositRefundCents: number;
+  depositRefundedAt: string | null;
   invoiceId: string | null;
   hallBookingId: string | null;
   /** Public approval link; null until the quote is sent. */
@@ -429,6 +435,22 @@ export interface CateringInvoiceDto {
 export const BOOKING_STATUSES = ["hold", "confirmed", "cancelled", "completed"] as const;
 export type HallBookingStatus = (typeof BOOKING_STATUSES)[number];
 
+/** Customer-cancel refund tiers on a paid hall deposit: the first tier (largest minDaysBefore first) the event is at least that far away wins; none after. */
+export const hallRefundPolicy = z.object({
+  tiers: z
+    .array(z.object({ minDaysBefore: z.number().int().min(0).max(730), refundBps: z.number().int().min(0).max(10_000) }))
+    .max(5)
+    .refine((t) => new Set(t.map((x) => x.minDaysBefore)).size === t.length, "Each tier needs a different number of days"),
+});
+export type HallRefundPolicy = z.infer<typeof hallRefundPolicy>;
+export const DEFAULT_HALL_REFUND_POLICY: HallRefundPolicy = { tiers: [{ minDaysBefore: 30, refundBps: 10_000 }, { minDaysBefore: 14, refundBps: 5_000 }] };
+/** Share of the deposit (basis points) a customer gets back cancelling `now` for an event starting at `startsAt`. */
+export function hallRefundBps(policy: HallRefundPolicy, startsAt: Date | string, now: Date = new Date()): number {
+  const days = (new Date(startsAt).getTime() - now.getTime()) / 86_400_000;
+  const tier = [...policy.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore).find((t) => days >= t.minDaysBefore);
+  return tier?.refundBps ?? 0;
+}
+
 export const hallPackage = z.object({
   name: z.string().trim().min(1).max(120),
   perHeadCents: z.number().int().min(0).max(1_000_000),
@@ -441,9 +463,20 @@ export const createHallBody = z.object({
   baseCents: z.number().int().min(0).max(100_000_000).default(0),
   packages: z.array(hallPackage).max(20).default([]),
   depositBps: z.number().int().min(0).max(10_000).default(2500),
+  refundPolicy: hallRefundPolicy.default(DEFAULT_HALL_REFUND_POLICY),
   active: z.boolean().default(true),
 });
-export const updateHallBody = createHallBody.partial();
+/** Explicit optional fields (not createHallBody.partial()): a partial of defaulted fields would reset them on every PATCH. */
+export const updateHallBody = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  capacity: z.number().int().min(1).max(5000).optional(),
+  description: z.string().trim().max(2000).nullish(),
+  baseCents: z.number().int().min(0).max(100_000_000).optional(),
+  packages: z.array(hallPackage).max(20).optional(),
+  depositBps: z.number().int().min(0).max(10_000).optional(),
+  refundPolicy: hallRefundPolicy.optional(),
+  active: z.boolean().optional(),
+});
 
 export const hallAvailabilityQuery = z.object({
   from: z.iso.datetime({ offset: true }),
@@ -484,6 +517,7 @@ export interface HallDto {
   baseCents: number;
   packages: { name: string; perHeadCents: number; includes: string[] }[];
   depositBps: number;
+  refundPolicy: HallRefundPolicy;
   active: boolean;
   createdAt: string;
 }
@@ -508,10 +542,17 @@ export interface HallBookingDto {
   totalCents: number;
   depositCents: number;
   depositPaidAt: string | null;
+  /** Deposit returned on cancel (0 = none) and when. */
+  depositRefundCents: number;
+  depositRefundedAt: string | null;
+  /** The hall's refund policy, so a customer sees what cancelling would return. */
+  refundPolicy: HallRefundPolicy | null;
   cateringEventId: string | null;
   notes: string | null;
   createdAt: string;
 }
+/** POST .../banquet/bookings/:id/cancel (staff). Customers send no body: the hall's policy applies. */
+export const cancelHallBookingBody = z.object({ refund: depositRefundChoice.default("none") });
 export interface HallAvailabilityResponse {
   halls: { hall: HallDto; busy: { bookingId: string; status: HallBookingStatus; startsAt: string; endsAt: string }[] }[];
 }

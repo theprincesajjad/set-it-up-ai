@@ -1,7 +1,7 @@
 "use client";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { restaurantApi } from "@ll/shared";
+import { restaurantApi } from "@ll/shared";
 import { Dot, EmptyState, Row, RowList, Section, SidePanel as Sheet } from "@/components/dashboard/kit";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { FormGrid, Loader, MoneyField, NumberField, bpsToPct, centsToField, fieldToCents } from "../common";
+import { policyText } from "./BookingsTab";
 
 type Gate = { featureKey: "restaurant.banquet"; title: string; what: string };
 type Pkg = { key: string; name: string; perHead: string; includes: string };
@@ -39,7 +40,7 @@ export function HallsTab({ gate, adding, onAddClose }: { gate: Gate; adding: boo
                   key={h.id}
                   title={h.name}
                   leading={<Dot tone={h.active ? "positive" : "neutral"}>{h.active ? "Open" : "Closed"}</Dot>}
-                  meta={`Seats ${formatNumber(h.capacity)} · ${h.packages.length} ${h.packages.length === 1 ? "package" : "packages"} · ${bpsToPct(h.depositBps)} deposit`}
+                  meta={`Seats ${formatNumber(h.capacity)} · ${h.packages.length} ${h.packages.length === 1 ? "package" : "packages"} · ${bpsToPct(h.depositBps)} deposit · ${policyText(h.refundPolicy)}`}
                   trailing={<span className="flex flex-col items-end"><span>{formatMoney(h.baseCents)}</span><span className="text-meta text-fg-muted">room fee</span></span>}
                   onClick={canEdit ? () => setEdit(h) : undefined}
                 />
@@ -63,6 +64,12 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
   const [base, setBase] = useState(centsToField(hall?.baseCents ?? 0));
   const [deposit, setDeposit] = useState(String((hall?.depositBps ?? 2500) / 100));
   const [active, setActive] = useState(hall?.active ?? true);
+  // Two tiers cover how halls actually write it: "full back N days ahead, half back M days ahead, nothing after".
+  const startTiers = [...(hall?.refundPolicy ?? restaurantApi.DEFAULT_HALL_REFUND_POLICY).tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore);
+  const [fullDays, setFullDays] = useState(startTiers[0] ? String(startTiers[0].minDaysBefore) : "");
+  const [fullPct, setFullPct] = useState(startTiers[0] ? String(startTiers[0].refundBps / 100) : "100");
+  const [partDays, setPartDays] = useState(startTiers[1] ? String(startTiers[1].minDaysBefore) : "");
+  const [partPct, setPartPct] = useState(startTiers[1] ? String(startTiers[1].refundBps / 100) : "50");
   const [pkgs, setPkgs] = useState<Pkg[]>((hall?.packages ?? []).map((p) => ({ key: `p${++seq}`, name: p.name, perHead: centsToField(p.perHeadCents), includes: p.includes.join("\n") })));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState(false);
@@ -73,11 +80,14 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
     if (!name.trim()) e.name = "Give the hall a name";
     if (!(Number(capacity) >= 1)) e.capacity = "How many does it seat?";
     if (pkgs.some((p) => !p.name.trim())) e.pkgs = "Every package needs a name";
+    const tiers = [{ d: fullDays, p: fullPct }, { d: partDays, p: partPct }].filter((t) => t.d.trim() !== "").map((t) => ({ minDaysBefore: Number(t.d), refundBps: Math.round((Number(t.p) || 0) * 100) }));
+    if (tiers.some((t) => t.refundBps > 10_000)) e.refund = "A refund can't be more than 100%";
+    else if (new Set(tiers.map((t) => t.minDaysBefore)).size !== tiers.length) e.refund = "Use a different number of days for each tier";
     setErrors(e);
     if (Object.keys(e).length) return;
     const body = {
       name: name.trim(), capacity: Number(capacity), description: description.trim() || null, baseCents: fieldToCents(base),
-      depositBps: Math.min(10_000, Math.round((Number(deposit) || 0) * 100)), active,
+      depositBps: Math.min(10_000, Math.round((Number(deposit) || 0) * 100)), active, refundPolicy: { tiers },
       packages: pkgs.map((p) => ({ name: p.name.trim(), perHeadCents: fieldToCents(p.perHead), includes: p.includes.split("\n").map((x) => x.trim()).filter(Boolean) })),
     };
     const r = await act.run(() => (hall ? api.banquet.updateHall(hall.id, body) : api.banquet.createHall(body)));
@@ -113,6 +123,19 @@ function HallSheet({ hall, onClose, onSaved }: { hall: restaurantApi.HallDto | n
             <TextField label="Deposit" suffix="%" inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value.replace(/[^0-9.]/g, ""))} hint="Of the total" />
           </FormGrid>
           <TextField type="textarea" label="About the room" optionalLabel placeholder="Stage, separate men's and women's seating, parking for 80 cars" className="min-h-20" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Section title="Cancellation refunds" description="What a customer gets back from their deposit if they cancel after paying it. Applied automatically. When you cancel for them, you choose.">
+            <div className="flex flex-col gap-3">
+              <FormGrid>
+                <NumberField label="Refund in full when cancelled at least" suffix="days ahead" value={fullDays} onChange={setFullDays} hint="Leave blank for no tier" />
+                <TextField label="Share refunded" suffix="%" inputMode="decimal" value={fullPct} onChange={(e) => setFullPct(e.target.value.replace(/[^0-9.]/g, ""))} />
+              </FormGrid>
+              <FormGrid>
+                <NumberField label="Then a partial refund at least" suffix="days ahead" value={partDays} onChange={setPartDays} hint="Leave blank for no second tier" />
+                <TextField label="Share refunded" suffix="%" inputMode="decimal" value={partPct} onChange={(e) => setPartPct(e.target.value.replace(/[^0-9.]/g, ""))} />
+              </FormGrid>
+              {errors.refund ? <p className="text-meta text-negative">{errors.refund}</p> : <p className="text-meta text-fg-muted">Customers see: {policyText({ tiers: [{ d: fullDays, p: fullPct }, { d: partDays, p: partPct }].filter((t) => t.d.trim() !== "").map((t) => ({ minDaysBefore: Number(t.d), refundBps: Math.round((Number(t.p) || 0) * 100) })) })}.</p>}
+            </div>
+          </Section>
           <Switch label="Open for holds" description="Turn off to stop new bookings without deleting the hall" checked={active} onChange={setActive} />
           <Section title="Packages" description="A per-guest price on top of the room fee. Walima dinner, mehndi night, nikah lunch.">
             {pkgs.length === 0 ? <p className="border-y border-line py-3 text-meta text-fg-muted">No packages. Customers pay the room fee only, and you quote the food separately.</p> : null}

@@ -1394,7 +1394,15 @@ export const tiffinSubscriptions = pgTable(
     /** card | pad (pre-authorized debit) */
     paymentMethod: text("payment_method").notNull().default("card"),
     stripeSubscriptionId: text("stripe_subscription_id"),
+    /** Stripe Customer for this user on the merchant's side (the connected account for direct charges, the platform otherwise). */
     stripeCustomerId: text("stripe_customer_id"),
+    /** Saved payment method renewals charge off-session (pm_...); null until the first payment saves one. */
+    paymentMethodId: text("payment_method_id"),
+    /** Display only: "visa", "mastercard", ... or "bank" for PAD. */
+    paymentMethodBrand: text("payment_method_brand"),
+    paymentMethodLast4: text("payment_method_last4"),
+    /** The open SetupIntent for "change card" (seti_...), resolved by the /pay/setup page. */
+    setupIntentId: text("setup_intent_id"),
     cancelledAt: ts("cancelled_at"),
     cancelReason: text("cancel_reason"),
     createdAt: createdAt(),
@@ -1506,6 +1514,9 @@ export const cateringEvents = pgTable(
     signatureUserAgent: text("signature_user_agent"),
     depositPaymentIntentId: text("deposit_payment_intent_id"),
     depositPaidAt: ts("deposit_paid_at"),
+    /** Deposit returned to the customer on cancel (cents, 0 = none) and when. */
+    depositRefundCents: integer("deposit_refund_cents").notNull().default(0),
+    depositRefundedAt: ts("deposit_refunded_at"),
     invoiceId: uuid("invoice_id"),
     hallBookingId: uuid("hall_booking_id"),
     createdAt: createdAt(),
@@ -1525,6 +1536,8 @@ export const halls = pgTable("halls", {
   /** [{ name, perHeadCents, includes: string[] }] */
   packages: jsonb("packages").$type<{ name: string; perHeadCents: number; includes: string[] }[]>().notNull().default([]),
   depositBps: integer("deposit_bps").notNull().default(2500),
+  /** Applied automatically when a customer cancels after paying the deposit: first tier whose minDaysBefore the event is at least away wins; none after. */
+  refundPolicy: jsonb("refund_policy").$type<{ tiers: { minDaysBefore: number; refundBps: number }[] }>().notNull().default({ tiers: [{ minDaysBefore: 30, refundBps: 10000 }, { minDaysBefore: 14, refundBps: 5000 }] }),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -1548,6 +1561,8 @@ export const hallBookings = pgTable(
     depositCents: integer("deposit_cents").notNull().default(0),
     depositPaymentIntentId: text("deposit_payment_intent_id"),
     depositPaidAt: ts("deposit_paid_at"),
+    depositRefundCents: integer("deposit_refund_cents").notNull().default(0),
+    depositRefundedAt: ts("deposit_refunded_at"),
     cateringEventId: uuid("catering_event_id"),
     notes: text("notes"),
     createdAt: createdAt(),

@@ -8,11 +8,13 @@ import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { cateringEvents, hallBookings, halls, orders, tiffinCharges, tiffinPlans, tiffinSubscriptions } from "@ll/db";
-import type { restaurantApi } from "@ll/shared";
+import type { restaurantApi, tiffinApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { notFound } from "../../lib/errors.js";
 import { formatLocalDateTime, loadMerchant } from "../../services/commerceShared.js";
-import { retrieveConnectPayment } from "../../services/payments.js";
+import { getPayments } from "../../providers/payments.js";
+import { retrieveConnectPayment, savedMethodScope } from "../../services/payments.js";
+import { cardOnFileOf } from "../../services/tiffin.js";
 
 type Resolved = { merchantId: string; kind: restaurantApi.PaymentIntentKind; describe: (merchant: { name: string; timezone: string }) => string };
 
@@ -45,6 +47,31 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     if (order) return { merchantId: order.merchantId, kind: "order", describe: () => `Order #${order.number}` };
     return null;
   }
+
+  /** /pay/setup/<setupIntentId>?cs=: the "change card" page for a tiffin subscription. Same rule as above: the client secret is the credential. */
+  app.get<{ Params: { setupIntentId: string }; Querystring: { cs?: string } }>("/public/payments/setup/:setupIntentId", async (req): Promise<tiffinApi.SetupIntentView> => {
+    const secret = typeof req.query.cs === "string" ? req.query.cs : "";
+    const [row] = secret
+      ? await ctx.db
+          .select({ sub: tiffinSubscriptions, planName: tiffinPlans.name })
+          .from(tiffinSubscriptions)
+          .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
+          .where(eq(tiffinSubscriptions.setupIntentId, req.params.setupIntentId))
+          .limit(1)
+      : [];
+    const merchant = row && (await loadMerchant(ctx.db, row.sub.merchantId));
+    if (!row || !merchant) throw notFound("Payment method");
+    const si = await getPayments(ctx).retrieveSetupIntent(req.params.setupIntentId, savedMethodScope(ctx, merchant)).catch(() => null);
+    if (!si || !safeEqual(si.clientSecret, secret)) throw notFound("Payment method");
+    const status: tiffinApi.SetupIntentView["status"] = si.status === "succeeded" ? "succeeded" : si.status === "processing" ? "processing" : si.status === "canceled" ? "canceled" : "requires_payment";
+    return {
+      merchant: { name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor },
+      description: `Tiffin: ${row.planName}`,
+      status,
+      methods: row.sub.paymentMethod === "pad" ? ["acss_debit"] : ["card"],
+      cardOnFile: status === "succeeded" ? cardOnFileOf(row.sub) : null,
+    };
+  });
 
   app.get<{ Params: { paymentIntentId: string }; Querystring: { cs?: string } }>("/public/payments/:paymentIntentId", async (req): Promise<restaurantApi.PaymentIntentView> => {
     const secret = typeof req.query.cs === "string" ? req.query.cs : "";

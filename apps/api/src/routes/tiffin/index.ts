@@ -156,6 +156,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.delete<{ Params: S & { date: string } }>("/me/tiffin/subscriptions/:subId/skips/:date", async (req) =>
     svc.myUnskip(ctx, requireUser(req).id, uid(req.params.subId), parse(dateParam, req.params.date)),
   );
+  /** Change the card on file: returns a SetupIntent client secret (web confirms it; the app opens /pay/setup/<id>?cs=). */
+  app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/payment-method", async (req) => svc.myPaymentMethodSetup(ctx, requireUser(req).id, uid(req.params.subId)));
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/pause", async (req) => svc.myPause(ctx, requireUser(req).id, uid(req.params.subId), parse(tiffinApi.pauseBody, req.body)));
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/resume", async (req) => svc.myResume(ctx, requireUser(req).id, uid(req.params.subId)));
   app.post<{ Params: S }>("/me/tiffin/subscriptions/:subId/cancel", async (req) => svc.myCancel(ctx, requireUser(req).id, uid(req.params.subId), parse(tiffinApi.cancelBody, req.body ?? {})));

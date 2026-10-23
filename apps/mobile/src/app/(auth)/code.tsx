@@ -2,11 +2,11 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { IS_DEV } from "../../config";
 import { firstName } from "../../lib/award";
 import { formatCountdown } from "../../lib/format";
 import { displayPhone } from "../../lib/phone";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { Banner, Button, OtpField, Screen, Text, useToast } from "../../ui";
@@ -15,6 +15,7 @@ import { Banner, Button, OtpField, Screen, Text, useToast } from "../../ui";
 export default function CodeStep() {
   const params = useLocalSearchParams<{ phone: string; devCode?: string; join?: string }>();
   const phone = params.phone ?? "";
+  const { t } = useLocale();
   const { signIn } = useSession();
   const toast = useToast();
   const [code, setCode] = useState("");
@@ -37,7 +38,7 @@ export default function CodeStep() {
       const res = await api.auth.otpVerify({ phone, code: value });
       await signIn(res, { mode: "customer", phone });
       if (!res.created && res.user.name) {
-        toast({ message: t("ok.welcomeBack", { firstName: firstName(res.user.name) }), tone: "success" });
+        toast({ message: t("auth.join.welcomeBack", { name: firstName(res.user.name) }), tone: "success" });
         if (params.join) router.replace({ pathname: "/name", params: { join: params.join, returning: "1" } });
         else router.replace("/map");
       } else {
@@ -45,15 +46,15 @@ export default function CodeStep() {
       }
     } catch (e) {
       setCode("");
-      if (isApiError(e) && e.status === 429) setError(t("err.otp.tooMany"));
+      if (isApiError(e) && e.status === 429) setError(t("auth.err.tooMany"));
       else if (isApiError(e) && e.code === "invalid_code") {
         const msg = e.message.toLowerCase();
         if ((msg.includes("expired") || msg.includes("used")) && !autoResent.current) {
           autoResent.current = true;
           await resend(true);
-          setError(t("err.otp.expired"));
-        } else setError(t("err.otp.wrong"));
-      } else setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+          setError(t("auth.m.code.expiredSent"));
+        } else setError(t("auth.err.wrong"));
+      } else setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setVerifying(false);
     }
@@ -73,13 +74,13 @@ export default function CodeStep() {
       const res = await api.auth.otpStart(phone);
       setResends((n) => n + 1);
       setResendIn(30);
-      if (!silent) toast("We sent you a new code.");
+      if (!silent) toast(t("auth.m.code.newSent"));
       if (IS_DEV && res.devCode) {
         setCode(res.devCode);
         void verify(res.devCode);
       }
     } catch (e) {
-      setError(isApiError(e) && e.status === 429 ? t("err.otp.tooMany") : errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(isApiError(e) && e.status === 429 ? t("auth.err.tooMany") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     }
   };
 
@@ -87,12 +88,12 @@ export default function CodeStep() {
     <Screen back>
       <View style={{ gap: 8 }}>
         <Text variant="largeTitle" accessibilityRole="header">
-          Enter the code
+          {t("auth.m.code.title")}
         </Text>
         <Text color="fgMuted">
-          {`Sent to ${displayPhone(phone)}. `}
+          {`${t("auth.m.code.sentTo", { phone: displayPhone(phone) })} `}
           <Text color="fgLink" style={{ textDecorationLine: "underline" }} onPress={() => router.back()} accessibilityRole="link">
-            Change
+            {t("auth.otp.change")}
           </Text>
         </Text>
       </View>
@@ -100,11 +101,11 @@ export default function CodeStep() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {resends >= 3 ? (
         <Text color="fgMuted">
-          {t("err.otp.tooMany")}
+          {t("auth.err.tooMany")}
         </Text>
       ) : (
         <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start", marginLeft: -4 }} disabled={resendIn > 0} onPress={() => resend()} loading={verifying}>
-          {resendIn > 0 ? t("action.resendIn", { time: formatCountdown(resendIn) }) : t("action.resend")}
+          {resendIn > 0 ? t("auth.otp.resendIn", { time: formatCountdown(resendIn) }) : t("auth.otp.resend")}
         </Button>
       )}
     </Screen>

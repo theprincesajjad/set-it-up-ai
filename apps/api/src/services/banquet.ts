@@ -8,12 +8,13 @@
  */
 import { and, asc, eq, gt, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
 import { cateringEvents, hallBookings, halls, type DbOrTx } from "@ll/db";
-import type { restaurantApi } from "@ll/shared";
+import { restaurantApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
+import { paidInApp, refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
 import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
@@ -35,11 +36,12 @@ export const hallDto = (h: Hall): restaurantApi.HallDto => ({
   baseCents: h.baseCents,
   packages: h.packages,
   depositBps: h.depositBps,
+  refundPolicy: h.refundPolicy,
   active: h.active,
   createdAt: h.createdAt.toISOString(),
 });
 
-export const bookingDto = (b: HallBooking, hallName: string | null = null): restaurantApi.HallBookingDto => ({
+export const bookingDto = (b: HallBooking, hallName: string | null = null, refundPolicy: restaurantApi.HallRefundPolicy | null = null): restaurantApi.HallBookingDto => ({
   id: b.id,
   hallId: b.hallId,
   hallName,
@@ -55,6 +57,9 @@ export const bookingDto = (b: HallBooking, hallName: string | null = null): rest
   totalCents: b.totalCents,
   depositCents: b.depositCents,
   depositPaidAt: iso(b.depositPaidAt),
+  depositRefundCents: b.depositRefundCents,
+  depositRefundedAt: iso(b.depositRefundedAt),
+  refundPolicy,
   cateringEventId: b.cateringEventId,
   notes: b.notes,
   createdAt: b.createdAt.toISOString(),
@@ -178,7 +183,7 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
       })
       .returning();
     if (event) await tx.update(cateringEvents).set({ hallBookingId: b!.id, updatedAt: now }).where(eq(cateringEvents.id, event.id));
-    return { b: b!, hallName: hall.name };
+    return { b: b!, hallName: hall.name, refundPolicy: hall.refundPolicy };
   });
   await notifyCustomer(ctx, {
     userId,
@@ -188,7 +193,7 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
     sms: false,
     data: { type: "hall_hold", hallBookingId: booking.b.id },
   });
-  return { booking: bookingDto(booking.b, booking.hallName), deposit: await depositPayment(ctx, merchant, booking.b) };
+  return { booking: bookingDto(booking.b, booking.hallName, booking.refundPolicy), deposit: await depositPayment(ctx, merchant, booking.b) };
 }
 
 export async function getBooking(db: DbOrTx, merchantId: string, bookingId: string): Promise<HallBooking> {
@@ -205,9 +210,9 @@ export async function getMyBooking(db: DbOrTx, userId: string, bookingId: string
 
 async function withHallNames(db: DbOrTx, rows: HallBooking[]) {
   const ids = [...new Set(rows.map((r) => r.hallId))];
-  const hs = ids.length ? await db.select({ id: halls.id, name: halls.name }).from(halls).where(inArray(halls.id, ids)) : [];
-  const names = new Map(hs.map((h) => [h.id, h.name]));
-  return rows.map((r) => bookingDto(r, names.get(r.hallId) ?? null));
+  const hs = ids.length ? await db.select({ id: halls.id, name: halls.name, refundPolicy: halls.refundPolicy }).from(halls).where(inArray(halls.id, ids)) : [];
+  const byId = new Map(hs.map((h) => [h.id, h]));
+  return rows.map((r) => bookingDto(r, byId.get(r.hallId)?.name ?? null, byId.get(r.hallId)?.refundPolicy ?? null));
 }
 
 /** Customer-facing (/me/banquet/...) DTOs: hall name plus the kitchen's name, slug, logo and brand colour. */
@@ -323,16 +328,47 @@ async function releaseCateringLink(db: DbOrTx, bookingId: string, now: Date) {
   await db.update(cateringEvents).set({ hallBookingId: null, updatedAt: now }).where(eq(cateringEvents.hallBookingId, bookingId));
 }
 
-export async function cancel(ctx: AppContext, where: { merchantId?: string; userId?: string; bookingId: string }): Promise<HallBooking> {
-  const b = where.merchantId ? await getBooking(ctx.db, where.merchantId, where.bookingId) : await getMyBooking(ctx.db, where.userId!, where.bookingId);
-  if (b.status === "cancelled") return b;
+/**
+ * Cancel a booking. Staff pass `refund` (full | none | {amountCents}, default none) for a deposit paid in the app.
+ * A customer's cancel applies the hall's refund policy automatically once the deposit is paid (a hold with no
+ * deposit just releases). Staff may also call it again on an already-cancelled booking to refund a deposit
+ * that landed after the cancel. The refund is made first, so a Stripe failure leaves the booking as it was.
+ */
+export async function cancel(ctx: AppContext, where: { merchantId?: string; userId?: string; bookingId: string }, refund?: restaurantApi.DepositRefundChoice): Promise<HallBooking> {
+  const staff = !!where.merchantId;
+  const b = staff ? await getBooking(ctx.db, where.merchantId!, where.bookingId) : await getMyBooking(ctx.db, where.userId!, where.bookingId);
+  const wasCancelled = b.status === "cancelled";
+  if (wasCancelled && (!staff || !refund || refund === "none")) return b;
   if (b.status === "completed") throw conflict("Booking is already completed");
   const now = ctx.now();
-  return ctx.db.transaction(async (tx) => {
-    const [row] = await tx.update(hallBookings).set({ status: "cancelled", holdExpiresAt: null }).where(eq(hallBookings.id, b.id)).returning();
-    await releaseCateringLink(tx, b.id, now);
-    return row!;
+  const merchant = await loadMerchant(ctx.db, b.merchantId);
+  let refundCents = 0;
+  if (staff) {
+    refundCents = merchant ? await resolveDepositRefund(ctx, merchant, refund, b) : 0;
+  } else if (merchant && !b.depositRefundedAt && b.depositCents > 0 && (await paidInApp(ctx, merchant, b))) {
+    const [hall] = await ctx.db.select({ refundPolicy: halls.refundPolicy }).from(halls).where(eq(halls.id, b.hallId)).limit(1);
+    refundCents = hall ? Math.round((b.depositCents * restaurantApi.hallRefundBps(hall.refundPolicy, b.startsAt, now)) / 10_000) : 0;
+  }
+  if (refundCents > 0 && merchant) await refundDeposit(ctx, merchant, { kind: "hall_deposit", id: b.id, paymentIntentId: b.depositPaymentIntentId! }, refundCents, staff ? "Hall booking cancelled" : "Cancelled by customer");
+  const refunded = refundCents > 0 ? { depositRefundCents: refundCents, depositRefundedAt: now } : {};
+  const row = await ctx.db.transaction(async (tx) => {
+    const [r] = await tx.update(hallBookings).set({ status: "cancelled", holdExpiresAt: null, ...refunded }).where(eq(hallBookings.id, b.id)).returning();
+    if (!wasCancelled) await releaseCateringLink(tx, b.id, now);
+    return r!;
   });
+  // The customer hears about a refund, and about a cancel they didn't make themselves.
+  if (merchant && (refundCents > 0 || (staff && !wasCancelled))) {
+    const when = formatLocalDateTime(b.startsAt, merchant.timezone);
+    await notifyCustomer(ctx, {
+      userId: b.userId,
+      merchantId: merchant.id,
+      title: `${merchant.name}: ${wasCancelled ? "deposit refunded" : "hall booking cancelled"}`,
+      body: `${wasCancelled ? `Your ${when} hall booking was already cancelled.` : `Your hall booking on ${when} was cancelled.`}${refundSentence(refundCents) || (b.depositPaidAt && !refundCents ? ` ${merchant.name} will be in touch about your deposit.` : "")}`,
+      sms: false,
+      data: { type: "hall_cancelled", hallBookingId: b.id, ...(refundCents > 0 ? { refundCents } : {}) },
+    });
+  }
+  return row;
 }
 
 /** Staff: mark a confirmed booking as done once the event has happened. */

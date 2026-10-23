@@ -25,6 +25,7 @@ export interface HallBody {
   baseCents?: number;
   packages?: { name: string; perHeadCents: number; includes?: string[] }[];
   depositBps?: number;
+  refundPolicy?: restaurantApi.HallRefundPolicy;
   active?: boolean;
 }
 export interface HallBookingsResponse {
@@ -87,7 +88,9 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       markDepositPaid: (id: string, method: "cash" | "etransfer" | "cheque" | "other" = "other") => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/deposit/mark-paid`, { method }),
       invoice: (id: string, send: boolean) => c.post<restaurantApi.CateringInvoiceDto>(`${cat}/${enc(id)}/invoice`, { send }),
       complete: (id: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/complete`, {}),
-      cancel: (id: string, reason?: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/cancel`, reason ? { reason } : {}),
+      /** `refund` applies to a deposit paid in the app: "full", "none" (default) or { amountCents }. */
+      cancel: (id: string, reason?: string, refund?: restaurantApi.DepositRefundChoice) =>
+        c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/cancel`, { ...(reason ? { reason } : {}), ...(refund ? { refund } : {}) }),
       linkHall: (id: string, hallBookingId: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/hall-booking`, { hallBookingId }),
     },
     banquet: {
@@ -99,7 +102,7 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       bookings: (q: Q = {}) => c.get<HallBookingsResponse>(`${bq}/bookings`, { query: q }),
       createHold: (body: restaurantApi.CreateHoldBody) => c.post<restaurantApi.HoldResponse>(`${bq}/bookings`, body),
       confirm: (id: string, markDepositPaid = false) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/confirm`, { markDepositPaid }),
-      cancel: (id: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/cancel`, {}),
+      cancel: (id: string, refund?: restaurantApi.DepositRefundChoice) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/cancel`, refund ? { refund } : {}),
       complete: (id: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/complete`, {}),
       deposit: (id: string) => c.post<restaurantApi.HoldResponse>(`${bq}/bookings/${enc(id)}/deposit`, {}),
       linkCatering: (id: string, cateringEventId: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/catering`, { cateringEventId }),

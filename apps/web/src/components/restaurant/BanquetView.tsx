@@ -3,6 +3,7 @@ import { CircleCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { restaurantApi } from "@ll/shared";
 import { PaymentBox } from "@/components/pass/PaymentBox";
+import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -49,7 +50,7 @@ function dayStates(busy: Busy): Map<string, DayState> {
 }
 
 /** /shops/<slug>/banquet: halls, packages, a month availability view, and a booking request. */
-export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn }: { shop: Shop; halls: Hall[]; initialBusy: Record<string, Busy> | null; initialMonth: { y: number; m: number }; signedIn: boolean }) {
+export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn, devAutofill }: { shop: Shop; halls: Hall[]; initialBusy: Record<string, Busy> | null; initialMonth: { y: number; m: number }; signedIn: boolean; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
   const { t, money, date, time, number, percent } = useFmt();
   const [hallId, setHallId] = useState(halls[0]?.id ?? "");
   const [month, setMonth] = useState(initialMonth);
@@ -59,6 +60,7 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn }
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const hall = halls.find((h) => h.id === hallId) ?? halls[0];
   const today = todayIso();
@@ -353,12 +355,18 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn }
                 {signedIn ? t("rc.bq.hold") : t("rc.bq.sendInquiry")}
               </Button>
               {!signedIn ? (
-                <Button variant="secondary" fullWidth href={`/login?next=${encodeURIComponent(`/shops/${shop.slug}/banquet`)}`}>
+                <Button variant="secondary" fullWidth aria-expanded={signInOpen} onClick={() => setSignInOpen(true)}>
                   {t("rc.signIn")}
                 </Button>
               ) : null}
             </div>
           </form>
+          {!signedIn && signInOpen ? (
+            // Outside the <form> (forms can't nest). No `next`: signing in refreshes this page in place, keeping the date and language.
+            <div className="border-t border-line pt-5">
+              <PhoneSignIn heading="h2" title={t("rc.signIn")} intro={t("auth.inline.hold")} devAutofill={devAutofill} />
+            </div>
+          ) : null}
         </>
       )}
     </div>

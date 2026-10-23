@@ -3,6 +3,7 @@ import { CircleCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { tiffinApi } from "@ll/shared";
 import { PaymentBox, pollUntil } from "@/components/pass/PaymentBox";
+import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -25,7 +26,7 @@ export function planPrice(p: Pick<Plan, "priceCents" | "extraServingCents">, ser
 }
 
 /** /shops/<slug>/tiffin: plans with the upcoming menu, servings stepper with live price, subscribe. */
-export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServings }: { shop: Shop; data: tiffinApi.PublicPlansResponse; signedIn: boolean; initialPlanId?: string; initialServings?: number }) {
+export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServings, devAutofill }: { shop: Shop; data: tiffinApi.PublicPlansResponse; signedIn: boolean; initialPlanId?: string; initialServings?: number; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
   const { t, money, date, pick } = useFmt();
   const plans = data.plans;
   const [planId, setPlanId] = useState<string | null>(plans.some((p) => p.id === initialPlanId) ? initialPlanId! : null);
@@ -46,7 +47,6 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
   const plan = plans.find((p) => p.id === planId) ?? null;
   const cadence = (p: Plan) => t(p.cadence === "weekly" ? "rc.tf.weekly" : "rc.tf.monthly");
   const dayNames = (p: Plan) => [...p.daysOfWeek].sort((a, b) => a - b).map((d) => date(new Date(Date.UTC(2024, 0, 7 + d, 12)), { weekday: "short" }, "UTC")).join(" · ");
-  const returnPath = plan ? `/shops/${encodeURIComponent(shop.slug)}/tiffin?plan=${plan.id}&servings=${servings}` : `/shops/${encodeURIComponent(shop.slug)}/tiffin`;
 
   function choose(p: Plan) {
     setPlanId(p.id);
@@ -249,15 +249,16 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                         {t("rc.tf.subscribeFor", { price: money(price) })}
                       </Button>
                     ) : (
-                      <div className="flex flex-col gap-2">
-                        <Button size="lg" fullWidth href={`/login?next=${encodeURIComponent(returnPath)}`}>
-                          {t("rc.tf.signInToSubscribe")}
-                        </Button>
-                        <p className="text-center text-meta text-fg-muted">{t("rc.tf.signInNote")}</p>
-                      </div>
+                      <p className="text-center text-meta text-fg-muted">{t("auth.inline.subscribe")}</p>
                     )}
                   </form>
                 )}
+                {selected && !signedIn ? (
+                  // Outside the <form> (forms can't nest). No `next`: signing in refreshes this page in place, keeping the plan and language.
+                  <div className="mt-5 border-t border-line pt-5">
+                    <PhoneSignIn heading="h3" title={t("rc.tf.signInToSubscribe")} devAutofill={devAutofill} />
+                  </div>
+                ) : null}
               </li>
             );
           })}

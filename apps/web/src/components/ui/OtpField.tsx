@@ -1,6 +1,7 @@
 "use client";
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export interface OtpFieldProps {
   value: string;
@@ -23,9 +24,11 @@ interface OtpCredential extends Credential {
  * so SMS autofill and paste work (system.md "OtpField"). Uses the Web OTP API where supported.
  */
 export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(function OtpField(
-  { value, onChange, onComplete, error, disabled, autoFocus = true, length = 6, label = "6-digit code" },
+  { value, onChange, onComplete, error, disabled, autoFocus = true, length = 6, label: labelProp },
   ref,
 ) {
+  const { t } = useLocaleOrEnglish();
+  const label = labelProp ?? t("auth.otp.label");
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
@@ -64,7 +67,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
       <label htmlFor={id} className="text-meta-strong text-fg">
         {label}
       </label>
-      <div className={cn("relative w-fit", error && "motion-safe:animate-[ll-otp-shake_220ms_ease-in-out]")} onClick={() => inputRef.current?.focus()}>
+      <div dir="ltr" className={cn("relative w-fit", error && "motion-safe:animate-[ll-otp-shake_220ms_ease-in-out]")} onClick={() => inputRef.current?.focus()}>
         <input
           ref={inputRef}
           id={id}
@@ -82,7 +85,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
           aria-describedby={error ? `${id}-error` : undefined}
           className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0 caret-transparent"
         />
-        <div aria-hidden className="flex gap-2">
+        <div aria-hidden dir="ltr" className="flex gap-2">
           {Array.from({ length }, (_, i) => {
             const ch = value[i] ?? "";
             const isActive = focused && i === active && value.length < length;

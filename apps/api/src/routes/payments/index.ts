@@ -14,9 +14,11 @@ import { FakePayments, getPayments, type PaymentsEvent } from "../../providers/p
 import { connectStatus, processWebhookEvent, startConnectOnboarding } from "../../services/payments.js";
 
 const simulateBody = z.object({
-  action: z.enum(["succeed_payment", "fail_payment", "complete_checkout", "complete_onboarding", "fail_renewal", "end_subscription", "renew_subscription", "update_subscription"]),
+  action: z.enum(["succeed_payment", "fail_payment", "succeed_setup", "complete_checkout", "complete_onboarding", "fail_renewal", "end_subscription", "renew_subscription", "update_subscription"]),
   /** PaymentIntent, Checkout Session, Connect account or Subscription id. */
   id: z.string().min(3),
+  /** succeed_payment / succeed_setup: which test method gets saved (FAKE_PM in providers/paymentsFake.ts), e.g. pm_fake_auth_required. */
+  paymentMethod: z.string().min(3).optional(),
 });
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -52,7 +54,10 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     try {
       switch (body.action) {
         case "succeed_payment":
-          events = [payments.succeedPaymentIntent(body.id)];
+          events = [payments.succeedPaymentIntent(body.id, { paymentMethod: body.paymentMethod })];
+          break;
+        case "succeed_setup":
+          events = [payments.succeedSetupIntent(body.id, { paymentMethod: body.paymentMethod })];
           break;
         case "fail_payment":
           events = [payments.failPaymentIntent(body.id)];

@@ -70,7 +70,7 @@ export default async function ShopBanquetPage({ params, searchParams }: Props) {
   const me = await getMe();
   return (
     <PageFrame locale={locale}>
-      <BanquetView shop={shop} halls={halls} initialBusy={busy} initialMonth={month} signedIn={!!me} />
+      <BanquetView shop={shop} halls={halls} initialBusy={busy} initialMonth={month} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );
 }

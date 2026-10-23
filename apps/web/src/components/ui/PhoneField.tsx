@@ -1,7 +1,8 @@
 "use client";
 import { forwardRef, useId, useState, type ChangeEvent } from "react";
 import { cn } from "@/lib/cn";
-import { PHONE_ERRORS, digitsAfterEdit, formatNanp, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { digitsAfterEdit, formatNanp, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
 import { FieldShell, describedBy, inputBase } from "./TextField";
 
 export interface PhoneFieldProps {
@@ -30,9 +31,11 @@ export interface PhoneFieldProps {
 
 /** NANP phone input: displays (416) 555-0123, emits digits and E.164 (system.md "PhoneField"). */
 export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function PhoneField(
-  { label = "Mobile number", hint, value, defaultValue = "", onChangeDigits, onChangeE164, error, forceValidate, autoFocus, disabled, name, id: idProp, showCountryPrefix = true, onEnter, size = "md" },
+  { label: labelProp, hint, value, defaultValue = "", onChangeDigits, onChangeE164, error, forceValidate, autoFocus, disabled, name, id: idProp, showCountryPrefix = true, onEnter, size = "md" },
   ref,
 ) {
+  const { t } = useLocaleOrEnglish();
+  const label = labelProp ?? t("auth.phone.label");
   const autoId = useId();
   const id = idProp ?? autoId;
   const [inner, setInner] = useState(() => normalizeDigits(defaultValue));
@@ -42,7 +45,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
 
   const validation = validateNanp(digits);
   const showValidation = ((blurred && digits.length > 0) || !!forceValidate) && validation !== "ok";
-  const message = error ?? (showValidation ? PHONE_ERRORS[validation === "invalid" ? "invalid" : "incomplete"] : null);
+  const message = error ?? (showValidation ? t(validation === "invalid" ? "auth.phone.invalid" : "auth.phone.incomplete") : null);
 
   function onChange(e: ChangeEvent<HTMLInputElement>) {
     const next = digitsAfterEdit(display, e.target.value, e.target.selectionStart);
@@ -55,7 +58,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
     <FieldShell id={id} label={label} hint={hint} error={message} gapClass={size === "lg" ? "gap-2" : undefined}>
       <div className="flex items-stretch gap-2">
         {showCountryPrefix ? (
-          <span aria-hidden className={size === "lg" ? "inline-flex h-[52px] items-center rounded-[12px] bg-bg-subtle px-3.5 text-[16px] text-fg-muted" : "inline-flex h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body text-fg-muted"}>
+          <span aria-hidden dir="ltr" className={size === "lg" ? "inline-flex h-[52px] items-center rounded-[12px] bg-bg-subtle px-3.5 text-[16px] text-fg-muted" : "inline-flex h-12 items-center rounded-input border border-line bg-bg-subtle px-3.5 text-body text-fg-muted"}>
             +1
           </span>
         ) : null}
@@ -64,6 +67,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
           id={id}
           name={name}
           type="tel"
+          dir="ltr"
           inputMode="numeric"
           autoComplete="tel-national"
           placeholder="(416) 555-0123"

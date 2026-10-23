@@ -49,7 +49,7 @@ export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(functio
           accessibilityHint={error ?? hint ?? undefined}
           onSubmitEditing={onSubmitEditing}
           returnKeyType="done"
-          style={[typo("title"), styles.input, { color: c.fg, fontVariant: ["tabular-nums"] }]}
+          style={[typo("title"), styles.input, { color: c.fg, fontVariant: ["tabular-nums"], writingDirection: "ltr" }]}
         />
       </View>
       {error ? (

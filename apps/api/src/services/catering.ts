@@ -16,6 +16,7 @@ import { randomToken } from "../lib/crypto.js";
 import { badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
+import { refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
 import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
 import { requireFeature } from "./features.js";
@@ -66,6 +67,8 @@ export function cateringDto(e: CateringEvent, publicWebUrl: string, forStaff: bo
     signatureName: e.signatureName,
     ...(forStaff ? { signatureIp: e.signatureIp, signatureUserAgent: e.signatureUserAgent } : {}),
     depositPaidAt: iso(e.depositPaidAt),
+    depositRefundCents: e.depositRefundCents,
+    depositRefundedAt: iso(e.depositRefundedAt),
     invoiceId: e.invoiceId,
     hallBookingId: e.hallBookingId,
     approvalUrl: e.quoteSentAt ? `${publicWebUrl}/e/${e.approvalToken}` : null,
@@ -542,12 +545,19 @@ export async function cancelEvent(ctx: AppContext, staff: StaffContext, eventId:
   if (e.status === "cancelled" || e.status === "completed") throw conflict(`Event is already ${e.status}`);
   const now = ctx.now();
   const notes = body.reason ? [e.notes, `Cancelled: ${body.reason}`].filter(Boolean).join("\n") : e.notes;
+  // Refund first: if Stripe refuses, the event stays open. A retry reuses the same idempotency key.
+  const refundCents = await resolveDepositRefund(ctx, merchant, body.refund, e);
+  if (refundCents > 0) await refundDeposit(ctx, merchant, { kind: "catering_deposit", id: e.id, paymentIntentId: e.depositPaymentIntentId! }, refundCents, body.reason ?? "Catering cancelled");
   const row = await ctx.db.transaction(async (tx) => {
     // Free the hall too: a cancelled event shouldn't keep a room blocked.
     if (e.hallBookingId) {
       await tx.update(hallBookings).set({ status: "cancelled", holdExpiresAt: null }).where(and(eq(hallBookings.id, e.hallBookingId), inArray(hallBookings.status, ["hold", "confirmed"])));
     }
-    const [r] = await tx.update(cateringEvents).set({ status: "cancelled", notes, updatedAt: now }).where(eq(cateringEvents.id, e.id)).returning();
+    const [r] = await tx
+      .update(cateringEvents)
+      .set({ status: "cancelled", notes, updatedAt: now, ...(refundCents > 0 ? { depositRefundCents: refundCents, depositRefundedAt: now } : {}) })
+      .where(eq(cateringEvents.id, e.id))
+      .returning();
     if (e.invoiceId) await tx.update(invoices).set({ status: "void" }).where(and(eq(invoices.id, e.invoiceId), inArray(invoices.status, ["draft", "open"])));
     return r!;
   });
@@ -555,9 +565,9 @@ export async function cancelEvent(ctx: AppContext, staff: StaffContext, eventId:
     userId: e.userId,
     merchantId: merchant.id,
     title: `${merchant.name}: catering cancelled`,
-    body: `Catering #${e.number} for ${e.eventDate} was cancelled.${e.depositPaidAt ? ` ${merchant.name} will be in touch about your deposit.` : ""}`,
+    body: `Catering #${e.number} for ${e.eventDate} was cancelled.${refundCents > 0 ? refundSentence(refundCents) : e.depositPaidAt ? ` ${merchant.name} will be in touch about your deposit.` : ""}`,
     sms: false,
-    data: { type: "catering_cancelled", cateringEventId: e.id },
+    data: { type: "catering_cancelled", cateringEventId: e.id, ...(refundCents > 0 ? { refundCents } : {}) },
   });
   return row;
 }

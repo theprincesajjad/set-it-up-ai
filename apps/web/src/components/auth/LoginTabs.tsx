@@ -2,22 +2,31 @@
 import { useState } from "react";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Tabs } from "@/components/ui/Tabs";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { EmailSignIn } from "./EmailSignIn";
 
 export function LoginTabs({ next, initial, devAutofill }: { next?: string | null; initial: "customer" | "shop"; devAutofill: boolean }) {
   const [tab, setTab] = useState(initial);
+  const { t } = useLocaleOrEnglish();
   return (
     <div className="flex flex-col gap-6">
       <Tabs
-        label="Sign in as"
+        label={t("auth.login.tabs")}
         value={tab}
-        onChange={(t) => setTab(t as "customer" | "shop")}
+        onChange={(v) => setTab(v as "customer" | "shop")}
         items={[
-          { id: "shop", label: "Shop owner or staff" },
-          { id: "customer", label: "Customer" },
+          { id: "shop", label: t("auth.login.tabShop") },
+          { id: "customer", label: t("auth.login.tabCustomer") },
         ]}
       />
-      {tab === "customer" ? <PhoneSignIn heading="h2" title="Sign in with your phone" next={next ?? "/me"} devAutofill={devAutofill} /> : <EmailSignIn next={next} devAutofill={devAutofill} />}
+      {tab === "customer" ? (
+        <PhoneSignIn heading="h2" next={next ?? "/me"} devAutofill={devAutofill} />
+      ) : (
+        // Shop owner and staff sign-in stays English in every language.
+        <div lang="en" dir="ltr">
+          <EmailSignIn next={next} devAutofill={devAutofill} />
+        </div>
+      )}
     </div>
   );
 }

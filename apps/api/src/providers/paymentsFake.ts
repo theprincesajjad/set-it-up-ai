@@ -16,8 +16,14 @@ import type {
   ChargeMode,
   CheckoutArgs,
   ConnectAccountStatus,
+  CreatePayerCustomerArgs,
   CreatePaymentIntentArgs,
+  CreateSetupIntentArgs,
+  OffSessionResult,
   PaymentIntentInfo,
+  SavedMethodScope,
+  SavedPaymentMethod,
+  SetupIntentInfo,
   PaymentsEvent,
   PaymentsProvider,
   PlatformChargeArgs,
@@ -28,12 +34,38 @@ import type {
 import { PLATFORM_CHARGE_MARKER } from "./payments.js";
 
 export const FAKE_WEBHOOK_SECRET = "whsec_fake_local_dev";
+
+/**
+ * Deterministic test payment methods (Stripe's own test cards behave like this). Pass one as `paymentMethod`
+ * to succeedPaymentIntent / succeedSetupIntent to choose what gets saved; renewals then behave accordingly.
+ */
+export const FAKE_PM = {
+  /** Default card: off-session charges succeed. */
+  visa: "pm_fake_visa_4242",
+  /** Off-session charges need the customer (3D Secure): authentication_required. */
+  authRequired: "pm_fake_auth_required",
+  /** Off-session charges are declined. */
+  declined: "pm_fake_declined",
+  /** Pre-authorized debit: off-session charges go to processing. */
+  pad: "pm_fake_pad_6789",
+} as const;
+const FAKE_PM_INFO: Record<string, Omit<SavedPaymentMethod, "id">> = {
+  [FAKE_PM.visa]: { type: "card", brand: "visa", last4: "4242" },
+  [FAKE_PM.authRequired]: { type: "card", brand: "visa", last4: "3155" },
+  [FAKE_PM.declined]: { type: "card", brand: "visa", last4: "0002" },
+  [FAKE_PM.pad]: { type: "pad", brand: "Stripe Test Bank", last4: "6789" },
+};
 const TOLERANCE_SECONDS = 300;
 
 interface FakeIntent extends PaymentIntentInfo {
   connectedAccountId: string;
   chargeMode: ChargeMode;
   refundedCents: number;
+  setupFutureUsage?: "off_session";
+}
+
+interface FakeSetupIntent extends SetupIntentInfo {
+  connectedAccountId: string | null;
 }
 
 interface FakeSubscription {
@@ -69,7 +101,10 @@ export class FakePayments implements PaymentsProvider {
   readonly accounts = new Map<string, ConnectAccountStatus & { merchantId: string }>();
   readonly intents = new Map<string, FakeIntent>();
   private readonly intentsByKey = new Map<string, string>();
-  readonly customers = new Map<string, { merchantId: string; email?: string | null; name: string }>();
+  readonly customers = new Map<string, { merchantId: string; email?: string | null; name: string; userId?: string; connectedAccountId?: string | null }>();
+  readonly setupIntents = new Map<string, FakeSetupIntent>();
+  private readonly setupByKey = new Map<string, string>();
+  private readonly customersByKey = new Map<string, string>();
   readonly sessions = new Map<string, CheckoutArgs & { id: string; url: string; completed: boolean }>();
   readonly subscriptions = new Map<string, FakeSubscription>();
   readonly refunds: { id: string; paymentIntentId: string; amountCents: number; connectedAccountId?: string }[] = [];
@@ -131,10 +166,86 @@ export class FakePayments implements PaymentsProvider {
       chargeMode: args.chargeMode ?? "destination",
       refundedCents: 0,
       ...(args.paymentMethodTypes ? { paymentMethodTypes: args.paymentMethodTypes } : {}),
+      ...(args.customerId ? { customerId: args.customerId } : {}),
+      ...(args.customerId && args.setupFutureUsage ? { setupFutureUsage: args.setupFutureUsage } : {}),
     };
     this.intents.set(id, intent);
     this.intentsByKey.set(args.idempotencyKey, id);
     return toInfo(intent);
+  }
+
+  // ---- Saved payment methods -----------------------------------------------
+  async createPayerCustomer(args: CreatePayerCustomerArgs) {
+    const key = `${args.connectedAccountId ?? "platform"}:${args.merchantId}:${args.userId}`;
+    const existing = this.customersByKey.get(key);
+    if (existing) return { customerId: existing };
+    const customerId = this.nextId("cus");
+    this.customers.set(customerId, { merchantId: args.merchantId, email: args.email, name: args.name ?? args.userId, userId: args.userId, connectedAccountId: args.connectedAccountId ?? null });
+    this.customersByKey.set(key, customerId);
+    return { customerId };
+  }
+
+  async createSetupIntent(args: CreateSetupIntentArgs): Promise<SetupIntentInfo> {
+    if (!this.customers.has(args.customerId)) throw new Error(`Unknown fake customer ${args.customerId}`);
+    const existing = this.setupByKey.get(args.idempotencyKey);
+    if (existing) return toSetupInfo(this.setupIntents.get(existing)!);
+    const id = this.nextId("seti");
+    const si: FakeSetupIntent = {
+      id,
+      clientSecret: `${id}_secret_${String(this.seq).padStart(6, "0")}`,
+      status: "requires_payment_method",
+      customerId: args.customerId,
+      paymentMethodId: null,
+      metadata: { ...args.metadata },
+      connectedAccountId: args.connectedAccountId ?? null,
+      ...(args.paymentMethodTypes ? { paymentMethodTypes: args.paymentMethodTypes } : {}),
+    };
+    this.setupIntents.set(id, si);
+    this.setupByKey.set(args.idempotencyKey, id);
+    return toSetupInfo(si);
+  }
+
+  async retrieveSetupIntent(id: string, _scope?: SavedMethodScope): Promise<SetupIntentInfo> {
+    const si = this.setupIntents.get(id);
+    if (!si) throw new Error(`Unknown fake setup intent ${id}`);
+    return toSetupInfo(si);
+  }
+
+  async retrievePaymentMethod(id: string, _scope?: SavedMethodScope): Promise<SavedPaymentMethod> {
+    return { id, ...(FAKE_PM_INFO[id] ?? { type: "card" as const, brand: "visa", last4: id.replace(/\D/g, "").slice(-4) || null }) };
+  }
+
+  /** Simulate the customer saving a method through the SetupIntent. Returns the setup_intent.succeeded event. */
+  succeedSetupIntent(id: string, opts: { paymentMethod?: string } = {}): PaymentsEvent {
+    const si = this.setupIntents.get(id);
+    if (!si) throw new Error(`Unknown fake setup intent ${id}`);
+    si.status = "succeeded";
+    si.paymentMethodId = opts.paymentMethod ?? (si.paymentMethodTypes?.includes("acss_debit") ? FAKE_PM.pad : FAKE_PM.visa);
+    return this.event("setup_intent.succeeded", { id: si.id, object: "setup_intent", status: si.status, customer: si.customerId, payment_method: si.paymentMethodId, metadata: si.metadata }, si.connectedAccountId ?? undefined);
+  }
+
+  async chargeSavedMethod(args: CreatePaymentIntentArgs & { customerId: string; paymentMethodId: string }): Promise<OffSessionResult> {
+    if (!this.customers.has(args.customerId)) throw new Error(`Unknown fake customer ${args.customerId}`);
+    const info = await this.createPaymentIntent(args);
+    const intent = this.intents.get(info.id)!;
+    if (intent.status === "succeeded") return { outcome: "succeeded", intent: toInfo(intent) };
+    intent.paymentMethodId = args.paymentMethodId;
+    if (args.paymentMethodId === FAKE_PM.authRequired) {
+      intent.status = "requires_action";
+      intent.lastErrorCode = "authentication_required";
+      return { outcome: "authentication_required", intent: toInfo(intent), errorCode: "authentication_required", message: "This payment requires authentication." };
+    }
+    if (args.paymentMethodId === FAKE_PM.declined) {
+      intent.status = "requires_payment_method";
+      intent.lastErrorCode = "card_declined";
+      return { outcome: "declined", intent: toInfo(intent), errorCode: "card_declined", message: "Your card was declined." };
+    }
+    if (FAKE_PM_INFO[args.paymentMethodId]?.type === "pad") {
+      intent.status = "processing";
+      return { outcome: "processing", intent: toInfo(intent) };
+    }
+    intent.status = "succeeded";
+    return { outcome: "succeeded", intent: toInfo(intent) };
   }
 
   async retrievePaymentIntent(id: string): Promise<PaymentIntentInfo> {
@@ -168,19 +279,25 @@ export class FakePayments implements PaymentsProvider {
     return { id, clientSecret: intent.clientSecret, status: intent.status, customerId };
   }
 
-  /** Simulate the customer paying. Returns the payment_intent.succeeded event. */
-  succeedPaymentIntent(id: string): PaymentsEvent {
+  /**
+   * Simulate the customer paying (or a processing bank debit clearing). Returns the payment_intent.succeeded event.
+   * `paymentMethod` picks the method used (default: the card already on the intent, else the 4242 test card; PAD intents use the test bank).
+   */
+  succeedPaymentIntent(id: string, opts: { paymentMethod?: string } = {}): PaymentsEvent {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);
     i.status = "succeeded";
+    i.lastErrorCode = null;
+    i.paymentMethodId = opts.paymentMethod ?? i.paymentMethodId ?? (i.paymentMethodTypes?.includes("acss_debit") ? FAKE_PM.pad : FAKE_PM.visa);
     return this.event("payment_intent.succeeded", this.intentObject(i), i.chargeMode === "direct" ? i.connectedAccountId : undefined);
   }
 
-  failPaymentIntent(id: string): PaymentsEvent {
+  failPaymentIntent(id: string, opts: { code?: string } = {}): PaymentsEvent {
     const i = this.intents.get(id);
     if (!i) throw new Error(`Unknown fake payment intent ${id}`);
     i.status = "requires_payment_method";
-    return this.event("payment_intent.payment_failed", { ...this.intentObject(i), last_payment_error: { message: "Your card was declined." } }, i.chargeMode === "direct" ? i.connectedAccountId : undefined);
+    i.lastErrorCode = opts.code ?? "card_declined";
+    return this.event("payment_intent.payment_failed", { ...this.intentObject(i), last_payment_error: { code: i.lastErrorCode, message: "Your card was declined." } }, i.chargeMode === "direct" ? i.connectedAccountId : undefined);
   }
 
   async refund(args: { paymentIntentId: string; amountCents?: number; idempotencyKey: string; reason?: string; connectedAccountId?: string; chargeMode?: ChargeMode }) {
@@ -439,6 +556,9 @@ export class FakePayments implements PaymentsProvider {
       transfer_data: i.connectedAccountId && i.chargeMode === "destination" ? { destination: i.connectedAccountId } : null,
       on_behalf_of: i.connectedAccountId && i.chargeMode === "destination" ? i.connectedAccountId : null,
       ll_charge_mode: i.chargeMode,
+      customer: i.customerId ?? null,
+      payment_method: i.paymentMethodId ?? null,
+      last_payment_error: i.lastErrorCode ? { code: i.lastErrorCode } : null,
     };
   }
 
@@ -469,7 +589,23 @@ export class FakePayments implements PaymentsProvider {
 }
 
 function toInfo(i: FakeIntent): PaymentIntentInfo {
-  return { id: i.id, clientSecret: i.clientSecret, status: i.status, amountCents: i.amountCents, applicationFeeCents: i.applicationFeeCents, metadata: i.metadata, chargeMode: i.chargeMode, ...(i.paymentMethodTypes ? { paymentMethodTypes: i.paymentMethodTypes } : {}) };
+  return {
+    id: i.id,
+    clientSecret: i.clientSecret,
+    status: i.status,
+    amountCents: i.amountCents,
+    applicationFeeCents: i.applicationFeeCents,
+    metadata: i.metadata,
+    chargeMode: i.chargeMode,
+    ...(i.paymentMethodTypes ? { paymentMethodTypes: i.paymentMethodTypes } : {}),
+    customerId: i.customerId ?? null,
+    paymentMethodId: i.paymentMethodId ?? null,
+    lastErrorCode: i.lastErrorCode ?? null,
+  };
+}
+
+function toSetupInfo(s: FakeSetupIntent): SetupIntentInfo {
+  return { id: s.id, clientSecret: s.clientSecret, status: s.status, customerId: s.customerId, paymentMethodId: s.paymentMethodId, metadata: s.metadata, ...(s.paymentMethodTypes ? { paymentMethodTypes: s.paymentMethodTypes } : {}) };
 }
 
 function snap(s: FakeSubscription): SubscriptionSnapshot {

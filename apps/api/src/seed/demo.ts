@@ -36,6 +36,7 @@ import type { AppContext } from "../context.js";
 import { createProviders } from "../providers/index.js";
 import { awardPurchase, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
+import { CORE_SHOP_FEATURES, seedCoreModules } from "./core.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
 
@@ -129,7 +130,10 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   const [existing] = await db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, "roncesvalles")).limit(1);
   if (existing) {
     log("Demo data already present (neighbourhood 'roncesvalles' exists) — skipping.");
-    // Older dev databases get the Ridgeway Plaza restaurant corridor added (no-op when present).
+    // Older dev databases get the core-module data (no-op when present) and the Ridgeway Plaza restaurant corridor added.
+    const skipConfig = { ...(opts.config ?? loadConfig({ NODE_ENV: "development" })) };
+    const skipClock = { now: new Date() };
+    await seedCoreModules(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { seed: opts.seed, log });
     await seedRestaurantCorridor(db, { config: opts.config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
@@ -396,6 +400,11 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   }
   const [{ n: leadCount } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads);
   log(`Leads: ${leadCount}`);
+
+  // ---- Core modules on the pilot shops: catalog, orders, slots, tickets, promos, cards, ads ----
+  clock.now = nowReal;
+  await seedCoreModules(db, ctx, clock, { seed: opts.seed, log });
+  clock.now = new Date();
 
   // ---- Ridgeway Plaza restaurant corridor (restaurant pack demo) ----
   const corridor = await seedRestaurantCorridor(db, { config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });

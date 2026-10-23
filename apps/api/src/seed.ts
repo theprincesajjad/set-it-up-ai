@@ -24,6 +24,7 @@ async function main() {
     console.log("\nPricing v2: only loyalty + reporting are free; paid features are hidden at launch.");
     console.log("Pilot shops with admin overrides (promos, discount cards, VIP, birthday/referrals, email, CSV, advanced reports):");
     for (const p of r.pilotOverrides) console.log(`  ${p.merchant} (${p.slug})`);
+    console.log("Core-module demo data (orders, slots, tickets, ads, promos, discount cards, catalog) on: Pinecone Coffee, Hearth & Crumb (+ ads), Village Apothecary, Fix-It Phone Lab (service tickets, drop-off slots).");
     console.log("Other shops' seeded promos stay hidden until an admin enables the feature (Admin → Rollout → overrides).");
     console.log("\nDemo credentials");
     console.log("────────────────");

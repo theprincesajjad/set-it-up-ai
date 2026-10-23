@@ -405,7 +405,34 @@ export interface SubscribeResponse {
   payment: PaymentIntentRef | null;
 }
 
+/** The saved payment method renewals are charged to automatically. */
+export interface CardOnFile {
+  /** card (visa, mastercard, ...) or pad (pre-authorized debit). */
+  type: "card" | "pad";
+  brand: string | null;
+  last4: string | null;
+}
+
+/** POST /me/tiffin/subscriptions/:subId/payment-method: a SetupIntent to confirm with Stripe.js (web) or at /pay/setup/<id>?cs= (app). */
+export interface PaymentMethodSetupResponse {
+  setupIntentId: string;
+  clientSecret: string;
+  methods: string[];
+}
+
+/** GET /public/payments/setup/:setupIntentId?cs=: what the /pay/setup page shows. */
+export interface SetupIntentView {
+  merchant: { name: string; slug: string; logoUrl: string | null; brandColor: string | null };
+  description: string;
+  status: "requires_payment" | "processing" | "succeeded" | "canceled";
+  methods: string[];
+  /** Set once the new method is saved. */
+  cardOnFile: CardOnFile | null;
+}
+
 export interface MySubscriptionDto extends SubscriptionDto {
+  /** null until the first payment saves a method. */
+  cardOnFile: CardOnFile | null;
   merchant: { id: string; name: string; slug: string; logoUrl: string | null };
   nextDelivery: { date: string; status: TiffinDeliveryStatus } | null;
   latestCharge: ChargeDto | null;

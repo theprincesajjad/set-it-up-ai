@@ -2,7 +2,7 @@
 import { ExternalLink, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { restaurantApi } from "@ll/shared";
+import { restaurantApi } from "@ll/shared";
 import { Capsules, DefList, Dot, EmptyState, Section, SidePanel as Sheet, type DotTone } from "@/components/dashboard/kit";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatMoney, formatNumber, formatTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS } from "../catering/labels";
+import { NO_REFUND, RefundChoice, refundBody, refundedText, type RefundState } from "../RefundChoice";
 import { CheckRow, FormGrid, Loader, NumberField, addDaysISO, bpsToPct, dayLabel, todayISO, torontoDay, torontoInstant } from "../common";
 import { BOOKING_LABEL, BOOKING_ORDER } from "./labels";
 
@@ -46,6 +47,13 @@ function HoldLeft({ b }: { b: Booking }) {
   const left = useHoldLeft(b.status === "hold" ? b.holdExpiresAt : null);
   if (!left) return null;
   return <span className={left.lapsed || left.urgent ? "text-negative" : "text-fg-muted"}>{left.text}</span>;
+}
+/** "100% back 30+ days ahead, 50% 14+ days ahead, nothing after" */
+export function policyText(p: restaurantApi.HallRefundPolicy): string {
+  if (!p.tiers.length) return "No refund";
+  const tiers = [...p.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore);
+  const pct = (bps: number) => (bps % 100 ? (bps / 100).toFixed(1) : String(bps / 100)) + "%";
+  return `${tiers.map((t) => `${pct(t.refundBps)} back ${t.minDaysBefore}+ days ahead`).join(", ")}, nothing after`;
 }
 const when = (b: Booking) => `${dayLabel(torontoDay(b.startsAt))}, ${formatTime(b.startsAt)} to ${formatTime(b.endsAt)}`;
 
@@ -114,6 +122,7 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
   const [pay, setPay] = useState<{ paymentIntentId: string; clientSecret: string; amountCents: number } | null>(null);
   const [noCard, setNoCard] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [refund, setRefund] = useState<RefundState>(NO_REFUND);
   const [pick, setPick] = useState("");
   const cateringOn = enabled("restaurant.catering");
   const events = useApi(cateringOn ? () => api.catering.list({ limit: 100 }) : null, [api, cateringOn]);
@@ -121,6 +130,11 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
   const live = b.status === "hold" || b.status === "confirmed";
   const hold = b.status === "hold";
   const depositDue = b.depositCents > 0 && !b.depositPaidAt;
+  // Only a deposit paid in the app can be refunded. One recorded by hand is returned directly (the server says so if you try).
+  const refundable = !!b.depositPaidAt && b.depositCents > 0 && b.depositRefundCents === 0;
+  // A deposit that landed after the cancel can still be refunded, once.
+  const laterRefund = b.status === "cancelled" && refundable;
+  const chosen = refundable ? refundBody(refund, b.depositCents) : null;
 
   const run = async <R,>(fn: () => Promise<R>, ok: string) => {
     const r = await act.run(fn);
@@ -145,6 +159,8 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
             { label: "Package", value: b.packageName ?? "Room only" },
             { label: "Total with tax", value: formatMoney(b.totalCents) },
             { label: "Deposit", value: b.depositPaidAt ? `${formatMoney(b.depositCents)} paid ${formatDateTime(b.depositPaidAt)}` : `${formatMoney(b.depositCents)} due` },
+            ...(b.depositRefundCents > 0 ? [{ label: "Refund", value: refundedText(b.depositRefundCents, b.depositRefundedAt, formatDateTime) ?? "" }] : []),
+            ...(b.refundPolicy ? [{ label: "Customer cancels", value: policyText(b.refundPolicy) }] : []),
             ...(b.notes ? [{ label: "Notes", value: b.notes }] : []),
           ]} />
 
@@ -182,6 +198,12 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
             </Section>
           ) : null}
 
+          {laterRefund ? (
+            <Section title="Deposit" description={`${formatMoney(b.depositCents)} arrived after this booking was cancelled.`}>
+              <Button size="sm" variant="secondary" onClick={() => setCancelling(true)}>Refund the deposit</Button>
+            </Section>
+          ) : null}
+
           {live ? (
             <Section title="Close out">
               <div className="flex flex-wrap gap-2">
@@ -194,17 +216,21 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
       </Sheet>
       <ConfirmDialog
         open={cancelling}
-        onClose={() => setCancelling(false)}
+        onClose={() => { setCancelling(false); setRefund(NO_REFUND); }}
         danger
-        title={hold ? "Release this hold?" : "Cancel this booking?"}
-        body={`The hall opens up for that time again.${b.depositPaidAt ? " The deposit is not refunded automatically." : ""}`}
-        confirmLabel={hold ? "Release hold" : "Cancel booking"}
+        title={laterRefund ? "Refund this deposit?" : hold ? "Release this hold?" : "Cancel this booking?"}
+        body={laterRefund ? "The booking is already cancelled. This returns the deposit to the card it was paid with." : `The hall opens up for that time again.${refundable ? " The customer is told, along with what happens to their deposit." : ""}`}
+        confirmLabel={laterRefund ? "Refund deposit" : refund.mode === "none" ? (hold ? "Release hold" : "Cancel booking") : "Cancel and refund"}
+        disabled={refundable && chosen === null}
         onConfirm={async () => {
-          await api.banquet.cancel(b.id);
-          toast({ message: hold ? "Hold released" : "Booking cancelled", tone: "success" });
+          const r = await api.banquet.cancel(b.id, refundable ? (chosen ?? undefined) : undefined);
+          toast({ message: r.depositRefundCents > 0 ? `${laterRefund ? "Deposit refunded" : "Booking cancelled"}. ${formatMoney(r.depositRefundCents)} is on its way back.` : hold ? "Hold released" : "Booking cancelled", tone: "success" });
+          setRefund(NO_REFUND);
           await reload();
         }}
-      />
+      >
+        {refundable ? <RefundChoice depositCents={b.depositCents} value={refund} onChange={setRefund} hint={b.refundPolicy && !laterRefund ? `Your policy for customers who cancel: ${policyText(b.refundPolicy)}. You choose here, so the policy is not applied.` : "If you took the deposit by e-transfer or cash, keep it here and return it yourself. The app can only refund card payments."} /> : null}
+      </ConfirmDialog>
     </>
   );
 }

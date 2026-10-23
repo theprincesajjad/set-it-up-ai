@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinSubscriptions, userNotificationPrefs } from "@ll/db";
 import { FEES } from "@ll/shared";
 import { cutoffAt, generateDeliveries, localInstant, mrrOf, rollBilling, runDaily } from "../src/services/tiffin.js";
+import { FAKE_PM } from "../src/providers/paymentsFake.js";
 import { call, customer, deliver, fake, paidMerchant } from "./commerce-fixtures.js";
 import { createTestEnv, grantFeatures, tokenFor, type TestEnv } from "./helpers.js";
 
@@ -70,6 +71,11 @@ async function activeSub(k: K, body: Record<string, unknown> = {}, who?: Awaited
   expect(j.r.status).toBe(201);
   await pay(j.payment.paymentIntentId);
   return j;
+}
+
+/** Forget the saved card, so renewals take the manual path (renewal_due, the customer confirms). */
+async function forgetCard(subId: string) {
+  await env.db.update(tiffinSubscriptions).set({ paymentMethodId: null, paymentMethodBrand: null, paymentMethodLast4: null }).where(eq(tiffinSubscriptions.id, subId));
 }
 
 describe("plans", () => {
@@ -305,6 +311,7 @@ describe("billing and skip credit", () => {
   it("credits only skips made before cutoff on the next period's charge, and takes the platform fee on the net", async () => {
     const k = await kitchen();
     const { c, sub, charge } = await activeSub(k, { servings: 2 }); // 19000, food 18000, 22 meal days in Nov 4 - Dec 3
+    await forgetCard(sub.id);
     const skip = (dates: string[]) => call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${sub.id}/skips`, { dates });
     const first = await skip(["2026-11-10", "2026-11-11"]);
     expect(first.body.creditCents).toBe(Math.round((18000 * 2) / 22)); // 1636 estimate
@@ -343,6 +350,7 @@ describe("billing and skip credit", () => {
   it("lists a subscriber's charges for the kitchen: period, amount, credit, status and paid date", async () => {
     const k = await kitchen();
     const { c, sub } = await activeSub(k, { servings: 2 });
+    await forgetCard(sub.id);
     const url = `${k.base}/subscribers/${sub.id}/charges`;
     const first = await call(env, k.m.ownerToken, "GET", url);
     expect(first.status).toBe(200);
@@ -368,6 +376,7 @@ describe("billing and skip credit", () => {
   it("marks past due and tells the customer when a payment fails, then recovers on retry", async () => {
     const k = await kitchen();
     const { c, sub } = await activeSub(k);
+    await forgetCard(sub.id);
     await at("2026-12-04T15:00:00Z");
     await runDaily(env.ctx);
     const [ch] = await env.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, sub.id), eq(tiffinCharges.periodStart, "2026-12-04")));
@@ -631,5 +640,194 @@ describe("charge mode", () => {
     await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, k.m.merchant.id));
     const { payment } = await join(k);
     expect(fake(env).intents.get(payment.paymentIntentId)).toMatchObject({ chargeMode: "destination" });
+  });
+});
+
+describe("saved payment methods and automatic renewals", () => {
+  const sub = async (id: string) => (await env.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, id)))[0]!;
+  const chargeFor = async (subId: string, periodStart: string) => (await env.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, subId), eq(tiffinCharges.periodStart, periodStart))))[0]!;
+  const events = async (userId: string) => (await env.db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.type, "tiffin_update")))).map((n) => n.data.event);
+  /** An active subscriber whose card on file is `pm`, ready to renew on 2026-12-04. */
+  async function renewing(k: K, pm: string, body: Record<string, unknown> = {}) {
+    const j = await join(k, body);
+    expect(j.r.status).toBe(201);
+    await deliver(env, fake(env).succeedPaymentIntent(j.payment.paymentIntentId, { paymentMethod: pm }));
+    await at("2026-12-04T15:00:00Z");
+    return j;
+  }
+
+  it("the first payment keeps the card on a Stripe customer (reused per user and kitchen) and saves it on the subscription", async () => {
+    const k = await kitchen();
+    const { r, c, sub: s0, payment, charge } = await join(k);
+    expect(r.status).toBe(201);
+    expect(r.body.subscription).not.toHaveProperty("stripeCustomerId");
+    const pi = fake(env).intents.get(payment.paymentIntentId)!;
+    const customerId = (await sub(s0.id)).stripeCustomerId!;
+    expect(customerId).toMatch(/^cus_fake_/);
+    expect(pi).toMatchObject({ customerId, setupFutureUsage: "off_session", metadata: { ll_id: charge.id } });
+    expect((await call(env, c.token, "GET", `/v1/me/tiffin/subscriptions/${s0.id}`)).body.subscription.cardOnFile).toBeNull();
+
+    await pay(payment.paymentIntentId);
+    expect(await sub(s0.id)).toMatchObject({ status: "active", paymentMethodId: FAKE_PM.visa, paymentMethodBrand: "visa", paymentMethodLast4: "4242" });
+    const mine = await call(env, c.token, "GET", `/v1/me/tiffin/subscriptions/${s0.id}`);
+    expect(mine.body.subscription.cardOnFile).toEqual({ type: "card", brand: "visa", last4: "4242" });
+    expect((await call(env, c.token, "GET", "/v1/me/tiffin/subscriptions")).body.items[0].cardOnFile).toMatchObject({ last4: "4242" });
+
+    // A second plan from the same kitchen reuses the customer instead of creating another.
+    const other = (await call(env, k.m.ownerToken, "POST", `${k.base}/plans`, { name: "Weekend biryani", cadence: "weekly", daysOfWeek: [6, 0], priceCents: 4500 })).body;
+    const second = await call(env, c.token, "POST", "/v1/me/tiffin/subscriptions", { planId: other.id, servings: 1, fulfilment: "pickup", startDate: "2026-11-07" });
+    expect(second.status).toBe(201);
+    expect((await sub(second.body.subscription.id)).stripeCustomerId).toBe(customerId);
+    expect(fake(env).customers.size).toBe(1);
+  });
+
+  it("renewals charge the saved card off-session with no action from the customer", async () => {
+    const k = await kitchen();
+    const { c, sub: s0 } = await renewing(k, FAKE_PM.visa);
+    const run = await runDaily(env.ctx);
+    expect(run.billing).toMatchObject({ charged: 1, errors: 0 });
+    const ch = await chargeFor(s0.id, "2026-12-04");
+    expect(ch).toMatchObject({ status: "paid", amountCents: 12000 + 1000 });
+    const pi = fake(env).intents.get(ch.stripePaymentIntentId!)!;
+    expect(pi).toMatchObject({ status: "succeeded", paymentMethodId: FAKE_PM.visa, customerId: (await sub(s0.id)).stripeCustomerId, applicationFeeCents: ch.platformFeeCents, connectedAccountId: k.m.merchant.stripeAccountId });
+    expect(await sub(s0.id)).toMatchObject({ status: "active", currentPeriodStart: "2026-12-04", currentPeriodEnd: "2027-01-03", nextBillingDate: "2027-01-04" });
+    // The customer is told it was paid, not asked to pay.
+    expect(await events(c.user.id)).toContain("renewal_paid");
+    expect(await events(c.user.id)).not.toContain("renewal_due");
+    // Re-running neither charges again nor notifies again; the webhook for the same intent is harmless.
+    expect((await rollBilling(env.ctx)).charged).toBe(0);
+    await pay(ch.stripePaymentIntentId!);
+    expect(await env.db.select().from(tiffinCharges).where(eq(tiffinCharges.subscriptionId, s0.id))).toHaveLength(2);
+    expect((await events(c.user.id)).filter((e) => e === "renewal_paid")).toHaveLength(1);
+  });
+
+  it("falls back to the renewal_due flow when the bank wants the customer (authentication required)", async () => {
+    const k = await kitchen();
+    const { c, sub: s0 } = await renewing(k, FAKE_PM.authRequired);
+    expect((await runDaily(env.ctx)).billing).toMatchObject({ charged: 1, errors: 0 });
+    const ch = await chargeFor(s0.id, "2026-12-04");
+    expect(ch).toMatchObject({ status: "pending" });
+    expect(fake(env).intents.get(ch.stripePaymentIntentId!)).toMatchObject({ status: "requires_action", lastErrorCode: "authentication_required" });
+    expect(await sub(s0.id)).toMatchObject({ status: "active", currentPeriodStart: "2026-11-04" });
+    expect(await events(c.user.id)).toContain("renewal_due");
+
+    // Stripe also reports the off-session attempt as failed: that must not mark it past due.
+    expect((await deliver(env, fake(env).failPaymentIntent(ch.stripePaymentIntentId!, { code: "authentication_required" }))).statusCode).toBe(200);
+    expect((await sub(s0.id)).status).toBe("active");
+    expect((await chargeFor(s0.id, "2026-12-04")).status).toBe("pending");
+
+    // The customer confirms the same intent from /pay/intent (retry-payment hands it back), and the period advances.
+    const retry = await call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${s0.id}/retry-payment`);
+    expect(retry.status).toBe(200);
+    expect(retry.body.payment.paymentIntentId).toBe(ch.stripePaymentIntentId);
+    await deliver(env, fake(env).succeedPaymentIntent(ch.stripePaymentIntentId!, { paymentMethod: FAKE_PM.visa }));
+    expect(await sub(s0.id)).toMatchObject({ status: "active", currentPeriodStart: "2026-12-04", paymentMethodId: FAKE_PM.visa, paymentMethodLast4: "4242" });
+    expect(await chargeFor(s0.id, "2026-12-04")).toMatchObject({ status: "paid" });
+  });
+
+  it("a declined card fails the charge, marks the subscription past due and tells the customer; a new card recovers it", async () => {
+    const k = await kitchen();
+    const { c, sub: s0 } = await renewing(k, FAKE_PM.declined);
+    expect((await runDaily(env.ctx)).billing).toMatchObject({ charged: 1, errors: 0 });
+    const ch = await chargeFor(s0.id, "2026-12-04");
+    expect(ch.status).toBe("failed");
+    expect(await sub(s0.id)).toMatchObject({ status: "past_due", currentPeriodStart: "2026-11-04" });
+    expect(env.ctx.providers.outbox.push.filter((p) => p.title === "Your tiffin payment didn't go through")).toHaveLength(1);
+    expect(await events(c.user.id)).toEqual(expect.arrayContaining(["payment_failed"]));
+    expect(await events(c.user.id)).not.toContain("renewal_due");
+
+    // Stripe's own payment_failed webhook for the same attempt doesn't notify twice; no retry loop either.
+    await deliver(env, fake(env).failPaymentIntent(ch.stripePaymentIntentId!));
+    expect(env.ctx.providers.outbox.push.filter((p) => p.title === "Your tiffin payment didn't go through")).toHaveLength(1);
+    expect((await rollBilling(env.ctx)).charged).toBe(0);
+
+    // The customer retries with a different card: a fresh manual intent, and that card becomes the one on file.
+    const retry = await call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${s0.id}/retry-payment`);
+    expect(retry.body.payment.paymentIntentId).not.toBe(ch.stripePaymentIntentId);
+    await deliver(env, fake(env).succeedPaymentIntent(retry.body.payment.paymentIntentId, { paymentMethod: FAKE_PM.visa }));
+    expect(await sub(s0.id)).toMatchObject({ status: "active", currentPeriodStart: "2026-12-04", paymentMethodId: FAKE_PM.visa });
+  });
+
+  it("pre-authorized debit renewals go to processing and settle when the debit clears", async () => {
+    env.ctx.config.tiffin = { padEnabled: true };
+    const k = await kitchen();
+    const first = await join(k, { paymentMethod: "pad" });
+    expect(fake(env).intents.get(first.payment.paymentIntentId)).toMatchObject({ paymentMethodTypes: ["acss_debit"], setupFutureUsage: "off_session" });
+    await pay(first.payment.paymentIntentId);
+    expect(await sub(first.sub.id)).toMatchObject({ paymentMethodId: FAKE_PM.pad, paymentMethodLast4: "6789" });
+    expect((await call(env, first.c.token, "GET", `/v1/me/tiffin/subscriptions/${first.sub.id}`)).body.subscription.cardOnFile).toMatchObject({ type: "pad", last4: "6789" });
+
+    await at("2026-12-04T15:00:00Z");
+    await runDaily(env.ctx);
+    const ch = await chargeFor(first.sub.id, "2026-12-04");
+    expect(ch.status).toBe("pending");
+    expect(fake(env).intents.get(ch.stripePaymentIntentId!)).toMatchObject({ status: "processing", paymentMethodTypes: ["acss_debit"] });
+    expect(await events(first.c.user.id)).not.toContain("renewal_due");
+    await pay(ch.stripePaymentIntentId!);
+    expect(await sub(first.sub.id)).toMatchObject({ status: "active", currentPeriodStart: "2026-12-04" });
+  });
+
+  it("a fully credited period still settles without a payment when a card is on file", async () => {
+    const k = await kitchen();
+    const { sub: s0 } = await activeSub(k);
+    await at("2026-12-04T15:00:00Z");
+    // Zero out the next period's price via a 100% credit: simplest is a free price.
+    await env.db.update(tiffinSubscriptions).set({ priceCents: 0 }).where(eq(tiffinSubscriptions.id, s0.id));
+    expect((await rollBilling(env.ctx)).settled).toBe(1);
+    expect(await chargeFor(s0.id, "2026-12-04")).toMatchObject({ status: "paid", stripePaymentIntentId: null });
+  });
+
+  it("direct charges keep the customer and the saved method on the kitchen's connected account", async () => {
+    env.ctx.config.stripe.directCharges = true;
+    const k = await kitchen();
+    await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, k.m.merchant.id));
+    const { c, sub: s0 } = await renewing(k, FAKE_PM.visa);
+    expect(fake(env).customers.get((await sub(s0.id)).stripeCustomerId!)).toMatchObject({ connectedAccountId: k.m.merchant.stripeAccountId, userId: c.user.id });
+    await runDaily(env.ctx);
+    const ch = await chargeFor(s0.id, "2026-12-04");
+    expect(ch.status).toBe("paid");
+    expect(fake(env).intents.get(ch.stripePaymentIntentId!)).toMatchObject({ chargeMode: "direct", status: "succeeded" });
+  });
+
+  it("changing the card: the SetupIntent is reused while open, the new card replaces the old, and renewals use it", async () => {
+    const k = await kitchen();
+    const { c, sub: s0 } = await activeSub(k);
+    const url = `/v1/me/tiffin/subscriptions/${s0.id}/payment-method`;
+    const first = await call(env, c.token, "POST", url);
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({ setupIntentId: expect.stringMatching(/^seti_fake_/), clientSecret: expect.stringContaining("_secret_"), methods: ["card"] });
+    expect((await call(env, c.token, "POST", url)).body.setupIntentId).toBe(first.body.setupIntentId);
+    // Someone else's subscription is a 404.
+    expect((await call(env, (await customer(env)).token, "POST", url)).status).toBe(404);
+
+    // The public /pay/setup page needs the secret and shows the kitchen.
+    const view = (cs: string) => call(env, null, "GET", `/v1/public/payments/setup/${first.body.setupIntentId}?cs=${cs}`);
+    expect((await view("nope")).status).toBe(404);
+    expect((await call(env, null, "GET", `/v1/public/payments/setup/seti_fake_999999?cs=${first.body.clientSecret}`)).status).toBe(404);
+    const open = await view(first.body.clientSecret);
+    expect(open.body).toMatchObject({ status: "requires_payment", description: "Tiffin: Veg thali, weekdays", methods: ["card"], cardOnFile: null, merchant: { slug: k.shop } });
+
+    expect((await deliver(env, fake(env).succeedSetupIntent(first.body.setupIntentId, { paymentMethod: FAKE_PM.declined }))).statusCode).toBe(200);
+    expect(await sub(s0.id)).toMatchObject({ paymentMethodId: FAKE_PM.declined, paymentMethodLast4: "0002" });
+    const mine = await call(env, c.token, "GET", `/v1/me/tiffin/subscriptions/${s0.id}`);
+    expect(mine.body.subscription.cardOnFile).toEqual({ type: "card", brand: "visa", last4: "0002" });
+    expect((await view(first.body.clientSecret)).body).toMatchObject({ status: "succeeded", cardOnFile: { last4: "0002" } });
+    expect(await events(c.user.id)).toContain("payment_method_updated");
+    // Replay is harmless, and a finished SetupIntent is not reused.
+    await deliver(env, fake(env).succeedSetupIntent(first.body.setupIntentId, { paymentMethod: FAKE_PM.declined }));
+    const next = await call(env, c.token, "POST", url);
+    expect(next.body.setupIntentId).not.toBe(first.body.setupIntentId);
+
+    // The new (declining) card is what the next renewal tries.
+    await at("2026-12-04T15:00:00Z");
+    await runDaily(env.ctx);
+    expect(await sub(s0.id)).toMatchObject({ status: "past_due" });
+  });
+
+  it("refuses a card change on a cancelled subscription", async () => {
+    const k = await kitchen();
+    const { c, sub: s0 } = await activeSub(k);
+    await call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${s0.id}/cancel`, {});
+    expect((await call(env, c.token, "POST", `/v1/me/tiffin/subscriptions/${s0.id}/payment-method`)).status).toBe(409);
   });
 });

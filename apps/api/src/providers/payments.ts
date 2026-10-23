@@ -40,6 +40,68 @@ export interface PaymentIntentInfo {
   metadata: Record<string, string>;
   chargeMode?: ChargeMode;
   paymentMethodTypes?: string[];
+  /** The Stripe Customer the intent belongs to, when it has one. */
+  customerId?: string | null;
+  /** The payment method used (pm_...) once confirmed. */
+  paymentMethodId?: string | null;
+  /** Stripe's last_payment_error.code of the latest failed attempt (authentication_required, card_declined, ...). */
+  lastErrorCode?: string | null;
+}
+
+/** A payment method kept on a customer for off-session renewals. */
+export interface SavedPaymentMethod {
+  id: string;
+  type: "card" | "pad";
+  /** visa, mastercard, ... (cards) or the bank name (PAD). */
+  brand: string | null;
+  last4: string | null;
+}
+
+export interface CreatePayerCustomerArgs {
+  userId: string;
+  merchantId: string;
+  email?: string | null;
+  name?: string | null;
+  /** Set for direct charges: the customer lives on the merchant's connected account. Omit for destination charges (platform account). */
+  connectedAccountId?: string | null;
+}
+
+/** Where a SetupIntent / saved payment method lives: the connected account for direct charges, else the platform. */
+export interface SavedMethodScope {
+  chargeMode?: ChargeMode;
+  connectedAccountId?: string | null;
+}
+
+export interface CreateSetupIntentArgs extends SavedMethodScope {
+  customerId: string;
+  /** Stripe payment method types, e.g. ["acss_debit"]. Omit for automatic (card, wallets). */
+  paymentMethodTypes?: string[];
+  metadata: Record<string, string>;
+  idempotencyKey: string;
+}
+
+export interface SetupIntentInfo {
+  id: string;
+  clientSecret: string;
+  status: string;
+  customerId: string | null;
+  paymentMethodId: string | null;
+  metadata: Record<string, string>;
+  paymentMethodTypes?: string[];
+}
+
+/**
+ * Outcome of confirming a saved method off-session. authentication_required: the bank wants the customer
+ * present (the intent stays open for them to confirm); declined: the payment failed; processing: PAD,
+ * settles later by webhook.
+ */
+export type OffSessionOutcome = "succeeded" | "processing" | "authentication_required" | "declined";
+export interface OffSessionResult {
+  outcome: OffSessionOutcome;
+  intent: PaymentIntentInfo;
+  /** Stripe error code or decline reason when not succeeded. */
+  errorCode?: string;
+  message?: string;
 }
 
 export interface CreatePaymentIntentArgs {
@@ -57,6 +119,10 @@ export interface CreatePaymentIntentArgs {
   paymentMethodTypes?: string[];
   /** Default "destination". Use chargeModeFor() in services/payments.ts to resolve it for a merchant. */
   chargeMode?: ChargeMode;
+  /** Attach the intent to this customer (created with createPayerCustomer, on the same account as the charge). */
+  customerId?: string;
+  /** Keep the payment method on the customer for later off-session charges (cards; PAD also records a mandate). Needs customerId. */
+  setupFutureUsage?: "off_session";
 }
 
 /**
@@ -148,6 +214,15 @@ export interface PaymentsProvider {
   retrievePaymentIntent(id: string, opts?: { connectedAccountId?: string }): Promise<PaymentIntentInfo>;
   /** Charge a merchant for platform services (PaymentIntent on the platform account). */
   createPlatformCharge(args: PlatformChargeArgs): Promise<PlatformChargeResult>;
+  // Saved payment methods (tiffin renewals)
+  /** A customer (a person paying a merchant) on the platform or the merchant's connected account. Idempotent per user + scope. */
+  createPayerCustomer(args: CreatePayerCustomerArgs): Promise<{ customerId: string }>;
+  /** SetupIntent to save or replace the payment method without charging. Confirm client-side with the client secret. */
+  createSetupIntent(args: CreateSetupIntentArgs): Promise<SetupIntentInfo>;
+  retrieveSetupIntent(id: string, scope?: SavedMethodScope): Promise<SetupIntentInfo>;
+  retrievePaymentMethod(id: string, scope?: SavedMethodScope): Promise<SavedPaymentMethod>;
+  /** Create the payment and confirm it with the saved method right away (`off_session: true, confirm: true`). Never throws for a card problem: see OffSessionResult. */
+  chargeSavedMethod(args: CreatePaymentIntentArgs & { customerId: string; paymentMethodId: string }): Promise<OffSessionResult>;
   refund(args: {
     paymentIntentId: string;
     amountCents?: number;

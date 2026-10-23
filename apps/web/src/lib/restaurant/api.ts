@@ -49,6 +49,8 @@ export function restaurantCustomerApi(c: ApiClient) {
       pause: (id: string, body: tiffinApi.PauseBody) => c.post<tiffinApi.PauseResponse>(`/v1/me/tiffin/subscriptions/${enc(id)}/pause`, body),
       resume: (id: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(id)}/resume`, {}),
       cancel: (id: string, reason?: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(id)}/cancel`, reason ? { reason } : {}),
+      /** Change the card on file: a SetupIntent to confirm (SetupBox). */
+      paymentMethod: (id: string) => c.post<tiffinApi.PaymentMethodSetupResponse>(`/v1/me/tiffin/subscriptions/${enc(id)}/payment-method`, {}),
       retryPayment: (id: string) => c.post<tiffinApi.RetryPaymentResponse>(`/v1/me/tiffin/subscriptions/${enc(id)}/retry-payment`, {}),
     },
   };

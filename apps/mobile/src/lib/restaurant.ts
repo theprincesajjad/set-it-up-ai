@@ -3,7 +3,7 @@
  * No react-native imports, so vitest runs them in plain Node. Calendar days are YYYY-MM-DD in
  * America/Toronto, the same as the API; instants are UTC ISO strings.
  */
-import type { MessageKey, restaurantApi, tiffinApi } from "@ll/shared";
+import { restaurantApi, type MessageKey, type tiffinApi } from "@ll/shared";
 
 const TZ = "America/Toronto";
 
@@ -319,10 +319,37 @@ export function bookingNeedsDeposit(b: Pick<restaurantApi.HallBookingDto, "statu
 /**
  * Where a Stripe PaymentIntent is confirmed until the app ships the Stripe SDK: the web pay page
  * (same pattern as invoices, tickets/[id].tsx). The secret travels in the query because the page has
- * nothing else to look the intent up by. TODO(web): build /pay/intent/[id] (Payment Element, returns to ll://).
+ * nothing else to look the intent up by. The page is /pay/intent/[id] on the web (Payment Element, returns to ll://).
  */
 export function paymentUrl(webUrl: string, p: { paymentIntentId: string; clientSecret: string }): string {
   return `${webUrl.replace(/\/+$/, "")}/pay/intent/${encodeURIComponent(p.paymentIntentId)}?cs=${encodeURIComponent(p.clientSecret)}`;
+}
+
+/** Where "change card" is confirmed: the web setup page (/pay/setup/[id]), the same hand-off as paymentUrl but nothing is charged. */
+export function setupUrl(webUrl: string, s: { setupIntentId: string; clientSecret: string }): string {
+  return `${webUrl.replace(/\/+$/, "")}/pay/setup/${encodeURIComponent(s.setupIntentId)}?cs=${encodeURIComponent(s.clientSecret)}`;
+}
+
+/** "Visa •••• 4242" (or "•••• 4242" when the brand is unknown) for the card on file. */
+export function cardLabel(card: Pick<tiffinApi.CardOnFile, "brand" | "last4">): string {
+  const names: Record<string, string> = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover", jcb: "JCB", diners: "Diners Club", unionpay: "UnionPay", interac: "Interac" };
+  const brand = card.brand ? (names[card.brand.toLowerCase()] ?? card.brand) : "";
+  return [brand, card.last4 ? `\u2022\u2022\u2022\u2022 ${card.last4}` : ""].filter(Boolean).join(" ");
+}
+
+// ---------------------------------------------------------------------------
+// Deposit refunds
+// ---------------------------------------------------------------------------
+/** The hall's refund tiers as {days, pct} lines, largest first, for display. */
+export function refundTiers(policy: restaurantApi.HallRefundPolicy): { days: number; pct: number }[] {
+  return [...policy.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore).map((t) => ({ days: t.minDaysBefore, pct: t.refundBps / 100 }));
+}
+
+/** What a customer would get back for a paid deposit if they cancelled now (the server applies the same policy). 0 when none is due. */
+export function refundIfCancelled(b: Pick<restaurantApi.HallBookingDto, "depositCents" | "depositPaidAt" | "depositRefundedAt" | "startsAt" | "refundPolicy">, now: number = Date.now()): { cents: number; bps: number } {
+  if (!b.depositPaidAt || b.depositRefundedAt || !b.refundPolicy) return { cents: 0, bps: 0 };
+  const bps = restaurantApi.hallRefundBps(b.refundPolicy, b.startsAt, new Date(now));
+  return { cents: Math.round((b.depositCents * bps) / 10_000), bps };
 }
 
 // ---------------------------------------------------------------------------

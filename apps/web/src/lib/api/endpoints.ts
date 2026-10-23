@@ -23,6 +23,7 @@ import type {
   restaurantApi,
   serviceApi,
   staffApi,
+  tiffinApi,
   walletApi,
   whatsappApi,
 } from "@ll/shared";
@@ -76,6 +77,8 @@ export function llApi(c: ApiClient) {
       whatsappPay: (orderId: string, t: string) => c.get<whatsappApi.WhatsappPayView>(`/v1/public/whatsapp/pay/${enc(orderId)}`, { anonymous: true, query: { t } }),
       // App payment page (/pay/intent/:id?cs=): what a PaymentIntent from the mobile app is paying for
       paymentIntent: (paymentIntentId: string, cs: string) => c.get<restaurantApi.PaymentIntentView>(`/v1/public/payments/${enc(paymentIntentId)}`, { anonymous: true, query: { cs } }),
+      // "Change card" page (/pay/setup/:id?cs=): the SetupIntent behind a tiffin subscription's saved card
+      setupIntent: (setupIntentId: string, cs: string) => c.get<tiffinApi.SetupIntentView>(`/v1/public/payments/setup/${enc(setupIntentId)}`, { anonymous: true, query: { cs } }),
       // Split bill guest page (/pay/split/:token)
       ...publicSplitEndpoints(c),
     },
@@ -192,7 +195,7 @@ export function llApi(c: ApiClient) {
     },
     dev: {
       /** Dev/test only (FakePayments): docs/engineering/api/payments.md. */
-      simulatePayment: (id: string, action: "succeed_payment" | "fail_payment" = "succeed_payment") =>
+      simulatePayment: (id: string, action: "succeed_payment" | "fail_payment" | "succeed_setup" = "succeed_payment") =>
         c.post<{ events: { id: string; type: string }[] }>("/v1/payments/fake/simulate", { action, id }, { anonymous: true }),
     },
   };

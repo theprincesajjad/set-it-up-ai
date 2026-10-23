@@ -106,7 +106,9 @@ test("restaurant pages: menu filters, tiffin plans, banquet calendar, shop links
   await page.goto("/shops/shree-thali-and-tiffin/tiffin");
   await expect(page.getByRole("heading", { level: 1, name: "Tiffin plans" })).toBeVisible();
   await page.getByRole("button", { name: "Choose this plan" }).first().click();
-  await expect(page.getByRole("link", { name: "Sign in to subscribe" })).toHaveAttribute("href", /\/login\?next=%2Fshops%2Fshree-thali-and-tiffin%2Ftiffin/);
+  // Signed out: the phone sign-in is inline under the plan (no bounce to /login).
+  await expect(page.getByRole("heading", { name: "Sign in to subscribe" })).toBeVisible();
+  await expect(page.getByLabel("Mobile number")).toBeVisible();
   await page.getByRole("button", { name: "+ Servings" }).click();
   await expect(page.getByText("2 servings")).toBeVisible();
   await expectNoHorizontalScroll(page);

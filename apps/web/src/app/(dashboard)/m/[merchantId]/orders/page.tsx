@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
-import { formatMoney, formatTime } from "@/lib/format";
+import { formatDate, formatMoney, formatTime } from "@/lib/format";
 import { relativeTime } from "@/lib/dashboard/time";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
@@ -68,7 +68,7 @@ function Orders() {
                       <OrderBadges kind={o.kind} channel={o.channel} />
                     </p>
                     <p className="text-meta text-fg-muted">
-                      {o.customer?.name ?? "Customer"} · {o.pickupAt ? `Pickup ${formatTime(o.pickupAt)}` : `Placed ${relativeTime(o.createdAt)}`}
+                      {o.customer?.name ?? "Customer"} · {o.pickupAt ? `Pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `Placed ${relativeTime(o.createdAt)}`}
                     </p>
                   </div>
                   <StatusDot domain="order" status={o.status} />

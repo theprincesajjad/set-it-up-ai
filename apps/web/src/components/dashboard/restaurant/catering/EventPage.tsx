@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { CheckRow, FormGrid, GroupLabel, MoneyField, NumberField, addDaysISO, bpsToPct, centsToField, copyText, dayLabel, fieldToCents, todayISO, torontoInstant } from "../common";
+import { NO_REFUND, RefundChoice, refundBody, refundedText, type RefundState } from "../RefundChoice";
 import { EVENT_TYPE_LABEL, EVENT_TYPE_OPTIONS, SERVICE_LABEL, SERVICE_OPTIONS, STATUS_LABEL } from "./labels";
 
 type Ev = restaurantApi.CateringEventDto;
@@ -301,6 +302,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
   const [invoice, setInvoice] = useState<restaurantApi.CateringInvoiceDto | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
+  const [refund, setRefund] = useState<RefundState>(NO_REFUND);
   const [hallPick, setHallPick] = useState("");
   const banquetOn = enabled("restaurant.banquet");
   const bookings = useApi(banquetOn ? () => api.banquet.bookings() : null, [api, banquetOn]);
@@ -330,7 +332,10 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
     { label: "Quote", value: event.quoteSentAt ? `Sent ${formatDateTime(event.quoteSentAt)}` : "Not sent" },
     { label: "Approval", value: event.approvedAt ? `${event.signatureName ?? "Customer"}, ${formatDateTime(event.approvedAt)}` : "Waiting" },
     { label: "Deposit", value: event.depositPaidAt ? `${formatMoney(event.depositCents)} paid ${formatDateTime(event.depositPaidAt)}` : event.depositCents ? `${formatMoney(event.depositCents)} due` : "None" },
+    ...(event.depositRefundCents > 0 ? [{ label: "Refund", value: refundedText(event.depositRefundCents, event.depositRefundedAt, formatDateTime) ?? "" }] : []),
   ];
+  // Only a deposit paid by card in the app can be refunded here; one marked received by hand is returned directly.
+  const refundable = !!event.depositPaidAt && event.depositCents > 0 && event.depositRefundCents === 0;
   const openBookings = (bookings.data?.items ?? []).filter((b) => b.status === "hold" || b.status === "confirmed");
 
   return (
@@ -427,18 +432,22 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
 
       <ConfirmDialog
         open={cancelling}
-        onClose={() => setCancelling(false)}
+        onClose={() => { setCancelling(false); setRefund(NO_REFUND); }}
         danger
         title={`Cancel ${EVENT_TYPE_LABEL[event.eventType].toLowerCase()}?`}
-        body={`${event.depositPaidAt ? "The deposit is not refunded automatically. " : ""}${event.hallBookingId ? "The linked hall booking is released. " : ""}The customer is told it was cancelled.`}
-        confirmLabel="Cancel event"
+        body={`${event.hallBookingId ? "The linked hall booking is released. " : ""}The customer is told it was cancelled${refundable ? ", and what happens to their deposit" : ""}.`}
+        confirmLabel={refund.mode === "none" ? "Cancel event" : "Cancel and refund"}
+        disabled={refundable && refundBody(refund, event.depositCents) === null}
         onConfirm={async () => {
-          const r = await api.catering.cancel(event.id, reason.trim() || undefined);
-          toast({ message: "Event cancelled", tone: "success" });
+          const choice = refundable ? refundBody(refund, event.depositCents) : null;
+          const r = await api.catering.cancel(event.id, reason.trim() || undefined, choice ?? undefined);
+          toast({ message: r.depositRefundCents > 0 ? `Event cancelled. ${formatMoney(r.depositRefundCents)} is on its way back.` : "Event cancelled", tone: "success" });
+          setRefund(NO_REFUND);
           onChange(r);
         }}
       >
         <TextField label="Reason" optionalLabel value={reason} onChange={(e) => setReason(e.target.value)} />
+        {refundable ? <RefundChoice depositCents={event.depositCents} value={refund} onChange={setRefund} hint="If you took the deposit by e-transfer or cash, keep it here and return it yourself. The app can only refund card payments." /> : event.depositPaidAt && event.depositRefundCents === 0 ? <p className="mt-3 text-meta text-fg-muted">The deposit is not refunded automatically.</p> : null}
       </ConfirmDialog>
     </>
   );

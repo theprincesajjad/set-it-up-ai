@@ -2,12 +2,17 @@ import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PassFooter } from "@/components/site/PassFooter";
+import { LocaleScope } from "@/lib/i18n";
+import { getLocale, getT } from "@/lib/i18n/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const [locale, t] = await Promise.all([getLocale(), getT()]);
   return (
     <>
       <main id="main" className="mx-auto max-w-[480px] px-4 py-16">
-        <EmptyState icon={MapPin} title="We couldn't find that page." description="The link may be old, or the shop may have moved." action={<Button href="/map">Find shops near you</Button>} secondaryAction={<Button variant="ghost" href="/">Home</Button>} />
+        <LocaleScope locale={locale}>
+          <EmptyState icon={MapPin} title={t("auth.notFound.title")} description={t("auth.notFound.body")} action={<Button href="/map">{t("auth.notFound.find")}</Button>} secondaryAction={<Button variant="ghost" href="/">{t("auth.notFound.home")}</Button>} />
+        </LocaleScope>
       </main>
       <PassFooter />
     </>

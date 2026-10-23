@@ -11,7 +11,13 @@
  *    (TIFFIN_MEAL_HOUR, America/Toronto). A skip made before cutoff earns a
  *    credit on the next charge: food price x skipped days / service days in the period.
  *  - tiffin_deliveries are generated for tomorrow by the daily job (idempotent).
+ *  - Renewals charge the saved payment method off-session. The first payment
+ *    carries setup_future_usage (card) / a mandate (PAD) and the webhook saves the
+ *    method on the subscription. If the bank wants the customer (authentication
+ *    required) the charge stays pending and they confirm at /pay/intent
+ *    (renewal_due); a decline marks it failed and the subscription past due.
  */
+import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { merchants, notifications, tiffinCharges, tiffinDeliveries, tiffinMenus, tiffinPlans, tiffinRoutes, tiffinSkips, tiffinSubscriptions, users, type DbOrTx } from "@ll/db";
 import { tiffinApi } from "@ll/shared";
@@ -19,7 +25,8 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
-import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
+import { getPayments } from "../providers/payments.js";
+import { chargeConnectSavedMethod, chargeModeFor, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope } from "./payments.js";
 import { decodeCursor, encodeCursor, money, notifyCustomer } from "./commerceShared.js";
 import { enabledFeaturesFor, requireFeature } from "./features.js";
 import { localDate } from "./messaging.js";
@@ -152,6 +159,9 @@ export function chargeDto(c: Charge): tiffinApi.ChargeDto {
     createdAt: c.createdAt.toISOString(),
   };
 }
+
+export const cardOnFileOf = (s: Pick<Sub, "paymentMethodId" | "paymentMethod" | "paymentMethodBrand" | "paymentMethodLast4">): tiffinApi.CardOnFile | null =>
+  s.paymentMethodId ? { type: s.paymentMethod === "pad" ? "pad" : "card", brand: s.paymentMethodBrand, last4: s.paymentMethodLast4 } : null;
 
 export function subDto(s: Sub, plan: Plan, route: Pick<Route, "name"> | null): tiffinApi.SubscriptionDto {
   return {
@@ -577,21 +587,69 @@ async function startPayment(ctx: AppContext, merchant: Merchant, sub: Sub, charg
     return null;
   }
   if (!merchant.stripeAccountId) throw conflict("This kitchen can't take payments yet");
+  // The customer confirms this one, and it keeps their method on file for renewals (replacing any old one).
+  const customerId = await ensurePayerCustomer(ctx, merchant, sub);
   const pi = await createConnectPayment(ctx, merchant, {
-    amountCents: charge.amountCents,
-    connectedAccountId: merchant.stripeAccountId,
-    applicationFeeCents: charge.platformFeeCents,
-    description: `${merchant.name} tiffin ${charge.periodStart} to ${charge.periodEnd}`,
-    metadata: { ll_kind: "tiffin", ll_id: charge.id, merchant_id: merchant.id, subscription_id: sub.id },
+    ...chargeArgs(merchant, sub, charge),
     idempotencyKey: `tiffin:${charge.id}:pi${attempt ? `:${attempt}` : ""}`,
-    ...(sub.paymentMethod === "pad" ? { paymentMethodTypes: ["acss_debit"] } : {}),
+    customerId,
+    setupFutureUsage: "off_session",
   });
   await ctx.db.update(tiffinCharges).set({ stripePaymentIntentId: pi.id, status: "pending" }).where(eq(tiffinCharges.id, charge.id));
   return paymentRef(pi, sub);
 }
 
+function chargeArgs(merchant: Merchant, sub: Sub, charge: Charge) {
+  return {
+    amountCents: charge.amountCents,
+    connectedAccountId: merchant.stripeAccountId!,
+    applicationFeeCents: charge.platformFeeCents,
+    description: `${merchant.name} tiffin ${charge.periodStart} to ${charge.periodEnd}`,
+    metadata: { ll_kind: "tiffin", ll_id: charge.id, merchant_id: merchant.id, subscription_id: sub.id },
+    ...(sub.paymentMethod === "pad" ? { paymentMethodTypes: ["acss_debit"] } : {}),
+  };
+}
+
+/**
+ * The Stripe Customer for this user at this merchant (on the connected account for direct charges, the platform
+ * otherwise): reused from another subscription of theirs with the same kitchen, else created once.
+ */
+async function ensurePayerCustomer(ctx: AppContext, merchant: Merchant, sub: Sub): Promise<string> {
+  if (sub.stripeCustomerId) return sub.stripeCustomerId;
+  const [other] = await ctx.db
+    .select({ id: tiffinSubscriptions.stripeCustomerId })
+    .from(tiffinSubscriptions)
+    .where(and(eq(tiffinSubscriptions.userId, sub.userId), eq(tiffinSubscriptions.merchantId, sub.merchantId), sql`${tiffinSubscriptions.stripeCustomerId} is not null`))
+    .limit(1);
+  let customerId = other?.id ?? null;
+  if (!customerId) {
+    const [u] = await ctx.db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, sub.userId)).limit(1);
+    const direct = chargeModeFor(ctx, merchant) === "direct";
+    customerId = (await getPayments(ctx).createPayerCustomer({ userId: sub.userId, merchantId: merchant.id, email: u?.email, name: u?.name, connectedAccountId: direct ? merchant.stripeAccountId : null })).customerId;
+  }
+  await ctx.db.update(tiffinSubscriptions).set({ stripeCustomerId: customerId, updatedAt: ctx.now() }).where(eq(tiffinSubscriptions.id, sub.id));
+  sub.stripeCustomerId = customerId;
+  return customerId;
+}
+
+/** Remember the method a customer paid or set up with, so renewals can charge it. Card details are display-only and best effort. */
+async function saveMethod(ctx: AppContext, merchant: Merchant, subId: string, paymentMethodId: string): Promise<void> {
+  const info = await getPayments(ctx).retrievePaymentMethod(paymentMethodId, savedMethodScope(ctx, merchant)).catch(() => null);
+  await ctx.db
+    .update(tiffinSubscriptions)
+    .set({ paymentMethodId, paymentMethodBrand: info?.brand ?? null, paymentMethodLast4: info?.last4 ?? null, updatedAt: ctx.now() })
+    .where(eq(tiffinSubscriptions.id, subId));
+}
+
+/** What the webhook knows about a PaymentIntent beyond its outcome. */
+interface PaidWith {
+  paymentMethodId?: string | null;
+  customerId?: string | null;
+  errorCode?: string | null;
+}
+
 /** Mark a charge paid and move the subscription into that period. Idempotent. */
-async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: string | null): Promise<void> {
+async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: string | null, paid?: PaidWith): Promise<void> {
   const [charge] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, chargeId)).limit(1);
   if (!charge || charge.status === "paid" || charge.status === "refunded") return;
   const [sub] = await ctx.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, charge.subscriptionId)).limit(1);
@@ -607,6 +665,11 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
     }
     return;
   }
+  // A payment that kept its method on our customer becomes the card on file.
+  if (paid?.paymentMethodId && paid.paymentMethodId !== sub.paymentMethodId && sub.stripeCustomerId && paid.customerId === sub.stripeCustomerId) {
+    const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, charge.merchantId)).limit(1);
+    if (m) await saveMethod(ctx, m, sub.id, paid.paymentMethodId);
+  }
   const advance = !sub.currentPeriodStart || charge.periodStart >= sub.currentPeriodStart;
   await ctx.db
     .update(tiffinSubscriptions)
@@ -619,13 +682,23 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
 }
 
 /** Webhook entry (payment_intent.* with ll_kind "tiffin"). */
-export async function onTiffinPayment(ctx: AppContext, chargeId: string, paymentIntentId: string, outcome: "succeeded" | "failed"): Promise<void> {
+export async function onTiffinPayment(ctx: AppContext, chargeId: string, paymentIntentId: string, outcome: "succeeded" | "failed", pi?: PaidWith): Promise<void> {
   const [charge] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, chargeId)).limit(1);
   if (!charge) return;
-  if (outcome === "succeeded") return settleCharge(ctx, chargeId, paymentIntentId);
+  if (outcome === "succeeded") return settleCharge(ctx, chargeId, paymentIntentId, pi);
   if (charge.status === "paid" || charge.status === "refunded") return;
   if (charge.stripePaymentIntentId && charge.stripePaymentIntentId !== paymentIntentId) return; // an older attempt
-  await ctx.db.update(tiffinCharges).set({ status: "failed" }).where(eq(tiffinCharges.id, chargeId));
+  // An off-session attempt that needs the customer: the charge stays pending and they confirm it (renewal_due was sent).
+  if (pi?.errorCode === "authentication_required") return;
+  // Already failed by the off-session charge itself; the webhook is the same news.
+  if (charge.status === "failed" && charge.stripePaymentIntentId === paymentIntentId) return;
+  await failCharge(ctx, charge, paymentIntentId);
+}
+
+/** A charge that didn't go through: mark it failed, an active subscription past due, and tell the customer. */
+async function failCharge(ctx: AppContext, charge: Charge, paymentIntentId: string): Promise<void> {
+  const chargeId = charge.id;
+  await ctx.db.update(tiffinCharges).set({ status: "failed", stripePaymentIntentId: paymentIntentId }).where(eq(tiffinCharges.id, chargeId));
   const row = await loadSubRow(ctx.db, charge.subscriptionId);
   if (!row || row.sub.status === "cancelled") return;
   if (row.sub.status === "active") await ctx.db.update(tiffinSubscriptions).set({ status: "past_due", updatedAt: ctx.now() }).where(eq(tiffinSubscriptions.id, row.sub.id));
@@ -656,6 +729,52 @@ export async function retryPayment(ctx: AppContext, userId: string, subId: strin
   return { charge: chargeDto(fresh!), payment };
 }
 
+/**
+ * Customer wants a different card (or bank account): a SetupIntent on their Stripe customer, confirmed with Stripe.js
+ * on the web or at /pay/setup/<id>?cs=<secret> from the app. An open one is reused. The webhook saves the result.
+ */
+export async function myPaymentMethodSetup(ctx: AppContext, userId: string, subId: string): Promise<tiffinApi.PaymentMethodSetupResponse> {
+  const { sub } = await mySubRow(ctx.db, userId, subId);
+  if (sub.status === "cancelled") throw conflict("This subscription is cancelled");
+  const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, sub.merchantId)).limit(1);
+  if (!merchant?.stripeAccountId) throw conflict("This kitchen can't take payments yet");
+  const payments = getPayments(ctx);
+  const scope = savedMethodScope(ctx, merchant);
+  const methods = sub.paymentMethod === "pad" ? ["acss_debit"] : ["card"];
+  if (sub.setupIntentId) {
+    const open = await payments.retrieveSetupIntent(sub.setupIntentId, scope).catch(() => null);
+    if (open && (open.status === "requires_payment_method" || open.status === "requires_confirmation") && open.customerId === sub.stripeCustomerId) return { setupIntentId: open.id, clientSecret: open.clientSecret, methods };
+  }
+  const customerId = await ensurePayerCustomer(ctx, merchant, sub);
+  const si = await payments.createSetupIntent({
+    ...scope,
+    customerId,
+    ...(sub.paymentMethod === "pad" ? { paymentMethodTypes: ["acss_debit"] } : {}),
+    metadata: { ll_kind: "tiffin_setup", ll_id: sub.id, merchant_id: merchant.id, subscription_id: sub.id },
+    // A finished SetupIntent is never reused, so each new one needs its own key; double taps are caught by reusing the open one above.
+    idempotencyKey: `tiffin_setup:${sub.id}:${randomUUID()}`,
+  });
+  await ctx.db.update(tiffinSubscriptions).set({ setupIntentId: si.id, updatedAt: ctx.now() }).where(eq(tiffinSubscriptions.id, sub.id));
+  return { setupIntentId: si.id, clientSecret: si.clientSecret, methods };
+}
+
+/** Webhook entry (setup_intent.succeeded with ll_kind "tiffin_setup"): the new method becomes the card on file. */
+export async function onTiffinSetup(ctx: AppContext, subId: string, setupIntentId: string, paymentMethodId: string): Promise<void> {
+  const row = await loadSubRow(ctx.db, subId);
+  if (!row || row.sub.status === "cancelled") return;
+  if (row.sub.paymentMethodId === paymentMethodId) return;
+  const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, row.sub.merchantId)).limit(1);
+  if (!merchant) return;
+  await saveMethod(ctx, merchant, subId, paymentMethodId);
+  const [fresh] = await ctx.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, subId)).limit(1);
+  const card = cardOnFileOf(fresh!);
+  await notify(ctx, row.sub.userId, row.sub.merchantId, "tiffin_update", "Your payment method was updated", `${merchant.name} will charge ${card?.last4 ? `${card.type === "pad" ? "your bank account" : "your card"} ending ${card.last4}` : "your new payment method"} for ${row.plan.name} renewals.`, {
+    subscriptionId: subId,
+    setupIntentId,
+    event: "payment_method_updated",
+  });
+}
+
 /** Billing roll: charge each subscription whose next period starts today or earlier. Idempotent. */
 export async function rollBilling(ctx: AppContext): Promise<{ charged: number; settled: number; errors: number }> {
   const today = todayOf(ctx);
@@ -673,6 +792,22 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
       const { charge, created } = await ensureCharge(ctx, sub, plan, sub.nextBillingDate!, false);
       if (charge.status === "paid" || charge.status === "refunded") continue;
       if (charge.stripePaymentIntentId || charge.status === "failed") continue; // already out for payment
+      const forPeriod = `${money(charge.amountCents)} for ${plan.name} from ${charge.periodStart}${charge.creditCents ? `, after ${money(charge.creditCents)} credit for skipped days` : ""}`;
+      // A saved method is charged without the customer; a free period (under the card minimum) settles below like before.
+      if (sub.paymentMethodId && sub.stripeCustomerId && merchant.stripeAccountId && charge.amountCents >= MIN_CHARGE_CENTS) {
+        const r = await chargeConnectSavedMethod(ctx, merchant, { ...chargeArgs(merchant, sub, charge), idempotencyKey: `tiffin:${charge.id}:off`, customerId: sub.stripeCustomerId, paymentMethodId: sub.paymentMethodId });
+        await ctx.db.update(tiffinCharges).set({ stripePaymentIntentId: r.intent.id, status: "pending" }).where(eq(tiffinCharges.id, charge.id));
+        charged++;
+        if (r.outcome === "succeeded") {
+          await settleCharge(ctx, charge.id, r.intent.id, { paymentMethodId: sub.paymentMethodId, customerId: sub.stripeCustomerId });
+          await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin renewal was paid", `${forPeriod}. Charged to your card on file.`, { subscriptionId: sub.id, chargeId: charge.id, event: "renewal_paid" });
+        } else if (r.outcome === "authentication_required") {
+          await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin renewal needs you", `${forPeriod}. Your bank wants you to confirm this payment.`, { subscriptionId: sub.id, chargeId: charge.id, event: "renewal_due", reason: "authentication_required" });
+        } else if (r.outcome === "declined") {
+          await failCharge(ctx, { ...charge, status: "pending" }, r.intent.id);
+        } // processing (PAD): the webhook settles it when the debit clears.
+        continue;
+      }
       const ref = await startPayment(ctx, merchant, sub, charge);
       if (!ref) {
         settled++;
@@ -680,7 +815,7 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
       }
       charged++;
       if (created || !charge.stripePaymentIntentId) {
-        await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin renewal is ready", `${money(charge.amountCents)} for ${plan.name} from ${charge.periodStart}${charge.creditCents ? `, after ${money(charge.creditCents)} credit for skipped days` : ""}.`, {
+        await notify(ctx, sub.userId, sub.merchantId, "tiffin_update", "Your tiffin renewal is ready", `${forPeriod}.`, {
           subscriptionId: sub.id,
           chargeId: charge.id,
           event: "renewal_due",
@@ -1195,6 +1330,7 @@ async function myDto(ctx: AppContext, row: SubRow, merchant: Pick<Merchant, "id"
   const next = upcoming.find((u) => u.status === "scheduled" || u.status === "out_for_delivery");
   return {
     ...subDto(row.sub, row.plan, row.route),
+    cardOnFile: cardOnFileOf(row.sub),
     merchant: { id: merchant.id, name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl },
     nextDelivery: next ? { date: next.date, status: next.status as tiffinApi.TiffinDeliveryStatus } : null,
     latestCharge: latest ? chargeDto(latest) : null,

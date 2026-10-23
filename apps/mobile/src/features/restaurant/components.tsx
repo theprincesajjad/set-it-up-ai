@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppState, Linking, Pressable, StyleSheet, View } from "react-native";
 import { WEB_URL } from "../../config";
 import { useLocale } from "../../lib/i18n";
-import { addDays, dayToDate, dietBadges, paymentUrl, torontoToday, weekdayOf, type CountdownParts, type DietaryLike } from "../../lib/restaurant";
+import { addDays, dayToDate, dietBadges, paymentUrl, setupUrl, torontoToday, weekdayOf, type CountdownParts, type DietaryLike } from "../../lib/restaurant";
 import { ui, useTheme } from "../../theme";
 import { Badge, Chip, ChevronLeft, ChevronRight, IconButton, Minus, Plus, Text } from "../../ui";
 
@@ -114,8 +114,8 @@ export function DietBadges({ dietary, style }: { dietary: DietaryLike; style?: o
   );
 }
 
-/** Opens the web pay page for a PaymentIntent, and runs `onReturn` when the app comes back to the foreground. */
-export function usePayment(onReturn: () => void) {
+/** Opens a web page and runs `onReturn` when the app comes back to the foreground (the app has no Stripe SDK yet). */
+function useWebHandoff(onReturn: () => void) {
   const waiting = useRef(false);
   const cb = useRef(onReturn);
   cb.current = onReturn;
@@ -128,17 +128,31 @@ export function usePayment(onReturn: () => void) {
     });
     return () => sub.remove();
   }, []);
-  return async (payment: { paymentIntentId: string; clientSecret: string | null }) => {
-    if (!payment.clientSecret) return false;
+  return async (url: string) => {
     waiting.current = true;
     try {
-      await Linking.openURL(paymentUrl(WEB_URL, { paymentIntentId: payment.paymentIntentId, clientSecret: payment.clientSecret }));
+      await Linking.openURL(url);
       return true;
     } catch {
       waiting.current = false;
       return false;
     }
   };
+}
+
+/** Opens the web pay page for a PaymentIntent, and runs `onReturn` when the app comes back to the foreground. */
+export function usePayment(onReturn: () => void) {
+  const open = useWebHandoff(onReturn);
+  return async (payment: { paymentIntentId: string; clientSecret: string | null }) => {
+    if (!payment.clientSecret) return false;
+    return open(paymentUrl(WEB_URL, { paymentIntentId: payment.paymentIntentId, clientSecret: payment.clientSecret }));
+  };
+}
+
+/** Opens the web "change card" page for a SetupIntent (/pay/setup/<id>), and runs `onReturn` when the app comes back. */
+export function useSetup(onReturn: () => void) {
+  const open = useWebHandoff(onReturn);
+  return async (setup: { setupIntentId: string; clientSecret: string }) => open(setupUrl(WEB_URL, setup));
 }
 
 // ---------------------------------------------------------------------------

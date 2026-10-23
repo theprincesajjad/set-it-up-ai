@@ -91,7 +91,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post<{ Params: BookingParams }>("/merchants/:merchantId/banquet/bookings/:bookingId/cancel", async (req) => {
     const staff = await staffFor(req);
-    return bookingOut(await svc.cancel(ctx, { merchantId: staff.merchant.id, bookingId: req.params.bookingId }));
+    const { refund } = parse(restaurantApi.cancelHallBookingBody, req.body ?? {});
+    return bookingOut(await svc.cancel(ctx, { merchantId: staff.merchant.id, bookingId: req.params.bookingId }, refund));
   });
 
   app.post<{ Params: BookingParams }>("/merchants/:merchantId/banquet/bookings/:bookingId/complete", async (req) => {

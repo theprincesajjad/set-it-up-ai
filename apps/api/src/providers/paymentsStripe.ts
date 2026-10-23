@@ -18,8 +18,14 @@ import type {
   ChargeMode,
   CheckoutArgs,
   ConnectAccountStatus,
+  CreatePayerCustomerArgs,
   CreatePaymentIntentArgs,
+  CreateSetupIntentArgs,
+  OffSessionResult,
   PaymentIntentInfo,
+  SavedMethodScope,
+  SavedPaymentMethod,
+  SetupIntentInfo,
   PaymentsEvent,
   PaymentsProvider,
   PlatformChargeArgs,
@@ -66,44 +72,95 @@ export class StripePayments implements PaymentsProvider {
     return { accountId, chargesEnabled: !!a.charges_enabled, payoutsEnabled: !!a.payouts_enabled, detailsSubmitted: !!a.details_submitted };
   }
 
-  async createPaymentIntent(args: CreatePaymentIntentArgs): Promise<PaymentIntentInfo> {
+  /** PAD mandate that covers later renewals (combined: the first payment and each off-session renewal). */
+  private padOptions(): Stripe.PaymentIntentCreateParams.PaymentMethodOptions {
+    return { acss_debit: { mandate_options: { payment_schedule: "combined", interval_description: "Tiffin subscription", transaction_type: "personal" }, verification_method: "automatic" } };
+  }
+
+  private async createIntent(args: CreatePaymentIntentArgs, extra: Partial<Stripe.PaymentIntentCreateParams> = {}): Promise<Stripe.PaymentIntent> {
+    const common: Stripe.PaymentIntentCreateParams = {
+      amount: args.amountCents,
+      currency: "cad",
+      application_fee_amount: args.applicationFeeCents,
+      description: args.description,
+      receipt_email: args.receiptEmail ?? undefined,
+      ...(args.customerId ? { customer: args.customerId, ...(args.setupFutureUsage ? { setup_future_usage: args.setupFutureUsage } : {}) } : {}),
+      ...extra,
+    };
+    const methods = args.paymentMethodTypes?.length
+      ? { payment_method_types: args.paymentMethodTypes, ...(args.paymentMethodTypes.includes("acss_debit") ? { payment_method_options: this.padOptions() } : {}) }
+      : { automatic_payment_methods: { enabled: true } };
     if (args.chargeMode === "direct") {
-      const pi = await this.stripe.paymentIntents.create(
-        {
-          amount: args.amountCents,
-          currency: "cad",
-          application_fee_amount: args.applicationFeeCents,
-          automatic_payment_methods: { enabled: true },
-          description: args.description,
-          metadata: { ...args.metadata, ll_charge_mode: "direct", ll_account: args.connectedAccountId },
-          receipt_email: args.receiptEmail ?? undefined,
-        },
+      return this.stripe.paymentIntents.create(
+        { ...common, ...methods, metadata: { ...args.metadata, ll_charge_mode: "direct", ll_account: args.connectedAccountId } },
         { idempotencyKey: args.idempotencyKey, stripeAccount: args.connectedAccountId },
       );
-      return toInfo(pi);
     }
-    const pi = await this.stripe.paymentIntents.create(
-      {
-        amount: args.amountCents,
-        currency: "cad",
-        application_fee_amount: args.applicationFeeCents,
-        transfer_data: { destination: args.connectedAccountId },
-        on_behalf_of: args.connectedAccountId,
-        ...(args.paymentMethodTypes?.length
-          ? {
-              payment_method_types: args.paymentMethodTypes,
-              ...(args.paymentMethodTypes.includes("acss_debit")
-                ? { payment_method_options: { acss_debit: { mandate_options: { payment_schedule: "combined", interval_description: "Tiffin subscription", transaction_type: "personal" as const }, verification_method: "automatic" as const } } }
-                : {}),
-            }
-          : { automatic_payment_methods: { enabled: true } }),
-        description: args.description,
-        metadata: args.metadata,
-        receipt_email: args.receiptEmail ?? undefined,
-      },
+    return this.stripe.paymentIntents.create(
+      { ...common, ...methods, transfer_data: { destination: args.connectedAccountId }, on_behalf_of: args.connectedAccountId, metadata: args.metadata },
       { idempotencyKey: args.idempotencyKey },
     );
-    return toInfo(pi);
+  }
+
+  async createPaymentIntent(args: CreatePaymentIntentArgs): Promise<PaymentIntentInfo> {
+    return toInfo(await this.createIntent(args));
+  }
+
+  private acct(scope?: SavedMethodScope) {
+    return scope?.chargeMode === "direct" && scope.connectedAccountId ? { stripeAccount: scope.connectedAccountId } : undefined;
+  }
+
+  async createPayerCustomer(args: CreatePayerCustomerArgs) {
+    const c = await this.stripe.customers.create(
+      { name: args.name ?? undefined, email: args.email ?? undefined, metadata: { user_id: args.userId, merchant_id: args.merchantId } },
+      { idempotencyKey: `payer-customer:${args.connectedAccountId ?? "platform"}:${args.merchantId}:${args.userId}`, ...(args.connectedAccountId ? { stripeAccount: args.connectedAccountId } : {}) },
+    );
+    return { customerId: c.id };
+  }
+
+  async createSetupIntent(args: CreateSetupIntentArgs): Promise<SetupIntentInfo> {
+    const direct = args.chargeMode === "direct" && !!args.connectedAccountId;
+    const pad = args.paymentMethodTypes?.includes("acss_debit");
+    const si = await this.stripe.setupIntents.create(
+      {
+        customer: args.customerId,
+        usage: "off_session",
+        ...(args.paymentMethodTypes?.length ? { payment_method_types: args.paymentMethodTypes } : { automatic_payment_methods: { enabled: true } }),
+        ...(pad ? { payment_method_options: { acss_debit: { currency: "cad" as const, mandate_options: { payment_schedule: "combined" as const, interval_description: "Tiffin subscription", transaction_type: "personal" as const }, verification_method: "automatic" as const } } } : {}),
+        // Destination charges are on behalf of the merchant, so the PAD mandate is in the kitchen's name.
+        ...(!direct && args.connectedAccountId ? { on_behalf_of: args.connectedAccountId } : {}),
+        metadata: args.metadata,
+      },
+      { idempotencyKey: args.idempotencyKey, ...(direct ? { stripeAccount: args.connectedAccountId! } : {}) },
+    );
+    return toSetupInfo(si);
+  }
+
+  async retrieveSetupIntent(id: string, scope?: SavedMethodScope): Promise<SetupIntentInfo> {
+    return toSetupInfo(await this.stripe.setupIntents.retrieve(id, undefined, this.acct(scope)));
+  }
+
+  async retrievePaymentMethod(id: string, scope?: SavedMethodScope): Promise<SavedPaymentMethod> {
+    const pm = await this.stripe.paymentMethods.retrieve(id, undefined, this.acct(scope));
+    if (pm.type === "acss_debit") return { id: pm.id, type: "pad", brand: pm.acss_debit?.bank_name ?? null, last4: pm.acss_debit?.last4 ?? null };
+    return { id: pm.id, type: "card", brand: pm.card?.brand ?? null, last4: pm.card?.last4 ?? null };
+  }
+
+  async chargeSavedMethod(args: CreatePaymentIntentArgs & { customerId: string; paymentMethodId: string }): Promise<OffSessionResult> {
+    try {
+      const pi = await this.createIntent(args, { payment_method: args.paymentMethodId, off_session: true, confirm: true });
+      const info = toInfo(pi);
+      if (pi.status === "succeeded") return { outcome: "succeeded", intent: info };
+      if (pi.status === "processing") return { outcome: "processing", intent: info };
+      // requires_action cannot happen off-session without an error, but treat it as the customer being needed.
+      return { outcome: "authentication_required", intent: info };
+    } catch (err) {
+      const e = err as Stripe.errors.StripeError & { payment_intent?: Stripe.PaymentIntent };
+      const pi = e.payment_intent ?? (e.raw as { payment_intent?: Stripe.PaymentIntent } | undefined)?.payment_intent;
+      if (!pi || typeof pi === "string" || e.type !== "StripeCardError") throw err;
+      const info = { ...toInfo(pi), lastErrorCode: e.code ?? null };
+      return { outcome: e.code === "authentication_required" ? "authentication_required" : "declined", intent: info, errorCode: e.code ?? "card_declined", message: e.message };
+    }
   }
 
   async createPlatformCharge(args: PlatformChargeArgs): Promise<PlatformChargeResult> {
@@ -325,6 +382,21 @@ function toInfo(pi: Stripe.PaymentIntent): PaymentIntentInfo {
     applicationFeeCents: pi.application_fee_amount ?? 0,
     metadata: (pi.metadata ?? {}) as Record<string, string>,
     chargeMode: pi.metadata?.ll_charge_mode === "direct" ? "direct" : "destination",
+    customerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
+    paymentMethodId: typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null),
+    lastErrorCode: pi.last_payment_error?.code ?? null,
+  };
+}
+
+function toSetupInfo(si: Stripe.SetupIntent): SetupIntentInfo {
+  return {
+    id: si.id,
+    clientSecret: si.client_secret ?? "",
+    status: si.status,
+    customerId: typeof si.customer === "string" ? si.customer : (si.customer?.id ?? null),
+    paymentMethodId: typeof si.payment_method === "string" ? si.payment_method : (si.payment_method?.id ?? null),
+    metadata: (si.metadata ?? {}) as Record<string, string>,
+    paymentMethodTypes: si.payment_method_types,
   };
 }
 

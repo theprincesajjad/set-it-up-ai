@@ -6,10 +6,10 @@ import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTran
 export const LOCALE_COOKIE = "ll_lang";
 
 /**
- * Variables that hold Latin runs (shop and customer names, amounts, phone numbers). In a right-to-left locale `t()` wraps
+ * Variables that hold Latin runs (shop and customer names, brand, amounts, phone numbers, countdowns). In a right-to-left locale `t()` wraps
  * them in a first-strong isolate so "Sarson Dhaba." or "$12.50" can't reorder the Urdu around them; `rich()` wraps them in <bdi>.
  */
-const LATIN_VARS = new Set(["shop", "name", "amount", "price", "certifier", "phone"]);
+const LATIN_VARS = new Set(["shop", "name", "amount", "price", "certifier", "phone", "brand", "sender", "street", "reward", "time"]);
 const FSI = "\u2068";
 const PDI = "\u2069";
 
@@ -31,6 +31,46 @@ interface LocaleValue {
 
 const Ctx = createContext<LocaleValue | null>(null);
 
+function buildValue(locale: Locale, setLocale: (next: Locale) => void): LocaleValue {
+  return {
+    locale,
+    info: LOCALES[locale],
+    dir: LOCALES[locale].dir,
+    t: (key, vars) => {
+      const rtl = LOCALES[locale].dir === "rtl";
+      if (!rtl || !vars) return translate(locale, key, vars);
+      const v: Vars = {};
+      for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `${FSI}${x}${PDI}` : x;
+      return translate(locale, key, v);
+    },
+    rich: (key, vars) => {
+      if (!vars) return translate(locale, key);
+      const v: Vars = {};
+      for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `\uE000${k}\uE001` : x;
+      return translate(locale, key, v)
+        .split(/\uE000(\w+)\uE001/)
+        .map((part, i) => (i % 2 ? <bdi key={i}>{vars[part]}</bdi> : part));
+    },
+    setLocale,
+    money: (cents, currency) => formatCurrency(locale, cents, currency),
+    number: (n) => formatNumber(locale, n),
+    date: (d, opts, tz) => formatDate(locale, d, opts, tz),
+    time: (d, tz) => formatTime(locale, d, tz),
+    pick: (item) => pickTranslation(item, locale),
+  };
+}
+
+/** Remember the language for next visits (the same cookie LanguageSwitcher writes). */
+export function rememberLocale(locale: Locale) {
+  try {
+    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // cookies blocked: ?lang= still carries the language
+  }
+}
+
+const ENGLISH = buildValue("en", () => undefined);
+
 /** Mounted by LocaleScope (server). Client components read it with `useLocale()`. */
 export function LocaleProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const router = useRouter();
@@ -51,35 +91,7 @@ export function LocaleProvider({ locale, children }: { locale: Locale; children:
     [router, pathname, params],
   );
 
-  const value = useMemo<LocaleValue>(
-    () => ({
-      locale,
-      info: LOCALES[locale],
-      dir: LOCALES[locale].dir,
-      t: (key, vars) => {
-        const rtl = LOCALES[locale].dir === "rtl";
-        if (!rtl || !vars) return translate(locale, key, vars);
-        const v: Vars = {};
-        for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `${FSI}${x}${PDI}` : x;
-        return translate(locale, key, v);
-      },
-      rich: (key, vars) => {
-        if (!vars) return translate(locale, key);
-        const v: Vars = {};
-        for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `\uE000${k}\uE001` : x;
-        return translate(locale, key, v)
-          .split(/\uE000(\w+)\uE001/)
-          .map((part, i) => (i % 2 ? <bdi key={i}>{vars[part]}</bdi> : part));
-      },
-      setLocale,
-      money: (cents, currency) => formatCurrency(locale, cents, currency),
-      number: (n) => formatNumber(locale, n),
-      date: (d, opts, tz) => formatDate(locale, d, opts, tz),
-      time: (d, tz) => formatTime(locale, d, tz),
-      pick: (item) => pickTranslation(item, locale),
-    }),
-    [locale, setLocale],
-  );
+  const value = useMemo<LocaleValue>(() => buildValue(locale, setLocale), [locale, setLocale]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -87,4 +99,12 @@ export function useLocale(): LocaleValue {
   const v = useContext(Ctx);
   if (!v) throw new Error("useLocale must be used inside <LocaleScope>");
   return v;
+}
+
+/**
+ * `useLocale()` for components that also render outside a <LocaleScope> (shared sign-in pieces, tests):
+ * English, with a no-op `setLocale`, when there is no scope.
+ */
+export function useLocaleOrEnglish(): LocaleValue {
+  return useContext(Ctx) ?? ENGLISH;
 }

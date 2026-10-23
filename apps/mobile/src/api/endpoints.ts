@@ -144,6 +144,8 @@ export function createEndpoints(c: ApiClient) {
       resume: (subId: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}/resume`),
       cancel: (subId: string, reason?: string) => c.post<tiffinApi.MySubscriptionDto>(`/v1/me/tiffin/subscriptions/${enc(subId)}/cancel`, { reason }),
       retryPayment: (subId: string) => c.post<tiffinApi.RetryPaymentResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}/retry-payment`),
+      /** Change the card on file: a SetupIntent, confirmed on the web page /pay/setup/<id>?cs=. */
+      paymentMethod: (subId: string) => c.post<tiffinApi.PaymentMethodSetupResponse>(`/v1/me/tiffin/subscriptions/${enc(subId)}/payment-method`),
     },
 
     catering: {

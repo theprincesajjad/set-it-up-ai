@@ -2,12 +2,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { MessageKey, tiffinApi } from "@ll/shared";
 import { PaymentBox, pollUntil } from "@/components/pass/PaymentBox";
+import { SetupBox } from "@/components/pass/SetupBox";
+import { cardLabel } from "@/components/pass/cardLabel";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
-import { browserClient } from "@/lib/api/browser";
+import { browserApi, browserClient } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
@@ -97,6 +99,7 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
   const [notes, setNotes] = useState(sub.addressNotes ?? "");
   const [charges, setCharges] = useState<tiffinApi.ChargeDto[] | null>(null);
   const [payment, setPayment] = useState<tiffinApi.PaymentIntentRef | null>(null);
+  const [setup, setSetup] = useState<tiffinApi.PaymentMethodSetupResponse | null>(null);
 
   const cancelled = sub.status === "cancelled";
   const needsPayment = sub.status === "past_due" || sub.status === "pending" || sub.latestCharge?.status === "failed";
@@ -186,6 +189,60 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
             </Button>
           </Banner>
         )
+      ) : null}
+
+      {!cancelled ? (
+        <section aria-label={t("rc.tm.cardOnFile")} className="flex flex-col gap-3 border-t border-line pt-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 text-meta text-fg-muted">
+              {sub.cardOnFile ? (
+                <>
+                  {t(sub.cardOnFile.type === "pad" ? "rc.tm.bankOnFile" : "rc.tm.cardOnFile")} <bdi className="text-body-strong tabular-nums text-fg">{cardLabel(sub.cardOnFile)}</bdi>
+                </>
+              ) : (
+                t("rc.tm.cardNone")
+              )}
+            </p>
+            {setup ? null : (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={busy === "card"}
+                onClick={() =>
+                  run("card", async () => {
+                    setSetup(await api.tiffin.paymentMethod(sub.id));
+                  })
+                }
+              >
+                {t("rc.tm.cardChange")}
+              </Button>
+            )}
+          </div>
+          {setup ? (
+            <div className="flex flex-col gap-3 rounded-card bg-bg-subtle p-4">
+              <Heading level={3}>{t("rc.tm.cardChanging")}</Heading>
+              <p className="text-meta text-fg-muted">{t("rc.tm.cardChangeBody")}</p>
+              <SetupBox
+                setupIntentId={setup.setupIntentId}
+                clientSecret={setup.clientSecret}
+                label={t("paySetup.save")}
+                onSaved={async () => {
+                  // The API saves the card from Stripe's webhook; wait for it to show on the setup.
+                  const ok = await pollUntil(async () => {
+                    const v = await browserApi.public.setupIntent(setup.setupIntentId, setup.clientSecret);
+                    return v.status === "succeeded" && !!v.cardOnFile;
+                  });
+                  setSetup(null);
+                  setNote({ tone: ok ? "success" : "info", text: ok ? t("rc.tm.cardSaved") : t("paySetup.slow") });
+                  await reload();
+                }}
+              />
+              <Button variant="ghost" size="sm" className="self-start" onClick={() => setSetup(null)}>
+                {t("rc.tm.cardKeep")}
+              </Button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {!cancelled ? (

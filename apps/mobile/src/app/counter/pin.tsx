@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { managerBus } from "../../features/scanBus";
 import { firstName } from "../../lib/award";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
@@ -21,6 +21,8 @@ import { Avatar, Banner, Button, Keypad, Text } from "../../ui";
  */
 export default function StaffPin() {
   const { verifyOnly } = useLocalSearchParams<{ verifyOnly?: string }>();
+  // Follows the device language, or the staff member's own (LocaleProvider defaults a counter session to merchant_staff.locale).
+  const { t } = useLocale();
   const { c } = useTheme();
   const { width } = useWindowDimensions();
   const { config, setStaffFromPin } = useCounter();
@@ -43,7 +45,7 @@ export default function StaffPin() {
       const res = await api.auth.verifyStaffPin(merchantId, { pin: value, ...(picked ? { userId: picked } : {}) });
       if (verifyOnly === "manager") {
         if (res.staff.role === "staff") {
-          setError("A manager or owner needs to do this.");
+          setError(t("auth.pin.managerNeeded"));
           setPin("");
           doShake();
           return;
@@ -57,7 +59,7 @@ export default function StaffPin() {
     } catch (e) {
       setPin("");
       doShake();
-      setError(isApiError(e) && e.status === 429 ? t("err.pin.locked") : isApiError(e) && e.status === 401 ? t("err.pin.wrong") : t("err.network"));
+      setError(isApiError(e) && e.status === 429 ? t("auth.pin.locked") : isApiError(e) && e.status === 401 ? t("auth.pin.wrong") : t("auth.err.network"));
     } finally {
       setBusy(false);
     }
@@ -73,7 +75,7 @@ export default function StaffPin() {
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={[styles.root, wide ? { flexDirection: "row" } : null]}>
         <View style={{ flex: 1, gap: 16 }}>
-          <Text variant="h2">{verifyOnly ? "Manager PIN" : `Who's at the counter?`}</Text>
+          <Text variant="h2">{verifyOnly ? t("auth.pin.manager") : t("auth.pin.who")}</Text>
           <Text color="fgMuted">{config.locationName ?? config.merchantName ?? ""}</Text>
           {staff.length > 0 && !verifyOnly ? (
             <ScrollView contentContainerStyle={styles.tiles}>
@@ -82,7 +84,7 @@ export default function StaffPin() {
                   key={s.userId}
                   accessibilityRole="button"
                   accessibilityState={{ selected: picked === s.userId }}
-                  accessibilityLabel={s.name ?? "Staff"}
+                  accessibilityLabel={s.name ?? t("auth.pin.staff")}
                   onPress={() => {
                     setPicked(s.userId);
                     setPin("");
@@ -91,14 +93,14 @@ export default function StaffPin() {
                   style={[styles.tile, { borderColor: picked === s.userId ? c.brand : c.border, backgroundColor: picked === s.userId ? c.brandSubtle : c.surface }]}
                 >
                   <Avatar name={s.name} id={s.userId} size={56} />
-                  <Text variant="bodyStrong">{firstName(s.name) ?? "Staff"}</Text>
+                  <Text variant="bodyStrong">{firstName(s.name) ?? t("auth.pin.staff")}</Text>
                 </Pressable>
               ))}
             </ScrollView>
           ) : null}
         </View>
         <View style={{ flex: 1, gap: 16, maxWidth: 440, alignSelf: "center", width: "100%" }}>
-          <Animated.View style={[styles.dots, { transform: [{ translateX: shake }] }]} accessible accessibilityLabel={`${pin.length} of 4 digits entered`}>
+          <Animated.View style={[styles.dots, { transform: [{ translateX: shake }] }]} accessible accessibilityLabel={t("auth.pin.entered", { n: pin.length })}>
             {[0, 1, 2, 3].map((i) => (
               <View key={i} style={[styles.dot, { borderColor: error ? c.danger : c.borderStrong, backgroundColor: i < pin.length ? c.fg : "transparent" }]} />
             ))}
@@ -107,11 +109,11 @@ export default function StaffPin() {
           <Keypad onKey={(k) => setPin((p) => (k === "back" ? p.slice(0, -1) : k === "clear" ? "" : p.length < 4 ? p + k : p))} disabled={busy} />
           {!verifyOnly ? (
             <Button variant="ghost" onPress={() => router.replace("/counter/select")}>
-              Switch location
+              {t("auth.pin.switchLocation")}
             </Button>
           ) : (
             <Button variant="secondary" onPress={() => router.back()}>
-              Cancel
+              {t("auth.pin.cancel")}
             </Button>
           )}
         </View>

@@ -337,6 +337,7 @@ export function commerceType(dataType: unknown): NotificationType | null {
     case "hall_hold":
     case "hall_confirmed":
     case "hall_hold_expired":
+    case "hall_cancelled":
     case "hall_update":
       return "hall_update";
     case "booking_reminder":

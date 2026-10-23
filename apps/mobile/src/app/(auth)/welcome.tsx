@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Linking, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Button, LogoMark, PlaceBubble, ShopLogo, Text } from "../../ui";
@@ -38,6 +40,7 @@ function StreetStill({ width }: { width: number }) {
 /** 1.1 Welcome. With ?join=<qrCode> (from /j/<code>), the shop leads. */
 export default function Welcome() {
   const { c } = useTheme();
+  const { t } = useLocale();
   const { width } = useWindowDimensions();
   const { join } = useLocalSearchParams<{ join?: string }>();
   const joinInfo = useQuery<networkApi.JoinInfoResponse>({
@@ -55,33 +58,39 @@ export default function Welcome() {
           {BRAND.name.toLowerCase()}
         </Text>
       </View>
+      {/* First auth screen: the language switch lives here (the choice is saved on the device). */}
+      <View style={{ paddingTop: 12 }}>
+        <LanguageSwitcher />
+      </View>
       <View style={styles.hero}>{shop ? <ShopLogo shop={shop} size={88} /> : <StreetStill width={stillW} />}</View>
       <View style={styles.body}>
         {/* On the type scale: 40 display (28 large title on narrow phones). */}
         <Text variant="largeTitle" accessibilityRole="header" style={width < 360 ? null : { fontSize: 40, lineHeight: 46 }}>
-          {shop ? `join ${shop.name.toLowerCase()}` : "one card for every shop on your street"}
+          {shop ? t("auth.m.welcome.titleShop", { shop: shop.name.toLowerCase() }) : t("auth.m.welcome.title")}
         </Text>
         <Text variant="body" color="fgMuted">
-          {shop ? `Earn at ${shop.name} and the shops around it. Free, and points never expire.` : "Earn at the shops on your block. Free, and points never expire."}
+          {shop ? t("auth.m.welcome.bodyShop", { shop: shop.name }) : t("auth.m.welcome.body")}
         </Text>
       </View>
       <View style={styles.actions}>
         <Button size="lg" fullWidth onPress={() => router.push({ pathname: "/phone", params: join ? { join } : {} })}>
-          Get started
+          {t("auth.m.welcome.getStarted")}
         </Button>
         <Button variant="ghost" fullWidth onPress={() => router.push("/staff-sign-in")}>
-          I'm a shop owner or staff
+          {t("auth.m.welcome.staff")}
         </Button>
         <Text variant="caption" color="fgMuted" center>
-          By continuing you agree to the{" "}
-          <Text variant="caption" color="fg" onPress={() => Linking.openURL("https://local.example/terms")} style={{ textDecorationLine: "underline" }}>
-            Terms
-          </Text>{" "}
-          and{" "}
-          <Text variant="caption" color="fg" onPress={() => Linking.openURL("https://local.example/privacy")} style={{ textDecorationLine: "underline" }}>
-            Privacy Policy
-          </Text>
-          .
+          {t("auth.m.welcome.agree", { terms: "\uE000terms\uE001", privacy: "\uE000privacy\uE001" })
+            .split(/\uE000(\w+)\uE001/)
+            .map((part, i) =>
+              i % 2 ? (
+                <Text key={i} variant="caption" color="fg" onPress={() => Linking.openURL(part === "terms" ? "https://local.example/terms" : "https://local.example/privacy")} style={{ textDecorationLine: "underline" }}>
+                  {part === "terms" ? t("auth.footer.terms") : t("auth.m.privacyPolicy")}
+                </Text>
+              ) : (
+                part
+              ),
+            )}
         </Text>
       </View>
     </SafeAreaView>

@@ -4,6 +4,7 @@
  * Pure, unit tested.
  */
 import { verticalCategory } from "@ll/design-tokens";
+import type { Locale, MessageKey, Vars } from "@ll/shared";
 import { placeKind } from "./place";
 
 type Program = { earnType: "per_dollar" | "per_visit" | "stamps"; terminology: string; welcomeBonus: number; stampGoal: number };
@@ -68,4 +69,38 @@ export function pickVaried<T extends { merchant: { id: string; vertical: string 
     if (out.length === n) break;
   }
   return out;
+}
+
+// Localized variants. English keeps the shop-specific wording above ("get a stamp for today's coffee", the
+// merchant's own point name); other languages use the catalog with generic wording, since the English nouns
+// ("coffee", "stamps") and the merchant's terminology aren't translatable here.
+type T = (key: MessageKey, vars?: Vars) => string;
+
+/** "5 stamps" / "5 points" in the active language. */
+export function unitText(t: T, program: Pick<Program, "earnType"> | null, n: number): string {
+  return t(program?.earnType === "stamps" ? "auth.unit.stamps" : "auth.unit.points", { n });
+}
+
+export function joinHeadlineT(t: T, locale: Locale, program: Program | null, vertical: string): string {
+  if (locale === "en") return joinHeadline(program, vertical);
+  if (!program) return t("auth.join.headlineJoin");
+  return program.welcomeBonus > 0 ? t("auth.join.headlineBonus", { bonus: unitText(t, program, program.welcomeBonus) }) : t("auth.join.headlineStart");
+}
+
+export function joinIntroT(t: T, locale: Locale, program: Program | null, reward: { name: string; pointsCost: number } | null | undefined, street: { name: string; shopCount: number } | null): string {
+  if (locale === "en") return joinIntro(program, reward, street);
+  const parts: string[] = [];
+  if (program && reward) parts.push(t("auth.join.introReward", { cost: unitText(t, program, reward.pointsCost), reward: reward.name }));
+  if (street && street.shopCount > 1) parts.push(t("auth.join.introStreet", { n: street.shopCount, street: street.name }));
+  parts.push(t("auth.join.introNoApp"));
+  return parts.join(" ");
+}
+
+export function alsoEarningT(t: T, locale: Locale, others: { vertical: string }[], total: number): string | null {
+  if (locale === "en") return alsoEarning(others, total);
+  return others.length === 0 ? null : t("auth.join.alsoNearby", { n: Math.max(total, others.length) });
+}
+
+export function stampsToGoT(t: T, locale: Locale, n: number, reward: string): string {
+  return locale === "en" ? `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}` : t("auth.joined.toGo", { n, reward });
 }
