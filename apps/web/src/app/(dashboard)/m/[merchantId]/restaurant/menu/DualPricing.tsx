@@ -37,7 +37,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
   if (!on) {
     return (
       <Panel title="Cash price">
-        <TierTeaser featureKey="restaurant.dual_pricing" inline />
+        <TierTeaser featureKey="restaurant.dual_pricing" inline stacked />
       </Panel>
     );
   }

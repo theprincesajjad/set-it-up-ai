@@ -1410,7 +1410,7 @@ export const tiffinMenus = pgTable(
     merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
     planId: uuid("plan_id").references(() => tiffinPlans.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
-    items: jsonb("items").$type<{ name: string; description?: string; dietary?: DietaryTags }[]>().notNull().default([]),
+    items: jsonb("items").$type<{ name: string; description?: string; dietary?: DietaryTags; translations?: Record<string, { name?: string; description?: string }> }[]>().notNull().default([]),
     notes: text("notes"),
     createdAt: createdAt(),
   },

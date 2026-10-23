@@ -51,7 +51,7 @@ export function ChartFrame({ title, subtitle, children, table, action, className
         </div>
         <div className="flex w-full items-center justify-between gap-3 whitespace-nowrap sm:ms-auto sm:w-auto sm:justify-end">
           {action}
-          <button type="button" onClick={() => setAsTable((v) => !v)} className="rounded-sm text-meta text-fg-muted hover:text-fg focus-visible:focus-ring">
+          <button type="button" onClick={() => setAsTable((v) => !v)} className="ms-auto rounded-sm text-meta text-fg-muted hover:text-fg focus-visible:focus-ring">
             {asTable ? "View as chart" : "View as table"}
           </button>
         </div>

@@ -9,7 +9,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { NoAccess } from "@/components/dashboard/PageStates";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { reportsApi } from "@ll/shared";
-import { formatDate, formatMoney, formatNumber, formatPoints } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
 import { pctDelta, rangeFor, type RangeKey } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";

@@ -15,12 +15,12 @@ import { useMerchant } from "../MerchantContext";
  * A restaurant feature the shop's tier does not include (the API answered 402, or the feature flag is off).
  * Names the restaurant tier that has it; owners get a link to the plans on the billing page.
  */
-export function TierTeaser({ featureKey, title, description, inline }: { featureKey: FeatureKey; title?: string; description?: string; inline?: boolean }) {
+export function TierTeaser({ featureKey, title, description, inline, stacked }: { featureKey: FeatureKey; title?: string; description?: string; inline?: boolean; /** Narrow side panels: text above the action. */ stacked?: boolean }) {
   const { base, role } = useMerchant();
   const def = FEATURES[featureKey];
   const plan = RESTAURANT_PLANS[def.packTier ?? "starter"];
   const body = (
-    <div className={cn("flex flex-col gap-3 border-y border-line py-5 sm:flex-row sm:items-center sm:justify-between", inline ? "" : "max-w-[640px]")}>
+    <div className={cn("flex flex-col gap-3 border-y border-line py-5", !stacked && "sm:flex-row sm:items-center sm:justify-between", inline ? "" : "max-w-[640px]")}>
       <div className="min-w-0">
         <p className="text-meta-strong text-fg">Included with {plan.name}</p>
         <p className="mt-0.5 text-meta text-fg-muted">
@@ -29,7 +29,7 @@ export function TierTeaser({ featureKey, title, description, inline }: { feature
         </p>
       </div>
       {role === "owner" ? (
-        <Button variant="secondary" size="sm" href={`${base}/billing`} className="shrink-0 self-start sm:self-auto">
+        <Button variant="secondary" size="sm" href={`${base}/billing`} className={cn("shrink-0 self-start", !stacked && "sm:self-auto")}>
           See restaurant plans
         </Button>
       ) : (

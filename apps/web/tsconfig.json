@@ -59,9 +59,7 @@
     ".next-rest4/types/**/*.ts",
     ".next-rest4/dev/types/**/*.ts",
     ".next-rest1/types/**/*.ts",
-    ".next-rest1/dev/types/**/*.ts",
-    ".next-core/types/**/*.ts",
-    ".next-core/dev/types/**/*.ts"
+    ".next-rest1/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
