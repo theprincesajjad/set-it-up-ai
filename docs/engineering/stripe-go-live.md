@@ -8,7 +8,9 @@ Do the whole thing in **test mode first**, then repeat steps 1 to 7 in live mode
 
 1. **Two webhook secrets, one env var.** Stripe issues a different signing secret for the "Your account" endpoint and the "Connected accounts" endpoint. `verifyWebhook` accepts one secret only, so one of the two endpoints will fail with 400. Until the lead ships the proposed patch (comma-separated `STRIPE_WEBHOOK_SECRET`, try each), you cannot receive both platform and Connect events. Test: `stripe-contract.test.ts`, "verifies events signed by either of two configured secrets" (`it.fails`).
 2. **PAD with direct charges** was a bug (the direct branch dropped `acss_debit` and the mandate options). The saved-payment-methods work now covers it and `stripe-contract.test.ts` asserts it; re-run that file after any provider change.
-3. **Subscription schedule vs. later edits (unverified offline).** A founding restaurant's subscription is attached to a schedule. Confirm in test mode (checklist F and G) that changing tier and attaching add-ons still works after the schedule exists. If Stripe rejects those calls, they need to go through the schedule instead.
+3. **Subscription schedule vs. later edits (fixed in code, confirm in test mode).** A founding restaurant's subscription is attached to a schedule, and Stripe rejects direct item edits on such a subscription (and the next phase would overwrite them). Tier changes, add-on attach, quantity change and detach now go through `subscriptionSchedules.update` when the subscription has a schedule: the current and all future phases get the new items, each phase keeps its coupon, dates, proration setting and tax setting, `proration_behavior` is `create_prorations`. The tier change also writes `restaurant_tier` to the subscription's metadata (metadata is not schedule-managed; the webhook reads the tier from it). Once the schedule is released after phase two the subscription is edited directly again. The request shapes are locked by the "schedule-managed (founding offer) subscription" tests in `stripe-contract.test.ts`; confirm against real Stripe with checklist F and G.
+4. **`payment_intent.processing` is now handled** (see section 5 and 7). Add that event to both webhook endpoints.
+5. **Automatic tax is optional and off** (`STRIPE_AUTOMATIC_TAX`). Decide before live and, if on, complete section 10 first.
 
 ## 1. Account settings
 
@@ -51,7 +53,7 @@ Create one product per row, one recurring price per interval, and set **Lookup k
 Notes:
 - Annual add-ons are 10 months of the monthly price (two months free), the same as the plans.
 - Initial restaurant checkout uses an **inline price** (price_data) with the product name "Restaurant Starter/Growth/Pro", not the pre-created prices. Only tier changes and add-ons use the lookup keys. This is harmless but means the tier price a customer first pays is not the pre-created one.
-- Set the tax behaviour and product tax code on every product if you collect GST/HST through Stripe Tax. The code does not enable automatic tax on checkout today; decide this before live.
+- Set the tax behaviour (**exclusive**) and product tax code (`txcd_10103001`, software as a service, business use) on every product if you collect GST/HST through Stripe Tax. With `STRIPE_AUTOMATIC_TAX` on, the app sets both on the inline checkout price and on the lookup-key prices it creates, but prices you pre-create, and the `STRIPE_PRICE_*` plan prices, must have them set by hand (section 10).
 
 ## 3. Coupons
 
@@ -88,13 +90,15 @@ Settings, Connect:
 
 Launch with destination for everyone. Turn direct on for one test merchant first, and only after issue 1 at the top is fixed (direct events arrive on the Connect endpoint).
 
+**Changing a merchant's charge mode and saved tiffin cards.** A tiffin customer's Stripe customer and saved card or bank account live on the account that charged them (the platform for destination, the merchant's connected account for direct), so they can't be used after a switch. When the admin endpoint changes the stored mode it clears the saved customer id, payment method id and card details of every non-cancelled tiffin subscription of that merchant, and drops the unpaid PaymentIntent of any pending charge (it lives on the old account too). The response says how many subscriptions were reset (`tiffinSubscriptionsReset`). At the next renewal the roll finds no saved card, creates a new intent and customer on the new account and sends the customer the usual "your tiffin renewal is ready" (`renewal_due`) notice; paying it saves the new card for the renewals after that. A payment that is already processing is left alone. The reset runs on any change of the stored mode, even while `STRIPE_DIRECT_CHARGES` is off, because the flag can be turned on later. Tell the kitchen before you flip a merchant with subscribers.
+
 ## 5. Pre-authorized debit (ACSS) for Canada
 
 1. Dashboard, Settings, Payments, Payment methods: enable **Pre-authorized debit in Canada**. It may need a short Stripe review.
 2. For connected accounts, enable the same method under Settings, Connect, Payment methods (or on the capability list) and confirm the `acss_debit_payments` capability is active on the test merchant's account.
 3. Set `TIFFIN_PAD=1` in the API env.
 4. The app creates tiffin PADs as `payment_method_types[]=acss_debit`, mandate `payment_schedule=combined`, `interval_description="Tiffin subscription"`, `transaction_type=personal`, `verification_method=automatic`. Customers see the standard PAD mandate; instant verification uses Financial Connections, micro-deposits are the fallback.
-5. PAD payments settle in days, not seconds. `payment_intent.processing` is not handled today; the charge shows pending until `payment_intent.succeeded` or `payment_intent.payment_failed`.
+5. PAD payments settle in days, not seconds. `payment_intent.processing` is handled: the order (`orders.payment_processing_at`), invoice, quote deposit, catering deposit and hall deposit (`*_processing_at`) are marked processing and stay unpaid, and a tiffin charge goes to status `processing` (customers see it as pending with `processing: true`). The same PaymentIntent is reused everywhere, a processing tiffin charge is skipped by the renewal roll and `retry-payment` answers 409 while it is in flight, so nothing is charged twice. Customers get a "payment is processing" notification for tiffin, quote deposits, catering and hall deposits, and a visible ticket note for invoices. `payment_intent.succeeded` completes it as before; `payment_intent.payment_failed` after processing clears the marker and fails it (order `failed`, tiffin charge `failed` and the subscription past due, deposits and invoices unpaid again so the customer can retry). Migration `0009_payment_processing` adds the columns.
 
 ## 6. Customer portal
 
@@ -117,14 +121,16 @@ One URL for everything: `POST {PUBLIC_API_URL}/v1/webhooks/stripe`. Create **two
 | `customer.subscription.deleted` | Drop to Free / clear restaurant tier |
 | `invoice.paid` | WhatsApp pack credits each renewal |
 | `invoice.payment_failed` | Mark past_due |
+| `payment_intent.processing` | Bank debit (PAD) in flight: mark orders, invoices, deposits and tiffin charges processing |
 | `payment_intent.succeeded` | Orders, deposits, invoices, tiffin, splits, catering and hall deposits, platform charges |
-| `payment_intent.payment_failed` | Release / fail the same |
+| `payment_intent.payment_failed` | Release / fail the same, including a debit that failed after processing |
 
 **Endpoint B: Events on Connected accounts** (listen to Connect)
 
 | Event | Why |
 | --- | --- |
 | `account.updated` | Onboarding status: charges / payouts enabled, details submitted |
+| `payment_intent.processing` | Direct charges (PAD in flight) |
 | `payment_intent.succeeded` | Direct charges (only matters once direct is on) |
 | `payment_intent.payment_failed` | Direct charges |
 
@@ -144,11 +150,12 @@ Signing secrets: copy each endpoint's `whsec_...`. Both must be accepted by the 
 | `STRIPE_PRICE_PRO_ANNUAL` | `price_...` | Recommended |
 | `STRIPE_DIRECT_CHARGES` | `1` or `true` to honour `chargeMode=direct`. Leave unset at launch. | No |
 | `TIFFIN_PAD` | `1` to offer PAD to tiffin subscribers | No |
+| `STRIPE_AUTOMATIC_TAX` | `1` or `true` to collect GST/HST on our own subscription checkouts (plans, restaurant tiers) with Stripe Tax. Default off. Needs section 10 done first. | No |
 | `PUBLIC_API_URL` | Public base URL of the API (webhook URL, redirects) | Yes in production |
 | `PUBLIC_WEB_URL` | Web app URL, used for checkout success / cancel and portal return links | Yes in production |
 | `NODE_ENV` | `production`. Also requires `JWT_SECRET` and `ENCRYPTION_KEY`; the dev payment simulator is disabled. | Yes |
 
-Note: `apps/api/.env.example` does not list `STRIPE_DIRECT_CHARGES` or `TIFFIN_PAD`; add them there.
+`apps/api/.env.example` lists all of these, including `STRIPE_DIRECT_CHARGES`, `TIFFIN_PAD` and `STRIPE_AUTOMATIC_TAX`.
 
 ## 9. Test-mode checklist (founder)
 
@@ -177,12 +184,37 @@ Canadian PAD (ACSS) test details: institution `000`, transit `11000`, account `0
 
 **F. Restaurant tier with founding offer.** Mark a merchant as founding. Buy Restaurant Growth monthly. Expect Checkout to show 50% off for 12 months ($99.50). After the webhook, in Stripe open the subscription: it has a **schedule** with two phases (12 months at 50%, then 25% off). Confirm `founding_year_one` and `founding_lifetime` exist. Use a test clock: advance 12 months plus a day and confirm the invoice drops to $149.25 (25% off $199) and stays there.
 
-**G. Tier change and add-ons on that founding subscription.** Change Growth to Pro in the app: the base item price changes and a prorated line appears. Attach Extra restaurant location with quantity 3, then change to 2, then remove: three items events, proration lines on the next invoice. Attach WhatsApp 1,000 pack: 1,000 credits arrive immediately and again on the next renewal (advance the test clock, look for `invoice.paid` with `subscription_cycle`). Attach Banquet on Growth. If any of these fail on a subscription that has a schedule, stop and tell the engineer (issue 3).
+**G. Tier change and add-ons on that founding subscription.** These go through the subscription's schedule (issue 3): after each step open the schedule in Stripe and confirm both phases have the new items and their coupons are unchanged. Change Growth to Pro in the app: the base item price changes in both phases and a prorated line appears. Attach Extra restaurant location with quantity 3, then change to 2, then remove: three items events, proration lines on the next invoice. Attach WhatsApp 1,000 pack: 1,000 credits arrive immediately and again on the next renewal (advance the test clock, look for `invoice.paid` with `subscription_cycle`). Attach Banquet on Growth. Also confirm `restaurant_tier` on the subscription's metadata now says `pro` (the webhook reads it) and that the next `customer.subscription.updated` leaves the merchant on Pro. After the schedule's second phase ends and it is released, repeat one tier change: it should be a direct subscription edit. If any of these fail on a subscription that has a schedule, stop and tell the engineer (issue 3).
 
 **H. Failed renewal.** Subscribe with `4000 0000 0000 0341`, advance the test clock one period. Expect `invoice.payment_failed`, merchant goes past_due and keeps the plan during retries.
 
-**I. Tiffin PAD.** `TIFFIN_PAD=1`, destination merchant. Subscribe a customer to a tiffin plan, choose pre-authorized debit, verify with instant or micro-deposit, then use the `000123456789` account. The PaymentIntent is `acss_debit` with the mandate; the charge stays pending, then succeeds. Repeat with Stripe's failing test account: it fails and the subscription shows payment failed.
+**I. Tiffin PAD.** `TIFFIN_PAD=1`, destination merchant. Subscribe a customer to a tiffin plan, choose pre-authorized debit, verify with instant or micro-deposit, then use the `000123456789` account. The PaymentIntent is `acss_debit` with the mandate; expect `payment_intent.processing` first (the charge shows processing, the customer gets "your tiffin payment is processing", the subscription stays as it was, and a second tap on pay says it is still processing), then `payment_intent.succeeded` settles it. Repeat with Stripe's failing test account: after processing it fails, the charge shows failed and the subscription shows payment failed. Do the same once for a catering deposit, a hall deposit, a repair quote deposit and an invoice paid by PAD: each shows processing (not paid) until the debit clears.
 
 **J. Webhook hardening.** In Stripe, resend a delivered event: the API answers 200 with `duplicate: true`. Send a request to the webhook URL with a bad signature: 400 `invalid_signature`.
 
-**K. Go live.** Repeat steps 1 to 7 with live mode, set live env vars, run one real $1 order on the founder's own card and refund it, then cancel a real Plus subscription. Keep the first week's webhook failures list open in Developers, Webhooks.
+**K. Charge-mode change.** With a test merchant that has two tiffin subscribers with a saved card (one on PAD), switch the merchant to direct (admin charge-mode endpoint). The response should say `tiffinSubscriptionsReset: 2`. Both subscribers show no card on file. Advance the clock to the next renewal: each gets a "renewal is ready" notice and a new PaymentIntent on the connected account (switch to its view in Stripe); paying it saves the card on the connected account, and the renewal after that is automatic.
+
+**L. Automatic tax (only if `STRIPE_AUTOMATIC_TAX` is on).** After section 10 is done, buy Plus monthly with a Toronto billing address: Checkout asks for the billing address, shows HST 13% added on top, and the invoice has the tax line. Repeat with a Calgary address (GST 5%) and a Vancouver address (GST only unless you registered for BC PST). The customer in Stripe now has the address and name saved. Buy Restaurant Growth with the founding offer: the 50% discount applies to the price and tax is computed on the discounted amount; after the test-clock rolls to the 25% phase, the invoice still has tax. With the flag off none of this happens: no address form, no tax line.
+
+**M. Go live.** Repeat steps 1 to 7 and section 10 with live mode, set live env vars, run one real $1 order on the founder's own card and refund it, then cancel a real Plus subscription. Keep the first week's webhook failures list open in Developers, Webhooks.
+
+## 10. Stripe Tax (GST/HST) for our own subscriptions
+
+Only needed if you turn on `STRIPE_AUTOMATIC_TAX=1`. It affects Stripe Billing checkouts for **our** subscriptions: Plus and Pro plans, restaurant tiers and, through the same subscription, their add-ons. It does not touch merchant payments (orders, deposits, invoices, tiffin): those use the merchant's own tax settings in the app.
+
+What the app does when the flag is on: Checkout is created with `automatic_tax[enabled]=true`, `billing_address_collection=required` and `customer_update[address]=auto, name=auto` (so an existing customer's address is saved from the form), inline checkout prices and the prices the app creates for tier changes and add-ons are `tax_behavior=exclusive` (tax is added on top of $39 / $99 / the tier price) with product tax code `txcd_10103001`, and founding-offer schedule phases keep automatic tax. Subscriptions created before the flag was turned on do not get tax retroactively.
+
+Stripe Tax setup (test mode first, then live; registrations are per mode):
+1. Dashboard, Tax, Settings: set the head office address (Canada), default product tax code `txcd_10103001` (software as a service, business use) and default tax behaviour **Exclusive**. Customers' tax-exempt status stays default.
+2. Dashboard, Tax, Registrations: add a registration for each place you must collect. Stripe only calculates and collects tax where a registration exists; it does not file or remit for you (use Stripe Tax filing partners, or file yourself).
+   - **Canada, federal GST 5%**: required once taxable supplies pass $30,000 in four quarters (small supplier rule). Enter the GST/HST number (`123456789RT0001`).
+   - **Ontario HST 13%**: collected under the federal GST/HST registration (HST provinces are federal). Add Ontario as a registration with that number so Stripe applies 13% (5% federal + 8% provincial) to Ontario customers.
+   - **Other HST provinces** under the same federal number: Nova Scotia 15%, New Brunswick 15%, Newfoundland and Labrador 15%, Prince Edward Island 15%. Add each province you sell into.
+   - **GST-only provinces and territories** (Alberta, Yukon, NWT, Nunavut): 5% from the federal registration, nothing extra.
+   - **British Columbia PST 7%, Saskatchewan PST 6%, Manitoba RST 7%, Quebec QST 9.975%**: provincial registrations are separate (BC, SK, MB through the province, Quebec through Revenu Quebec) and each has its own non-resident or small-supplier threshold; for software sold to businesses the rules differ again. Ask your accountant before adding them. Until a province is registered, Stripe charges only the 5% GST there.
+   - US states: out of scope for this launch; leave unregistered.
+3. Pre-created prices (`STRIPE_PRICE_PLUS_*`, `STRIPE_PRICE_PRO_*` and the restaurant lookup-key prices in section 2) need **Tax behavior: Exclusive** and the product tax code set by hand. A price with no tax behaviour makes Checkout fail while automatic tax is on.
+4. Customer portal (section 6): leave "update billing information" on, so customers can correct their address.
+5. Run checklist L. Then set `STRIPE_AUTOMATIC_TAX=1` in the API env and redeploy. Turning it off again only affects new checkouts.
+
+Tax shows on the Stripe invoice and receipt. The Billing invoice list in the app shows the invoice total including tax.

@@ -76,8 +76,8 @@ function Slots() {
             {bookings.data.items.map((b) => (
               <li key={b.id} className="flex items-center gap-3 py-3 text-meta">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-body text-fg">{b.customerName ?? "Customer"}{b.orderNumber ? ` · Order #${b.orderNumber}` : b.ticketNumber ? ` · Ticket #${b.ticketNumber}` : ""}</span>
-                  <span className="block truncate text-fg-muted tabular">{formatDate(b.startsAt, true)} {formatTime(b.startsAt)}{b.status === "booked" ? "" : ` · ${b.status.replace(/_/g, " ")}`}{b.notes ? ` · ${b.notes}` : ""}</span>
+                  <span className="block truncate text-body text-fg">{b.customerName ?? "Customer"}</span>
+                  <span className="block truncate text-fg-muted tabular">{formatDate(b.startsAt, true)} {formatTime(b.startsAt)}{b.orderNumber ? ` · Order #${b.orderNumber}` : b.ticketNumber ? ` · Ticket #${b.ticketNumber}` : ""}{b.status === "booked" ? "" : ` · ${b.status.replace(/_/g, " ")}`}{b.notes ? ` · ${b.notes}` : ""}</span>
                 </span>
                 {b.status === "booked" ? (
                   <div className="flex shrink-0 items-center gap-1">

@@ -40,7 +40,7 @@ describe("payment processing (bank debit in flight)", () => {
   it("marks the order processing without paying it, never charges twice, and pays when the debit clears", async () => {
     const { m, c, order, pi } = await placeInApp("proc-0001");
     expect((await deliver(env, fake(env).processPaymentIntent(pi))).statusCode).toBe(200);
-    expect(await row(order.id)).toMatchObject({ paymentStatus: "unpaid", paymentProcessingAt: env.clock.now, paidAt: null });
+    expect(await row(order.id)).toMatchObject({ paymentStatus: "requires_action", paymentProcessingAt: env.clock.now, paidAt: null });
     // Still out of the kitchen queue, and no new PaymentIntent is created for it: the customer gets the same one back.
     expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/orders`)).body.items).toHaveLength(0);
     expect((await call(env, c.token, "GET", `/v1/me/orders/${order.id}`)).body.payment?.paymentIntentId ?? pi).toBe(pi);

@@ -11,7 +11,7 @@ import type { AddressInfo } from "node:net";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { merchantAddOns, merchants, subscriptions } from "@ll/db";
+import { merchantAddOns, merchants, orders, subscriptions, tiffinPlans, tiffinSubscriptions } from "@ll/db";
 import { ADD_ONS, FEES, FOUNDING_OFFER, RESTAURANT_PLANS } from "@ll/shared";
 import type { AppContext } from "../src/context.js";
 import { StripePayments } from "../src/providers/paymentsStripe.js";
@@ -19,7 +19,9 @@ import { computeFees } from "../src/services/fees.js";
 import { attachAddOn, detachAddOn, startRestaurantCheckout, changeRestaurantTier } from "../src/services/billing-restaurant.js";
 import { startCheckout } from "../src/services/billing.js";
 import { createConnectPayment, refundConnectPayment } from "../src/services/payments.js";
-import { createMerchant, createTestEnv, type TestEnv } from "./helpers.js";
+import { loadConfig } from "../src/config.js";
+import { rollBilling } from "../src/services/tiffin.js";
+import { createMerchant, createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
 import { PAID_FEATURES, setStage } from "./commerce-fixtures.js";
 
 interface Recorded {
@@ -46,6 +48,8 @@ let scheduleManaged = false;
 let scheduleAddOn: { addOnId: string; price: string; quantity: number } | null = null;
 /** When set, a confirming off-session PaymentIntent answers `processing` (a PAD debit in flight). */
 let offSessionProcessing = false;
+/** When set, the fixture schedule's phases say they use automatic tax (a subscription created with Stripe Tax). */
+let schedulePhaseTax = false;
 /** When set, a confirming PaymentIntent create answers with this Stripe card error. */
 let offSessionFailure: { code: string; decline_code?: string; type?: string } | null = null;
 
@@ -101,8 +105,8 @@ function respond(r: Recorded): { status: number; body: unknown } {
         end_behavior: "release",
         current_phase: { start_date: 1_700_000_000, end_date: 1_900_000_000 },
         phases: [
-          { start_date: 1_700_000_000, end_date: 1_900_000_000, items: items(), discounts: [{ coupon: "founding_year_one" }], proration_behavior: "none", metadata: {} },
-          { start_date: 1_900_000_000, end_date: 2_000_000_000, items: items(), discounts: [{ coupon: "founding_lifetime" }], proration_behavior: "none", metadata: {} },
+          { start_date: 1_700_000_000, end_date: 1_900_000_000, items: items(), discounts: [{ coupon: "founding_year_one" }], proration_behavior: "none", metadata: {}, ...(schedulePhaseTax ? { automatic_tax: { enabled: true } } : {}) },
+          { start_date: 1_900_000_000, end_date: 2_000_000_000, items: items(), discounts: [{ coupon: "founding_lifetime" }], proration_behavior: "none", metadata: {}, ...(schedulePhaseTax ? { automatic_tax: { enabled: true } } : {}) },
         ],
       },
     };
@@ -186,6 +190,7 @@ beforeEach(() => {
   scheduleManaged = false;
   scheduleAddOn = null;
   offSessionProcessing = false;
+  schedulePhaseTax = false;
 });
 
 // ---------------------------------------------------------------------------
@@ -623,10 +628,368 @@ describe("restaurant pack billing", () => {
     expect(row).toMatchObject({ status: "cancelled", stripeSubscriptionItemId: null });
   });
 
+  // -------------------------------------------------------------------------
+  // Founding subscriptions are managed by a subscription schedule: Stripe rejects direct item changes on them
+  // and the next phase would overwrite them, so every change goes through subscriptionSchedules.update.
+  // -------------------------------------------------------------------------
+  describe("schedule-managed (founding offer) subscription", () => {
+    const itemsOf = (u: Recorded, phase: number) =>
+      [0, 1, 2, 3].flatMap((i) => (u.form[`phases[${phase}][items][${i}][price]`] ? [{ price: u.form[`phases[${phase}][items][${i}][price]`], quantity: u.form[`phases[${phase}][items][${i}][quantity]`], addOn: u.form[`phases[${phase}][items][${i}][metadata][add_on_id]`] }] : []));
+    const noDirectItemCalls = () => {
+      expect(only("POST", "/v1/subscription_items")).toHaveLength(0);
+      expect(calls.filter((c) => c.path.startsWith("/v1/subscription_items/"))).toHaveLength(0);
+      // Only metadata may be written straight to the subscription, never items or prorations.
+      for (const c of only("POST", `/v1/subscriptions/${SUB_ID}`)) expect(Object.keys(c.form).filter((k) => k.startsWith("items") || k === "proration_behavior")).toEqual([]);
+    };
+    /** What every schedule update must keep: the current phase's start, both coupons, the proration setting, release at the end. */
+    const expectPhasesKept = (u: Recorded) => {
+      expect(u.form).toMatchObject({
+        end_behavior: "release",
+        proration_behavior: "create_prorations",
+        "phases[0][start_date]": "1700000000",
+        "phases[0][end_date]": "1900000000",
+        "phases[0][discounts][0][coupon]": "founding_year_one",
+        "phases[0][proration_behavior]": "none",
+        "phases[1][end_date]": "2000000000",
+        "phases[1][discounts][0][coupon]": "founding_lifetime",
+        "phases[1][proration_behavior]": "none",
+      });
+      expect(u.form["phases[1][start_date]"]).toBeUndefined();
+      expect(Object.keys(u.form).some((k) => k.startsWith("phases[2]"))).toBe(false);
+    };
+
+    beforeEach(() => {
+      scheduleManaged = true;
+    });
+
+    it("tier change swaps the base price in the current and the future phase, keeps the coupons, and never edits the subscription's items", async () => {
+      const m = await liveRestaurant("starter", "month", true);
+      const out = await changeRestaurantTier(env.ctx, m, "pro");
+      expect(out.tier).toBe("pro");
+      const price = one("POST", "/v1/prices");
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expectPhasesKept(u);
+      for (const phase of [0, 1]) expect(itemsOf(u, phase)).toEqual([{ price: `price_${price.form.lookup_key}`, quantity: "1", addOn: undefined }]);
+      expect(u.form["phases[0][metadata][restaurant_tier]"]).toBe("pro");
+      expect(u.form["phases[1][metadata][restaurant_tier]"]).toBe("pro");
+      // The webhook reads the tier from the subscription's metadata, so it is written there (metadata only).
+      expect(one("POST", `/v1/subscriptions/${SUB_ID}`).form).toMatchObject({ "metadata[restaurant_tier]": "pro", "metadata[merchant_id]": "m1" });
+      noDirectItemCalls();
+      const [row] = await env.db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, SUB_ID));
+      expect(row!.restaurantTier).toBe("pro");
+    });
+
+    it("a tier change keeps add-ons on their own price", async () => {
+      const m = await liveRestaurant("growth", "month", true);
+      await attachAddOn(env.ctx, m, "extra_location", { quantity: 2 });
+      calls = [];
+      await changeRestaurantTier(env.ctx, m, "pro");
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      const proPrice = `price_ll_restaurant_pro_month_${RESTAURANT_PLANS.pro.priceCents}`;
+      for (const phase of [0, 1]) {
+        const items = itemsOf(u, phase);
+        expect(items[0]).toMatchObject({ price: proPrice, addOn: undefined });
+        expect(items[1]).toMatchObject({ price: `price_ll_addon_extra_location_month_${ADD_ONS.extra_location.priceCents}`, quantity: "2", addOn: "extra_location" });
+      }
+      noDirectItemCalls();
+    });
+
+    it("add-on attach adds one item with quantity and add_on_id to both phases, prorated, and stores the new subscription item id", async () => {
+      const m = await liveRestaurant("growth", "month", true);
+      const dto = await attachAddOn(env.ctx, m, "extra_location", { quantity: 3 });
+      expect(dto).toMatchObject({ id: "extra_location", quantity: 3, active: true });
+      const price = one("POST", "/v1/prices");
+      expect(price.form.lookup_key).toBe(`ll_addon_extra_location_month_${ADD_ONS.extra_location.priceCents}`);
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expectPhasesKept(u);
+      for (const phase of [0, 1]) {
+        expect(itemsOf(u, phase)).toEqual([
+          { price: "price_tier_fixture", quantity: "1", addOn: undefined },
+          { price: `price_${price.form.lookup_key}`, quantity: "3", addOn: "extra_location" },
+        ]);
+      }
+      noDirectItemCalls();
+      // The item id comes from the subscription after the update, so later changes can find it.
+      const [row] = await env.db.select().from(merchantAddOns).where(eq(merchantAddOns.merchantId, m.id));
+      expect(row).toMatchObject({ addOnId: "extra_location", quantity: 3, status: "active", stripeSubscriptionItemId: "si_sched_addon" });
+    });
+
+    it("quantity change rewrites only that item's quantity in both phases", async () => {
+      const m = await liveRestaurant("growth", "month", true);
+      await attachAddOn(env.ctx, m, "extra_location", { quantity: 3 });
+      calls = [];
+      await attachAddOn(env.ctx, m, "extra_location", { quantity: 2 });
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expectPhasesKept(u);
+      for (const phase of [0, 1]) {
+        const items = itemsOf(u, phase);
+        expect(items).toHaveLength(2);
+        expect(items[0]).toMatchObject({ price: "price_tier_fixture", quantity: "1" });
+        expect(items[1]).toMatchObject({ quantity: "2", addOn: "extra_location" });
+      }
+      noDirectItemCalls();
+      const [row] = await env.db.select().from(merchantAddOns).where(eq(merchantAddOns.merchantId, m.id));
+      expect(row).toMatchObject({ quantity: 2, status: "active", stripeSubscriptionItemId: "si_sched_addon" });
+    });
+
+    it("detach drops the item from both phases and leaves the plan item", async () => {
+      const m = await liveRestaurant("growth", "month", true);
+      await attachAddOn(env.ctx, m, "extra_location", { quantity: 3 });
+      calls = [];
+      await detachAddOn(env.ctx, m, "extra_location");
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expectPhasesKept(u);
+      for (const phase of [0, 1]) expect(itemsOf(u, phase)).toEqual([{ price: "price_tier_fixture", quantity: "1", addOn: undefined }]);
+      noDirectItemCalls();
+      const [row] = await env.db.select().from(merchantAddOns).where(eq(merchantAddOns.merchantId, m.id));
+      expect(row).toMatchObject({ status: "cancelled", stripeSubscriptionItemId: null });
+    });
+
+    it("moving off Growth drops the banquet add-on through the schedule too", async () => {
+      const m = await liveRestaurant("growth", "month", true);
+      await attachAddOn(env.ctx, m, "banquet_module", { quantity: 1 });
+      calls = [];
+      await changeRestaurantTier(env.ctx, m, "starter");
+      const updates = only("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expect(updates).toHaveLength(2); // tier swap, then the add-on removal
+      expect(itemsOf(updates[1]!, 0).map((i) => i.addOn)).toEqual([undefined]);
+      noDirectItemCalls();
+    });
+
+    it("a released schedule (the subscription no longer has one) is changed directly again", async () => {
+      scheduleManaged = false;
+      const m = await liveRestaurant("starter", "month", true);
+      await changeRestaurantTier(env.ctx, m, "growth");
+      await attachAddOn(env.ctx, m, "extra_location", { quantity: 1 });
+      expect(only("POST", "/v1/subscription_schedules/sub_sched_fixture")).toHaveLength(0);
+      expect(one("POST", `/v1/subscriptions/${SUB_ID}`).form["items[0][id]"]).toBe("si_base");
+      expect(only("POST", "/v1/subscription_items")).toHaveLength(1);
+    });
+
+    it("annual founding subscription: the same phase-update path", async () => {
+      subscriptionInterval = "year";
+      const m = await liveRestaurant("growth", "year", true);
+      await attachAddOn(env.ctx, m, "phone_ai", { quantity: 1 });
+      const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+      expect(itemsOf(u, 0)[1]).toMatchObject({ price: `price_ll_addon_phone_ai_year_${ADD_ONS.phone_ai.priceCents * 10}`, addOn: "phone_ai" });
+      noDirectItemCalls();
+    });
+  });
+
   it("add-ons are blocked before Stripe is called when the tier does not allow them", async () => {
     const m = await liveRestaurant("starter");
     await expect(attachAddOn(env.ctx, m, "banquet_module", { quantity: 1 })).rejects.toThrow();
     expect(calls).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Automatic tax (STRIPE_AUTOMATIC_TAX): GST/HST on our own subscription checkouts
+// ---------------------------------------------------------------------------
+describe("automatic tax on Stripe Billing checkouts", () => {
+  let env: TestEnv;
+  beforeEach(async () => {
+    env = await createTestEnv();
+    await setStage(env, PAID_FEATURES, "ga");
+  });
+  afterEach(async () => env.close());
+  const merchantRow = async (id: string) => (await env.db.select().from(merchants).where(eq(merchants.id, id)))[0]!;
+  const taxKeys = (form: Record<string, string>) => Object.keys(form).filter((k) => k.startsWith("automatic_tax") || k.startsWith("customer_update") || k === "billing_address_collection" || k.includes("tax_behavior") || k.includes("tax_code"));
+
+  it("config: off by default, on with STRIPE_AUTOMATIC_TAX=1 or true", () => {
+    expect(loadConfig({}).stripe.automaticTax).toBe(false);
+    expect(loadConfig({ STRIPE_AUTOMATIC_TAX: "0" }).stripe.automaticTax).toBe(false);
+    expect(loadConfig({ STRIPE_AUTOMATIC_TAX: "1" }).stripe.automaticTax).toBe(true);
+    expect(loadConfig({ STRIPE_AUTOMATIC_TAX: "true" }).stripe.automaticTax).toBe(true);
+  });
+
+  it("off (default): no automatic_tax, no address collection, no tax fields on any checkout", async () => {
+    env.ctx.providers.payments = makeProvider();
+    const { merchant } = await createMerchant(env);
+    await startCheckout(env.ctx, await merchantRow(merchant.id), { plan: "plus", interval: "month" });
+    await startRestaurantCheckout(env.ctx, { ...(await merchantRow(merchant.id)), stripeCustomerId: "cus_fixture" }, { tier: "growth", interval: "month" });
+    const sessions = only("POST", "/v1/checkout/sessions");
+    expect(sessions).toHaveLength(2);
+    for (const c of sessions) expect(taxKeys(c.form)).toEqual([]);
+  });
+
+  it("on: plan checkout (inline price) collects GST/HST: automatic tax, required billing address, tax-exclusive SaaS price", async () => {
+    env.ctx.providers.payments = makeProvider({ automaticTax: true });
+    const { merchant } = await createMerchant(env);
+    await startCheckout(env.ctx, await merchantRow(merchant.id), { plan: "pro", interval: "month" });
+    const s = one("POST", "/v1/checkout/sessions");
+    expect(s.form).toMatchObject({
+      "automatic_tax[enabled]": "true",
+      billing_address_collection: "required",
+      // Stripe requires the customer's address to be saved from this form when the customer already exists.
+      "customer_update[address]": "auto",
+      "customer_update[name]": "auto",
+      "line_items[0][price_data][tax_behavior]": "exclusive",
+      "line_items[0][price_data][product_data][tax_code]": "txcd_10103001",
+      mode: "subscription",
+      allow_promotion_codes: "true",
+    });
+  });
+
+  it("on: a configured Price id is sent as is (set its tax behaviour in Stripe), still with automatic tax and address", async () => {
+    env.ctx.providers.payments = makeProvider({ automaticTax: true });
+    env.ctx.config = { ...env.ctx.config, stripe: { ...env.ctx.config.stripe, prices: { plusMonthly: "price_plus_m" } } };
+    const { merchant } = await createMerchant(env);
+    await startCheckout(env.ctx, await merchantRow(merchant.id), { plan: "plus", interval: "month" });
+    const s = one("POST", "/v1/checkout/sessions");
+    expect(s.form).toMatchObject({ "line_items[0][price]": "price_plus_m", "automatic_tax[enabled]": "true", billing_address_collection: "required", "customer_update[address]": "auto" });
+    expect(s.form["line_items[0][price_data][tax_behavior]"]).toBeUndefined();
+  });
+
+  it("on: restaurant tier checkout (with and without the founding coupon) collects tax too", async () => {
+    env.ctx.providers.payments = makeProvider({ automaticTax: true });
+    const { merchant } = await createMerchant(env);
+    await startRestaurantCheckout(env.ctx, await merchantRow(merchant.id), { tier: "growth", interval: "year" });
+    await env.db.update(merchants).set({ foundingOffer: true }).where(eq(merchants.id, merchant.id));
+    await startRestaurantCheckout(env.ctx, { ...(await merchantRow(merchant.id)), stripeCustomerId: "cus_fixture" }, { tier: "starter", interval: "month" });
+    const [plain, founding] = only("POST", "/v1/checkout/sessions");
+    for (const c of [plain!, founding!]) {
+      expect(c.form).toMatchObject({ "automatic_tax[enabled]": "true", billing_address_collection: "required", "line_items[0][price_data][tax_behavior]": "exclusive", "metadata[restaurant_tier]": expect.any(String) });
+    }
+    expect(founding!.form["discounts[0][coupon]"]).toBe("founding_year_one");
+  });
+
+  it("on: prices created for tier changes and add-ons are tax-exclusive, and rewritten founding phases keep automatic tax", async () => {
+    const p = makeProvider({ automaticTax: true });
+    await p.changeSubscriptionTier({ subscriptionId: SUB_ID, tier: "pro", interval: "month", unitAmountCents: RESTAURANT_PLANS.pro.priceCents, productName: "Restaurant Pro" });
+    await p.addSubscriptionItem({ subscriptionId: SUB_ID, addOnId: "phone_ai", quantity: 1, interval: "month", unitAmountCents: ADD_ONS.phone_ai.priceCents, name: "Phone ordering assistant" });
+    for (const price of only("POST", "/v1/prices")) expect(price.form).toMatchObject({ tax_behavior: "exclusive", "product_data[tax_code]": "txcd_10103001" });
+    calls = [];
+    await p.scheduleFoundingOffer(SUB_ID);
+    const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+    expect(u.form).toMatchObject({ "phases[0][automatic_tax][enabled]": "true", "phases[1][automatic_tax][enabled]": "true" });
+  });
+
+  it("off: prices and founding phases carry no tax fields", async () => {
+    const p = makeProvider();
+    await p.changeSubscriptionTier({ subscriptionId: SUB_ID, tier: "pro", interval: "month", unitAmountCents: RESTAURANT_PLANS.pro.priceCents, productName: "Restaurant Pro" });
+    await p.scheduleFoundingOffer(SUB_ID);
+    for (const c of calls.filter((x) => x.method === "POST")) expect(taxKeys(c.form)).toEqual([]);
+  });
+
+  it("on: schedule updates keep each phase's automatic tax setting", async () => {
+    scheduleManaged = true;
+    schedulePhaseTax = true;
+    const p = makeProvider({ automaticTax: true });
+    await p.addSubscriptionItem({ subscriptionId: SUB_ID, addOnId: "phone_ai", quantity: 1, interval: "month", unitAmountCents: ADD_ONS.phone_ai.priceCents, name: "Phone ordering assistant" });
+    const u = one("POST", "/v1/subscription_schedules/sub_sched_fixture");
+    expect(u.form).toMatchObject({ "phases[0][automatic_tax][enabled]": "true", "phases[1][automatic_tax][enabled]": "true" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// payment_intent.processing (PAD / ACSS settles in days)
+// ---------------------------------------------------------------------------
+describe("payment_intent.processing", () => {
+  const stripe = makeStripe();
+  const sign = (payload: string) => stripe.webhooks.generateTestHeaderString({ payload, secret: WHSEC });
+  let env: TestEnv;
+  beforeEach(async () => {
+    env = await createTestEnv();
+    env.ctx.providers.payments = makeProvider();
+  });
+  afterEach(async () => env.close());
+  const post = (type: string, object: Record<string, unknown>, id: string) => {
+    const payload = JSON.stringify({ id, object: "event", api_version: "2025-01-01", created: Math.floor(Date.now() / 1000), type, livemode: false, data: { object: { object: "payment_intent", amount: 5000, ...object } } });
+    return env.app.inject({ method: "POST", url: "/v1/webhooks/stripe", headers: { "content-type": "application/json", "stripe-signature": sign(payload) }, payload });
+  };
+  async function inAppOrder() {
+    const { merchant } = await createMerchant(env);
+    const user = await createUser(env.db);
+    const [o] = await env.db
+      .insert(orders)
+      .values({ merchantId: merchant.id, userId: user.id, number: 1, subtotalCents: 5000, totalCents: 5000, paymentMethod: "in_app", stripePaymentIntentId: "pi_pad_1" })
+      .returning();
+    return { merchant, order: o! };
+  }
+  const orderRow = async (id: string) => (await env.db.select().from(orders).where(eq(orders.id, id)))[0]!;
+
+  it("a signed payment_intent.processing (real SDK signature) marks the order processing, not paid; a later failure reverts it", async () => {
+    const { merchant, order } = await inAppOrder();
+    const meta = { ll_kind: "order", ll_id: order.id, merchant_id: merchant.id };
+    const res = await post("payment_intent.processing", { id: "pi_pad_1", status: "processing", metadata: meta }, "evt_proc_1");
+    expect(res.json()).toEqual({ received: true, duplicate: false });
+    expect(await orderRow(order.id)).toMatchObject({ paymentStatus: "unpaid", paidAt: null, paymentProcessingAt: expect.any(Date) });
+    expect((await post("payment_intent.processing", { id: "pi_pad_1", status: "processing", metadata: meta }, "evt_proc_1")).json()).toEqual({ received: true, duplicate: true });
+    await post("payment_intent.payment_failed", { id: "pi_pad_1", status: "requires_payment_method", metadata: meta, last_payment_error: { code: "account_closed" } }, "evt_proc_2");
+    expect(await orderRow(order.id)).toMatchObject({ paymentStatus: "failed", paymentProcessingAt: null });
+  });
+
+  it("processing then succeeded pays the order and clears the marker", async () => {
+    const { merchant, order } = await inAppOrder();
+    const meta = { ll_kind: "order", ll_id: order.id, merchant_id: merchant.id };
+    await post("payment_intent.processing", { id: "pi_pad_1", status: "processing", metadata: meta }, "evt_a");
+    await post("payment_intent.succeeded", { id: "pi_pad_1", status: "succeeded", metadata: meta }, "evt_b");
+    expect(await orderRow(order.id)).toMatchObject({ paymentStatus: "paid", paymentProcessingAt: null });
+  });
+
+  it("processing for something that isn't ours, or a platform charge, is acknowledged and ignored", async () => {
+    expect((await post("payment_intent.processing", { id: "pi_x", metadata: {} }, "evt_c")).statusCode).toBe(200);
+    expect((await post("payment_intent.processing", { id: "pi_y", metadata: { ll_platform_charge: "true", kind: "ad_campaign", id: "a1" } }, "evt_d")).statusCode).toBe(200);
+  });
+
+  it("an off-session charge that comes back processing is an outcome (the debit is in flight), not an error or a decline", async () => {
+    offSessionProcessing = true;
+    const res = await makeProvider().chargeSavedMethod({ amountCents: 5000, connectedAccountId: ACCT, applicationFeeCents: 50, description: "Tiffin", metadata: { ll_kind: "tiffin", ll_id: "c1" }, idempotencyKey: "tiffin:c1:off", chargeMode: "destination", customerId: "cus_platform", paymentMethodId: "pm_pad", paymentMethodTypes: ["acss_debit"] });
+    expect(res).toMatchObject({ outcome: "processing", intent: { id: "pi_processing_fixture", status: "processing" } });
+    const r = one("POST", "/v1/payment_intents");
+    expect(r.form).toMatchObject({ off_session: "true", confirm: "true", payment_method: "pm_pad", "payment_method_types[0]": "acss_debit" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Charge-mode change: saved tiffin customers and methods live on the old account
+// ---------------------------------------------------------------------------
+describe("charge-mode change and saved tiffin methods", () => {
+  let env: TestEnv;
+  beforeEach(async () => {
+    env = await createTestEnv();
+    env.ctx.providers.payments = makeProvider();
+    env.ctx.config = { ...env.ctx.config, stripe: { ...env.ctx.config.stripe, directCharges: true } };
+  });
+  afterEach(async () => env.close());
+
+  it("never calls Stripe, clears the saved customer and method of live subscriptions, counts them, and the renewal then charges a fresh intent on the connected account", async () => {
+    const { merchant, ownerToken } = await createMerchant(env);
+    await env.db.update(merchants).set({ stripeAccountId: ACCT, stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true }).where(eq(merchants.id, merchant.id));
+    const [plan] = await env.db.insert(tiffinPlans).values({ merchantId: merchant.id, name: "Thali", priceCents: 12000 }).returning();
+    const rows = [];
+    for (const status of ["active", "past_due", "cancelled"]) {
+      const user = await createUser(env.db);
+      const [r] = await env.db
+        .insert(tiffinSubscriptions)
+        .values({ merchantId: merchant.id, planId: plan!.id, userId: user.id, status, startDate: "2026-11-04", nextBillingDate: "2026-11-04", priceCents: 12000, stripeCustomerId: "cus_old_platform", paymentMethodId: "pm_old_platform", paymentMethodBrand: "visa", paymentMethodLast4: "4242" })
+        .returning();
+      rows.push(r!);
+    }
+    const admin = await createUser(env.db, { platformRole: "admin" });
+    const res = await env.app.inject({ method: "PUT", url: `/v1/admin/merchants/${merchant.id}/charge-mode`, headers: { authorization: `Bearer ${await tokenFor(env, admin)}` }, payload: { chargeMode: "direct" } });
+    expect(res.json()).toMatchObject({ merchantId: merchant.id, chargeMode: "direct", directChargesEnabled: true, tiffinSubscriptionsReset: 2 });
+    expect(calls).toHaveLength(0);
+    const after = await env.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.merchantId, merchant.id));
+    const by = (id: string) => after.find((a) => a.id === id)!;
+    expect(by(rows[0]!.id)).toMatchObject({ stripeCustomerId: null, paymentMethodId: null, paymentMethodBrand: null, paymentMethodLast4: null });
+    expect(by(rows[1]!.id)).toMatchObject({ stripeCustomerId: null, paymentMethodId: null });
+    expect(by(rows[2]!.id)).toMatchObject({ stripeCustomerId: "cus_old_platform", paymentMethodId: "pm_old_platform" }); // cancelled: untouched
+    expect((await env.app.inject({ method: "PUT", url: `/v1/admin/merchants/${merchant.id}/charge-mode`, headers: { authorization: `Bearer ${await tokenFor(env, admin)}` }, payload: { chargeMode: "direct" } })).json().tiffinSubscriptionsReset).toBe(0);
+    void ownerToken;
+
+    // The renewal (billing roll) has no card to charge, so it takes the renewal_due path: a fresh customer and intent on the
+    // connected account, under a new idempotency key (the platform-account request used the old one).
+    env.clock.now = new Date("2026-11-04T15:00:00Z");
+    await rollBilling(env.ctx);
+    expect(only("POST", "/v1/payment_intents").filter((c) => c.form.confirm === "true")).toHaveLength(0);
+    const customer = one("POST", "/v1/customers");
+    expect(customer.headers["stripe-account"]).toBe(ACCT);
+    const pi = one("POST", "/v1/payment_intents");
+    expect(pi.headers["stripe-account"]).toBe(ACCT);
+    expect(pi.headers["idempotency-key"]).toMatch(/^tiffin:.+:pi:direct$/);
+    expect(pi.form).toMatchObject({ customer: "cus_fixture", setup_future_usage: "off_session", "metadata[ll_kind]": "tiffin" });
   });
 });
 

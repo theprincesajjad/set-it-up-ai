@@ -219,21 +219,26 @@ test("rep: pipeline and done-for-you merchant setup", async ({ page }) => {
   await page.getByLabel("Street address").fill("123 Roncesvalles Ave");
   await page.getByLabel("Shop phone").fill(randPhone());
   await page.getByLabel("Neighbourhood").selectOption({ index: 1 });
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByLabel("Owner's name").fill("Jordan Lee");
   await page.getByLabel("Owner's mobile").fill(randPhone());
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("radio", { name: "Bookstore" }).click();
   await expect(page.getByRole("group", { name: /Customer preview/ })).toBeVisible();
   await page.screenshot({ path: shot("18-rep-template"), fullPage: true });
-  await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ready to create" })).toBeVisible();
   await page.getByRole("button", { name: "Create merchant" }).click();
   await expect(page.getByRole("heading", { name: "QR kit" })).toBeVisible();
   await page.getByRole("button", { name: "Mark as delivered" }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  // Next through the remaining steps (QR kit, train the staff) to the done screen.
+  const live = page.getByRole("heading", { name: `${name} is live.` });
+  for (let i = 0; i < 3 && !(await live.isVisible()); i++) {
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.waitForTimeout(400);
+  }
   await expect(page.getByRole("heading", { name: `${name} is live.` })).toBeVisible();
   await page.screenshot({ path: shot("19-rep-done"), fullPage: true });
   await page.getByRole("link", { name: "Open merchant" }).click();
@@ -278,7 +283,7 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
   await sheet.getByRole("button", { name: /Pinecone Coffee Co\./ }).click();
   await sheet.getByLabel("Reason (optional)").fill("Pilot shop");
   await sheet.getByRole("button", { name: "Save override" }).click();
-  await expect(sheet.getByText("Forced on")).toBeVisible();
+  await expect(sheet.getByRole("listitem").filter({ hasText: "Pinecone Coffee Co." }).getByText("Forced on")).toBeVisible();
   await page.screenshot({ path: shot("24-admin-override") });
   await sheet.getByRole("button", { name: "Close" }).click();
 
