@@ -265,6 +265,10 @@ export const updateProgramBody = z
     visitCooldownMinutes: z.number().int().min(0).max(1440),
     termsText: nullableText(5000),
     active: z.boolean(),
+    /** Stamp on scan: a one-match 4-digit entry or a scanned card stamps without a confirm tap. Always off for per_dollar. */
+    counterAutoStamp: z.boolean(),
+    /** What one reward costs the shop, in cents. Optional; only used by Reports to estimate rewards owed. */
+    rewardCostCents: centsSchema.nullable(),
   })
   .partial();
 export type UpdateProgramBody = z.infer<typeof updateProgramBody>;
@@ -286,6 +290,9 @@ export interface LoyaltyProgram {
   visitCooldownMinutes: number;
   termsText: string | null;
   active: boolean;
+  /** Effective value: the stored setting, forced false for per_dollar programs. */
+  counterAutoStamp: boolean;
+  rewardCostCents: number | null;
   /** Plain-language expiry disclosure to show next to every balance. */
   expiryDisclosure: string;
   updatedAt: string;
@@ -489,6 +496,11 @@ export const listCustomersQuery = z.object({
   lapsedDays: z.coerce.number().int().min(1).max(3650).optional(),
   /** Balance covers at least one active reward. */
   rewardAvailable: z.enum(["true", "false"]).optional(),
+  /**
+   * Café segments: regulars (3+ visits in 30 days), slipping (see reportsApi.isSlipping),
+   * birthday_month (birthday falls in the current month, shop time), can_text (consent, not muted, has a phone).
+   */
+  segment: z.enum(["regulars", "slipping", "birthday_month", "can_text"]).optional(),
   /** Joined at or after this instant (ISO date = midnight UTC, or datetime with offset). */
   joinedAfter: z.union([z.iso.date(), z.iso.datetime({ offset: true })]).optional(),
   /** opted_in = marketing consent and not muted (the only members promos reach); not = everyone else. */
@@ -520,6 +532,23 @@ export interface CustomerSummary {
   marketingConsent: boolean;
   muted: boolean;
   rewardAvailable: boolean;
+  /** Visits in the last 30 days. */
+  visits30d: number;
+  /** "Weekdays 8 am": most common weekday group and 2-hour bucket over the last 12 visits; null under 4 visits. */
+  usually: string | null;
+  isRegular: boolean;
+  isSlipping: boolean;
+}
+
+/** GET /v1/merchants/:id/customers/segment-counts: numbers on the Customers chips. */
+export interface CustomerSegmentCounts {
+  all: number;
+  regulars: number;
+  slipping: number;
+  rewardReady: number;
+  newThisMonth: number;
+  birthdayMonth: number;
+  canText: number;
 }
 
 /** GET /v1/merchants/:id/customers. `phone` on each item is masked ("(416) ***-1234"). */
@@ -567,6 +596,8 @@ export interface CustomerDetail {
     notes: string | null;
     marketingConsentAt: string | null;
     marketingConsentSource: string | null;
+    /** The exact wording the customer agreed to, when it was recorded. */
+    marketingConsentText: string | null;
   };
   transactions: LedgerTransactionView[];
   visits: VisitView[];

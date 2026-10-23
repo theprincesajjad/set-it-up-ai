@@ -71,6 +71,13 @@
       "when": 1792717197420,
       "tag": "0009_payment_processing",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792723098704,
+      "tag": "0010_cafe_counter_auto_stamp",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,12 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
     return svc.listCustomers(ctx, s.merchant.id, parse(merchantApi.listCustomersQuery, req.query));
   });
 
+  app.get("/merchants/:merchantId/customers/segment-counts", async (req: Req) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await requireFeature(ctx.db, s.merchant, "customers.directory");
+    return svc.segmentCounts(ctx, s.merchant.id);
+  });
+
   app.get("/merchants/:merchantId/customers/export.csv", async (req: Req, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
     await requireFeature(ctx.db, s.merchant, "customers.csv_export");

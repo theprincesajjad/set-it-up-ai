@@ -3,9 +3,10 @@
  * reversals, CSV export and CSV import (migration from another program).
  * Points only change through ledger.ts.
  */
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   ledgerTransactions,
+  merchants,
   merchantMembers,
   redemptions,
   rewards,
@@ -21,6 +22,7 @@ import { parseCsvObjects, toCsv } from "./csv.js";
 import { adjustPoints, ensureMember, findOrCreateCustomerByPhone, postTransaction, reverseTransaction } from "./ledger.js";
 import { writeAudit } from "./admin-audit.js";
 import { iso, normalizePhone } from "./merchant.js";
+import { NO_RHYTHM, memberRhythms, monthStart, shopDate, rhythmSegmentIds, type MemberRhythm } from "./member-stats.js";
 
 // ---------------------------------------------------------------------------
 // Cursor helpers (opaque offset cursors)
@@ -60,7 +62,7 @@ type SummaryRow = {
   vipName: string | null;
 };
 
-function toSummary(r: SummaryRow, minCost: number | null): merchantApi.CustomerSummary {
+function toSummary(r: SummaryRow, minCost: number | null, rhythm: MemberRhythm = NO_RHYTHM): merchantApi.CustomerSummary {
   const m = r.member;
   return {
     memberId: m.id,
@@ -82,13 +84,32 @@ function toSummary(r: SummaryRow, minCost: number | null): merchantApi.CustomerS
     marketingConsent: !!m.marketingConsentAt && !m.muted,
     muted: m.muted,
     rewardAvailable: minCost !== null && m.balance >= minCost,
+    visits30d: rhythm.visits30d,
+    usually: rhythm.usually,
+    isRegular: rhythm.isRegular,
+    isSlipping: rhythm.isSlipping,
   };
+}
+
+async function merchantTimezone(db: DbOrTx, merchantId: string): Promise<string> {
+  const [m] = await db.select({ tz: merchants.timezone }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  return m?.tz ?? "America/Toronto";
 }
 
 // ---------------------------------------------------------------------------
 // Directory
 // ---------------------------------------------------------------------------
-export function customerFilters(ctx: AppContext, merchantId: string, q: Partial<merchantApi.ListCustomersQuery>, minCost: number | null): SQL {
+/**
+ * `segmentIds`: members already resolved for the rhythm segments (regulars, slipping), which need visit history.
+ * `birthdayMonth`: "MM" of the current month in the shop's timezone, for segment=birthday_month.
+ */
+export function customerFilters(
+  ctx: AppContext,
+  merchantId: string,
+  q: Partial<merchantApi.ListCustomersQuery>,
+  minCost: number | null,
+  extra: { segmentIds?: string[]; birthdayMonth?: string } = {},
+): SQL {
   const conds: (SQL | undefined)[] = [eq(merchantMembers.merchantId, merchantId)];
   if (q.q) {
     const like = `%${q.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
@@ -110,6 +131,9 @@ export function customerFilters(ctx: AppContext, merchantId: string, q: Partial<
   // Same rule as CustomerSummary.marketingConsent: consent recorded and not muted.
   if (q.consent === "opted_in") conds.push(and(isNotNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, false)));
   if (q.consent === "not") conds.push(or(isNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, true)));
+  if (q.segment === "regulars" || q.segment === "slipping") conds.push(extra.segmentIds?.length ? inArray(merchantMembers.id, extra.segmentIds) : sql`false`);
+  if (q.segment === "birthday_month") conds.push(extra.birthdayMonth ? sql`to_char(${users.birthday}, 'MM') = ${extra.birthdayMonth}` : sql`false`);
+  if (q.segment === "can_text") conds.push(and(isNotNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, false), isNotNull(users.phone), isNull(users.deletedAt)));
   if (q.muted === "true") conds.push(eq(merchantMembers.muted, true));
   if (q.muted === "false") conds.push(eq(merchantMembers.muted, false));
   return and(...conds)!;
@@ -126,7 +150,9 @@ export async function listCustomers(ctx: AppContext, merchantId: string, q: merc
     spend: [desc(merchantMembers.totalSpendCents)],
     name: [sql`${users.name} asc nulls last`],
   }[q.sort];
-  const where = customerFilters(ctx, merchantId, q, minCost);
+  const tz = await merchantTimezone(ctx.db, merchantId);
+  const now = ctx.now();
+  const where = customerFilters(ctx, merchantId, q, minCost, await segmentExtras(ctx, merchantId, tz, q.segment));
   const [rows, [totalRow]] = await Promise.all([
     ctx.db
       .select(summarySelect)
@@ -139,8 +165,46 @@ export async function listCustomers(ctx: AppContext, merchantId: string, q: merc
       .offset(offset),
     ctx.db.select({ n: count() }).from(merchantMembers).innerJoin(users, eq(users.id, merchantMembers.userId)).where(where),
   ]);
-  const items = rows.slice(0, q.limit).map((r) => toSummary(r, minCost));
+  const page = rows.slice(0, q.limit);
+  const rhythms = await memberRhythms(ctx.db, merchantId, tz, now, page.map((r) => r.member.id));
+  const items = page.map((r) => toSummary(r, minCost, rhythms.get(r.member.id)));
   return { items, nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null, total: Number(totalRow?.n ?? 0) } satisfies merchantApi.ListCustomersResponse;
+}
+
+async function segmentExtras(ctx: AppContext, merchantId: string, tz: string, segment: merchantApi.ListCustomersQuery["segment"]) {
+  const now = ctx.now();
+  if (segment === "regulars" || segment === "slipping") return { segmentIds: await rhythmSegmentIds(ctx.db, merchantId, tz, now, segment) };
+  if (segment === "birthday_month") return { birthdayMonth: shopDate(now, tz).slice(5, 7) };
+  return {};
+}
+
+/** Counts behind the Customers chips. One pass over members; rhythm segments come from visit history. */
+export async function segmentCounts(ctx: AppContext, merchantId: string): Promise<merchantApi.CustomerSegmentCounts> {
+  const tz = await merchantTimezone(ctx.db, merchantId);
+  const now = ctx.now();
+  const minCost = await minRewardCost(ctx.db, merchantId);
+  const rhythms = await memberRhythms(ctx.db, merchantId, tz, now);
+  const [row] = await ctx.db
+    .select({
+      all: sql<number>`count(*)::int`,
+      rewardReady: sql<number>`count(*) filter (where ${minCost === null ? sql`false` : sql`${merchantMembers.balance} >= ${minCost}`})::int`,
+      fresh: sql<number>`count(*) filter (where ${merchantMembers.createdAt} >= ${monthStart(now, tz).toISOString()}::timestamptz)::int`,
+      birthday: sql<number>`count(*) filter (where to_char(${users.birthday}, 'MM') = ${shopDate(now, tz).slice(5, 7)})::int`,
+      canText: sql<number>`count(*) filter (where ${merchantMembers.marketingConsentAt} is not null and ${merchantMembers.muted} = false and ${users.phone} is not null)::int`,
+    })
+    .from(merchantMembers)
+    .innerJoin(users, eq(users.id, merchantMembers.userId))
+    .where(and(eq(merchantMembers.merchantId, merchantId), isNull(users.deletedAt)));
+  const vals = [...rhythms.values()];
+  return {
+    all: Number(row?.all ?? 0),
+    regulars: vals.filter((r) => r.isRegular).length,
+    slipping: vals.filter((r) => r.isSlipping).length,
+    rewardReady: Number(row?.rewardReady ?? 0),
+    newThisMonth: Number(row?.fresh ?? 0),
+    birthdayMonth: Number(row?.birthday ?? 0),
+    canText: Number(row?.canText ?? 0),
+  };
 }
 
 /** Full phone number for one member (manager+). Every reveal is written to audit_logs. */
@@ -184,6 +248,7 @@ export function serializeTx(t: typeof ledgerTransactions.$inferSelect): merchant
 export async function getCustomerDetail(ctx: AppContext, merchantId: string, memberId: string): Promise<merchantApi.CustomerDetail> {
   const r = await loadMember(ctx.db, merchantId, memberId);
   const minCost = await minRewardCost(ctx.db, merchantId);
+  const rhythm = (await memberRhythms(ctx.db, merchantId, await merchantTimezone(ctx.db, merchantId), ctx.now(), [memberId])).get(memberId);
   const [txs, vs, reds] = await Promise.all([
     ctx.db
       .select()
@@ -206,11 +271,12 @@ export async function getCustomerDetail(ctx: AppContext, merchantId: string, mem
   ]);
   return {
     customer: {
-      ...toSummary(r, minCost),
+      ...toSummary(r, minCost, rhythm),
       birthday: r.birthday,
       notes: r.member.notes,
       marketingConsentAt: iso(r.member.marketingConsentAt),
       marketingConsentSource: r.member.marketingConsentSource,
+      marketingConsentText: r.member.marketingConsentText,
     },
     transactions: txs.map(serializeTx),
     visits: vs.map((v) => ({ id: v.id, locationId: v.locationId, amountCents: v.amountCents, source: v.source, transactionId: v.transactionId, createdAt: v.createdAt.toISOString() })),
@@ -276,12 +342,13 @@ export async function listActivity(ctx: AppContext, merchantId: string, q: { fro
 // ---------------------------------------------------------------------------
 export async function exportCustomersCsv(ctx: AppContext, merchantId: string, q: Partial<merchantApi.ListCustomersQuery> = {}): Promise<string> {
   const minCost = await minRewardCost(ctx.db, merchantId);
+  const extras = await segmentExtras(ctx, merchantId, await merchantTimezone(ctx.db, merchantId), q.segment);
   const rows = await ctx.db
     .select(summarySelect)
     .from(merchantMembers)
     .innerJoin(users, eq(users.id, merchantMembers.userId))
     .leftJoin(vipLevels, eq(vipLevels.id, merchantMembers.vipLevelId))
-    .where(customerFilters(ctx, merchantId, q, minCost))
+    .where(customerFilters(ctx, merchantId, q, minCost, extras))
     .orderBy(asc(merchantMembers.createdAt), asc(merchantMembers.id));
   return toCsv(
     ["member_id", "name", "phone", "email", "member_code", "balance", "lifetime_points", "visits", "total_spend", "last_visit_at", "joined_at", "joined_via", "vip_level", "tags", "birthday", "marketing_consent_at", "muted", "notes"],

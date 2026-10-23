@@ -133,6 +133,17 @@ export interface PromoResult {
   boostedTransactions: number;
   /** Avg daily visits during the window vs. the 14 days before it (null if no baseline). */
   liftPct: number | null;
+  /** Visits inside the promo's window (days and hours) from `startsAt` until now or `endsAt`. */
+  windowVisits: number;
+  /**
+   * Mean visits in the same weekdays and hours over the 4 weeks before the promo, scaled to the
+   * same number of window-days. Null when fewer than 2 weeks of history exist before the promo.
+   */
+  typicalVisits: number | null;
+  /** `windowVisits - typicalVisits` (null when `typicalVisits` is null). */
+  extraVisits: number | null;
+  /** Rewards-type items given: boosted transactions plus redemptions during the window. */
+  freeItemsGiven: number;
 }
 export interface PromosReport {
   items: PromoResult[];
@@ -175,4 +186,159 @@ export interface RetentionCohort {
 export interface RetentionReport {
   months: number;
   cohorts: RetentionCohort[];
+  /** Joiners of the last 4 weeks (ending 30 days ago at most) who came back within 7, 14 and 30 days. */
+  joinerReturn: JoinerReturnReport;
+}
+
+// ---------------------------------------------------------------------------
+// Café & retail: today (home), heatmap, rewards owed, joiner return
+// ---------------------------------------------------------------------------
+const DAY_MS = 86_400_000;
+/** A regular has at least this many visits in the last 30 days. */
+export const REGULAR_MIN_VISITS_30D = 3;
+/** Slipping away needs at least this many visits in the prior 60 days. */
+export const SLIPPING_MIN_VISITS_60D = 3;
+/** Never call someone slipping before this many days without a visit. */
+export const SLIPPING_MIN_DAYS = 14;
+
+type TimeLike = Date | number | string;
+const ms = (t: TimeLike) => (t instanceof Date ? t.getTime() : typeof t === "number" ? t : new Date(t).getTime());
+
+/** Visit times at or before `now` inside the trailing window, oldest first. */
+function within(times: TimeLike[], now: TimeLike, days: number): number[] {
+  const end = ms(now);
+  const start = end - days * DAY_MS;
+  return times.map(ms).filter((t) => t > start && t <= end).sort((a, b) => a - b);
+}
+
+/** Regular = at least 3 visits in the last 30 days. */
+export function isRegular(visitTimes: TimeLike[], now: TimeLike): boolean {
+  return within(visitTimes, now, 30).length >= REGULAR_MIN_VISITS_30D;
+}
+
+/** Median gap in days between consecutive visits in the prior 60 days (null with fewer than 2 visits). */
+export function medianGapDays(visitTimes: TimeLike[], now: TimeLike): number | null {
+  const v = within(visitTimes, now, 60);
+  if (v.length < 2) return null;
+  const gaps = v.slice(1).map((t, i) => (t - v[i]!) / DAY_MS).sort((a, b) => a - b);
+  const mid = Math.floor(gaps.length / 2);
+  return gaps.length % 2 ? gaps[mid]! : (gaps[mid - 1]! + gaps[mid]!) / 2;
+}
+
+/** Days without a visit after which this person counts as slipping away: `max(14, 2 × median gap)`. */
+export function slippingThresholdDays(visitTimes: TimeLike[], now: TimeLike): number | null {
+  const gap = medianGapDays(visitTimes, now);
+  return gap === null ? null : Math.max(SLIPPING_MIN_DAYS, 2 * gap);
+}
+
+/**
+ * Slipping away = a regular (3+ visits in the prior 60 days) whose days since the last visit exceed
+ * `max(14, 2 × their own median gap)`. Measured against that person's own rhythm.
+ */
+export function isSlipping(visitTimes: TimeLike[], now: TimeLike): boolean {
+  const v = within(visitTimes, now, 60);
+  if (v.length < SLIPPING_MIN_VISITS_60D) return false;
+  const threshold = slippingThresholdDays(visitTimes, now);
+  if (threshold === null) return false;
+  return (ms(now) - v[v.length - 1]!) / DAY_MS > threshold;
+}
+
+/** Local weekday (0 = Sunday) and hour (0-23) of one visit in the shop's timezone. */
+export interface VisitSlot {
+  dow: number;
+  hour: number;
+}
+export const USUALLY_MIN_VISITS = 4;
+export const USUALLY_WINDOW = 12;
+
+/** "8 am", "12 pm", "4 pm" for an hour 0-23. */
+export function hourLabel(hour: number): string {
+  const h = ((hour % 24) + 24) % 24;
+  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
+}
+
+/**
+ * "Weekdays 8 am": the most common weekday group (Weekdays or Weekends) and 2-hour bucket across
+ * the most recent 12 visits. `slots` are newest first. Null with fewer than 4 visits. Ties go to
+ * the larger group count, then the earlier bucket.
+ */
+export function usuallyLabel(slots: VisitSlot[]): string | null {
+  const recent = slots.slice(0, USUALLY_WINDOW);
+  if (recent.length < USUALLY_MIN_VISITS) return null;
+  const group = (dow: number) => (dow === 0 || dow === 6 ? "Weekends" : "Weekdays");
+  const groups = new Map<string, number>();
+  for (const s of recent) groups.set(group(s.dow), (groups.get(group(s.dow)) ?? 0) + 1);
+  const bestGroup = [...groups.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? 1 : -1))[0]![0];
+  const buckets = new Map<number, number>();
+  for (const s of recent) if (group(s.dow) === bestGroup) buckets.set(s.hour - (s.hour % 2), (buckets.get(s.hour - (s.hour % 2)) ?? 0) + 1);
+  const bestBucket = [...buckets.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]![0];
+  return `${bestGroup} ${hourLabel(bestBucket)}`;
+}
+
+/** Counts in the last four same-weekday buckets → typical value (mean, rounded). Null with no history. */
+export function typicalFromWeeks(counts: number[], weeks = 4): number | null {
+  const last = counts.slice(-weeks);
+  if (!last.length) return null;
+  return Math.round(last.reduce((a, b) => a + b, 0) / last.length);
+}
+
+export interface TodayReportDto {
+  /** ISO, shop timezone Toronto. */
+  asOf: string;
+  timezone: string;
+  /** typical = mean of the last 4 same weekdays before yesterday. */
+  yesterday: { visits: number; typicalVisits: number };
+  today: {
+    visits: number;
+    typicalVisitsFullDay: number;
+    newMembers: number;
+    newViaQr: number;
+    stampsGiven: number;
+    redemptions: number;
+    regularsSeen: number;
+    regularsTotal: number;
+  };
+  /** Hours 7..18 in shop time. */
+  hourly: { hours: number[]; typical: number[]; today: number[] };
+  /** Members at or above the reward cost; top 4 by most recent visit. */
+  rewardsWaiting: { count: number; goal: number | null; members: { memberId: string; name: string | null; balance: number; lastVisitAt: string | null }[] };
+  slipping: { count: number; canText: number; members: { memberId: string; name: string | null; usually: string | null; lastVisitAt: string | null; canText: boolean }[] };
+  staff: { staffId: string; name: string; shift: string | null; stamps: number; visits: number; undone: number }[];
+  /** A promo running today (by weekday and hours) with its window numbers, if any. */
+  promoWindow: { promoId: string; title: string; startTime: string | null; endTime: string | null; windowVisits: number; typicalVisits: number; extraVisits: number } | null;
+  counter: { online: boolean; staffName: string | null; signedInAt: string | null };
+}
+
+export const heatmapQuery = z.object({ weeks: z.coerce.number().int().min(1).max(26).default(4) });
+export interface HeatmapReport {
+  weeks: number;
+  timezone: string;
+  /** matrix[weekday][hour], weekday 0 = Monday ... 6 = Sunday, hour 0-23, shop time. */
+  matrix: number[][];
+  max: number;
+}
+
+export interface RewardsOwedReport {
+  /** Free rewards members could redeem right now (floor(balance / goal) summed). */
+  rewardsOwed: number;
+  stampsOutstanding: number;
+  members: number;
+  /** `rewardsOwed × rewardCostCents`. Null when the shop has not entered a cost. Always an estimate. */
+  estCostCents: number | null;
+  rewardCostCents: number | null;
+  estimate: true;
+}
+
+export interface JoinerReturnReport {
+  /** Joiners between `from` and `to` that are old enough for every window. */
+  from: string;
+  to: string;
+  joined: number;
+  /** Cumulative: members whose first return visit (after the join visit) came within N days. */
+  windows: { days: number; cameBack: number }[];
+}
+
+export interface FreeDrinksReport {
+  given: number;
+  estCostCents: number | null;
 }

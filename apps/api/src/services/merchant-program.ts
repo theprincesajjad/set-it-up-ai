@@ -45,6 +45,8 @@ export async function updateProgram(ctx: AppContext, merchantId: string, actorUs
   if (next.earnType === "per_dollar" && next.pointsPerDollar < 1) throw badRequest("Points per dollar must be at least 1");
   if (next.earnType !== "per_dollar" && next.pointsPerVisit < 1) throw badRequest("Points per visit must be at least 1");
   if (next.earnType === "stamps" && next.stampGoal < 1) throw badRequest("Set how many stamps earn the reward");
+  // Stamp on scan never applies to per-dollar programs (the amount must be typed).
+  if (next.earnType === "per_dollar") body = { ...body, counterAutoStamp: false };
   const [p] = await ctx.db
     .update(loyaltyPrograms)
     .set({ ...body, updatedAt: ctx.now() })

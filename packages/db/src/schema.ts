@@ -347,6 +347,10 @@ export const loyaltyPrograms = pgTable(
     visitCooldownMinutes: integer("visit_cooldown_minutes").notNull().default(30),
     termsText: text("terms_text"),
     active: boolean("active").notNull().default(true),
+    /** Stamp on scan: a scan or a one-match 4-digit entry stamps without a confirm tap. On for new café/bakery programs, off elsewhere; never applies to per_dollar. */
+    counterAutoStamp: boolean("counter_auto_stamp").notNull().default(false),
+    /** What one reward costs the shop (cents); optional, Reports uses it to estimate rewards owed. */
+    rewardCostCents: integer("reward_cost_cents"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

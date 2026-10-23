@@ -133,6 +133,8 @@ export function serializeProgram(p: ProgramRow): merchantApi.LoyaltyProgram {
     visitCooldownMinutes: p.visitCooldownMinutes,
     termsText: p.termsText,
     active: p.active,
+    counterAutoStamp: p.counterAutoStamp && p.earnType !== "per_dollar",
+    rewardCostCents: p.rewardCostCents,
     expiryDisclosure: expiryDisclosure(p),
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -214,6 +216,8 @@ export async function applyVerticalTemplate(tx: Tx, merchantId: string, vertical
     minSpendCents: 0,
     expiryMonths: null,
     active: true,
+    // Stamp on scan is on for cafés and bakeries only; elsewhere the owner opts in on the Rewards page.
+    counterAutoStamp: (vertical === "cafe" || vertical === "bakery") && t.earnType !== "per_dollar",
     termsText: `${t.terminology[0]!.toUpperCase()}${t.terminology.slice(1)} are earned and redeemed only at ${merchant.name}. They never expire and have no cash value.`,
   };
   const [program] = await tx
