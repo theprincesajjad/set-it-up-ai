@@ -282,7 +282,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
       name,
       email: R.chance(0.7) ? `${first}.${last}.${i}`.toLowerCase().replace(/[^a-z0-9.]/g, "") + "@example.com" : null,
       // Month and day only ("MM-DD"): the column is text with a check constraint (migration 0017), we never keep the year.
-      birthday: R.chance(0.5) ? `${String(R.int(1, 12)).padStart(2, "0")}-${String(R.int(1, 28)).padStart(2, "0")}` : null,
+      // R.int(1955, 2005) is still drawn (and dropped) so the seeded random stream, and every demo phone and name after it, stays the same.
+      birthday: R.chance(0.5) ? (R.int(1955, 2005), `${String(R.int(1, 12)).padStart(2, "0")}-${String(R.int(1, 28)).padStart(2, "0")}`) : null,
     });
     // Regulars visit more shops more often; a long tail visits once.
     const shopsCount = R.chance(0.35) ? R.int(3, 5) : R.int(1, 2);
