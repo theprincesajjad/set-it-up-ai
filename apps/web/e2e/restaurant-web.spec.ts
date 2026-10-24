@@ -80,7 +80,7 @@ test("menu: one halal banner, no certifier per dish, Without nuts, cart and pick
   // A dish with options opens a sheet; a plain dish adds directly.
   await page.getByRole("button", { name: "Add Hyderabadi Chicken Dum Biryani" }).click();
   const sheet = page.getByRole("dialog", { name: "Hyderabadi Chicken Dum Biryani" });
-  await sheet.getByLabel(/Raita cup/).check({ force: true });
+  await sheet.getByText(/Raita cup/).first().click();
   await sheet.getByRole("button", { name: /Add · \$21\.48/ }).click();
   await page.getByRole("button", { name: "Add Irani Chai" }).click();
   const bar = page.getByRole("link", { name: /Order for pickup.*2 items · \$25\.47/ });
@@ -239,7 +239,7 @@ test("owner: halal certification block on Menu & dietary, and private feedback t
   await card.getByRole("button", { name: "Offer a free chai" }).click();
   const reply = page.getByRole("dialog", { name: /Reply to/ });
   await expect(reply.getByLabel("Your reply")).toHaveValue(/[2-9A-Z]{6}/);
-  await reply.getByRole("button", { name: "Email" }).click();
+  await reply.getByRole("radio", { name: "Email" }).click();
   await reply.getByRole("button", { name: "Cancel" }).click();
   await card.getByRole("button", { name: "Mark handled" }).click();
   await expect(page.getByText("Marked handled")).toBeVisible();

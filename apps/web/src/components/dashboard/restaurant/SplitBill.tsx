@@ -78,7 +78,6 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
 
   // Each row starts on guest 1; keep assignments inside the guest list when it shrinks.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAssign((a) => Object.fromEntries(rows.map((r) => [r.ref, (a[r.ref] ?? [0]).filter((g) => g < guests).length ? (a[r.ref] ?? [0]).filter((g) => g < guests) : [0]])));
   }, [rows, guests]);
 

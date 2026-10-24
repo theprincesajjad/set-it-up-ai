@@ -8,14 +8,13 @@ import { Empty, ErrorLine, PageHeader, PageTabs, Panel, QuietButton, Section, Se
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { NoAccess } from "@/components/dashboard/PageStates";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { reportsApi } from "@ll/shared";
-import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { formatMoney, formatNumber } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
 import { rewardNoun } from "@/lib/dashboard/home";
 import { cameBackShare, joinersTitle, owedDetail, owedHeadline } from "@/lib/dashboard/reports";
 import { promoWhen } from "@/lib/dashboard/promos";
-import { pctDelta, rangeFor, type RangeKey } from "@/lib/dashboard/time";
+import { pctDelta, rangeFor } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";
 
 type Tab = "overview" | "retention" | "rewards" | "promos" | "network";
@@ -39,6 +38,7 @@ export default function ReportsPage() {
   const [range, setRange] = useState<Range>("4w");
   const days = RANGE_DAYS[range];
   const r = rangeFor(days === 7 ? "7d" : days === 28 ? "30d" : "90d");
+  // eslint-disable-next-line react-hooks/purity
   const from = new Date(Date.now() - days * 86_400_000).toISOString();
   const manager = role !== "staff";
   const advanced = enabled("reports.advanced");

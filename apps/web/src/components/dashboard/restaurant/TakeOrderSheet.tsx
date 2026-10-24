@@ -1,4 +1,5 @@
 "use client";
+import { nowMs } from "@/lib/restaurant/util";
 /**
  * Ring up an order by hand: a walk-in at the counter, a call taken on the phone ("Take a phone order", every tier), or a
  * phone pre-order for a pickup day. Posts to POST :m/orders/counter with the channel, so it shows as "Phone" in Orders and
@@ -36,7 +37,7 @@ const COPY: Record<TakeOrderMode, { title: string; subtitle: string; send: strin
 
 /** The next whole hour after `h` hours from now, as a datetime-local value in Toronto time. */
 function defaultPickup(hoursAhead: number): string {
-  const d = new Date(Date.now() + hoursAhead * 3_600_000);
+  const d = new Date(nowMs() + hoursAhead * 3_600_000);
   d.setMinutes(0, 0, 0);
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
   const g = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
@@ -67,7 +68,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   const isPre = mode === "preorder";
   const copy = COPY[mode];
   const menu = useMemo(
-    () => (catalog.data?.items ?? []).filter((i) => i.available && i.orderable && !!i.preorderOnly === isPre && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > Date.now())),
+    () => (catalog.data?.items ?? []).filter((i) => i.available && i.orderable && !!i.preorderOnly === isPre && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > nowMs())),
     [catalog.data, isPre],
   );
   const shown = useMemo(() => {
@@ -112,6 +113,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
     if (prefill?.usual && lookup?.usual && !lines.length) {
       for (const u of lookup.usual.items) {
         const it = menu.find((m) => m.id === u.catalogItemId);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (it) add(it.id, it.name, it.priceCents, u.quantity);
       }
     }

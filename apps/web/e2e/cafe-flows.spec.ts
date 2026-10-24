@@ -125,7 +125,7 @@ test("cold scan stamps in under 3 seconds and undo reverses it", async ({
 test("one match by last four digits stamps exactly once", async ({ page }) => {
   const { token, id } = await setup();
   // Unique last four digits for this run so exactly one member matches.
-  let phone = randPhone();
+  const phone = randPhone();
   const m = await member(token, id, "Single Match", phone);
   const before = await balance(token, id, m);
   await signIn(page, `/m/${id}/counter`);

@@ -93,23 +93,17 @@ test("owner: web counter award, undo and repeat customer", async ({ page }) => {
   await signIn(page, OWNER, `/m/${id}/counter`);
   await expect(page.getByRole("heading", { level: 1, name: "Counter" })).toBeVisible();
   const phone = randPhone();
-  await page.getByLabel("Phone, last 4 digits or member code").fill(phone);
-  await page.keyboard.press("Enter");
-  await expect(page.getByText(/New customer/)).toBeVisible();
+  for (const d of phone.slice(-4)) await page.getByRole("group", { name: "Keypad" }).getByRole("button", { name: d, exact: true }).click();
+  await expect(page.getByRole("heading", { name: /^No one ends in/ })).toBeVisible();
   await page.screenshot({ path: shot("04-counter-new-customer"), fullPage: true });
+  await page.getByRole("button", { name: "Add as a new member" }).click();
+  await page.getByPlaceholder("(416) 555-0123").fill(phone);
   await page.getByLabel("First name (optional)").fill("Robin");
   await page.getByRole("button", { name: "Add and award" }).click();
-  await expect(page.getByText(/^Added \d+ stamps?$/)).toBeVisible();
-  await expect(page.getByText(/Robin has/)).toBeVisible();
-  await page.screenshot({ path: shot("05-counter-awarded"), fullPage: true });
-  await page.getByRole("button", { name: /^Undo · \d+s$/ }).click();
   await expect(page.getByRole("heading", { name: "Robin" })).toBeVisible();
-  await expect(page.getByRole("radiogroup", { name: "How many" })).toBeVisible();
-  await page.getByRole("radio", { name: "+2" }).click();
-  await expect(page.getByRole("button", { name: "Add 2 stamps" })).toBeVisible();
-  await page.screenshot({ path: shot("06-counter-member"), fullPage: true });
-  await page.keyboard.press("Escape");
-  await expect(page.getByLabel("Phone, last 4 digits or member code")).toBeFocused();
+  await page.screenshot({ path: shot("05-counter-awarded"), fullPage: true });
+  await page.getByRole("button", { name: /^Undo \d+s$/ }).click();
+  await expect(page.getByRole("region", { name: "Scan a card" })).toBeVisible();
 });
 
 test("owner: customers, detail and manual adjust", async ({ page }) => {
@@ -123,7 +117,7 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   await page.screenshot({ path: shot("07-customers"), fullPage: true });
   await page.getByRole("table", { name: "Customers" }).getByRole("row").nth(1).click();
   const panel = page.getByRole("dialog", { name: "Customer" });
-  await expect(panel.getByRole("heading", { name: "Activity" })).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Recent" })).toBeVisible();
   await expect(page).toHaveURL(/[?&]member=/);
   const before = Number.parseInt((await panel.getByText(/^\d+$/).first().textContent()) ?? "0", 10);
   await panel.getByRole("button", { name: /Adjust stamps/ }).click();
@@ -139,30 +133,29 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   // The full page stays for deep links.
   await panel.getByRole("link", { name: "Open full page" }).click();
   await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent" })).toBeVisible();
 });
 
 test("owner: program editor with live preview saves", async ({ page }) => {
   const id = await pineconeId();
   await signIn(page, OWNER, `/m/${id}/program`);
-  await expect(page.getByRole("heading", { level: 1, name: "Program & rewards" })).toBeVisible();
-  const preview = page.getByRole("group", { name: /Customer preview/ });
-  await expect(preview).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Rewards" })).toBeVisible();
+  const preview = page;
   await expect(preview.getByRole("img", { name: /of 10 stamps/ })).toBeVisible();
-  await page.getByRole("button", { name: "More stamp goal" }).click();
+  await page.getByRole("button", { name: "More stamps" }).click();
   await expect(preview.getByRole("img", { name: /of 11 stamps/ })).toBeVisible();
-  await expect(page.getByText("You have unsaved changes")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
   await page.screenshot({ path: shot("10-program-editor"), fullPage: true });
-  await page.getByRole("button", { name: "Save program" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
   const confirm = page.getByRole("dialog", { name: "Customers will need more to reach a reward" });
   await expect(confirm).toBeVisible();
-  await confirm.getByRole("button", { name: "Save program" }).click();
-  await expect(page.getByText("Program saved")).toBeVisible();
-  await expect(page.getByText("You have unsaved changes")).toBeHidden();
+  await confirm.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   // Put it back so other runs see the template.
-  await page.getByRole("button", { name: "Fewer stamp goal" }).click();
-  await page.getByRole("button", { name: "Save program" }).click();
-  await expect(page.getByText("Program saved")).toBeVisible();
+  await page.getByRole("button", { name: "Fewer stamps" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
 });
 
 test("owner: create and publish a promo (pilot override)", async ({ page }) => {

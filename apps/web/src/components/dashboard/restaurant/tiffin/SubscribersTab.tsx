@@ -247,26 +247,6 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
   const payee = useApi(() => api.settings.payment(), [api]);
   return (
     <>
-      {recording && due ? (
-        <RecordPaymentPanel
-          subtitle={`${c.name ?? "Subscriber"} · ${sub.plan.name} · ${sub.servings} ${sub.servings === 1 ? "serving" : "servings"}`}
-          rows={[
-            { label: "Period", value: `${dayShort(due.periodStart)} to ${dayShort(due.periodEnd)}` },
-            { label: "Amount due", value: <strong>{formatMoney(due.remainingCents)}</strong> },
-            ...(sub.paymentMethod === "etransfer" && payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
-            ...(due.referenceCode ? [{ label: "Reference in message", value: <strong>{due.referenceCode}</strong> }] : []),
-          ]}
-          amountCents={due.remainingCents}
-          defaultMethod={sub.paymentMethod === "cash" ? "cash" : "etransfer"}
-          onClose={() => setRecording(false)}
-          onRecord={async (body) => {
-            const r = await api.tiffin.recordPayment(due.id, body);
-            const fresh = await api.tiffin.subscriber(sub.id);
-            onChanged(fresh);
-            return r;
-          }}
-        />
-      ) : null}
       <Sheet
         open
         onClose={onClose}
@@ -362,6 +342,26 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
           ) : null}
         </div>
       </Sheet>
+      {recording && due ? (
+        <RecordPaymentPanel
+          subtitle={`${c.name ?? "Subscriber"} · ${sub.plan.name} · ${sub.servings} ${sub.servings === 1 ? "serving" : "servings"}`}
+          rows={[
+            { label: "Period", value: `${dayShort(due.periodStart)} to ${dayShort(due.periodEnd)}` },
+            { label: "Amount due", value: <strong>{formatMoney(due.remainingCents)}</strong> },
+            ...(sub.paymentMethod === "etransfer" && payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
+            ...(due.referenceCode ? [{ label: "Reference in message", value: <strong>{due.referenceCode}</strong> }] : []),
+          ]}
+          amountCents={due.remainingCents}
+          defaultMethod={sub.paymentMethod === "cash" ? "cash" : "etransfer"}
+          onClose={() => setRecording(false)}
+          onRecord={async (body) => {
+            const r = await api.tiffin.recordPayment(due.id, body);
+            const fresh = await api.tiffin.subscriber(sub.id);
+            onChanged(fresh);
+            return r;
+          }}
+        />
+      ) : null}
       <ConfirmDialog
         open={confirmCancel}
         onClose={() => setConfirmCancel(false)}

@@ -1,4 +1,5 @@
 "use client";
+import { nowMs } from "@/lib/restaurant/util";
 /**
  * Kitchen display (restaurant.kds, frame 03). Neutral tickets: a hairline border, and the accent only for a late timer.
  * A pre-order inside two hours of its fire time is pinned at the top with the FIRE time and a "Start dum" button.
@@ -70,7 +71,7 @@ export function KitchenBoard() {
   const [station, setStation] = useState<string>(sp.get("station") ?? "all");
   const [lang, setLang] = useState<Lang | undefined>(initialLang);
   // `at` is when the poll landed: ticket ages are counted forward from it so the timers tick without extra requests.
-  const state = useApi(async () => ({ res: await api.kitchen.tickets({ station, ...(lang ? { lang } : {}) }), at: Date.now() }), [api, station, lang], { pollMs: POLL_MS });
+  const state = useApi(async () => ({ res: await api.kitchen.tickets({ station, ...(lang ? { lang } : {}) }), at: nowMs() }), [api, station, lang], { pollMs: POLL_MS });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [recent, setRecent] = useState<{ orderId: string; number: number }[]>([]);
@@ -78,9 +79,9 @@ export function KitchenBoard() {
   const [soldOutOpen, setSoldOutOpen] = useState(false);
 
   // Age is computed from when each poll landed, so the timers tick every second without extra requests.
-  const [tick, setTick] = useState(() => Date.now());
+  const [tick, setTick] = useState(() => nowMs());
   useEffect(() => {
-    const t = setInterval(() => setTick(Date.now()), 1000);
+    const t = setInterval(() => setTick(nowMs()), 1000);
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
@@ -400,7 +401,7 @@ function SoldOutSheet({ lang, tr, onClose, onChanged }: { lang: Lang; tr: Tr; on
   };
   const until = (iso: string) => {
     const d = new Date(iso);
-    return d.getTime() - Date.now() > 3 * 86_400_000 ? "until restored" : `until ${d.toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" })}`;
+    return d.getTime() - nowMs() > 3 * 86_400_000 ? "until restored" : `until ${d.toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" })}`;
   };
   return (
     <div className="fixed inset-0 z-modal">
@@ -437,7 +438,7 @@ function SoldOutSheet({ lang, tr, onClose, onChanged }: { lang: Lang; tr: Tr; on
                     <button type="button" disabled={working === i.id} onClick={() => void set(i.id, "today")} className="inline-flex h-11 items-center rounded-full border border-line px-5 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-60">
                       {tr("kitchen.soldOutToday")}
                     </button>
-                    <button type="button" disabled={working === i.id} onClick={() => void set(i.id, new Date(Date.now() + 365 * 86_400_000).toISOString())} className="inline-flex h-11 items-center rounded-full border border-line px-5 text-meta text-fg-muted hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-60">
+                    <button type="button" disabled={working === i.id} onClick={() => void set(i.id, new Date(nowMs() + 365 * 86_400_000).toISOString())} className="inline-flex h-11 items-center rounded-full border border-line px-5 text-meta text-fg-muted hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-60">
                       {tr("kitchen.soldOutUntilRestored")}
                     </button>
                   </>

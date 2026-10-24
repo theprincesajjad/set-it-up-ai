@@ -59,7 +59,7 @@ const BLOOM_SERVICES: SvcSeed[] = [
   { key: "mani", name: "Gel manicure", cat: "Nails", min: 60, price: 5500, buffer: 10, rebookDays: 21 },
 ];
 const BLOOM_STAFF: StaffSeed[] = [
-  { key: "simran", name: "Simran Kaur", phone: "+14165550311", locale: "pa", role: "manager" },
+  { key: "simran", name: "Simran Kaur", phone: "+14165550311", locale: "pa", role: "manager", does: ["cut", "high", "toner", "root", "brow", "mani"] },
   { key: "aisha", name: "Aisha Rahman", phone: "+14165550312", locale: "en", does: ["cut", "root", "high", "toner"] },
   { key: "priya", name: "Priya Raman", phone: "+14165550313", locale: "hi", does: ["cut", "brow", "mani"] },
 ];
@@ -72,7 +72,7 @@ const RANGREZ_SERVICES: SvcSeed[] = [
   { key: "facial", name: "Hydrating facial", cat: "Skin", min: 60, price: 8500, buffer: 10, rebookDays: 35 },
 ];
 const RANGREZ_STAFF: StaffSeed[] = [
-  { key: "noor", name: "Noor Fatima", phone: "+14165550321", locale: "ur", role: "manager" },
+  { key: "noor", name: "Noor Fatima", phone: "+14165550321", locale: "ur", role: "manager", does: ["brow", "face", "henna", "bridalh", "bridalm", "facial"] },
   { key: "jas", name: "Jasleen Gill", phone: "+14165550322", locale: "pa", does: ["brow", "face", "facial", "henna"] },
   { key: "meena", name: "Meena Kapoor", phone: "+14165550323", locale: "hi", does: ["bridalh", "bridalm", "henna", "brow"] },
 ];

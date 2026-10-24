@@ -1,4 +1,5 @@
 "use client";
+import { nowMs } from "@/lib/restaurant/util";
 /**
  * One call in the right pane (frame 09): what we heard in the caller's language, what we understood in English, and the
  * draft order with only the uncertain item flagged. A heard phrase that fits several dishes ("biryani") shows chips of the
@@ -48,7 +49,7 @@ export function CallDetail({ call, catalog, onChanged }: { call: whatsappApi.Pho
   const toast = useToast();
   const act = useAction();
   const editable = call.status === "received" || call.status === "drafted" || call.status === "failed";
-  const items = useMemo(() => (catalog ?? []).filter((i) => i.available && i.orderable && !i.preorderOnly && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > Date.now())), [catalog]);
+  const items = useMemo(() => (catalog ?? []).filter((i) => i.available && i.orderable && !i.preorderOnly && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > nowMs())), [catalog]);
   const byId = useMemo(() => new Map((catalog ?? []).map((i) => [i.id, i])), [catalog]);
   const [lines, setLines] = useState<DraftLine[]>(() => (call.draftOrder?.items ?? []).filter((i): i is DraftLine => !!i.catalogItemId).map((i) => ({ catalogItemId: i.catalogItemId, name: i.name, quantity: i.quantity, uncertain: !!i.uncertain })));
   const [ambiguous, setAmbiguous] = useState(call.ambiguous);

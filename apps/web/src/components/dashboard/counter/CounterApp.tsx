@@ -170,8 +170,11 @@ export function CounterApp({
   const [sentNote, setSentNote] = useState<string | null>(null);
   const queueRef = useRef<QueuedAward[]>([]);
   const phaseRef = useRef<Phase>(phase);
+  // Handlers read the latest phase synchronously (they also set it before React re-renders).
+  // eslint-disable-next-line react-hooks/refs
   phaseRef.current = phase;
   const busyRef = useRef(false);
+  // eslint-disable-next-line react-hooks/refs
   busyRef.current = busy;
 
   // ---- Never lose an award (polish-audit D10): network failures go to a queue on this device, shown in a

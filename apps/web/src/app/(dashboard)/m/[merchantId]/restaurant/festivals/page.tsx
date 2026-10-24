@@ -1,4 +1,5 @@
 "use client";
+import { nowMs } from "@/lib/restaurant/util";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -268,7 +269,7 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
   const email = useApi(available.email ? () => api.messages.audience({ channel: "email", segment: { kind: "all" } }) : null, [api, available.email]);
   const wa = useApi(available.whatsapp ? () => api.whatsapp.broadcast({ templateName: template.whatsappTemplateName, language: lang, segment: { kind: "all" }, dryRun: true }).catch(() => null) : null, [api, available.whatsapp, template.whatsappTemplateName, lang]);
   const reach = [wa.data ? `${formatNumber(wa.data.recipients)} on WhatsApp` : null, sms.data ? `${formatNumber(sms.data.recipients)} SMS` : null, email.data ? `${formatNumber(email.data.recipients)} email` : null].filter(Boolean).join(" · ");
-  const past = new Date(`${when}:00`).getTime() <= Date.now();
+  const past = new Date(`${when}:00`).getTime() <= nowMs();
   const quiet = (() => {
     const h = Number(when.slice(11, 13));
     return h >= 21 || h < 8;

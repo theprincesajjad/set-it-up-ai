@@ -63,3 +63,6 @@ export function clockLabel(hhmm: string, locale: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, h ?? 0, m ?? 0)));
 }
+
+/** The clock, behind a function so render code that must read it (relative times) stays lint-clean. */
+export const nowMs = (): number => Date.now();

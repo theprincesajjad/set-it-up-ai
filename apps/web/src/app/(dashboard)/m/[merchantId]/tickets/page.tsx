@@ -33,7 +33,7 @@ function Board() {
   const list = useApi(() => api.tickets({ q: q.trim() || undefined, limit: 200, ...(view === "past" ? { status: "picked_up,cancelled" } : {}) }), [api, q, view], { pollMs: 30_000 });
   const summary = useApi(() => api.serviceOps.summary(), [api], { pollMs: 30_000 });
   const now = new Date();
-  const all = list.data?.items ?? [];
+  const all = useMemo(() => list.data?.items ?? [], [list.data]);
   const items = useMemo(
     () =>
       all.filter((t) => {

@@ -69,7 +69,7 @@ function Calendar() {
   }, []);
   // A link can open a given day (?date=2026-11-14), e.g. from a reminder or a bookmark.
   useEffect(() => {
-    const d = new URLSearchParams(window.location.search).get("date");
+    const d = new URLSearchParams(globalThis.location.search).get("date");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d);
   }, []);
@@ -91,7 +91,7 @@ function Calendar() {
     return dayColumns(date, staff, items, { onlyStaff: only || null });
   }, [view, date, staff, items, only, chosenStaff]);
   const dayItems = useMemo(() => (view === "day" ? items.filter((a) => parts(a.startsAt).date === date) : items), [items, view, date]);
-  const window = useMemo(() => {
+  const win = useMemo(() => {
     if (view === "day") return workWindow(date, staff, dayItems);
     return workWindow(date, staff.filter((s) => s.userId === chosenStaff), items);
   }, [view, date, staff, dayItems, items, chosenStaff]);
@@ -122,7 +122,7 @@ function Calendar() {
       else if (e.key === "ArrowRight") go(1);
       else if (e.key === "n") {
         e.preventDefault();
-        setSheet({ kind: "new", defaults: { date, minutes: Math.max(window[0], Math.ceil((parts(new Date()).minutes) / 15) * 15), staffId: only || null } });
+        setSheet({ kind: "new", defaults: { date, minutes: Math.max(win[0], Math.ceil((parts(new Date()).minutes) / 15) * 15), staffId: only || null } });
       } else if (e.key === "w") {
         e.preventDefault();
         setSheet({ kind: "walkin" });
@@ -130,7 +130,7 @@ function Calendar() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [go, date, window, only]);
+  }, [go, date, win, only]);
 
   const nameOf = (id: string | null) => staff.find((s) => s.userId === id)?.name ?? null;
 
@@ -195,7 +195,7 @@ function Calendar() {
         actions={
           <>
             <Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setSheet({ kind: "walkin" })}>Walk-in</Button>
-            <Button size="sm" iconStart={Plus} onClick={() => setSheet({ kind: "new", defaults: { date, minutes: Math.max(window[0], 10 * 60), staffId: only || null } })}>New appointment</Button>
+            <Button size="sm" iconStart={Plus} onClick={() => setSheet({ kind: "new", defaults: { date, minutes: Math.max(win[0], 10 * 60), staffId: only || null } })}>New appointment</Button>
           </>
         }
       />
@@ -223,7 +223,7 @@ function Calendar() {
         <CalendarDay
           columns={columns}
           appts={dayItems}
-          window={window}
+          window={win}
           today={today}
           now={now}
           selectedId={selectedId}

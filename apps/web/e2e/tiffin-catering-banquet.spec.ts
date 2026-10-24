@@ -37,16 +37,20 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   await customer.goto("/shops/shree-thali-and-tiffin/tiffin");
   await customer.getByRole("button", { name: "Choose this plan" }).first().click();
   await customer.getByLabel("Mobile number").fill(phone);
-  await customer.getByRole("button", { name: "Text me a code" }).click();
+  await customer.getByRole("button", { name: "Send code" }).click();
   await expect(customer.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
-  await customer.getByRole("button", { name: "Continue" }).click();
+  await customer.getByRole("button", { name: "Sign in", exact: true }).click();
   const first = customer.getByLabel("First name");
-  if (await first.isVisible().catch(() => false)) {
+  if (await first.isVisible({ timeout: 3000 }).catch(() => false)) {
     await first.fill("Priya");
-    await customer.getByRole("button", { name: /Continue|Join|Done/ }).first().click();
+    await customer.getByRole("button", { name: /Continue|Join|Done|Save/ }).first().click();
   }
-  await customer.getByLabel(/Address/).first().fill("48 Maple Grove Dr");
-  await customer.getByLabel(/Postal code/).fill("L5R 1B1");
+  // Signing in refreshes the page in place; pick the plan again if the form was closed.
+  await customer.waitForTimeout(1500);
+  const choose = customer.getByRole("button", { name: "Choose this plan" }).first();
+  if (await choose.isVisible().catch(() => false)) await choose.click();
+  await customer.getByLabel("Delivery address").fill("48 Maple Grove Dr");
+  await customer.getByLabel("Postal code").fill("L5R 1B1");
   await customer.getByRole("radio", { name: /Interac e-transfer/ }).click();
   await expect(customer.getByText("After you subscribe")).toBeVisible();
   await customer.getByRole("button", { name: /Subscribe · .* to send/ }).click();
@@ -67,8 +71,9 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   await expect(page.getByText("Money to confirm")).toBeVisible();
   await expect(page.getByText("Needs you")).toBeVisible();
   await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=subscribers&status=awaiting`);
-  const row = page.getByRole("row", { name: /Priya/ });
-  await expect(row).toContainText("Awaiting e-transfer");
+  await page.getByLabel("Search subscribers").fill(phone.slice(3));
+  const row = page.getByRole("row").filter({ hasText: "Awaiting e-transfer" }).first();
+  await expect(row).toBeVisible();
   await row.getByRole("button", { name: /Open/ }).click();
   await page.getByRole("button", { name: "Record payment" }).first().click();
   const panel = page.getByRole("dialog", { name: "Record payment" });
@@ -79,7 +84,8 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   await panel.getByRole("button", { name: /Mark paid/ }).click();
   await expect(page.getByText("Payment recorded")).toBeVisible();
   await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=subscribers`);
-  await expect(page.getByRole("row", { name: /Priya/ })).toContainText("Active");
+  await page.getByLabel("Search subscribers").fill(phone.slice(3));
+  await expect(page.getByRole("row").filter({ hasText: "Active" }).first()).toBeVisible();
   await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=revenue`);
   await expect(page.getByText("Collected this month by how they paid")).toBeVisible();
   await expect(page.getByText(/Interac e-transfer \(recorded\)/)).toBeVisible();
@@ -160,7 +166,7 @@ test("settings: how you get paid, tax status and food safety save", async ({ pag
   await expect(page.getByRole("heading", { name: "How you get paid" })).toBeVisible();
   await expect(page.getByLabel("E-transfer email")).toHaveValue("pay@shreethali.ca");
   await page.getByRole("radio", { name: /Yes, I'm registered/ }).click();
-  await page.getByLabel("GST/HST number").fill("123456789 RT0001");
+  await page.getByLabel("GST/HST number").fill(`${Math.floor(100000000 + Math.random() * 899999999)} RT0001`);
   await page.getByRole("button", { name: "Save" }).nth(1).click();
   await expect(page.getByText("Tax status saved")).toBeVisible();
   await page.screenshot({ path: "e2e/screenshots/tcb-settings.png", fullPage: true });

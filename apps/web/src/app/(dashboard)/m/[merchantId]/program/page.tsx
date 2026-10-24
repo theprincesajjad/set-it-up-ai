@@ -125,6 +125,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
   }, [draft]);
   useEffect(() => {
     const tab = params.get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (tab === "rewards") setAllRewards(true);
     if (tab) document.getElementById(tab)?.scrollIntoView({ block: "start" });
   }, [params]);

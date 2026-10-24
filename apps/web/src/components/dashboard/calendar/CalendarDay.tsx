@@ -1,4 +1,5 @@
 "use client";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { cn } from "@/lib/cn";
@@ -142,7 +143,7 @@ export function CalendarDay({
   return (
     <div className="overflow-hidden rounded-card border border-line bg-bg" data-calendar>
       {/* Column headers */}
-      <div className="grid border-b border-line" style={{ gridTemplateColumns: `48px repeat(${cols}, minmax(0, 1fr))` }}>
+      <div className="grid grid-cols-[48px_minmax(0,1fr)] md:[grid-template-columns:48px_repeat(var(--n),minmax(0,1fr))] border-b border-line" style={{ "--n": cols } as React.CSSProperties}>
         <div aria-hidden className="border-e border-line" />
         {columns.map((c, i) => (
           <div key={c.key} className={cn("flex min-w-0 items-center gap-2.5 border-s border-line px-3 py-2.5 first:border-s-0", i !== mobileIndex && "max-md:hidden")}>
@@ -157,7 +158,7 @@ export function CalendarDay({
         ))}
       </div>
       <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 280px)", minHeight: 360 }}>
-        <div className="grid" style={{ gridTemplateColumns: `48px repeat(${cols}, minmax(0, 1fr))` }}>
+        <div className="grid grid-cols-[48px_minmax(0,1fr)] md:[grid-template-columns:48px_repeat(var(--n),minmax(0,1fr))]" style={{ "--n": cols } as React.CSSProperties}>
           <div aria-hidden className="relative border-e border-line" style={{ height: hours * PX_PER_HOUR }}>
             {Array.from({ length: hours }, (_, i) => (
               <span key={i} className="absolute end-1.5 -translate-y-1/2 bg-bg px-0.5 text-[11px] leading-4 text-fg-muted first:translate-y-0" style={{ top: i * PX_PER_HOUR + (i === 0 ? 2 : 0) }}>

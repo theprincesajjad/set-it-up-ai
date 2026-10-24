@@ -1,5 +1,5 @@
 "use client";
-import { ArrowDown, ArrowUp, Download, Search, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";

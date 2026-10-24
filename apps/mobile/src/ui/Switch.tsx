@@ -17,7 +17,14 @@ export interface SwitchRowProps {
 }
 
 /** Settings that apply immediately. Label left, describes the on-state. */
-export function SwitchRow({ label, description, value, onValueChange, disabled, divider }: SwitchRowProps) {
+export function SwitchRow({
+  label,
+  description,
+  value,
+  onValueChange,
+  disabled,
+  divider,
+}: SwitchRowProps) {
   const { c } = useTheme();
   return (
     <View style={styles.row}>
@@ -29,28 +36,51 @@ export function SwitchRow({ label, description, value, onValueChange, disabled, 
           </Text>
         ) : null}
       </View>
-      <RNSwitch
-        accessibilityLabel={label}
-        value={value}
-        onValueChange={(v) => {
-          haptic.select();
-          onValueChange(v);
-        }}
-        disabled={disabled}
-        // iOS keeps the system switch (green). Android tints it black so it matches the black primary. The web
-        // QA preview draws the iOS switch (RN-web's default is Material teal; polish-audit S7).
-        {...(Platform.OS === "android"
-          ? { trackColor: { false: c.bgMuted, true: c.fg }, thumbColor: c.bg }
-          : Platform.OS === "web"
-            ? ({ trackColor: { false: c.bgMuted, true: IOS_GREEN }, thumbColor: "#FFFFFF", activeThumbColor: "#FFFFFF" } as object)
-            : {})}
-      />
-      {divider ? <View style={[styles.divider, { backgroundColor: c.line }]} /> : null}
+      {/* RN-web positions the thumb with physical offsets, so in an RTL language (Urdu) it slides off the track. The
+          switch itself stays LTR; the row around it still mirrors. */}
+      <View style={Platform.OS === "web" ? styles.ltr : undefined}>
+        <RNSwitch
+          accessibilityLabel={label}
+          value={value}
+          onValueChange={(v) => {
+            haptic.select();
+            onValueChange(v);
+          }}
+          disabled={disabled}
+          // iOS keeps the system switch (green). Android tints it black so it matches the black primary. The web
+          // QA preview draws the iOS switch (RN-web's default is Material teal; polish-audit S7).
+          {...(Platform.OS === "android"
+            ? { trackColor: { false: c.bgMuted, true: c.fg }, thumbColor: c.bg }
+            : Platform.OS === "web"
+              ? ({
+                  trackColor: { false: c.bgMuted, true: IOS_GREEN },
+                  thumbColor: "#FFFFFF",
+                  activeThumbColor: "#FFFFFF",
+                } as object)
+              : {})}
+        />
+      </View>
+      {divider ? (
+        <View style={[styles.divider, { backgroundColor: c.line }]} />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 16, minHeight: 52, paddingVertical: 10 },
-  divider: { position: "absolute", left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    minHeight: 52,
+    paddingVertical: 10,
+  },
+  ltr: { direction: "ltr" },
+  divider: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+  },
 });

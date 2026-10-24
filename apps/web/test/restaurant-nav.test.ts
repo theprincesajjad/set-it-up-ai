@@ -9,7 +9,7 @@ describe("restaurant nav", () => {
     expect(keys([])).toEqual([]);
   });
   it("lists only entitled modules and folds the rest into one 'More for restaurants' entry", () => {
-    expect(keys(["restaurant.dietary_tags", "restaurant.reviews", "restaurant.whatsapp_notifications"])).toEqual(["home", "orders", "restaurant-phone-orders", "restaurant-menu", "restaurant-whatsapp", "restaurant-reviews", "customers", "program", "promos", "discount-cards", "messages", "reports", "restaurant-more"]);
+    expect(keys(["restaurant.dietary_tags", "restaurant.reviews", "restaurant.whatsapp_notifications"])).toEqual(["home", "restaurant-phone-orders", "restaurant-menu", "restaurant-whatsapp", "restaurant-reviews", "customers", "program", "reports", "restaurant-more"]);
   });
   it("banquet and phone orders follow the merchant's enabled list (add-ons are folded in there)", () => {
     expect(keys(["restaurant.dietary_tags", "restaurant.banquet", "restaurant.phone_ai"])).toContain("restaurant-banquet");

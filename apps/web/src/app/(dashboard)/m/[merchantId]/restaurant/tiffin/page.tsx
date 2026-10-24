@@ -2,7 +2,9 @@
 import { Suspense } from "react";
 import { PageHeader, PageTabs } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
+import { useApi } from "@/lib/dashboard/useApi";
 import { PageSkeleton } from "@/components/dashboard/PageStates";
 import { TierGate, useTabParam } from "@/components/dashboard/restaurant/common";
 import { DeliveriesTab } from "@/components/dashboard/restaurant/tiffin/DeliveriesTab";
@@ -30,10 +32,17 @@ export default function TiffinPage() {
 
 function Tiffin() {
   const [tab, setTab] = useTabParam(TABS, "today");
-  const { base } = useMerchant();
+  const { base, api } = useMerchant();
+  const safety = useApi(() => api.settings.foodSafety(), [api]);
+  const dte = safety.data?.daysToExpiry ?? null;
   return (
     <div className="flex flex-col gap-5">
       <PageHeader flush className="print:hidden" title="Tiffin" description="Today's count for the kitchen, the delivery run, and the people who subscribe." actions={<Button size="sm" variant="secondary" href={`${base}/restaurant/payments`}>How you get paid</Button>} />
+      {dte !== null && dte <= 60 ? (
+        <Banner tone="warning" className="print:hidden" title={dte < 0 ? "Your food handler certificate has expired" : `Your food handler certificate expires in ${dte} ${dte === 1 ? "day" : "days"}`} action={<Button size="sm" variant="secondary" href={`${base}/restaurant/payments`}>Food safety</Button>}>
+          A reminder only. Selling is not affected.
+        </Banner>
+      ) : null}
       <PageTabs<Tab> label="Tiffin views" value={tab} onChange={setTab} className="print:hidden" items={TABS.map((t) => ({ id: t, label: LABELS[t] }))} />
       <div role="tabpanel" aria-label={LABELS[tab]}>
         {tab === "today" ? (

@@ -148,23 +148,6 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
   };
   return (
     <>
-      {recording !== null && b.schedule[recording] ? (
-        <RecordPaymentPanel
-          subtitle={`${b.hallName ?? "Hall"}, ${EVENT_TYPE_LABEL[b.eventType].toLowerCase()} · ${when(b)}`}
-          rows={[
-            { label: b.schedule[recording]!.label, value: <strong>{formatMoney(b.schedule[recording]!.amountCents)}</strong> },
-            ...(payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
-            ...(b.referenceCode ? [{ label: "Reference in message", value: <strong>{b.referenceCode}</strong> }] : []),
-          ]}
-          amountCents={b.schedule[recording]!.amountCents}
-          note={recording === 0 ? "Check the deposit in your bank first. Recording it marks the first payment as in, then you can confirm the booking." : "Check the payment in your bank first."}
-          onClose={() => setRecording(null)}
-          onRecord={async (body) => {
-            await api.banquet.recordPayment(b.id, { ...body, instalmentIndex: recording });
-            await reload();
-          }}
-        />
-      ) : null}
       <Sheet open onClose={onClose} label="Hall booking" title={`${b.hallName ?? "Hall"}, ${EVENT_TYPE_LABEL[b.eventType].toLowerCase()}`} subtitle={when(b)} width={480}>
         <div className="flex flex-col gap-5">
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -266,6 +249,23 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
           ) : null}
         </div>
       </Sheet>
+      {recording !== null && b.schedule[recording] ? (
+        <RecordPaymentPanel
+          subtitle={`${b.hallName ?? "Hall"}, ${EVENT_TYPE_LABEL[b.eventType].toLowerCase()} · ${when(b)}`}
+          rows={[
+            { label: b.schedule[recording]!.label, value: <strong>{formatMoney(b.schedule[recording]!.amountCents)}</strong> },
+            ...(payee.data?.etransferEmail ? [{ label: "Told to send to", value: payee.data.etransferEmail }] : []),
+            ...(b.referenceCode ? [{ label: "Reference in message", value: <strong>{b.referenceCode}</strong> }] : []),
+          ]}
+          amountCents={b.schedule[recording]!.amountCents}
+          note={recording === 0 ? "Check the deposit in your bank first. Recording it marks the first payment as in, then you can confirm the booking." : "Check the payment in your bank first."}
+          onClose={() => setRecording(null)}
+          onRecord={async (body) => {
+            await api.banquet.recordPayment(b.id, { ...body, instalmentIndex: recording });
+            await reload();
+          }}
+        />
+      ) : null}
       <ConfirmDialog
         open={cancelling}
         onClose={() => { setCancelling(false); setRefund(NO_REFUND); }}

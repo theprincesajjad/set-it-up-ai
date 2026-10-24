@@ -147,3 +147,5 @@ Errors: `400` (balance < $0.50), `402`, `409` (`payments_not_set_up`, not open).
 
 `service.expire_quotes` job: `sent` quotes past `expiresAt` become `expired` (timeline event). Responding to one is
 `409 quote_expired`; the shop sends a new quote.
+
+See also [service-ops.md](service-ops.md): photo upload, intake terms, phone approval, the 10% invoice cap, tips, the public status page, invoices list and summary, rebooking, pickup reminders and rolling drop-off slots.
