@@ -51,7 +51,7 @@ test("tickets board: stat strip matches the API summary, no horizontal scroll at
 test("ticket: phone approval needs a name, shows on the quote, the cap line is total x 1.10, opened is set by the customer only", async ({ page, context }) => {
   const { id, token } = await owner("fix-it-phone-lab");
   const phone = `+1416555${String(Math.floor(1000 + Math.random() * 8999))}`;
-  const t = await api<{ ticket: { id: string; number: number } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone, name: "Phone Approver" }, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 11" }, issue: `Screen ${run}`, photos: [] }, token);
+  const t = await api<{ ticket: { id: string; number: number } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone, name: "Phone Approver" }, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 11" }, issue: `Screen ${run}`, termsAccepted: true, photos: [] }, token);
   const q = await api<{ id: string; approvalUrl: string; totalCents: number }>("POST", `/v1/merchants/${id}/tickets/${t.ticket.id}/quotes`, { lineItems: [{ description: "Screen", quantity: 1, unitPriceCents: 10000, kind: "part" }], send: true }, token);
   await signIn(page, "fix-it-phone-lab");
   await page.goto(`/m/${id}/tickets/${t.ticket.id}`);
@@ -86,7 +86,7 @@ test("ticket: phone approval needs a name, shows on the quote, the cap line is t
 test("customer status page is public and the drop-off booking works", async ({ page }) => {
   const { id, token } = await owner("fix-it-phone-lab");
   const phone = `+1416555${String(Math.floor(1000 + Math.random() * 8999))}`;
-  const t = await api<{ ticket: { id: string; statusUrl: string } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone, name: "Status Viewer" }, itemKind: "device", itemDetails: { make: "Google", model: "Pixel 7" }, issue: `Battery ${run}` }, token);
+  const t = await api<{ ticket: { id: string; statusUrl: string } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone, name: "Status Viewer" }, itemKind: "device", itemDetails: { make: "Google", model: "Pixel 7" }, issue: `Battery ${run}`, termsAccepted: true }, token);
   await page.goto(new URL(t.ticket.statusUrl).pathname);
   await expect(page.getByRole("heading", { name: /dropped off/i })).toBeVisible();
   await expect(page.getByText(/Pixel 7/)).toBeVisible();

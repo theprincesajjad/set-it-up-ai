@@ -51,7 +51,7 @@ export async function repairQuote(): Promise<{ token: string }> {
   const ticket = await call<{ ticket: { id: string } }>(
     "POST",
     `/v1/merchants/${m.id}/tickets`,
-    { customer: { phone, name: "Alex Chen" }, locationId: m.location.id, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 13" }, issue: "Cracked screen" },
+    { customer: { phone, name: "Alex Chen" }, locationId: m.location.id, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 13" }, issue: "Cracked screen", termsAccepted: true },
     owner,
   );
   const quote = await call<{ approvalUrl: string | null }>(
