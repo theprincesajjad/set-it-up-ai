@@ -21,7 +21,7 @@ shops, run with the neighbourhood, and your points always stay redeemable where 
 | --- | --- | --- |
 | Customer | "One card for every shop on your street." | Shops on the map near you; join in 30 s with no app; points never expire. |
 | Counter staff | "Phone number, tap, done." | Under 5 seconds. Big buttons. Works when the Wi-Fi doesn't. |
-| Owner | "Free forever. We set it up. Your regulars already walk this street." | No transaction fees, unlimited locations, setup in 20 minutes, first 25 members in 30 days. |
+| Owner | "Free forever. We set it up. Your regulars already walk this street." | No fee on loyalty, unlimited locations, setup in 20 minutes, first 25 members in 30 days. |
 | BIA manager | "Proof that street events bring people in." | Visits and redemptions per shop, per day, during your event. |
 
 **Brand idea: _the shopfront_.** Everything we make should feel like the best corner shop you

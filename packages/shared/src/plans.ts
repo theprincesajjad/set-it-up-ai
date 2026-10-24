@@ -5,7 +5,7 @@
  *  1. Loyalty + reporting on it are free forever. FREE_FOREVER = the loyalty
  *     program (points, visits, stamps, items, rewards, welcome bonus, manual
  *     adjustments, no-earn categories), being findable on the network, the
- *     wallet pass, the customer directory and basic reports. No transaction fee,
+ *     wallet pass, the customer directory and basic reports. No fee on loyalty,
  *     unlimited members. (Unlimited staff and locations are kept free per the
  *     founder's earlier instruction; whether they stay free is an open question.)
  *  2. Everything else is on Plus ($39) or Pro ($79) and ships "hidden": it rolls
@@ -38,13 +38,16 @@ export interface Plan {
   smsPerMonth: number;
 }
 
+/** The fee on online orders for Free shops, in basis points. Defined first so the Free blurb and FEES cannot disagree. */
+const ORDER_BPS_FREE = 150;
+
 export const PLANS: Record<PlanId, Plan> = {
   free: {
     id: "free",
     name: "Free",
     priceCents: 0,
     annualPriceCents: 0,
-    blurb: "Your loyalty program, the network listing, wallet pass and reports. Free forever, no transaction fees.",
+    blurb: `Your loyalty program, the network listing, wallet pass and reports. Free forever: no subscription and no fee on loyalty. Online orders on Free carry ${Number((ORDER_BPS_FREE / 100).toFixed(2))}%.`,
     bestFor: ["Every merchant"],
     smsPerMonth: 0,
   },
@@ -130,7 +133,7 @@ export const WHATSAPP_PACK_MESSAGES = 1000;
  * Card processing (Stripe) is passed through at cost on top.
  */
 export const FEES = {
-  orderBpsFree: 150,
+  orderBpsFree: ORDER_BPS_FREE,
   orderBpsPaid: 0,
   customerServiceFeeCents: 49,
   depositInvoiceBps: 100,

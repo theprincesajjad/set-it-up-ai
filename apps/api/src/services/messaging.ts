@@ -22,7 +22,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { FEATURES, PLANS, messagingApi } from "@ll/shared";
+import { FEATURES, PLANS, isStopKeyword, messagingApi, normalizeReplyWord } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
@@ -36,6 +36,8 @@ import { localDayStart } from "./staff.js";
 import { writeAudit } from "./admin-audit.js";
 import { iso } from "./merchant.js";
 import { decodeCursor, encodeCursor } from "./merchant-customers.js";
+import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
+import { recordPhoneOptOut } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type MessageRow = typeof messages.$inferSelect;
@@ -183,9 +185,11 @@ export async function resolveAudience(db: DbOrTx, merchantId: string, channel: C
       .where(inArray(pushTokens.userId, consented.map((r) => r.userId)));
     tokens = t.reduce((m, r) => m.set(r.userId, [...(m.get(r.userId) ?? []), r.token]), new Map<string, string[]>());
   }
+  // A number that replied STOP (to any shop's text) is off every SMS list, whatever the consent record says.
+  const stopped = channel === "sms" ? await optedOutSet(db, consented.map((r) => r.phone), "sms") : new Set<string>();
   const recipients: Recipient[] = [];
   for (const r of consented) {
-    const to = channel === "email" ? (r.email ? [r.email] : []) : channel === "sms" ? (r.phone ? [r.phone] : []) : (tokens.get(r.userId) ?? []);
+    const to = channel === "email" ? (r.email ? [r.email] : []) : channel === "sms" ? (r.phone && !isSuppressed(stopped, r.phone) ? [r.phone] : []) : (tokens.get(r.userId) ?? []);
     if (to.length) recipients.push({ memberId: r.memberId, userId: r.userId, name: r.name, balance: r.balance, to });
   }
   return {
@@ -254,8 +258,13 @@ async function deliver(ctx: AppContext, a: DeliverArgs): Promise<number> {
       let error: string | null = null;
       try {
         if (a.channel === "email") providerId = (await ctx.providers.email.send({ to, subject: subject ?? a.merchant.name, text })).id;
-        else if (a.channel === "sms") providerId = (await ctx.providers.sms.send(to, text)).id;
-        else {
+        else if (a.channel === "sms") {
+          const r = await sendSms(ctx, to, text);
+          if (!r) {
+            status = "skipped";
+            error = "opted_out";
+          } else providerId = r.id;
+        } else {
           const res = await ctx.providers.push.send([{ token: to, title: subject ?? a.merchant.name, body: text, data: { merchantId: a.merchant.id, messageId: a.messageId } }]);
           if (res.failed) status = "failed";
         }
@@ -502,7 +511,7 @@ export async function deliverTestToSelf(
     let error: string | null = null;
     try {
       if (m.channel === "email") providerId = (await ctx.providers.email.send({ to: addr, subject, text })).id;
-      else if (m.channel === "sms") providerId = (await ctx.providers.sms.send(addr, `[Test] ${text}`)).id;
+      else if (m.channel === "sms") providerId = (await sendSms(ctx, addr, `[Test] ${text}`))?.id ?? null;
       else if ((await ctx.providers.push.send([{ token: addr, title: subject, body: text, data: { merchantId: merchant.id, test: "1" } }])).failed) status = "failed";
     } catch (err) {
       status = "failed";
@@ -929,16 +938,13 @@ export interface InboundSmsResult {
  * merchant (we send SMS from shared numbers, so STOP applies network-wide).
  */
 export async function handleInboundSms(ctx: AppContext, fromPhone: string, body: string): Promise<InboundSmsResult> {
-  const word = body
-    .trim()
-    .toUpperCase()
-    .normalize("NFC")
-    .replace(/[^A-ZÀ-Ü-]/g, "");
-  const isStop = (messagingApi.STOP_KEYWORDS as readonly string[]).includes(word);
+  const word = normalizeReplyWord(body);
   if (word === "HELP" || word === "INFO" || word === "AIDE") {
     return { action: "help", merchantsAffected: 0, reply: "Local Loyalty: shop rewards messages. Reply STOP to opt out of all shops. Help: hello@localloyalty.example" };
   }
-  if (!isStop) return { action: "none", merchantsAffected: 0, reply: null };
+  if (!isStopKeyword(body)) return { action: "none", merchantsAffected: 0, reply: null };
+  // The number goes on the do-not-contact list first, whoever it belongs to (a shopper, a shop owner, a wait-list guest).
+  await recordPhoneOptOut(ctx, fromPhone, "sms", word, "sms_reply");
   const [user] = await ctx.db.select({ id: users.id }).from(users).where(eq(users.phone, fromPhone)).limit(1);
   if (!user) return { action: "opted_out", merchantsAffected: 0, reply: "You're unsubscribed from Local Loyalty shop messages. No more texts will be sent." };
   const rows = await ctx.db

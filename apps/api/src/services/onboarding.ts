@@ -9,6 +9,7 @@ import {
   ACTIVATION,
   BRAND,
   NUDGE_RULES,
+  OWNER_SMS_STOP_LINE,
   PACE_LABEL,
   daysSince,
   dueNudge,
@@ -22,8 +23,10 @@ import {
   type merchantApi,
 } from "@ll/shared";
 import type { AppContext } from "../context.js";
-import { notFound } from "../lib/errors.js";
+import { hmacSha256, safeEqual } from "../lib/crypto.js";
+import { badRequest, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
+import { isOptedOut, sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -234,6 +237,24 @@ export async function dismissUpsell(ctx: AppContext, merchantId: string, actorUs
   return getOnboardingChecklist(ctx, merchantId);
 }
 
+export function nudgeUnsubscribeToken(ctx: AppContext, merchantId: string): string {
+  return hmacSha256(ctx.config.jwtSecret, `nudge-unsub:${merchantId}`).slice(0, 32);
+}
+
+/** The one-step unsubscribe link printed in every setup reminder (GET opens a confirmation page; no sign-in). */
+export function nudgeUnsubscribeUrl(ctx: AppContext, merchantId: string): string {
+  return `${ctx.config.publicApiUrl.replace(/\/$/, "")}/v1/public/onboarding/unsubscribe?m=${merchantId}&t=${nudgeUnsubscribeToken(ctx, merchantId)}`;
+}
+
+export async function unsubscribeNudgesByToken(ctx: AppContext, merchantId: string, token: string): Promise<{ merchantName: string }> {
+  if (!safeEqual(token, nudgeUnsubscribeToken(ctx, merchantId))) throw badRequest("This unsubscribe link is invalid");
+  const [m] = await ctx.db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Shop");
+  await recordMilestone(ctx.db, merchantId, "nudges_off", ctx.now());
+  await writeAudit(ctx.db, { actorUserId: null, merchantId, action: "onboarding.nudges_unsubscribe_link", entity: "merchant", entityId: merchantId, data: {} });
+  return { merchantName: m.name };
+}
+
 export async function setNudges(ctx: AppContext, merchantId: string, actorUserId: string, enabled: boolean) {
   if (enabled) await removeMilestone(ctx.db, merchantId, "nudges_off");
   else await recordMilestone(ctx.db, merchantId, "nudges_off", ctx.now());
@@ -281,6 +302,8 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
     const owner = await ownerOf(ctx.db, m.id);
     const smsTo = owner?.phone ?? m.phone;
     if (!owner || (!smsTo && !owner.email)) continue;
+    // The owner replied STOP to a text from us: no more setup reminders on any channel.
+    if (smsTo && (await isOptedOut(ctx.db, smsTo, "sms"))) continue;
     // Claim the nudge first so a crash or a second worker cannot send it twice.
     if (!(await recordMilestone(ctx.db, m.id, key, now, { members }))) continue;
     // Earlier nudges that are now moot are marked sent too, so a late shop gets one message, not a pile.
@@ -294,10 +317,11 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
       tillLine: playbookFor(m.vertical).tillLine,
       url: `${ctx.config.publicWebUrl.replace(/\/$/, "")}/m/${m.id}/setup`,
     });
-    const footer = `\nStop setup reminders: ${ctx.config.publicWebUrl.replace(/\/$/, "")}/m/${m.id}/setup`;
+    // CASL: say who we are and give a one-step way out. The link works with one tap and no sign-in.
+    const stopUrl = nudgeUnsubscribeUrl(ctx, m.id);
     try {
-      if (smsTo) await ctx.providers.sms.send(smsTo, `${BRAND.name}: ${text.body}${footer}`);
-      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}${footer}` });
+      if (smsTo) await sendSms(ctx, smsTo, `${BRAND.name}: ${text.body}\n${OWNER_SMS_STOP_LINE}, or unsubscribe: ${stopUrl}`);
+      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}\n\n--\n${BRAND.name} sent this because you set up a shop with us. Stop these setup reminders: ${stopUrl}` });
       sent += 1;
     } catch (err) {
       console.error("[onboarding.nudge]", m.id, err);

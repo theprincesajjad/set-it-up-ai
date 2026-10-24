@@ -8,7 +8,7 @@
  * Use `getStorage(ctx)`; never construct a provider in a route.
  */
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AppContext } from "../context.js";
 
@@ -22,6 +22,14 @@ export interface StorageProvider {
   put(args: { merchantId: string; contentType: string; body: Buffer }): Promise<StoredObject>;
   /** Read back an object the provider serves itself (disk and memory). Hosted stores return null: their URLs are public. */
   get?(key: string): Promise<{ body: Buffer; contentType: string } | null>;
+  /** Remove an object (retention and account deletion). Resolves true when something was removed; a missing object is not an error. */
+  delete?(key: string): Promise<boolean>;
+}
+
+const UPLOAD_KEY = /([0-9a-f-]{36}\/[0-9a-f]{32}\.[a-z]+)(?:[?#].*)?$/;
+/** The storage key inside a stored upload URL (relative path, our own origin or a hosted store's URL), or null when it is not one of ours. */
+export function storageKeyFromUrl(url: string): string | null {
+  return UPLOAD_KEY.exec(url)?.[1] ?? null;
 }
 
 export const IMAGE_TYPES: Record<string, string> = {
@@ -77,6 +85,9 @@ export class MemoryStorage implements StorageProvider {
   async get(key: string) {
     return this.objects.get(key) ?? null;
   }
+  async delete(key: string) {
+    return this.objects.delete(key);
+  }
 }
 
 export class DiskStorage implements StorageProvider {
@@ -97,6 +108,15 @@ export class DiskStorage implements StorageProvider {
       return { body: await readFile(join(this.dir, key)), contentType };
     } catch {
       return null;
+    }
+  }
+  async delete(key: string) {
+    if (!/^[0-9a-f-]{36}\/[0-9a-f]{32}\.(jpg|png|webp|heic|heif)$/.test(key)) return false;
+    try {
+      await unlink(join(this.dir, key));
+      return true;
+    } catch {
+      return false;
     }
   }
 }

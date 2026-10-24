@@ -10,6 +10,7 @@ import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, forbidden } from "../lib/errors.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { prepareTransactional } from "./notifications.js";
+import { sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -68,9 +69,11 @@ export async function notifyCustomer(ctx: AppContext, args: NotifyArgs): Promise
     if (args.sms !== false && n.sms && user.phone) {
       const body = args.smsBody ?? args.body;
       try {
-        const r = await ctx.providers.sms.send(user.phone, body);
-        out.sms = true;
-        await log("sms", user.phone, body, "sent", r.id);
+        const r = await sendSms(ctx, user.phone, body);
+        if (r) {
+          out.sms = true;
+          await log("sms", user.phone, body, "sent", r.id);
+        } else await log("sms", user.phone, body, "skipped", null, "opted_out");
       } catch (err) {
         await log("sms", user.phone, body, "failed", null, (err as Error).message);
       }

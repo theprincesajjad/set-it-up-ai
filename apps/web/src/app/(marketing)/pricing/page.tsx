@@ -16,7 +16,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free forever for your loyalty program and its reports, with no transaction fees. Flat monthly prices for marketing, automations, payments and repair tools, and for restaurants with no commission on online orders.",
+  description: "Free forever for your loyalty program and its reports, with no subscription and no fee on loyalty. Flat monthly prices for marketing, automations, payments and repair tools, and for restaurants with no commission on online orders.",
   alternates: { canonical: "/pricing" },
 };
 

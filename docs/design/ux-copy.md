@@ -328,7 +328,7 @@ Printed with the QR kit (A6, back of the stand or a separate card):
 | `misc.distance` | {meters} m · {minutes} min walk (switch to km above 1,000 m: "1.2 km") |
 | `misc.openUntil` | Open · closes {time} |
 | `misc.closedUntil` | Closed · opens {time} |
-| `misc.freeForever` | Free forever · No transaction fees · Unlimited locations |
+| `misc.freeForever` | Free forever · No fee on loyalty · Unlimited locations |
 | `misc.madeInToronto` | Made in Toronto |
 | `misc.joinTagline` | One card for every shop on your street. |
 | `misc.standHeadline` | Scan to join |

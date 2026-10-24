@@ -1,9 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { messagingApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/messaging.js";
+import { unsubscribeNudgesByToken } from "../../services/onboarding.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
@@ -99,5 +101,21 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.post("/public/messaging/unsubscribe", async (req): Promise<messagingApi.UnsubscribeResponse> => {
     const b = parse(messagingApi.unsubscribeBody, { ...(req.query as object), ...((req.body as object) ?? {}) });
     return svc.unsubscribeByToken(ctx, b.m, b.t);
+  });
+
+  // ---- One-step unsubscribe from our setup reminders to shop owners (CASL). ----
+  const nudgeQuery = z.object({ m: z.string().uuid(), t: z.string().min(8).max(128) });
+  app.get("/public/onboarding/unsubscribe", async (req, reply) => {
+    const q = parse(nudgeQuery, req.query);
+    const r = await unsubscribeNudgesByToken(ctx, q.m, q.t);
+    const name = r.merchantName.replace(/[<>&"]/g, "");
+    return reply
+      .header("content-type", "text/html; charset=utf-8")
+      .send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed</title><body style="font-family:system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem"><h1>No more setup reminders</h1><p>We won't send setup reminders for ${name} any more. Your account and your shop are not affected, and you can turn reminders back on from the setup page.</p></body>`);
+  });
+  app.post("/public/onboarding/unsubscribe", async (req) => {
+    const b = parse(nudgeQuery, { ...(req.query as object), ...((req.body as object) ?? {}) });
+    await unsubscribeNudgesByToken(ctx, b.m, b.t);
+    return { ok: true };
   });
 }

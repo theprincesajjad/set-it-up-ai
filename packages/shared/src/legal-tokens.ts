@@ -5,10 +5,11 @@
  * fail on an unknown token and on any hard-coded fee or price that disagrees with plans.ts.
  *
  * Inline tokens: {{plan.free.name}} {{plan.plus.price}} {{plan.pro.annual}} {{restaurant.growth.price}}
- *   {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
+ *   {{retention.phoneTranscriptDays}} (see retention.ts) {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
  *   {{fee.appointmentCheckout}} {{fee.customerService}} {{founding.firstYearPct}} ...
  * Blocks: {{table.plans}} {{table.restaurant}} {{table.addons}} {{table.fees}} {{list.free}} {{list.plus}} {{list.pro}}
  */
+import { RETENTION, retentionLabel, type RetentionKey } from "./retention.js";
 import { ADD_ONS, ADD_ON_IDS, FEATURES, FEES, FOUNDING_OFFER, FREE_FOREVER, PAID_FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS } from "./plans.js";
 
 const money = (cents: number): string => {
@@ -45,6 +46,7 @@ export function legalTokens(): Record<string, string> {
   t["fee.appointmentCheckout"] = pct(FEES.appointmentCheckoutBps);
   t["fee.customerService"] = money(FEES.customerServiceFeeCents);
   t["fee.manual"] = "0%";
+  for (const k of Object.keys(RETENTION) as RetentionKey[]) t[`retention.${k}`] = retentionLabel(k);
   t["founding.firstYearPct"] = `${FOUNDING_OFFER.firstYearPct}%`;
   t["founding.lifetimePct"] = `${FOUNDING_OFFER.lifetimePct}%`;
   t["founding.slots"] = String(FOUNDING_OFFER.slotsPerCorridor);

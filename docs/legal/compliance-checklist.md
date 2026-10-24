@@ -171,10 +171,10 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 
 **CASL**
 
-- ☐ **Onboarding nudges to shop owners** (`services/onboarding.ts`, an SMS or email at set times after sign-up). A message that encourages a business to use our service is a CEM. Rely on express consent captured at sign-up (add the wording to the sign-up form and store it) or on implied consent for an existing relationship (**VERIFY** the 2-year rule with counsel). Each message must identify us and give a working unsubscribe. **Gap today:** the footer is a link to the setup page, not a one-step unsubscribe, and the SMS has no STOP keyword for owners. Add a STOP or a one-click opt-out (the `nudges_off` milestone exists) and test it.
+- ☑ **Onboarding nudges to shop owners** (`services/onboarding.ts`): every text names us, says "Reply STOP to stop" and carries a one-step unsubscribe link (`/v1/public/onboarding/unsubscribe`, no sign-in; email carries the same link). STOP replies are honoured (`comm_opt_outs`); tests in `apps/api/test/opt-out.test.ts`. ☐ Still open: capture express consent wording at sign-up, or confirm the implied-consent route with counsel (**VERIFY** the 2-year rule).
 - ☐ **Rebooking and pickup-reminder nudges to shoppers** (`services/rebooking.ts`) are CEMs: they go only to members with marketing consent for that shop who have not muted it, name the shop, and carry "Reply STOP" on SMS. Keep the cap of one nudge per service per cycle and two without a visit. Pickup reminders for a finished repair are service messages: keep every promotional line out of them.
 - ☐ **Appointment confirmations and reminders** are transactional (they confirm a booking the customer made). Keep them free of offers.
-- ☐ **STOP handling** (`services/integrations-sms.ts`): STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, ARRET, ARRÊT, REVOKE, OPTOUT withdraw consent for every shop, mute, and write an audit log; test every keyword and the French ones, and confirm the same for WhatsApp replies (STOP in the WhatsApp webhook) and for the email unsubscribe link (per shop). **VERIFY** that WhatsApp marketing sends only to `marketing_opt_in_at` contacts and honours STOP.
+- ☑ **STOP handling**: SMS (Twilio webhook) and WhatsApp STOP, ARRET, UNSUBSCRIBE, END, CANCEL, QUIT (plus STOPALL, REVOKE, OPTOUT) record an opt-out per number (`comm_opt_outs`, `services/opt-out.ts`); START resubscribes. Honoured by campaigns and automations, onboarding nudges, rebooking nudges, review requests, tiffin, catering and pickup reminders, wait-list texts, driver links and WhatsApp sends. Email unsubscribe stays per shop. One list of words in `packages/shared/src/opt-out.ts`.
 - ☐ **WhatsApp:** marketing only inside Meta's template rules, only to opted-in customers; the 24-hour window for free-form replies is enforced in `services/whatsapp.ts`.
 - ☐ **Quiet hours:** nothing promotional from 21:00 to 08:00 local (recommended; some flows already enforce it).
 
@@ -189,13 +189,13 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 
 **Retention (nothing is deleted automatically yet; decide the periods, then build the jobs)**
 
-- ☐ **Phone transcripts and WhatsApp messages** (`phone_calls`, `whatsapp_messages`, `whatsapp_sessions`): proposed [90 days] after the order is confirmed or dismissed. Build a job that blanks `transcript`, message `body` and `cart`, keeps the order.
-- ☐ **Uploaded repair photos** (`service_tickets.photos`, object store): proposed ticket life plus [24 months]. Delete the stored files as well as the URLs. Photo URLs are unguessable but not secret (`providers/storage.ts`); move to signed, expiring URLs before launch. **VERIFY**
-- ☐ **Review feedback** (`review_requests.feedback`, `reply_body`): proposed [24 months].
-- ☐ **Tiffin addresses** (`tiffin_subscriptions.address`, `address_notes`, `dietary_notes`) and driver links (expire the same night): address kept while active and [12 months] after.
-- ☐ **Allergy notes** (`orders.allergy_note`, `whatsapp_sessions.allergy_note`) and dietary notes: kept with the order or subscription only; they are free text a customer chose to give a shop. Do not use them for marketing or analytics.
-- ☐ **Account deletion** (`deleteAccount` in `services/customer.ts`) scrubs the profile, consent, sessions, push tokens and wallet passes, but **does not reach** the newer records above (names and addresses on appointments, tiffin, catering, WhatsApp, calls, reviews). The privacy policy says it does; build the scrub or change the sentence before publishing.
-- ☐ Write the retention schedule once, in `privacy-policy.md` section 6, and keep the jobs and the page in step (add a test as we did for fees).
+- ☑ **Phone transcripts and WhatsApp messages**: deleted by the `privacy.retention` job after the period in `packages/shared/src/retention.ts` (`services/retention.ts`).
+- ☑ **Uploaded repair photos**: files deleted from the object store (`StorageProvider.delete`) then the links, 24 months after the ticket closes. ☐ Still open: signed, expiring photo URLs before launch. **VERIFY**
+- ☑ **Review feedback** (`review_requests.feedback`, `reply_body`): deleted after the period in `retention.ts`.
+- ☑ **Tiffin addresses** and notes: cleared after the period for cancelled subscriptions; driver link rows deleted after the period (links expire the same night).
+- ☑ **Allergy notes** on orders cleared after the period once the order is done; WhatsApp allergy notes with the chat. Free text a customer chose to give a shop: do not use it for marketing or analytics.
+- ☑ **Account deletion** (`deleteAccount` in `services/customer.ts`, `services/privacy-scrub.ts`) now reaches appointments, tiffin, catering, hall bookings, WhatsApp, calls, reviews, tickets, quote signatures, orders, wait lists, referrals, consents, wallet passes and push tokens; money records stay with amounts only. Tests: `apps/api/test/privacy-deletion.test.ts`. The do-not-contact entry is kept on purpose (counsel to confirm).
+- ☑ The retention schedule is written once, in `packages/shared/src/retention.ts`; the privacy policy prints it through `{{retention.*}}` tokens and a test checks the page (`apps/web/test/legal-pages.test.ts`).
 
 **Other**
 

@@ -40,6 +40,7 @@ import { getIntegration } from "./integrations.js";
 import { isFeatureOn, requireFeature } from "./features.js";
 import { personalize, resolveAudience, segmentCondition } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
+import { isOptedOut, recordPhoneOptOut, recordPhoneResubscribe } from "./opt-out.js";
 import { retrieveConnectPayment } from "./payments.js";
 import {
   converse,
@@ -231,6 +232,8 @@ export async function recordOptIn(ctx: AppContext, merchant: Merchant, actorUser
 export async function recordOptOut(ctx: AppContext, merchant: Pick<Merchant, "id">, phone: string, source: string, actorUserId: string | null = null): Promise<whatsappApi.WhatsappConsent> {
   const p = normalizePhone(phone);
   const { session } = await upsertSession(ctx, merchant.id, p, { marketingOptInAt: null, state: "opted_out", cart: [] });
+  // One STOP covers every shop: the number goes on the do-not-contact list (services/opt-out.ts).
+  await recordPhoneOptOut(ctx, p, "whatsapp", source === "whatsapp_stop" ? "STOP" : null, "whatsapp_reply");
   await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "whatsapp.opt_out", entity: "whatsapp_session", entityId: session.id, data: { source } });
   return { merchantId: merchant.id, phone: p, optedIn: false, optedInAt: null };
 }
@@ -242,6 +245,7 @@ export async function setCustomerConsent(ctx: AppContext, userId: string, mercha
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!merchant) throw notFound("Shop");
   if (!body.optIn) return recordOptOut(ctx, merchant, u.phone, "customer_app", userId);
+  await recordPhoneResubscribe(ctx, u.phone, "whatsapp");
   return recordOptIn(ctx, merchant, userId, { phone: u.phone, userId, source: "form", language: body.language });
 }
 
@@ -297,6 +301,8 @@ export interface Outgoing {
   sender?: "assistant" | "staff" | "system";
   /** Free-form text, used inside the 24 hour window. */
   text?: string;
+  /** The answer to the guest's own STOP or START: always sent, it is the confirmation they are waiting for. */
+  confirmation?: boolean;
   /** Approved template, used outside the window (counts a credit). */
   template?: { name: string; params: string[] };
   language?: string;
@@ -306,7 +312,7 @@ export interface SendOutcome {
   sent: boolean;
   via?: "text" | "template";
   id?: string;
-  reason?: "no_sender" | "outside_window" | "no_credits" | "send_failed";
+  reason?: "no_sender" | "outside_window" | "no_credits" | "send_failed" | "opted_out";
   error?: string;
 }
 
@@ -317,6 +323,8 @@ export async function sendWhatsApp(ctx: AppContext, merchant: Merchant, phone: s
     if (!sender) return { sent: false, reason: "no_sender" };
     const to = normalizePhone(phone);
     const session = sessionHint ?? (await getSession(ctx, merchant.id, to));
+    // STOP is honoured per number across every shop (comm_opt_outs), and per shop on the chat itself.
+    if (!msg.confirmation && (session?.state === "opted_out" || (await isOptedOut(ctx.db, to, "whatsapp")))) return { sent: false, reason: "opted_out" };
     const provider = getWhatsApp(ctx);
     if (msg.text && windowOpen(session, ctx.now())) {
       const r = await provider.sendText({ phoneNumberId: sender.phoneNumberId, to, body: msg.text });
@@ -482,7 +490,7 @@ export async function handleWebhook(ctx: AppContext, body: unknown): Promise<Web
 }
 
 async function reply(ctx: AppContext, merchant: Merchant, session: Session, texts: string[]): Promise<void> {
-  for (const text of texts.filter(Boolean)) await sendWhatsApp(ctx, merchant, session.phone, { text, sender: "assistant" }, session);
+  for (const text of texts.filter(Boolean)) await sendWhatsApp(ctx, merchant, session.phone, { text, sender: "assistant", confirmation: true }, session);
 }
 
 /** One inbound customer message for a shop: update the window, run the conversation, send replies, act. */
@@ -525,7 +533,10 @@ export async function processInbound(ctx: AppContext, merchant: Merchant, msg: I
   )[0]!;
 
   if (out.action?.type === "opt_out") await recordOptOut(ctx, merchant, msg.from, "whatsapp_stop");
-  else if (out.action?.type === "opt_in") await recordOptIn(ctx, merchant, null, { phone: msg.from, source: "whatsapp_reply" });
+  else if (out.action?.type === "opt_in") {
+    await recordPhoneResubscribe(ctx, msg.from, "whatsapp");
+    await recordOptIn(ctx, merchant, null, { phone: msg.from, source: "whatsapp_reply" });
+  }
   await reply(ctx, merchant, session, replies);
   if (out.action?.type === "checkout") await checkout(ctx, merchant, session, msg.name);
 }

@@ -12,7 +12,7 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
    - {{list.free}}.
 
    **There is no subscription fee and no transaction fee on your loyalty program.** If you take payments through us, the fees in section 5 apply, and we show them before you turn the feature on. A {{plan.free.name}} feature will never be moved to a paid plan.
-2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of them, free, for [90] days.
+2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of them, free, for {{retention.leaverExportDays}}: after you close your shop or move back to the {{plan.free.name}} plan, the members and visits CSV downloads stay available to the owner from Settings.
 3. **Your points are your promise.** Points customers earn at your shop are issued by you, and you honour them at your shop. **Network bonuses are paid for by us**, never by you.
 4. Paid plans ({{plan.plus.name}} {{plan.plus.price}}, {{plan.pro.name}} {{plan.pro.price}}, and the restaurant plans {{restaurant.starter.name}}, {{restaurant.growth.name}} and {{restaurant.pro.name}}) are optional. They appear only when we launch them in your area, and you can cancel at any time. Prices are in section 1.2 and fees in section 5.
 5. You follow the rules on consent, pharmacies, alcohol and fair promos, and we give you the tools to do it.
@@ -56,7 +56,7 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 
 ## 2. Data and customer relationships
 
-2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. Whatever your plan, when you leave we give you an export of your Merchant Customer Data at no charge for [90] days.
+2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. Whatever your plan, when you leave we give you an export of your Merchant Customer Data at no charge for {{retention.leaverExportDays}} (the members and visits CSV downloads in Settings, even without {{plan.plus.name}}).
 
 2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer's relationship with Local Loyalty and those other shops. You will not see other merchants' data; we will not show your data to other merchants.
 

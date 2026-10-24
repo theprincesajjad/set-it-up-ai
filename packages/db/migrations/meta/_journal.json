@@ -127,6 +127,13 @@
       "when": 1792879656382,
       "tag": "0017_legal",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792883954911,
+      "tag": "0018_priv",
+      "breakpoints": true
     }
   ]
 }

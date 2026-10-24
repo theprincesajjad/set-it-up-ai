@@ -105,3 +105,15 @@ describe("llApi endpoints", () => {
     expect(newIdempotencyKey("redeem").length).toBeGreaterThanOrEqual(8);
   });
 });
+
+describe("shopper data download (web Settings)", () => {
+  it("GETs /v1/me/export through the shared client and returns the JSON untouched", async () => {
+    const body = { exportedAt: "2026-11-03T15:00:00.000Z", orders: [], appointments: [], tiffinSubscriptions: [], cateringEvents: [], whatsapp: { sessions: [], messages: [] }, serviceTickets: [] };
+    const fetch = vi.fn(async () => json(200, body));
+    const api = llApi(createApiClient({ baseUrl: "http://api", getAccessToken: () => "tok", fetch }));
+    expect(await api.me.exportData()).toEqual(body);
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("http://api/v1/me/export");
+    expect(init.method ?? "GET").toBe("GET");
+  });
+});

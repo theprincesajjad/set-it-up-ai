@@ -47,6 +47,7 @@ import {
 import { enabledFeaturesByMerchantId } from "./features.js";
 import { shopDate } from "./member-stats.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
+import { sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Member = typeof merchantMembers.$inferSelect;
@@ -332,7 +333,11 @@ async function queueReceipt(ctx: AppContext, merchant: Merchant, member: Member,
       .values({ userId: member.userId, merchantId: merchant.id, channel: "sms", to: u.phone!, body, kind: "transactional", status: "queued", createdAt: ctx.now() })
       .returning({ id: messageDeliveries.id });
     try {
-      const sent = await ctx.providers.sms.send(u.phone!, body);
+      const sent = await sendSms(ctx, u.phone!, body);
+      if (!sent) {
+        await ctx.db.update(messageDeliveries).set({ status: "skipped", error: "opted_out" }).where(eq(messageDeliveries.id, d!.id));
+        return;
+      }
       await ctx.db.update(messageDeliveries).set({ status: "sent", providerId: sent.id }).where(eq(messageDeliveries.id, d!.id));
     } catch (err) {
       await ctx.db.update(messageDeliveries).set({ status: "failed", error: String((err as Error).message ?? err).slice(0, 500) }).where(eq(messageDeliveries.id, d!.id));

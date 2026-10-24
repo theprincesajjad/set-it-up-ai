@@ -88,7 +88,7 @@ export const copy = {
     stampsToGo: (n: number, reward: string) => `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}`,
     ptsToGo: (n: number, reward: string) => `${n} pts to ${reward}`,
     showAtCounter: "Show this at the counter",
-    freeForever: "Free forever · No transaction fees · Unlimited locations",
+    freeForever: "Free forever · No subscription, no fee on loyalty · Unlimited locations",
     madeInToronto: "Made in Toronto",
     joinTagline: "One card for every shop on your street.",
     openUntil: (time: string) => `Open · closes ${time}`,
@@ -133,8 +133,8 @@ export const copy = {
   landing: {
     heroEyebrow: "For independent shops in Toronto and the GTA",
     heroTitle: "your regulars already walk this street.",
-    heroSub: "A free loyalty program for your shop, shared with every shop on your block. No app to download, no fees, set up with you in 20 minutes.",
-    heroTrust: "Free forever · 0% fees · no contract · unlimited locations and staff",
+    heroSub: "A free loyalty program for your shop, shared with every shop on your block. No app to download, no fee on loyalty, set up with you in 20 minutes.",
+    heroTrust: "Free forever · no fee on loyalty · no contract · unlimited locations and staff",
     router: {
       label: "Where do you fit?",
       items: [
@@ -197,7 +197,7 @@ export const copy = {
     faqEyebrow: "Questions",
     faqTitle: "the honest answers.",
     faq: [
-      { q: "Is it really free?", a: "Yes. Points, stamps, rewards, your customer list, reports, the map listing and the wallet pass are free forever, for unlimited locations and staff. No transaction fees." },
+      { q: "Is it really free?", a: "Yes. Points, stamps, rewards, your customer list, reports, the map listing and the wallet pass are free forever, for unlimited locations and staff. No subscription and no fee on loyalty. Online orders on the Free plan carry a 1.5% fee." },
       { q: "How do you make money?", a: "Three ways, all optional for you. Restaurant plans are live now. Shop add-ons (promos, email and SMS, POS auto-award) come later, and pilot shops have them today. BIAs pay for street campaigns. Your loyalty program never moves to a paid plan." },
       { q: "Do I need a POS?", a: "No. Staff type a phone number in the free counter app. POS auto-award is a paid extra." },
       { q: "Whose customer data is it?", a: "Yours. Other shops never see your members, and customers only get offers if they opt in (CASL)." },
@@ -214,14 +214,14 @@ export const copy = {
   pricing: {
     eyebrow: "Pricing",
     title: "free forever for your loyalty program. flat prices for the rest.",
-    sub: "No fee on loyalty sales and no contract. Every price is in CAD and per month, per business.",
+    sub: "No fee on loyalty and no contract. Every price is in CAD and per month, per business.",
     chips: [
       { id: "shop", label: "I run a shop", href: "/pricing?for=shop#shops" },
       { id: "restaurant", label: "I run a restaurant", href: "/pricing?for=restaurant#restaurants" },
       { id: "bia", label: "I run a BIA", href: "/pricing?for=bia#bias" },
     ],
     freeBadge: "Every shop",
-    freeLead: "Your loyalty program and its reports. No fee on sales.",
+    freeLead: "Your loyalty program and its reports. No subscription and no fee on loyalty.",
     freeLines: ["Points, visits or stamps", "Rewards and a welcome bonus", "Customer list and basic reports", "Map listing and wallet pass", "Unlimited staff and locations"],
     plusLine: "Promos, campaigns and POS auto-award.",
     proLine: "For repair, auto, alterations and print shops.",

@@ -2,7 +2,7 @@
 import { Check, CreditCard } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { FEATURES, FEATURE_KEYS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FEES, PLANS, PLATFORM_PAYMENT_FEE_BPS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useNetworkShops } from "@/components/dashboard/FeatureTeaser";
 import { Dot, Meter, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
@@ -20,7 +20,7 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 const HERO: Record<"plus" | "pro", FeatureKey> = { plus: "orders.order_ahead", pro: "service.tickets" };
 const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
-  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no payments and no fees.`],
+  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
   [`Why can't I buy ${PLANS.plus.name} yet?`, copy.soon.pricingNote],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
 ];
@@ -75,7 +75,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         </h2>
         {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, Café &amp; Retail tools are included.</p> : null}
         <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {["No transaction fees", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
+          {["No subscription and no fee on loyalty", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-meta text-fg">
               <Check aria-hidden className="size-3.5 text-fg-muted" />
               {t}

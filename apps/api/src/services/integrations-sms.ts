@@ -8,25 +8,27 @@
  */
 import { eq, inArray } from "drizzle-orm";
 import { merchantMembers, users } from "@ll/db";
-import { BRAND, normalizePhone } from "@ll/shared";
+import { BRAND, START_KEYWORDS, STOP_KEYWORDS, isStartKeyword, isStopKeyword, normalizePhone, normalizeReplyWord } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { handleInboundSms } from "./messaging.js";
+import { recordPhoneOptOut, recordPhoneResubscribe } from "./opt-out.js";
 
-export const STOP_WORDS = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "ARRET", "ARRÊT", "REVOKE", "OPTOUT"]);
-export const START_WORDS = new Set(["START", "UNSTOP", "YES", "SUBSCRIBE"]);
+export const STOP_WORDS = new Set<string>(STOP_KEYWORDS);
+export const START_WORDS = new Set<string>(START_KEYWORDS);
 export const HELP_WORDS = new Set(["HELP", "INFO", "AIDE"]);
 
 export type InboundSmsResult = { action: "stop" | "start" | "help" | "none"; reply: string | null; membershipsUpdated: number };
 
 export async function handleInboundSmsLocal(ctx: AppContext, from: string, body: string): Promise<InboundSmsResult> {
-  const word = body.trim().split(/\s+/)[0]?.toUpperCase().replace(/[^A-ZÊ]/g, "") ?? "";
+  const word = normalizeReplyWord(body);
   const phone = normalizePhone(from);
   const userIds = async () => {
     if (!phone) return [];
     const rows = await ctx.db.select({ id: users.id }).from(users).where(eq(users.phone, phone));
     return rows.map((r) => r.id);
   };
-  if (STOP_WORDS.has(word)) {
+  if (isStopKeyword(body)) {
+    if (phone) await recordPhoneOptOut(ctx, phone, "sms", word, "sms_reply");
     const ids = await userIds();
     const updated = ids.length
       ? await ctx.db
@@ -38,7 +40,8 @@ export async function handleInboundSmsLocal(ctx: AppContext, from: string, body:
     // Twilio's Advanced Opt-Out sends the carrier-compliant confirmation itself.
     return { action: "stop", reply: null, membershipsUpdated: updated.length };
   }
-  if (START_WORDS.has(word)) {
+  if (isStartKeyword(body)) {
+    if (phone) await recordPhoneResubscribe(ctx, phone, "sms");
     const ids = await userIds();
     const updated = ids.length ? await ctx.db.update(merchantMembers).set({ muted: false }).where(inArray(merchantMembers.userId, ids)).returning({ id: merchantMembers.id }) : [];
     return { action: "start", reply: null, membershipsUpdated: updated.length };

@@ -28,6 +28,7 @@ import { smsAllowance, withFooter } from "./messaging.js";
 import { ensureMember } from "./ledger.js";
 import { canSendTransactional, getSession, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
 import { writeAudit } from "./admin-audit.js";
+import { isOptedOut, sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Request = typeof reviewRequests.$inferSelect;
@@ -54,7 +55,7 @@ export async function consentedChannels(ctx: AppContext, merchant: Merchant, use
   const casl = !!member?.consent && !member.muted;
   const out: Channel[] = [];
   if (user.phone && canSendTransactional(await getSession(ctx, merchant.id, user.phone)) && (await isFeatureOn(ctx.db, merchant, "restaurant.whatsapp_notifications"))) out.push("whatsapp");
-  if (user.phone && casl && (await isFeatureOn(ctx.db, merchant, "marketing.sms"))) out.push("sms");
+  if (user.phone && casl && !(await isOptedOut(ctx.db, user.phone, "sms")) && (await isFeatureOn(ctx.db, merchant, "marketing.sms"))) out.push("sms");
   if (user.email && casl) out.push("email");
   const [tok] = await ctx.db.select({ id: pushTokens.id }).from(pushTokens).where(eq(pushTokens.userId, userId)).limit(1);
   if (tok) out.push("push");
@@ -129,7 +130,8 @@ async function deliver(ctx: AppContext, merchant: Merchant, req: Request): Promi
         if (r.sent) return channel;
       } else if (channel === "sms" && user.phone) {
         if (!(await reserveSms(ctx, merchant))) continue;
-        await ctx.providers.sms.send(user.phone, member ? withFooter(ctx, "sms", merchant.name, text, member.id) : `${text}\n— ${merchant.name}. Reply STOP to opt out.`);
+        const sent = await sendSms(ctx, user.phone, member ? withFooter(ctx, "sms", merchant.name, text, member.id) : `${text}\n— ${merchant.name}. Reply STOP to opt out.`);
+        if (!sent) continue;
         return channel;
       } else if (channel === "email" && user.email) {
         const body = member ? withFooter(ctx, "email", merchant.name, text, member.id) : text;
@@ -397,7 +399,7 @@ export async function replyToReview(ctx: AppContext, merchant: Merchant, actorUs
     if (!user?.phone) throw new HttpError(409, "no_contact", "We don't have a phone number for this guest.");
     if (body.channel === "sms") {
       if (!(await reserveSms(ctx, merchant))) throw new HttpError(409, "no_credits", "You have used this month's text messages. Use WhatsApp or email.");
-      await ctx.providers.sms.send(user.phone, `${body.body}\n— ${merchant.name}`);
+      if (!(await sendSms(ctx, user.phone, `${body.body}\n— ${merchant.name}`))) throw new HttpError(409, "opted_out", "This guest replied STOP to our texts, so we can't text them. Use WhatsApp or email.");
     } else {
       const out = await sendWhatsApp(ctx, merchant, user.phone, { text: body.body });
       if (!out.sent) {

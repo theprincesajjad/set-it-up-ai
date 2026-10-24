@@ -14,3 +14,5 @@ export * from "./halal-banner.js";
 export * as bookingLogic from "./booking.js";
 export * from "./birthday.js";
 export * from "./legal-tokens.js";
+export * from "./retention.js";
+export * from "./opt-out.js";

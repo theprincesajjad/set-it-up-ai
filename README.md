@@ -4,7 +4,7 @@ A free, shared loyalty network for independent neighbourhood businesses,
 starting in Toronto. One customer identity (phone number, wallet pass or app)
 works at every shop on the street.
 
-- **Merchants pay nothing for loyalty, forever.** No transaction fees,
+- **Merchants pay nothing for loyalty, forever.** No fee on loyalty,
   unlimited locations, unlimited staff, unlimited members. We set it up for them.
 - **The network is the product.** Every shop on one app, so customers who join
   at the café see the bakery and the repair shop on day one.

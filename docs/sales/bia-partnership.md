@@ -103,7 +103,7 @@ Canadian contest law has specific requirements. Every draw needs: **a no-purchas
 > **[BIA name] × Local Loyalty**
 > **One free loyalty app for the whole street.**
 >
-> **For your members:** free forever. No monthly fee, no transaction fee, unlimited locations and staff. We set it up in 20 minutes and train their staff. Works with the POS they already have.
+> **For your members:** free forever. No monthly fee, no fee on loyalty, unlimited locations and staff. We set it up in 20 minutes and train their staff. Works with the POS they already have.
 >
 > **For their customers:** join at any shop with a phone number. No app needed: it lives in Apple or Google Wallet. Earn at every shop, see promos from the whole street.
 >

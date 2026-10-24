@@ -22,11 +22,12 @@ import { messagingJobs } from "./messaging.js";
 import { onboardingJobs } from "./onboarding.js";
 import { notificationJobs } from "./notifications.js";
 import { redemptionJobs } from "./redemptions.js";
+import { retentionJobs } from "./retention.js";
 import { restaurantMessagingJobs } from "./restaurant-messaging.js";
 import { serviceJobs } from "./service.js";
 import { tiffinJobs } from "./tiffin.js";
 
-export const jobs: Job[] = [...messagingJobs, ...commerceJobs, ...adsJobs, ...connectorsJobs, ...redemptionJobs, ...notificationJobs, ...banquetJobs, ...tiffinJobs, ...restaurantMessagingJobs, ...appointmentJobs, ...halalJobs, ...serviceJobs, ...onboardingJobs];
+export const jobs: Job[] = [...messagingJobs, ...commerceJobs, ...adsJobs, ...connectorsJobs, ...redemptionJobs, ...notificationJobs, ...banquetJobs, ...tiffinJobs, ...restaurantMessagingJobs, ...appointmentJobs, ...halalJobs, ...serviceJobs, ...onboardingJobs, ...retentionJobs];
 
 export function startJobs(ctx: AppContext): () => void {
   if (process.env.JOBS === "0" || ctx.config.env === "test") return () => {};

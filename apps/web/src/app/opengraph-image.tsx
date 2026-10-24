@@ -25,7 +25,7 @@ export default async function OgImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ fontSize: 84, fontWeight: 800, color: "#0B0B0C", lineHeight: 1.02, letterSpacing: -1.7, fontFamily: display }}>one card for every shop on your street.</div>
-          <div style={{ fontSize: 32, color: "#6B6B70" }}>Free forever · No transaction fees · Unlimited locations</div>
+          <div style={{ fontSize: 32, color: "#6B6B70" }}>Free forever · No fee on loyalty · Unlimited locations</div>
         </div>
       </div>
     ),

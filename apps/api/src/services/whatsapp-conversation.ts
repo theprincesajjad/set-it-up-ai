@@ -218,10 +218,10 @@ const CMD = {
   menu: words("menu", "menus", "hi", "hello", "hey", "hii", "start over", "namaste", "namaskar", "salaam", "salam", "assalamualaikum", "assalam o alaikum", "sat sri akal", "मेन्यू", "मेनू", "नमस्ते", "مینو", "سلام", "ਮੇਨੂ", "ਮੀਨੂ", "ਸਤ ਸ੍ਰੀ ਅਕਾਲ"),
   cart: words("cart", "basket", "my order", "review", "कार्ट", "کارٹ", "ਕਾਰਟ"),
   checkout: words("checkout", "check out", "pay", "place order", "place my order", "confirm", "done", "order now", "चेकआउट", "ऑर्डर", "چیک آؤٹ", "آرڈر", "ਚੈੱਕਆਊਟ", "ਆਰਡਰ"),
-  clear: words("clear", "reset", "empty", "cancel", "start again", "साफ़", "खाली", "صاف", "ਖਾਲੀ"),
+  clear: words("clear", "reset", "empty", "start again", "साफ़", "खाली", "صاف", "ਖਾਲੀ"),
   help: words("help", "info", "madad", "मदद", "مدد", "ਮਦਦ"),
-  stop: words("stop", "stopall", "unsubscribe", "quit", "end", "optout", "opt out", "रुकें", "बंद", "بند", "ਬੰਦ"),
-  start: words("start", "subscribe", "unstop", "yes", "शुरू", "شروع", "ਸ਼ੁਰੂ"),
+  stop: words("stop", "stopall", "unsubscribe", "cancel", "quit", "end", "optout", "opt out", "arret", "revoke", "annuler", "desabonner", "रुकें", "बंद", "بند", "ਬੰਦ"),
+  start: words("start", "subscribe", "unstop", "yes", "oui", "commencer", "शुरू", "شروع", "ਸ਼ੁਰੂ"),
 };
 /** Language names (bare, or after "language"). The two-letter codes only count after "language" because "hi" is also a greeting. */
 const LANG_NAMES: Record<string, WaLang> = { english: "en", hindi: "hi", "हिंदी": "hi", "हिन्दी": "hi", urdu: "ur", "اردو": "ur", punjabi: "pa", panjabi: "pa", "ਪੰਜਾਬੀ": "pa" };

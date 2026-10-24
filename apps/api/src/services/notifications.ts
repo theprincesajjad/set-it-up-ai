@@ -31,6 +31,7 @@ import type { PushTicket } from "../providers/types.js";
 import { enabledFeaturesFor } from "./features.js";
 import { balanceListeners, type BalanceChange, type BalanceListener } from "./ledger.js";
 import { addPassMessage, hasWalletPass } from "./wallet.js";
+import { sendSms } from "./opt-out.js";
 
 export type NotificationType = customerApi.NotificationType;
 export type NotificationChannel = customerApi.NotificationChannel;
@@ -308,9 +309,11 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
     if (!res.push && !wallet && prefs[args.type].sms && user.phone && (await paidSms(ctx, merchant)) && !(await mutedShop(ctx, user.id, merchant))) {
       const body = args.smsBody ?? `${args.title}: ${args.body}${info.kind === "marketing" ? " Reply STOP to opt out." : ""}`;
       try {
-        const r = await ctx.providers.sms.send(user.phone, body);
-        res.channels.push("sms");
-        await log("sms", user.phone, body, "sent", r.id);
+        const r = await sendSms(ctx, user.phone, body);
+        if (r) {
+          res.channels.push("sms");
+          await log("sms", user.phone, body, "sent", r.id);
+        } else await log("sms", user.phone, body, "skipped", null, "opted_out");
       } catch (err) {
         await log("sms", user.phone, body, "failed", null, (err as Error).message);
       }

@@ -51,6 +51,14 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page.getByRole("switch", { name: "Get offers from Pinecone Coffee Co." })).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: shot("07-wallet-settings"), fullPage: true });
+
+  // Settings: "Download my data" gives a JSON file with a section for every feature (PIPEDA access, Law 25 portability).
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download my data" }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^my-data-\d{4}-\d{2}-\d{2}\.json$/);
+  const { readFile } = await import("node:fs/promises");
+  const data = JSON.parse(await readFile((await download.path())!, "utf8"));
+  for (const key of ["profile", "memberships", "consents", "visits", "orders", "appointments", "tiffinSubscriptions", "cateringEvents", "hallBookings", "whatsapp", "phoneCalls", "reviews", "serviceTickets", "waitlist", "referrals", "notificationPrefs", "walletPasses", "doNotContact"]) expect(data, key).toHaveProperty(key);
+  expect(data.consents[0]).toMatchObject({ merchantName: "Pinecone Coffee Co." });
 });
 
 test("/join/<code> alias renders the same page; bad codes explain what to do", async ({ page }) => {

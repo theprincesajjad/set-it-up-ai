@@ -17,6 +17,7 @@ import { requireFeature } from "./features.js";
 import { orderCancelledHooks, balanceDueCents } from "./orders.js";
 import { addDaysKey, capFor, dateKeyIn, potRowsOnDay } from "./preorderPlanning.js";
 import { canSendTransactional, getSession, renderTemplateText, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
+import { sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -83,8 +84,7 @@ async function messagePhone(ctx: AppContext, merchant: Merchant, phone: string, 
     if (r.sent) return "whatsapp";
   }
   try {
-    await ctx.providers.sms.send(phone, smsText);
-    return "sms";
+    return (await sendSms(ctx, phone, smsText)) ? "sms" : "none";
   } catch {
     return "none";
   }

@@ -58,7 +58,7 @@ Each playbook has niche versions. These are the base answers.
 > "That means you already know it works. We keep what your customers like (the stamps, the free item) and drop the lost cards and the cheating. Bring your regulars over: if someone shows you a half-full paper card, we add those stamps to their digital card."
 
 **"I already use SoPoints."**
-> "Lots of good shops do. Two differences: we charge no transaction fee at all, and we do the setup for you. Their free plan listed a 5% fee when we last checked their pricing page (Oct 2026; I'll show you the page). We'll move your members over for free." Use [../scripts/sopoints-switch.md](../scripts/sopoints-switch.md).
+> "Lots of good shops do. Two differences: we charge no fee on loyalty at all, and we do the setup for you. Their free plan listed a 5% fee when we last checked their pricing page (Oct 2026; I'll show you the page). We'll move your members over for free." Use [../scripts/sopoints-switch.md](../scripts/sopoints-switch.md).
 
 **"I already use Square Loyalty."**
 > "Keep Square. We connect to it so points land automatically, and you drop the Square Loyalty subscription, which is priced per location (from about $60/month per location when we last checked; let's look at your bill)." Use [../scripts/square-loyalty-users.md](../scripts/square-loyalty-users.md).

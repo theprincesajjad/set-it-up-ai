@@ -277,6 +277,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     dismissUpsell: () => c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/upsell/dismiss`, {}),
     setNudges: (enabled: boolean) => c.put<merchantApi.OnboardingChecklist>(`${b}/onboarding/nudges`, { enabled }),
     features: () => c.get<merchantApi.MerchantFeaturesResponse>(`${b}/features`),
+    /** The free export window after a shop leaves (closed or back on Free): until is null when it does not apply. */
+    exportWindow: () => c.get<{ leftAt: string | null; until: string | null }>(`${b}/customers/export-window`),
     notifyFeature: (key: string) => c.post<merchantApi.FeatureInterestResponse>(`${b}/features/${enc(key)}/notify`, {}),
     setBeta: (optIn: boolean) => c.put<merchantApi.MerchantFeaturesResponse>(`${b}/beta`, { optIn }),
     qrKit: () => c.get<merchantApi.QrKit>(`${b}/qr-kit`),

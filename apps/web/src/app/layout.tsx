@@ -13,7 +13,7 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: { default: `${BRAND.name} · ${BRAND.tagline}`, template: `%s · ${BRAND.name}` },
-  description: "A free loyalty program for independent shops, shared with every shop on the street. Free forever, no transaction fees, unlimited locations.",
+  description: "A free loyalty program for independent shops, shared with every shop on the street. Free forever, no fee on loyalty, unlimited locations.",
   applicationName: BRAND.name,
   openGraph: { siteName: BRAND.name, type: "website", locale: "en_CA" },
   twitter: { card: "summary_large_image" },

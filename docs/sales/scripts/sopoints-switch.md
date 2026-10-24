@@ -38,7 +38,7 @@ Always use **their** numbers. Ask: "Do you know roughly what SoPoints costs you 
 
 ## The pitch
 
-> "SoPoints had the right idea, and a lot of good shops use it. We do the same thing with two differences: **no transaction fee at all**, and **we set it up and move your members for you, free**. And we're building the street block by block, so [Anchor shops] are already on here."
+> "SoPoints had the right idea, and a lot of good shops use it. We do the same thing with two differences: **no fee on loyalty at all**, and **we set it up and move your members for you, free**. And we're building the street block by block, so [Anchor shops] are already on here."
 
 ## Objections
 

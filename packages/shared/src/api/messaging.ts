@@ -32,7 +32,7 @@ export const PUSH_MAX_BODY = 180;
 /** Placeholders replaced per recipient. */
 export const MESSAGE_VARIABLES = ["{{first_name}}", "{{name}}", "{{balance}}", "{{terminology}}", "{{merchant}}"] as const;
 /** Inbound SMS keywords that withdraw consent everywhere (incl. French for Canada). */
-export const STOP_KEYWORDS = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "ARRET", "ARRÊT", "OPTOUT", "OPT-OUT"] as const;
+export { STOP_KEYWORDS } from "../opt-out.js";
 
 /** "Lapsed" default for the Messages audience chips and the win-back automation. */
 export const LAPSED_DEFAULT_DAYS = 21;

@@ -6,6 +6,7 @@ import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import { writeAudit } from "../../services/admin-audit.js";
 import { requireFeature } from "../../services/features.js";
+import { exportWindow, requireCsvExport } from "../../services/leaver-export.js";
 import * as svc from "../../services/merchant-customers.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
@@ -25,9 +26,16 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
     return svc.segmentCounts(ctx, s.merchant.id);
   });
 
+  /** When the free post-leaving export ends (null = the shop has not left). Drives the "Your data" panel for shops without CSV export on their plan. */
+  app.get("/merchants/:merchantId/customers/export-window", async (req: Req) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    const w = await exportWindow(ctx.db, s.merchant);
+    return { leftAt: w.leftAt?.toISOString() ?? null, until: w.until && w.until > ctx.now() ? w.until.toISOString() : null };
+  });
+
   app.get("/merchants/:merchantId/customers/export.csv", async (req: Req, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
-    await requireFeature(ctx.db, s.merchant, "customers.csv_export");
+    await requireCsvExport(ctx, s.merchant);
     const q = parse(merchantApi.listCustomersQuery, req.query);
     const csv = await svc.exportCustomersCsv(ctx, s.merchant.id, q);
     // Full phones/emails leave the system: audit every export.
@@ -80,7 +88,7 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
 
   app.get("/merchants/:merchantId/activity/export.csv", async (req: Req, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
-    await requireFeature(ctx.db, s.merchant, "customers.csv_export");
+    await requireCsvExport(ctx, s.merchant);
     const q = parse(merchantApi.listActivityQuery, req.query);
     const csv = await svc.exportTransactionsCsv(ctx, s.merchant.id, q);
     const { cursor: _c, limit: _l, ...filters } = q;

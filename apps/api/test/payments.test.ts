@@ -70,7 +70,7 @@ describe("Stripe Connect onboarding", () => {
     expect((await call(env, mgr.token, "GET", `${url}/status`)).body.chargesEnabled).toBe(true);
   });
 
-  it("is not available on Free (no payments, no transaction fees)", async () => {
+  it("is not available on Free (no in-app payments)", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
     await setStage(env, PAID_FEATURES, "ga");
     const r = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/payments/connect`, {});

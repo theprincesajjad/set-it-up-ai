@@ -2181,3 +2181,28 @@ export const merchantAddOns = pgTable(
   },
   (t) => [primaryKey({ columns: [t.merchantId, t.addOnId] })],
 );
+
+/**
+ * Do-not-contact list, one row per phone number and channel. Written when someone replies STOP (SMS or
+ * WhatsApp) and cleared by START. Every sender checks it (services/opt-out.ts). It is kept after account
+ * deletion on purpose: it is the only way to keep honouring the request.
+ */
+export const commOptOuts = pgTable(
+  "comm_opt_outs",
+  {
+    id: id(),
+    /** E.164. */
+    phone: text("phone").notNull(),
+    /** sms | whatsapp */
+    channel: text("channel").notNull(),
+    /** The word they sent (STOP, ARRET ...), or "link" for the one-step unsubscribe page. */
+    keyword: text("keyword"),
+    /** sms_reply | whatsapp_reply | link */
+    source: text("source").notNull().default("sms_reply"),
+    optedOutAt: ts("opted_out_at").notNull().defaultNow(),
+    /** Set by START: the number may be messaged again, subject to the usual consent rules. */
+    resubscribedAt: ts("resubscribed_at"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("comm_opt_outs_uq").on(t.phone, t.channel)],
+);

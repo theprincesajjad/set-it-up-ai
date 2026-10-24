@@ -18,7 +18,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: { absolute: `${BRAND.name}: free loyalty for independent shops` },
-  description: "Free forever. No transaction fees. Unlimited locations. A loyalty program for your shop, shared with every shop on your block. We set it up in 20 minutes.",
+  description: "Free forever, no fee on loyalty. Unlimited locations. A loyalty program for your shop, shared with every shop on your block. We set it up in 20 minutes.",
   alternates: { canonical: "/" },
 };
 

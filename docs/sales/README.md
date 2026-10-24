@@ -4,7 +4,7 @@ Owner: Head of Sales & GTM · Last updated: Oct 21, 2026
 
 This folder is the sales kit. A new part-time rep should be able to read this page, skim their niche playbook, and walk a strip tomorrow.
 
-> **Where this differs from the PRD:** the founder's model wins. Loyalty is **free forever**: no transaction fee, unlimited locations, unlimited staff, and we set it up. Phase 1 is about building one large network on one app. Paid Plus/Pro add-ons come later, once a strip has density. Network ads and BIA campaigns come after that.
+> **Where this differs from the PRD:** the founder's model wins. Loyalty is **free forever**: no fee on loyalty, unlimited locations, unlimited staff, and we set it up. Phase 1 is about building one large network on one app. Paid Plus/Pro add-ons come later, once a strip has density. Network ads and BIA campaigns come after that.
 
 ---
 

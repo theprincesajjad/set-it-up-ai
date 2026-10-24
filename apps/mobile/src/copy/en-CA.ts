@@ -139,7 +139,7 @@ export const enCA = {
   "misc.offlineQueue": "Offline · {n} waiting to send",
   "misc.updatedAgo": "Updated {relativeTime}",
   "misc.joinTagline": "One card for every shop on your street.",
-  "misc.freeForever": "Free forever · No transaction fees · Unlimited locations",
+  "misc.freeForever": "Free forever · No subscription, no fee on loyalty · Unlimited locations",
   "misc.pharmacyRule": "Prescriptions and pharmacy services don't earn points, as Ontario rules require.",
 } as const;
 

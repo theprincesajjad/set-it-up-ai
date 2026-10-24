@@ -326,17 +326,38 @@ export interface ReferralResponse {
   stats: { invited: number; rewarded: number };
 }
 
-/** GET /v1/me/export — everything we hold about the signed-in customer (PIPEDA access request). */
-export interface DataExportResponse {
+/** The per-feature half of the export. Rows are the customer's own; tokens and secrets are left out. */
+export interface DataExportModules {
+  orders: unknown[];
+  appointments: unknown[];
+  bookings: unknown[];
+  rebookingNudges: unknown[];
+  tiffinSubscriptions: unknown[];
+  cateringEvents: unknown[];
+  hallBookings: unknown[];
+  manualPayments: unknown[];
+  whatsapp: { sessions: unknown[]; messages: unknown[] };
+  phoneCalls: unknown[];
+  reviews: unknown[];
+  serviceTickets: unknown[];
+  waitlist: unknown[];
+  notificationPrefs: unknown[];
+  notifications: unknown[];
+  walletPasses: unknown[];
+  doNotContact: unknown[];
+}
+
+/** GET /v1/me/export: everything we hold about the signed-in customer, every module (PIPEDA access request, Law 25 portability). */
+export interface DataExportResponse extends DataExportModules {
   exportedAt: string;
   profile: ProfileDto;
   memberships: (MembershipDto & { transactions: LedgerTxDto[]; redemptions: RedemptionDto[] })[];
+  /** What the customer agreed to, per shop: the exact wording, when and how. */
+  consents: { merchantId: string; merchantName: string; text: string | null; at: string | null; source: string | null; muted: boolean }[];
   visits: { merchantId: string; locationId: string | null; amountCents: number | null; createdAt: string }[];
   referrals: { merchantId: string; code: string; role: "referrer" | "referee"; status: string; createdAt: string }[];
   pushTokens: { platform: string; createdAt: string }[];
   sessions: { userAgent: string | null; createdAt: string; expiresAt: string; revoked: boolean }[];
-  orders: unknown[];
-  serviceTickets: unknown[];
   invoices: unknown[];
   messages: { merchantId: string | null; channel: string; kind: string; body: string; createdAt: string }[];
 }

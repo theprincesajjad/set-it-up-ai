@@ -19,6 +19,7 @@ import { getMerchantFeatures } from "./features.js";
 import { localDate, reserveSmsCredits, smsAllowance } from "./messaging.js";
 import { messageDeliveries } from "@ll/db";
 import { inQuietHours } from "./notifications.js";
+import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
 const DAY_MS = 86_400_000;
@@ -93,6 +94,8 @@ export async function rebookingCandidates(ctx: AppContext, merchant: Merchant): 
   const member = new Map(members.map((m) => [m.userId, m]));
   const hasPush = new Set(tokens.map((x) => x.userId));
   const hasFuture = new Set(future.map((f) => f.userId));
+  // A number that replied STOP to any text is off the list, whatever the consent record says.
+  const stopped = await optedOutSet(ctx.db, people.map((p) => p.phone), "sms");
 
   const out: Candidate[] = [];
   for (const v of last.values()) {
@@ -126,7 +129,7 @@ export async function rebookingCandidates(ctx: AppContext, merchant: Merchant): 
       daysLate,
       state: snooze ? "snoozed" : daysLate > 0 ? "late" : "due",
       channel,
-      canSend: consented && (channel === "push" || !!u.phone),
+      canSend: consented && (channel === "push" || (!!u.phone && !isSuppressed(stopped, u.phone))),
       memberId: m?.id ?? null,
     });
   }
@@ -216,7 +219,11 @@ async function deliverNudge(ctx: AppContext, merchant: Merchant, c: Candidate, o
     let providerId: string | null = null;
     let error: string | null = null;
     try {
-      providerId = (await ctx.providers.sms.send(u!.phone!, body)).id;
+      const r = await sendSms(ctx, u!.phone!, body);
+      if (!r) {
+        status = "skipped";
+        error = "opted_out";
+      } else providerId = r.id;
     } catch (err) {
       status = "failed";
       error = err instanceof Error ? err.message.slice(0, 500) : "send failed";

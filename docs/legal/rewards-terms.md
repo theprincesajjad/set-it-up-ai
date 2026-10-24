@@ -52,7 +52,6 @@ Local Loyalty will not change the value of Network Rewards you already hold.
 
 - **The merchant leaves Local Loyalty.** It must keep honouring your points for at least **[60] days** after you are notified. Your balance and the last day to redeem are shown in the app, and we send you a reminder.
 - **The merchant closes permanently without notice.** We will tell you as soon as we know. We cannot guarantee value issued by a closed business.
-  - Counsel: decide whether the platform offers goodwill conversion, for example converting balances above [X] points into Network Rewards at [rate]. It is recommended for trust but carries cost. Model cost: not included.
 - **Network Rewards** are unaffected; use them at any other participating shop.
 
 ## 7. If Local Loyalty shuts down
@@ -74,14 +73,3 @@ You can close your account at any time. We show your balances first so you can r
 ## 10. Questions and complaints
 
 Ask the shop, or contact [support email]. We aim to resolve points disputes within **10 business days**. If a merchant refuses a valid redemption, tell us; we will follow up with the merchant, and we track this as part of merchant compliance.
-
-*Counsel checklist:*
-
-- Ontario CPA rules on rewards-point expiry, including treatment under the Consumer Protection Act, 2023 once it is in force;
-- the gift-card regulation, which does not apply because points cannot be purchased; confirm;
-- whether a negative balance is permissible;
-- goodwill conversion on merchant closure;
-- the Quebec version;
-- consistency with OCP and AGCO restrictions.
-
-*Finance note:* the model books platform-funded Network Rewards at **earn × expected redemption** (assumption: 60%). Merchant-issued points are a merchant liability and never appear on our balance sheet. Report the outstanding Network Rewards liability monthly.

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ADD_ONS, ADD_ON_IDS, FEES, FREE_FOREVER, FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS, legalTokens } from "@ll/shared";
+import { ADD_ONS, ADD_ON_IDS, FEES, FREE_FOREVER, FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS, RETENTION, legalTokens } from "@ll/shared";
 import { LEGAL_DOCS, renderLegalMarkdown } from "../src/lib/legal";
 
 const DIR = path.resolve(__dirname, "../../../docs/legal");
@@ -85,5 +85,43 @@ describe("privacy policy", () => {
     for (const w of ["Appointments", "Tiffin", "driver link", "Catering", "Review", "WhatsApp", "transcript", "photos", "Allergy", "halal", "Stripe", "Twilio", "Meta WhatsApp Cloud API", "Resend", "Expo", "Law 25", "CASL", "STOP", "Retention"]) {
       expect(md.toLowerCase(), w).toContain(w.toLowerCase());
     }
+  });
+});
+
+describe("privacy policy retention and deletion text match the code", () => {
+  const md = rendered("privacy");
+  it("prints every retention period from the shared RETENTION config", () => {
+    const t = legalTokens();
+    for (const k of ["phoneTranscriptDays", "whatsappMessageDays", "repairPhotoMonths", "reviewFeedbackMonths", "tiffinAddressMonths", "appointmentMonths", "allergyNoteDays", "driverLinkDays", "abandonedHoldDays"] as const) {
+      expect(raw("privacy"), k).toContain(`{{retention.${k}}}`);
+      expect(md, k).toContain(t[`retention.${k}`]!);
+    }
+    expect(t["retention.phoneTranscriptDays"]).toBe(`${RETENTION.phoneTranscriptDays} days`);
+  });
+  it("has no bracketed target periods and no engineering notes left", () => {
+    for (const bad of ["[90 days]", "[24 months]", "[12 months]", "these periods are targets", "not yet built", "Counsel and engineering", "confirm that deletion also reaches"]) expect(md, bad).not.toContain(bad);
+  });
+  it("says deletion reaches the newer records and that a STOP entry is kept", () => {
+    for (const w of ["appointment notes", "tiffin addresses", "WhatsApp chats", "phone transcripts", "review comments", "quote signatures", "wait-list entries", "referral links", "wallet passes", "push tokens", "replied STOP"]) expect(md.toLowerCase(), w).toContain(w.toLowerCase());
+  });
+});
+
+describe("rewards terms: nothing internal on the public page", () => {
+  const md = rendered("rewards");
+  it("has no finance, counsel or model notes", () => {
+    for (const bad of ["Finance note", "Counsel:", "Counsel checklist", "counsel", "Model cost", "expected redemption", "balance sheet", "assumption"]) expect(md.toLowerCase(), bad).not.toContain(bad.toLowerCase());
+  });
+  it("the removed notes are kept for counsel in docs/legal/counsel-notes.md", () => {
+    const notes = readFileSync(path.join(DIR, "counsel-notes.md"), "utf8");
+    expect(notes).toContain("Finance note");
+    expect(notes).toContain("goodwill conversion");
+  });
+});
+
+describe("merchant agreement: the export promise is the one the product keeps", () => {
+  it("prints the window from RETENTION.leaverExportDays", () => {
+    expect(raw("merchants")).toContain("{{retention.leaverExportDays}}");
+    expect(rendered("merchants")).toContain(`${RETENTION.leaverExportDays} days`);
+    expect(rendered("merchants")).not.toContain("[90] days");
   });
 });

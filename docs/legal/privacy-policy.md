@@ -129,7 +129,7 @@ Some are located in, or may process data in, the **United States** or other coun
 - **Mute a shop**, or **leave a shop's program**. Your points at that shop stay unless you close your account.
 - **Location:** turn it off in device settings.
 - **Access and correction:** see and edit your profile in the app, or ask us. We respond within **30 days**.
-- **Export and deletion:** download your data or delete your account in settings. Deleting your account removes your name, phone, email, birthday, postal code and consent records from your profile and signs you out everywhere. Some records, such as payment and tax records, orders a shop must keep for its own books, and fraud logs, are kept as long as the law requires. [Counsel and engineering: confirm that deletion also reaches the newer records listed in section 2, such as addresses, transcripts and WhatsApp messages, before this sentence is published.]
+- **Export and deletion:** download your data from settings (a JSON file with your profile, every shop's activity and everything you gave a feature: orders, appointments, tickets, tiffin, catering, WhatsApp, review feedback, wait lists, consents and more), or delete your account there. Deleting your account removes your name, phone, email, birthday, postal code and consent records, signs you out everywhere, and clears what you gave each feature: order and allergy notes, appointment notes, tiffin addresses and notes, catering and hall event details and signatures, WhatsApp chats, phone transcripts, review comments, repair details, photos and quote signatures, wait-list entries, referral links, wallet passes and push tokens. Records the law or accounting needs, such as paid invoices, charges and deposits, stay with only amounts and dates and no longer identify you; fraud logs are kept as long as the law requires. We keep one entry for a number that replied STOP, so we never message it again.
 - **Withdraw consent** at any time, subject to legal or contractual limits. We will explain what that means for the Service.
 
 ## 6. Retention
@@ -138,14 +138,16 @@ Some are located in, or may process data in, the **United States** or other coun
 - If an account has been inactive for **[3] years**, we notify you and then delete or anonymize personal information. Before that, we give you the chance to redeem or keep your points.
   - Counsel: reconcile this with points that never expire, for example by keeping a minimal balance record.
 - Consent records are kept for at least [3] years after the relationship ends. Transaction records are kept as required for tax purposes ([6] years).
-- **Phone-call transcripts and WhatsApp messages:** kept for [90 days] after the order is confirmed or dismissed, then deleted or anonymized, except the order itself.
-- **Repair photos and ticket records:** kept for the life of the ticket and [24 months] after it closes (the warranty and dispute period), then deleted.
-- **Allergy and dietary notes** on an order or subscription are kept with that order or subscription only.
-- **Review feedback** is kept for [24 months].
-- **Tiffin addresses and driver links:** a driver link stops working the same night. Your address is kept while your subscription is active and for [12 months] after it ends.
+- **Phone-call transcripts:** kept for {{retention.phoneTranscriptDays}} after the call, then deleted, together with the order text we drafted from it and the caller's number. The confirmed order itself stays.
+- **WhatsApp messages:** message text is deleted {{retention.whatsappMessageDays}} after it was sent. Carts and allergy notes on a chat that has gone quiet are cleared at the same time.
+- **Repair photos and ticket records:** kept for the life of the ticket and {{retention.repairPhotoMonths}} after it closes (picked up or cancelled, the warranty and dispute period). Then the photos (the files and the links), item details, notes and the quote signature record are deleted. Quote and invoice amounts stay for the shop's accounts.
+- **Allergy and dietary notes:** an allergy note on an order is cleared {{retention.allergyNoteDays}} after the order is picked up or cancelled. Dietary notes on a tiffin subscription follow the tiffin rule below. Allergy and dietary notes are not used for marketing or analytics.
+- **Review feedback** (your private comment and the shop's reply) is deleted {{retention.reviewFeedbackMonths}} after it was given. The star rating stays and does not identify you.
+- **Tiffin addresses and driver links:** a driver link stops working the same night and its record is deleted after {{retention.driverLinkDays}}. Your address, postal code and delivery and dietary notes are kept while your subscription is active and for {{retention.tiffinAddressMonths}} after it ends.
 - **Location:** we do not keep a location history.
-- **Appointments** are kept for [24 months] after the visit.
-- Counsel and engineering: these periods are targets. Automatic deletion for transcripts, messages, photos and feedback is not yet built; set the periods and build the deletion before this policy is published.
+- **Appointments:** notes and the name typed at the desk are deleted {{retention.appointmentMonths}} after the visit. The booking and its payment record stay.
+- **Unpaid holds:** a booking or hall hold that lapsed without payment is deleted {{retention.abandonedHoldDays}} later.
+- These deletions run automatically, several times a day.
 
 ## 7. Security
 

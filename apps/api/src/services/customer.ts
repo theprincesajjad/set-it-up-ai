@@ -53,6 +53,8 @@ import {
   terminologyOf,
   vipDto,
 } from "./serializers.js";
+import { moduleExport } from "./data-export.js";
+import { deleteStoredPhotos, scrubCustomerData } from "./privacy-scrub.js";
 
 type Member = typeof merchantMembers.$inferSelect;
 type Merchant = typeof merchants.$inferSelect;
@@ -151,7 +153,11 @@ export async function updateProfile(ctx: AppContext, userId: string, body: custo
 export async function deleteAccount(ctx: AppContext, userId: string): Promise<void> {
   const u = await loadActiveUser(ctx.db, userId);
   const now = ctx.now();
+  let photoUrls: string[] = [];
   await ctx.db.transaction(async (tx) => {
+    // Every newer module first (it needs the phone number the account still has), then the profile itself.
+    const scrubbed = await scrubCustomerData(tx, u.id, u.phone, now);
+    photoUrls = scrubbed.photoUrls;
     const targets = [u.phone, u.email?.toLowerCase()].filter((t): t is string => !!t);
     if (targets.length) await tx.delete(otpCodes).where(inArray(otpCodes.target, targets));
     await tx
@@ -179,8 +185,10 @@ export async function deleteAccount(ctx: AppContext, userId: string): Promise<vo
     await tx.delete(sessions).where(eq(sessions.userId, u.id));
     await tx.delete(pushTokens).where(eq(pushTokens.userId, u.id));
     await tx.delete(walletPasses).where(eq(walletPasses.userId, u.id));
-    await tx.insert(auditLogs).values({ actorUserId: u.id, action: "user.deleted", entity: "user", entityId: u.id, createdAt: now });
+    await tx.insert(auditLogs).values({ actorUserId: u.id, action: "user.deleted", entity: "user", entityId: u.id, data: { scrubbed: scrubbed.report }, createdAt: now });
   });
+  // The files can only go once the rows that point at them are gone for good.
+  await deleteStoredPhotos(ctx, photoUrls);
 }
 
 // ---------------------------------------------------------------------------
@@ -623,7 +631,7 @@ export async function exportData(ctx: AppContext, userId: string): Promise<custo
   const memberIds = rows.map((r) => r.member.id);
   const rs = await activeRewardsByMerchant(ctx.db, rows.map((r) => r.merchant.id));
   const none = sql`false`;
-  const [txs, reds, vis, refs, tokens, sess, ords, tickets, invs, msgs] = await Promise.all([
+  const [txs, reds, vis, refs, tokens, sess, invs, msgs, modules] = await Promise.all([
     memberIds.length ? ctx.db.select().from(ledgerTransactions).where(inArray(ledgerTransactions.memberId, memberIds)).orderBy(ledgerTransactions.createdAt) : [],
     memberIds.length
       ? ctx.db.select({ r: redemptions, rewardName: rewards.name }).from(redemptions).innerJoin(rewards, eq(rewards.id, redemptions.rewardId)).where(inArray(redemptions.memberId, memberIds))
@@ -635,10 +643,9 @@ export async function exportData(ctx: AppContext, userId: string): Promise<custo
       .where(or(eq(referrals.refereeUserId, userId), memberIds.length ? inArray(referrals.referrerMemberId, memberIds) : none)),
     ctx.db.select().from(pushTokens).where(eq(pushTokens.userId, userId)),
     ctx.db.select().from(sessions).where(eq(sessions.userId, userId)),
-    ctx.db.select().from(orders).where(eq(orders.userId, userId)),
-    ctx.db.select().from(serviceTickets).where(eq(serviceTickets.userId, userId)),
     ctx.db.select().from(invoices).where(eq(invoices.userId, userId)),
     ctx.db.select().from(messageDeliveries).where(eq(messageDeliveries.userId, userId)),
+    moduleExport(ctx, userId, profile.phone ?? null),
   ]);
   const memberSet = new Set(memberIds);
   return {
@@ -660,8 +667,8 @@ export async function exportData(ctx: AppContext, userId: string): Promise<custo
     })),
     pushTokens: tokens.map((t) => ({ platform: t.platform, createdAt: t.createdAt.toISOString() })),
     sessions: sess.map((s) => ({ userAgent: s.userAgent ?? null, createdAt: s.createdAt.toISOString(), expiresAt: s.expiresAt.toISOString(), revoked: !!s.revokedAt })),
-    orders: ords,
-    serviceTickets: tickets,
+    ...modules,
+    consents: rows.map((r) => ({ merchantId: r.merchant.id, merchantName: r.merchant.name, text: r.member.marketingConsentText ?? null, at: iso(r.member.marketingConsentAt), source: r.member.marketingConsentSource ?? null, muted: r.member.muted })),
     invoices: invs.map(({ payToken: _t, ...rest }) => rest),
     messages: msgs.map((m) => ({ merchantId: m.merchantId ?? null, channel: m.channel, kind: m.kind, body: m.body, createdAt: m.createdAt.toISOString() })),
   };

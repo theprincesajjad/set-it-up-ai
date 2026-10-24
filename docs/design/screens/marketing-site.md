@@ -13,7 +13,7 @@ Pages: `/` (merchants), `/shoppers`, `/bia`, `/pricing`, `/neighbourhoods` (wher
 1. **Hero:** left: overline "FOR INDEPENDENT SHOPS IN TORONTO", `hero` Fraunces 56 "Your regulars
    already walk this street.", body-lg "A free loyalty program for your shop, shared with every
    shop on your block. We set it up for you in 20 minutes." Primary lg "Get started free", secondary
-   "Book a 20-minute visit". Trust line `caption`: "Free forever · No transaction fees · Unlimited
+   "Book a 20-minute visit". Trust line `caption`: "Free forever · No fee on loyalty · Unlimited
    locations". Right: photo of an owner at the counter with the QR stand visible, and a floating
    phone showing the counter success card ("Added 1 stamp · 9 / 10").
 2. **Three-up "How it works":** 1. "We set you up" (rep visit, template for your type of shop). 2.
@@ -59,7 +59,7 @@ Pages: `/` (merchants), `/shoppers`, `/bia`, `/pricing`, `/neighbourhoods` (wher
 
 ## 4. `/pricing`
 
-Above the fold, centred: `display` "Free forever. No transaction fees. Unlimited locations." Sub:
+Above the fold, centred: `display` "Free forever. No fee on loyalty. Unlimited locations." Sub:
 "Every loyalty feature, for every shop. Paid tools come later, and only if you want them."
 
 Plan cards (3 columns lg, stacked mobile, Free first and visually primary):

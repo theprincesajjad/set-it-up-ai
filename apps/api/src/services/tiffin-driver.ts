@@ -17,6 +17,7 @@ import { inQuietHours } from "./notifications.js";
 import { addDays, localInstant, manifest, setDeliveryStatus, todayOf } from "./tiffin.js";
 import { normalizePhone } from "./channel-orders.js";
 import { sendWhatsApp } from "./whatsapp.js";
+import { sendSms } from "./opt-out.js";
 
 type Link = typeof tiffinDriverLinks.$inferSelect;
 const LATE_GAP_MS = 15 * 60_000;
@@ -82,7 +83,10 @@ export async function sendDriverLinks(ctx: AppContext, staff: StaffContext, body
       const r = await sendWhatsApp(ctx, staff.merchant, phone, { text });
       if (r.sent) channel = "whatsapp";
     }
-    if (channel === "sms") await ctx.providers.sms.send(phone, text);
+    if (channel === "sms" && !(await sendSms(ctx, phone, text))) {
+      out.skipped.push({ routeId, reason: "opted_out" });
+      continue;
+    }
     out.sent.push({ routeId, to: phone, channel });
   }
   return out;

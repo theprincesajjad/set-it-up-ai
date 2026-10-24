@@ -1,6 +1,6 @@
 import { Check, Minus } from "lucide-react";
 import Link from "next/link";
-import { FEATURES, FEATURE_KEYS, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FEES, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -67,6 +67,7 @@ export function FreeCard() {
         <span className="text-body text-fg-muted">forever</span>
       </p>
       <p className="mt-3 text-body text-fg">{P.freeLead}</p>
+      <p className="mt-2 text-meta text-fg-muted">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
       <Button href="/signup" fullWidth size="lg" className="mt-6">
         Get started free
       </Button>
