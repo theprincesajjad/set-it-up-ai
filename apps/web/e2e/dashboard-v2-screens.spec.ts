@@ -69,9 +69,9 @@ for (const width of [1440, 390]) {
         await expect(p.getByRole("dialog", { name: "Customer" }).getByRole("heading", { name: "Recent" })).toBeVisible();
       }, false);
       await shoot(page, "06-counter-member", `${m}/counter`, width, async (p) => {
-        await p.getByLabel("Phone, last 4 digits or member code").fill("1034");
-        await p.keyboard.press("Enter");
-        await expect(p.getByRole("heading", { name: "Emma Wong" })).toBeVisible();
+        for (const d of "1034") await p.getByRole("group", { name: "Keypad" }).getByRole("button", { name: d, exact: true }).click();
+        // Stamped on the 1440 run; at 390 the cooldown message shows instead.
+        await expect(p.getByRole("heading", { name: "Emma Wong" }).or(p.getByText(/already got stamps for this visit/))).toBeVisible();
       });
       if (mobile) await shoot(page, "16-menu", m, width, async (p) => p.getByRole("button", { name: "Open menu" }).click(), false);
       else await shoot(page, "16-search", m, width, async (p) => {

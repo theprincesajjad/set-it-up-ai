@@ -143,6 +143,7 @@ describe("public member counts and customer features", () => {
       banquet: false,
       whatsapp: false,
       dietaryTags: false,
+      appointments: false,
     });
     let list = (await call("GET", "/v1/network/shops")).json();
     expect(list.items[0].memberCount).toBeNull();
@@ -174,6 +175,7 @@ describe("public member counts and customer features", () => {
       banquet: false,
       whatsapp: false,
       dietaryTags: false,
+      appointments: false,
     });
   });
 });
