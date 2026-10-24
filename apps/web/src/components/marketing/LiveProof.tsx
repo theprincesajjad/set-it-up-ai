@@ -17,18 +17,27 @@ export function liveProofStats(n: { activeMerchants: number; liveStreets: number
 
 /**
  * Live counts from GET /v1/public/plans, shown under the router. Real numbers only: it renders nothing while the
- * network has fewer than 10 shops, and nothing when the API is unreachable.
+ * network has fewer than 10 shops, and nothing when the API is unreachable. The page is statically rendered and
+ * re-generated every 5 minutes (`revalidate` on the page and on the API call), so the counts can trail by that long; the
+ * data-* attributes carry the values this render was made from.
  */
 export async function LiveProof() {
-  let stats: ReturnType<typeof liveProofStats> = null;
+  let network: Awaited<ReturnType<ReturnType<typeof publicServerApi>["public"]["plans"]>>["network"] | null = null;
   try {
-    stats = liveProofStats((await publicServerApi().public.plans()).network);
+    network = (await publicServerApi().public.plans()).network;
   } catch {
-    stats = null;
+    network = null;
   }
-  if (!stats) return null;
+  const stats = liveProofStats(network);
+  if (!stats || !network) return null;
   return (
-    <section aria-label="The network today" className="bg-bg-subtle py-10 md:py-14">
+    <section
+      aria-label="The network today"
+      className="bg-bg-subtle py-10 md:py-14"
+      data-shops={network.activeMerchants}
+      data-streets={network.liveStreets}
+      data-multi-pct={network.multiShopMemberPct}
+    >
       <div className="mx-auto max-w-[1200px] px-4 md:px-8">
         <dl className="grid gap-8 md:grid-cols-3">
           {stats.map((s) => (

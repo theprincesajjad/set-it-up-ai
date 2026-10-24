@@ -4,6 +4,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useState } from "react";
 import { copy } from "@/copy/en-CA";
+import { stripeAppearance } from "@/lib/stripeAppearance";
 import { formatMoney } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -57,7 +58,7 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
 
 export default function StripePayment({ publishableKey, clientSecret, ...rest }: StripePaymentProps) {
   return (
-    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: { theme: "stripe", variables: { colorPrimary: "#0B0B0C", colorText: "#0B0B0C", colorTextSecondary: "#6B6B70", borderRadius: "10px", fontFamily: "Inter, system-ui, sans-serif" } } }}>
+    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: stripeAppearance() }}>
       <Form {...rest} />
     </Elements>
   );

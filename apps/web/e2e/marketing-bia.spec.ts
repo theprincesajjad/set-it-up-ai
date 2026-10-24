@@ -91,15 +91,24 @@ test.describe("landing", () => {
   });
 
   test("live proof shows the network's real counts", async ({ page }) => {
+    // The home page is statically rendered and regenerated every 5 minutes, so it can trail the API. Compare what it
+    // prints with the values it was rendered from (data-*), and check those against the API as of now: the suite
+    // only ever adds shops and streets, so a render can be behind but never ahead.
     const plans = (await call<{ network: { activeMerchants: number; liveStreets: number; multiShopMemberPct: number } }>("GET", "/v1/public/plans")).json.network;
     await page.goto("/");
     const strip = page.getByRole("region", { name: "The network today" });
-    if (plans.activeMerchants < 10) await expect(strip).toHaveCount(0);
-    else {
-      await expect(strip).toContainText(String(plans.activeMerchants));
-      await expect(strip).toContainText(`${plans.multiShopMemberPct}%`);
-      await expect(strip).toContainText(String(plans.liveStreets));
+    if (plans.activeMerchants < 10) {
+      await expect(strip).toHaveCount(0);
+      return;
     }
+    await expect(strip, "rendered before the network reached 10 shops: rebuild the web app after seeding").toHaveCount(1);
+    const n = await strip.evaluate((e) => ({ shops: Number(e.getAttribute("data-shops")), streets: Number(e.getAttribute("data-streets")), multi: Number(e.getAttribute("data-multi-pct")) }));
+    expect(n.shops).toBeGreaterThanOrEqual(10);
+    expect(n.shops).toBeLessThanOrEqual(plans.activeMerchants);
+    expect(n.streets).toBeLessThanOrEqual(plans.liveStreets);
+    await expect(strip).toContainText(n.shops.toLocaleString("en-CA"));
+    await expect(strip).toContainText(n.streets.toLocaleString("en-CA"));
+    await expect(strip).toContainText(`${Number.isInteger(n.multi) ? n.multi : n.multi.toFixed(1)}%`);
   });
 
   for (const [name, width] of [["390", 390], ["1440", 1440]] as const) {
@@ -241,6 +250,38 @@ test.describe("for restaurants", () => {
     await form.getByLabel("Restaurant").fill("No Phone Kitchen");
     await form.getByRole("button", { name: "Book my visit" }).click();
     await expect(form.getByText("Enter a 10-digit mobile number.")).toBeVisible();
+  });
+});
+
+test.describe("marketing language scope", () => {
+  // docs/research/landing-and-network.md 7.3: the marketing site is English; only /for-restaurants has translated content.
+  for (const path of ["/", "/pricing", "/for-bias"]) {
+    test(`${path} stays English with ?lang= and a saved language, and shows no language switcher or lang link`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: "ll_lang", value: "ur", url: baseURL! }]);
+      const english = await (async () => {
+        await page.goto(path);
+        return page.getByRole("heading", { level: 1 }).innerText();
+      })();
+      await page.goto(`${path}?lang=hi`);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(english);
+      expect(await page.evaluate(() => document.documentElement.lang)).toBe("en-CA");
+      await expect(page.getByRole("banner").getByText("Language", { exact: false })).toHaveCount(0);
+      await expect(page.locator('a[href*="lang="]')).toHaveCount(0);
+      await expect(page.locator('[dir="rtl"]')).toHaveCount(0);
+      await expect(page.getByRole("banner").getByRole("link", { name: "Log in" })).toBeVisible();
+    });
+  }
+
+  test("/for-restaurants works in all four languages with a switcher that links to each", async ({ page }) => {
+    const h1 = { en: "keep the whole order.", hi: "पूरा ऑर्डर अपने पास रखिए।", ur: "پورا آرڈر اپنے پاس رکھیں۔", pa: "ਪੂਰਾ ਆਰਡਰ ਆਪਣੇ ਕੋਲ ਰੱਖੋ।" } as const;
+    for (const [code, title] of Object.entries(h1)) {
+      await page.goto(`/for-restaurants?lang=${code}`);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
+      const rtl = code === "ur";
+      expect(await page.getByRole("heading", { level: 1 }).evaluate((e) => e.closest("[dir]")?.getAttribute("dir") ?? "ltr")).toBe(rtl ? "rtl" : "ltr");
+      const links = page.locator('header a[href^="/for-restaurants?lang="]');
+      expect(await links.evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute("href")))].sort())).toEqual(["/for-restaurants?lang=en", "/for-restaurants?lang=hi", "/for-restaurants?lang=pa", "/for-restaurants?lang=ur"]);
+    }
   });
 });
 

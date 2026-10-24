@@ -47,6 +47,20 @@ export function sniffImage(body: Buffer): string | null {
   return null;
 }
 
+/** Path (no origin) at which the API serves an upload. Stored values use this form so they survive a change of API host or port. */
+export const UPLOAD_PATH = "/v1/public/uploads/";
+
+/** Store form: our own origin is dropped from an upload URL; anything else (a hosted store's CDN URL) is kept as given. */
+export function toStoredUploadUrl(url: string, publicApiUrl: string): string {
+  const base = publicApiUrl.replace(/\/+$/, "");
+  return url.startsWith(`${base}${UPLOAD_PATH}`) ? url.slice(base.length) : url;
+}
+
+/** Read form: a stored relative upload path becomes an absolute URL on the API's public origin. */
+export function resolveUploadUrl(url: string, publicApiUrl: string): string {
+  return url.startsWith(UPLOAD_PATH) ? `${publicApiUrl.replace(/\/+$/, "")}${url}` : url;
+}
+
 function newKey(merchantId: string, contentType: string): string {
   return `${merchantId}/${randomBytes(16).toString("hex")}.${IMAGE_TYPES[contentType] ?? "bin"}`;
 }

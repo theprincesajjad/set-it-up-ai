@@ -83,7 +83,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/tickets", async (req) => {
     const staff = await staffFor(req, "staff", ["service.tickets"]);
     const q = parse(serviceApi.listTicketsQuery, req.query);
-    return ticketsSvc.listTickets(ctx.db, staff.merchant, q, { now: ctx.now, publicWebUrl: ctx.config.publicWebUrl });
+    return ticketsSvc.listTickets(ctx.db, staff.merchant, q, { now: ctx.now, publicWebUrl: ctx.config.publicWebUrl, publicApiUrl: ctx.config.publicApiUrl });
   });
 
   app.get<{ Params: TicketParams }>("/merchants/:merchantId/tickets/:ticketId", async (req) => {
@@ -227,7 +227,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get("/me/tickets", async (req) => {
     const user = requireUser(req);
     const q = parse(paginationQuery, req.query);
-    return ticketsSvc.listMyTickets(ctx.db, user.id, q);
+    return ticketsSvc.listMyTickets(ctx.db, user.id, q, ctx.config.publicApiUrl);
   });
 
   app.get<{ Params: { ticketId: string } }>("/me/tickets/:ticketId", async (req) => {

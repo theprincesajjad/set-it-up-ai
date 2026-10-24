@@ -46,6 +46,8 @@ import {
   tiffinCharges,
 } from "@ll/db";
 import { DEMO_CREDENTIALS, seedDemo } from "../src/seed.js";
+import { resolveUploadUrl, toStoredUploadUrl } from "../src/providers/storage.js";
+import { campaignProgress, campaigns, neighbourhoodManagers } from "@ll/db";
 import { ledgerBalance } from "../src/services/ledger.js";
 import { createTestEnv, type TestEnv } from "./helpers.js";
 
@@ -179,6 +181,47 @@ describe("core modules on the pilot shops", () => {
     expect(new Set(qs.map((q) => q.status))).toEqual(new Set(["sent", "approved", "declined"]));
     const inv = await env.db.select().from(invoices).where(eq(invoices.merchantId, id));
     expect(new Set(inv.map((i) => i.status))).toEqual(new Set(["open", "paid"]));
+  });
+
+  it("ticket photos are stored as relative upload paths and resolve to the API's public URL when read", async () => {
+    const id = await slugToId("fix-it-phone-lab");
+    const ts = await env.db.select().from(serviceTickets).where(eq(serviceTickets.merchantId, id));
+    const photos = ts.flatMap((t) => t.photos);
+    expect(photos.length).toBeGreaterThanOrEqual(5);
+    for (const p of photos) expect(p).toMatch(/^\/v1\/public\/uploads\/[0-9a-f-]{36}\/[0-9a-f]{32}\.png$/);
+    const login = await env.app.inject({ method: "POST", url: "/v1/auth/login", payload: { email: DEMO_CREDENTIALS.ownerEmail("fix-it-phone-lab"), password: DEMO_CREDENTIALS.ownerPassword } });
+    const headers = { authorization: `Bearer ${login.json().accessToken}` };
+    const list = await env.app.inject({ method: "GET", url: `/v1/merchants/${id}/tickets?limit=100`, headers });
+    const shown: string[] = list.json().items.flatMap((t: { photos: string[] }) => t.photos);
+    expect(shown.length).toBe(photos.length);
+    for (const u of shown) expect(u.startsWith(`${env.ctx.config.publicApiUrl}/v1/public/uploads/`)).toBe(true);
+  });
+
+  it("upload URLs follow the API origin: stripped on write, resolved on read, foreign URLs left alone", () => {
+    expect(toStoredUploadUrl("http://localhost:4000/v1/public/uploads/a/b.png", "http://localhost:4000/")).toBe("/v1/public/uploads/a/b.png");
+    expect(toStoredUploadUrl("https://cdn.example.com/x.png", "http://localhost:4000")).toBe("https://cdn.example.com/x.png");
+    expect(resolveUploadUrl("/v1/public/uploads/a/b.png", "http://localhost:4530/")).toBe("http://localhost:4530/v1/public/uploads/a/b.png");
+    expect(resolveUploadUrl("https://cdn.example.com/x.png", "http://localhost:4530")).toBe("https://cdn.example.com/x.png");
+  });
+
+  it("the BIA demo login manages Roncesvalles with campaigns in every state", async () => {
+    expect(DEMO_CREDENTIALS.bia).toEqual({ email: "bia+roncesvalles@example.com", password: "localloyalty-demo" });
+    const login = await env.app.inject({ method: "POST", url: "/v1/auth/login", payload: DEMO_CREDENTIALS.bia });
+    expect(login.statusCode).toBe(200);
+    const headers = { authorization: `Bearer ${login.json().accessToken}` };
+    const [hood] = await env.db.select().from(neighbourhoods).where(eq(neighbourhoods.slug, "roncesvalles"));
+    const mgr = await env.db.select().from(neighbourhoodManagers).where(eq(neighbourhoodManagers.neighbourhoodId, hood!.id));
+    expect(mgr).toHaveLength(1);
+    const mine = await env.app.inject({ method: "GET", url: "/v1/campaigns", headers });
+    expect(mine.statusCode).toBe(200);
+    const items = mine.json().items as { name: string; status: string; merchants: unknown[] }[];
+    expect(items.map((c) => c.status).sort()).toEqual(["draft", "ended", "live", "scheduled"]);
+    for (const c of items) expect(c.merchants.length).toBeGreaterThanOrEqual(3);
+    const rows = await env.db.select().from(campaigns).where(eq(campaigns.neighbourhoodId, hood!.id));
+    const ended = rows.find((c) => c.status === "ended")!;
+    expect(ended.winnerUserId).toBeTruthy();
+    expect(await count(campaignProgress, eq(campaignProgress.campaignId, ended.id))).toBeGreaterThanOrEqual(20);
+    expect(login.json().user?.platformRole).toBe("none");
   });
 
   it("hearth & crumb runs a draft, a live and an ended ad with delivery numbers", async () => {

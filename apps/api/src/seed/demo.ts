@@ -37,6 +37,7 @@ import { createProviders } from "../providers/index.js";
 import { awardPurchase, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { CORE_SHOP_FEATURES, seedCoreModules } from "./core.js";
+import { BIA_DEMO, seedBiaDemo } from "./bia.js";
 import { seedServiceOps } from "./serviceOps.js";
 import { seedAppointmentSalons } from "./appointments.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
@@ -50,6 +51,8 @@ export const DEMO_CREDENTIALS = {
   ownerPassword: "localloyalty-demo",
   ownerEmail: (slug: string) => `owner+${slug}@example.com`,
   staffPin: "1234",
+  /** BIA console login for the Roncesvalles neighbourhood (manager of its campaigns). */
+  bia: { email: BIA_DEMO.email(BIA_DEMO.hood), password: BIA_DEMO.password },
 } as const;
 
 export interface SeedOptions {
@@ -118,6 +121,7 @@ function credentialsList(): SeedResult["credentials"] {
   return [
     { role: "admin", email: DEMO_CREDENTIALS.admin.email, password: DEMO_CREDENTIALS.admin.password },
     { role: "rep", email: DEMO_CREDENTIALS.rep.email, password: DEMO_CREDENTIALS.rep.password },
+    { role: "bia", email: DEMO_CREDENTIALS.bia.email, password: DEMO_CREDENTIALS.bia.password, merchant: "Roncesvalles Village BIA" },
     ...MERCHANTS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: m.name })),
     ...RESTAURANT_SHOPS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: `${m.name} (${m.tier ? `restaurant ${m.tier}` : "network shop"})` })),
   ];
@@ -139,6 +143,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     await seedRestaurantCorridor(db, { config: opts.config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
     await seedAppointmentSalons(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedServiceOps(db, { log });
+    await seedBiaDemo(db, { log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
@@ -418,6 +423,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   clock.now = new Date();
   await seedAppointmentSalons(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedServiceOps(db, { log });
+  await seedBiaDemo(db, { log });
   clock.now = new Date();
 
   return {

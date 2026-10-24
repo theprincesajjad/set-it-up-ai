@@ -155,7 +155,7 @@ await step("customer-sign-in", async () => {
   custState = await customer.context.storageState();
 });
 
-const walletReady = (page) => page.getByText(/^(ready now|earning|your shops)$/).first().waitFor();
+const walletReady = (page) => page.getByText(/^(reward ready|ready now|earning|your shops)$/i).first().waitFor();
 
 await step("wallet", async () => {
   await cp.goto(`${WEB}/wallet`);

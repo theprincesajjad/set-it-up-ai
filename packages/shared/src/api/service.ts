@@ -27,6 +27,9 @@ export const MANUAL_TICKET_STATUSES = ["diagnosing", "in_progress", "waiting_par
 /** make, model, serial, imei, vin, plate, mileage, colour, size, ... */
 export const itemDetailsSchema = z.record(z.string().min(1).max(40), z.string().max(200));
 
+/** An uploaded photo: an absolute URL, or the API's own relative upload path (stored form, resolved to absolute when read). */
+const uploadRef = z.union([z.url(), z.string().regex(/^\/v1\/public\/uploads\/[\w./-]+$/)]);
+
 export const createTicketBody = z.object({
   customer: z.object({ phone: phoneSchema, name: z.string().trim().max(120).nullish() }),
   locationId: uuidSchema.nullish(),
@@ -35,7 +38,7 @@ export const createTicketBody = z.object({
   issue: z.string().trim().min(1).max(2000),
   intakeNotes: z.string().max(4000).nullish(),
   /** Already-uploaded photo URLs. */
-  photos: z.array(z.url()).max(20).default([]),
+  photos: z.array(uploadRef).max(20).default([]),
   promisedAt: isoDateTime.nullish(),
   assignedStaffId: uuidSchema.nullish(),
   /** Condition chips ticked at intake. */
@@ -56,7 +59,7 @@ export const updateTicketBody = z.object({
   itemDetails: itemDetailsSchema.optional(),
   issue: z.string().trim().min(1).max(2000).optional(),
   intakeNotes: z.string().max(4000).nullish(),
-  photos: z.array(z.url()).max(20).optional(),
+  photos: z.array(uploadRef).max(20).optional(),
   promisedAt: isoDateTime.nullish(),
   assignedStaffId: uuidSchema.nullish(),
   intakeChecklist: z.array(z.string().trim().min(1).max(80)).max(30).optional(),

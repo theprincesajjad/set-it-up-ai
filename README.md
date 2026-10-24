@@ -52,6 +52,7 @@ Demo logins (seed):
 | --- | --- |
 | Admin | `admin@localloyalty.example` / `localloyalty-admin` |
 | Rep | `rep@localloyalty.example` / `localloyalty-rep` |
+| BIA manager (Roncesvalles, with campaign data) | `bia+roncesvalles@example.com` / `localloyalty-demo` |
 | Shop owner | `owner+<shop-slug>@example.com` / `localloyalty-demo` (e.g. `owner+pinecone-coffee@example.com`) |
 | Counter staff | `staff+pinecone-coffee@example.com` / `localloyalty-demo`, PIN `1234` |
 | Restaurant pack (Ridgeway Plaza, Mississauga) | `owner+<slug>@example.com` / `localloyalty-demo` for `nawab-biryani-house` (Pro), `lahori-karahi-and-bbq`, `shree-thali-and-tiffin`, `zeenat-catering` (Growth), `sarson-dhaba`, `meethi-mithai-and-chai`, `padma-bangladeshi-kitchen`, `jaffna-kottu-house`, `kabul-garden-grill` (Starter), `rangrez-beauty-studio` (salon, network only) |
@@ -67,9 +68,16 @@ To run against a real Postgres, set `DATABASE_URL=postgres://…` and run
 pnpm typecheck
 pnpm test
 pnpm --filter @ll/web build
-pnpm --filter @ll/web e2e                         # Playwright against a seeded API
+pnpm --filter web e2e:full                        # EVERY Playwright spec in one run: fresh seed, API, production build, next start, then stops them
 cd apps/mobile && npx expo export --platform ios  # native bundle
 ```
+
+`pnpm --filter web e2e:full` (apps/web/e2e/run-all.sh) seeds a throw-away PGlite database, starts the API (`NODE_ENV=test`),
+builds the web app for production, runs every spec in `apps/web/e2e` against `next start`, and stops both servers. A fresh
+database per run keeps the one-time review links and shared plan/override state repeatable. Options: `API_PORT`, `WEB_PORT`,
+`NEXT_DIST_DIR`, `PW_ARGS="e2e/web-pass.spec.ts"` (some specs), `SKIP_BUILD=1`. The specs rewrite the tracked images in
+`apps/web/e2e/screenshots`; restore them with `git checkout -- apps/web/e2e/screenshots` unless you meant to update them.
+The landing page's "network today" strip is statically rendered and refreshed every 5 minutes, so start the API before the build.
 
 ## Going live checklist
 

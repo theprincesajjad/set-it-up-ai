@@ -46,7 +46,7 @@ import { createItem } from "../services/catalog.js";
 import { createInvoice, markInvoicePaid } from "../services/invoices.js";
 import { placeOrder, updateOrderStatus } from "../services/orders.js";
 import { authorizeQuoteByPhone, createQuote, getMerchantQuote, markQuoteViewed, respondToQuote } from "../services/quotes.js";
-import { getStorage } from "../providers/storage.js";
+import { UPLOAD_PATH, getStorage } from "../providers/storage.js";
 import { addNote, createTicket, setTicketStatus } from "../services/tickets.js";
 
 const DAY = 86_400_000;
@@ -376,7 +376,7 @@ export async function seedCoreModules(db: Db, ctx: AppContext, clock: { now: Dat
     setClock(at);
     if (p.locale) await db.update(users).set({ locale: p.locale }).where(eq(users.id, cust.id));
     const photoUrls: string[] = [];
-    for (let k = 0; k < (p.photos ?? 0); k++) photoUrls.push((await getStorage(ctx).put({ merchantId: repair.id, contentType: "image/png", body: solidPng(...([[188, 190, 196], [150, 154, 164], [216, 218, 222]][k % 3] as [number, number, number])) })).url);
+    for (let k = 0; k < (p.photos ?? 0); k++) photoUrls.push(`${UPLOAD_PATH}${(await getStorage(ctx).put({ merchantId: repair.id, contentType: "image/png", body: solidPng(...([[188, 190, 196], [150, 154, 164], [216, 218, 222]][k % 3] as [number, number, number])) })).key}`);
     const created = await createTicket(ctx, repair.staff, {
       customer: { phone: cust.phone!, name: cust.name },
       locationId: repair.locationId,
