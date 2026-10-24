@@ -133,9 +133,9 @@ for (const s of SIZES) {
     const c = await ctx(browser, s);
     const page = await c.newPage();
     await page.goto(`/q/${token}`);
-    await expect(page.getByText("Deposit due on approval")).toBeVisible();
+    await expect(page.getByRole("region", { name: /Deposit due now/ })).toBeVisible();
     await shot(page, "quote", s.w);
-    await page.getByLabel("Type your name to sign").fill("Alex Chen");
+    await page.getByLabel("Type your full name to sign").fill("Alex Chen");
     await page.getByRole("button", { name: /Approve and pay/ }).click();
     await expect(page.getByText("Test payment (development)")).toBeVisible();
     await shot(page, "quote-deposit", s.w);

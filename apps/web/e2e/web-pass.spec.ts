@@ -80,13 +80,13 @@ test("public shop page with rewards, promos and about tabs", async ({ page }) =>
 test("quote approval with typed signature and deposit (dev fake payment)", async ({ page }) => {
   const { token } = await repairQuote();
   await page.goto(`/q/${token}`);
-  await expect(page.getByRole("heading", { name: /Quote for Apple iPhone 13/ })).toBeVisible();
-  await expect(page.getByText("Deposit due on approval")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "your repair quote" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Deposit due now/ })).toBeVisible();
   await page.screenshot({ path: shot("09-quote"), fullPage: true });
 
   await page.getByRole("button", { name: /Approve and pay/ }).click();
-  await expect(page.getByText("Type your full name to sign.")).toBeVisible();
-  await page.getByLabel("Type your name to sign").fill("Alex Chen");
+  await expect(page.getByText("Type your full name, at least 2 letters.")).toBeVisible();
+  await page.getByLabel("Type your full name to sign").fill("Alex Chen");
   await page.getByRole("button", { name: /Approve and pay/ }).click();
   await expect(page.getByText(/Approved .* by Alex Chen/)).toBeVisible();
   await expect(page.getByText("Test payment (development)")).toBeVisible();
