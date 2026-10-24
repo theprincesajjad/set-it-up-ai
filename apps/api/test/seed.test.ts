@@ -238,8 +238,11 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     const nawab = await slugToId("nawab-biryani-house");
     const items = await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, nawab));
     expect(items.length).toBeGreaterThanOrEqual(15);
+    // The certifier is the shop's, stated once; a dish only carries its own when it differs.
+    const [shop] = await env.db.select().from(merchants).where(eq(merchants.id, nawab));
+    expect(shop!.halalCertification).toMatchObject({ certifier: "Crescent Halal Council", scope: "all_meat" });
     for (const i of items) {
-      expect(i.dietary).toMatchObject({ halal: true, zabihah: true, halalCertifier: "Crescent Halal Council" });
+      expect(i.dietary).toMatchObject({ halal: true, zabihah: true });
       expect(i.translations.hi?.name && i.translations.ur?.name && i.translations.pa?.name).toBeTruthy();
     }
     const biryani = items.find((i) => i.name === "Hyderabadi Chicken Dum Biryani")!;
