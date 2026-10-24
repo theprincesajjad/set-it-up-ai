@@ -135,7 +135,7 @@ test.describe("promos and discount cards", () => {
     await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
     await page.waitForLoadState("networkidle");
     await page.goto(`/m/${id}/promos`);
-    await page.getByRole("tab", { name: /Live/ }).click();
+    await page.getByRole("tab", { name: /Running/ }).click();
     await expect(page.getByText(title)).toBeVisible();
   });
 

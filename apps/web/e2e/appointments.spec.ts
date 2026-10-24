@@ -161,11 +161,12 @@ test("walk-in starts now with the client arrived", async ({ page }) => {
   await expect(page.locator("[data-calendar]")).toBeVisible();
   await page.keyboard.press("w");
   const sheet = page.getByRole("dialog", { name: "Walk-in" });
-  await sheet.getByLabel("Name").fill("Zane Walkin");
+  const who = `Walkin ${Date.now() % 1_000_000}`; // unique, so earlier runs on the same database do not match
+  await sheet.getByLabel("Name").fill(who);
   await sheet.getByLabel("Stylist").selectOption(priya.userId);
   await sheet.getByRole("checkbox", { name: new RegExp(svc.name) }).click();
   await sheet.getByRole("button", { name: "Start now" }).click();
-  await expect(page.locator('[data-status="arrived"]').filter({ hasText: "Zane Walkin" })).toBeVisible();
+  await expect(page.locator('[data-status="arrived"]').filter({ hasText: who })).toBeVisible();
 });
 
 test("customer books with a deposit; a taken time says so", async ({ page }) => {
