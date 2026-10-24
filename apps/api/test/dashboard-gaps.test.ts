@@ -220,7 +220,7 @@ describe("POST /messages/:id/test", () => {
     expect(r.json()).toMatchObject({ channel: "sms", sent: 1, to: [s.manager.phone], smsCreditsUsed: 1 });
     const last = env.ctx.providers.outbox.sms.at(-1)!;
     expect(last.to).toBe(s.manager.phone);
-    expect(last.body).toContain("Reply STOP to opt out");
+    expect(last.body).toContain("Reply STOP to unsubscribe");
     const [m] = await env.db.select().from(merchants).where(eq(merchants.id, s.merchant.id));
     expect(m!.smsCreditsUsed).toBe(1);
 
