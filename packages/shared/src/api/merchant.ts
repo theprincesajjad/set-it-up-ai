@@ -653,6 +653,7 @@ export interface VisitView {
 }
 export interface CustomerDetail {
   customer: CustomerSummary & {
+    /** Month and day only, "MM-DD" */
     birthday: string | null;
     notes: string | null;
     marketingConsentAt: string | null;
@@ -695,7 +696,7 @@ export interface ActivityItem extends LedgerTransactionView {
 // ---------------------------------------------------------------------------
 /**
  * CSV header row required. Columns (case-insensitive): phone (required), name,
- * email, points, visits, birthday (YYYY-MM-DD), consent (yes/true/1) and
+ * email, points, visits, birthday (MM-DD, or YYYY-MM-DD with the year dropped), consent (yes/true/1) and
  * consent_date (ISO date) — consent is only recorded when BOTH are present (CASL).
  */
 export const importCustomersBody = z.object({

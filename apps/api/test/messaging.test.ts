@@ -278,8 +278,8 @@ describe("automations (Plus) + birthday bonus (Plus since Pricing v2)", () => {
     const s = await setup();
     await env.db.update(loyaltyPrograms).set({ birthdayBonus: 25 }).where(eq(loyaltyPrograms.merchantId, s.merchant.id));
     // Clock is 2026-11-03 10:00 Toronto.
-    await env.db.update(users).set({ birthday: "1990-11-03" }).where(eq(users.id, s.noConsent.userId));
-    await env.db.update(users).set({ birthday: "1985-11-04" }).where(eq(users.id, s.alice.userId));
+    await env.db.update(users).set({ birthday: "11-03" }).where(eq(users.id, s.noConsent.userId));
+    await env.db.update(users).set({ birthday: "11-04" }).where(eq(users.id, s.alice.userId));
     // Pricing v2: without loyalty.birthday_bonus the job skips the shop entirely.
     await grantFeatures(env, s.merchant.id, ["loyalty.birthday_bonus"], false);
     expect(await awardBirthdayBonuses(env.ctx)).toBe(0);

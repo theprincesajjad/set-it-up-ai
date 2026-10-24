@@ -408,3 +408,10 @@ Stop or shelve the data product if any of these happens:
 `docs/business/prd.md`, `combined-strategy.md`, `pricing.md`, `network-monetization.md`; `packages/shared/src/plans.ts`; `docs/finance/unit-economics.md`, `launch-plan-economics.md`, `model/model.py`, `model/combined_strategy.py`; `docs/legal/*`; `docs/research/landing-and-network.md`; `apps/web/src/copy/en-CA.ts`; `apps/web/src/lib/legal.ts`; `packages/db/src/schema.ts`.
 
 **Reproduce the tables:** `python3 -I docs/finance/model/data_strategy.py`
+
+## Decision (2026-10-24)
+
+The founder chose to **keep today's plan**: Free (loyalty and reports), paid Café & Retail and Service plans,
+the paid restaurant pack, and payment and usage fees, as defined in `packages/shared/src/plans.ts`. No data is
+sold or licensed, and every current privacy promise stands. The Main Street Index and the "free for most
+features" pilot remain options to revisit with real coverage and signup data.

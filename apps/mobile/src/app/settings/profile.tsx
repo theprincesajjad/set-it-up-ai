@@ -59,7 +59,7 @@ export default function EditProfile() {
   );
 }
 
-/** "2000-11-26" or "--11-26" → "November 26" (we never show or ask for the year). */
+/** "11-26" (or a legacy "2000-11-26") → "November 26" (we never show or ask for the year). */
 function formatBirthday(iso: string): string {
   const [m, d] = iso.slice(-5).split("-").map(Number);
   if (!m || !d) return iso;

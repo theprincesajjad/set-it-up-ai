@@ -239,7 +239,7 @@ export interface OrderDto {
   taxCents: number;
   tipCents: number;
   totalCents: number;
-  /** 0.75% of total for in-app payments; 0 when paid at pickup. */
+  /** Platform fee on this order (0% on paid plans, 1.5% on Free; see FEES in plans.ts); 0 when paid at pickup. */
   platformFeeCents: number;
   paymentMethod: "in_app" | "at_pickup";
   paymentStatus: PaymentStatus;

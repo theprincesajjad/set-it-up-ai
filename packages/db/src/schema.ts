@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -115,7 +116,8 @@ export const users = pgTable(
     name: text("name"),
     passwordHash: text("password_hash"),
     platformRole: platformRole("platform_role").notNull().default("none"),
-    birthday: date("birthday"), // optional, for birthday rewards
+    /** Optional, for birthday rewards. Month and day only, "MM-DD": we never store the year (privacy policy). */
+    birthday: text("birthday"),
     postalCode: text("postal_code"),
     homeNeighbourhoodId: uuid("home_neighbourhood_id"),
     locale: text("locale").notNull().default("en-CA"),
@@ -131,6 +133,7 @@ export const users = pgTable(
     uniqueIndex("users_email_uq").on(sql`lower(${t.email})`),
     uniqueIndex("users_phone_uq").on(t.phone),
     uniqueIndex("users_member_code_uq").on(t.memberCode),
+    check("users_birthday_md_chk", sql`${t.birthday} is null or ${t.birthday} ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'`),
   ],
 );
 

@@ -12,3 +12,5 @@ export * from "./service-rules.js";
 export * from "./sample-report.js";
 export * from "./halal-banner.js";
 export * as bookingLogic from "./booking.js";
+export * from "./birthday.js";
+export * from "./legal-tokens.js";

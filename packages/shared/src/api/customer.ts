@@ -6,6 +6,7 @@
  * cards, VIP, next-reward progress) reused by the staff and network contracts.
  */
 import { z } from "zod";
+import { birthdaySchema } from "../birthday.js";
 import { uuidSchema } from "./common.js";
 
 // ---------------------------------------------------------------------------
@@ -120,7 +121,8 @@ export const updateProfileBody = z
   .object({
     name: z.string().trim().min(1).max(120).nullable(),
     email: z.email().max(254).nullable(),
-    birthday: z.iso.date().nullable(),
+    /** Month and day only, "MM-DD" (no year is ever stored). A legacy "YYYY-MM-DD" is accepted and the year dropped. */
+    birthday: birthdaySchema.nullable(),
     postalCode: z
       .string()
       .trim()
@@ -175,6 +177,7 @@ export interface ProfileDto {
   email: string | null;
   phone: string | null;
   memberCode: string;
+  /** "MM-DD" */
   birthday: string | null;
   postalCode: string | null;
   homeNeighbourhood: { id: string; slug: string; name: string } | null;

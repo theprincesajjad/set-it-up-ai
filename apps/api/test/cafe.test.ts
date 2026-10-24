@@ -364,9 +364,9 @@ describe("customers: segments and rhythm fields", () => {
   it("filters can_text and birthday_month, and counts every chip", async () => {
     const m = await seedPeople();
     const [rae] = await env.db.select().from(users).where(eq(users.phone, m.phones.regular));
-    await env.db.update(users).set({ birthday: "1990-10-05" }).where(eq(users.id, rae!.id));
+    await env.db.update(users).set({ birthday: "10-05" }).where(eq(users.id, rae!.id));
     const [cam] = await env.db.select().from(users).where(eq(users.phone, m.phones.casual));
-    await env.db.update(users).set({ birthday: "1985-03-05" }).where(eq(users.id, cam!.id));
+    await env.db.update(users).set({ birthday: "03-05" }).where(eq(users.id, cam!.id));
     expect((await list(m, "?segment=can_text")).items.map((i: { name: string }) => i.name)).toEqual(["Rae Regular"]);
     expect((await list(m, "?segment=birthday_month")).items.map((i: { name: string }) => i.name)).toEqual(["Rae Regular"]);
     const counts = (await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/customers/segment-counts`, headers: auth(m.ownerToken) })).json();

@@ -15,7 +15,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { maskPhone, type merchantApi } from "@ll/shared";
+import { maskPhone, toMonthDay, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { parseCsvObjects, toCsv } from "./csv.js";
@@ -133,7 +133,7 @@ export function customerFilters(
   if (q.consent === "opted_in") conds.push(and(isNotNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, false)));
   if (q.consent === "not") conds.push(or(isNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, true)));
   if (q.segment === "regulars" || q.segment === "slipping") conds.push(extra.segmentIds?.length ? inArray(merchantMembers.id, extra.segmentIds) : sql`false`);
-  if (q.segment === "birthday_month") conds.push(extra.birthdayMonth ? sql`to_char(${users.birthday}, 'MM') = ${extra.birthdayMonth}` : sql`false`);
+  if (q.segment === "birthday_month") conds.push(extra.birthdayMonth ? sql`substring(${users.birthday} from 1 for 2) = ${extra.birthdayMonth}` : sql`false`);
   if (q.segment === "can_text") conds.push(and(isNotNull(merchantMembers.marketingConsentAt), eq(merchantMembers.muted, false), isNotNull(users.phone), isNull(users.deletedAt)));
   if (q.muted === "true") conds.push(eq(merchantMembers.muted, true));
   if (q.muted === "false") conds.push(eq(merchantMembers.muted, false));
@@ -190,7 +190,7 @@ export async function segmentCounts(ctx: AppContext, merchantId: string): Promis
       all: sql<number>`count(*)::int`,
       rewardReady: sql<number>`count(*) filter (where ${minCost === null ? sql`false` : sql`${merchantMembers.balance} >= ${minCost}`})::int`,
       fresh: sql<number>`count(*) filter (where ${merchantMembers.createdAt} >= ${monthStart(now, tz).toISOString()}::timestamptz)::int`,
-      birthday: sql<number>`count(*) filter (where to_char(${users.birthday}, 'MM') = ${shopDate(now, tz).slice(5, 7)})::int`,
+      birthday: sql<number>`count(*) filter (where substring(${users.birthday} from 1 for 2) = ${shopDate(now, tz).slice(5, 7)})::int`,
       canText: sql<number>`count(*) filter (where ${merchantMembers.marketingConsentAt} is not null and ${merchantMembers.muted} = false and ${users.phone} is not null)::int`,
     })
     .from(merchantMembers)
@@ -414,12 +414,8 @@ const TRUTHY = new Set(["yes", "y", "true", "1", "opted_in", "opt-in", "optin", 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pick = (row: Record<string, string>, ...keys: string[]) => keys.map((k) => row[k]).find((v) => v !== undefined && v !== "") ?? "";
 
-function parseBirthday(v: string): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  if (!m) return null;
-  const d = new Date(`${v}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) || d.getUTCMonth() + 1 !== Number(m[2]) ? null : v;
-}
+/** "MM-DD" or "YYYY-MM-DD" -> "MM-DD" (the year is never kept). */
+const parseBirthday = toMonthDay;
 
 export async function importCustomersCsv(ctx: AppContext, merchantId: string, actorUserId: string, body: { csv: string; dryRun: boolean; sourceName?: string }): Promise<merchantApi.ImportCustomersResult> {
   const { headers, rows } = parseCsvObjects(body.csv);
@@ -475,7 +471,7 @@ export async function importCustomersCsv(ctx: AppContext, merchantId: string, ac
     }
     const birthdayRaw = pick(row, "birthday", "birthdate", "dob");
     const birthday = birthdayRaw ? parseBirthday(birthdayRaw) : null;
-    if (birthdayRaw && !birthday) result.warnings.push({ row: rowNo, message: `Birthday "${birthdayRaw}" ignored (use YYYY-MM-DD)` });
+    if (birthdayRaw && !birthday) result.warnings.push({ row: rowNo, message: `Birthday "${birthdayRaw}" ignored (use MM-DD)` });
 
     // CASL: only an explicit consent flag WITH a consent date counts as express consent.
     const consentFlag = pick(row, "consent", "marketing_consent", "opt_in", "accepts_marketing").toLowerCase();

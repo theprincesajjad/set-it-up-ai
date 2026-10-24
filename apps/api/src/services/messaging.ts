@@ -745,7 +745,7 @@ async function automationCandidates(ctx: AppContext, merchant: Merchant, row: Me
       return and(
         base,
         isNotNull(users.birthday),
-        inArray(sql`to_char(${users.birthday}, 'MM-DD')`, days),
+        inArray(users.birthday, days),
         notSentSince(new Date(`${year}-01-01T00:00:00Z`)),
       )!;
     }
@@ -872,7 +872,7 @@ export async function awardBirthdayBonuses(ctx: AppContext): Promise<number> {
         and(
           eq(merchantMembers.merchantId, merchant.id),
           isNull(users.deletedAt),
-          inArray(sql`to_char(${users.birthday}, 'MM-DD')`, days),
+          inArray(users.birthday, days),
           or(isNull(merchantMembers.lastBirthdayBonusYear), sql`${merchantMembers.lastBirthdayBonusYear} <> ${year}`),
         ),
       );

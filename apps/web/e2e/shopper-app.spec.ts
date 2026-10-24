@@ -37,12 +37,9 @@ test("/for-shoppers: English, then Hindi, Urdu (right to left) and Punjabi, with
 
   await page.goto("/for-shoppers?lang=pa");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("ਤੁਹਾਡੀ ਗਲੀ ਦੀ ਹਰ ਦੁਕਾਨ");
-  // The header offers the language menu on this page, and it keeps you on /for-shoppers.
-  const summary = page.locator("header summary").filter({ hasText: "ਪੰਜਾਬੀ" });
-  if (await summary.count()) {
-    await summary.first().click();
-    await expect(page.locator("header a[href='/for-shoppers?lang=hi']").first()).toBeVisible();
-  }
+  // The header offers the language menu on this page, and every link keeps you on /for-shoppers (the menu itself is hidden on a phone, so check the links).
+  await expect(page.locator("header a[href='/for-shoppers?lang=hi']").first()).toBeAttached();
+  await expect(page.locator("header a[href^='/for-restaurants?lang=']")).toHaveCount(0);
 });
 
 test("a shopper's language follows them: Settings saves it on the profile and the wallet speaks it", async ({ page }) => {

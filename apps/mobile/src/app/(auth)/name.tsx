@@ -77,7 +77,7 @@ export default function NameStep() {
     setSaving(true);
     setError(null);
     try {
-      const birthday = month && day ? `2000-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` : undefined;
+      const birthday = month && day ? `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` : undefined;
       if (!isReturning) {
         await api.me.updateProfile({ name: [first.trim(), last.trim()].filter(Boolean).join(" "), ...(birthday ? { birthday } : {}) });
         updatePrefs({ globalConsent, platformConsent });

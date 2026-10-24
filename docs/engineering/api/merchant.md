@@ -236,7 +236,7 @@ Money columns are dollars with 2 decimals. Text cells starting with `= + - @` ar
 
 ### `POST …/customers/import` (manager) — migrate from another loyalty app
 Body `{ csv: string, dryRun = false, sourceName? }`. Header row required; columns (case-insensitive):
-`phone` (required), `name`, `email`, `points`, `visits`, `birthday` (YYYY-MM-DD), `consent`, `consent_date`.
+`phone` (required), `name`, `email`, `points`, `visits`, `birthday` (MM-DD; YYYY-MM-DD is accepted and the year dropped), `consent`, `consent_date`.
 Per row: one network identity per phone (`findOrCreateCustomerByPhone`), membership via `ensureMember`
 (`joinedVia: import`, **no welcome bonus**), opening balance via a ledger `import` transaction with idempotency key
 `import:<E.164 phone>` — re-running a file never doubles balances. `visits` is recorded in the transaction breakdown

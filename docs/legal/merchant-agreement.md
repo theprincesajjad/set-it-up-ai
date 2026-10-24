@@ -8,39 +8,47 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
 
 ## Plain-language summary
 
-1. **Free forever.** Everything on the Free plan stays free for as long as you use Local Loyalty:
-   - loyalty points, visits, stamps and items;
-   - the rewards catalog;
-   - promos;
-   - the digital discount card;
-   - the network listing;
-   - the wallet pass;
-   - the customer directory with CSV import and export;
-   - reports;
-   - unlimited staff and unlimited locations;
-   - POS auto-award;
-   - email to opted-in members.
+1. **Free forever.** The {{plan.free.name}} plan costs {{plan.free.price}} a month, and everything on it stays free for as long as you use Local Loyalty. It is the loyalty program and its reporting:
+   - {{list.free}}.
 
-   **We charge no transaction fee on the Free plan.** A Free feature will never be moved to a paid plan.
-2. **You own your customer relationships.** You can export your members and their activity at your shop at any time, free, even if you leave.
+   **There is no subscription fee and no transaction fee on your loyalty program.** If you take payments through us, the fees in section 5 apply, and we show them before you turn the feature on. A {{plan.free.name}} feature will never be moved to a paid plan.
+2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of them, free, for [90] days.
 3. **Your points are your promise.** Points customers earn at your shop are issued by you, and you honour them at your shop. **Network bonuses are paid for by us**, never by you.
-4. Paid plans (Plus $39/mo, Pro $79/mo) are optional. They appear only when we launch them in your area, and you can cancel at any time.
+4. Paid plans ({{plan.plus.name}} {{plan.plus.price}}, {{plan.pro.name}} {{plan.pro.price}}, and the restaurant plans {{restaurant.starter.name}}, {{restaurant.growth.name}} and {{restaurant.pro.name}}) are optional. They appear only when we launch them in your area, and you can cancel at any time. Prices are in section 1.2 and fees in section 5.
 5. You follow the rules on consent, pharmacies, alcohol and fair promos, and we give you the tools to do it.
 
 ## 1. The Service and plans
 
-1.1 **Free plan.** We provide the Free plan features listed in Schedule A at no charge, with no transaction fee, for as long as this Agreement is in force. We will not remove a Schedule A feature from the Free plan or make it paid. We may improve or replace a Free feature with an equivalent one.
+1.1 **Free plan.** We provide the Free plan features listed in Schedule A at no charge, with no subscription fee and no fee on your loyalty program, for as long as this Agreement is in force. We will not remove a Schedule A feature from the Free plan or make it paid. We may improve or replace a Free feature with an equivalent one.
 - Counsel: the scope of "equivalent"; and whether to commit to a minimum notice period if the whole Service is discontinued (see 11.3).
 
-1.2 **Paid plans.** Plus and Pro subscriptions add operations features such as order-ahead, pickup, SMS, service tickets, quotes, deposits and invoices. They are available only once we launch them for your area. Paid plans:
-- are billed monthly or annually in advance;
+1.2 **Paid plans.** Paid plans add operations and marketing features. They are available only once we launch them for your area.
+
+{{table.plans}}
+
+{{plan.plus.name}} adds: {{list.plus}}.
+
+{{plan.pro.name}} includes everything in {{plan.plus.name}}, plus: {{list.pro}}.
+
+Restaurants can instead buy a restaurant plan. Every restaurant plan includes everything in {{plan.plus.name}}.
+
+{{table.restaurant}}
+
+Add-ons for restaurants:
+
+{{table.addons}}
+
+The first {{founding.slots}} restaurants per corridor get a founding offer of {{founding.firstYearPct}} off for 12 months, then {{founding.lifetimePct}} off for life.
+
+Paid plans:
+- are billed monthly or annually in advance (annual prices are shown above);
 - can be cancelled at any time, effective at the end of the current billing period;
-- have prices shown before purchase;
+- have prices shown before purchase, plus applicable taxes;
 - give at least **60 days' notice** of any price increase.
 
-Included SMS allowances are shown on the plan; overage, if any, is shown before you send.
+Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is shown before you send. WhatsApp message packs can be bought as add-ons.
 
-1.3 **In-app payments.** Payments are processed by Stripe under Stripe's own agreement with you. The fees are Stripe's processing fees plus our **0.75% platform fee** on payments processed in the app, and both are shown together. There is no platform fee on the Free plan, which has no payments. You are responsible for refunds, chargebacks and disputes on your sales.
+1.3 **In-app payments.** Payments are processed by Stripe under Stripe's own agreement with you. You pay Stripe's card processing fees at cost, plus our platform fee in section 5. Both are shown together before you accept a payment. You are responsible for refunds, chargebacks and disputes on your sales. Payments you record by hand (e-transfer, cash, cheque) carry no platform fee and are your own record: check your bank before you mark one received.
 
 1.4 **Advertising and campaigns.** Sponsored listings, sponsored promos, map pins, nearby push boosts and neighbourhood campaigns are optional. They are prepaid at the rates shown and labelled "Sponsored".
 
@@ -48,7 +56,7 @@ Included SMS allowances are shown on the plan; overage, if any, is shown before 
 
 ## 2. Data and customer relationships
 
-2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions. As between us, **you own Merchant Customer Data.** You can export it at any time in CSV (Free plan). After termination you can export it for [90] days.
+2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. Whatever your plan, when you leave we give you an export of your Merchant Customer Data at no charge for [90] days.
 
 2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer's relationship with Local Loyalty and those other shops. You will not see other merchants' data; we will not show your data to other merchants.
 
@@ -57,6 +65,8 @@ Included SMS allowances are shown on the plan; overage, if any, is shown before 
 2.4 **Your use and compliance.** When you use Merchant Customer Data, including exports and email or SMS campaigns, you are responsible for complying with privacy law (PIPEDA) and CASL. Only message customers who consented to receive messages from you; our consent and unsubscribe tools are built in, so don't bypass them.
 
 2.5 **Security.** We protect data with reasonable safeguards and host primary data in Canada where practical. We notify you without undue delay of any breach affecting your Merchant Customer Data. Each party is responsible for its own reporting obligations.
+
+2.5A **Sensitive and conversation data.** We never sell Merchant Customer Data. We do not use messages, transcripts, review text or repair photos to train AI models and do not license them to anyone. Do not put health information in notes (other than an allergy a customer asks you to pass to the kitchen). Delete or correct a customer's information when they ask.
 
 2.6 **Processor terms.** Where we process personal information on your behalf, the Data Processing Schedule (Schedule B) applies.
 - Counsel: draft Schedule B; it allocates the controller-like roles.
@@ -88,9 +98,17 @@ Included SMS allowances are shown on the plan; overage, if any, is shown before 
 
 4.4 Display the counter kit and ask customers before adding them. No sign-ups without consent.
 
+4.5 **WhatsApp and phone ordering.** Message customers on WhatsApp promotionally only if they opted in to that. If you use the phone ordering assistant, calls are transcribed and the transcript is kept for you, and the greeting tells the caller so in English, Hindi, Urdu and Punjabi. You must not switch the notice off. You are responsible for any recording you make on your own phone system.
+
 ## 5. Fees and taxes
 
-Free plan: **$0**. Paid plans and ads: as shown, plus applicable taxes (HST). Late paid-plan invoices may suspend *paid* features only, never Free features or your access to your data.
+{{plan.free.name}} plan: **{{plan.free.price}}**. Paid plans, add-ons and ads: as shown, plus applicable taxes (HST). Late paid-plan invoices may suspend *paid* features only, never Free features or your access to your data.
+
+**Platform fees on payments** taken through us (card processing by Stripe is charged at cost on top):
+
+{{table.fees}}
+
+Online orders are **commission-free ({{fee.orderPaid}})** on every paid plan and restaurant plan. Cash discount pricing is not available in Quebec.
 
 ## 6. Intellectual property
 
@@ -138,9 +156,11 @@ Ontario law and the federal laws of Canada apply, with the courts of Toronto. Th
 
 ---
 
-**Schedule A — Free-forever features.** Source: `FREE_FOREVER` in `packages/shared/src/plans.ts`; keep the two in sync.
+**Schedule A — Free-forever features.** Generated from `FREE_FOREVER` in `packages/shared/src/plans.ts`, so the two cannot differ.
 
-Points per dollar; points per visit; stamp cards; points per item; rewards catalog; VIP levels; welcome bonus; birthday reward; referrals; manual adjustments; no-earn categories; digital discount cards; promos; bonus-point promos; network listing; network perks; Apple & Google Wallet pass; customer directory; CSV export; import & migrate; reports; unlimited staff; unlimited locations; POS auto-award; webhooks & API; email campaigns.
+{{list.free}}.
+
+Network perks are run by the network for every shop whatever its plan.
 
 **Schedule B — Data Processing Schedule.** [To draft with counsel.]
 

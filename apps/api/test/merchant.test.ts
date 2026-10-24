@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { auditLogs, discountCards, ledgerEntries, merchantCategories, merchantMembers, merchantStaff, merchants, neighbourhoods } from "@ll/db";
+import { auditLogs, discountCards, ledgerEntries, merchantCategories, merchantMembers, merchantStaff, merchants, neighbourhoods, users } from "@ll/db";
 import { VERTICAL_TEMPLATES } from "@ll/shared";
 import { awardPurchase, ledgerBalance } from "../src/services/ledger.js";
 import { verifyMerchantApiKey } from "../src/services/merchant.js";
@@ -543,6 +543,9 @@ describe("CSV import", () => {
     expect(byBal[40]!.marketingConsentAt).toBeNull(); // consent without a date is not consent
     expect(byBal[0]!.marketingConsentAt).toBeNull();
     for (const m of members) expect(await ledgerBalance(env.db, m.id)).toBe(m.balance); // no welcome bonus
+    // A full birthday in the file is stored as month and day only; an impossible one (1985-13-01) is ignored.
+    const bdays = (await env.db.select({ birthday: users.birthday }).from(users).where(eq(users.id, byBal[120]!.userId)))[0]!.birthday;
+    expect(bdays).toBe("04-12");
 
     // Re-running the same file doesn't double the balances.
     const again = (await env.app.inject({ method: "POST", url, headers: auth(ownerToken), payload: { csv } })).json();

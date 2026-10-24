@@ -83,7 +83,7 @@ export interface AuthUserDto {
   memberCode: string;
   phoneVerified: boolean;
   emailVerified: boolean;
-  /** YYYY-MM-DD */
+  /** Month and day only, "MM-DD" */
   birthday: string | null;
   postalCode: string | null;
   homeNeighbourhoodId: string | null;

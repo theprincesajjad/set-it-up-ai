@@ -43,7 +43,7 @@ describe("profile", () => {
     expect(up.json()).toMatchObject({
       name: "Samira Lee",
       email: "sam@example.com",
-      birthday: "1990-05-04",
+      birthday: "05-04", // a legacy full date is accepted and the year dropped
       postalCode: "M6R 2K3",
       homeNeighbourhood: { id: hood.id, slug: "roncy", name: "roncy" },
     });
@@ -51,6 +51,22 @@ describe("profile", () => {
     expect((await call("PATCH", "/v1/me", { email: "TAKEN@example.com" }, token)).statusCode).toBe(409);
     expect((await call("PATCH", "/v1/me", { postalCode: "90210" }, token)).statusCode).toBe(400);
     expect((await call("PATCH", "/v1/me", { homeNeighbourhoodId: "00000000-0000-4000-8000-000000000000" }, token)).statusCode).toBe(400);
+  });
+});
+
+describe("birthday is month and day only", () => {
+  it("stores MM-DD, drops the year from legacy dates, rejects impossible dates and never persists a year", async () => {
+    const { user, token } = await customer();
+    expect((await call("PATCH", "/v1/me", { birthday: "02-29" }, token)).json().birthday).toBe("02-29");
+    expect((await call("PATCH", "/v1/me", { birthday: "1990-11-26" }, token)).json().birthday).toBe("11-26");
+    const [row] = await env.db.select({ birthday: users.birthday }).from(users).where(eq(users.id, user.id));
+    expect(row!.birthday).toBe("11-26");
+    for (const bad of ["02-30", "13-01", "1990-02-30", "1990", "Nov 26", "2000-1-5"]) {
+      expect((await call("PATCH", "/v1/me", { birthday: bad }, token)).statusCode).toBe(400);
+    }
+    // The database refuses a stored year even if a code path forgets to strip it.
+    await expect(env.db.update(users).set({ birthday: "1990-11-26" }).where(eq(users.id, user.id))).rejects.toThrow();
+    expect((await call("PATCH", "/v1/me", { birthday: null }, token)).json().birthday).toBeNull();
   });
 });
 

@@ -281,7 +281,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
       phone,
       name,
       email: R.chance(0.7) ? `${first}.${last}.${i}`.toLowerCase().replace(/[^a-z0-9.]/g, "") + "@example.com" : null,
-      birthday: R.chance(0.5) ? `${R.int(1955, 2005)}-${String(R.int(1, 12)).padStart(2, "0")}-${String(R.int(1, 28)).padStart(2, "0")}` : null,
+      birthday: R.chance(0.5) ? `${String(R.int(1, 12)).padStart(2, "0")}-${String(R.int(1, 28)).padStart(2, "0")}` : null,
     });
     // Regulars visit more shops more often; a long tail visits once.
     const shopsCount = R.chance(0.35) ? R.int(3, 5) : R.int(1, 2);

@@ -46,10 +46,10 @@ Muting a shop stops all promos from it but the customer keeps earning.
 ## Profile
 
 ### GET /v1/me
-`200` → `ProfileDto` `{ id, name, email, phone, memberCode, birthday (YYYY-MM-DD|null), postalCode, homeNeighbourhood: {id,slug,name}|null, locale, phoneVerified, emailVerified, createdAt }`.
+`200` → `ProfileDto` `{ id, name, email, phone, memberCode, birthday ("MM-DD"|null, no year), postalCode, homeNeighbourhood: {id,slug,name}|null, locale, phoneVerified, emailVerified, createdAt }`.
 
 ### PATCH /v1/me
-Body (all optional; `null` clears): `{ name, email, birthday: "YYYY-MM-DD", postalCode: "M6R 2K3", homeNeighbourhoodId, locale: "en"|"hi"|"ur"|"pa" ("en-CA" is the legacy default) }`. The locale is the shopper's language: pushes, inbox text, SMS fallbacks, the wallet pass (Apple and Google, re-issued on change), the lock-screen relevance text and the referral invite text are written in it. Apps save it from Settings and right after sign-in.
+Body (all optional; `null` clears): `{ name, email, birthday: "MM-DD" (a legacy "YYYY-MM-DD" is accepted and the year dropped), postalCode: "M6R 2K3", homeNeighbourhoodId, locale: "en"|"hi"|"ur"|"pa" ("en-CA" is the legacy default) }`. The locale is the shopper's language: pushes, inbox text, SMS fallbacks, the wallet pass (Apple and Google, re-issued on change), the lock-screen relevance text and the referral invite text are written in it. Apps save it from Settings and right after sign-in.
 Postal codes are normalised to `A1A 1A1`. Changing email clears `emailVerified`.
 `200` → `ProfileDto`. Errors: `400` (validation, unknown neighbourhood), `409` (email used by another account).
 

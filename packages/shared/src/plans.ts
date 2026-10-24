@@ -312,7 +312,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("reports.advanced", "Advanced reports", "Cohorts, retention, network overlap.", "plus", 2, 100),
     f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 100),
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
-    f("payments.in_app", "In-app payments", "Card payments via Stripe; 0.75% platform fee.", "plus", 2, 100),
+    f("payments.in_app", "In-app payments", "Card payments via Stripe. No platform fee on online orders; 1% on deposits and invoices.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
     f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios.", "plus", 2, 100),
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
