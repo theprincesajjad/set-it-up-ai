@@ -67,9 +67,24 @@ PHONE_AI_TAKE_FREE = 0.40   # share of restaurants who would switch on phone AI 
 PHONE_AI_COST = 30.0        # ~250 minutes at ~C$0.12/min (A, same as combined_strategy.py)
 
 
-def base_rows():
-    net, desi = C.plans()["C_combined_desi_first"]
+STRESS_NET_SCALE = 0.5   # (A) stress case: half the network shops, and the restaurant adds of C_combined_half_desi_adds
+
+
+def base_rows(stress=False):
+    key = "C_combined_half_desi_adds" if stress else "C_combined_desi_first"
+    net, desi = C.plans()[key]
     drows = C.desi_rows(desi, standalone=False)
+    if stress:
+        k = STRESS_NET_SCALE
+        scaled = []
+        for r in net:
+            cost = r["net_rev"] - r["net_ebitda"]
+            r2 = dict(r)
+            for f in ("net_shops", "net_active", "net_paying", "net_subs", "net_fees", "net_bia", "net_rev"):
+                r2[f] = r[f] * k
+            r2["net_ebitda"] = r2["net_rev"] - (cost * k + 340.0 * (1 - k))  # fixed overhead does not halve
+            scaled.append(r2)
+        net = scaled
     return net, drows, desi
 
 
@@ -113,9 +128,9 @@ def data_schedule(active_total, cfg, shift=0, mult=1.0, zero_forever=False):
     return rev, cost, launch, contrib
 
 
-def run(key, shift=0, mult=1.0, zero_forever=False, draw=0.0):
+def run(key, shift=0, mult=1.0, zero_forever=False, draw=0.0, stress=False):
     cfg = SCEN[key]
-    net, drows, dp = base_rows()
+    net, drows, dp = base_rows(stress)
     u = cfg["uplift"]
     rows, active_total = [], []
     for m in range(1, MONTHS + 1):
@@ -278,6 +293,29 @@ def main():
     print("== SENSITIVITY")
     for r in sens:
         print(r[0], f"{r[1]:<38}", "launch", r[2], "BE", r[3], f"cash needed {r[4]:,.0f}", f"cum36 {r[5]:,.0f} cum60 {r[6]:,.0f} rev60 {r[7]:,.0f} ebitda60 {r[8]:,.0f}")
+    print("== STRESS (half the shops, half the restaurant adds)")
+    for k in SCEN:
+        rows, launch = run(k, stress=True)
+        s = summarize(rows)
+        print(f"{SCEN[k]['label']:<70} BE {s['breakeven']!s:>4} | pos3 {s['positive3']!s:>4} | cash needed {s['cash_needed']:>10,.0f} (m{s['cash_low_month']}) | rev m36/60 {s['rev_m36']:,.0f}/{s['rev_m60']:,.0f} | cum m36 {s['cum_m36']:,.0f} m60 {s['cum_m60']:,.0f} | data m60 {s['data_m60']:,.0f} | launch {launch if SCEN[k]['data'] else 'n/a'} | active m36 {s['active_m36']:.0f} m60 {s['active_m60']:.0f}")
+        summary["stress_" + k] = s
+        summary["stress_" + k]["launch"] = launch
+    M.write_csv(os.path.join(OUT, "data_strategy_stress.csv"), ["key"] + list(summary["stress_a"]),
+                [[k] + [summary["stress_" + k][c] for c in summary["stress_a"]] for k in SCEN])
+    print("== DATA ARR NEEDED TO REPLACE SUBSCRIPTIONS + ADD-ONS AT MONTH 36 (scenario a lines)")
+    ra, _ = run("a")
+    need = (ra[35]["rev_subs"] + ra[35]["rev_addons_usage"]) * 12
+    lo, hi = 100.0, 200000.0
+    cfg = SCEN["b"]
+    import math
+    for _ in range(80):
+        mid = (lo + hi) / 2
+        # ARR curve at `mid` contributing merchants (re-use the schedule's interpolation through a one-point call)
+        rev, _c, _l, _ = data_schedule([mid / DATA["consent_coverage"]] * MONTHS, dict(cfg, data=True), 0, 1.0)
+        arr_mid = rev[-1] * 12
+        lo, hi = (mid, hi) if arr_mid < need else (lo, mid)
+    print(f"annual subs+add-ons at m36 in (a): {need:,.0f}; contributing merchants needed on our ARR curve: {lo:,.0f}; "
+          f"b contributing at m36: {run('b')[0][35]['contributing']:,.0f}")
     print("== STATIC DATA REVENUE")
     for n, t, lines, base in static_data_revenue():
         print(n, t["strips"], "strips", t["customers"], "customers", t["history"], "base", f"{base:,.0f}", "low", f"{base * 0.4:,.0f}", "high", f"{base * 2:,.0f}", "per merchant/mo", f"{base / n / 12:,.2f}")

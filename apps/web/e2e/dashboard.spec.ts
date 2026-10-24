@@ -259,7 +259,7 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
 
   await signIn(page, ADMIN);
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Network" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
   await page.screenshot({ path: shot("21-admin-network"), fullPage: true });
   await page.goto("/admin/rollout");
   const row = page.locator('tr[data-feature="orders.order_ahead"]');
