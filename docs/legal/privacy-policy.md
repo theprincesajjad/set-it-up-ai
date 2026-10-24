@@ -27,27 +27,65 @@ Last updated: [date] · Version [0.1-draft]
 
 ## 2. What we collect
 
+We collect only what a feature needs. What you share depends on which shops and features you use. This list is complete for the product today.
+
+**Your account and loyalty membership**
+
 | Information | Where it comes from | Why |
 | --- | --- | --- |
-| Mobile number, first name, email (optional), birthday month and day (optional) | You, at the counter, in the app or on a wallet pass | Create your account, verify your number, birthday reward |
-| Visits, amounts recorded, points, redemptions, rewards | Participating shops, including their POS systems if connected | Run each shop's program and Network Rewards |
-| Consent records: what you agreed to, when, and how | You | Prove consent (CASL) and respect your choices |
-| Orders, quotes, approvals, deposits, invoices | You and the shop | Provide order-ahead and service features |
+| Mobile number, first name, email (optional), postal code (optional), language, **birthday month and day (optional, we never store the year)** | You, at the counter, in the app, on the web or on a wallet pass | Create your account, verify your number, birthday reward, show nearby shops, send messages in your language |
+| One-time login codes, sign-in sessions (device type and browser details), push notification tokens, wallet pass identifiers | Your device | Sign you in, keep you signed in, deliver notices and update your wallet pass |
+| Visits, amounts recorded, points, redemptions, rewards, referrals | Participating shops, including their POS systems if connected | Run each shop's program and Network Rewards |
+| Consent records: what you agreed to, the exact wording, when, how and (for counter sign-ups) who recorded it | You | Prove consent (CASL) and respect your choices |
+| Marketing and notification choices, mutes per shop | You | Respect your choices |
+
+**Shopping, booking and service features** (only where a shop offers them)
+
+| Information | Where it comes from | Why |
+| --- | --- | --- |
+| Orders: items, pickup time, notes, **allergy notes you add for the kitchen**, tip, totals, payment status | You and the shop | Fill your order |
+| **Menu data about food**, such as halal, zabihah, vegetarian, vegan, Jain, gluten-free, spice level and allergen tags | Set by each shop for its own menu items | Let you filter a menu. These are the shop's own statements about its food, not information about you |
+| **Appointments**: services, times, staff chosen, notes you add, deposit and no-show fee records, reminder history | You and the shop | Run your booking, send reminders, protect the shop from no-shows |
+| Card on file for a no-show fee (held by Stripe; we keep only brand and last 4 digits) | You, through Stripe | Charge a fee you agreed to |
+| **Repair and service tickets**: item details (for example make, model, serial or plate), your description, **photos you or the shop upload of the item**, status updates | You and the shop | Run repairs and quotes |
+| Quotes, approvals and e-signatures: your typed name, the time, your IP address and device, the quote version | You | A record that you approved the work and the price |
+| Deposits, invoices, balances, payments recorded by hand by the shop (method, amount, date, bank reference) | You and the shop | Billing and receipts |
+| Rebooking and pickup reminder history (sent, skipped, snoozed) | Us | Send at most one reminder per cycle and never repeat after you say stop |
+
+**Restaurant features** (only where a restaurant offers them)
+
+| Information | Where it comes from | Why |
+| --- | --- | --- |
+| **Tiffin subscriptions**: plan, servings, **delivery address, postal code, delivery notes and dietary notes**, pause and skip dates, delivery status, payment method details held by Stripe (brand and last 4 digits only) | You and the shop | Plan routes, deliver meals, bill you |
+| **Driver links**: the shop can create a link for one route and one day. It shows that day's stops, each with your name, phone number, address, delivery and dietary notes, and lets the driver mark a stop delivered or missed. It expires the same night | The shop | Let a driver without a login do the route |
+| **Catering and banquet events**: event type and date, headcount, venue and address, menu, dietary notes, quote, your approval and signature record, deposit | You and the shop | Quote, confirm and bill an event |
+| **Review requests and review feedback**: your rating and any private comment, whether you opened or clicked the link, the shop's reply | You and the shop | Let a shop hear how it did privately and offer a public Google review. A public Google review is posted to Google, not to us |
+| **WhatsApp messages**: your WhatsApp number, language, the messages you and the shop send, your cart, allergy note, and whether you opted in to marketing | You and the shop | Take your order and send updates |
+| **Phone-call transcripts**: your phone number and a **text transcript of what you say** when you call a shop's ordering line, with the language and the order we drafted from it. We do not keep call audio | You | Draft your order for the shop to confirm. A person at the shop checks and confirms the order |
+| Waitlist entries for limited items (name, phone, the consent wording) | You | Tell you when an item returns |
+
+**Payments, location, devices and support**
+
+| Information | Where it comes from | Why |
+| --- | --- | --- |
 | Payment details | Entered directly with **Stripe**; we receive only limited information such as card brand and last 4 digits | Process payments; we never store full card numbers |
-| Approximate or precise location (only if you allow it) | Your device | Show nearby shops and nearby promos you opted into |
-| Device and usage data: app version, crash logs, IP address | Your device | Security, fraud prevention, fixing bugs |
+| Approximate or precise location (only if you allow it) | Your device | Show nearby shops and nearby promos you opted into. We do not keep a location history |
+| Device and usage data: app version, crash logs, IP address in security and audit logs | Your device | Security, fraud prevention, fixing bugs |
 | Messages with support | You | Help you |
 
-We do not collect government ID, health information, precise location history or your contacts.
+We do not collect government ID, prescription or other health records, precise location history or your contacts. Allergy and dietary notes are text you choose to give a shop so it can serve you safely; please do not enter other health information.
+
+**We do not sell personal information.** None of the above, including messages, transcripts, review text and photos, is sold, licensed to data buyers, or used to train AI models.
 
 ## 3. How we use it
 
 We use your information to:
 
-- provide the Service;
+- provide the Service and the features you use;
 - run each shop's program and Network Rewards;
-- send service messages (verification codes, reward-ready and order-ready notices);
+- send service messages (verification codes, reward-ready, order-ready, booking confirmations and reminders, delivery updates, quote and invoice notices);
 - send promotional messages **only with your consent**;
+- draft an order from a phone call or WhatsApp message for a shop to confirm (a person confirms; nothing is charged because of the draft alone);
 - prevent fraud and abuse;
 - improve the Service;
 - produce **aggregated, de-identified** statistics for shops and Business Improvement Areas, for example "visits on the street rose 18% during the passport week", reported only in groups of [10] or more people;
@@ -57,18 +95,28 @@ If we want to use your information for a new purpose, we will ask you first.
 
 ## 4. Who sees it
 
-- **Each participating shop** sees your name, number, and your visits, points and redemptions **at that shop**, plus your marketing preference for that shop. A shop can export this list to manage its own customer relationship; it is then responsible for using it lawfully.
-- **Local Loyalty staff** see it only as needed for support, security and operations, with role-based access and audit logs.
-- **Service providers** process data for us under contract and only on our instructions:
-  - hosting and database: [provider, Canadian region];
-  - Stripe (payments);
-  - Twilio (SMS);
-  - [email provider];
-  - Apple and Google (wallet passes and push notifications);
-  - [analytics and crash reporting].
+| Who | What they see |
+| --- | --- |
+| **The shop you deal with** | Your name, number, and your visits, points and redemptions **at that shop**, your marketing choice for that shop, and for the features you use with it: your orders and allergy notes, appointments, tickets and photos, tiffin address and notes, catering events, review feedback, WhatsApp conversation and phone transcripts. Staff see these according to their role. A shop can export its list to manage its own customer relationship, and is then responsible for using it lawfully. |
+| **A delivery driver** | Only the stops on one route for one day, through the shop's driver link. |
+| **Other shops** | **Nothing.** Shops never see where else you shop or your activity, messages, addresses or transcripts at any other shop. |
+| **Local Loyalty staff** | Only as needed for support, security and operations, with role-based access and audit logs. Support sessions are logged. |
+| **BIAs and sponsors** | Aggregated reports only, never your personal information. |
 
-  Some are located in, or may process data in, the **United States** or other countries, where it may be accessible to authorities under local law.
-- **BIAs and sponsors** receive aggregated reports only, never your personal information.
+**Service providers** process data for us under contract and only on our instructions:
+
+- hosting and database: [provider, Canadian region];
+- file storage for uploaded photos: [provider, region];
+- **Stripe** (payments, saved cards, payouts to shops);
+- **Twilio** (SMS and the phone line, including speech-to-text for phone orders);
+- **Meta WhatsApp Cloud API** (WhatsApp messages);
+- **Resend** (email);
+- **Expo, Apple and Google** (push notifications; Apple and Google Wallet passes);
+- [map tile provider] (the map in the app and website);
+- [analytics and crash reporting].
+
+Some are located in, or may process data in, the **United States** or other countries, where it may be accessible to authorities under local law.
+
 - **Legal reasons.** We disclose information where required by law, or to protect rights, safety or prevent fraud.
 - **Business transfer.** If our business is sold, your information may transfer under equivalent protections, and you will be notified.
 
