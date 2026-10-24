@@ -75,7 +75,9 @@
     ".next-tcb/types/**/*.ts",
     ".next-tcb/dev/types/**/*.ts",
     ".next-appts/types/**/*.ts",
-    ".next-appts/dev/types/**/*.ts"
+    ".next-appts/dev/types/**/*.ts",
+    ".next-vqa/types/**/*.ts",
+    ".next-vqa/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

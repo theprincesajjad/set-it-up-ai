@@ -118,7 +118,7 @@ function PromosPage() {
                       <>
                         <Td className="font-semibold tabular text-fg">{r ? formatNumber(r.windowVisits) : "–"}</Td>
                         <Td className="tabular text-fg-muted">{r ? (r.typicalVisits == null ? <span className="text-[12px]">Not enough history</span> : formatNumber(r.typicalVisits)) : "–"}</Td>
-                        <Td className={cn("tabular", r && r.extraVisits != null && r.extraVisits > 0 ? "font-medium text-positive" : "text-fg-muted")}>{r ? (r.extraVisits == null ? "–" : signedVisits(r.extraVisits)) : "–"}</Td>
+                        <Td className={cn("tabular", r && r.extraVisits != null && r.extraVisits > 0 ? "font-medium text-positive-text" : "text-fg-muted")}>{r ? (r.extraVisits == null ? "–" : signedVisits(r.extraVisits)) : "–"}</Td>
                         <Td className="tabular text-fg">{r ? formatNumber(r.freeItemsGiven) : "–"}</Td>
                       </>
                     ) : null}

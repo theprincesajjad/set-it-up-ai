@@ -16,8 +16,8 @@ export function formatNumber(locale: Locale, n: number, opts?: Intl.NumberFormat
 }
 
 /** Integer cents to a currency string (CAD unless told otherwise). */
-export function formatCurrency(locale: Locale, cents: number, currency = "CAD"): string {
-  const whole = cents % 100 === 0;
+export function formatCurrency(locale: Locale, cents: number, currency = "CAD", exact = false): string {
+  const whole = !exact && cents % 100 === 0;
   return tryIntl(locale, (tag) => new Intl.NumberFormat(tag, { style: "currency", currency, currencyDisplay: "narrowSymbol", minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(cents / 100));
 }
 

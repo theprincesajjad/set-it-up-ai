@@ -147,6 +147,10 @@ export interface ShopListItemDto {
   isMember: boolean;
   /** Members at this shop; null when fewer than MEMBER_COUNT_MIN (tiny numbers aren't shown). */
   memberCount: number | null;
+  /** A live earn boost window right now, in words ("2× stamps till 4 pm"). Null when none. Feeds the Discover and map italic line. */
+  promoLine: string | null;
+  /** The shop's standing perk in words ("5% off Tuesdays", "show your card for 10% off"). Null when none. */
+  perk: string | null;
   /** Restaurant-pack shops with dietary tags on: "all" = every orderable item is tagged halal, "some" = at least one is. Absent otherwise. */
   halalMenu?: "all" | "some";
 }

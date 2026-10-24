@@ -54,11 +54,19 @@ describe("mini map spacing", () => {
     expect(Math.round(Math.hypot(p!.x - 150, p!.y - 66))).toBeGreaterThanOrEqual(35);
   });
 
-  it("subtitle priority: progress, promo, perk, category", () => {
+  it("subtitle: my progress and the live window together, then the perk with the kind of place, then the category", () => {
     const sh = shop("a", "cafe", 140);
-    expect(shopSubtitle(sh, null, { progress: { n: 7, goal: 10 }, promoLine: "x" })).toBe("your 7 / 10");
+    expect(shopSubtitle(sh, null, { progress: { n: 7, goal: 10 }, promoLine: promoWindowLine(2, "stamps", 16) })).toBe("your 7 / 10 · 2× stamps till 4 pm");
+    expect(shopSubtitle(sh, null, { progress: { n: 7, goal: 10 }, promoLine: null, perk: "p" })).toBe("your 7 / 10");
     expect(shopSubtitle(sh, null, { promoLine: promoWindowLine(2, "stamps", 16), perk: "p" })).toBe("2× stamps till 4 pm");
-    expect(shopSubtitle(sh, null, { perk: "10% off for students" })).toBe("10% off for students");
+    expect(shopSubtitle(sh, null, { perk: "10% off for students" })).toBe("café · 10% off for students");
     expect(shopSubtitle(sh, null)).toBe("café · 140 m");
+  });
+
+  it("takes the live window and the perk straight from the network directory entry", () => {
+    const grocer = { ...shop("g", "grocery", 400), promoLine: null, perk: "5% off Tuesdays" };
+    expect(shopSubtitle(grocer, null)).toBe("market · 5% off Tuesdays");
+    const cafe = { ...shop("c", "cafe", 100), promoLine: "2× stamps till 4 pm", perk: null };
+    expect(shopSubtitle(cafe, null, { progress: { n: 7, goal: 10 } })).toBe("your 7 / 10 · 2× stamps till 4 pm");
   });
 });

@@ -30,15 +30,15 @@ export function InvoiceDetail({ row, canVoid, busy, error, copied, onPay, onCopy
       <dl className="divide-y divide-line border-y border-line text-body">
         {row.lineItems.map((l, i) => (
           <div key={i} className="flex justify-between gap-3 py-2.5">
-            <dt className={cn(l.totalCents < 0 ? "text-positive" : "text-fg")}>{l.description}{l.quantity > 1 ? ` × ${l.quantity}` : ""}</dt>
-            <dd className={cn("tabular", l.totalCents < 0 ? "text-positive" : "text-fg")}>{formatMoney(l.totalCents)}</dd>
+            <dt className={cn(l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{l.description}{l.quantity > 1 ? ` × ${l.quantity}` : ""}</dt>
+            <dd className={cn("tabular", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{formatMoney(l.totalCents)}</dd>
           </div>
         ))}
         {row.taxCents > 0 ? (
           <div className="flex justify-between gap-3 py-2.5 text-fg-muted"><dt>Tax</dt><dd className="tabular">{formatMoney(row.taxCents)}</dd></div>
         ) : null}
         {row.depositAppliedCents > 0 ? (
-          <div className="flex justify-between gap-3 py-2.5 text-positive"><dt>Deposit paid on approval</dt><dd className="tabular">-{formatMoney(row.depositAppliedCents)}</dd></div>
+          <div className="flex justify-between gap-3 py-2.5 text-positive-text"><dt>Deposit paid on approval</dt><dd className="tabular">-{formatMoney(row.depositAppliedCents)}</dd></div>
         ) : null}
         <div className="flex items-baseline justify-between gap-3 py-3"><dt className="text-headline text-fg">{row.status === "paid" ? "Paid" : "Amount due"}</dt><dd className="text-[28px] font-semibold tabular text-fg">{formatMoney(row.status === "paid" ? row.totalCents - row.depositAppliedCents : row.amountDueCents)}</dd></div>
         {row.tipCents > 0 ? <div className="flex justify-between gap-3 py-2.5 text-fg-muted"><dt>Tip (not taxed, no points)</dt><dd className="tabular">{formatMoney(row.tipCents)}</dd></div> : null}

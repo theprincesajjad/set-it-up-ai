@@ -14,7 +14,7 @@ const SURFACE: Record<string, string> = {
   no_show: "bg-bg border border-line",
   cancelled: "bg-bg border border-dashed border-line text-fg-muted",
 };
-const TONE = { plain: "text-fg-muted", positive: "text-positive", negative: "text-negative", muted: "text-fg-muted" } as const;
+const TONE = { plain: "text-fg-muted", positive: "text-positive-text", negative: "text-negative", muted: "text-fg-muted" } as const;
 
 /** One appointment on the time grid: keyboard focusable, role button, drag to move, bottom edge to resize. */
 export function AppointmentBlock({

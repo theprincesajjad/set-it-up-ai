@@ -145,7 +145,7 @@ export function DriverRun({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Heading level={2}>{run.route.name}{run.route.driverName ? ` · ${run.route.driverName}` : ""}</Heading>
+        <Heading level={3} plain className="truncate"><bdi>{run.route.name.split(":")[0]}</bdi>{run.route.driverName ? <> · <bdi>{run.route.driverName}</bdi></> : null}</Heading>
         <div className="mt-2 flex items-baseline justify-between gap-3 text-meta text-fg">
           <span aria-live="polite">{t("tcb.dr.progress", { done: number(run.progress.done), total: number(run.progress.total) })}</span>
           <span className="text-fg-muted">{date(new Date(`${run.date}T12:00:00Z`), { weekday: "short", month: "short", day: "numeric" }, "UTC")}</span>
@@ -167,7 +167,7 @@ export function DriverRun({ token }: { token: string }) {
             <p className="text-caption font-medium uppercase tracking-wide text-fg-muted">{t("tcb.dr.next", { n: label(next) })}</p>
             <span className="rounded-full bg-bg-muted px-2.5 py-1 text-caption text-fg">{t("tcb.dr.tiffins", { n: next.servings })}</span>
           </div>
-          <Heading level={1} className="break-words !text-[28px] !leading-8">{next.customerName ?? "—"}</Heading>
+          <Heading level={1} plain className="break-words !text-[28px] !leading-8">{next.customerName ?? "—"}</Heading>
           <p className="text-body text-fg">{where(next) || "—"}</p>
           {next.addressNotes ? <p className="rounded-card bg-bg-subtle px-3 py-2.5 text-body text-fg">{t("tcb.dr.door", { notes: next.addressNotes })}</p> : null}
           {next.dietaryNotes ? (

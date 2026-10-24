@@ -90,7 +90,7 @@ function MessagesPage() {
                   <p className="truncate text-[15px] text-fg">{a.label} (automation)</p>
                   <p className="text-[12px] text-fg-muted">{CHANNEL[a.channel]} · last 30 days · {formatNumber(a.last30Days.messaged)} people</p>
                 </div>
-                <span className="shrink-0 text-[14px] font-medium text-positive">{formatNumber(a.last30Days.cameIn7d)} came in</span>
+                <span className="shrink-0 text-[14px] font-medium text-positive-text">{formatNumber(a.last30Days.cameIn7d)} came in</span>
               </li>
             ))}
           </ul>
@@ -116,7 +116,7 @@ function SentRow({ m, href }: { m: messagingApi.Message; href: string }) {
         </span>
         <span className="shrink-0 text-[14px] font-medium">
           {m.cameIn7d != null ? (
-            <span className="text-positive" title={m.cameIn7dFinal ? undefined : "Still counting: it has been fewer than 7 days"}>
+            <span className="text-positive-text" title={m.cameIn7dFinal ? undefined : "Still counting: it has been fewer than 7 days"}>
               {formatNumber(m.cameIn7d)} came in{m.cameIn7dFinal ? "" : " so far"}
             </span>
           ) : (

@@ -9,10 +9,11 @@ import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, useMembershipDetails, usePhase2, useWallet } from "../../features/customer/queries";
 import { JoinSheet, PushPrompt, SponsoredWhySheet } from "../../features/customer/sheets";
 import { capSponsored } from "../../lib/feed";
-import { promoEnds, relativeTime, rewardInSentence } from "../../lib/format";
-import { heroText, homeHero, rewardPhrase } from "../../lib/hero";
+import { promoEnds, relativeTime } from "../../lib/format";
+import { heroText, homeHero } from "../../lib/hero";
 import { shortHood } from "../../lib/discover";
 import { formatNumber, termWord } from "../../lib/award";
+import { walletRow } from "../../lib/walletRow";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
@@ -22,16 +23,6 @@ import { Banner, BellOff, Button, categorySource, ChevronRightGlyph, CountUp, Em
 import { readableOn, shopInitials } from "../../ui/ShopTile";
 
 type Membership = customerApi.WalletResponse["items"][number];
-
-/** One line of progress (canvas Wallet): "free drink ready" / "38 points to $5 off" / "3 more for a free drink". */
-function progressLine(m: customerApi.MembershipDto, readyName?: string | null): string {
-  if (m.rewardsAvailableCount > 0) return m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : readyName ? `${rewardInSentence(readyName)} ready` : "reward ready";
-  if (!m.nextReward) return m.expiryDisclosure;
-  const n = m.nextReward.pointsNeeded;
-  return m.program?.earnType === "stamps"
-    ? t("misc.stampsToGo", { n, reward: m.nextReward.name.toLowerCase() })
-    : `${formatNumber(n)} ${termWord(m.terminology, n)} to ${rewardPhrase(m.nextReward.name).replace(/^A /, "a ").replace(/^(a )?Free /, (x) => x.toLowerCase())}`;
-}
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -133,15 +124,12 @@ export default function Wallet() {
   const readyNameOf = (m: Membership) => readyNames.find((d) => d.data?.membership.id === m.id)?.data?.rewards.find((r) => r.affordable)?.name ?? null;
 
   const shopRow = (m: Membership, i: number, n: number) => {
-    const isReady = m.rewardsAvailableCount > 0;
-    const next = m.nextReward;
-    const pct = next && next.pointsCost > 0 ? Math.max(0, Math.min(1, (next.pointsCost - next.pointsNeeded) / next.pointsCost)) : null;
-    const unit = termWord(m.terminology, m.balance);
+    const row = walletRow(m, readyNameOf(m));
     return (
       <Pressable
         key={m.id}
         accessibilityRole="button"
-        accessibilityLabel={`${m.merchant.name}. ${formatNumber(m.balance)} ${unit}. ${progressLine(m, readyNameOf(m))}`}
+        accessibilityLabel={`${m.merchant.name}. ${row.subtitle}`}
         onPress={() => router.push(`/shop/${m.merchant.slug}`)}
         style={({ pressed }) => [styles.row, { borderBottomColor: c.line, borderBottomWidth: i < n - 1 ? hairline : 0 }, pressed ? { opacity: 0.7 } : null]}
       >
@@ -153,30 +141,30 @@ export default function Wallet() {
             </Text>
             {m.muted ? <BellOff size={13} color={c.fgMuted} /> : null}
           </View>
-          <Text style={[ui(13, 400, 17), { marginTop: 2 }]} rawColor={isReady ? c.accentText : c.fgMuted} numberOfLines={1}>
-            {progressLine(m, readyNameOf(m))}
+          <Text style={[ui(13, 400, 17), { marginTop: 2, fontStyle: "italic" }]} rawColor={row.accent ? c.accentText : c.fgMuted} numberOfLines={1}>
+            {row.subtitle}
           </Text>
-          {!isReady && pct != null ? (
+          {row.progress != null ? (
             <View style={[styles.bar, { backgroundColor: c.bgMuted }]}>
-              <View style={{ width: `${Math.round(pct * 100)}%`, height: 3, borderRadius: 999, backgroundColor: c.fg }} />
+              <View style={{ width: `${Math.round(row.progress * 100)}%`, height: 3, borderRadius: 999, backgroundColor: c.fg }} />
             </View>
           ) : null}
         </View>
-        {isReady ? (
+        {row.trailing.kind === "showCard" ? (
           <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
             Show card
           </Text>
-        ) : m.program?.earnType === "stamps" && next ? (
+        ) : row.trailing.kind === "fraction" ? (
           <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
-            {`${m.balance} / ${next.pointsCost}`}
+            {row.trailing.text}
           </Text>
         ) : (
-        <View style={styles.bal}>
-          <CountUp value={m.balance} format={formatNumber} style={disp(20, 800, 24)} color={isReady ? "accent" : "fg"} />
-          <Text style={ui(12, 400, 15)} rawColor={c.fgMuted}>
-            {unit}
-          </Text>
-        </View>
+          <View style={styles.bal}>
+            <CountUp value={row.trailing.value} format={formatNumber} style={disp(20, 800, 24)} color="fg" />
+            <Text style={ui(12, 400, 15)} rawColor={c.fgMuted}>
+              {row.trailing.unit}
+            </Text>
+          </View>
         )}
       </Pressable>
     );

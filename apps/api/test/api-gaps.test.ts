@@ -143,6 +143,8 @@ describe("public member counts and customer features", () => {
       banquet: false,
       whatsapp: false,
       dietaryTags: false,
+      // Booking entry points: a drop-off time (repair) and a stylist and time (appointments), both off here.
+      dropoffScheduling: false,
       appointments: false,
     });
     let list = (await call("GET", "/v1/network/shops")).json();
@@ -175,6 +177,8 @@ describe("public member counts and customer features", () => {
       banquet: false,
       whatsapp: false,
       dietaryTags: false,
+      // Booking entry points: a drop-off time (repair) and a stylist and time (appointments), both off here.
+      dropoffScheduling: false,
       appointments: false,
     });
   });

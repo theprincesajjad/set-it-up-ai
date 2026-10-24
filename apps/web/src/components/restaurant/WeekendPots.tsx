@@ -25,7 +25,7 @@ export function WeekendPots({ weekend, items }: { weekend: restaurantWebApi.Publ
               <li key={w.date} className="flex items-baseline justify-between gap-3 py-3.5">
                 <span className="text-body text-fg">{date(dayDate(w.date), { weekday: "short", month: "short", day: "numeric" }, "UTC")}</span>
                 <span className={cn("text-body tabular-nums", low ? "text-accent-text" : "text-fg-muted")}>
-                  {w.full ? t("rs.weekend.full") : w.potsLeft === null ? t("rs.weekend.open") : t("rs.weekend.potsLeft", { n: w.potsLeft })}
+                  {w.closed ? t("rs.weekend.closed") : w.full ? t("rs.weekend.full") : w.potsLeft === null ? t("rs.weekend.open") : t("rs.weekend.potsLeft", { n: w.potsLeft })}
                 </span>
               </li>
             );

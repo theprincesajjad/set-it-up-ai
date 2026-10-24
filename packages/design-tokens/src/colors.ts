@@ -39,8 +39,10 @@ export interface ColorRoles {
   accentSoft: string;
   /** Icon/text drawn on an accent fill (icons + large text only, 3:1). */
   onAccent: string;
-  /** "Open now" dot, positive deltas (dot/icon, 3:1). */
+  /** "Open now" dot, positive delta arrow (dot/icon, 3:1). Not for small text: use `positiveText`. */
   positive: string;
+  /** Positive text (deltas, "paid", "can text", credits): >= 4.5:1 on bg, bgSubtle, bgMuted and accentSoft in both themes. */
+  positiveText: string;
   /** Closed, errors, destructive. Text-safe on bg. */
   negative: string;
   /** The user's own location dot only. */
@@ -117,6 +119,7 @@ const v2Light = {
   accentSoft: p.orange[50],
   onAccent: p.gray[0],
   positive: p.green[600],
+  positiveText: p.green[800],
   negative: p.red[600],
   location: p.blue[500],
   chrome: "rgba(255, 255, 255, 0.8)",
@@ -139,6 +142,7 @@ const v2Dark = {
   accentSoft: p.orange[950],
   onAccent: p.gray[950],
   positive: p.green[500],
+  positiveText: p.green[500],
   negative: p.red[400],
   location: p.blue[400],
   chrome: "rgba(22, 22, 24, 0.8)",
@@ -257,6 +261,7 @@ export const contrastPairs: ContrastPair[] = [
   ...textOn(["bg", "bgSubtle", "bgMuted"], ["fg", "fgMuted"], "Primary & secondary text on every background"),
   ...textOn(["bg", "bgSubtle", "accentSoft"], ["accentText"], "Small accent text: balances, 'reward ready', points labels"),
   { fg: "bg", bg: "fg", min: TEXT, note: "Primary (black) button label, inverse snackbar" },
+  ...textOn(["bg", "bgSubtle", "bgMuted", "accentSoft"], ["positiveText"], "Positive text: deltas, 'paid', 'can text', credit lines"),
   { fg: "negative", bg: "bg", min: TEXT, note: "Inline error / 'closed' text" },
   { fg: "qrFg", bg: "qrBg", min: 15, note: "QR modules: always black on white" },
   // Large text / non-text UI (WCAG 1.4.3 large, 1.4.11)

@@ -1,7 +1,7 @@
 /** Restaurant customer web pages (desi1): halal certification, dish options, pre-order availability, shop summary, cancel rule, private feedback. */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { catalogItems, merchants, orders, redemptions, reviewRequests, rewards, users, whatsappSessions, type ItemOptions } from "@ll/db";
+import { catalogItems, locations, merchants, orders, redemptions, reviewRequests, rewards, users, whatsappSessions, type ItemOptions } from "@ll/db";
 import { sendHalalExpiryReminders } from "../src/services/halal.js";
 import { scheduleReviewRequest } from "../src/services/reviews.js";
 import { call, customer, deliver, fake } from "./commerce-fixtures.js";
@@ -271,6 +271,23 @@ describe("pre-order availability and the shop summary", () => {
     expect(days.get("2026-11-07")!.windows.every((w) => w.full)).toBe(true);
   });
 
+  it("uses the planning caps (weekday, per hour, date override) and shows a closed weekday as closed, not busy", async () => {
+    const s = await shop(12);
+    await env.db.update(locations).set({ hours: { mon: [["09:00", "17:00"]], tue: [["09:00", "17:00"]], wed: [["09:00", "17:00"]], thu: [["09:00", "17:00"]], fri: [["09:00", "17:00"]], sat: [["10:00", "14:00"]] } }).where(eq(locations.merchantId, s.merchant.id));
+    await env.db.update(merchants).set({ preorderCapByWeekday: { sat: 4 }, preorderPerHourCap: 2, preorderOverrides: [{ from: "2026-11-11", to: "2026-11-11", cap: 30, label: "Remembrance eve" }] }).where(eq(merchants.id, s.merchant.id));
+    const r = await avail(s, `itemId=${s.items.pot.id}&from=2026-11-06&to=2026-11-11`);
+    type Day = { date: string; potsLeft: number | null; full: boolean; closed: boolean; note: string | null; windows: { start: string }[] };
+    const days = new Map((r.body.days as Day[]).map((d) => [d.date, d] as const));
+    expect(r.body.perHourCap).toBe(2);
+    expect(days.get("2026-11-07")).toMatchObject({ potsLeft: 4, closed: false, full: false }); // Saturday: weekday cap, not the daily 12
+    expect(days.get("2026-11-07")!.windows.map((w) => w.start)).toEqual(["10:00", "11:00", "12:00", "13:00"]);
+    expect(days.get("2026-11-08")).toMatchObject({ closed: true, full: false, windows: [] }); // Sunday: no hours
+    expect(days.get("2026-11-11")).toMatchObject({ potsLeft: 30, note: "Remembrance eve", closed: false }); // override wins
+    // The shop summary agrees: the weekend chips come from the same caps.
+    const sum = await req(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/restaurant`);
+    expect(sum.body.weekend).toEqual([expect.objectContaining({ date: "2026-11-07", potsLeft: 4, closed: false }), expect.objectContaining({ date: "2026-11-08", closed: true })]);
+  });
+
   it("has no cap: potsLeft is null. Cancelled pre-orders free their pots", async () => {
     const s = await shop(12);
     await env.db.update(merchants).set({ preorderDailyCap: null }).where(eq(merchants.id, s.merchant.id));
@@ -293,6 +310,8 @@ describe("pre-order availability and the shop summary", () => {
 
   it("summarises the shop page: weekend pots, popular dishes, wait, halal block, features", async () => {
     const s = await shop(12);
+    const wk = (await env.db.select().from(locations).where(eq(locations.merchantId, s.merchant.id)))[0]!.hours ?? {};
+    await env.db.update(locations).set({ hours: { ...wk, sat: [["09:00", "17:00"]], sun: [["09:00", "17:00"]] } }).where(eq(locations.merchantId, s.merchant.id));
     await req(env, s.ownerToken, "PUT", `/v1/merchants/${s.merchant.id}/menu/halal-certification`, CERT);
     await book(s, 3, "2026-11-07T17:00:00.000Z"); // Sat
     await book(s, 12, "2026-11-08T17:00:00.000Z"); // Sun: full
@@ -303,7 +322,7 @@ describe("pre-order availability and the shop summary", () => {
     await place(s.items.chicken.id, 2);
     const r = await req(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/restaurant`);
     expect(r.status).toBe(200);
-    expect(r.body.weekend).toEqual([{ date: "2026-11-07", potsLeft: 9, full: false }, { date: "2026-11-08", potsLeft: 0, full: true }]);
+    expect(r.body.weekend).toEqual([{ date: "2026-11-07", potsLeft: 9, full: false, closed: false }, { date: "2026-11-08", potsLeft: 0, full: true, closed: false }]);
     expect(r.body.popular.slice(0, 2)).toEqual([s.items.mutton.id, s.items.chicken.id]);
     expect(r.body.popular).not.toContain(s.items.pot.id);
     expect(r.body).toMatchObject({ acceptingOrders: true, quotedWaitMin: 20, whatsappNumber: "+14165550100", features: { pickup: true, preorder: true }, cancelCutoffHours: null });

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { errorMessage as apiError, isApiError } from "../../api/client";
 import { t as copy } from "../../copy/en-CA";
+import { addAppointmentToCalendar } from "../../features/customer/addToCalendar";
 import { InfoRow, useMoney } from "../../features/restaurant/components";
 import { useLocale } from "../../lib/i18n";
 import { dayToDate, torontoToday } from "../../lib/restaurant";
@@ -51,6 +52,11 @@ export default function Appointment() {
   };
   const policy = !inside ? t("bk.manage.cancelFree", { when: when(a.freeChangeUntil) }) : fee > 0 && a.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(fee) }) : t("bk.manage.cancelLate");
 
+  async function addToCalendar() {
+    const r = await addAppointmentToCalendar(a!, t("bk.done.calendar"));
+    if (r === "failed") setNote({ variant: "danger", text: t("bk.calendarFailed") });
+  }
+
   async function cancel() {
     setBusy(true);
     try {
@@ -92,7 +98,7 @@ export default function Appointment() {
         {a.items.map((i, k) => (
           <InfoRow key={`${i.name}${k}`} label={`${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}${a.staffName ? ` · ${a.staffName}` : ""}`} value={money(i.priceCents)} />
         ))}
-        <InfoRow strong label={t("bk.totalLabel")} value={money(a.totalCents)} />
+        <InfoRow strong label={a.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")} value={money(a.totalCents)} />
       </View>
       {a.merchant.address ? <Text variant="meta" color="fgMuted">{a.merchant.address}</Text> : null}
       {live ? <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}><Text>{policy}</Text></View> : null}
@@ -121,6 +127,7 @@ export default function Appointment() {
         </View>
       ) : (
         <View style={{ gap: 12 }}>
+          {a.status === "booked" ? <Button size="lg" fullWidth onPress={() => void addToCalendar()}>{t("bk.done.calendar")}</Button> : null}
           {live ? <Button size="lg" variant="secondary" fullWidth onPress={() => setMode("move")}>{t("bk.manage.reschedule")}</Button> : null}
           {live ? <Button size="lg" variant="ghost" fullWidth onPress={() => setMode("cancel")}>{t("bk.manage.cancel")}</Button> : null}
           <Button variant="ghost" fullWidth onPress={() => router.push(`/book/${a.merchant.slug}`)}>{t("bk.done.another")}</Button>

@@ -7,6 +7,7 @@ import { STEP_COPY } from "@/components/dashboard/Checklist";
 import { Dot, Meter, PageHeader, Panel, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
+import { TaxStatus } from "@/components/dashboard/TaxStatus";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
@@ -150,6 +151,16 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
             </Button>
           </div>
         </form>
+      ) : null}
+
+      {step.key === "profile" ? (
+        <section aria-label="Tax" className="flex flex-col gap-3 border-t border-line pt-4">
+          <div>
+            <h3 className="text-body-strong text-fg">Charging GST/HST?</h3>
+            <p className="mt-0.5 text-meta text-fg-muted">Pick one now so invoices, appointments and tiffin bills are right from the first sale. You can change it in Settings.</p>
+          </div>
+          <TaxStatus owner={detail.role === "owner"} compact />
+        </section>
       ) : null}
 
       {step.key === "program" ? (

@@ -9,7 +9,7 @@
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { appointments, locations, merchants, services, staffHours, staffServices, users } from "@ll/db";
-import { LOCALES, appointmentsApi, normalizeLocale, translator, type Locale } from "@ll/shared";
+import { LOCALES, appointmentsApi, normalizeLocale, salesTaxCopy, translator, type Locale } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -31,6 +31,7 @@ import {
 import { iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { requireFeature } from "./features.js";
 import { platformFeeFor } from "./fees.js";
+import { merchantProvince } from "./tax.js";
 import { chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
 import { getPayments } from "../providers/payments.js";
 
@@ -66,6 +67,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return {
     shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null },
+    tax: salesTaxCopy({ province: await merchantProvince(ctx.db, merchant), taxRegistered: merchant.taxRegistered }),
     policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: merchant.noShowFeeCents, takesCards: cardsOk },
     services: rows.map((s) => ({
       id: s.id,
@@ -77,6 +79,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
       depositCents: s.depositCents,
       categoryName: s.categoryId ? (catName.get(s.categoryId) ?? null) : null,
       translations: s.translations ?? {},
+      taxable: s.taxable,
       staffIds: assigned.filter((a) => a.serviceId === s.id).map((a) => a.userId),
       staffOverrides: assigned.filter((a) => a.serviceId === s.id && (a.durationMin !== null || a.priceCents !== null)).map((a) => ({ staffId: a.userId, durationMin: a.durationMin, priceCents: a.priceCents })),
     })),
@@ -93,8 +96,15 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
   const ls = await ctx.db.select().from(locations).where(inArray(locations.id, [...new Set(rows.map((r) => r.locationId))]));
   const staffIds = [...new Set(rows.map((r) => r.staffId).filter((s): s is string => !!s))];
   const staff = staffIds.length ? await ctx.db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, staffIds)) : [];
+  // Tax copy: the shop's province and registration, and whether any service on the visit carries tax.
+  const serviceIds = [...new Set(rows.flatMap((r) => r.items.map((i) => i.serviceId)).filter((x): x is string => !!x))];
+  const taxableById = new Map((serviceIds.length ? await ctx.db.select({ id: services.id, taxable: services.taxable }).from(services).where(inArray(services.id, serviceIds)) : []).map((x) => [x.id, x.taxable] as const));
+  const provinces = new Map<string, string>();
+  for (const m of ms) provinces.set(m.id, await merchantProvince(ctx.db, m));
   return rows.map((r): appointmentsApi.MyAppointmentDto => {
     const m = ms.find((x) => x.id === r.merchantId)!;
+    const copy = salesTaxCopy({ province: provinces.get(m.id), taxRegistered: m.taxRegistered });
+    const anyTaxable = r.items.some((i) => (i.serviceId ? (taxableById.get(i.serviceId) ?? true) : true));
     const l = ls.find((x) => x.id === r.locationId);
     return {
       id: r.id,
@@ -112,6 +122,7 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
       pending: r.status === "booked" && !!r.holdExpiresAt,
       holdExpiresAt: iso(r.holdExpiresAt),
       policy: { cancelWindowHours: m.cancelWindowHours, noShowFeeCents: r.noShowFeeCents ?? m.noShowFeeCents },
+      tax: { applies: copy.applies && anyTaxable, name: copy.name },
       freeChangeUntil: new Date(r.startsAt.getTime() - m.cancelWindowHours * HOUR).toISOString(),
       feeChargedAt: iso(r.feeChargedAt),
       notes: r.notes,

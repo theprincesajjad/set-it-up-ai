@@ -4,6 +4,7 @@
  * subtitle and the list fallback sections. Pure so it's unit tested.
  */
 import { MAP_CATEGORIES, verticalCategory, type MapCategoryId } from "@ll/design-tokens";
+import { shopLine } from "./shopLine";
 
 export { MAP_CATEGORIES };
 export type { MapCategoryId };
@@ -123,8 +124,9 @@ export interface PinMembership {
  * points: "reward ready". Stamps read "7 / 10 stamps" (the card, not the
  * lifetime total), points "1,350 pts", strangers get the kind of place.
  */
-export function pinSubtitle(vertical: string, m: PinMembership | null): { text: string; accent: boolean } {
-  if (!m) return { text: placeKind(vertical), accent: false };
+export function pinSubtitle(vertical: string, m: PinMembership | null, extra: { promoLine?: string | null; perk?: string | null } = {}): { text: string; accent: boolean } {
+  // A stranger, or a member with nothing of their own to show: the live window, the perk, then the kind of place (same helper as Discover).
+  if (!m) return { text: shopLine({ promoLine: extra.promoLine, perk: extra.perk, kind: placeKind(vertical) }), accent: false };
   if (m.rewardsAvailableCount > 0) return { text: m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : "reward ready", accent: true };
   if (m.earnType === "stamps" && m.stampGoal && m.stampGoal > 0) {
     const on = Math.min(m.balance, m.stampGoal);

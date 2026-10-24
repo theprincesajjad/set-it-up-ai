@@ -39,7 +39,7 @@ function MessagePage() {
                 <Button size="sm" variant="ghost" iconStart={Send} loading={test.busy} onClick={async () => { setTestNote(null); const r = await test.run(() => api.messages.sendTest(m.id)); if (r) setTestNote(`Test sent to ${r.to.join(", ")}. ${r.testsRemainingToday} left today.`); }}>Send test to me</Button>
               </>
             } />
-            {testNote ? <p role="status" className="text-meta text-positive">{testNote}</p> : null}
+            {testNote ? <p role="status" className="text-meta text-positive-text">{testNote}</p> : null}
             {test.error ? <p className="text-negative">{test.error}</p> : null}
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-4">
               <StatTile label="Recipients" value={formatNumber(m.recipientCount)} />

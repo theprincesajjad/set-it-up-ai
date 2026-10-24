@@ -176,6 +176,8 @@ export interface PreorderAvailabilityDay {
   date: string;
   potsLeft: number | null;
   full: boolean;
+  /** The shop is closed that weekday: no pickup windows, and never shown as "busy" or full. */
+  closed: boolean;
   /** Guests already waiting for this day. */
   waiting: number;
   /** Earliest day this dish can be picked up is later than this date (notice period). */
@@ -345,6 +347,37 @@ export const festivalDateOverrideBody = z.object({
 export type FestivalDateOverrideBody = z.input<typeof festivalDateOverrideBody>;
 export const festivalPreferencesBody = z.object({ cuisines: z.array(z.string().trim().min(1).max(30)).max(12) });
 export type FestivalPreferencesBody = z.input<typeof festivalPreferencesBody>;
+/** POST .../festivals/occasions: "Add my own date". The date has to be one the planner can draft for (2026 to 2028). */
+export const customOccasionBody = z.object({
+  name: z.string().trim().min(1).max(60),
+  date: isoDate.refine((d) => d >= "2026-01-01" && d <= "2028-12-31", "Pick a date from 2026 to 2028"),
+  subject: z.string().trim().min(1).max(150),
+  /** The message (email). Texts and WhatsApp use it too unless given their own shorter version. */
+  body: z.string().trim().min(1).max(10_000),
+  sms: z.string().trim().min(1).max(480).optional(),
+  whatsapp: z.string().trim().min(1).max(1000).optional(),
+});
+export type CustomOccasionBody = z.input<typeof customOccasionBody>;
+
+/** POST .../festivals/:festivalId/test-send: "Send me a test" goes to the signed-in owner only, by the chosen channel. */
+export const festivalTestBody = z.object({
+  templateId: z.string().min(1).max(60),
+  year: z.number().int().min(2026).max(2028).optional(),
+  channel: z.enum(["email", "sms", "push", "whatsapp"]),
+  subject: z.string().trim().min(1).max(150).optional(),
+  body: z.string().trim().min(1).max(10_000).optional(),
+  /** WhatsApp: values for the approved template when the owner has not messaged the shop number in the last 24 hours. */
+  params: z.array(z.string().max(200)).max(10).optional(),
+});
+export type FestivalTestBody = z.input<typeof festivalTestBody>;
+export interface FestivalTestResult {
+  channel: "email" | "sms" | "push" | "whatsapp";
+  sent: number;
+  /** Where it went: the owner's email or phone; push shows "this device". */
+  to: string[];
+  smsCreditsUsed: number;
+  testsRemainingToday: number;
+}
 /** Where a send stands, from festival_sends. */
 export interface FestivalSendStatus {
   templateId: string;

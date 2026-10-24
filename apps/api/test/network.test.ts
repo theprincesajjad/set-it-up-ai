@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { campaigns, discountCards, featureOverrides, locations, merchantMembers, merchants, neighbourhoods, networkPerks, promos } from "@ll/db";
+import { campaigns, discountCards, featureOverrides, locations, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, networkPerks, promos } from "@ll/db";
 import type { networkApi } from "@ll/shared";
 import { awardPurchase } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv, grantFeatures } from "./helpers.js";
@@ -106,6 +106,52 @@ describe("shops map/list", () => {
     expect(mine.items[0]).toMatchObject({ isMember: true, myBalance: 15 });
     expect(mine.items[1]).toMatchObject({ isMember: false, myBalance: null });
     void mid;
+  });
+});
+
+describe("shop lines for Discover and the map (promoLine, perk)", () => {
+  const base = { startsAt: new Date("2026-10-01"), status: "live" as const };
+  const lines = async (url = `/v1/network/shops?lat=${ME.lat}&lng=${ME.lng}`) => {
+    const items: networkApi.ShopListItemDto[] = (await call("GET", url)).json().items;
+    return new Map(items.map((i) => [i.merchant.name, { promoLine: i.promoLine, perk: i.perk }]));
+  };
+
+  it("says a live earn window in words, with the shop's own unit and its closing time", async () => {
+    const cafe = await shop("Window Cafe", 43.6488, -79.4496);
+    await env.db.update(loyaltyPrograms).set({ terminology: "stamps" }).where(eq(loyaltyPrograms.merchantId, cafe.merchant.id));
+    // Tuesday 7 am to 4 pm, double: on now (Tue 10:00).
+    await env.db.insert(promos).values({ ...base, merchantId: cafe.merchant.id, title: "Double stamps", kind: "multiplier", multiplierPct: 200, daysOfWeek: [2], startTime: "07:00", endTime: "16:00" });
+    const other = await shop("Wrong Day", 43.65, -79.45);
+    await env.db.insert(promos).values({ ...base, merchantId: other.merchant.id, title: "Fridays", kind: "multiplier", multiplierPct: 150, daysOfWeek: [5], startTime: "07:00", endTime: "16:00" });
+    const dated = await shop("Dated Bakery", 43.651, -79.451, { vertical: "bakery" });
+    await env.db.insert(promos).values({ ...base, merchantId: dated.merchant.id, title: "1.5x", kind: "multiplier", multiplierPct: 150, endsAt: new Date("2026-11-14T17:00:00Z") });
+    const got = await lines();
+    expect(got.get("Window Cafe")).toEqual({ promoLine: "2× stamps till 4 pm", perk: null });
+    expect(got.get("Wrong Day")).toEqual({ promoLine: null, perk: null }); // not today
+    expect(got.get("Dated Bakery")!.promoLine).toBe("1.5× points till Nov 14");
+  });
+
+  it("says the standing perk: a recurring percent-off day, else the show-your-card discount", async () => {
+    const grocer = await shop("Tuesday Grocer", 43.6488, -79.4496, { vertical: "grocery" });
+    await env.db.insert(promos).values({ ...base, merchantId: grocer.merchant.id, title: "5% off Tuesdays", kind: "discount", percentOff: 5, daysOfWeek: [2] });
+    const pharmacy = await shop("Village Apothecary", 43.65, -79.45, { vertical: "pharmacy" });
+    await env.db.insert(discountCards).values({ merchantId: pharmacy.merchant.id, name: "Front-store", percentOff: 10 });
+    const inactive = await shop("Old Card", 43.651, -79.451);
+    await env.db.insert(discountCards).values({ merchantId: inactive.merchant.id, name: "Old", percentOff: 15, active: false });
+    const seniors = await shop("Seniors Only", 43.652, -79.452);
+    await env.db.insert(discountCards).values({ merchantId: seniors.merchant.id, name: "Seniors", percentOff: 20, eligibility: "seniors" });
+    const got = await lines();
+    expect(got.get("Tuesday Grocer")!.perk).toBe("5% off Tuesdays");
+    expect(got.get("Village Apothecary")!.perk).toBe("show your card for 10% off");
+    expect(got.get("Old Card")!.perk).toBeNull();
+    expect(got.get("Seniors Only")!.perk).toBeNull(); // a card only some people qualify for is not the shop's perk
+  });
+
+  it("leaves both empty for a free shop (promos and discount cards are Plus)", async () => {
+    const free = await shop("Free Shop", 43.6488, -79.4496, { free: true });
+    await env.db.insert(promos).values({ ...base, merchantId: free.merchant.id, title: "Double", kind: "multiplier", multiplierPct: 200, startTime: "07:00", endTime: "16:00" });
+    await env.db.insert(discountCards).values({ merchantId: free.merchant.id, name: "Card", percentOff: 10 });
+    expect((await lines()).get("Free Shop")).toEqual({ promoLine: null, perk: null });
   });
 });
 

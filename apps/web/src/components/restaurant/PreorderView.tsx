@@ -12,7 +12,7 @@ import { browserApi, browserClient } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
-import { defaultOptionIds, idempotencyKeyFor, preorderBill, priceDish, type Item } from "@/lib/restaurant/order";
+import { defaultOptionIds, idempotencyKeyFor, preorderBill, priceDish, summaryLine, type Item } from "@/lib/restaurant/order";
 import { TZ, dayDate, torontoInstant } from "@/lib/restaurant/util";
 import { DietaryPills } from "./dietary";
 import { OptionGroups } from "./OptionGroups";
@@ -51,7 +51,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
 
   const day = days.find((d) => d.date === dayKey) ?? null;
   const slot = day?.windows.find((w) => w.start === win) ?? null;
-  const { unitCents, picks } = priceDish(item, ids);
+  const { unitCents } = priceDish(item, ids);
   const bill = preorderBill(unitCents, 1, item.depositBps ?? 0, menu.tax.ratePpm);
   const pickupAt = day && slot ? torontoInstant(day.date, slot.start) : null;
   const cutoffHours = restaurant?.cancelCutoffHours ?? availability.leadHours;
@@ -63,7 +63,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
   const base = `/shops/${encodeURIComponent(shop.slug)}`;
   const location = menu.locations[0];
 
-  const summaryTitle = [p.name, ...picks.map((x) => x.option)].join(" + ");
+  const summaryTitle = summaryLine(item, p.name, ids, (name, n) => t("rs.pre.sizeServes", { name, n: number(n) }));
   const accentLeft = (n: number | null) => n !== null && n > 0 && n <= 3;
 
   // Refresh pots after "full" or a cap change under us.
@@ -103,14 +103,12 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
 
   const deposit = money(bill.deposit);
   const hero = (
-    <div className="-mx-4 -mt-4">
-      {item.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
+    item.imageUrl ? (
+      <div className="-mx-4 -mt-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={item.imageUrl} alt="" width={480} height={190} decoding="async" className="aspect-[480/190] w-full bg-bg-subtle object-cover" />
-      ) : (
-        <div aria-hidden className="aspect-[480/190] w-full bg-bg-subtle" />
-      )}
-    </div>
+      </div>
+    ) : null
   );
 
   if (step === "pay") {
@@ -221,7 +219,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
         <div role="radiogroup" aria-label={t("rs.pre.when")} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {days.map((d) => {
             const off = d.tooSoon || d.windows.length === 0;
-            const sub = d.full ? t("rs.weekend.full") : off ? "" : d.potsLeft === null ? t("rs.weekend.open") : t("rs.pre.left", { n: number(d.potsLeft) });
+            const sub = d.closed ? t("rs.weekend.closed") : d.full ? t("rs.weekend.full") : off ? "" : d.potsLeft === null ? t("rs.weekend.open") : t("rs.pre.left", { n: number(d.potsLeft) });
             const on = d.date === dayKey;
             return (
               <button

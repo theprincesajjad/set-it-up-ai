@@ -194,6 +194,66 @@ export function timeOffBlocks(staff: Staff, date: string, window: [number, numbe
 }
 
 // ---------------------------------------------------------------------------
+// Open walk-in gaps (Figma frame 3: dashed "Open" blocks)
+// ---------------------------------------------------------------------------
+export const GAP_MIN = 30;
+export const GAP_MAX = 90;
+
+export interface WalkInGap {
+  /** Minutes after local midnight. */
+  start: number;
+  end: number;
+  top: number;
+  height: number;
+}
+
+/**
+ * Free stretches a walk-in can take: inside the person's working time, not over an appointment or time off, from 30 up to 90
+ * minutes (a longer free stretch is just an empty afternoon, not a gap). Computed, never stored. On today only the part after
+ * `now` counts (rounded up to the next step); past days show none.
+ */
+export function walkInGaps(staff: Staff | null, staffId: string | null, date: string, window: [number, number], appts: Appt[], now = new Date(), tz = TZ, pxPerHour = PX_PER_HOUR): WalkInGap[] {
+  if (!staff || !staffId) return [];
+  const today = parts(now, tz);
+  if (date < today.date) return [];
+  const floor = date === today.date ? Math.ceil(today.minutes / STEP_MIN) * STEP_MIN : 0;
+  const dayStart = instantAt(date, 0, tz).getTime();
+  const busy: Shift[] = [];
+  for (const a of appts) {
+    if (a.staffId !== staffId || a.status === "cancelled" || a.status === "no_show") continue;
+    const s = Math.floor((new Date(a.startsAt).getTime() - dayStart) / MIN);
+    const e = Math.ceil((new Date(a.endsAt).getTime() - dayStart) / MIN);
+    if (e > 0 && s < 24 * 60) busy.push([s, e]);
+  }
+  for (const t of staff.timeOff) {
+    const s = Math.floor((new Date(t.startsAt).getTime() - dayStart) / MIN);
+    const e = Math.ceil((new Date(t.endsAt).getTime() - dayStart) / MIN);
+    if (e > 0 && s < 24 * 60) busy.push([s, e]);
+  }
+  busy.sort((x, y) => x[0] - y[0]);
+  const out: WalkInGap[] = [];
+  for (const [ws, we] of shiftsOn(staff, weekdayOf(date))) {
+    let cur = Math.max(ws, floor, window[0]);
+    const end = Math.min(we, window[1]);
+    const close = (to: number) => {
+      const len = to - cur;
+      if (len >= GAP_MIN && len <= GAP_MAX) out.push({ start: cur, end: to, top: minutesToPx(cur - window[0], pxPerHour), height: minutesToPx(len, pxPerHour) - 1 });
+    };
+    for (const [bs, be] of busy) {
+      if (be <= cur) continue;
+      if (bs >= end) break;
+      if (bs > cur) close(Math.min(bs, end));
+      cur = Math.max(cur, be);
+    }
+    if (cur < end) close(end);
+  }
+  return out;
+}
+
+/** "Open: walk-in gap" and the range under it, e.g. "4:00 to 5:00". */
+export const gapRange = (g: Pick<WalkInGap, "start" | "end">) => `${clock(g.start).replace(/ (am|pm)$/, "")} to ${clock(g.end).replace(/ (am|pm)$/, "")}`;
+
+// ---------------------------------------------------------------------------
 // Blocks
 // ---------------------------------------------------------------------------
 export function geometry(a: Pick<Appt, "startsAt" | "endsAt">, date: string, window: [number, number], tz = TZ, pxPerHour = PX_PER_HOUR): { top: number; height: number } {
@@ -240,6 +300,8 @@ export const movable = (a: Appt) => a.status === "booked" || a.status === "arriv
 // The day's numbers (page description) and the staff header
 // ---------------------------------------------------------------------------
 export interface DayNumbers {
+  /** Open walk-in gaps across the shown columns. */
+  gaps?: number;
   booked: number;
   noShows: number;
   depositsDue: number;
@@ -257,6 +319,7 @@ export function dayNumbers(appts: Appt[], now = new Date()): DayNumbers {
 
 export function dayDescription(date: string, n: DayNumbers): string {
   const bits = [`${n.booked} booked`];
+  if (n.gaps) bits.push(`${n.gaps} walk-in ${n.gaps === 1 ? "gap" : "gaps"} open`);
   if (n.inChair) bits.push(`${n.inChair} in the chair`);
   if (n.noShows) bits.push(`${n.noShows} no-show${n.noShows === 1 ? "" : "s"}`);
   if (n.depositsDue) bits.push(`${n.depositsDue} deposit${n.depositsDue === 1 ? "" : "s"} still due`);

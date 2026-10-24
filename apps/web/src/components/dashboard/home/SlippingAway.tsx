@@ -18,7 +18,7 @@ export function SlippingAway({ data, base, canMessage, loading }: { data: report
         href: `${base}/customers?member=${m.memberId}`,
         title: m.name ?? "No name",
         meta: `${m.usually ?? "No pattern yet"} · last in ${shortDay(m.lastVisitAt)}`,
-        trailing: m.canText ? <span className="text-positive">Can text</span> : <span className="text-fg-subtle">No consent</span>,
+        trailing: m.canText ? <span className="text-positive-text">Can text</span> : <span className="text-fg-subtle">No consent</span>,
       }))}
       footer={
         data && data.count > 0 ? (

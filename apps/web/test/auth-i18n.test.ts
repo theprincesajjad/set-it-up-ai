@@ -19,6 +19,11 @@ describe("CASL consent wording", () => {
     for (const l of LOCALE_CODES) {
       const text = t(l, "auth.consent.merchant", { shop: "Sarson Dhaba" });
       expect(text, l).toContain("Sarson Dhaba");
+      // The English line is text only, optional, unticked, and says how to stop: every language must say the same.
+      expect(text, l).toContain("STOP");
+      expect(text, l).not.toMatch(/ईमेल|ای میل|ਈਮੇਲ|email/i);
+      expect(t(l, "auth.join.numberUse"), l).toContain("6");
+      if (l !== "en") expect(t(l, "auth.join.numberUse"), l).not.toBe(t("en", "auth.join.numberUse"));
       const caption = t(l, "auth.consent.caption", { sender: "Sarson Dhaba, 1 Main St", brand: "Local Loyalty" });
       expect(caption, l).toContain("STOP");
       expect(caption, l).toContain("Sarson Dhaba");

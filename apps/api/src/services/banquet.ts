@@ -18,7 +18,7 @@ import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { paidInApp, refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
 import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { computeTax, merchantProvince } from "./tax.js";
-import { addLedger, assertNotFuture, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor } from "./manual-payments.js";
+import { addLedger, assertNotFuture, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor, voidLedger } from "./manual-payments.js";
 import { localDate } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
 
@@ -503,6 +503,31 @@ export async function recordPayment(ctx: AppContext, staff: StaffContext, bookin
   if (body.sendReceipt) {
     await notifyCustomer(ctx, { userId: b0.userId, merchantId: merchant.id, title: `${merchant.name}: payment received`, body: `${merchant.name} received ${receiptLine(body.amountCents, body.method, body.receivedOn)} for your hall booking on ${formatLocalDateTime(b0.startsAt, tz)}.${covered ? "" : " The rest of this payment is still due."} Thank you.`, sms: false, data: { type: "hall_payment", hallBookingId: b0.id } });
   }
+  return b!;
+}
+
+/**
+ * Undo an instalment recorded by hand (a mistake): owner only, with a reason, audited. The instalment is unpaid again; if it was
+ * the deposit, the booking's deposit date clears too. A booking that was confirmed by that payment stays confirmed: change
+ * its status separately. Card payments have no ledger row and are refunded, not voided.
+ */
+export async function voidPayment(ctx: AppContext, staff: StaffContext, bookingId: string, body: z.output<typeof paymentsManualApi.voidPaymentBody>): Promise<HallBooking> {
+  const b0 = await getBooking(ctx.db, staff.merchant.id, bookingId);
+  if (b0.status === "cancelled" || b0.status === "completed") throw conflict(`Booking is ${b0.status}`);
+  const target = body.paymentId ? (await liveLedger(ctx.db, "hall_instalment", b0.id)).find((l) => l.id === body.paymentId) : undefined;
+  const voided = await voidLedger(ctx, staff, "hall_instalment", b0.id, body.reason, target?.id);
+  const index = voided.instalmentIndex;
+  const schedule = b0.schedule;
+  if (index === null || !schedule?.[index]) return b0;
+  const row = schedule[index]!;
+  const paidForRow = (await liveLedger(ctx.db, "hall_instalment", b0.id)).filter((l) => l.instalmentIndex === index).reduce((s, l) => s + l.amountCents, 0);
+  if (paidForRow >= row.amountCents) return b0;
+  const nextSchedule = schedule.map((r, k) => (k === index ? { ...r, paidAt: null } : r));
+  const [b] = await ctx.db
+    .update(hallBookings)
+    .set({ schedule: nextSchedule, ...(index === 0 ? { depositPaidAt: null } : {}) })
+    .where(eq(hallBookings.id, b0.id))
+    .returning();
   return b!;
 }
 

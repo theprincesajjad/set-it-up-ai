@@ -20,7 +20,7 @@ export const PIN_HEIGHT = 48;
 
 /** The selected pin is the bare 46 pt ringed bubble: the sheet below carries the name (canvas ShopSheet). */
 export function ShopPin({ shop, membership, selected, bare, side = "right" }: { shop: networkApi.ShopListItemDto; membership: PinMembership | null; selected: boolean; bare?: boolean; side?: "right" | "left" }) {
-  const sub = pinSubtitle(shop.merchant.vertical, membership);
+  const sub = pinSubtitle(shop.merchant.vertical, membership, shop);
   const b = selected ? 46 : PIN_BUBBLE;
   return (
     <View style={{ width: PIN_WIDTH, height: PIN_HEIGHT, justifyContent: "center" }} pointerEvents="none">
@@ -32,7 +32,7 @@ export function ShopPin({ shop, membership, selected, bare, side = "right" }: { 
 }
 
 export function pinLabel(shop: networkApi.ShopListItemDto, membership: PinMembership | null): string {
-  return `${shop.merchant.name}, ${pinSubtitle(shop.merchant.vertical, membership).text}`;
+  return `${shop.merchant.name}, ${pinSubtitle(shop.merchant.vertical, membership, shop).text}`;
 }
 
 /** Overlapping pins fold into a black 24 pt count capsule (canvas), centred where the bubble would be. */

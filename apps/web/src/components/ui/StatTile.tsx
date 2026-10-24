@@ -37,7 +37,7 @@ export function StatTile({ label, value, delta, spark, href, loading, caption, f
       <p className="text-meta text-fg-muted">{label}</p>
       {loading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="display mt-1 text-stat tabular-nums text-fg">{value ?? "–"}</p>}
       {delta && !loading ? (
-        <p className={cn("mt-1 text-meta tabular-nums", delta.good === true ? "text-positive" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`}</p>
+        <p className={cn("mt-1 text-meta tabular-nums", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`}</p>
       ) : null}
       {caption ? <p className="mt-1 text-meta text-fg-muted">{caption}</p> : null}
       {spark && !loading ? <Sparkline values={spark} /> : null}

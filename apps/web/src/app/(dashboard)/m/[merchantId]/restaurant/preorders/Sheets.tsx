@@ -26,13 +26,14 @@ interface OverrideDraft {
 }
 
 /** Rules and caps. `draft` pre-fills an override (the festival checklist links here with Eid's dates). */
-export function RulesSheet({ rules, canEdit, draft, onClose, onSaved }: { rules: restaurantApi.PreorderRulesResponse; canEdit: boolean; draft?: Partial<OverrideDraft> | null; onClose: () => void; onSaved: () => void }) {
+export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSaved }: { rules: restaurantApi.PreorderRulesResponse; cancelHours: number | null; canEdit: boolean; draft?: Partial<OverrideDraft> | null; onClose: () => void; onSaved: () => void }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const [daily, setDaily] = useState(rules.preorderDailyCap == null ? "" : String(rules.preorderDailyCap));
   const [byDay, setByDay] = useState<Record<string, string>>(() => Object.fromEntries(restaurantApi.WEEKDAYS.map((d) => [d, rules.capByWeekday[d] == null ? "" : String(rules.capByWeekday[d])])));
   const [hour, setHour] = useState(rules.perHourCap == null ? "" : String(rules.perHourCap));
+  const [cancel, setCancel] = useState(cancelHours == null ? "" : String(cancelHours));
   const [overrides, setOverrides] = useState<OverrideDraft[]>(() => {
     const list = rules.overrides.map((o) => ({ label: o.label, from: o.from, to: o.to, cap: String(o.cap), leadHours: o.leadHours == null ? "" : String(o.leadHours) }));
     return draft ? [...list, { label: draft.label ?? "", from: draft.from ?? "", to: draft.to ?? draft.from ?? "", cap: draft.cap ?? String(Math.max(20, (rules.preorderDailyCap ?? 20) * 2)), leadHours: draft.leadHours ?? "72" }] : list;
@@ -47,7 +48,11 @@ export function RulesSheet({ rules, canEdit, draft, onClose, onSaved }: { rules:
       perHourCap: num(hour),
       overrides: overrides.map((o) => ({ label: o.label.trim(), from: o.from, to: o.to, cap: num(o.cap)!, ...(num(o.leadHours) != null ? { leadHours: num(o.leadHours)! } : {}) })),
     };
-    const r = await act.run(() => api.preorders.saveRules(body));
+    const r = await act.run(async () => {
+      const saved = await api.preorders.saveRules(body);
+      await api.preorders.saveCancelRule(num(cancel));
+      return saved;
+    });
     if (r) {
       toast({ message: "Rules saved", tone: "success" });
       onSaved();
@@ -85,6 +90,10 @@ export function RulesSheet({ rules, canEdit, draft, onClose, onSaved }: { rules:
         <section className="flex flex-col gap-3">
           <h3 className="text-meta-strong text-fg">Pickup crowding</h3>
           <TextField label="Most pots in one pickup hour" suffix="pots" inputMode="numeric" value={hour} onChange={(e) => setHour(digits(e.target.value))} disabled={!canEdit} hint="Stops six families arriving for pots at 6 pm. Leave empty for no limit." />
+        </section>
+        <section className="flex flex-col gap-3">
+          <h3 className="text-meta-strong text-fg">Cancelling</h3>
+          <TextField label="Free cancel until" suffix="hours before pickup" inputMode="numeric" value={cancel} onChange={(e) => setCancel(digits(e.target.value))} disabled={!canEdit} hint="After this the guest keeps the deposit and you can still cancel and refund. Leave empty to use each dish's own notice period. 0 means free until pickup." />
         </section>
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">

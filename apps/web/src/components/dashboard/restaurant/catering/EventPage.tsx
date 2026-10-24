@@ -28,8 +28,9 @@ export function EventPage({ event, onChange }: { event: Ev; onChange: (e: Ev) =>
   return (
     <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="order-2 flex min-w-0 flex-col gap-8 lg:order-1">
-        <Details event={event} onChange={onChange} />
+        {/* The quote is the job (catering research, Frame C2): menu and pricing first, the event facts under it. */}
         <MenuBuilder event={event} onChange={onChange} />
+        <Details event={event} onChange={onChange} />
       </div>
       <aside aria-label={`Steps for ${title}`} className="order-1 flex min-w-0 flex-col gap-6 lg:order-2">
         <NextSteps event={event} onChange={onChange} />
@@ -307,7 +308,7 @@ function Total({ label, value, strong, muted }: { label: string; value: string; 
 /* ----------------------------------------------------------- next steps */
 
 function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }) {
-  const { api, enabled, base } = useMerchant();
+  const { api, enabled, base, role } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const [tDate, setTDate] = useState(addDaysISO(todayISO(), 3));
@@ -315,6 +316,8 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
   const [sms, setSms] = useState(true);
   const [email, setEmail] = useState(true);
   const [recording, setRecording] = useState<"deposit" | "balance" | null>(null);
+  const [voiding, setVoiding] = useState<{ id: string; label: string } | null>(null);
+  const [why, setWhy] = useState("");
   const payee = useApi(() => api.settings.payment(), [api]);
   const [sendInvoice, setSendInvoice] = useState(true);
   const [invoice, setInvoice] = useState<restaurantApi.CateringInvoiceDto | null>(null);
@@ -368,7 +371,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
       </div>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {event.dateClashes ? <Banner tone="warning" title="Another booking that day">{event.dateClashes === 1 ? "A confirmed event or hall booking" : `${event.dateClashes} confirmed events or hall bookings`} is on {dayLabel(event.eventDate)}. You can still go ahead.</Banner> : null}
-      <PaymentsCard event={event} payee={payee.data ?? null} onRecord={setRecording} />
+      <PaymentsCard event={event} payee={payee.data ?? null} onRecord={setRecording} onVoid={role === "owner" ? setVoiding : undefined} />
 
       {(st === "inquiry" || st === "tasting") ? (
         <Section title="Tasting" description={event.tastingAt ? `Booked for ${formatDateTime(event.tastingAt)}` : "Optional. Have them try the biryani before they commit."}>
@@ -403,6 +406,25 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
           </div>
         </Section>
       ) : null}
+
+      <ConfirmDialog
+        open={!!voiding}
+        onClose={() => { setVoiding(null); setWhy(""); }}
+        danger
+        title="Void this payment?"
+        body={`${voiding?.label ?? "The payment"} stays in the ledger as voided and the amount is due again. Use this for a mistake, such as the wrong event. Only the owner can do this, and it is logged.`}
+        confirmLabel="Void payment"
+        disabled={!why.trim()}
+        onConfirm={async () => {
+          if (!voiding) return;
+          const r = await api.catering.voidPayment(event.id, why.trim(), voiding.id);
+          onChange(r);
+          toast({ message: "Payment voided", tone: "success" });
+          setWhy("");
+        }}
+      >
+        <TextField label="Reason" value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Recorded on the wrong event" />
+      </ConfirmDialog>
 
       {recording ? (
         <RecordPaymentPanel
@@ -491,7 +513,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
 const METHOD_WORD: Record<string, string> = { etransfer: "e-transfer", cash: "cash", cheque: "cheque", other: "other", card: "card" };
 
 /** The payments ledger (design C2): deposit and balance, what the customer was told, and a Record payment button. */
-function PaymentsCard({ event, payee, onRecord }: { event: Ev; payee: { etransferEnabled: boolean; etransferEmail: string | null } | null; onRecord: (k: "deposit" | "balance") => void }) {
+function PaymentsCard({ event, payee, onRecord, onVoid }: { event: Ev; payee: { etransferEnabled: boolean; etransferEmail: string | null } | null; onRecord: (k: "deposit" | "balance") => void; onVoid?: (p: { id: string; label: string }) => void }) {
   const st = event.status;
   if (!event.totalCents || st === "cancelled" || st === "inquiry" || st === "tasting") return null;
   const dep = (event.payments ?? []).filter((p) => p.subjectType === "catering_deposit");
@@ -515,7 +537,10 @@ function PaymentsCard({ event, payee, onRecord }: { event: Ev; payee: { etransfe
               {event.depositPaidAt ? `Paid${event.depositMethod ? ` by ${METHOD_WORD[event.depositMethod] ?? event.depositMethod}` : ""}${event.depositReceivedOn ? ` ${dayLabel(event.depositReceivedOn)}` : ""}` : depositDue ? `Awaiting${event.referenceCode ? ` e-transfer · reference ${event.referenceCode}` : ""}` : "After the customer approves"}
             </p>
             {live(dep).map((p) => (
-              <p key={p.id} className="ps-3 text-caption text-fg-muted">{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</p>
+              <p key={p.id} className="flex items-center gap-2 ps-3 text-caption text-fg-muted">
+                <span>{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</span>
+                {onVoid ? <button type="button" onClick={() => onVoid({ id: p.id, label: `${formatMoney(p.amountCents)} by ${METHOD_WORD[p.method]}` })} className="rounded-sm font-medium text-fg underline underline-offset-4 hover:no-underline focus-visible:focus-ring">Void</button> : null}
+              </p>
             ))}
           </div>
           <p className="shrink-0 text-body tabular text-fg">{formatMoney(event.depositCents)}</p>
@@ -528,7 +553,10 @@ function PaymentsCard({ event, payee, onRecord }: { event: Ev; payee: { etransfe
               {event.balanceCents === 0 && event.depositPaidAt ? "Paid in full" : event.invoiceId ? "Invoice sent" : "Invoice after the event"}
             </p>
             {live(bal).map((p) => (
-              <p key={p.id} className="ps-3 text-caption text-fg-muted">{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</p>
+              <p key={p.id} className="flex items-center gap-2 ps-3 text-caption text-fg-muted">
+                <span>{formatMoney(p.amountCents)} {METHOD_WORD[p.method]} {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</span>
+                {onVoid ? <button type="button" onClick={() => onVoid({ id: p.id, label: `${formatMoney(p.amountCents)} by ${METHOD_WORD[p.method]}` })} className="rounded-sm font-medium text-fg underline underline-offset-4 hover:no-underline focus-visible:focus-ring">Void</button> : null}
+              </p>
             ))}
           </div>
           <p className="shrink-0 text-body tabular text-fg">{formatMoney(Math.max(0, event.totalCents - event.depositCents))}</p>

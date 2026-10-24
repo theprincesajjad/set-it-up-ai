@@ -229,10 +229,15 @@ export async function waitlistCounts(db: DbOrTx, merchantId: string, from: strin
 // ---------------------------------------------------------------------------
 // Public availability (guest's date chips)
 // ---------------------------------------------------------------------------
-/** Opening hours for a weekday from the shop's first active location, as [openHour, closeHour); falls back to 11 to 21. */
-async function openHours(db: DbOrTx, merchantId: string, dateKey: string): Promise<[number, number]> {
+/**
+ * Opening hours for a weekday from the shop's first active location, as [openHour, closeHour), or null when the shop is
+ * closed that day (hours are set but the day has none). Falls back to 11 to 21 only when the shop never set hours.
+ */
+export async function openHours(db: DbOrTx, merchantId: string, dateKey: string): Promise<[number, number] | null> {
   const [loc] = await db.select({ hours: locations.hours }).from(locations).where(and(eq(locations.merchantId, merchantId), eq(locations.active, true))).orderBy(asc(locations.createdAt)).limit(1);
+  const hasHours = !!loc?.hours && Object.values(loc.hours).some((v) => v && v.length);
   const spans = loc?.hours?.[weekdayOfKey(dateKey)] ?? null;
+  if (hasHours && !(spans && spans.length)) return null;
   if (spans && spans.length) {
     const open = Math.min(...spans.map(([a]) => Number(a.slice(0, 2))));
     const closeRaw = Math.max(...spans.map(([, b]) => (b === "00:00" ? 24 : Number(b.slice(0, 2)) + (Number(b.slice(3, 5)) > 0 ? 1 : 0))));
@@ -261,7 +266,9 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
     const rows = cap != null || merchant.preorderPerHourCap != null ? await potRowsOnDay(ctx.db, merchant, d) : [];
     const booked = rows.reduce((s, r) => s + r.quantity, 0);
     const potsLeft = cap == null ? null : Math.max(0, cap - booked);
-    const [open, close] = await openHours(ctx.db, merchant.id, d);
+    const hours = await openHours(ctx.db, merchant.id, d);
+    const closed = hours === null;
+    const [open, close] = hours ?? [0, 0];
     const windows: restaurantApi.PreorderAvailabilityDay["windows"] = [];
     for (let h = open; h < close; h++) {
       const start = new Date(localMidnightUtc(d, merchant.timezone).getTime() + h * 3_600_000);
@@ -269,7 +276,7 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
       const full = start.getTime() < earliest || (merchant.preorderPerHourCap != null && hourBooked >= merchant.preorderPerHourCap) || (potsLeft != null && potsLeft <= 0);
       windows.push({ start: `${String(h).padStart(2, "0")}:00`, end: `${String(h + 1).padStart(2, "0")}:00`, full });
     }
-    days.push({ date: d, potsLeft, full: potsLeft != null && potsLeft <= 0, waiting: waiting.get(d) ?? 0, tooSoon, windows, note });
+    days.push({ date: d, potsLeft, full: !closed && potsLeft != null && potsLeft <= 0, closed, waiting: waiting.get(d) ?? 0, tooSoon, windows, note });
     if (days.length >= 60) break;
   }
   return { itemId: item.id, leadHours: item.leadTimeHours, perHourCap: merchant.preorderPerHourCap, days };

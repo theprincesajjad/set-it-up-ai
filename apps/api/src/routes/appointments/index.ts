@@ -92,7 +92,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // ---------------------------------------------------------------- settings
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/appointments/settings", async (req) => {
     const staff = await staffFor(req, "staff", "booking.appointments", null);
-    return svc.settingsDto(staff.merchant);
+    return svc.settingsDto(ctx, staff.merchant);
   });
 
   app.put<{ Params: MerchantParams }>("/merchants/:merchantId/appointments/settings", async (req) => {

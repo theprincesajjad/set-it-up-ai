@@ -30,7 +30,7 @@ function itemTitle(t: serviceApi.PublicQuoteResponse["ticket"]) {
  * holds the date. In English, Hindi, Urdu and Punjabi, with the cap line in every one.
  */
 export function QuoteView({ token, initial, preview = false }: { token: string; initial: serviceApi.PublicQuoteResponse; preview?: boolean }) {
-  const { t, money, date, number, percent, locale } = useFmt();
+  const { t, moneyExact: money, date, number, percent, locale } = useFmt();
   const [data, setData] = useState(initial);
   const [deposit, setDeposit] = useState<serviceApi.DepositPaymentDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +151,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
           />
         </Section>
       ) : q.diagnosis ? (
-        <Section title={t("sv.q.whatWeFound")}>
+        <Section plain title={t("sv.q.whatWeFound")}>
           <p className="text-body text-fg-muted">{q.diagnosis}</p>
         </Section>
       ) : null}
@@ -160,16 +160,17 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
         <ul>
           {q.lineItems.map((l, i) => {
             const credit = l.totalCents < 0;
+            const kindLabel = (x: typeof l, c: boolean) => { const k = c ? t("sv.q.credited") : x.kind === "part" || x.kind === "labour" || x.kind === "fee" ? t(`sv.q.kind.${x.kind}` as MessageKey) : ""; return k && x.description.toLowerCase().includes(k.toLowerCase()) ? "" : k; };
             return (
               <li key={i} className={cn("flex items-start justify-between gap-4 py-3", i > 0 && "border-t border-line")}>
                 <div className="min-w-0">
-                  <p className={cn("text-body", credit ? "text-positive" : "text-fg")}>{l.description}</p>
+                  <p className={cn("text-body", credit ? "text-positive-text" : "text-fg")}>{l.description}</p>
                   <p className="text-meta text-fg-muted">
-                    {credit ? t("sv.q.credited") : l.kind === "part" || l.kind === "labour" || l.kind === "fee" ? t(`sv.q.kind.${l.kind}` as MessageKey) : ""}
+                    {kindLabel(l, credit)}
                     {l.quantity > 1 ? `${credit || l.kind !== "other" ? " · " : ""}${number(l.quantity)} × ${money(l.unitPriceCents)}` : ""}
                   </p>
                 </div>
-                <p className={cn("shrink-0 text-body tabular-nums", credit ? "text-positive" : "text-fg")}>{money(l.totalCents)}</p>
+                <p className={cn("shrink-0 text-body tabular-nums", credit ? "text-positive-text" : "text-fg")}>{money(l.totalCents)}</p>
               </li>
             );
           })}
@@ -200,7 +201,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       {ev ? <p className="text-meta text-fg-muted">{t("sv.q.changes", { shop: shopName })}</p> : <p className="text-meta text-fg-muted">{t("sv.q.cap", { amount: money(q.maxAuthorizedCents) })}</p>}
 
       {data.terms ? (
-        <Section title={t("sv.q.terms", { shop: shopName })}>
+        <Section plain title={t("sv.q.terms", { shop: shopName })}>
           <p className="whitespace-pre-line text-meta text-fg-muted">{data.terms}</p>
         </Section>
       ) : null}
@@ -219,7 +220,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
           <Button type="submit" size="lg" fullWidth loading={busy === "approve"}>{approveLabel}</Button>
           <div className="grid grid-cols-2 gap-3">
             {shop.phone ? (
-              <Button variant="secondary" size="lg" fullWidth iconStart={Phone} href={ev ? `sms:${shop.phone}` : `tel:${shop.phone}`}>{ev ? t("sv.q.message", { shop: shopName }) : t("rc.callShop", { shop: shopName })}</Button>
+              <Button variant="secondary" size="lg" fullWidth iconStart={Phone} href={ev ? `sms:${shop.phone}` : `tel:${shop.phone}`}>{ev ? t("sv.q.message", { shop: shopName }) : t("sv.q.callShop")}</Button>
             ) : <span />}
             <Button type="button" variant="secondary" size="lg" fullWidth disabled={busy !== null} onClick={() => setDeclineOpen(true)}>{t("sv.q.decline")}</Button>
           </div>

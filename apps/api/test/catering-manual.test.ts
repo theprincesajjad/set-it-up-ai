@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, catalogItems, cateringEvents, hallBookings, invoices, merchants, notifications } from "@ll/db";
 import { createTestEnv, tokenFor, type TestEnv } from "./helpers.js";
-import { paidMerchant } from "./commerce-fixtures.js";
+import { paidMerchant, staffMember } from "./commerce-fixtures.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -104,6 +104,51 @@ describe("catering deposit recorded by hand", () => {
     expect(again.status).toBe(409);
     const [inv0] = await env.db.select().from(invoices).where(eq(invoices.cateringEventId, q.id));
     expect(inv0!.status).toBe("paid");
+  });
+});
+
+describe("void a payment recorded by hand (owner only, audited)", () => {
+  it("voids a balance payment and reopens the balance, keeping the row as voided with the reason", async () => {
+    const c = await caterer();
+    const q = await quoted(c);
+    await api(c.ownerToken, "POST", `${q.base}/deposit/mark-paid`, { method: "etransfer" });
+    await api(c.ownerToken, "POST", `${q.base}/balance/record-payment`, { method: "cheque", amountCents: 30000, receivedOn: "2026-11-03" });
+    const r = await api(c.ownerToken, "POST", `${q.base}/void-payment`, { reason: "Wrong event" });
+    expect(r.status).toBe(200);
+    expect(r.body.balanceCents).toBe(79100);
+    expect(r.body.payments.find((p: { subjectType: string }) => p.subjectType === "catering_balance")).toMatchObject({ voidReason: "Wrong event", voidedAt: expect.any(String) });
+    expect(await env.db.select().from(auditLogs).where(eq(auditLogs.action, "payment.void"))).toEqual([expect.objectContaining({ entity: "catering_balance", entityId: q.id, actorUserId: c.owner.id, data: expect.objectContaining({ reason: "Wrong event", amountCents: 30000 }) })]);
+    // Nothing left to undo on the balance; the deposit is next in line, and a reason is required.
+    expect((await api(c.ownerToken, "POST", `${q.base}/void-payment`, {})).status).toBe(400);
+  });
+
+  it("voids a deposit while nothing is built on it: the event goes back to quoted. Later payments block it", async () => {
+    const c = await caterer();
+    const q = await quoted(c);
+    await api(c.ownerToken, "POST", `${q.base}/deposit/mark-paid`, { method: "etransfer" });
+    const back = await api(c.ownerToken, "POST", `${q.base}/void-payment`, { reason: "Not received" });
+    expect(back.status).toBe(200);
+    expect(back.body).toMatchObject({ status: "quoted", depositPaidAt: null, depositMethod: null });
+    // Paid again, then a balance payment sits on top: the deposit can't be voided under it.
+    await api(c.ownerToken, "POST", `${q.base}/deposit/mark-paid`, { method: "etransfer" });
+    const bal = await api(c.ownerToken, "POST", `${q.base}/balance/record-payment`, { method: "cheque", amountCents: 1000, receivedOn: "2026-11-03" });
+    expect(bal.status).toBe(200);
+    const deposit = bal.body.payments.find((p: { subjectType: string; voidedAt: string | null }) => p.subjectType === "catering_deposit" && !p.voidedAt);
+    expect((await api(c.ownerToken, "POST", `${q.base}/void-payment`, { reason: "x", paymentId: deposit.id })).status).toBe(409);
+  });
+
+  it("will not void the payment that settled a paid invoice, and nothing but the owner can void", async () => {
+    const c = await caterer();
+    const q = await quoted(c);
+    await api(c.ownerToken, "POST", `${q.base}/deposit/mark-paid`, { method: "etransfer" });
+    await api(c.ownerToken, "POST", `${q.base}/invoice`, { send: true });
+    await api(c.ownerToken, "POST", `${q.base}/balance/record-payment`, { method: "etransfer", amountCents: 79100, receivedOn: "2026-11-03" });
+    const settled = await api(c.ownerToken, "POST", `${q.base}/void-payment`, { reason: "Oops" });
+    expect(settled.status).toBe(409);
+    expect(settled.body.error.message).toContain("settled the balance invoice");
+    const manager = await staffMember(env, c.merchant.id, "manager");
+    expect((await api(manager.token, "POST", `${q.base}/void-payment`, { reason: "Oops" })).status).toBe(403);
+    expect((await api(null, "POST", `${q.base}/void-payment`, { reason: "Oops" })).status).toBe(401);
   });
 });
 

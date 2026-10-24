@@ -11,7 +11,7 @@ const TZ = "America/Toronto";
 
 /** /t/<token>: where is my repair. One big status word, pay now when something is owed, the progress with times, warranty, call and directions. */
 export function TicketStatusView({ token, initial }: { token: string; initial: serviceApi.PublicTicketStatusResponse }) {
-  const { t, money, date, locale } = useFmt();
+  const { t, moneyExact: money, date, locale } = useFmt();
   const [data, setData] = useState(initial);
   useEffect(() => {
     const id = setInterval(() => {

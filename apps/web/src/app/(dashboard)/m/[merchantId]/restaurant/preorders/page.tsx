@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import { capsInWords, channelMix, depositInWords, fireInWords, noticeInWords, pickupsInWords } from "@/lib/restaurant/preorders";
+import { cancelRuleInWords, capsInWords, channelMix, depositInWords, fireInWords, noticeInWords, pickupsInWords } from "@/lib/restaurant/preorders";
 import { RecipeSheet, RulesSheet, WaitlistSheet } from "./Sheets";
 
 export default function PreordersPage() {
@@ -43,6 +43,7 @@ function Preorders() {
   const to = addDaysISO(week, 6);
   const state = useApi(() => api.preorders.list({ from, to }), [api, from, to], { pollMs: 30_000 });
   const catalog = useApi(() => api.catalog(), [api]);
+  const cancelRule = useApi(() => api.preorders.cancelRule(), [api]);
   const canEdit = role === "owner" || role === "manager";
 
   const byDate = useMemo(() => new Map((state.data?.days ?? []).map((d) => [d.date, d])), [state.data]);
@@ -145,7 +146,7 @@ function Preorders() {
           <OrdersForDay day={day} orders={orders} loading={state.loading && !state.data} onChanged={() => void state.reload()} />
         </div>
         <aside className="flex min-w-0 flex-col gap-8">
-          <RulesCard rules={state.data?.rules ?? null} items={potItems} onEdit={() => setRulesOpen(true)} />
+          <RulesCard rules={state.data?.rules ?? null} cancelHours={cancelRule.data ? cancelRule.data.cancelCutoffHours : undefined} items={potItems} onEdit={() => setRulesOpen(true)} />
           <section aria-labelledby="wl-h">
             <h2 id="wl-h" className="mb-3 text-[15px] font-semibold text-fg">Wait list</h2>
             <div className="flex flex-col gap-3 rounded-card border border-line p-5">
@@ -158,7 +159,7 @@ function Preorders() {
         </aside>
       </div>
 
-      {rulesOpen ? <RulesSheet rules={state.data?.rules ?? { preorderDailyCap: null, capByWeekday: {}, perHourCap: null, overrides: [] }} canEdit={canEdit} draft={params.get("rules") === "open" && params.get("from") ? { label: params.get("label") ?? "", from: params.get("from") ?? "", to: params.get("to") ?? params.get("from") ?? "" } : null} onClose={() => setRulesOpen(false)} onSaved={() => void state.reload()} /> : null}
+      {rulesOpen ? <RulesSheet rules={state.data?.rules ?? { preorderDailyCap: null, capByWeekday: {}, perHourCap: null, overrides: [] }} canEdit={canEdit} draft={params.get("rules") === "open" && params.get("from") ? { label: params.get("label") ?? "", from: params.get("from") ?? "", to: params.get("to") ?? params.get("from") ?? "" } : null} cancelHours={cancelRule.data?.cancelCutoffHours ?? null} onClose={() => setRulesOpen(false)} onSaved={() => { void state.reload(); void cancelRule.reload(); }} /> : null}
       {recipes ? <RecipeSheet onClose={() => setRecipes(false)} onSaved={() => { void state.reload(); void catalog.reload(); }} /> : null}
       {waitlist ? <WaitlistSheet from={from} to={to} onClose={() => setWaitlist(false)} /> : null}
       <TakeOrderSheet open={phoneOrder} mode="preorder" onClose={() => setPhoneOrder(false)} onPlaced={() => void state.reload()} />
@@ -257,7 +258,7 @@ function OrdersForDay({ day, orders, loading, onChanged }: { day: string; orders
       header: "Balance",
       mobile: "subtitle",
       sortValue: (o) => o.balanceDueCents,
-      cell: (o) => (o.balanceDueCents ? <span className="font-medium tabular">{formatMoney(o.balanceDueCents)} due</span> : <span className="text-positive">Paid</span>),
+      cell: (o) => (o.balanceDueCents ? <span className="font-medium tabular">{formatMoney(o.balanceDueCents)} due</span> : <span className="text-positive-text">Paid</span>),
     },
     {
       key: "act",
@@ -288,13 +289,14 @@ function OrdersForDay({ day, orders, loading, onChanged }: { day: string; orders
 
 const formatClock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "pm" : "am"}`);
 
-function RulesCard({ rules, items, onEdit }: { rules: restaurantApi.PreorderRulesResponse | null; items: { name: string; leadTimeHours?: number; depositBps?: number }[]; onEdit: () => void }) {
+function RulesCard({ rules, cancelHours, items, onEdit }: { rules: restaurantApi.PreorderRulesResponse | null; cancelHours: number | null | undefined; items: { name: string; leadTimeHours?: number; depositBps?: number }[]; onEdit: () => void }) {
   const rows = rules
     ? [
         { label: "Daily pots", value: capsInWords(rules) },
         { label: "Pickup crowding", value: rules.perHourCap ? `Max ${rules.perHourCap} pots per hour` : "No limit per hour" },
         { label: "Notice", value: noticeInWords(items.map((i) => ({ name: i.name, leadTimeHours: i.leadTimeHours ?? 0 }))) },
         { label: "Deposit", value: depositInWords(items.map((i) => ({ depositBps: i.depositBps ?? 0 }))) },
+        ...(cancelHours === undefined ? [] : [{ label: "Cancelling", value: cancelRuleInWords(cancelHours) }]),
         ...rules.overrides.map((o) => ({ label: `${o.label}, ${new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${o.from}T12:00:00Z`))}${o.to !== o.from ? ` to ${new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${o.to}T12:00:00Z`))}` : ""}`, value: `${o.cap} pots${o.leadHours != null ? `, cut-off ${o.leadHours} h` : ""}` })),
       ]
     : [];

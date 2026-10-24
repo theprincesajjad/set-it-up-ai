@@ -108,6 +108,8 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       markDepositPaid: (id: string, method: "cash" | "etransfer" | "cheque" | "other" | paymentsManualApi.RecordPaymentBody = "other") =>
         c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/deposit/mark-paid`, typeof method === "string" ? { method } : method),
       recordBalance: (id: string, body: paymentsManualApi.RecordPaymentBody) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/balance/record-payment`, body),
+      /** Owner only. Undo the latest (or the named) hand-recorded payment. */
+      voidPayment: (id: string, reason: string, paymentId?: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/void-payment`, { reason, ...(paymentId ? { paymentId } : {}) }),
       invoice: (id: string, send: boolean) => c.post<restaurantApi.CateringInvoiceDto>(`${cat}/${enc(id)}/invoice`, { send }),
       complete: (id: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/complete`, {}),
       /** `refund` applies to a deposit paid in the app: "full", "none" (default) or { amountCents }. */
@@ -127,6 +129,8 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       cancel: (id: string, refund?: restaurantApi.DepositRefundChoice) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/cancel`, refund ? { refund } : {}),
       complete: (id: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/complete`, {}),
       recordPayment: (id: string, body: paymentsManualApi.RecordPaymentBody) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/payments`, body),
+      /** Owner only. Undo the latest (or the named) hand-recorded instalment. */
+      voidPayment: (id: string, reason: string, paymentId?: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/void-payment`, { reason, ...(paymentId ? { paymentId } : {}) }),
       deposit: (id: string) => c.post<restaurantApi.HoldResponse>(`${bq}/bookings/${enc(id)}/deposit`, {}),
       linkCatering: (id: string, cateringEventId: string) => c.post<restaurantApi.HallBookingDto>(`${bq}/bookings/${enc(id)}/catering`, { cateringEventId }),
     },

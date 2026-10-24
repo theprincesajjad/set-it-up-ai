@@ -24,10 +24,11 @@ import {
   type AppointmentItemRow,
   type DbOrTx,
 } from "@ll/db";
-import { appointmentsApi, normalizeLocale, tipsEnabledFor } from "@ll/shared";
+import { appointmentsApi, normalizeLocale, salesTaxCopy, tipsEnabledFor } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
+import { merchantProvince } from "./tax.js";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "../lib/errors.js";
 import { addDays, zonedToUtc } from "./bookings.js";
 import { iso } from "./commerceShared.js";
@@ -305,8 +306,8 @@ export async function putStaffServices(db: DbOrTx, merchantId: string, userId: s
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-export function settingsDto(m: Merchant): appointmentsApi.AppointmentSettingsDto {
-  return { cancelWindowHours: m.cancelWindowHours, noShowFeeCents: m.noShowFeeCents, tipsEnabled: m.tipsEnabled, tipsOn: tipsEnabledFor(m.vertical, m.tipsEnabled), tipPresets: m.tipPresets };
+export async function settingsDto(ctx: AppContext, m: Merchant): Promise<appointmentsApi.AppointmentSettingsDto> {
+  return { cancelWindowHours: m.cancelWindowHours, noShowFeeCents: m.noShowFeeCents, tipsEnabled: m.tipsEnabled, tipsOn: tipsEnabledFor(m.vertical, m.tipsEnabled), tipPresets: m.tipPresets, tax: salesTaxCopy({ province: await merchantProvince(ctx.db, m), taxRegistered: m.taxRegistered }) };
 }
 
 export async function updateSettings(ctx: AppContext, merchant: Merchant, body: z.output<typeof appointmentsApi.appointmentSettingsBody>): Promise<appointmentsApi.AppointmentSettingsDto> {
@@ -315,9 +316,9 @@ export async function updateSettings(ctx: AppContext, merchant: Merchant, body: 
   if (body.noShowFeeCents !== undefined) patch.noShowFeeCents = body.noShowFeeCents;
   if (body.tipsEnabled !== undefined) patch.tipsEnabled = body.tipsEnabled;
   if (body.tipPresets !== undefined) patch.tipPresets = body.tipPresets;
-  if (!Object.keys(patch).length) return settingsDto(merchant);
+  if (!Object.keys(patch).length) return settingsDto(ctx, merchant);
   const [row] = await ctx.db.update(merchants).set({ ...patch, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id)).returning();
-  return settingsDto(row!);
+  return settingsDto(ctx, row!);
 }
 
 // ---------------------------------------------------------------------------

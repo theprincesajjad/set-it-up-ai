@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capsInWords, channelMix, depositInWords, noticeInWords } from "@/lib/restaurant/preorders";
+import { cancelRuleInWords, capsInWords, channelMix, depositInWords, noticeInWords } from "@/lib/restaurant/preorders";
 import { chatStatus, initials, languageLabel, windowHoursLeft } from "@/lib/restaurant/inbox";
 import { chipOf, splitLine } from "@/lib/restaurant/orders";
 
@@ -43,5 +43,14 @@ describe("orders words", () => {
   });
   it("says how a bill was split", () => {
     expect(splitLine([{ label: "Asif", tender: "card", status: "open" }, { label: "Sana", tender: "cash", status: "paid" }] as never)).toBe("Split two ways: Asif card, Sana cash (paid)");
+  });
+});
+
+describe("cancel rule in words", () => {
+  it("names the hours, free-until-pickup, or the dish's own notice", () => {
+    expect(cancelRuleInWords(12)).toBe("Free until 12 hours before pickup, then the deposit stays");
+    expect(cancelRuleInWords(1)).toBe("Free until 1 hour before pickup, then the deposit stays");
+    expect(cancelRuleInWords(0)).toBe("Free until pickup");
+    expect(cancelRuleInWords(null)).toBe("Free until each dish's notice period before pickup");
   });
 });

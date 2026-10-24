@@ -18,7 +18,7 @@ export default function CounterPage() {
     );
   return (
     <div>
-      <PageHeader title="Counter" description={`${detail.merchant.name}${role === "staff" ? ` · Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : ""}`} />
+      <PageHeader title="Counter" description={role === "staff" ? `Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : undefined} />
       <CounterApp signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
     </div>
   );

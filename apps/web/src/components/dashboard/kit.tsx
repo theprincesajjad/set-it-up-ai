@@ -137,7 +137,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
             <dd className="mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
               {s.delta ? (
                 <>
-                  <span className={s.delta.good === true ? "text-positive" : s.delta.good === false ? "text-negative" : "text-fg-muted"}>{s.delta.text}</span>
+                  <span className={s.delta.good === true ? "text-positive-text" : s.delta.good === false ? "text-negative" : "text-fg-muted"}>{s.delta.text}</span>
                   {s.delta.context ? <span className="text-fg-muted"> {s.delta.context}</span> : null}
                 </>
               ) : s.caption ? (
@@ -569,7 +569,7 @@ export function StatTile({ label, value, delta, href, loading, caption }: { labe
       <p className="text-meta text-fg-muted">{label}</p>
       <p className="mt-1.5 text-[28px] font-semibold leading-8 tracking-[-0.01em] text-fg tabular">{loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : (value ?? "–")}</p>
       {delta && !loading ? (
-        <p className={cn("mt-1 text-caption font-normal tabular", delta.good === true ? "text-positive" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${(delta.pct ?? 0) >= 0 ? "+" : ""}${delta.pct}%`}</p>
+        <p className={cn("mt-1 text-caption font-normal tabular", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${(delta.pct ?? 0) >= 0 ? "+" : ""}${delta.pct}%`}</p>
       ) : null}
       {caption ? <p className="mt-1 text-caption font-normal text-fg-muted">{caption}</p> : null}
     </>
@@ -591,7 +591,7 @@ export function StatGrid({ children, className }: { children: ReactNode; classNa
 /* ------------------------------------------------------- pill + save bar */
 
 const PILL: Record<DotTone, string> = {
-  positive: "bg-positive/10 text-positive",
+  positive: "bg-positive/10 text-positive-text",
   negative: "bg-negative/10 text-negative",
   neutral: "bg-bg-muted text-fg-muted",
   accent: "bg-accent-soft text-accent-text",

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { addLine, cartCount, cartSubtotal, defaultOptionIds, idempotencyKeyFor, lineKey, loadCart, pickupCode, pickupDays, preorderBill, priceDish, pruneCart, saveCart, setQty, taxOf, type Item } from "@/lib/restaurant/order";
+import { addLine, cartCount, cartSubtotal, defaultOptionIds, idempotencyKeyFor, lineKey, loadCart, pickupCode, pickupDays, preorderBill, priceDish, pruneCart, saveCart, setQty, summaryLine, taxOf, type Item } from "@/lib/restaurant/order";
 import { available, buildSections, isFiltering, matches, NO_FILTERS } from "@/lib/restaurant/menu";
 import { buildIcs, icsFold, icsText } from "@/lib/restaurant/ics";
 import { whatsappChatUrl, whatsappShareUrl } from "@/lib/restaurant/share";
@@ -20,6 +20,15 @@ const plain = { id: "p1", priceCents: 1899 } as Item;
 afterEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
+});
+
+describe("order summary line", () => {
+  const size = (n: string, serves: number) => `${n} (serves ${serves})`;
+  it("reads dish, size with serves, spice, then + add-ons", () => {
+    expect(summaryLine(degh, "Chicken Biryani Degh", ["half", "hot", "raita", "naan"], size)).toBe("Chicken Biryani Degh · Half degh (serves 8) · Hot · + Raita, + Garlic naan");
+    expect(summaryLine(degh, "Chicken Biryani Degh", [], size)).toBe("Chicken Biryani Degh · Full degh (serves 15)");
+    expect(summaryLine(plain, "Nihari", [], size)).toBe("Nihari");
+  });
 });
 
 describe("dish pricing from options", () => {

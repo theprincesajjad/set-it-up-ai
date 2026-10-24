@@ -114,7 +114,7 @@ export function ManageAppointment({ initial, slug }: { initial: Appt; slug: stri
           </li>
         ))}
         <li className="flex items-center justify-between py-3">
-          <span className="text-body-strong text-fg">{t("bk.totalLabel")}</span>
+          <span className="text-body-strong text-fg">{appt.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")}</span>
           <BigNumber className="text-[28px]">{money(appt.totalCents)}</BigNumber>
         </li>
       </ul>

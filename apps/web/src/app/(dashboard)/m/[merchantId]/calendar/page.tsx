@@ -27,6 +27,7 @@ import {
   dayDescription,
   dayNumbers,
   todayOf,
+  walkInGaps,
   weekColumns,
   weekStart,
   workWindow,
@@ -95,7 +96,7 @@ function Calendar() {
     if (view === "day") return workWindow(date, staff, dayItems);
     return workWindow(date, staff.filter((s) => s.userId === chosenStaff), items);
   }, [view, date, staff, dayItems, items, chosenStaff]);
-  const numbers = dayNumbers(dayItems, now);
+  const numbers = { ...dayNumbers(dayItems, now), gaps: view === "day" ? columns.reduce((n, c) => n + walkInGaps(c.staff, c.staffId, c.date, win, dayItems, now).length, 0) : 0 };
 
   // Open the chair that is in service (or the next one up) on first load, like the design.
   const [primed, setPrimed] = useState(false);

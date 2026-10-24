@@ -451,7 +451,7 @@ export default function Explore() {
 
   const row = (s: Shop, i: number, n: number) => {
     const mem = memberships[s.merchant.id] ?? null;
-    const sub = pinSubtitle(s.merchant.vertical, mem);
+    const sub = pinSubtitle(s.merchant.vertical, mem, s);
     return (
       <ShopTile
         key={s.merchant.id}

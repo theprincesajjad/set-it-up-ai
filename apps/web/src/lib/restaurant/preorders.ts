@@ -57,3 +57,10 @@ export function channelMix(orders: { channel: string }[]): string {
   for (const o of orders) n.set(o.channel, (n.get(o.channel) ?? 0) + 1);
   return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([c, k]) => `${k} ${label[c] ?? c}`).join(", ");
 }
+
+/** The free-cancel rule in words for the rules card. null = each dish's own notice period. */
+export function cancelRuleInWords(hours: number | null): string {
+  if (hours === null) return "Free until each dish's notice period before pickup";
+  if (hours === 0) return "Free until pickup";
+  return `Free until ${hours} ${hours === 1 ? "hour" : "hours"} before pickup, then the deposit stays`;
+}

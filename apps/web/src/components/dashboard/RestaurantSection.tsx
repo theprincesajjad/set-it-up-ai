@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { RESTAURANT_MORE, hasRestaurantFeature, enabledSet, restaurantModules } from "@/lib/dashboard/nav";
 import { TierTeaser } from "./restaurant/shared";
+import { TaxNotSetBanner } from "./TaxStatus";
 import { useMerchant } from "./MerchantContext";
 
 export function RestaurantSection({ children }: { children: ReactNode }) {
@@ -49,6 +50,7 @@ export function RestaurantSection({ children }: { children: ReactNode }) {
           })}
         </div>
       ) : null}
+      <TaxNotSetBanner />
       {children}
     </div>
   );

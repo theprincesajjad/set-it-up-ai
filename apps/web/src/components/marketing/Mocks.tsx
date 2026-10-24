@@ -28,6 +28,8 @@ function fake(id: string, name: string, vertical: string, o: Partial<networkApi.
     distanceMetres: null,
     openNow: true,
     hasPromo: false,
+    promoLine: null,
+    perk: null,
     terminology: "stamps",
     earnType: "stamps",
     myBalance: null,

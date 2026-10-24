@@ -199,7 +199,7 @@ function Customers() {
                   <Td className="hidden tabular sm:table-cell">{formatNumber(c.visits30d)}</Td>
                   <Td className={cn("hidden md:table-cell", c.isSlipping ? "text-negative" : undefined)}>{c.lastVisitAt ? lastVisitText(c.lastVisitAt) : <span className="text-fg-muted">No visits yet</span>}</Td>
                   <Td className="hidden text-fg-muted lg:table-cell">{c.usually ?? "–"}</Td>
-                  <Td className={cn("hidden md:table-cell", c.marketingConsent && c.phone ? "text-positive" : "text-fg-muted")}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "No consent"}</Td>
+                  <Td className={cn("hidden md:table-cell", c.marketingConsent && c.phone ? "text-positive-text" : "text-fg-muted")}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "No consent"}</Td>
                 </Tr>
               ))}
             </tbody>

@@ -449,15 +449,30 @@ export const TEST_SENDS_PER_DAY = 10;
  * no consent check, no delivery stats on the campaign. SMS uses exactly 1 credit.
  * Limited to TEST_SENDS_PER_DAY per user per shop (rolling 24 h, counted in audit_logs).
  */
-export async function sendTestToSelf(ctx: AppContext, merchant: Merchant, actorUserId: string, id: string): Promise<messagingApi.TestSendResult> {
-  const m = await getCampaign(ctx.db, merchant.id, id);
-  await requireChannel(ctx.db, merchant, m.channel);
-  const now = ctx.now();
+/** Tests this user sent for this shop in the last 24 hours (every channel, counted in audit_logs). */
+export async function testSendsUsedToday(ctx: AppContext, merchantId: string, actorUserId: string): Promise<number> {
   const [used] = await ctx.db
     .select({ n: sql<number>`count(*)::int` })
     .from(auditLogs)
-    .where(and(eq(auditLogs.merchantId, merchant.id), eq(auditLogs.actorUserId, actorUserId), eq(auditLogs.action, "message.test_sent"), gte(auditLogs.createdAt, new Date(now.getTime() - 86_400_000))));
-  const usedToday = Number(used?.n ?? 0);
+    .where(and(eq(auditLogs.merchantId, merchantId), eq(auditLogs.actorUserId, actorUserId), eq(auditLogs.action, "message.test_sent"), gte(auditLogs.createdAt, new Date(ctx.now().getTime() - 86_400_000))));
+  return Number(used?.n ?? 0);
+}
+
+export async function sendTestToSelf(ctx: AppContext, merchant: Merchant, actorUserId: string, id: string): Promise<messagingApi.TestSendResult> {
+  const m = await getCampaign(ctx.db, merchant.id, id);
+  return deliverTestToSelf(ctx, merchant, actorUserId, { channel: m.channel, subject: m.subject, body: m.body, entityId: m.id });
+}
+
+/** The shared test-send: renders `body` (personalization + CASL footer) and delivers it to the signed-in user's own address. */
+export async function deliverTestToSelf(
+  ctx: AppContext,
+  merchant: Merchant,
+  actorUserId: string,
+  m: { channel: messagingApi.TestSendResult["channel"]; subject: string | null; body: string; entityId: string; entity?: string },
+): Promise<messagingApi.TestSendResult> {
+  await requireChannel(ctx.db, merchant, m.channel);
+  const now = ctx.now();
+  const usedToday = await testSendsUsedToday(ctx, merchant.id, actorUserId);
   if (usedToday >= TEST_SENDS_PER_DAY) throw tooMany(`You can send ${TEST_SENDS_PER_DAY} tests a day. Try again tomorrow.`);
 
   const [me] = await ctx.db.select({ name: users.name, email: users.email, phone: users.phone }).from(users).where(eq(users.id, actorUserId)).limit(1);
@@ -498,7 +513,7 @@ export async function sendTestToSelf(ctx: AppContext, merchant: Merchant, actorU
     await ctx.db.insert(messageDeliveries).values({ messageId: null, userId: actorUserId, merchantId: merchant.id, channel: m.channel, to: addr, body: text, kind: "transactional", status, providerId, error, createdAt: now });
   }
   // createdAt from ctx.now() so the rolling 24 h window uses the same clock as the check above.
-  await ctx.db.insert(auditLogs).values({ actorUserId, merchantId: merchant.id, action: "message.test_sent", entity: "message", entityId: m.id, data: { channel: m.channel, addresses: to.length, sent }, createdAt: now });
+  await ctx.db.insert(auditLogs).values({ actorUserId, merchantId: merchant.id, action: "message.test_sent", entity: m.entity ?? "message", entityId: m.entityId, data: { channel: m.channel, addresses: to.length, sent }, createdAt: now });
   return {
     channel: m.channel,
     sent,

@@ -27,6 +27,8 @@ export interface Selection {
   depositCents: number;
   /** At least one chosen service is a "from" price. */
   from: boolean;
+  /** At least one chosen service carries sales tax. */
+  taxable: boolean;
 }
 
 export function summarize(services: PublicService[], ids: string[], staffId: string | null): Selection {
@@ -41,7 +43,22 @@ export function summarize(services: PublicService[], ids: string[], staffId: str
       priceCents,
     ),
     from: picked.some((s) => s.priceFrom),
+    taxable: picked.some((s) => s.taxable),
   };
+}
+
+/**
+ * The running total line: "$65" for a shop that charges no tax (or a chosen service with none), "$65 plus HST" only when the
+ * shop is registered (`tax.applies`, from the merchant tax helper on the server) and a chosen service is taxable.
+ */
+export function totalText(
+  t: (k: "bk.totalPlus" | "bk.from", v: Record<string, string>) => string,
+  data: { tax: { applies: boolean; name: string } },
+  sel: Pick<Selection, "priceCents" | "from" | "taxable">,
+  money: (cents: number) => string,
+): string {
+  const amount = sel.from ? t("bk.from", { price: money(sel.priceCents) }) : money(sel.priceCents);
+  return data.tax.applies && sel.taxable ? t("bk.totalPlus", { amount, tax: data.tax.name }) : amount;
 }
 
 /** Group services by category name in the order the shop listed them ("Other" last). */

@@ -15,6 +15,7 @@ import {
   parts,
   resizedEnd,
   timeOffBlocks,
+  walkInGaps,
   type CalColumn,
 } from "@/lib/dashboard/calendar";
 import { AppointmentBlock } from "./AppointmentBlock";
@@ -183,6 +184,8 @@ export function CalendarDay({
                 window={window}
                 off={c.staff ? offSegments(c.staff, c.date, window) : []}
                 timeOff={c.staff ? timeOffBlocks(c.staff, c.date, window) : []}
+                gaps={walkInGaps(c.staff, c.staffId, c.date, window, appts, now)}
+                onGapClick={(g) => onEmptyClick(c, g.start)}
                 nowMinute={showNow ? nowParts.minutes : null}
                 hidden={i !== mobileIndex}
                 onEmptyClick={(e, rectTop) => {

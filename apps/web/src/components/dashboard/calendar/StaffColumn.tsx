@@ -1,7 +1,7 @@
 "use client";
 import { forwardRef, type MouseEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { minutesToPx, type TimeOffBlock } from "@/lib/dashboard/calendar";
+import { gapRange, minutesToPx, type TimeOffBlock, type WalkInGap } from "@/lib/dashboard/calendar";
 
 /** One column of the grid (a stylist, or one day for a stylist): hour lines, shaded non-working time, time off, blocks. */
 export const StaffColumn = forwardRef<
@@ -12,12 +12,14 @@ export const StaffColumn = forwardRef<
     window: [number, number];
     off: [number, number][];
     timeOff: TimeOffBlock[];
+    gaps?: WalkInGap[];
+    onGapClick?: (g: WalkInGap) => void;
     nowMinute: number | null;
     onEmptyClick: (e: MouseEvent<HTMLDivElement>, rectTop: number) => void;
     hidden?: boolean;
     children?: ReactNode;
   }
->(function StaffColumn({ label, hours, window, off, timeOff, nowMinute, onEmptyClick, hidden, children }, ref) {
+>(function StaffColumn({ label, hours, window, off, timeOff, gaps = [], onGapClick, nowMinute, onEmptyClick, hidden, children }, ref) {
   return (
     <div
       ref={ref}
@@ -42,6 +44,21 @@ export const StaffColumn = forwardRef<
           <p className="truncate font-medium">{t.reason || "Time off"}</p>
           <p className="truncate">Blocked</p>
         </div>
+      ))}
+      {gaps.map((g) => (
+        <button
+          key={g.start}
+          type="button"
+          data-gap
+          aria-label={`Open walk-in gap, ${gapRange(g)}`}
+          onClick={() => onGapClick?.(g)}
+          className="absolute inset-x-1 z-10 flex flex-col items-start overflow-hidden rounded-[8px] border border-dashed border-fg-subtle bg-bg px-2 py-1 text-start text-[11px] leading-4 text-fg-muted hover:bg-bg-subtle focus-visible:focus-ring"
+          style={{ top: g.top, height: g.height }}
+        >
+          <span className="truncate font-medium">{g.height >= 44 ? "Open: walk-in gap" : "Open"}</span>
+          {g.height >= 44 ? <span className="truncate">Free for walk-ins</span> : null}
+          {g.height >= 58 ? <span className="truncate tabular">{gapRange(g)}</span> : null}
+        </button>
       ))}
       {children}
       {nowMinute !== null ? <div aria-hidden className="pointer-events-none absolute inset-x-0 z-30 h-0.5 bg-fg" style={{ top: minutesToPx(nowMinute - window[0]) }} /> : null}

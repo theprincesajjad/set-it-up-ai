@@ -24,7 +24,7 @@ import { sendInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
 import { computeTax, merchantProvince } from "./tax.js";
-import { addLedger, assertNotFuture, etransferOffer, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor } from "./manual-payments.js";
+import { addLedger, assertNotFuture, etransferOffer, ledgerDtos, liveLedger, manualInstructions, newReferenceCode, receiptLine, todayFor, voidLedger } from "./manual-payments.js";
 import { markInvoicePaid } from "./invoices.js";
 
 export type CateringEvent = typeof cateringEvents.$inferSelect;
@@ -578,6 +578,40 @@ export async function recordBalancePayment(ctx: AppContext, staff: StaffContext,
   }
   if (input.sendReceipt) {
     await notifyCustomer(ctx, { userId: e.userId, merchantId: staff.merchant.id, title: `${staff.merchant.name}: payment received`, body: `${staff.merchant.name} received ${receiptLine(input.amountCents, input.method, input.receivedOn)} for catering #${e.number}. Thank you.`, sms: false, data: { type: "catering_payment", cateringEventId: e.id } });
+  }
+  return getMerchantEvent(ctx.db, staff.merchant.id, e.id);
+}
+
+/**
+ * Undo a payment recorded by hand (a mistake): owner only, with a reason, audited. A balance payment reopens the balance. A
+ * deposit payment reopens the quote (the event goes back to "quoted") while nothing was built on it. A payment that settled
+ * the balance invoice, or any payment on a finished event, can't be voided here: those need a refund.
+ */
+export async function voidEventPayment(ctx: AppContext, staff: StaffContext, eventId: string, body: z.output<typeof paymentsManualApi.voidPaymentBody>): Promise<CateringEvent> {
+  const e = await getMerchantEvent(ctx.db, staff.merchant.id, eventId);
+  const deposit = await liveLedger(ctx.db, "catering_deposit", e.id);
+  const balance = await liveLedger(ctx.db, "catering_balance", e.id);
+  const all = [...deposit, ...balance].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const target = body.paymentId ? all.find((l) => l.id === body.paymentId) : all[all.length - 1];
+  if (!target) throw conflict("There is no recorded payment to void");
+  if (target.subjectType === "catering_balance") {
+    if (e.invoiceId) {
+      const [inv] = await ctx.db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, e.invoiceId)).limit(1);
+      if (inv?.status === "paid") throw conflict("This payment settled the balance invoice, which is paid. Refund it from the invoice instead.");
+    }
+  } else {
+    if (e.status !== "confirmed" || e.invoiceId || balance.length) throw conflict("Void the later payments first. A deposit can only be voided while the event is confirmed and nothing else has been taken.");
+    if (e.depositPaymentIntentId) throw conflict("The deposit was paid by card. Refund it instead.");
+  }
+  await voidLedger(ctx, staff, target.subjectType as "catering_deposit" | "catering_balance", e.id, body.reason, target.id);
+  if (target.subjectType === "catering_deposit") {
+    const left = (await liveLedger(ctx.db, "catering_deposit", e.id)).reduce((s, l) => s + l.amountCents, 0);
+    if (e.depositCents <= 0 || left < e.depositCents) {
+      await ctx.db
+        .update(cateringEvents)
+        .set({ depositPaidAt: null, depositMethod: null, depositReceivedOn: null, status: "quoted", updatedAt: ctx.now() })
+        .where(and(eq(cateringEvents.id, e.id), eq(cateringEvents.status, "confirmed")));
+    }
   }
   return getMerchantEvent(ctx.db, staff.merchant.id, e.id);
 }

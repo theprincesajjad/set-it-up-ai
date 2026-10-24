@@ -83,6 +83,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return out(await svc.recordBalancePayment(ctx, staff, req.params.eventId, parse(paymentsManualApi.recordPaymentBody, req.body)));
   });
 
+  /** Undo a payment recorded by hand. Owner only; the reason is kept in the audit log. */
+  app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/void-payment", async (req) => {
+    const staff = await staffFor(req, "owner");
+    return out(await svc.voidEventPayment(ctx, staff, req.params.eventId, parse(paymentsManualApi.voidPaymentBody, req.body)));
+  });
+
   app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/invoice", async (req, reply) => {
     const staff = await staffFor(req);
     return reply.status(201).send(await svc.convertToInvoice(ctx, staff, req.params.eventId, parse(restaurantApi.cateringInvoiceBody, req.body ?? {})));

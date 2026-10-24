@@ -34,9 +34,9 @@ const CUISINES: Record<string, string[]> = {
 /** Cook time (minutes from fire to ready) and the per-pot recipe, by dish name. Estimates, as the screens say. */
 const DEGH: Record<string, Record<string, { cook: number; recipe: { riceKg?: number; meatKg?: number; meatKind?: string; extras?: { name: string; qty: number; unit: string }[] } }>> = {
   "nawab-biryani-house": {
-    "Chicken Biryani Degh (serves 15)": { cook: 90, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "chicken" } },
-    "Goat Biryani Degh (serves 15)": { cook: 210, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "goat" } },
-    "Vegetable Biryani Degh (serves 15)": { cook: 60, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "paneer" } },
+    "Chicken Biryani Degh": { cook: 90, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "chicken" } },
+    "Goat Biryani Degh": { cook: 210, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "goat" } },
+    "Vegetable Biryani Degh": { cook: 60, recipe: { riceKg: 2.2, meatKg: 3, meatKind: "paneer" } },
   },
   "lahori-karahi-and-bbq": {
     "Chicken Karahi Degh (serves 20)": { cook: 120, recipe: { meatKg: 4, meatKind: "chicken", extras: [{ name: "tomatoes", qty: 3, unit: "kg" }] } },
@@ -88,9 +88,9 @@ export async function seedRestaurantDesk(ctx: AppContext, log: (m: string) => vo
   const person = (i: number) => people.find((p) => p.phone === phones[i])!;
   const items = await db.select().from(catalogItems).where(eq(catalogItems.merchantId, nawab.id));
   const dish = (name: string) => items.find((i) => i.name === name)!;
-  const chicken = dish("Chicken Biryani Degh (serves 15)");
-  const goat = dish("Goat Biryani Degh (serves 15)");
-  const veg = dish("Vegetable Biryani Degh (serves 15)");
+  const chicken = dish("Chicken Biryani Degh");
+  const goat = dish("Goat Biryani Degh");
+  const veg = dish("Vegetable Biryani Degh");
 
   // ---- tomorrow's pre-orders and one pinned for "Start dum" today ----
   interface Pre { who: number; lines: [typeof chicken, number][]; day: string; hour: number; minute?: number; channel: "web" | "whatsapp" | "phone"; paid: boolean; allergy?: string }
@@ -185,11 +185,11 @@ export async function seedRestaurantDesk(ctx: AppContext, log: (m: string) => vo
   }
   const t = (m: number) => new Date(now.getTime() - m * MIN);
   const payUrl = hiraOrder ? orderPayUrl(ctx, hiraOrder.id) : null;
-  const summary: restaurantApi.OrderSummaryBody = { orderNumber: hiraOrder?.number ?? 0, lines: [{ quantity: 2, name: "Chicken Biryani Degh (serves 15)", totalCents: chicken.priceCents * 2 }], subtotalCents: chicken.priceCents * 2, taxCents: computeTax(chicken.priceCents * 2, "ON").taxCents, totalCents: chicken.priceCents * 2 + computeTax(chicken.priceCents * 2, "ON").taxCents, depositCents: Math.round((chicken.priceCents * 2 + computeTax(chicken.priceCents * 2, "ON").taxCents) * 0.3), payUrl };
+  const summary: restaurantApi.OrderSummaryBody = { orderNumber: hiraOrder?.number ?? 0, lines: [{ quantity: 2, name: "Chicken Biryani Degh", totalCents: chicken.priceCents * 2 }], subtotalCents: chicken.priceCents * 2, taxCents: computeTax(chicken.priceCents * 2, "ON").taxCents, totalCents: chicken.priceCents * 2 + computeTax(chicken.priceCents * 2, "ON").taxCents, depositCents: Math.round((chicken.priceCents * 2 + computeTax(chicken.priceCents * 2, "ON").taxCents) * 0.3), payUrl };
   const row = (direction: "in" | "out", kind: "text" | "order_summary", body: string, minutesAgo: number, sender: string | null) => ({ merchantId: nawab.id, sessionId: hiraSession!.id, direction, kind, body, sender, createdAt: t(minutesAgo) });
   await db.insert(whatsappMessages).values([
     row("in", "text", "assalam o alaikum, kal dopahar do chicken biryani degh chahiye, 2 baje pickup", 26, "guest"),
-    row("out", "text", "Walaikum assalam Hira. 2 × Chicken Biryani Degh (serves 15), tomorrow, pickup 12:30 pm. Deposit 30%.", 25, "assistant"),
+    row("out", "text", "Walaikum assalam Hira. 2 × Chicken Biryani Degh, tomorrow, pickup 12:30 pm. Deposit 30%.", 25, "assistant"),
     row("out", "order_summary", JSON.stringify(summary), 25, "assistant"),
     row("out", "text", "Pay link sent. It expires in 30 minutes; I will hold the pots until then.", 24, "assistant"),
     row("in", "text", "theek hai, abhi karti hun", 4, "guest"),

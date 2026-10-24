@@ -145,7 +145,7 @@ export function ServiceEditor({
         ) : null}
         <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Hair, Threading, Nails. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
         <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint="The usual gap between visits. Used for rebooking nudges." value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />
-        <Switch label="Charge tax" checked={taxable} onChange={setTaxable} />
+        <Switch label="Charge tax" description="Added at checkout when your shop is registered for GST/HST. Turn it off for a service with no tax." checked={taxable} onChange={setTaxable} />
         <Switch label={active ? "Bookable" : "Hidden from booking"} checked={active} onChange={setActive} />
         {!repair && staff.length ? (
           <fieldset className="flex flex-col gap-1.5">

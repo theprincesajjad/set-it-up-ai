@@ -40,6 +40,25 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
       return svc.setCuisines(ctx, s.merchant, parse(restaurantApi.festivalPreferencesBody, req.body).cuisines);
     });
 
+    // "Add my own date": a named occasion with its message, planned like a festival.
+    app.post("/merchants/:merchantId/festivals/occasions", async (req: Req, reply) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      const out = await svc.addOccasion(ctx, s.merchant, s.user.id, parse(restaurantApi.customOccasionBody, req.body));
+      reply.status(201);
+      return out;
+    });
+
+    app.delete("/merchants/:merchantId/festivals/occasions/:occasionId", async (req: Req<{ occasionId: string }>) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      return svc.removeOccasion(ctx, s.merchant, s.user.id, req.params.occasionId);
+    });
+
+    // "Send me a test": the template to the signed-in owner only.
+    app.post("/merchants/:merchantId/festivals/:festivalId/test-send", async (req: Req<{ festivalId: string }>) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      return svc.sendFestivalTest(ctx, s.merchant, s.user.id, req.params.festivalId, parse(restaurantApi.festivalTestBody, req.body));
+    });
+
     app.post("/merchants/:merchantId/festivals/:festivalId/campaign-drafts", async (req: Req<{ festivalId: string }>, reply) => {
       const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
       const out = await svc.createFestivalDraft(ctx, s.merchant, s.user.id, req.params.festivalId, parse(whatsappApi.festivalDraftBody, req.body));

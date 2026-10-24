@@ -3,7 +3,7 @@ import type { appointmentsApi } from "@ll/shared";
 import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn } from "@/lib/booking";
 
 type S = appointmentsApi.PublicServiceDto;
-const svc = (over: Partial<S> & { id: string }): S => ({ name: over.id, description: null, durationMin: 60, priceCents: 5000, priceFrom: false, depositCents: 0, categoryName: null, translations: {}, staffIds: [], staffOverrides: [], ...over });
+const svc = (over: Partial<S> & { id: string }): S => ({ name: over.id, description: null, durationMin: 60, priceCents: 5000, priceFrom: false, depositCents: 0, categoryName: null, translations: {}, staffIds: [], staffOverrides: [], taxable: true, ...over });
 
 describe("who does what", () => {
   const cut = svc({ id: "cut", staffIds: ["a", "b"], staffOverrides: [{ staffId: "b", durationMin: 75, priceCents: 7000 }] });

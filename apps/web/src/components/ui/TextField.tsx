@@ -90,7 +90,7 @@ export function TextField(props: TextFieldProps) {
             {...(rest as InputHTMLAttributes<HTMLInputElement>)}
             id={id}
             {...aria}
-            className={cn(inputBase, prefix && "ps-8", suffix && "pe-12", rest.className)}
+            className={cn(inputBase, prefix && "ps-8", suffix && (suffix.length > 4 ? "pe-[4.5rem]" : "pe-12"), rest.className)}
           />
           {suffix ? <span className="pointer-events-none absolute end-3 text-body text-fg-muted">{suffix}</span> : null}
         </div>

@@ -31,7 +31,7 @@ const money = (cents: number) => `$${(cents / 100).toLocaleString("en-CA", { min
 const timeLabel = (d: Date, tz: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d).replace(/ /g, " ").replace(/\./g, "").toLowerCase();
 const shortHour = (d: Date, tz: string) => timeLabel(d, tz).replace(":00", "");
 
-/** First word of a dish ("Chicken Biryani Degh (serves 15)" -> "chicken") for the one-line pot split. */
+/** First word of a dish ("Chicken Biryani Degh" -> "chicken") for the one-line pot split. */
 export const potWord = (name: string) => (name.replace(/\(.*?\)/g, "").trim().split(/\s+/)[0] ?? name).toLowerCase();
 
 /** Open orders with the same filter as the orders screen: pay-at-pickup, or paid / authorized in the app. */

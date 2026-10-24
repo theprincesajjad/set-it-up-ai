@@ -92,6 +92,7 @@ export function TiffinManage() {
 function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; reload: () => Promise<void> }) {
   const { t, money, date, number } = useFmt();
   const [busy, setBusy] = useState<string | null>(null);
+  const [allMeals, setAllMeals] = useState(false);
   const [note, setNote] = useState<{ tone: "success" | "danger" | "info"; text: string } | null>(null);
   const [panel, setPanel] = useState<null | "pause" | "address" | "cancel" | "charges">(null);
   const [until, setUntil] = useState(addDays(todayIso(), 8));
@@ -150,7 +151,7 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
         <Pill>{statusLabel[sub.status]}</Pill>
       </div>
       <div>
-        <Heading level={2} className="break-words">
+        <Heading level={2} plain className="break-words">
           {sub.plan.name}
         </Heading>
         <p className="mt-1 text-meta text-fg-muted">
@@ -269,7 +270,7 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
             <p className="py-2 text-meta text-fg-muted">{t("rc.tm.noUpcoming")}</p>
           ) : (
             <ul>
-              {meals.map((m) => {
+              {(allMeals ? meals : meals.slice(0, 7)).map((m) => {
                 const skipped = m.status === "skipped";
                 return (
                   <li key={m.date} className="flex items-start gap-3 border-t border-line py-3">
@@ -303,6 +304,11 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
               })}
             </ul>
           )}
+          {!allMeals && meals.length > 7 ? (
+            <Button variant="ghost" size="sm" className="self-start" onClick={() => setAllMeals(true)}>
+              {t("rc.tm.showAll", { n: number(meals.length) })}
+            </Button>
+          ) : null}
         </section>
       ) : null}
 

@@ -62,6 +62,29 @@ export function priceDish(item: Pick<Item, "priceCents" | "options">, optionIds:
   return { unitCents: unit, picks, serves };
 }
 
+/** "Raita, 1 L" -> "Raita", "Garlic naan × 20" -> "Garlic naan": the short name of an add-on for a one-line summary. */
+export const shortOptionName = (name: string) => name.replace(/,.*$/, "").replace(/\s+[×x]\s*\d+.*$/i, "").trim();
+
+/**
+ * The order summary line: "<dish> · Half degh (serves 8) · Hot · + Raita, + Garlic naan". Sizes carry how many they serve,
+ * other single picks are named, add-ons are "+ name" and joined with commas.
+ */
+export function summaryLine(item: Pick<Item, "priceCents" | "options">, dishName: string, optionIds: string[], sizeLabel: (name: string, serves: number) => string): string {
+  const parts: string[] = [dishName];
+  const adds: string[] = [];
+  for (const g of item.options?.groups ?? []) {
+    let chosen = g.options.filter((o) => optionIds.includes(o.id));
+    if (!chosen.length && g.required) chosen = [groupDefault(g)!];
+    if (g.type === "single") chosen = chosen.slice(0, 1);
+    for (const o of chosen) {
+      if (g.type === "multi") adds.push(`+ ${shortOptionName(o.name)}`);
+      else parts.push(o.serves && g.priceMode === "absolute" ? sizeLabel(o.name, o.serves) : o.name);
+    }
+  }
+  if (adds.length) parts.push(adds.join(", "));
+  return parts.join(" · ");
+}
+
 /** What a group's option costs to show on the page: the absolute price for a size, "+$x" for the rest. */
 export function optionPriceLabel(g: OptionGroup, o: Option): { cents: number; plus: boolean } {
   return g.priceMode === "absolute" ? { cents: o.priceCents, plus: false } : { cents: o.priceCents, plus: o.priceCents > 0 };

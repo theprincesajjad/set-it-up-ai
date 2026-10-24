@@ -133,7 +133,7 @@ export function CheckoutSheet({
           <dl className="divide-y divide-line border-y border-line text-meta">
             <Line label="Services" value={money(inv.subtotalCents + inv.discountCents)} />
             {inv.discountCents ? <Line label="Reward" value={`-${money(inv.discountCents)}`} tone="positive" /> : null}
-            <Line label="HST" value={money(inv.taxCents)} />
+            {inv.taxCents > 0 ? <Line label={settings?.tax.name ?? "Tax"} value={money(inv.taxCents)} /> : null}
             {inv.depositAppliedCents ? <Line label="Deposit paid online" value={`-${money(inv.depositAppliedCents)}`} tone="positive" /> : null}
             <Line label="Balance" value={money(inv.amountDueCents)} strong />
             {inv.tipCents ? <Line label="Tip" value={money(inv.tipCents)} /> : null}
@@ -213,7 +213,7 @@ function Line({ label, value, strong, tone }: { label: string; value: string; st
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <dt className={cn(strong ? "text-body-strong text-fg" : "text-fg-muted")}>{label}</dt>
-      <dd className={cn("tabular", strong ? "text-body-strong text-fg" : tone === "positive" ? "text-positive" : "text-fg")}>{value}</dd>
+      <dd className={cn("tabular", strong ? "text-body-strong text-fg" : tone === "positive" ? "text-positive-text" : "text-fg")}>{value}</dd>
     </div>
   );
 }

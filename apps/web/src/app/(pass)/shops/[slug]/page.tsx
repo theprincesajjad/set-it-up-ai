@@ -158,9 +158,9 @@ export default async function ShopPage({ params, searchParams }: Props) {
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
-          {shop.memberCount ? <span className="text-fg-muted">{shop.memberCount.toLocaleString("en-CA")} neighbours are members</span> : null}
+          {shop.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: shop.memberCount.toLocaleString("en-CA") })}</span> : null}
           {rest ? (rest.quotedWaitMin ? <span className="text-fg-muted">{t("rs.pickupWait", { min: rest.quotedWaitMin })}</span> : null) : shop.features?.orderAhead ? <span className="text-fg-muted">{t("shop.orderAheadInApp")}</span> : null}
-          {shop.features?.serviceTickets ? <span className="text-fg-muted">Repair tracking</span> : null}
+          {shop.features?.serviceTickets ? <span className="text-fg-muted">{t("shop.repairTracking")}</span> : null}
         </div>
       ) : null}
       {rest?.halalCertification ? <HalalBlock cert={rest.halalCertification} variant="shop" /> : null}

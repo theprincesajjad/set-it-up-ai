@@ -6,6 +6,7 @@
 import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
 import { placeKind } from "./explore";
 import { formatDistance } from "./format";
+import { shopLine } from "./shopLine";
 
 /** "Roncesvalles Village" → "roncesvalles" (the canvas voice: short, lowercase). */
 export function shortHood(name: string | null | undefined): string {
@@ -133,18 +134,17 @@ export function miniMapPoints(origin: { lat: number; lng: number }, shops: { id:
 }
 
 /**
- * The one line under a shop on Discover: my progress first ("your 7 / 10"), then a live promo
- * window ("2× stamps till 4 pm"), then a perk, then the category with distance and open status.
+ * The one line under a shop on Discover: my progress first ("your 7 / 10"), then a live promo window ("2× stamps till 4 pm"),
+ * then the shop's perk ("bakery · 5% off Tuesdays"), then the category with distance and open status. The window and perk
+ * come from the network directory (`promoLine`, `perk`).
  */
 export function shopSubtitle(
-  s: DiscoverShop,
+  s: DiscoverShop & { promoLine?: string | null; perk?: string | null },
   status: { open: boolean; label: string } | null,
   opts: { progress?: { n: number; goal: number } | null; promoLine?: string | null; perk?: string | null } = {},
 ): string {
-  if (opts.progress && opts.progress.goal > 0) return `your ${Math.min(opts.progress.n, opts.progress.goal)} / ${opts.progress.goal}`;
-  if (opts.promoLine) return opts.promoLine;
-  if (opts.perk) return opts.perk;
-  return discoverMeta(s, status);
+  const progress = opts.progress && opts.progress.goal > 0 ? `your ${Math.min(opts.progress.n, opts.progress.goal)} / ${opts.progress.goal}` : null;
+  return shopLine({ progress, promoLine: opts.promoLine ?? s.promoLine ?? null, perk: opts.perk ?? s.perk ?? null, kind: placeKind(s.merchant.vertical), meta: discoverMeta(s, status) });
 }
 
 /** "2× stamps till 4 pm" for a live multiplier window ending at `endHour` (24 h). */

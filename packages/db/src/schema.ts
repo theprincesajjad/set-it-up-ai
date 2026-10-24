@@ -1189,7 +1189,7 @@ export type HalalCertification = { certifier: string; certificateNo?: string; sc
 export type ItemOptionGroup = { id: string; name: string; type: "single" | "multi"; required: boolean; priceMode: "delta" | "absolute"; options: { id: string; name: string; priceCents: number; serves?: number; note?: string; default?: boolean }[] };
 export type ItemOptions = { groups: ItemOptionGroup[] };
 
-export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null };
+export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null; /** false = no sales tax on this line (default true). */ taxable?: boolean };
 
 /** How a quote was approved: customer link, phone call (name, phone, time recorded), or at the counter. */
 export type QuoteAuthorization = { method: "link" | "phone" | "counter"; name: string; phone?: string | null; note?: string | null; at: string; staffId?: string | null };
@@ -2098,6 +2098,24 @@ export const festivalSends = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("festival_sends_merchant_idx").on(t.merchantId, t.festivalId, t.year)],
+);
+
+/** Dates the owner added to the festival planner ("Add my own date"): one occasion with its message texts. */
+export const merchantOccasions = pgTable(
+  "merchant_occasions",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** YYYY-MM-DD in the shop's local calendar. */
+    date: text("date").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    sms: text("sms").notNull(),
+    whatsapp: text("whatsapp").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("merchant_occasions_merchant_idx").on(t.merchantId, t.date)],
 );
 
 export const merchantAddOns = pgTable(

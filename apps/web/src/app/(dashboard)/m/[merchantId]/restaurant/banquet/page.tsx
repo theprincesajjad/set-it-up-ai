@@ -25,7 +25,7 @@ export default function BanquetPage() {
 }
 
 function Banquet() {
-  const [tab, setTab] = useTabParam(TABS, "bookings");
+  const [tab, setTab] = useTabParam(TABS, "availability");
   const { base } = useMerchant();
   const [holding, setHolding] = useState(false);
   const [adding, setAdding] = useState(false);

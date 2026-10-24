@@ -289,7 +289,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </div>
             ) : null}
             <SettingRow title={`Welcome ${term.replace(/s$/, "")}`} hint="Given when someone joins from the counter QR">
-              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-28 text-end" />
+              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36 text-end" />
             </SettingRow>
           </section>
 

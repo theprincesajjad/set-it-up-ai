@@ -252,6 +252,41 @@ async function halalMenus(db: DbOrTx, shops: Merchant[]): Promise<Map<string, "a
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// The one italic line per shop on Discover and the map: a live earn window, then a standing perk
+// ---------------------------------------------------------------------------
+const DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
+/** "4 pm", "4:30 pm" from "16:00". */
+function clockWord(hhmm: string): string {
+  const h = Number(hhmm.slice(0, 2));
+  const m = Number(hhmm.slice(3, 5));
+  return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 ? "pm" : "am"}`;
+}
+
+/**
+ * "2× stamps till 4 pm": a multiplier promo that applies right now (day and time window checked in the shop's zone).
+ * The end is the promo's daily end time, else its end date. Nothing when the promo has no end to show.
+ */
+export function promoWindowLine(p: Promo, noun: string, timeZone: string, at: Date): string | null {
+  if (p.kind !== "multiplier" || !p.multiplierPct || p.multiplierPct <= 100 || !promoAppliesAt(p, at, timeZone)) return null;
+  const x = p.multiplierPct / 100;
+  const times = Number.isInteger(x) ? String(x) : String(+x.toFixed(2));
+  let till: string | null = null;
+  if (p.endTime) till = clockWord(p.endTime);
+  else if (p.endsAt) till = new Intl.DateTimeFormat("en-CA", { timeZone, month: "short", day: "numeric" }).format(p.endsAt);
+  return till ? `${times}× ${noun} till ${till}` : null;
+}
+
+/** "5% off Tuesdays" from a recurring percent-off promo, else "show your card for 10% off" from an active discount card. */
+export function perkLine(promosOf: Promo[], cardsOf: { percentOff: number; amountOffCents: number }[]): string | null {
+  const recurring = promosOf.find((p) => p.percentOff && p.percentOff > 0 && p.daysOfWeek?.length === 1);
+  if (recurring) return `${recurring.percentOff}% off ${DAY_NAMES[recurring.daysOfWeek![0]!]}`;
+  const card = cardsOf.find((c) => c.percentOff > 0 || c.amountOffCents > 0);
+  if (!card) return null;
+  return `show your card for ${card.percentOff > 0 ? `${card.percentOff}%` : `$${(card.amountOffCents / 100).toFixed(card.amountOffCents % 100 ? 2 : 0)}`} off`;
+}
+
 export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userId: string | null): Promise<networkApi.ShopsResponse> {
   const now = ctx.now();
   const point = q.lat !== undefined && q.lng !== undefined ? { lat: q.lat, lng: q.lng } : null;
@@ -271,12 +306,14 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       ),
     );
   const ids = rows.map((r) => r.m.id);
-  const [locs, ps, mine, counts, halal] = await Promise.all([
+  const [locs, ps, mine, counts, halal, cardRows, cardOn] = await Promise.all([
     locationsByMerchant(ctx.db, ids),
     windowPromos(ctx.db, ids, now),
     membershipsFor(ctx.db, userId, ids),
     memberCountsFor(ctx.db, ids),
     halalMenus(ctx.db, rows.map((r) => r.m)),
+    ids.length ? ctx.db.select().from(discountCards).where(and(inArray(discountCards.merchantId, ids), eq(discountCards.active, true), inArray(discountCards.eligibility, ["everyone", "members_only"]))) : Promise.resolve([]),
+    enabledFeaturesFor(ctx.db, rows.map((r) => r.m), ["discount_cards"]),
   ]);
   const promoBy = new Set(ps.filter((p) => p.audience === "network" && promoAppliesAt(p, now, rows.find((r) => r.m.id === p.merchantId)!.m.timezone)).map((p) => p.merchantId));
   let items: networkApi.ShopListItemDto[] = rows.map(({ m, program }) => {
@@ -291,6 +328,11 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
       distanceMetres: distance,
       openNow: loc?.openNow ?? null,
       hasPromo: promoBy.has(m.id),
+      promoLine: ps.filter((p) => p.merchantId === m.id && p.audience === "network").map((p) => promoWindowLine(p, terminologyOf(program), m.timezone, now)).find((x) => x) ?? null,
+      perk: perkLine(
+        ps.filter((p) => p.merchantId === m.id && p.audience === "network"),
+        cardOn.get(m.id)?.has("discount_cards") ? cardRows.filter((c) => c.merchantId === m.id) : [],
+      ),
       terminology: terminologyOf(program),
       earnType: program?.earnType ?? null,
       myBalance: membership ? membership.balance : null,

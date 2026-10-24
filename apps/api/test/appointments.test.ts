@@ -28,8 +28,10 @@ const plusMin = (iso: string, min: number) => new Date(new Date(iso).getTime() +
 const MON_SAT = [1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, startsLocal: "09:00", endsLocal: "17:00" }));
 
 /** A salon with two stylists (Simran, Aisha), a front desk manager and a small price list, all through the API. */
-async function salon(opts: { plan?: "free" | "plus" | "pro"; connect?: boolean; feeCents?: number; windowHours?: number } = {}) {
+async function salon(opts: { plan?: "free" | "plus" | "pro"; connect?: boolean; feeCents?: number; windowHours?: number; taxRegistered?: boolean | null } = {}) {
   const m = await paidMerchant(env, { plan: opts.plan ?? "plus", connect: opts.connect });
+  // A salon registered for GST/HST unless a test says otherwise: appointments only charge tax for a registered shop.
+  await env.db.update(merchants).set({ taxRegistered: opts.taxRegistered === undefined ? true : opts.taxRegistered }).where(eq(merchants.id, m.merchant.id));
   const base = `/v1/merchants/${m.merchant.id}`;
   const simran = await staffMember(env, m.merchant.id, "staff");
   const aisha = await staffMember(env, m.merchant.id, "staff");
@@ -205,10 +207,10 @@ describe("policy settings", () => {
   it("reads and saves the cancel window, no-show fee and tips; only managers change them", async () => {
     const s = await salon();
     const url = `${s.base}/appointments/settings`;
-    expect((await call(env, s.simran.token, "GET", url)).body).toEqual({ cancelWindowHours: 24, noShowFeeCents: 0, tipsEnabled: null, tipsOn: false, tipPresets: [15, 20, 25] });
+    expect((await call(env, s.simran.token, "GET", url)).body).toEqual({ cancelWindowHours: 24, noShowFeeCents: 0, tipsEnabled: null, tipsOn: false, tipPresets: [15, 20, 25], tax: { applies: true, name: "HST" } });
     expect((await call(env, s.simran.token, "PUT", url, { noShowFeeCents: 2500 })).status).toBe(403);
     const saved = await call(env, s.desk.token, "PUT", url, { cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipPresets: [10, 15, 20, 25] });
-    expect(saved.body).toEqual({ cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipsOn: true, tipPresets: [10, 15, 20, 25] });
+    expect(saved.body).toEqual({ cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipsOn: true, tipPresets: [10, 15, 20, 25], tax: { applies: true, name: "HST" } });
     expect((await call(env, s.desk.token, "PUT", url, { cancelWindowHours: -1 })).status).toBe(400);
     expect((await call(env, s.desk.token, "PUT", url, { tipPresets: [] })).status).toBe(400);
     // The public page shows the new policy; the fee is a snapshot taken when the booking is made.
@@ -751,6 +753,60 @@ describe("checkout", () => {
     expect(again.body.invoice.id).toBe(r.body.invoice.id);
     expect(await env.db.select().from(invoices).where(eq(invoices.merchantId, s.merchant.id))).toHaveLength(1);
     expect(await earned(s, v.c.user.id)).toBe(145);
+  });
+
+  it("charges tax only on taxable services, only for a shop registered for GST/HST", async () => {
+    const s = await salon();
+    // A gift card style line with "Charge tax" off, next to a taxable $65 cut.
+    const gift = (await call(env, s.ownerToken, "POST", `${s.base}/services`, { name: "Gift card", durationMin: 5, priceCents: 5000, taxable: false })).body;
+    expect(gift.taxable).toBe(false);
+    const v = await visit(s, { services: [s.cut.id] });
+    const r = await checkout(s, v, { mode: "counter", counterMethod: "cash", tipCents: 0, items: [{ serviceId: s.cut.id, name: "Cut and blow-dry", durationMin: 45, priceCents: 6500 }, { serviceId: gift.id, name: "Gift card", durationMin: 0, priceCents: 5000 }] });
+    expect(r.status).toBe(200);
+    // $115 of services, HST on the $65 only: 13% of 6500 = 845.
+    expect(r.body.invoice).toMatchObject({ subtotalCents: 11_500, taxCents: 845, totalCents: 12_345 });
+    const [inv] = await env.db.select().from(invoices).where(eq(invoices.id, r.body.invoice.id));
+    expect(inv!.lineItems.map((l) => l.taxable)).toEqual([undefined, false]);
+
+    // Not registered, and not answered yet: no tax at all.
+    for (const status of [false, null]) {
+      env.clock.now = new Date("2026-11-03T15:00:00Z");
+      const plain = await salon({ taxRegistered: status });
+      const pv = await visit(plain, { services: [plain.cut.id] });
+      const pr = await checkout(plain, pv, { mode: "counter", counterMethod: "cash", tipCents: 0 });
+      expect(pr.body.invoice, `taxRegistered ${status}`).toMatchObject({ subtotalCents: 6500, taxCents: 0, totalCents: 6500 });
+    }
+  });
+
+  it("a reward discount comes off the taxable lines in proportion", async () => {
+    const { taxableBase } = await import("../src/services/quotes.js");
+    // $65 taxable + $50 not, with a $5 credit: the taxable share of the bill is 65/115.
+    expect(taxableBase([{ quantity: 1, unitPriceCents: 6500 }, { quantity: 1, unitPriceCents: 5000, taxable: false }, { quantity: 1, unitPriceCents: -500 }])).toBe(Math.round((6500 * 11_000) / 11_500));
+    expect(taxableBase([{ quantity: 1, unitPriceCents: 5000, taxable: false }])).toBe(0);
+    expect(taxableBase([])).toBe(0);
+  });
+
+  it("tells the booking pages when to say plus HST: registered shop and a taxable service only", async () => {
+    const s = await salon();
+    const gift = (await call(env, s.ownerToken, "POST", `${s.base}/services`, { name: "Gift card", durationMin: 5, priceCents: 5000, taxable: false })).body;
+    const pub = await call(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/services`);
+    expect(pub.body.tax).toEqual({ applies: true, name: "HST" });
+    expect(pub.body.services.find((x: { id: string }) => x.id === s.cut.id).taxable).toBe(true);
+    expect(pub.body.services.find((x: { id: string }) => x.id === gift.id).taxable).toBe(false);
+    const settings = await call(env, s.desk.token, "GET", `${s.base}/appointments/settings`);
+    expect(settings.body.tax).toEqual({ applies: true, name: "HST" });
+
+    const c = await customer(env);
+    const taxed = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.simran.user.id, startsAt: at("2026-11-04 10:00") });
+    expect(taxed.status).toBe(201);
+    expect((await call(env, c.token, "GET", `/v1/me/appointments/${taxed.body.appointment.id}`)).body.appointment.tax).toEqual({ applies: true, name: "HST" });
+    const free = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [gift.id], staffId: s.aisha.user.id, startsAt: at("2026-11-04 12:00") });
+    expect((await call(env, c.token, "GET", `/v1/me/appointments/${free.body.appointment.id}`)).body.appointment.tax.applies).toBe(false);
+
+    const small = await salon({ taxRegistered: false });
+    expect((await call(env, null, "GET", `/v1/public/shops/${small.merchant.slug}/services`)).body.tax.applies).toBe(false);
+    const unset = await salon({ taxRegistered: null });
+    expect((await call(env, null, "GET", `/v1/public/shops/${unset.merchant.slug}/services`)).body.tax.applies).toBe(false);
   });
 
   it("applies a reward as a credit line and never earns points on it", async () => {

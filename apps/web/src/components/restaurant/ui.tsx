@@ -9,11 +9,11 @@ import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
 
 /** Lowercase Bricolage heading like the canvas for English; the locale's own face (never lowercased) for hi / ur / pa. */
-export function Heading({ children, level = 1, className }: { children: ReactNode; level?: 1 | 2 | 3; className?: string }) {
+export function Heading({ children, level = 1, className, plain }: { children: ReactNode; level?: 1 | 2 | 3; className?: string; /** Sentence-case Inter semibold (service-business screens); the default is the lowercase display face. */ plain?: boolean }) {
   const { locale } = useLocale();
   const Tag = `h${level}` as "h1";
   const size = level === 1 ? "text-large-title" : level === 2 ? "text-title" : "text-headline";
-  return <Tag className={cn(size, "text-fg", locale === "en" ? "display lowercase" : "font-bold", className)}>{children}</Tag>;
+  return <Tag className={cn(size, "text-fg", plain ? "font-semibold" : locale === "en" ? "display lowercase" : "font-bold", className)}>{children}</Tag>;
 }
 
 /** Big number in the display face (amounts due). */
@@ -33,7 +33,7 @@ export function useFmt() {
   const l = useLocale();
   const rtl = l.dir === "rtl";
   const wrap = (s: string) => (rtl ? isolate(s) : s);
-  return { ...l, money: (c: number, cur?: string) => wrap(l.money(c, cur)), number: (n: number) => wrap(l.number(n)), percent: (n: number) => wrap(`${l.number(n)}%`) };
+  return { ...l, money: (c: number, cur?: string) => wrap(l.money(c, cur)), moneyExact: (c: number, cur?: string) => wrap(l.moneyExact(c, cur)), number: (n: number) => wrap(l.number(n)), percent: (n: number) => wrap(`${l.number(n)}%`) };
 }
 
 export function ShopHead({ shop, kicker, href }: { shop: { name: string; logoUrl?: string | null; brandColor?: string | null }; kicker?: ReactNode; href?: string }) {
@@ -57,12 +57,12 @@ export function ShopHead({ shop, kicker, href }: { shop: { name: string; logoUrl
 }
 
 /** A titled block separated by a hairline, no card-in-card. */
-export function Section({ title, children, className, aside }: { title?: ReactNode; children: ReactNode; className?: string; aside?: ReactNode }) {
+export function Section({ title, children, className, aside, plain }: { title?: ReactNode; children: ReactNode; className?: string; aside?: ReactNode; plain?: boolean }) {
   return (
     <section className={cn("flex flex-col gap-3", className)}>
       {title || aside ? (
         <div className="flex items-baseline justify-between gap-3">
-          {title ? <Heading level={3}>{title}</Heading> : <span />}
+          {title ? <Heading level={3} plain={plain}>{title}</Heading> : <span />}
           {aside}
         </div>
       ) : null}

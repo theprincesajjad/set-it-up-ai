@@ -15,7 +15,7 @@
  *  - `{{festival_date}}` is filled with a readable date when a draft is created.
  */
 
-export type FestivalTradition = "islamic" | "hindu" | "sikh" | "national";
+export type FestivalTradition = "islamic" | "hindu" | "sikh" | "national" | "custom";
 
 /** Who a festival is for. Religion, region or language, and country tags; a shop's cuisines map onto these. */
 export const COMMUNITIES = ["muslim", "hindu", "sikh", "jain", "punjabi", "gujarati", "bengali", "tamil", "hyderabadi", "south_indian", "north_indian", "pakistani", "indian", "bangladeshi", "sri_lankan", "afghan"] as const;
@@ -716,9 +716,9 @@ export function sendDates(f: FestivalDef, start: string): FestivalSendDate[] {
  * Festivals that are under way on `from`, start in [from, to] (YYYY-MM-DD, inclusive), or have a
  * recommended send in that window. Sorted by start date.
  */
-export function festivalOccurrences(from: string, to: string, overrides?: FestivalOverrides): FestivalOccurrence[] {
+export function festivalOccurrences(from: string, to: string, overrides?: FestivalOverrides, defs: readonly FestivalDef[] = FESTIVALS): FestivalOccurrence[] {
   const out: FestivalOccurrence[] = [];
-  for (const f of FESTIVALS) {
+  for (const f of defs) {
     for (const year of Object.keys(f.dates)) {
       const d = resolveFestivalDates(f, year, overrides)!;
       const end = d.end ?? d.start;
@@ -749,4 +749,43 @@ export function festivalOccurrences(from: string, to: string, overrides?: Festiv
 /** Readable date, e.g. "Sunday, November 8" (en-CA, UTC so the calendar day never shifts). */
 export function formatFestivalDate(date: string): string {
   return new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(parseDay(date)));
+}
+
+// ---------------------------------------------------------------------------
+// The shop's own dates ("Add my own date": a grand opening, a family night, a local fair)
+// ---------------------------------------------------------------------------
+export const CUSTOM_FESTIVAL_PREFIX = "custom-";
+export const isCustomFestivalId = (id: string): boolean => id.startsWith(CUSTOM_FESTIVAL_PREFIX);
+
+/** A date the owner added: one occasion, one set of message texts. Stored in merchant_occasions. */
+export interface CustomOccasion {
+  id: string;
+  name: string;
+  /** YYYY-MM-DD in the shop's local calendar. */
+  date: string;
+  subject: string;
+  /** Email body. */
+  body: string;
+  sms: string;
+  whatsapp: string;
+}
+
+/** The occasion as a festival definition, so the planner, drafts and tests treat it like any other date. */
+export function customOccasionDef(o: CustomOccasion): FestivalDef {
+  return {
+    id: `${CUSTOM_FESTIVAL_PREFIX}${o.id}`,
+    name: o.name,
+    greeting: { en: o.name },
+    tradition: "custom",
+    approximate: false,
+    dateNote: "Your own date.",
+    communities: [],
+    alsoFor: [],
+    dates: { [o.date.slice(0, 4)]: { start: o.date } },
+    templates: [{ id: "message", label: "Your message", subject: o.subject, body: o.body, sms: o.sms, whatsapp: o.whatsapp, whatsappTemplateName: "occasion_greeting" }],
+    sends: [
+      { offsetDays: -3, templateId: "message", label: "Tell your guests" },
+      { offsetDays: -1, templateId: "message", label: "Day-before reminder" },
+    ],
+  };
 }

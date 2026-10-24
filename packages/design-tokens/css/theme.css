@@ -43,6 +43,7 @@
   --color-accent-soft: var(--ll-color-accent-soft);
   --color-on-accent: var(--ll-color-on-accent);
   --color-positive: var(--ll-color-positive);
+  --color-positive-text: var(--ll-color-positive-text);
   --color-negative: var(--ll-color-negative);
   --color-location: var(--ll-color-location);
   --color-chrome: var(--ll-color-chrome);
@@ -234,6 +235,7 @@
   --color-ll-orange-950: #2A1710;
   --color-ll-green-500: #22C55E;
   --color-ll-green-600: #16A34A;
+  --color-ll-green-800: #166534;
   --color-ll-red-400: #F87171;
   --color-ll-red-600: #DC2626;
   --color-ll-red-700: #B91C1C;

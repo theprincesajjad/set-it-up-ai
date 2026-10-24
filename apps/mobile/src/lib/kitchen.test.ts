@@ -3,7 +3,15 @@ import type { restaurantApi } from "@ll/shared";
 import { ageText, cashPriceCents, columnOf, groupTickets, isLate, liveAgeSeconds, nextItemStatus, tenderPrices, withItemStatus } from "./kitchen";
 
 const item = (id: string, status: restaurantApi.KitchenItemStatus): restaurantApi.KitchenItemDto => ({ id, catalogItemId: null, name: id, nameEn: id, quantity: 1, modifiers: [], notes: null, station: null, status });
-const ticket = (n: number, ageSeconds: number, ...items: restaurantApi.KitchenItemDto[]): restaurantApi.KitchenTicketDto => ({ orderId: `o${n}`, number: n, kind: "pickup", channel: "counter", orderStatus: "preparing", pickupAt: null, notes: null, firedAt: "2026-10-22T18:00:00Z", bumpedAt: null, ageSeconds, items });
+const ticket = (n: number, ageSeconds: number, ...items: restaurantApi.KitchenItemDto[]): restaurantApi.KitchenTicketDto => ({ orderId: `o${n}`, number: n, kind: "pickup", channel: "counter", orderStatus: "preparing", pickupAt: null, notes: null, firedAt: "2026-10-22T18:00:00Z", bumpedAt: null, ageSeconds, items, customerName: null, allergyNote: null, fireAt: null, cookMinutes: 0, pinned: false });
+
+describe("kitchen tickets carry the current ticket shape", () => {
+  it("a pinned degh pre-order keeps its fire time, cook time and the guest's allergy note", () => {
+    const t = { ...ticket(7, 0, item("pot", "queued")), kind: "preorder", customerName: "Hira", allergyNote: "Nut allergy", fireAt: "2026-10-23T15:30:00Z", cookMinutes: 90, pinned: true, firedAt: null };
+    expect(t).toMatchObject({ customerName: "Hira", allergyNote: "Nut allergy", cookMinutes: 90, pinned: true, firedAt: null });
+    expect(columnOf(t)).toBe("new");
+  });
+});
 
 describe("kitchen columns", () => {
   it("sorts a ticket by how far its items are", () => {

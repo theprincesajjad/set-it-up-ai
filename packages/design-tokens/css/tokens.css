@@ -239,6 +239,7 @@
   --ll-color-accent-soft: #FFF1EA;
   --ll-color-on-accent: #FFFFFF;
   --ll-color-positive: #16A34A;
+  --ll-color-positive-text: #166534;
   --ll-color-negative: #DC2626;
   --ll-color-location: #2F7BF6;
   --ll-color-chrome: rgba(255, 255, 255, 0.8);
@@ -417,6 +418,7 @@
     --ll-color-accent-soft: #2A1710;
     --ll-color-on-accent: #0B0B0C;
     --ll-color-positive: #22C55E;
+    --ll-color-positive-text: #22C55E;
     --ll-color-negative: #F87171;
     --ll-color-location: #4C8DF8;
     --ll-color-chrome: rgba(22, 22, 24, 0.8);
@@ -595,6 +597,7 @@
   --ll-color-accent-soft: #2A1710;
   --ll-color-on-accent: #0B0B0C;
   --ll-color-positive: #22C55E;
+  --ll-color-positive-text: #22C55E;
   --ll-color-negative: #F87171;
   --ll-color-location: #4C8DF8;
   --ll-color-chrome: rgba(22, 22, 24, 0.8);

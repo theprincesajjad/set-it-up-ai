@@ -117,11 +117,13 @@ export function BookingsTab({ gate, goHalls, holding, onNewHold, onHoldClose }: 
 }
 
 function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void; reload: () => Promise<void> }) {
-  const { api, enabled, base } = useMerchant();
+  const { api, enabled, base, role } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const left = useHoldLeft(b.status === "hold" ? b.holdExpiresAt : null);
   const [recording, setRecording] = useState<number | null>(null);
+  const [voiding, setVoiding] = useState<{ id: string; label: string } | null>(null);
+  const [why, setWhy] = useState("");
   const payee = useApi(() => api.settings.payment(), [api]);
   const [pay, setPay] = useState<{ paymentIntentId: string; clientSecret: string; amountCents: number } | null>(null);
   const [noCard, setNoCard] = useState(false);
@@ -195,7 +197,12 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
               {b.manual && live ? <Banner tone="info" className="mt-3">Customer was told to send {formatMoney(b.manual.amountCents)} to {b.manual.email} with {b.manual.referenceCode} in the message.</Banner> : null}
               {b.payments?.length ? (
                 <ul className="mt-2 text-caption text-fg-muted">
-                  {b.payments.filter((p) => !p.voidedAt).map((p) => <li key={p.id}>{formatMoney(p.amountCents)} by {p.method === "etransfer" ? "e-transfer" : p.method}, {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</li>)}
+                  {b.payments.filter((p) => !p.voidedAt).map((p) => (
+                    <li key={p.id} className="flex items-center gap-2">
+                      <span>{formatMoney(p.amountCents)} by {p.method === "etransfer" ? "e-transfer" : p.method}, {dayLabel(p.receivedOn)}{p.bankReference ? ` · ${p.bankReference}` : ""}</span>
+                      {role === "owner" ? <button type="button" onClick={() => setVoiding({ id: p.id, label: `${formatMoney(p.amountCents)} by ${p.method === "etransfer" ? "e-transfer" : p.method}` })} className="rounded-sm font-medium text-fg underline underline-offset-4 hover:no-underline focus-visible:focus-ring">Void</button> : null}
+                    </li>
+                  ))}
                 </ul>
               ) : null}
             </Section>
@@ -266,6 +273,24 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
           }}
         />
       ) : null}
+      <ConfirmDialog
+        open={!!voiding}
+        onClose={() => { setVoiding(null); setWhy(""); }}
+        danger
+        title="Void this payment?"
+        body={`${voiding?.label ?? "The payment"} stays in the ledger as voided and that instalment is due again. Use this for a mistake, such as the wrong booking. Only the owner can do this, and it is logged.`}
+        confirmLabel="Void payment"
+        disabled={!why.trim()}
+        onConfirm={async () => {
+          if (!voiding) return;
+          await api.banquet.voidPayment(b.id, why.trim(), voiding.id);
+          toast({ message: "Payment voided", tone: "success" });
+          setWhy("");
+          await reload();
+        }}
+      >
+        <TextField label="Reason" value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Recorded on the wrong booking" />
+      </ConfirmDialog>
       <ConfirmDialog
         open={cancelling}
         onClose={() => { setCancelling(false); setRefund(NO_REFUND); }}

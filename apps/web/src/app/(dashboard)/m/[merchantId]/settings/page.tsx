@@ -1,11 +1,13 @@
 "use client";
 import { Download, ExternalLink } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { TaxStatus } from "@/components/dashboard/TaxStatus";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
@@ -17,14 +19,17 @@ import { BFF_BASE } from "@/lib/api/browser";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
 import { useAction } from "@/lib/dashboard/useApi";
 
-type Tab = "profile" | "hours" | "counter" | "privacy" | "danger";
+type Tab = "profile" | "hours" | "tax" | "counter" | "privacy" | "danger";
 
 export default function SettingsPage() {
   const { detail, role } = useMerchant();
-  const [tab, setTab] = useState<Tab>("profile");
+  const params = useSearchParams();
+  const want = params.get("tab");
+  const [tab, setTab] = useState<Tab>(want === "tax" ? "tax" : "profile");
   const items: { id: Tab; label: string }[] = [
     { id: "profile", label: "Shop profile" },
     { id: "hours", label: "Hours" },
+    { id: "tax", label: "Tax" },
     { id: "counter", label: "Counter & receipts" },
     { id: "privacy", label: "Privacy" },
     ...(role === "owner" ? [{ id: "danger" as const, label: "Danger zone" }] : []),
@@ -36,6 +41,7 @@ export default function SettingsPage() {
       {/* Profile and Hours stay mounted so an unsaved draft survives a tab switch; only the active tab shows its save bar. */}
       <div role="tabpanel" hidden={tab !== "profile"}><Profile active={tab === "profile"} /></div>
       <div role="tabpanel" hidden={tab !== "hours"}><HoursTab active={tab === "hours"} /></div>
+      {tab === "tax" ? <div role="tabpanel"><TaxStatus owner={role === "owner"} /></div> : null}
       {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
     </div>
   );

@@ -55,18 +55,38 @@ export function quoteDto(q: Quote, publicWebUrl: string, forStaff: boolean): ser
   };
 }
 
-/** Normalize line items and compute subtotal / tax / total. */
-export async function priceLineItems(db: DbOrTx, merchant: Merchant, input: z.infer<typeof serviceApi.lineItemSchema>[]) {
+/**
+ * Sales tax base: the lines that carry tax (`taxable !== false`). Credits (reward discounts) come off the taxable lines in
+ * proportion, so a discount on a mixed bill never turns a non-taxable line taxable or the other way round.
+ */
+export function taxableBase(lines: { quantity: number; unitPriceCents: number; taxable?: boolean }[]): number {
+  let positive = 0;
+  let taxablePositive = 0;
+  let credits = 0;
+  for (const l of lines) {
+    const v = l.quantity * l.unitPriceCents;
+    if (v < 0) credits += v;
+    else {
+      positive += v;
+      if (l.taxable !== false) taxablePositive += v;
+    }
+  }
+  if (positive <= 0) return 0;
+  return Math.max(0, Math.round((taxablePositive * (positive + credits)) / positive));
+}
+
+/** Normalize line items and compute subtotal / tax / total. A line with `taxable: false` carries no tax. */
+export async function priceLineItems(db: DbOrTx, merchant: Pick<Merchant, "id" | "neighbourhoodId" | "taxRegistered">, input: (z.infer<typeof serviceApi.lineItemSchema> & { taxable?: boolean })[]) {
   const catIds = [...new Set(input.map((l) => l.categoryId).filter((c): c is string => !!c))];
   if (catIds.length) {
     const found = await db.select({ id: merchantCategories.id }).from(merchantCategories).where(and(eq(merchantCategories.merchantId, merchant.id), inArray(merchantCategories.id, catIds)));
     if (found.length !== catIds.length) throw badRequest("Unknown category on a line item");
   }
-  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null, ...(l.serviceId ? { serviceId: l.serviceId } : {}) }));
+  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null, ...(l.serviceId ? { serviceId: l.serviceId } : {}), ...(l.taxable === false ? { taxable: false } : {}) }));
   const subtotalCents = lineItems.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0);
   if (subtotalCents < 0) throw badRequest("Credits can't be more than the lines they apply to");
   // Tax comes from the shop's province and tax registration, never from the client.
-  const tax = await merchantTax(db, merchant, subtotalCents);
+  const tax = await merchantTax(db, merchant, taxableBase(lineItems));
   return { lineItems, subtotalCents, taxCents: tax.taxCents, totalCents: subtotalCents + tax.taxCents, taxLines: tax.lines.map((l) => ({ label: l.label, cents: l.cents })), taxLabel: tax.label };
 }
 

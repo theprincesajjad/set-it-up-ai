@@ -105,6 +105,30 @@ describe("staged payments", () => {
   });
 });
 
+describe("void an instalment recorded by hand (owner only, audited)", () => {
+  it("reopens the instalment and clears the deposit date, keeps the voided row with its reason, and is owner only", async () => {
+    const s = await setup();
+    const b = await hold(s);
+    const paid = await api(s.m.ownerToken, "POST", `${s.base}/banquet/bookings/${b.id}/payments`, { method: "etransfer", amountCents: 141250, receivedOn: "2026-11-03" });
+    expect(paid.body.schedule[0].paidAt).toBeTruthy();
+    expect((await api(null, "POST", `${s.base}/banquet/bookings/${b.id}/void-payment`, { reason: "x" })).status).toBe(401);
+    const { staffMember } = await import("./commerce-fixtures.js");
+    const manager = await staffMember(env, s.m.merchant.id, "manager");
+    expect((await api(manager.token, "POST", `${s.base}/banquet/bookings/${b.id}/void-payment`, { reason: "x" })).status).toBe(403);
+    expect((await api(s.m.ownerToken, "POST", `${s.base}/banquet/bookings/${b.id}/void-payment`, {})).status).toBe(400);
+
+    const v = await api(s.m.ownerToken, "POST", `${s.base}/banquet/bookings/${b.id}/void-payment`, { reason: "Entered on the wrong booking" });
+    expect(v.status).toBe(200);
+    expect(v.body.schedule[0].paidAt).toBeNull();
+    expect(v.body.depositPaidAt).toBeNull();
+    expect(v.body.payments).toEqual([expect.objectContaining({ amountCents: 141250, voidReason: "Entered on the wrong booking", voidedAt: expect.any(String) })]);
+    // Nothing left to void.
+    expect((await api(s.m.ownerToken, "POST", `${s.base}/banquet/bookings/${b.id}/void-payment`, { reason: "again" })).status).toBe(409);
+    // The instalment can be paid again.
+    expect((await api(s.m.ownerToken, "POST", `${s.base}/banquet/bookings/${b.id}/payments`, { method: "cash", amountCents: 141250, receivedOn: "2026-11-03" })).status).toBe(200);
+  });
+});
+
 describe("banquet reminders job", () => {
   const sent = async (type: string) => (await env.db.select().from(notifications).where(eq(notifications.type, "order_status"))).filter((n) => (n.data as { type?: string })?.type === type);
   it("sends hold-expiry notices at 24h and 4h and a payment-due notice once each, not in quiet hours", async () => {

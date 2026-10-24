@@ -14,7 +14,7 @@ export function DensityBar({ label, value, target, unit = "shops", format = form
     <div className={cn("min-w-0", className)}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="min-w-0 text-meta text-fg-muted">{label}</p>
-        <p className="shrink-0 text-caption font-normal text-fg-muted">{s === "ready" ? <span className="text-positive">{STATUS_TEXT[s]}</span> : `${format(Math.max(0, target - value))} to go`}</p>
+        <p className="shrink-0 text-caption font-normal text-fg-muted">{s === "ready" ? <span className="text-positive-text">{STATUS_TEXT[s]}</span> : `${format(Math.max(0, target - value))} to go`}</p>
       </div>
       <p className="mt-1 text-headline text-fg tabular">
         {format(value)}

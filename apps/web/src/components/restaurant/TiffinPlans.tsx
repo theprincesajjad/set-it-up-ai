@@ -159,7 +159,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
               <li key={p.id} className={cn("rounded-card border p-4", selected ? "border-fg" : "border-line")}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <Heading level={2} className="break-words">
+                    <Heading level={2} plain className="break-words">
                       {tr.name}
                     </Heading>
                     {tr.description ? <p className="mt-1 text-body text-fg-muted">{tr.description}</p> : null}

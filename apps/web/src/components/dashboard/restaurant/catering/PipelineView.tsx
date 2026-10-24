@@ -68,12 +68,12 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                           <p className="text-meta text-fg-muted">{hint}</p>
                         </div>
                         {col.length ? (
-                          <ul className="divide-y divide-line">
+                          <ul className="mt-3 flex flex-col gap-3">
                             {col.map((e) => (
                               <li key={e.id}>
-                                <Link href={`${base}/restaurant/catering/${e.id}`} className="-mx-2 block rounded-sm px-2 py-3 hover:bg-bg-subtle focus-visible:focus-ring">
+                                <Link href={`${base}/restaurant/catering/${e.id}`} className="block rounded-card border border-line p-3 hover:bg-bg-subtle focus-visible:focus-ring">
                                   <div className="flex items-baseline justify-between gap-2">
-                                    <span className="truncate text-body text-fg">{title(e)}</span>
+                                    <span className="truncate text-body-strong text-fg">{EVENT_TYPE_LABEL[e.eventType]}</span>
                                     {e.totalCents ? <span className="shrink-0 text-meta tabular text-fg">{formatMoney(e.totalCents)}</span> : null}
                                   </div>
                                   <p className="truncate text-meta text-fg-muted">{e.customer?.name ?? "Customer"}</p>
@@ -81,9 +81,9 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                                   {(() => {
                                     const n = nextAction(e, now, dayShort);
                                     return n ? (
-                                      <p className={`mt-1 flex items-center gap-1.5 truncate text-meta ${n.tone === "accent" ? "text-accent-text" : n.tone === "info" ? "text-location" : "text-fg-muted"}`}>
-                                        <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${TONE[n.tone].split(" ")[0]}`} />
-                                        <span className="truncate">{n.text}</span>
+                                      <p className={`mt-1 flex items-start gap-1.5 text-meta ${n.tone === "accent" ? "text-accent-text" : n.tone === "info" ? "text-location" : "text-fg-muted"}`}>
+                                        <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${TONE[n.tone].split(" ")[0]}`} />
+                                        <span>{n.text}</span>
                                       </p>
                                     ) : null;
                                   })()}

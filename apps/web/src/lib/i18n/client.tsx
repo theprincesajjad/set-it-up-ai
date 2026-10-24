@@ -22,6 +22,8 @@ interface LocaleValue {
   rich: (key: MessageKey, vars?: Vars) => ReactNode;
   setLocale: (next: Locale) => void;
   money: (cents: number, currency?: string) => string;
+  /** Always two decimals ($129.00): quotes, invoices and receipts, where lines must add up on sight. */
+  moneyExact: (cents: number, currency?: string) => string;
   number: (n: number) => string;
   date: (d: Date | string | number, opts?: Intl.DateTimeFormatOptions, tz?: string) => string;
   time: (d: Date | string | number, tz?: string) => string;
@@ -53,6 +55,7 @@ function buildValue(locale: Locale, setLocale: (next: Locale) => void): LocaleVa
     },
     setLocale,
     money: (cents, currency) => formatCurrency(locale, cents, currency),
+    moneyExact: (cents, currency) => formatCurrency(locale, cents, currency, true),
     number: (n) => formatNumber(locale, n),
     date: (d, opts, tz) => formatDate(locale, d, opts, tz),
     time: (d, tz) => formatTime(locale, d, tz),

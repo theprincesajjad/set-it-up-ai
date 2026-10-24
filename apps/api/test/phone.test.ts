@@ -88,7 +88,7 @@ describe("transcript parser (pure)", () => {
   it("reads two distinctive words in a row as one phrase, not two orders", () => {
     const long = [
       { id: "hyd", name: "Hyderabadi Chicken Dum Biryani" },
-      { id: "degh", name: "Chicken Biryani Degh (serves 15)" },
+      { id: "degh", name: "Chicken Biryani Degh" },
       { id: "goat", name: "Hyderabadi Goat Dum Biryani" },
       { id: "tikka", name: "Chicken Tikka" },
     ];

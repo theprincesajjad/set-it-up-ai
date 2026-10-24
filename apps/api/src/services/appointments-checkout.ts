@@ -71,13 +71,15 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
   const items = body.items ?? a.items;
   if (!items.length) throw badRequest("Nothing to bill");
   const serviceIds = [...new Set(items.map((i) => i.serviceId).filter((s): s is string => !!s))];
-  const svcs = serviceIds.length ? await ctx.db.select({ id: services.id, categoryId: services.categoryId }).from(services).where(and(eq(services.merchantId, merchant.id), inArray(services.id, serviceIds))) : [];
-  const lines: { description: string; quantity: number; unitPriceCents: number; kind: "labour" | "part" | "fee" | "other"; categoryId: string | null }[] = items.map((i) => ({
+  const svcs = serviceIds.length ? await ctx.db.select({ id: services.id, categoryId: services.categoryId, taxable: services.taxable }).from(services).where(and(eq(services.merchantId, merchant.id), inArray(services.id, serviceIds))) : [];
+  const lines: { description: string; quantity: number; unitPriceCents: number; kind: "labour" | "part" | "fee" | "other"; categoryId: string | null; taxable?: boolean }[] = items.map((i) => ({
     description: i.name,
     quantity: 1,
     unitPriceCents: i.priceCents,
     kind: "labour",
     categoryId: svcs.find((s) => s.id === i.serviceId)?.categoryId ?? null,
+    // A service marked "no tax" (a gift card, a product with its own rules) is billed without it.
+    taxable: svcs.find((s) => s.id === i.serviceId)?.taxable ?? true,
   }));
   const serviceTotal = lines.reduce((n, l) => n + l.unitPriceCents, 0);
 
@@ -90,7 +92,8 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     discountCents = Math.min(serviceTotal, Math.max(0, r.redemption.discountCents ?? 0));
     if (discountCents > 0) lines.push({ description: `Reward: ${r.reward.name}`, quantity: 1, unitPriceCents: -discountCents, kind: "other", categoryId: null });
   }
-  const priced = await priceLineItems(ctx.db, merchant, lines);
+  // Like tiffin: tax only for a shop that says it is registered for GST/HST. An unanswered status adds nothing, so "plus HST" copy and the bill agree.
+  const priced = await priceLineItems(ctx.db, { id: merchant.id, neighbourhoodId: merchant.neighbourhoodId, taxRegistered: merchant.taxRegistered === true }, lines);
 
   // Tip: at the desk only; on the pay link the client picks it (the stylist is recorded either way).
   const counter = body.mode === "counter";

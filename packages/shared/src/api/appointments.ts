@@ -350,6 +350,8 @@ export interface AppointmentSettingsDto {
   tipsEnabled: boolean | null;
   tipsOn: boolean;
   tipPresets: number[];
+  /** `applies` only when the shop is registered for GST/HST (checkout then adds `name` on taxable services). */
+  tax: { applies: boolean; name: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -389,6 +391,8 @@ export interface PublicServiceDto {
   translations: Record<string, { name?: string; description?: string }>;
   /** Staff who do it (empty = anyone). */
   staffIds: string[];
+  /** The service carries sales tax (when the shop is registered). */
+  taxable: boolean;
   /** Per-person overrides of duration and price (staff_services). */
   staffOverrides: { staffId: string; durationMin: number | null; priceCents: number | null }[];
 }
@@ -405,6 +409,8 @@ export interface PublicBookingPolicyDto {
 }
 export interface PublicServicesResponse {
   shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null };
+  /** `applies` only when the shop is registered for GST/HST; `name` is what to call it ("HST"). */
+  tax: { applies: boolean; name: string };
   policy: PublicBookingPolicyDto;
   services: PublicServiceDto[];
   staff: PublicStaffDto[];
@@ -442,6 +448,8 @@ export interface MyAppointmentDto {
   pending: boolean;
   holdExpiresAt: string | null;
   policy: { cancelWindowHours: number; noShowFeeCents: number };
+  /** Tax is added to this visit (the shop is registered and a service on it is taxable). */
+  tax: { applies: boolean; name: string };
   /** Cancelling now is free (before the window). */
   freeChangeUntil: string;
   feeChargedAt: string | null;

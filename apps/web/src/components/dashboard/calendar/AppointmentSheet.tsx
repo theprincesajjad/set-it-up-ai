@@ -87,7 +87,7 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt:
         {appt.depositPaidAt ? (
           <li className="flex items-center justify-between gap-3 py-2.5 text-meta">
             <span className="text-fg-muted">Deposit paid online</span>
-            <span className="text-positive tabular">-{money(due.depositCents)}</span>
+            <span className="text-positive-text tabular">-{money(due.depositCents)}</span>
           </li>
         ) : appt.holdExpiresAt ? (
           <li className="flex items-center justify-between gap-3 py-2.5 text-meta">

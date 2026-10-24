@@ -16,7 +16,7 @@ const TZ = "America/Toronto";
 
 /** /i/<token>: invoice view and pay. Salon-type shops add a tip picker; the points line says tax and tips do not earn. */
 export function InvoiceView({ token, initial }: { token: string; initial: serviceApi.PublicInvoiceResponse }) {
-  const { t, money, date, number } = useFmt();
+  const { t, moneyExact: money, date, number } = useFmt();
   const [data, setData] = useState(initial);
   const [payment, setPayment] = useState<serviceApi.PayInvoiceResponse["payment"]>(null);
   const [tip, setTip] = useState<TipValue>({ kind: "none", cents: 0 });
@@ -87,15 +87,15 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
         <ul>
           {inv.lineItems.map((l, i) => (
             <li key={i} className={cn("flex items-start justify-between gap-4 py-3", i > 0 && "border-t border-line")}>
-              <span className={cn("text-body", l.totalCents < 0 ? "text-positive" : "text-fg")}>{l.description}{l.quantity > 1 ? <span className="text-fg-muted"> × {number(l.quantity)}</span> : null}</span>
-              <span className={cn("shrink-0 text-body tabular-nums", l.totalCents < 0 ? "text-positive" : "text-fg")}>{money(l.totalCents)}</span>
+              <span className={cn("text-body", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{l.description}{l.quantity > 1 ? <span className="text-fg-muted"> × {number(l.quantity)}</span> : null}</span>
+              <span className={cn("shrink-0 text-body tabular-nums", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{money(l.totalCents)}</span>
             </li>
           ))}
           {inv.taxCents > 0 ? (
             <li className="flex justify-between gap-4 border-t border-line py-3 text-body text-fg-muted"><span><bdi>{taxLabel}</bdi></span><span className="tabular-nums">{money(inv.taxCents)}</span></li>
           ) : null}
           {inv.depositAppliedCents > 0 ? (
-            <li className="flex justify-between gap-4 border-t border-line py-3 text-body text-positive"><span>{t("sv.i.depositPaid")}</span><span className="tabular-nums">−{money(inv.depositAppliedCents)}</span></li>
+            <li className="flex justify-between gap-4 border-t border-line py-3 text-body text-positive-text"><span>{t("sv.i.depositPaid")}</span><span className="tabular-nums">−{money(inv.depositAppliedCents)}</span></li>
           ) : null}
           {inv.tipCents > 0 && inv.status === "paid" ? (
             <li className="flex justify-between gap-4 border-t border-line py-3 text-body text-fg-muted"><span>{t("sv.i.tipLine")}</span><span className="tabular-nums">{money(inv.tipCents)}</span></li>

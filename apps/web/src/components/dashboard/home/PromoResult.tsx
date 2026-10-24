@@ -28,7 +28,7 @@ function Figure({ value, label, tone = "plain" }: { value: string; label: string
   return (
     <div className="flex flex-col-reverse">
       <dt className="text-[12px] text-fg-muted">{label}</dt>
-      <dd className={`text-[24px] font-semibold leading-8 tracking-[-0.01em] ${tone === "good" ? "text-positive" : "text-fg"}`}>{value}</dd>
+      <dd className={`text-[24px] font-semibold leading-8 tracking-[-0.01em] ${tone === "good" ? "text-positive-text" : "text-fg"}`}>{value}</dd>
     </div>
   );
 }

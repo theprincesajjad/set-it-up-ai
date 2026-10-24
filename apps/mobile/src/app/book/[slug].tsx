@@ -234,7 +234,7 @@ export default function Book() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
             <View>
               <Text variant="meta" color="fgMuted">{ids.length ? t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) }) : t("bk.chooseTime")}</Text>
-              {ids.length ? <Text style={disp(22, 800, 26)}>{t("bk.total", { amount: sel.from ? t("bk.from", { price: money(sel.priceCents) }) : money(sel.priceCents) })}</Text> : null}
+              {ids.length ? <Text style={disp(22, 800, 26)}>{bookingLogic.totalText(t as never, data, sel, money)}</Text> : null}
             </View>
             {ids.length && deposit > 0 ? <Text variant="meta" color="fgMuted">{t("bk.depositHold", { amount: money(deposit) })}</Text> : null}
           </View>

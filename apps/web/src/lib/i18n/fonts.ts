@@ -19,8 +19,8 @@ export function localeFont(locale: Locale): { className: string; fontFamily?: st
     case "pa":
       return { className: gurmukhi.variable, fontFamily: `var(--font-noto-guru), ${BASE}` };
     case "ur":
-      // Nastaliq first; Naskh covers glyphs Nastaliq lacks. Nastaliq has tall ascenders, so lines get extra leading.
-      return { className: `${nastaliq.variable} ${naskh.variable}`, fontFamily: `var(--font-noto-nastaliq), var(--font-noto-naskh), ${BASE}` };
+      // Inter first so Latin runs (shop names, dish names, amounts) stay sans: Noto Nastaliq ships its own serif Latin and would take them. Inter has no Arabic glyphs, so Urdu falls through to Nastaliq, then Naskh for glyphs Nastaliq lacks. Nastaliq has tall ascenders, so lines get extra leading.
+      return { className: `${nastaliq.variable} ${naskh.variable}`, fontFamily: `var(--font-inter), var(--font-noto-nastaliq), var(--font-noto-naskh), system-ui, sans-serif` };
     default:
       return { className: "" };
   }

@@ -70,7 +70,7 @@ export default function RolloutPage() {
                                 </div>
                                 <span className="tabular text-fg-muted">
                                   <span className="text-fg">{formatNumber(f.activeMerchants)}</span> / {formatNumber(f.unlockAtMerchants)}
-                                  {f.readyToUnlock ? <span className="text-positive"> · met</span> : null}
+                                  {f.readyToUnlock ? <span className="text-positive-text"> · met</span> : null}
                                 </span>
                               </div>
                             ) : (

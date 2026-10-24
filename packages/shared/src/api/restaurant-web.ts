@@ -120,7 +120,7 @@ export interface CancelRuleResponse {
 export interface PublicRestaurantResponse {
   halalCertification: PublicHalalCertification | null;
   /** Next Saturday and Sunday (or today, if it is one) with pots left for the first degh. */
-  weekend: { date: string; potsLeft: number | null; full: boolean }[];
+  weekend: { date: string; potsLeft: number | null; full: boolean; closed: boolean }[];
   /** Most ordered dishes in the last 30 days (catalog item ids), pre-order items excluded. */
   popular: string[];
   acceptingOrders: boolean;

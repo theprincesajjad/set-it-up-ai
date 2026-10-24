@@ -20,7 +20,7 @@ type Payment = { paymentIntentId: string; clientSecret: string; amountCents: num
 
 /** /e/<token>: review a catering quote, sign with a typed name, then pay the deposit. */
 export function CateringApproval({ token, initial }: { token: string; initial: restaurantApi.PublicCateringResponse }) {
-  const { t, money, date, time, number, percent } = useFmt();
+  const { t, moneyExact: money, date, time, number, percent } = useFmt();
   const [data, setData] = useState(initial);
   const [signature, setSignature] = useState("");
   const [touched, setTouched] = useState(false);
@@ -36,7 +36,8 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
   const [manual, setManual] = useState(data.manual);
 
   const dayLabel = date(dayDate(e.eventDate), { weekday: "long", month: "long", day: "numeric", year: "numeric" }, "UTC");
-  const whenLabel = e.startTime ? t("rc.ca.when", { date: dayLabel, time: time(new Date(`${e.eventDate}T${e.startTime}:00Z`), "UTC") }) : dayLabel;
+  const shortDay = date(dayDate(e.eventDate), { weekday: "short", month: "short", day: "numeric" }, "UTC");
+  const whenLabel = e.startTime ? t("rc.ca.when", { date: shortDay, time: time(new Date(`${e.eventDate}T${e.startTime}:00Z`), "UTC") }) : shortDay;
   const typeLabel = eventLabel(t, e.eventType);
   const depositPct = Math.round(e.depositBps / 100);
   const hasDeposit = e.depositCents > 0;
@@ -173,7 +174,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
       {hasDeposit && status !== "cancelled" ? (
         <section className="flex flex-col gap-1" aria-label={t("rc.ca.depositDue", { pct: percent(depositPct) })}>
           <p className="text-meta text-fg-muted">{e.depositPaidAt ? t("rc.ca.depositPaid") : t("rc.ca.depositDue", { pct: percent(depositPct) })}</p>
-          <BigNumber tone={e.depositPaidAt ? "muted" : "accent"}>{money(e.depositCents)}</BigNumber>
+          <BigNumber tone={e.depositPaidAt ? "muted" : "fg"}>{money(e.depositCents)}</BigNumber>
           <p className="text-meta text-fg-muted">
             {t("rc.ca.balance")}: {money(Math.max(0, e.totalCents - e.depositCents))}
           </p>

@@ -4,7 +4,7 @@
  * `api.splits`; the public split page uses `publicSplitEndpoints`. Contracts: @ll/shared restaurantApi,
  * routes: docs/engineering/restaurant-endpoints.md.
  */
-import type { restaurantApi } from "@ll/shared";
+import type { restaurantApi, restaurantWebApi } from "@ll/shared";
 import type { ApiClient } from "./client";
 
 const enc = encodeURIComponent;
@@ -25,6 +25,8 @@ export function restaurantKitchenEndpoints(c: ApiClient, b: string) {
       saveSettings: (preorderDailyCap: number | null) => c.put<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`, { preorderDailyCap }),
       rules: () => c.get<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`),
       waitlist: (q: { from?: string; to?: string } = {}) => c.get<{ items: restaurantApi.WaitlistEntryDto[] }>(`${b}/preorders/waitlist`, { query: q }),
+      cancelRule: () => c.get<restaurantWebApi.CancelRuleResponse>(`${b}/preorders/cancel-rule`),
+      saveCancelRule: (cancelCutoffHours: number | null) => c.put<restaurantWebApi.CancelRuleResponse>(`${b}/preorders/cancel-rule`, { cancelCutoffHours }),
       saveRules: (body: restaurantApi.PreorderRulesBody) => c.put<restaurantApi.PreorderRulesResponse>(`${b}/preorders/settings`, body),
     },
     kitchen: {

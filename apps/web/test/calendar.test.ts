@@ -24,6 +24,8 @@ import {
   snap,
   stateLine,
   tipChoices,
+  walkInGaps,
+  gapRange,
   weekColumns,
   weekStart,
   workWindow,
@@ -229,5 +231,35 @@ describe("checkout preview", () => {
   });
   it("prices the tip presets on the pre-tax amount", () => {
     expect(tipChoices(18000, [15, 20, 25])).toEqual([{ percent: 15, cents: 2700 }, { percent: 20, cents: 3600 }, { percent: 25, cents: 4500 }]);
+  });
+});
+
+describe("open walk-in gaps", () => {
+  const win: [number, number] = [9 * 60, 18 * 60];
+  const early = new Date(instantAt("2026-11-04", 7 * 60).getTime()); // before opening
+  const day = [appt({ start: "09:00", end: "10:15" }), appt({ id: "b", start: "10:45", end: "12:00" }), appt({ id: "c", start: "13:30", end: "15:00" })];
+  it("finds the free stretches of 30 to 90 minutes inside working time", () => {
+    const g = walkInGaps(staff("s1", "Simran Kaur"), "s1", "2026-11-04", win, day, early);
+    // 10:15-10:45 (30 min), 12:00-13:30 (90 min); 15:00-17:00 is two hours, an empty afternoon rather than a gap.
+    expect(g.map((x) => [x.start, x.end])).toEqual([[10 * 60 + 15, 10 * 60 + 45], [12 * 60, 13 * 60 + 30]]);
+    expect(g[0]).toMatchObject({ top: 75, height: 29 });
+    expect(gapRange(g[1]!)).toBe("12:00 to 1:30");
+  });
+  it("ignores cancelled and other people's appointments, counts time off, and shows nothing for past days or off-shift staff", () => {
+    const s = staff("s1", "Simran Kaur", [[3, "09:00", "17:00"]], [{ id: "t", userId: "s1", startsAt: instantAt("2026-11-04", 12 * 60).toISOString(), endsAt: instantAt("2026-11-04", 13 * 60).toISOString(), reason: "Lunch" }]);
+    const more = [...day, appt({ id: "x", start: "15:30", end: "16:00", status: "cancelled" }), appt({ id: "y", start: "15:00", end: "16:30", staffId: "s2" })];
+    expect(walkInGaps(s, "s1", "2026-11-04", win, more, early).map((x) => [x.start, x.end])).toEqual([[10 * 60 + 15, 10 * 60 + 45], [13 * 60, 13 * 60 + 30]]);
+    expect(walkInGaps(s, "s1", "2026-11-04", win, more, new Date(instantAt("2026-11-05", 7 * 60)))).toEqual([]);
+    expect(walkInGaps(s, "s1", "2026-11-05", win, [], early)).toEqual([]); // Thursday: no shift
+    expect(walkInGaps(null, null, "2026-11-04", win, day, early)).toEqual([]);
+  });
+  it("on today only the time after now counts, rounded up to the next quarter hour", () => {
+    const now = instantAt("2026-11-04", 12 * 60 + 5);
+    const g = walkInGaps(staff("s1", "Simran Kaur"), "s1", "2026-11-04", win, day, now);
+    expect(g.map((x) => [x.start, x.end])).toEqual([[12 * 60 + 15, 13 * 60 + 30]]);
+  });
+  it("is counted in the page description", () => {
+    expect(dayDescription("2026-11-04", { booked: 3, noShows: 0, depositsDue: 0, inChair: 0, gaps: 2 })).toBe("Wednesday, November 4. 3 booked, 2 walk-in gaps open.");
+    expect(dayDescription("2026-11-04", { booked: 3, noShows: 0, depositsDue: 0, inChair: 0, gaps: 1 })).toContain("1 walk-in gap open");
   });
 });

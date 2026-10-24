@@ -34,6 +34,32 @@ export function salesTaxBps(input: { province?: string | null; taxRegistered?: b
   return PROVINCIAL_SALES_TAX_BPS[key] ?? PROVINCIAL_SALES_TAX_BPS[DEFAULT_SALES_TAX_PROVINCE]!;
 }
 
+/** What a province calls its sales tax, for copy like "plus HST". */
+export const PROVINCIAL_TAX_NAME: Record<string, string> = {
+  ON: "HST",
+  NB: "HST",
+  NL: "HST",
+  PE: "HST",
+  NS: "HST",
+  QC: "GST + QST",
+  BC: "GST + PST",
+  MB: "GST + RST",
+  SK: "GST + PST",
+  AB: "GST",
+  YT: "GST",
+  NT: "GST",
+  NU: "GST",
+};
+
+/**
+ * How a screen words the tax for a merchant: "plus HST" only when the shop says it is registered for GST/HST. A small
+ * supplier, or a shop that has not answered yet, charges no tax on appointments, so there is no tax line at all.
+ */
+export function salesTaxCopy(input: { province?: string | null; taxRegistered?: boolean | null }): { applies: boolean; name: string } {
+  const key = (input.province ?? DEFAULT_SALES_TAX_PROVINCE).toUpperCase();
+  return { applies: input.taxRegistered === true, name: PROVINCIAL_TAX_NAME[key] ?? PROVINCIAL_TAX_NAME[DEFAULT_SALES_TAX_PROVINCE]! };
+}
+
 /** GST/HST registration number: 9 digits, optional "RT0001"-style program suffix. */
 export const GST_HST_NUMBER_RE = /^\d{9}(\s?RT\s?\d{4})?$/i;
 export function isValidGstHstNumber(v: string): boolean {

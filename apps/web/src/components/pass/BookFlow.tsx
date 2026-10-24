@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
-import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn } from "@/lib/booking";
+import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
 import { cn } from "@/lib/cn";
 import { dayDate, todayIso } from "@/lib/restaurant/util";
 
@@ -196,7 +196,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
           <Heading level={2}>{t("bk.done.title")}</Heading>
           <p className="text-body text-fg-muted">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt) })}</p>
           {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
-          {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
+          {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
         </section>
         <div className="flex flex-col gap-3">
           <Button size="lg" fullWidth onClick={download}>{t("bk.done.calendar")}</Button>
@@ -363,7 +363,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-meta text-fg-muted">{ids.length ? t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) }) : <Pill>{t("bk.chooseTime")}</Pill>}</p>
-            {ids.length ? <p className="text-title tabular-nums text-fg">{t("bk.total", { amount: (sel.from ? t("bk.from", { price: money(sel.priceCents) }) : money(sel.priceCents)) })}</p> : null}
+            {ids.length ? <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p> : null}
           </div>
           {ids.length && deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
         </div>

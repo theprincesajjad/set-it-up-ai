@@ -47,7 +47,7 @@ export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Pro
     const today = localDay(now, merchant.timezone);
     const dates = weekendDates(today);
     const a = await availability(ctx, merchant, { itemId: preorderItems[0]!.id, from: dates[0]!, to: dates[dates.length - 1]! });
-    weekend = a.days.filter((d) => dates.includes(d.date)).map((d) => ({ date: d.date, potsLeft: d.potsLeft, full: d.full }));
+    weekend = a.days.filter((d) => dates.includes(d.date)).map((d) => ({ date: d.date, potsLeft: d.potsLeft, full: d.full, closed: d.closed }));
   }
 
   let popular: string[] = [];

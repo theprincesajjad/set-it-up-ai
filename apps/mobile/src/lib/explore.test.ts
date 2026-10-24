@@ -41,6 +41,9 @@ describe("explore", () => {
     expect(pinSubtitle("cafe", { ...m, balance: 14 })).toEqual({ text: "10 / 10 stamps", accent: false });
     expect(pinSubtitle("cafe", { ...m, rewardsAvailableCount: 1 })).toEqual({ text: "reward ready", accent: true });
     expect(pinSubtitle("restaurant", { ...m, earnType: "per_dollar", terminology: "points", balance: 1350, stampGoal: null })).toEqual({ text: "1,350 pts", accent: false });
+    // A stranger sees the live window or the perk, from the same helper as Discover.
+    expect(pinSubtitle("cafe", null, { promoLine: "2× stamps till 4 pm", perk: "x" })).toEqual({ text: "2× stamps till 4 pm", accent: false });
+    expect(pinSubtitle("grocery", null, { perk: "5% off Tuesdays" })).toEqual({ text: "market · 5% off Tuesdays", accent: false });
     expect(placeKind("repair_electronics")).toBe("phone repair");
     expect(placeKind("unknown")).toBe("shop");
   });

@@ -37,8 +37,9 @@ export const palette = {
     950: "#2A1710", // accent-soft (dark)
   },
   green: {
-    500: "#22C55E", // positive (dark)
-    600: "#16A34A", // positive (light)
+    500: "#22C55E", // positive (dark), positive-text (dark)
+    600: "#16A34A", // positive (light): dots and icons (3:1)
+    800: "#166534", // positive-text (light): small text, 4.5:1 or better on every background
   },
   red: {
     400: "#F87171", // negative (dark)

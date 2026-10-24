@@ -79,7 +79,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
           x: ((s.location!.lng! - x0) / region.longitudeDelta) * size.width,
           y: ((y0 - s.location!.lat!) / region.latitudeDelta) * size.height,
           priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, openNow: s.openNow, distanceMetres: s.distanceMetres }),
-          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text),
+          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null, s).text),
           h: labelHeight(s.merchant.name),
         };
       }),
