@@ -114,7 +114,7 @@ export type AttachAddOnBody = z.input<typeof attachAddOnBody>;
 
 export const addOnIdParam = z.enum(ADD_ON_IDS);
 
-export const setChargeModeBody = z.object({ chargeMode: z.enum(["destination", "direct"]) });
+export const setChargeModeBody = z.object({ chargeMode: z.enum(["destination", "direct"]), reason: z.string().trim().min(5, "Give a reason").max(500).optional() });
 
 export interface RestaurantPlanOptionDto {
   tier: RestaurantTier;

@@ -1,5 +1,6 @@
 "use client";
-import { ArrowLeft, ArrowRight, Check, Printer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Copy, Printer } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ONBOARDING_STEPS_UI } from "./steps";
@@ -12,6 +13,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { QrCode } from "@/components/ui/QrCode";
+import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -24,10 +27,10 @@ import type { merchantApi } from "@ll/shared";
 /** Setup guide (merchant-dashboard.md §1): profile → program → rewards → staff → QR kit → first 25 members. */
 export default function SetupPage() {
   const { api, base } = useMerchant();
-  const state = useApi(() => api.onboarding(), [api]);
+  const state = useApi(() => api.onboarding(), [api], { pollMs: 8000 });
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Set up your shop" description="Each step saves as you go. You can come back any time." />
+      <PageHeader flush title="Set up your shop" description="Five steps to live on the street. Each saves as you go." />
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
     </div>
   );
@@ -36,12 +39,13 @@ export default function SetupPage() {
 function Wizard({ checklist, onChange, base }: { checklist: merchantApi.OnboardingChecklist; onChange: (c: merchantApi.OnboardingChecklist) => void; base: string }) {
   const params = useSearchParams();
   const router = useRouter();
-  const steps = checklist.steps;
-  const initial = Math.max(0, steps.findIndex((s) => s.key === (params.get("step") ?? checklist.currentStep)));
+  const core = checklist.steps;
+  const steps = [...core, ...checklist.later];
+  const initial = steps.findIndex((s) => s.key === (params.get("step") ?? checklist.currentStep));
   const [i, setI] = useState(initial === -1 ? 0 : initial);
   const step = steps[i] ?? steps[0]!;
-  const doneCount = steps.filter((s) => s.done).length;
-  const allDone = checklist.currentStep === "done" || doneCount === steps.length;
+  const doneCount = core.filter((s) => s.done).length;
+  const allDone = checklist.currentStep === "done" || doneCount === core.length;
   const go = (n: number) => {
     setI(n);
     router.replace(`${base}/setup?step=${steps[n]!.key}`, { scroll: false });
@@ -54,20 +58,21 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
         <div className="min-w-0">
           <div className="mb-3 flex items-baseline justify-between text-meta">
             <span className="text-fg">
-              {doneCount} of {steps.length} done
+              {doneCount} of {core.length} done
             </span>
-            <span className="tabular text-fg-muted">{Math.round((doneCount / steps.length) * 100)}%</span>
+            <span className="tabular text-fg-muted">{Math.round((doneCount / core.length) * 100)}%</span>
           </div>
-          <Meter value={doneCount} max={steps.length} label="Setup progress" />
+          <Meter value={doneCount} max={core.length} label="Setup progress" />
           <ol className="relative mt-4 flex gap-1 overflow-x-auto lg:flex-col" aria-label="Setup steps">
             {steps.map((s, n) => (
-              <li key={s.key}>
+              <li key={s.key} className={cn(n === core.length && "lg:mt-4 lg:border-t lg:border-line lg:pt-3")}>
+                {n === core.length ? <span className="mb-1 hidden px-2 text-caption font-semibold uppercase tracking-wide text-fg-muted lg:block">Later, optional</span> : null}
                 <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-9 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle")}>
                   <span aria-hidden className={cn("inline-flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] tabular", s.done ? "bg-fg text-bg" : "border border-line-strong text-fg-muted")}>
                     {s.done ? <Check className="size-3" strokeWidth={2.5} /> : n + 1}
                   </span>
                   <span className="sr-only">{s.done ? "Done: " : ""}</span>
-                  {STEP_COPY[s.key].label}
+                  <span className={cn(n >= core.length && !s.done && "text-fg-muted")}>{STEP_COPY[s.key].label}</span>
                 </button>
               </li>
             ))}
@@ -75,7 +80,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <Panel>
-            <StepBody step={step} checklist={checklist} onChange={onChange} base={base} next={() => i < steps.length - 1 && go(i + 1)} />
+            <StepBody step={step} checklist={checklist} onChange={onChange} base={base} next={() => i < core.length - 1 && go(i + 1)} />
           </Panel>
           <div className="flex justify-between gap-3">
             {i > 0 ? (
@@ -85,7 +90,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
             ) : (
               <span />
             )}
-            {i < steps.length - 1 ? (
+            {i < core.length - 1 ? (
               <Button variant="ghost" size="sm" iconEnd={ArrowRight} onClick={() => go(i + 1)}>
                 Next
               </Button>
@@ -93,23 +98,47 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
               <Button variant="secondary" size="sm" href={base}>Go to Home</Button>
             )}
           </div>
+          <NudgeToggle checklist={checklist} onChange={onChange} />
         </div>
       </div>
     </>
   );
 }
 
+function NudgeToggle({ checklist, onChange }: { checklist: merchantApi.OnboardingChecklist; onChange: (c: merchantApi.OnboardingChecklist) => void }) {
+  const { api, role } = useMerchant();
+  const act = useAction();
+  if (role !== "owner" || checklist.activatedAt) return null;
+  return (
+    <p className="text-caption text-fg-muted">
+      Setup reminders by text: {checklist.nudgesOn ? "on" : "off"}.{" "}
+      <button
+        type="button"
+        disabled={act.busy}
+        className="rounded-sm text-fg underline underline-offset-2 focus-visible:focus-ring"
+        onClick={async () => {
+          const r = await act.run(() => api.setNudges(!checklist.nudgesOn));
+          if (r) onChange(r);
+        }}
+      >
+        {checklist.nudgesOn ? "Stop reminders" : "Turn on"}
+      </button>
+    </p>
+  );
+}
+
 function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi.OnboardingStep; checklist: merchantApi.OnboardingChecklist; onChange: (c: merchantApi.OnboardingChecklist) => void; base: string; next: () => void }) {
-  const { api, detail, setDetail } = useMerchant();
+  const { api, detail, setDetail, enabled } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const copy = ONBOARDING_STEPS_UI[step.key];
-  const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members">) => {
+  const pb = checklist.playbook;
+  const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members" | "first_stamp">, advance = true) => {
     const r = await act.run(() => api.completeStep(key));
     if (r) {
       onChange(r);
       toast({ message: "Saved", tone: "success" });
-      next();
+      if (advance) next();
     }
   };
 
@@ -118,7 +147,9 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
   const [staffName, setStaffName] = useState("");
   const [staffPhone, setStaffPhone] = useState<string | null>(null);
   const [staffRole, setStaffRole] = useState<"staff" | "manager">("staff");
-  const rewards = useApi(step.key === "rewards" || step.key === "program" ? () => api.rewards() : null, [api, step.key]);
+  const [copied, setCopied] = useState(false);
+  const rewards = useApi(step.key === "program" ? () => api.rewards() : null, [api, step.key]);
+  const loc = detail.locations[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -131,6 +162,89 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
       </div>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
+      {step.key === "program" ? (
+        <>
+          {detail.program ? <p className="border-y border-line py-3 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
+          {rewards.data?.items.length ? (
+            <ul className="divide-y divide-line border-b border-line">
+              {rewards.data.items.map((r) => (
+                <li key={r.id} className="flex min-h-11 items-center justify-between">
+                  <span className="text-body text-fg">{r.name}</span>
+                  <span className="tabular-nums text-meta text-fg-muted">{formatPoints(r.pointsCost, detail.program?.terminology)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="text-meta text-fg-muted">Set up for: {pb.label}. At the till, staff say: &ldquo;{pb.tillLine}&rdquo;</p>
+          <div className="flex flex-wrap gap-2">
+            <Button loading={act.busy} onClick={() => complete("program")}>
+              Looks good
+            </Button>
+            <Button variant="secondary" href={`${base}/program`}>
+              Change
+            </Button>
+          </div>
+        </>
+      ) : null}
+
+      {step.key === "first_stamp" ? (
+        step.done ? (
+          <>
+            <Banner tone="success" title="First stamp given.">
+              {checklist.activation.firstStampMinutes !== null ? `${Math.max(1, Math.round(checklist.activation.firstStampMinutes))} minutes after you signed up. ` : ""}
+              Now you know exactly what your customers see. Next: print the QR stand.
+            </Banner>
+            <div>
+              <Button href={`${base}/counter`}>Open counter</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-body text-fg">{pb.firstStampHint}</p>
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+              {loc ? (
+                <div className="w-[200px] shrink-0 rounded-card border border-line bg-qr-bg p-3">
+                  <QrCode value={loc.joinUrl} size={176} label={`QR code to join ${detail.merchant.name}`} />
+                </div>
+              ) : null}
+              <ol className="flex flex-col gap-2.5 text-body text-fg">
+                <li>
+                  <span className="me-2 font-semibold text-accent-text">1</span>Scan with your phone camera. No app.
+                </li>
+                <li>
+                  <span className="me-2 font-semibold text-accent-text">2</span>Enter your name and number. 30 seconds.
+                </li>
+                <li>
+                  <span className="me-2 font-semibold text-accent-text">3</span>Open the counter, find yourself, tap Add stamp.
+                </li>
+                <li>
+                  <Dot tone="accent" className="rounded-full bg-bg-subtle px-3 py-1.5">
+                    Waiting for your first stamp. This page updates by itself.
+                  </Dot>
+                </li>
+              </ol>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button href={`${base}/counter`}>Open counter</Button>
+              {loc ? (
+                <Button
+                  variant="secondary"
+                  iconStart={copied ? Check : Copy}
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(loc.joinUrl).then(() => setCopied(true)).catch(() => undefined);
+                  }}
+                >
+                  {copied ? "Link copied" : "Copy join link"}
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-caption text-fg-muted">
+              Rather have a hand? <Link className="underline underline-offset-2" href="/#book">Book a free 20-minute call</Link> and we set it up with you.
+            </p>
+          </>
+        )
+      ) : null}
+
       {step.key === "profile" ? (
         <form
           className="flex flex-col gap-4"
@@ -139,7 +253,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
             const d = await act.run(() => api.update({ description: desc.trim() || null, logoUrl: logo.trim() || null }));
             if (d) {
               setDetail(d);
-              await complete("profile");
+              await complete("profile", false);
             }
           }}
         >
@@ -163,41 +277,6 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         </section>
       ) : null}
 
-      {step.key === "program" ? (
-        <>
-          {detail.program ? <p className="border-y border-line py-3 text-body text-fg">{programSentence(draftFromProgram(detail.program), rewards.data?.items[0])}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button loading={act.busy} onClick={() => complete("program")}>
-              Looks good
-            </Button>
-            <Button variant="secondary" href={`${base}/program`}>
-              Change
-            </Button>
-          </div>
-        </>
-      ) : null}
-
-      {step.key === "rewards" ? (
-        <>
-          <ul className="divide-y divide-line border-y border-line">
-            {(rewards.data?.items ?? []).map((r) => (
-              <li key={r.id} className="flex min-h-11 items-center justify-between">
-                <span className="text-body text-fg">{r.name}</span>
-                <span className="tabular-nums text-meta text-fg-muted">{formatPoints(r.pointsCost, detail.program?.terminology)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap gap-2">
-            <Button loading={act.busy} onClick={() => complete("rewards")}>
-              Rewards are ready
-            </Button>
-            <Button variant="secondary" href={`${base}/program?tab=rewards`}>
-              Edit rewards
-            </Button>
-          </div>
-        </>
-      ) : null}
-
       {step.key === "staff" ? (
         <form
           className="flex flex-col gap-4"
@@ -214,6 +293,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
           <TextField label="Name" value={staffName} onChange={(e) => setStaffName(e.target.value)} autoComplete="off" />
           <PhoneField label="Mobile number" onChangeE164={setStaffPhone} />
           <Select label="Role" value={staffRole} onChange={(e) => setStaffRole(e.target.value as "staff" | "manager")} options={[{ value: "staff", label: "Staff: counter only" }, { value: "manager", label: "Manager: everything but billing" }]} />
+          <p className="text-meta text-fg-muted">They get a text with the sign-in link. On their phone they open Counter and add it to the home screen, and it works like an app.</p>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" loading={act.busy}>
               Invite staff
@@ -228,7 +308,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "qr_kit" ? (
         <div className="flex flex-wrap gap-2">
-          <Button iconStart={Printer} href={`${base}/locations/kit${detail.locations[0] ? `?location=${detail.locations[0].id}` : ""}`}>
+          <Button iconStart={Printer} href={`${base}/locations/kit${loc ? `?location=${loc.id}` : ""}`}>
             Print QR kit
           </Button>
           <Button variant="secondary" loading={act.busy} onClick={() => complete("qr_kit")}>
@@ -237,16 +317,38 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         </div>
       ) : null}
 
+      {step.key === "pos" ? (
+        enabled("integrations.pos_auto_award") ? (
+          <div className="flex flex-wrap gap-2">
+            <Button href={`${base}/integrations`}>Choose your POS</Button>
+            <Button variant="ghost" loading={act.busy} onClick={() => complete("pos", false)}>
+              Skip for now
+            </Button>
+          </div>
+        ) : (
+          <p className="text-body text-fg">
+            POS sync is part of Café &amp; Retail and is not switched on yet. Stamps from the counter work the same way in the meantime. <NotifyLink keys={["integrations.pos_auto_award"]} />
+          </p>
+        )
+      ) : null}
+
       {step.key === "first_members" ? (
         <>
           <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Active members" valueText={`${checklist.activeMembers} of ${checklist.activationTarget} active members`} />
+          <p className="text-meta text-fg-muted">
+            {checklist.activation.paceLabel} · {checklist.activation.members >= checklist.activation.leadingMembers ? "past" : "aiming for"} {checklist.activation.leadingMembers} by day {checklist.activation.leadingByDay}
+          </p>
+          <p className="text-body text-fg">{pb.tactic}</p>
           <ul className="list-disc ps-5 text-meta text-fg">
-            <li>Ask every customer: &quot;Are you on the card? It&apos;s free, here and on the whole street.&quot;</li>
-            <li>Put the QR stand right next to the till.</li>
-            <li>Add the stamp or points before they pay, so they see it work.</li>
+            {pb.tips.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
           </ul>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button href={`${base}/counter`}>Open counter</Button>
+            <Button variant="secondary" href={`${base}/locations/kit?print=script`}>
+              Print the staff script
+            </Button>
           </div>
         </>
       ) : null}

@@ -39,6 +39,8 @@ import { createMerchantWithTemplate } from "../services/merchant.js";
 import { CORE_SHOP_FEATURES, seedCoreModules } from "./core.js";
 import { BIA_DEMO, seedBiaDemo } from "./bia.js";
 import { seedServiceOps } from "./serviceOps.js";
+import { seedRepAdmin } from "./repAdmin.js";
+import { backfillMilestones } from "../services/onboarding.js";
 import { seedAppointmentSalons } from "./appointments.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
@@ -424,6 +426,9 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   await seedAppointmentSalons(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedServiceOps(db, { log });
   await seedBiaDemo(db, { log });
+  await seedRepAdmin(db, { repId: rep.id, log });
+  const [{ n: allLeads } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads);
+  await backfillMilestones(db);
   clock.now = new Date();
 
   return {
@@ -433,7 +438,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     customers: nCustomers,
     visits: visitCount,
     redemptions: redemptionCount,
-    leads: Number(leadCount),
+    leads: Number(allLeads),
     corridor: { merchants: corridor.merchants, customers: corridor.customers, visits: corridor.visits, orders: corridor.orders },
     credentials: credentialsList(),
     pilotOverrides: pilotList(),

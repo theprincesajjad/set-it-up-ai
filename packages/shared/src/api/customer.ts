@@ -127,7 +127,8 @@ export const updateProfileBody = z
       .regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Enter a Canadian postal code like M6R 2K3")
       .nullable(),
     homeNeighbourhoodId: uuidSchema.nullable(),
-    locale: z.enum(["en-CA", "fr-CA"]),
+    // The shopper's language (en, hi, ur, pa). Pushes, texts, the wallet pass and the inbox follow it. en-CA is the legacy default.
+    locale: z.enum(["en", "hi", "ur", "pa", "en-CA"]),
   })
   .partial();
 export type UpdateProfileBody = z.infer<typeof updateProfileBody>;
@@ -417,6 +418,15 @@ export const NOTIFICATION_CATALOG: readonly NotificationTypeInfo[] = [
   t("promo_nearby", "marketing", "offers", "Offers nearby", "Offers from shops you've joined, when you're close (at most one a day, never 9pm-8am).", { push: true }),
 ];
 
+/**
+ * Routine notifications: the high-frequency, low-urgency ones. A shopper on a street card visits several shops
+ * a week, so their pushes are budgeted across all shops: at most ROUTINE_PUSHES_PER_DAY in a rolling 24 hours.
+ * The inbox row is always written; only the push is skipped. Everything else (reward ready, redeem, orders,
+ * expiry warnings) is never capped.
+ */
+export const ROUTINE_PUSH_TYPES: readonly NotificationType[] = ["points_earned", "passport_progress"];
+export const ROUTINE_PUSHES_PER_DAY = 3;
+
 export const notificationInfo = (type: NotificationType): NotificationTypeInfo => NOTIFICATION_CATALOG.find((x) => x.type === type)!;
 
 export interface NotificationPrefDto {
@@ -432,6 +442,8 @@ export interface NotificationPrefDto {
 export interface NotificationPrefsResponse {
   items: NotificationPrefDto[];
   quietHours: { start: "21:00"; end: "08:00"; appliesTo: "marketing" };
+  /** The rules the settings screen states in words (see notifications.ts in the API). */
+  limits: { routinePushesPerDay: number; offersPerDay: number; pointsCollapseMinutes: number };
 }
 
 /** PUT /v1/me/notification-prefs — partial: only the listed type/channel pairs change. */

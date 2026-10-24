@@ -21,6 +21,7 @@ import { boardMeetingSoon, leadLanguageName } from "@/lib/leads";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";
 
+const SOURCE_LABEL: Record<NonNullable<R.Lead["source"]>, string> = { website: "Website", street: "Street", phone: "Phone", referral: "Referral", bia: "BIA" };
 const STAGE_LABEL: Record<R.LeadStage, string> = { new: "New", contacted: "Contacted", visit_booked: "Visit booked", signed: "Signed", activated: "Live", lost: "Lost" };
 
 export default function LeadsPage() {
@@ -39,7 +40,7 @@ export default function LeadsPage() {
     { key: "name", header: "Business", mobile: "title", sortValue: (l) => l.businessName, cell: (l) => <span className="font-medium">{l.businessName}</span> },
     { key: "stage", header: "Stage", mobile: "trailing", cell: (l) => <Badge>{STAGE_LABEL[l.stage]}</Badge> },
     { key: "vertical", header: "Type", mobile: "subtitle", cell: (l) => (l.vertical ? verticalLabel(l.vertical) : "–") },
-    { key: "extra", header: "Language / board", mobile: "hidden", cell: (l) => [leadLanguageName(l.language), l.boardMeetingAt ? `Board ${formatDate(`${l.boardMeetingAt}T12:00:00`)}${boardMeetingSoon(l) ? " (soon)" : ""}` : null].filter(Boolean).join(" · ") || "–" },
+    { key: "extra", header: "Source / language / board", mobile: "hidden", cell: (l) => [l.source ? SOURCE_LABEL[l.source] : null, l.setupAt ? `Setup ${formatDate(l.setupAt, true)}` : null, leadLanguageName(l.language), l.boardMeetingAt ? `Board ${formatDate(`${l.boardMeetingAt}T12:00:00`)}${boardMeetingSoon(l) ? " (soon)" : ""}` : null].filter(Boolean).join(" · ") || "–" },
     { key: "next", header: "Next action", mobile: "subtitle", sortValue: (l) => l.nextActionAt ?? "~", cell: (l) => (l.nextActionAt ? formatDate(l.nextActionAt, true) : "–") },
     { key: "acts", header: "Activity", align: "end", mobile: "hidden", cell: (l) => l.activityCount },
   ];

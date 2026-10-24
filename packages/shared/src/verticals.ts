@@ -6,6 +6,8 @@
 export const VERTICALS = [
   "cafe",
   "restaurant",
+  "restaurant_south_asian",
+  "tiffin",
   "bakery",
   "bar",
   "grocery",
@@ -75,6 +77,33 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     ],
     // Ontario AGCO rules restrict alcohol inducements; keep alcohol off points and rewards.
     categories: [{ name: "Food", earnEligible: true, discountEligible: true }, { name: "Alcohol", earnEligible: false, discountEligible: false }],
+    upsellPlan: "plus",
+  },
+  restaurant_south_asian: {
+    label: "South Asian restaurant",
+    earnType: "per_dollar",
+    pointsPerDollar: 10,
+    pointsPerVisit: 0,
+    stampGoal: 0,
+    terminology: "points",
+    welcomeBonus: 50,
+    rewards: [
+      { name: "Free masala chai", pointsCost: 150, rewardType: "free_item", value: 0 },
+      { name: "$10 off", pointsCost: 500, rewardType: "amount_off", value: 1000 },
+    ],
+    categories: [{ name: "Food", earnEligible: true, discountEligible: true }, { name: "Sweets & mithai", earnEligible: true, discountEligible: true }],
+    upsellPlan: "plus",
+  },
+  tiffin: {
+    label: "Tiffin kitchen",
+    earnType: "stamps",
+    pointsPerDollar: 0,
+    pointsPerVisit: 1,
+    stampGoal: 10,
+    terminology: "stamps",
+    welcomeBonus: 1,
+    rewards: [{ name: "Free tiffin box", pointsCost: 10, rewardType: "free_item", value: 0 }],
+    categories: [{ name: "Meals", earnEligible: true, discountEligible: true }],
     upsellPlan: "plus",
   },
   bakery: {

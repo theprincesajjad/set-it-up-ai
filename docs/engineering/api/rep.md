@@ -73,3 +73,13 @@ Body `{ day: 7 | 30, outcome?, notes? }` → `201 RepMerchant` (updated check-in
 → `CommissionSummary { rates, merchantsSigned, merchantsActivated, signedEarnedCents, activationEarnedCents, totalEarnedCents, pendingBonusCents, items[] }`.
 Per merchant: `signedCents` always; `activationBonusCents` only if `activatedAt` is within `activationWindowDays` of signup.
 `bonusStatus`: `activated` (earned) · `pending` (window open) · `missed`.
+
+## Street day, outcomes, today, proof (rep-and-admin)
+Design: `docs/research/rep-and-admin.md`. Code: `services/rep-field.ts`.
+
+- `GET /v1/rep/street-day?neighbourhoodId` → `StreetDay`: the area (given, else the next `neighbourhoods.streetDayOn` assigned to the caller or to nobody), its open leads in walking order (`orderStreetDay`: odd side up, even side back; nearest neighbour when 80% have a pin), then today's visited ones. `todayOutcome` comes from `lead_activities.outcome` recorded today (America/Toronto).
+- `POST /v1/rep/leads/:leadId/outcome` `{ outcome: signed_up|setup_call|come_back|not_interested|not_in, clientId (8-80 chars), at?, notes?, nextActionAt?, setupAt?, setupChannel?, lat?, lng? }`. Effects: `come_back` next action in 2 days (or `nextActionAt`), `not_in` tomorrow, `setup_call` stage `visit_booked` with `setupAt`/`setupChannel`, `not_interested` stage `lost` (audited). Idempotent by `clientId`: a repeat returns `200 { status: "duplicate" }`, a new one `201 { status: "recorded" }`.
+- `POST /v1/rep/outcomes/sync` `{ items: [{ leadId, ...outcome }] }` (1-100) → per-item `recorded | duplicate | not_found`. The phone queues taps offline and replays them here.
+- `GET /v1/rep/today` → street-day summary, day 7/30 calls due, setup sessions today, leads due, unassigned website leads.
+- `GET /v1/rep/proof?neighbourhoodId` → live numbers for the pitch (active shops, members, 2+ shop share, visits in 7 days, top shops, network totals).
+- Leads gained `source` (website|street|phone|referral|bia), `lat`/`lng`, `setupAt`, `setupChannel`. Public form leads are `website`; reps' are `street`.

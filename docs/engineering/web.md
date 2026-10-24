@@ -136,8 +136,8 @@ Routes (all dynamic, `noindex`):
 | Area | Routes |
 | --- | --- |
 | Merchant `/m/[merchantId]` | `/` Home (KPIs, daily chart, checklist, activation, today, network overlap, live promos, one LockedFeature) · `/setup` guide · `/counter` web counter · `/customers` (+ `/[memberId]`, `/import`) · `/program` (earn, rewards, bonuses + VIP, categories, expiry, live preview) · `/promos` (+ `/new`, `/[promoId]`) · `/discount-cards` · `/messages` (+ `/new`, `/[messageId]`, `/automations`) · `/reports` · `/locations` (+ `/kit` print page) · `/staff` · `/integrations` (+ `/[provider]`, `/developers` webhooks + API key) · `/billing` (plans, Stripe Connect) · `/settings` · Phase 2: `/orders`, `/catalog`, `/tickets` (+ `/new`, `/[ticketId]`), `/slots` · Phase 3: `/ads` (+ `/new`, `/[adId]` with card payment), `/campaigns` |
-| Rep `/rep` | Today · `/leads` (board + list, `/[leadId]`) · `/new` (done-for-you wizard) · `/merchants` (+ `/[id]`, `/[id]/kit`) · `/earnings` |
-| Admin `/admin` | Network · `/rollout` · `/merchants` (+ `/[id]`) · `/neighbourhoods` (+ perks) · `/users` · `/campaigns` (+ `/[id]`) · `/ads` · `/audit` |
+| Rep `/rep` | Today (street day, calls due, setups, website leads) · `/day` (street day: ordered shops, outcomes that work offline, pitch sheet) · `/signup` (two-minute signup) · `/leads` (board + list, `/[leadId]`) · `/new` (full done-for-you wizard) · `/merchants` (+ `/[id]`, `/[id]/kit`) · `/earnings`. Phone tab bar: Today, Street day, Leads, Shops |
+| Admin `/admin` | Today (pace, MRR, fees, funnel by area, at-risk shops, network gauges) · `/costs` · `/rollout` · `/merchants` (+ `/[id]`: money, charge mode, follow-ups, support session) · `/neighbourhoods` (areas calendar + perks) · `/users` · `/campaigns` (+ `/[id]`) · `/ads` · `/audit` |
 | BIA `/bia` | Overview (stats, visits per week, campaigns, shops, board report, unlock gates), `/campaigns` (+ `/[campaignId]`: shops, report, CSV/print), `/shops`, `/reports` (+ `/print`, one Letter page); a street switcher when you manage more than one |
 | Dev | `/dev/checkout/[id]`, `/dev/stripe-onboarding`, `/dev/billing-portal`: FakePayments stand-ins |
 

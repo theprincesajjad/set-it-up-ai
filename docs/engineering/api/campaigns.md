@@ -173,3 +173,8 @@ campaigns[] }` where `campaigns` are scheduled/live/ended campaigns running in t
 `csv` → `text/csv` attachment (`<street>-board-report-<from>-to-<to>.csv`): key numbers, one row per campaign, one row per
 shop; cells that start with `= + @ -` are prefixed so a spreadsheet never runs a name as a formula. PDF is the browser's print
 on `/bia/reports/print?n=<neighbourhoodId>&from&to&label` (print stylesheet, one Letter page); there is no PDF dependency.
+
+
+## GET /v1/public/live-campaigns
+
+Anonymous. Campaigns with `status = live` inside their window, soonest to end first (max 6), as `PublicCampaign[]` in `{ items }`. The `/for-shoppers` page shows the first as "on now".

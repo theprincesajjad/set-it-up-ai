@@ -16,7 +16,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import type { authApi, customerApi, networkApi, walletApi } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { otpErrorMessage } from "@/lib/auth/otpErrors";
-import { rememberLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
+import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { firstName, formatPoints } from "@/lib/format";
@@ -162,6 +162,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
     try {
       const r = await deps.verifyOtp({ phone: e164!, code: c });
       rememberLocale(locale);
+      void saveProfileLocale(locale);
       setUserName(r.user.name);
       const hasName = !!r.user.name?.trim();
       setNeedsName(!hasName);

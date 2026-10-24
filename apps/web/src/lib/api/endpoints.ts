@@ -74,6 +74,7 @@ export function llApi(c: ApiClient) {
       // Appointment booking: services, policy and availability (appointments.ts)
       ...publicAppointmentEndpoints(c),
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
+      liveCampaigns: () => c.get<{ items: campaignsApi.PublicCampaign[] }>("/v1/public/live-campaigns", { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
       /** Founding offer spots per corridor (restaurants page and pricing). */
       foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/founding", { anonymous: true, next: { revalidate: 300 } }),
@@ -108,6 +109,7 @@ export function llApi(c: ApiClient) {
       cancelRedemption: (redemptionId: string) => c.delete<{ balance: number }>(`/v1/me/redemptions/${enc(redemptionId)}`),
       card: () => c.get<customerApi.CardResponse>("/v1/me/card"),
       referral: (memberId: string) => c.get<customerApi.ReferralResponse>(`/v1/me/memberships/${enc(memberId)}/referral`),
+      newReferral: (memberId: string) => c.post<customerApi.ReferralResponse>(`/v1/me/memberships/${enc(memberId)}/referral`),
       notifications: (q: { limit?: number; cursor?: string; unread?: boolean } = {}) =>
         c.get<customerApi.NotificationsResponse>("/v1/me/notifications", { query: { limit: q.limit ?? 30, cursor: q.cursor, unread: q.unread ? "1" : undefined } }),
       readNotification: (id: string) => c.post<customerApi.NotificationsReadResponse>(`/v1/me/notifications/${enc(id)}/read`),
@@ -144,9 +146,23 @@ export function llApi(c: ApiClient) {
       checkIn: (merchantId: string, body: { day: 7 | 30; outcome?: string; notes?: string }) =>
         c.post<repApi.RepMerchant>(`/v1/rep/merchants/${enc(merchantId)}/check-ins`, body),
       commission: (q: Q = {}) => c.get<repApi.CommissionSummary>("/v1/rep/commission", { query: q }),
+      today: () => c.get<repApi.RepToday>("/v1/rep/today"),
+      streetDay: (q: Q = {}) => c.get<repApi.StreetDay>("/v1/rep/street-day", { query: q }),
+      proof: (q: Q = {}) => c.get<repApi.PitchProof>("/v1/rep/proof", { query: q }),
+      outcome: (leadId: string, body: repApi.LeadOutcomeBody) => c.post<{ status: "recorded" | "duplicate"; lead: repApi.LeadDetail }>(`/v1/rep/leads/${enc(leadId)}/outcome`, body),
+      syncOutcomes: (items: (repApi.LeadOutcomeBody & { leadId: string })[]) => c.post<repApi.OutcomeSyncResult>("/v1/rep/outcomes/sync", { items }),
     },
     admin: {
       dashboard: () => c.get<adminApi.NetworkDashboard>("/v1/admin/dashboard"),
+      onboardingFunnel: (days = 90) => c.get<adminApi.OnboardingFunnel>("/v1/admin/onboarding/funnel", { query: { days } }),
+      overview: () => c.get<adminApi.AdminOverview>("/v1/admin/overview"),
+      atRisk: () => c.get<{ items: adminApi.AtRiskShop[] }>("/v1/admin/at-risk"),
+      costs: () => c.get<adminApi.AdminCosts>("/v1/admin/costs"),
+      merchantMoney: (id: string) => c.get<adminApi.MerchantMoney>(`/v1/admin/merchants/${enc(id)}/money`),
+      setChargeMode: (id: string, body: { chargeMode: "destination" | "direct"; reason: string }) => c.put<unknown>(`/v1/admin/merchants/${enc(id)}/charge-mode`, body),
+      supportSessions: (q: Q = {}) => c.get<Items<adminApi.SupportSession>>("/v1/admin/support-sessions", { query: q }),
+      startSupportSession: (merchantId: string, reason: string) => c.post<adminApi.SupportSession>(`/v1/admin/merchants/${enc(merchantId)}/support-sessions`, { reason }),
+      endSupportSession: (id: string) => c.post<adminApi.SupportSession>(`/v1/admin/support-sessions/${enc(id)}/end`, {}),
       features: () => c.get<Items<adminApi.AdminFeature>>("/v1/admin/features"),
       setStage: (key: string, body: { stage: "hidden" | "beta" | "ga"; note?: string }) =>
         c.put<adminApi.AdminFeature>(`/v1/admin/features/${enc(key)}/stage`, body),
@@ -256,8 +272,10 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
-    completeStep: (step: "profile" | "program" | "rewards" | "staff" | "qr_kit") =>
+    completeStep: (step: "profile" | "program" | "staff" | "qr_kit" | "pos") =>
       c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/complete`, { step }),
+    dismissUpsell: () => c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/upsell/dismiss`, {}),
+    setNudges: (enabled: boolean) => c.put<merchantApi.OnboardingChecklist>(`${b}/onboarding/nudges`, { enabled }),
     features: () => c.get<merchantApi.MerchantFeaturesResponse>(`${b}/features`),
     notifyFeature: (key: string) => c.post<merchantApi.FeatureInterestResponse>(`${b}/features/${enc(key)}/notify`, {}),
     setBeta: (optIn: boolean) => c.put<merchantApi.MerchantFeaturesResponse>(`${b}/beta`, { optIn }),

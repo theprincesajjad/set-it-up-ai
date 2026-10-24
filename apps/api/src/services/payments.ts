@@ -129,7 +129,7 @@ export async function refundConnectPayment(
 }
 
 /** Admin: switch how a merchant's payments are created. Takes effect only while STRIPE_DIRECT_CHARGES is on. */
-export async function setChargeMode(ctx: AppContext, actorId: string, merchantId: string, chargeMode: ChargeMode): Promise<billingApi.ChargeModeResponse> {
+export async function setChargeMode(ctx: AppContext, actorId: string, merchantId: string, chargeMode: ChargeMode, reason?: string): Promise<billingApi.ChargeModeResponse> {
   const [before] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!before) throw notFound("Merchant");
   if (chargeMode === "direct" && !before.stripeAccountId) throw conflict("Connect a Stripe account before switching to direct charges.");
@@ -139,7 +139,7 @@ export async function setChargeMode(ctx: AppContext, actorId: string, merchantId
     // Saved tiffin customers and payment methods live on the old account (platform vs the merchant's connected account).
     // Reset on any stored change, not only an effective one: the STRIPE_DIRECT_CHARGES flag can be switched on later.
     tiffinSubscriptionsReset = await resetSavedMethodsForChargeModeChange(ctx, merchantId);
-    await ctx.db.insert(auditLogs).values({ merchantId, actorUserId: actorId, action: "billing.charge_mode_changed", entity: "merchant", entityId: merchantId, data: { from: before.chargeMode, to: chargeMode, tiffinSubscriptionsReset } });
+    await ctx.db.insert(auditLogs).values({ merchantId, actorUserId: actorId, action: "billing.charge_mode_changed", entity: "merchant", entityId: merchantId, data: { from: before.chargeMode, to: chargeMode, tiffinSubscriptionsReset, ...(reason ? { reason } : {}) } });
   }
   return { merchantId, chargeMode, directChargesEnabled: !!ctx.config.stripe.directCharges, tiffinSubscriptionsReset };
 }

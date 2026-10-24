@@ -4,13 +4,14 @@
  * title + time, body, and an accent dot on unread rows. Used by the activity tab (left button = profile)
  * and the bell's pushed /notifications page (left button = back).
  */
-import type { customerApi } from "@ll/shared";
+import { customerApi } from "@ll/shared";
 import { router } from "expo-router";
 import { useMemo } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { shopInitials, readableOn } from "../../ui/ShopTile";
+import { useLocale } from "../../lib/i18n";
 import { useOnline } from "../../state/network";
 import { disp, ui, useTheme } from "../../theme";
 import { Button, categorySource, ChevronLeftGlyph, EmptyState, ErrorState, hairline, SkeletonRows, SlidersGlyph, Text, User, useTabBarSpace } from "../../ui";
@@ -53,10 +54,13 @@ function Lead({ n }: { n: customerApi.NotificationDto }) {
 
 function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boolean; onPress: () => void }) {
   const { c } = useTheme();
+  const { locale, time, date } = useLocale();
+  // English keeps the canvas style (bare 9:41, Tue, Oct 12); other languages use their own digits and month names.
+  const when = locale === "en" ? inboxTime(n.createdAt) : new Date(n.createdAt).toDateString() === new Date().toDateString() ? time(n.createdAt) : date(n.createdAt, { month: "short", day: "numeric" });
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${n.read ? "" : "Unread. "}${n.title}. ${n.body}. ${inboxTime(n.createdAt)}`}
+      accessibilityLabel={`${n.read ? "" : "• "}${n.title}. ${n.body}. ${when}`}
       onPress={onPress}
       style={({ pressed }) => [styles.row, { borderBottomColor: c.line, borderBottomWidth: last ? 0 : hairline }, pressed ? { opacity: 0.7 } : null]}
     >
@@ -67,7 +71,7 @@ function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boole
             {n.title}
           </Text>
           <Text style={[ui(12, 400, 16), { paddingLeft: 8, marginTop: 2 }]} rawColor={c.fgSubtle}>
-            {inboxTime(n.createdAt)}
+            {when}
           </Text>
         </View>
         <Text style={[ui(14, 400, 19), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={3}>
@@ -84,11 +88,12 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
   const online = useOnline();
+  const { t } = useLocale();
   const inbox = useInbox();
   const markRead = useMarkRead();
   const items = useMemo(() => (inbox.data?.pages ?? []).flatMap((p) => p.items), [inbox.data]);
   const unread = inbox.data?.pages[0]?.unreadCount ?? items.filter((n) => !n.read).length;
-  const sections = inboxSections(items);
+  const sections = inboxSections(items, new Date(), [t("sh.inbox.today"), t("sh.inbox.week"), t("sh.inbox.earlier")]);
   const missingApi = inbox.error && (inbox.error as { status?: number }).status === 404;
   const topPad = insets.top > 0 ? insets.top + 9 : 56;
 
@@ -101,28 +106,28 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
     >
       <View style={styles.bar}>
         {inTab ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push("/you")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.you.title")} onPress={() => router.push("/you")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
             <User size={18} color={c.fg} strokeWidth={1.9} />
           </Pressable>
         ) : (
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
             <ChevronLeftGlyph size={18} color={c.fg} />
           </Pressable>
         )}
-        <Pressable accessibilityRole="button" accessibilityLabel="Notification settings" onPress={() => router.push("/settings/notifications")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("sh.inbox.settings")} onPress={() => router.push("/settings/notifications")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
           <SlidersGlyph size={18} color={c.fg} />
         </Pressable>
       </View>
       <Text style={[disp(34, 800, 40, -0.01), { marginTop: 16 }]} accessibilityRole="header">
-        activity
+        {t("sh.inbox.title")}
       </Text>
       <View style={styles.sub}>
         <Text style={ui(14, 400, 18)} rawColor={c.fgMuted}>
-          {unread > 0 ? `${unread} new` : "all caught up"}
+          {unread > 0 ? t("sh.inbox.newN", { n: unread }) : t("sh.inbox.caughtUp")}
         </Text>
         {unread > 0 ? (
           <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={8}>
-            <Text style={ui(14, 600, 18)}>Mark all read</Text>
+            <Text style={ui(14, 600, 18)}>{t("sh.set.markAllRead")}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -132,9 +137,9 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
           <SkeletonRows rows={5} trailing={false} />
         </View>
       ) : inbox.isError && !missingApi && items.length === 0 ? (
-        <ErrorState offline={!online} message={online ? "Your activity didn't load." : "You're offline. Activity loads when you're back."} onRetry={() => void inbox.refetch()} />
+        <ErrorState offline={!online} message={online ? t("sh.inbox.loadFail") : t("sh.inbox.offline")} onRetry={() => void inbox.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState body="Nothing yet. Points, rewards and order updates from your shops land here." actionLabel="Notification settings" onAction={() => router.push("/settings/notifications")} />
+        <EmptyState body={t("sh.set.inboxEmpty")} actionLabel={t("sh.inbox.settings")} onAction={() => router.push("/settings/notifications")} />
       ) : (
         sections.map((s) => (
           <View key={s.title}>
@@ -157,13 +162,19 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
       )}
       {inbox.hasNextPage ? (
         <Button variant="secondary" loading={inbox.isFetchingNextPage} onPress={() => void inbox.fetchNextPage()} style={{ marginTop: 16 }}>
-          Show older
+          {t("sh.inbox.older")}
         </Button>
       ) : null}
       {inTab ? (
         <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={{ marginTop: 24, alignSelf: "flex-start" }} hitSlop={8}>
-          <Text style={ui(14, 600, 18)}>Points history</Text>
+          <Text style={ui(14, 600, 18)}>{t("sh.inbox.history")}</Text>
         </Pressable>
+      ) : null}
+      {/* The budget, said out loud: a quiet phone never feels broken. */}
+      {items.length > 0 ? (
+        <Text style={[ui(12, 400, 16), { marginTop: 16 }]} rawColor={c.fgMuted}>
+          {t("sh.inbox.budget", { n: customerApi.ROUTINE_PUSHES_PER_DAY })}
+        </Text>
       ) : null}
     </ScrollView>
       {inTab ? (

@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { otpErrorMessage } from "@/lib/auth/otpErrors";
-import { rememberLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
+import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { withLang } from "@/lib/i18n/url";
 import { toE164, validateNanp } from "@/lib/phone";
 import { Banner } from "@/components/ui/Banner";
@@ -55,6 +55,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro }:
     try {
       await sessionApi.verifyOtp({ phone: e164!, code: c });
       rememberLocale(locale);
+      void saveProfileLocale(locale);
       if (next) router.push(withLang(next, locale));
       router.refresh();
     } catch (err) {

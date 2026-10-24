@@ -21,6 +21,7 @@ import {
 } from "@ll/shared";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
+import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { getJson, setJson } from "../../state/storage";
 
@@ -65,10 +66,16 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const locale: Locale = chosen ?? sessionDefault(session) ?? "en";
-  const setLocale = useCallback((next: Locale) => {
-    setChosen(next);
-    void setJson(LOCALE_KEY, next);
-  }, []);
+  const signedInShopper = session.status === "signedIn" && session.mode !== "counter";
+  const setLocale = useCallback(
+    (next: Locale) => {
+      setChosen(next);
+      void setJson(LOCALE_KEY, next);
+      // The shopper's language travels with the account: alerts, texts and the wallet pass are written in it.
+      if (signedInShopper) void api.me.updateProfile({ locale: next }).catch(() => undefined);
+    },
+    [signedInShopper],
+  );
 
   const value = useMemo<LocaleValue>(
     () => ({

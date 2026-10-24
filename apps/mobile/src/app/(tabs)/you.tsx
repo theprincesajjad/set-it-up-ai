@@ -45,38 +45,38 @@ export default function You() {
   const referralShop = (wallet.data?.items ?? []).find((m) => m.features?.referrals !== false && (m.program?.referralBonus ?? 0) > 0);
 
   return (
-    <Screen title="Profile" largeTitle tabBar>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${name || "Add your name"}. Edit profile`} onPress={() => router.push("/settings/profile")} style={styles.me}>
+    <Screen title={t("sh.you.title")} largeTitle tabBar>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${name || t("sh.you.addName")}. ${t("sh.you.edit")}`} onPress={() => router.push("/settings/profile")} style={styles.me}>
         <Avatar name={name} id={user?.id} size={64} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="title">{name || "Add your name"}</Text>
+          <Text variant="title">{name || t("sh.you.addName")}</Text>
           {phone ? (
             <Text variant="meta" color="fgMuted">
               {maskPhone(phone)}
             </Text>
           ) : null}
         </View>
-        <Text variant="bodyStrong">Edit</Text>
+        <Text variant="bodyStrong">{t("sh.you.edit")}</Text>
       </Pressable>
-      <Section title="Your card">
-        <ListRow leadingIcon={Gift} title="Rewards" subtitle="Ready to redeem, every shop, passport" chevron onPress={() => router.push("/rewards")} />
-        {phase2.enabled ? <ListRow leadingIcon={Ticket} title="Orders & tickets" chevron onPress={() => router.push("/orders")} /> : null}
+      <Section title={t("sh.you.yourCard")}>
+        <ListRow leadingIcon={Gift} title={t("sh.you.rewards")} subtitle={t("sh.you.rewardsSub")} chevron onPress={() => router.push("/rewards")} />
+        {phase2.enabled ? <ListRow leadingIcon={Ticket} title={t("sh.you.orders")} chevron onPress={() => router.push("/orders")} /> : null}
         {restaurant.tiffinEnabled ? <ListRow leadingIcon={UtensilsCrossed} title={t("rest.tiffin.mine")} subtitle={t("rest.you.tiffin.sub")} chevron onPress={() => router.push("/tiffin")} /> : null}
         {restaurant.eventsEnabled ? <ListRow leadingIcon={Users} title={t("rest.events.title")} subtitle={t("rest.you.events.sub")} chevron onPress={() => router.push("/events")} /> : null}
-        <ListRow leadingIcon={Wallet} title="Wallet pass" chevron onPress={() => router.push("/card")} divider={!!referralShop} />
-        {referralShop ? <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get points at ${referralShop.merchant.name}`} chevron divider={false} onPress={() => router.push("/referrals")} /> : null}
+        <ListRow leadingIcon={Wallet} title={t("sh.you.walletPass")} chevron onPress={() => router.push("/card")} divider={!!referralShop} />
+        {referralShop ? <ListRow leadingIcon={UserPlus} title={t("sh.inv.title")} subtitle={t("sh.inv.sub", { shop: referralShop.merchant.name })} chevron divider={false} onPress={() => router.push("/referrals")} /> : null}
       </Section>
-      <Section title="Settings">
+      <Section title={t("sh.you.settings")}>
         <ListRow leadingIcon={Globe} title={t("lang.label")} subtitle={info.name} chevron onPress={() => router.push("/settings/language")} />
-        <ListRow leadingIcon={Bell} title="Notifications" chevron onPress={() => router.push("/settings/notifications")} />
-        <ListRow leadingIcon={Store} title="Shops & messages" chevron onPress={() => router.push("/settings/shops")} />
-        <ListRow leadingIcon={Shield} title="Privacy & data" chevron onPress={() => router.push("/settings/privacy")} />
-        <ListRow leadingIcon={CircleHelp} title="Help" chevron onPress={() => Linking.openURL(`mailto:${BRAND.supportEmail}`)} divider={merchants.length > 0} />
+        <ListRow leadingIcon={Bell} title={t("sh.set.notifications")} chevron onPress={() => router.push("/settings/notifications")} />
+        <ListRow leadingIcon={Store} title={t("sh.you.shopsMessages")} chevron onPress={() => router.push("/settings/shops")} />
+        <ListRow leadingIcon={Shield} title={t("sh.you.privacy")} chevron onPress={() => router.push("/settings/privacy")} />
+        <ListRow leadingIcon={CircleHelp} title={t("sh.you.help")} chevron onPress={() => Linking.openURL(`mailto:${BRAND.supportEmail}`)} divider={merchants.length > 0} />
         {merchants.length > 0 ? (
           <ListRow
             leadingIcon={Tablet}
-            title="Counter mode"
-            subtitle={merchants.length === 1 ? merchants[0]!.name : `${merchants.length} shops`}
+            title={t("sh.you.counter")}
+            subtitle={merchants.length === 1 ? merchants[0]!.name : t("sh.fs.shopsN", { n: merchants.length })}
             chevron
             divider={false}
             onPress={() => {
@@ -87,14 +87,14 @@ export default function You() {
         ) : null}
       </Section>
       <View>
-        <ListRow leadingIcon={LogOut} title="Sign out" danger divider={false} onPress={() => setConfirm(true)} />
-        <Text variant="caption" color="fgMuted" style={{ paddingTop: 8 }}>{`${BRAND.name} ${Constants.expoConfig?.version ?? ""} · Made in Toronto`}</Text>
+        <ListRow leadingIcon={LogOut} title={t("sh.you.signOut")} danger divider={false} onPress={() => setConfirm(true)} />
+        <Text variant="caption" color="fgMuted" style={{ paddingTop: 8 }}>{`${BRAND.name} ${Constants.expoConfig?.version ?? ""} · ${t("sh.you.madeIn")}`}</Text>
       </View>
       <ConfirmDialog
         visible={confirm}
-        title="Sign out?"
-        body="Your points stay safe. Sign in again with your phone number anytime."
-        confirmLabel="Sign out"
+        title={t("sh.you.signOutTitle")}
+        body={t("sh.you.signOutBody")}
+        confirmLabel={t("sh.you.signOut")}
         variant="primary"
         onCancel={() => setConfirm(false)}
         onConfirm={async () => {

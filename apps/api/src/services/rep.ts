@@ -23,7 +23,7 @@ const isAdmin = (u: AuthUser) => u.platformRole === "admin";
 // ---------------------------------------------------------------------------
 // Leads
 // ---------------------------------------------------------------------------
-function serializeLead(l: LeadRow, stats?: { n: number; last: Date | null }): repApi.Lead {
+export function serializeLead(l: LeadRow, stats?: { n: number; last: Date | null }): repApi.Lead {
   return {
     id: l.id,
     businessName: l.businessName,
@@ -44,6 +44,11 @@ function serializeLead(l: LeadRow, stats?: { n: number; last: Date | null }): re
     eventDate: l.eventDate,
     boardMeetingAt: l.boardMeetingAt,
     memberCount: l.memberCount,
+    source: (l.source as repApi.Lead["source"]) ?? null,
+    lat: l.lat,
+    lng: l.lng,
+    setupAt: iso(l.setupAt),
+    setupChannel: (l.setupChannel as repApi.Lead["setupChannel"]) ?? null,
     activityCount: stats?.n ?? 0,
     lastActivityAt: iso(stats?.last ?? null),
     createdAt: l.createdAt.toISOString(),
@@ -58,7 +63,7 @@ async function syncActivatedLeads(db: DbOrTx) {
     where stage = 'signed' and merchant_id in (select id from merchants where activated_at is not null)`);
 }
 
-async function activityStats(db: DbOrTx, ids: string[]) {
+export async function activityStats(db: DbOrTx, ids: string[]) {
   if (!ids.length) return new Map<string, { n: number; last: Date | null }>();
   const rows = await db
     .select({ leadId: leadActivities.leadId, n: sql<number>`count(*)::int`, last: sql<Date | null>`max(${leadActivities.createdAt})` })
@@ -69,7 +74,7 @@ async function activityStats(db: DbOrTx, ids: string[]) {
 }
 
 /** Reps see their own and unassigned leads; admins see everything. */
-function visibleTo(user: AuthUser) {
+export function visibleTo(user: AuthUser) {
   return isAdmin(user) ? undefined : or(eq(leads.assignedRepId, user.id), isNull(leads.assignedRepId));
 }
 
@@ -98,7 +103,7 @@ export async function listLeads(ctx: AppContext, user: AuthUser, q: z.infer<type
   return { items: page.map((l) => serializeLead(l, stats.get(l.id))), nextCursor: rows.length > q.limit ? encodeCursor(offset + q.limit) : null };
 }
 
-async function loadLead(db: DbOrTx, user: AuthUser, id: string) {
+export async function loadLead(db: DbOrTx, user: AuthUser, id: string) {
   const [l] = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
   if (!l) throw notFound("Lead");
   if (!isAdmin(user) && l.assignedRepId && l.assignedRepId !== user.id) throw notFound("Lead");
@@ -137,6 +142,11 @@ export async function createLead(ctx: AppContext, user: AuthUser, body: z.infer<
       currentLoyalty: body.currentLoyalty ?? null,
       notes: body.notes ?? null,
       nextActionAt: body.nextActionAt ? new Date(body.nextActionAt) : null,
+      source: body.source ?? "street",
+      lat: body.lat ?? null,
+      lng: body.lng ?? null,
+      setupAt: body.setupAt ? new Date(body.setupAt) : null,
+      setupChannel: body.setupChannel ?? null,
       // Reps own the leads they create.
       assignedRepId: assigned === undefined ? (isAdmin(user) ? null : user.id) : assigned,
       stage: "new",
@@ -150,8 +160,9 @@ export async function createLead(ctx: AppContext, user: AuthUser, body: z.infer<
 
 export async function updateLead(ctx: AppContext, user: AuthUser, id: string, body: z.infer<typeof repApi.updateLeadBody>) {
   const cur = await loadLead(ctx.db, user, id);
-  const { nextActionAt, phone, assignedRepId, ...rest } = body;
+  const { nextActionAt, phone, assignedRepId, setupAt, ...rest } = body;
   const set: Partial<typeof leads.$inferInsert> = { ...rest, updatedAt: ctx.now() };
+  if (setupAt !== undefined) set.setupAt = setupAt ? new Date(setupAt) : null;
   if (nextActionAt !== undefined) set.nextActionAt = nextActionAt ? new Date(nextActionAt) : null;
   if (phone !== undefined) set.phone = phone ? requirePhone(phone) : null;
   const a = assignee(user, assignedRepId);
@@ -261,11 +272,21 @@ export async function listRepMerchants(ctx: AppContext, user: AuthUser, repUserI
   });
 }
 
+/** Day-7 and day-30 call state for one shop, whether or not a rep owns it (admins and the founder make these calls too). */
+export async function checkInStatesFor(db: DbOrTx, m: Pick<Merchant, "id" | "createdAt">, now: Date): Promise<repApi.CheckInState[]> {
+  const done = await db.select({ data: auditLogs.data, createdAt: auditLogs.createdAt }).from(auditLogs).where(and(eq(auditLogs.action, "rep.check_in"), eq(auditLogs.merchantId, m.id)));
+  return repApi.CHECK_IN_DAYS.map((day) => {
+    const dueAt = new Date(m.createdAt.getTime() + day * DAY);
+    const hit = done.find((ci) => (ci.data as { day?: number } | null)?.day === day);
+    return { day, dueAt: dueAt.toISOString(), due: !hit && dueAt <= now, doneAt: iso(hit?.createdAt ?? null) };
+  });
+}
+
 export async function logCheckIn(ctx: AppContext, user: AuthUser, merchantId: string, body: z.infer<typeof repApi.logCheckInBody>) {
   const m = await assertRepMerchant(ctx, user, merchantId);
   await writeAudit(ctx.db, { actorUserId: user.id, merchantId, action: "rep.check_in", entity: "merchant", entityId: merchantId, data: { day: body.day, outcome: body.outcome ?? null, notes: body.notes ?? null } });
-  const list = await listRepMerchants(ctx, user, m.repUserId ?? undefined);
-  return list.find((x) => x.merchantId === merchantId)!;
+  const list = m.repUserId ? await listRepMerchants(ctx, user, m.repUserId) : [];
+  return list.find((x) => x.merchantId === merchantId) ?? ({ merchantId, name: m.name, checkIns: await checkInStatesFor(ctx.db, m, ctx.now()) } as repApi.RepMerchant);
 }
 
 // ---------------------------------------------------------------------------

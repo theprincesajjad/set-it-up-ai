@@ -1,6 +1,6 @@
 "use client";
 import {
-  BadgeDollarSign, BarChart3, ClipboardList, FileText, Flag, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Store, Users, CreditCard, type LucideIcon,
+  BadgeDollarSign, BarChart3, ClipboardList, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
@@ -11,9 +11,9 @@ import { BiaSwitcher } from "./bia/BiaSwitcher";
 import { Shell } from "./Shell";
 
 const ICONS: Record<string, LucideIcon> = {
-  today: LayoutDashboard, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package, earnings: BadgeDollarSign,
+  today: LayoutDashboard, day: Footprints, costs: Coins, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package, earnings: BadgeDollarSign,
   network: BarChart3, rollout: Gauge, plans: CreditCard, neighbourhoods: MapPinned, users: Users, ads: Flag, campaigns: ClipboardList, audit: History,
-  overview: LayoutDashboard, shops: Store, reports: FileText,
+  overview: LayoutDashboard, shops: Store, reports: FileText, onboarding: Rocket,
 };
 
 export type ConsoleKind = "rep" | "admin" | "bia";
@@ -21,16 +21,17 @@ export type ConsoleKind = "rep" | "admin" | "bia";
 const NAV: Record<ConsoleKind, { key: string; href: string; label: string; group: string; exact?: boolean }[]> = {
   rep: [
     { key: "today", href: "/rep", label: "Today", group: "a", exact: true },
+    { key: "day", href: "/rep/day", label: "Street day", group: "a" },
     { key: "leads", href: "/rep/leads", label: "Leads", group: "a" },
-    { key: "merchants", href: "/rep/merchants", label: "My merchants", group: "a" },
-    { key: "new", href: "/rep/new", label: "New merchant", group: "a" },
-    { key: "earnings", href: "/rep/earnings", label: "Earnings", group: "b" },
+    { key: "merchants", href: "/rep/merchants", label: "Shops", group: "a" },
   ],
   admin: [
-    { key: "network", href: "/admin", label: "Network", group: "a", exact: true },
-    { key: "rollout", href: "/admin/rollout", label: "Rollout", group: "a" },
+    { key: "today", href: "/admin", label: "Today", group: "a", exact: true },
+    { key: "neighbourhoods", href: "/admin/neighbourhoods", label: "Areas & perks", group: "a" },
     { key: "merchants", href: "/admin/merchants", label: "Merchants", group: "a" },
-    { key: "neighbourhoods", href: "/admin/neighbourhoods", label: "Neighbourhoods & perks", group: "b" },
+    { key: "costs", href: "/admin/costs", label: "Costs", group: "a" },
+    { key: "onboarding", href: "/admin/onboarding", label: "Activation", group: "a" },
+    { key: "rollout", href: "/admin/rollout", label: "Rollout", group: "b" },
     { key: "campaigns", href: "/admin/campaigns", label: "BIA campaigns", group: "b" },
     { key: "ads", href: "/admin/ads", label: "Ads review", group: "b" },
     { key: "users", href: "/admin/users", label: "Users & roles", group: "c" },
@@ -52,6 +53,7 @@ export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: au
   const links = [
     ...(me.platformRole === "admin" && kind !== "admin" ? [{ href: "/admin", label: "Admin" }] : []),
     ...(me.platformRole !== "none" && kind !== "rep" ? [{ href: "/rep", label: "Rep console" }] : []),
+    ...(kind === "rep" ? [{ href: "/rep/signup", label: "Sign up a shop" }, { href: "/rep/new", label: "Full setup" }, { href: "/rep/earnings", label: "Earnings" }] : []),
     ...me.merchants.slice(0, 3).map((m) => ({ href: `/m/${m.merchantId}`, label: m.name })),
   ];
   const search = useMemo<CommandSearch | undefined>(
@@ -82,7 +84,7 @@ export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: au
       }
       footer={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
       mobileTitle={kind === "bia" ? <BiaSwitcher compact /> : TITLE[kind]}
-      bottomTabs={kind === "bia"}
+      bottomTabs={kind === "bia" || kind === "rep"}
     >
       {children}
     </Shell>

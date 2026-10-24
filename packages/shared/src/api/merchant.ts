@@ -141,10 +141,12 @@ export interface MyMerchant {
 // ---------------------------------------------------------------------------
 // Onboarding checklist + features
 // ---------------------------------------------------------------------------
-export const ONBOARDING_STEPS = ["profile", "program", "rewards", "staff", "qr_kit", "first_members"] as const;
-export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number];
-/** Steps a merchant can tick manually (e.g. solo owner skips "staff"). */
-export const completeStepBody = z.object({ step: z.enum(["profile", "program", "rewards", "staff", "qr_kit"]) });
+export const ONBOARDING_STEPS = ["program", "first_stamp", "qr_kit", "staff", "first_members"] as const;
+/** Optional steps shown under "Later". They never block going live and do not count toward progress. */
+export const ONBOARDING_LATER_STEPS = ["profile", "pos"] as const;
+export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number] | (typeof ONBOARDING_LATER_STEPS)[number];
+/** Steps a merchant can tick manually (e.g. solo owner skips "staff"). "rewards" is accepted for older clients and ignored. */
+export const completeStepBody = z.object({ step: z.enum(["profile", "program", "rewards", "staff", "qr_kit", "pos"]) });
 
 export interface OnboardingStep {
   key: OnboardingStepKey;
@@ -153,15 +155,74 @@ export interface OnboardingStep {
   /** Human hint, e.g. "12 of 25 members have visited". */
   detail: string | null;
 }
+export type OnboardingPace = "activated" | "ahead" | "on_track" | "behind" | "late";
+export interface OnboardingMilestone {
+  key: "signed_up" | "first_stamp" | "members_10" | "activated";
+  label: string;
+  /** ISO time reached, or null. */
+  at: string | null;
+  /** "12 min later", "Day 6", "Needs 11 more". */
+  detail: string;
+}
+export interface OnboardingSource {
+  source: "counter" | "qr" | "link" | "other";
+  label: string;
+  count: number;
+}
+export interface OnboardingUpsell {
+  moment: "none" | "preview" | "offer";
+  plan: "restaurant_starter" | "restaurant_growth" | "plus" | "pro";
+  headline: string;
+  body: string;
+  priceLine: string;
+  foundingLine: string | null;
+}
+export interface OnboardingActivation {
+  windowDays: number;
+  /** Days since signup, 0 on the first day. */
+  day: number;
+  daysLeft: number;
+  members: number;
+  target: number;
+  leadingMembers: number;
+  leadingByDay: number;
+  pace: OnboardingPace;
+  paceLabel: string;
+  /** Minutes from signup to the first stamp, null until it happens. */
+  firstStampMinutes: number | null;
+  milestones: OnboardingMilestone[];
+  sources: OnboardingSource[];
+  nextMove: { title: string; body: string; cta: string; path: string };
+}
+export interface OnboardingPlaybookDto {
+  key: string;
+  label: string;
+  tillLine: string;
+  tactic: string;
+  tips: string[];
+  firstStampHint: string;
+  scriptLanguages: string[];
+  /** Till line in Hindi, Urdu and Punjabi for the printed staff script, or null. */
+  tillLineLocal: Record<"hi" | "ur" | "pa", string> | null;
+}
 export interface OnboardingChecklist {
+  /** Core steps in order. */
   steps: OnboardingStep[];
-  /** First step that isn't done, or "done". */
+  /** Optional steps. */
+  later: OnboardingStep[];
+  /** First core step that isn't done, or "done". */
   currentStep: OnboardingStepKey | "done";
   percentComplete: number;
   activeMembers: number;
   activationTarget: number;
   activatedAt: string | null;
+  activation: OnboardingActivation;
+  playbook: OnboardingPlaybookDto;
+  upsell: OnboardingUpsell;
+  /** False when the owner turned the setup texts off. */
+  nudgesOn: boolean;
 }
+export const setNudgesBody = z.object({ enabled: z.boolean() });
 
 export interface MerchantFeature {
   key: FeatureKey;

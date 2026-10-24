@@ -31,12 +31,15 @@ const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname =
 
 /**
  * Marketing top nav: white, hairline, one black button. Mobile menu uses <details> (no JS). The language menu and
- * translated labels appear only on /for-restaurants, the one page that has translated content (docs/research/landing-and-network.md 7.3).
+ * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
  */
 export function SiteHeader() {
   const pathname = usePathname() ?? "/";
-  const translated = pathname.startsWith(RESTAURANTS);
+  // Pages that have translated content (the restaurant page and the shopper page) get the language menu.
+  const shoppers = pathname.startsWith("/for-shoppers");
+  const translated = pathname.startsWith(RESTAURANTS) || shoppers;
+  const langBase = shoppers ? "/for-shoppers" : RESTAURANTS;
   const bia = pathname.startsWith("/for-bias");
   // English on the server and while hydrating; then ?lang= / the cookie. A tap on a language switches the header at once.
   const stored = useSyncExternalStore(subscribeNever, readLocale, () => "en" as Locale);
@@ -59,7 +62,7 @@ export function SiteHeader() {
         {LOCALE_LIST.map((l) => (
           <li key={l.code}>
             <Link
-              href={`${RESTAURANTS}?lang=${l.code}`}
+              href={`${langBase}?lang=${l.code}`}
               lang={l.bcp47}
               hrefLang={l.bcp47}
               onClick={() => {
@@ -118,7 +121,7 @@ export function SiteHeader() {
                   {LOCALE_LIST.map((l) => (
                     <Link
                       key={l.code}
-                      href={`${RESTAURANTS}?lang=${l.code}`}
+                      href={`${langBase}?lang=${l.code}`}
                       lang={l.bcp47}
                       onClick={() => {
                 rememberLocale(l.code);

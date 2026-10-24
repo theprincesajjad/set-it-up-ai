@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { campaignProgress, featureRollouts, ledgerAccounts, ledgerEntries, ledgerTransactions, merchantMembers, visits } from "@ll/db";
+import { auditLogs, campaignProgress, featureRollouts, ledgerAccounts, ledgerEntries, ledgerTransactions, merchantMembers, visits } from "@ll/db";
 import type { campaignsApi } from "@ll/shared";
 import { campaignVisitHook } from "../src/services/campaigns.js";
 import { awardPurchase } from "../src/services/ledger.js";
@@ -104,6 +104,11 @@ describe("campaigns: access and gating", () => {
     expect((await env.app.inject({ method: "POST", url: `/v1/admin/campaigns/${c.id}/mark-paid`, headers: t.admin, payload: {} })).json().paid).toBe(true);
     const scheduled = await env.app.inject({ method: "POST", url: `/v1/campaigns/${c.id}/schedule`, headers: t.manager });
     expect(scheduled.json().status).toBe("scheduled");
+    // Marking a campaign paid is a money action: it is audited with who did it.
+    const audited = await env.db.select().from(auditLogs).where(eq(auditLogs.action, "campaign.marked_paid"));
+    expect(audited).toHaveLength(1);
+    expect(audited[0]).toMatchObject({ entityId: c.id, data: { paid: true } });
+    expect((await env.db.select().from(auditLogs).where(eq(auditLogs.action, "campaign.manager_added"))).length).toBeGreaterThan(0);
   });
 });
 
@@ -181,6 +186,7 @@ describe("campaigns: passport progress, bonuses and completion", () => {
     expect(draw.statusCode).toBe(200);
     const result = draw.json() as campaignsApi.DrawResult;
     expect(result.eligibleCount).toBe(1);
+    expect(await env.db.select().from(auditLogs).where(eq(auditLogs.action, "campaign.winner_drawn"))).toHaveLength(1);
     expect(result.winner).toEqual({ firstName: "Jamie", maskedPhone: `(${phone.slice(2, 5)}) ***-${phone.slice(-4)}` });
     expect(draw.body).not.toContain(phone);
     expect(draw.body).not.toContain(customer.id);

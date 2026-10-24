@@ -13,25 +13,29 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
-type NDraft = { id?: string; slug: string; name: string; city: string; status: adminApi.AdminNeighbourhood["status"]; biaName: string; biaContactName: string; biaContactEmail: string; storefrontEstimate: string; biaMemberCount: string; centerLat: string; centerLng: string; notes: string };
+type NDraft = { id?: string; slug: string; name: string; city: string; status: adminApi.AdminNeighbourhood["status"]; biaName: string; biaContactName: string; biaContactEmail: string; storefrontEstimate: string; biaMemberCount: string; centerLat: string; centerLng: string; notes: string; opensOn: string; streetDayOn: string; streetDayRepId: string; targetShops: string };
 type PDraft = { id?: string; name: string; neighbourhoodId: string; threshold: string; windowDays: string; bonusPoints: string; description: string };
 
 export default function NeighbourhoodsPage() {
   const hoods = useApi(() => browserApi.admin.neighbourhoods(), []);
   const perks = useApi(() => browserApi.admin.perks(), []);
+  const team = useApi(async () => {
+    const [reps, admins] = await Promise.all([browserApi.admin.users({ platformRole: "rep", limit: 100 }), browserApi.admin.users({ platformRole: "admin", limit: 100 })]);
+    return [...reps.items, ...admins.items];
+  }, []);
   const [n, setN] = useState<NDraft | null>(null);
   const [p, setP] = useState<PDraft | null>(null);
   const [delN, setDelN] = useState<adminApi.AdminNeighbourhood | null>(null);
   const act = useAction();
-  const blankN = (): NDraft => ({ slug: "", name: "", city: "Toronto", status: "scouting", biaName: "", biaContactName: "", biaContactEmail: "", storefrontEstimate: "", biaMemberCount: "", centerLat: "", centerLng: "", notes: "" });
+  const blankN = (): NDraft => ({ slug: "", name: "", city: "Toronto", status: "scouting", biaName: "", biaContactName: "", biaContactEmail: "", storefrontEstimate: "", biaMemberCount: "", centerLat: "", centerLng: "", notes: "", opensOn: "", streetDayOn: "", streetDayRepId: "", targetShops: "30" });
   const nul = (v: string) => (v.trim() ? v.trim() : null);
   const num = (v: string) => (v.trim() ? Number(v) : null);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Neighbourhoods & perks" description="BIA details, storefront targets and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
+      <PageHeader title="Areas & perks" description="The launch calendar (opens, street day, who walks it), BIA details and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
       <Async state={hoods}>
         {(d) => (
           <ul className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-2 xl:grid-cols-3">
@@ -47,8 +51,14 @@ export default function NeighbourhoodsPage() {
                   </div>
                   <DensityBar label="Shops live" value={h.merchants} target={h.storefrontEstimate ?? 40} unit="shops" />
                   <p className="text-meta text-fg-muted">{formatNumber(h.activatedMerchants)} activated{h.biaContactName ? ` · BIA: ${h.biaContactName}` : ""}</p>
+                  {h.opensOn || h.streetDayOn ? (
+                    <p className="text-meta text-fg-muted">
+                      {h.opensOn ? `Opens ${formatDate(`${h.opensOn}T12:00:00`, true)}` : null}{h.opensOn && h.streetDayOn ? " · " : null}
+                      {h.streetDayOn ? <>Street day {formatDate(`${h.streetDayOn}T12:00:00`, true)} · {h.streetDayRepName ?? <span className="text-accent-text">no one assigned</span>}</> : null}
+                    </p>
+                  ) : null}
                   <div className="mt-auto flex gap-2">
-                    <Button variant="secondary" size="sm" aria-label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", biaMemberCount: h.biaMemberCount?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "" })}>Edit</Button>
+                    <Button variant="secondary" size="sm" aria-label={`Edit ${h.name}`} onClick={() => setN({ id: h.id, slug: h.slug, name: h.name, city: h.city, status: h.status, biaName: h.biaName ?? "", biaContactName: h.biaContactName ?? "", biaContactEmail: h.biaContactEmail ?? "", storefrontEstimate: h.storefrontEstimate?.toString() ?? "", biaMemberCount: h.biaMemberCount?.toString() ?? "", centerLat: h.centerLat?.toString() ?? "", centerLng: h.centerLng?.toString() ?? "", notes: h.notes ?? "", opensOn: h.opensOn ?? "", streetDayOn: h.streetDayOn ?? "", streetDayRepId: h.streetDayRepId ?? "", targetShops: String(h.targetShops) })}>Edit</Button>
                     {h.merchants === 0 ? <Button variant="ghost" size="sm" onClick={() => setDelN(h)}>Delete</Button> : null}
                   </div>
                 </div>
@@ -81,7 +91,7 @@ export default function NeighbourhoodsPage() {
           <Button variant="secondary" onClick={() => setN(null)}>Cancel</Button>
           <Button loading={act.busy} onClick={async () => {
             if (!n) return;
-            const body = { slug: n.slug.trim(), name: n.name.trim(), city: n.city.trim(), status: n.status, biaName: nul(n.biaName), biaContactName: nul(n.biaContactName), biaContactEmail: nul(n.biaContactEmail), storefrontEstimate: num(n.storefrontEstimate), biaMemberCount: num(n.biaMemberCount), centerLat: num(n.centerLat), centerLng: num(n.centerLng), notes: nul(n.notes) };
+            const body = { slug: n.slug.trim(), name: n.name.trim(), city: n.city.trim(), status: n.status, biaName: nul(n.biaName), biaContactName: nul(n.biaContactName), biaContactEmail: nul(n.biaContactEmail), storefrontEstimate: num(n.storefrontEstimate), biaMemberCount: num(n.biaMemberCount), centerLat: num(n.centerLat), centerLng: num(n.centerLng), notes: nul(n.notes), opensOn: nul(n.opensOn), streetDayOn: nul(n.streetDayOn), streetDayRepId: nul(n.streetDayRepId), targetShops: Number(n.targetShops) || 30 };
             const r = await act.run(() => (n.id ? browserApi.admin.updateNeighbourhood(n.id, body) : browserApi.admin.createNeighbourhood(body)));
             if (r) { setN(null); await hoods.reload(); }
           }}>Save</Button>
@@ -100,6 +110,10 @@ export default function NeighbourhoodsPage() {
             <TextField label="BIA members" optionalLabel inputMode="numeric" hint="The “of 74” on the BIA overview" value={n.biaMemberCount} onChange={(e) => setN({ ...n, biaMemberCount: e.target.value.replace(/\D/g, "") })} />
             <TextField label="Centre latitude" optionalLabel inputMode="decimal" value={n.centerLat} onChange={(e) => setN({ ...n, centerLat: e.target.value })} />
             <TextField label="Centre longitude" optionalLabel inputMode="decimal" value={n.centerLng} onChange={(e) => setN({ ...n, centerLng: e.target.value })} />
+            <TextField type="date" label="Opens on" optionalLabel value={n.opensOn} onChange={(e) => setN({ ...n, opensOn: e.target.value })} />
+            <TextField type="date" label="Street day" optionalLabel hint="The day one person walks every shop" value={n.streetDayOn} onChange={(e) => setN({ ...n, streetDayOn: e.target.value })} />
+            <Select label="Who walks it" placeholder="No one yet" value={n.streetDayRepId} onChange={(e) => setN({ ...n, streetDayRepId: e.target.value })} options={(team.data ?? []).map((u) => ({ value: u.id, label: u.name ?? u.email ?? "User" }))} />
+            <TextField label="Shop target" inputMode="numeric" hint="About 30 per area" value={n.targetShops} onChange={(e) => setN({ ...n, targetShops: e.target.value.replace(/\D/g, "") })} />
             <div className="sm:col-span-2"><TextField type="textarea" label="Notes" optionalLabel value={n.notes} onChange={(e) => setN({ ...n, notes: e.target.value })} /></div>
           </div>
         ) : null}

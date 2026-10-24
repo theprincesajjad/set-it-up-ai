@@ -198,6 +198,11 @@ export const neighbourhoods = pgTable(
     /** How many members the BIA has (the "of 74" on its overview). Entered by an admin. */
     biaMemberCount: integer("bia_member_count"),
     notes: text("notes"),
+    /** Area plan (rep-admin): when the area opens, the day one person walks all its shops, who walks it, and the shop target (~30). */
+    opensOn: date("opens_on"),
+    streetDayOn: date("street_day_on"),
+    streetDayRepId: uuid("street_day_rep_id").references(() => users.id),
+    targetShops: integer("target_shops").notNull().default(30),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("neighbourhoods_slug_uq").on(t.slug)],
@@ -1560,6 +1565,14 @@ export const leads = pgTable(
     eventDate: date("event_date"),
     boardMeetingAt: date("board_meeting_at"),
     memberCount: integer("member_count"),
+    /** Where the lead came from: website | street | phone | referral | bia. */
+    source: text("source"),
+    /** Pin dropped from the rep's phone at the door; used to order the street day. */
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
+    /** Remote setup session booked with the owner (phone, whatsapp or video). */
+    setupAt: ts("setup_at"),
+    setupChannel: text("setup_channel"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1573,8 +1586,25 @@ export const leadActivities = pgTable("lead_activities", {
   kind: text("kind").notNull(), // call | email | visit | note
   outcome: text("outcome"),
   notes: text("notes"),
+  /** Idempotency key from the rep's phone so an outcome queued offline is never recorded twice. */
+  clientId: text("client_id"),
   createdAt: createdAt(),
-});
+}, (t) => [uniqueIndex("lead_activities_client_uq").on(t.clientId)]);
+
+/** A timed, reasoned window in which an admin works inside a shop's dashboard (support). Writes made in it are audited. */
+export const supportSessions = pgTable(
+  "support_sessions",
+  {
+    id: id(),
+    adminUserId: uuid("admin_user_id").notNull().references(() => users.id),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: ts("expires_at").notNull(),
+    endedAt: ts("ended_at"),
+  },
+  (t) => [index("support_sessions_merchant_idx").on(t.merchantId, t.startedAt)],
+);
 
 // ---------------------------------------------------------------------------
 // Audit
@@ -1593,6 +1623,23 @@ export const auditLogs = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("audit_logs_merchant_idx").on(t.merchantId, t.createdAt)],
+);
+
+
+// ---------------------------------------------------------------------------
+// Merchant onboarding milestones (activation funnel, nudges sent). One row per (merchant, key).
+// ---------------------------------------------------------------------------
+export const merchantMilestones = pgTable(
+  "merchant_milestones",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** See MILESTONE_KEYS and NUDGE_KEYS in @ll/shared (onboarding.ts). */
+    key: text("key").notNull(),
+    reachedAt: ts("reached_at").notNull().defaultNow(),
+    data: jsonb("data").$type<Record<string, unknown>>(),
+  },
+  (t) => [uniqueIndex("merchant_milestones_uq").on(t.merchantId, t.key), index("merchant_milestones_key_idx").on(t.key, t.reachedAt)],
 );
 
 // ---------------------------------------------------------------------------

@@ -57,6 +57,7 @@ export async function createPublicLead(ctx: AppContext, body: repApi.PublicLeadB
       eventDate: body.eventDate ?? null,
       boardMeetingAt: body.boardMeetingAt ?? null,
       memberCount: body.memberCount ?? null,
+      source: "website",
       stage: "new",
       assignedRepId: null,
       createdAt: now,

@@ -1,6 +1,9 @@
+"use client";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { formatDate, formatPoints } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { unitsText } from "@/lib/units";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { ProgressBar } from "./ProgressBar";
@@ -31,6 +34,7 @@ export interface RewardCardProps {
 
 /** A reward: name + cost; a Redeem button when affordable, thin progress when not. No icon tiles. */
 export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, redeemedAt, children, className, layout = "card" }: RewardCardProps) {
+  const { t, locale, date } = useLocaleOrEnglish();
   const toGo = Math.max(0, reward.pointsCost - balance);
   return (
     <div className={cn(layout === "card" ? "rounded-card border border-line bg-bg p-4" : "py-3.5", className)}>
@@ -38,20 +42,20 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
         <div className="min-w-0 flex-1">
           <p className="text-body-strong text-fg">{reward.name}</p>
           <p className="text-meta tabular-nums text-fg-muted">
-            {state === "available" ? <span className="font-semibold text-accent-text">Ready · </span> : null}
-            {formatPoints(reward.pointsCost, terminology)}
+            {state === "available" ? <span className="font-semibold text-accent-text">{t("sh.rc.ready")} · </span> : null}
+            {unitsText(locale, reward.pointsCost, terminology)}
           </p>
         </div>
         {state === "available" && onRedeem ? (
           <Button size="sm" onClick={onRedeem}>
-            Redeem
+            {t("sh.rc.redeem")}
           </Button>
         ) : null}
-        {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{formatPoints(toGo, terminology)} to go</span> : null}
-        {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? `Redeemed ${formatDate(redeemedAt)}` : "Redeemed"}</Badge> : null}
+        {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{locale === "en" ? `${unitsText(locale, toGo, terminology)} to go` : t("sh.wallet.toGo", { amount: unitsText(locale, toGo, terminology) })}</span> : null}
+        {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? (locale === "en" ? `Redeemed ${formatDate(redeemedAt)}` : t("sh.rc.redeemedOn", { date: date(redeemedAt, { month: "short", day: "numeric" }) })) : t("sh.wallet.redeemed")}</Badge> : null}
       </div>
       {state === "locked" ? (
-        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={`${balance} of ${reward.pointsCost} ${terminology}`} />
+        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={locale === "en" ? `${balance} of ${reward.pointsCost} ${terminology}` : t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: terminology })} />
       ) : null}
       {reward.description || reward.terms ? <p className="mt-2 text-meta text-fg-muted">{reward.terms ?? reward.description}</p> : null}
       {state === "redeeming" ? <div className="mt-3">{children}</div> : null}

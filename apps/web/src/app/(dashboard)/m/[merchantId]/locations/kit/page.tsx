@@ -14,6 +14,7 @@ export default function QrKitPage() {
   const params = useSearchParams();
   const kit = useApi(() => api.qrKit(), [api]);
   const hoods = useNeighbourhoods();
+  const ob = useApi(role !== "staff" ? () => api.onboarding() : null, [api, role]);
   const street = hoods?.find((n) => n.id === detail.merchant.neighbourhoodId)?.name ?? "the street";
   const onPrinted = useCallback(() => {
     if (role !== "staff") void api.completeStep("qr_kit").catch(() => undefined);
@@ -23,7 +24,7 @@ export default function QrKitPage() {
       <div className="print:hidden">
         <PageHeader flush back={{ href: `${base}/locations`, label: "Locations & QR kit" }} title="Print your QR kit" description="Put the stand right next to the till. Customers scan it to join in 30 seconds." />
       </div>
-      <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} initialLocationId={params.get("location")} onPrinted={onPrinted} />}</Async>
+      <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} initialLocationId={params.get("location")} initialSize={params.get("print") === "script" ? "script" : undefined} localScript={ob.data?.playbook.tillLineLocal ?? null} onPrinted={onPrinted} />}</Async>
     </div>
   );
 }

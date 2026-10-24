@@ -83,7 +83,7 @@ export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: st
   );
 }
 
-function ScriptCard({ kit, street }: { kit: merchantApi.QrKit; street: string }) {
+function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: string; local?: merchantApi.OnboardingPlaybookDto["tillLineLocal"] }) {
   const row = { fontSize: "3.8mm", lineHeight: 1.4, borderTop: "0.3mm solid #E8E8E6", paddingTop: "3mm" } as const;
   return (
     <div className="qr-stand flex flex-col gap-[3mm] bg-[#FFFFFF] p-[8mm] text-[#0B0B0C]" style={{ width: "105mm", height: "148mm", fontFamily: TEXT }}>
@@ -99,14 +99,21 @@ function ScriptCard({ kit, street }: { kit: merchantApi.QrKit; street: string })
       <p style={row}>
         <strong>Mistake?</strong> Tap <strong>Undo</strong> right away.
       </p>
+      {local ? (
+        <div style={{ ...row, display: "flex", flexDirection: "column", gap: "1.6mm" }}>
+          <p lang="hi">{local.hi}</p>
+          <p lang="ur" dir="rtl" style={{ fontSize: "4.2mm", lineHeight: 1.7 }}>{local.ur}</p>
+          <p lang="pa">{local.pa}</p>
+        </div>
+      ) : null}
       <p style={{ ...row, fontSize: "3.2mm", color: "#6B6B70", marginTop: "auto" }}>{kit.staffScript}</p>
     </div>
   );
 }
 
 /** Print-ready QR kit page body. `window.print()` with @page sized to the chosen artifact. */
-export function QrKitPrint({ kit, street, initialLocationId, onPrinted }: { kit: merchantApi.QrKit; street: string; initialLocationId?: string | null; onPrinted?: () => void }) {
-  const [size, setSize] = useState<KitSize>("a6");
+export function QrKitPrint({ kit, street, initialLocationId, initialSize, localScript, onPrinted }: { kit: merchantApi.QrKit; street: string; initialLocationId?: string | null; initialSize?: KitSize; localScript?: merchantApi.OnboardingPlaybookDto["tillLineLocal"]; onPrinted?: () => void }) {
+  const [size, setSize] = useState<KitSize>(initialSize ?? "a6");
   const [locId, setLocId] = useState(initialLocationId && kit.locations.some((l) => l.id === initialLocationId) ? initialLocationId : (kit.locations[0]?.id ?? ""));
   const loc = kit.locations.find((l) => l.id === locId) ?? kit.locations[0];
   useEffect(() => {
@@ -136,7 +143,7 @@ export function QrKitPrint({ kit, street, initialLocationId, onPrinted }: { kit:
       {loc ? (
         <div className="qr-kit-canvas flex justify-center overflow-x-auto rounded-card bg-bg-subtle px-4 py-10 print:block print:rounded-none print:bg-transparent print:p-0">
         <div className="qr-kit-sheet border border-line print:border-0">
-          {size === "script" ? <ScriptCard kit={kit} street={street} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} />}
+          {size === "script" ? <ScriptCard kit={kit} street={street} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} />}
         </div>
         </div>
       ) : (

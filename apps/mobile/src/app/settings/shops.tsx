@@ -7,6 +7,7 @@ import { useWallet } from "../../features/customer/queries";
 import { termWord } from "../../lib/award";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
+import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { Button, Card, ConsentCheckbox, EmptyState, ListRow, Screen, Sheet, ShopLogo, Store, SwitchRow, Text, useToast } from "../../ui";
 
@@ -15,6 +16,7 @@ export default function ShopsAndMessages() {
   const wallet = useWallet();
   const qc = useQueryClient();
   const toast = useToast();
+  const { t: lt } = useLocale();
   const { prefs, updatePrefs } = useSession();
   const [open, setOpen] = useState<customerApi.MembershipDto | null>(null);
   const [granting, setGranting] = useState<customerApi.MembershipDto | null>(null);
@@ -56,8 +58,8 @@ export default function ShopsAndMessages() {
   const current = open ? (items.find((x) => x.id === open.id) ?? open) : null;
 
   return (
-    <Screen back title="Shops & messages">
-      <Text color="fgMuted">You choose who can send you offers. Your points keep working either way.</Text>
+    <Screen back title={lt("sh.you.shopsMessages")}>
+      <Text color="fgMuted">{lt("sh.shops.intro")}</Text>
       {items.length === 0 ? (
         <EmptyState icon={Store} title={t("empty.wallet.title")} body={t("empty.wallet.body")} />
       ) : (
@@ -68,7 +70,7 @@ export default function ShopsAndMessages() {
               divider={i < items.length - 1}
               leading={<ShopLogo shop={m.merchant} size={40} />}
               title={m.merchant.name}
-              subtitle={m.muted ? "muted" : m.marketingConsent.granted ? "offers on" : "offers off"}
+              subtitle={m.muted ? lt("sh.shops.muted") : m.marketingConsent.granted ? lt("sh.shops.on") : lt("sh.shops.off")}
               chevron
               onPress={() => setOpen(m)}
             />
@@ -76,21 +78,21 @@ export default function ShopsAndMessages() {
         </Card>
       )}
       <Card>
-        <SwitchRow label={`${BRAND.name} news and neighbourhood events`} description="By email, a few times a year." value={prefs.platformConsent} onValueChange={(v) => updatePrefs({ platformConsent: v })} />
+        <SwitchRow label={lt("sh.shops.news", { brand: BRAND.name })} description={lt("sh.shops.newsSub")} value={prefs.platformConsent} onValueChange={(v) => updatePrefs({ platformConsent: v })} />
       </Card>
 
       <Sheet visible={!!current} onClose={() => setOpen(null)} title={current?.merchant.name}>
         {current ? (
           <View>
             <SwitchRow
-              label="Offers by text and email"
-              description={current.marketingConsent.granted ? `Since ${current.marketingConsent.grantedAt?.slice(0, 10) ?? ""}` : "Off"}
+              label={lt("sh.priv.offersBy")}
+              description={current.marketingConsent.granted ? lt("sh.priv.since", { date: current.marketingConsent.grantedAt?.slice(0, 10) ?? "" }) : lt("sh.shops.off2")}
               value={current.marketingConsent.granted}
               onValueChange={(v) => (v ? setGranting(current) : withdraw(current))}
             />
             <SwitchRow
-              label={`Mute ${current.merchant.name}`}
-              description="Hides its promos and stops all offers. Order and repair updates still arrive."
+              label={lt("sh.priv.muteShop", { shop: current.merchant.name })}
+              description={lt("sh.shops.muteHint")}
               value={current.muted}
               onValueChange={(v) => setMuted(current, v)}
             />
@@ -100,10 +102,10 @@ export default function ShopsAndMessages() {
       <Sheet
         visible={!!granting}
         onClose={() => setGranting(null)}
-        title="Turn on offers"
+        title={lt("sh.shops.turnOn")}
         footer={
           <Button fullWidth disabled={!agree} onPress={() => granting && grant(granting)}>
-            Turn on offers
+            {lt("sh.shops.turnOn")}
           </Button>
         }
       >

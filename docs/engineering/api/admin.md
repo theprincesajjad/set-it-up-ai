@@ -59,3 +59,15 @@ Perks are applied by the ledger on each visit (network-funded `network_bonus`).
 ## Audit log
 ### `GET /v1/admin/audit?merchantId&actorUserId&action&entity&from&to&limit&cursor`
 `action` exact, or a prefix ending in `.` (e.g. `feature.`). Newest first → `{ items: AuditEntry[] }` (`actorName` = name or email).
+
+## Founder's console (rep-and-admin)
+Design: `docs/research/rep-and-admin.md`. Code: `services/admin-ops.ts`, constants in `packages/shared/src/launch.ts` (assumptions from the finance docs).
+
+- `GET /v1/admin/overview` → `AdminOverview`: pace against the plan (109/248/400), MRR (live paying subscriptions; trialing counts 0; annual ÷ 12; founding restaurants at half in year one), fee revenue over 30 days (orders incl. customer fee, invoices, tiffin charges), activation, cost per shop, funnel by area, at-risk shops.
+- `GET /v1/admin/at-risk` → every at-risk shop; one reason each, most urgent first: `payment_failed`, `stalled_setup`, `quiet`, `slow_activation`, `sms_cap`.
+- `GET /v1/admin/costs` → per shop texts, WhatsApp, hosting, plan + fees, margin; totals; the unit-cost assumptions used.
+- `GET /v1/admin/merchants/:id/money` → MRR, renewal, 30-day fees, costs, charge mode, Stripe state. `GET /v1/admin/merchants/:id` also returns `checkIns` (day 7 and day 30).
+- `PUT /v1/admin/merchants/:id/charge-mode` `{ chargeMode, reason? }` (billing route): the reason is stored in the `billing.charge_mode_changed` audit row; the dashboard requires it.
+- Support sessions: `POST /v1/admin/merchants/:id/support-sessions { reason }` (30 minutes), `POST /v1/admin/support-sessions/:id/end`, `GET /v1/admin/support-sessions?merchantId`. Audit: `support.session_started`, `support.session_ended`, and `support.write` (or `rep.write` for a rep on their own shop) for every non-GET request an admin or rep makes through a shop's own API.
+- Area plan fields on neighbourhoods: `opensOn`, `streetDayOn`, `streetDayRepId` (must be a rep or admin), `targetShops` (default 30).
+- Audit added for `campaign.marked_paid`, `campaign.winner_drawn`, `campaign.manager_added`, `campaign.manager_removed`.

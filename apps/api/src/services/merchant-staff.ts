@@ -6,6 +6,7 @@ import type { AppContext } from "../context.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
 import { setStaffPin } from "./auth.js";
 import { findOrCreateCustomerByPhone, generateMemberCode } from "./ledger.js";
+import { recordMilestone } from "./onboarding.js";
 import { writeAudit } from "./admin-audit.js";
 import { requirePhone } from "./merchant.js";
 
@@ -105,6 +106,7 @@ export async function inviteStaff(ctx: AppContext, merchantId: string, actorUser
     return u;
   });
   await sendStaffInvite(ctx, { merchantName: m.name, role: body.role, email: body.email ?? user.email, phone: body.email ? null : user.phone });
+  await recordMilestone(ctx.db, merchantId, "staff_added", ctx.now());
   return serialize(await getStaff(ctx.db, merchantId, user.id));
 }
 

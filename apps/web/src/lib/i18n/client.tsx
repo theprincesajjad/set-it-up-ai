@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { browserApi } from "@/lib/api/browser";
 import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, t as translate, type Locale, type LocaleInfo, type MessageKey, type TranslationsJson, type Vars } from "@ll/shared";
 
 export const LOCALE_COOKIE = "ll_lang";
@@ -70,6 +71,19 @@ export function rememberLocale(locale: Locale) {
   } catch {
     // cookies blocked: ?lang= still carries the language
   }
+}
+
+/**
+ * Save the language on the shopper's profile, so texts, alerts and the wallet pass follow it. Signed-in callers only
+ * (right after sign-in, or from Settings). After sign-in only a non-English page language is saved: English is also
+ * what an untouched browser shows, so it must not overwrite a language chosen on another device.
+ */
+export function saveProfileLocale(locale: Locale, opts: { explicit?: boolean } = {}): Promise<boolean> {
+  if (locale === "en" && !opts.explicit) return Promise.resolve(false);
+  return browserApi.me.updateProfile({ locale }).then(
+    () => true,
+    () => false,
+  );
 }
 
 const ENGLISH = buildValue("en", () => undefined);

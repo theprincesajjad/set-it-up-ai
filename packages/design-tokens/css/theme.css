@@ -107,6 +107,14 @@
   --color-vertical-restaurant-on-accent: var(--ll-vertical-restaurant-on-accent);
   --color-vertical-restaurant-tint: var(--ll-vertical-restaurant-tint);
   --color-vertical-restaurant-ink: var(--ll-vertical-restaurant-ink);
+  --color-vertical-restaurant-south-asian-accent: var(--ll-vertical-restaurant-south-asian-accent);
+  --color-vertical-restaurant-south-asian-on-accent: var(--ll-vertical-restaurant-south-asian-on-accent);
+  --color-vertical-restaurant-south-asian-tint: var(--ll-vertical-restaurant-south-asian-tint);
+  --color-vertical-restaurant-south-asian-ink: var(--ll-vertical-restaurant-south-asian-ink);
+  --color-vertical-tiffin-accent: var(--ll-vertical-tiffin-accent);
+  --color-vertical-tiffin-on-accent: var(--ll-vertical-tiffin-on-accent);
+  --color-vertical-tiffin-tint: var(--ll-vertical-tiffin-tint);
+  --color-vertical-tiffin-ink: var(--ll-vertical-tiffin-ink);
   --color-vertical-bakery-accent: var(--ll-vertical-bakery-accent);
   --color-vertical-bakery-on-accent: var(--ll-vertical-bakery-on-accent);
   --color-vertical-bakery-tint: var(--ll-vertical-bakery-tint);

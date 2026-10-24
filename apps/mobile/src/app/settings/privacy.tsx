@@ -8,12 +8,14 @@ import { errorMessage, isApiError } from "../../api/client";
 import { t } from "../../copy/en-CA";
 import { usePhase2, useWallet } from "../../features/customer/queries";
 import { api } from "../../state/api";
+import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { Banner, Button, ConfirmDialog, Download, ListRow, Screen, Section, Text, TextField, Trash2, useToast } from "../../ui";
 
 /** 10.3 Privacy & data: export (PIPEDA access) and delete account. */
 export default function Privacy() {
   const toast = useToast();
+  const { t: lt } = useLocale();
   const { signOut } = useSession();
   const wallet = useWallet();
   const phase2 = usePhase2();
@@ -33,7 +35,7 @@ export default function Privacy() {
       const file = new File(Paths.cache, `my-${BRAND.shortName.toLowerCase()}-data.json`);
       file.write(JSON.stringify(data, null, 2));
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: "Your data" });
-      toast({ tone: "success", message: "Your data file is ready." });
+      toast({ tone: "success", message: lt("sh.priv.m.dlReady") });
     } catch (e) {
       toast({ tone: "error", message: errorMessage(e, { network: t("err.network"), server: t("err.server") }) });
     } finally {
@@ -48,7 +50,7 @@ export default function Privacy() {
       await api.me.deleteAccount();
       await signOut();
       router.replace({ pathname: "/welcome" });
-      toast("Your account is deleted.");
+      toast(lt("sh.priv.m.deleted"));
     } catch (e) {
       setError(isApiError(e) && e.status === 409 ? e.message : errorMessage(e, { network: t("err.network"), server: t("err.server") }));
     } finally {
@@ -58,31 +60,31 @@ export default function Privacy() {
   };
 
   return (
-    <Screen back title="Privacy & data">
-      <Section title="Download my data" spaced>
-        <Text color="fgMuted">A file with your profile, shops, points and messages. It downloads to this phone so you can save or send it.</Text>
+    <Screen back title={lt("sh.you.privacy")}>
+      <Section title={lt("sh.priv.download")} spaced>
+        <Text color="fgMuted">{lt("sh.priv.m.dlBody")}</Text>
         <Button variant="secondary" iconStart={Download} loading={exporting} onPress={exportData}>
-          Request my data
+          {lt("sh.priv.m.request")}
         </Button>
       </Section>
-      <Section title="Delete my account" spaced>
-        <Text>{`Your card stops working at every shop. Everything you've collected at ${shops.length === 1 ? "your shop" : `your ${shops.length} shops`} (points, stamps and rewards) will be lost. Shops keep records of past purchases as the law requires, without your name.`}</Text>
-        {openWork ? <Banner variant="warning">{`Finish or cancel your open repair or order at ${openShop ?? "the shop"} first.`}</Banner> : null}
-        <TextField label='Type "DELETE" to confirm' value={typed} onChangeText={setTyped} autoCapitalize="characters" />
+      <Section title={lt("sh.priv.delete")} spaced>
+        <Text>{lt("sh.priv.m.delBody", { shops: lt("sh.priv.m.yourShops", { n: shops.length }) })}</Text>
+        {openWork ? <Banner variant="warning">{lt("sh.priv.m.openWork", { shop: openShop ?? lt("sh.priv.m.theShop") })}</Banner> : null}
+        <TextField label={lt("sh.priv.deleteType")} value={typed} onChangeText={setTyped} autoCapitalize="characters" />
         {error ? <Banner variant="danger">{error}</Banner> : null}
         <Button variant="danger" iconStart={Trash2} disabled={typed !== "DELETE" || openWork} onPress={() => setConfirm(true)}>
           {t("destructive.deleteAccount")}
         </Button>
       </Section>
       <View>
-        <ListRow title="Privacy Policy" chevron onPress={() => Linking.openURL("https://local.example/privacy")} />
-        <ListRow title="Terms" chevron onPress={() => Linking.openURL("https://local.example/terms")} />
-        <ListRow title="How shops use your data" chevron divider={false} onPress={() => Linking.openURL("https://local.example/privacy#shops")} />
+        <ListRow title={lt("sh.priv.m.policy")} chevron onPress={() => Linking.openURL("https://local.example/privacy")} />
+        <ListRow title={lt("sh.priv.m.terms")} chevron onPress={() => Linking.openURL("https://local.example/terms")} />
+        <ListRow title={lt("sh.priv.m.howShops")} chevron divider={false} onPress={() => Linking.openURL("https://local.example/privacy#shops")} />
       </View>
       <ConfirmDialog
         visible={confirm}
-        title="Delete your account?"
-        body="This can't be undone. Your card stops working everywhere and your points are lost."
+        title={lt("sh.priv.deleteTitle")}
+        body={lt("sh.priv.m.cantUndo")}
         confirmLabel={t("destructive.deleteAccount")}
         loading={deleting}
         onCancel={() => setConfirm(false)}

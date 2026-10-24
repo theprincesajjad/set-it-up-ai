@@ -356,6 +356,18 @@ export async function publicCampaign(ctx: AppContext, id: string): Promise<campa
   return (await publicDtos(ctx.db, [c]))[0]!;
 }
 
+/** Street campaigns running right now, soonest to end first: what the public shopper page shows as "on now". */
+export async function liveCampaigns(ctx: AppContext, limit = 6): Promise<campaignsApi.PublicCampaign[]> {
+  const now = ctx.now();
+  const rows = await ctx.db
+    .select()
+    .from(campaigns)
+    .where(and(eq(campaigns.status, "live"), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
+    .orderBy(asc(campaigns.endsAt))
+    .limit(limit);
+  return publicDtos(ctx.db, rows);
+}
+
 /** Live and upcoming campaigns near the customer (home neighbourhood, shops they belong to, or where they are), with progress. */
 export async function myCampaigns(ctx: AppContext, userId: string, q: { lat?: number; lng?: number }): Promise<campaignsApi.MyCampaign[]> {
   const db = ctx.db;

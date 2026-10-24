@@ -103,7 +103,7 @@ describe("profile, onboarding, features", () => {
     expect(r.statusCode).toBe(403);
 
     let cl = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/onboarding`, headers: auth(staff.token) })).json();
-    expect(cl.currentStep).toBe("profile");
+    expect(cl.currentStep).toBe("first_stamp");
     expect(cl.steps.find((s: { key: string }) => s.key === "program").done).toBe(true);
     expect(cl.steps.find((s: { key: string }) => s.key === "staff").done).toBe(true); // owner + staff
 
@@ -120,10 +120,14 @@ describe("profile, onboarding, features", () => {
     expect((await env.app.inject({ method: "PATCH", url: `/v1/merchants/${merchant.id}`, headers: auth(ownerToken), payload: { brandColor: "red" } })).statusCode).toBe(400);
 
     cl = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/onboarding`, headers: auth(ownerToken) })).json();
+    expect(cl.later.find((s: { key: string }) => s.key === "profile").done).toBe(true);
+    expect(cl.currentStep).toBe("first_stamp");
+    await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app" });
+    cl = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/onboarding`, headers: auth(ownerToken) })).json();
     expect(cl.currentStep).toBe("qr_kit");
     cl = (await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/onboarding/complete`, headers: auth(ownerToken), payload: { step: "qr_kit" } })).json();
     expect(cl.currentStep).toBe("first_members");
-    for (let i = 0; i < 3; i++) await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app" });
+    for (let i = 0; i < 2; i++) await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app" });
     cl = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/onboarding`, headers: auth(ownerToken) })).json();
     expect(cl.currentStep).toBe("done");
     expect(cl.percentComplete).toBe(100);

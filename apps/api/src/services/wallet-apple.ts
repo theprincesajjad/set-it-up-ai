@@ -12,7 +12,7 @@
 import { createHash } from "node:crypto";
 import { zipSync } from "fflate";
 import forge from "node-forge";
-import { BRAND, walletApi } from "@ll/shared";
+import { BRAND, normalizeLocale, t as translate, unitLabel, unitWord, walletApi, type Locale } from "@ll/shared";
 import type { Config } from "../config.js";
 import { pemFromEnv } from "./wallet-apns.js";
 import { iconPng, logoPng, walletAsset } from "./wallet-png.js";
@@ -68,16 +68,23 @@ export function missingAppleConfig(config: Config): string[] {
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
 /** "1 stamp", "120 points", "3 stars": the shop's own unit, singular when 1. */
-export function balanceText(balance: number, terminology: string): string {
-  const unit = Math.abs(balance) === 1 ? terminology.replace(/s$/, "") : terminology;
-  return `${balance.toLocaleString("en-CA")} ${unit}`;
+export function balanceText(balance: number, terminology: string, locale: Locale = "en"): string {
+  return unitLabel(locale, terminology, balance);
 }
 
-const expiryLine = (x: walletApi.WalletShopBalance) =>
-  x.expiryMonths ? `${x.terminology.charAt(0).toUpperCase()}${x.terminology.slice(1)} expire after ${x.expiryMonths} months with no visits.` : `${x.terminology.charAt(0).toUpperCase()}${x.terminology.slice(1)} never expire.`;
+/** The pass language: the shopper's profile language, English when absent. */
+export const passLocale = (s: { locale?: string | null }): Locale => normalizeLocale(s.locale) ?? "en";
+const cap = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+
+const expiryLine = (x: walletApi.WalletShopBalance, loc: Locale) => {
+  const unit = cap(unitWord(loc, x.terminology));
+  return x.expiryMonths ? translate(loc, "sh.pass.expireAfter", { unit, months: x.expiryMonths }) : translate(loc, "sh.pass.neverExpire", { unit });
+};
 
 export function buildPassJson(config: Config, p: { passTypeId: string; teamId: string }, input: ApplePassInput) {
   const s = input.summary;
+  const loc = passLocale(s);
+  const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate(loc, key, vars);
   const ready = s.rewardsReady ?? 0;
   const top = s.shops.slice(0, 2);
   const readyShops = s.shops.filter((x) => (x.rewardsReady ?? 0) > 0);
@@ -86,25 +93,25 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
     ready > 0
       ? {
           key: "primary",
-          label: readyShops.length === 1 ? `ready at ${truncate(readyShops[0]!.name, 28)}` : `ready across ${readyShops.length} shops`,
-          value: `${ready} ${ready === 1 ? "reward" : "rewards"}`,
+          label: readyShops.length === 1 ? tr("sh.pass.readyAt", { shop: truncate(readyShops[0]!.name, 28) }) : tr("sh.pass.readyAcross", { n: readyShops.length }),
+          value: tr("sh.pass.rewardsN", { n: ready }),
         }
-      : { key: "primary", label: s.shopCount ? "member at" : "your card", value: s.shopCount ? `${s.shopCount} ${s.shopCount === 1 ? "shop" : "shops"}` : "every shop on your street" };
+      : { key: "primary", label: s.shopCount ? tr("sh.pass.memberAt") : tr("sh.pass.yourCard"), value: s.shopCount ? tr("sh.pass.shopsN", { n: s.shopCount }) : tr("sh.pass.everyShop") };
 
   // Slot 1 = the shop visited most recently (the one that just changed), so its
   // change message is the lock-screen notification: "You now have 130 points at Pinecone".
   const shopFields = top.map((x, i) => ({
     key: `shop${i + 1}`,
     label: truncate(x.name.toLowerCase(), 20),
-    value: balanceText(x.balance, x.terminology),
-    ...(i === 0 ? { changeMessage: `You now have %@ at ${x.name}` } : {}),
+    value: balanceText(x.balance, x.terminology, loc),
+    ...(i === 0 ? { changeMessage: tr("sh.pass.change", { shop: x.name }) } : {}),
   }));
 
   const memberships = s.shops.length
     ? s.shops
-        .map((x) => `${x.name}: ${balanceText(x.balance, x.terminology)}${x.rewardsReady ? ` (${x.rewardsReady} ${x.rewardsReady === 1 ? "reward" : "rewards"} ready)` : ""}\n${expiryLine(x)}`)
+        .map((x) => `${x.name}: ${balanceText(x.balance, x.terminology, loc)}${x.rewardsReady ? ` (${tr("sh.pass.rewardsReadySuffix", { n: x.rewardsReady })})` : ""}\n${expiryLine(x, loc)}`)
         .join("\n\n")
-    : "Show this card at any participating shop to join and start earning.";
+    : tr("sh.pass.joinBody");
   const anyExpiry = s.shops.some((x) => x.expiryMonths);
 
   return {
@@ -115,7 +122,7 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
     webServiceURL: `${config.publicApiUrl}/v1/wallet/apple`,
     authenticationToken: input.authToken,
     organizationName: BRAND.name,
-    description: `${BRAND.name} member card`,
+    description: `${BRAND.name} ${loc === "en" ? "member card" : tr("sh.card.title")}`,
     logoText: BRAND.name.toLowerCase(),
     foregroundColor: rgb(PASS_COLORS.foreground),
     backgroundColor: rgb(PASS_COLORS.background),
@@ -125,27 +132,27 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
     ...(input.locations?.length ? { locations: input.locations.slice(0, 10), maxDistance: 100 } : {}),
     barcodes: [{ format: "PKBarcodeFormatQR", message: s.qrValue, messageEncoding: "iso-8859-1", altText: s.memberCode }],
     storeCard: {
-      headerFields: [{ key: "ready", label: "rewards ready", value: ready, textAlignment: "PKTextAlignmentRight", changeMessage: "Rewards ready: %@" }],
+      headerFields: [{ key: "ready", label: tr("sh.pass.ready"), value: ready, textAlignment: "PKTextAlignmentRight", changeMessage: tr("sh.pass.changeReady") }],
       primaryFields: [primary],
       secondaryFields: shopFields,
-      auxiliaryFields: [{ key: "member", label: "member", value: s.name ?? s.memberCode }],
+      auxiliaryFields: [{ key: "member", label: tr("sh.pass.member"), value: s.name ?? s.memberCode }],
       backFields: [
-        { key: "memberships", label: "Your shops", value: memberships },
+        { key: "memberships", label: tr("sh.pass.shopsBack"), value: memberships },
         {
           key: "expiry",
-          label: "Points expiry",
+          label: tr("sh.pass.expiryLabel"),
           value: anyExpiry
-            ? `Points never expire unless a shop says so above. ${s.shops
+            ? `${tr("sh.pass.expiryUnless")} ${s.shops
                 .filter((x) => x.expiryMonths)
-                .map((x) => `${x.name}: after ${x.expiryMonths} months without a visit.`)
+                .map((x) => tr("sh.pass.afterMonths", { shop: x.name, months: x.expiryMonths! }))
                 .join(" ")}`
-            : "Your points never expire.",
+            : tr("sh.pass.expiryNever"),
         },
-        { key: "how", label: "How to use", value: `Show this card at the counter of any ${BRAND.name} shop. Staff scan the code to add points or redeem a reward. One card for every shop on your street.` },
-        { key: "code", label: "Member code", value: s.memberCode },
-        { key: "updates", label: "Updates", value: "This card updates itself when your balance changes. Turn notifications for it on or off in the pass details (•••)." },
-        { key: "terms", label: "Terms", value: `${config.publicWebUrl}/terms`, attributedValue: `<a href='${config.publicWebUrl}/terms'>${config.publicWebUrl.replace(/^https?:\/\//, "")}/terms</a>` },
-        { key: "help", label: "Support", value: BRAND.supportEmail, attributedValue: `<a href='mailto:${BRAND.supportEmail}'>${BRAND.supportEmail}</a>` },
+        { key: "how", label: tr("sh.pass.howLabel"), value: tr("sh.pass.how", { brand: BRAND.name }) },
+        { key: "code", label: tr("sh.pass.codeLabel"), value: s.memberCode },
+        { key: "updates", label: tr("sh.pass.updatesLabel"), value: tr("sh.pass.updatesBody") },
+        { key: "terms", label: tr("sh.pass.terms"), value: `${config.publicWebUrl}/terms`, attributedValue: `<a href='${config.publicWebUrl}/terms'>${config.publicWebUrl.replace(/^https?:\/\//, "")}/terms</a>` },
+        { key: "help", label: tr("sh.pass.support"), value: BRAND.supportEmail, attributedValue: `<a href='mailto:${BRAND.supportEmail}'>${BRAND.supportEmail}</a>` },
       ],
     },
   };

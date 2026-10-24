@@ -6,6 +6,7 @@ import { requirePlatformRole } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import { buildQrKit, loadMerchantDetail } from "../../services/merchant.js";
 import * as svc from "../../services/rep.js";
+import * as field from "../../services/rep-field.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 import registerPublicLeads from "./public-leads.js";
 
@@ -43,6 +44,28 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     const user = requirePlatformRole(req, "rep");
     reply.status(201);
     return svc.addLeadActivity(ctx, user, req.params.leadId, parse(repApi.addLeadActivityBody, req.body));
+  });
+
+  app.post("/rep/leads/:leadId/outcome", async (req: Req<{ leadId: string }>, reply) => {
+    const user = requirePlatformRole(req, "rep");
+    const r = await field.recordOutcome(ctx, user, req.params.leadId, parse(repApi.leadOutcomeBody, req.body));
+    reply.status(r.status === "recorded" ? 201 : 200);
+    return r;
+  });
+  app.post("/rep/outcomes/sync", async (req) => {
+    const user = requirePlatformRole(req, "rep");
+    return field.syncOutcomes(ctx, user, parse(repApi.outcomeSyncBody, req.body).items);
+  });
+
+  // ---- Street day, today, proof ----
+  app.get("/rep/street-day", async (req) => {
+    const user = requirePlatformRole(req, "rep");
+    return field.streetDay(ctx, user, parse(z.object({ neighbourhoodId: z.uuid().optional() }), req.query));
+  });
+  app.get("/rep/today", async (req) => field.repToday(ctx, requirePlatformRole(req, "rep")));
+  app.get("/rep/proof", async (req) => {
+    requirePlatformRole(req, "rep");
+    return field.pitchProof(ctx, parse(z.object({ neighbourhoodId: z.uuid().optional() }), req.query));
   });
 
   // ---- Done-for-you merchants ----

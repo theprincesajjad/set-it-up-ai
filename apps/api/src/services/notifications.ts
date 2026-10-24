@@ -24,13 +24,12 @@
  */
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { loyaltyPrograms, merchantMembers, merchants, messageDeliveries, notifications, pushTokens, rewards, userNotificationPrefs, users } from "@ll/db";
-import { BRAND, customerApi } from "@ll/shared";
+import { BRAND, customerApi, normalizeLocale, t as translate, unitLabel, unitWord, type Locale } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import type { PushTicket } from "../providers/types.js";
 import { enabledFeaturesFor } from "./features.js";
 import { balanceListeners, type BalanceChange, type BalanceListener } from "./ledger.js";
-import { balanceText } from "./wallet-apple.js";
 import { addPassMessage, hasWalletPass } from "./wallet.js";
 
 export type NotificationType = customerApi.NotificationType;
@@ -41,6 +40,14 @@ type NotificationRow = typeof notifications.$inferSelect;
 export const POINTS_COLLAPSE_MS = 10 * 60_000;
 export const PROMO_DAILY_LIMIT_MS = 24 * 60 * 60_000;
 export const QUIET_HOURS = { start: 21, end: 8 } as const;
+/** Routine pushes (points earned, passport progress) allowed per customer per rolling 24 h, across all shops. */
+export const ROUTINE_PUSHES_PER_DAY = customerApi.ROUTINE_PUSHES_PER_DAY;
+
+/** The shopper's language (users.locale: en, hi, ur, pa; legacy "en-CA" is English). */
+export async function userLocale(ctx: AppContext, userId: string): Promise<Locale> {
+  const [u] = await ctx.db.select({ locale: users.locale }).from(users).where(eq(users.id, userId)).limit(1);
+  return normalizeLocale(u?.locale) ?? "en";
+}
 
 // ---------------------------------------------------------------------------
 // Preferences
@@ -72,6 +79,7 @@ export function prefsResponse(m: PrefMatrix): customerApi.NotificationPrefsRespo
       channels: Object.fromEntries(info.channels.map((c) => [c, m[info.type][c]])),
     })),
     quietHours: { start: "21:00", end: "08:00", appliesTo: "marketing" },
+    limits: { routinePushesPerDay: ROUTINE_PUSHES_PER_DAY, offersPerDay: 1, pointsCollapseMinutes: POINTS_COLLAPSE_MS / 60_000 },
   };
 }
 
@@ -177,6 +185,8 @@ export interface SendResult {
   skipped?: SkipReason;
   channels: string[];
   push: number;
+  /** True when the routine-push budget was used up: the inbox row exists, the push was not sent. */
+  budgeted?: boolean;
 }
 
 /**
@@ -232,7 +242,7 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
         .limit(1);
       if (prev) {
         const delta = Number(prev.data.delta ?? 0) + Number(args.data?.delta ?? 0);
-        const title = collapsedPointsTitle(delta, String(args.data?.terminology ?? "points"), merchant.name) ?? args.title;
+        const title = collapsedPointsTitle(delta, String(args.data?.terminology ?? "points"), merchant.name, normalizeLocale(user.locale) ?? "en") ?? args.title;
         await ctx.db
           .update(notifications)
           .set({ title, body: args.body, data: { ...prev.data, ...data, delta, notificationId: prev.id }, readAt: null, updatedAt: now })
@@ -253,8 +263,26 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
     const log = (channel: "sms" | "email" | "push", to: string, body: string, status: string, providerId?: string | null, error?: string | null) =>
       ctx.db.insert(messageDeliveries).values({ userId: user.id, merchantId: merchant?.id ?? null, channel, to, body, kind: info.kind, status, providerId: providerId ?? null, error: error ?? null });
 
+    // ---- Routine budget: the push is skipped (the inbox row stays) once the day's routine pushes are used up ----
+    let overBudget = false;
+    if (customerApi.ROUTINE_PUSH_TYPES.includes(args.type)) {
+      const [used] = await ctx.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, user.id),
+            inArray(notifications.type, [...customerApi.ROUTINE_PUSH_TYPES]),
+            gt(notifications.createdAt, new Date(now.getTime() - PROMO_DAILY_LIMIT_MS)),
+            sql`${notifications.channels} @> '["push"]'::jsonb`,
+          ),
+        );
+      overBudget = Number(used?.n ?? 0) >= ROUTINE_PUSHES_PER_DAY;
+      if (overBudget) res.budgeted = true;
+    }
+
     // ---- Push (the app) ----
-    if (prefs[args.type].push) {
+    if (prefs[args.type].push && !overBudget) {
       const tokens = await tokensFor(ctx, user.id);
       if (tokens.length) {
         try {
@@ -307,9 +335,9 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
   return res;
 }
 
-function collapsedPointsTitle(delta: number, terminology: string, shop: string): string | null {
+function collapsedPointsTitle(delta: number, terminology: string, shop: string, locale: Locale = "en"): string | null {
   if (!Number.isFinite(delta) || delta <= 0) return null;
-  return `+${balanceText(delta, terminology)} at ${shop}`;
+  return translate(locale, "sh.n.earnTitle", { amount: unitLabel(locale, terminology, delta), shop });
 }
 
 // ---------------------------------------------------------------------------
@@ -552,12 +580,13 @@ export async function sendExpiryWarnings(ctx: AppContext): Promise<number> {
       .limit(1);
     if (already) continue;
     const days = Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000));
+    const loc = await userLocale(ctx, r.userId);
     const res = await sendNotification(ctx, {
       userId: r.userId,
       merchantId: r.merchantId,
       type: "reward_expiring",
-      title: `${r.merchantName}: ${r.terminology} expiring`,
-      body: `Your ${balanceText(r.balance, r.terminology)} expire in ${days} ${days === 1 ? "day" : "days"} unless you visit. Any visit keeps them.`,
+      title: translate(loc, "sh.n.expireTitle", { shop: r.merchantName, unit: unitWord(loc, r.terminology) }),
+      body: translate(loc, "sh.n.expireBody", { balance: unitLabel(loc, r.terminology, r.balance), days }),
       data: { expiresAt: expiresAt.toISOString() },
       passMessage: true,
     });
@@ -579,6 +608,8 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
     .limit(1);
   if (!m) return;
   const term = m.terminology ?? "points";
+  const loc = await userLocale(ctx, change.userId);
+  const units = (n: number) => unitLabel(loc, term, n);
 
   if (change.kind === "redeem") {
     // In-app redemptions show the code on screen; confirm the ones staff applied.
@@ -587,8 +618,8 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
       userId: change.userId,
       merchantId: change.merchantId,
       type: "redeem_confirmed",
-      title: `${m.name}: ${change.reward?.name ?? "reward"} redeemed`,
-      body: `Enjoy. You have ${balanceText(change.balance, term)} left.`,
+      title: translate(loc, "sh.n.redeemTitle", { shop: m.name, reward: change.reward?.name ?? "reward" }),
+      body: translate(loc, "sh.n.redeemBody", { balance: units(change.balance) }),
       data: { delta: change.delta, balance: change.balance, rewardId: change.reward?.id },
     });
     return;
@@ -606,8 +637,8 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
         userId: change.userId,
         merchantId: change.merchantId,
         type: "reward_ready",
-        title: `Reward ready at ${m.name}`,
-        body: `You have ${balanceText(change.balance, term)}: enough for ${best.name}. Show your card at the counter to redeem.`,
+        title: translate(loc, "sh.n.readyTitle", { shop: m.name }),
+        body: translate(loc, "sh.n.readyBody", { balance: units(change.balance), reward: best.name }),
         data: { rewardId: best.id, balance: change.balance, delta: change.delta },
         passMessage: true,
       });
@@ -622,8 +653,8 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
         userId: change.userId,
         merchantId: change.merchantId,
         type: "points_earned",
-        title: `+${balanceText(change.delta, term)} at ${m.name}`,
-        body: `You now have ${balanceText(change.balance, term)}.${next ? ` ${balanceText(next.cost - change.balance, term)} to ${next.name}.` : ""}`,
+        title: translate(loc, "sh.n.earnTitle", { amount: units(change.delta), shop: m.name }),
+        body: `${translate(loc, "sh.n.earnBody", { balance: units(change.balance) })}${next ? ` ${translate(loc, "sh.n.earnNext", { need: units(next.cost - change.balance), reward: next.name })}` : ""}`,
         data: { delta: change.delta, balance: change.balance, terminology: term },
       });
     }
@@ -634,7 +665,7 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
       userId: change.userId,
       merchantId: change.merchantId,
       type: "passport_progress",
-      title: "Neighbourhood passport",
+      title: translate(loc, "sh.n.passportTitle"),
       body: change.messages.join(" "),
       data: {},
     });

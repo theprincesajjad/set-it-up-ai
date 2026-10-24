@@ -18,6 +18,7 @@ import {
   setBetaOptIn,
   updateProfile,
 } from "../../services/merchant.js";
+import { dismissUpsell, setNudges } from "../../services/onboarding.js";
 import { recordFeatureInterest, requireFeature } from "../../services/features.js";
 import registerCustomers from "./customers.js";
 import registerProgram from "./program.js";
@@ -86,6 +87,17 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
     const { step } = parse(merchantApi.completeStepBody, req.body);
     return completeOnboardingStep(ctx, s.merchant.id, s.user.id, step);
+  });
+
+  app.post("/merchants/:merchantId/onboarding/upsell/dismiss", async (req: MerchantReq) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    return dismissUpsell(ctx, s.merchant.id, s.user.id);
+  });
+
+  app.put("/merchants/:merchantId/onboarding/nudges", async (req: MerchantReq) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    const { enabled } = parse(merchantApi.setNudgesBody, req.body);
+    return setNudges(ctx, s.merchant.id, s.user.id, enabled);
   });
 
   app.get("/merchants/:merchantId/features", async (req: MerchantReq) => {

@@ -25,6 +25,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
+import { checkInStatesFor } from "./rep.js";
 import { getRolloutStages } from "./features.js";
 import { iso, requirePhone } from "./merchant.js";
 import { decodeCursor, encodeCursor } from "./merchant-customers.js";
@@ -216,7 +217,13 @@ async function hoodCounts(db: DbOrTx) {
     .groupBy(merchants.neighbourhoodId);
   return new Map(rows.map((r) => [r.id, r]));
 }
-const serializeHood = (h: HoodRow, c?: { n: number; activated: number }): adminApi.AdminNeighbourhood => ({
+async function repNames(db: DbOrTx, ids: (string | null)[]) {
+  const want = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!want.length) return new Map<string, string | null>();
+  const rows = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, want));
+  return new Map(rows.map((r) => [r.id, r.name ?? r.email]));
+}
+const serializeHood = (h: HoodRow, c?: { n: number; activated: number }, reps?: Map<string, string | null>): adminApi.AdminNeighbourhood => ({
   id: h.id,
   slug: h.slug,
   name: h.name,
@@ -233,6 +240,11 @@ const serializeHood = (h: HoodRow, c?: { n: number; activated: number }): adminA
   storefrontEstimate: h.storefrontEstimate,
   biaMemberCount: h.biaMemberCount,
   notes: h.notes,
+  opensOn: h.opensOn,
+  streetDayOn: h.streetDayOn,
+  streetDayRepId: h.streetDayRepId,
+  streetDayRepName: h.streetDayRepId ? reps?.get(h.streetDayRepId) ?? null : null,
+  targetShops: h.targetShops,
   merchants: num(c?.n),
   activatedMerchants: num(c?.activated),
   createdAt: h.createdAt.toISOString(),
@@ -240,13 +252,14 @@ const serializeHood = (h: HoodRow, c?: { n: number; activated: number }): adminA
 
 export async function listNeighbourhoods(ctx: AppContext) {
   const [rows, counts] = await Promise.all([ctx.db.select().from(neighbourhoods).orderBy(asc(neighbourhoods.name)), hoodCounts(ctx.db)]);
-  return rows.map((h) => serializeHood(h, counts.get(h.id)));
+  const reps = await repNames(ctx.db, rows.map((h) => h.streetDayRepId));
+  return rows.map((h) => serializeHood(h, counts.get(h.id), reps));
 }
 
 async function getHood(ctx: AppContext, id: string) {
   const [h] = await ctx.db.select().from(neighbourhoods).where(eq(neighbourhoods.id, id)).limit(1);
   if (!h) throw notFound("Neighbourhood");
-  return serializeHood(h, (await hoodCounts(ctx.db)).get(h.id));
+  return serializeHood(h, (await hoodCounts(ctx.db)).get(h.id), await repNames(ctx.db, [h.streetDayRepId]));
 }
 
 export async function createNeighbourhood(ctx: AppContext, actorUserId: string, body: z.infer<typeof adminApi.createNeighbourhoodBody>) {
@@ -260,6 +273,10 @@ export async function createNeighbourhood(ctx: AppContext, actorUserId: string, 
 export async function updateNeighbourhood(ctx: AppContext, actorUserId: string, id: string, body: z.infer<typeof adminApi.updateNeighbourhoodBody>) {
   const set = { ...body };
   if (body.biaContactPhone) set.biaContactPhone = requirePhone(body.biaContactPhone);
+  if (body.streetDayRepId) {
+    const [rep] = await ctx.db.select({ role: users.platformRole }).from(users).where(eq(users.id, body.streetDayRepId)).limit(1);
+    if (!rep || rep.role === "none") throw badRequest("The street-day rep must be a rep or an admin");
+  }
   if (body.slug) {
     const [clash] = await ctx.db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, body.slug)).limit(1);
     if (clash && clash.id !== id) throw conflict(`A neighbourhood with slug "${body.slug}" already exists`);
@@ -413,6 +430,7 @@ export async function getMerchant(ctx: AppContext, id: string): Promise<adminApi
     staff,
     locations: num(locs?.n),
     overrides: ov.map((o) => ({ key: o.key, enabled: o.enabled, reason: o.reason })),
+    checkIns: await checkInStatesFor(ctx.db, m, ctx.now()),
   };
 }
 

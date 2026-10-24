@@ -8,6 +8,7 @@ import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { WalletPassButton } from "../features/customer/WalletPassButton";
 import { formatPts, groupMemberCode, shortName } from "../lib/award";
+import { useLocale } from "../lib/i18n";
 import { api } from "../state/api";
 import { useOnline } from "../state/network";
 import { qk } from "../state/query";
@@ -23,6 +24,7 @@ import { Banner, Button, Chip, CloseGlyph, DiscountCard, hairline, QrCode, Segme
  */
 export default function CardSheet() {
   const { c } = useTheme();
+  const { t: lt } = useLocale();
   const { width } = useWindowDimensions();
   const { user } = useSession();
   const online = useOnline();
@@ -82,19 +84,19 @@ export default function CardSheet() {
       {web ? <View style={[styles.grabber, { backgroundColor: "#E0E0DE" }]} /> : null}
       <View style={styles.head}>
         <Text style={disp(17, 800, 21)} accessibilityRole="header">
-          my card
+          {lt("sh.card.title")}
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={[styles.close, { backgroundColor: c.bgSubtle }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={lt("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={[styles.close, { backgroundColor: c.bgSubtle }]}>
           <CloseGlyph size={16} color={c.fg} />
         </Pressable>
       </View>
-      {!online ? <View style={{ alignSelf: "stretch", marginTop: 12 }}><Banner variant="neutral">Offline · your card still works</Banner></View> : null}
+      {!online ? <View style={{ alignSelf: "stretch", marginTop: 12 }}><Banner variant="neutral">{lt("sh.card.offline")}</Banner></View> : null}
       {discountCards.length > 0 ? (
         <View style={{ alignSelf: "stretch", marginTop: 16 }}>
           <SegmentedControl
             options={[
-              { value: "card", label: "Card" },
-              { value: "discounts", label: "Discount cards" },
+              { value: "card", label: lt("sh.card.tabCard") },
+              { value: "discounts", label: lt("sh.card.tabDiscounts") },
             ]}
             value={tab}
             onChange={setTab}
@@ -103,9 +105,9 @@ export default function CardSheet() {
       ) : null}
       {tab === "card" ? (
         <>
-          <Text style={[disp(28, 800, 32, -0.01), { marginTop: 40, textAlign: "center" }]}>show this at the counter</Text>
+          <Text style={[disp(28, 800, 32, -0.01), { marginTop: 40, textAlign: "center" }]}>{lt("sh.card.show")}</Text>
           <Text style={[ui(15, 400, 20), { marginTop: 8, textAlign: "center" }]} rawColor={c.fgMuted}>
-            One card for every shop on the street.
+            {lt("sh.card.sub")}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -120,7 +122,7 @@ export default function CardSheet() {
             {card ? groupMemberCode(card.memberCode) : "•••• ••••"}
           </Text>
           <Text style={[ui(13, 400, 17), { marginTop: 4, textAlign: "center" }]} rawColor={c.fgMuted}>
-            {`${shortName(card?.name ?? user?.name)} · staff can type this code`}
+            {lt("sh.card.staffCode", { name: shortName(card?.name ?? user?.name) })}
           </Text>
           {!card && isError ? <View style={{ alignSelf: "stretch", marginTop: 12 }}><Banner variant="danger">{t("err.network")}</Banner></View> : null}
           <View style={styles.bottom}>
@@ -128,10 +130,10 @@ export default function CardSheet() {
             {memberships.length > 0 ? (
               <View style={styles.claim}>
                 <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
-                  Forgot to scan?
+                  {lt("sh.card.forgot")}
                 </Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Forgot to scan? Claim a purchase" onPress={() => setClaimOpen(true)} hitSlop={10}>
-                  <Text style={ui(13, 600, 17)}>Claim a purchase</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={10}>
+                  <Text style={ui(13, 600, 17)}>{lt("sh.card.claim")}</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -163,20 +165,20 @@ export default function CardSheet() {
       <Sheet
         visible={claimOpen}
         onClose={() => setClaimOpen(false)}
-        title="Claim a purchase"
+        title={lt("sh.card.claimTitle")}
         footer={
           <Button fullWidth loading={claimBusy} disabled={claimCode.trim().length < 3 || !online} onPress={claim}>
-            Claim points
+            {lt("sh.card.claimPoints")}
           </Button>
         }
       >
-        <Text color="fgMuted">Type the receipt or order number from your receipt. Works for shops that connect their till.</Text>
+        <Text color="fgMuted">{lt("sh.card.claimHelp")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {memberships.map((m) => (
             <Chip key={m.id} label={m.merchant.name} selected={(claimShop ?? memberships[0]?.merchant.id) === m.merchant.id} onPress={() => setClaimShop(m.merchant.id)} />
           ))}
         </View>
-        <TextField label="Receipt number" value={claimCode} onChangeText={setClaimCode} autoCapitalize="characters" autoCorrect={false} maxLength={40} />
+        <TextField label={lt("sh.card.receipt")} value={claimCode} onChangeText={setClaimCode} autoCapitalize="characters" autoCorrect={false} maxLength={40} />
         {claimError ? <Banner variant="danger">{claimError}</Banner> : null}
       </Sheet>
     </View>

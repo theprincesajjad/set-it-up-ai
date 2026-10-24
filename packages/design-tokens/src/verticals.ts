@@ -81,6 +81,8 @@ interface Seed {
 const seeds: Record<Vertical, Seed> = {
   cafe: { emoji: "☕", icon: "coffee", category: "coffee" },
   restaurant: { emoji: "🍽️", icon: "utensils-crossed", category: "eat" },
+  restaurant_south_asian: { emoji: "🍛", icon: "utensils-crossed", category: "eat" },
+  tiffin: { emoji: "🍱", icon: "package", category: "eat" },
   bakery: { emoji: "🥐", icon: "croissant", category: "bakery" },
   bar: { emoji: "🍻", icon: "beer", category: "eat" },
   grocery: { emoji: "🧺", icon: "shopping-basket", category: "shops" },

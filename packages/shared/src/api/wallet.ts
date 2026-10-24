@@ -34,6 +34,8 @@ export interface WalletSummary {
   rewardsReady?: number;
   /** Ordered: shops with rewards ready first, then most recent visit. */
   shops: WalletShopBalance[];
+  /** The shopper's language (en, hi, ur, pa): the pass text is written in it. Absent = English. */
+  locale?: "en" | "hi" | "ur" | "pa";
 }
 
 /** Brand wording for the wallet buttons (Apple / Google brand guidelines). */

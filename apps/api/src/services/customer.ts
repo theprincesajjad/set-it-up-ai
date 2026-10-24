@@ -5,6 +5,8 @@
  */
 import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import QRCode from "qrcode";
+import { notifyPassUpdate } from "./wallet.js";
+import { userLocale } from "./notifications.js";
 import {
   auditLogs,
   discountCards,
@@ -31,7 +33,7 @@ import {
   type DbOrTx,
   type Tx,
 } from "@ll/db";
-import { BRAND, staffApi, type customerApi } from "@ll/shared";
+import { BRAND, staffApi, t as translate, unitLabel, type customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
@@ -135,6 +137,8 @@ export async function updateProfile(ctx: AppContext, userId: string, body: custo
     }
   }
   await ctx.db.update(users).set(patch).where(eq(users.id, u.id));
+  // The pass text is written in the shopper's language: a language change re-issues the pass on their devices.
+  if (body.locale !== undefined && body.locale !== u.locale) await notifyPassUpdate(ctx, userId, { force: true });
   return getProfile(ctx, userId);
 }
 
@@ -473,14 +477,16 @@ export async function getOrCreateReferral(ctx: AppContext, userId: string, membe
     .from(referrals)
     .where(eq(referrals.referrerMemberId, row.member.id));
   const bonus = row.program?.active ? row.program.referralBonus : 0;
-  const shareUrl = `${ctx.config.publicWebUrl}/shops/${row.merchant.slug}?ref=${code}`;
+  // The invite is written in the inviter's language, and the link opens the friend's page in it too.
+  const loc = await userLocale(ctx, userId);
+  const shareUrl = `${ctx.config.publicWebUrl}/shops/${row.merchant.slug}?ref=${code}${loc === "en" ? "" : `&lang=${loc}`}`;
   return {
     code,
     shareUrl,
     shareText:
       bonus > 0
-        ? `Join me at ${row.merchant.name} on ${BRAND.name} and we both get ${bonus} ${terminologyOf(row.program)}: ${shareUrl}`
-        : `Join me at ${row.merchant.name} on ${BRAND.name}: ${shareUrl}`,
+        ? translate(loc, "sh.inv.shareBonus", { shop: row.merchant.name, brand: BRAND.name, bonus: unitLabel(loc, terminologyOf(row.program), bonus), link: shareUrl })
+        : translate(loc, "sh.inv.shareNoBonus", { shop: row.merchant.name, brand: BRAND.name, link: shareUrl }),
     bonusPoints: bonus,
     stats: { invited: Number(stats?.invited ?? 0), rewarded: Number(stats?.rewarded ?? 0) },
   };

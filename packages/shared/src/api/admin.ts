@@ -9,6 +9,27 @@ import { phoneSchema, uuidSchema } from "./common.js";
 const page = { limit: z.coerce.number().int().min(1).max(200).default(50), cursor: z.string().optional() };
 const nullableText = (max: number) => z.string().trim().max(max).nullable();
 
+
+// ---------------------------------------------------------------------------
+// Onboarding funnel (launch plan: >= 60% of shops activate within 30 days)
+// ---------------------------------------------------------------------------
+export const onboardingFunnelQuery = z.object({ days: z.coerce.number().int().min(7).max(365).default(90) });
+export interface OnboardingFunnel {
+  days: number;
+  signedUp: number;
+  steps: { key: "signed_up" | "first_stamp" | "members_10" | "activated"; label: string; count: number; pct: number }[];
+  /** Share of shops signed at least 30 days ago that reached 25 members inside 30 days. Null until one is old enough. */
+  activatedIn30dPct: number | null;
+  medianMinutesToFirstStamp: number | null;
+  /** No first stamp 48 hours after signup. */
+  stuckNoStamp: number;
+  /** Shops past day 14 with fewer than 12 members. */
+  behindAtDay14: number;
+  byVertical: { vertical: string; signedUp: number; activated: number; pct: number }[];
+  /** Who to phone first. */
+  callList: { merchantId: string; name: string; vertical: string; day: number; members: number; reason: string; phone: string | null; ownerName: string | null }[];
+}
+
 // ---------------------------------------------------------------------------
 // Network dashboard
 // ---------------------------------------------------------------------------
@@ -109,6 +130,11 @@ const neighbourhoodFields = {
   /** How many members the BIA has (the "of 74" on its overview). */
   biaMemberCount: z.number().int().min(0).max(100000).nullable(),
   notes: nullableText(5000),
+  /** Area plan: opens on / street day (YYYY-MM-DD), who walks it, shop target (~30). */
+  opensOn: z.iso.date().nullable(),
+  streetDayOn: z.iso.date().nullable(),
+  streetDayRepId: uuidSchema.nullable(),
+  targetShops: z.number().int().min(1).max(500),
 };
 export const createNeighbourhoodBody = z.object(neighbourhoodFields).partial().required({ slug: true, name: true });
 export const updateNeighbourhoodBody = z.object(neighbourhoodFields).partial();
@@ -129,6 +155,11 @@ export interface AdminNeighbourhood {
   storefrontEstimate: number | null;
   biaMemberCount: number | null;
   notes: string | null;
+  opensOn: string | null;
+  streetDayOn: string | null;
+  streetDayRepId: string | null;
+  streetDayRepName: string | null;
+  targetShops: number;
   merchants: number;
   activatedMerchants: number;
   createdAt: string;
@@ -208,6 +239,8 @@ export interface AdminMerchantDetail extends AdminMerchant {
   staff: { userId: string; name: string | null; email: string | null; role: "owner" | "manager" | "staff" }[];
   locations: number;
   overrides: { key: string; enabled: boolean; reason: string | null }[];
+  /** Day-7 and day-30 follow-up calls: due date and whether one was logged. */
+  checkIns: { day: 7 | 30; dueAt: string; due: boolean; doneAt: string | null }[];
 }
 export const setMerchantStatusBody = z.object({
   status: z.enum(["onboarding", "active", "paused", "closed"]),
@@ -255,4 +288,93 @@ export interface AuditEntry {
   data: unknown;
   ip: string | null;
   createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Founder's overview, money, costs, support sessions
+// ---------------------------------------------------------------------------
+export const AT_RISK_REASONS = ["payment_failed", "stalled_setup", "quiet", "slow_activation", "sms_cap"] as const;
+export type AtRiskReason = (typeof AT_RISK_REASONS)[number];
+export interface AtRiskShop {
+  merchantId: string;
+  name: string;
+  neighbourhoodName: string | null;
+  reason: AtRiskReason;
+  /** One plain sentence: what is wrong and how long. */
+  detail: string;
+  daysSinceSignup: number;
+  activeMembers: number;
+  target: number;
+}
+export interface AreaFunnel {
+  neighbourhoodId: string;
+  name: string;
+  status: z.infer<typeof neighbourhoodStatusSchema>;
+  opensOn: string | null;
+  streetDayOn: string | null;
+  targetShops: number;
+  /** Leads still being worked or won (not lost). */
+  leads: number;
+  contacted: number;
+  /** Shops created in the area (merchant rows, not closed). */
+  signed: number;
+  activated: number;
+  /** signed ÷ targetShops, 0..1+. */
+  signedPct: number;
+  /** Day 7 / day 30 calls due and not logged. */
+  checkInsDue: number;
+}
+export interface AdminOverview {
+  generatedAt: string;
+  pace: { month: number; plannedEndOfMonth: number; plannedToday: number; actual: number; delta: number; areasOpened: number; areasPlanned: number };
+  money: { mrrCents: number; payingShops: number; byPlan: { plus: number; pro: number; restaurant: number }; feeRevenue30dCents: number; volume30dCents: number };
+  activation: { signed: number; activated: number; rate: number; goal: number };
+  costs: { monthCents: number; perShopCents: number; shops: number };
+  funnel: AreaFunnel[];
+  atRisk: { total: number; items: AtRiskShop[] };
+}
+export interface ShopCostRow {
+  merchantId: string;
+  name: string;
+  plan: PlanId;
+  smsCredits: number;
+  whatsappMessages: number;
+  messagingCents: number;
+  infraCents: number;
+  costCents: number;
+  subscriptionCents: number;
+  feeCents30d: number;
+  /** subscription + fees − cost. */
+  marginCents: number;
+}
+export interface AdminCosts {
+  generatedAt: string;
+  totals: { smsCredits: number; whatsappMessages: number; costCents: number; subscriptionCents: number; feeCents30d: number; marginCents: number; shops: number };
+  shops: ShopCostRow[];
+  assumptions: { smsSegmentCents: number; whatsappMessageCents: number; infraPerShopCents: number };
+}
+export const chargeModeSchema = z.enum(["destination", "direct"]);
+export interface MerchantMoney {
+  mrrCents: number;
+  subscriptionStatus: string | null;
+  renewsOn: string | null;
+  fees30dCents: number;
+  volume30dCents: number;
+  costs: { smsCredits: number; whatsappMessages: number; messagingCents: number; infraCents: number; totalCents: number };
+  chargeMode: z.infer<typeof chargeModeSchema>;
+  stripe: { connected: boolean; chargesEnabled: boolean; payoutsEnabled: boolean };
+}
+export const startSupportSessionBody = z.object({ reason: z.string().trim().min(5, "Give a reason").max(500) });
+export const SUPPORT_SESSION_MINUTES = 30;
+export interface SupportSession {
+  id: string;
+  adminUserId: string;
+  adminName: string | null;
+  merchantId: string;
+  reason: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  /** Not ended and not expired. */
+  active: boolean;
 }

@@ -30,6 +30,10 @@ export type LeadStage = z.infer<typeof leadStageSchema>;
 export const LEAD_ACTIVITY_KINDS = ["call", "email", "visit", "note"] as const;
 export const leadActivityKindSchema = z.enum(LEAD_ACTIVITY_KINDS);
 
+export const LEAD_SOURCES = ["website", "street", "phone", "referral", "bia"] as const;
+export const SETUP_CHANNELS = ["phone", "whatsapp", "video"] as const;
+export type SetupChannel = (typeof SETUP_CHANNELS)[number];
+
 const leadFields = {
   businessName: z.string().trim().min(1).max(160),
   vertical: z.string().trim().max(40).nullable(),
@@ -44,6 +48,14 @@ const leadFields = {
   nextActionAt: z.iso.datetime({ offset: true }).nullable(),
   /** Admins can assign; reps can only assign to themselves. */
   assignedRepId: uuidSchema.nullable(),
+  /** website | street | phone | referral | bia. */
+  source: z.enum(LEAD_SOURCES).nullable(),
+  /** Pin dropped from the rep's phone at the door. */
+  lat: z.number().min(-90).max(90).nullable(),
+  lng: z.number().min(-180).max(180).nullable(),
+  /** Remote setup session booked with the owner. */
+  setupAt: z.iso.datetime({ offset: true }).nullable(),
+  setupChannel: z.enum(SETUP_CHANNELS).nullable(),
 };
 export const createLeadBody = z.object(leadFields).partial().required({ businessName: true });
 export const updateLeadBody = z.object({ ...leadFields, stage: leadStageSchema }).partial();
@@ -125,6 +137,11 @@ export interface Lead {
   eventDate: string | null;
   boardMeetingAt: string | null;
   memberCount: number | null;
+  source: (typeof LEAD_SOURCES)[number] | null;
+  lat: number | null;
+  lng: number | null;
+  setupAt: string | null;
+  setupChannel: SetupChannel | null;
   activityCount: number;
   lastActivityAt: string | null;
   createdAt: string;
@@ -208,3 +225,73 @@ export interface CommissionSummary {
 }
 
 export type RepQrKit = QrKit;
+
+// ---------------------------------------------------------------------------
+// Street day, outcomes (offline-safe), today, proof
+// ---------------------------------------------------------------------------
+/** What happened at the door. Each one is one tap on the phone. */
+export const LEAD_OUTCOMES = ["signed_up", "setup_call", "come_back", "not_interested", "not_in"] as const;
+export type LeadOutcome = (typeof LEAD_OUTCOMES)[number];
+export const OUTCOME_LABEL: Record<LeadOutcome, string> = {
+  signed_up: "Signed up",
+  setup_call: "Setup call booked",
+  come_back: "Come back",
+  not_interested: "Not interested",
+  not_in: "Not in",
+};
+
+export const leadOutcomeBody = z.object({
+  outcome: z.enum(LEAD_OUTCOMES),
+  /** Generated on the phone; the same id sent twice records one outcome (offline replays). */
+  clientId: z.string().trim().min(8).max(80),
+  /** When it happened on the phone (ISO); defaults to now. */
+  at: z.iso.datetime({ offset: true }).optional(),
+  notes: z.string().trim().max(2000).optional(),
+  /** come_back: when to return (default in 2 days). */
+  nextActionAt: z.iso.datetime({ offset: true }).optional(),
+  /** setup_call: when and how. */
+  setupAt: z.iso.datetime({ offset: true }).optional(),
+  setupChannel: z.enum(SETUP_CHANNELS).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+});
+export type LeadOutcomeBody = z.infer<typeof leadOutcomeBody>;
+export const OUTCOME_SYNC_MAX = 100;
+export const outcomeSyncBody = z.object({ items: z.array(leadOutcomeBody.extend({ leadId: uuidSchema })).min(1).max(OUTCOME_SYNC_MAX) });
+export interface OutcomeSyncResult {
+  results: { clientId: string; leadId: string; status: "recorded" | "duplicate" | "not_found" }[];
+}
+
+export interface StreetStop extends Lead {
+  /** 1-based position in today's walking order (open stops only). */
+  order: number | null;
+  todayOutcome: LeadOutcome | null;
+}
+export interface StreetDay {
+  area: { id: string; name: string; streetDayOn: string | null; targetShops: number; storefrontEstimate: number | null } | null;
+  /** Open stops in walking order, then the ones already visited today. */
+  stops: StreetStop[];
+  counts: { total: number; visited: number; signedUp: number; setupCalls: number; comeBack: number; notInterested: number; notIn: number; left: number };
+  generatedAt: string;
+}
+
+export interface RepToday {
+  repName: string | null;
+  streetDay: { areaId: string; areaName: string; streetDayOn: string | null; visited: number; total: number; isToday: boolean } | null;
+  checkInsDue: { merchantId: string; name: string; day: 7 | 30; daysSinceSignup: number; activeMembers: number; target: number }[];
+  setupSessions: { leadId: string; businessName: string; setupAt: string; setupChannel: SetupChannel | null; phone: string | null }[];
+  leadsDue: Lead[];
+  websiteLeads: Lead[];
+}
+
+/** Live numbers a rep shows at the door, computed from the real network. */
+export interface PitchProof {
+  area: { id: string; name: string } | null;
+  shopsLive: number;
+  customers: number;
+  multiShopPct: number;
+  visitsLast7Days: number;
+  topShops: { name: string; vertical: string; members: number }[];
+  /** The whole network, for areas with too few shops of their own to talk about yet. */
+  network: { shopsLive: number; customers: number };
+}

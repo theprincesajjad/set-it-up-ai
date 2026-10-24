@@ -12,7 +12,7 @@
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gt, inArray, isNotNull, ne } from "drizzle-orm";
 import { locations, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, rewards, users, walletDeviceRegistrations, walletPasses } from "@ll/db";
-import { walletApi } from "@ll/shared";
+import { normalizeLocale, t as translate, walletApi, type Locale } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { hmacSha256, randomToken, safeEqual } from "../lib/crypto.js";
 import { HttpError, notFound } from "../lib/errors.js";
@@ -70,6 +70,7 @@ export async function walletSummary(ctx: AppContext, userId: string): Promise<wa
     memberCode: user.memberCode,
     qrValue: walletApi.memberQrValue(user.memberCode),
     name: user.name,
+    locale: normalizeLocale(user.locale) ?? "en",
     shopCount: shops.length,
     totalPoints: shops.reduce((s, x) => s + Math.max(0, x.balance), 0),
     rewardsReady: shops.reduce((s, x) => s + x.rewardsReady, 0),
@@ -88,7 +89,7 @@ const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: numbe
  * ("Show this at Pinecone to earn"). "Near" = the customer's home neighbourhood
  * centre, or else their most recently visited shop.
  */
-export async function passLocations(ctx: AppContext, userId: string, max = 10): Promise<PassLocation[]> {
+export async function passLocations(ctx: AppContext, userId: string, max = 10, locale: Locale = "en"): Promise<PassLocation[]> {
   const rows = await ctx.db
     .select({ name: merchants.name, lat: locations.lat, lng: locations.lng, lastVisitAt: merchantMembers.lastVisitAt })
     .from(merchantMembers)
@@ -109,7 +110,7 @@ export async function passLocations(ctx: AppContext, userId: string, max = 10): 
     .map((r) => ({ r, d: haversine(origin, { lat: r.lat!, lng: r.lng! }) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, max)
-    .map(({ r }) => ({ latitude: Number(r.lat!.toFixed(6)), longitude: Number(r.lng!.toFixed(6)), relevantText: `Show this at ${r.name} to earn` }));
+    .map(({ r }) => ({ latitude: Number(r.lat!.toFixed(6)), longitude: Number(r.lng!.toFixed(6)), relevantText: translate(locale, "sh.pass.nearby", { shop: r.name }) }));
 }
 
 export async function getOrCreatePass(ctx: AppContext, userId: string, platform: Platform): Promise<WalletPass> {
@@ -139,7 +140,8 @@ export function walletNotConfigured(platform: Platform, missing: string[]) {
 export async function applePassBuffer(ctx: AppContext, pass: WalletPass): Promise<Buffer> {
   const signer = appleSignerFromConfig(ctx.config);
   if (!signer) throw walletNotConfigured("apple", missingAppleConfig(ctx.config));
-  const [summary, locs] = await Promise.all([walletSummary(ctx, pass.userId), passLocations(ctx, pass.userId)]);
+  const summary = await walletSummary(ctx, pass.userId);
+  const locs = await passLocations(ctx, pass.userId, 10, summary.locale ?? "en");
   return buildPkpass(ctx.config, signer, { serialNumber: pass.serialNumber, authToken: pass.authToken, summary, locations: locs });
 }
 
@@ -151,7 +153,8 @@ export function missingGoogleConfig(ctx: AppContext): string[] {
 export async function googleSaveLink(ctx: AppContext, userId: string): Promise<string> {
   if (!googleConfigured(ctx.config)) throw walletNotConfigured("google", missingGoogleConfig(ctx));
   await getOrCreatePass(ctx, userId, "google");
-  const [summary, locs] = await Promise.all([walletSummary(ctx, userId), passLocations(ctx, userId)]);
+  const summary = await walletSummary(ctx, userId);
+  const locs = await passLocations(ctx, userId, 10, summary.locale ?? "en");
   return googleSaveUrl(ctx.config, userId, { summary, locations: locs }, ctx.now());
 }
 
@@ -242,7 +245,8 @@ export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { 
   try {
     const existing = await ctx.db.select({ id: walletPasses.id, platform: walletPasses.platform }).from(walletPasses).where(eq(walletPasses.userId, userId));
     if (!existing.length) return undefined;
-    const [summary, locs] = await Promise.all([walletSummary(ctx, userId), passLocations(ctx, userId)]);
+    const summary = await walletSummary(ctx, userId);
+    const locs = await passLocations(ctx, userId, 10, summary.locale ?? "en");
     const hash = createHash("sha1").update(JSON.stringify({ summary, locs })).digest("hex");
     let seen = lastContent.get(ctx);
     if (!seen) lastContent.set(ctx, (seen = new Map()));

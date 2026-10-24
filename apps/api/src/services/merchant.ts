@@ -35,6 +35,7 @@ import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { getMerchantFeatures, getRolloutStages } from "./features.js";
 import { writeAudit } from "./admin-audit.js";
+import { getOnboardingChecklist, recordMilestone, visitedMembers } from "./onboarding.js";
 
 export type Merchant = typeof merchants.$inferSelect;
 export type LocationRow = typeof locations.$inferSelect;
@@ -345,6 +346,7 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
       })
       .returning();
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);
+    await recordMilestone(tx, m!.id, "signed_up", ctx.now());
     await writeAudit(tx, {
       actorUserId: args.actorUserId,
       merchantId: m!.id,
@@ -382,73 +384,18 @@ export async function setBetaOptIn(ctx: AppContext, merchantId: string, actorUse
 }
 
 // ---------------------------------------------------------------------------
-// Onboarding checklist
+// Onboarding checklist (the rules and the owner's activation view live in onboarding.ts)
 // ---------------------------------------------------------------------------
-const STEP_LABELS: Record<merchantApi.OnboardingStepKey, string> = {
-  profile: "Add your logo and description",
-  program: "Set your earn rules",
-  rewards: "Pick your rewards",
-  staff: "Add your staff",
-  qr_kit: "Print your counter QR kit",
-  first_members: "Sign up your first members",
-};
-const STEP_ORDER: merchantApi.OnboardingStepKey[] = ["profile", "program", "rewards", "staff", "qr_kit", "first_members"];
-
 export async function countActiveMembers(db: DbOrTx, merchantId: string): Promise<number> {
-  const [row] = await db
-    .select({ n: count() })
-    .from(merchantMembers)
-    .where(and(eq(merchantMembers.merchantId, merchantId), gte(merchantMembers.visitCount, 1)));
-  return Number(row?.n ?? 0);
+  return visitedMembers(db, merchantId);
 }
 
-export async function getOnboardingChecklist(ctx: AppContext, merchantId: string): Promise<merchantApi.OnboardingChecklist> {
-  const db = ctx.db;
-  const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  if (!m) throw notFound("Merchant");
-  const [[program], [rewardRow], [staffRow], marks, activeMembers] = await Promise.all([
-    db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchantId)).limit(1),
-    db.select({ n: count() }).from(rewards).where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true))),
-    db.select({ n: count() }).from(merchantStaff).where(eq(merchantStaff.merchantId, merchantId)),
-    db
-      .select({ data: auditLogs.data })
-      .from(auditLogs)
-      .where(and(eq(auditLogs.merchantId, merchantId), eq(auditLogs.action, "onboarding.step_completed"))),
-    countActiveMembers(db, merchantId),
-  ]);
-  const marked = new Set(marks.map((r) => (r.data as { step?: string } | null)?.step).filter(Boolean));
-  const target = ctx.config.activationThreshold;
-  const done: Record<merchantApi.OnboardingStepKey, boolean> = {
-    profile: (!!m.description && !!m.logoUrl) || marked.has("profile"),
-    program: (!!program && program.active) || marked.has("program"),
-    rewards: Number(rewardRow?.n ?? 0) > 0 || marked.has("rewards"),
-    staff: Number(staffRow?.n ?? 0) > 1 || marked.has("staff"),
-    qr_kit: marked.has("qr_kit"),
-    first_members: !!m.activatedAt || activeMembers >= target,
-  };
-  const detail: Record<merchantApi.OnboardingStepKey, string | null> = {
-    profile: null,
-    program: program ? `${program.earnType.replace("_", " ")} · ${program.terminology}` : null,
-    rewards: `${Number(rewardRow?.n ?? 0)} active reward(s)`,
-    staff: `${Number(staffRow?.n ?? 0)} team member(s)`,
-    qr_kit: null,
-    first_members: `${Math.min(activeMembers, target)} of ${target} members have visited`,
-  };
-  const steps = STEP_ORDER.map((key) => ({ key, label: STEP_LABELS[key], done: done[key], detail: detail[key] }));
-  const current = steps.find((s) => !s.done)?.key ?? "done";
-  if (m.onboardingStep !== current) await db.update(merchants).set({ onboardingStep: current }).where(eq(merchants.id, merchantId));
-  return {
-    steps,
-    currentStep: current,
-    percentComplete: Math.round((steps.filter((s) => s.done).length / steps.length) * 100),
-    activeMembers,
-    activationTarget: target,
-    activatedAt: iso(m.activatedAt),
-  };
-}
+export { getOnboardingChecklist };
 
 export async function completeOnboardingStep(ctx: AppContext, merchantId: string, actorUserId: string, step: string) {
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "onboarding.step_completed", entity: "merchant", entityId: merchantId, data: { step } });
+  const key = ({ qr_kit: "qr_printed", staff: "staff_added", pos: "pos_connected" } as const)[step as "qr_kit" | "staff" | "pos"];
+  if (key) await recordMilestone(ctx.db, merchantId, key, ctx.now());
   return getOnboardingChecklist(ctx, merchantId);
 }
 

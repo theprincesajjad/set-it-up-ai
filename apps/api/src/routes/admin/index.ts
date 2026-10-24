@@ -5,6 +5,7 @@ import type { AppContext } from "../../context.js";
 import { requirePlatformRole } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/admin.js";
+import * as ops from "../../services/admin-ops.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
 type Req<P = object> = FastifyRequest<{ Params: P }>;
@@ -20,10 +21,18 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
   });
 }
 
+import { onboardingFunnel } from "../../services/onboarding.js";
+
 async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const actor = (req: FastifyRequest) => requirePlatformRole(req, "admin").id;
 
   app.get("/admin/dashboard", async () => svc.networkDashboard(ctx));
+  app.get("/admin/onboarding/funnel", async (req) => onboardingFunnel(ctx, parse(adminApi.onboardingFunnelQuery, req.query).days));
+
+  // ---- Founder's overview, costs, at-risk ----
+  app.get("/admin/overview", async () => ops.adminOverview(ctx));
+  app.get("/admin/at-risk", async () => ops.atRiskAll(ctx));
+  app.get("/admin/costs", async () => ops.adminCosts(ctx));
 
   // ---- Feature rollout ----
   app.get("/admin/features", async () => ({ items: await svc.listFeatures(ctx), nextCursor: null }));
@@ -76,6 +85,16 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     const { status, reason } = parse(adminApi.setMerchantStatusBody, req.body);
     return svc.setMerchantStatus(ctx, actor(req), req.params.merchantId, status, reason);
   });
+
+  app.get("/admin/merchants/:merchantId/money", async (req: Req<{ merchantId: string }>) => ops.merchantMoney(ctx, req.params.merchantId));
+
+  // ---- Support sessions ----
+  app.get("/admin/support-sessions", async (req) => ops.listSupportSessions(ctx, parse(z.object({ merchantId: z.uuid().optional() }), req.query).merchantId));
+  app.post("/admin/merchants/:merchantId/support-sessions", async (req: Req<{ merchantId: string }>, reply) => {
+    reply.status(201);
+    return ops.startSupportSession(ctx, actor(req), req.params.merchantId, parse(adminApi.startSupportSessionBody, req.body).reason, req.ip);
+  });
+  app.post("/admin/support-sessions/:sessionId/end", async (req: Req<{ sessionId: string }>) => ops.endSupportSession(ctx, actor(req), req.params.sessionId));
 
   // ---- Users ----
   app.get("/admin/users", async (req) => svc.listUsers(ctx, parse(adminApi.listUsersQuery, req.query)));

@@ -94,6 +94,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.put<{ Params: { merchantId: string } }>("/admin/merchants/:merchantId/charge-mode", async (req) => {
     const admin = requirePlatformRole(req, "admin");
     const merchantId = parse(z.uuid(), req.params.merchantId);
-    return setChargeMode(ctx, admin.id, merchantId, parse(billingApi.setChargeModeBody, req.body).chargeMode);
+    const body = parse(billingApi.setChargeModeBody, req.body);
+    return setChargeMode(ctx, admin.id, merchantId, body.chargeMode, body.reason);
   });
 }

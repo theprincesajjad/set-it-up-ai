@@ -1,4 +1,5 @@
 import { blur, layout, shadowFloatDark, shadows } from "@ll/design-tokens";
+import type { MessageKey } from "@ll/shared";
 import { BlurView } from "expo-blur";
 import { Redirect, router } from "expo-router";
 import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
@@ -7,12 +8,13 @@ import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useProfile } from "../../features/customer/queries";
 import { useTabBarHidden } from "../../features/tabBar";
 import { initials } from "../../lib/award";
+import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
 import { CardQrIcon, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
 
 type TabName = "map" | "discover" | "wallet" | "activity";
-const LABELS: Record<TabName, string> = { map: "Map", discover: "Discover", wallet: "Wallet", activity: "Activity" };
+const LABEL_KEYS = { map: "sh.nav.map", discover: "sh.nav.discover", wallet: "sh.nav.wallet", activity: "sh.nav.activity" } as const satisfies Record<TabName, MessageKey>;
 const ORDER: TabName[] = ["map", "discover", "wallet", "activity"];
 
 /**
@@ -21,11 +23,12 @@ const ORDER: TabName[] = ["map", "discover", "wallet", "activity"];
  */
 function CardButton() {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="My card"
-      accessibilityHint="Opens your member QR code"
+      accessibilityLabel={t("sh.nav.myCard")}
+      accessibilityHint={t("sh.card.cardLabel", { code: "" }).trim()}
       onPress={() => {
         haptic.tap();
         router.push("/card");
@@ -44,6 +47,7 @@ function CardButton() {
  */
 function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
   const { c, isDark } = useTheme();
+  const { t } = useLocale();
   const { user } = useSession();
   const profile = useProfile();
   const hidden = useTabBarHidden();
@@ -64,7 +68,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
       <Pressable
         key={route.key}
         accessibilityRole="tab"
-        accessibilityLabel={LABELS[name]}
+        accessibilityLabel={t(LABEL_KEYS[name])}
         accessibilityState={{ selected: focused }}
         onPress={() => {
           if (focused) return;

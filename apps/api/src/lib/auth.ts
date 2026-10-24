@@ -1,3 +1,4 @@
+import { writeAudit } from "../services/admin-audit.js";
 import { and, eq } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import { SignJWT, jwtVerify } from "jose";
@@ -80,8 +81,21 @@ export async function requireStaff(
   const user = requireUser(req);
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!merchant) throw notFound("Merchant");
-  if (user.platformRole === "admin") return { user, merchant, role: "owner", impersonated: true };
-  if (user.platformRole === "rep" && merchant.repUserId === user.id) return { user, merchant, role: "owner", impersonated: true };
+  if (user.platformRole === "admin" || (user.platformRole === "rep" && merchant.repUserId === user.id)) {
+    // Acting inside a shop as platform staff: every change is written to the audit log (reads are not).
+    if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      await writeAudit(ctx.db, {
+        actorUserId: user.id,
+        merchantId,
+        action: user.platformRole === "admin" ? "support.write" : "rep.write",
+        entity: "merchant",
+        entityId: merchantId,
+        data: { method: req.method, path: req.url.split("?")[0] },
+        ip: req.ip,
+      });
+    }
+    return { user, merchant, role: "owner", impersonated: true };
+  }
   const [membership] = await ctx.db
     .select({ role: merchantStaff.role })
     .from(merchantStaff)

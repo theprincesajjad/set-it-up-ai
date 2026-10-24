@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export const OPEN_CARD_EVENT = "ll:open-card";
 
@@ -47,6 +48,7 @@ export function CardGlyph({ size = 24 }: { size?: number }) {
 export function PassTabBar({ initials, active }: { initials: string; active?: "map" | "discover" | "wallet" | "activity" }) {
   const path = usePathname();
   const router = useRouter();
+  const { t } = useLocaleOrEnglish();
   const current = active ?? (path.startsWith("/discover") ? "discover" : path.startsWith("/map") ? "map" : "wallet");
   const item = (key: typeof current, href: string, label: string, glyph: React.ReactNode) => (
     <Link
@@ -61,19 +63,19 @@ export function PassTabBar({ initials, active }: { initials: string; active?: "m
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[26px] z-40 mx-auto flex w-full max-w-[480px] items-center gap-2.5 px-4">
       <nav
-        aria-label="Main"
+        aria-label={t("sh.nav.main")}
         className="pointer-events-auto flex h-[60px] flex-1 items-center justify-around rounded-full bg-[rgba(255,255,255,.86)] px-2 shadow-float backdrop-blur-[20px] dark:bg-[rgba(22,22,24,.86)]"
       >
-        {item("map", "/map", "Map", <MapGlyph on={current === "map"} />)}
-        {item("discover", "/discover", "Discover", <DiscoverGlyph on={current === "discover"} />)}
-        {item("wallet", "/me", "Wallet", <WalletGlyph on={current === "wallet"} />)}
-        <Link href="/me#activity" aria-label="Activity" className="flex h-11 w-12 items-center justify-center rounded-full focus-visible:focus-ring">
+        {item("map", "/map", t("sh.nav.map"), <MapGlyph on={current === "map"} />)}
+        {item("discover", "/discover", t("sh.nav.discover"), <DiscoverGlyph on={current === "discover"} />)}
+        {item("wallet", "/me", t("sh.nav.wallet"), <WalletGlyph on={current === "wallet"} />)}
+        <Link href="/me#activity" aria-label={t("sh.nav.activity")} className="flex h-11 w-12 items-center justify-center rounded-full focus-visible:focus-ring">
           <span className="flex size-7 items-center justify-center rounded-full bg-bg-muted text-[11px] font-semibold text-fg">{initials}</span>
         </Link>
       </nav>
       <button
         type="button"
-        aria-label="Show my card"
+        aria-label={t("sh.nav.myCard")}
         onClick={() => {
           if (path === "/me") window.dispatchEvent(new Event(OPEN_CARD_EVENT));
           else router.push("/me#card");

@@ -9,8 +9,10 @@ import { RewardsWaiting } from "@/components/dashboard/home/RewardsWaiting";
 import { SlippingAway } from "@/components/dashboard/home/SlippingAway";
 import { StaffStamps } from "@/components/dashboard/home/StaffStamps";
 import { TodayStats } from "@/components/dashboard/home/TodayStats";
-import { ErrorLine, Meter, PageHeader, QuietLink, StatBlock } from "@/components/dashboard/kit";
+import { ErrorLine, PageHeader, StatBlock } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { ActivationCard } from "@/components/dashboard/onboarding/ActivationCard";
+import { UpsellCard } from "@/components/dashboard/onboarding/UpsellCard";
 import { RestaurantHome } from "@/components/dashboard/restaurant/RestaurantHome";
 import { Button } from "@/components/ui/Button";
 import { firstName, formatNumber } from "@/lib/format";
@@ -52,7 +54,6 @@ function Home() {
 
   const name = me.user.name ? firstName(me.user.name) : null;
   const ob = onboarding.data;
-  const daysLeft = Math.max(0, 30 - Math.floor((now - new Date(m.createdAt).getTime()) / 86_400_000));
   const canMessage = enabled("marketing.sms") || enabled("marketing.email");
   const upsellKeys = (["promos.basic", "marketing.email", "integrations.pos_auto_award"] as const).filter((k) => !enabled(k));
   const loc = detail.locations[0];
@@ -75,19 +76,11 @@ function Home() {
           {today.error && !d ? <ErrorLine message={today.error} onRetry={() => void today.reload()} /> : null}
           <TodayStats mode={mode} data={d} weekday={weekday} yesterdayWeekday={yesterdayWeekday} terminology={term} vertical={m.vertical} base={base} loading={today.loading} />
 
-          {ob && !ob.activatedAt ? (
-            <div className="flex flex-col gap-2 border-y border-line py-3 sm:flex-row sm:items-center sm:gap-6">
-              <span className="shrink-0 text-meta text-fg">Your first 25 members</span>
-              <Meter className="sm:max-w-[320px]" value={ob.activeMembers} max={ob.activationTarget} label="Active members" />
-              <span className="shrink-0 text-meta text-fg-muted tabular">
-                {ob.activeMembers} of {ob.activationTarget}
-                {daysLeft > 0 ? ` · ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : ""}
-              </span>
-              <QuietLink href={`${base}/setup?step=first_members`} className="sm:ms-auto">
-                Tips
-              </QuietLink>
-            </div>
+          {ob && !ob.activatedAt ? <ActivationCard c={ob} base={base} /> : null}
+          {ob && ob.activatedAt ? (
+            <UpsellCard upsell={ob.upsell} base={base} activeLine={`You are an active shop: ${ob.activeMembers} members visited`} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} />
           ) : null}
+          {ob && !ob.activatedAt ? <UpsellCard upsell={ob.upsell} base={base} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
 
           {d ? <HourlyShape mode={mode} hourly={d.hourly} weekday={weekday} promo={enabled("promos.basic") ? d.promoWindow : null} /> : today.loading ? <div className="skeleton h-[270px] w-full rounded-card" /> : null}
 

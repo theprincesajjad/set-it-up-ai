@@ -4,6 +4,7 @@ import { campaignsApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requirePlatformRole, requireStaff, requireUser } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
+import { writeAudit } from "../../services/admin-audit.js";
 // Importing the service registers the campaign visit hook with the ledger.
 import {
   addCampaignMerchant,
@@ -23,6 +24,7 @@ import {
   merchantJoinCampaign,
   merchantLeaveCampaign,
   myCampaigns,
+  liveCampaigns,
   publicCampaign,
   removeCampaignMerchant,
   removeNeighbourhoodManager,
@@ -132,17 +134,21 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // Platform admin only
   // -------------------------------------------------------------------------
   app.post("/admin/campaigns/:id/mark-paid", async (req): Promise<campaignsApi.Campaign> => {
-    requirePlatformRole(req, "admin");
+    const admin = requirePlatformRole(req, "admin");
     const { id } = parse(idParams, req.params);
     const { paid } = parse(campaignsApi.markCampaignPaidBody, req.body ?? {});
-    return campaignDto(ctx.db, await markCampaignPaid(ctx, id, paid));
+    const campaign = await markCampaignPaid(ctx, id, paid);
+    await writeAudit(ctx.db, { actorUserId: admin.id, action: "campaign.marked_paid", entity: "campaign", entityId: id, data: { paid }, ip: req.ip });
+    return campaignDto(ctx.db, campaign);
   });
 
   app.post("/admin/campaigns/:id/draw", async (req): Promise<campaignsApi.DrawResult> => {
-    requirePlatformRole(req, "admin");
+    const admin = requirePlatformRole(req, "admin");
     const { id } = parse(idParams, req.params);
     const { redraw } = parse(campaignsApi.drawBody, req.body ?? {});
-    return drawWinner(ctx, id, { redraw });
+    const result = await drawWinner(ctx, id, { redraw });
+    await writeAudit(ctx.db, { actorUserId: admin.id, action: "campaign.winner_drawn", entity: "campaign", entityId: id, data: { redraw: !!redraw, eligibleCount: result.eligibleCount }, ip: req.ip });
+    return result;
   });
 
   app.get("/admin/campaign-managers", async (req) => {
@@ -153,14 +159,17 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post("/admin/campaign-managers", async (req, reply) => {
     const admin = requirePlatformRole(req, "admin");
-    const items = await addNeighbourhoodManager(ctx, admin.id, parse(campaignsApi.addManagerBody, req.body));
+    const body = parse(campaignsApi.addManagerBody, req.body);
+    const items = await addNeighbourhoodManager(ctx, admin.id, body);
+    await writeAudit(ctx.db, { actorUserId: admin.id, action: "campaign.manager_added", entity: "neighbourhood", entityId: body.neighbourhoodId, data: { userId: body.userId ?? null, email: body.email ?? null }, ip: req.ip });
     return reply.status(201).send({ items, nextCursor: null });
   });
 
   app.delete("/admin/campaign-managers/:neighbourhoodId/:userId", async (req, reply) => {
-    requirePlatformRole(req, "admin");
+    const admin = requirePlatformRole(req, "admin");
     const { neighbourhoodId, userId } = parse(managerParams, req.params);
     await removeNeighbourhoodManager(ctx, neighbourhoodId, userId);
+    await writeAudit(ctx.db, { actorUserId: admin.id, action: "campaign.manager_removed", entity: "neighbourhood", entityId: neighbourhoodId, data: { userId }, ip: req.ip });
     return reply.status(204).send();
   });
 
@@ -193,6 +202,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const q = parse(campaignsApi.myCampaignsQuery, req.query);
     return { items: await myCampaigns(ctx, user.id, q), nextCursor: null };
   });
+
+  // Anonymous: the /for-shoppers page shows the street campaigns that are on now.
+  app.get("/public/live-campaigns", async () => ({ items: await liveCampaigns(ctx) }));
 
   app.get("/public/campaigns/:id", async (req): Promise<campaignsApi.PublicCampaign> => {
     const { id } = parse(idParams, req.params);

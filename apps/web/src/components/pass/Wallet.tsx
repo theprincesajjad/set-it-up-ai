@@ -5,20 +5,23 @@
  */
 import { CountUp } from "@/components/ui/CountUp";
 import { placeKind } from "@/lib/place";
-import { NotificationSettings } from "./NotificationSettings";
+import { InboxList, NotificationSettings } from "./NotificationSettings";
+import { InviteSheet } from "./InviteSheet";
 import { WalletButtons } from "./WalletButtons";
-import { Activity, ChevronRight, Download, Gift, LogOut, Store, Trash2 } from "lucide-react";
+import { Activity, ChevronRight, Download, Gift, LogOut, Store, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { OPEN_CARD_EVENT, PassTabBar } from "./PassTabBar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { customerApi } from "@ll/shared";
+import { type campaignsApi, type customerApi, type MessageKey } from "@ll/shared";
+import { useLocale } from "@/lib/i18n/client";
+import { unitCaption, unitsText } from "@/lib/units";
 import { copy } from "@/copy/en-CA";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
-import { formatDate, formatPoints, formatTime, groupCode } from "@/lib/format";
+import { formatDate, formatPoints, groupCode } from "@/lib/format";
 import { walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
@@ -47,26 +50,18 @@ export interface WalletProps {
   profile: customerApi.ProfileDto;
   wallet: customerApi.WalletResponse;
   card: customerApi.CardResponse | null;
+  /** The shopper's campaigns (street passports): the live one shows under "on your street". */
+  campaigns?: campaignsApi.MyCampaign[];
+  /** End dates written on the server in the shopper's language, by campaign id (client Intl data differs and would not hydrate). */
+  endsLabels?: Record<string, string>;
 }
 
 type Details = Record<string, customerApi.MembershipDetailResponse>;
 
-const TX_LABELS: Record<string, string> = {
-  earn: "Earned",
-  redeem: "Redeemed",
-  adjust: "Adjusted",
-  welcome_bonus: "Welcome bonus",
-  birthday_bonus: "Birthday bonus",
-  referral_bonus: "Referral bonus",
-  promo_bonus: "Promo bonus",
-  network_bonus: "Neighbourhood bonus",
-  campaign_bonus: "Campaign bonus",
-  reversal: "Reversed",
-  expire: "Expired",
-  import: "Imported",
-};
+const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
-export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
+export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {} }: WalletProps) {
+  const { t, locale } = useLocale();
   const [tab, setTab] = useState<Tab>("shops");
   const [cardOpen, setCardOpen] = useState(false);
   const [wallet, setWallet] = useState(initialWallet);
@@ -132,6 +127,9 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
 
   // Never sum points and stamps across shops: rewards ready, else the closest reward.
   const headline = useMemo(() => walletHeadline(wallet.items), [wallet.items]);
+  // The hero line in the shopper's language (English keeps the existing wording).
+  const heroLabel = locale === "en" ? headline.label : headline.kind === "ready" ? t("sh.wallet.heroReady", { n: headline.value }) : headline.kind === "closest" ? t("sh.wallet.toGo", { amount: unitsText(locale, headline.value, closestTerminology(wallet.items), false) }) : t("sh.wallet.heroReady", { n: 0 });
+  const heroContext = locale === "en" ? headline.context : t("sh.wallet.heroAcross", { n: wallet.items.length });
 
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
@@ -142,9 +140,9 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
       <section aria-labelledby="total" className="-mx-4 -mt-4 px-5 pt-[60px]">
         <div className="flex items-center justify-between gap-3">
           <h1 id="total" className="display text-[34px] leading-[40px] font-extrabold tracking-[-0.01em] text-fg">
-            wallet
+            {t("sh.wallet.title")}
           </h1>
-          <Link href="/map" aria-label="Search shops" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring">
+          <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-10 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring">
             <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           </Link>
         </div>
@@ -153,25 +151,25 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
             <CountUp value={headline.value} />
           </span>
           <span className="text-[15px] font-medium leading-5 text-fg">
-            {headline.label} <span className="font-normal text-fg-muted">· {headline.context}</span>
+            {heroLabel} <span className="font-normal text-fg-muted">· {heroContext}</span>
           </span>
         </div>
       </section>
       <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} />
       <Tabs
-        label="Wallet"
+        label={t("sh.nav.wallet")}
         value={tab}
         onChange={selectTab}
         items={[
-          { id: "shops", label: "Shops" },
-          { id: "rewards", label: "Rewards" },
-          { id: "activity", label: "Activity" },
-          { id: "settings", label: "Settings" },
+          { id: "shops", label: t("sh.tab.shops") },
+          { id: "rewards", label: t("sh.tab.rewards") },
+          { id: "activity", label: t("sh.tab.activity") },
+          { id: "settings", label: t("sh.tab.settings") },
         ]}
       />
 
       {tab === "shops" ? (
-        <ShopsTab wallet={wallet} details={details} openShop={openShop} setOpenShop={setOpenShop} loadDetails={loadDetails} onChanged={refreshWallet} profile={profile} />
+        <ShopsTab wallet={wallet} details={details} openShop={openShop} setOpenShop={setOpenShop} loadDetails={loadDetails} onChanged={refreshWallet} profile={profile} campaigns={campaigns} endsLabels={endsLabels} />
       ) : null}
       {tab === "rewards" ? <RewardsTab wallet={wallet} details={details} loading={loadingDetails} onShowShops={() => selectTab("shops")} onChanged={async () => { await refreshWallet(); await loadDetails(); }} /> : null}
       {tab === "activity" ? <ActivityTab wallet={wallet} details={details} loading={loadingDetails} /> : null}
@@ -181,12 +179,19 @@ export function Wallet({ profile, wallet: initialWallet, card }: WalletProps) {
   );
 }
 
+/** Unit word of the shop closest to its next reward (the hero line when nothing is ready yet). */
+function closestTerminology(items: customerApi.MembershipDto[]): string {
+  const closest = items.filter((m) => m.nextReward && m.nextReward.pointsNeeded > 0).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct)[0];
+  return closest?.terminology ?? "points";
+}
+
 /** My card (foundations.md "My card"): white sheet, big QR, member code in mono, one black wallet button for this phone. */
 function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
   const [walletError, setWalletError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"apple" | "google" | null>(null);
   const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
   const [os, setOs] = useState<"ios" | "android" | "other">("other");
+  const { t } = useLocale();
   useEffect(() => {
     // The UA is only known on the client.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -199,7 +204,7 @@ function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: (
       .then((s) => setAvailable({ apple: s.apple.available, google: s.google.available }))
       .catch(() => undefined);
   }, [open]);
-  const unavailable = "Wallet passes aren't available right now. Your card above works at the counter.";
+  const unavailable = t("sh.card.walletOff");
   async function google() {
     setBusy("google");
     try {
@@ -224,20 +229,20 @@ function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: (
     }
   }
   return (
-    <Modal open={open} onClose={onClose} title="my card" variant="sheet" titleClassName="display pt-1.5 text-[17px] leading-[21px] text-fg">
+    <Modal open={open} onClose={onClose} title={t("sh.card.title")} variant="sheet" titleClassName="display pt-1.5 text-[17px] leading-[21px] text-fg">
       {/* canvas Card.dc.html: headline, bordered 200 px QR tile, mono member code, one black wallet button. */}
       <div className="flex flex-col items-center pb-3">
-        <p className="display mt-8 text-center text-[28px] leading-8 text-fg">show this at the counter</p>
-        <p className="mt-2 text-center text-[15px] leading-5 text-fg-muted">One card for every shop on the street.</p>
+        <p className="display mt-8 text-center text-[28px] leading-8 text-fg">{t("sh.card.show")}</p>
+        <p className="mt-2 text-center text-[15px] leading-5 text-fg-muted">{t("sh.card.sub")}</p>
         <div className="mt-8 rounded-[20px] border border-line bg-qr-bg p-[18px] dark:border-transparent">
           {card?.qrSvg ? (
-            <div role="img" aria-label={`Member QR code ${card.memberCode}`} className="size-[200px] [&>svg]:block [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: card.qrSvg }} />
+            <div role="img" aria-label={t("sh.card.cardLabel", { code: card.memberCode })} className="size-[200px] [&>svg]:block [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: card.qrSvg }} />
           ) : (
             <div className="skeleton size-[200px] rounded-[8px]" aria-busy="true" />
           )}
         </div>
         <p className="mt-[22px] font-mono text-[24px] font-semibold leading-[30px] tracking-[0.14em] text-fg tabular-nums">{groupCode(card?.memberCode ?? profile.memberCode)}</p>
-        <p className="mt-1 text-[13px] leading-[17px] text-fg-muted">{shortName(profile.name)} · staff can type this code</p>
+        <p className="mt-1 text-[13px] leading-[17px] text-fg-muted">{t("sh.card.staffCode", { name: shortName(profile.name, t("sh.card.defaultName")) })}</p>
         {walletError ? <Banner tone="neutral" className="mt-6 w-full">{walletError}</Banner> : null}
         <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="mt-8 w-full" />
       </div>
@@ -246,29 +251,38 @@ function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: (
 }
 
 /** "Nikos Gagnon" → "Nikos G." */
-function shortName(name: string | null | undefined): string {
+function shortName(name: string | null | undefined, fallback = "Member"): string {
   const p = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (p.length === 0) return "Member";
+  if (p.length === 0) return fallback;
   return p.length === 1 ? p[0]! : `${p[0]} ${p[p.length - 1]![0]!.toUpperCase()}.`;
 }
 
-function progressLine(m: customerApi.MembershipDto) {
-  return m.nextReward ? copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name) : m.expiryDisclosure;
+type Tr = (key: MessageKey, vars?: Record<string, string | number | null | undefined>) => string;
+
+/** The grey line under a shop name: what's left to the next reward, else the expiry rule. English keeps the shop's own wording. */
+function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
+  if (locale === "en") return m.nextReward ? copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name) : m.expiryDisclosure;
+  if (m.nextReward) return t("sh.n.earnNext", { need: unitsText(locale as never, m.nextReward.pointsNeeded, m.terminology, false), reward: m.nextReward.name }).replace(/[.।۔]$/, "");
+  const unit = unitCaption(locale as never, 2, m.terminology);
+  const months = m.program?.expiryMonths;
+  return months ? t("sh.pass.expireAfter", { unit, months }) : t("sh.pass.neverExpire", { unit });
 }
 
-function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChanged, profile }: { wallet: customerApi.WalletResponse; details: Details; openShop: string | null; setOpenShop: (id: string | null) => void; loadDetails: (ids?: string[]) => Promise<void>; onChanged: () => Promise<void>; profile: customerApi.ProfileDto }) {
+function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChanged, profile, campaigns, endsLabels }: { wallet: customerApi.WalletResponse; details: Details; openShop: string | null; setOpenShop: (id: string | null) => void; loadDetails: (ids?: string[]) => Promise<void>; onChanged: () => Promise<void>; profile: customerApi.ProfileDto; campaigns: campaignsApi.MyCampaign[]; endsLabels: Record<string, string> }) {
+  const { t, locale } = useLocale();
   if (!wallet.items.length)
-    return <EmptyState icon={Store} title={copy.empty.wallet.title} description={copy.empty.wallet.body} action={<Button href="/map">Find shops nearby</Button>} />;
+    return <EmptyState icon={Store} title={locale === "en" ? copy.empty.wallet.title : t("sh.wallet.emptyTitle")} description={locale === "en" ? copy.empty.wallet.body : t("sh.wallet.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   // Rewards ready float to the top under their own header (foundations.md "Wallet").
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0);
   const rest = wallet.items.filter((m) => m.rewardsAvailableCount === 0);
   const current = wallet.items.find((m) => m.id === openShop) ?? null;
+  const live = campaigns.find((c) => c.status === "live") ?? null;
   // canvas Wallet rows: 44 px avatar, name 16/500, one line (accent when ready), a thin bar while earning,
   // the balance right-aligned (accent when a reward is ready, black otherwise).
   const row = (m: customerApi.MembershipDto, last: boolean) => {
     const ready = m.rewardsAvailableCount > 0;
     const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : null;
-    const unit = formatPoints(m.balance, m.terminology, false).replace(/^[\d,]+ /, "");
+    const unit = unitCaption(locale, m.balance, m.terminology);
     return (
       <li key={m.id}>
         <button
@@ -283,7 +297,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
           <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} className="text-[15px]" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[16px] font-medium leading-[21px] text-fg">{m.merchant.name}</span>
-            <span className={cn("mt-0.5 block truncate text-[13px] leading-[17px]", ready ? "text-accent-text" : "text-fg-muted")}>{ready ? (m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : "reward ready") : progressLine(m)}</span>
+            <span className={cn("mt-0.5 block truncate text-[13px] leading-[17px]", ready ? "text-accent-text" : "text-fg-muted")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
               <span aria-hidden className="mt-2 block h-[3px] w-[150px] overflow-hidden rounded-full bg-bg-muted">
                 <span className="block h-[3px] rounded-full bg-fg" style={{ width: `${pct}%` }} />
@@ -306,17 +320,56 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
   );
   return (
     <div className="flex flex-col gap-7">
-      {ready.length ? section("ready now", ready) : null}
-      {rest.length ? section(ready.length ? "earning" : "your shops", rest) : null}
-      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKind(current.merchant.vertical)}</span> : undefined}>
+      {ready.length ? section(t("sh.wallet.readyNow"), ready) : null}
+      {rest.length ? section(ready.length ? t("sh.wallet.earning") : t("sh.wallet.yourShops"), rest) : null}
+      {live ? <StreetBlock campaign={live} t={t} ends={endsLabels[live.id] ?? ""} /> : null}
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current && locale === "en" ? <span className="italic">{placeKind(current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
     </div>
   );
 }
 
+/**
+ * "on your street": the live neighbourhood passport, the thing one shared card can show that seven shop cards cannot.
+ * Progress dots, the deadline, and a link to the campaign page. Hidden when no campaign is live.
+ */
+function StreetBlock({ campaign, t, ends }: { campaign: campaignsApi.MyCampaign; t: Tr; ends: string }) {
+  const { visited, goal } = campaign.progress;
+  // Progress dots only mean something for a passport (visit N shops); a points weekend just states its bonus and end date.
+  const passport = campaign.kind === "passport";
+  const dots = passport ? Math.min(goal, 12) : 0;
+  const line = passport
+    ? t("sh.wallet.passportLine", { visited: Math.min(visited, goal), goal, date: ends })
+    : `${campaign.bonusPoints > 0 ? t("sh.camp.stepBonus", { n: campaign.bonusPoints }) : campaign.multiplierPct ? t("sh.camp.stepMult", { n: campaign.multiplierPct / 100 }) : ""} ${t("sh.disc.endsOn", { date: ends })}`.trim();
+  return (
+    <section aria-labelledby="street">
+      <h2 id="street" className="display border-b border-line pb-2 text-[13px] font-bold tracking-normal text-fg-muted">{t("sh.wallet.street")}</h2>
+      <Link href={`/c/${campaign.id}`} className="flex items-center gap-3.5 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
+        <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold tabular-nums text-accent-text">
+          {passport ? `${Math.min(visited, goal)}/${goal}` : "+"}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-medium leading-[21px] text-fg">{campaign.name}</span>
+          <span className="mt-0.5 line-clamp-2 block text-[13px] leading-[17px] text-fg-muted">{line}</span>
+          <span aria-hidden className={cn("mt-2 flex gap-1.5", !dots && "hidden")}>
+            {Array.from({ length: dots }, (_, i) => (
+              <span key={i} className={cn("size-2.5 rounded-full", i < visited ? "bg-accent" : "bg-bg-muted")} />
+            ))}
+          </span>
+        </span>
+        <ChevronRight aria-hidden className="size-4 text-fg-subtle" />
+      </Link>
+    </section>
+  );
+}
+
 /** Shop sheet: italic vertical line, a stamp row or points ring, rewards, discount cards, then the shop page. */
 function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.MembershipDto; d: customerApi.MembershipDetailResponse | undefined; profile: customerApi.ProfileDto; onChanged: () => Promise<void> }) {
+  const { t, locale } = useLocale();
+  const [inviting, setInviting] = useState(false);
+  // Referrals are a paid shop feature: the API reports the bonus as 0 when the shop doesn't have them.
+  const canInvite = (m.program?.referralBonus ?? 0) > 0 && (m as { features?: { referrals?: boolean } }).features?.referrals !== false;
   return (
     <div className="flex flex-col gap-5">
       {m.program?.earnType === "stamps" ? (
@@ -325,8 +378,8 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
         <div className="flex items-center gap-4 rounded-card border border-line p-4">
           <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
-            <p className="display text-title tabular-nums text-accent-text">{formatPoints(m.balance, m.terminology, false)}</p>
-            <p className="text-meta text-fg-muted">{progressLine(m)}</p>
+            <p className="display text-title tabular-nums text-accent-text">{unitsText(locale, m.balance, m.terminology, false)}</p>
+            <p className="text-meta text-fg-muted">{progressLine(m, t, locale)}</p>
           </div>
         </div>
       )}
@@ -340,10 +393,16 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
           ))}
         </>
       )}
-      <p className="text-meta text-fg-muted">{m.expiryDisclosure}</p>
+      <p className="text-meta text-fg-muted">{locale === "en" ? m.expiryDisclosure : progressLine({ ...m, nextReward: null }, t, locale)}</p>
+      {canInvite ? (
+        <Button variant="secondary" size="lg" fullWidth iconStart={UserPlus} onClick={() => setInviting(true)}>
+          {t("sh.inv.title")}
+        </Button>
+      ) : null}
       <Button variant="secondary" size="lg" fullWidth href={`/shops/${m.merchant.slug}`} iconEnd={ChevronRight}>
-        Shop page
+        {t("sh.wallet.shopPage")}
       </Button>
+      {canInvite ? <InviteSheet open={inviting} onClose={() => setInviting(false)} membership={m} /> : null}
     </div>
   );
 }
@@ -354,6 +413,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+  const { t } = useLocale();
 
   // While a code is showing, poll until staff confirm it at the counter.
   useEffect(() => {
@@ -386,7 +446,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
     if (!active) return;
     try {
       await browserApi.me.cancelRedemption(active.redemption.id);
-      toast({ message: "Cancelled. Your points are back.", tone: "success" });
+      toast({ message: t("sh.wallet.cancelled"), tone: "success" });
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     }
@@ -399,15 +459,15 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   return (
     <div className="flex flex-col gap-3">
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <ListGroup title="Rewards">
+      <ListGroup title={t("sh.wallet.rewards")}>
         {open.map((r) => (
           <li key={r.id} className="flex items-center justify-between gap-3 py-3.5">
             <div className="min-w-0">
               <p className="text-body-strong text-fg">{r.rewardName}</p>
-              <p className="text-meta font-semibold text-accent-text">Code ready to show</p>
+              <p className="text-meta font-semibold text-accent-text">{t("sh.wallet.codeReady")}</p>
             </div>
             <Button size="sm" onClick={() => setActive({ redemption: r, used: false })}>
-              {copy.action.showCodeToStaff}
+              {t("sh.wallet.showCode")}
             </Button>
           </li>
         ))}
@@ -433,7 +493,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
           setActive(null);
           if (wasUsed) await onChanged();
         }}
-        title={active?.used ? "Redeemed" : copy.action.showCodeToStaff}
+        title={active?.used ? t("sh.wallet.redeemed") : t("sh.wallet.showCode")}
         variant="sheet"
       >
         {active ? (
@@ -443,7 +503,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
               <p className="text-body-strong text-fg">{membership.merchant.name}</p>
             </div>
             <p className="display text-large-title text-fg">{active.redemption.rewardName}</p>
-            <RedeemCode code={active.redemption.code} rewardName="Your code" expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
+            <RedeemCode code={active.redemption.code} rewardName={t("sh.wallet.yourCode")} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
           </div>
         ) : null}
       </Modal>
@@ -452,16 +512,17 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
 }
 
 function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wallet: customerApi.WalletResponse; details: Details; loading: boolean; onChanged: () => Promise<void>; onShowShops: () => void }) {
+  const { t, locale } = useLocale();
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0 || (details[m.id]?.openRedemptions.length ?? 0) > 0);
   if (loading && !Object.keys(details).length) return <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   if (!ready.length) {
     const close = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct).slice(0, 5);
     if (!close.length)
-      return <EmptyState icon={Gift} title={copy.empty.rewardsReady.title} description={copy.empty.rewardsReady.body} action={<Button variant="secondary" onClick={onShowShops}>{copy.empty.rewardsReady.action}</Button>} />;
+      return <EmptyState icon={Gift} title={locale === "en" ? copy.empty.rewardsReady.title : t("sh.rewards.emptyTitle")} description={locale === "en" ? copy.empty.rewardsReady.body : t("sh.rewards.emptyBody")} action={<Button variant="secondary" onClick={onShowShops}>{locale === "en" ? copy.empty.rewardsReady.action : t("sh.rewards.seeShops")}</Button>} />;
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-body text-fg-muted">{copy.empty.rewardsReady.body}</p>
-        <ListGroup title="Closest rewards">
+        <p className="text-body text-fg-muted">{locale === "en" ? copy.empty.rewardsReady.body : t("sh.rewards.emptyBody")}</p>
+        <ListGroup title={t("sh.wallet.closest")}>
           {close.map((m) => (
             <li key={m.id} className="flex flex-col gap-2.5 py-3.5">
               <div className="flex items-center gap-3">
@@ -470,9 +531,9 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
                   <p className="truncate text-body-strong text-fg">{m.nextReward!.name}</p>
                   <p className="truncate text-meta text-fg-muted">{m.merchant.name}</p>
                 </div>
-                <span className="shrink-0 text-meta tabular-nums text-fg-muted">{formatPoints(m.nextReward!.pointsNeeded, m.terminology)} to go</span>
+                <span className="shrink-0 text-meta tabular-nums text-fg-muted">{locale === "en" ? `${formatPoints(m.nextReward!.pointsNeeded, m.terminology)} to go` : t("sh.wallet.toGo", { amount: unitsText(locale, m.nextReward!.pointsNeeded, m.terminology) })}</span>
               </div>
-              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={`${m.nextReward!.progressPct}% of the way to ${m.nextReward!.name}`} />
+              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={locale === "en" ? `${m.nextReward!.progressPct}% of the way to ${m.nextReward!.name}` : `${m.nextReward!.progressPct}% · ${m.nextReward!.name}`} />
             </li>
           ))}
         </ListGroup>
@@ -486,7 +547,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
           <div className="flex items-center gap-2.5 px-1">
             <ShopLogo shop={m.merchant} size={24} />
             <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{m.merchant.name}</h2>
-            <span className="text-meta tabular-nums text-fg-muted">{formatPoints(m.balance, m.terminology)}</span>
+            <span className="text-meta tabular-nums text-fg-muted">{unitsText(locale, m.balance, m.terminology)}</span>
           </div>
           {details[m.id] ? <MemberRewards membership={m} detail={details[m.id]!} onChanged={onChanged} /> : <SkeletonCard />}
         </section>
@@ -495,43 +556,61 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
   );
 }
 
+/**
+ * Activity: the inbox first (what we held back from a push, with the day's budget said out loud), then the points history
+ * below it. The avatar in the tab bar and the bell on Discover both land here.
+ */
 function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletResponse; details: Details; loading: boolean }) {
+  const { t, locale, date, time } = useLocale();
   const rows = useMemo(
     () =>
       wallet.items
-        .flatMap((m) => (details[m.id]?.history.items ?? []).map((t) => ({ t, m })))
-        .sort((a, b) => b.t.createdAt.localeCompare(a.t.createdAt))
+        .flatMap((m) => (details[m.id]?.history.items ?? []).map((tx) => ({ tx, m })))
+        .sort((x, y) => y.tx.createdAt.localeCompare(x.tx.createdAt))
         .slice(0, 100),
     [wallet.items, details],
   );
-  if (loading && !rows.length) return <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>;
-  if (!rows.length) {
-    const e = copy.empty.activity("points");
-    return <EmptyState icon={Activity} title={e.title} description={e.body} action={<Button href="/map">{e.action}</Button>} />;
-  }
+  const txLabel = (type: string, description: string | null | undefined) => {
+    const key = `sh.tx.${type}` as MessageKey;
+    const translated = (TX_KEYS as readonly string[]).includes(type) ? t(key) : type;
+    // English keeps the shop's own description ("Purchase $12.50"); other languages show the translated kind.
+    return locale === "en" ? description || translated : translated;
+  };
+  let history: React.ReactNode;
+  if (loading && !rows.length) history = <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
+  else if (!rows.length) {
+    history = <EmptyState icon={Activity} title={locale === "en" ? copy.empty.activity("points").title : t("sh.activity.emptyTitle")} description={locale === "en" ? copy.empty.activity("points").body : t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
+  } else
+    history = (
+      <ListGroup title={t("sh.activity.history")}>
+        {rows.map(({ tx, m }) => (
+          <li key={tx.id} className="flex min-h-16 items-center gap-3 py-2.5">
+            <ShopLogo shop={m.merchant} size={40} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-body-strong text-fg">{txLabel(tx.type, tx.description)}</p>
+              <p className="truncate text-meta text-fg-muted">
+                {m.merchant.name} · {date(tx.createdAt, { weekday: "short", month: "short", day: "numeric" })}, {time(tx.createdAt)}
+                {tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}
+              </p>
+            </div>
+            <span className={tx.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-fg" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
+              {tx.points >= 0 ? "+" : "−"}
+              {unitsText(locale, Math.abs(tx.points), m.terminology)}
+            </span>
+          </li>
+        ))}
+      </ListGroup>
+    );
   return (
-    <ListGroup>
-      {rows.map(({ t, m }) => (
-        <li key={t.id} className="flex min-h-16 items-center gap-3 py-2.5">
-          <ShopLogo shop={m.merchant} size={40} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-body-strong text-fg">{t.description || TX_LABELS[t.type] || t.type}</p>
-            <p className="truncate text-meta text-fg-muted">
-              {m.merchant.name} · {formatDate(t.createdAt, true)}, {formatTime(t.createdAt)}
-              {t.reversed ? " · reversed" : ""}
-            </p>
-          </div>
-          <span className={t.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-fg" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
-            {t.points >= 0 ? "+" : "−"}
-            {formatPoints(Math.abs(t.points), m.terminology)}
-          </span>
-        </li>
-      ))}
-    </ListGroup>
+    <div className="flex flex-col gap-7">
+      <InboxList />
+      {history}
+    </div>
   );
 }
 
 function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.WalletResponse; profile: customerApi.ProfileDto; onMembership: (m: customerApi.MembershipDto) => void }) {
+  const { t, locale, date } = useLocale();
   const router = useRouter();
   const toast = useToast();
   const [name, setName] = useState(profile.name ?? "");
@@ -545,7 +624,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
     setSaving(true);
     try {
       await browserApi.me.updateProfile({ name: name.trim() || null, email: email.trim() || null });
-      toast({ message: copy.ok.saved, tone: "success" });
+      toast({ message: locale === "en" ? copy.ok.saved : t("sh.priv.save"), tone: "success" });
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     } finally {
@@ -607,62 +686,62 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   return (
     <div id="settings" className="flex flex-col gap-7">
       <NotificationSettings />
-      <ListGroup title="Messages from shops" footer="Each shop asks separately. Muting stops all offers from a shop; your points keep working.">
+      <ListGroup title={t("sh.priv.shopsTitle")} footer={t("sh.priv.shopsFoot")}>
         {wallet.items.map((m) => (
           <li key={m.id} className="flex flex-col py-3">
             <p className="flex items-center gap-2.5 py-1 text-body-strong text-fg">
               <ShopLogo shop={m.merchant} size={24} />
               <span className="min-w-0 flex-1 truncate">{m.merchant.name}</span>
-              {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">Offers on</StatusDot> : null}
+              {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">{t("sh.priv.offersOn")}</StatusDot> : null}
             </p>
-            <Switch label="Offers by text and email" ariaLabel={`Get offers from ${m.merchant.name}`} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : "By text and email. Unsubscribe anytime."} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
-            <Switch label="Mute this shop" ariaLabel={`Mute ${m.merchant.name}`} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
+            <Switch label={t("sh.priv.offersBy")} ariaLabel={locale === "en" ? `Get offers from ${m.merchant.name}` : t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? (locale === "en" ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : t("sh.priv.since", { date: date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) })) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
+            <Switch label={t("sh.priv.mute")} ariaLabel={locale === "en" ? `Mute ${m.merchant.name}` : t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
           </li>
         ))}
       </ListGroup>
 
-      <ListGroup title="Your details" as="div" footer={<>Phone <span className="tabular-nums">{formatE164(profile.phone)}</span> · Member number <span className="tabular-nums">{profile.memberCode}</span></>}>
+      <ListGroup title={t("sh.priv.details")} as="div" footer={locale === "en" ? <>Phone <span className="tabular-nums">{formatE164(profile.phone)}</span> · Member number <span className="tabular-nums">{profile.memberCode}</span></> : <span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
         <div className="flex flex-col gap-4 py-4">
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-          <TextField label="Email" type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+          <TextField label={t("sh.priv.name")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          <TextField label={t("sh.priv.email")} type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           <Button onClick={save} loading={saving} className="self-start">
-            Save
+            {t("sh.priv.save")}
           </Button>
         </div>
       </ListGroup>
 
-      <ListGroup title="Your data" as="div" footer="Download everything we hold about you, or delete your account.">
+      <ListGroup title={t("sh.priv.data")} as="div" footer={t("sh.priv.dataFoot")}>
         <button type="button" onClick={exportData} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
           <Download aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
-          <span className="flex-1">Download my data</span>
+          <span className="flex-1">{t("sh.priv.download")}</span>
         </button>
         <button type="button" onClick={signOut} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
           <LogOut aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
-          <span className="flex-1">Sign out</span>
+          <span className="flex-1">{t("sh.priv.signOut")}</span>
         </button>
         <button type="button" onClick={() => setDeleteOpen(true)} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-negative hover:bg-bg-subtle focus-visible:focus-ring">
           <Trash2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
-          <span className="flex-1">Delete my account</span>
+          <span className="flex-1">{t("sh.priv.delete")}</span>
         </button>
       </ListGroup>
 
       <Modal
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        title="Delete your account?"
-        description="Your name, phone and email are erased and your card stops working at every shop. Shops keep anonymous points history. This can't be undone."
+        title={t("sh.priv.deleteTitle")}
+        description={t("sh.priv.deleteBody")}
         actions={
           <>
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t("sh.priv.cancel")}
             </Button>
             <Button variant="danger" loading={deleting} disabled={confirmText !== "DELETE"} onClick={deleteAccount}>
-              Delete my account
+              {t("sh.priv.delete")}
             </Button>
           </>
         }
       >
-        <TextField label="Type DELETE to confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
+        <TextField label={t("sh.priv.deleteType")} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
       </Modal>
     </div>
   );

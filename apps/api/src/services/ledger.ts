@@ -31,6 +31,7 @@ import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { enabledFeaturesFor } from "./features.js";
+import { recordVisitMilestones } from "./onboarding.js";
 
 type TxType = (typeof ledgerTransactions.$inferInsert)["type"];
 type TxSource = (typeof ledgerTransactions.$inferInsert)["source"];
@@ -708,19 +709,9 @@ async function applyNetworkPerks(tx: Tx, merchant: Merchant, program: typeof loy
   return null;
 }
 
-/** Mark the merchant activated once it has N members with at least one visit. */
+/** Mark the merchant activated once it has N members with at least one visit; records the onboarding milestones on the way. */
 export async function maybeActivateMerchant(ctx: AppContext, tx: DbOrTx, merchant: Pick<Merchant, "id" | "activatedAt" | "status">) {
-  if (merchant.activatedAt) return false;
-  const [row] = await tx
-    .select({ n: sql<number>`count(*)::int` })
-    .from(merchantMembers)
-    .where(and(eq(merchantMembers.merchantId, merchant.id), gte(merchantMembers.visitCount, 1)));
-  if (Number(row?.n ?? 0) < ctx.config.activationThreshold) return false;
-  await tx
-    .update(merchants)
-    .set({ activatedAt: ctx.now(), status: merchant.status === "onboarding" ? "active" : merchant.status })
-    .where(and(eq(merchants.id, merchant.id), isNull(merchants.activatedAt)));
-  return true;
+  return recordVisitMilestones(ctx, tx, merchant);
 }
 
 // ---------------------------------------------------------------------------

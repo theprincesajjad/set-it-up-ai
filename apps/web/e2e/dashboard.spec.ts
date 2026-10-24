@@ -75,11 +75,13 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Your shop", exact: true })).toBeVisible();
   await page.getByLabel("About your shop").fill("Small-batch coffee and fresh croissants on Roncesvalles since 2014.");
   await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible();
+  await page.goto(`${base}/setup?step=program`);
   await expect(page.getByRole("heading", { name: "Your program" })).toBeVisible();
   await expect(page.getByText(/Customers get 1 stamp per visit/)).toBeVisible();
   await page.screenshot({ path: shot("02-setup-program"), fullPage: true });
   await page.getByRole("button", { name: "Looks good" }).click();
-  await expect(page.getByRole("heading", { name: "Your rewards" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Give your first stamp" })).toBeVisible();
   await page.goto(`${base}/setup?step=qr_kit`);
   await expect(page.getByRole("heading", { name: "Print your QR stand" })).toBeVisible();
   await page.getByRole("button", { name: "I printed it" }).click();

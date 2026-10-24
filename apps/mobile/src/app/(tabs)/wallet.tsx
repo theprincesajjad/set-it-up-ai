@@ -15,6 +15,7 @@ import { shortHood } from "../../lib/discover";
 import { formatNumber, termWord } from "../../lib/award";
 import { walletRow } from "../../lib/walletRow";
 import { api } from "../../state/api";
+import { useLocale } from "../../lib/i18n";
 import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
@@ -60,6 +61,8 @@ export default function Wallet() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
+  const { t: tr, locale, info } = useLocale();
+  const i18n = { locale, t: tr };
   const { prefs } = useSession();
   const online = useOnline();
   const wallet = useWallet();
@@ -73,7 +76,7 @@ export default function Wallet() {
   const campaigns = useCampaigns(loc.coords?.lat, loc.coords?.lng);
   const live = (campaigns.data?.items ?? []).filter((x) => x.status === "live");
   const hero = homeHero(memberships);
-  const heroCopy = hero.kind === "empty" ? null : heroText(hero);
+  const heroCopy = hero.kind === "empty" ? null : heroText(hero, i18n);
 
   const sorted = useMemo(() => [...memberships].sort((a, b) => (b.lastVisitAt ?? "").localeCompare(a.lastVisitAt ?? "")), [memberships]);
   const ready = sorted.filter((m) => m.rewardsAvailableCount > 0);
@@ -124,7 +127,7 @@ export default function Wallet() {
   const readyNameOf = (m: Membership) => readyNames.find((d) => d.data?.membership.id === m.id)?.data?.rewards.find((r) => r.affordable)?.name ?? null;
 
   const shopRow = (m: Membership, i: number, n: number) => {
-    const row = walletRow(m, readyNameOf(m));
+    const row = walletRow(m, readyNameOf(m), i18n);
     return (
       <Pressable
         key={m.id}
@@ -152,7 +155,7 @@ export default function Wallet() {
         </View>
         {row.trailing.kind === "showCard" ? (
           <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
-            Show card
+            {tr("sh.hero.showCard")}
           </Text>
         ) : row.trailing.kind === "fraction" ? (
           <Text style={ui(14, 600, 18)} rawColor={c.accentText}>
@@ -199,7 +202,7 @@ export default function Wallet() {
         promo={it.promo}
         shop={{ name: it.merchant.name, vertical: it.merchant.vertical, logoUrl: it.merchant.logoUrl, brandColor: it.merchant.brandColor, distanceM: it.distanceMetres }}
         onPress={() => router.push(`/shop/${it.merchant.slug}`)}
-        joinLabel={it.isMember ? undefined : "Join"}
+        joinLabel={it.isMember ? undefined : tr("sh.wallet.join")}
         onJoin={it.isMember ? undefined : () => setJoining(it)}
       />
     );
@@ -214,9 +217,9 @@ export default function Wallet() {
       >
         <View style={styles.titleRow}>
           <Text style={disp(34, 800, 40, -0.01)} accessibilityRole="header">
-            wallet
+            {tr("sh.wallet.title")}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Search shops" onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
             <SearchGlyph size={18} color={c.fg} strokeWidth={2} />
           </Pressable>
         </View>
@@ -242,7 +245,7 @@ export default function Wallet() {
             <View style={{ width: `${Math.round((100 * hero.value) / Math.max(1, hero.max))}%`, height: 3, borderRadius: 999, backgroundColor: c.accent }} />
           </View>
         ) : null}
-        {wallet.isError && memberships.length > 0 ? <View style={{ marginTop: 16 }}><Banner variant="neutral" actionLabel="Try again" onAction={() => void wallet.refetch()}>{"Couldn't refresh. Showing your last balances."}</Banner></View> : null}
+        {wallet.isError && memberships.length > 0 ? <View style={{ marginTop: 16 }}><Banner variant="neutral" actionLabel={tr("sh.act.tryAgain")} onAction={() => void wallet.refetch()}>{tr("sh.wallet.staleBanner")}</Banner></View> : null}
         {wallet.dataUpdatedAt && !online ? (
           <Text variant="caption" color="fgMuted" style={{ marginTop: 8 }}>
             {t("misc.updatedAgo", { relativeTime: relativeTime(wallet.dataUpdatedAt) })}
@@ -254,20 +257,20 @@ export default function Wallet() {
             <SkeletonRows rows={4} />
           </View>
         ) : wallet.isError && memberships.length === 0 ? (
-          <ErrorState offline={!online} message={online ? "Your wallet didn't load." : "You're offline. Your card still works at the counter."} onRetry={() => void wallet.refetch()} />
+          <ErrorState offline={!online} message={online ? tr("sh.wallet.loadFail") : tr("sh.wallet.offline")} onRetry={() => void wallet.refetch()} />
         ) : memberships.length === 0 ? (
           <EmptyState body={t("empty.wallet.body")} actionLabel={t("action.showCard")} onAction={() => router.push("/card")} />
         ) : (
           <>
             {ready.length > 0 ? (
               <View>
-                {section("Reward ready")}
+                {section(tr("sh.wallet.readyNow"))}
                 {ready.map((m, i) => shopRow(m, i, ready.length))}
               </View>
             ) : null}
             {rest.length > 0 ? (
               <View>
-                {section("Your shops")}
+                {section(ready.length > 0 ? tr("sh.wallet.earning") : tr("sh.wallet.yourShops"))}
                 {rest.map((m, i) => shopRow(m, i, rest.length))}
               </View>
             ) : null}
@@ -276,7 +279,7 @@ export default function Wallet() {
 
         {inProgress.length > 0 ? (
           <View>
-            {section("in progress")}
+            {section(tr("sh.wallet.inProgress"))}
             {inProgress.slice(0, 4).map((row, i, shown) =>
               row.kind === "ticket" ? (
                 <ListRow
@@ -284,7 +287,7 @@ export default function Wallet() {
                   divider={i < shown.length - 1}
                   leadingIcon={Ticket}
                   title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
-                  subtitle={`${row.x.merchantName} · ${row.x.status === "quote_sent" ? "needs your approval" : TICKET_STATUS_LABELS[row.x.status].toLowerCase()}`}
+                  subtitle={`${row.x.merchantName} · ${row.x.status === "quote_sent" ? tr("sh.wallet.needsApproval") : TICKET_STATUS_LABELS[row.x.status].toLowerCase()}`}
                   chevron
                   onPress={() => router.push(`/tickets/${row.x.id}`)}
                 />
@@ -293,7 +296,7 @@ export default function Wallet() {
                   key={row.x.id}
                   divider={i < shown.length - 1}
                   leadingIcon={Store}
-                  title={`Pickup order #${row.x.number}`}
+                  title={tr("sh.wallet.pickupOrder", { n: row.x.number })}
                   subtitle={`${row.x.merchantName} · ${ORDER_STATUS_LABELS[row.x.status].toLowerCase()}`}
                   chevron
                   onPress={() => router.push(`/orders/${row.x.id}`)}
@@ -305,7 +308,7 @@ export default function Wallet() {
 
         {camp ? (
           <View>
-            {section(shortHood(camp.neighbourhood.name))}
+            {section(locale === "en" ? shortHood(camp.neighbourhood.name) : tr("sh.wallet.street"))}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${camp.name}. ${camp.progress.visited} of ${camp.progress.goal} shops.`}
@@ -318,7 +321,9 @@ export default function Wallet() {
                   {camp.name}
                 </Text>
                 <Text style={[ui(13, 400, 17), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
-                  {[`${camp.progress.visited} of ${camp.progress.goal} shops`, promoEnds(camp.endsAt)?.replace(/^E/, "e")].filter(Boolean).join(" · ")}
+                  {locale === "en"
+                    ? [`${camp.progress.visited} of ${camp.progress.goal} shops`, promoEnds(camp.endsAt)?.replace(/^E/, "e")].filter(Boolean).join(" · ")
+                    : tr("sh.wallet.passportLine", { visited: camp.progress.visited, goal: camp.progress.goal, date: new Date(camp.endsAt).toLocaleDateString(info.bcp47, { month: "short", day: "numeric" }) })}
                 </Text>
               </View>
               <ChevronRightGlyph size={16} color={c.fgSubtle} />
@@ -328,11 +333,11 @@ export default function Wallet() {
 
         {promosOn && feedItems.length > 0 ? (
           <View style={{ gap: 12 }}>
-            {section("nearby offers")}
+            {section(tr("sh.wallet.nearbyOffers"))}
             {feedItems.map(renderFeed)}
             {feed.hasNextPage && feedItems.length < 6 ? (
               <Button variant="secondary" loading={feed.isFetchingNextPage} onPress={() => feed.fetchNextPage()}>
-                Show more
+                {tr("sh.wallet.showMore")}
               </Button>
             ) : null}
           </View>

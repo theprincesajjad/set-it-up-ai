@@ -9,11 +9,11 @@
  * Docs: https://developers.google.com/wallet/retail/loyalty-cards
  */
 import { SignJWT, importPKCS8 } from "jose";
-import { BRAND, walletApi } from "@ll/shared";
+import { BRAND, t as translate, walletApi } from "@ll/shared";
 import type { Config } from "../config.js";
 import { requestJson } from "../connectors/util.js";
 import type { Fetch } from "./integrations-http.js";
-import { PASS_COLORS, balanceText, type PassLocation } from "./wallet-apple.js";
+import { PASS_COLORS, balanceText, passLocale, type PassLocation } from "./wallet-apple.js";
 
 export interface ServiceAccount {
   client_email: string;
@@ -71,6 +71,9 @@ export interface GoogleObjectInput {
 /** One loyalty object per customer. */
 export function loyaltyObject(config: Config, issuerId: string, userId: string, input: GoogleObjectInput) {
   const s = input.summary;
+  const loc = passLocale(s);
+  const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate(loc, key, vars);
+  const cap = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;
   const top = s.shops.slice(0, 3);
   const anyExpiry = s.shops.some((x) => x.expiryMonths);
   return {
@@ -80,36 +83,36 @@ export function loyaltyObject(config: Config, issuerId: string, userId: string, 
     accountId: s.memberCode,
     accountName: s.name ?? "Member",
     hexBackgroundColor: PASS_COLORS.background,
-    loyaltyPoints: { label: "Rewards ready", balance: { int: s.rewardsReady ?? 0 } },
-    secondaryLoyaltyPoints: { label: "Shops", balance: { int: s.shopCount } },
+    loyaltyPoints: { label: cap(tr("sh.pass.ready")), balance: { int: s.rewardsReady ?? 0 } },
+    secondaryLoyaltyPoints: { label: tr("sh.pass.shopsCap"), balance: { int: s.shopCount } },
     barcode: { type: "QR_CODE", value: s.qrValue, alternateText: s.memberCode },
     textModulesData: [
       ...top.map((x, i) => ({
         id: `shop${i + 1}`,
         header: x.name,
-        body: `${balanceText(x.balance, x.terminology)}${x.rewardsReady ? ` · ${x.rewardsReady} ${x.rewardsReady === 1 ? "reward" : "rewards"} ready` : ""}`,
+        body: `${balanceText(x.balance, x.terminology, loc)}${x.rewardsReady ? ` · ${tr("sh.pass.rewardsReadySuffix", { n: x.rewardsReady })}` : ""}`,
       })),
       ...(s.shops.length > 3
-        ? [{ id: "more", header: `${s.shops.length - 3} more ${s.shops.length - 3 === 1 ? "shop" : "shops"}`, body: s.shops.slice(3).map((x) => `${x.name}: ${balanceText(x.balance, x.terminology)}`).join("\n") }]
+        ? [{ id: "more", header: tr("sh.pass.moreShops", { n: s.shops.length - 3 }), body: s.shops.slice(3).map((x) => `${x.name}: ${balanceText(x.balance, x.terminology, loc)}`).join("\n") }]
         : []),
-      ...(s.shops.length ? [] : [{ id: "join", header: "Start earning", body: "Show this card at any participating shop to join." }]),
+      ...(s.shops.length ? [] : [{ id: "join", header: tr("sh.pass.startEarning"), body: tr("sh.pass.joinBody") }]),
       {
         id: "expiry",
-        header: "Points expiry",
+        header: tr("sh.pass.expiryLabel"),
         body: anyExpiry
           ? s.shops
               .filter((x) => x.expiryMonths)
-              .map((x) => `${x.name}: after ${x.expiryMonths} months without a visit`)
-              .join("\n") + "\nOther shops: points never expire."
-          : "Your points never expire.",
+              .map((x) => tr("sh.pass.afterMonths", { shop: x.name, months: x.expiryMonths! }).replace(/[.।۔]$/, ""))
+              .join("\n") + `\n${tr("sh.pass.othersNever")}`
+          : tr("sh.pass.expiryNever"),
       },
-      { id: "how", header: "How to use", body: `Show this card at the counter of any ${BRAND.name} shop to earn and redeem.` },
+      { id: "how", header: tr("sh.pass.howLabel"), body: tr("sh.pass.googleHow", { brand: BRAND.name }) },
     ],
     linksModuleData: {
       uris: [
-        { id: "card", uri: `${config.publicWebUrl}/me`, description: "Your shops and rewards" },
-        { id: "terms", uri: `${config.publicWebUrl}/terms`, description: "Terms" },
-        { id: "support", uri: `mailto:${BRAND.supportEmail}`, description: "Support" },
+        { id: "card", uri: `${config.publicWebUrl}/me`, description: tr("sh.pass.yourShopsAndRewards") },
+        { id: "terms", uri: `${config.publicWebUrl}/terms`, description: tr("sh.pass.terms") },
+        { id: "support", uri: `mailto:${BRAND.supportEmail}`, description: tr("sh.pass.support") },
       ],
     },
     ...(input.locations?.length ? { locations: input.locations.slice(0, 10).map((l) => ({ latitude: l.latitude, longitude: l.longitude })) } : {}),

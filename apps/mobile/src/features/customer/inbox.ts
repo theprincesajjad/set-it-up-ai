@@ -6,7 +6,7 @@
  * If the API answers 404 (an older server), the inbox shows its empty state and the settings screen falls back
  * to the device-only switches, so nothing breaks.
  */
-import { customerApi } from "@ll/shared";
+import { customerApi, type MessageKey } from "@ll/shared";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { isApiError } from "../../api/client";
@@ -91,13 +91,13 @@ export function openNotification(n: customerApi.NotificationDto): void {
 }
 
 /** Inbox sections: today · this week · earlier. */
-export function inboxSections(items: customerApi.NotificationDto[], now = new Date()): { title: string; data: customerApi.NotificationDto[] }[] {
+export function inboxSections(items: customerApi.NotificationDto[], now = new Date(), labels: [string, string, string] = ["today", "this week", "earlier"]): { title: string; data: customerApi.NotificationDto[] }[] {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const weekAgo = startOfDay - 6 * 24 * 60 * 60_000;
   const out = [
-    { title: "today", data: [] as customerApi.NotificationDto[] },
-    { title: "this week", data: [] as customerApi.NotificationDto[] },
-    { title: "earlier", data: [] as customerApi.NotificationDto[] },
+    { title: labels[0], data: [] as customerApi.NotificationDto[] },
+    { title: labels[1], data: [] as customerApi.NotificationDto[] },
+    { title: labels[2], data: [] as customerApi.NotificationDto[] },
   ];
   for (const n of items) {
     const t = new Date(n.createdAt).getTime();
@@ -142,15 +142,18 @@ export function useSetNotificationPref() {
 }
 
 /** Settings groups, in catalogue order. "Points and rewards" · "Orders and repairs" · "Offers". */
-export const PREF_GROUPS: { title: string; channel: customerApi.AndroidChannelId; note?: string }[] = [
-  { title: "Points and rewards", channel: "points" },
-  { title: "Orders and repairs", channel: "orders" },
-  { title: "Offers", channel: "offers", note: "Only from shops you've said yes to, at most one a day, never 9 pm to 8 am." },
+export const PREF_GROUPS: { title: string; titleKey: MessageKey; channel: customerApi.AndroidChannelId; note?: string; noteKey?: MessageKey }[] = [
+  { title: "Points and rewards", titleKey: "sh.set.groupPoints", channel: "points" },
+  { title: "Orders and repairs", titleKey: "sh.set.groupOrders", channel: "orders" },
+  { title: "Offers", titleKey: "sh.set.groupOffers", channel: "offers", note: "Only from shops you've said yes to, at most one a day, never 9 pm to 8 am.", noteKey: "sh.set.offersNote" },
 ];
 
-export function groupPrefs(items: customerApi.NotificationPrefDto[]): { title: string; note?: string; items: customerApi.NotificationPrefDto[] }[] {
+export function groupPrefs(items: customerApi.NotificationPrefDto[]): { title: string; titleKey: MessageKey; channel: customerApi.AndroidChannelId; note?: string; noteKey?: MessageKey; items: customerApi.NotificationPrefDto[] }[] {
   return PREF_GROUPS.map((g) => ({
     title: g.title,
+    titleKey: g.titleKey,
+    channel: g.channel,
+    noteKey: g.noteKey,
     note: g.note,
     items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel),
   })).filter((g) => g.items.length > 0);

@@ -13,7 +13,7 @@ import { errorMessage } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
 
-const PREFIXES = ["", "feature.", "merchant.", "user.", "member.", "consent.", "ad.", "campaign.", "rep.", "billing."];
+const PREFIXES = ["", "feature.", "merchant.", "billing.", "support.", "user.", "lead.", "rep.", "neighbourhood.", "perk.", "campaign.", "ad.", "member.", "consent."];
 
 export default function AuditPage() {
   const [action, setAction] = useState("");

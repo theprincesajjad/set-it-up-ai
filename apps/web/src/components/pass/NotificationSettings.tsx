@@ -1,32 +1,30 @@
 "use client";
 /**
- * /me Settings → Notifications: the latest inbox items (mark read, open) and per-type switches grouped like
- * the app (points and rewards · orders and repairs · offers), on the customer notifications API
- * (docs/engineering/api/notifications.md). An older API (404) hides the section instead of erroring.
+ * The shopper's notifications on /me, two pieces with two jobs:
+ *  - <InboxList/>  (Activity tab): everything we held back from a push, newest first, with the day's budget said out loud.
+ *  - <NotificationSettings/>  (Settings tab): the language messages come in, and per-type switches grouped like the app
+ *    (points and rewards · orders and repairs · offers), each stating its own limit.
+ * On the customer notifications API (docs/engineering/api/notifications.md). An older API (404) hides the section.
  */
-import { customerApi } from "@ll/shared";
+import { customerApi, LOCALE_LIST, t as translate, type MessageKey } from "@ll/shared";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
-import { formatDate, formatTime } from "@/lib/format";
+import { useLocale, saveProfileLocale } from "@/lib/i18n/client";
 
-const GROUPS: { title: string; channel: customerApi.AndroidChannelId; note?: string }[] = [
-  { title: "Points and rewards", channel: "points" },
-  { title: "Orders and repairs", channel: "orders" },
-  { title: "Offers", channel: "offers", note: "Only from shops you've said yes to, at most one a day, never 9 pm to 8 am." },
+const GROUPS: { titleKey: MessageKey; channel: customerApi.AndroidChannelId; noteKey?: MessageKey }[] = [
+  { titleKey: "sh.set.groupPoints", channel: "points" },
+  { titleKey: "sh.set.groupOrders", channel: "orders" },
+  { titleKey: "sh.set.groupOffers", channel: "offers", noteKey: "sh.set.offersNote" },
 ];
-const CHANNEL: Record<customerApi.NotificationChannel, string> = { push: "app", sms: "text", email: "email" };
-
-function when(iso: string): string {
-  const d = new Date(iso);
-  return d.toDateString() === new Date().toDateString() ? formatTime(iso) : formatDate(iso);
-}
+const CHANNEL_KEY: Record<customerApi.NotificationChannel, MessageKey> = { push: "sh.ch.push", sms: "sh.ch.sms", email: "sh.ch.email" };
 
 /** Inbox links: ll://shop/<slug> → /shops/<slug>; web links as they are. */
 function hrefFor(n: customerApi.NotificationDto): string | null {
@@ -36,40 +34,28 @@ function hrefFor(n: customerApi.NotificationDto): string | null {
   return slug ? `/shops/${slug}` : null;
 }
 
-export function NotificationSettings() {
-  const toast = useToast();
-  const [prefs, setPrefs] = useState<customerApi.NotificationPrefsResponse | null>(null);
+/** The latest inbox items (mark read, open). Hides itself on an older API (404). */
+export function InboxList({ limit = 20 }: { limit?: number }) {
+  const { t, time, date } = useLocale();
   const [inbox, setInbox] = useState<customerApi.NotificationsResponse | null>(null);
+  const [limits, setLimits] = useState<number>(customerApi.ROUTINE_PUSHES_PER_DAY);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
 
   const load = useCallback(async () => {
     setState("loading");
     try {
-      const [p, n] = await Promise.all([browserApi.me.notificationPrefs(), browserApi.me.notifications({ limit: 5 })]);
-      setPrefs(p);
+      const [n, p] = await Promise.all([browserApi.me.notifications({ limit }), browserApi.me.notificationPrefs().catch(() => null)]);
       setInbox(n);
+      if (p?.limits) setLimits(p.limits.routinePushesPerDay);
       setState("ready");
     } catch (e) {
       setState(isApiError(e) && e.status === 404 ? "missing" : "error");
     }
-  }, []);
+  }, [limit]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
-
-  async function toggle(type: customerApi.NotificationType, channel: customerApi.NotificationChannel, enabled: boolean) {
-    if (!prefs) return;
-    const prev = prefs;
-    // Optimistic: the switch moves now; rolled back if the save fails.
-    setPrefs({ ...prefs, items: prefs.items.map((x) => (x.type === type ? { ...x, channels: { ...x.channels, [channel]: enabled } } : x)) });
-    try {
-      setPrefs(await browserApi.me.updateNotificationPrefs({ prefs: [{ type, channel, enabled }] }));
-    } catch {
-      setPrefs(prev);
-      toast({ message: "That didn't save. Try again.", tone: "error" });
-    }
-  }
 
   async function markAll() {
     if (!inbox) return;
@@ -80,42 +66,35 @@ export function NotificationSettings() {
   if (state === "missing") return null;
   if (state === "loading")
     return (
-      <SkeletonGroup className="flex flex-col gap-3" label="Loading notifications">
+      <SkeletonGroup className="flex flex-col gap-3" label={t("sh.activity.title")}>
         <Skeleton className="h-3.5 w-28" />
-        <div className="flex flex-col gap-4 rounded-card border border-line p-4">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-2/5" />
-                <Skeleton className="h-3 w-4/5" />
-              </div>
-              <Skeleton className="h-[31px] w-[51px] rounded-full" />
-            </div>
-          ))}
-        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+        ))}
       </SkeletonGroup>
     );
   if (state === "error")
     return (
       <div className="flex items-center justify-between gap-4 rounded-card border border-line p-4">
-        <p className="text-body text-fg">Your notification settings didn&apos;t load.</p>
+        <p className="text-body text-fg">{t("sh.set.loadFail")}</p>
         <Button variant="secondary" size="sm" onClick={() => void load()}>
-          Try again
+          {t("sh.act.tryAgain")}
         </Button>
       </div>
     );
 
-  const items = prefs?.items ?? [];
-  const groups = GROUPS.map((g) => ({ ...g, items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel) })).filter((g) => g.items.length);
-
+  const when = (iso: string) => (new Date(iso).toDateString() === new Date().toDateString() ? time(iso) : date(iso, { month: "short", day: "numeric" }));
   return (
-    <div id="notifications" className="flex flex-col gap-7">
+    <div id="notifications" className="flex flex-col gap-3">
       <ListGroup
-        title="Notifications"
+        title={t("sh.activity.title")}
         action={
           inbox && inbox.unreadCount > 0 ? (
             <button type="button" onClick={() => void markAll()} className="text-meta-strong text-fg hover:underline focus-visible:focus-ring">
-              Mark all read
+              {t("sh.set.markAllRead")}
             </button>
           ) : null
         }
@@ -125,7 +104,7 @@ export function NotificationSettings() {
             const href = hrefFor(n);
             const body = (
               <>
-                <span aria-hidden className={cn("mt-2 size-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-fg")} />
+                <span aria-hidden className={cn("mt-2 size-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-accent")} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-baseline gap-2">
                     <span className={cn("flex-1 text-body", n.read ? "text-fg" : "font-semibold text-fg")}>{n.title}</span>
@@ -151,22 +130,133 @@ export function NotificationSettings() {
             );
           })
         ) : (
-          <li className="py-3.5 text-body text-fg-muted">Nothing yet. Points, rewards and order updates land here.</li>
+          <li className="py-3.5 text-body text-fg-muted">{t("sh.set.inboxEmpty")}</li>
         )}
       </ListGroup>
+      {/* The budget, said out loud, so a quiet phone never feels broken. */}
+      <p className="text-meta text-fg-muted">{t("sh.activity.budget", { n: limits })}</p>
+    </div>
+  );
+}
 
+/** The language messages come in. Saved on the profile, so alerts, texts and the wallet pass follow it. */
+function MessagesLanguage() {
+  const { t, locale, setLocale } = useLocale();
+  const toast = useToast();
+  return (
+    <section aria-labelledby="msg-lang" className="flex flex-col gap-2.5 rounded-card border border-line p-4">
+      <div className="flex flex-col gap-0.5">
+        <h2 id="msg-lang" className="text-body-strong text-fg">{t("sh.set.messagesIn")}</h2>
+        <p className="text-meta text-fg-muted">{t("sh.set.messagesInHint")}</p>
+      </div>
+      <SegmentedControl
+        label={t("sh.set.language")}
+        value={locale}
+        onChange={(next) => {
+          // The page switches now (cookie + ?lang=); the same choice is saved on the profile (English too: it is explicit here).
+          setLocale(next);
+          const message = translate(next, "sh.set.languageSaved");
+          void saveProfileLocale(next, { explicit: true }).then((ok) => ok && toast({ message, tone: "success" }));
+        }}
+        className="self-start max-w-full"
+        options={LOCALE_LIST.map((l) => ({ value: l.code, label: l.name }))}
+      />
+    </section>
+  );
+}
+
+export function NotificationSettings() {
+  const toast = useToast();
+  const { t, locale } = useLocale();
+  const [prefs, setPrefs] = useState<customerApi.NotificationPrefsResponse | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
+
+  const load = useCallback(async () => {
+    setState("loading");
+    try {
+      setPrefs(await browserApi.me.notificationPrefs());
+      setState("ready");
+    } catch (e) {
+      setState(isApiError(e) && e.status === 404 ? "missing" : "error");
+    }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  async function toggle(type: customerApi.NotificationType, channel: customerApi.NotificationChannel, enabled: boolean) {
+    if (!prefs) return;
+    const prev = prefs;
+    // Optimistic: the switch moves now; rolled back if the save fails.
+    setPrefs({ ...prefs, items: prefs.items.map((x) => (x.type === type ? { ...x, channels: { ...x.channels, [channel]: enabled } } : x)) });
+    try {
+      setPrefs(await browserApi.me.updateNotificationPrefs({ prefs: [{ type, channel, enabled }] }));
+    } catch {
+      setPrefs(prev);
+      toast({ message: t("sh.set.saveFail"), tone: "error" });
+    }
+  }
+
+  const language = <MessagesLanguage />;
+  if (state === "missing") return language;
+  if (state === "loading")
+    return (
+      <div className="flex flex-col gap-7">
+        {language}
+        <SkeletonGroup className="flex flex-col gap-3" label={t("sh.set.notifications")}>
+          <Skeleton className="h-3.5 w-28" />
+          <div className="flex flex-col gap-4 rounded-card border border-line p-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="h-3 w-4/5" />
+                </div>
+                <Skeleton className="h-[31px] w-[51px] rounded-full" />
+              </div>
+            ))}
+          </div>
+        </SkeletonGroup>
+      </div>
+    );
+  if (state === "error")
+    return (
+      <div className="flex flex-col gap-7">
+        {language}
+        <div className="flex items-center justify-between gap-4 rounded-card border border-line p-4">
+          <p className="text-body text-fg">{t("sh.set.loadFail")}</p>
+          <Button variant="secondary" size="sm" onClick={() => void load()}>
+            {t("sh.act.tryAgain")}
+          </Button>
+        </div>
+      </div>
+    );
+
+  const items = prefs?.items ?? [];
+  const budget = prefs?.limits?.routinePushesPerDay ?? customerApi.ROUTINE_PUSHES_PER_DAY;
+  const groups = GROUPS.map((g) => ({ ...g, items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel) })).filter((g) => g.items.length);
+  const label = (type: customerApi.NotificationType, fallback: string) => {
+    const key = `sh.nt.${type}` as MessageKey;
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
+
+  return (
+    <div id="notifications-settings" className="flex flex-col gap-7">
+      {language}
       {groups.map((g) => (
-        <ListGroup key={g.title} title={g.title} footer={g.note}>
+        <ListGroup key={g.titleKey} title={t(g.titleKey)} footer={g.noteKey ? t(g.noteKey) : g.channel === "points" ? t("sh.set.budget", { n: budget }) : undefined}>
           {g.items.map((item) => {
             const chans = (Object.keys(item.channels) as customerApi.NotificationChannel[]).sort((a, b) => ["push", "sms", "email"].indexOf(a) - ["push", "sms", "email"].indexOf(b));
             const [first, ...more] = chans;
             if (!first) return null;
             return (
               <li key={item.type} className="py-2">
-                <Switch label={item.label} description={item.description} checked={!!item.channels[first]} onChange={(v) => void toggle(item.type, first, v)} />
+                <Switch label={label(item.type, item.label)} description={locale === "en" ? item.description : undefined} checked={!!item.channels[first]} onChange={(v) => void toggle(item.type, first, v)} />
                 {more.map((ch) => (
                   <div key={ch} className="ps-4">
-                    <Switch label={`Also by ${CHANNEL[ch]}`} checked={!!item.channels[ch]} onChange={(v) => void toggle(item.type, ch, v)} />
+                    <Switch label={t("sh.set.alsoBy", { channel: t(CHANNEL_KEY[ch]) })} checked={!!item.channels[ch]} onChange={(v) => void toggle(item.type, ch, v)} />
                   </div>
                 ))}
               </li>

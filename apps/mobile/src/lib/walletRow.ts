@@ -9,7 +9,8 @@
  */
 import { termWord, formatNumber } from "./award";
 import { rewardInSentence } from "./format";
-import { rewardPhrase } from "./hero";
+import { rewardPhrase, type HeroI18n } from "./hero";
+import { unitLabel as localizedUnit } from "@ll/shared";
 
 export interface WalletRowInput {
   balance: number;
@@ -32,16 +33,33 @@ export interface WalletRow {
   progress: number | null;
 }
 
-export function walletRow(m: WalletRowInput, readyName?: string | null): WalletRow {
-  const unit = termWord(m.terminology, m.balance);
+export function walletRow(m: WalletRowInput, readyName?: string | null, i18n?: HeroI18n): WalletRow {
+  const other = !!i18n && i18n.locale !== "en";
+  const unit = other ? localizedUnit(i18n!.locale, m.terminology, m.balance).replace(/^[\d,.\s]+/, "") : termWord(m.terminology, m.balance);
   if (m.rewardsAvailableCount > 0) {
-    const subtitle = m.rewardsAvailableCount > 1 ? `${m.rewardsAvailableCount} rewards ready` : readyName ? `${rewardInSentence(readyName)} ready` : "reward ready";
+    const subtitle = other
+      ? m.rewardsAvailableCount > 1
+        ? i18n!.t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount })
+        : readyName
+          ? i18n!.t("sh.hero.readyAt", { reward: readyName })
+          : i18n!.t("sh.wallet.rewardReady")
+      : m.rewardsAvailableCount > 1
+        ? `${m.rewardsAvailableCount} rewards ready`
+        : readyName
+          ? `${rewardInSentence(readyName)} ready`
+          : "reward ready";
     return { subtitle, trailing: { kind: "showCard" }, accent: true, progress: null };
   }
   const next = m.nextReward;
-  if (!next) return { subtitle: m.expiryDisclosure, trailing: { kind: "balance", value: m.balance, unit }, accent: false, progress: null };
+  if (!next) {
+    // The expiry sentence is the shop's English text; in other languages the row just states the balance.
+    const subtitle = other ? localizedUnit(i18n!.locale, m.terminology, m.balance) : m.expiryDisclosure;
+    return { subtitle, trailing: { kind: "balance", value: m.balance, unit }, accent: false, progress: null };
+  }
   const progress = next.pointsCost > 0 ? Math.max(0, Math.min(1, (next.pointsCost - next.pointsNeeded) / next.pointsCost)) : null;
-  const subtitle = `${formatNumber(m.balance)} ${unit} · ${formatNumber(next.pointsNeeded)} to ${rewardPhrase(next.name)}`;
+  const subtitle = other
+    ? `${localizedUnit(i18n!.locale, m.terminology, m.balance)} · ${i18n!.t("sh.n.earnNext", { need: localizedUnit(i18n!.locale, m.terminology, next.pointsNeeded), reward: next.name }).replace(/[.।۔]$/, "")}`
+    : `${formatNumber(m.balance)} ${unit} · ${formatNumber(next.pointsNeeded)} to ${rewardPhrase(next.name)}`;
   const trailing: WalletTrailing = m.program?.earnType === "stamps" ? { kind: "fraction", text: `${m.balance} / ${next.pointsCost}` } : { kind: "balance", value: m.balance, unit };
   return { subtitle, trailing, accent: false, progress };
 }

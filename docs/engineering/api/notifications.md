@@ -34,6 +34,10 @@ Every notification we decide to send is stored in the inbox (`notifications`) fi
 
 Adjustments and reversals update the wallet pass but send no message.
 
+> **Routine budget.** `points_earned` and `passport_progress` share `ROUTINE_PUSHES_PER_DAY` (3) pushes per customer per rolling 24 h across all shops. Over the budget the inbox row is still written (`channels` has no `push`, `SendResult.budgeted` is true); only the push is skipped. Reward ready, redeem, orders, quotes, tiffin, catering, hall, booking, expiry and offers are never counted. `GET /v1/me/notification-prefs` returns `limits: { routinePushesPerDay, offersPerDay, pointsCollapseMinutes }` for the settings screen to state in words.
+>
+> **Language.** Titles and bodies built by this service (earn, reward ready, redeem, expiry, passport title) use `users.locale` (`en | hi | ur | pa`) via the `sh.n.*` catalog keys; English output is unchanged.
+
 Senders (API code): `sendNotification(ctx, { userId, merchantId, type, title, body, data?, smsBody?, passMessage? })` returns
 `{ notificationId, skipped?, channels, push }` and never throws. `skipped` ∈ `no_consent | muted | feature_off | quiet_hours |
 daily_limit | collapsed | user_missing`. Commerce code keeps calling `commerceShared.notifyCustomer` (mapped by `data.type`:

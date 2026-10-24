@@ -1,5 +1,12 @@
 import type { customerApi } from "@ll/shared";
+import { unitWord, type Locale, type MessageKey, type Vars } from "@ll/shared";
 import { formatNumber, termWord } from "./award";
+
+/** Pass `{ locale, t }` to get the hero in the shopper's language; English keeps the wording below. */
+export interface HeroI18n {
+  locale: Locale;
+  t: (key: MessageKey, vars?: Vars) => string;
+}
 
 type Membership = Pick<customerApi.MembershipDto, "id" | "merchant" | "terminology" | "nextReward" | "rewardsAvailableCount">;
 
@@ -57,7 +64,26 @@ export function rewardPhrase(name: string): string {
 }
 
 /** Text for the hero: big number, the line under it, the chip, and one accessibility label. */
-export function heroText(h: Exclude<HomeHero, { kind: "empty" }>): { big: string; line: string; chip: string; label: string } {
+export function heroText(h: Exclude<HomeHero, { kind: "empty" }>, i18n?: HeroI18n): { big: string; line: string; chip: string; label: string } {
+  if (i18n && i18n.locale !== "en") {
+    const { t } = i18n;
+    switch (h.kind) {
+      case "ready": {
+        const line = t("sh.wallet.heroReady", { n: h.count });
+        const chip = h.shopName ? t("sh.hero.atShop", { shop: h.shopName }) : t("sh.wallet.heroAcross", { n: h.shopCount });
+        return { big: formatNumber(h.count), line, chip, label: `${h.count} ${line} ${chip}` };
+      }
+      case "progress": {
+        const line = t("sh.hero.toReward", { unit: unitWord(i18n.locale, h.unit), reward: h.rewardName });
+        const chip = t("sh.hero.atShop", { shop: h.shopName });
+        return { big: formatNumber(h.toGo), line, chip, label: `${formatNumber(h.toGo)} ${line} ${chip}` };
+      }
+      case "shops": {
+        const line = t("sh.hero.shopsOnCard", { n: h.count });
+        return { big: String(h.count), line, chip: t("sh.hero.nextVisit"), label: `${h.count} ${line}` };
+      }
+    }
+  }
   switch (h.kind) {
     case "ready": {
       const line = h.count === 1 ? "reward ready" : "rewards ready";
