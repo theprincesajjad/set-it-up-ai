@@ -85,6 +85,8 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await page.goto(`${base}/setup?step=qr_kit`);
   await expect(page.getByRole("heading", { name: "Print your QR stand" })).toBeVisible();
   await page.getByRole("button", { name: "I printed it" }).click();
+  await expect(page.getByRole("heading", { name: "Staff and counter app" })).toBeVisible();
+  await page.goto(`${base}/setup?step=first_members`);
   await expect(page.getByRole("heading", { name: "Your first 25 members" })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Active members" })).toBeVisible();
   await page.screenshot({ path: shot("03-setup-first-members"), fullPage: true });

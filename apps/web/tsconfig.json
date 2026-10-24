@@ -78,8 +78,6 @@
     ".next-appts/dev/types/**/*.ts",
     ".next-vqa/types/**/*.ts",
     ".next-vqa/dev/types/**/*.ts",
-    ".next-onb/types/**/*.ts",
-    ".next-onb/dev/types/**/*.ts",
     ".next-ops/types/**/*.ts",
     ".next-ops/dev/types/**/*.ts",
     ".next-shop/types/**/*.ts",
