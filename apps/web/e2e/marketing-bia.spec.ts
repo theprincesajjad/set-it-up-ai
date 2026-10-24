@@ -293,6 +293,8 @@ test.describe("BIA console", () => {
     expect(all.length).toBeGreaterThan(2);
     await page.context().clearCookies();
     await signIn(page, ADMIN);
+    await page.goto("/bia");
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
     await expect(page.getByRole("complementary").getByLabel("Neighbourhood").locator("option")).toHaveCount(all.length);
     // A manager of one street gets plain text, no switcher.
     await page.context().clearCookies();

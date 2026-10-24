@@ -66,7 +66,7 @@ for (const width of [1440, 390]) {
       for (const [name, path] of pages) await shoot(page, name, path, width);
       await shoot(page, "03-customer-panel", `${m}/customers`, width, async (p) => {
         await p.getByRole("table", { name: "Customers" }).getByRole("row").nth(1).click();
-        await expect(p.getByRole("dialog", { name: "Customer" }).getByRole("heading", { name: "Activity" })).toBeVisible();
+        await expect(p.getByRole("dialog", { name: "Customer" }).getByRole("heading", { name: "Recent" })).toBeVisible();
       }, false);
       await shoot(page, "06-counter-member", `${m}/counter`, width, async (p) => {
         await p.getByLabel("Phone, last 4 digits or member code").fill("1034");
