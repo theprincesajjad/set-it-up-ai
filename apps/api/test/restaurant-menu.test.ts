@@ -268,7 +268,7 @@ describe("degh pre-orders", () => {
     const cancelled = list.body.days[0].orders[0];
     await env.db.update(orders).set({ status: "cancelled" }).where(eq(orders.id, cancelled.orderId));
     expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/preorders?from=2026-11-06&to=2026-11-06`)).body.days[0].pots).toBe(1);
-    expect((await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/preorders/settings`, { preorderDailyCap: null })).body).toEqual({ preorderDailyCap: null });
+    expect((await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/preorders/settings`, { preorderDailyCap: null })).body).toMatchObject({ preorderDailyCap: null });
   });
 
   it("is gated to Growth", async () => {

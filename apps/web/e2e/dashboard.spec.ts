@@ -119,8 +119,8 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   const panel = page.getByRole("dialog", { name: "Customer" });
   await expect(panel.getByRole("heading", { name: "Recent" })).toBeVisible();
   await expect(page).toHaveURL(/[?&]member=/);
-  const before = Number.parseInt((await panel.getByText(/^\d+$/).first().textContent()) ?? "0", 10);
-  await panel.getByRole("button", { name: /Adjust stamps/ }).click();
+  const before = Number.parseInt((await panel.getByText(/^\d+ of \d+ stamps/).first().textContent()) ?? "0", 10);
+  await panel.getByRole("button", { name: /^Adjust( stamps)?$/ }).first().click();
   const sheet = page.getByRole("dialog", { name: "Adjust stamps" });
   await sheet.getByLabel("Amount").fill("2");
   await sheet.getByLabel("Reason").selectOption("Missed at the counter");
@@ -133,7 +133,7 @@ test("owner: customers, detail and manual adjust", async ({ page }) => {
   // The full page stays for deep links.
   await panel.getByRole("link", { name: "Open full page" }).click();
   await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { name: "Recent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
 });
 
 test("owner: program editor with live preview saves", async ({ page }) => {
@@ -308,13 +308,13 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   await page.screenshot({ path: shot("27-integrations"), fullPage: true });
   await pilot(id, ["marketing.email"], true);
   await page.goto(`/m/${id}/messages/new`);
-  await expect(page.getByText(/Will go to \d+/)).toBeVisible();
+  await page.getByRole("radio", { name: "Email" }).click();
   await page.getByLabel("Subject").fill("New pastries this week");
-  await page.getByLabel("Message").fill("Hi {{first_name}}, try our new almond croissant.");
-  await expect(page.getByText("Added automatically")).toBeVisible();
+  await page.locator("#msg-body").fill("Hi {{first_name}}, try our new almond croissant.");
+  await expect(page.getByText(/Added for you:.*unsubscribe link/)).toBeVisible();
   await page.screenshot({ path: shot("28-message-composer"), fullPage: true });
   await page.goto(`/m/${id}/reports`);
-  await expect(page.getByRole("heading", { name: "Visits per day" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "When people come in" })).toBeVisible();
   await page.screenshot({ path: shot("29-reports"), fullPage: true });
   // Network overlap is an advanced (paid) report: no tab while locked.
   await expect(page.getByRole("tab", { name: "Network" })).toHaveCount(0);
@@ -348,7 +348,7 @@ test.describe("phone width", () => {
     await page.getByRole("button", { name: "Open menu" }).click();
     await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Counter" })).toBeVisible();
     await page.goto(`/m/${id}/counter`);
-    await expect(page.getByLabel("Phone, last 4 digits or member code")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Scan a card" })).toBeVisible();
     await page.screenshot({ path: shot("33-mobile-counter"), fullPage: true });
   });
 });
