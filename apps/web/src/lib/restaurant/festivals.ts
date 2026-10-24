@@ -3,7 +3,7 @@
  * the "get the kitchen ready" checklist, and the message text per language (English from the template; Hindi, Urdu and
  * Punjabi are short drafts built from the greeting and need a native speaker's check before sending).
  */
-import { formatFestivalDate, getFestival, type FestivalDef, type FestivalTemplate } from "@ll/shared";
+import { customOccasionDef, formatFestivalDate, getFestival, type FestivalDef, type FestivalTemplate } from "@ll/shared";
 import type { FestivalsUpcoming } from "@/lib/api/endpoints";
 
 export type FestivalItem = FestivalsUpcoming["items"][number];
@@ -98,6 +98,11 @@ function addDay(d: string, n: number): string {
 /** The day, 10:00 in the shop's morning: a sensible time for a scheduled festival message (never in the 9 pm to 8 am quiet hours). */
 export function defaultSendTime(date: string): string {
   return `${date}T10:00`;
+}
+
+/** The festival definition behind a planner item: the calendar's, or the one built from a date the owner added. */
+export function festivalDefOf(o: Pick<FestivalItem, "festivalId" | "custom">): FestivalDef | undefined {
+  return o.custom ? customOccasionDef(o.custom) : getFestival(o.festivalId);
 }
 
 export { getFestival };

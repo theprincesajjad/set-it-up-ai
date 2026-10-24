@@ -67,3 +67,29 @@ test("catering: inquiry, menu, quote and approval link", async ({ page }) => {
   await expect(page.getByText("Quote sent")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Approval link" })).toHaveValue(/\/e\/[A-Za-z0-9_-]+$/);
 });
+
+test("festivals: add my own date, plan it, and send myself a test", async ({ page }) => {
+  const email = "owner+nawab-biryani-house@example.com";
+  const id = await merchantId(email);
+  await signIn(page, email);
+  await page.goto(`/m/${id}/restaurant/festivals`);
+  await expect(page.getByRole("heading", { name: "Festivals", level: 1 })).toBeVisible();
+  await page.getByRole("button", { name: "Add my own date" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add my own date" });
+  const name = `Family night ${Date.now().toString().slice(-5)}`;
+  const day = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByLabel("Date").fill(day);
+  await dialog.getByLabel("Email subject").fill("Family night is coming");
+  await dialog.getByLabel("Message", { exact: true }).fill("Join us for family night at {{merchant}}.");
+  await dialog.getByRole("button", { name: "Add date" }).click();
+  const strip = page.getByRole("list", { name: "Next dates" });
+  await expect(strip.getByText(name)).toBeVisible();
+  await strip.getByRole("button", { name: new RegExp(name) }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(`^${name}`) })).toBeVisible();
+  await page.getByLabel("Send as").selectOption("email");
+  await page.getByRole("button", { name: "Send me a test" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /Test sent to/ })).toBeVisible();
+  await page.getByRole("button", { name: "Remove this date" }).click();
+  await expect(strip.getByText(name)).toHaveCount(0);
+});

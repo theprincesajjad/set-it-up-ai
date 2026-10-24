@@ -63,5 +63,5 @@ test("join page: Punjabi, with the CASL consent unticked and complete", async ({
   await expect(page.locator('div[lang="pa-IN"]').first()).toBeVisible();
   const consent = page.getByRole("checkbox").first();
   await expect(consent).not.toBeChecked();
-  await expect(page.getByText(/ਵਿਕਲਪਿਕ.*ਅਨਸਬਸਕ੍ਰਾਈਬ/)).toBeVisible();
+  await expect(page.getByText(/ਵਿਕਲਪਿਕ.*ਟਿੱਕ ਨਹੀਂ.*STOP/)).toBeVisible();
 });

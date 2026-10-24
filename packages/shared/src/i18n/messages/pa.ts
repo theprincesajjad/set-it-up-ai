@@ -6,6 +6,8 @@ export const pa: Messages = {
   // Public shop page
   "shop.rewards": "ਇਨਾਮ",
   "shop.promos": "ਆਫ਼ਰ",
+  "shop.howEarn": "ਇੱਥੇ ਕਿਵੇਂ ਕਮਾਉਣਾ ਹੈ",
+  "shop.welcomeBonus": "ਜੁੜੋ ਅਤੇ ਤੁਰੰਤ {points} ਪਾਓ।",
   "shop.about": "ਜਾਣਕਾਰੀ",
   "shop.call": "ਕਾਲ ਕਰੋ",
   "shop.directions": "ਰਾਹ ਵੇਖੋ",

@@ -6,6 +6,8 @@ export const ur: Messages = {
   // Public shop page
   "shop.rewards": "انعامات",
   "shop.promos": "آفرز",
+  "shop.howEarn": "یہاں کیسے کمائیں",
+  "shop.welcomeBonus": "شامل ہوں اور فوراً {points} پائیں۔",
   "shop.about": "تعارف",
   "shop.call": "کال کریں",
   "shop.directions": "راستہ دیکھیں",

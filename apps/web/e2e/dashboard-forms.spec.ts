@@ -186,14 +186,14 @@ test.describe("slots and tickets", () => {
 
   test("change a ticket's status and see it on the board and in the timeline", async ({ page }) => {
     const { id, token } = await owner("fix-it-phone-lab");
-    const fresh = await api<{ ticket: { id: string; number: number } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone: "+16475551050", name: "Dana Whitfield" }, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 11" }, issue: `Speaker muffled ${run}` }, token);
+    const fresh = await api<{ ticket: { id: string; number: number } }>("POST", `/v1/merchants/${id}/tickets`, { customer: { phone: "+16475551050", name: "Dana Whitfield" }, itemKind: "device", itemDetails: { make: "Apple", model: "iPhone 11" }, issue: `Speaker muffled ${run}`, termsAccepted: true }, token);
     await signIn(page, "fix-it-phone-lab");
     await page.goto(`/m/${id}/tickets`);
     await expect(page.getByRole("heading", { name: "Tickets", level: 1 })).toBeVisible();
     await page.getByRole("link", { name: new RegExp(`#${fresh.ticket.number}.*Speaker muffled ${run}`) }).click();
     await expect(page.getByRole("heading", { level: 1, name: new RegExp(`#${fresh.ticket.number}`) })).toBeVisible();
     await expect(page.getByRole("button", { name: "Update", exact: true })).toBeDisabled();
-    await page.getByLabel("Update status").selectOption({ label: "Work started" });
+    await page.getByRole("combobox", { name: "Update status" }).selectOption({ label: "Work started" });
     await page.getByLabel("Note for the customer").fill("Replacing the speaker mesh");
     await page.getByRole("button", { name: "Update", exact: true }).click();
     await expect(page.getByText("Updated. The customer was notified.")).toBeVisible();

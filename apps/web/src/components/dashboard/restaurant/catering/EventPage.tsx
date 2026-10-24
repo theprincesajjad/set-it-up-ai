@@ -240,9 +240,10 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
           </div>
         ) : null}
 
+        {can || extras.some((x) => x.description || x.unit) ? (
         <Section title="Extras" description="Staffing, delivery, chafing dishes, serving spoons.">
           <ul className="flex flex-col divide-y divide-line border-y border-line">
-            {extras.map((x) => (
+            {extras.filter((x) => can || x.description || x.unit).map((x) => (
               <li key={x.key} className="grid grid-cols-[1fr_auto] items-end gap-x-3 gap-y-1 py-3 sm:grid-cols-[1fr_6rem_9rem_auto]">
                 <div className="col-span-2 sm:col-span-1"><TextField label="Extra" hideLabel placeholder="Delivery and setup" disabled={!can} value={x.description} onChange={(e) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, description: e.target.value } : y)))} /></div>
                 <NumberField label="Qty" disabled={!can} value={x.qty} onChange={(v) => setExtras((xs) => xs.map((y) => (y.key === x.key ? { ...y, qty: v } : y)))} />
@@ -253,6 +254,7 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
           </ul>
           {can ? <div className="mt-2"><Button variant="ghost" size="sm" iconStart={Plus} onClick={() => setExtras((x) => [...x, { key: nk(), description: "", qty: "1", unit: "" }])}>Add an extra</Button></div> : null}
         </Section>
+        ) : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="sm:order-2">

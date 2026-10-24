@@ -3,18 +3,21 @@ import { nowMs } from "@/lib/restaurant/util";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { formatFestivalDate, getFestival, type FestivalSendDate } from "@ll/shared";
+import { formatFestivalDate, type FestivalDef, type FestivalSendDate } from "@ll/shared";
 import { Dot, EmptyState, ErrorLine, PageHeader, SkeletonRows } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { RestaurantGate, TierTeaser } from "@/components/dashboard/restaurant/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
 import type { FestivalsUpcoming } from "@/lib/api/endpoints";
+import { errorMessage } from "@/lib/api/errors";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import { MSG_LANGS, dateTag, defaultSendTime, festivalMessage, kitchenChecklist, stripFestivals, type FestivalItem, type MsgLang } from "@/lib/restaurant/festivals";
+import { MSG_LANGS, dateTag, defaultSendTime, festivalDefOf, festivalMessage, kitchenChecklist, stripFestivals, type FestivalItem, type MsgLang } from "@/lib/restaurant/festivals";
 import { YearCalendar } from "./YearCalendar";
 
 export default function FestivalsPage() {
@@ -32,6 +35,7 @@ function Festivals() {
   const { api } = useMerchant();
   const [view, setView] = useState<"plan" | "year">("plan");
   const up = useApi(() => api.festivals.upcoming(400), [api]);
+  const [adding, setAdding] = useState(false);
   if (up.status === 402) return <TierTeaser featureKey="restaurant.festival_campaigns" title="Festival campaigns" />;
   const today = up.data?.today ?? new Date().toISOString().slice(0, 10);
   return (
@@ -41,11 +45,15 @@ function Festivals() {
         title="Festivals"
         description="The next dates that change your kitchen, and the message ready for each, in your guests' languages."
         actions={
-          <Button size="md" variant={view === "year" ? "primary" : "secondary"} onClick={() => setView(view === "year" ? "plan" : "year")}>
-            {view === "year" ? "Back to the plan" : "Full year"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="md" variant="secondary" onClick={() => setAdding(true)}>Add my own date</Button>
+            <Button size="md" variant={view === "year" ? "primary" : "secondary"} onClick={() => setView(view === "year" ? "plan" : "year")}>
+              {view === "year" ? "Back to the plan" : "Full year"}
+            </Button>
+          </div>
         }
       />
+      <AddDateModal open={adding} today={today} onClose={() => setAdding(false)} onAdded={() => void up.reload()} />
       {view === "year" ? (
         <YearCalendar today={today} />
       ) : up.error && !up.data ? (
@@ -138,7 +146,7 @@ function Planner({ data, onReload, onYear }: { data: FestivalsUpcoming; onReload
 
 function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void; toast: (m: string) => void }) {
   const { api, base, enabled } = useMerchant();
-  const def = getFestival(o.festivalId)!;
+  const def = festivalDefOf(o)!;
   const rules = useApi(enabled("restaurant.degh_preorders") ? () => api.preorders.rules() : null, [api]);
   const act = useAction();
   const [templateId, setTemplateId] = useState(def.templates[0]!.id);
@@ -154,6 +162,16 @@ function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void;
     }
   };
 
+  const removeOwn = async () => {
+    if (!o.custom) return;
+    const id = o.custom.id;
+    const r = await act.run(() => api.festivals.removeOccasion(id));
+    if (r) {
+      toast("Date removed.");
+      onChanged();
+    }
+  };
+
   const statusFor = (s: FestivalSendDate) => o.sendStatus.find((x) => x.templateId === s.templateId);
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -165,6 +183,11 @@ function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void;
           </h2>
           <p className="mt-1 text-meta text-fg-muted">Send plan counted back from the date. If the date moves a day, the plan moves with it.</p>
           {o.moved ? <p className="mt-1 text-meta text-fg">You moved this from {longDay(o.calendarStartDate ?? o.startDate)}.</p> : null}
+          {o.custom ? (
+            <div className="mt-2">
+              <Button size="sm" variant="ghost" loading={act.busy} onClick={() => void removeOwn()}>Remove this date</Button>
+            </div>
+          ) : null}
           {o.approximate ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void move(-1)}>Move a day earlier</Button>
@@ -249,9 +272,9 @@ function KitchenTask({ task, festival, first }: { task: ReturnType<typeof kitche
 }
 
 /** The message in each language, who gets it, what it costs, and Schedule (a draft with a send time, never an instant send). */
-function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o: FestivalItem; template: NonNullable<ReturnType<typeof getFestival>>["templates"][number]; templates: { id: string; label: string }[]; onTemplate: (id: string) => void; onChanged: () => void; toast: (m: string) => void }) {
+function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o: FestivalItem; template: FestivalDef["templates"][number]; templates: { id: string; label: string }[]; onTemplate: (id: string) => void; onChanged: () => void; toast: (m: string) => void }) {
   const { api, base, enabled, detail } = useMerchant();
-  const def = getFestival(o.festivalId)!;
+  const def = festivalDefOf(o)!;
   const act = useAction();
   const router = useRouter();
   const [lang, setLang] = useState<MsgLang>("en");
@@ -274,6 +297,23 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
     const h = Number(when.slice(11, 13));
     return h >= 21 || h < 8;
   })();
+
+  const [testing, setTesting] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  async function sendTest() {
+    setTesting(true);
+    setTestNote(null);
+    setTestError(null);
+    try {
+      const r = await api.festivals.testSend(o.festivalId, { templateId: template.id, year: o.year, channel: channel === "email" ? "email" : channel, ...(lang === "en" ? {} : { body: text }) });
+      setTestNote(`Test sent to ${r.to.join(", ")}${r.smsCreditsUsed ? " (used 1 text)" : ""}. Nothing went to your guests. ${r.testsRemainingToday} tests left today.`);
+    } catch (e) {
+      setTestError(errorMessage(e));
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function schedule() {
     if (channel === "whatsapp") {
@@ -355,6 +395,7 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
               <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="h-9 rounded-input border border-line bg-bg px-2 text-meta text-fg focus-visible:focus-ring" />
             </label>
           ) : null}
+          <Button variant="secondary" size="md" disabled={!available[channel]} loading={testing} onClick={() => void sendTest()}>Send me a test</Button>
           {channel !== "whatsapp" ? (
             <Button variant="secondary" size="md" disabled={!available[channel]} loading={act.busy} onClick={() => void saveDraft()}>Save as draft</Button>
           ) : null}
@@ -364,8 +405,63 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
         </div>
         {channel !== "whatsapp" && (past || quiet) ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{quiet ? "We never send between 9 pm and 8 am. Pick a time between 8 am and 9 pm." : "Pick a time in the future."}</p> : null}
         {act.error ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{act.error}</p> : null}
+        {testError ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{testError}</p> : null}
+        {testNote ? <p role="status" className="border-t border-line px-5 py-2 text-meta text-fg">{testNote}</p> : null}
       </div>
       <p className="mt-2 text-caption text-fg-muted">Schedule makes a draft with a send time. It never sends at once, and you can change it under Messages.</p>
     </section>
+  );
+}
+
+/** "Add my own date": a named occasion (grand opening, family night) with its message, planned like a festival. */
+function AddDateModal({ open, today, onClose, onAdded }: { open: boolean; today: string; onClose: () => void; onAdded: () => void }) {
+  const { api } = useMerchant();
+  const act = useAction();
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [sms, setSms] = useState("");
+  const problem = !name.trim() ? "Give the date a name." : !date ? "Pick the date." : date < today ? "Pick a date that has not passed." : !subject.trim() ? "Add a subject line for the email." : !message.trim() ? "Write the message." : null;
+  const [shown, setShown] = useState(false);
+  const save = async () => {
+    setShown(true);
+    if (problem) return;
+    const r = await act.run(() => api.festivals.addOccasion({ name: name.trim(), date, subject: subject.trim(), body: message.trim(), ...(sms.trim() ? { sms: sms.trim() } : {}) }));
+    if (r) {
+      setName("");
+      setDate("");
+      setSubject("");
+      setMessage("");
+      setSms("");
+      setShown(false);
+      onAdded();
+      onClose();
+    }
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Add my own date"
+      description="A grand opening, a family night, a local fair. We plan a message three days before and a reminder the day before."
+      size="md"
+      actions={
+        <>
+          <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
+          <Button size="md" loading={act.busy} onClick={() => void save()}>Add date</Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <TextField id="occ-name" label="Name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+        <TextField id="occ-date" label="Date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+        <TextField id="occ-subject" label="Email subject" value={subject} maxLength={150} onChange={(e) => setSubject(e.target.value)} />
+        <TextField id="occ-body" label="Message" type="textarea" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} hint="Use {{first_name}} and {{merchant}} to fill in names." />
+        <TextField id="occ-sms" label="Shorter text message" optionalLabel type="textarea" rows={2} maxLength={480} value={sms} onChange={(e) => setSms(e.target.value)} hint="If you leave this empty, texts use the message above." />
+        {shown && problem ? <p role="alert" className="text-meta text-negative">{problem}</p> : null}
+        {act.error ? <p role="alert" className="text-meta text-negative">{act.error}</p> : null}
+      </div>
+    </Modal>
   );
 }

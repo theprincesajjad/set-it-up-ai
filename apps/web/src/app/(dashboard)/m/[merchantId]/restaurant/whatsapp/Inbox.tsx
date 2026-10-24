@@ -27,7 +27,7 @@ export function Inbox({ sessions, connected, onSetup, onTemplates }: { sessions:
   const [mobile, setMobile] = useState<"list" | "thread">("list");
   const current = items.find((s) => s.id === sel) ?? items[0] ?? null;
   return (
-    <div className="overflow-hidden rounded-card border border-line lg:grid lg:h-[calc(100dvh-300px)] lg:min-h-[560px] lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_280px]">
+    <div className="overflow-hidden rounded-card border border-line lg:grid lg:h-[calc(100dvh-300px)] lg:min-h-[560px] lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className={cn("min-h-0 flex-col overflow-y-auto border-line lg:flex lg:border-e", mobile === "thread" ? "hidden lg:flex" : "flex")}>
         {sessions.error && !sessions.data ? <div className="p-4"><ErrorLine message={sessions.error} onRetry={() => void sessions.reload()} /></div> : null}
         {sessions.loading && !sessions.data ? <div className="p-4"><SkeletonRows rows={5} /></div> : null}

@@ -62,7 +62,7 @@ export function TicketStatusView({ token, initial }: { token: string; initial: s
 
       <section aria-labelledby="progress" className="flex flex-col gap-3">
         <h2 id="progress" className="text-headline text-fg">{t("sv.t.progress")}</h2>
-        <Timeline steps={steps} label={t("sv.t.progress")} />
+        <Timeline quiet steps={steps} label={t("sv.t.progress")} />
       </section>
 
       {data.warrantyDays && (tk.status === "ready" || tk.status === "picked_up") ? (

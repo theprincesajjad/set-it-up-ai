@@ -79,7 +79,7 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
   const columns: Column<tiffinApi.SubscriberDto>[] = [
     { key: "name", header: "Subscriber", mobile: "title", sortValue: (r) => r.customer.name ?? "", cell: (r) => <span className="font-medium">{r.customer.name ?? r.customer.phone ?? "Subscriber"}</span> },
     { key: "plan", header: "Plan", mobile: "subtitle", sortValue: (r) => r.plan.name, cell: (r) => `${r.plan.name}` },
-    { key: "ful", header: "Meals", mobile: "subtitle", cell: (r) => `${r.servings} × ${r.fulfilment === "delivery" ? `delivery${r.routeName ? `, ${r.routeName}` : ""}` : "pickup"}` },
+    { key: "ful", header: "Meals", mobile: "subtitle", cell: (r) => `${r.servings} × ${r.fulfilment === "delivery" ? (r.routeName ? (r.routeName.split(":")[0] ?? r.routeName).trim() : "delivery") : "pickup"}` },
     { key: "pays", header: "Pays by", mobile: "hidden", sortValue: (r) => r.paymentMethod, cell: (r) => PAY_LABEL[r.paymentMethod] },
     { key: "due", header: "Next due", mobile: "hidden", sortValue: (r) => r.nextBillingDate ?? "", cell: (r) => (r.nextBillingDate && r.status !== "cancelled" ? dayShort(r.nextBillingDate) : "None") },
     { key: "status", header: "Status", mobile: "trailing", sortValue: (r) => r.status, cell: (r) => <StatusWord s={r.status} r={r} /> },

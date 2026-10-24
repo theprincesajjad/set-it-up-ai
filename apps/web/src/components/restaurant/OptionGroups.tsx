@@ -64,7 +64,7 @@ function Group({ g, value, onPick, idPrefix }: { g: OptionGroup; value: string[]
                     <span className="block break-words text-body text-fg">{tr({ name: o.name }).name}</span>
                     {o.serves || o.note ? <span className="block text-meta text-fg-muted">{[o.serves ? t("menu.serves", { n: number(o.serves) }) : null, o.note].filter(Boolean).join(" · ")}</span> : null}
                   </span>
-                  <span className="shrink-0 text-body tabular-nums text-fg-muted">{p.cents === 0 && !p.plus && g.priceMode === "delta" ? "" : `${p.plus ? "+" : ""}${money(p.cents)}`}</span>
+                  <span dir="ltr" className="shrink-0 text-body tabular-nums text-fg-muted">{p.cents === 0 && !p.plus && g.priceMode === "delta" ? "" : `${p.plus ? "+" : ""}${money(p.cents)}`}</span>
                 </label>
               </li>
             );

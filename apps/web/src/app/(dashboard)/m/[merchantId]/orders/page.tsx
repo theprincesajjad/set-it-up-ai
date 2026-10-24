@@ -123,7 +123,7 @@ function Orders() {
       ) : orders.loading && !orders.data ? (
         <SkeletonRows rows={4} />
       ) : shown.length ? (
-        <ul aria-label={view === "open" ? "Open orders" : "Finished orders"} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <ul aria-label={view === "open" ? "Open orders" : "Finished orders"} className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((o) => (
             <li key={o.id} className="min-w-0">
               <OrderCard o={o} view={view} restaurant={restaurant} canSplitIt={splitOn && view === "open" && canSplit(o)} selected={split?.id === o.id} onMove={move} onSplit={() => setSplit(o)} onCancel={() => setCancel(o)} />

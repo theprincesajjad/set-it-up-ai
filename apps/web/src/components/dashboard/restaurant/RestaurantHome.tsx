@@ -69,7 +69,7 @@ export function RestaurantHome() {
             {
               label: "Sales today",
               value: d ? formatMoney(d.salesTodayCents) : "–",
-              delta: d && d.salesVsLastSameWeekdayPct != null ? { good: d.salesVsLastSameWeekdayPct > 0 ? true : d.salesVsLastSameWeekdayPct < 0 ? false : null, text: `${d.salesVsLastSameWeekdayPct > 0 ? "+" : ""}${d.salesVsLastSameWeekdayPct}% vs last ${new Intl.DateTimeFormat("en-CA", { weekday: "long", timeZone: "UTC" }).format(new Date(`${d.today}T12:00:00Z`))}` } : null,
+              delta: d && d.salesVsLastSameWeekdayPct != null ? { good: d.salesVsLastSameWeekdayPct > 0 ? true : d.salesVsLastSameWeekdayPct < 0 ? false : null, text: `${d.salesVsLastSameWeekdayPct > 999 ? "Well up" : `${d.salesVsLastSameWeekdayPct > 0 ? "+" : ""}${d.salesVsLastSameWeekdayPct}%`} vs last ${new Intl.DateTimeFormat("en-CA", { weekday: "long", timeZone: "UTC" }).format(new Date(`${d.today}T12:00:00Z`))}` } : null,
               caption: d ? "Orders placed so far today" : undefined,
             },
             { label: "Commission avoided", value: d ? formatMoney(d.directSavings.cents) : "–", caption: d ? <Estimate s={d.directSavings} /> : undefined },

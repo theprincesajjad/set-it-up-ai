@@ -20,7 +20,7 @@ const ALL = "__all";
 /** Busy windows (confirmed bookings and live holds) per hall, by week or by month. */
 export function AvailabilityTab({ gate, goHalls }: { gate: Gate; goHalls: () => void }) {
   const { api } = useMerchant();
-  const [view, setView] = useState<View>("week");
+  const [view, setView] = useState<View>("month");
   const [anchor, setAnchor] = useState(todayISO());
   const [hallId, setHallId] = useState("");
   const [sel, setSel] = useState<string | null>(null);

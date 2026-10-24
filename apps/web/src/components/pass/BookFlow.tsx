@@ -5,7 +5,7 @@ import type { appointmentsApi } from "@ll/shared";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { SetupBox } from "@/components/pass/SetupBox";
-import { BigNumber, Heading, Pill, ShopHead, useFmt } from "@/components/restaurant/ui";
+import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -360,13 +360,15 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
       </ul>
       {!visible.length ? <Banner tone="info">{t("bk.noServices")}</Banner> : null}
       <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-meta text-fg-muted">{ids.length ? t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) }) : <Pill>{t("bk.chooseTime")}</Pill>}</p>
-            {ids.length ? <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p> : null}
+        {ids.length ? (
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-meta text-fg-muted">{t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) })}</p>
+              <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p>
+            </div>
+            {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
           </div>
-          {ids.length && deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
-        </div>
+        ) : null}
         <Button size="lg" fullWidth disabled={!ids.length} onClick={() => { setStep("time"); window.scrollTo?.({ top: 0 }); }}>{t("bk.chooseTime")}</Button>
       </div>
     </div>

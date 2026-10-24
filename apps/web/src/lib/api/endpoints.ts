@@ -27,7 +27,7 @@ import type {
   walletApi,
   whatsappApi,
 } from "@ll/shared";
-import type { FestivalDef, FestivalOccurrence, FestivalRelevance, FestivalTemplate, FestivalTradition } from "@ll/shared";
+import type { CustomOccasion, FestivalDef, FestivalOccurrence, FestivalRelevance, FestivalTemplate, FestivalTradition } from "@ll/shared";
 import type { ApiClient } from "./client";
 import { restaurantOpsEndpoints } from "./restaurantOps";
 import { restaurantDeskEndpoints } from "./restaurantDesk";
@@ -444,6 +444,9 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       catalog: () => c.get<Items<FestivalCatalogEntry>>(`${b}/festivals`),
       setDateOverride: (festivalId: string, body: restaurantApi.FestivalDateOverrideBody) => c.put<{ festivalId: string; year: number; start: string; moved: boolean; shiftedMessages: number }>(`${b}/festivals/${enc(festivalId)}/date-override`, body),
       setCuisines: (cuisines: string[]) => c.put<{ cuisines: string[] }>(`${b}/festivals/preferences`, { cuisines }),
+      addOccasion: (body: restaurantApi.CustomOccasionBody) => c.post<CustomOccasion>(`${b}/festivals/occasions`, body),
+      removeOccasion: (id: string) => c.delete<{ ok: true }>(`${b}/festivals/occasions/${enc(id)}`),
+      testSend: (festivalId: string, body: restaurantApi.FestivalTestBody) => c.post<restaurantApi.FestivalTestResult>(`${b}/festivals/${enc(festivalId)}/test-send`, body),
       createDraft: (festivalId: string, body: whatsappApi.FestivalDraftBody) => c.post<whatsappApi.FestivalDraftResult>(`${b}/festivals/${enc(festivalId)}/campaign-drafts`, body),
     },
     phone: {
@@ -462,7 +465,7 @@ export interface FestivalsUpcoming {
   /** The shop's cuisine tags; empty means not set (nothing is hidden). */
   cuisines: string[];
   cuisineOptions: { id: string; label: string }[];
-  items: (FestivalOccurrence & { templates: { id: string; label: string }[]; relevance: FestivalRelevance; sendStatus: restaurantApi.FestivalSendStatus[] })[];
+  items: (FestivalOccurrence & { templates: { id: string; label: string }[]; relevance: FestivalRelevance; sendStatus: restaurantApi.FestivalSendStatus[]; custom?: CustomOccasion })[];
 }
 /** GET :m/festivals (services/festivals.ts listFestivalCatalog). */
 export interface FestivalCatalogEntry {

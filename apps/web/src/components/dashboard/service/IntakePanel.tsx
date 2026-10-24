@@ -32,7 +32,7 @@ export function IntakePanel({ ticket, checkedInAt }: { ticket: serviceApi.Ticket
                       <span className="flex size-full items-center justify-center text-fg-subtle"><ImageOff aria-hidden className="size-5" strokeWidth={1.5} /></span>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p} alt={`Intake photo ${i + 1}`} className="size-full object-cover" loading="lazy" onError={() => setBroken(new Set(broken).add(p))} />
+                      <img src={p} alt={`Intake photo ${i + 1}`} className="size-full object-cover" loading="lazy" onError={() => setBroken((b) => new Set(b).add(p))} />
                     )}
                   </button>
                 </li>

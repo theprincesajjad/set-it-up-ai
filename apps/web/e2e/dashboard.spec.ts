@@ -280,12 +280,15 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
   await page.screenshot({ path: shot("24-admin-override") });
   await sheet.getByRole("button", { name: "Close" }).click();
 
-  // After: the pilot shop sees Orders and Menu in its nav.
+  // After: the override turns Order-ahead on for the shop, but a café's sidebar keeps ordering off its first-run path
+  // (Pro or a restaurant tier brings Orders and Menu into the nav, cafes-retail.md 7.8), so the page opens by its address.
   await owner.reload();
-  await expect(nav.getByRole("link", { name: "Orders" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Menu & catalog" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Customers" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Orders" })).toHaveCount(0);
+  const feats = (await (await fetch(`${API}/v1/merchants/${id}/features`, { headers: { authorization: `Bearer ${await apiToken(OWNER)}` } })).json()) as { features: { key: string; enabled: boolean }[] };
+  expect(feats.features.find((f) => f.key === "orders.order_ahead")?.enabled).toBe(true);
   await owner.screenshot({ path: shot("25-merchant-nav-pilot"), fullPage: true });
-  await owner.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Orders" }).click();
+  await owner.goto(`/m/${id}/orders`);
   await expect(owner.getByRole("heading", { level: 1, name: "Orders" })).toBeVisible();
 
   // Clean up so the seed's defaults hold for later runs.

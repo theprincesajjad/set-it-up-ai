@@ -92,14 +92,15 @@ test("unknown quote links explain what to do", async ({ page }) => {
 
 test("restaurant pages: menu filters, tiffin plans, banquet calendar, shop links", async ({ page }) => {
   await page.goto("/shops/nawab-biryani-house");
-  await expect(page.getByRole("link", { name: /Menu/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Order for pickup/ }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Banquet halls/ })).toBeVisible();
 
   await page.goto("/shops/nawab-biryani-house/menu");
   await expect(page.getByRole("heading", { level: 1, name: "Menu" })).toBeVisible();
-  await expect(page.getByText("Order ahead in the app")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add Hyderabadi Chicken Dum Biryani" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Pre-order Chicken Biryani Degh" })).toBeVisible();
   const all = await page.locator("li", { hasText: "$" }).count();
-  await page.getByRole("button", { name: "Vegetarian" }).click();
+  await page.getByRole("button", { name: "Veg", exact: true }).click();
   expect(await page.locator("li", { hasText: "$" }).count()).toBeLessThan(all);
   await expectNoHorizontalScroll(page);
 

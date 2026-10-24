@@ -229,21 +229,21 @@ export default async function ShopPage({ params, searchParams }: Props) {
             content: (
               <>
                 {program ? (
-                  <ListGroup title="How you earn here" as="div">
+                  <ListGroup title={t("shop.howEarn")} as="div">
                     <div className="flex flex-col gap-1 py-3.5">
-                      <p className="text-body-strong text-fg">{howYouEarn(program)}</p>
+                      <p dir="auto" className="text-body-strong text-fg">{howYouEarn(program)}</p>
                       {program.welcomeBonus > 0 ? (
                         <p className="text-meta text-fg">
-                          Join and get {formatPoints(program.welcomeBonus, terminology, false)} right away.
+                          {t("shop.welcomeBonus", { points: formatPoints(program.welcomeBonus, terminology, false) })}
                         </p>
                       ) : null}
-                      <p className="text-meta text-fg-muted">{program.expiryDisclosure}</p>
+                      <p dir="auto" className="text-meta text-fg-muted">{program.expiryDisclosure}</p>
                       {m.vertical === "pharmacy" ? <p className="text-meta text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
                     </div>
                   </ListGroup>
                 ) : null}
                 {shop.rewards.length ? (
-                  <ListGroup title="Rewards">
+                  <ListGroup title={t("shop.rewards")}>
                     {shop.rewards.map((r) => (
                       <li key={r.id}>
                         <RewardCard layout="row" reward={r} terminology={terminology} balance={membership?.balance ?? 0} state={membership ? (membership.balance >= r.pointsCost ? "available" : "locked") : "preview"} />

@@ -163,6 +163,8 @@ function BlockDay({ open, onClose, min, busy, onConfirm }: { open: boolean; onCl
   );
 }
 
+const inRange = (v: string, lo: number, hi: number) => v !== "" && Number(v) >= lo && Number(v) <= hi;
+
 /** Pickup shops still create their slots here: a small form, not the whole page. */
 function PickupMaker({ loc, onMade }: { loc: string; onMade: () => void }) {
   const { api } = useMerchant();
@@ -171,20 +173,23 @@ function PickupMaker({ loc, onMade }: { loc: string; onMade: () => void }) {
   const [days, setDays] = useState("7");
   const [mins, setMins] = useState("15");
   const [cap, setCap] = useState("4");
+  const [tried, setTried] = useState(false);
+  const bad = { days: !inRange(days, 1, 31), mins: !inRange(mins, 5, 240), cap: !inRange(cap, 1, 100) };
   return (
     <Panel title="Make pickup slots" description="Adds slots from your opening hours. Existing slots stay.">
       <div className="grid gap-4 sm:grid-cols-3">
-        <TextField label="Days ahead" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} />
-        <TextField label="Slot length" inputMode="numeric" suffix="min" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ""))} />
-        <TextField label="Per slot" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value.replace(/\D/g, ""))} />
+        <TextField label="Days ahead" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} error={tried && bad.days ? "Use 1 to 31 days." : null} />
+        <TextField label="Slot length" inputMode="numeric" suffix="min" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ""))} error={tried && bad.mins ? "Use 5 to 240 minutes." : null} />
+        <TextField label="Per slot" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value.replace(/\D/g, ""))} error={tried && bad.cap ? "Use 1 to 100." : null} />
       </div>
       {act.error ? <Banner tone="danger" className="mt-3">{act.error}</Banner> : null}
       <Button
         className="mt-4"
         iconStart={CalendarPlus}
         loading={act.busy}
-        disabled={!days || !mins || !cap}
         onClick={async () => {
+          setTried(true);
+          if (bad.days || bad.mins || bad.cap) return;
           const r = await act.run(() => api.generateSlots({ locationId: loc, kind: "pickup", startDate: toLocalInput(new Date()).slice(0, 10), days: Number(days), slotMinutes: Number(mins), capacity: Number(cap) }));
           if (r) {
             toast({ message: `${r.created} slots added`, tone: "success" });

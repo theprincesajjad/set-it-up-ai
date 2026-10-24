@@ -6,6 +6,8 @@ export const hi: Messages = {
   // Public shop page
   "shop.rewards": "रिवॉर्ड",
   "shop.promos": "ऑफ़र",
+  "shop.howEarn": "यहाँ कैसे कमाएँ",
+  "shop.welcomeBonus": "जुड़ें और तुरंत {points} पाएँ।",
   "shop.about": "जानकारी",
   "shop.call": "कॉल करें",
   "shop.directions": "रास्ता देखें",

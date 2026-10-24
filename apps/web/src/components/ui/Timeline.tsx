@@ -15,27 +15,27 @@ export interface TimelineStep {
 }
 
 /** Vertical service-ticket timeline (system.md §6 Timeline). */
-export function Timeline({ steps, label = "Progress" }: { steps: TimelineStep[]; label?: string }) {
+export function Timeline({ steps, label = "Progress", quiet = false }: { steps: TimelineStep[]; label?: string; /** Customer log: finished steps recede to grey, the latest one is a solid check. */ quiet?: boolean }) {
   return (
     <ol aria-label={label} className="flex flex-col">
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         return (
           <li key={s.id} className="relative flex gap-3 pb-5 last:pb-0" aria-current={s.state === "current" ? "step" : undefined}>
-            {!last ? <span aria-hidden className={cn("absolute start-[9px] top-5 bottom-0 w-px", s.state === "done" ? "bg-fg" : "bg-line")} /> : null}
+            {!last ? <span aria-hidden className={cn("absolute start-[9px] top-5 bottom-0 w-px", s.state === "done" && !quiet ? "bg-fg" : "bg-line")} /> : null}
             <span
               aria-hidden
               className={cn(
                 "relative z-[1] mt-px flex size-[19px] shrink-0 items-center justify-center rounded-full",
-                s.state === "done" && "bg-fg text-bg",
-                s.state === "current" && "border-[1.5px] border-fg bg-bg",
+                s.state === "done" && (quiet ? "bg-bg-muted text-fg-muted" : "bg-fg text-bg"),
+                s.state === "current" && (quiet ? "bg-fg text-bg" : "border-[1.5px] border-fg bg-bg"),
                 s.state === "upcoming" && "border border-line bg-bg",
                 s.state === "stopped" && "bg-negative text-[#FFFFFF]",
                 s.state === "waiting" && "border-[1.5px] border-fg bg-bg text-fg",
               )}
             >
-              {s.state === "done" ? <Check className="size-3" strokeWidth={3} /> : null}
-              {s.state === "current" ? <span className="size-[7px] rounded-full bg-fg" /> : null}
+              {s.state === "done" || (quiet && s.state === "current") ? <Check className="size-3" strokeWidth={3} /> : null}
+              {s.state === "current" && !quiet ? <span className="size-[7px] rounded-full bg-fg" /> : null}
               {s.state === "stopped" ? <X className="size-3" strokeWidth={3} /> : null}
               {s.state === "waiting" ? <Hourglass className="size-2.5" strokeWidth={2.5} /> : null}
             </span>

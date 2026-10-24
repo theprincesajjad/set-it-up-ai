@@ -168,7 +168,7 @@ export function DriverRun({ token }: { token: string }) {
             <span className="rounded-full bg-bg-muted px-2.5 py-1 text-caption text-fg">{t("tcb.dr.tiffins", { n: next.servings })}</span>
           </div>
           <Heading level={1} plain className="break-words !text-[28px] !leading-8">{next.customerName ?? "—"}</Heading>
-          <p className="text-body text-fg">{where(next) || "—"}</p>
+          <p className="text-body text-fg"><bdi dir="ltr">{where(next) || "—"}</bdi></p>
           {next.addressNotes ? <p className="rounded-card bg-bg-subtle px-3 py-2.5 text-body text-fg">{t("tcb.dr.door", { notes: next.addressNotes })}</p> : null}
           {next.dietaryNotes ? (
             <p className="flex flex-wrap items-center gap-2 text-meta text-fg-muted">
@@ -202,7 +202,7 @@ export function DriverRun({ token }: { token: string }) {
                 <span className="w-6 shrink-0 text-body tabular-nums text-fg-muted">{label(s)}</span>
                 <div className="min-w-0">
                   <p className="text-body text-fg">{s.customerName ?? "—"}</p>
-                  <p className="text-meta text-fg-muted">{where(s)}</p>
+                  <p className="text-meta text-fg-muted"><bdi dir="ltr">{where(s)}</bdi></p>
                 </div>
               </li>
             ))}

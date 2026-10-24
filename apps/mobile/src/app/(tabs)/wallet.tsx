@@ -221,12 +221,13 @@ export default function Wallet() {
           </Pressable>
         </View>
         <OfflineBanner mode="customer" online={online} />
-        {heroCopy ? (
+        {/* With a reward ready, the first section below says it already (Figma wallet): the big number would repeat it. */}
+        {heroCopy && hero.kind !== "ready" ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={heroCopy.label}
-            disabled={hero.kind !== "ready" && hero.kind !== "progress"}
-            onPress={() => (hero.kind === "ready" ? router.push("/rewards") : hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
+            disabled={hero.kind !== "progress"}
+            onPress={() => (hero.kind === "progress" ? router.push(`/shop/${memberships.find((m) => m.id === hero.memberId)?.merchant.slug ?? ""}`) : undefined)}
             style={styles.hero}
           >
             {/^\d+$/.test(heroCopy.big) ? <CountUp value={Number(heroCopy.big)} style={disp(44, 800, 44)} /> : <Text style={disp(44, 800, 44)} tabular>{heroCopy.big}</Text>}

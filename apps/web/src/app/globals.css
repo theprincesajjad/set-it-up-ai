@@ -126,3 +126,7 @@
 [lang^="ur"] :is(p, li, dd, dt, label, legend) {
   line-height: 1.8;
 }
+/* Rows built from spans (name over detail) carry the same tall glyphs; give the type-scale classes the same leading. */
+[lang^="ur"] :is(.text-body, .text-body-strong, .text-meta, .text-meta-strong, .text-caption, .text-callout) {
+  line-height: 1.9;
+}

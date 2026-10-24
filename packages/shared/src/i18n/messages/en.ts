@@ -5,6 +5,8 @@ export const en = {
   // Public shop page
   "shop.rewards": "Rewards",
   "shop.promos": "Promos",
+  "shop.howEarn": "How you earn here",
+  "shop.welcomeBonus": "Join and get {points} right away.",
   "shop.about": "About",
   "shop.call": "Call",
   "shop.directions": "Directions",

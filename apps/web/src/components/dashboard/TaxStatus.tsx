@@ -6,6 +6,7 @@
  * Owners edit; everyone else sees what is set.
  */
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { isValidGstHstNumber, type paymentsManualApi } from "@ll/shared";
 import { Panel } from "@/components/dashboard/kit";
@@ -84,7 +85,10 @@ function TaxForm({ d, owner, compact, reload, api }: { d: paymentsManualApi.TaxS
 export function TaxNotSetBanner() {
   const { api, base, role } = useMerchant();
   const owner = role === "owner";
+  const pathname = usePathname();
   const state = useApi(owner ? () => api.settings.tax() : null, [api, owner]);
+  // The payments page carries the question itself; a second banner above it says the same thing twice.
+  if (pathname.endsWith("/restaurant/payments")) return null;
   if (!owner || !state.data || state.data.taxRegistered !== null) return null;
   return (
     <Banner tone="warning" title="Set your tax status">
