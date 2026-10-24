@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { orders, phoneCalls } from "@ll/db";
 import { extractOrderLines, matchOne, normalize, rankItems, similarity } from "../src/lib/menu-match.js";
 import { twilioSignature } from "../src/providers/twilio.js";
-import { parseTranscript, voiceResponse } from "../src/services/phone.js";
+import { TRANSCRIPT_NOTICE, parseTranscript, voiceResponse } from "../src/services/phone.js";
 import { createTestEnv, type TestEnv } from "./helpers.js";
 import { req, restaurantShop } from "./restaurant-msg-fixtures.js";
 
@@ -133,6 +133,11 @@ describe("phone webhook and call handling (Pro)", () => {
     expect(first.statusCode).toBe(200);
     expect(first.headers["content-type"]).toContain("text/xml");
     expect(first.body).toContain("<Gather");
+    // The call is transcribed and stored, so the greeting says so, in all four languages, before the prompt.
+    for (const [lang, code] of [["en", "en-CA"], ["hi", "hi-IN"], ["ur", "ur-PK"], ["pa", "pa-guru-IN"]] as const) {
+      expect(first.body).toContain(`<Say language="${code}">${TRANSCRIPT_NOTICE[lang]}</Say>`);
+    }
+    expect(first.body.indexOf("turned into text")).toBeLessThan(first.body.indexOf("After the tone"));
     expect(await env.db.select().from(phoneCalls)).toHaveLength(0);
 
     const second = await hook(shop, { CallSid: "CA1", From: "+14165550177", SpeechResult: "Hi, two chicken biryani and one garlic naan, pickup in 20 minutes", Language: "en-US" });

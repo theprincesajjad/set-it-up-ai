@@ -1,6 +1,6 @@
 # DRAFT — have a lawyer review
 
-> **DRAFT — have a lawyer review.** Not legal advice. This policy is written for PIPEDA, the federal private-sector privacy law that applies in Ontario. Quebec (Law 25) would need additional terms and a French version. Bracketed items are placeholders. Before publishing, check that every statement matches what the product actually does.
+> **DRAFT — have a lawyer review.** Not legal advice. This policy is written for PIPEDA, the federal private-sector privacy law that applies in Ontario. Quebec (Law 25) terms are in section 8 and still need a French version. Bracketed items are placeholders. Before publishing, check that every statement matches what the product actually does.
 
 # Local Loyalty — Privacy Policy
 
@@ -23,7 +23,8 @@ Last updated: [date] · Version [0.1-draft]
 - **We do not sell your personal information.** BIA and neighbourhood reports are aggregated and never identify you.
 - Marketing messages are opt-in, **separately for each shop**, and you can unsubscribe at any time.
 - We store our main database in **Canada** where practical. Some service providers, such as payments and SMS, may process data in the US.
-- We **never collect prescription or health information**. At pharmacies only front-store purchases count.
+- We **never collect prescription or health records**. At pharmacies only front-store purchases count. If you tell a restaurant about an allergy, that note goes only to that restaurant.
+- Features like orders, appointments, tiffin delivery, catering, WhatsApp and phone ordering collect more, only when you use them. Section 2 lists everything.
 
 ## 2. What we collect
 
@@ -124,11 +125,11 @@ Some are located in, or may process data in, the **United States** or other coun
 
 ## 5. Your choices
 
-- **Marketing:** opt in or out per shop and for Local Loyalty, by email, SMS (reply STOP) or push, in settings. Unsubscribes take effect promptly and within 10 business days at most.
+- **Marketing:** opt in or out per shop and for Local Loyalty, by email, SMS (reply STOP, or ARRET in French), WhatsApp (reply STOP) or push, in settings. Unsubscribes take effect promptly and within 10 business days at most. Replying STOP ends marketing from every shop and from us. Service messages about an order or booking you made continue.
 - **Mute a shop**, or **leave a shop's program**. Your points at that shop stay unless you close your account.
 - **Location:** turn it off in device settings.
 - **Access and correction:** see and edit your profile in the app, or ask us. We respond within **30 days**.
-- **Export and deletion:** download your data or delete your account in settings. Some records, such as payment and tax records or fraud logs, are kept as long as the law requires.
+- **Export and deletion:** download your data or delete your account in settings. Deleting your account removes your name, phone, email, birthday, postal code and consent records from your profile and signs you out everywhere. Some records, such as payment and tax records, orders a shop must keep for its own books, and fraud logs, are kept as long as the law requires. [Counsel and engineering: confirm that deletion also reaches the newer records listed in section 2, such as addresses, transcripts and WhatsApp messages, before this sentence is published.]
 - **Withdraw consent** at any time, subject to legal or contractual limits. We will explain what that means for the Service.
 
 ## 6. Retention
@@ -137,6 +138,14 @@ Some are located in, or may process data in, the **United States** or other coun
 - If an account has been inactive for **[3] years**, we notify you and then delete or anonymize personal information. Before that, we give you the chance to redeem or keep your points.
   - Counsel: reconcile this with points that never expire, for example by keeping a minimal balance record.
 - Consent records are kept for at least [3] years after the relationship ends. Transaction records are kept as required for tax purposes ([6] years).
+- **Phone-call transcripts and WhatsApp messages:** kept for [90 days] after the order is confirmed or dismissed, then deleted or anonymized, except the order itself.
+- **Repair photos and ticket records:** kept for the life of the ticket and [24 months] after it closes (the warranty and dispute period), then deleted.
+- **Allergy and dietary notes** on an order or subscription are kept with that order or subscription only.
+- **Review feedback** is kept for [24 months].
+- **Tiffin addresses and driver links:** a driver link stops working the same night. Your address is kept while your subscription is active and for [12 months] after it ends.
+- **Location:** we do not keep a location history.
+- **Appointments** are kept for [24 months] after the visit.
+- Counsel and engineering: these periods are targets. Automatic deletion for transcripts, messages, photos and feedback is not yet built; set the periods and build the deletion before this policy is published.
 
 ## 7. Security
 
@@ -148,15 +157,23 @@ Some are located in, or may process data in, the **United States** or other coun
 
 No system is perfectly secure. If a breach creates a real risk of significant harm, we will notify you and the Office of the Privacy Commissioner of Canada as the law requires, and we keep records of all breaches.
 
-## 8. Children
+## 8. Quebec residents
+
+If you live in Quebec, the *Act respecting the protection of personal information in the private sector* (Law 25) also applies. Our person in charge of the protection of personal information is our Privacy Officer, named above. We tell you when your information is used for a purpose you did not agree to, we assess the privacy impact before we transfer personal information outside Quebec, we keep a register of confidentiality incidents and report serious ones to the Commission d'accès à l'information, and our default settings are the most private (marketing is off until you opt in). You can ask for your information in a structured, commonly used format. The phone assistant drafts an order from a transcript; a person at the shop reviews and confirms it, and you can ask us to explain how it was drafted. You can complain to the Commission d'accès à l'information. [A French version of this policy is required before we serve Quebec shoppers.]
+
+## 9. Commercial messages (CASL)
+
+Under Canada's Anti-Spam Legislation, we and the shops send promotional email, text, WhatsApp or push messages only with your consent, or where the law lets us rely on an existing business relationship. Consent is **separate for each shop and for Local Loyalty**, is never pre-ticked, and every promotional message names who is sending it, gives their contact details and has a free unsubscribe (STOP for text and WhatsApp). We keep a record of when and how you consented. Reminders and notices about something you ordered or booked are service messages and carry no advertising. When we message a shop owner about setting up their program, we identify ourselves and offer a way to stop those reminders.
+
+## 10. Children
 
 The Service is for people aged **[16]** and over. We do not knowingly collect information from younger children; contact us if you think we have.
 
-## 9. Changes
+## 11. Changes
 
 We will notify you in the app or by email at least 30 days before material changes take effect.
 
-## 10. Questions and complaints
+## 12. Questions and complaints
 
 Contact our Privacy Officer at [email]. If you are not satisfied, you can complain to the **Office of the Privacy Commissioner of Canada** (priv.gc.ca).
 
@@ -166,5 +183,8 @@ Contact our Privacy Officer at [email]. If you are not satisfied, you can compla
 - inactivity-deletion versus non-expiring points;
 - the age floor;
 - whether precise location for nearby push needs express opt-in wording (recommended: yes);
+- retention periods for transcripts, messages, photos and feedback, and whether account deletion must reach every module in section 2;
+- whether storing allergy notes, phone transcripts and halal or dietary information raises sensitivity under PIPEDA and Law 25;
+- the processors' contracts and locations (Stripe, Twilio, Meta WhatsApp, Resend, Expo, the photo store);
 - a Quebec Law 25 annex (privacy impact assessments for transfers outside Quebec, privacy-by-default settings, a confidentiality incident register, a French version);
 - a cookie and tracking notice for the website.

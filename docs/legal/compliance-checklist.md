@@ -1,6 +1,6 @@
 # Local Loyalty — Compliance checklist (Canada / Ontario)
 
-Oct 21, 2026 · Business ops (legal/compliance) · **Not legal advice.**
+Oct 24, 2026 (federal status and new modules updated; first written Oct 21) · Business ops (legal/compliance) · **Not legal advice.**
 
 This is a working checklist for a founder and a lawyer. Laws, regulator guidance and thresholds change. Items marked **VERIFY** must be confirmed with counsel or the regulator before launch. The draft customer-facing documents in this folder are all marked **DRAFT — have a lawyer review**.
 
@@ -38,7 +38,11 @@ Promotional email, SMS and other "commercial electronic messages" (CEMs) need co
 
 ## 2. PIPEDA: privacy (Ontario private sector)
 
-Ontario has no general private-sector privacy statute, so **PIPEDA applies**. Bill C-27, which would have created the Consumer Privacy Protection Act, died when Parliament was prorogued in Jan 2025. Monitor for successor legislation (**VERIFY** current status).
+Ontario has no general private-sector privacy statute, so **PIPEDA applies**. **Federal reform status (checked Oct 24, 2026).**
+
+- **Bill C-27** (the Consumer Privacy Protection Act) is dead: it lapsed when Parliament was prorogued in January 2025.
+- **Bill C-36, the *Protecting Privacy and Consumer Data Act*,** was introduced and had **first reading on June 15, 2026**, in the 45th Parliament, 1st session. It has had no further stage that we could find. **It is not law and not in force.** If enacted it would replace Part 1 of PIPEDA, and the reported coming-into-force depends on another bill (C-34). Sources: [Parliament of Canada, LegisInfo, C-36](https://www.parl.ca/LegisInfo/en/bill/45-1/C-36) (its "current status" label says "At second reading", but its stage list shows no activity past first reading, so treat the label with caution), [text as introduced](https://www.parl.ca/DocumentViewer/en/45-1/bill/C-36/first-reading), [Gowling WLG](https://gowlingwlg.com/en/insights-resources/articles/2026/understanding-bill-c36), [Osler](https://www.osler.com/en/insights/reports/the-protecting-privacy-and-consumer-data-act-bill-c-36-key-obligations-and-enforcement-overview/), and `docs/business/data-strategy.md`. **PIPEDA remains the law that applies** (plus Law 25 in Quebec).
+- ☐ Re-check LegisInfo before every release of the privacy policy and before any new data feature. Build to C-36 where it is cheap: treat de-identified data as personal information, rely on aggregation rather than pseudonymisation, and do not sell or license personal data (the founder has not decided anything about data sales; this policy keeps every current promise).
 
 The 10 fair information principles, and what each means for us:
 
@@ -47,7 +51,7 @@ The 10 fair information principles, and what each means for us:
 | 1. Accountability | Appoint a Privacy Officer (the founder). Publish their contact. Contracts with processors: Stripe, Twilio, hosting, email, Apple/Google wallet |
 | 2. Identifying purposes | The privacy policy lists purposes: loyalty ledger, network perks, messages the customer consented to, fraud prevention, aggregated BIA reports |
 | 3. Consent | Meaningful consent at join, in plain language, with layered notices. Express consent for sensitive uses (precise location for nearby push). Separate consent for marketing (CASL) |
-| 4. Limiting collection | Collect phone number, first name and optional birthday month/day (no year). **No health data from pharmacies**: front-store only, never prescription information |
+| 4. Limiting collection | Collect phone number, first name and optional birthday month/day (no year: the database now stores only "MM-DD" and refuses a year). **No health data from pharmacies**: front-store only, never prescription information |
 | 5. Limiting use, disclosure, retention | A merchant sees only its own members and their activity at that merchant (PRD). BIA reports are **aggregated** (minimum group of 10 or more). Delete inactive accounts after 3 years of inactivity, while keeping points balances honourable (see rewards terms) |
 | 6. Accuracy | Customers can edit their profile |
 | 7. Safeguards | Encryption in transit and at rest, role-based access (PRD), MFA for staff and admins, audit logs, least privilege for reps |
@@ -61,7 +65,7 @@ The 10 fair information principles, and what each means for us:
   - **Keep records of *all* breaches for 24 months.**
   - Write a 1-page incident-response plan now.
 - ☐ **Roles and data ownership.** The merchant owns its customer relationship and can export its member list (CSV export is Free in plans.ts). Local Loyalty owns the network account (one login across shops). Document in the merchant agreement who is responsible for what. When a merchant uses member data for its own marketing, the merchant is accountable for its CASL and PIPEDA compliance.
-- ☐ **Data residency.** Host the primary database and backups in a Canadian region where practical (PRD non-functional requirement). Disclose the cross-border processors (Stripe, Twilio, Apple/Google, email and analytics providers, which may process data in the US). PIPEDA permits transfers with transparency and contractual safeguards.
+- ☐ **Data residency.** Host the primary database and backups in a Canadian region where practical (PRD non-functional requirement). Disclose the cross-border processors (Stripe, Twilio, Meta WhatsApp Cloud API, Resend, Expo, Apple/Google, the photo store, map tiles, analytics providers, which may process data in the US). PIPEDA permits transfers with transparency and contractual safeguards.
 - ☐ **Location.** Use coarse or approximate location by default. Get precise location only with opt-in for nearby features; do not store location history beyond 30 days.
 - ☐ **Minors.** Accounts are 16+ unless counsel approves otherwise (**VERIFY** with counsel). No targeted promos to known minors.
 - ☐ **Privacy impact assessment** before launching nearby push, ads targeting and BIA data reports.
@@ -121,7 +125,7 @@ The PRD's original idea of **commission-only student interns is not allowed.** M
 ## 7. Competition Act: deceptive marketing
 
 - ☐ "**Free forever**" must be literally true for everything on the Free plan. Rule 3 in plans.ts guarantees features never move to paid; the Merchant Agreement must say the same. Publish "what's free" and "what's paid" in plain terms.
-- ☐ No **drip pricing**: show all mandatory fees up front. For payments, show Stripe's 2.9% + $0.30 plus our 0.75% together.
+- ☐ No **drip pricing**: show all mandatory fees up front. For payments, show Stripe's processing fee plus our platform fee together (the fee table in the merchant agreement is generated from `FEES` in plans.ts and a test checks it against `fees.ts`). Keep the Free-plan promise exact: "no subscription fee and no fee on the loyalty program" is true; "no transaction fees" is not, because Free shops pay 1.5% on online orders. Fix the Free-plan blurb in `PLANS.free.blurb` and any marketing copy that still says "no transaction fees". **VERIFY**
 - ☐ Competitor comparisons (such as SoPoints' 5% fee) must be accurate, current and substantiated. Keep screenshots with dates; **VERIFY** before publishing.
 - ☐ Clearly label **sponsored listings, promos, pins and boosts as "Sponsored"**. No fake reviews or testimonials; disclose any incentive behind a merchant testimonial.
 - ☐ Performance claims made to BIAs and merchants (such as "+20% visits") need adequate and proper testing before they are made.
@@ -137,7 +141,7 @@ The PRD's original idea of **commission-only student interns is not allowed.** M
 
 - ☐ Use Stripe-hosted fields only (Checkout, Elements, Payment Element) so card data never touches our servers. That keeps PCI scope at **SAQ A**, with an annual self-assessment. Never log card numbers.
 - ☐ Stripe Connect: merchants complete Stripe's identity verification (KYC). Choose the account type (Standard, Express or Custom) with counsel and finance; it determines who pays processing and Connect fees. The model assumes platform-paid Connect costs of 0.25% + $2 per account (**VERIFY**).
-- ☐ **Retail Payment Activities Act** (Bank of Canada registration of payment service providers, in force 2024). Confirm whether our role in Stripe Connect flows (collecting the 0.75% platform fee, any holding of funds) requires registration or fits an exemption. **VERIFY with counsel before Phase 2.**
+- ☐ **Retail Payment Activities Act** (Bank of Canada registration of payment service providers, in force 2024). Confirm whether our role in Stripe Connect flows (collecting the platform fee of 1% on deposits and invoices and 1.5% on Free-plan orders, any holding of funds) requires registration or fits an exemption. **VERIFY with counsel before Phase 2.**
 - ☐ Refunds, disputes and chargebacks: the merchant agreement allocates them to the merchant. The platform fee is not refunded on chargebacks unless counsel advises otherwise.
 - ☐ Deposits on repair quotes must be clearly refundable or non-refundable, disclosed before payment.
 
@@ -161,7 +165,48 @@ The PRD's original idea of **commission-only student interns is not allowed.** M
 - ☐ The Quebec *Consumer Protection Act* has its own rules on loyalty points and contracts. **VERIFY** before launch.
 - ☐ Budget: $10–20k for French translation and legal review (assumption).
 
-## 11. Platform policies
+## 11. New modules (appointments, tiffin, catering, WhatsApp, phone AI, repairs, reviews)
+
+Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the code does today, so the work left is visible.
+
+**CASL**
+
+- ☐ **Onboarding nudges to shop owners** (`services/onboarding.ts`, an SMS or email at set times after sign-up). A message that encourages a business to use our service is a CEM. Rely on express consent captured at sign-up (add the wording to the sign-up form and store it) or on implied consent for an existing relationship (**VERIFY** the 2-year rule with counsel). Each message must identify us and give a working unsubscribe. **Gap today:** the footer is a link to the setup page, not a one-step unsubscribe, and the SMS has no STOP keyword for owners. Add a STOP or a one-click opt-out (the `nudges_off` milestone exists) and test it.
+- ☐ **Rebooking and pickup-reminder nudges to shoppers** (`services/rebooking.ts`) are CEMs: they go only to members with marketing consent for that shop who have not muted it, name the shop, and carry "Reply STOP" on SMS. Keep the cap of one nudge per service per cycle and two without a visit. Pickup reminders for a finished repair are service messages: keep every promotional line out of them.
+- ☐ **Appointment confirmations and reminders** are transactional (they confirm a booking the customer made). Keep them free of offers.
+- ☐ **STOP handling** (`services/integrations-sms.ts`): STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, ARRET, ARRÊT, REVOKE, OPTOUT withdraw consent for every shop, mute, and write an audit log; test every keyword and the French ones, and confirm the same for WhatsApp replies (STOP in the WhatsApp webhook) and for the email unsubscribe link (per shop). **VERIFY** that WhatsApp marketing sends only to `marketing_opt_in_at` contacts and honours STOP.
+- ☐ **WhatsApp:** marketing only inside Meta's template rules, only to opted-in customers; the 24-hour window for free-form replies is enforced in `services/whatsapp.ts`.
+- ☐ **Quiet hours:** nothing promotional from 21:00 to 08:00 local (recommended; some flows already enforce it).
+
+**Phone AI (restaurant.phone_ai)**
+
+- ☑ The greeting says the call is turned into text and the text is saved, in English, Hindi, Urdu and Punjabi, before the order prompt (`TRANSCRIPT_NOTICE` in `services/phone.ts`; test in `apps/api/test/phone.test.ts`). ☐ Have a native speaker of each language check the wording.
+- ☐ If we ever store or record call **audio**, change the notice (recording), and add audio to the privacy policy and the retention schedule. Today only the speech-to-text result is stored (`phone_calls.transcript`).
+- ☐ Provider settings: turn off provider-side call recording and transcription retention (Twilio) unless the notice covers it. **VERIFY**
+- ☐ A person confirms every phone order before it becomes an order (`confirmCall`); keep it that way, since that is what lets us say no automated decision is made about the caller. Law 25 requires telling people when a decision is based exclusively on automated processing.
+- ☐ Transcripts are never sold, licensed or used to train models (data-strategy section on transcripts; OPC joint findings on OpenAI, May 6, 2026).
+- ☐ Merchants may also run their own recording; the merchant agreement (4.5) puts that on them.
+
+**Retention (nothing is deleted automatically yet; decide the periods, then build the jobs)**
+
+- ☐ **Phone transcripts and WhatsApp messages** (`phone_calls`, `whatsapp_messages`, `whatsapp_sessions`): proposed [90 days] after the order is confirmed or dismissed. Build a job that blanks `transcript`, message `body` and `cart`, keeps the order.
+- ☐ **Uploaded repair photos** (`service_tickets.photos`, object store): proposed ticket life plus [24 months]. Delete the stored files as well as the URLs. Photo URLs are unguessable but not secret (`providers/storage.ts`); move to signed, expiring URLs before launch. **VERIFY**
+- ☐ **Review feedback** (`review_requests.feedback`, `reply_body`): proposed [24 months].
+- ☐ **Tiffin addresses** (`tiffin_subscriptions.address`, `address_notes`, `dietary_notes`) and driver links (expire the same night): address kept while active and [12 months] after.
+- ☐ **Allergy notes** (`orders.allergy_note`, `whatsapp_sessions.allergy_note`) and dietary notes: kept with the order or subscription only; they are free text a customer chose to give a shop. Do not use them for marketing or analytics.
+- ☐ **Account deletion** (`deleteAccount` in `services/customer.ts`) scrubs the profile, consent, sessions, push tokens and wallet passes, but **does not reach** the newer records above (names and addresses on appointments, tiffin, catering, WhatsApp, calls, reviews). The privacy policy says it does; build the scrub or change the sentence before publishing.
+- ☐ Write the retention schedule once, in `privacy-policy.md` section 6, and keep the jobs and the page in step (add a test as we did for fees).
+
+**Other**
+
+- ☐ **Halal and dietary tags** are menu data entered by the shop, not data about the customer. Do not infer or store a customer's religion or diet from what they order or filter. The shop owns the claim (`halalCertifier`, certification file); do not make our own halal claims. Keep "Zabihah" wording as the shop states it. **VERIFY** advertising rules on halal claims (Competition Act, misleading representations).
+- ☐ **Birthday** is stored as month and day only (done Oct 24, 2026). Keep every import, export and message free of a year.
+- ☐ **Driver links** show a customer's name, phone and address for one route and one day: keep the token unguessable, expiry the same night, rate limit (120 a minute) and no search-engine indexing.
+- ☐ **E-signature and approval records** for quotes and catering keep the signer's IP and device: list them in the privacy policy (done) and keep them as long as the dispute period.
+- ☐ **Privacy impact assessment** for the new modules and for the phone assistant (voice, transcripts, a third-party speech-to-text) before launch; required before transfers outside Quebec if we serve Quebec.
+- ☐ **French:** any phone notice and message for Quebec shoppers in French; the notice currently covers English, Hindi, Urdu and Punjabi only.
+
+## 12. Platform policies
 
 - ☐ Apple App Store and Google Play: loyalty programs and in-app purchases. Points cannot be bought with real money via the app without in-app purchase rules applying, so don't sell points. Wallet pass guidelines.
 - ☐ Twilio and carrier rules for Canadian SMS: register sender numbers (toll-free verification or 10-digit long code registration as required); carrier content rules; quiet hours (recommend 9 pm–8 am local).

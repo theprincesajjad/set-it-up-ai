@@ -51,10 +51,29 @@ export function languageFromCode(code: string | undefined | null): "en" | "hi" |
 const SPEECH_LANG: Record<string, string> = { en: "en-CA", hi: "hi-IN", ur: "ur-PK", pa: "pa-guru-IN" };
 const esc = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
 
-/** TwiML: ask for the order (Gather posts back to `action`), or just say something. */
-export function voiceResponse(opts: { say: string; gatherAction?: string; language?: string }): string {
+/**
+ * Spoken before the caller says anything: the call is turned into text and the text is kept (phone_calls.transcript),
+ * so the caller must be told (PIPEDA openness and consent; Quebec Law 25). All four languages, the shop's first.
+ * Wording to be checked by a native speaker of each language before launch.
+ */
+export const TRANSCRIPT_NOTICE: Record<"en" | "hi" | "ur" | "pa", string> = {
+  en: "This call is turned into text by an automated assistant, and the text is saved so the shop can prepare your order. If you do not want this, please hang up.",
+  hi: "यह कॉल एक स्वचालित सहायक द्वारा टेक्स्ट में बदली जाती है, और आपका ऑर्डर तैयार करने के लिए वह टेक्स्ट सहेजा जाता है। यदि आप ऐसा नहीं चाहते, तो कृपया फ़ोन रख दें।",
+  ur: "یہ کال ایک خودکار معاون کے ذریعے متن میں تبدیل کی جاتی ہے، اور آپ کا آرڈر تیار کرنے کے لیے وہ متن محفوظ کیا جاتا ہے۔ اگر آپ یہ نہیں چاہتے تو براہِ کرم فون بند کر دیں۔",
+  pa: "ਇਹ ਕਾਲ ਇੱਕ ਆਟੋਮੈਟਿਕ ਸਹਾਇਕ ਦੁਆਰਾ ਟੈਕਸਟ ਵਿੱਚ ਬਦਲੀ ਜਾਂਦੀ ਹੈ, ਅਤੇ ਤੁਹਾਡਾ ਆਰਡਰ ਤਿਆਰ ਕਰਨ ਲਈ ਉਹ ਟੈਕਸਟ ਸੰਭਾਲਿਆ ਜਾਂਦਾ ਹੈ। ਜੇ ਤੁਸੀਂ ਇਹ ਨਹੀਂ ਚਾਹੁੰਦੇ, ਤਾਂ ਕਿਰਪਾ ਕਰਕੇ ਫ਼ੋਨ ਰੱਖ ਦਿਓ।",
+};
+
+/** The notice in all four languages, `first` leading, each as a <Say> tagged with its own language. */
+export function noticeSays(first: "en" | "hi" | "ur" | "pa"): string {
+  const order = [first, ...(["en", "hi", "ur", "pa"] as const).filter((l) => l !== first)];
+  return order.map((l) => `<Say language="${SPEECH_LANG[l]}">${esc(TRANSCRIPT_NOTICE[l])}</Say>`).join("");
+}
+
+/** TwiML: ask for the order (Gather posts back to `action`), or just say something. `notices` are extra <Say> spoken first. */
+export function voiceResponse(opts: { say: string; gatherAction?: string; language?: string; notices?: string }): string {
   const say = `<Say>${esc(opts.say)}</Say>`;
-  const inner = opts.gatherAction ? `<Gather input="speech" action="${esc(opts.gatherAction)}" method="POST" speechTimeout="auto" language="${esc(opts.language ?? "en-CA")}">${say}</Gather>` : say;
+  // Notices sit before the <Gather>, not inside it, so the caller talking over the prompt cannot skip them.
+  const inner = (opts.notices ?? "") + (opts.gatherAction ? `<Gather input="speech" action="${esc(opts.gatherAction)}" method="POST" speechTimeout="auto" language="${esc(opts.language ?? "en-CA")}">${say}</Gather>` : say);
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${inner}${opts.gatherAction ? "" : "<Hangup/>"}</Response>`;
 }
 
@@ -143,7 +162,7 @@ export async function ingestCall(ctx: AppContext, merchant: Merchant, call: Inco
   if (!enabled) return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. Please call back during business hours to place your order.` }), row: null };
   const lang = languageFromCode(call.languageCode) ?? (merchant.languages[0] as "en" | "hi" | "ur" | "pa" | undefined) ?? "en";
   if (!call.transcript) {
-    return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. After the tone, tell us what you would like to order and a time for pickup.`, gatherAction: selfUrl, language: SPEECH_LANG[lang] }), row: null };
+    return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. After the tone, tell us what you would like to order and a time for pickup.`, gatherAction: selfUrl, language: SPEECH_LANG[lang], notices: noticeSays(lang) }), row: null };
   }
   const menu = await menuFor(ctx, merchant.id);
   const { draft } = parseTranscript(call.transcript, menu, ctx.now());
