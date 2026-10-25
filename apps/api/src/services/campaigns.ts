@@ -416,23 +416,26 @@ export async function myCampaigns(ctx: AppContext, userId: string, q: { lat?: nu
 // ---------------------------------------------------------------------------
 // Visit hook: progress, bonuses, completion
 // ---------------------------------------------------------------------------
-export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, member, visitId, at, source }) => {
+export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, program, member, visitId, at, source }) => {
+  // The live campaigns at this shop, with this customer's progress in the same read.
   const live = await tx
-    .select({ c: campaigns })
+    .select({ c: campaigns, progress: campaignProgress })
     .from(campaigns)
     .innerJoin(campaignMerchants, and(eq(campaignMerchants.campaignId, campaigns.id), eq(campaignMerchants.merchantId, merchant.id)))
+    .leftJoin(campaignProgress, and(eq(campaignProgress.campaignId, campaigns.id), eq(campaignProgress.userId, member.userId)))
     .where(and(inArray(campaigns.status, RUNNING), lte(campaigns.startsAt, at), gt(campaigns.endsAt, at)));
   if (!live.length) return;
   let pointsAwarded = 0;
   const messages: string[] = [];
-  for (const { c } of live) {
-    await tx.insert(campaignProgress).values({ campaignId: c.id, userId: member.userId, merchantIds: [] }).onConflictDoNothing();
-    const [p] = await tx
-      .select()
-      .from(campaignProgress)
-      .where(and(eq(campaignProgress.campaignId, c.id), eq(campaignProgress.userId, member.userId)))
-      .for("update")
-      .limit(1);
+  for (const { c, progress } of live) {
+    const progressOf = and(eq(campaignProgress.campaignId, c.id), eq(campaignProgress.userId, member.userId));
+    // Steady state (this shop already counted for this customer, nothing left to complete): a plain read, no write, no lock.
+    // That is safe because the shop list only ever grows; anything that could change the row takes the locked path below.
+    let p = progress ?? undefined;
+    if (!p || !(p.merchantIds.includes(merchant.id) && (p.completedAt || p.merchantIds.length < c.goalVisits))) {
+      await tx.insert(campaignProgress).values({ campaignId: c.id, userId: member.userId, merchantIds: [] }).onConflictDoNothing();
+      [p] = await tx.select().from(campaignProgress).where(progressOf).for("update").limit(1);
+    }
     const firstAtShop = !p!.merchantIds.includes(merchant.id);
     const merchantIds = firstAtShop ? [...p!.merchantIds, merchant.id] : p!.merchantIds;
     const completesNow = !p!.completedAt && merchantIds.length >= c.goalVisits;
@@ -444,8 +447,8 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, member, v
     }
 
     if (firstAtShop && c.bonusPoints > 0) {
-      const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1);
-      const bonus = program ? networkBonusInShopUnits(program, c.bonusPoints) : c.bonusPoints;
+      const prog = program ?? (await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1))[0];
+      const bonus = prog ? networkBonusInShopUnits(prog, c.bonusPoints) : c.bonusPoints;
       const r = await postTransaction(tx, {
         merchantId: merchant.id,
         memberId: member.id,
@@ -456,6 +459,9 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, member, v
         campaignId: c.id,
         counterAccount: "network_issued",
         idempotencyKey: `campaign:${c.id}:${member.userId}:${merchant.id}`,
+        // The member row is locked by this transaction already, and a positive bonus cannot overdraw it; a repeat is caught by the key.
+        lockedMember: member,
+        idempotencyChecked: true,
       });
       if (!r.duplicate) pointsAwarded += bonus;
     }
@@ -479,6 +485,8 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, member, v
           campaignId: c.id,
           counterAccount: "network_issued",
           idempotencyKey: `campaign:${c.id}:visit:${visitId}`,
+          lockedMember: member,
+          idempotencyChecked: true,
         });
         if (!r.duplicate) pointsAwarded += extra;
       }

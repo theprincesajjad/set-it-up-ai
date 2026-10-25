@@ -17,7 +17,7 @@ import type { AppContext } from "../context.js";
 import { hmacSha256, randomToken, safeEqual } from "../lib/crypto.js";
 import { HttpError, notFound } from "../lib/errors.js";
 import { httpFor } from "./integrations-http.js";
-import { balanceListeners, type BalanceListener } from "./ledger.js";
+import { registerBalanceListener, type BalanceListener } from "./ledger.js";
 import { apnsFor } from "./wallet-apns.js";
 import { appleSignerFromConfig, buildPkpass, missingAppleConfig, type PassLocation } from "./wallet-apple.js";
 import { addGoogleMessage, googleConfigured, googleSaveUrl, updateGoogleObject } from "./wallet-google.js";
@@ -318,4 +318,4 @@ export async function hasWalletPass(ctx: AppContext, userId: string): Promise<bo
 const walletBalanceListener: BalanceListener = async (ctx, change) => {
   await notifyPassUpdate(ctx, change.userId);
 };
-if (!balanceListeners.includes(walletBalanceListener)) balanceListeners.push(walletBalanceListener);
+registerBalanceListener("wallet_pass", walletBalanceListener);

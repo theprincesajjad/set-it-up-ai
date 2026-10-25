@@ -10,7 +10,7 @@ Auth: `manager` or `owner` of the merchant (admins / the merchant's rep pass as 
 - Recipients = members of this merchant with `marketingConsentAt` set **and** `muted = false` (and a live account).
 - Every message gets a footer the client must **not** add itself:
   - SMS: `\n— <Merchant>. Reply STOP to opt out.`
-  - Email: sender line + `Unsubscribe: <PUBLIC_API_URL>/v1/public/messaging/unsubscribe?m=<memberId>&t=<token>`
+  - Email: sender line + `Unsubscribe: <PUBLIC_API_URL>/v1/public/messaging/unsubscribe?m=<memberId>&t=<token>` (opens a confirm page; `List-Unsubscribe` / `List-Unsubscribe-Post` headers give mail apps the one-click POST)
   - Push: ` (<Merchant> · mute this shop in the app to stop offers)`
 - Inbound `STOP` (also `STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, ARRET/ARRÊT, OPTOUT`) withdraws consent and mutes the
   sender at **every** merchant — see `handleInboundSms` below.
@@ -110,9 +110,16 @@ All automations are promotional → CASL rules above apply.
 ## Opt-outs
 
 ### `GET /v1/public/messaging/unsubscribe?m=<memberId>&t=<token>` (no auth)
-The link in every email. Withdraws consent for that one merchant and returns a small HTML confirmation. `400` bad token.
+The link in every email. **A GET never changes anything**: mail scanners, link previews and prefetchers open every URL in a message, and an unsubscribe that fired on GET would be triggered by them. It checks the token and returns a small HTML **confirm page** ("Unsubscribe from {shop}?") whose button POSTs the same `m` and `t` back. The page is in the reader's language (`?lang=` or `Accept-Language`; en, hi, ur with RTL, pa), is `no-store` and `noindex`, sends no referrer, and its form can only post to our own origin. `400` bad token (it counts toward the per-address enumeration guard).
 ### `POST /v1/public/messaging/unsubscribe` (no auth)
-Body (or query) `{ m, t }` → `{ ok: true, merchantName }` (for the web page / one-click `List-Unsubscribe-Post`).
+Body (or query) `{ m, t }`. The only call that withdraws consent for that merchant (audit `consent.withdrawn_unsubscribe`).
+- From the confirm page's button (a browser form post, `Accept: text/html`): the HTML "You're unsubscribed" page.
+- Anything else (the web app, or an **RFC 8058 one-click** from a mail app: it POSTs `List-Unsubscribe=One-Click` as `application/x-www-form-urlencoded` to the URL in the `List-Unsubscribe` header and reads the status): `200 { ok: true, merchantName }`.
+
+Campaign emails (and the test send) carry the headers `List-Unsubscribe: <…/v1/public/messaging/unsubscribe?m=…&t=…>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, so Gmail, Apple Mail and Outlook show their own Unsubscribe button; the footer link still opens the confirm page. The email provider accepts optional `headers` (Resend passes them through).
+
+### Setup reminders to shop owners: `GET|POST /v1/public/onboarding/unsubscribe?m=<merchantId>&t=<token>` (no auth)
+Same rule: the GET (the link in our reminder texts and emails) shows a confirm page ("Stop setup reminders for {shop}?"), the POST turns the reminders off (milestone `nudges_off`, audit `onboarding.nudges_unsubscribe_link`) and answers a page or `{ ok: true }` the same way. Reminder emails carry the same `List-Unsubscribe` headers. Reminders can be turned back on from the setup page.
 
 ### `handleInboundSms(ctx, fromPhone, body)` — service function for the Twilio webhook (integrations team)
 In `services/messaging.ts`. `fromPhone` must be E.164. Returns `{ action: "opted_out" | "help" | "none", merchantsAffected, reply }`.

@@ -141,6 +141,13 @@
       "when": 1792890350059,
       "tag": "0019_harden",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792899382426,
+      "tag": "0020_perf",
+      "breakpoints": true
     }
   ]
 }

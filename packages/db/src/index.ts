@@ -31,6 +31,27 @@ export async function migrateDb(url: string) {
 }
 
 /**
+ * A freshly migrated throw-away database on a real PostgreSQL server (same driver and pool as production), dropped by `$close`.
+ * `adminUrl` points at any database on the server the caller may CREATE DATABASE on. Used by the API test suite when
+ * TEST_PG_URL is set, to check what PGlite cannot (driver parameter handling, pooled connections).
+ */
+export async function createDisposablePgDb(adminUrl: string): Promise<Db> {
+  const name = `ll_t_${Math.random().toString(16).slice(2, 14)}`;
+  const admin = postgres(adminUrl, { max: 1, onnotice: () => {} });
+  await admin.unsafe(`create database ${name}`);
+  const url = adminUrl.replace(/\/[^/?]*(\?.*)?$/, `/${name}$1`);
+  await migrateDb(url);
+  const db = createDb(url, { max: 5 });
+  const close = db.$close;
+  db.$close = async () => {
+    await close();
+    await admin.unsafe(`drop database if exists ${name} with (force)`);
+    await admin.end();
+  };
+  return db;
+}
+
+/**
  * In-process Postgres (PGlite, WASM) with all migrations applied. Used by the
  * test suites and by `DATABASE_URL=pglite://memory` local dev so nobody needs a
  * running Postgres server to work on the app.

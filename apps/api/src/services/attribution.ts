@@ -1,6 +1,7 @@
 /**
- * Ad visit attribution. Registered as a ledger visit hook at module load, so
- * importing this module (routes/ads/index.ts does) turns it on.
+ * Ad visit attribution. Registered as a ledger visit effect (delivered from the
+ * outbox after the stamp commits) at module load, so importing this module
+ * (routes/ads/index.ts does) turns it on.
  *
  * Method: last touch, click beats impression. A visit at merchant M by user U
  * is attributed to M's ad campaign that U clicked (else saw) most recently in
@@ -12,12 +13,12 @@
 import { and, desc, eq, gt, gte, inArray, lte, max, sql } from "drizzle-orm";
 import { adCampaigns, adEvents, type Tx } from "@ll/db";
 import { adsApi } from "@ll/shared";
-import { visitHooks, type VisitHook, type VisitHookArgs } from "./ledger.js";
+import { registerVisitEffect } from "./ledger.js";
 import { DAY_MS } from "./ads.js";
 
 const { AD_RULES } = adsApi;
 
-export async function attributeVisit(tx: Tx, args: Pick<VisitHookArgs, "merchant" | "member" | "visitId" | "at">): Promise<string | null> {
+export async function attributeVisit(tx: Tx, args: { merchant: { id: string }; member: { userId: string }; visitId: string; at: Date }): Promise<string | null> {
   const userId = args.member.userId;
   const windowStart = new Date(args.at.getTime() - AD_RULES.attributionWindowDays * DAY_MS);
   const ads = await tx
@@ -63,8 +64,7 @@ export async function attributeVisit(tx: Tx, args: Pick<VisitHookArgs, "merchant
   return winner.adId;
 }
 
-export const adAttributionHook: VisitHook = async (tx, args) => {
-  await attributeVisit(tx, args);
-};
-
-if (!visitHooks.includes(adAttributionHook)) visitHooks.push(adAttributionHook);
+/** Runs from the outbox after the stamp has committed (it only counts ad conversions; nothing the counter shows depends on it). */
+registerVisitEffect("ad_attribution", async (ctx, a) => {
+  await ctx.db.transaction((tx) => attributeVisit(tx, { merchant: { id: a.merchantId }, member: { userId: a.userId }, visitId: a.visitId, at: a.at }));
+});

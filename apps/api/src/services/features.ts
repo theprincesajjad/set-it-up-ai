@@ -1,8 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants } from "@ll/db";
 import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
+import { rowsOf } from "../lib/sql.js";
 
 
 type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"] };
@@ -25,6 +26,38 @@ export async function getRolloutStages(db: DbOrTx): Promise<Record<FeatureKey, R
   >;
 }
 
+
+interface FeatureInputs {
+  stages: Map<string, string>;
+  overrides: Map<string, boolean>;
+  addOns: Map<string, string[]>;
+}
+
+/**
+ * Everything feature resolution needs (rollout stages, per-merchant overrides, active add-ons) in ONE round trip:
+ * three scalar sub-selects returning JSON. `keys` narrows the overrides read (all keys when omitted).
+ */
+async function loadFeatureInputs(db: DbOrTx, merchantIds: string[], keys?: readonly FeatureKey[]): Promise<FeatureInputs> {
+  const ids = sql.join(merchantIds.map((i) => sql`${i}`), sql`, `);
+  const keyFilter = keys?.length ? sql` and key in (${sql.join(keys.map((k) => sql`${k}`), sql`, `)})` : sql``;
+  const res = await db.execute(sql`
+    select
+      (select coalesce(jsonb_agg(jsonb_build_object('key', key, 'stage', stage)), '[]'::jsonb) from feature_rollouts) as rollouts,
+      (select coalesce(jsonb_agg(jsonb_build_object('merchantId', merchant_id, 'key', key, 'enabled', enabled)), '[]'::jsonb) from feature_overrides where merchant_id in (${ids})${keyFilter}) as overrides,
+      (select coalesce(jsonb_agg(jsonb_build_object('merchantId', merchant_id, 'addOnId', add_on_id)), '[]'::jsonb) from merchant_add_ons where merchant_id in (${ids}) and status = 'active') as add_ons`);
+  const row = rowsOf<Record<string, unknown>>(res)[0] ?? {};
+  const arr = <T>(v: unknown): T[] => (typeof v === "string" ? (JSON.parse(v) as T[]) : ((v as T[] | null) ?? []));
+  const addOns = new Map<string, string[]>();
+  for (const a of arr<{ merchantId: string; addOnId: string }>(row.add_ons)) addOns.set(a.merchantId, [...(addOns.get(a.merchantId) ?? []), a.addOnId]);
+  return {
+    stages: new Map(arr<{ key: string; stage: string }>(row.rollouts).map((r) => [r.key, r.stage])),
+    overrides: new Map(arr<{ merchantId: string; key: string; enabled: boolean }>(row.overrides).map((o) => [`${o.merchantId}:${o.key}`, o.enabled])),
+    addOns,
+  };
+}
+
+const stageOf = (inputs: FeatureInputs, key: FeatureKey) => (inputs.stages.get(key) as RolloutStage | undefined) ?? FEATURES[key].defaultStage;
+
 export interface FeatureState {
   key: FeatureKey;
   enabled: boolean;
@@ -35,16 +68,11 @@ export interface FeatureState {
 }
 
 export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promise<Record<FeatureKey, FeatureState>> {
-  const [stages, overrides, addOns] = await Promise.all([
-    getRolloutStages(db),
-    db.select().from(featureOverrides).where(eq(featureOverrides.merchantId, merchant.id)),
-    activeAddOns(db, [merchant.id]),
-  ]);
-  const ov = new Map(overrides.map((o) => [o.key, o.enabled]));
+  const inputs = await loadFeatureInputs(db, [merchant.id]);
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
-    const stage = stages[key];
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, addOns: addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: ov.get(key) ?? null });
+    const stage = stageOf(inputs, key);
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, addOns: inputs.addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -56,7 +84,7 @@ export async function requireFeature(db: DbOrTx, merchant: Merchant, key: Featur
   requireFeatureFrom(await getMerchantFeatures(db, merchant), key);
 }
 
-/** Same check against features already resolved by the caller (each resolution is three queries). */
+/** Same check against features already resolved by the caller (each resolution is one query). */
 export function requireFeatureFrom(features: Record<FeatureKey, FeatureState>, key: FeatureKey): void {
   const f = features[key];
   if (!f.enabled) throw featureLocked(FEATURES[key].name, f.lockedReason ?? "plan");
@@ -89,25 +117,17 @@ export async function isFeatureOn(db: DbOrTx, merchant: Merchant, key: FeatureKe
 }
 
 /**
- * Batched: which of `keys` each merchant has enabled. One rollout read + one
- * overrides read for any number of merchants (use it on customer-facing lists).
+ * Batched: which of `keys` each merchant has enabled. One query (rollouts, overrides and add-ons together)
+ * for any number of merchants (use it on customer-facing lists).
  */
 export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   const out = new Map<string, Set<FeatureKey>>();
   if (!list.length || !keys.length) return out;
-  const [stages, overrides, addOns] = await Promise.all([
-    getRolloutStages(db),
-    db
-      .select()
-      .from(featureOverrides)
-      .where(and(inArray(featureOverrides.merchantId, list.map((m) => m.id)), inArray(featureOverrides.key, [...keys]))),
-    activeAddOns(db, list.map((m) => m.id)),
-  ]);
-  const ov = new Map(overrides.map((o) => [`${o.merchantId}:${o.key}`, o.enabled]));
+  const inputs = await loadFeatureInputs(db, list.map((m) => m.id), keys);
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, addOns: addOns.get(m.id), stage: stages[key], betaOptIn: m.betaOptIn, override: ov.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, addOns: inputs.addOns.get(m.id), stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }

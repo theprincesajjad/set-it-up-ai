@@ -3,7 +3,7 @@
 Contract: `packages/shared/src/api/customer.ts` (`customerApi`: `NOTIFICATION_TYPES`, `NOTIFICATION_CATALOG`,
 `ANDROID_CHANNELS`, `NotificationDto`, `NotificationsResponse`, `NotificationPrefsResponse`, `updateNotificationPrefsBody`,
 `notificationsQuery`, `NotificationData`). Code: `apps/api/src/services/notifications.ts`, `apps/api/src/routes/notifications/`,
-jobs in `apps/api/src/jobs/notifications.ts`. Tables: `notifications`, `user_notification_prefs` (migration `0005_notifications`).
+jobs in `apps/api/src/jobs/notifications.ts` (and `jobs/outbox.ts`, see "Delivery" below). Tables: `notifications`, `user_notification_prefs` (migration `0005_notifications`), `outbox_events` (migration `0020_perf`).
 
 ## How a customer hears about something
 
@@ -37,6 +37,21 @@ Adjustments and reversals update the wallet pass but send no message.
 > **Routine budget.** `points_earned` and `passport_progress` share `ROUTINE_PUSHES_PER_DAY` (3) pushes per customer per rolling 24 h across all shops. Over the budget the inbox row is still written (`channels` has no `push`, `SendResult.budgeted` is true); only the push is skipped. Reward ready, redeem, orders, quotes, tiffin, catering, hall, booking, expiry and offers are never counted. `GET /v1/me/notification-prefs` returns `limits: { routinePushesPerDay, offersPerDay, pointsCollapseMinutes }` for the settings screen to state in words.
 >
 > **Language.** Titles and bodies built by this service (earn, reward ready, redeem, expiry, passport title) use `users.locale` (`en | hi | ur | pa`) via the `sh.n.*` catalog keys; English output is unchanged.
+
+## Delivery: the after-commit outbox
+
+Notifications for ledger events (award, redeem, adjust, reversal) are not sent inside the request that caused them. The ledger transaction writes one row to `outbox_events` (`kind: balance_change`, `order_key` = the member, `dedupe_key` = `balance:<kind>:<transactionId>`, payload = the `BalanceChange`), and `services/outbox.ts` delivers it:
+
+| | |
+| --- | --- |
+| **Fast path** | `kickOutbox` runs right after the commit: the next tick of the same process drains the table, so a customer normally gets the push within a second. Turned off with `OUTBOX_FAST_PATH=0` (the drain job then does everything). Tests and `OUTBOX_INLINE=1` deliver *before* the request returns, so assertions are deterministic. |
+| **Durable path** | Job `outbox.drain` (every 5 s) claims whatever is due: events the fast path missed (crash, deploy), events waiting for a retry, claims older than 2 min whose worker died. Run it wherever `JOBS=1` runs; the fast path works on every instance. |
+| **Order** | One event per member at a time, oldest first (`seq`). A failing event holds back that member's later events until it succeeds or is declared dead; other members are not held. |
+| **Idempotence** | `dedupe_key` is unique (enqueueing twice is a no-op). Delivery is split into named steps (`milestones`, `ad_attribution`, `notifications`, `wallet_pass`); the steps already done are stored in `steps_done`, so a retry skips them and never sends a notification twice. |
+| **Retry** | Backoff 10 s, 20 s, 40 s ... capped at 15 min, 8 attempts, then `status = dead` (logged; kept 30 days; it no longer blocks the member). Delivered rows are deleted after 3 days (`outbox.cleanup`, hourly). |
+| **Claiming** | One `UPDATE ... RETURNING` per batch (12 events, delivered 3 at a time so delivery never takes the whole connection pool from the counter), so several API instances or a dedicated worker can drain the same table without delivering anything twice. |
+
+`sendNotification`'s own rules are unchanged (collapse, quiet hours, routine budget, consent): they run at delivery time, against the delivery time clock. A balance change that earned nothing (a stamp below the minimum spend) records its visit effects but sends no message.
 
 Senders (API code): `sendNotification(ctx, { userId, merchantId, type, title, body, data?, smsBody?, passMessage? })` returns
 `{ notificationId, skipped?, channels, push }` and never throws. `skipped` ∈ `no_consent | muted | feature_off | quiet_hours |

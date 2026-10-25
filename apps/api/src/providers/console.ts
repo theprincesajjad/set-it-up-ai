@@ -21,8 +21,8 @@ export function consoleSms(outbox: Outbox, log = false): SmsProvider {
 export function consoleEmail(outbox: Outbox, log = false): EmailProvider {
   return {
     name: "console",
-    async send({ to, subject, text }) {
-      push(outbox.email, { to, subject, text, at: new Date() });
+    async send({ to, subject, text, headers }) {
+      push(outbox.email, { to, subject, text, at: new Date(), ...(headers ? { headers } : {}) });
       if (log) console.log(`[email -> ${to}] ${subject}\n${text}`);
       return { id: `console_${randomToken(6)}` };
     },

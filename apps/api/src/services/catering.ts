@@ -14,6 +14,7 @@ import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
+import { allow } from "../lib/rate-limit.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
@@ -136,20 +137,10 @@ function localDate(now: Date, timeZone: string): string {
 // Inquiry
 // ---------------------------------------------------------------------------
 const HOUR = 3_600_000;
-const hitsByCtx = new WeakMap<AppContext, Map<string, number[]>>();
 const PUBLIC_INQUIRIES_PER_HOUR = 10;
 
-function checkRate(ctx: AppContext, ip: string) {
-  let hits = hitsByCtx.get(ctx);
-  if (!hits) hitsByCtx.set(ctx, (hits = new Map()));
-  const now = ctx.now().getTime();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < HOUR);
-  if (recent.length >= PUBLIC_INQUIRIES_PER_HOUR) {
-    hits.set(ip, recent);
-    throw tooMany("Too many inquiries from this connection. Try again in an hour, or call the shop.");
-  }
-  recent.push(now);
-  hits.set(ip, recent);
+async function checkRate(ctx: AppContext, ip: string) {
+  if (!(await allow(ctx, `catering-inquiry:${ip}`, PUBLIC_INQUIRIES_PER_HOUR, HOUR))) throw tooMany("Too many inquiries from this connection. Try again in an hour, or call the shop.");
 }
 
 export async function createInquiry(ctx: AppContext, merchant: Merchant, userId: string, body: z.infer<typeof restaurantApi.cateringInquiryBody>): Promise<CateringEvent> {
@@ -188,7 +179,7 @@ export async function createInquiry(ctx: AppContext, merchant: Merchant, userId:
 export async function createPublicInquiry(ctx: AppContext, merchant: Merchant, body: z.infer<typeof restaurantApi.cateringPublicInquiryBody>, ip: string) {
   await requireFeature(ctx.db, merchant, "restaurant.catering");
   const phone = requirePhone(body.phone);
-  checkRate(ctx, ip);
+  await checkRate(ctx, ip);
   const { user } = await findOrCreateCustomerByPhone(ctx.db, phone, body.name);
   if (body.email && !user.email) {
     const [taken] = await ctx.db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${body.email.toLowerCase()}`).limit(1);

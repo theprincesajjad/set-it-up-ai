@@ -69,6 +69,9 @@ export const PICKUP_LADDER = [
 ];
 export const LIEN_FLAG_DAYS = 60;
 
+/** The public ticket status link (/t/<token>) stops working this many days after the ticket closes (picked up or cancelled). */
+export const TICKET_LINK_DAYS_AFTER_CLOSE = 30;
+
 /** Every ladder step that has come due and not yet been done, oldest first. */
 export function dueSteps(daysReady: number, lastDone: number): (typeof PICKUP_LADDER)[number][] {
   return PICKUP_LADDER.filter((step) => step.day > lastDone && daysReady >= step.day);

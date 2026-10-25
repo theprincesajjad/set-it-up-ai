@@ -61,6 +61,11 @@ export function unsubscribeToken(ctx: AppContext, memberId: string): string {
   return hmacSha256(ctx.config.jwtSecret, `unsub:${memberId}`).slice(0, 32);
 }
 
+/** RFC 8058 headers: mail apps show their own Unsubscribe button and POST `List-Unsubscribe=One-Click` to the link (no page, no GET). */
+export function unsubscribeHeaders(ctx: AppContext, memberId: string): Record<string, string> {
+  return { "List-Unsubscribe": `<${unsubscribeUrl(ctx, memberId)}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+}
+
 export function unsubscribeUrl(ctx: AppContext, memberId: string): string {
   return `${ctx.config.publicApiUrl.replace(/\/$/, "")}/v1/public/messaging/unsubscribe?m=${memberId}&t=${unsubscribeToken(ctx, memberId)}`;
 }
@@ -257,7 +262,7 @@ async function deliver(ctx: AppContext, a: DeliverArgs): Promise<number> {
       let providerId: string | null = null;
       let error: string | null = null;
       try {
-        if (a.channel === "email") providerId = (await ctx.providers.email.send({ to, subject: subject ?? a.merchant.name, text })).id;
+        if (a.channel === "email") providerId = (await ctx.providers.email.send({ to, subject: subject ?? a.merchant.name, text, headers: unsubscribeHeaders(ctx, r.memberId) })).id;
         else if (a.channel === "sms") {
           const r = await sendSms(ctx, to, text);
           if (!r) {
@@ -510,7 +515,7 @@ export async function deliverTestToSelf(
     let providerId: string | null = null;
     let error: string | null = null;
     try {
-      if (m.channel === "email") providerId = (await ctx.providers.email.send({ to: addr, subject, text })).id;
+      if (m.channel === "email") providerId = (await ctx.providers.email.send({ to: addr, subject, text, headers: membership?.id ? unsubscribeHeaders(ctx, membership.id) : undefined })).id;
       else if (m.channel === "sms") providerId = (await sendSms(ctx, addr, `[Test] ${text}`))?.id ?? null;
       else if ((await ctx.providers.push.send([{ token: addr, title: subject, body: text, data: { merchantId: merchant.id, test: "1" } }])).failed) status = "failed";
     } catch (err) {
@@ -956,7 +961,20 @@ export async function handleInboundSms(ctx: AppContext, fromPhone: string, body:
   return { action: "opted_out", merchantsAffected: rows.length, reply: "You're unsubscribed from Local Loyalty shop messages. No more texts will be sent." };
 }
 
-/** Email unsubscribe link: withdraws consent for that one merchant. */
+/** Checks an unsubscribe link and names the shop, without changing anything (the page a GET opens asks before it acts). */
+export async function previewUnsubscribe(ctx: AppContext, memberId: string, token: string): Promise<{ merchantName: string }> {
+  if (!safeEqual(token, unsubscribeToken(ctx, memberId))) throw badRequest("This unsubscribe link is invalid");
+  const [row] = await ctx.db
+    .select({ name: merchants.name })
+    .from(merchantMembers)
+    .innerJoin(merchants, eq(merchants.id, merchantMembers.merchantId))
+    .where(eq(merchantMembers.id, memberId))
+    .limit(1);
+  if (!row) throw notFound("Subscription");
+  return { merchantName: row.name };
+}
+
+/** Email unsubscribe link: withdraws consent for that one merchant. Only ever called from a POST. */
 export async function unsubscribeByToken(ctx: AppContext, memberId: string, token: string): Promise<messagingApi.UnsubscribeResponse> {
   if (!safeEqual(token, unsubscribeToken(ctx, memberId))) throw badRequest("This unsubscribe link is invalid");
   const [m] = await ctx.db

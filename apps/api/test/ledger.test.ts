@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ledgerEntries, merchantMembers, merchants, networkPerks, promos, vipLevels } from "@ll/db";
+import { ledgerEntries, ledgerTransactions, merchantMembers, merchants, networkPerkAwards, networkPerks, promos, vipLevels, visits } from "@ll/db";
 import { adjustPoints, awardPurchase, ledgerBalance, redeemReward, reverseTransaction } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, nextPhone, type TestEnv, grantFeatures } from "./helpers.js";
 
@@ -98,6 +98,35 @@ describe("ledger", () => {
     expect(m!.activatedAt).not.toBeNull();
     const members = await env.db.select().from(merchantMembers).where(eq(merchantMembers.merchantId, shops[2]!.merchant.id));
     expect(members).toHaveLength(1);
+  });
+});
+
+describe("network perks", () => {
+  it("awards the perk once per customer, however many more shops they visit", async () => {
+    const hood = await createNeighbourhood(env.db);
+    await env.db.insert(networkPerks).values({ neighbourhoodId: hood.id, name: "Strip explorer", threshold: 2, bonusPoints: 50 });
+    const shops = await Promise.all([1, 2, 3, 4].map(() => createMerchant(env, { neighbourhoodId: hood.id })));
+    const phone = nextPhone();
+    const extra: number[] = [];
+    for (const s of shops) extra.push((await awardPurchase(env.ctx, { merchantId: s.merchant.id, phone, source: "staff_app", amountCents: 500 })).extraPoints);
+    extra.push((await awardPurchase(env.ctx, { merchantId: shops[0]!.merchant.id, phone, source: "staff_app", amountCents: 500 })).extraPoints);
+    expect(extra).toEqual([0, 50, 0, 0, 0]);
+    expect(await env.db.select().from(networkPerkAwards)).toHaveLength(1);
+    expect(await env.db.select().from(ledgerTransactions).where(eq(ledgerTransactions.type, "network_bonus"))).toHaveLength(1);
+  });
+
+  it("counts only the visits inside the perk's window", async () => {
+    const hood = await createNeighbourhood(env.db);
+    await env.db.insert(networkPerks).values({ neighbourhoodId: hood.id, name: "Strip explorer", threshold: 2, bonusPoints: 50, windowDays: 30 });
+    const [a, b] = await Promise.all([1, 2].map(() => createMerchant(env, { neighbourhoodId: hood.id })));
+    const phone = nextPhone();
+    await awardPurchase(env.ctx, { merchantId: a!.merchant.id, phone, source: "staff_app", amountCents: 500 });
+    // The first visit is 40 days old: outside the window, so the second shop is only the first visit in it.
+    await env.db.update(visits).set({ createdAt: new Date(env.clock.now.getTime() - 40 * 86_400_000) });
+    expect((await awardPurchase(env.ctx, { merchantId: b!.merchant.id, phone, source: "staff_app", amountCents: 500 })).extraPoints).toBe(0);
+    // A visit 10 days old is inside it.
+    await env.db.update(visits).set({ createdAt: new Date(env.clock.now.getTime() - 10 * 86_400_000) });
+    expect((await awardPurchase(env.ctx, { merchantId: a!.merchant.id, phone: phone, source: "staff_app", amountCents: 500, ignoreCooldown: true })).extraPoints).toBe(50);
   });
 });
 

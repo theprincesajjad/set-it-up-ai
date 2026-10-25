@@ -218,10 +218,17 @@ describe("onboarding nudges to shop owners (CASL)", () => {
     expect(sms.body).toContain(nudgeUnsubscribeUrl(env.ctx, s.id));
     const url = sms.body.match(/https?:\/\/\S+unsubscribe\?\S+/)![0];
     const path = url.replace(env.ctx.config.publicApiUrl, "");
+    const nudgesOff = async () => (await env.db.select().from(merchantMilestones).where(and(eq(merchantMilestones.merchantId, s.id), eq(merchantMilestones.key, "nudges_off")))).length;
+    // The link only asks (scanners open every link in a text); the button's POST turns the reminders off.
     const r = await env.app.inject({ method: "GET", url: path });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain("No more setup reminders");
-    expect((await env.db.select().from(merchantMilestones).where(and(eq(merchantMilestones.merchantId, s.id), eq(merchantMilestones.key, "nudges_off")))).length).toBe(1);
+    expect(r.body).toContain("Stop setup reminders for");
+    expect(r.body).toContain('<form method="post" action="/v1/public/onboarding/unsubscribe">');
+    expect(await nudgesOff()).toBe(0);
+    const form = await env.app.inject({ method: "POST", url: "/v1/public/onboarding/unsubscribe", headers: { accept: "text/html", "content-type": "application/x-www-form-urlencoded" }, payload: new URLSearchParams(path.split("?")[1]!).toString() });
+    expect(form.statusCode).toBe(200);
+    expect(form.body).toContain("No more setup reminders");
+    expect(await nudgesOff()).toBe(1);
     env.clock.now = new Date(env.clock.now.getTime() + 3 * 86_400_000);
     expect((await runOnboardingNudges(env.ctx)).sent).toBe(0);
   });

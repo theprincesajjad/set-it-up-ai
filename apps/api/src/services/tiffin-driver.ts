@@ -24,8 +24,8 @@ type Link = typeof tiffinDriverLinks.$inferSelect;
 const LATE_GAP_MS = 15 * 60_000;
 
 /** 120 requests a minute per token: plenty for a driver tapping through a route, hard for a scraper. */
-function rateLimit(ctx: AppContext, key: string) {
-  if (!allow(ctx, `driver:${key}`, 120, 60_000)) throw tooMany("Too many requests. Wait a moment.");
+async function rateLimit(ctx: AppContext, key: string) {
+  if (!(await allow(ctx, `driver:${key}`, 120, 60_000))) throw tooMany("Too many requests. Wait a moment.");
 }
 
 const expiryFor = (date: string) => new Date(localInstant(addDays(date, 1), 0).getTime() - 1000);
@@ -88,7 +88,7 @@ export async function sendDriverLinks(ctx: AppContext, staff: StaffContext, body
 
 async function linkByToken(ctx: AppContext, token: string): Promise<Link> {
   if (!token || token.length < 16) throw notFound("Driver link");
-  rateLimit(ctx, token);
+  await rateLimit(ctx, token);
   const [l] = await ctx.db.select().from(tiffinDriverLinks).where(eq(tiffinDriverLinks.token, token)).limit(1);
   if (!l) throw notFound("Driver link");
   if (l.expiresAt <= ctx.now()) throw new HttpError(410, "link_expired", "This driver link has expired. Ask the kitchen for a new one.");

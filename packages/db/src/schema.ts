@@ -2206,3 +2206,54 @@ export const commOptOuts = pgTable(
   },
   (t) => [uniqueIndex("comm_opt_outs_uq").on(t.phone, t.channel)],
 );
+
+/**
+ * After-commit outbox. A row is written in the same transaction as the thing that happened (a stamp, a
+ * redemption, an adjustment), so a crash between "committed" and "notified" can never lose the side effects.
+ * services/outbox.ts delivers them: a fast path right after the commit, and the `outbox.drain` job as the
+ * durable retry. `dedupe_key` makes enqueueing idempotent; `order_key` (the member) plus `seq` give per-member order.
+ */
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: id(),
+    /** Monotonic, for ordering within an order_key. */
+    seq: bigint("seq", { mode: "number" }).notNull().generatedAlwaysAsIdentity(),
+    /** balance_change (more kinds can be added; each has a handler in services/outbox.ts). */
+    kind: text("kind").notNull(),
+    /** Events with the same key are delivered one at a time, oldest first (the member id). */
+    orderKey: text("order_key").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    merchantId: uuid("merchant_id"),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    /** Handler steps already completed, so a retry never repeats a notification that went out. */
+    stepsDone: jsonb("steps_done").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    /** pending | processing | done | dead */
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: ts("next_attempt_at").notNull().defaultNow(),
+    lockedAt: ts("locked_at"),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    processedAt: ts("processed_at"),
+  },
+  (t) => [
+    uniqueIndex("outbox_events_dedupe_uq").on(t.dedupeKey),
+    // The claim reads the oldest unfinished event of each order key: only unfinished rows are in this index, so it stays small however many delivered rows are waiting to be cleaned up.
+    index("outbox_events_open_idx").on(t.orderKey, t.seq).where(sql`${t.status} in ('pending', 'processing')`),
+  ],
+);
+
+/**
+ * Shared rate-limit counters, used only when RATE_LIMIT_STORE=postgres (several API instances). One fixed
+ * window per key, started by the first hit; expired rows are swept by the `ratelimit.sweep` job.
+ */
+export const rateLimitCounters = pgTable(
+  "rate_limit_counters",
+  {
+    key: text("key").primaryKey(),
+    hits: integer("hits").notNull().default(0),
+    expiresAt: ts("expires_at").notNull(),
+  },
+  (t) => [index("rate_limit_counters_expires_idx").on(t.expiresAt)],
+);

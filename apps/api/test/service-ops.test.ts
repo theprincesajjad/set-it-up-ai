@@ -5,7 +5,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { appointments, bookingSlots, bookings, invoices, merchantMembers, merchants, pushTokens, quotes, rebookingNudges, serviceTickets, services, users } from "@ll/db";
+import { appointments, bookingSlots, bookings, invoices, merchantMembers, merchants, pushTokens, quotes, rebookingNudges, serviceTickets, services, ticketEvents, users } from "@ll/db";
 import { FREE_FOREVER, dueSteps, earnableAmounts, maxAuthorizedCents, tipChoices, tipsEnabledFor } from "@ll/shared";
 import { MemoryStorage } from "../src/providers/storage.js";
 import { runRollingDropoffSlots } from "../src/services/dropoff.js";
@@ -448,6 +448,39 @@ describe("public ticket status page", () => {
     const ready = await call(env, null, "GET", `/v1/public/tickets/${token}`);
     expect(ready.body.ticket.status).toBe("ready");
     expect(ready.body.invoice).toMatchObject({ amountDueCents: 11300, status: "open", payUrl: expect.stringContaining("/i/") });
+  });
+
+  it("expires 30 days after the ticket closes (410 with the shop's name and phone); an open ticket never expires", async () => {
+    const m = await paidMerchant(env, { plan: "pro" });
+    const closed = await newTicket(m, m.ownerToken);
+    const open = await newTicket(m, m.ownerToken, { customer: { phone: "4165550177", name: "Open Job" } });
+    const closedToken = closed.ticket.statusUrl.split("/t/")[1]!;
+    const openToken = open.ticket.statusUrl.split("/t/")[1]!;
+    // Timeline rows take created_at from the database clock; this test moves the injected clock, so stamp the closing on it.
+    const close = async (id: string, status: "picked_up" | "cancelled") => {
+      await call(env, m.ownerToken, "POST", `${base(m)}/tickets/${id}/status`, { status });
+      await env.db.update(ticketEvents).set({ createdAt: env.clock.now }).where(and(eq(ticketEvents.ticketId, id), eq(ticketEvents.status, status)));
+    };
+    await close(closed.ticket.id, "picked_up");
+    const page = (token: string) => call(env, null, "GET", `/v1/public/tickets/${token}`);
+    expect((await page(closedToken)).status).toBe(200);
+    await later(m, 29 * DAY);
+    expect((await page(closedToken)).status).toBe(200);
+    await later(m, 2 * DAY); // 31 days after closing
+    const gone = await page(closedToken);
+    expect(gone.status).toBe(410);
+    expect(gone.body.error).toMatchObject({ code: "link_expired", details: { shopName: "Test Shop" } });
+    // The expired body carries the shop's contact and nothing about the job or the customer.
+    expect(Object.keys(gone.body.error.details).sort()).toEqual(["shopName", "shopPhone"]);
+    expect(JSON.stringify(gone.body)).not.toContain("Apple");
+    // Still open after 100 days: no expiry until it closes.
+    await later(m, 69 * DAY);
+    expect((await page(openToken)).status).toBe(200);
+    // A cancelled ticket expires the same way, counted from the cancellation.
+    await close(open.ticket.id, "cancelled");
+    expect((await page(openToken)).status).toBe(200);
+    await later(m, 31 * DAY);
+    expect((await page(openToken)).status).toBe(410);
   });
 
   it("gives older tickets a token the first time staff open them", async () => {

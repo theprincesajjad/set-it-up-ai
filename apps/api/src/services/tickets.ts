@@ -4,7 +4,7 @@
  */
 import { and, asc, desc, eq, ilike, inArray, isNull, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { bookings, invoices, locations, merchantMembers, merchantStaff, merchants, quotes, serviceTickets, ticketEvents, users, type DbOrTx } from "@ll/db";
-import { LIEN_FLAG_DAYS, normalizeLocale, normalizePhone, serviceApi, t } from "@ll/shared";
+import { LIEN_FLAG_DAYS, TICKET_LINK_DAYS_AFTER_CLOSE, normalizeLocale, normalizePhone, serviceApi, t } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -424,10 +424,30 @@ export async function addNote(ctx: AppContext, staff: StaffContext, ticketId: st
 // ---------------------------------------------------------------------------
 // Public status page (/t/<token>): no sign-in, nothing staff-only
 // ---------------------------------------------------------------------------
-export async function getTicketByStatusToken(db: DbOrTx, token: string): Promise<Ticket> {
+/** When the ticket closed: its last picked_up / cancelled event, falling back to its last update. Null while it is open. */
+export async function ticketClosedAt(db: DbOrTx, ticket: Pick<Ticket, "id" | "status" | "updatedAt">): Promise<Date | null> {
+  if (!TERMINAL_TICKET_STATUSES.includes(ticket.status)) return null;
+  const [last] = await db
+    .select({ at: sql<Date | null>`max(${ticketEvents.createdAt})` })
+    .from(ticketEvents)
+    .where(and(eq(ticketEvents.ticketId, ticket.id), inArray(ticketEvents.status, TERMINAL_TICKET_STATUSES)));
+  const at = last?.at ? new Date(last.at) : null;
+  return at && !Number.isNaN(at.getTime()) ? at : ticket.updatedAt;
+}
+
+/**
+ * Ticket for a public status link. Open tickets always resolve; a closed one resolves for
+ * TICKET_LINK_DAYS_AFTER_CLOSE days, then 410 `link_expired` (the page shows the shop's name and phone so the customer can ask).
+ */
+export async function getTicketByStatusToken(db: DbOrTx, token: string, now: Date = new Date()): Promise<Ticket> {
   if (!token || token.length < 16) throw notFound("Ticket");
   const [row] = await db.select().from(serviceTickets).where(eq(serviceTickets.statusToken, token)).limit(1);
   if (!row) throw notFound("Ticket");
+  const closedAt = await ticketClosedAt(db, row);
+  if (closedAt && now.getTime() - closedAt.getTime() > TICKET_LINK_DAYS_AFTER_CLOSE * DAY_MS) {
+    const [shop] = await db.select({ name: merchants.name, phone: merchants.phone }).from(merchants).where(eq(merchants.id, row.merchantId)).limit(1);
+    throw new HttpError(410, "link_expired", "This status link has expired.", { shopName: shop?.name ?? null, shopPhone: shop?.phone ?? null });
+  }
   return row;
 }
 

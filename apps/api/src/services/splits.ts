@@ -187,7 +187,7 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
   if (tenderOf(split) !== "link") throw conflict("This share is paid at the table, not by link");
   if (order.status === "cancelled" || order.status === "refunded" || order.paymentStatus === "paid") throw conflict("This bill is closed");
   // Each distinct tip starts a new PaymentIntent at Stripe: cap how many a single link can start.
-  if (!allow(ctx, `split-pay:${split.id}`, 20, 3_600_000)) throw tooMany("Too many payment attempts on this link. Try again in an hour, or pay the shop directly.");
+  if (!(await allow(ctx, `split-pay:${split.id}`, 20, 3_600_000))) throw tooMany("Too many payment attempts on this link. Try again in an hour, or pay the shop directly.");
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   const amount = split.amountCents + body.tipCents;
   // Split shares are order payments: same rule as the whole bill (0% paid/restaurant, 1.5% Free). No customer fee on shares.

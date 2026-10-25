@@ -1,11 +1,12 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { messagingApi } from "@ll/shared";
+import { messagingApi, negotiateLocale, normalizeLocale } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
+import { UNSUBSCRIBE_PAGE_HEADERS, unsubscribeConfirmPage, unsubscribeDonePage } from "../../lib/unsubscribe-page.js";
 import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/messaging.js";
-import { unsubscribeNudgesByToken } from "../../services/onboarding.js";
+import { previewNudgeUnsubscribe, unsubscribeNudgesByToken } from "../../services/onboarding.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
@@ -89,33 +90,39 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     return svc.upsertAutomation(ctx, s.merchant, s.user.id, kind, parse(messagingApi.upsertAutomationBody, req.body));
   });
 
-  // ---- Public unsubscribe link (CASL). GET = link click, POST = one-click / web page. ----
+  // ---- Public unsubscribe links (CASL). A GET never changes anything: mail scanners, link previews and prefetchers open every
+  // URL in a message. It shows a confirm page whose button POSTs the same token back; the POST is also the RFC 8058 one-click
+  // endpoint (mail apps POST `List-Unsubscribe=One-Click` to the URL in the List-Unsubscribe header and read the status). ----
+  const pageLocale = (req: FastifyRequest) => {
+    const lang = (req.query as { lang?: string } | undefined)?.lang ?? (req.body as { lang?: string } | undefined)?.lang;
+    return normalizeLocale(lang) ?? negotiateLocale(req.headers["accept-language"]);
+  };
+  const wantsHtml = (req: FastifyRequest) => String(req.headers.accept ?? "").includes("text/html");
+  const send = (reply: FastifyReply, html: string) => reply.headers(UNSUBSCRIBE_PAGE_HEADERS).send(html);
+
   app.get("/public/messaging/unsubscribe", async (req, reply) => {
     const q = parse(messagingApi.unsubscribeBody, req.query);
-    const r = await svc.unsubscribeByToken(ctx, q.m, q.t);
-    const name = r.merchantName.replace(/[<>&"]/g, "");
-    return reply
-      .header("content-type", "text/html; charset=utf-8")
-      .send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed</title><body style="font-family:system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem"><h1>You're unsubscribed</h1><p>You won't get offers from ${name} any more. You'll still earn and redeem rewards there as usual.</p></body>`);
+    const r = await svc.previewUnsubscribe(ctx, q.m, q.t);
+    return send(reply, unsubscribeConfirmPage(pageLocale(req), "member", r.merchantName, "/v1/public/messaging/unsubscribe", { m: q.m, t: q.t, lang: pageLocale(req) }));
   });
-  app.post("/public/messaging/unsubscribe", async (req): Promise<messagingApi.UnsubscribeResponse> => {
+  app.post("/public/messaging/unsubscribe", async (req, reply) => {
     const b = parse(messagingApi.unsubscribeBody, { ...(req.query as object), ...((req.body as object) ?? {}) });
-    return svc.unsubscribeByToken(ctx, b.m, b.t);
+    const r = await svc.unsubscribeByToken(ctx, b.m, b.t);
+    if (wantsHtml(req)) return send(reply, unsubscribeDonePage(pageLocale(req), "member", r.merchantName));
+    return r satisfies messagingApi.UnsubscribeResponse;
   });
 
-  // ---- One-step unsubscribe from our setup reminders to shop owners (CASL). ----
+  // ---- One-step unsubscribe from our setup reminders to shop owners (CASL): same GET-asks, POST-acts rule. ----
   const nudgeQuery = z.object({ m: z.string().uuid(), t: z.string().min(8).max(128) });
   app.get("/public/onboarding/unsubscribe", async (req, reply) => {
     const q = parse(nudgeQuery, req.query);
-    const r = await unsubscribeNudgesByToken(ctx, q.m, q.t);
-    const name = r.merchantName.replace(/[<>&"]/g, "");
-    return reply
-      .header("content-type", "text/html; charset=utf-8")
-      .send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed</title><body style="font-family:system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem"><h1>No more setup reminders</h1><p>We won't send setup reminders for ${name} any more. Your account and your shop are not affected, and you can turn reminders back on from the setup page.</p></body>`);
+    const r = await previewNudgeUnsubscribe(ctx, q.m, q.t);
+    return send(reply, unsubscribeConfirmPage(pageLocale(req), "nudge", r.merchantName, "/v1/public/onboarding/unsubscribe", { m: q.m, t: q.t, lang: pageLocale(req) }));
   });
-  app.post("/public/onboarding/unsubscribe", async (req) => {
+  app.post("/public/onboarding/unsubscribe", async (req, reply) => {
     const b = parse(nudgeQuery, { ...(req.query as object), ...((req.body as object) ?? {}) });
-    await unsubscribeNudgesByToken(ctx, b.m, b.t);
+    const r = await unsubscribeNudgesByToken(ctx, b.m, b.t);
+    if (wantsHtml(req)) return send(reply, unsubscribeDonePage(pageLocale(req), "nudge", r.merchantName));
     return { ok: true };
   });
 }

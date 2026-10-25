@@ -144,7 +144,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   /** Ticket status page by its own token: no sign-in, only what the customer may see. */
   app.get<{ Params: { token: string } }>("/public/tickets/:token", async (req): Promise<serviceApi.PublicTicketStatusResponse> => {
-    const ticket = await getTicketByStatusToken(ctx.db, req.params.token);
+    const ticket = await getTicketByStatusToken(ctx.db, req.params.token, ctx.now());
     return publicTicketStatus(ctx, ticket);
   });
 

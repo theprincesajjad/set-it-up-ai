@@ -90,6 +90,9 @@ docs/           business, engineering, design, finance, sales
 - `vitest`. API tests use `apps/api/test/helpers.ts` → `createTestEnv()` (fresh
   PGlite DB per test, controllable clock, console providers with an `outbox` you
   can assert on). Use `env.app.inject({ method, url, headers, payload })` for HTTP tests.
+  `TEST_PG_URL=postgres://user@host:port/postgres` runs the same tests on a real PostgreSQL (a fresh
+  database per test env, dropped on close): use it for anything that touches raw SQL or driver parameters,
+  where postgres-js is stricter than PGlite (it refuses a `Date` inside a raw `sql` template: pass an ISO string and cast).
 - Every route area ships with tests covering the happy path, auth failures and
   the business rules above. Run `pnpm --filter @ll/api test` and
   `pnpm --filter @ll/api typecheck` before declaring done.

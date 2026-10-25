@@ -261,6 +261,15 @@ export function nudgeUnsubscribeUrl(ctx: AppContext, merchantId: string): string
   return `${ctx.config.publicApiUrl.replace(/\/$/, "")}/v1/public/onboarding/unsubscribe?m=${merchantId}&t=${nudgeUnsubscribeToken(ctx, merchantId)}`;
 }
 
+/** Checks the link and names the shop, without changing anything (the page a GET opens asks before it acts). */
+export async function previewNudgeUnsubscribe(ctx: AppContext, merchantId: string, token: string): Promise<{ merchantName: string }> {
+  if (!safeEqual(token, nudgeUnsubscribeToken(ctx, merchantId))) throw badRequest("This unsubscribe link is invalid");
+  const [m] = await ctx.db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Shop");
+  return { merchantName: m.name };
+}
+
+/** Turns the reminders off. Only ever called from a POST (a GET just asks). */
 export async function unsubscribeNudgesByToken(ctx: AppContext, merchantId: string, token: string): Promise<{ merchantName: string }> {
   if (!safeEqual(token, nudgeUnsubscribeToken(ctx, merchantId))) throw badRequest("This unsubscribe link is invalid");
   const [m] = await ctx.db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
@@ -342,7 +351,7 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
     const stopUrl = nudgeUnsubscribeUrl(ctx, m.id);
     try {
       if (smsTo) await sendSms(ctx, smsTo, `${BRAND.name}: ${text.body}\n${t(locale, "ob.smsFoot", { stop: t(locale, "ob.stopLine"), url: stopUrl })}`);
-      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}\n\n--\n${t(locale, "ob.emailFoot", { brand: BRAND.name, url: stopUrl })}` });
+      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}\n\n--\n${t(locale, "ob.emailFoot", { brand: BRAND.name, url: stopUrl })}`, headers: { "List-Unsubscribe": `<${stopUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } });
       sent += 1;
     } catch (err) {
       console.error("[onboarding.nudge]", m.id, err);

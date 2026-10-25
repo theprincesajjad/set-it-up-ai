@@ -21,7 +21,7 @@ with marketing consent), and HST on tips (tips are never taxed here).
 - Drop-off (`booking.dropoff_scheduling`): `GET|PUT /dropoff-settings`, `POST /dropoff-settings/block`, `DELETE /dropoff-settings/block/:date`.
 
 ## Public
-- `GET /public/tickets/:token` status page. `GET /public/quotes/:token` stamps `firstViewedAt` once; `?preview=1` does not. Payloads add `merchant.vertical`, `maxAuthorizedCents`, event facts, `terms`, `taxLabel`.
+- `GET /public/tickets/:token` status page. **Expiry**: an open ticket's link always works; once the ticket is closed (`picked_up` or `cancelled`) it keeps working for `TICKET_LINK_DAYS_AFTER_CLOSE` = 30 days (counted from the last closing event), then `410 link_expired` with `details { shopName, shopPhone }` and nothing about the job or the customer; the web page (`/t/<token>`) turns that into a friendly "this status link has expired, contact {shop}" page with a call button, in all four languages. Counts toward the per-address enumeration guard like any 404/410. `GET /public/quotes/:token` stamps `firstViewedAt` once; `?preview=1` does not. Payloads add `merchant.vertical`, `maxAuthorizedCents`, event facts, `terms`, `taxLabel`.
 - `POST /public/invoices/:token/pay { tipCents }` 0 to 100% of the pre-tax subtotal, only where tips are on; tips are not taxed and never earn points.
 
 ## Jobs

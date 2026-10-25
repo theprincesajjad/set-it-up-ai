@@ -44,7 +44,7 @@ import {
   type AwardResult,
   type ConsentInput,
 } from "./ledger.js";
-import { enabledFeaturesByMerchantId } from "./features.js";
+import { enabledFeaturesByMerchantId, enabledFeaturesFor } from "./features.js";
 import { shopDate } from "./member-stats.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 import { sendSms } from "./opt-out.js";
@@ -67,52 +67,72 @@ async function loadProgram(db: DbOrTx, merchantId: string): Promise<Program | nu
 
 /**
  * Builds summaries for the members matching `where` (always AND-ed with the
- * merchant scope and "not merged"). One joined query + 4 parallel reads.
+ * merchant scope and "not merged"). One joined query (member, user, VIP level, open redemptions, optionally this
+ * month's visits) plus the program, the rewards and the feature check in parallel; discount cards are read only
+ * when the shop has them.
  */
-async function summaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit = 10): Promise<staffApi.MemberSummaryDto[]> {
-  const [rows, program, rs, cards, paid] = await Promise.all([
+interface SummaryOptions {
+  /** Also count each member's visits since this instant. */
+  monthStart?: Date;
+  /** What the caller already read; each one saves a statement. */
+  preloaded?: { merchant?: Merchant; program?: Program; rewards?: { id: string; name: string; pointsCost: number }[] };
+}
+
+async function loadSummaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit: number, opts: SummaryOptions = {}): Promise<{ dto: staffApi.MemberSummaryDto; visitsThisMonth: number }[]> {
+  const { monthStart, preloaded } = opts;
+  const [rows, program, rs, paid] = await Promise.all([
     db
-      .select({ member: merchantMembers, phone: users.phone, name: users.name, memberCode: users.memberCode, vip: vipLevels })
+      .select({
+        member: merchantMembers,
+        phone: users.phone,
+        name: users.name,
+        memberCode: users.memberCode,
+        vip: vipLevels,
+        open: sql<number>`(select count(*)::int from ${redemptions} where ${redemptions.merchantId} = ${merchantId} and ${redemptions.status} = 'issued' and ${redemptions.memberId} = ${merchantMembers.id})`,
+        month: monthStart ? sql<number>`(select count(*)::int from ${visits} where ${visits.memberId} = ${merchantMembers.id} and ${visits.createdAt} >= ${monthStart.toISOString()}::timestamptz)` : sql<number>`0`,
+      })
       .from(merchantMembers)
       .innerJoin(users, eq(users.id, merchantMembers.userId))
       .leftJoin(vipLevels, eq(vipLevels.id, merchantMembers.vipLevelId))
       .where(and(eq(merchantMembers.merchantId, merchantId), notMerged, where))
       .orderBy(desc(merchantMembers.lastVisitAt))
       .limit(limit),
-    loadProgram(db, merchantId),
-    db
-      .select({ id: rewards.id, name: rewards.name, pointsCost: rewards.pointsCost })
-      .from(rewards)
-      .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true))),
-    db.select().from(discountCards).where(and(eq(discountCards.merchantId, merchantId), eq(discountCards.active, true))),
-    enabledFeaturesByMerchantId(db, [merchantId], ["discount_cards", "loyalty.vip_levels"]).then((m) => m.get(merchantId) ?? new Set()),
+    preloaded?.program ?? loadProgram(db, merchantId),
+    preloaded?.rewards ??
+      db
+        .select({ id: rewards.id, name: rewards.name, pointsCost: rewards.pointsCost })
+        .from(rewards)
+        .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true))),
+    (preloaded?.merchant ? enabledFeaturesFor(db, [preloaded.merchant], ["discount_cards", "loyalty.vip_levels"]) : enabledFeaturesByMerchantId(db, [merchantId], ["discount_cards", "loyalty.vip_levels"])).then((m) => m.get(merchantId) ?? new Set()),
   ]);
   if (!rows.length) return [];
-  const open = await db
-    .select({ memberId: redemptions.memberId, n: sql<number>`count(*)::int` })
-    .from(redemptions)
-    .where(and(eq(redemptions.merchantId, merchantId), eq(redemptions.status, "issued"), inArray(redemptions.memberId, rows.map((r) => r.member.id))))
-    .groupBy(redemptions.memberId);
-  const openBy = new Map(open.map((o) => [o.memberId, Number(o.n)]));
-  return rows.map(({ member, phone, name, memberCode, vip }) => ({
-    memberId: member.id,
-    name: name ?? null,
-    maskedPhone: maskedPhone(phone),
-    memberCode,
-    balance: member.balance,
-    terminology: terminologyOf(program),
-    visitCount: member.visitCount,
-    lastVisitAt: iso(member.lastVisitAt),
-    joinedAt: member.createdAt.toISOString(),
-    // VIP levels and discount cards are paid: hidden at the counter while the shop doesn't have them.
-    vip: paid.has("loyalty.vip_levels") ? vipDto(vip) : null,
-    rewardsAffordable: affordable(rs, member.balance),
-    nextReward: nextReward(rs, member.balance),
-    discountCards: paid.has("discount_cards") ? cardsForMember(cards.filter((c) => c.eligibility !== "vip" || paid.has("loyalty.vip_levels")), member) : [],
-    openRedemptionCount: openBy.get(member.id) ?? 0,
-    marketingConsent: !!member.marketingConsentAt,
-    expiryDisclosure: expiryDisclosure(program),
+  const cards = paid.has("discount_cards") ? await db.select().from(discountCards).where(and(eq(discountCards.merchantId, merchantId), eq(discountCards.active, true))) : [];
+  return rows.map(({ member, phone, name, memberCode, vip, open, month }) => ({
+    visitsThisMonth: Number(month),
+    dto: {
+      memberId: member.id,
+      name: name ?? null,
+      maskedPhone: maskedPhone(phone),
+      memberCode,
+      balance: member.balance,
+      terminology: terminologyOf(program),
+      visitCount: member.visitCount,
+      lastVisitAt: iso(member.lastVisitAt),
+      joinedAt: member.createdAt.toISOString(),
+      // VIP levels and discount cards are paid: hidden at the counter while the shop doesn't have them.
+      vip: paid.has("loyalty.vip_levels") ? vipDto(vip) : null,
+      rewardsAffordable: affordable(rs, member.balance),
+      nextReward: nextReward(rs, member.balance),
+      discountCards: paid.has("discount_cards") ? cardsForMember(cards.filter((c) => c.eligibility !== "vip" || paid.has("loyalty.vip_levels")), member) : [],
+      openRedemptionCount: Number(open),
+      marketingConsent: !!member.marketingConsentAt,
+      expiryDisclosure: expiryDisclosure(program),
+    },
   }));
+}
+
+async function summaries(db: DbOrTx, merchantId: string, where: SqlWhere, limit = 10): Promise<staffApi.MemberSummaryDto[]> {
+  return (await loadSummaries(db, merchantId, where, limit)).map((r) => r.dto);
 }
 
 export async function memberSummary(db: DbOrTx, merchantId: string, memberId: string): Promise<staffApi.MemberSummaryDto> {
@@ -243,6 +263,7 @@ async function doAward(
   const consent: ConsentInput | null = input.consent ? { text: input.consent.text, source: opts.consentSource ?? "counter_staff" } : null;
   const result = await awardPurchase(ctx, {
     merchantId: staff.merchant.id,
+    merchant: staff.merchant,
     ...(who.member ? { memberId: who.member.id } : who.userId ? { userId: who.userId } : { phone: who.phone! }),
     customerName: input.customerName ?? null,
     amountCents: input.amountCents,
@@ -275,11 +296,12 @@ async function doAward(
       createdAt: ctx.now(),
     });
   }
-  const member = await memberSummary(ctx.db, staff.merchant.id, result.member.id);
-  const [monthVisits] = await ctx.db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(visits)
-    .where(and(eq(visits.memberId, result.member.id), gte(visits.createdAt, monthStart(ctx.now(), staff.merchant.timezone))));
+  const [summary] = await loadSummaries(ctx.db, staff.merchant.id, eq(merchantMembers.id, result.member.id), 1, {
+    monthStart: monthStart(ctx.now(), staff.merchant.timezone),
+    preloaded: { merchant: staff.merchant, ...result.preloaded },
+  });
+  if (!summary) throw notFound("Member");
+  const member = summary.dto;
   const pointsEarned = result.transaction?.points ?? 0;
   const receiptQueued = !result.duplicate && pointsEarned > 0 ? await queueReceipt(ctx, staff.merchant, result.member, pointsEarned, member.terminology) : false;
   return {
@@ -298,7 +320,7 @@ async function doAward(
       rewardsAvailable: result.rewardsAvailable,
       messages: result.messages,
       receiptQueued,
-      visitsThisMonth: Number(monthVisits?.n ?? 0),
+      visitsThisMonth: summary.visitsThisMonth,
     },
   };
 }
@@ -321,7 +343,7 @@ export async function flushReceipts(): Promise<void> {
 async function queueReceipt(ctx: AppContext, merchant: Merchant, member: Member, points: number, terminology: string): Promise<boolean> {
   if (!merchant.smsReceiptsEnabled || member.muted) return false;
   // Texts cost money, so receipts ride on the paid SMS feature (Free has no SMS).
-  const enabled = await enabledFeaturesByMerchantId(ctx.db, [merchant.id], ["marketing.sms"]);
+  const enabled = await enabledFeaturesFor(ctx.db, [merchant], ["marketing.sms"]);
   if (!enabled.get(merchant.id)?.has("marketing.sms")) return false;
   const [u] = await ctx.db.select({ phone: users.phone, deletedAt: users.deletedAt }).from(users).where(eq(users.id, member.userId)).limit(1);
   if (!u?.phone || u.deletedAt) return false;

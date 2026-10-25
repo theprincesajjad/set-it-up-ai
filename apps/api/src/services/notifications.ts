@@ -29,7 +29,7 @@ import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import type { PushTicket } from "../providers/types.js";
 import { enabledFeaturesFor } from "./features.js";
-import { balanceListeners, type BalanceChange, type BalanceListener } from "./ledger.js";
+import { registerBalanceListener, type BalanceChange, type BalanceListener } from "./ledger.js";
 import { addPassMessage, hasWalletPass } from "./wallet.js";
 import { sendSms } from "./opt-out.js";
 
@@ -676,4 +676,4 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
 }
 
 const notificationsBalanceListener: BalanceListener = onBalanceChange;
-if (!balanceListeners.includes(notificationsBalanceListener)) balanceListeners.push(notificationsBalanceListener);
+registerBalanceListener("notifications", notificationsBalanceListener);

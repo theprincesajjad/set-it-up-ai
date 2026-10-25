@@ -4,7 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { AppContext } from "./context.js";
 import { verifyAccessToken } from "./lib/auth.js";
 import { HttpError, tooMany } from "./lib/errors.js";
-import { countHits, recordHit } from "./lib/rate-limit.js";
+import { countHits, postgresBlanketStore, recordHit } from "./lib/rate-limit.js";
 import { registerRoutes } from "./routes/index.js";
 
 declare module "fastify" {
@@ -51,6 +51,8 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
       timeWindow: "1 minute",
       hook: "preHandler",
       keyGenerator: (req) => (req.authUser ? `user:${req.authUser.id}` : `ip:${req.ip}`),
+      // RATE_LIMIT_STORE=postgres: one shared counter per key across API instances (default: per process).
+      ...(ctx.config.rateLimit.store === "postgres" ? { store: postgresBlanketStore(ctx) } : {}),
     });
   }
 
@@ -64,14 +66,14 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
   // defence in depth (and a cheap way to spot a scanner), not the primary control.
   const GUARDED = /^\/v1\/public\/(tiffin\/driver|tickets|reviews|catering|splits|quotes|invoices|payments|join|whatsapp\/pay|messaging\/unsubscribe|onboarding\/unsubscribe)\b/;
   app.addHook("preHandler", async (req) => {
-    if (!GUARDED.test(req.url) || countHits(ctx, `miss:${req.ip}`, MISS_WINDOW_MS) < MISS_LIMIT) return;
+    if (!GUARDED.test(req.url) || (await countHits(ctx, `miss:${req.ip}`, MISS_WINDOW_MS)) < MISS_LIMIT) return;
     throw tooMany("Too many links that don't exist. Check the link, or try again in a few minutes.");
   });
   app.addHook("onResponse", async (req, reply) => {
     if (!GUARDED.test(req.url)) return;
     // 404/410: a link that does not exist or has expired. 400/403 only where the credential is a query parameter (unsubscribe, pay page).
     const credentialInQuery = /\/public\/(messaging\/unsubscribe|onboarding\/unsubscribe|whatsapp\/pay)/.test(req.url);
-    if ([404, 410].includes(reply.statusCode) || (credentialInQuery && [400, 403].includes(reply.statusCode))) recordHit(ctx, `miss:${req.ip}`, MISS_WINDOW_MS);
+    if ([404, 410].includes(reply.statusCode) || (credentialInQuery && [400, 403].includes(reply.statusCode))) await recordHit(ctx, `miss:${req.ip}`, MISS_WINDOW_MS);
   });
 
   app.setErrorHandler((err, req, reply) => {

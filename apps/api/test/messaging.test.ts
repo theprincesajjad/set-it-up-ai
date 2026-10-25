@@ -215,13 +215,41 @@ describe("opt-outs", () => {
     const s = await setup();
     const bad = await env.app.inject({ method: "GET", url: `/v1/public/messaging/unsubscribe?m=${s.alice.id}&t=wrongtokenwrongtoken` });
     expect(bad.statusCode).toBe(400);
-    const ok = await env.app.inject({ method: "GET", url: `/v1/public/messaging/unsubscribe?m=${s.alice.id}&t=${unsubscribeToken(env.ctx, s.alice.id)}` });
+    const token = unsubscribeToken(env.ctx, s.alice.id);
+    // A GET (a mail scanner, a link preview, a click) only asks: nothing changes until the button's POST.
+    const ok = await env.app.inject({ method: "GET", url: `/v1/public/messaging/unsubscribe?m=${s.alice.id}&t=${token}`, headers: { "accept-language": "hi-IN,hi;q=0.9" } });
     expect(ok.statusCode).toBe(200);
+    expect(ok.headers["cache-control"]).toBe("no-store");
     expect(ok.body).toContain("Test Shop");
-    const [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.alice.id));
+    expect(ok.body).toContain('lang="hi"');
+    expect(ok.body).toContain('<form method="post" action="/v1/public/messaging/unsubscribe">');
+    expect(ok.body).toContain(`name="t" value="${token}"`);
+    let [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.alice.id));
+    expect(m!.marketingConsentAt).not.toBeNull();
+    expect(await env.db.select().from(auditLogs).where(eq(auditLogs.action, "consent.withdrawn_unsubscribe"))).toHaveLength(0);
+
+    // The button: a browser form post gets a page.
+    const form = await env.app.inject({ method: "POST", url: "/v1/public/messaging/unsubscribe", headers: { accept: "text/html", "content-type": "application/x-www-form-urlencoded" }, payload: `m=${s.alice.id}&t=${token}&lang=en` });
+    expect(form.statusCode).toBe(200);
+    expect(form.headers["content-type"]).toContain("text/html");
+    expect(form.body).toContain("You&#39;re unsubscribed");
+    [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.alice.id));
     expect(m!.marketingConsentAt).toBeNull();
-    const post = await env.app.inject({ method: "POST", url: `/v1/public/messaging/unsubscribe`, payload: { m: s.alice.id, t: unsubscribeToken(env.ctx, s.alice.id) } });
+    // Other members of the shop are untouched.
+    const [other] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.noEmail.id));
+    expect(other!.marketingConsentAt).not.toBeNull();
+
+    // RFC 8058 one-click: a mail app POSTs `List-Unsubscribe=One-Click` to the header's URL and reads the status; JSON back.
+    await env.db.update(merchantMembers).set({ marketingConsentAt: new Date() }).where(eq(merchantMembers.id, s.alice.id));
+    const oneClick = await env.app.inject({ method: "POST", url: `/v1/public/messaging/unsubscribe?m=${s.alice.id}&t=${token}`, headers: { "content-type": "application/x-www-form-urlencoded" }, payload: "List-Unsubscribe=One-Click" });
+    expect(oneClick.statusCode).toBe(200);
+    expect(oneClick.json()).toEqual({ ok: true, merchantName: "Test Shop" });
+    [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.alice.id));
+    expect(m!.marketingConsentAt).toBeNull();
+    const post = await env.app.inject({ method: "POST", url: `/v1/public/messaging/unsubscribe`, payload: { m: s.alice.id, t: token } });
     expect(post.json()).toEqual({ ok: true, merchantName: "Test Shop" });
+    // A bad token never changes anything, on either verb.
+    expect((await env.app.inject({ method: "POST", url: `/v1/public/messaging/unsubscribe?m=${s.noEmail.id}&t=wrongtokenwrongtoken` })).statusCode).toBe(400);
   });
 });
 

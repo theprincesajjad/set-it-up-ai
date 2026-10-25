@@ -32,6 +32,7 @@ import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { enabledFeaturesFor } from "./features.js";
 import { recordVisitMilestones } from "./onboarding.js";
+import { enqueueOutbox, kickOutbox, registerOutboxHandler } from "./outbox.js";
 
 type TxType = (typeof ledgerTransactions.$inferInsert)["type"];
 type TxSource = (typeof ledgerTransactions.$inferInsert)["source"];
@@ -47,22 +48,41 @@ const LIFETIME_TYPES = new Set<TxType>(["earn", "welcome_bonus", "birthday_bonus
 // ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
+/**
+ * Account ids never change once created (an account row is only removed with its member or shop), so the lookups are
+ * remembered per process: a stamp used to spend two reads on them.
+ */
+const accountIds = new Map<string, string>();
+const ACCOUNT_CACHE_MAX = 20_000;
+function rememberAccount(key: string, id: string) {
+  if (accountIds.size >= ACCOUNT_CACHE_MAX) accountIds.delete(accountIds.keys().next().value as string);
+  accountIds.set(key, id);
+  return id;
+}
+
 async function merchantAccount(tx: DbOrTx, merchantId: string | null, kind: AccountKind): Promise<string> {
+  // The network account (no merchant) is not remembered: its id is the same key in every database this process opens (tests).
+  const cacheKey = merchantId ? `m:${merchantId}:${kind}` : null;
+  const hit = cacheKey ? accountIds.get(cacheKey) : undefined;
+  if (hit) return hit;
   const where =
     merchantId === null
       ? and(isNull(ledgerAccounts.merchantId), eq(ledgerAccounts.kind, kind), isNull(ledgerAccounts.memberId))
       : and(eq(ledgerAccounts.merchantId, merchantId), eq(ledgerAccounts.kind, kind), isNull(ledgerAccounts.memberId));
   const [existing] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(where).limit(1);
-  if (existing) return existing.id;
+  if (existing) return cacheKey ? rememberAccount(cacheKey, existing.id) : existing.id;
   const [created] = await tx.insert(ledgerAccounts).values({ merchantId, kind }).onConflictDoNothing().returning({ id: ledgerAccounts.id });
   if (created) return created.id;
   const [again] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(where).limit(1);
-  return again!.id;
+  return cacheKey ? rememberAccount(cacheKey, again!.id) : again!.id;
 }
 
 async function memberAccount(tx: DbOrTx, member: Pick<Member, "id" | "merchantId">): Promise<string> {
+  const cacheKey = `u:${member.id}`;
+  const hit = accountIds.get(cacheKey);
+  if (hit) return hit;
   const [existing] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(eq(ledgerAccounts.memberId, member.id)).limit(1);
-  if (existing) return existing.id;
+  if (existing) return rememberAccount(cacheKey, existing.id);
   const [created] = await tx
     .insert(ledgerAccounts)
     .values({ merchantId: member.merchantId, kind: "member", memberId: member.id })
@@ -70,7 +90,7 @@ async function memberAccount(tx: DbOrTx, member: Pick<Member, "id" | "merchantId
     .returning({ id: ledgerAccounts.id });
   if (created) return created.id;
   const [again] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(eq(ledgerAccounts.memberId, member.id)).limit(1);
-  return again!.id;
+  return rememberAccount(cacheKey, again!.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +121,10 @@ export interface PostArgs {
   allowNegative?: boolean;
   /** createdAt for the transaction (callers pass ctx.now() so injected clocks line up). Defaults to the DB clock. */
   at?: Date;
+  /** The member row, already read FOR UPDATE in this transaction (and not changed since): skips the locking read. */
+  lockedMember?: Member;
+  /** The caller already looked for an existing transaction with this idempotency key in this transaction. */
+  idempotencyChecked?: boolean;
 }
 
 export interface PostResult {
@@ -113,7 +137,7 @@ export interface PostResult {
 export async function postTransaction(tx: Tx, args: PostArgs): Promise<PostResult> {
   if (!Number.isInteger(args.points)) throw badRequest("Points must be a whole number");
 
-  if (args.idempotencyKey) {
+  if (args.idempotencyKey && !args.idempotencyChecked) {
     const [dup] = await tx
       .select()
       .from(ledgerTransactions)
@@ -126,12 +150,16 @@ export async function postTransaction(tx: Tx, args: PostArgs): Promise<PostResul
   }
 
   // Lock the member row so concurrent awards/redeems serialize.
-  const [member] = await tx
-    .select()
-    .from(merchantMembers)
-    .where(and(eq(merchantMembers.id, args.memberId), eq(merchantMembers.merchantId, args.merchantId)))
-    .for("update")
-    .limit(1);
+  const member =
+    args.lockedMember ??
+    (
+      await tx
+        .select()
+        .from(merchantMembers)
+        .where(and(eq(merchantMembers.id, args.memberId), eq(merchantMembers.merchantId, args.merchantId)))
+        .for("update")
+        .limit(1)
+    )[0];
   if (!member) throw notFound("Member");
   if (!args.allowNegative && member.balance + args.points < 0) {
     throw new HttpError(409, "insufficient_points", `Not enough points (balance ${member.balance}, needs ${-args.points})`);
@@ -382,6 +410,9 @@ export async function activeBoosts(
 export interface VisitHookArgs {
   ctx: AppContext;
   merchant: Merchant;
+  /** The shop's loyalty program, already read by the stamp (hooks called on their own may omit it). */
+  program?: typeof loyaltyPrograms.$inferSelect;
+  /** The member row, locked by this transaction since the start of the stamp. */
   member: Member;
   visitId: string;
   at: Date;
@@ -391,10 +422,11 @@ export type VisitHook = (tx: Tx, args: VisitHookArgs) => Promise<{ pointsAwarded
 export const visitHooks: VisitHook[] = [];
 
 /**
- * Balance-change listeners run AFTER the ledger transaction commits (wallet pass
- * updates, customer notifications). They never affect the ledger result: errors
- * are logged and swallowed. In tests they are awaited so assertions are
- * deterministic; elsewhere they run in the background so the counter isn't kept waiting.
+ * Balance-change listeners (wallet pass updates, customer notifications) run AFTER the ledger transaction commits,
+ * from the outbox: the event is written in the same transaction as the ledger rows (`publishBalanceChange`), so it
+ * cannot be lost, and delivered by services/outbox.ts (fast path right after the commit, `outbox.drain` job as the
+ * retry). They never affect the ledger result. Each listener is a named step: a retry skips the steps that already
+ * completed, so a notification is not sent twice. Events for one member are delivered in order.
  */
 export interface BalanceChange {
   kind: "award" | "redeem" | "adjust" | "reversal";
@@ -410,28 +442,74 @@ export interface BalanceChange {
   transactionId: string | null;
   /** award: messages from perks/campaign hooks ("Passport: 3 of 5 shops visited."). */
   messages?: string[];
+  /** award: the visit this stamp recorded (drives the visit effects: onboarding milestones, ad attribution). */
+  visitId?: string;
   /** redeem: the reward. */
   reward?: { id: string; name: string };
 }
 export type BalanceListener = (ctx: AppContext, change: BalanceChange) => Promise<void>;
 export const balanceListeners: BalanceListener[] = [];
+const listenerNames = new Map<BalanceListener, string>();
 
-export async function emitBalanceChange(ctx: AppContext, change: BalanceChange): Promise<void> {
-  const run = async () => {
-    for (const l of balanceListeners) {
-      try {
-        await l(ctx, change);
-      } catch (err) {
-        if (ctx.config.env !== "test") console.error("[ledger] balance listener failed", err);
-      }
-    }
-  };
-  if (ctx.config.env === "test") await run();
-  else void run();
+/** Register a listener under a stable step name (stored with the outbox event; do not rename once shipped). */
+export function registerBalanceListener(name: string, listener: BalanceListener) {
+  if (listenerNames.get(listener) === name) return;
+  listenerNames.set(listener, name);
+  balanceListeners.push(listener);
 }
+
+/** Write the balance change to the outbox inside the ledger transaction. Call `kickOutbox` once it has committed. */
+export async function publishBalanceChange(ctx: AppContext, tx: DbOrTx, change: BalanceChange): Promise<void> {
+  await enqueueOutbox(ctx, tx, {
+    kind: "balance_change",
+    orderKey: change.memberId,
+    // One event per ledger transaction; a stamp that posted nothing is keyed by its visit.
+    dedupeKey: change.transactionId ? `balance:${change.kind}:${change.transactionId}` : `balance:${change.kind}:visit:${change.visitId ?? `${change.memberId}:${change.at.getTime()}`}`,
+    merchantId: change.merchantId,
+    payload: { ...change, at: change.at.toISOString() },
+  });
+}
+
+/**
+ * Bookkeeping that follows a recorded visit but changes nothing the counter shows: onboarding milestones and
+ * activation, ad attribution. They run from the outbox (as named steps, like the listeners), not in the stamp's transaction.
+ */
+export interface VisitEffectArgs {
+  merchantId: string;
+  memberId: string;
+  userId: string;
+  visitId: string;
+  at: Date;
+  source: TxSource;
+}
+export type VisitEffect = (ctx: AppContext, args: VisitEffectArgs) => Promise<void>;
+const visitEffects = new Map<string, VisitEffect>();
+export function registerVisitEffect(name: string, effect: VisitEffect) {
+  visitEffects.set(name, effect);
+}
+
+registerVisitEffect("milestones", async (ctx, a) => {
+  await ctx.db.transaction(async (tx) => {
+    const [m] = await tx.select({ id: merchants.id, activatedAt: merchants.activatedAt, status: merchants.status }).from(merchants).where(eq(merchants.id, a.merchantId)).limit(1);
+    if (m) await maybeActivateMerchant({ ...ctx, now: () => a.at }, tx, m);
+  });
+});
+
+registerOutboxHandler("balance_change", async (ctx, ev, steps) => {
+  const p = ev.payload as unknown as Omit<BalanceChange, "at"> & { at: string };
+  const change: BalanceChange = { ...p, at: new Date(p.at) };
+  if (change.kind === "award" && change.visitId) {
+    const args: VisitEffectArgs = { merchantId: change.merchantId, memberId: change.memberId, userId: change.userId, visitId: change.visitId, at: change.at, source: change.source };
+    for (const [name, effect] of visitEffects) await steps.run(name, () => effect(ctx, args));
+  }
+  // A visit that earned nothing (a stamp below the minimum spend) has nothing to tell the customer.
+  if (change.delta !== 0 || change.messages?.length) for (const l of balanceListeners) await steps.run(listenerNames.get(l) ?? l.name ?? "listener", () => l(ctx, change));
+});
 
 export interface AwardArgs {
   merchantId: string;
+  /** The shop row, when the caller has just read it (the counter): saves one read. */
+  merchant?: Merchant;
   /** Provide one of memberId, userId or phone (E.164). */
   memberId?: string;
   userId?: string;
@@ -463,32 +541,21 @@ export interface AwardResult {
   messages: string[];
   /** Rewards the member can now afford. */
   rewardsAvailable: { id: string; name: string; pointsCost: number }[];
+  /** What the stamp already read about the shop, so the counter's response does not read it again. */
+  preloaded?: { program: typeof loyaltyPrograms.$inferSelect; rewards: { id: string; name: string; pointsCost: number }[] };
 }
 
 export async function awardPurchase(ctx: AppContext, args: AwardArgs): Promise<AwardResult> {
   const r = await awardPurchaseTx(ctx, args);
-  const delta = (r.transaction?.points ?? 0) + r.extraPoints;
-  if (!r.duplicate && (delta !== 0 || r.messages.length))
-    await emitBalanceChange(ctx, {
-      kind: "award",
-      merchantId: r.member.merchantId,
-      memberId: r.member.id,
-      userId: r.member.userId,
-      delta,
-      balance: r.member.balance,
-      previousBalance: r.member.balance - delta,
-      source: args.source,
-      at: ctx.now(),
-      transactionId: r.transaction?.id ?? null,
-      messages: r.messages,
-    });
+  // The outbox row was written in the transaction; start delivering now that it has committed.
+  if (!r.duplicate && (r.transaction || r.extraPoints || r.messages.length || r.earn.qualifiesAsVisit)) await kickOutbox(ctx);
   return r;
 }
 
 async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardResult> {
   return ctx.db.transaction(async (tx) => {
     const now = ctx.now();
-    const [merchant] = await tx.select().from(merchants).where(eq(merchants.id, args.merchantId)).limit(1);
+    const merchant = args.merchant?.id === args.merchantId ? args.merchant : (await tx.select().from(merchants).where(eq(merchants.id, args.merchantId)).limit(1))[0];
     if (!merchant) throw notFound("Merchant");
     if (merchant.status === "closed" || merchant.status === "paused") throw conflict("This shop's loyalty program is paused");
     const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1);
@@ -514,18 +581,21 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
           duplicate: true,
           extraPoints: 0,
           messages: [],
-          rewardsAvailable: await affordableRewards(tx, merchant.id, m!.balance),
+          ...(await rewardsFor(tx, merchant.id, m!.balance, program)),
         };
       }
     }
 
     // Resolve the member.
     let member: Member;
+    let lockedMember: Member | undefined;
     let memberCreated = false;
     if (args.memberId) {
-      const [m] = await tx.select().from(merchantMembers).where(and(eq(merchantMembers.id, args.memberId), eq(merchantMembers.merchantId, merchant.id))).limit(1);
+      // Locked here (the ledger post would lock it next anyway): one read serves the cooldown check and the post.
+      const [m] = await tx.select().from(merchantMembers).where(and(eq(merchantMembers.id, args.memberId), eq(merchantMembers.merchantId, merchant.id))).for("update").limit(1);
       if (!m) throw notFound("Member");
       member = m;
+      lockedMember = m;
     } else {
       let userId = args.userId;
       if (!userId) {
@@ -554,7 +624,8 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
 
     const lines: PurchaseLine[] = args.lines?.length ? args.lines : [{ amountCents: Math.max(0, args.amountCents ?? 0) }];
     const amountCents = lines.reduce((s, l) => s + Math.max(0, l.amountCents), 0);
-    const cats = await tx.select({ id: merchantCategories.id, earn: merchantCategories.earnEligible }).from(merchantCategories).where(eq(merchantCategories.merchantId, merchant.id));
+    // Only lines tagged with a category can fall in a no-earn one; an amount-only stamp needs no category read.
+    const cats = lines.some((l) => l.categoryId) ? await tx.select({ id: merchantCategories.id, earn: merchantCategories.earnEligible }).from(merchantCategories).where(eq(merchantCategories.merchantId, merchant.id)) : [];
     const noEarn = cats.filter((c) => !c.earn).map((c) => c.id);
     const boosts = await activeBoosts(tx, merchant, now);
     let vipMultiplier = 1;
@@ -590,6 +661,8 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
         locationId: args.locationId,
         promoId: boosts[0]?.promoId ?? null,
         at: now,
+        lockedMember,
+        idempotencyChecked: true,
       });
       transaction = r.transaction;
       member = r.member;
@@ -597,6 +670,7 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
 
     const messages: string[] = [];
     let extraPoints = 0;
+    let visitId: string | undefined;
     if (earn.qualifiesAsVisit) {
       const [visit] = await tx
         .insert(visits)
@@ -611,7 +685,8 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
           amountCents,
           createdAt: now,
         })
-        .returning();
+        .returning({ id: visits.id });
+      visitId = visit!.id;
       const [m] = await tx
         .update(merchantMembers)
         .set({
@@ -631,7 +706,7 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
         messages.push(perk.message);
       }
       for (const hook of visitHooks) {
-        const out = await hook(tx, { ctx, merchant, member, visitId: visit!.id, at: now, source: args.source });
+        const out = await hook(tx, { ctx, merchant, program, member, visitId: visit!.id, at: now, source: args.source });
         if (out?.pointsAwarded) extraPoints += out.pointsAwarded;
         if (out?.messages) messages.push(...out.messages);
       }
@@ -639,8 +714,24 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
         const [m2] = await tx.select().from(merchantMembers).where(eq(merchantMembers.id, member.id)).limit(1);
         member = m2!;
       }
-      await maybeActivateMerchant(ctx, tx, merchant);
     }
+
+    const delta = (transaction?.points ?? 0) + extraPoints;
+    if (delta !== 0 || messages.length || visitId)
+      await publishBalanceChange(ctx, tx, {
+        kind: "award",
+        merchantId: merchant.id,
+        memberId: member.id,
+        userId: member.userId,
+        delta,
+        balance: member.balance,
+        previousBalance: member.balance - delta,
+        source: args.source,
+        at: now,
+        transactionId: transaction?.id ?? null,
+        messages,
+        visitId,
+      });
 
     return {
       member,
@@ -650,17 +741,19 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       duplicate: false,
       extraPoints,
       messages,
-      rewardsAvailable: await affordableRewards(tx, merchant.id, member.balance),
+      ...(await rewardsFor(tx, merchant.id, member.balance, program)),
     };
   });
 }
 
-async function affordableRewards(tx: DbOrTx, merchantId: string, balance: number) {
-  return tx
+/** The shop's active rewards (one read), the ones `balance` can afford, and both kept for the caller's response. */
+async function rewardsFor(tx: DbOrTx, merchantId: string, balance: number, program: typeof loyaltyPrograms.$inferSelect) {
+  const all = await tx
     .select({ id: rewards.id, name: rewards.name, pointsCost: rewards.pointsCost })
     .from(rewards)
-    .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true), lte(rewards.pointsCost, balance)))
+    .where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true)))
     .orderBy(rewards.pointsCost);
+  return { rewardsAvailable: all.filter((r) => r.pointsCost <= balance), preloaded: { program, rewards: all } };
 }
 
 export async function refreshVipLevel(tx: DbOrTx, member: Member): Promise<Member> {
@@ -672,27 +765,28 @@ export async function refreshVipLevel(tx: DbOrTx, member: Member): Promise<Membe
   return m!;
 }
 
+// Drizzle writes the columns of a single-table select without their table name, which would let the sub-selects below read their
+// own tables' `id`; the outer perk columns are therefore spelled out.
+const PERK_ID = sql.raw('"network_perks"."id"');
+const PERK_WINDOW_DAYS = sql.raw('"network_perks"."window_days"');
+
 /** Network-funded bonus when a customer visits N distinct shops in the neighbourhood. */
 async function applyNetworkPerks(tx: Tx, merchant: Merchant, program: typeof loyaltyPrograms.$inferSelect, member: Member, now: Date, source: TxSource) {
   if (!merchant.neighbourhoodId) return null;
+  // One read: the perks that apply here, whether this customer already has each, and (only when not) how many distinct
+  // shops they visited in the perk's window. A customer who has them all, or no perk exists, costs one statement.
   const perks = await tx
-    .select()
+    .select({
+      perk: networkPerks,
+      already: sql<boolean>`exists (select 1 from ${networkPerkAwards} where ${networkPerkAwards.perkId} = ${PERK_ID} and ${networkPerkAwards.userId} = ${member.userId})`,
+      shops: sql<number>`case when exists (select 1 from ${networkPerkAwards} where ${networkPerkAwards.perkId} = ${PERK_ID} and ${networkPerkAwards.userId} = ${member.userId}) then 0 else (select count(distinct ${visits.merchantId})::int from ${visits} where ${visits.userId} = ${member.userId} and ${visits.neighbourhoodId} = ${merchant.neighbourhoodId} and ${visits.createdAt} >= ${now.toISOString()}::timestamptz - ${PERK_WINDOW_DAYS} * interval '1 day') end`,
+    })
     .from(networkPerks)
     .where(and(eq(networkPerks.active, true), or(eq(networkPerks.neighbourhoodId, merchant.neighbourhoodId), isNull(networkPerks.neighbourhoodId))));
-  for (const perk of perks) {
+  for (const { perk, already, shops } of perks) {
     if (perk.ruleType !== "distinct_merchants") continue;
-    const [already] = await tx
-      .select({ id: networkPerkAwards.id })
-      .from(networkPerkAwards)
-      .where(and(eq(networkPerkAwards.perkId, perk.id), eq(networkPerkAwards.userId, member.userId)))
-      .limit(1);
     if (already) continue;
-    const since = new Date(now.getTime() - perk.windowDays * 86400000);
-    const [row] = await tx
-      .select({ n: sql<number>`count(distinct ${visits.merchantId})::int` })
-      .from(visits)
-      .where(and(eq(visits.userId, member.userId), eq(visits.neighbourhoodId, merchant.neighbourhoodId), gte(visits.createdAt, since)));
-    if (Number(row?.n ?? 0) < perk.threshold) continue;
+    if (Number(shops ?? 0) < perk.threshold) continue;
     const bonus = networkBonusInShopUnits(program, perk.bonusPoints);
     const r = await postTransaction(tx, {
       merchantId: merchant.id,
@@ -736,20 +830,7 @@ export const REDEMPTION_CODE_TTL_MS = 10 * 60_000;
 
 export async function redeemReward(ctx: AppContext, args: RedeemArgs) {
   const r = await redeemRewardTx(ctx, args);
-  if (!r.duplicate)
-    await emitBalanceChange(ctx, {
-      kind: "redeem",
-      merchantId: args.merchantId,
-      memberId: r.member.id,
-      userId: r.member.userId,
-      delta: -r.reward.pointsCost,
-      balance: r.member.balance,
-      previousBalance: r.member.balance + r.reward.pointsCost,
-      source: args.source,
-      at: ctx.now(),
-      transactionId: r.redemption.transactionId,
-      reward: { id: r.reward.id, name: r.reward.name },
-    });
+  if (!r.duplicate) await kickOutbox(ctx);
   return r;
 }
 
@@ -796,6 +877,19 @@ async function redeemRewardTx(ctx: AppContext, args: RedeemArgs) {
         .onConflictDoNothing()
         .returning();
     }
+    await publishBalanceChange(ctx, tx, {
+      kind: "redeem",
+      merchantId: args.merchantId,
+      memberId: r.member.id,
+      userId: r.member.userId,
+      delta: -reward.pointsCost,
+      balance: r.member.balance,
+      previousBalance: r.member.balance + reward.pointsCost,
+      source: args.source,
+      at: now,
+      transactionId: redemption!.transactionId,
+      reward: { id: reward.id, name: reward.name },
+    });
     return { redemption: redemption!, member: r.member, reward, duplicate: false };
   });
 }
@@ -806,8 +900,8 @@ export async function adjustPoints(
 ) {
   if (!args.reason.trim()) throw badRequest("A reason is required for manual adjustments");
   if (args.points === 0) throw badRequest("Adjustment cannot be zero");
-  const r = await ctx.db.transaction((tx) =>
-    postTransaction(tx, {
+  const r = await ctx.db.transaction(async (tx) => {
+    const posted = await postTransaction(tx, {
       merchantId: args.merchantId,
       memberId: args.memberId,
       type: "adjust",
@@ -817,21 +911,23 @@ export async function adjustPoints(
       staffUserId: args.staffUserId,
       idempotencyKey: args.idempotencyKey,
       at: ctx.now(),
-    }),
-  );
-  if (!r.duplicate)
-    await emitBalanceChange(ctx, {
-      kind: "adjust",
-      merchantId: args.merchantId,
-      memberId: r.member.id,
-      userId: r.member.userId,
-      delta: args.points,
-      balance: r.member.balance,
-      previousBalance: r.member.balance - args.points,
-      source: args.source ?? "dashboard",
-      at: ctx.now(),
-      transactionId: r.transaction.id,
     });
+    if (!posted.duplicate)
+      await publishBalanceChange(ctx, tx, {
+        kind: "adjust",
+        merchantId: args.merchantId,
+        memberId: posted.member.id,
+        userId: posted.member.userId,
+        delta: args.points,
+        balance: posted.member.balance,
+        previousBalance: posted.member.balance - args.points,
+        source: args.source ?? "dashboard",
+        at: ctx.now(),
+        transactionId: posted.transaction.id,
+      });
+    return posted;
+  });
+  if (!r.duplicate) await kickOutbox(ctx);
   return r;
 }
 
@@ -841,18 +937,7 @@ export async function reverseTransaction(
   args: { merchantId: string; transactionId: string; reason: string; staffUserId?: string | null; source?: TxSource },
 ) {
   const r = await reverseTransactionTx(ctx, args);
-  await emitBalanceChange(ctx, {
-    kind: "reversal",
-    merchantId: args.merchantId,
-    memberId: r.member.id,
-    userId: r.member.userId,
-    delta: r.transaction.points,
-    balance: r.member.balance,
-    previousBalance: r.member.balance - r.transaction.points,
-    source: args.source ?? "dashboard",
-    at: ctx.now(),
-    transactionId: r.transaction.id,
-  });
+  await kickOutbox(ctx);
   return r;
 }
 
@@ -894,6 +979,18 @@ async function reverseTransactionTx(
     await tx.update(ledgerTransactions).set({ reversedAt: ctx.now() }).where(eq(ledgerTransactions.id, orig.id));
     if (orig.type === "redeem") await tx.update(redemptions).set({ status: "void" }).where(eq(redemptions.transactionId, orig.id));
     const [member] = await tx.select().from(merchantMembers).where(eq(merchantMembers.id, orig.memberId)).limit(1);
+    await publishBalanceChange(ctx, tx, {
+      kind: "reversal",
+      merchantId: args.merchantId,
+      memberId: member!.id,
+      userId: member!.userId,
+      delta: r.transaction.points,
+      balance: member!.balance,
+      previousBalance: member!.balance - r.transaction.points,
+      source: args.source ?? "dashboard",
+      at: ctx.now(),
+      transactionId: r.transaction.id,
+    });
     return { transaction: r.transaction, member: member! };
   });
 }

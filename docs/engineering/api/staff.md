@@ -81,6 +81,28 @@ Awards to a merged duplicate are forwarded to the member it was merged into.
 `duplicate: true` means this key was already processed: show the same success screen, nothing was awarded twice.
 `messages` are network perk / campaign notes to show staff. `transactionId` is `null` when nothing was earned (e.g. a $0.50 purchase).
 
+**What happens inside the request, and what does not.** The award is the ledger write plus what the response needs, in one DB transaction: the stamp (earn, visit, member counters, VIP level), neighbourhood perks and campaign bonuses (they add points, so they are part of the result), and one `outbox_events` row. A steady-state stamp is **18 statements** (down from 75; numbers below) and the counter's server time is tens of milliseconds. Everything the customer or the shop hears about afterwards is delivered from the after-commit **outbox** (`services/outbox.ts`), not in the request:
+
+- notifications and the inbox row (`points_earned`, `reward_ready`, `passport_progress`) with their push / SMS / email fallbacks and the routine-push budget,
+- the wallet pass update (APNs, Google object),
+- onboarding milestones and shop activation, ad-visit attribution.
+
+The event is written in the same transaction as the ledger rows (so a crash between "committed" and "notified" cannot lose it, and a refused or repeated stamp leaves none), then delivered right after the commit on the next tick of the same process (**fast path**, normally well under a second) and, for anything that failed or was left behind by a crash, by the `outbox.drain` job every 5 s. Delivery is at-least-once, one member at a time in order, and per step idempotent: a retry never repeats a notification that already went out. See [notifications.md](notifications.md#delivery-the-after-commit-outbox).
+
+**Measured** (`pnpm --filter @ll/api load -- --label x --customers 600 --users 1,50`, the demo seed at the café; add `--pg postgres://...` for a real server and `--trace` to print every statement; the award latency is the `award` line, the lookup is reported separately):
+
+| | before (listeners and bookkeeping in the request) | after (outbox) |
+| --- | --- | --- |
+| Statements per award | 75 | 18 for a regular; 26 for the first stamp of a live passport campaign (it also posts the network-funded bonus as a second ledger transaction) |
+| Statements per lookup | 11 | 6 to 7 |
+| Statements per award, moved to the outbox | n/a | 20 to 32 (notifications 2 x ~11, wallet pass, milestones, ad attribution, step bookkeeping) |
+| PostgreSQL 16, 1 user: award p50 / p95 | 66 / 89 ms | 32 / 46 ms (25 / 35 ms with delivery running alongside) |
+| PostgreSQL 16, 50 users: award p50 / p95 | 909 / 1301 ms | 442 / 562 ms (430 / 543 ms with delivery alongside) |
+| PGlite, 1 user: award p50 / p95 | 88 / 109 ms | 48 / 68 ms |
+| PGlite, 50 users: award p50 / p95 | 1330 / 7183 ms | 931 / 1255 ms (1695 / 8359 ms with delivery alongside) |
+
+PostgreSQL here is a local 16 with a pool of 10 (the production driver), `fsync` off, on the same 4-core machine as the API and the load generator. PGlite runs one statement at a time, so its 50-user figures are queueing behind everyone else's statements, and the delivery the outbox moves out of the request still competes for that one connection (the last PGlite figure is the saturated worst case: the same work, delivered alongside). Use the PostgreSQL rows for latency; the PGlite rows are for counting statements. `test/award-latency.test.ts` runs one stamp for a single user and fails above 20 statements (28 for the campaign-bonus stamp, 8 for the lookup) or if the median server time passes 300 ms, and checks that no notification, wallet, milestone or ad-attribution statement is in the request.
+
 **SMS receipt**: when the merchant enabled receipts (`merchants.sms_receipts_enabled`, default off) and the member has not muted the shop, a transactional SMS is sent after the award commits, outside the DB transaction, without delaying the response:
 `You earned 12 points at Roncy Cafe. Balance 48. Reply STOP to opt out`. Each send is logged in `message_deliveries` (`kind: "transactional"`).
 

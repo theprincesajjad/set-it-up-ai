@@ -80,8 +80,15 @@ export async function requireStaff(
   minRole: StaffRole = "staff",
 ): Promise<StaffContext> {
   const user = requireUser(req);
-  const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  if (!merchant) throw notFound("Merchant");
+  // The shop and the caller's membership in one read (the counter pays for every round trip).
+  const [found] = await ctx.db
+    .select({ merchant: merchants, role: merchantStaff.role })
+    .from(merchants)
+    .leftJoin(merchantStaff, and(eq(merchantStaff.merchantId, merchants.id), eq(merchantStaff.userId, user.id)))
+    .where(eq(merchants.id, merchantId))
+    .limit(1);
+  if (!found) throw notFound("Merchant");
+  const { merchant } = found;
   if (user.platformRole === "admin" || (user.platformRole === "rep" && merchant.repUserId === user.id)) {
     // Acting inside a shop as platform staff: every change is written to the audit log (reads are not).
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
@@ -99,11 +106,7 @@ export async function requireStaff(
     }
     return { user, merchant, role: "owner", impersonated: true };
   }
-  const [membership] = await ctx.db
-    .select({ role: merchantStaff.role })
-    .from(merchantStaff)
-    .where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, user.id)))
-    .limit(1);
+  const membership = found.role ? { role: found.role } : null;
   if (!membership) throw forbidden();
   if (RANK[membership.role] < RANK[minRole]) throw forbidden(`Requires ${minRole} access`);
   return { user, merchant, role: membership.role, impersonated: false };

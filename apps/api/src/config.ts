@@ -14,6 +14,20 @@ export interface Config {
    * caller pick its own address and walk around per-address limits, so production defaults to one hop (the load balancer).
    */
   trustProxy: boolean | number;
+  /**
+   * After-commit outbox (services/outbox.ts). `inline` delivers before the request returns (the default in tests, so
+   * assertions are deterministic; OUTBOX_INLINE=1 forces it anywhere, 0 turns it off). Otherwise delivery starts on
+   * the next tick in the background and the `outbox.drain` job retries anything that failed. OUTBOX_FAST_PATH=0 turns
+   * the next-tick delivery off, leaving it all to the drain job (a few seconds later); load tests use it to
+   * measure the request on its own.
+   */
+  outbox: { inline: boolean; fastPath: boolean };
+  /**
+   * Where the per-key rate-limit counters (lib/rate-limit.ts and the blanket @fastify/rate-limit cap) live.
+   * `memory` (default): per API process, so with N instances the effective limit is N times higher.
+   * `postgres`: one shared table (rate_limit_counters), for deployments with more than one instance.
+   */
+  rateLimit: { store: "memory" | "postgres" };
   /** Merchants need this many active members to count as "activated". */
   activationThreshold: number;
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
@@ -76,6 +90,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     publicApiUrl: env.PUBLIC_API_URL ?? "http://localhost:4000",
     publicWebUrl: env.PUBLIC_WEB_URL ?? "http://localhost:3000",
     trustProxy: parseTrustProxy(env.TRUST_PROXY_HOPS, isProd),
+    outbox: { inline: env.OUTBOX_INLINE ? env.OUTBOX_INLINE === "1" : nodeEnv === "test", fastPath: env.OUTBOX_FAST_PATH !== "0" },
+    rateLimit: { store: env.RATE_LIMIT_STORE === "postgres" ? "postgres" : "memory" },
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:8081").split(",").map((s) => s.trim()),
     activationThreshold: Number(env.ACTIVATION_THRESHOLD ?? 25),
     sms: {

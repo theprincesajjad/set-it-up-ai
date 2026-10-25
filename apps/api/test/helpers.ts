@@ -1,4 +1,4 @@
-import { createPgliteDb, featureOverrides, supportSessions, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
+import { createDisposablePgDb, createPgliteDb, featureOverrides, supportSessions, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
 import type { FastifyInstance } from "fastify";
 import type { FeatureKey } from "@ll/shared";
 import { buildApp } from "../src/app.js";
@@ -18,7 +18,8 @@ export interface TestEnv {
 }
 
 export async function createTestEnv(opts: { now?: Date; activationThreshold?: number } = {}): Promise<TestEnv> {
-  const db = await createPgliteDb();
+  // TEST_PG_URL=postgres://user@host:port/postgres runs the suite on a real PostgreSQL (a fresh database per test env) instead of PGlite.
+  const db = process.env.TEST_PG_URL ? await createDisposablePgDb(process.env.TEST_PG_URL) : await createPgliteDb();
   const config = { ...loadConfig({ NODE_ENV: "test" }), activationThreshold: opts.activationThreshold ?? 25 };
   const clock = { now: opts.now ?? new Date("2026-11-03T15:00:00Z") };
   const ctx: AppContext = { db, config, providers: createProviders(config), now: () => clock.now };

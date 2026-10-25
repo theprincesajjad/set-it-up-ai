@@ -16,6 +16,7 @@ export function resendEmail(opts: { apiKey: string; from: string; replyTo?: stri
           subject: msg.subject,
           text: msg.text,
           ...(msg.html ? { html: msg.html } : {}),
+          ...(msg.headers ? { headers: msg.headers } : {}),
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
         }),
       });

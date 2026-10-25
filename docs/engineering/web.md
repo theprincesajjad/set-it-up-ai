@@ -34,7 +34,7 @@ cd apps/web && E2E_WEB_URL=http://localhost:3100 E2E_API_URL=http://localhost:41
 
 Specs: `web-pass.spec.ts` (customer pass), `dashboard.spec.ts` (merchant dashboard, web counter, rep, admin rollout,
 BIA; screenshots → `e2e/screenshots/dashboard/`), `map.spec.ts` (vector map; routes tiles through `HTTPS_PROXY`
-when set, falls back to the list otherwise). The dashboard spec resets the rollout stage/override it changes.
+when set, falls back to the list otherwise), `unsubscribe.spec.ts` (the API-served unsubscribe pages: a link only asks, the button acts, four languages; it signs its tokens with `E2E_JWT_SECRET`, default the dev secret the e2e API uses). The dashboard spec resets the rollout stage/override it changes.
 
 `e2e/fixtures.ts` logs in with the seed's demo credentials, enables the Pro features for Fix-It Phone Lab through an
 admin override, finishes fake Stripe Connect onboarding and creates a sent quote with a 25% deposit.

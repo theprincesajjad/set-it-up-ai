@@ -767,3 +767,23 @@ What to look at first:
 | `ob.card.optional` | Optional |
 | `ob.card.allSet` | Everything is set up. |
 
+
+### Expired repair link and unsubscribe pages (`sv.t.expired*`, `unsub.*`) (13)
+
+Added by the `perf` pass. The unsubscribe pages are rendered by the API (`apps/api/src/lib/unsubscribe-page.ts`) in the reader's language (`?lang=`, else `Accept-Language`), with `dir="rtl"` for Urdu. They are the pages a customer or shop owner sees after tapping the unsubscribe link in an email or text, so the confirm button must say plainly what it does, and the "nothing changes until you press the button" line must stay (a mail scanner opens the page too). The glossary terms used: subscribe / unsubscribe (सब्सक्राइब / سبسکرائب / ਸਬਸਕ੍ਰਾਈਬ), reward (रिवॉर्ड / انعام / ਰਿਵਾਰਡ), redeem (रिडीम / ریڈیم / ਰੀਡੀਮ), repair (रिपेयर / مرمت / ਮੁਰੰਮਤ), expiry (मियाद ख़त्म, میعاد ختم, ਮਿਆਦ ਖ਼ਤਮ). Open question for the reviewer: Hindi and Punjabi use the English-derived "अनसब्सक्राइब / ਅਨਸਬਸਕ੍ਰਾਈਬ" because that is the word on the email apps' own buttons; Urdu uses "سبسکرائب ختم کریں" ("end the subscription").
+
+| Key | English |
+| --- | --- |
+| `sv.t.expiredTitle` | This status link has expired |
+| `sv.t.expiredBody` | Repair status links stop working {days} days after the job closes. Contact {shop} if you need anything about this repair. |
+| `unsub.confirmTitle` | Unsubscribe from {shop}? |
+| `unsub.confirmBody` | You'll stop getting offers from {shop}. You'll still earn and redeem rewards there as usual. |
+| `unsub.confirmButton` | Unsubscribe |
+| `unsub.doneTitle` | You're unsubscribed |
+| `unsub.doneBody` | You won't get offers from {shop} any more. You'll still earn and redeem rewards there as usual. |
+| `unsub.nudge.confirmTitle` | Stop setup reminders for {shop}? |
+| `unsub.nudge.confirmBody` | We'll stop sending setup reminders. Your account and your shop are not affected, and you can turn reminders back on from the setup page. |
+| `unsub.nudge.confirmButton` | Stop reminders |
+| `unsub.nudge.doneTitle` | No more setup reminders |
+| `unsub.nudge.doneBody` | We won't send setup reminders for {shop} any more. Your account and your shop are not affected, and you can turn reminders back on from the setup page. |
+| `unsub.leave` | Nothing changes until you press the button. You can close this page. |

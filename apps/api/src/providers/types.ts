@@ -10,7 +10,8 @@ export interface SmsProvider {
 
 export interface EmailProvider {
   name: string;
-  send(msg: { to: string; subject: string; text: string; html?: string }): Promise<{ id: string }>;
+  /** `headers`: extra message headers, e.g. List-Unsubscribe / List-Unsubscribe-Post (RFC 8058) on marketing mail. */
+  send(msg: { to: string; subject: string; text: string; html?: string; headers?: Record<string, string> }): Promise<{ id: string }>;
 }
 
 export interface PushMessage {
@@ -49,7 +50,7 @@ export interface PushProvider {
 /** Recorded outbound messages (console providers) so tests and dev tools can inspect them. */
 export interface Outbox {
   sms: { to: string; body: string; at: Date }[];
-  email: { to: string; subject: string; text: string; at: Date }[];
+  email: { to: string; subject: string; text: string; at: Date; headers?: Record<string, string> }[];
   push: { token: string; title: string; body: string; at: Date; data?: Record<string, unknown>; channelId?: string }[];
 }
 
