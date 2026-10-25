@@ -187,6 +187,7 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   // A day with room for a two hour service: the last bookable day in the strip.
   await page.getByRole("group", { name: "Pick a time" }).getByRole("button").and(page.locator(":not([disabled])")).last().click();
   await expect(TIMES.first()).toBeVisible();
+  const takenLabel = (await TIMES.first().textContent())!.trim();
   await TIMES.first().click();
   await page.screenshot({ path: shot("m2-390") });
 
@@ -210,8 +211,11 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   // Signing in carries on with the booking by itself.
   await expect(page.getByText("That time was just taken. Pick another.")).toBeVisible({ timeout: 20_000 });
 
-  // Pick a different time and pay the deposit with the dev test card.
-  await TIMES.nth(1).click();
+  // Pick a different time and pay the deposit with the dev test card. Wait for the refreshed list first: until it lands, the list on
+  // screen is the stale one, whose second time overlaps the two hour block the shop just took (a second "taken", no hold).
+  await expect(page.getByRole("button", { name: takenLabel, exact: true })).toHaveCount(0);
+  await expect(TIMES.first()).toBeEnabled();
+  await TIMES.first().click();
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
   await expect(page.getByText(/We are holding this time until/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();

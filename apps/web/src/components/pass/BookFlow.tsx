@@ -259,11 +259,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
             {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 w-24 rounded-input" />)}
           </div>
         ) : (
-          <div className="flex flex-col gap-3" aria-live="polite">
+          <div className="flex flex-col gap-3" aria-live="polite" aria-busy={avLoading}>
             <p className="text-meta-strong text-fg">{times.length ? t("bk.time.count", { day: date(dayDate(day), { weekday: "long" }, "UTC"), n: times.length, staff: staffName || t("bk.anyone") }) : t("bk.time.none", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
             <div className="flex flex-wrap gap-2">
               {times.map((x) => (
-                <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} onClick={() => setSlot(x)} className={cn("h-11 min-w-[88px] rounded-input border px-4 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 min-w-[88px] rounded-input border px-4 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                   {time(x.startsAt)}
                 </button>
               ))}

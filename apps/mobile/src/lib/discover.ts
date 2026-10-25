@@ -4,10 +4,10 @@
  * Data only from existing APIs (campaigns, network shops, wallet). No upgrade prompts.
  */
 import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
-import { LOCALES, placeKindLabel } from "@ll/shared";
+import { placeKindLabel } from "@ll/shared";
 import { placeKind } from "./explore";
 import { formatDistance } from "./format";
-import { formatDistanceL, isolateL, openPartsL, type L } from "./formatL";
+import { formatDistanceL, formatShortDateL, isolateL, openPartsL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
 /** "Roncesvalles Village" → "roncesvalles" (the canvas voice: short, lowercase). */
@@ -159,12 +159,7 @@ export function promoWindowLine(multiplier: number, noun: string, endHour: numbe
 export function heroCopyL(L: L, c: HeroCampaign, now = new Date()): { eyebrow: string; headline: string; progress: { value: number; max: number } | null } {
   if (L.locale === "en") return heroCopy(c, now);
   const end = new Date(c.endsAt);
-  let date: string;
-  try {
-    date = new Intl.DateTimeFormat(LOCALES[L.locale].bcp47, { month: "short", day: "numeric" }).format(end);
-  } catch {
-    date = `${MONTHS[end.getMonth()]} ${end.getDate()}`;
-  }
+  const date = formatShortDateL(L, end);
   const prize = c.prize ? c.prize.replace(/^win\s+/i, "").replace(/\.$/, "") : null;
   const headline =
     c.kind === "passport"

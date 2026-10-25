@@ -3,7 +3,7 @@
  * "Oct 21") exactly; hi / ur / pa go through Intl with the language's own tag and the catalog for the fixed words.
  * Pass the `useLocale()` value: `const L = useLocale(); formatTimeL(L, d)`.
  */
-import { LOCALES, formatCurrency, unitLabel as sharedUnitLabel, unitWord, type Locale, type MessageKey, type Vars } from "@ll/shared";
+import { formatCurrency, formatDate as formatSharedDate, unitLabel as sharedUnitLabel, unitWord, type Locale, type MessageKey, type Vars } from "@ll/shared";
 import { formatMoney, formatPts, termWord, unitLabel } from "./award";
 import { dayGroupLabel, formatDate, formatDayTime, formatDistance, formatShortDate, formatTime, openStatus, relativeTime, hoursRows } from "./format";
 
@@ -17,13 +17,21 @@ export const isolateL = (L: L, s: string | null | undefined): string | null | un
 
 const toDate = (d: string | number | Date) => (d instanceof Date ? d : new Date(d));
 
-/** Intl in the device's time zone (shops are local; the app has always shown device-local times). */
-function intl(locale: Locale, d: string | number | Date, opts: Intl.DateTimeFormatOptions): string {
+/** The device's time zone (shops are local; the app has always shown device-local times). */
+function deviceZone(): string | undefined {
   try {
-    return new Intl.DateTimeFormat(LOCALES[locale].bcp47, opts).format(toDate(d));
+    return new Intl.DateTimeFormat("en-CA").resolvedOptions().timeZone || undefined;
   } catch {
-    return new Intl.DateTimeFormat("en-CA", opts).format(toDate(d));
+    return undefined;
   }
+}
+
+/**
+ * hi / ur / pa dates and times come from the shared name tables (no Intl locale data: Hermes on Android can lack Punjabi and Urdu),
+ * with the numbers read in the device's zone.
+ */
+function intl(locale: Locale, d: string | number | Date, opts: Intl.DateTimeFormatOptions): string {
+  return formatSharedDate(locale, toDate(d), opts, deviceZone());
 }
 
 export const formatTimeL = (L: L, d: string | number | Date) => (L.locale === "en" ? formatTime(d) : intl(L.locale, d, { hour: "numeric", minute: "2-digit" }));
