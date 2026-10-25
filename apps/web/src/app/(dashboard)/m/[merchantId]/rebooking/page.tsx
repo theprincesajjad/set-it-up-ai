@@ -101,7 +101,7 @@ function Rebooking() {
                 { label: "Opted out", dot: "neutral", value: d.stats.optedOut, caption: "Replied STOP or muted" },
               ]}
             />
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <RebookDueList
                 data={d}
                 tab={tab}

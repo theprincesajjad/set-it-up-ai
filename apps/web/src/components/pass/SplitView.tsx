@@ -1,5 +1,4 @@
 "use client";
-import { Check } from "lucide-react";
 import { useState } from "react";
 import type { restaurantApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
@@ -134,7 +133,7 @@ export function SplitView({ token, initial }: { token: string; initial: restaura
             <div className="flex flex-col gap-3">
               <PaymentBox paymentIntentId={payment.paymentIntentId} clientSecret={payment.clientSecret} amountCents={payment.amountCents} label={t("split.pay", { amount: money(payment.amountCents) })} onPaid={paid} />
               <Button variant="ghost" onClick={() => setPayment(null)}>
-                {t("split.tip")}
+                {t("rc.back")}
               </Button>
             </div>
           ) : (
@@ -145,12 +144,6 @@ export function SplitView({ token, initial }: { token: string; initial: restaura
         </>
       ) : null}
 
-      {data.status === "paid" ? (
-        <p className="flex items-center gap-2 text-meta text-fg-muted">
-          <Check aria-hidden className="size-4 text-positive" strokeWidth={2} />
-          {t("split.paid")}
-        </p>
-      ) : null}
       <p className="text-center text-meta text-fg-muted">{t("split.secure")}</p>
     </div>
   );

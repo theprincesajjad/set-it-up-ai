@@ -53,7 +53,8 @@ export function ReservedView({ initial }: { initial: commerceApi.OrderDto }) {
   const hour = (d: Date) => date(d, { hour: "numeric", ...(d.getUTCMinutes() ? { minute: "2-digit" } : {}) }, TZ);
   const free = order.cancelFreeUntil ? new Date(order.cancelFreeUntil) : null;
   const canCancel = !cancelled && (order.status === "pending" || order.status === "accepted") && !!free && free.getTime() > now;
-  const stamp = (d: Date) => date(d, { weekday: "long", hour: "numeric", minute: "2-digit" }, TZ);
+  /** No trailing full stop ("2:00 p.m."): the sentence adds its own. */
+  const stamp = (d: Date) => date(d, { weekday: "long", hour: "numeric", minute: "2-digit" }, TZ).replace(/\.$/, "");
   const shopLink = origin && slug ? `${origin}/shops/${encodeURIComponent(slug)}` : "";
   const share = start ? whatsappShareUrl(t("rs.res.shareMessage", { shop: order.merchantName, day: dayLabel, time: hour(start), link: shopLink }).trim()) : "";
 

@@ -39,7 +39,8 @@ export function HourlyShape({ mode, hourly, weekday, promo }: { mode: HomeMode; 
           </div>
         ))}
       </div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>{title}</caption>
         <thead>
           <tr>
@@ -58,6 +59,7 @@ export function HourlyShape({ mode, hourly, weekday, promo }: { mode: HomeMode; 
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

@@ -1393,7 +1393,6 @@ export const hi: Messages = {
   "rs.pre.unavailableBody": "देग के बारे में पूछने के लिए रेस्टोरेंट को कॉल करें।",
   "rs.pre.reserveTitle": "अपनी देग बुक करें",
   "rs.pre.details": "आपकी जानकारी",
-  "rs.pre.detailsHint": "न ऐप, न पासवर्ड। हम एक कोड टेक्स्ट करते हैं।",
   "rs.pre.nameLabel": "पिकअप के लिए नाम",
   "rs.pre.payHeading": "डिपॉज़िट चुकाएँ",
   "rs.pre.noDepositHeading": "बुक करें",

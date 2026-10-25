@@ -40,7 +40,8 @@ export default function AuditPage() {
         <TextField label="Exact action" optionalLabel placeholder="feature.stage_changed" value={custom} onChange={(e) => setCustom(e.target.value)} />
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <Panel padded={false} className="overflow-x-auto">
+      <Panel padded={false}>
+        <div className="relative overflow-x-auto">
         {loading && !rows.length ? <Skeleton className="m-4 h-40" /> : (
           <table className="w-full min-w-[720px] text-meta">
             <caption className="sr-only">Audit entries</caption>
@@ -65,6 +66,7 @@ export default function AuditPage() {
             </tbody>
           </table>
         )}
+        </div>
       </Panel>
       {cursor ? <Button variant="secondary" className="self-start" onClick={async () => { const r = await browserApi.admin.audit({ action: a || undefined, limit: 50, cursor }); setRows((x) => [...x, ...r.items]); setCursor(r.nextCursor); }}>Load more</Button> : null}
     </div>

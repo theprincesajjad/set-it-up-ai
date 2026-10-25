@@ -48,6 +48,8 @@ export function AppointmentBlock({
 }) {
   const line = stateLine(appt, now);
   const compact = height < 44;
+  // A 15-minute block is only 14px tall: one 11px line, no padding, no resize grip competing for the space.
+  const tiny = height < 24;
   return (
     <div
       role="button"
@@ -65,16 +67,17 @@ export function AppointmentBlock({
       }}
       onPointerDown={movable ? onDragStart : undefined}
       className={cn(
-        "absolute inset-x-1 select-none overflow-hidden rounded-[8px] px-2 py-1 text-start outline-none focus-visible:focus-ring",
+        "absolute inset-x-1 select-none overflow-hidden rounded-[8px] px-2 text-start outline-none focus-visible:focus-ring",
         SURFACE[appt.status] ?? SURFACE.booked,
         movable && "cursor-grab touch-none active:cursor-grabbing",
         selected && appt.status !== "in_service" && "ring-2 ring-fg ring-offset-0",
         dragging && "z-20 opacity-90 shadow-float",
         !dragging && "z-10",
+        tiny ? "flex items-center py-0" : "py-1",
       )}
       style={{ top, height, transform: dragging ? `translate(${offsetX}px, ${offsetY}px)` : undefined }}
     >
-      <p className={cn("truncate text-[12px] font-semibold leading-4", appt.status === "no_show" && "text-negative", appt.status === "completed" && "font-medium")}>
+      <p className={cn("truncate font-semibold", tiny ? "min-w-0 text-[11px] leading-[12px]" : "text-[12px] leading-4", appt.status === "no_show" && "text-negative", appt.status === "completed" && "font-medium")}>
         {appt.customer.name}
         {compact ? <span className="font-normal text-fg-muted"> · {serviceSummary(appt)}</span> : null}
       </p>
@@ -85,7 +88,7 @@ export function AppointmentBlock({
           {line.text ? <span className={TONE[line.tone]}> · {line.text}</span> : null}
         </p>
       ) : null}
-      {movable ? (
+      {movable && !tiny ? (
         <span
           data-resize
           aria-hidden

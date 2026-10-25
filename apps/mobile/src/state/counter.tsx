@@ -136,6 +136,7 @@ export function CounterProvider({ children }: { children: ReactNode }) {
         minSpendCents: merchant.program.minSpendCents,
         stampGoal: merchant.program.stampGoal,
         active: merchant.program.active,
+        counterAutoStamp: merchant.program.counterAutoStamp,
       }
     : null;
   const programPaused = merchant ? merchant.merchant.status === "paused" || merchant.program?.active === false : false;

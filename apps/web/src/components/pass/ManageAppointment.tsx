@@ -3,6 +3,8 @@ import { CalendarPlus, ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { BigNumber, Heading, Pill, ShopHead, useFmt } from "@/components/restaurant/ui";
+import { PaymentBox } from "@/components/pass/PaymentBox";
+import { SetupBox } from "@/components/pass/SetupBox";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
@@ -14,7 +16,7 @@ import { dayDate, todayIso } from "@/lib/restaurant/util";
 type Appt = appointmentsApi.MyAppointmentDto;
 
 /** One appointment: when, who, what it costs, the policy in words, add to calendar, change the time, cancel. */
-export function ManageAppointment({ initial, slug }: { initial: Appt; slug: string }) {
+export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug: string; /** What a held booking still needs: the deposit to pay or the card to save. */ pay?: { deposit: { paymentIntentId: string; clientSecret: string; amountCents: number } | null; setup: { setupIntentId: string; clientSecret: string } | null } }) {
   const { t, money, date, time } = useFmt();
   const [appt, setAppt] = useState(initial);
   const [mode, setMode] = useState<"view" | "move" | "cancel">("view");
@@ -80,6 +82,17 @@ export function ManageAppointment({ initial, slug }: { initial: Appt; slug: stri
       setBusy(false);
     }
   }
+  async function refreshAfterPay() {
+    // The webhook confirms the booking a moment after the payment; look again until it has.
+    for (let i = 0; i < 10; i++) {
+      const r = await browserApi.me.appointment(appt.id).catch(() => null);
+      if (r && !r.appointment.pending) {
+        setAppt(r.appointment);
+        return;
+      }
+      await new Promise((res) => setTimeout(res, 1000));
+    }
+  }
   function download() {
     const url = `${window.location.origin}/shops/${slug}/book/${appt.id}`;
     const ics = buildIcs({ uid: appt.id, title: `${appt.items.map((i) => i.name).join(", ")} · ${appt.merchant.name}`, startsAt: appt.startsAt, endsAt: appt.endsAt, location: appt.merchant.address, description: url, url });
@@ -97,7 +110,7 @@ export function ManageAppointment({ initial, slug }: { initial: Appt; slug: stri
       <div className="flex flex-col gap-2">
         <Heading>{t("bk.manage.title")}</Heading>
         <div className="flex flex-wrap items-center gap-2">
-          <Pill tone={appt.status === "booked" ? "ink" : "neutral"}>{t(`bk.status.${appt.status}` as "bk.status.booked")}</Pill>
+          <Pill tone={appt.status === "booked" && !appt.pending ? "ink" : "neutral"}>{appt.status === "booked" && appt.pending ? (pay?.deposit ? t("bk.depositHold", { amount: money(pay.deposit.amountCents) }) : t("bk.card.title")) : t(`bk.status.${appt.status}` as "bk.status.booked")}</Pill>
           <span className="text-body text-fg-muted">{when(appt.startsAt)}</span>
         </div>
       </div>
@@ -119,6 +132,18 @@ export function ManageAppointment({ initial, slug }: { initial: Appt; slug: stri
         </li>
       </ul>
       {m.address ? <p className="text-meta text-fg-muted">{m.address}</p> : null}
+
+      {/* A held booking (deposit or card not done yet) is not confirmed: say so and let the customer finish it from here, as at the end of the booking flow. */}
+      {appt.status === "booked" && appt.pending ? (
+        <section aria-label={t("bk.card.title")} className="flex flex-col gap-3 rounded-card bg-bg-subtle p-4">
+          {appt.holdExpiresAt ? <p className="text-meta text-fg-muted">{t("bk.holding", { time: time(appt.holdExpiresAt).replace(/\.$/, "") })}</p> : null}
+          {pay?.deposit ? (
+            <PaymentBox paymentIntentId={pay.deposit.paymentIntentId} clientSecret={pay.deposit.clientSecret} amountCents={pay.deposit.amountCents} label={t("bk.cta.deposit", { amount: money(pay.deposit.amountCents) })} onPaid={refreshAfterPay} />
+          ) : pay?.setup ? (
+            <SetupBox setupIntentId={pay.setup.setupIntentId} clientSecret={pay.setup.clientSecret} label={t("bk.cta.card")} onSaved={refreshAfterPay} />
+          ) : null}
+        </section>
+      ) : null}
 
       {live ? (
         <p className="rounded-card bg-bg-subtle p-4 text-body text-fg">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil) }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</p>

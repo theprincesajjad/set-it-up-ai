@@ -1397,7 +1397,6 @@ export const en = {
   "rs.pre.unavailableBody": "Call the restaurant to ask about a degh.",
   "rs.pre.reserveTitle": "Reserve your degh",
   "rs.pre.details": "Your details",
-  "rs.pre.detailsHint": "No app and no password. We text a code.",
   "rs.pre.nameLabel": "Name for the pickup",
   "rs.pre.payHeading": "Pay the deposit",
   "rs.pre.noDepositHeading": "Reserve it",

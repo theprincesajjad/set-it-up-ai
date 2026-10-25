@@ -82,7 +82,7 @@ function Home() {
           ) : null}
           {ob && !ob.activatedAt ? <UpsellCard upsell={ob.upsell} base={base} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
 
-          {d ? <HourlyShape mode={mode} hourly={d.hourly} weekday={weekday} promo={enabled("promos.basic") ? d.promoWindow : null} /> : today.loading ? <div className="skeleton h-[270px] w-full rounded-card" /> : null}
+          {d ? (mode === "close" || d.hourly.typical.some((v) => v > 0) ? <HourlyShape mode={mode} hourly={d.hourly} weekday={weekday} promo={enabled("promos.basic") ? d.promoWindow : null} /> : null) : today.loading ? <div className="skeleton h-[270px] w-full rounded-card" /> : null}
 
           {mode === "close" && d?.promoWindow && enabled("promos.basic") ? <PromoResult promo={d.promoWindow} weekday={weekday} base={base} /> : null}
 

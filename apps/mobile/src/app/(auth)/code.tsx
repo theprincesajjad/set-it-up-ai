@@ -25,6 +25,11 @@ export default function CodeStep() {
   const [resends, setResends] = useState(0);
   const autoResent = useRef(false);
 
+  // Opened without a number (a stale link or a refresh): there is nothing to confirm, so go back to asking for it.
+  useEffect(() => {
+    if (!phone) router.replace("/phone");
+  }, [phone]);
+
   useEffect(() => {
     const id = setInterval(() => setResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(id);

@@ -34,7 +34,8 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
         Darker is busier.{note ? ` ${note}` : ""}
         {outside > 0 ? ` ${outside} ${outside === 1 ? "visit" : "visits"} outside 7 am to 7 pm are not shown.` : ""}
       </p>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>Visits by weekday and hour, last {data.weeks} weeks</caption>
         <thead>
           <tr>
@@ -55,6 +56,7 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

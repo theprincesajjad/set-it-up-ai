@@ -221,7 +221,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
           <Button type="submit" size="lg" fullWidth loading={busy === "approve"}>{approveLabel}</Button>
           <div className="grid grid-cols-2 gap-3">
             {shop.phone ? (
-              <Button variant="secondary" size="lg" fullWidth iconStart={Phone} href={ev ? `sms:${shop.phone}` : `tel:${shop.phone}`}>{ev ? t("sv.q.message", { shop: shopName }) : t("sv.q.callShop")}</Button>
+              <Button variant="secondary" size="lg" fullWidth iconStart={Phone} href={ev ? `sms:${shop.phone}` : `tel:${shop.phone}`}>{ev ? t("sv.q.message", { shop: shopName.length > 14 ? shopName.split(/\s+/)[0]! : shopName }) : t("sv.q.callShop")}</Button>
             ) : <span />}
             <Button type="button" variant="secondary" size="lg" fullWidth disabled={busy !== null} onClick={() => setDeclineOpen(true)}>{t("sv.q.decline")}</Button>
           </div>

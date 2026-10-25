@@ -96,9 +96,12 @@ export default async function DiscoverPage({ searchParams }: Props) {
         <svg aria-hidden width="100%" height="340" viewBox="0 0 390 340" preserveAspectRatio="xMidYMid slice" className="absolute inset-0">
           <g stroke="#1D1D20" strokeWidth="10" fill="none" strokeLinecap="round"><path d="M150 -20 L 230 360" /><path d="M-20 90 L 410 60" /><path d="M-20 190 L 410 166" /><path d="M-20 290 L 410 266" /></g>
         </svg>
-        <CategoryIcon category="coffee" size={88} className="absolute left-[calc(100%-184px)] top-[58px] -rotate-[8deg]" />
-        <CategoryIcon category="bakery" size={76} className="absolute left-[calc(100%-104px)] top-[132px] rotate-[10deg]" />
-        <CategoryIcon category="beauty" size={58} className="absolute left-[calc(100%-162px)] top-[176px] -rotate-[14deg]" />
+        {/* The three objects are from the canvas. In hi, ur and pa the headline runs wider and crosses them, so they step back. */}
+        <div aria-hidden className={locale === "en" ? "" : "opacity-35"}>
+          <CategoryIcon category="coffee" size={88} className="absolute left-[calc(100%-184px)] top-[58px] -rotate-[8deg]" />
+          <CategoryIcon category="bakery" size={76} className="absolute left-[calc(100%-104px)] top-[132px] rotate-[10deg]" />
+          <CategoryIcon category="beauty" size={58} className="absolute left-[calc(100%-162px)] top-[176px] -rotate-[14deg]" />
+        </div>
         <div className="absolute inset-x-5 top-[58px] flex justify-between">
           <span className="display text-[15px] leading-[18px] text-white">{BRAND.name.toLowerCase()}</span>
           <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-9 items-center justify-center rounded-full bg-white/[.12] text-white">
@@ -159,7 +162,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
                     <CategoryIcon vertical={s.merchant.vertical} size={76} />
                     {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-accent-soft px-[9px] text-[12px] font-semibold text-accent-text">{t("sh.wallet.rewardReady")}</span> : null}
                   </span>
-                  <span className="display mt-2.5 block truncate text-[15px] font-bold tracking-normal text-fg">{s.merchant.name.toLowerCase()}</span>
+                  <span className="display mt-2.5 line-clamp-2 text-[15px] leading-[1.15] font-bold tracking-normal text-fg">{s.merchant.name.toLowerCase()}</span>
                   <span className="mt-0.5 block truncate text-[12px] text-fg-muted">{[placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>
                 </Link>
               </li>

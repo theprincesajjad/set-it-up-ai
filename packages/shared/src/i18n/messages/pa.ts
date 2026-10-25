@@ -1393,7 +1393,6 @@ export const pa: Messages = {
   "rs.pre.unavailableBody": "ਦੇਗ ਬਾਰੇ ਪੁੱਛਣ ਲਈ ਰੈਸਟੋਰੈਂਟ ਨੂੰ ਕਾਲ ਕਰੋ।",
   "rs.pre.reserveTitle": "ਆਪਣੀ ਦੇਗ ਬੁੱਕ ਕਰੋ",
   "rs.pre.details": "ਤੁਹਾਡੀ ਜਾਣਕਾਰੀ",
-  "rs.pre.detailsHint": "ਨਾ ਐਪ, ਨਾ ਪਾਸਵਰਡ। ਅਸੀਂ ਇੱਕ ਕੋਡ ਟੈਕਸਟ ਕਰਦੇ ਹਾਂ।",
   "rs.pre.nameLabel": "ਪਿਕਅੱਪ ਲਈ ਨਾਂ",
   "rs.pre.payHeading": "ਡਿਪਾਜ਼ਿਟ ਭਰੋ",
   "rs.pre.noDepositHeading": "ਬੁੱਕ ਕਰੋ",

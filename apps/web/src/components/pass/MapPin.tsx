@@ -57,9 +57,9 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         </span>
         </span>
         {showLabel || selected ? (
-          <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_#fff,0_0_3px_#fff,0_0_5px_#fff]">
-            <span className="line-clamp-2 w-full text-[13px] font-semibold leading-[15px] tracking-[-0.01em] text-[#0B0B0C]">{name}</span>
-            <span className="w-full truncate text-[12px] italic leading-[14px] text-[#6B6B70]">{sub}</span>
+          <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_var(--ll-color-bg),0_0_3px_var(--ll-color-bg),0_0_5px_var(--ll-color-bg)]">
+            <span className="line-clamp-2 w-full text-[13px] font-semibold leading-[15px] tracking-[-0.01em] text-fg"><bdi>{name}</bdi></span>
+            <span className="w-full truncate text-[12px] italic leading-[14px] text-fg-muted">{sub}</span>
           </span>
         ) : null}
       </button>

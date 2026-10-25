@@ -257,8 +257,9 @@ function StreetDay() {
         <ol className="flex flex-col gap-4">
           {steps.map((s, i) => (
             <li key={s.key}>
-              <p className="text-meta-strong text-fg">{i + 1} · {s.title}</p>
-              <p className="mt-1 text-body text-fg">{s.say}</p>
+              <p className="text-body-strong text-fg">{i + 1} · {s.title}</p>
+              {/* Read aloud at a shop counter, often outdoors: the same size as the canvas pitch frame. */}
+              <p className="mt-1 text-[17px] leading-snug text-fg">{s.say}</p>
               {s.key === "proof" && proof ? (
                 <dl className="mt-2 grid grid-cols-3 divide-x divide-line rounded-card border border-line">
                   {proofHighlights(proof).map((h) => (

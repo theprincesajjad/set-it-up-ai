@@ -54,7 +54,10 @@ export function Composer({ onSent }: { onSent?: () => void }) {
   const selected = counts[aud] ?? null;
   const term = detail.program?.terminology ?? "stamps";
 
-  const chosen = (k: AudienceKey) => {
+  // Nobody picked an audience yet: start on the first one that has people in it (an empty "Slipping away" is a dead start).
+  const picked = useRef(!!params.get("segment"));
+  const chosen = (k: AudienceKey, byHand = true) => {
+    if (byHand) picked.current = true;
     setAud(k);
     if (!touched.current) setBody(defaultBody(k, noun));
     setDraftId(null);
@@ -65,13 +68,20 @@ export function Composer({ onSent }: { onSent?: () => void }) {
     let live = true;
     const t = setTimeout(() => {
       void Promise.all(AUDIENCES.map((a) => api.messages.audience({ channel, segment: a.segment }).then((r) => [a.key, r.recipients] as const).catch(() => [a.key, null] as const))).then((rows) => {
-        if (live) setCounts(Object.fromEntries(rows.filter((r) => r[1] != null)) as Partial<Record<AudienceKey, number>>);
+        if (!live) return;
+        const next = Object.fromEntries(rows.filter((r) => r[1] != null)) as Partial<Record<AudienceKey, number>>;
+        setCounts(next);
+        if (!picked.current) {
+          const first = AUDIENCES.find((a) => (next[a.key] ?? 0) > 0);
+          if (first && (next[aud] ?? 0) === 0) chosen(first.key, false);
+        }
       });
     }, 150);
     return () => {
       live = false;
       clearTimeout(t);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the first-audience pick reads aud/chosen once per channel load
   }, [api, channel]);
 
   useEffect(() => {

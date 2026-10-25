@@ -58,7 +58,8 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
   const cutoff = pickupAt ? new Date(new Date(pickupAt).getTime() - cutoffHours * 3_600_000) : null;
   const orderBy = pickupAt ? new Date(new Date(pickupAt).getTime() - availability.leadHours * 3_600_000) : null;
   const dayLabel = (d: string, o: Intl.DateTimeFormatOptions) => date(dayDate(d), o, "UTC");
-  const stamp = (d: Date) => date(d, { weekday: "short", hour: "numeric", minute: "2-digit" }, TZ);
+  /** No trailing full stop ("2:00 p.m."): the sentence adds its own. */
+  const stamp = (d: Date) => date(d, { weekday: "short", hour: "numeric", minute: "2-digit" }, TZ).replace(/\.$/, "");
   const ready = !!day && !!slot && !slot.full && !day.full;
   const base = `/shops/${encodeURIComponent(shop.slug)}`;
   const location = menu.locations[0];
@@ -146,12 +147,10 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
         ) : (
           <>
             <section aria-labelledby="pre-you" className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <Heading level={2}>
-                  <span id="pre-you">{t("rs.pre.details")}</span>
-                </Heading>
-                <p className="text-body text-fg-muted">{t("rs.pre.detailsHint")}</p>
-              </div>
+              {/* The sign-in block says "no app, no password, we text a code" itself; repeating it under the heading was the same sentence twice. */}
+              <Heading level={2}>
+                <span id="pre-you">{t("rs.pre.details")}</span>
+              </Heading>
               {signedIn ? (
                 <>
                   <TextField label={t("rs.pre.nameLabel")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={80} />

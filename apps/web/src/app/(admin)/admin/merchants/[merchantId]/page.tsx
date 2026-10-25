@@ -1,6 +1,7 @@
 "use client";
 import { BackLink, Dot, PageHeader, Panel, QuietLink, Row, RowList, StatBlock, StatusDot } from "@/components/dashboard/kit";
 import { ExternalLink, Upload } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
@@ -81,7 +82,8 @@ export default function AdminMerchantPage() {
                 {d.overrides.length ? <ul className="mt-2 divide-y divide-line border-y border-line text-meta">{d.overrides.map((o) => <li key={o.key} className="flex min-h-9 items-center justify-between gap-2"><span className="font-mono text-caption font-normal">{o.key}</span><Dot tone={o.enabled ? "positive" : "neutral"}>{o.enabled ? "On" : "Off"}</Dot></li>)}</ul> : <p className="mt-2 text-meta text-fg-muted">None.</p>}
               </Panel>
               <Panel title="Audit trail">
-                <ul className="divide-y divide-line border-y border-line text-meta">{(audit.data?.items ?? []).map((a) => <li key={a.id} className="py-2"><span className="font-mono text-caption font-normal text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
+                <ul className="divide-y divide-line border-y border-line text-meta">{(audit.data?.items ?? []).slice(0, 8).map((a) => <li key={a.id} className="py-2"><span className="font-mono text-caption font-normal text-fg">{a.action}</span> <span className="text-fg-muted">· {a.actorName ?? "system"} · {formatDateTime(a.createdAt)}</span></li>)}</ul>
+                <p className="mt-3 text-meta"><Link href="/admin/audit" className="text-fg-muted underline hover:text-fg">Whole audit log</Link></p>
               </Panel>
             </div>
             <ConfirmDialog open={support} onClose={() => { setSupport(false); setSupportReason(""); }} title={`Open ${d.name} as support`} body="You get 30 minutes inside their dashboard. The reason and every change you make are written to the audit log." confirmLabel="Start support session" disabled={supportReason.trim().length < 5} onConfirm={async () => {

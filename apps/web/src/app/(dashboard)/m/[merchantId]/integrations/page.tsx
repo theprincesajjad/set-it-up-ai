@@ -63,8 +63,9 @@ export default function IntegrationsPage() {
         {(d) => {
           // Pricing v2: paid connectors (POS, Mailchimp, automation) are listed only when their feature is on,
           // or when a connection already exists (shown as paused).
-          const visible = d.items.filter((i) => !hidden.has(i.provider) && i.provider !== "webhooks" && i.provider !== "api" && (!i.locked || i.status !== "not_connected"));
-          const lockedCount = d.items.filter((i) => i.locked && i.status === "not_connected").length;
+          const visible = d.items.filter((i) => !hidden.has(i.provider) && i.provider !== "webhooks" && i.provider !== "api" && (!i.locked || i.status !== "not_connected") && (i.available || i.status !== "not_connected"));
+          // Connectors that are paid or not built yet get one line below the list, not a row with nothing to press.
+          const lockedCount = d.items.filter((i) => (i.locked || !i.available) && i.status === "not_connected").length;
           const groups: [string, integrationsApi.IntegrationSummary[]][] = [...new Set(visible.map((i) => i.category))].map((c) => [c, visible.filter((i) => i.category === c)]);
           return (
             <>

@@ -78,7 +78,7 @@ export const { isRegular, isSlipping } = reportsApi;
 /** What one reward is called on Home: "free drink" at a café, "free pastry" at a bakery, otherwise "reward". */
 export function rewardNoun(vertical: string | undefined, plural = false): string {
   const one = vertical === "cafe" ? "free drink" : vertical === "bakery" ? "free pastry" : "reward";
-  return plural ? `${one}s` : one;
+  return plural ? (one.endsWith("y") ? `${one.slice(0, -1)}ies` : `${one}s`) : one;
 }
 
 const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;

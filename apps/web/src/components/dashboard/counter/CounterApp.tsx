@@ -1304,8 +1304,9 @@ function Stamped({
             ? stampsLeft(left, res.member.nextReward.name)
             : formatPoints(n, program.terminology)}
       </p>
-      {res.breakdown.length ? (
-        <p className="text-meta text-fg-muted">{res.breakdown.join(" · ")}</p>
+      {/* The big number already says "1 stamp"; only the extras (boosts, VIP) are worth a line. */}
+      {res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).length ? (
+        <p className="text-meta text-fg-muted">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
       ) : null}
       {res.messages.map((msg) => (
         <p key={msg} className="text-meta text-fg-muted">

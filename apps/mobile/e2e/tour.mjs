@@ -95,7 +95,7 @@ await step("setup", async () => {
   // The customer redeems a free drink in the app ("redeem") and another at the counter ("counter-redeem").
   // The seed is relative to today, so top the stamp card up to two free drinks when it is short.
   // The 30-minute stamp cooldown would block the top-up and the later counter award, so the e2e copy turns it off.
-  await call("PATCH", `/v1/merchants/${pinecone.id}/program`, { visitCooldownMinutes: 0 }, owner);
+  await call("PATCH", `/v1/merchants/${pinecone.id}/program`, { visitCooldownMinutes: 0, counterAutoStamp: false }, owner); // the tour walks the confirm-tap path; stamp-on-scan is unit tested (award.test.ts)
   const look = await call("GET", `/v1/merchants/${pinecone.id}/counter/lookup?q=${encodeURIComponent(CUSTOMER)}`, undefined, owner);
   const card = look.items[0];
   const cost = card?.nextReward?.pointsCost ?? card?.rewardsAffordable?.[0]?.pointsCost ?? 10;

@@ -32,8 +32,11 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
       </PageFrame>
     );
   let appointment;
+  let pay: { deposit: { paymentIntentId: string; clientSecret: string; amountCents: number } | null; setup: { setupIntentId: string; clientSecret: string } | null } = { deposit: null, setup: null };
   try {
-    appointment = (await (await getServerApi()).me.appointment(id)).appointment;
+    const r = await (await getServerApi()).me.appointment(id);
+    appointment = r.appointment;
+    pay = { deposit: r.deposit, setup: r.setup };
   } catch (e) {
     if (isApiError(e) && (e.status === 404 || e.status === 403))
       return (
@@ -45,7 +48,7 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
   }
   return (
     <PageFrame locale={locale}>
-      <ManageAppointment initial={appointment} slug={slug} />
+      <ManageAppointment initial={appointment} slug={slug} pay={pay} />
     </PageFrame>
   );
 }

@@ -101,7 +101,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
         <ol className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
           {STEPS.map(([title, body], i) => (
             <li key={title} className="bg-bg p-6 md:p-8">
-              <span className="display text-mkt-sm tabular-nums text-fg-subtle">{i + 1}</span>
+              <span className="display text-mkt-sm tabular-nums text-fg-muted">{i + 1}</span>
               <h3 className="mt-6 text-headline text-fg">{t(title)}</h3>
               <p className="mt-2 text-body text-fg-muted">{t(body)}</p>
             </li>

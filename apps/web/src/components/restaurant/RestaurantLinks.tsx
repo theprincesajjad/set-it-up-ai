@@ -43,7 +43,7 @@ export async function RestaurantLinks({ slug, locale, features, skipMenu = false
               <r.icon aria-hidden className="size-5 shrink-0 text-fg" strokeWidth={1.75} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-body-strong text-fg">{r.title}</span>
-                <span className="block truncate text-meta text-fg-muted">{r.sub}</span>
+                <span className="line-clamp-2 text-meta text-fg-muted">{r.sub}</span>
               </span>
               <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle rtl:rotate-180" />
             </Link>

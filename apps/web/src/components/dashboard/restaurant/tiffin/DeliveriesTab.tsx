@@ -212,7 +212,7 @@ function Run({ r, date, onMarkOut, pickup, picked, toggle, toggleAll, move, busy
             {!pickup && !r.route ? ". Auto-assign matches them by postal code." : ""}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {r.route?.driverPhone ? (
             <a href={`tel:${r.route.driverPhone}`} className="inline-flex items-center gap-1 text-meta text-fg-muted hover:text-fg">
               <Phone aria-hidden className="size-3.5" /> {r.route.driverPhone}

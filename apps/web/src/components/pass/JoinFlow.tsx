@@ -264,7 +264,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             {t("auth.join.textMe")}
           </Button>
         </form>
-        <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-subtle">
+        <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-muted">
           {t("auth.join.numberUse")}{" "}
           <Link href="/legal/rewards" className="text-fg-muted underline">{t("auth.footer.rewards")}</Link> · <Link href="/legal/privacy" className="text-fg-muted underline">{t("auth.footer.privacy")}</Link>
         </p>

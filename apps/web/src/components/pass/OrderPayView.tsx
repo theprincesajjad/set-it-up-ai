@@ -64,7 +64,7 @@ export function OrderPayView({ orderId, token, initial }: { orderId: string; tok
             {order.items.map((l, i) => (
               <tr key={i} className="border-b border-line">
                 <td className="py-3 pe-2 text-start">{l.name}</td>
-                <td className="py-3 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${number(l.quantity)}` : ""}</td>
+                <td className="whitespace-nowrap py-3 pe-2 text-end tabular-nums text-fg-muted">{l.quantity > 1 ? `× ${number(l.quantity)}` : ""}</td>
                 <td className="py-3 text-end tabular-nums"><bdi>{money(l.lineTotalCents)}</bdi></td>
               </tr>
             ))}

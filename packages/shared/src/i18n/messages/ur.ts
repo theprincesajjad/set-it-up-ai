@@ -1393,7 +1393,6 @@ export const ur: Messages = {
   "rs.pre.unavailableBody": "دیگ کے بارے میں پوچھنے کے لیے ریسٹورنٹ کو کال کریں۔",
   "rs.pre.reserveTitle": "اپنی دیگ بک کریں",
   "rs.pre.details": "آپ کی معلومات",
-  "rs.pre.detailsHint": "نہ ایپ، نہ پاس ورڈ۔ ہم ایک کوڈ ٹیکسٹ کرتے ہیں۔",
   "rs.pre.nameLabel": "پک اپ کے لیے نام",
   "rs.pre.payHeading": "ڈپازٹ ادا کریں",
   "rs.pre.noDepositHeading": "بک کریں",

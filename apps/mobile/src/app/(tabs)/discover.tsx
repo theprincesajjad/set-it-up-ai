@@ -151,7 +151,7 @@ export default function Discover() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: tabSpace + 24 }} showsVerticalScrollIndicator={false}>
-        {/* Hero: black, the live campaign. */}
+        {/* Hero: black, the live campaign. The three objects are from the canvas; in hi, ur and pa the headline runs wider and crosses them, so they step back. */}
         <Pressable
           accessibilityRole={live ? "button" : undefined}
           accessibilityLabel={hero ? `${hero.eyebrow}. ${hero.headline}${hero.progress ? `. ${tr("ui.progressOf", { value: hero.progress.value, max: hero.progress.max })}` : ""}` : undefined}
@@ -167,7 +167,7 @@ export default function Discover() {
             <Path d="M-20 290 L 410 266" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />
           </Svg>
           {HERO_OBJECTS.map((o) => (
-            <Image key={o.cat} source={categorySource(o.cat)} style={{ position: "absolute", start: o.left + (width - 390), top: top(o.top), width: o.size, height: o.size, transform: [{ rotate: o.rotate }] }} resizeMode="contain" accessibilityIgnoresInvertColors />
+            <Image key={o.cat} source={categorySource(o.cat)} style={{ position: "absolute", start: o.left + (width - 390), top: top(o.top), width: o.size, height: o.size, transform: [{ rotate: o.rotate }], opacity: L.locale === "en" ? 1 : 0.35 }} resizeMode="contain" accessibilityIgnoresInvertColors />
           ))}
           <View style={[styles.heroTop, { top: top(58) }]}>
             <Text style={disp(15, 800, 18)} rawColor="#FFFFFF">
@@ -181,7 +181,7 @@ export default function Discover() {
           <View style={styles.heroCopy}>
             {hero ? (
               <>
-                <Text style={ui(12, 600, 16)} rawColor="#FF7A45" numberOfLines={1}>
+                <Text style={ui(12, 600, 16)} rawColor="#FF7A45" numberOfLines={2}>
                   {hero.eyebrow}
                 </Text>
                 <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor="#FFFFFF" accessibilityRole="header">

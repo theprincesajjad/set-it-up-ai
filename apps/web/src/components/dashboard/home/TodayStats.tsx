@@ -10,6 +10,7 @@ export function TodayStats({ mode, data, weekday, yesterdayWeekday, terminology,
   const t = data?.today;
   const y = data?.yesterday;
   const noun = rewardNoun(vertical);
+  const nounPl = rewardNoun(vertical, true);
   const waiting = data?.rewardsWaiting;
   const goal = waiting?.goal ?? null;
 
@@ -22,7 +23,7 @@ export function TodayStats({ mode, data, weekday, yesterdayWeekday, terminology,
           })(),
           { label: "New members yesterday", value: y ? formatNumber(y.newMembers) : "–", caption: y ? (y.newViaQr ? `${y.newViaQr} from the counter QR` : y.newMembers ? "Joined at the counter" : "Nobody joined") : undefined, href: `${base}/customers` },
           {
-            label: `${noun[0]!.toUpperCase()}${noun.slice(1)}s waiting`,
+            label: `${nounPl[0]!.toUpperCase()}${nounPl.slice(1)} waiting`,
             value: <span className="text-accent">{waiting ? formatNumber(waiting.count) : "–"}</span>,
             caption: goal ? `Members at ${goal}/${goal} who have not redeemed` : "Members with a reward ready",
             href: `${base}/customers?segment=reward`,
@@ -36,9 +37,9 @@ export function TodayStats({ mode, data, weekday, yesterdayWeekday, terminology,
           })(),
           { label: "New members", value: t ? formatNumber(t.newMembers) : "–", caption: t ? joinCaption(t.newMembers, t.newViaQr) : undefined, href: `${base}/customers` },
           {
-            label: `${terminology[0]!.toUpperCase()}${terminology.slice(1)} given · ${noun}s redeemed`,
+            label: `${terminology[0]!.toUpperCase()}${terminology.slice(1)} given · ${nounPl} redeemed`,
             value: t ? `${formatNumber(t.stampsGiven)} · ${formatNumber(t.redemptions)}` : "–",
-            caption: waiting ? (waiting.count ? `${waiting.count} still waiting on a ${noun}` : `No ${noun}s waiting`) : undefined,
+            caption: waiting ? (waiting.count ? `${waiting.count} still waiting on a ${noun}` : `No ${nounPl} waiting`) : undefined,
           },
           { label: "Regulars who came in", value: t ? `${formatNumber(t.regularsSeen)} of ${formatNumber(t.regularsTotal)}` : "–", caption: t ? `${formatNumber(Math.max(0, t.regularsTotal - t.regularsSeen))} regulars did not visit today` : undefined, href: `${base}/customers?segment=regulars` },
         ];

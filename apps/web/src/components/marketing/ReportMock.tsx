@@ -85,7 +85,8 @@ export function ReportShopBars({ report: r, maxShops, headingLevel = 3 }: Pick<R
           </li>
         ))}
       </ul>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>Visits by shop</caption>
         <thead>
           <tr>
@@ -104,6 +105,7 @@ export function ReportShopBars({ report: r, maxShops, headingLevel = 3 }: Pick<R
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

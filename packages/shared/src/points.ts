@@ -74,7 +74,7 @@ export function calculateEarn(input: EarnInput): EarnResult {
     if (basePoints) breakdown.push(`${rules.pointsPerDollar} pt/$ on $${(eligibleCents / 100).toFixed(2)}`);
   } else if (qualifiesAsVisit) {
     basePoints = rules.pointsPerVisit;
-    if (basePoints) breakdown.push(rules.earnType === "stamps" ? `${basePoints} stamp(s)` : `${basePoints} pts for visit`);
+    if (basePoints) breakdown.push(rules.earnType === "stamps" ? `${basePoints} ${basePoints === 1 ? "stamp" : "stamps"}` : `${basePoints} pts for visit`);
   }
 
   const vip = input.vipMultiplier && input.vipMultiplier > 1 ? input.vipMultiplier : 1;

@@ -14,6 +14,9 @@ import { useApi } from "@/lib/dashboard/useApi";
 const REASON: Record<adminApi.AtRiskReason, string> = { payment_failed: "Payment failed", stalled_setup: "Setup stalled", quiet: "Gone quiet", slow_activation: "Slow to activate", sms_cap: "SMS allowance used" };
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
+/** Shops listed before "All N": the founder calls the worst few first; the funnel table beside it stays the same height. */
+const AT_RISK_PREVIEW = 6;
+
 /** Founder's morning: am I on pace, what do I earn and spend, which street is stalling, which shops need a call. */
 export default function AdminToday() {
   const o = useApi(() => browserApi.admin.overview(), []);
@@ -25,7 +28,7 @@ export default function AdminToday() {
       <Async state={o}>
         {(d) => {
           const behind = d.pace.delta < 0;
-          const risk = all ?? d.atRisk.items;
+          const risk = all ?? d.atRisk.items.slice(0, AT_RISK_PREVIEW);
           return (
             <>
               <Panel
@@ -97,7 +100,7 @@ export default function AdminToday() {
                     <p className="px-4 py-4 text-meta text-fg-muted">No area has leads or shops yet. Plan an area to start the funnel.</p>
                   )}
                 </Panel>
-                <Panel title="Shops at risk" description={`${d.atRisk.total} to call, most urgent first`} padded={false} action={d.atRisk.total > d.atRisk.items.length && !all ? <Button size="sm" variant="ghost" onClick={async () => setAll((await browserApi.admin.atRisk()).items)}>All {d.atRisk.total}</Button> : null}>
+                <Panel title="Shops at risk" description={`${d.atRisk.total} to call, most urgent first`} padded={false} action={d.atRisk.total > AT_RISK_PREVIEW && !all ? <Button size="sm" variant="ghost" onClick={async () => setAll((await browserApi.admin.atRisk()).items)}>All {d.atRisk.total}</Button> : null}>
                   {risk.length ? (
                     <ul className="divide-y divide-line">
                       {risk.map((r) => (

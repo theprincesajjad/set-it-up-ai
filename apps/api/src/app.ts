@@ -17,7 +17,8 @@ declare module "fastify" {
   }
 }
 
-const MISS_LIMIT = 40;
+/** Misses per address per window before slowing down; MISS_LIMIT lifts it for screenshot and load runs that open many dead links from one machine. */
+const MISS_LIMIT = Number(process.env.MISS_LIMIT) || 40;
 const MISS_WINDOW_MS = 10 * 60_000;
 
 export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {

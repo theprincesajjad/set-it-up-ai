@@ -216,7 +216,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
         <div className="flex flex-col gap-2">
           <Heading>{t("bk.card.title")}</Heading>
           <p className="text-body text-fg-muted">{when(a.startsAt)}{a.staffName ? ` · ${a.staffName}` : ""}</p>
-          {a.holdExpiresAt ? <p className="text-meta text-fg-muted">{t("bk.holding", { time: time(a.holdExpiresAt) })}</p> : null}
+          {a.holdExpiresAt ? <p className="text-meta text-fg-muted">{t("bk.holding", { time: time(a.holdExpiresAt).replace(/\.$/, "") })}</p> : null}
         </div>
         {booked.deposit ? <BigNumber tone="accent" className="text-[32px]">{money(booked.deposit.amountCents)}</BigNumber> : null}
         {policy}

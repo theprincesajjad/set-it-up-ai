@@ -370,7 +370,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     const leadHours = Math.max(0, overrideLeadHours(merchant, pickupAt!) ?? 0, ...lines.map((l) => l.leadTimeHours));
     const earliest = new Date(now.getTime() + leadHours * 3_600_000);
     if (pickupAt!.getTime() < earliest.getTime()) {
-      throw new HttpError(409, "preorder_lead_time", `These items need ${leadHours} hours' notice. Earliest pickup is ${formatLocalDateTime(earliest, merchant.timezone)}.`, { leadTimeHours: leadHours, earliestPickupAt: earliest.toISOString() });
+      throw new HttpError(409, "preorder_lead_time", `These items need ${leadHours} hours' notice. Earliest pickup is ${formatLocalDateTime(earliest, merchant.timezone).replace(/\.$/, "")}.`, { leadTimeHours: leadHours, earliestPickupAt: earliest.toISOString() });
     }
     potsRequested = lines.filter((l) => l.preorderOnly).reduce((s, l) => s + l.quantity, 0);
     depositBase = lines.reduce((s, l) => s + (l.lineTotalCents * l.depositBps) / 10_000, 0);

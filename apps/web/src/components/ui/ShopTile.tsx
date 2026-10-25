@@ -67,7 +67,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
   const [coverFailed, setCoverFailed] = useState(false);
   const name = (
     <span className="flex min-w-0 items-center gap-1.5">
-      <span className="min-w-0 truncate">{shop.name}</span>
+      <span className="min-w-0 truncate"><bdi>{shop.name}</bdi></span>
       {muted ? (
         <>
           <BellOff aria-hidden className="size-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
@@ -92,7 +92,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
           <div className="min-w-0 flex-1">
             {sponsored ? <SponsoredBadge /> : null}
             {/* Shop title: 22/600 like the app's shop sheet, never heavy (polish-audit M13). */}
-            <h1 className="text-title font-semibold text-fg">{shop.name}</h1>
+            <h1 className="text-title font-semibold text-fg"><bdi>{shop.name}</bdi></h1>
             {subtitle ? <p className="mt-0.5 text-meta italic text-fg-muted">{subtitle}</p> : null}
           </div>
         </div>
@@ -116,7 +116,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
             </span>
           ) : null}
         </div>
-        {second ? <div className={cn("truncate text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKindLabel(locale, shop.vertical)}</div> : null}
+        {second ? <div className={cn("line-clamp-2 text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKindLabel(locale, shop.vertical)}</div> : null}
       </div>
       {href && variant !== "compact" ? <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" /> : null}
     </>

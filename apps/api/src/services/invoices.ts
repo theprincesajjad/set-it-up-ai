@@ -265,6 +265,11 @@ export async function sendInvoice(ctx: AppContext, staff: StaffContext, invoiceI
 
 /** The person a tip goes to: whoever the ticket is assigned to. */
 export async function invoiceTipInfo(db: DbOrTx, inv: Invoice): Promise<{ staff: { id: string; name: string } | null }> {
+  // A salon checkout names the stylist on the invoice itself (appointment checkout sets tipStaffId); a repair ticket uses its assignee.
+  if (inv.tipStaffId) {
+    const [named] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, inv.tipStaffId)).limit(1);
+    if (named) return { staff: { id: named.id, name: named.name ?? "your stylist" } };
+  }
   if (!inv.ticketId) return { staff: null };
   const [row] = await db
     .select({ id: users.id, name: users.name })

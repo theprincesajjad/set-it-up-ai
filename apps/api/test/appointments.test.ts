@@ -831,6 +831,7 @@ describe("checkout", () => {
 
   it("sends a pay link (tip chosen by the client, stylist recorded) and never double-awards on a replayed webhook", async () => {
     const s = await salon();
+    expect((await call(env, s.desk.token, "PUT", `${s.base}/appointments/settings`, { tipsEnabled: true })).status).toBe(200);
     const v = await visit(s, { services: [s.cut.id] });
     const sms0 = env.ctx.providers.outbox.sms.length;
     const r = await checkout(s, v, { mode: "link", tipCents: 999, tipStaffId: s.aisha.user.id });
@@ -842,6 +843,9 @@ describe("checkout", () => {
     expect(r.body.appointment.status).toBe("completed");
 
     const token = r.body.payUrl.split("/i/")[1];
+    // The customer's pay page names the stylist the tip goes to ("Add a tip for Aisha"), not just the shop.
+    const view = await call(env, null, "GET", `/v1/public/invoices/${token}`);
+    expect(view.body.tip?.staff).toMatchObject({ id: s.aisha.user.id });
     const pay = await call(env, null, "POST", `/v1/public/invoices/${token}/pay`, {});
     expect(pay.status).toBe(200);
     // The balance through the pay link carries no platform fee either (the deposit already paid its 1%).
