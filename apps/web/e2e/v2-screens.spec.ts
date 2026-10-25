@@ -4,7 +4,7 @@
  * web server (see playwright.config.ts). Map tiles go through HTTPS_PROXY when set.
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { API, cafeQr, repairQuote } from "./fixtures";
+import { API, cafeQr, fillPhone, repairQuote, newPhone } from "./fixtures";
 
 const proxy = process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: "localhost,127.0.0.1" } : undefined;
 const BASE = process.env.E2E_WEB_URL ?? "http://localhost:3100";
@@ -75,11 +75,11 @@ for (const s of SIZES) {
     const { qrCode, slug } = await cafeQr();
     const c = await ctx(browser, s);
     const page = await c.newPage();
-    const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+    const phone = newPhone();
     await page.goto(`/j/${qrCode}`);
     await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
     await shot(page, "join-1-phone", s.w);
-    await page.getByLabel("Mobile number").fill(phone);
+    await fillPhone(page, phone);
     await page.getByRole("button", { name: "Text me a code" }).click();
     await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();
     await shot(page, "join-2-code", s.w);

@@ -1,14 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cafeQr } from "./fixtures";
+import { cafeQr, fillPhone, newPhone } from "./fixtures";
 
 const shot = (name: string) => `e2e/screenshots/${name}.png`;
 
 /** Join the café through its counter QR, so the context holds a signed-in shopper (language en). */
 async function joinAsShopper(page: Page) {
   const { qrCode } = await cafeQr();
-  const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+  const phone = newPhone();
   await page.goto(`/j/${qrCode}`);
-  await page.getByLabel("Mobile number").fill(phone);
+  await fillPhone(page, phone);
   await page.getByRole("button", { name: "Text me a code" }).click();
   await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
   await page.getByRole("button", { name: "Continue" }).click();

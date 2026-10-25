@@ -72,14 +72,14 @@ export default function StaffPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 ps-11 sm:justify-end sm:ps-0">
+                      <div className="grid grid-cols-2 gap-2 ps-11 [&>:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:ps-0">
                         {owner && !self ? (
-                          <label className="shrink-0">
+                          <label className="min-w-0 sm:shrink-0">
                             <span className="sr-only">{`Role for ${s.name ?? "staff"}`}</span>
                             <select value={s.role} onChange={async (e) => {
                               const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
                               if (r) await state.reload();
-                            }} className="h-8 rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle">
+                            }} className="h-8 w-full rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle sm:w-auto">
                               {ROLES.map((r) => (
                                 <option key={r.value} value={r.value}>
                                   {r.label}
@@ -89,20 +89,20 @@ export default function StaffPage() {
                           </label>
                         ) : null}
                         {enabled("booking.appointments") && role !== "staff" ? (
-                          <Button variant="ghost" size="sm" onClick={() => setSchedule(s)}>
+                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setSchedule(s)}>
                             Hours and services
                           </Button>
                         ) : null}
-                        <Button variant="ghost" size="sm" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
+                        <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
                           Language and station
                         </Button>
                         {owner || self ? (
-                          <Button variant="secondary" size="sm" onClick={() => setPinFor(s)}>
+                          <Button variant="secondary" size="sm" className="max-sm:w-full" onClick={() => setPinFor(s)}>
                             {s.hasPin ? "Reset PIN" : "Set PIN"}
                           </Button>
                         ) : null}
                         {owner && !self ? (
-                          <Button variant="ghost" size="sm" onClick={() => setRemove(s)}>
+                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setRemove(s)}>
                             Remove
                           </Button>
                         ) : null}

@@ -4,7 +4,7 @@
  * goes to, and the split-bill page says Paid once.
  */
 import { expect, test } from "@playwright/test";
-import { API } from "./fixtures";
+import { API, fillPhone, newPhone } from "./fixtures";
 import { ownerOf } from "./restaurant-fixtures";
 
 async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
@@ -13,7 +13,7 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
   if (!res.ok) throw new Error(`${method} ${path} -> ${res.status} ${text}`);
   return (text ? JSON.parse(text) : undefined) as T;
 }
-const phone = () => `+1647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+const phone = () => `+1${newPhone()}`;
 
 test("a dead shop link shows one message and one footer", async ({ page }) => {
   await page.goto("/shops/no-such-shop-xyz");
@@ -37,7 +37,7 @@ test("a held booking opened from its page shows the deposit to pay, not 'Booked'
   expect(booked.appointment.pending).toBe(true);
 
   await page.goto(`/shops/${slug}/book/${booked.appointment.id}`);
-  await page.getByLabel("Mobile number").fill(who.replace("+1", ""));
+  await fillPhone(page, who.replace("+1", ""));
   await page.getByRole("button", { name: "Send code" }).click();
   await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

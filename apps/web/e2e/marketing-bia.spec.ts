@@ -3,7 +3,7 @@
  * Run with E2E_WEB_URL / E2E_API_URL (see docs/engineering/web.md). No screenshots are written to e2e/screenshots.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { API } from "./fixtures";
+import { API, newPhone } from "./fixtures";
 
 const ADMIN = { email: "admin@localloyalty.example", password: "localloyalty-admin" };
 const TWO_STREETS = { email: "owner+hearth-and-crumb@example.com", password: "localloyalty-demo" };
@@ -229,7 +229,7 @@ test.describe("for restaurants", () => {
 
   test("submitting the form creates a restaurant lead in the chosen language", async ({ page }) => {
     const name = `Karahi House ${Date.now() % 100000}`;
-    const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+    const phone = newPhone();
     await page.goto("/for-restaurants");
     const form = page.locator("#book form");
     await form.getByLabel("Your name").fill("Imran");

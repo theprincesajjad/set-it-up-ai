@@ -4,7 +4,7 @@
  * Flow: a customer subscribes by e-transfer in the browser, the owner records it, the driver marks a stop, a caterer records a deposit.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { API } from "./fixtures";
+import { API, fillPhone, newPhone } from "./fixtures";
 import { ownerOf, publicInquiry, sendQuoteFor } from "./restaurant-fixtures";
 
 const PW = "localloyalty-demo";
@@ -33,10 +33,10 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
 
   // --- the customer, in the browser
   const customer = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+  const phone = newPhone();
   await customer.goto("/shops/shree-thali-and-tiffin/tiffin");
   await customer.getByRole("button", { name: "Choose this plan" }).first().click();
-  await customer.getByLabel("Mobile number").fill(phone);
+  await fillPhone(customer, phone);
   await customer.getByRole("button", { name: "Send code" }).click();
   await expect(customer.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
   await customer.getByRole("button", { name: "Sign in", exact: true }).click();

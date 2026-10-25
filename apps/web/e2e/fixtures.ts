@@ -2,6 +2,8 @@
  * E2E data setup against a running, seeded API (pnpm --filter @ll/api seed).
  * Uses the seed's demo credentials (apps/api/src/seed/demo.ts) and the API directly.
  */
+import { expect, type Page } from "@playwright/test";
+
 export const API = process.env.E2E_API_URL ?? "http://localhost:4100";
 
 async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
@@ -71,4 +73,28 @@ export async function repairQuote(): Promise<{ token: string }> {
   const token = quote.approvalUrl?.split("/q/")[1];
   if (!token) throw new Error(`No approval URL: ${JSON.stringify(quote)}`);
   return { token };
+}
+
+/**
+ * Type a 10-digit number into the page's "Mobile number" field and prove the page is hydrated. The field is a controlled
+ * input that re-formats to (416) 555-0123; a fill that lands before React attaches its handlers is thrown away (the raw
+ * digits stay in the box and the value never gets formatted), so retry the fill until the formatted value shows.
+ */
+export async function fillPhone(page: Page, digits: string) {
+  const field = page.getByLabel("Mobile number");
+  await expect(field).toBeVisible();
+  await expect(async () => {
+    // Clear first: refilling the digits already sitting in the box is not a change to React, so it would not fire onChange.
+    await field.fill("", { timeout: 5_000 });
+    await field.fill(digits, { timeout: 5_000 });
+    await expect(field).toHaveValue(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000, intervals: [250, 500, 1_000] });
+}
+
+/**
+ * A 10-digit number nobody has used: 647 + an exchange that is not 555 (the seed's members live there) + six random digits.
+ * The old `647555` + four digits collided with an earlier test's member now and then; an existing member skips the name step.
+ */
+export function newPhone(): string {
+  return `6472${String(Math.floor(100000 + Math.random() * 899999))}`;
 }

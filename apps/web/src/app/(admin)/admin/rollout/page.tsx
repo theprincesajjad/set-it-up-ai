@@ -32,8 +32,8 @@ export default function RolloutPage() {
             {groupFeatures(d.items).map((g) => (
               <Section key={g.id} title={g.title}>
                 <TableWrap>
-                  <Table label={g.title} className="min-w-[960px] table-fixed">
-                    <thead>
+                  <Table label={g.title} className="max-md:block md:min-w-[960px] md:table-fixed">
+                    <thead className="max-md:hidden">
                       <tr>
                         <Th className="w-[240px]">Feature</Th>
                         <Th className="w-[110px]">Plan</Th>
@@ -44,15 +44,15 @@ export default function RolloutPage() {
                         <Th className="w-[160px]">Last changed</Th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="max-md:block">
                       {g.items.map((f) => (
-                        <tr key={f.key} className="[&:last-child>td]:border-b-0" data-feature={f.key}>
-                          <Td className="py-2">
+                        <tr key={f.key} className="[&:last-child>td]:border-b-0 max-md:grid max-md:grid-cols-2 max-md:gap-x-4 max-md:gap-y-3 max-md:border-b max-md:border-line max-md:px-4 max-md:py-4 max-md:last:border-b-0" data-feature={f.key}>
+                          <Td className="py-2 max-md:col-span-2 max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0">
                             <p className="font-medium text-fg">{f.name}</p>
                             <p className="truncate font-mono text-[11px] text-fg-muted">{f.key}</p>
                           </Td>
-                          <Td className="text-fg-muted">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Td>
-                          <Td>
+                          <Td data-label="Plan" className="text-fg-muted max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Td>
+                          <Td data-label="Stage" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)] max-md:col-span-2">
                             {stageLocked(f) ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <Lock aria-hidden className="size-3.5 text-fg-subtle" />
@@ -62,7 +62,7 @@ export default function RolloutPage() {
                               <Segmented label={`Stage for ${f.name}`} value={f.stage} onChange={(to) => to !== f.stage && setChange({ f, to })} options={[{ value: "hidden", label: "Hidden" }, { value: "beta", label: "Beta" }, { value: "ga", label: "GA" }]} />
                             )}
                           </Td>
-                          <Td>
+                          <Td data-label="Unlock target" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)] max-md:col-span-2">
                             {f.unlockAtMerchants ? (
                               <div className="flex items-center gap-3">
                                 <div className="h-1 w-20 overflow-hidden rounded-full bg-bg-muted" aria-hidden>
@@ -77,8 +77,8 @@ export default function RolloutPage() {
                               <span className="text-fg-subtle">–</span>
                             )}
                           </Td>
-                          <Td align="end">{f.freeForever ? <span className="text-fg-subtle">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
-                          <Td>
+                          <Td align="end" data-label="Asked for it" className="max-md:text-start max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? <span className="text-fg-subtle">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
+                          <Td data-label="Overrides" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">
                             {f.freeForever ? (
                               <span className="text-fg-subtle">–</span>
                             ) : (
@@ -87,9 +87,9 @@ export default function RolloutPage() {
                               </button>
                             )}
                           </Td>
-                          <Td className="text-fg-muted">
+                          <Td data-label="Last changed" className="text-fg-muted max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">
                             {f.updatedAt ? `${f.updatedByName ?? "Admin"}, ${formatDate(f.updatedAt)}` : "Default"}
-                            {f.note ? <span className="block max-w-[200px] truncate text-caption font-normal">{f.note}</span> : null}
+                            {f.note ? <span className="block max-w-[200px] truncate text-caption font-normal max-md:max-w-full">{f.note}</span> : null}
                           </Td>
                         </tr>
                       ))}

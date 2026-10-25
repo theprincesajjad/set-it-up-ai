@@ -11,6 +11,7 @@
 # Overrides (all optional):
 #   API_PORT=4100  WEB_PORT=3100  NEXT_DIST_DIR=.next-e2e  E2E_DB_DIR=<dir for the throw-away database>
 #   PW_ARGS="e2e/web-pass.spec.ts"   run only some specs (still against the fresh stack)
+#   PW_RETRIES=0                     Playwright retries (default 0: a flaky test fails the run; PW_ARGS="--retries=N" also works, it comes later)
 #   SKIP_BUILD=1                     reuse the existing production build in NEXT_DIST_DIR (built against the same API port)
 #
 # Specs write screenshots under e2e/screenshots (tracked). Restore them afterwards with
@@ -83,7 +84,7 @@ echo "==> running every spec in apps/web/e2e"
 cd apps/web
 set +e
 # shellcheck disable=SC2086
-E2E_WEB_URL="$WEB_URL" E2E_API_URL="$API_URL" npx playwright test ${PW_ARGS:-}
+E2E_WEB_URL="$WEB_URL" E2E_API_URL="$API_URL" npx playwright test --retries="${PW_RETRIES:-0}" ${PW_ARGS:-}
 status=$?
 set -e
 echo "==> done (exit $status); logs in $LOG_DIR"

@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { cafeQr, repairQuote } from "./fixtures";
+import { cafeQr, fillPhone, repairQuote, newPhone } from "./fixtures";
 
 const shot = (name: string) => `e2e/screenshots/${name}.png`;
 
 test("counter QR join: phone → code → name + consent → joined", async ({ page }) => {
   const { qrCode } = await cafeQr();
-  const phone = `647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+  const phone = newPhone();
   const started = Date.now();
   await page.goto(`/j/${qrCode}?ref=NOTAREALCODE`);
   await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
@@ -16,8 +16,7 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   await page.screenshot({ path: shot("01-join-phone"), fullPage: true });
 
   await consent.check();
-  await page.getByLabel("Mobile number").fill(phone);
-  await expect(page.getByLabel("Mobile number")).toHaveValue(`(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`);
+  await fillPhone(page, phone);
   await page.getByRole("button", { name: "Text me a code" }).click();
 
   await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();

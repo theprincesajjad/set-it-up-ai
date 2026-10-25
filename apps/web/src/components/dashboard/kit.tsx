@@ -25,7 +25,7 @@ export function PageHeader({ title, description, actions, back, className, flush
         <h1 className="text-title text-fg [text-wrap:balance]">{title}</h1>
         {description ? <p className="mt-0.5 text-meta text-fg-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 max-sm:[&>*:not(:only-child)]:grow max-sm:[&>a:only-child]:w-full max-sm:[&>button:only-child]:w-full">{actions}</div> : null}
     </header>
   );
 }

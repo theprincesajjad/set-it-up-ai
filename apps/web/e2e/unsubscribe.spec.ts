@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { API } from "./fixtures";
+import { API, newPhone } from "./fixtures";
 
 /**
  * Unsubscribe links never act on GET (mail scanners and link previews open every URL in a message): the link shows a
@@ -20,7 +20,7 @@ test("a member's unsubscribe link asks first; only the button withdraws consent"
   const { items: shops } = await api<{ items: { id: string }[] }>("GET", "/v1/merchants", undefined, accessToken);
   const shop = shops[0]!.id;
   // A fresh customer who agreed to offers at the counter, so the seeded members are left alone.
-  const phone = `+1647555${String(Math.floor(1000 + Math.random() * 8999))}`;
+  const phone = `+1${newPhone()}`;
   const awarded = await api<{ member: { memberId: string } }>(
     "POST",
     `/v1/merchants/${shop}/counter/award`,
