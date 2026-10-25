@@ -91,10 +91,4 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     return svc.logCheckIn(ctx, user, req.params.merchantId, parse(repApi.logCheckInBody, req.body));
   });
 
-  // ---- Commission ----
-  app.get("/rep/commission", async (req) => {
-    const user = requirePlatformRole(req, "rep");
-    const { repUserId } = parse(repFilter, req.query);
-    return svc.commissionSummary(ctx, user, repUserId);
-  });
 }

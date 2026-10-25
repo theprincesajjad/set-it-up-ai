@@ -1,5 +1,7 @@
 # DRAFT — have a lawyer review
 
+> **Not used (Oct 2026).** The founder decided there are no paid sales reps: onboarding is done by the founder and remote onboarding agents, and the product has no rep commission, bonus or earnings. Rep wage, commission and activation-bonus figures below are kept only as history and for a possible later change of plan; do not use them in the live plan.
+
 > **DRAFT — have a lawyer review.** These are briefing notes for a one-hour call with an Ontario employment lawyer (budgeted at about $3,500 for month 1, together with incorporation; see `one_time_costs` in the model). They are not legal advice and not an agreement.
 
 # Onboarding reps: what to ask the employment lawyer

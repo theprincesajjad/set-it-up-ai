@@ -1,5 +1,7 @@
 # Local Loyalty — Unit economics, rollout gates and pricing
 
+> **Not used (Oct 2026).** The founder decided there are no paid sales reps: onboarding is done by the founder and remote onboarding agents, and the product has no rep commission, bonus or earnings. Rep wage, commission and activation-bonus figures below are kept only as history and for a possible later change of plan; do not use them in the live plan.
+
 Oct 21, 2026 (Pricing v2 update Oct 22, 2026) · Finance & business ops · All money in CAD
 
 This document explains the numbers in the financial model and turns them into decisions. The model is `docs/finance/model/model.py`. It uses the Python standard library only, and every assumption sits in one `ASSUMPTIONS` dict. The workbook is `docs/finance/model/local-loyalty-model.xlsx`, with live formulas checked against `model.py` to within 1e-13. Generated CSVs are in `docs/finance/model/output/`.

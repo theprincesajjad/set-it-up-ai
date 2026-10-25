@@ -107,7 +107,7 @@ If we want to use your information for a new purpose, we will ask you first.
 **Service providers** process data for us under contract and only on our instructions:
 
 - hosting and database: [provider, Canadian region];
-- file storage for uploaded photos: [provider, region]. A photo is never served from a permanent link: each time it is shown it gets a signed link that stops working after {{upload.linkMinutes}};
+- **Cloudflare R2** (file storage for uploaded photos; kept in North America). A photo is never served from a permanent link: each time it is shown it gets a signed link that stops working after {{upload.linkMinutes}};
 - **Stripe** (payments, saved cards, payouts to shops);
 - **Twilio** (SMS and the phone line, including speech-to-text for phone orders);
 - **Meta WhatsApp Cloud API** (WhatsApp messages);

@@ -8,7 +8,6 @@ Reps act as `owner` on merchants they signed (`merchants.repUserId`), so all `/v
 (profile, program, rewards, team, QR kit, import...) work for done-for-you setup.
 
 ## Constants
-- `REP_COMMISSION = { signedCents: 5000, activationBonusCents: 2500, activationWindowDays: 30 }` (PRD: $50 + $25 30-day bonus).
 - `CHECK_IN_DAYS = [7, 30]`.
 - `LEAD_STAGES = new → contacted → visit_booked → signed → activated | lost`. `LEAD_ACTIVITY_KINDS = call | email | visit | note`.
 
@@ -67,12 +66,9 @@ print-ready `qrSvg`, staff script). Not your merchant → `404`.
 ### `POST /v1/rep/merchants/:merchantId/check-ins`
 Body `{ day: 7 | 30, outcome?, notes? }` → `201 RepMerchant` (updated check-in state). Stored in the audit log (`rep.check_in`).
 
-## Commission
+## Commission (removed)
 
-### `GET /v1/rep/commission` (admins: `?repUserId=`)
-→ `CommissionSummary { rates, merchantsSigned, merchantsActivated, signedEarnedCents, activationEarnedCents, totalEarnedCents, pendingBonusCents, items[] }`.
-Per merchant: `signedCents` always; `activationBonusCents` only if `activatedAt` is within `activationWindowDays` of signup.
-`bonusStatus`: `activated` (earned) · `pending` (window open) · `missed`.
+There are no paid reps (founder decision, Oct 2026), so `GET /v1/rep/commission`, `REP_COMMISSION`, `CommissionSummary` and `CommissionItem` are gone (the route now answers `404`). Activation tracking (`activeMembers`, `progressPct`, check-ins) stays; it measures the shop, not pay. `merchants.repUserId` stays as attribution only; the database never had commission columns, so there is no migration.
 
 ## Street day, outcomes, today, proof (rep-and-admin)
 Design: `docs/research/rep-and-admin.md`. Code: `services/rep-field.ts`.

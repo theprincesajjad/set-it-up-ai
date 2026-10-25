@@ -7,9 +7,10 @@
  * Nothing is served from a permanent link. The database stores only the relative path (`/v1/public/uploads/<key>`);
  * every time an upload is shown, `uploadSigner(ctx)` turns it into a short-lived HMAC-signed URL
  * (`?exp=<unix seconds>&sig=<hmac>`, UPLOAD_URL_TTL_SECONDS) that the serving route verifies for signature and expiry.
- * A production object store (S3, R2, GCS) plugs in by passing `providers.storage` to createProviders and
- * implementing `signedUrl` (a presigned GET); the callers do not change. Use `getStorage(ctx)`; never construct a
- * provider in a route.
+ * Production uses Cloudflare R2 (STORAGE_PROVIDER=r2, providers/storageR2.ts: S3 API, presigned GET with expiry).
+ * STORAGE_PROVIDER picks the provider (default: memory in tests, disk elsewhere); another store plugs in by passing
+ * `providers.storage` to createProviders and implementing `signedUrl`; the callers do not change. Use
+ * `getStorage(ctx)`; never construct a provider in a route.
  */
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -17,6 +18,7 @@ import { join } from "node:path";
 import { UPLOAD_LINK_MINUTES } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
+import { R2Storage } from "./storageR2.js";
 
 export interface StoredObject {
   url: string;
@@ -26,7 +28,7 @@ export interface StoredObject {
 export interface StorageProvider {
   name: string;
   put(args: { merchantId: string; contentType: string; body: Buffer }): Promise<StoredObject>;
-  /** Read back an object the provider serves itself (disk and memory). Hosted stores return null: their URLs are public. */
+  /** Read back an object the provider serves itself (disk and memory). Hosted stores may implement it too (R2 does, for the owner export ZIP). */
   get?(key: string): Promise<{ body: Buffer; contentType: string } | null>;
   /** Remove an object (retention and account deletion). Resolves true when something was removed; a missing object is not an error. */
   delete?(key: string): Promise<boolean>;
@@ -117,7 +119,7 @@ export function uploadSigner(ctx: AppContext, ttlSeconds = UPLOAD_URL_TTL_SECOND
   };
 }
 
-function newKey(merchantId: string, contentType: string): string {
+export function newKey(merchantId: string, contentType: string): string {
   return `${merchantId}/${randomBytes(16).toString("hex")}.${IMAGE_TYPES[contentType] ?? "bin"}`;
 }
 
@@ -171,11 +173,23 @@ export class DiskStorage implements StorageProvider {
 
 const fallback = new WeakMap<object, StorageProvider>();
 
+/** The provider STORAGE_PROVIDER names for this config (config.ts has already checked the R2 settings). */
+export function createStorage(config: AppContext["config"], now: () => Date = () => new Date()): StorageProvider {
+  switch (config.storage.provider) {
+    case "r2":
+      return new R2Storage({ ...config.storage.r2!, now });
+    case "memory":
+      return new MemoryStorage();
+    default:
+      return new DiskStorage(process.env.UPLOADS_DIR ?? join(process.cwd(), "data", "uploads"), config.publicApiUrl);
+  }
+}
+
 export function getStorage(ctx: AppContext): StorageProvider {
   if (ctx.providers.storage) return ctx.providers.storage;
   let s = fallback.get(ctx.config);
   if (!s) {
-    s = ctx.config.env === "test" ? new MemoryStorage() : new DiskStorage(process.env.UPLOADS_DIR ?? join(process.cwd(), "data", "uploads"), ctx.config.publicApiUrl);
+    s = createStorage(ctx.config, () => ctx.now());
     fallback.set(ctx.config, s);
   }
   return s;

@@ -11,16 +11,6 @@ import { z } from "zod";
 import { phoneSchema, uuidSchema } from "./common.js";
 import { createMerchantBody, type QrKit } from "./merchant.js";
 
-/** Rep pay (CAD cents). See PRD unit economics: $50 commission + $25 30-day activation bonus. */
-export const REP_COMMISSION = {
-  /** Paid per merchant the rep signs (merchant created with repUserId = rep). */
-  signedCents: 5000,
-  /** Paid when the merchant activates (≥ activation threshold members with a visit)… */
-  activationBonusCents: 2500,
-  /** …within this many days of signup. */
-  activationWindowDays: 30,
-} as const;
-
 /** Rep check-ins after signup (PRD: day 7 and day 30 phone check-ins). */
 export const CHECK_IN_DAYS = [7, 30] as const;
 
@@ -200,28 +190,6 @@ export interface RepMerchant {
   daysSinceSignup: number;
   onboardingStep: string;
   checkIns: CheckInState[];
-}
-
-export interface CommissionItem {
-  merchantId: string;
-  name: string;
-  signedAt: string;
-  activatedAt: string | null;
-  signedCents: number;
-  activationBonusCents: number;
-  /** activated = bonus earned; pending = window still open; missed = window closed without activation. */
-  bonusStatus: "activated" | "pending" | "missed";
-}
-export interface CommissionSummary {
-  rates: typeof REP_COMMISSION;
-  merchantsSigned: number;
-  merchantsActivated: number;
-  signedEarnedCents: number;
-  activationEarnedCents: number;
-  totalEarnedCents: number;
-  /** Bonus still achievable (pending merchants × bonus). */
-  pendingBonusCents: number;
-  items: CommissionItem[];
 }
 
 export type RepQrKit = QrKit;

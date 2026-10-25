@@ -107,7 +107,7 @@ Si nous souhaitons utiliser vos renseignements à une nouvelle fin, nous vous le
 Des **fournisseurs de services** traitent des données pour nous en vertu d'un contrat et seulement selon nos instructions :
 
 - hébergement et base de données : [fournisseur, région canadienne];
-- stockage de fichiers pour les photos téléversées : [fournisseur, région]. Une photo n'est jamais servie par un lien permanent : chaque fois qu'elle est affichée, elle reçoit un lien signé qui cesse de fonctionner après {{upload.linkMinutes}};
+- **Cloudflare R2** (stockage de fichiers pour les photos téléversées; conservé en Amérique du Nord). Une photo n'est jamais servie par un lien permanent : chaque fois qu'elle est affichée, elle reçoit un lien signé qui cesse de fonctionner après {{upload.linkMinutes}};
 - **Stripe** (paiements, cartes enregistrées, versements aux boutiques);
 - **Twilio** (messages texte et ligne téléphonique, y compris la reconnaissance vocale pour les commandes téléphoniques);
 - **Meta WhatsApp Cloud API** (messages WhatsApp);

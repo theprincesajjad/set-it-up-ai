@@ -28,6 +28,15 @@ export interface Config {
    * `postgres`: one shared table (rate_limit_counters), for deployments with more than one instance.
    */
   rateLimit: { store: "memory" | "postgres" };
+  /**
+   * Where uploads live (providers/storage.ts). STORAGE_PROVIDER=r2|disk|memory; default `memory` in tests, `disk` otherwise.
+   * `r2` is Cloudflare R2 over its S3 API and needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET
+   * (R2_ENDPOINT and R2_PUBLIC_BASE are optional). Disk keeps files under UPLOADS_DIR.
+   */
+  storage: {
+    provider: "r2" | "disk" | "memory";
+    r2?: { accountId: string; accessKeyId: string; secretAccessKey: string; bucket: string; endpoint?: string; publicBase?: string };
+  };
   /** Merchants need this many active members to count as "activated". */
   activationThreshold: number;
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
@@ -81,6 +90,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     if (!v && isProd) throw new Error(`Missing required env var ${name}`);
     return v ?? devDefault;
   };
+  const storageProvider = env.STORAGE_PROVIDER || (nodeEnv === "test" ? "memory" : "disk");
+  if (storageProvider !== "r2" && storageProvider !== "disk" && storageProvider !== "memory") throw new Error(`STORAGE_PROVIDER must be r2, disk or memory (got "${storageProvider}")`);
+  if (storageProvider === "memory" && isProd) throw new Error("STORAGE_PROVIDER=memory loses every upload on restart; use r2 or disk in production");
+  const r2Missing = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].filter((n) => !env[n]);
+  if (storageProvider === "r2" && r2Missing.length) throw new Error(`STORAGE_PROVIDER=r2 needs ${r2Missing.join(", ")}`);
   return {
     env: nodeEnv,
     port: Number(env.PORT ?? 4000),
@@ -93,6 +107,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     outbox: { inline: env.OUTBOX_INLINE ? env.OUTBOX_INLINE === "1" : nodeEnv === "test", fastPath: env.OUTBOX_FAST_PATH !== "0" },
     rateLimit: { store: env.RATE_LIMIT_STORE === "postgres" ? "postgres" : "memory" },
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:8081").split(",").map((s) => s.trim()),
+    storage: {
+      provider: storageProvider,
+      r2:
+        storageProvider === "r2"
+          ? { accountId: env.R2_ACCOUNT_ID!, accessKeyId: env.R2_ACCESS_KEY_ID!, secretAccessKey: env.R2_SECRET_ACCESS_KEY!, bucket: env.R2_BUCKET!, endpoint: env.R2_ENDPOINT || undefined, publicBase: env.R2_PUBLIC_BASE || undefined }
+          : undefined,
+    },
     activationThreshold: Number(env.ACTIVATION_THRESHOLD ?? 25),
     sms: {
       provider: env.TWILIO_ACCOUNT_SID ? "twilio" : "console",

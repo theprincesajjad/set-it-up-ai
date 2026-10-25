@@ -32,7 +32,7 @@ Two users, one product, very different days.
 | Lead detail | Activity log | **Keep.** |
 | `/rep/new` nine-step wizard | The 20-minute done-for-you visit | **Keep** for the full setup, **add** `/rep/signup` (four fields, about two minutes, QR on screen). A street rep cannot run a nine-step wizard at a counter. |
 | My merchants (+ detail, kit) | Activation tracking and QR print | **Keep.** Renamed "Shops". |
-| Earnings | Commission under Part B | **Keep, demote** to the account menu. In Part A (no paid reps) it is not a daily screen. Open item: hide when the founder confirms plan A. |
+| Earnings | Commission under Part B | **Removed** (Oct 2026): the founder confirmed plan A, no paid reps. The page, `GET /v1/rep/commission` and the bonus column are gone. |
 | Admin Network page: 4 stat tiles, gauges, weekly visits, by neighbourhood, by type | Network density and rollout gating | **Change.** Tiles replaced by pace, MRR, fee revenue, activation, cost per shop. Gauges and weekly visits **kept** (they gate paid tools). "By type" **cut** (no decision depends on it); "by neighbourhood" became the funnel by area. |
 | Rollout, Merchants, Users, Ads review, BIA campaigns, Audit | Feature gates, support, roles, ad moderation, BIA billing, audit | **Keep.** Audit gets the new action prefixes. |
 | Neighbourhoods and perks | BIA info, perks | **Change.** Gains the launch calendar: opens on, street day, who walks it, shop target. |
@@ -83,7 +83,7 @@ Founder:
 - **Map view and live route re-optimisation.** Walking one street needs an order, not turn-by-turn; Navigate hands off to Google Maps. A map would add a geocoding vendor for no job.
 - **Gamified leaderboards (Spotio-style).** The plan has one or two people on the street.
 - **AI call scripts and an in-app dialer.** The founder phones from his phone; tel: links are enough. The "AI onboarding agents" in the plan are not built here.
-- **Rep payroll.** Commission display stays; payment runs outside the app.
+- **Rep payroll and commission.** Not used: there are no paid reps.
 - **Impersonation by "log in as the owner".** A support session gives access with a reason and audit; we never mint the owner's session.
 - **Per-message SMS/WhatsApp cost ledger.** The counters are monthly credits; cost is an estimate from them. A true ledger needs provider webhooks (open item).
 
@@ -120,7 +120,7 @@ Everything below is built (see the report for check counts). Migration: `package
 
 ## 8. Open items
 
-1. Founder to confirm plan A (no paid reps); then hide Earnings and the commission fields.
+1. ~~Founder to confirm plan A (no paid reps); then hide Earnings and the commission fields.~~ **Resolved (Oct 2026):** the founder confirmed no paid sales reps. Onboarding is done by the founder and remote onboarding agents. Earnings page, commission/bonus fields, endpoint and DTOs are removed; street day, leads, setups and follow-ups stay. No DB columns held commission, so nothing to migrate.
 2. ~~MRR counts the subscription row only.~~ Done (harden team): MRR now includes add-ons and restaurant tiers and Today shows the split.
 3. SMS and WhatsApp cost is estimated from monthly credit counters at assumed unit prices. A true ledger needs Twilio and Meta usage webhooks.
 4. Rep and street-day screens are English only (internal tools). If Hindi, Urdu or Punjabi-speaking reps join, translate with the glossary.

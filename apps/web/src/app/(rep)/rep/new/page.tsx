@@ -226,7 +226,7 @@ export default function NewMerchantPage() {
                 <Button size="sm" variant="ghost" iconStart={Copy} onClick={() => navigator.clipboard?.writeText(joinUrl)}>Copy</Button>
               </div>
             ) : null}
-            <p className="text-body text-fg">Activation goal: 25 active members in 30 days. You earn the activation bonus when they get there.</p>
+            <p className="text-body text-fg">Activation goal: 25 active members in 30 days.</p>
             <div className="flex flex-wrap gap-2">
               <Button href={`/rep/merchants/${created.merchant.id}`}>Open merchant</Button>
               <Button variant="secondary" href="/rep/new" onClick={() => { setCreated(null); setD(EMPTY); setStep(0); }}>Set up another</Button>

@@ -48,7 +48,7 @@ The 10 fair information principles, and what each means for us:
 
 | Principle | What we do |
 | --- | --- |
-| 1. Accountability | Appoint a Privacy Officer (the founder). Publish their contact. Contracts with processors: Stripe, Twilio, hosting, email, Apple/Google wallet |
+| 1. Accountability | Appoint a Privacy Officer (the founder). Publish their contact. Contracts with processors: Stripe, Twilio, Cloudflare (R2 file storage), hosting, email, Apple/Google wallet |
 | 2. Identifying purposes | The privacy policy lists purposes: loyalty ledger, network perks, messages the customer consented to, fraud prevention, aggregated BIA reports |
 | 3. Consent | Meaningful consent at join, in plain language, with layered notices. Express consent for sensitive uses (precise location for nearby push). Separate consent for marketing (CASL) |
 | 4. Limiting collection | Collect phone number, first name and optional birthday month/day (no year: the database now stores only "MM-DD" and refuses a year). **No health data from pharmacies**: front-store only, never prescription information |
@@ -65,7 +65,8 @@ The 10 fair information principles, and what each means for us:
   - **Keep records of *all* breaches for 24 months.**
   - Write a 1-page incident-response plan now.
 - ☐ **Roles and data ownership.** The merchant owns its customer relationship and can export all of its customer data (CSV for every kind of record and one ZIP, on a paid plan and free for 90 days after leaving: `apps/api/src/services/merchant-export.ts`, tests in `apps/api/test/merchant-export.test.ts`). Local Loyalty owns the network account (one login across shops). Document in the merchant agreement who is responsible for what. When a merchant uses member data for its own marketing, the merchant is accountable for its CASL and PIPEDA compliance.
-- ☐ **Data residency.** Host the primary database and backups in a Canadian region where practical (PRD non-functional requirement). Disclose the cross-border processors (Stripe, Twilio, Meta WhatsApp Cloud API, Resend, Expo, Apple/Google, the photo store, map tiles, analytics providers, which may process data in the US). PIPEDA permits transfers with transparency and contractual safeguards.
+- ☐ **Data residency.** Host the primary database and backups in a Canadian region where practical (PRD non-functional requirement). Disclose the cross-border processors (Stripe, Twilio, Meta WhatsApp Cloud API, Resend, Expo, Apple/Google, Cloudflare R2 (the photo store), map tiles, analytics providers, which may process data in the US). PIPEDA permits transfers with transparency and contractual safeguards.
+- ☐ **File storage (Cloudflare R2).** Photos and exports live in one private R2 bucket (`docs/engineering/storage-go-live.md`). R2 has no Canada jurisdiction: a location hint (`enam`/`wnam`) is best effort, so state "North America", not "Canada", in the privacy policy and do not promise Canadian residency for files. Accept Cloudflare's DPA, confirm the lifecycle backstop matches `packages/shared/src/retention.ts`, and keep the bucket private (no public domain). **VERIFY** the current location options before launch.
 - ☐ **Location.** Use coarse or approximate location by default. Get precise location only with opt-in for nearby features; do not store location history beyond 30 days.
 - ☐ **Minors.** Accounts are 16+ unless counsel approves otherwise (**VERIFY** with counsel). No targeted promos to known minors.
 - ☐ **Privacy impact assessment** before launching nearby push, ads targeting and BIA data reports.
@@ -94,6 +95,8 @@ Ontario prohibits loyalty points, bonuses or inducements tied to **prescriptions
 - ☐ Lottery products, firearms, adult content and payday lenders: excluded from ads.
 
 ## 5. Employment: student reps (Ontario *Employment Standards Act, 2000*)
+
+> **Not used (decided Oct 2026).** There are no paid sales reps: the founder and remote onboarding agents do onboarding, and the product has no rep commission, bonus or earnings screen. This section applies only if the plan changes and paid reps are hired later.
 
 The PRD's original idea of **commission-only student interns is not allowed.** Most interns are employees owed minimum wage. Unpaid placements are lawful only inside qualifying school programs ([McMillan](https://mcmillan.ca/insights/internal-affairs-managing-unpaid-internships-in-ontario/), cited in the PRD).
 

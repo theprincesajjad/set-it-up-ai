@@ -234,7 +234,7 @@ export const merchants = pgTable(
     coverUrl: text("cover_url"),
     brandColor: text("brand_color"),
     timezone: text("timezone").notNull().default("America/Toronto"),
-    /** Rep who signed the merchant (for commission + activation bonus). */
+    /** Rep who signed the merchant (attribution only; no pay is calculated from it). */
     repUserId: uuid("rep_user_id").references(() => users.id),
     /** Set when the merchant hits the activation threshold (25 active members). */
     activatedAt: ts("activated_at"),

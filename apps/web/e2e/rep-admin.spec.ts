@@ -94,6 +94,16 @@ test.describe("rep on a street day (phone)", () => {
     await shot(page, "rep-signup-done");
     await expect(page.getByRole("link", { name: "Back to the street day" })).toBeVisible();
   });
+
+  test("no paid reps: no Earnings page, no commission API, no bonus column", async ({ page }) => {
+    await signIn(page, REP);
+    const res = await page.goto("/rep/earnings");
+    expect(res?.status()).toBe(404);
+    expect((await fetch(`${API}/v1/rep/commission`, { headers: { authorization: `Bearer ${await token(REP)}` } })).status).toBe(404);
+    await page.goto("/rep/merchants");
+    await expect(page.getByRole("heading", { level: 1, name: "My merchants" })).toBeVisible();
+    await expect(page.getByText(/Activation bonus|Earnings|commission/i)).toHaveCount(0);
+  });
 });
 
 test.describe("founder's console (desktop)", () => {

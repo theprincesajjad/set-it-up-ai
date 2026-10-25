@@ -66,7 +66,7 @@ describe("rep console", () => {
     expect((await env.app.inject({ method: "GET", url: "/v1/rep/leads?due=true", headers: auth(r1.token) })).json().items).toHaveLength(0);
   });
 
-  it("creates a merchant on behalf of the owner (done-for-you), QR kit, activation tracking, commission", async () => {
+  it("creates a merchant on behalf of the owner (done-for-you), QR kit, activation tracking", async () => {
     const r = await rep();
     const hood = await createNeighbourhood(env.db, "roncesvalles");
     const lead = (await env.app.inject({ method: "POST", url: "/v1/rep/leads", headers: auth(r.token), payload: { businessName: "Roncy Repair", neighbourhoodId: hood.id } })).json();
@@ -109,9 +109,6 @@ describe("rep console", () => {
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({ activeMembers: 0, target: 3, progressPct: 0 });
     expect(mine[0].checkIns.map((c: { due: boolean }) => c.due)).toEqual([false, false]);
-    let comm = (await env.app.inject({ method: "GET", url: "/v1/rep/commission", headers: auth(r.token) })).json();
-    expect(comm).toMatchObject({ merchantsSigned: 1, signedEarnedCents: 5000, activationEarnedCents: 0, pendingBonusCents: 2500 });
-    expect(comm.items[0].bonusStatus).toBe("pending");
 
     env.clock.now = new Date(env.clock.now.getTime() + 8 * DAY);
     const t2 = await tokenFor(env, r.user);
@@ -122,20 +119,17 @@ describe("rep console", () => {
     expect(ci.json().checkIns[0]).toMatchObject({ due: false });
     expect(ci.json().checkIns[0].doneAt).not.toBeNull();
 
-    // Merchant activates (3 members with a visit) inside 30 days → bonus earned, lead → activated.
+    // Merchant activates (3 members with a visit) inside 30 days → lead → activated.
     for (let i = 0; i < 3; i++) await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", amountCents: 2500 });
-    comm = (await env.app.inject({ method: "GET", url: "/v1/rep/commission", headers: auth(t2) })).json();
-    expect(comm).toMatchObject({ merchantsActivated: 1, activationEarnedCents: repApi.REP_COMMISSION.activationBonusCents, totalEarnedCents: 7500, pendingBonusCents: 0 });
+    mine = (await env.app.inject({ method: "GET", url: "/v1/rep/merchants", headers: auth(t2) })).json().items;
+    expect(mine[0]).toMatchObject({ activeMembers: 3, progressPct: 100 });
     const leadNow = (await env.app.inject({ method: "GET", url: `/v1/rep/leads/${lead.id}`, headers: auth(t2) })).json();
     expect(leadNow.stage).toBe("activated");
   });
 
-  it("no activation bonus when the merchant activates after the 30-day window", async () => {
+  it("the commission and earnings endpoints are gone (no paid reps)", async () => {
     const r = await rep();
-    const m = await createMerchant(env);
-    await env.db.update(merchants).set({ repUserId: r.user.id, createdAt: new Date(env.clock.now.getTime() - 40 * DAY), activatedAt: env.clock.now }).where(eq(merchants.id, m.merchant.id));
-    const comm = (await env.app.inject({ method: "GET", url: "/v1/rep/commission", headers: auth(r.token) })).json();
-    expect(comm.items[0]).toMatchObject({ bonusStatus: "missed", activationBonusCents: 0 });
-    expect(comm.totalEarnedCents).toBe(5000);
+    for (const url of ["/v1/rep/commission", "/v1/rep/earnings"]) expect((await env.app.inject({ method: "GET", url, headers: auth(r.token) })).statusCode).toBe(404);
+    expect("REP_COMMISSION" in repApi).toBe(false);
   });
 });

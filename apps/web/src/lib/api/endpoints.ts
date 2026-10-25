@@ -151,7 +151,6 @@ export function llApi(c: ApiClient) {
       qrKit: (merchantId: string) => c.get<merchantApi.QrKit>(`/v1/rep/merchants/${enc(merchantId)}/qr-kit`),
       checkIn: (merchantId: string, body: { day: 7 | 30; outcome?: string; notes?: string }) =>
         c.post<repApi.RepMerchant>(`/v1/rep/merchants/${enc(merchantId)}/check-ins`, body),
-      commission: (q: Q = {}) => c.get<repApi.CommissionSummary>("/v1/rep/commission", { query: q }),
       today: () => c.get<repApi.RepToday>("/v1/rep/today"),
       streetDay: (q: Q = {}) => c.get<repApi.StreetDay>("/v1/rep/street-day", { query: q }),
       proof: (q: Q = {}) => c.get<repApi.PitchProof>("/v1/rep/proof", { query: q }),

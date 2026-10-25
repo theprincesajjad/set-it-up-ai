@@ -1,6 +1,6 @@
 "use client";
 import {
-  BadgeDollarSign, BarChart3, ClipboardList, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
+  BarChart3, ClipboardList, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
@@ -11,7 +11,7 @@ import { BiaSwitcher } from "./bia/BiaSwitcher";
 import { Shell } from "./Shell";
 
 const ICONS: Record<string, LucideIcon> = {
-  today: LayoutDashboard, day: Footprints, costs: Coins, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package, earnings: BadgeDollarSign,
+  today: LayoutDashboard, day: Footprints, costs: Coins, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package,
   network: BarChart3, rollout: Gauge, plans: CreditCard, neighbourhoods: MapPinned, users: Users, ads: Flag, campaigns: ClipboardList, audit: History,
   overview: LayoutDashboard, shops: Store, reports: FileText, onboarding: Rocket,
 };
@@ -53,7 +53,7 @@ export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: au
   const links = [
     ...(me.platformRole === "admin" && kind !== "admin" ? [{ href: "/admin", label: "Admin" }] : []),
     ...(me.platformRole !== "none" && kind !== "rep" ? [{ href: "/rep", label: "Rep console" }] : []),
-    ...(kind === "rep" ? [{ href: "/rep/signup", label: "Sign up a shop" }, { href: "/rep/new", label: "Full setup" }, { href: "/rep/earnings", label: "Earnings" }] : []),
+    ...(kind === "rep" ? [{ href: "/rep/signup", label: "Sign up a shop" }, { href: "/rep/new", label: "Full setup" }] : []),
     ...me.merchants.slice(0, 3).map((m) => ({ href: `/m/${m.merchantId}`, label: m.name })),
   ];
   const search = useMemo<CommandSearch | undefined>(

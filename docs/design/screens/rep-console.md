@@ -5,7 +5,7 @@ For internal onboarding reps who set up merchants on-site (20-minute visit) or b
 standing at a counter**, so it is mobile-first like the dashboard.
 
 Shell: same as merchant dashboard with a 4 px `info` top strip and "Rep" Badge next to the logo.
-Nav: Today · My merchants · New merchant · Neighbourhoods · Kits · Earnings.
+Nav: Today · My merchants · New merchant · Neighbourhoods · Kits. (Earnings was removed: no paid reps.)
 
 ## 1. Today
 
@@ -40,8 +40,7 @@ shop's Wi-Fi is weak; final "Create" needs a connection.
 ## 3. My merchants
 
 DataTable: Shop (logo + name), Vertical, Status Badge (onboarding/active/paused/closed), Signed
-date, Active members (ProgressBar to 25), Days since signed, Next follow-up, Activation bonus
-(Badge: Earned / Pending / Missed). Filters: status, activation state, neighbourhood. Row → merchant
+date, Active members (ProgressBar to 25), Days since signed, Next follow-up. Filters: status, activation state, neighbourhood. Row → merchant
 summary (read-mostly view of the merchant's Home KPIs, program, staff, last 10 transactions, notes,
 "Open as merchant" impersonation with a sticky danger Banner "Viewing as Sorauren Coffee. Changes
 are logged." and "Exit").
@@ -56,11 +55,9 @@ form (name, vertical, address, notes, owner present? Y/N).
 
 Inventory of QR stands/decals the rep carries, reorder button, print queue for merchants.
 
-## 6. Earnings
+## 6. Earnings (removed)
 
-Hourly shifts logged + activation bonuses (merchant reached 25 active members within 30 days).
-Table by week; never commission-only language (see PRD legal note). Copy: "Shifts", "Activation
-bonuses", "Paid on {date}".
+Not built any more: there are no paid reps, so no earnings, shifts or bonus screen.
 
 ## States
 

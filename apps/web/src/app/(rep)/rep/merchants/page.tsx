@@ -4,7 +4,6 @@ import { Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { repApi } from "@ll/shared";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -13,11 +12,6 @@ import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
-
-function bonus(m: repApi.RepMerchant): { label: string; tone: "success" | "info" | "neutral" } {
-  if (m.activatedAt) return new Date(m.activatedAt).getTime() - new Date(m.createdAt).getTime() <= 30 * 86_400_000 ? { label: "Earned", tone: "success" } : { label: "Missed", tone: "neutral" };
-  return m.daysSinceSignup <= 30 ? { label: "Pending", tone: "info" } : { label: "Missed", tone: "neutral" };
-}
 
 export default function RepMerchantsPage() {
   const router = useRouter();
@@ -32,7 +26,6 @@ export default function RepMerchantsPage() {
     { key: "active", header: "Active members", mobile: "subtitle", sortValue: (m) => m.activeMembers, cell: (m) => <ProgressBar className="min-w-32" value={m.activeMembers} max={m.target} valueText={`${m.activeMembers} / ${m.target}`} /> },
     { key: "days", header: "Days", align: "end", mobile: "hidden", sortValue: (m) => m.daysSinceSignup, cell: (m) => m.daysSinceSignup },
     { key: "next", header: "Next check-in", mobile: "subtitle", cell: (m) => { const c = m.checkIns.find((x) => !x.doneAt); return c ? `${c.due ? "Due: " : ""}day ${c.day} · ${formatDate(c.dueAt)}` : "Done"; } },
-    { key: "bonus", header: "Activation bonus", mobile: "hidden", cell: (m) => { const b = bonus(m); return <Badge tone={b.tone}>{b.label}</Badge>; } },
   ];
   return (
     <div className="flex flex-col gap-4">

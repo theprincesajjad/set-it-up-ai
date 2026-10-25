@@ -109,7 +109,7 @@ for (const width of [1440, 390]) {
 
     test("rep console", async ({ page }) => {
       await signIn(page, REP);
-      for (const [name, path] of [["40-rep-today", "/rep"], ["41-rep-leads", "/rep/leads"], ["42-rep-merchants", "/rep/merchants"], ["43-rep-new", "/rep/new"], ["44-rep-earnings", "/rep/earnings"]] as const) await shoot(page, name, path, width);
+      for (const [name, path] of [["40-rep-today", "/rep"], ["41-rep-leads", "/rep/leads"], ["42-rep-merchants", "/rep/merchants"], ["43-rep-new", "/rep/new"]] as const) await shoot(page, name, path, width);
       const id = await merchantOf(OWNER);
       await shoot(page, "45-rep-merchant", `/rep/merchants/${id}`, width);
     });

@@ -42,7 +42,7 @@ export interface ShellProps {
   children: ReactNode;
 }
 
-const CRUMBS: Record<string, string> = { kit: "QR kit", import: "Import", new: "New", developers: "Webhooks & API", automations: "Automations", earnings: "Earnings" };
+const CRUMBS: Record<string, string> = { kit: "QR kit", import: "Import", new: "New", developers: "Webhooks & API", automations: "Automations" };
 /** Last path segment as a breadcrumb label (ids read as "Details"). */
 function crumb(pathname: string): string {
   const seg = pathname.split("/").filter(Boolean).pop() ?? "";

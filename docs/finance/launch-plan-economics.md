@@ -1,5 +1,7 @@
 # Launch plan economics
 
+> **Not used (Oct 2026).** The founder decided there are no paid sales reps: onboarding is done by the founder and remote onboarding agents, and the product has no rep commission, bonus or earnings. Rep wage, commission and activation-bonus figures below are kept only as history and for a possible later change of plan; do not use them in the live plan.
+
 Oct 22, 2026 · Finance · All money in CAD · Model month 1 = Nov 2026
 
 **The founder's question:** "If we spend 3 months with no revenue, just non-stop onboarding (bootstrapped), and then switch on the subscription plans for all the other features so revenue starts then, what happens?"

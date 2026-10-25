@@ -1,6 +1,6 @@
 /**
  * Rep console: leads pipeline, done-for-you merchant creation, QR kits,
- * activation tracking with day-7/day-30 check-ins, commission summary.
+ * activation tracking with day-7/day-30 check-ins.
  */
 import { startSupportSession } from "./admin-ops.js";
 import { and, asc, desc, eq, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
@@ -290,40 +290,4 @@ export async function logCheckIn(ctx: AppContext, user: AuthUser, merchantId: st
   await writeAudit(ctx.db, { actorUserId: user.id, merchantId, action: "rep.check_in", entity: "merchant", entityId: merchantId, data: { day: body.day, outcome: body.outcome ?? null, notes: body.notes ?? null } });
   const list = m.repUserId ? await listRepMerchants(ctx, user, m.repUserId) : [];
   return list.find((x) => x.merchantId === merchantId) ?? ({ merchantId, name: m.name, checkIns: await checkInStatesFor(ctx.db, m, ctx.now()) } as repApi.RepMerchant);
-}
-
-// ---------------------------------------------------------------------------
-// Commission
-// ---------------------------------------------------------------------------
-export async function commissionSummary(ctx: AppContext, user: AuthUser, repUserId?: string): Promise<repApi.CommissionSummary> {
-  const who = repUserId && isAdmin(user) ? repUserId : user.id;
-  const list = await repMerchants(ctx.db, who);
-  const rates = repApi.REP_COMMISSION;
-  const now = ctx.now();
-  const items: repApi.CommissionItem[] = list.map((m) => {
-    const deadline = m.createdAt.getTime() + rates.activationWindowDays * DAY;
-    const activatedInWindow = !!m.activatedAt && m.activatedAt.getTime() <= deadline;
-    const bonusStatus: repApi.CommissionItem["bonusStatus"] = activatedInWindow ? "activated" : now.getTime() <= deadline && !m.activatedAt ? "pending" : "missed";
-    return {
-      merchantId: m.id,
-      name: m.name,
-      signedAt: m.createdAt.toISOString(),
-      activatedAt: iso(m.activatedAt),
-      signedCents: rates.signedCents,
-      activationBonusCents: activatedInWindow ? rates.activationBonusCents : 0,
-      bonusStatus,
-    };
-  });
-  const signedEarnedCents = items.length * rates.signedCents;
-  const activationEarnedCents = items.reduce((s, i) => s + i.activationBonusCents, 0);
-  return {
-    rates,
-    merchantsSigned: items.length,
-    merchantsActivated: list.filter((m) => m.activatedAt).length,
-    signedEarnedCents,
-    activationEarnedCents,
-    totalEarnedCents: signedEarnedCents + activationEarnedCents,
-    pendingBonusCents: items.filter((i) => i.bonusStatus === "pending").length * rates.activationBonusCents,
-    items,
-  };
 }

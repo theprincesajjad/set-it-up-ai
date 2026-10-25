@@ -1,5 +1,7 @@
 # Student Rep Program
 
+> **Not used (Oct 2026).** The founder decided there are no paid sales reps: onboarding is done by the founder and remote onboarding agents, and the product has no rep commission, bonus or earnings. Rep wage, commission and activation-bonus figures below are kept only as history and for a possible later change of plan; do not use them in the live plan.
+
 Last updated: Oct 21, 2026 · Owner: founder / head of sales
 
 Part-time student reps do the street work: mapping, calls, walk-ins, 20-minute setups and check-ins. This page covers hiring them legally, training, the daily routine, targets, pay and CRM hygiene.
