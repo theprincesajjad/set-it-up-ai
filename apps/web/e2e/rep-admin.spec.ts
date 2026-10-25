@@ -175,11 +175,13 @@ test.describe("founder's console (desktop)", () => {
     await page.goto(`/m/${shop.id}`);
     const banner = page.getByTestId("support-banner");
     await expect(banner).toContainText("start a support session");
+    await shot(page, "support-banner-before");
     const start = banner.getByRole("button", { name: "Start support session" });
     await expect(start).toBeDisabled();
     await banner.getByLabel("Reason (audit log)").fill(`e2e banner ${Date.now() % 100000}`);
     await start.click();
     await expect(banner).toContainText("Support session open until");
+    await shot(page, "support-banner-open");
     expect((await write(7)).status).toBe(200);
     await banner.getByRole("button", { name: "End session" }).click();
     await expect(banner).toContainText("start a support session");
@@ -192,6 +194,7 @@ test.describe("founder's console (desktop)", () => {
     const split = page.getByTestId("mrr-split");
     await expect(split).toBeVisible();
     for (const label of ["Plus and Pro", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
+    await shot(page, "admin-today-mrr-split");
     const o = await api<{ money: { mrrCents: number; mrrSplit: Record<string, number> } }>("/v1/admin/overview", await token(ADMIN));
     expect(Object.values(o.money.mrrSplit).reduce((a, b) => a + b, 0)).toBe(o.money.mrrCents);
   });
