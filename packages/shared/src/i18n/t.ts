@@ -93,14 +93,13 @@ export function t(locale: Locale, key: MessageKey, vars?: Vars): string {
 }
 
 /**
- * For a right-to-left language: a message that opens with a Latin run ("Local Loyalty کی خبریں") would be laid out left to
- * right by the browser's first-strong rule. A leading RLM (U+200F) makes the Urdu text decide the paragraph direction.
- * Text inside isolates (the wrapped shop and customer names) is ignored when looking for the first letter.
+ * For a right-to-left language: a message that opens with a Latin run ("Local Loyalty کی خبریں") or with an isolated name
+ * ("\u2068Sarson Dhaba\u2069 میں خوش آمدید") would be laid out left to right by the browser's first-strong rule (Chromium's `dir="auto"`
+ * looks inside isolates). A leading RLM (U+200F) makes the paragraph right to left; it is zero-width.
  */
 export function withRtlMark(locale: Locale, text: string): string {
   if (LOCALES[locale].dir !== "rtl" || !text) return text;
-  const outside = text.replace(/[\u2066\u2067\u2068][\s\S]*?\u2069/g, "");
-  return /^[^\p{L}]*\p{Script=Latin}/u.test(outside) ? `\u200F${text}` : text;
+  return /^[^\p{L}\u2066-\u2068]*(\p{Script=Latin}|[\u2066-\u2068])/u.test(text) ? `\u200F${text}` : text;
 }
 
 /** Bind a locale once: `const tr = translator("ur"); tr("menu.add")`. */

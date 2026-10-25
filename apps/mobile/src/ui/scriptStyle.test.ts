@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scriptStyle, URDU_MIN_LINE_HEIGHT } from "./scriptStyle";
+import { mayHoldUrdu, scriptStyle, URDU_MIN_LINE_HEIGHT } from "./scriptStyle";
 
 describe("scriptStyle", () => {
   it("leaves English, Hindi and Punjabi text alone", () => {
@@ -16,5 +16,14 @@ describe("scriptStyle", () => {
 
   it("switches off letter-spacing (it breaks Arabic-script joins) and italics", () => {
     expect(scriptStyle("ur", { fontSize: 15, lineHeight: 18 })).toMatchObject({ letterSpacing: 0, fontStyle: "normal" });
+  });
+
+  it("skips Latin codes and numbers, which keep the spacing they were designed with", () => {
+    expect(scriptStyle("ur", { fontSize: 28, lineHeight: 34 }, "YDKM J5DN")).toBeNull();
+    expect(scriptStyle("ur", { fontSize: 28, lineHeight: 34 }, 394)).toBeNull();
+    expect(scriptStyle("ur", { fontSize: 14, lineHeight: 18 }, "ریڈیم کریں")).not.toBeNull();
+    expect(mayHoldUrdu(["5 ", "اسٹامپ"])).toBe(true);
+    expect(mayHoldUrdu(["Nonna's Table"])).toBe(false);
+    expect(mayHoldUrdu({ type: "span" })).toBe(true);
   });
 });

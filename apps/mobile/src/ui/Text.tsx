@@ -25,7 +25,7 @@ export function Text({ variant = "body", color = "fg", rawColor, center, tabular
   const rtl = useIsRtl();
   const locale = useLocaleCode();
   const base = typo(variant);
-  const script = scriptStyle(locale, StyleSheet.flatten([base, style]) ?? {});
+  const script = scriptStyle(locale, StyleSheet.flatten([base, style]) ?? {}, rest.children);
   return (
     <RNText
       {...rest}

@@ -348,8 +348,6 @@ export async function activeBoosts(
   merchant: Pick<Merchant, "id" | "timezone" | "plan" | "betaOptIn">,
   at: Date,
 ): Promise<(ActiveBoost & { promoId: string })[]> {
-  const on = (await enabledFeaturesFor(tx, [merchant], ["promos.double_points"])).get(merchant.id);
-  if (!on?.has("promos.double_points")) return [];
   const rows = await tx
     .select()
     .from(promos)
@@ -362,6 +360,10 @@ export async function activeBoosts(
         or(isNull(promos.endsAt), gte(promos.endsAt, at)),
       ),
     );
+  // Most shops have no live boost: only resolve the feature (three queries) when there is something it could switch off.
+  if (!rows.length) return [];
+  const on = (await enabledFeaturesFor(tx, [merchant], ["promos.double_points"])).get(merchant.id);
+  if (!on?.has("promos.double_points")) return [];
   return rows
     .filter((p) => promoAppliesAt(p, at, merchant.timezone))
     .map((p) => ({

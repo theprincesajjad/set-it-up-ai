@@ -157,7 +157,8 @@ export default function Discover() {
           accessibilityLabel={hero ? `${hero.eyebrow}. ${hero.headline}${hero.progress ? `. ${tr("ui.progressOf", { value: hero.progress.value, max: hero.progress.max })}` : ""}` : undefined}
           disabled={!live}
           onPress={() => live && router.push(`/campaigns/${live.id}`)}
-          style={[styles.hero, { height: top(340) }]}
+          // Urdu lines are taller (Nastaliq needs 1.7 line height), so the black hero gets room for the headline under the wordmark.
+          style={[styles.hero, { height: top(340) + (L.locale === "ur" ? 112 : 0) }]}
         >
           <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} viewBox="0 0 390 340" preserveAspectRatio="xMidYMid slice">
             <Path d="M150 -20 L 230 360" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />

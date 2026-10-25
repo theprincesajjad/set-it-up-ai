@@ -78,12 +78,14 @@ describe("helpers", () => {
 });
 
 describe("withRtlMark", () => {
-  it("puts an RLM in front of an Urdu message that opens with a Latin run, so the Urdu decides the direction", () => {
-    expect(withRtlMark("ur", "Local Loyalty کی خبریں")).toBe("‏Local Loyalty کی خبریں");
+  it("puts an RLM in front of an Urdu message that opens with a Latin run or an isolated name, so the paragraph runs right to left", () => {
+    expect(withRtlMark("ur", "Local Loyalty کی خبریں")).toBe("\u200FLocal Loyalty کی خبریں");
+    expect(withRtlMark("ur", "\u2068Sarson Dhaba\u2069 میں خوش آمدید")).toBe("\u200F\u2068Sarson Dhaba\u2069 میں خوش آمدید");
+    expect(withRtlMark("ur", "(Local Loyalty) کی خبریں")).toBe("\u200F(Local Loyalty) کی خبریں");
   });
-  it("leaves messages that already open with Urdu, isolated names, other languages and empty text alone", () => {
+  it("leaves messages that open with Urdu, other languages and empty text alone", () => {
     expect(withRtlMark("ur", "آپ کا کارڈ")).toBe("آپ کا کارڈ");
-    expect(withRtlMark("ur", "⁨Sarson Dhaba⁩ میں خوش آمدید")).toBe("⁨Sarson Dhaba⁩ میں خوش آمدید");
+    expect(withRtlMark("ur", "آپ کا کارڈ \u2068Sarson Dhaba\u2069")).toBe("آپ کا کارڈ \u2068Sarson Dhaba\u2069");
     expect(withRtlMark("hi", "Local Loyalty की खबरें")).toBe("Local Loyalty की खबरें");
     expect(withRtlMark("en", "Hello")).toBe("Hello");
     expect(withRtlMark("ur", "")).toBe("");

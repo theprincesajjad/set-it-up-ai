@@ -5,7 +5,7 @@
  */
 import { MAP_CATEGORIES, verticalCategory, type MapCategoryId } from "@ll/design-tokens";
 import { placeKindLabel } from "@ll/shared";
-import { formatPtsL, type L } from "./formatL";
+import { formatPtsL, isolateL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
 export { MAP_CATEGORIES };
@@ -141,7 +141,7 @@ export function pinSubtitle(vertical: string, m: PinMembership | null, extra: { 
 /** `pinSubtitle` in the shopper's language (English keeps the wording above). */
 export function pinSubtitleL(L: L, vertical: string, m: PinMembership | null, extra: { promoLine?: string | null; perk?: string | null } = {}): { text: string; accent: boolean } {
   if (L.locale === "en") return pinSubtitle(vertical, m, extra);
-  if (!m) return { text: shopLine({ promoLine: extra.promoLine, perk: extra.perk, kind: placeKindLabel(L.locale, vertical) }), accent: false };
+  if (!m) return { text: shopLine({ promoLine: isolateL(L, extra.promoLine), perk: isolateL(L, extra.perk), kind: placeKindLabel(L.locale, vertical) }), accent: false };
   if (m.rewardsAvailableCount > 0) return { text: L.t(m.rewardsAvailableCount > 1 ? "sh.wallet.rewardsReadyN" : "sh.wallet.rewardReady", { n: m.rewardsAvailableCount }), accent: true };
   if (m.earnType === "stamps" && m.stampGoal && m.stampGoal > 0) return { text: L.t("ms.stampsProgress", { n: Math.min(m.balance, m.stampGoal), goal: m.stampGoal }), accent: false };
   return { text: formatPtsL(L, m.balance, m.terminology), accent: false };

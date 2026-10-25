@@ -199,14 +199,16 @@ export function RedeemConfirmSheet({
               {formatPtsL(L, reward.pointsCost, membership.terminology)}
             </Text>
           </View>
-          <View style={{ flexDirection: "row" }}>
-            <Text color="fgMuted" style={{ flex: 1 }}>
-              {t("ms.redeem.after")}
-            </Text>
-            <Text variant="bodyStrong" tabular>
-              {formatPtsL(L, Math.max(0, after), membership.terminology)}
-            </Text>
-          </View>
+          {Number.isFinite(after) ? (
+            <View style={{ flexDirection: "row" }}>
+              <Text color="fgMuted" style={{ flex: 1 }}>
+                {t("ms.redeem.after")}
+              </Text>
+              <Text variant="bodyStrong" tabular>
+                {formatPtsL(L, Math.max(0, after), membership.terminology)}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Card>
       {reward.description ? <Text variant="meta" color="fgMuted">{reward.description}</Text> : null}

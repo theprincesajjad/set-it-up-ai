@@ -128,6 +128,14 @@ export function CounterApp({
   clock = Date.now,
 }: CounterAppProps) {
   const [mode, setMode] = useState<"scan" | "verify">("scan");
+  // The counter is server-rendered, so it is on screen before React can hear a tap or a scanner's keystrokes (the key
+  // listener below attaches in an effect). Anything entered in that gap was silently lost. `ready` flips in the same
+  // commit as those effects: the keypad stays disabled until then and the scan panel says so (data-scan-ready).
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReady(true);
+  }, []);
   const [staff, setStaff] = useState<CounterStaff | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const api = staff && pin ? pin.apiAs(staff.token) : baseApi;
@@ -812,6 +820,7 @@ export function CounterApp({
           {mode === "scan" && phase.kind === "idle" && !pinOpen ? (
             <>
               <ScanPanel
+                ready={ready}
                 onScan={onScan}
                 hint={
                   program.counterAutoStamp && !perDollar
@@ -823,7 +832,7 @@ export function CounterApp({
                 or type the last 4 digits of their phone
               </p>
               <DigitBoxes value={entry} />
-              <ScanKeypad onKey={onDigit} disabled={busy} />
+              <ScanKeypad onKey={onDigit} disabled={busy || !ready} />
               <div className="flex items-center justify-between text-[13px] text-fg-muted">
                 <span className="flex items-center gap-2">
                   <span

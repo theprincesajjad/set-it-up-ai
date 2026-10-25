@@ -4,7 +4,7 @@ import { auditLogs, featureRollouts, merchants, users } from "@ll/db";
 import { FEATURES, FREE_FOREVER } from "@ll/shared";
 import { requireFeature } from "../src/services/features.js";
 import { awardPurchase } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
 let adminToken: string;
@@ -144,6 +144,11 @@ describe("admin", () => {
     expect(page.nextCursor).not.toBeNull();
     const detail = (await get(`/v1/admin/merchants/${a.merchant.id}`)).json();
     expect(detail.staff[0].role).toBe("owner");
+    // Pausing a shop is a write inside it: refused until the admin has a support session for that shop.
+    const noSession = await env.app.inject({ method: "POST", url: `/v1/admin/merchants/${a.merchant.id}/status`, headers: auth(adminToken), payload: { status: "paused", reason: "Owner request" } });
+    expect(noSession.statusCode).toBe(403);
+    expect(noSession.json().error.code).toBe("support_session_required");
+    await openSupportSession(env, admin.id, a.merchant.id, "Pause at the owner's request");
     expect((await env.app.inject({ method: "POST", url: `/v1/admin/merchants/${a.merchant.id}/status`, headers: auth(adminToken), payload: { status: "paused" } })).statusCode).toBe(400);
     const paused = await env.app.inject({ method: "POST", url: `/v1/admin/merchants/${a.merchant.id}/status`, headers: auth(adminToken), payload: { status: "paused", reason: "Owner request" } });
     expect(paused.json().status).toBe("paused");

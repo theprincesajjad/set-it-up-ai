@@ -48,7 +48,7 @@ function instrument(client: { query: (...a: never[]) => Promise<unknown>; transa
       } finally {
         if (counting) {
           log.push({ text: String((a as unknown[])[0]), ms: performance.now() - t0 });
-          if (process.env.LOAD_STACK && String((a as unknown[])[0]).includes(process.env.LOAD_STACK)) console.log("STACK", new Error().stack?.split("\n").filter((l) => l.includes("/src/")).slice(0, 6).join(" <- "));
+          if (process.env.LOAD_STACK && String((a as unknown[])[0]).includes(process.env.LOAD_STACK)) console.log("STACK", new Error().stack?.split("\n").filter((l) => l.includes("apps/api/src")).slice(0, 5).map((l) => l.trim().replace(/.*apps\/api\/src\//, "")).join(" <- "));
         }
       }
     }) as never;

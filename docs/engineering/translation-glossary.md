@@ -155,7 +155,7 @@ Punjabi
 
 - Layout: the mobile root sets `direction` and `dir`, so rows flip. Use `start` / `end`, `marginStart` / `paddingStart` and `textAlign` through `Text`, never `left` / `right`, except for things tied to the map (pins, mini map) which keep their geometry (`direction: ltr`, `dir="ltr"`).
 - Icons that mean a direction (back, next, disclosure chevrons) are mirrored by `ChevronLeft` / `ChevronRight` in `ui/icons.ts`. Icons that rotate (accordions) use `ChevronRightLtr`.
-- Bidi: shop names, reward names, amounts and links that sit inside an Urdu sentence are wrapped in an isolate (`t()` does it for the variables listed in `lib/i18n/index.tsx`; `money()` wraps amounts). A message that opens with a Latin run gets a leading RLM (`withRtlMark`) so the Urdu decides the direction.
+- Bidi: shop names, reward names, amounts and links that sit inside an Urdu sentence are wrapped in an isolate (`t()` does it for the variables listed in `lib/i18n/index.tsx`; `money()` wraps amounts). A message that opens with a Latin run or an isolated name gets a leading RLM (`withRtlMark`), because Chromium's `dir="auto"` looks inside isolates and would lay the whole paragraph out left to right.
 - Script: `ui/scriptStyle.ts` gives Urdu text a line height of at least 1.7 times the font size (Nastaliq ascenders and descenders clip in a tight line box), and switches off letter-spacing (it breaks Arabic joins) and italics.
 - Digits come out Latin in Urdu, Hindi and Punjabi (the formatters decide, see the rule on numbers above); OTP codes, phone numbers and the switch thumb stay left-to-right.
 

@@ -7,7 +7,7 @@ import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
 import { LOCALES, placeKindLabel } from "@ll/shared";
 import { placeKind } from "./explore";
 import { formatDistance } from "./format";
-import { formatDistanceL, openPartsL, type L } from "./formatL";
+import { formatDistanceL, isolateL, openPartsL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
 /** "Roncesvalles Village" → "roncesvalles" (the canvas voice: short, lowercase). */
@@ -197,5 +197,5 @@ export function shopSubtitleL(
   const parts = openPartsL(L, hours, openNow);
   const when = parts?.open ? L.t("sh.disc.open") : parts?.rest ?? null;
   const meta = [kind, formatDistanceL(L, s.distanceMetres), when].filter(Boolean).join(" · ");
-  return shopLine({ progress, promoLine: opts.promoLine ?? s.promoLine ?? null, perk: opts.perk ?? s.perk ?? null, kind, meta });
+  return shopLine({ progress, promoLine: isolateL(L, opts.promoLine ?? s.promoLine ?? null), perk: isolateL(L, opts.perk ?? s.perk ?? null), kind, meta });
 }

@@ -11,18 +11,11 @@ type DetectorCtor = new (opts?: { formats?: string[] }) => DetectorLike;
  * camera permission is already granted (or the owner taps "Use the camera"); a USB or Bluetooth scanner works with no
  * camera at all because CounterApp listens for scanner keystrokes ending in Enter.
  */
-export function ScanPanel({ onScan, hint }: { onScan: (payload: string) => void; hint: string }) {
+export function ScanPanel({ onScan, hint, ready }: { onScan: (payload: string) => void; hint: string; ready: boolean }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const [state, setState] = useState<"off" | "starting" | "on" | "denied" | "unsupported">("off");
   const last = useRef({ value: "", at: 0 });
-  // The panel is server-rendered, so it is on screen before React has attached the scanner's key listener (CounterApp).
-  // Keys typed in that gap are lost, so mark the moment hydration and its effects are done: "ready" means a scan will land.
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReady(true);
-  }, []);
 
   const stop = useCallback(() => {
     stream.current?.getTracks().forEach((t) => t.stop());

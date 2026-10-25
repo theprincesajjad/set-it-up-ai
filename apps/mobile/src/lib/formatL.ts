@@ -12,6 +12,9 @@ export interface L {
   t: (key: MessageKey, vars?: Vars) => string;
 }
 
+/** Text a shop wrote (a promo line, a reward name) inside a sentence the app wrote: isolated, so Urdu around it cannot reorder it. */
+export const isolateL = (L: L, s: string | null | undefined): string | null | undefined => (L.locale === "ur" && s ? `\u2068${s}\u2069` : s);
+
 const toDate = (d: string | number | Date) => (d instanceof Date ? d : new Date(d));
 
 /** Intl in the device's time zone (shops are local; the app has always shown device-local times). */
