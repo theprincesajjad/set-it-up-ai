@@ -34,9 +34,9 @@ export function QuotePanel({ quote, customerName, now, busy, canAct, onResend, o
     <Panel
       title="Quote"
       action={
-        <span className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+        <span className="flex max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-1">
           {quoteStatusLine(quote, now).map((s) => (
-            <Dot key={s.text} tone={s.tone}>{s.text}</Dot>
+            <Dot key={s.text} tone={s.tone} className="!whitespace-normal">{s.text}</Dot>
           ))}
         </span>
       }

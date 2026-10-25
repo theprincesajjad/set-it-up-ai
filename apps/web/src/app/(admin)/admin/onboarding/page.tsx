@@ -35,12 +35,12 @@ export default function OnboardingFunnelPage() {
             <Panel title="From signup to active" description={`${formatNumber(d.signedUp)} shops signed in this period`}>
               <ul className="flex flex-col gap-3" aria-label="Funnel">
                 {d.steps.map((s) => (
-                  <li key={s.key} className="grid grid-cols-[150px_minmax(0,1fr)_110px] items-center gap-4 text-body text-fg">
+                  <li key={s.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-body text-fg sm:grid-cols-[150px_minmax(0,1fr)_110px]">
                     <span>{s.label}</span>
-                    <span className="h-5 rounded-md bg-bg-subtle">
+                    <span className="order-last col-span-2 h-5 rounded-md bg-bg-subtle sm:order-none sm:col-span-1">
                       <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-accent" : "bg-fg"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
                     </span>
-                    <span className="tabular text-meta text-fg-muted">
+                    <span className="tabular text-meta text-fg-muted sm:text-left text-right">
                       {formatNumber(s.count)} · {s.pct}%
                     </span>
                   </li>

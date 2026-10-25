@@ -32,7 +32,7 @@ function MessagePage() {
       <Async state={state}>
         {(m) => (
           <>
-            <PageHeader title={m.subject ?? `${m.channel.toUpperCase()} message`} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="message" status={m.status} />{m.sentAt ? `Sent ${formatDateTime(m.sentAt)}` : m.scheduledAt ? `Scheduled for ${formatDateTime(m.scheduledAt)}` : "Draft"}</span>} actions={
+            <PageHeader title={m.subject ?? `${m.channel.toUpperCase()} message`} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="message" status={m.status} />{m.sentAt ? formatDateTime(m.sentAt) : m.scheduledAt ? `Scheduled for ${formatDateTime(m.scheduledAt)}` : "Draft"}</span>} actions={
               <>
                 {m.status === "draft" ? <Button size="sm" loading={act.busy} onClick={async () => { const r = await act.run(() => api.messages.send(m.id)); if (r) state.setData(r); }}>Send now</Button> : null}
                 {m.status === "draft" || m.status === "scheduled" ? <Button size="sm" variant="secondary" onClick={async () => { const r = await act.run(() => api.messages.cancel(m.id)); if (r) state.setData(r); }}>Cancel</Button> : null}
@@ -49,7 +49,7 @@ function MessagePage() {
             </div>
             <Panel>
               <h2 className="text-body-strong text-fg">What recipients get</h2>
-              <pre className="mt-2 whitespace-pre-wrap font-sans text-body text-fg">{m.preview}</pre>
+              <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-body text-fg [overflow-wrap:anywhere]">{m.preview}</pre>
             </Panel>
             {act.error ? <p className="text-negative">{act.error}</p> : null}
           </>

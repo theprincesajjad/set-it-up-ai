@@ -191,7 +191,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         step.done ? (
           <>
             <Banner tone="success" title="First stamp given.">
-              {checklist.activation.firstStampMinutes !== null ? `${Math.max(1, Math.round(checklist.activation.firstStampMinutes))} minutes after you signed up. ` : ""}
+              {checklist.activation.firstStampMinutes !== null ? `${Math.max(1, Math.round(checklist.activation.firstStampMinutes))} ${Math.max(1, Math.round(checklist.activation.firstStampMinutes)) === 1 ? "minute" : "minutes"} after you signed up. ` : ""}
               Now you know exactly what your customers see. Next: print the QR stand.
             </Banner>
             <div>
@@ -218,7 +218,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
                   <span className="me-2 font-semibold text-accent-text">3</span>Open the counter, find yourself, tap Add stamp.
                 </li>
                 <li>
-                  <Dot tone="accent" className="rounded-full bg-bg-subtle px-3 py-1.5">
+                  <Dot tone="accent" className="max-w-full items-start !whitespace-normal rounded-2xl bg-bg-subtle px-3 py-1.5">
                     Waiting for your first stamp. This page updates by itself.
                   </Dot>
                 </li>

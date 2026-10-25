@@ -46,7 +46,7 @@ export function Section({ title, description, action, children, className, id }:
             ) : null}
             {description ? <p className="text-meta text-fg-muted">{description}</p> : null}
           </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
+          {action ? <div className="max-w-full shrink-0">{action}</div> : null}
         </div>
       ) : null}
       {children}
@@ -75,7 +75,7 @@ export function Panel({ title, description, action, children, className, footer,
             ) : null}
             {description ? <p className="mt-0.5 text-meta text-fg-muted">{description}</p> : null}
           </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
+          {action ? <div className="max-w-full shrink-0">{action}</div> : null}
         </div>
       ) : null}
       {children ? <div className={cn(padded && "px-5 pb-5", padded && (title || action) ? "pt-3" : padded ? "pt-5" : "", inner)}>{children}</div> : null}

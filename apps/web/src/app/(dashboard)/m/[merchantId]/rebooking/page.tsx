@@ -124,7 +124,7 @@ function Rebooking() {
                     />
                   )}
                 </Async>
-                <RebookPreview shop={detail.merchant.name} slug={detail.merchant.slug} name={d.items[0]?.customerName ?? "Ritu Gill"} service={d.items[0]?.serviceName ?? rules.data?.items.find((x) => x.rebookAfterDays)?.name ?? "haircut"} weeks={Math.max(1, Math.round((d.items[0]?.rebookAfterDays ?? 28) / 7))} />
+                <RebookPreview shop={detail.merchant.name} slug={detail.merchant.slug} name={d.items[0]?.customerName ?? "Ritu Gill"} service={d.items[0]?.serviceName ?? rules.data?.items.find((x) => x.rebookAfterDays)?.name ?? rules.data?.items[0]?.name ?? "visit"} weeks={Math.max(1, Math.round((d.items[0]?.rebookAfterDays ?? 28) / 7))} />
               </div>
             </div>
           </>
