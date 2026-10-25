@@ -15,7 +15,7 @@
 import bcrypt from "bcryptjs";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { auditLogs, merchantStaff, merchants, otpCodes, sessions, users } from "@ll/db";
-import { BRAND, authApi, normalizeLocale, normalizePhone } from "@ll/shared";
+import { AGENT_TEXTS, BRAND, authApi, type AgentLang, normalizeLocale, normalizePhone } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { signAccessToken, type AuthUser } from "../lib/auth.js";
 import { hmacSha256, randomDigits, randomToken, safeEqual, sha256 } from "../lib/crypto.js";
@@ -130,10 +130,12 @@ export async function startPhoneOtp(ctx: AppContext, phoneInput: string, opts: {
  * the person holds the number; it does not sign anyone in (no session, no token). Own purpose, so a login code cannot
  * be replayed here or the other way round.
  */
-export async function startAgentVerification(ctx: AppContext, phoneInput: string): Promise<void> {
+export async function startAgentVerification(ctx: AppContext, phoneInput: string, lang: AgentLang = "en"): Promise<void> {
   const phone = requirePhone(phoneInput);
   const code = await createOtp(ctx, "agent_verify", phone);
-  await ctx.providers.sms.send(phone, `${code} is your ${BRAND.name} code to check it's you in our chat. It expires in 10 minutes. Don't share it.`);
+  // Fixed text in the person's language (French for Quebec); languages without a translated SMS get the English one.
+  const body = (AGENT_TEXTS[lang].otpSms ?? AGENT_TEXTS.en.otpSms!)(code);
+  await ctx.providers.sms.send(phone, body);
 }
 
 export type AgentVerification = { ok: true } | { ok: false; reason: "wrong" | "expired" | "locked"; attemptsLeft?: number };

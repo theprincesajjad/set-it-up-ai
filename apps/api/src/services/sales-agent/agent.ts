@@ -12,7 +12,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { merchantStaff, users } from "@ll/db";
-import { AGENT_TEXTS, SALES_AGENT_LIMITS, detectAgentLanguage, isAgentLang, isStartKeyword, isStopKeyword, normalizePhone, wantsHuman, type AgentLang } from "@ll/shared";
+import { AGENT_TEXTS, SALES_AGENT_LIMITS, detectAgentLanguage, isAgentLang, looksEnglish, isStartKeyword, isStopKeyword, normalizePhone, wantsHuman, type AgentLang } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { allow } from "../../lib/rate-limit.js";
 import { isOptedOut, recordPhoneOptOut, recordPhoneResubscribe } from "../opt-out.js";
@@ -96,7 +96,9 @@ export async function handleInbound(ctx: AppContext, inb: Inbound): Promise<Agen
   const { conv: opened, created } = await openConversation(ctx, { channel: inb.channel, contactKey: inb.contactKey, phone, name: inb.name, language: lang0, page: inb.page });
   let conv = opened;
   const now = ctx.now();
-  const detected = detectAgentLanguage(inb.text);
+  // Latin script cannot tell English from romanised Hindi, so the chat keeps its language; the one exception is a French chat
+  // (a Quebec visitor, or the French widget) whose person, after the French disclosure, writes plainly in English.
+  const detected = detectAgentLanguage(inb.text) ?? (conv.language === "fr" && conv.disclosedAt && looksEnglish(inb.text) ? "en" : null);
   const lang = detected ?? asLang(conv.language);
   const patch: Parameters<typeof updateConversation>[2] = { lastInboundAt: now, lastActivityAt: now };
   if (detected && detected !== conv.language) patch.language = detected;

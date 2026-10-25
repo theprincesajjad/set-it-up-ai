@@ -6,7 +6,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { leads, merchants, salesAgentConversations, salesAgentMessages, users } from "@ll/db";
-import { ADD_ONS, AGENT_TEXTS, FEES, FOUNDING_OFFER, PLANS, RESTAURANT_PLANS, RETENTION, SALES_AGENT_LIMITS, daysAgo, detectAgentLanguage, isStopKeyword, legalTokens, wantsHuman } from "@ll/shared";
+import { ADD_ONS, AGENT_TEXTS, FEES, FOUNDING_OFFER, PLANS, RESTAURANT_PLANS, RETENTION, SALES_AGENT_LIMITS, WIDGET_TEXTS, daysAgo, detectAgentLanguage, isStopKeyword, legalTokens, looksEnglish, wantsHuman } from "@ll/shared";
 import { getWhatsApp } from "../src/providers/whatsapp.js";
 import { isOptedOut } from "../src/services/opt-out.js";
 import { purgeSalesAgentChats } from "../src/services/retention.js";
@@ -286,10 +286,10 @@ describe("tool use and grounding", () => {
     expect(body.replace(/\{\{[^}]+\}\}/g, "")).not.toMatch(/\$\s?\d|\d\s?%/);
   });
 
-  it("every eval case has a fact or a behaviour to check, and the four languages are covered", () => {
+  it("every eval case has a fact or a behaviour to check, and the five languages are covered", () => {
     expect(EVAL_CASES.length).toBeGreaterThanOrEqual(40);
     for (const c of EVAL_CASES) expect(c.anyOf || c.allOf || c.noneOf || c.script || c.handoff || c.tool, c.id).toBeTruthy();
-    for (const lang of ["en", "hi", "ur", "pa"] as const) expect(EVAL_CASES.filter((c) => c.lang === lang).length).toBeGreaterThanOrEqual(8);
+    for (const lang of ["en", "fr", "hi", "ur", "pa"] as const) expect(EVAL_CASES.filter((c) => c.lang === lang).length).toBeGreaterThanOrEqual(8);
     expect(new Set(EVAL_CASES.map((c) => c.id)).size).toBe(EVAL_CASES.length);
   });
 });
@@ -717,6 +717,177 @@ describe("STOP, START and HUMAN", () => {
     await req(env, null, "POST", "/v1/webhooks/whatsapp", body);
     expect(model.calls).toHaveLength(0);
     expect(texts().at(-1)).toBe(AGENT_TEXTS.en.unsupported);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("Quebec French (fr-CA)", () => {
+  const NB = "\u00a0";
+  const send = (phone: string, text: string) => req(env, null, "POST", "/v1/webhooks/whatsapp", waBody("pn_platform", phone, text));
+  const texts = () => (wa(env).sent.filter((s) => s.kind === "text") as { body: string }[]).map((s) => s.body);
+
+  it("recognises French from its words and accents, and leaves English and romanised Hindi alone", () => {
+    for (const t of ["Bonjour", "Combien ça coûte?", "Quel est le prix du forfait Growth pour mon restaurant?", "Est-ce qu'il y a un contrat?", "J'aimerais m'inscrire", "À qui appartiennent mes données ?", "merci beaucoup", "Faut-il une caisse pour utiliser ça?", "Où sont mes clients et la liste des commandes"]) {
+      expect(detectAgentLanguage(t), t).toBe("fr");
+    }
+    for (const t of ["How much is the Growth plan?", "Do I need a POS?", "café menu", "Leave a comment about the plan", "pour me a coffee", "mujhe plan ke baare mein batao", "kya contract hai?", "ok", "", "$199"]) {
+      expect(detectAgentLanguage(t), t).toBeNull();
+    }
+    // script still wins over words
+    expect(detectAgentLanguage("नमस्ते bonjour")).toBe("hi");
+    expect(looksEnglish("What does it cost for my restaurant?")).toBe(true);
+    expect(looksEnglish("Bonjour, combien ça coûte?")).toBe(false);
+    expect(looksEnglish("kya hai")).toBe(false);
+  });
+
+  it("recognises a request for a person in French, and not a question that mentions one", () => {
+    for (const t of ["HUMAN", "humain", "Je veux parler à une personne", "Pouvez-vous me passer quelqu'un de l’équipe?", "Parler à un agent svp", "un conseiller", "je veux un humain"]) expect(wantsHuman(t), t).toBe(true);
+    for (const t of ["Combien coûte l'option ressources humaines?", "Êtes-vous une personne ou un robot?", "La personne qui livre est-elle payée?"]) expect(wantsHuman(t), t).toBe(false);
+  });
+
+  it("has every fixed text in French, with the STOP / START / HUMAN words kept and an AI disclosure", () => {
+    const fr = AGENT_TEXTS.fr;
+    for (const [k, v] of Object.entries(fr)) {
+      if (typeof v === "string") expect(v.length, k).toBeGreaterThan(10);
+    }
+    const d = fr.disclosure({ whatsapp: false });
+    expect(d).toContain("assistant IA");
+    expect(d).toContain("HUMAN");
+    expect(d).toContain("Local Loyalty");
+    expect(fr.disclosure({ whatsapp: true })).toContain("STOP");
+    expect(fr.stopped).toContain("START");
+    expect(fr.started).toContain("HUMAN");
+    expect(fr.rateLimited).toContain("HUMAN");
+    expect(fr.unsupported).toContain("HUMAN");
+    expect(fr.otpSms!("123456")).toContain("123456");
+    // fr-CA typography: no-break space before a colon, curly apostrophes, never the English words
+    expect(d).toContain(`tromper${NB}:`);
+    for (const v of [d, fr.offline, fr.handoff, fr.guardrail, fr.tooLong, fr.humanJoined]) expect(v).not.toMatch(/\b(the|please|team will)\b/i);
+    for (const v of Object.values(WIDGET_TEXTS.fr).flat()) expect(String(v)).not.toMatch(/\b(Ask us|Send|Close chat)\b/);
+  });
+
+  it("answers a French first message in French: disclosure first, the model told, the widget language kept", async () => {
+    const model = script(say("Growth coûte 199 $ par mois, avant TPS/TVH."));
+    withModel(model);
+    const r = await web("Bonjour, combien coûte le forfait Growth?");
+    expect(r.body.language).toBe("fr");
+    expect(r.body.lines[0].text).toBe(AGENT_TEXTS.fr.disclosure({ whatsapp: false }));
+    expect(r.body.lines[1].text).toContain("199 $");
+    expect(lastUserText(model.calls[0]!)).toContain("detected_language: fr");
+    expect(model.calls[0]!.system).toContain("Quebec French");
+    expect(model.calls[0]!.system).toContain("avant TPS/TVH");
+    // the French widget's hint alone is enough for the disclosure, even before the text says anything
+    env = await resetEnv();
+    withModel(script(say("ok")));
+    const hinted = await web("ok", undefined, { language: "fr" });
+    expect(hinted.body.language).toBe("fr");
+    expect(hinted.body.lines[0].text).toBe(AGENT_TEXTS.fr.disclosure({ whatsapp: false }));
+    // an unknown language is refused by validation, not stored
+    expect((await web("hi", undefined, { language: "de" })).status).toBe(400);
+  });
+
+  it("keeps a French chat French on a short Latin message, and switches to English only when the person writes English", async () => {
+    withModel(script(say("a"), say("b"), say("c")));
+    const first = await web("Bonjour, j'ai un restaurant");
+    const second = await web("ok", first.body.sessionToken);
+    expect(second.body.language).toBe("fr");
+    const third = await web("What does it cost for my restaurant?", first.body.sessionToken);
+    expect(third.body.language).toBe("en");
+  });
+
+  it("does the fixed replies in French: hand-off on a French HUMAN, text-only, too long, offline", async () => {
+    const model = script(say("Réponse."));
+    withModel(model);
+    const a = await web("Bonjour, je veux parler à une personne");
+    expect(a.body.status).toBe("handoff");
+    expect(a.body.lines.at(-1).text).toBe(AGENT_TEXTS.fr.handoff);
+    expect(model.calls).toHaveLength(0);
+
+    env = await resetEnv();
+    withModel(script());
+    await send(nextPhone(), `Bonjour ${"très long ".repeat(150)}`);
+    expect(texts().at(-1)).toBe(AGENT_TEXTS.fr.tooLong);
+
+    env = await resetEnv();
+    withModel(null);
+    const off = await web("Bonjour, combien coûte le forfait?");
+    expect(off.body.lines.at(-1).text).toBe(AGENT_TEXTS.fr.offline);
+    expect(off.body.status).toBe("handoff");
+  });
+
+  it("STOP, START and a voice note on WhatsApp answer in French once the chat is French", async () => {
+    const model = script(say("Bonjour!"), say("Voici le prix."));
+    withModel(model);
+    const phone = nextPhone();
+    await send(phone, "Bonjour, combien coûte le forfait Growth?");
+    expect(texts()[0]).toBe(AGENT_TEXTS.fr.disclosure({ whatsapp: true }));
+    expect(texts()[0]).toContain("Répondez STOP");
+    wa(env).reset();
+    await send(phone, "ARRÊT");
+    expect(await isOptedOut(env.db, phone, "whatsapp")).toBe(true);
+    expect(texts()).toEqual([AGENT_TEXTS.fr.stopped]);
+    wa(env).reset();
+    await send(phone, "START");
+    expect(texts()).toEqual([AGENT_TEXTS.fr.started]);
+    wa(env).reset();
+    const body = waBody("pn_platform", phone, "");
+    // @ts-expect-error fixture shape
+    body.entry[0].changes[0].value.messages[0] = { id: "wamid.voicefr", from: body.entry[0].changes[0].value.messages[0].from, timestamp: "1700000000", type: "audio" };
+    await req(env, null, "POST", "/v1/webhooks/whatsapp", body);
+    expect(texts().at(-1)).toBe(AGENT_TEXTS.fr.unsupported);
+  });
+
+  it("texts the owner's phone-check code in French when the chat is French", async () => {
+    const mine = await createMerchant(env, { slug: "owner-fr" });
+    const phone = mine.owner.phone!;
+    withModel(script(use("request_phone_verification", { phone }, "t1"), say("Un code vous a été envoyé. Écrivez-le ici.")));
+    await web("Bonjour, je suis propriétaire, vérifiez mon compte");
+    const sms = smsTo(phone);
+    expect(sms).toHaveLength(1);
+    expect(sms[0]!.body).toMatch(/^\d{6} est votre code Local Loyalty/);
+    // English chats still get the English text
+    env = await resetEnv();
+    const other = await createMerchant(env, { slug: "owner-en" });
+    withModel(script(use("request_phone_verification", { phone: other.owner.phone! }, "t1"), say("Sent.")));
+    await web("I own a shop, check my account");
+    expect(smsTo(other.owner.phone!)[0]!.body).toContain("is your Local Loyalty code");
+  });
+
+  it("the price and fee guard reads French number formats", () => {
+    const ok = (reply: string, extra: { userText?: string; toolText?: string } = {}) => checkReply(reply, { userText: "", toolText: "", ...extra });
+    expect(amountsIn(`Growth coûte 199${NB}$ par mois, avant TPS/TVH.`)).toEqual([199]);
+    expect(amountsIn("39 $, 39$, 39 $ CA, 39 $CA, 39 dollars, 39 dollars canadiens")).toEqual([39, 39, 39, 39, 39, 39, 39, 39]); // "39 dollars" is read by both the English and the French pattern
+    expect(amountsIn(`1${NB}990${NB}$ par année, 1 990,50 $, 99,50 $ et 1\u202f990 $`)).toEqual([1990, 1990.5, 99.5, 1990]);
+    expect(amountsIn("1,990 $ et $1,990 et 199 $.")).toEqual([1990, 1990, 199]);
+    expect(amountsIn("1,990 $")).toEqual([1990]);
+    expect(percentsIn(`1${NB}% et 1 %, 1,5 %, 2,9% et 25 pour cent`)).toEqual([1, 1, 1.5, 2.9, 25]);
+    expect(percentsIn("0.5 % and 1.5%")).toEqual([0.5, 1.5]);
+    // the product's own figures pass in French form
+    expect(ok(`Growth coûte 199${NB}$ par mois ou 1${NB}990${NB}$ par année, avant TPS/TVH.`)).toEqual([]);
+    expect(ok(`Les frais sont de 1,5${NB}% sur le forfait Free et de 0${NB}% sur un forfait payant. Prix de fondateur\u00a0: 99,50 $ puis 149,25 $.`)).toEqual([]);
+    expect(ok("Vous faites 5 000 $ par mois, donc…", { userText: "Je fais 5 000 $ par mois" })).toEqual([]);
+    // a wrong figure fails, whatever the format
+    expect(ok("Growth coûte 149 $ par mois.").map((i) => i.code)).toEqual(["price_mismatch"]);
+    expect(ok("Growth coûte 149,00 $ par mois.").map((i) => i.code)).toEqual(["price_mismatch"]);
+    expect(ok("Compte 1 490 $ par année.").map((i) => i.code)).toEqual(["price_mismatch"]);
+    expect(ok("Nous prélevons 3 % sur les commandes.").map((i) => i.code)).toEqual(["percent_mismatch"]);
+    expect(ok("Nous prélevons 2,9 % sur les commandes.").map((i) => i.code)).toEqual(["percent_mismatch"]);
+    expect(ok("Environ 750 $ d'économies.", { toolText: '{"x":"$750"}' })).toEqual([]);
+    // French digits-only prose does not count as money
+    expect(ok("Il y a 3 plans, 12 mois de rabais et 10 minutes de mise en route.")).toEqual([]);
+  });
+
+  it("the promise guard reads French promises", () => {
+    const codes = (t: string) => checkReply(t, { userText: "", toolText: "" }).map((i) => i.code);
+    expect(codes("Nous vous garantissons 30 % de clients de plus.")).toContain("promise_guarantee");
+    expect(codes("C'est garanti, vos ventes vont augmenter.")).toContain("promise_guarantee");
+    expect(codes("Inscrivez-vous sans risque, satisfait ou remboursé.")).toContain("promise_risk_free");
+    expect(codes("Profitez d'un essai gratuit de 30 jours.")).toContain("promise_trial");
+    expect(codes("Votre compte sera activé d'ici vendredi.")).toContain("promise_date_promise");
+    expect(codes("Notre programme va doubler vos ventes.")).toContain("promise_results");
+    expect(codes("Nous sommes entièrement conformes à la LCAP.")).toContain("promise_legal_advice");
+    expect(codes("Il n'y a aucun contrat; vous pouvez annuler en tout temps et garder vos données de fidélité.")).toEqual([]);
+    expect(codes("Je vais vérifier auprès de l'équipe.")).toEqual([]);
   });
 });
 

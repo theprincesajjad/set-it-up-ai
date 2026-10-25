@@ -41,8 +41,9 @@ export function SalesChat() {
   // Browser-only state (the page language, the tab's saved chat) can only be read after mount: reading it during render would mismatch the server HTML.
   useEffect(() => {
     let live = true;
+    // ?lang= first (the same switch the legal pages use), then the browser's languages in order, then the page's own. Only the widget changes language.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLang(chatLang(document.documentElement.lang, navigator.language));
+    setLang(chatLang(new URLSearchParams(window.location.search).get("lang"), ...(navigator.languages?.length ? navigator.languages : [navigator.language]), document.documentElement.lang));
     const saved = loadChat(store());
     if (saved) {
       setToken(saved.token);
@@ -126,7 +127,7 @@ export function SalesChat() {
         </button>
       ) : null}
       {open ? (
-        <section role="dialog" aria-label={T.title} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-line bg-bg shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
+        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-line bg-bg shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
           <header className="flex items-center gap-3 border-b border-line px-4 py-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-body font-semibold text-fg">{T.title}</h2>
@@ -177,7 +178,7 @@ export function SalesChat() {
             <p className="px-1 text-caption text-fg-muted">
               {wa ? <><a href={wa} target="_blank" rel="noopener noreferrer" className="font-medium text-fg underline underline-offset-2">{T.whatsapp}</a>{" · "}</> : null}
               {T.retention}{" "}
-              <Link href="/legal/privacy" className="underline underline-offset-2">{T.privacy}</Link>
+              <Link href={lang === "fr" ? "/legal/privacy?lang=fr" : "/legal/privacy"} className="underline underline-offset-2">{T.privacy}</Link>
             </p>
           </form>
         </section>

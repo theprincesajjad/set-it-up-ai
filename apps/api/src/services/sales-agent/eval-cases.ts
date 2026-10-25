@@ -1,5 +1,5 @@
 /**
- * The eval set for the sales assistant: realistic owner questions in English, Hindi, Urdu and Punjabi, each with the facts a
+ * The eval set for the sales assistant: realistic owner questions in English, Quebec French, Hindi, Urdu and Punjabi, each with the facts a
  * good answer must contain (taken from plans.ts, so the set follows the product) and the behaviour expected (a tool, a hand-off,
  * a refusal). Used by the live eval (scripts/sales-agent-eval.ts, docs/engineering/sales-agent-evals.md) and listed in the
  * console's quality tab. Every reply is also run through the production guard (guard.ts), so an invented figure or a promise fails
@@ -29,6 +29,8 @@ export interface EvalCase {
 
 const price = (t: keyof typeof RESTAURANT_PLANS) => String(RESTAURANT_PLANS[t].priceCents / 100);
 const pct = (bps: number) => `${Number((bps / 100).toFixed(2))}%`;
+/** The same figure the way Quebec French writes it: comma for decimals, "1,5 %". */
+const frPct = (bps: number) => `${Number((bps / 100).toFixed(2))}`.replace(".", ",");
 const REFUSE = ["can't", "cannot", "can not", "not able", "unable", "won't", "do not", "don't", "no one can", "nobody can"];
 
 export const EVAL_CASES: EvalCase[] = [
@@ -49,6 +51,15 @@ export const EVAL_CASES: EvalCase[] = [
   { id: "en-whatsapp-count", lang: "en", question: "How many WhatsApp messages come with Growth?", expectText: `${RESTAURANT_PLANS.growth.whatsappPerMonth.toLocaleString("en-CA")} a month`, anyOf: ["1,000", "1000"] },
   { id: "en-human", lang: "en", question: "I want to talk to a real person please", expectText: "Hands off to a person immediately (code path)", handoff: true },
   { id: "en-founder-call", lang: "en", question: "Can I book a call with the founder? Tuesday after 3pm works. My number is 647-555-0199, I'm Raza from Karahi Corner.", expectText: "Starts a call request and asks to confirm; does not say it is booked", tool: "request_founder_call", noneOf: ["is booked", "have booked", "you're booked"] },
+  // ---- French, Quebec (8). Answers come from the same English knowledge and tools; amounts are written "199 $", "1,5 %", "avant TPS/TVH".
+  { id: "fr-growth-price", lang: "fr", question: "Combien coûte le forfait Growth pour mon restaurant?", expectText: `Growth coûte ${price("growth")} $ par mois, avant TPS/TVH, en français`, allOf: [price("growth")], script: "fr", tool: "get_pricing" },
+  { id: "fr-starter-price", lang: "fr", question: "Quel est le prix mensuel du forfait Starter pour un restaurant?", expectText: `Starter coûte ${price("starter")} $ par mois, avant TPS/TVH`, allOf: [price("starter")], script: "fr", tool: "get_pricing" },
+  { id: "fr-free-fee", lang: "fr", question: "Je suis sur le forfait gratuit. Quels frais prélevez-vous sur les commandes en ligne?", expectText: `${frPct(FEES.orderBpsFree)} % sur les commandes en ligne avec le forfait Free`, anyOf: [`${frPct(FEES.orderBpsFree)} %`, `${frPct(FEES.orderBpsFree)}%`, pct(FEES.orderBpsFree)], script: "fr" },
+  { id: "fr-contract", lang: "fr", question: "Y a-t-il un contrat? Puis-je annuler après deux mois?", expectText: "Aucun contrat, aucuns frais d'installation, annulation en tout temps", anyOf: ["aucun contrat", "sans contrat", "pas de contrat", "n'y a pas de contrat"], script: "fr", tool: "search_knowledge" },
+  { id: "fr-pos", lang: "fr", question: "Ai-je besoin d'un système de caisse pour utiliser ça?", expectText: "Aucune caisse requise; le personnel entre un numéro de téléphone dans l'application de comptoir gratuite", script: "fr", tool: "search_knowledge" },
+  { id: "fr-data", lang: "fr", question: "Si je pars, à qui appartient ma liste de clients?", expectText: "À vous (le commerce), avec une période d'exportation CSV après le départ", anyOf: ["vous appartient", "à vous", "vos données", "votre liste", "vos clients"], script: "fr", tool: "search_knowledge" },
+  { id: "fr-founding", lang: "fr", question: "J'ai entendu parler d'un rabais de fondateur pour les restaurants. Comment ça marche?", expectText: `${FOUNDING_OFFER.firstYearPct} % de rabais pendant 12 mois, puis ${FOUNDING_OFFER.lifetimePct} % à vie, tant qu'il reste des places; ne promet pas de place`, allOf: [String(FOUNDING_OFFER.firstYearPct), String(FOUNDING_OFFER.lifetimePct)], script: "fr", tool: "get_pricing" },
+  { id: "fr-guarantee", lang: "fr", question: "Pouvez-vous me garantir que mes ventes vont doubler si je m'inscris?", expectText: "Refuse de promettre des résultats; décrit ce que fait le produit", anyOf: ["ne peux pas", "ne garantis pas", "aucune garantie", "pas de garantie", "ne peut pas", "impossible de"], script: "fr" },
   // ---- Hindi (8)
   { id: "hi-growth-price", lang: "hi", question: "ग्रोथ प्लान की कीमत कितनी है?", expectText: `$${price("growth")}/महीना, HST से पहले, हिंदी में`, allOf: [price("growth")], script: "hi" },
   { id: "hi-starter-price", lang: "hi", question: "रेस्टोरेंट स्टार्टर प्लान कितने का है?", expectText: `$${price("starter")}/महीना`, allOf: [price("starter")], script: "hi" },

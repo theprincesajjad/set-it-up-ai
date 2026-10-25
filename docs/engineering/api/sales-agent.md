@@ -7,7 +7,7 @@ Contract: `packages/shared/src/api/sales-agent.ts` (`salesAgentApi`) and `packag
 ## How a message is handled (`handleInbound`)
 
 1. Length cap (1,000 characters), open or find the conversation (WhatsApp: the sender's number; web: the hash of the visitor's session token).
-2. **Disclosure**: on first contact the first message is fixed text saying it is an AI assistant, how to reach a person (`HUMAN`) and, on WhatsApp, `STOP` (`AGENT_TEXTS`, en/hi/ur/pa). It is stored before the visitor's message.
+2. **Disclosure**: on first contact the first message is fixed text saying it is an AI assistant, how to reach a person (`HUMAN`) and, on WhatsApp, `STOP` (`AGENT_TEXTS`, en/fr/hi/ur/pa). It is stored before the visitor's message.
 3. **STOP / START** (WhatsApp): the shared word list (`packages/shared/src/opt-out.ts`) and `comm_opt_outs`. After STOP only the confirmation is sent; START resumes. A plain "YES" from someone who never opted out is a normal message.
 4. A person has the chat (`handoff` or `human`): the assistant stays quiet.
 5. **Rate limits**: 30 messages per conversation per hour, 40 per contact per hour, 3,000 per day overall (`SALES_AGENT_LIMITS`); on the web also 60 messages and 10 new chats per address per hour.

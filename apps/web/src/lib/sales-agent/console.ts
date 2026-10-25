@@ -3,7 +3,7 @@ import type { salesAgentApi } from "@ll/shared";
 
 export const STATUS_LABEL: Record<salesAgentApi.ConversationStatus, string> = { open: "Assistant", handoff: "Needs a person", human: "You have it", closed: "Closed" };
 export const STATUS_TONE: Record<salesAgentApi.ConversationStatus, "neutral" | "accent" | "positive"> = { open: "neutral", handoff: "accent", human: "positive", closed: "neutral" };
-export const LANGUAGE_NAME: Record<string, string> = { en: "English", hi: "Hindi", ur: "Urdu", pa: "Punjabi" };
+export const LANGUAGE_NAME: Record<string, string> = { en: "English", fr: "French", hi: "Hindi", ur: "Urdu", pa: "Punjabi" };
 export const languageName = (code: string): string => LANGUAGE_NAME[code] ?? code;
 
 /** "12 min", "3 h", "2 d": how long a hand-off has waited. */

@@ -105,7 +105,7 @@ New components: the agent service (`agent.ts`, `tools.ts`, `guard.ts`, `prompt.t
 - **No memory across channels or people** (a web visitor and a WhatsApp contact are separate conversations until a person links them).
 - **No voice, images or documents**: a non-text message gets "I can only read text".
 - **No streaming** in the widget (replies are a few sentences).
-- **No French yet** (disclosure and widget are en/hi/ur/pa). Open item for Quebec.
+- **French is fixed-text plus model-reply only**: the disclosure, STOP/START/HUMAN, hand-off, offline, text-only, rate-limit, too-long, guardrail and OTP SMS texts and the widget are in Quebec French (fr-CA), and the model answers in French from the same English FAQ and plans; the figures guard reads French formats ("39 $", "1 990,50 $", "2,9 %", "avant TPS/TVH"). The French wording has not been reviewed by a Quebec translator or lawyer (`docs/legal/counsel-notes.md`). The marketing site itself stays English; only the widget switches.
 - **No agent for merchants' own customers**: that is the restaurant pack's WhatsApp ordering.
 
 ## 6. Design
@@ -127,7 +127,7 @@ Iterations (screenshots checked twice): the Urdu line height was too tight and w
 
 **API** (`apps/api`): `src/services/sales-agent/{agent,tools,guard,prompt,knowledge,llm,store,channels,inbox,eval-cases}.ts`; `src/routes/sales-agent/index.ts` (registered in `routes/index.ts`); a branch in `services/whatsapp.ts` `handleWebhook` for the platform number; `startAgentVerification` / `checkAgentVerification` in `services/auth.ts` (OTP purpose `agent_verify`); `purgeSalesAgentChats` in `services/retention.ts`; chat deletion in `services/privacy-scrub.ts`; `config.salesAgent`; `providers/types.ts` `salesAgentLlm`; `scripts/sales-agent-eval.ts`. Dependency `@anthropic-ai/sdk`.
 **DB** (`packages/db`): `sales_agent_conversations`, `sales_agent_messages`; migration `0022_agent`.
-**Shared** (`packages/shared`): `sales-agent.ts` (texts in four languages, language detection, the HUMAN rule, limits), `api/sales-agent.ts` (contracts), `RETENTION.salesAgentDays`.
+**Shared** (`packages/shared`): `sales-agent.ts` (texts in five languages: en, fr-CA, hi, ur, pa; language detection, the HUMAN rule, limits), `api/sales-agent.ts` (contracts), `RETENTION.salesAgentDays`.
 **Web** (`apps/web`): `components/marketing/SalesChat.tsx` mounted in the marketing layout; `lib/marketing/{whatsapp,salesChat,signupPrefill}.ts`; `/signup` pre-fill; `app/(admin)/admin/sales-agent/page.tsx` and a nav entry; `lib/api/salesAgent.ts`; the BFF forwards `x-agent-session`.
 **Docs**: `docs/sales/agent-faq.md`, `docs/engineering/api/sales-agent.md`, `docs/engineering/sales-agent-evals.md`, privacy policy (en, fr), compliance checklist section 12, README and `.env.example`.
 **Acceptance checks**: `apps/api/test/sales-agent.test.ts` (60 tests), `apps/web/test/sales-agent.test.ts`, `apps/web/e2e/sales-agent.spec.ts`, the live eval.
@@ -144,7 +144,7 @@ Iterations (screenshots checked twice): the Urdu line height was too tight and w
 ## 9. Open items
 
 - Choose and register the platform WhatsApp number (separate WhatsApp Business account); set the two env vars; Meta display-name review.
-- Native-speaker review of the Hindi, Urdu and Punjabi fixed texts; add French for Quebec.
+- Native-speaker review of the Hindi, Urdu and Punjabi fixed texts; a Quebec translator or lawyer to review the French ones.
 - Counsel: follow-up on leads created in chat (CASL); the privacy-policy wording about Anthropic; verify the Anthropic account's no-training and retention terms.
 - Decide who watches the queue and in which hours; consider an on-call email-to-WhatsApp bridge.
 - Run the live eval with a real key, record the cost per run and the pass rate; tune `SALES_AGENT_EFFORT`.

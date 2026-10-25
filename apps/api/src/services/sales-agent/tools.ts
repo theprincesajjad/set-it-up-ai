@@ -213,7 +213,7 @@ async function requestVerification(c: Ctx, phoneRaw: unknown): Promise<ToolRun> 
     .innerJoin(merchantStaff, eq(merchantStaff.userId, users.id))
     .where(and(eq(users.phone, phone), eq(merchantStaff.role, "owner")))
     .limit(1);
-  if (owner) await startAgentVerification(ctx, phone);
+  if (owner) await startAgentVerification(ctx, phone, c.lang);
   // Whether or not we sent, the chat waits for a code, and a wrong or missing one fails the same way.
   const next = await updateConversation(ctx, conv.id, { otpPhone: phone, otpSentAt: ctx.now(), phone: conv.phone ?? phone });
   return { ok: true, data: { status: "code_requested", message: "If that number belongs to a shop owner, a 6-digit code was texted to it. Ask the person to type just the code here." }, summary: "verification code requested", conv: next };
@@ -265,9 +265,11 @@ const phoneOf = (v: unknown) => {
   return p ? normalizePhone(p) : null;
 };
 
-function leadLanguage(lang: AgentLang): AgentLang {
-  return lang;
+/** The lead's language field is the reps' four (rep.ts); a French chat has no field value, so the note names it and the rep reads it there. */
+function leadLanguage(lang: AgentLang): "en" | "hi" | "ur" | "pa" | undefined {
+  return lang === "fr" ? undefined : lang;
 }
+const leadNote = (channel: string, lang: AgentLang) => `[sales assistant, ${channel}${lang === "fr" ? ", speaks French (Quebec): reply in French" : ""}]`;
 
 const ACTIONS: Record<string, ActionSpec> = {
   create_lead: {
@@ -290,7 +292,7 @@ const ACTIONS: Record<string, ActionSpec> = {
           phone: (a.phone as string | null) ?? undefined,
           email: (a.email as string | null) ?? undefined,
           vertical: (a.vertical as string | null) ?? undefined,
-          message: [`[sales assistant, ${conv.channel}]`, a.notes as string | null, `Conversation ${conv.id}`].filter(Boolean).join("\n"),
+          message: [leadNote(conv.channel, c.lang), a.notes as string | null, `Conversation ${conv.id}`].filter(Boolean).join("\n"),
           kind: "talk_to_us",
           language: leadLanguage(c.lang),
         },
@@ -343,7 +345,7 @@ const ACTIONS: Record<string, ActionSpec> = {
           contactName: (a.contact_name as string | null) ?? undefined,
           phone: (a.phone as string | null) ?? undefined,
           email: (a.email as string | null) ?? undefined,
-          message: [`[founder call requested via the sales assistant]`, `Preferred time: ${a.when as string}${a.iso ? ` (${a.iso as string})` : ""}`, a.topic as string | null, `Conversation ${conv.id}`].filter(Boolean).join("\n"),
+          message: [`[founder call requested via the sales assistant${c.lang === "fr" ? "; speaks French (Quebec): reply in French" : ""}]`, `Preferred time: ${a.when as string}${a.iso ? ` (${a.iso as string})` : ""}`, a.topic as string | null, `Conversation ${conv.id}`].filter(Boolean).join("\n"),
           kind: "talk_to_us",
           language: leadLanguage(c.lang),
         },

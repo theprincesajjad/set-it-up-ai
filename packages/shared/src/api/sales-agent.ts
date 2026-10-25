@@ -19,7 +19,7 @@ export const webMessageBody = z.object({
   sessionToken: z.string().trim().min(20).max(200).optional(),
   text: z.string().trim().min(1).max(SALES_AGENT_LIMITS.maxMessageChars),
   /** The widget's language, a hint for the very first message. */
-  language: z.enum(["en", "hi", "ur", "pa"]).optional(),
+  language: z.enum(["en", "fr", "hi", "ur", "pa"]).optional(),
   /** Page the visitor is on (path only), for the team's context. */
   page: z.string().trim().max(200).optional(),
 });
@@ -35,7 +35,7 @@ export interface ChatLine {
 
 export interface WebChatResponse {
   sessionToken: string;
-  language: "en" | "hi" | "ur" | "pa";
+  language: "en" | "fr" | "hi" | "ur" | "pa";
   status: ConversationStatus;
   /** New lines since the visitor's message: the disclosure on the first call, then the replies. */
   lines: ChatLine[];
@@ -141,7 +141,7 @@ export interface QualityMetrics {
 
 export interface EvalCaseView {
   id: string;
-  lang: "en" | "hi" | "ur" | "pa";
+  lang: "en" | "fr" | "hi" | "ur" | "pa";
   question: string;
   expect: string;
 }

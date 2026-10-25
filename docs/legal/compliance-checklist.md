@@ -165,6 +165,7 @@ The PRD's original idea of **commission-only student interns is not allowed.** M
   - transparency about automated decisions;
   - a data-portability right.
 - ☐ **Charter of the French language (Bill 96):** French versions of the app, contracts of adhesion (ToS, rewards terms, merchant agreement) and marketing; French must be at least equal.
+- ◐ **The sales assistant serves Quebec visitors in French** (disclosure, fixed notices, widget and replies; see section 12 and `counsel-notes.md`). The marketing pages, the app and the English-only contracts are still not in French.
 - ☐ The Quebec *Consumer Protection Act* has its own rules on loyalty points and contracts. **VERIFY** before launch.
 - ☐ Budget: $10–20k for French translation and legal review (assumption).
 
@@ -247,7 +248,7 @@ Added Oct 25, 2026. Code: `apps/api/src/services/sales-agent/*`, `packages/share
 - ☑ Retention: `purgeSalesAgentChats` (job `privacy.retention`) deletes conversations, messages and tool records 90 days after the last message. Account deletion deletes the chats tied to that number or verified owner (`privacy-scrub.ts`).
 - ☑ Log minimisation: tool-call records and audit rows carry masked numbers and emails; the server never logs message text; error logs carry the error class only; the SMS code is checked in code and never stored or sent to the model.
 - ☑ No automated decision about a person: the assistant cannot approve, refuse or price anything outside `plans.ts`; anything uncertain goes to a person (Law 25 transparency about automated processing).
-- ☐ Quebec: the disclosure and the widget have no French version yet. If we market in Quebec, add `fr` to `AGENT_TEXTS` and `WIDGET_TEXTS`.
+- ◐ **Quebec visitors are served in French by the assistant.** `fr` (fr-CA) is in `AGENT_TEXTS` and `WIDGET_TEXTS`: the AI disclosure, STOP / START / HUMAN, hand-off, offline, text-only, rate-limit and SMS-code texts and the widget are French, the language is picked when the person writes French, the French widget shows for a French browser or `?lang=fr`, and the model replies in French from the same English knowledge, with the price and fee guard reading French number formats ("39 $", "1,5 %", "avant TPS/TVH"). The rest of the marketing site is English only (see section 10). ☐ Have a Quebec translator or lawyer review the French wording (`counsel-notes.md`, "Traduction — à faire réviser: assistant de vente et de soutien").
 
 **CASL**
 

@@ -1,5 +1,5 @@
 /**
- * Live eval for the sales assistant: runs docs/engineering/sales-agent-evals.md's ~40 questions (src/services/sales-agent/eval-cases.ts)
+ * Live eval for the sales assistant: runs docs/engineering/sales-agent-evals.md's ~48 questions (src/services/sales-agent/eval-cases.ts)
  * through the real assistant (real tools on a throw-away database) and the real model, and checks each reply for the expected facts
  * and behaviour.
  *
@@ -99,7 +99,7 @@ async function main() {
   };
   await Promise.all([worker(), worker(), worker(), worker()]);
   const passed = results.filter((r) => r.pass).length;
-  const byLang = ["en", "hi", "ur", "pa"].map((l) => `${l} ${results.filter((r) => r.lang === l && r.pass).length}/${results.filter((r) => r.lang === l).length}`).join("  ");
+  const byLang = ["en", "fr", "hi", "ur", "pa"].map((l) => `${l} ${results.filter((r) => r.lang === l && r.pass).length}/${results.filter((r) => r.lang === l).length}`).join("  ");
   console.log(`\n${passed}/${results.length} passed  (${byLang})`);
   mkdirSync(".sales-agent-eval", { recursive: true });
   writeFileSync(".sales-agent-eval/latest.json", JSON.stringify({ at: new Date().toISOString(), model: config.salesAgent.model, passed, total: results.length, results }, null, 2));

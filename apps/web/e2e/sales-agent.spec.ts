@@ -2,7 +2,8 @@
  * The sales assistant, end to end on the real stack (API in NODE_ENV=test with no ANTHROPIC_API_KEY, so the model is "offline"):
  * the website widget discloses that it is an AI before the visitor types, a message lands in the founder's queue with the
  * offline notice, the founder takes over and replies from the console, the visitor sees the person's reply, and the console's
- * thumbs and Quality tab work. Also: no WhatsApp button without a configured number, and the pre-filled sign-up link.
+ * thumbs and Quality tab work. In French (a French browser, or ?lang=fr) the widget, its disclosure and the assistant's fixed
+ * notices are Quebec French while the rest of the site stays English. Also: no WhatsApp button without a configured number, and the pre-filled sign-up link.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { API } from "./fixtures";
@@ -96,6 +97,46 @@ test.describe("website chat and the founder's console", () => {
 
     await visitorCtx.close();
     await adminCtx.close();
+  });
+
+  test("a French browser, or ?lang=fr, gets the widget and the assistant's fixed notices in French; the page stays English", async ({ browser }) => {
+    for (const how of ["browser", "query"] as const) {
+      const ctx = await browser.newContext(how === "browser" ? { locale: "fr-CA", viewport: { width: 390, height: 844 } } : { locale: "en-CA", viewport: { width: 390, height: 844 } });
+      const page = await ctx.newPage();
+      await page.goto(how === "browser" ? "/" : "/?lang=fr");
+      // Only the widget switches: the page itself is still English.
+      await expect(page.locator("html")).toHaveAttribute("lang", "en-CA");
+      await expect(page.getByRole("link", { name: "Pricing" }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "Ask us" })).toHaveCount(0);
+      await page.getByRole("button", { name: "Posez-nous une question" }).click();
+      const chat = page.getByRole("dialog", { name: "Posez-nous vos questions" });
+      await expect(chat).toBeVisible();
+      // The disclosure is French and is there before anyone types.
+      await expect(chat).toContainText("assistant IA");
+      await expect(chat).toContainText("HUMAN");
+      await expect(chat).toContainText("Assistant IA. Une personne peut se joindre.");
+      await expect(chat).toContainText("Les clavardages sont conservés 90 jours.");
+      await expect(chat.getByRole("link", { name: "Confidentialité" })).toHaveAttribute("href", "/legal/privacy?lang=fr");
+      await expect(chat.getByRole("button", { name: "Combien ça coûte?" })).toBeVisible();
+      await expect(chat.getByLabel("Écrivez votre question")).toBeVisible();
+      await expect(chat.getByRole("button", { name: "Fermer le clavardage" })).toBeVisible();
+      await shot(page, `widget-fr-${how}-390`);
+
+      // A chip is a French question; the model is offline in this stack, so the fixed French notice comes back and a person is needed.
+      await chat.getByRole("button", { name: "Combien ça coûte?" }).click();
+      await expect(chat.getByText("Notre assistant n’est pas disponible pour le moment.")).toBeVisible();
+      await expect(chat.getByText(/je suis l’assistant IA de Local Loyalty/)).toHaveCount(1);
+      await expect(chat.getByText("Combien ça coûte?", { exact: true }).first()).toBeVisible();
+      await shot(page, `widget-fr-offline-${how}-390`);
+      await ctx.close();
+    }
+
+    // The same visitor on an English browser still gets the English widget,.
+    const en = await browser.newContext({ locale: "en-CA", viewport: { width: 390, height: 844 } });
+    const p = await en.newPage();
+    await p.goto("/");
+    await expect(p.getByRole("button", { name: "Ask us" })).toBeVisible();
+    await en.close();
   });
 
   test("the API refuses the console to anyone but an admin, and a visitor's session token is not guessable", async ({ request }) => {

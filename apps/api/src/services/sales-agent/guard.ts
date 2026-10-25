@@ -3,7 +3,7 @@
  * A reply that fails is sent back to the model once with the reason; if it fails again it is replaced with the
  * fixed hand-off text and the chat goes to a person (agent.ts). Two checks:
  *
- *  1. Figures. Every dollar amount and percentage must be one of the product's own figures (plans.ts: plans, annual
+ *  1. Figures (English or French formatting: "$1,990", "1 990,50 $", "39 $ CA", "2,9 %"). Every dollar amount and percentage must be one of the product's own figures (plans.ts: plans, annual
  *     prices, add-ons, fees, the founding offer and the discounted prices it gives), or a figure that appeared in a tool
  *     result this turn, or one the person wrote themselves ("I do $5,000 a month"). So "Growth is $199" passes and
  *     "Growth is $149" does not, whatever the model "remembers".
@@ -21,18 +21,34 @@ const num = (raw: string) => round2(Number(raw.replace(/,/g, "")));
 
 /** `$199`, `$1,990`, `$99.50`, `199 dollars`, `CAD 199`, `199 CAD`, `199 डॉलर`. */
 const MONEY = /(?:(?:US|CA|C|CAD)?\$\s?(\d[\d,]*(?:\.\d{1,2})?))|(?:(\d[\d,]*(?:\.\d{1,2})?)\s?(?:dollars?|CAD|डॉलर|ڈالر|ਡਾਲਰ))|(?:CAD\s?(\d[\d,]*(?:\.\d{1,2})?))/gi;
-const PERCENT = /(\d+(?:\.\d+)?)\s?%|(\d+(?:\.\d+)?)\s?(?:percent|प्रतिशत|فیصد|ਪ੍ਰਤੀਸ਼ਤ)/gi;
+const PERCENT = /(\d+(?:[.,]\d+)?)\s?%|(\d+(?:[.,]\d+)?)\s?(?:percent|pour ?cent|प्रतिशत|فیصد|ਪ੍ਰਤੀਸ਼ਤ)/gi;
+
+/**
+ * French (fr-CA) money: the amount comes first, a space (or no-break space) groups thousands, a comma marks cents, and the
+ * symbol follows with a space: "39 $", "1 990 $", "1 990,50 $", "39 $ CA", "39 $CA", "39 dollars". A comma followed by exactly three
+ * digits is read as English thousands ("1,990 $"), the safe side: it is then checked against the same list.
+ */
+const FR_MONEY = /(?<![\d$.,])(\d{1,3}(?:[\s\u00a0\u202f]\d{3})+(?:,\d{1,2})?|\d+(?:,\d{1,2})?|\d{1,3}(?:,\d{3})+)(?![\d])\s?(?:\$\s?(?:CA|CAD|can)?|dollars?(?:\s+canadiens?)?|CAD)(?![\p{L}\d])/giu;
+
+const frNum = (raw: string): number => {
+  const t = raw.replace(/[\s\u00a0\u202f]/g, "");
+  if (/^\d{1,3}(,\d{3})+$/.test(t)) return round2(Number(t.replace(/,/g, "")));
+  return round2(Number(t.replace(",", ".")));
+};
+const pctNum = (raw: string) => round2(Number(raw.replace(",", ".")));
 
 export function amountsIn(text: string): number[] {
   const t = asciiDigits(text);
   const out: number[] = [];
   for (const m of t.matchAll(MONEY)) out.push(num((m[1] ?? m[2] ?? m[3])!));
+  // French order ("39 $") is checked on what the English patterns did not already read as "$39".
+  for (const m of t.matchAll(FR_MONEY)) out.push(frNum(m[1]!));
   return out;
 }
 export function percentsIn(text: string): number[] {
   const t = asciiDigits(text);
   const out: number[] = [];
-  for (const m of t.matchAll(PERCENT)) out.push(round2(Number(m[1] ?? m[2])));
+  for (const m of t.matchAll(PERCENT)) out.push(pctNum((m[1] ?? m[2])!));
   return out;
 }
 
@@ -64,12 +80,15 @@ export function productPercents(): Set<number> {
 }
 
 const PROMISES: { code: string; re: RegExp }[] = [
-  { code: "guarantee", re: /\bguarantee[sd]?\b|\bwarrant(y|ies)\b|गारंटी|ضمانت|ਗਾਰੰਟੀ/i },
-  { code: "risk_free", re: /\brisk[- ]free\b|\bno[- ]risk\b|\bmoney[- ]back\b|\bfull refund\b/i },
+  { code: "guarantee", re: /\bguarantee[sd]?\b|\bwarrant(y|ies)\b|गारंटी|ضمانت|ਗਾਰੰਟੀ|(?<![\p{L}])garanti(?:e|es|s|t|r|ssons|ssez)?(?![\p{L}])/iu },
+  { code: "risk_free", re: /\brisk[- ]free\b|\bno[- ]risk\b|\bmoney[- ]back\b|\bfull refund\b|(?<![\p{L}])sans (?:aucun )?risques?(?![\p{L}])|satisfait ou rembours|(?<![\p{L}])remboursement (?:intégral|complet|total)|garantie de remboursement/iu },
   { code: "results", re: /\b(will|can|going to)\s+(definitely\s+|certainly\s+)?(increase|boost|grow|double|triple|raise|bring)\b.{0,50}\b(sales|revenue|customers|traffic|profit|visits|footfall|repeat)/i },
+  { code: "results", re: /(?<![\p{L}])(?:va|vont|allez|pourra|pourrez|permettra de|vous permettra d')\s+(?:sûrement\s+|certainement\s+|définitivement\s+)?(?:augmenter|accroître|doubler|tripler|multiplier|faire croître|générer|attirer)\b.{0,50}(?:ventes|revenus|clients|clientèle|achalandage|profits?|visites|fréquentation|fidél)/iu },
   { code: "results", re: /\b\d+(\.\d+)?\s?(x|times)\s+(more|the|your)\b|\b(increase|boost|lift)\w*\s+(by\s+)?\d+\s?%/i },
-  { code: "trial", re: /\bfree trial\b|\b\d+[- ]day (free )?trial\b|\btry (it )?free for\b/i },
+  { code: "trial", re: /\bfree trial\b|\b\d+[- ]day (free )?trial\b|\btry (it )?free for\b|(?<![\p{L}])essai gratuit|essay(?:ez|er) (?:le |la |l')?(?:gratuitement|sans frais)|\d+ jours? d'essai|période d'essai gratuite/iu },
   { code: "date_promise", re: /\b(will be|goes?|going to be|are|is)\s+(live|ready|set up|activated)\s+(by|on|within|in)\s+\w+/i },
+  { code: "date_promise", re: /(?<![\p{L}])(?:sera|seront|serez|sont|est)\s+(?:en ligne|prête?s?|activée?s?|configurée?s?|opérationnelle?s?)\s+(?:d'ici|avant|dans|le|en|sous)\s+\S+/iu },
+  { code: "legal_advice", re: /(?<![\p{L}])(?:nous sommes|vous êtes|c'est|il est|cela est)\s+(?:entièrement\s+|pleinement\s+)?(?:conforme|légal|conformes)\b.{0,40}(?:loi|lcap|casl|lprpde|loi 25|charte)|\bconforme à la (?:loi|lcap|lprpde)\b/iu },
   { code: "legal_advice", re: /\b(this is|that is|it is)\s+(legal advice|legally compliant|fully compliant)\b|\bwe are (fully )?(casl|pipeda|gdpr)[- ]compliant\b/i },
 ];
 

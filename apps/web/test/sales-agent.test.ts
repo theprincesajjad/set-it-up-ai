@@ -10,7 +10,10 @@ describe("chat widget helpers", () => {
   it("picks the widget language from the page, then the browser, else English", () => {
     expect(chatLang("ur", "en-CA")).toBe("ur");
     expect(chatLang("", "pa-IN")).toBe("pa");
-    expect(chatLang(undefined, "fr-CA")).toBe("en");
+    expect(chatLang(undefined, "fr-CA")).toBe("fr");
+    expect(chatLang("fr", "en-CA")).toBe("fr");
+    expect(chatLang(null, "de-DE", "fr-CA", "en")).toBe("fr");
+    expect(chatLang("de", "es")).toBe("en");
     expect(chatLang("hi-IN")).toBe("hi");
   });
 
@@ -47,17 +50,19 @@ describe("chat widget helpers", () => {
     expect(() => saveChat({ setItem: () => { throw new Error("blocked"); } }, { token: "t", lines: [], status: "open" })).not.toThrow();
   });
 
-  it("has the widget's strings and the disclosure in all four languages, saying it is an AI and how to reach a person", () => {
-    for (const lang of ["en", "hi", "ur", "pa"] as const) {
+  it("has the widget's strings and the disclosure in all five languages, saying it is an AI and how to reach a person", () => {
+    for (const lang of ["en", "fr", "hi", "ur", "pa"] as const) {
       const w = WIDGET_TEXTS[lang];
       for (const v of [w.launcher, w.title, w.subtitle, w.placeholder, w.send, w.close, w.whatsapp, w.retention, w.privacy, w.error, ...w.chips]) expect(v.length, `${lang}`).toBeGreaterThan(1);
       const d = AGENT_TEXTS[lang].disclosure({ whatsapp: false });
-      expect(d).toContain("AI");
+      expect(d).toContain(lang === "fr" ? "IA" : "AI");
       expect(d).toContain("HUMAN");
       expect(AGENT_TEXTS[lang].disclosure({ whatsapp: true })).toContain("STOP");
       expect(AGENT_TEXTS[lang].stopped).toContain("START");
     }
     expect(WIDGET_TEXTS.en.retention).toContain("90");
+    expect(WIDGET_TEXTS.fr.retention).toContain("90 jours");
+    expect(WIDGET_TEXTS.fr.chips[0]).toBe("Combien ça coûte?");
   });
 });
 

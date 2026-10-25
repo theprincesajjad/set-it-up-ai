@@ -6,7 +6,11 @@ import { isAgentLang, type AgentLang, type salesAgentApi } from "@ll/shared";
 
 export type Line = salesAgentApi.ChatLine;
 
-/** The widget's language from the page's `lang` (set by ?lang=), then the browser's; English otherwise. */
+/**
+ * The widget's language: the first candidate that is a language the assistant speaks, in the order given. The component passes
+ * ?lang=, then the browser's languages in order, then the page's own `lang` (always English on the marketing site, so it comes last
+ * and the rest of the page stays English whatever the widget shows). English when nothing matches.
+ */
 export function chatLang(...candidates: (string | null | undefined)[]): AgentLang {
   for (const c of candidates) {
     const base = (c ?? "").toLowerCase().split(/[-_]/)[0];

@@ -2,26 +2,69 @@
  * The sales and support assistant (apps/api/src/services/sales-agent/*): the parts both the API and the web widget
  * need and that must never come from the model.
  *
- *  - The disclosure (first message), the STOP / START / hand-off / offline texts, in en, hi, ur and pa.
+ *  - The disclosure (first message), the STOP / START / hand-off / offline texts, in en, fr (Canadian French, for Quebec),
+ *    hi, ur and pa.
  *    Fixed text, not model output: Meta's escalation rule, CASL sender identification and "tell people it is an
  *    AI" are things we promise in code, so a prompt change cannot remove them.
  *  - Language detection from script, and the words that ask for a person.
  *  - The widget's own strings.
  *
- * Wording to be checked by a native speaker of each language before launch (docs/engineering/translation-glossary.md).
+ * Wording to be checked by a native speaker of each language before launch (docs/engineering/translation-glossary.md). The
+ * French is for Quebec (Charter of the French language: commercial communications in French) and needs a Quebec reviewer:
+ * docs/legal/counsel-notes.md.
  */
 import { BRAND } from "./brand.js";
 import { RETENTION } from "./retention.js";
 
-export const AGENT_LANGS = ["en", "hi", "ur", "pa"] as const;
+export const AGENT_LANGS = ["en", "fr", "hi", "ur", "pa"] as const;
 export type AgentLang = (typeof AGENT_LANGS)[number];
 export const isAgentLang = (v: unknown): v is AgentLang => typeof v === "string" && (AGENT_LANGS as readonly string[]).includes(v);
 
-/** Script-based guess. Latin text stays English: romanised Hindi and Urdu read fine to the model, which replies in kind. */
+/**
+ * French words that are not English (or romanised Hindi/Urdu/Punjabi) words: one is enough. Compared lower-cased, accents
+ * kept, ’ read as '. Words that double as English ("pour", "sans", "comment", "commerce") or as romanised Hindi ("se", "ne",
+ * "de", "par", "le") are left out of both lists.
+ */
+const FR_STRONG = new Set(["bonjour", "bonsoir", "salut", "merci", "svp", "combien", "pourquoi", "quel", "quelle", "quels", "quelles", "est-ce", "suis", "êtes", "sont", "nous", "vous", "votre", "vos", "notre", "avec", "dans", "pas", "ça", "cette", "ces", "des", "une", "du", "aux", "je", "il", "elle", "oui", "prix", "tarif", "tarifs", "abonnement", "frais", "forfait", "gratuit", "gratuite", "commerçant", "clavardage", "courriel", "inscription", "inscrire", "puis-je", "peut-on", "faut-il", "dois-je", "besoin", "fonctionne", "contrat", "données", "mois", "caisse"]);
+/** Plain function words: they count only alongside another signal. */
+const FR_WEAK = new Set(["la", "les", "et", "est", "que", "qui", "sur", "en", "au", "ou"]);
+const FR_ACCENT = /[éèêëàâçùûôîïœ]/;
+const EN_WORDS = new Set(["the", "is", "are", "what", "how", "much", "does", "do", "i", "my", "you", "your", "can", "with", "for", "and", "need", "of", "to", "it", "this", "that", "have", "will", "plan", "cost"]);
+
+const words = (text: string): string[] =>
+  text
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[’‘`]/g, "'")
+    .replace(/[^\p{L}\p{M}'\-\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/** Latin text is French when it carries a strong French word (2) or two weaker signals: function words and accented letters (1 each). */
+function looksFrench(text: string): boolean {
+  let score = FR_ACCENT.test(text.toLowerCase()) ? 1 : 0;
+  for (const w of words(text)) {
+    if (FR_STRONG.has(w) || /^(l|d|j|qu|n|s|m|t|c)'[\p{L}]{2,}/u.test(w)) score += 2;
+    else if (FR_WEAK.has(w)) score += 1;
+  }
+  return score >= 2;
+}
+
+/** True when a Latin-script message is plainly English (used only to leave French once a chat has begun in it). */
+export function looksEnglish(text: string): boolean {
+  const w = words(text);
+  return w.filter((x) => EN_WORDS.has(x)).length >= 2 && !looksFrench(text);
+}
+
+/**
+ * Script-based guess, then French. Romanised Hindi and Urdu stay null (the model replies in kind); French is recognised
+ * from its words and accents because Quebec visitors write it in Latin script and must be answered in French.
+ */
 export function detectAgentLanguage(text: string): AgentLang | null {
   if (/[ऀ-ॿ]/.test(text)) return "hi";
   if (/[਀-੿]/.test(text)) return "pa";
   if (/[؀-ۿݐ-ݿ]/.test(text)) return "ur";
+  if (looksFrench(text)) return "fr";
   return null;
 }
 
@@ -29,11 +72,16 @@ const HUMAN_NATIVE = ["इंसान", "इन्सान", "व्यक्�
 const HUMAN_BARE = /^(human|a human|person|a person|agent|an agent|representative|real person|someone|operator|help|support)$/;
 const HUMAN_PHRASE = /\b(talk|speak|chat|connect|transfer|put me)\b.{0,20}\b(human|person|someone|agent|representative|real person|the team)\b|\b(human|real person|live agent)\b.{0,12}\b(please|now|needed)\b/;
 
+const HUMAN_BARE_FR = /^(humain|un humain|une personne|quelqu'un|un agent|agent|un conseiller|conseiller|un représentant|représentant|une vraie personne|vraie personne|aide|de l'aide|soutien|assistance|service à la clientèle)$/u;
+const HUMAN_PHRASE_FR = /(?<![\p{L}])(parler|discuter|clavarder|communiquer|joindre|contacter|transférer|passer|connecter|mettre)(?![\p{L}]).{0,30}(?<![\p{L}])(humain|personne|quelqu'un|agent|conseiller|représentant|équipe|vrai(?:e)? personne)(?![\p{L}])|(?<![\p{L}])(humain|vraie personne|agent humain)(?![\p{L}]).{0,14}(?<![\p{L}])(svp|s'il (?:vous|te) plaît|maintenant|requis)(?![\p{L}])|(?<![\p{L}])je veux (?:un|une) (?:humain|personne|agent|conseiller)/u;
+
 /** True when the message asks for a person. Code, not the model, so "HUMAN" always works. */
 export function wantsHuman(text: string): boolean {
   const t = text.normalize("NFKC").toLowerCase().replace(/[.!?,;:"']/g, " ").replace(/\s+/g, " ").trim();
   if (!t || t.length > 120) return false;
   if (HUMAN_BARE.test(t) || HUMAN_PHRASE.test(t)) return true;
+  const f = t.replace(/[’‘]/g, "'");
+  if (HUMAN_BARE_FR.test(f) || HUMAN_PHRASE_FR.test(f)) return true;
   return HUMAN_NATIVE.some((w) => text.includes(w)) && t.length <= 60;
 }
 
@@ -53,6 +101,8 @@ export interface AgentTexts {
   /** A reply failed a check (a figure or a promise we cannot stand behind): replaced, and handed off. */
   guardrail: string;
   unsupported: string;
+  /** The SMS that carries the owner's phone-check code. Absent: the English text goes out. */
+  otpSms?: (code: string) => string;
 }
 
 const brand = BRAND.name;
@@ -70,6 +120,21 @@ export const AGENT_TEXTS: Record<AgentLang, AgentTexts> = {
     tooLong: "That message is too long for me. Please send a shorter one.",
     guardrail: "I'm not able to confirm that, so I'll check with the team. A person will reply in this chat.",
     unsupported: "I can only read text messages. Please type your question, or type HUMAN for a person.",
+    otpSms: (code) => `${code} is your ${brand} code to check it's you in our chat. It expires in 10 minutes. Don't share it.`,
+  },
+  fr: {
+    disclosure: ({ whatsapp }) =>
+      `Bonjour, je suis l’assistant IA de ${brand}. Je peux répondre à vos questions sur les prix, les frais, le fonctionnement et la mise en route, et lancer votre inscription. Je peux me tromper : pour tout ce qui est important, une personne de l’équipe peut intervenir en tout temps. Écrivez HUMAN. ${whatsapp ? "Répondez STOP pour ne plus recevoir de messages." : "Les clavardages sont conservés pour que l’équipe puisse faire un suivi."}`,
+    stopped: `Vous ne recevrez plus de messages WhatsApp de ${brand}. Répondez START pour les réactiver.`,
+    started: "Content de vous revoir. Posez-moi vos questions sur les prix ou la mise en route, ou écrivez HUMAN pour parler à une personne.",
+    offline: "Notre assistant n’est pas disponible pour le moment. J’ai transmis votre message à l’équipe, et une personne vous répondra ici même.",
+    handoff: "Je vais vérifier auprès de l’équipe. Une personne vous répondra dans ce clavardage. D’ici là, je ne répondrai pas à de nouvelles questions.",
+    humanJoined: "Une personne de l’équipe s’est jointe au clavardage.",
+    rateLimited: "Vous envoyez des messages très rapidement. Attendez quelques minutes et réessayez, ou écrivez HUMAN.",
+    tooLong: "Ce message est trop long pour moi. Veuillez en envoyer un plus court.",
+    guardrail: "Je ne peux pas confirmer cela, alors je vais vérifier auprès de l’équipe. Une personne vous répondra dans ce clavardage.",
+    unsupported: "Je ne peux lire que les messages texte. Écrivez votre question, ou écrivez HUMAN pour parler à une personne.",
+    otpSms: (code) => `${code} est votre code ${brand} pour confirmer votre identité dans notre clavardage. Il expire dans 10 minutes. Ne le partagez pas.`,
   },
   hi: {
     disclosure: ({ whatsapp }) =>
@@ -132,6 +197,7 @@ export interface WidgetTexts {
 const days = RETENTION.salesAgentDays;
 export const WIDGET_TEXTS: Record<AgentLang, WidgetTexts> = {
   en: { launcher: "Ask us", title: "Ask us anything", subtitle: "AI assistant. A person can join.", placeholder: "Type your question", send: "Send", close: "Close chat", chips: ["What does it cost?", "Do I need a POS?", "Who owns my data?"], whatsapp: "Continue on WhatsApp", retention: `Chats are kept ${days} days.`, privacy: "Privacy", human: "Team", assistant: "AI assistant", error: "Something went wrong. Please try again, or email us.", typing: "Typing" },
+  fr: { launcher: "Posez-nous une question", title: "Posez-nous vos questions", subtitle: "Assistant IA. Une personne peut se joindre.", placeholder: "Écrivez votre question", send: "Envoyer", close: "Fermer le clavardage", chips: ["Combien ça coûte?", "Faut-il une caisse?", "À qui appartiennent mes données?"], whatsapp: "Continuer sur WhatsApp", retention: `Les clavardages sont conservés ${days} jours.`, privacy: "Confidentialité", human: "Équipe", assistant: "Assistant IA", error: "Une erreur s’est produite. Réessayez ou écrivez-nous par courriel.", typing: "En train d’écrire" },
   hi: { launcher: "हमसे पूछें", title: "कुछ भी पूछें", subtitle: "AI सहायक। कोई व्यक्ति जुड़ सकता है।", placeholder: "अपना सवाल लिखें", send: "भेजें", close: "चैट बंद करें", chips: ["इसकी क़ीमत क्या है?", "क्या POS चाहिए?", "मेरा डेटा किसका है?"], whatsapp: "WhatsApp पर जारी रखें", retention: `चैट ${days} दिन रखी जाती है।`, privacy: "गोपनीयता", human: "टीम", assistant: "AI सहायक", error: "कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें, या हमें ईमेल करें।", typing: "लिख रहा है" },
   ur: { launcher: "ہم سے پوچھیں", title: "کچھ بھی پوچھیں", subtitle: "AI معاون۔ کوئی فرد شامل ہو سکتا ہے۔", placeholder: "اپنا سوال لکھیں", send: "بھیجیں", close: "چیٹ بند کریں", chips: ["اس کی قیمت کیا ہے؟", "کیا POS چاہیے؟", "میرا ڈیٹا کس کا ہے؟"], whatsapp: "WhatsApp پر جاری رکھیں", retention: `چیٹ ${days} دن رکھی جاتی ہے۔`, privacy: "رازداری", human: "ٹیم", assistant: "AI معاون", error: "کچھ گڑبڑ ہو گئی۔ براہِ کرم دوبارہ کوشش کریں، یا ہمیں ای میل کریں۔", typing: "لکھ رہا ہے" },
   pa: { launcher: "ਸਾਨੂੰ ਪੁੱਛੋ", title: "ਕੁਝ ਵੀ ਪੁੱਛੋ", subtitle: "AI ਸਹਾਇਕ। ਕੋਈ ਵਿਅਕਤੀ ਜੁੜ ਸਕਦਾ ਹੈ।", placeholder: "ਆਪਣਾ ਸਵਾਲ ਲਿਖੋ", send: "ਭੇਜੋ", close: "ਚੈਟ ਬੰਦ ਕਰੋ", chips: ["ਇਸਦੀ ਕੀਮਤ ਕੀ ਹੈ?", "ਕੀ POS ਚਾਹੀਦਾ ਹੈ?", "ਮੇਰਾ ਡੇਟਾ ਕਿਸਦਾ ਹੈ?"], whatsapp: "WhatsApp ਤੇ ਜਾਰੀ ਰੱਖੋ", retention: `ਚੈਟ ${days} ਦਿਨ ਰੱਖੀ ਜਾਂਦੀ ਹੈ।`, privacy: "ਗੋਪਨੀਯਤਾ", human: "ਟੀਮ", assistant: "AI ਸਹਾਇਕ", error: "ਕੁਝ ਗੜਬੜ ਹੋ ਗਈ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ ਸਾਨੂੰ ਈਮੇਲ ਕਰੋ।", typing: "ਲਿਖ ਰਿਹਾ ਹੈ" },
