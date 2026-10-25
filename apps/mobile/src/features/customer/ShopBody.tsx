@@ -243,7 +243,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             </Text>
             {m?.muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel={tr("ui.muted")} /> : null}
           </View>
-          <Text style={[ui(13, 400, 17), { fontStyle: "italic", marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
+          <Text style={[ui(13, 400, 17), { fontStyle: "italic", marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={2}>
             {kind}
           </Text>
         </View>
