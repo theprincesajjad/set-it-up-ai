@@ -367,6 +367,25 @@ describe("availability", () => {
 });
 
 describe("online booking: deposit, card on file and the 10-minute hold", () => {
+  it("a payment-provider failure while starting the deposit releases the time instead of leaving a hold behind", async () => {
+    const s = await salon({ feeCents: 2500 });
+    const c = await customer(env);
+    const start = at("2026-11-04 10:30");
+    const pay = fake(env);
+    const real = pay.createPaymentIntent.bind(pay);
+    pay.createPaymentIntent = async () => {
+      throw new Error("Unknown fake customer cus_fake_000014");
+    };
+    const failed = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: start });
+    expect(failed.status).toBe(500);
+    // Nothing is left holding Simran's time or counting against the customer's open bookings.
+    expect((await env.db.select().from(appointments).where(and(eq(appointments.userId, c.user.id), eq(appointments.status, "booked")))).length).toBe(0);
+    pay.createPaymentIntent = real;
+    const retry = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: start });
+    expect(retry.status).toBe(201);
+    expect(retry.body.deposit).toMatchObject({ amountCents: 4000 });
+  });
+
   it("holds the time, takes the deposit by webhook and confirms; the card is kept for a fee", async () => {
     const s = await salon({ feeCents: 2500 });
     const c = await customer(env, { name: "Neha Sharma" });

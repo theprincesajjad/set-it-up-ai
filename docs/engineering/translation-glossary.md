@@ -787,3 +787,33 @@ Added by the `perf` pass. The unsubscribe pages are rendered by the API (`apps/a
 | `unsub.nudge.doneTitle` | No more setup reminders |
 | `unsub.nudge.doneBody` | We won't send setup reminders for {shop} any more. Your account and your shop are not affected, and you can turn reminders back on from the setup page. |
 | `unsub.leave` | Nothing changes until you press the button. You can close this page. |
+
+### Restaurant menu section names (`apps/api/src/seed/restaurantMenuCategories.ts`) (23)
+
+Added by the `tail` pass. The tab names on the demo restaurants' public menus (`?lang=hi|ur|pa`, stored in `merchant_categories.translations`). Owners can now edit them in the dashboard (Restaurant > Menu > Section names). Terms follow the glossary: pre-order is प्री-ऑर्डर / پیشگی آرڈر / ਪ੍ਰੀ-ਆਰਡਰ; "degh" (the pot) stays as the shops say it. Open question for the reviewer: "Kottu" is written phonetically in all three scripts, and "farsan" is kept in Hindi and Punjabi because that is the shop word.
+
+| English | Hindi | Urdu | Punjabi |
+| --- | --- | --- | --- |
+| Biryani | बिरयानी | بریانی | ਬਿਰਯਾਨੀ |
+| Biryani & rice | बिरयानी और चावल | بریانی اور چاول | ਬਿਰਯਾਨੀ ਤੇ ਚੌਲ |
+| Curries | करी | سالن | ਕਰੀ |
+| Karahi & curries | करी और कड़ाही | کڑاہی اور سالن | ਕੜਾਹੀ ਤੇ ਕਰੀ |
+| Tandoor | तंदूर | تندور | ਤੰਦੂਰ |
+| Tandoor & grill | तंदूर और ग्रिल | تندور اور گرل | ਤੰਦੂਰ ਤੇ ਗ੍ਰਿਲ |
+| Breads | रोटियाँ | روٹیاں | ਰੋਟੀਆਂ |
+| Sides & raita | साइड और रायता | سائیڈز اور رائتہ | ਸਾਈਡ ਤੇ ਰਾਇਤਾ |
+| Sweets & chai | मिठाई और चाय | میٹھا اور چائے | ਮਿੱਠਾ ਤੇ ਚਾਹ |
+| Desserts | मीठा | میٹھا | ਮਿੱਠਾ |
+| Drinks | पेय | مشروبات | ਪੀਣ ਵਾਲੇ ਪਦਾਰਥ |
+| Pre-order pots | प्री-ऑर्डर देग | پیشگی آرڈر دیگ | ਪ੍ਰੀ-ਆਰਡਰ ਦੇਗ |
+| Thalis | थाली | تھالی | ਥਾਲੀ |
+| Snacks & farsan | नाश्ता और फरसाण | ناشتہ اور فرسان | ਨਾਸ਼ਤਾ ਤੇ ਫਰਸਾਣ |
+| Snacks | नाश्ता | ناشتہ | ਨਾਸ਼ਤਾ |
+| Chaat & snacks | चाट और नाश्ता | چاٹ اور ناشتہ | ਚਾਟ ਤੇ ਨਾਸ਼ਤਾ |
+| Mains | मुख्य व्यंजन | مین ڈشز | ਮੁੱਖ ਪਕਵਾਨ |
+| Kottu roti | कोट्टू रोटी | کوتّو روٹی | ਕੋੱਟੂ ਰੋਟੀ |
+| Hoppers & rice | हॉपर्स और भात | ہاپرز اور چاول | ਹੌਪਰਜ਼ ਤੇ ਚੌਲ |
+| Dumplings | डम्पलिंग्स | ڈمپلنگز | ਡੰਪਲਿੰਗ |
+| Mithai | मिठाई | مٹھائی | ਮਿਠਾਈ |
+| Festival boxes | त्योहार बॉक्स | تہوار باکس | ਤਿਉਹਾਰ ਡੱਬੇ |
+| Catering packages | कैटरिंग पैकेज | کیٹرنگ پیکجز | ਕੈਟਰਿੰਗ ਪੈਕੇਜ |

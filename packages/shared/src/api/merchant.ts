@@ -7,6 +7,7 @@ import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
 import { VERTICALS, type Vertical } from "../verticals.js";
 import { LOCALE_CODES } from "../i18n/locales.js";
 import { centsSchema, phoneSchema, uuidSchema } from "./common.js";
+import { translationsSchema } from "./restaurant.js";
 
 // ---------------------------------------------------------------------------
 // Shared bits
@@ -428,6 +429,8 @@ export const createCategoryBody = z.object({
   earnEligible: z.boolean().optional(),
   discountEligible: z.boolean().optional(),
   externalIds: z.record(z.string(), z.string()).optional(),
+  /** Restaurant menus: the tab name in hi / ur / pa (restaurant.multilingual_menu). Only `name` is used. */
+  translations: translationsSchema.optional(),
 });
 export const updateCategoryBody = createCategoryBody.partial();
 export interface Category {
@@ -438,6 +441,8 @@ export interface Category {
   /** Regulated category (e.g. prescriptions): can never earn or be discounted, can't be deleted. */
   protected: boolean;
   externalIds: Record<string, string>;
+  /** Restaurant menus only: tab names in hi / ur / pa. */
+  translations?: Record<string, { name?: string }>;
   createdAt: string;
 }
 

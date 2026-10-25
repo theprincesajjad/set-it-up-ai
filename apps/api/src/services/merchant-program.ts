@@ -11,6 +11,7 @@ import {
   loyaltyPrograms,
   merchantCategories,
   merchantMembers,
+  merchants,
   promos,
   redemptions,
   rewards,
@@ -22,6 +23,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
+import { requireFeature } from "./features.js";
 import { iso, serializeLocation, serializeProgram, uniqueQrCode } from "./merchant.js";
 
 type Body<T extends z.ZodType> = z.infer<T>;
@@ -185,6 +187,7 @@ const serializeCategory = (c: CategoryRow): merchantApi.Category => ({
   discountEligible: c.discountEligible,
   protected: isRegulatedCategory(c.name),
   externalIds: c.externalIds,
+  ...(Object.keys(c.translations ?? {}).length ? { translations: c.translations } : {}),
   createdAt: c.createdAt.toISOString(),
 });
 
@@ -211,15 +214,23 @@ async function getCategory(db: DbOrTx, merchantId: string, id: string) {
   return c;
 }
 
+/** Tab names in hi / ur / pa belong to the multilingual menu feature. */
+async function requireTranslationsFeature(ctx: AppContext, merchantId: string) {
+  const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Merchant");
+  await requireFeature(ctx.db, m, "restaurant.multilingual_menu");
+}
+
 export async function createCategory(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createCategoryBody>) {
   // Regulated names default to no-earn/no-discount; explicitly asking for earn/discount is an error.
   const regulated = isRegulatedCategory(body.name);
   const earnEligible = body.earnEligible ?? !regulated;
   const discountEligible = body.discountEligible ?? !regulated;
   assertCategoryAllowed(body.name, earnEligible, discountEligible);
+  if (body.translations) await requireTranslationsFeature(ctx, merchantId);
   const [c] = await ctx.db
     .insert(merchantCategories)
-    .values({ merchantId, name: body.name, earnEligible, discountEligible, externalIds: body.externalIds ?? {} })
+    .values({ merchantId, name: body.name, earnEligible, discountEligible, externalIds: body.externalIds ?? {}, translations: body.translations ?? {} })
     .returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "category.created", entity: "category", entityId: c!.id, data: body });
   return serializeCategory(c!);
@@ -227,6 +238,7 @@ export async function createCategory(ctx: AppContext, merchantId: string, actorU
 
 export async function updateCategory(ctx: AppContext, merchantId: string, actorUserId: string, id: string, body: Body<typeof merchantApi.updateCategoryBody>) {
   const cur = await getCategory(ctx.db, merchantId, id);
+  if (body.translations) await requireTranslationsFeature(ctx, merchantId);
   const nextEarn = body.earnEligible ?? cur.earnEligible;
   const nextDiscount = body.discountEligible ?? cur.discountEligible;
   // Renaming a protected category doesn't unlock it: check both old and new names.

@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { CategoryNames } from "./CategoryNames";
 import { DualPricing } from "./DualPricing";
 import { HalalCertification } from "./HalalCertification";
 import { ItemSheet } from "./ItemSheet";
@@ -225,6 +226,7 @@ function Menu() {
               <p className="text-caption text-fg-muted">Halal and dietary tags are your own claims. A dish shows a certifier only when you name one that differs from your shop certificate.</p>
             </>
           )}
+          {enabled("restaurant.multilingual_menu") ? <CategoryNames categories={state.data?.categories ?? []} onSaved={() => void state.reload()} /> : null}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">

@@ -139,6 +139,29 @@ describe("multilingual menu", () => {
     const plain = await restaurant(null);
     expect((await call(env, plain.ownerToken, "PUT", `/v1/merchants/${plain.merchant.id}/menu/languages`, { languages: ["en", "hi"] })).status).toBe(402);
   });
+
+  it("owners enter section names in hi, ur and pa; the public menu serves each, and they need the pack", async () => {
+    const m = await restaurant("starter", { slug: "lahori2" });
+    const cats = `/v1/merchants/${m.merchant.id}/categories`;
+    const made = await call(env, m.ownerToken, "POST", cats, { name: "Curries", translations: { hi: { name: "करी" }, ur: { name: "سالن" }, pa: { name: "ਕਰੀ" } } });
+    expect(made.status).toBe(201);
+    expect(made.body.translations).toEqual({ hi: { name: "करी" }, ur: { name: "سالن" }, pa: { name: "ਕਰੀ" } });
+    const id = made.body.id as string;
+    const upd = await call(env, m.ownerToken, "PATCH", `${cats}/${id}`, { translations: { hi: { name: "सालन" }, ur: { name: "سالن" }, pa: { name: "ਕਰੀ" } } });
+    expect(upd.body.translations.hi.name).toBe("सालन");
+    expect((await call(env, m.ownerToken, "PATCH", `${cats}/${id}`, { translations: { fr: { name: "x" } } })).status).toBe(400);
+    await call(env, m.ownerToken, "POST", itemsUrl(m), { name: "Nihari", priceCents: 1700, categoryId: id });
+    await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/menu/languages`, { languages: ["en", "hi", "ur", "pa"] });
+    for (const [lang, name] of [["hi", "सालन"], ["ur", "سالن"], ["pa", "ਕਰੀ"]] as const) {
+      const body = (await call(env, null, "GET", `/v1/public/shops/lahori2/menu?lang=${lang}`)).body;
+      expect(body.categories[0]).toMatchObject({ name, nameEn: "Curries" });
+    }
+    expect((await call(env, null, "GET", "/v1/public/shops/lahori2/menu")).body.categories[0].name).toBe("Curries");
+    // Without the pack, translations are refused.
+    const plain = await restaurant(null);
+    const r = await call(env, plain.ownerToken, "POST", `/v1/merchants/${plain.merchant.id}/categories`, { name: "Gifts", translations: { hi: { name: "उपहार" } } });
+    expect(r.status).toBe(402);
+  });
 });
 
 describe("dual pricing", () => {

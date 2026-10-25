@@ -62,6 +62,7 @@ export const createCategoryBody = z.object({
   /** false = no-earn category (prescriptions, alcohol, tobacco, lottery, gift cards). */
   earnEligible: z.boolean().default(true),
   discountEligible: z.boolean().default(true),
+  translations: translationsSchema.optional(),
 });
 export type CreateCategoryBody = z.input<typeof createCategoryBody>;
 export const updateCategoryBody = createCategoryBody.partial();

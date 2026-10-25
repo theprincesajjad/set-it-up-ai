@@ -285,7 +285,14 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
       .returning();
     return a!;
   });
-  const pay = await pendingPayment(ctx, merchant, row);
+  let pay: Awaited<ReturnType<typeof pendingPayment>>;
+  try {
+    pay = await pendingPayment(ctx, merchant, row);
+  } catch (err) {
+    // The provider refused the deposit or card setup: the customer sees an error, so do not leave their time held (it would block a retry and count as an open booking).
+    await ctx.db.update(appointments).set({ status: "cancelled", cancelledAt: now, cancelReason: "payment_setup_failed", holdExpiresAt: null, updatedAt: now }).where(eq(appointments.id, row.id));
+    throw err;
+  }
   const [fresh] = await ctx.db.select().from(appointments).where(eq(appointments.id, row.id)).limit(1);
   if (!hold) await notifyConfirmed(ctx, merchant, fresh!);
   return { appointment: (await myDtos(ctx, [fresh!]))[0]!, deposit: pay.deposit, setup: pay.setup, confirmed: !hold };

@@ -282,23 +282,39 @@ describe("Ridgeway Plaza restaurant corridor", () => {
   });
 
   it("restaurant menus are split into real categories, in tab order, translated, and the public menu localises the tab names", async () => {
-    const slugs = ["nawab-biryani-house", "lahori-karahi-and-bbq", "shree-thali-and-tiffin", "sarson-dhaba", "meethi-mithai-and-chai", "padma-bangladeshi-kitchen", "jaffna-kottu-house", "kabul-garden-grill"];
+    const slugs = ["nawab-biryani-house", "lahori-karahi-and-bbq", "shree-thali-and-tiffin", "sarson-dhaba", "meethi-mithai-and-chai", "padma-bangladeshi-kitchen", "jaffna-kottu-house", "kabul-garden-grill", "zeenat-catering"];
+    const script = { hi: /^[\u0900-\u097F\s&()+,.'-]+$/, ur: /^[\u0600-\u06FF\s&()+,.'-]+$/, pa: /^[\u0A00-\u0A7F\s&()+,.'-]+$/ };
     for (const slug of slugs) {
       const id = await slugToId(slug);
       const cats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, id)).orderBy(merchantCategories.sortOrder);
       const items = await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, id));
-      expect(cats.length, slug).toBeGreaterThanOrEqual(4);
+      expect(cats.length, slug).toBeGreaterThanOrEqual(slug === "zeenat-catering" ? 1 : 4); // the caterer sells packages only
       expect(cats.some((c) => c.name === "Food"), slug).toBe(false);
       expect(cats.map((c) => c.sortOrder), slug).toEqual(cats.map((_, k) => k));
       expect(items.every((i) => i.categoryId && cats.some((c) => c.id === i.categoryId)), slug).toBe(true);
       for (const c of cats) {
-        expect(c.translations.hi?.name, `${slug} ${c.name}`).toMatch(/[\u0900-\u097F]/);
-        expect(c.translations.ur?.name, `${slug} ${c.name}`).toMatch(/[\u0600-\u06FF]/);
-        expect(c.translations.pa?.name, `${slug} ${c.name}`).toMatch(/[\u0A00-\u0A7F]/);
+        // All three non-English names exist and are written in their own script (no Latin left over).
+        for (const lang of ["hi", "ur", "pa"] as const) expect(c.translations[lang]?.name, `${slug} ${c.name} ${lang}`).toMatch(script[lang]);
         expect(items.some((i) => i.categoryId === c.id), `${slug} ${c.name} is empty`).toBe(true);
       }
     }
     // Nawab matches the Figma tabs: Biryani, Curries, Tandoor, Breads, Sweets & chai (+ the Degh pots).
+    // The public menu returns every category in each language the shop has switched on (hi, ur and pa alike).
+    const langsOf: Record<string, string[]> = {};
+    for (const slug of slugs) {
+      const [m] = await env.db.select({ languages: merchants.languages }).from(merchants).where(eq(merchants.id, await slugToId(slug)));
+      langsOf[slug] = m!.languages.filter((l) => l !== "en");
+      for (const lang of langsOf[slug]!) {
+        const res = await env.app.inject({ method: "GET", url: `/v1/public/shops/${slug}/menu?lang=${lang}` });
+        const cats = res.json().categories as { name: string; nameEn?: string }[];
+        expect(cats.length, `${slug} ${lang}`).toBeGreaterThan(0);
+        for (const c of cats) {
+          expect(c.name, `${slug} ${lang}`).toMatch(script[lang as "hi" | "ur" | "pa"]);
+          expect(c.nameEn, `${slug} ${lang}`).toBeTruthy();
+        }
+      }
+    }
+    expect(Object.values(langsOf).flat()).toEqual(expect.arrayContaining(["hi", "ur", "pa"]));
     const nawab = await slugToId("nawab-biryani-house");
     const nawabCats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, nawab)).orderBy(merchantCategories.sortOrder);
     expect(nawabCats.map((c) => c.name)).toEqual(["Biryani", "Curries", "Tandoor", "Breads", "Sweets & chai", "Pre-order pots"]);

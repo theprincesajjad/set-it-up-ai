@@ -214,6 +214,11 @@ test("owner: halal certification block on Menu & dietary, and private feedback t
   await expect(page.getByText("Halal claims are yours. We print the certifier only when you name one", { exact: false })).toBeVisible();
   // No certifier text repeated on the dish rows.
   await expect(page.locator("ul li").getByText(/certified by/i)).toHaveCount(0);
+  // Section (tab) names can be entered in Hindi, Urdu and Punjabi; the seeded ones are there.
+  await expect(page.getByRole("heading", { name: "Section names" })).toBeVisible();
+  await expect(page.getByLabel("Biryani in Hindi", { exact: true })).toHaveValue("बिरयानी");
+  await expect(page.getByLabel("Biryani in Urdu", { exact: true })).toHaveValue("بریانی");
+  await expect(page.getByLabel("Biryani in Punjabi", { exact: true })).toHaveValue("ਬਿਰਯਾਨੀ");
   await page.screenshot({ path: `${SHOTS}/dash-menu-1440.png`, fullPage: true });
 
   await page.getByRole("button", { name: "Edit certification" }).click();
