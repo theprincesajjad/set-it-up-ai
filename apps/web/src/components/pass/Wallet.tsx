@@ -4,7 +4,7 @@
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
 import { CountUp } from "@/components/ui/CountUp";
-import { placeKind } from "@/lib/place";
+import { placeKindLabel } from "@ll/shared";
 import { InboxList, NotificationSettings } from "./NotificationSettings";
 import { InviteSheet } from "./InviteSheet";
 import { WalletButtons } from "./WalletButtons";
@@ -15,13 +15,14 @@ import { cn } from "@/lib/cn";
 import { OPEN_CARD_EVENT, PassTabBar } from "./PassTabBar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type campaignsApi, type customerApi, type MessageKey } from "@ll/shared";
-import { useLocale } from "@/lib/i18n/client";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitCaption, unitsText } from "@/lib/units";
-import { copy } from "@/copy/en-CA";
+import { copy } from "@/copy/en-CA"; // l10n-ok: only the recorded consent sentence (stored with the opt-in) comes from here
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
-import { formatDate, formatPoints, groupCode } from "@/lib/format";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
+import { formatDate, groupCode, rewardInSentence } from "@/lib/format";
 import { walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
@@ -61,7 +62,7 @@ type Details = Record<string, customerApi.MembershipDetailResponse>;
 const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
 export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {} }: WalletProps) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   const [tab, setTab] = useState<Tab>("shops");
   const [cardOpen, setCardOpen] = useState(false);
   const [wallet, setWallet] = useState(initialWallet);
@@ -191,7 +192,7 @@ function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: (
   const [busy, setBusy] = useState<"apple" | "google" | null>(null);
   const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
   const [os, setOs] = useState<"ios" | "android" | "other">("other");
-  const { t } = useLocale();
+  const { t } = useLocaleOrEnglish();
   useEffect(() => {
     // The UA is only known on the client.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -261,7 +262,7 @@ type Tr = (key: MessageKey, vars?: Record<string, string | number | null | undef
 
 /** The grey line under a shop name: what's left to the next reward, else the expiry rule. English keeps the shop's own wording. */
 function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
-  if (locale === "en") return m.nextReward ? copy.misc.stampsToGo(m.nextReward.pointsNeeded, m.nextReward.name) : m.expiryDisclosure;
+  if (locale === "en") return m.nextReward ? t("ui.stampMore", { n: m.nextReward.pointsNeeded, reward: rewardInSentence(m.nextReward.name) }) : m.expiryDisclosure;
   if (m.nextReward) return t("sh.n.earnNext", { need: unitsText(locale as never, m.nextReward.pointsNeeded, m.terminology, false), reward: m.nextReward.name }).replace(/[.।۔]$/, "");
   const unit = unitCaption(locale as never, 2, m.terminology);
   const months = m.program?.expiryMonths;
@@ -269,9 +270,9 @@ function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
 }
 
 function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChanged, profile, campaigns, endsLabels }: { wallet: customerApi.WalletResponse; details: Details; openShop: string | null; setOpenShop: (id: string | null) => void; loadDetails: (ids?: string[]) => Promise<void>; onChanged: () => Promise<void>; profile: customerApi.ProfileDto; campaigns: campaignsApi.MyCampaign[]; endsLabels: Record<string, string> }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   if (!wallet.items.length)
-    return <EmptyState icon={Store} title={locale === "en" ? copy.empty.wallet.title : t("sh.wallet.emptyTitle")} description={locale === "en" ? copy.empty.wallet.body : t("sh.wallet.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
+    return <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   // Rewards ready float to the top under their own header (foundations.md "Wallet").
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0);
   const rest = wallet.items.filter((m) => m.rewardsAvailableCount === 0);
@@ -323,7 +324,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
       {ready.length ? section(t("sh.wallet.readyNow"), ready) : null}
       {rest.length ? section(ready.length ? t("sh.wallet.earning") : t("sh.wallet.yourShops"), rest) : null}
       {live ? <StreetBlock campaign={live} t={t} ends={endsLabels[live.id] ?? ""} /> : null}
-      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? "Shop"} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current && locale === "en" ? <span className="italic">{placeKind(current.merchant.vertical)}</span> : undefined}>
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? t("wp.t.shop")} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKindLabel(locale, current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
     </div>
@@ -366,7 +367,7 @@ function StreetBlock({ campaign, t, ends }: { campaign: campaignsApi.MyCampaign;
 
 /** Shop sheet: italic vertical line, a stamp row or points ring, rewards, discount cards, then the shop page. */
 function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.MembershipDto; d: customerApi.MembershipDetailResponse | undefined; profile: customerApi.ProfileDto; onChanged: () => Promise<void> }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   const [inviting, setInviting] = useState(false);
   // Referrals are a paid shop feature: the API reports the bonus as 0 when the shop doesn't have them.
   const canInvite = (m.program?.referralBonus ?? 0) > 0 && (m as { features?: { referrals?: boolean } }).features?.referrals !== false;
@@ -413,7 +414,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
-  const { t } = useLocale();
+  const { t } = useLocaleOrEnglish();
 
   // While a code is showing, poll until staff confirm it at the counter.
   useEffect(() => {
@@ -512,16 +513,16 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
 }
 
 function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wallet: customerApi.WalletResponse; details: Details; loading: boolean; onChanged: () => Promise<void>; onShowShops: () => void }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0 || (details[m.id]?.openRedemptions.length ?? 0) > 0);
   if (loading && !Object.keys(details).length) return <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   if (!ready.length) {
     const close = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct).slice(0, 5);
     if (!close.length)
-      return <EmptyState icon={Gift} title={locale === "en" ? copy.empty.rewardsReady.title : t("sh.rewards.emptyTitle")} description={locale === "en" ? copy.empty.rewardsReady.body : t("sh.rewards.emptyBody")} action={<Button variant="secondary" onClick={onShowShops}>{locale === "en" ? copy.empty.rewardsReady.action : t("sh.rewards.seeShops")}</Button>} />;
+      return <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} description={t("sh.rewards.emptyBody")} action={<Button variant="secondary" onClick={onShowShops}>{t("sh.rewards.seeShops")}</Button>} />;
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-body text-fg-muted">{locale === "en" ? copy.empty.rewardsReady.body : t("sh.rewards.emptyBody")}</p>
+        <p className="text-body text-fg-muted">{t("sh.rewards.emptyBody")}</p>
         <ListGroup title={t("sh.wallet.closest")}>
           {close.map((m) => (
             <li key={m.id} className="flex flex-col gap-2.5 py-3.5">
@@ -531,9 +532,9 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
                   <p className="truncate text-body-strong text-fg">{m.nextReward!.name}</p>
                   <p className="truncate text-meta text-fg-muted">{m.merchant.name}</p>
                 </div>
-                <span className="shrink-0 text-meta tabular-nums text-fg-muted">{locale === "en" ? `${formatPoints(m.nextReward!.pointsNeeded, m.terminology)} to go` : t("sh.wallet.toGo", { amount: unitsText(locale, m.nextReward!.pointsNeeded, m.terminology) })}</span>
+                <span className="shrink-0 text-meta tabular-nums text-fg-muted">{t("sh.wallet.toGo", { amount: unitsText(locale, m.nextReward!.pointsNeeded, m.terminology) })}</span>
               </div>
-              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={locale === "en" ? `${m.nextReward!.progressPct}% of the way to ${m.nextReward!.name}` : `${m.nextReward!.progressPct}% · ${m.nextReward!.name}`} />
+              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={t("wp.w.wayTo", { pct: m.nextReward!.progressPct, reward: m.nextReward!.name })} />
             </li>
           ))}
         </ListGroup>
@@ -561,7 +562,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
  * below it. The avatar in the tab bar and the bell on Discover both land here.
  */
 function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletResponse; details: Details; loading: boolean }) {
-  const { t, locale, date, time } = useLocale();
+  const { t, locale, date, time } = useLocaleOrEnglish();
   const rows = useMemo(
     () =>
       wallet.items
@@ -579,7 +580,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
   let history: React.ReactNode;
   if (loading && !rows.length) history = <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   else if (!rows.length) {
-    history = <EmptyState icon={Activity} title={locale === "en" ? copy.empty.activity("points").title : t("sh.activity.emptyTitle")} description={locale === "en" ? copy.empty.activity("points").body : t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
+    history = <EmptyState icon={Activity} title={t("sh.activity.emptyTitle")} description={t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   } else
     history = (
       <ListGroup title={t("sh.activity.history")}>
@@ -610,7 +611,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
 }
 
 function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.WalletResponse; profile: customerApi.ProfileDto; onMembership: (m: customerApi.MembershipDto) => void }) {
-  const { t, locale, date } = useLocale();
+  const { t, locale, date } = useLocaleOrEnglish();
   const router = useRouter();
   const toast = useToast();
   const [name, setName] = useState(profile.name ?? "");
@@ -624,7 +625,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
     setSaving(true);
     try {
       await browserApi.me.updateProfile({ name: name.trim() || null, email: email.trim() || null });
-      toast({ message: locale === "en" ? copy.ok.saved : t("sh.priv.save"), tone: "success" });
+      toast({ message: t("cp.ok.saved"), tone: "success" });
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     } finally {
@@ -635,7 +636,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   async function setMuted(m: customerApi.MembershipDto, muted: boolean) {
     try {
       onMembership(await browserApi.me.setMuted(m.id, muted));
-      if (muted) toast(copy.ok.muted(m.merchant.name, m.terminology));
+      if (muted) toast(t("cp.ok.muted", { shop: m.merchant.name, terminology: unitCaption(locale, 2, m.terminology) }));
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     }
@@ -644,7 +645,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   async function setConsent(m: customerApi.MembershipDto, on: boolean) {
     try {
       onMembership(on ? await browserApi.me.grantConsent(m.id, copy.consent.merchant(m.merchant.name)) : await browserApi.me.withdrawConsent(m.id));
-      toast(on ? copy.ok.consentOn(m.merchant.name) : `${copy.ok.consentOff(m.merchant.name)} Your ${m.terminology} keep working.`);
+      toast(on ? t("cp.ok.consentOn", { shop: m.merchant.name }) : t("cp.consent.withdrawn", { shop: m.merchant.name, terminology: unitCaption(locale, 2, m.terminology) }));
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     }
@@ -694,13 +695,13 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
               <span className="min-w-0 flex-1 truncate">{m.merchant.name}</span>
               {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">{t("sh.priv.offersOn")}</StatusDot> : null}
             </p>
-            <Switch label={t("sh.priv.offersBy")} ariaLabel={locale === "en" ? `Get offers from ${m.merchant.name}` : t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? (locale === "en" ? `Since ${formatDate(m.marketingConsent.grantedAt)}` : t("sh.priv.since", { date: date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) })) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
-            <Switch label={t("sh.priv.mute")} ariaLabel={locale === "en" ? `Mute ${m.merchant.name}` : t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
+            <Switch label={t("sh.priv.offersBy")} ariaLabel={t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? t("sh.priv.since", { date: locale === "en" ? formatDate(m.marketingConsent.grantedAt) : date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) }) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
+            <Switch label={t("sh.priv.mute")} ariaLabel={t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
           </li>
         ))}
       </ListGroup>
 
-      <ListGroup title={t("sh.priv.details")} as="div" footer={locale === "en" ? <>Phone <span className="tabular-nums">{formatE164(profile.phone)}</span> · Member number <span className="tabular-nums">{profile.memberCode}</span></> : <span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
+      <ListGroup title={t("sh.priv.details")} as="div" footer={<span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
         <div className="flex flex-col gap-4 py-4">
           <TextField label={t("sh.priv.name")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           <TextField label={t("sh.priv.email")} type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />

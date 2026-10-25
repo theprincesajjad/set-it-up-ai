@@ -8,7 +8,7 @@ point under the Repair and Storage Liens Act (we flag and record, never sell or 
 with marketing consent), and HST on tips (tips are never taxed here).
 
 ## Merchant (staff, feature `service.tickets` unless noted)
-- `POST /merchants/:id/uploads` raw image body (jpeg, png, webp, heic), 5 MB, header sniffed. Returns `{ url }`. Storage provider: memory in tests, disk in dev (`GET /v1/public/uploads/:merchantId/:file`); plug an object store in through `providers.storage`.
+- `POST /merchants/:id/uploads` raw image body (jpeg, png, webp, heic), 5 MB, header sniffed. Returns `{ url }`: a signed link (`?exp=<unix seconds>&sig=<hmac>`) that works for 15 minutes. Tickets store only the permanent path `/v1/public/uploads/<key>`; every read (staff list and detail, the customer's own tickets, the shopper data export) signs it again, and `GET /v1/public/uploads/:merchantId/:file` serves only a link whose signature and expiry check out (403 `invalid_link` / `link_expired`). A photo whose key belongs to another shop is refused on write. Storage provider: memory in tests, disk in dev; plug an object store in through `providers.storage` and implement `signedUrl(key, expiresAt)` (a presigned GET). See `apps/api/test/uploads-signed.test.ts`.
 - `GET /tickets/summary`, `GET /tickets?assignedTo&dueState&hasPhotos`, ticket DTO adds quote, invoice, `dueState`, assignee, `statusUrl`, `lienEligible`.
 - `POST /tickets` adds `intakeChecklist`, `termsAccepted` (required when the shop has terms, else 400 `terms_required`), `shelfLocation`, `items`, `bookingId` (check-in completes the booking).
 - `POST /tickets/:id/quotes/preview` server totals, tax for the shop's province and tax registration, deposit and `maxAuthorizedCents`.

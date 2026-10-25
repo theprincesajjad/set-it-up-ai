@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../../../api/client";
-import { t as copy } from "../../../../copy/en-CA";
 import { ChipGroup, DateField, DietBadges, InfoRow, StepperRow, useDaysLabel, usePayment, useMoney, WeekdayDots } from "../../../../features/restaurant/components";
 import { rk, useTiffinPlans } from "../../../../features/restaurant/queries";
 import { newIdempotencyKey } from "../../../../lib/ids";
@@ -91,7 +90,7 @@ export default function TiffinPlanDetail() {
       if (res.payment && !res.manual) await pay(res.payment);
     } catch (e) {
       if (isApiError(e) && e.status < 500) setIdemKey(newIdempotencyKey());
-      setError(errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setSubmitting(false);
     }

@@ -1,12 +1,12 @@
 /** Sheets shared by several customer screens: join (CASL), redeem confirm, sponsored "why", push pre-prompt. */
-import { customerApi } from "@ll/shared";
+import { BRAND, customerApi } from "@ll/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
-import { formatPts, termWord } from "../../lib/award";
+import { formatPtsL, termWordL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { newIdempotencyKey } from "../../lib/ids";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
@@ -34,6 +34,8 @@ export function JoinSheet({
   onJoined?: (res: customerApi.JoinResponse) => void;
 }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const { prefs } = useSession();
   const qc = useQueryClient();
   // Pre-filled only from the member's own onboarding choice; never ticked by default.
@@ -41,7 +43,8 @@ export function JoinSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState<customerApi.JoinResponse | null>(null);
-  const text = shop.consentText ?? customerApi.marketingConsentText(shop.name);
+  // CASL: what the shopper reads is what is recorded. The shop's English sentence in English, the faithful translation otherwise.
+  const text = L.locale === "en" ? (shop.consentText ?? customerApi.marketingConsentText(shop.name)) : t("auth.consent.merchantApp", { shop: shop.name, brand: BRAND.name });
   const join = async () => {
     setBusy(true);
     setError(null);
@@ -53,7 +56,7 @@ export function JoinSheet({
       // A moment, not a toast: check, what they got, and the Wallet pass (polish-audit M24).
       setJoined(res);
     } catch (e) {
-      setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }
@@ -69,18 +72,18 @@ export function JoinSheet({
           <>
             <WalletPassButton />
             <Button variant="ghost" size="lg" fullWidth onPress={onClose}>
-              Done
+              {t("auth.m.done")}
             </Button>
           </>
         }
       >
         <Appear style={{ gap: 12, alignItems: "flex-start", paddingTop: 8 }}>
           <SuccessCheck size={44} color={c.positive} />
-          <Text variant="title" accessibilityRole="header">{`You're in at ${shop.name}.`}</Text>
+          <Text variant="title" accessibilityRole="header">{t("ms.join.inAt", { shop: shop.name })}</Text>
           <Text color="fgMuted">
             {joined.bonusPoints > 0
-              ? `${formatPts(joined.bonusPoints, term)} added. Show your card next visit to keep earning.`
-              : "Show your card next visit and your first points land in your wallet."}
+              ? t("ms.join.added", { amount: formatPtsL(L, joined.bonusPoints, term) })
+              : t("ms.join.next")}
           </Text>
         </Appear>
       </Sheet>
@@ -90,21 +93,21 @@ export function JoinSheet({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title={t("action.join", { shop: shop.name })}
+      title={t("auth.join.joinShop", { shop: shop.name })}
       footer={
         <Button size="lg" fullWidth loading={busy} onPress={join}>
-          {t("action.join", { shop: shop.name })}
+          {t("auth.join.joinShop", { shop: shop.name })}
         </Button>
       }
     >
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
         <ShopLogo shop={shop} size={44} />
         <Text style={{ flex: 1 }} color="fgMuted">
-          {welcomeBonus ? `Get ${formatPts(welcomeBonus, terminology)} when you join. ` : ""}
-          {`Your ${termWord(terminology)} never expire unless the shop says otherwise.`}
+          {welcomeBonus ? `${t("ms.join.getBonus", { amount: formatPtsL(L, welcomeBonus, terminology) })} ` : ""}
+          {t("ms.join.neverExpire", { unit: termWordL(L, terminology) })}
         </Text>
       </View>
-      <ConsentCheckbox text={text} checked={consent} onChange={setConsent} caption={t(shop.consentText ? "consent.merchant.caption.v1" : "consent.merchant.sender", { shop: shop.name })} />
+      <ConsentCheckbox text={text} checked={consent} onChange={setConsent} caption={t(L.locale === "en" && shop.consentText ? "auth.consent.caption" : "cp.consent.sender", { sender: shop.name, shop: shop.name, brand: BRAND.name })} />
       {error ? <Banner variant="danger">{error}</Banner> : null}
     </Sheet>
   );
@@ -121,6 +124,8 @@ export function RedeemConfirmSheet({
   membership: customerApi.MembershipDto;
   reward: customerApi.MemberRewardDto | customerApi.RewardDto;
 }) {
+  const L = useLocale();
+  const { t } = L;
   const online = useOnline();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -156,8 +161,8 @@ export function RedeemConfirmSheet({
       });
     } catch (e) {
       if (isApiError(e) && e.code === "insufficient_points") {
-        setError(t("err.redeem.notEnough", { terminology: termWord(membership.terminology), n: Math.max(0, -after) }));
-      } else setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+        setError(t("cp.err.notEnough", { terminology: termWordL(L, membership.terminology), n: Math.max(0, -after) }));
+      } else setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }
@@ -170,10 +175,10 @@ export function RedeemConfirmSheet({
       footer={
         <>
           <Button size="lg" fullWidth loading={busy} disabled={!online} onPress={go}>
-            {t("action.showCodeToStaff")}
+            {t("sh.wallet.showCode")}
           </Button>
           <Button variant="ghost" fullWidth onPress={onClose}>
-            {t("action.notNow")}
+            {t("cp.action.notNow")}
           </Button>
         </>
       }
@@ -188,38 +193,40 @@ export function RedeemConfirmSheet({
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row" }}>
             <Text color="fgMuted" style={{ flex: 1 }}>
-              Uses
+              {t("ms.redeem.uses")}
             </Text>
             <Text variant="bodyStrong" tabular>
-              {formatPts(reward.pointsCost, membership.terminology)}
+              {formatPtsL(L, reward.pointsCost, membership.terminology)}
             </Text>
           </View>
           <View style={{ flexDirection: "row" }}>
             <Text color="fgMuted" style={{ flex: 1 }}>
-              Your balance after
+              {t("ms.redeem.after")}
             </Text>
             <Text variant="bodyStrong" tabular>
-              {formatPts(Math.max(0, after), membership.terminology)}
+              {formatPtsL(L, Math.max(0, after), membership.terminology)}
             </Text>
           </View>
         </View>
       </Card>
       {reward.description ? <Text variant="meta" color="fgMuted">{reward.description}</Text> : null}
       <Text variant="meta" color="fgMuted">
-        Only tap this at the counter. The code lasts 10 minutes.
+        {t("ms.redeem.warn")}
       </Text>
-      {!online ? <Banner variant="warning">{t("err.redeem.offlineCustomer")}</Banner> : null}
+      {!online ? <Banner variant="warning">{t("cp.err.offlineRedeem")}</Banner> : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
     </Sheet>
   );
 }
 
 export function SponsoredWhySheet({ visible, onClose, shopName, street, terminology }: { visible: boolean; onClose: () => void; shopName: string; street?: string | null; terminology?: string }) {
+  const L = useLocale();
+  const { t } = L;
   return (
-    <Sheet visible={visible} onClose={onClose} title={t("ad.why.title")} scroll={false}>
-      <Text color="fgMuted">{t("ad.why.body", { shop: shopName, street: street ?? "your street", terminology: termWord(terminology) })}</Text>
+    <Sheet visible={visible} onClose={onClose} title={t("cp.ad.whyTitle")} scroll={false}>
+      <Text color="fgMuted">{t("cp.ad.whyBody", { shop: shopName, street: street ?? t("sh.wallet.street"), terminology: termWordL(L, terminology) })}</Text>
       <Button variant="ghost" onPress={() => { onClose(); router.push("/settings/notifications"); }}>
-        {t("ad.why.link")}
+        {t("cp.ad.link")}
       </Button>
     </Sheet>
   );
@@ -227,6 +234,7 @@ export function SponsoredWhySheet({ visible, onClose, shopName, street, terminol
 
 /** 1.5 Notifications pre-prompt. Never the OS prompt cold. */
 export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useLocale();
   const { updatePrefs } = useSession();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -239,7 +247,7 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
       visible={visible}
       onClose={close}
       scroll={false}
-      title={t("consent.push.title")}
+      title={t("cp.consent.pushTitle")}
       footer={
         <>
           <Button
@@ -250,20 +258,20 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
               setBusy(true);
               const res = await registerForCustomerPush().catch(() => "unavailable" as const);
               setBusy(false);
-              if (res === "registered") toast({ tone: "success", message: "Notifications are on." });
-              else if (res === "denied") toast("Notifications are off. You can turn them on in Settings.");
+              if (res === "registered") toast({ tone: "success", message: t("ms.notif.on") });
+              else if (res === "denied") toast(t("ms.notif.offHint"));
               close();
             }}
           >
-            {t("action.turnOn")}
+            {t("sh.set.turnOn")}
           </Button>
           <Button variant="ghost" size="lg" fullWidth onPress={close}>
-            {t("action.notNow")}
+            {t("cp.action.notNow")}
           </Button>
         </>
       }
     >
-      <Text color="fgMuted">{t("consent.push.body")}</Text>
+      <Text color="fgMuted">{t("cp.consent.pushBody")}</Text>
     </Sheet>
   );
 }

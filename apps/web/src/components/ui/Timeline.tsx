@@ -1,7 +1,9 @@
+"use client";
 import { Check, Hourglass, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export interface TimelineStep {
   id: string;
@@ -15,9 +17,10 @@ export interface TimelineStep {
 }
 
 /** Vertical service-ticket timeline (system.md §6 Timeline). */
-export function Timeline({ steps, label = "Progress", quiet = false }: { steps: TimelineStep[]; label?: string; /** Customer log: finished steps recede to grey, the latest one is a solid check. */ quiet?: boolean }) {
+export function Timeline({ steps, label, quiet = false }: { steps: TimelineStep[]; label?: string; /** Customer log: finished steps recede to grey, the latest one is a solid check. */ quiet?: boolean }) {
+  const { t } = useLocaleOrEnglish();
   return (
-    <ol aria-label={label} className="flex flex-col">
+    <ol aria-label={label ?? t("wp.step.progress")} className="flex flex-col">
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         return (
@@ -41,7 +44,7 @@ export function Timeline({ steps, label = "Progress", quiet = false }: { steps: 
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn("text-body", s.state === "upcoming" ? "text-fg-muted" : "text-fg", (s.state === "current" || s.state === "waiting") && "font-semibold")}>
-                <span className="sr-only">{s.state === "done" ? "Done: " : s.state === "current" ? "Current: " : s.state === "stopped" ? "Stopped: " : s.state === "waiting" ? "Waiting: " : "Next: "}</span>
+                <span className="sr-only">{`${t(s.state === "done" ? "wp.step.done" : s.state === "current" ? "wp.step.current" : s.state === "stopped" ? "wp.step.stopped" : s.state === "waiting" ? "wp.step.waiting" : "wp.step.next")} `}</span>
                 {s.label}
               </p>
               {s.at ? <p className="text-meta text-fg-muted">{formatDateTime(s.at)}</p> : null}

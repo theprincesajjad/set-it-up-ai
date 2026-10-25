@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOGS, LOCALE_CODES, LOCALES, MESSAGE_KEYS, formatCurrency, formatDate, formatMessage, negotiateLocale, normalizeLocale, pickTranslation, spiceKey, t } from "../src/index.js";
+import { CATALOGS, LOCALE_CODES, LOCALES, MESSAGE_KEYS, formatCurrency, formatDate, formatMessage, negotiateLocale, normalizeLocale, pickTranslation, spiceKey, t, withRtlMark } from "../src/index.js";
 
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\s*[,}]/g)].map((m) => m[1]).sort().join(",");
 const SCRIPT: Record<string, RegExp> = { hi: /[ऀ-ॿ]/, ur: /[؀-ۿ]/, pa: /[਀-੿]/ };
@@ -74,5 +74,18 @@ describe("helpers", () => {
       expect(formatDate(l, "2026-10-22T16:00:00Z")).toBeTruthy();
     }
     expect(formatCurrency("en", 1200)).toBe("$12");
+  });
+});
+
+describe("withRtlMark", () => {
+  it("puts an RLM in front of an Urdu message that opens with a Latin run, so the Urdu decides the direction", () => {
+    expect(withRtlMark("ur", "Local Loyalty کی خبریں")).toBe("‏Local Loyalty کی خبریں");
+  });
+  it("leaves messages that already open with Urdu, isolated names, other languages and empty text alone", () => {
+    expect(withRtlMark("ur", "آپ کا کارڈ")).toBe("آپ کا کارڈ");
+    expect(withRtlMark("ur", "⁨Sarson Dhaba⁩ میں خوش آمدید")).toBe("⁨Sarson Dhaba⁩ میں خوش آمدید");
+    expect(withRtlMark("hi", "Local Loyalty की खबरें")).toBe("Local Loyalty की खबरें");
+    expect(withRtlMark("en", "Hello")).toBe("Hello");
+    expect(withRtlMark("ur", "")).toBe("");
   });
 });

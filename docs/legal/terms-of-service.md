@@ -1,6 +1,6 @@
 # DRAFT — have a lawyer review
 
-> **DRAFT — have a lawyer review.** This document is not legal advice and is not ready to publish. Bracketed items `[like this]` are placeholders. Notes for counsel appear as "Counsel:" lines.
+> **DRAFT — have a lawyer review.** Not legal advice.
 
 # Local Loyalty — Customer Terms of Service
 
@@ -21,8 +21,7 @@ Some bonuses, called "Network Rewards" (for example "visit 3 shops on the street
 
 ## 2. Eligibility and your account
 
-- You must be **[16]** or older and live in Canada.
-  - Counsel: confirm the age floor, and parental-consent rules for 13–15.
+- You must be **16** or older and live in Canada.
 - You can join with your mobile number at a shop counter, by scanning a QR code, through a wallet pass or in the app. You are responsible for keeping your phone number current. We may send a one-time verification code.
 - One account per person. Accounts are personal and cannot be sold or transferred.
 - Keep your account secure. Tell us at [support email] if you think someone else used it.
@@ -96,22 +95,13 @@ Campaigns such as passport weeks, prize draws and BIA events have their own offi
   - the Service is provided "as is";
   - we are not liable for merchants' goods or services;
   - our total liability to you for claims about the Service is limited to **the greater of $100 or the amount you paid us** in the 12 months before the claim.
-  - Counsel: check enforceability against consumers in Ontario and Quebec.
 
 ## 13. Disputes
 
 - Contact us first at [support email]; we aim to respond within 10 business days.
 - These Terms are governed by the laws of Ontario and the federal laws of Canada. You may bring a claim in the courts of Ontario or in the Ontario Small Claims Court.
-- Counsel: we intend **no mandatory arbitration and no class-action waiver for consumers**. Ontario's CPA limits these, and the Drop lesson suggests transparency is the better defence.
+- There is **no mandatory arbitration and no class-action waiver** for consumers.
 
 ## 14. Contact
 
 [Local Loyalty Inc.], [address], [email], [phone]. Privacy Officer: [name, email].
-
-*Counsel checklist for this document:*
-
-- age floor;
-- Quebec carve-outs (language, Law 25, Quebec CPA);
-- consistency with CASL consent flows;
-- whether CPA Part IV internet-agreement disclosures apply to any paid customer feature;
-- the limitation-of-liability wording.

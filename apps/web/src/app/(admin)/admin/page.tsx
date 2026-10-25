@@ -45,6 +45,24 @@ export default function AdminToday() {
                   { label: "Cost per shop", value: formatMoney(d.costs.perShopCents), caption: `${formatMoney(d.costs.monthCents)} this month for ${formatNumber(d.costs.shops)} shops`, href: "/admin/costs" },
                 ]}
               />
+              {d.money.mrrCents ? (
+                <Panel title="What MRR is made of" description="Plan subscriptions, restaurant tiers and add-ons on paying shops">
+                  <dl data-testid="mrr-split" className="grid grid-cols-2 gap-x-6 gap-y-2 text-meta sm:grid-cols-5">
+                    {([
+                      ["Plus and Pro", d.money.mrrSplit.plansCents],
+                      ["Restaurant tiers", d.money.mrrSplit.restaurantCents],
+                      ["WhatsApp packs", d.money.mrrSplit.whatsappCents],
+                      ["Extra locations", d.money.mrrSplit.extraLocationsCents],
+                      ["Other add-ons", d.money.mrrSplit.otherAddOnsCents],
+                    ] as const).map(([label, cents]) => (
+                      <div key={label}>
+                        <dt className="text-label text-fg-muted">{label}</dt>
+                        <dd className="tabular text-fg">{formatMoney(cents)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Panel>
+              ) : null}
               <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
                 <Panel title="Signups by area" description="Leads, shops signed and activated against the area's target" padded={false}>
                   {d.funnel.length ? (

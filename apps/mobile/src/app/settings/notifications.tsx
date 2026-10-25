@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { isApiError } from "../../api/client";
-import { CHANNEL_LABELS, groupPrefs, useNotificationPrefs, useSetNotificationPref } from "../../features/customer/inbox";
+import { CHANNEL_KEYS, groupPrefs, useNotificationPrefs, useSetNotificationPref } from "../../features/customer/inbox";
 import { usePhase2 } from "../../features/customer/queries";
 import { useRestaurantMine } from "../../features/restaurant/queries";
 import { registerForCustomerPush } from "../../features/customer/notifications";
@@ -14,21 +14,27 @@ import { Banner, ErrorState, Globe, ListRow, Screen, Section, Skeleton, Store, S
 
 /** A type: its push switch, then "also by text / email" when the type supports them (indented, same column). */
 function TypeRows({ item, last, onChange }: { item: customerApi.NotificationPrefDto; last: boolean; onChange: (channel: customerApi.NotificationChannel, enabled: boolean) => void }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const typeLabel = (() => {
     const key = `sh.nt.${item.type}` as MessageKey;
     const out = t(key);
     return out === key ? item.label : out;
+  })();
+  // What each type is for, in the shopper's language (the API sends the English sentence as the fallback).
+  const description = (() => {
+    const key = `sh.ntd.${item.type}` as MessageKey;
+    const out = t(key);
+    return out === key ? item.description : out;
   })();
   const channels = (Object.keys(item.channels) as customerApi.NotificationChannel[]).sort((a, b) => ["push", "sms", "email"].indexOf(a) - ["push", "sms", "email"].indexOf(b));
   const [first, ...more] = channels;
   if (!first) return null;
   return (
     <View>
-      <SwitchRow label={typeLabel} description={locale === "en" ? item.description : undefined} value={!!item.channels[first]} onValueChange={(v) => onChange(first, v)} divider={more.length === 0 && !last} />
+      <SwitchRow label={typeLabel} description={description} value={!!item.channels[first]} onValueChange={(v) => onChange(first, v)} divider={more.length === 0 && !last} />
       {more.map((ch, i) => (
         <View key={ch} style={styles.sub}>
-          <SwitchRow label={locale === "en" ? `Also by ${CHANNEL_LABELS[ch].toLowerCase()}` : t("sh.set.alsoBy", { channel: t(`sh.ch.${ch}` as MessageKey) })} value={!!item.channels[ch]} onValueChange={(v) => onChange(ch, v)} divider={i === more.length - 1 && !last} />
+          <SwitchRow label={t("sh.set.alsoBy", { channel: t(CHANNEL_KEYS[ch]) })} value={!!item.channels[ch]} onValueChange={(v) => onChange(ch, v)} divider={i === more.length - 1 && !last} />
         </View>
       ))}
     </View>
@@ -56,7 +62,7 @@ export default function NotificationSettings() {
   const change = (type: customerApi.NotificationType, channel: customerApi.NotificationChannel, enabled: boolean) =>
     set.mutate({ type, channel, enabled }, { onError: () => toast({ tone: "error", message: t("sh.set.saveFail") }) });
   // Orders and repairs only matter once one of your shops offers them.
-  const groups = groupPrefs(q.data?.items ?? []).filter((g) => g.title !== "Orders and repairs" || phase2.enabled || restaurant.tiffinEnabled);
+  const groups = groupPrefs(q.data?.items ?? []).filter((g) => g.channel !== "orders" || phase2.enabled || restaurant.tiffinEnabled);
 
   return (
     <Screen back title={t("sh.set.screenTitle")}>
@@ -74,7 +80,7 @@ export default function NotificationSettings() {
           actionLabel={t("sh.set.turnOn")}
           onAction={async () => {
             const r = await registerForCustomerPush().catch(() => "unavailable" as const);
-            toast(r === "registered" ? "Notifications are on." : r === "denied" ? "Turn notifications on in your phone's settings." : "Notifications aren't available on this device yet.");
+            toast(r === "registered" ? t("ms.notif.on") : r === "denied" ? t("ms.notif.denied") : t("ms.notif.unavailable"));
             updatePrefs({ pushPrompted: true });
           }}
         >
@@ -83,7 +89,7 @@ export default function NotificationSettings() {
       ) : null}
 
       {q.isLoading ? (
-        <View style={{ gap: 20 }} accessible accessibilityLabel="Loading" accessibilityState={{ busy: true }}>
+        <View style={{ gap: 20 }} accessible accessibilityLabel={t("rc.loading")} accessibilityState={{ busy: true }}>
           {[0, 1, 2].map((i) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
               <View style={{ flex: 1, gap: 8 }}>
@@ -95,17 +101,17 @@ export default function NotificationSettings() {
           ))}
         </View>
       ) : missingApi ? (
-        <Section title="Push notifications">
-          <SwitchRow label="Points and rewards" description="When you earn, and when a reward is ready." value={prefs.notifications.rewards} onValueChange={(v) => updatePrefs({ notifications: { ...prefs.notifications, rewards: v } })} divider={phase2.enabled} />
+        <Section title={t("ms.notif.pushHead")}>
+          <SwitchRow label={t("sh.set.groupPoints")} description={t("ms.notif.pointsDesc")} value={prefs.notifications.rewards} onValueChange={(v) => updatePrefs({ notifications: { ...prefs.notifications, rewards: v } })} divider={phase2.enabled} />
           {phase2.enabled ? (
-            <SwitchRow label="Orders and repairs" description="Order ready, quote to approve, repair updates." value={prefs.notifications.orders} onValueChange={(v) => updatePrefs({ notifications: { ...prefs.notifications, orders: v } })} />
+            <SwitchRow label={t("sh.set.groupOrders")} description={t("ms.notif.ordersDesc")} value={prefs.notifications.orders} onValueChange={(v) => updatePrefs({ notifications: { ...prefs.notifications, orders: v } })} />
           ) : null}
         </Section>
       ) : q.isError ? (
         <ErrorState message={t("sh.set.loadFail")} onRetry={() => void q.refetch()} />
       ) : (
         groups.map((g) => (
-          <Section key={g.title} title={t(g.titleKey)}>
+          <Section key={g.titleKey} title={t(g.titleKey)}>
             {g.items.map((item, i) => (
               <TypeRows key={item.type} item={item} last={i === g.items.length - 1} onChange={(ch, v) => change(item.type, ch, v)} />
             ))}
@@ -126,5 +132,5 @@ export default function NotificationSettings() {
 }
 
 const styles = StyleSheet.create({
-  sub: { paddingLeft: 16 },
+  sub: { paddingStart: 16 },
 });

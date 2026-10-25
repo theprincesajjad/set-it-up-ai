@@ -8,6 +8,7 @@
  * wallet (platform null), so nothing renders there.
  */
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { ui, useTheme } from "../../theme";
 import { Check, Text, WalletPassGlyph, haptic, useToast } from "../../ui";
@@ -17,6 +18,7 @@ import { useEffect } from "react";
 export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
   const { c } = useTheme();
   const toast = useToast();
+  const { t } = useLocale();
   const { prefs, updatePrefs } = useSession();
   const { platform, buttonText, available, add, busy, error } = useAddToWallet();
   useEffect(() => {
@@ -24,13 +26,14 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
   }, [error, toast]);
   // null = still asking the server; false = not configured. Only a known-good platform shows the button.
   if (!platform || !buttonText || available === false) return null;
+  const label = t(platform === "apple" ? "ms.wallet.addApple" : "ms.wallet.addGoogle");
 
   if (prefs.inWallet[platform]) {
     return (
       <View style={styles.inWallet}>
         <Check size={16} color={c.positive} strokeWidth={2.25} />
         <Text variant="meta" color="fgMuted">
-          {platform === "apple" ? "In Apple Wallet" : "In Google Wallet"}
+          {platform === "apple" ? t("ms.wallet.inApple") : t("ms.wallet.inGoogle")}
         </Text>
       </View>
     );
@@ -40,8 +43,8 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={buttonText}
-      accessibilityHint="Opens your phone's wallet"
+      accessibilityLabel={label}
+      accessibilityHint={t("ms.wallet.hint")}
       accessibilityState={{ busy }}
       disabled={busy}
       onPress={async () => {
@@ -55,7 +58,7 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
     >
       {busy ? <ActivityIndicator color={c.bg} /> : <WalletPassGlyph size={22} color={c.bg} />}
       <Text style={ui(16, 600, 20)} rawColor={c.bg}>
-        {buttonText}
+        {label}
       </Text>
     </Pressable>
   );

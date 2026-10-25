@@ -4,15 +4,14 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { t } from "../../copy/en-CA";
 import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, useMembershipDetails, usePhase2, useWallet } from "../../features/customer/queries";
 import { JoinSheet, PushPrompt, SponsoredWhySheet } from "../../features/customer/sheets";
 import { capSponsored } from "../../lib/feed";
-import { promoEnds, relativeTime } from "../../lib/format";
+import { promoEndsL, relativeTimeL } from "../../lib/formatL";
 import { heroText, homeHero } from "../../lib/hero";
 import { shortHood } from "../../lib/discover";
-import { formatNumber, termWord } from "../../lib/award";
+import { formatNumber } from "../../lib/award";
 import { walletRow } from "../../lib/walletRow";
 import { api } from "../../state/api";
 import { useLocale } from "../../lib/i18n";
@@ -20,7 +19,7 @@ import { useOnline } from "../../state/network";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { disp, ui, useTheme } from "../../theme";
-import { Banner, BellOff, Button, categorySource, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_LABELS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_LABELS, useTabBarSpace } from "../../ui";
+import { Banner, BellOff, Button, categorySource, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
 import { readableOn, shopInitials } from "../../ui/ShopTile";
 
 type Membership = customerApi.WalletResponse["items"][number];
@@ -61,7 +60,8 @@ export default function Wallet() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
-  const { t: tr, locale, info } = useLocale();
+  const L = useLocale();
+  const { t: tr, locale } = L;
   const i18n = { locale, t: tr };
   const { prefs } = useSession();
   const online = useOnline();
@@ -248,7 +248,7 @@ export default function Wallet() {
         {wallet.isError && memberships.length > 0 ? <View style={{ marginTop: 16 }}><Banner variant="neutral" actionLabel={tr("sh.act.tryAgain")} onAction={() => void wallet.refetch()}>{tr("sh.wallet.staleBanner")}</Banner></View> : null}
         {wallet.dataUpdatedAt && !online ? (
           <Text variant="caption" color="fgMuted" style={{ marginTop: 8 }}>
-            {t("misc.updatedAgo", { relativeTime: relativeTime(wallet.dataUpdatedAt) })}
+            {tr("cp.misc.updatedAgo", { relativeTime: relativeTimeL(L, wallet.dataUpdatedAt) })}
           </Text>
         ) : null}
 
@@ -259,7 +259,7 @@ export default function Wallet() {
         ) : wallet.isError && memberships.length === 0 ? (
           <ErrorState offline={!online} message={online ? tr("sh.wallet.loadFail") : tr("sh.wallet.offline")} onRetry={() => void wallet.refetch()} />
         ) : memberships.length === 0 ? (
-          <EmptyState body={t("empty.wallet.body")} actionLabel={t("action.showCard")} onAction={() => router.push("/card")} />
+          <EmptyState body={tr("cp.empty.walletBody")} actionLabel={tr("sh.nav.myCard")} onAction={() => router.push("/card")} />
         ) : (
           <>
             {ready.length > 0 ? (
@@ -287,7 +287,7 @@ export default function Wallet() {
                   divider={i < shown.length - 1}
                   leadingIcon={Ticket}
                   title={`${[row.x.itemDetails.make, row.x.itemDetails.model].filter(Boolean).join(" ") || row.x.issue}`}
-                  subtitle={`${row.x.merchantName} · ${row.x.status === "quote_sent" ? tr("sh.wallet.needsApproval") : TICKET_STATUS_LABELS[row.x.status].toLowerCase()}`}
+                  subtitle={`${row.x.merchantName} · ${row.x.status === "quote_sent" ? tr("sh.wallet.needsApproval") : tr(TICKET_STATUS_KEYS[row.x.status]).toLowerCase()}`}
                   chevron
                   onPress={() => router.push(`/tickets/${row.x.id}`)}
                 />
@@ -297,7 +297,7 @@ export default function Wallet() {
                   divider={i < shown.length - 1}
                   leadingIcon={Store}
                   title={tr("sh.wallet.pickupOrder", { n: row.x.number })}
-                  subtitle={`${row.x.merchantName} · ${ORDER_STATUS_LABELS[row.x.status].toLowerCase()}`}
+                  subtitle={`${row.x.merchantName} · ${tr(ORDER_STATUS_KEYS[row.x.status]).toLowerCase()}`}
                   chevron
                   onPress={() => router.push(`/orders/${row.x.id}`)}
                 />
@@ -311,7 +311,7 @@ export default function Wallet() {
             {section(locale === "en" ? shortHood(camp.neighbourhood.name) : tr("sh.wallet.street"))}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${camp.name}. ${camp.progress.visited} of ${camp.progress.goal} shops.`}
+              accessibilityLabel={tr("ms.camp.a11yShops", { name: camp.name, visited: camp.progress.visited, goal: camp.progress.goal })}
               onPress={() => router.push(`/campaigns/${camp.id}`)}
               style={({ pressed }) => [styles.row, pressed ? { opacity: 0.7 } : null]}
             >
@@ -321,9 +321,7 @@ export default function Wallet() {
                   {camp.name}
                 </Text>
                 <Text style={[ui(13, 400, 17), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
-                  {locale === "en"
-                    ? [`${camp.progress.visited} of ${camp.progress.goal} shops`, promoEnds(camp.endsAt)?.replace(/^E/, "e")].filter(Boolean).join(" · ")
-                    : tr("sh.wallet.passportLine", { visited: camp.progress.visited, goal: camp.progress.goal, date: new Date(camp.endsAt).toLocaleDateString(info.bcp47, { month: "short", day: "numeric" }) })}
+                  {[tr("ms.camp.ofShops", { visited: camp.progress.visited, goal: camp.progress.goal }), promoEndsL(L, camp.endsAt)?.replace(/^E/, "e")].filter(Boolean).join(" · ")}
                 </Text>
               </View>
               <ChevronRightGlyph size={16} color={c.fgSubtle} />
@@ -352,7 +350,7 @@ export default function Wallet() {
           onJoined={() => feed.refetch()}
         />
       ) : null}
-      <SponsoredWhySheet visible={!!why} onClose={() => setWhy(null)} shopName={why?.shop ?? ""} street={null} terminology={termWord(memberships[0]?.terminology)} />
+      <SponsoredWhySheet visible={!!why} onClose={() => setWhy(null)} shopName={why?.shop ?? ""} street={null} terminology={memberships[0]?.terminology} />
       <PushPrompt visible={pushOpen} onClose={() => setPushOpen(false)} />
     </View>
   );
@@ -367,5 +365,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14 },
   av: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   bar: { height: 3, borderRadius: 999, marginTop: 8, width: 150, overflow: "hidden" },
-  bal: { marginLeft: "auto", alignItems: "flex-end" },
+  bal: { marginStart: "auto", alignItems: "flex-end" },
 });

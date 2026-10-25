@@ -1,6 +1,6 @@
 # DRAFT — have a lawyer review
 
-> **DRAFT — have a lawyer review.** Not legal advice. This policy is written for PIPEDA, the federal private-sector privacy law that applies in Ontario. Quebec (Law 25) terms are in section 8 and still need a French version. Bracketed items are placeholders. Before publishing, check that every statement matches what the product actually does.
+> **DRAFT — have a lawyer review.** Not legal advice.
 
 # Local Loyalty — Privacy Policy
 
@@ -89,7 +89,7 @@ We use your information to:
 - draft an order from a phone call or WhatsApp message for a shop to confirm (a person confirms; nothing is charged because of the draft alone);
 - prevent fraud and abuse;
 - improve the Service;
-- produce **aggregated, de-identified** statistics for shops and Business Improvement Areas, for example "visits on the street rose 18% during the passport week", reported only in groups of [10] or more people;
+- produce **aggregated, de-identified** statistics for shops and Business Improvement Areas, for example "visits on the street rose 18% during the passport week", reported only in groups of 10 or more people;
 - meet legal obligations.
 
 If we want to use your information for a new purpose, we will ask you first.
@@ -107,7 +107,7 @@ If we want to use your information for a new purpose, we will ask you first.
 **Service providers** process data for us under contract and only on our instructions:
 
 - hosting and database: [provider, Canadian region];
-- file storage for uploaded photos: [provider, region];
+- file storage for uploaded photos: [provider, region]. A photo is never served from a permanent link: each time it is shown it gets a signed link that stops working after {{upload.linkMinutes}};
 - **Stripe** (payments, saved cards, payouts to shops);
 - **Twilio** (SMS and the phone line, including speech-to-text for phone orders);
 - **Meta WhatsApp Cloud API** (WhatsApp messages);
@@ -135,9 +135,8 @@ Some are located in, or may process data in, the **United States** or other coun
 ## 6. Retention
 
 - We keep account information while your account is open.
-- If an account has been inactive for **[3] years**, we notify you and then delete or anonymize personal information. Before that, we give you the chance to redeem or keep your points.
-  - Counsel: reconcile this with points that never expire, for example by keeping a minimal balance record.
-- Consent records are kept for at least [3] years after the relationship ends. Transaction records are kept as required for tax purposes ([6] years).
+- If an account has been inactive for **3 years**, we notify you and then delete or anonymize personal information. Before that, we give you the chance to redeem or keep your points.
+- Consent records are kept for at least 3 years after the relationship ends. Transaction records are kept as required for tax purposes (6 years).
 - **Phone-call transcripts:** kept for {{retention.phoneTranscriptDays}} after the call, then deleted, together with the order text we drafted from it and the caller's number. The confirmed order itself stays.
 - **WhatsApp messages:** message text is deleted {{retention.whatsappMessageDays}} after it was sent. Carts and allergy notes on a chat that has gone quiet are cleared at the same time.
 - **Repair photos and ticket records:** kept for the life of the ticket and {{retention.repairPhotoMonths}} after it closes (picked up or cancelled, the warranty and dispute period). Then the photos (the files and the links), item details, notes and the quote signature record are deleted. Quote and invoice amounts stay for the shop's accounts.
@@ -161,7 +160,7 @@ No system is perfectly secure. If a breach creates a real risk of significant ha
 
 ## 8. Quebec residents
 
-If you live in Quebec, the *Act respecting the protection of personal information in the private sector* (Law 25) also applies. Our person in charge of the protection of personal information is our Privacy Officer, named above. We tell you when your information is used for a purpose you did not agree to, we assess the privacy impact before we transfer personal information outside Quebec, we keep a register of confidentiality incidents and report serious ones to the Commission d'accès à l'information, and our default settings are the most private (marketing is off until you opt in). You can ask for your information in a structured, commonly used format. The phone assistant drafts an order from a transcript; a person at the shop reviews and confirms it, and you can ask us to explain how it was drafted. You can complain to the Commission d'accès à l'information. [A French version of this policy is required before we serve Quebec shoppers.]
+If you live in Quebec, the *Act respecting the protection of personal information in the private sector* (Law 25) also applies. Our person in charge of the protection of personal information is our Privacy Officer, named above. We tell you when your information is used for a purpose you did not agree to, we assess the privacy impact before we transfer personal information outside Quebec, we keep a register of confidentiality incidents and report serious ones to the Commission d'accès à l'information, and our default settings are the most private (marketing is off until you opt in). You can ask for your information in a structured, commonly used format. The phone assistant drafts an order from a transcript; a person at the shop reviews and confirms it, and you can ask us to explain how it was drafted. You can complain to the Commission d'accès à l'information. A French version of this policy is available at [/legal/privacy?lang=fr](/legal/privacy?lang=fr).
 
 ## 9. Commercial messages (CASL)
 
@@ -169,7 +168,7 @@ Under Canada's Anti-Spam Legislation, we and the shops send promotional email, t
 
 ## 10. Children
 
-The Service is for people aged **[16]** and over. We do not knowingly collect information from younger children; contact us if you think we have.
+The Service is for people aged **16** and over. We do not knowingly collect information from younger children; contact us if you think we have.
 
 ## 11. Changes
 
@@ -178,15 +177,3 @@ We will notify you in the app or by email at least 30 days before material chang
 ## 12. Questions and complaints
 
 Contact our Privacy Officer at [email]. If you are not satisfied, you can complain to the **Office of the Privacy Commissioner of Canada** (priv.gc.ca).
-
-*Counsel checklist:*
-
-- confirm vendor list and data locations;
-- inactivity-deletion versus non-expiring points;
-- the age floor;
-- whether precise location for nearby push needs express opt-in wording (recommended: yes);
-- retention periods for transcripts, messages, photos and feedback, and whether account deletion must reach every module in section 2;
-- whether storing allergy notes, phone transcripts and halal or dietary information raises sensitivity under PIPEDA and Law 25;
-- the processors' contracts and locations (Stripe, Twilio, Meta WhatsApp, Resend, Expo, the photo store);
-- a Quebec Law 25 annex (privacy impact assessments for transfers outside Quebec, privacy-by-default settings, a confidentiality incident register, a French version);
-- a cookie and tracking notice for the website.

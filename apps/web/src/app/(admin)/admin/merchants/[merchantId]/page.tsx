@@ -51,7 +51,7 @@ export default function AdminMerchantPage() {
               loading={!money.data}
               items={[
                 { label: "Members", value: formatNumber(d.members), caption: `${formatNumber(d.activeMembers)} active · setup: ${d.onboardingStep.replace(/_/g, " ")}` },
-                { label: "MRR", value: formatMoney(money.data?.mrrCents ?? 0), caption: money.data?.subscriptionStatus ? `${money.data.subscriptionStatus.replace(/_/g, " ")}${money.data.renewsOn ? ` · renews ${formatDate(`${money.data.renewsOn}T12:00:00`)}` : ""}` : "No paid plan" },
+                { label: "MRR", value: formatMoney(money.data?.mrrCents ?? 0), caption: money.data?.subscriptionStatus ? `${money.data.subscriptionStatus.replace(/_/g, " ")}${money.data.renewsOn ? ` · renews ${formatDate(`${money.data.renewsOn}T12:00:00`)}` : ""}${money.data.mrrSplit.addOnCents ? ` · incl. ${formatMoney(money.data.mrrSplit.addOnCents)} add-ons` : ""}` : "No paid plan" },
                 { label: "Fees, 30 days", value: formatMoney(money.data?.fees30dCents ?? 0), caption: `On ${formatMoney(money.data?.volume30dCents ?? 0)} paid through the app` },
                 { label: "Cost this month", value: formatMoney(money.data?.costs.totalCents ?? 0), caption: `${formatNumber(money.data?.costs.smsCredits ?? 0)} texts · ${formatNumber(money.data?.costs.whatsappMessages ?? 0)} WhatsApp · hosting` },
               ]}

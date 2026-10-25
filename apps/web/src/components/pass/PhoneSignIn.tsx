@@ -90,6 +90,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro }:
           className="flex flex-col gap-4"
         >
           <OtpField value={code} onChange={setCode} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
+          {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
           {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {t("auth.otp.signIn")}

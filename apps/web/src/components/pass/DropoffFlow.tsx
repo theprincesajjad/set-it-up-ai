@@ -96,7 +96,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
 
   function download() {
     if (!booked) return;
-    const ics = buildIcs({ uid: booked.id, title: `${shop.name}: drop-off`, startsAt: booked.startsAt, endsAt: booked.endsAt, location: address, description: notes || null });
+    const ics = buildIcs({ uid: booked.id, title: t("wp.cal.dropoff", { shop: shop.name }), startsAt: booked.startsAt, endsAt: booked.endsAt, location: address, description: notes || null });
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
     const a = document.createElement("a");
     a.href = url;

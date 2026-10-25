@@ -3,11 +3,11 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { errorMessage, isApiError } from "../api/client";
-import { t } from "../copy/en-CA";
 import { useBrightScreen } from "../features/customer/brightness";
 import { useCard, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { WalletPassButton } from "../features/customer/WalletPassButton";
-import { formatPts, groupMemberCode, shortName } from "../lib/award";
+import { groupMemberCode, shortName } from "../lib/award";
+import { formatPtsL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
 import { api } from "../state/api";
 import { useOnline } from "../state/network";
@@ -24,7 +24,8 @@ import { Banner, Button, Chip, CloseGlyph, DiscountCard, hairline, QrCode, Segme
  */
 export default function CardSheet() {
   const { c } = useTheme();
-  const { t: lt } = useLocale();
+  const L = useLocale();
+  const { t: lt } = L;
   const { width } = useWindowDimensions();
   const { user } = useSession();
   const online = useOnline();
@@ -55,7 +56,7 @@ export default function CardSheet() {
       const res = await api.me.claimPurchase(shop, claimCode.trim());
       const m = memberships.find((x) => x.merchant.id === shop);
       haptic.success();
-      toast({ tone: "success", message: `Added ${formatPts(res.pointsAwarded, m?.terminology)}. You have ${formatPts(res.balance, m?.terminology)}.` });
+      toast({ tone: "success", message: lt("ms.card.added", { amount: formatPtsL(L, res.pointsAwarded, m?.terminology), balance: formatPtsL(L, res.balance, m?.terminology) }) });
       void qc.invalidateQueries({ queryKey: qk.wallet });
       setClaimOpen(false);
       setClaimCode("");
@@ -63,14 +64,14 @@ export default function CardSheet() {
       const code = isApiError(e) ? e.code : "";
       setClaimError(
         code === "already_claimed"
-          ? "That purchase was already added."
+          ? lt("ms.card.claimDup")
           : code === "claim_expired"
-            ? "That receipt is more than 30 days old."
+            ? lt("ms.card.claimOld")
             : isApiError(e) && e.status === 404
-              ? "We couldn't find that receipt at this shop. Check the number on your receipt."
+              ? lt("ms.card.claimNotFound")
               : isApiError(e) && e.status === 429
-                ? "You can claim up to 3 purchases a day per shop."
-                : errorMessage(e, { network: t("err.network"), server: t("err.server") }),
+                ? lt("ms.card.claimLimit")
+                : errorMessage(e, { network: lt("auth.err.network"), server: lt("auth.err.server") }),
       );
     } finally {
       setClaimBusy(false);
@@ -111,12 +112,12 @@ export default function CardSheet() {
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="Opens the QR full screen"
+            accessibilityHint={lt("ms.card.qrHint")}
             disabled={!card}
             onPress={() => card && router.push({ pathname: "/qr", params: { payload: card.qrPayload, code: card.memberCode } })}
             style={[styles.qrTile, { backgroundColor: c.qrBg, borderColor: c.line }]}
           >
-            {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={`Your member QR code, number ${card.memberCode.split("").join(" ")}`} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
+            {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={lt("ui.memberQr", { code: card.memberCode.split("").join(" ") })} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
           </Pressable>
           <Text rawColor={c.fg} center selectable style={styles.code}>
             {card ? groupMemberCode(card.memberCode) : "•••• ••••"}
@@ -124,7 +125,7 @@ export default function CardSheet() {
           <Text style={[ui(13, 400, 17), { marginTop: 4, textAlign: "center" }]} rawColor={c.fgMuted}>
             {lt("sh.card.staffCode", { name: shortName(card?.name ?? user?.name) })}
           </Text>
-          {!card && isError ? <View style={{ alignSelf: "stretch", marginTop: 12 }}><Banner variant="danger">{t("err.network")}</Banner></View> : null}
+          {!card && isError ? <View style={{ alignSelf: "stretch", marginTop: 12 }}><Banner variant="danger">{lt("auth.err.network")}</Banner></View> : null}
           <View style={styles.bottom}>
             <WalletPassButton />
             {memberships.length > 0 ? (

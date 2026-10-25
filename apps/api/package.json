@@ -8,7 +8,8 @@
     "start": "tsx src/server.ts",
     "seed": "tsx src/seed.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "load": "tsx scripts/load.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

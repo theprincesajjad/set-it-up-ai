@@ -1,16 +1,17 @@
 import { router } from "expo-router";
-import { t } from "../copy/en-CA";
+import { useLocale } from "../lib/i18n";
 import { useSession } from "../state/session";
 import { Button, Sheet, Text } from "../ui";
 
 /** Silent refresh failed → "Sign in again" → Phone step with the number pre-filled. */
 export function SessionExpiredSheet() {
   const { expired, dismissExpired, prefs } = useSession();
+  const { t } = useLocale();
   return (
     <Sheet
       visible={expired}
       onClose={dismissExpired}
-      title="Sign in again"
+      title={t("ms.session.title")}
       scroll={false}
       footer={
         <Button
@@ -21,11 +22,11 @@ export function SessionExpiredSheet() {
             else router.replace({ pathname: "/phone", params: { prefill: prefs.lastPhone ?? "" } });
           }}
         >
-          Sign in
+          {t("rc.signIn")}
         </Button>
       }
     >
-      <Text color="fgMuted">{t("err.sessionExpired")}</Text>
+      <Text color="fgMuted">{t("cp.err.sessionExpired")}</Text>
     </Sheet>
   );
 }

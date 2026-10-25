@@ -5,7 +5,7 @@ import { FEES } from "@ll/shared";
 import { cutoffAt, generateDeliveries, localInstant, mrrOf, rollBilling, runDaily } from "../src/services/tiffin.js";
 import { FAKE_PM } from "../src/providers/paymentsFake.js";
 import { call, customer, deliver, fake, paidMerchant } from "./commerce-fixtures.js";
-import { createTestEnv, createUser, grantFeatures, tokenFor, type TestEnv } from "./helpers.js";
+import { createTestEnv, createUser, grantFeatures, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
 // 2026-11-03 10:00 in Toronto (EST). Tuesday.
@@ -912,6 +912,7 @@ describe("charge mode change", () => {
   const chargeFor = async (subId: string, periodStart: string) => (await env.db.select().from(tiffinCharges).where(and(eq(tiffinCharges.subscriptionId, subId), eq(tiffinCharges.periodStart, periodStart))))[0]!;
   async function setMode(merchantId: string, chargeMode: string) {
     const admin = await createUser(env.db, { platformRole: "admin" });
+    await openSupportSession(env, admin.id, merchantId);
     return call(env, await tokenFor(env, admin), "PUT", `/v1/admin/merchants/${merchantId}/charge-mode`, { chargeMode });
   }
 

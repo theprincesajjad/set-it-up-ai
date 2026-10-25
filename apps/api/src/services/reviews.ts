@@ -191,6 +191,8 @@ export async function requestForOrder(ctx: AppContext, merchant: Merchant, order
 // ---------------------------------------------------------------------------
 // Public page
 // ---------------------------------------------------------------------------
+export const REVIEW_LINK_DAYS = 90;
+
 async function byToken(ctx: AppContext, token: string): Promise<{ req: Request; merchant: Merchant }> {
   const [req] = await ctx.db.select().from(reviewRequests).where(eq(reviewRequests.token, token)).limit(1);
   if (!req) throw notFound("Review request");
@@ -217,6 +219,8 @@ export async function submitReview(ctx: AppContext, token: string, input: whatsa
   });
   // One rating per request; a repeat submit (double tap, refresh) returns the stored answer.
   if (req.rating != null) return respond(req.rating);
+  // A link in an old text is not an open door: new answers stop after 90 days.
+  if (ctx.now().getTime() - req.createdAt.getTime() > REVIEW_LINK_DAYS * 86_400_000) throw new HttpError(410, "link_expired", "This review link has expired.");
   const [claimed] = await ctx.db
     .update(reviewRequests)
     .set({ rating: body.rating, feedback: body.feedback?.trim() || null, clickedAt: req.clickedAt ?? ctx.now() })

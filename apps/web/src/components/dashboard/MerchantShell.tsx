@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { NAV_GROUP_LABELS, buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
+import { browserApi } from "@/lib/api/browser";
+import { errorMessage } from "@/lib/api/errors";
 import { useApi } from "@/lib/dashboard/useApi";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
@@ -108,6 +110,66 @@ function SetupProgress() {
   );
 }
 
+/**
+ * Shown to an admin or rep inside a shop that is not theirs. Reading is always open; changing anything needs a
+ * support session, which is one click with a reason (30 minutes, every change audited).
+ */
+function SupportBanner({ viewingAs }: { viewingAs: "admin" | "rep" }) {
+  const { detail, merchantId } = useMerchant();
+  const router = useRouter();
+  const current = useApi(() => browserApi.support.current(merchantId), [merchantId]);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const session = current.data?.session ?? null;
+  const exit = viewingAs === "admin" ? `/admin/merchants/${detail.merchant.id}` : `/rep/merchants/${detail.merchant.id}`;
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await fn();
+      setReason("");
+      await current.reload();
+      router.refresh();
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div role="status" data-testid="support-banner" className="mb-6 flex flex-col gap-2 rounded-input border border-line bg-bg-subtle px-4 py-2 text-meta print:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${session ? "bg-positive" : "bg-negative"}`} />
+          <span className="truncate">
+            {session ? `Support session open until ${new Date(session.expiresAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}. Changes are logged.` : `Viewing ${detail.merchant.name} as ${viewingAs}. You can look around; to change anything, start a support session.`}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          {session ? (
+            <button type="button" disabled={busy} onClick={() => run(() => browserApi.support.end(session.id))} className="font-medium text-fg hover:underline">End session</button>
+          ) : null}
+          <Link href={exit} className="font-medium text-fg hover:underline">Exit</Link>
+        </span>
+      </div>
+      {!session && !current.loading ? (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (reason.trim().length >= 5) void run(() => browserApi.support.start(merchantId, reason.trim()));
+          }}
+        >
+          <input aria-label="Reason (audit log)" placeholder="Reason, e.g. fix opening hours for the owner" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className="h-8 min-w-0 flex-1 rounded-input border border-line bg-bg px-3 text-meta" />
+          <Button size="sm" type="submit" loading={busy} disabled={reason.trim().length < 5}>Start support session</Button>
+        </form>
+      ) : null}
+      {err ? <p role="alert" className="text-negative">{err}</p> : null}
+    </div>
+  );
+}
+
 export function MerchantShell({ me, children }: { me: authApi.MeResponse; children: ReactNode }) {
   const { base, detail, role, features, viewingAs, api } = useMerchant();
   const pathname = usePathname() ?? "";
@@ -156,19 +218,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
       footer={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
       mobileTitle={detail.merchant.name}
       notice={
-        viewingAs ? (
-          <div role="status" className="mb-6 flex items-center justify-between gap-3 rounded-input border border-line bg-bg-subtle px-4 py-2 text-meta print:hidden">
-            <span className="flex min-w-0 items-center gap-2">
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-negative" />
-              <span className="truncate">
-                Viewing as {detail.merchant.name} ({viewingAs === "admin" ? "admin" : "rep"}). Changes are logged.
-              </span>
-            </span>
-            <Link href={viewingAs === "admin" ? `/admin/merchants/${detail.merchant.id}` : `/rep/merchants/${detail.merchant.id}`} className="shrink-0 font-medium text-fg hover:underline">
-              Exit
-            </Link>
-          </div>
-        ) : null
+        viewingAs ? <SupportBanner viewingAs={viewingAs} /> : null
       }
     >
       {allowed ? (

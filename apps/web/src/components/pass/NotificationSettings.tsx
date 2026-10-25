@@ -17,7 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
-import { useLocale, saveProfileLocale } from "@/lib/i18n/client";
+import { useLocaleOrEnglish, saveProfileLocale } from "@/lib/i18n/client";
 
 const GROUPS: { titleKey: MessageKey; channel: customerApi.AndroidChannelId; noteKey?: MessageKey }[] = [
   { titleKey: "sh.set.groupPoints", channel: "points" },
@@ -36,7 +36,7 @@ function hrefFor(n: customerApi.NotificationDto): string | null {
 
 /** The latest inbox items (mark read, open). Hides itself on an older API (404). */
 export function InboxList({ limit = 20 }: { limit?: number }) {
-  const { t, time, date } = useLocale();
+  const { t, time, date } = useLocaleOrEnglish();
   const [inbox, setInbox] = useState<customerApi.NotificationsResponse | null>(null);
   const [limits, setLimits] = useState<number>(customerApi.ROUTINE_PUSHES_PER_DAY);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
@@ -141,7 +141,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
 
 /** The language messages come in. Saved on the profile, so alerts, texts and the wallet pass follow it. */
 function MessagesLanguage() {
-  const { t, locale, setLocale } = useLocale();
+  const { t, locale, setLocale } = useLocaleOrEnglish();
   const toast = useToast();
   return (
     <section aria-labelledby="msg-lang" className="flex flex-col gap-2.5 rounded-card border border-line p-4">
@@ -167,7 +167,7 @@ function MessagesLanguage() {
 
 export function NotificationSettings() {
   const toast = useToast();
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   const [prefs, setPrefs] = useState<customerApi.NotificationPrefsResponse | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
 

@@ -13,7 +13,7 @@ export function QrCode({ value, size = 260, label, ecc = "M" }: { value: string;
     for (let x = 0; x < n; x++) if (data[y * n + x]) d += `M${x} ${y}h1v1h-1z`;
   }
   return (
-    <svg role="img" aria-label={label ?? "QR code"} width={size} height={size} viewBox={`0 0 ${n} ${n}`} shapeRendering="crispEdges" className="block max-w-full" style={{ height: "auto" }}>
+    <svg role="img" aria-label={label ?? "QR code" /* l10n-ok: callers pass a translated label; last-resort default */} width={size} height={size} viewBox={`0 0 ${n} ${n}`} shapeRendering="crispEdges" className="block max-w-full" style={{ height: "auto" }}>
       <rect width={n} height={n} fill="#FFFFFF" />
       <path d={d} fill="#000000" />
     </svg>

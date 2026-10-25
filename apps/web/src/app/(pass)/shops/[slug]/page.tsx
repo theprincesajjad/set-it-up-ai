@@ -5,7 +5,6 @@ import { HalalBlock } from "@/components/restaurant/HalalBlock";
 import { PopularRow } from "@/components/restaurant/PopularRow";
 import { RestaurantLinks } from "@/components/restaurant/RestaurantLinks";
 import { WeekendPots } from "@/components/restaurant/WeekendPots";
-import { placeKind } from "@/lib/place";
 import { notFound } from "next/navigation";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
@@ -20,18 +19,17 @@ import { PointsRing } from "@/components/ui/PointsRing";
 import { PromoCard } from "@/components/ui/PromoCard";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopTile } from "@/components/ui/ShopTile";
-import { copy } from "@/copy/en-CA";
 import { isApiError } from "@/lib/api/errors";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
-import { formatPoints, rewardInSentence } from "@/lib/format";
+import { unitsText } from "@/lib/units";
+import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRowsL } from "@/lib/i18n/formatL";
 import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
-import { openStatus, weekRows } from "@/lib/hours";
 import { howYouEarn } from "@/lib/program";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
-import { getLocale } from "@/lib/i18n/server";
-import { translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { formatCurrency, translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
 import { publicRestaurantApi } from "@/lib/restaurant/server";
 import { whatsappChatUrl } from "@/lib/restaurant/share";
 
@@ -41,17 +39,19 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<s
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const t = await getT();
+  const english = (await getLocale()) === "en";
   try {
     const s = await publicServerApi().public.shop(slug);
     const where = s.merchant.neighbourhood?.name ?? s.locations[0]?.city ?? "";
     return {
       title: `${s.merchant.name}${where ? ` · ${where}` : ""}`,
-      description: s.merchant.description ?? `Earn rewards at ${s.merchant.name}. ${s.program ? howYouEarn(s.program) : ""}`,
+      description: s.merchant.description ?? `${t("wp.t.shopEarn", { shop: s.merchant.name })}${english ? `. ${s.program ? howYouEarn(s.program) : ""}` : "."}`,
       alternates: { canonical: `/shops/${slug}` },
-      openGraph: { title: `Earn rewards at ${s.merchant.name}` },
+      openGraph: { title: t("wp.t.shopEarn", { shop: s.merchant.name }) },
     };
   } catch {
-    return { title: "Shop" };
+    return { title: t("wp.t.shop") };
   }
 }
 
@@ -64,13 +64,14 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
   const t = translator(locale);
+  const L = { locale, t };
   const ref = typeof sp.ref === "string" ? sp.ref.slice(0, 32) : null;
   let shop: networkApi.PublicShopResponse;
   try {
     shop = await publicServerApi().public.shop(slug);
   } catch (e) {
     if (isApiError(e) && e.status === 404) notFound();
-    return <ErrorState title="Can't load this shop right now" description={copy.err.network} action={<Button variant="secondary" href={`/shops/${slug}`}>Try again</Button>} />;
+    return <ErrorState title={t("wp.err.shop")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/shops/${slug}`}>{t("rc.tryAgain")}</Button>} />;
   }
 
   const me = await getMe();
@@ -87,7 +88,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const m = shop.merchant;
   const loc = shop.locations[0] ?? null;
   const program = shop.program;
-  const status = loc ? openStatus(loc.hours, m.timezone) : null;
+  const status = loc ? openStatusL(L, loc.hours, m.timezone) : null;
   let nearby: networkApi.ShopListItemDto[] = [];
   if (m.neighbourhood) {
     try {
@@ -153,7 +154,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       <ShopTile
         variant="hero"
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }}
-        subtitle={[placeKind(m.vertical), m.neighbourhood?.name.toLowerCase()].filter(Boolean).join(" · ")}
+        subtitle={[kindL(L, m.vertical), m.neighbourhood?.name.toLowerCase()].filter(Boolean).join(" · ")}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
@@ -208,12 +209,12 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <div className="flex items-center gap-4">
           <PointsRing balance={membership.balance} goal={membership.nextReward?.pointsCost ?? 0} terminology={membership.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
-            <p className="text-meta text-fg-muted">You have</p>
-            <p className="display text-title tabular-nums text-accent-text">{formatPoints(membership.balance, membership.terminology, false)}</p>
-            <p className="text-meta text-fg-muted">{membership.nextReward ? `${membership.nextReward.pointsNeeded} more for a ${rewardInSentence(membership.nextReward.name)}` : membership.expiryDisclosure}</p>
+            <p className="text-meta text-fg-muted">{t("wp.shop.youHave")}</p>
+            <p className="display text-title tabular-nums text-accent-text">{unitsText(locale, membership.balance, membership.terminology, false)}</p>
+            <p className="text-meta text-fg-muted">{membership.nextReward ? t("ui.stampMore", { n: membership.nextReward.pointsNeeded, reward: rewardInSentenceL(L, membership.nextReward.name) }) : expiryLineL(L, membership)}</p>
           </div>
           <Button variant="secondary" size="sm" href="/me">
-            My card
+            {t("sh.fs.ctaCard")}
           </Button>
         </div>
         <MemberWalletButtons />
@@ -231,14 +232,14 @@ export default async function ShopPage({ params, searchParams }: Props) {
                 {program ? (
                   <ListGroup title={t("shop.howEarn")} as="div">
                     <div className="flex flex-col gap-1 py-3.5">
-                      <p dir="auto" className="text-body-strong text-fg">{howYouEarn(program)}</p>
+                      <p dir="auto" className="text-body-strong text-fg">{howYouEarnL(L, program, formatCurrency(locale, 100))}</p>
                       {program.welcomeBonus > 0 ? (
                         <p className="text-meta text-fg">
-                          {t("shop.welcomeBonus", { points: formatPoints(program.welcomeBonus, terminology, false) })}
+                          {t("shop.welcomeBonus", { points: unitsText(locale, program.welcomeBonus, terminology, false) })}
                         </p>
                       ) : null}
-                      <p dir="auto" className="text-meta text-fg-muted">{program.expiryDisclosure}</p>
-                      {m.vertical === "pharmacy" ? <p className="text-meta text-fg-muted">{copy.misc.pharmacyRule}</p> : null}
+                      <p dir="auto" className="text-meta text-fg-muted">{expiryLineL(L, { expiryDisclosure: program.expiryDisclosure, terminology, program })}</p>
+                      {m.vertical === "pharmacy" ? <p className="text-meta text-fg-muted">{t("wp.shop.pharmacyRule")}</p> : null}
                     </div>
                   </ListGroup>
                 ) : null}
@@ -264,7 +265,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
             content: shop.promos.length ? (
               shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
             ) : (
-              <p className="py-6 text-center text-body text-fg-muted">No offers right now. Members hear about new ones first.</p>
+              <p className="py-6 text-center text-body text-fg-muted">{t("wp.shop.noOffers")}</p>
             ),
           },
           {
@@ -274,23 +275,23 @@ export default async function ShopPage({ params, searchParams }: Props) {
               <>
                 {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
                 {loc ? (
-                  <ListGroup title="Visit" as="div">
+                  <ListGroup title={t("wp.shop.visit")} as="div">
                     <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
                       <div className="min-w-0 flex-1">
                         <p className="text-body-strong text-fg">{loc.address}</p>
                         <p className="text-meta text-fg-muted">
                           {loc.city}
                           {loc.postalCode ? ` ${loc.postalCode}` : ""}
-                          {shop.locations.length > 1 ? ` · ${shop.locations.length} locations` : ""}
+                          {shop.locations.length > 1 ? ` · ${t("wp.shop.locationsN", { n: shop.locations.length })}` : ""}
                         </p>
                       </div>
                       <span className="text-meta-strong text-fg">{t("shop.directions")}</span>
                     </a>
                     {loc.hours ? (
                       <table className="my-2 w-full text-meta">
-                        <caption className="sr-only">Opening hours</caption>
+                        <caption className="sr-only">{t("wp.shop.hoursCaption")}</caption>
                         <tbody>
-                          {weekRows(loc.hours).map((r) => (
+                          {weekRowsL(L, loc.hours).map((r) => (
                             <tr key={r.day}>
                               <th scope="row" className="py-1 text-start font-normal text-fg-muted">
                                 {r.day}
@@ -316,13 +317,13 @@ export default async function ShopPage({ params, searchParams }: Props) {
       />
 
       {!membership && joinInfo ? (
-        <section id="join" aria-label={`Join ${m.name}`} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5">
+        <section id="join" aria-label={t("auth.join.joinShop", { shop: m.name })} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5">
           <JoinFlow info={joinInfo} merchantId={m.id} referralCode={ref} signedIn={!!me} signedInName={me?.user.name ?? null} showHeader={false} autoFocus={false} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
         </section>
       ) : null}
 
       {nearby.length && m.neighbourhood ? (
-        <ListGroup title={`More shops on ${m.neighbourhood.name}`}>
+        <ListGroup title={t("wp.shop.moreOn", { hood: m.neighbourhood.name })}>
           {nearby.map((s) => (
             <li key={s.merchant.id}>
               <ShopTile variant="list" href={`/shops/${s.merchant.slug}`} className="-mx-4 px-4 hover:bg-bg-subtle" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={s.location?.address} />
@@ -332,7 +333,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
 
       {!membership && joinInfo && !rest ? (
-        <StickyJoin label={copy.action.join(m.name)} />
+        <StickyJoin label={t("auth.join.joinShop", { shop: m.name })} />
       ) : null}
     </LocaleScope>
   );

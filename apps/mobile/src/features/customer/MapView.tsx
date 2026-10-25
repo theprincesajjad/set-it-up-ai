@@ -12,7 +12,8 @@ import Constants from "expo-constants";
 import { Component, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet } from "react-native";
 import RNMapView, { Marker, type Region } from "react-native-maps";
-import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitle, type PinMembership } from "../../lib/explore";
+import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitleL, type PinMembership } from "../../lib/explore";
+import { useLocale } from "../../lib/i18n";
 import { useTheme } from "../../theme";
 import { ClusterPin, PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -61,6 +62,7 @@ export interface ExploreMapProps {
 
 export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset, chrome }, ref) {
   const { scheme } = useTheme();
+  const L = useLocale();
   const map = useRef<RNMapView>(null);
   const withCoords = useMemo(() => shops.filter((s) => s.location?.lat != null && s.location?.lng != null), [shops]);
   const [region, setRegion] = useState<Region>({ latitude: center.lat, longitude: center.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 });
@@ -79,14 +81,14 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
           x: ((s.location!.lng! - x0) / region.longitudeDelta) * size.width,
           y: ((y0 - s.location!.lat!) / region.latitudeDelta) * size.height,
           priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, openNow: s.openNow, distanceMetres: s.distanceMetres }),
-          w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null, s).text),
+          w: labelWidth(s.merchant.name, pinSubtitleL(L, s.merchant.vertical, mem ?? null, s).text),
           h: labelHeight(s.merchant.name),
         };
       }),
       { chrome, labelAvoid: [{ x1: size.width - 4, y1: -1e4, x2: size.width + 1e4, y2: 1e4 }, { x1: -1e4, y1: -1e4, x2: 4, y2: 1e4 }] },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withCoords, memberships, selectedId, region, size, JSON.stringify(chrome)]);
+  }, [withCoords, memberships, selectedId, region, size, JSON.stringify(chrome), L.locale]);
   const fitIds = (ids: string[]) => {
     const pts = withCoords.filter((s) => ids.includes(s.merchant.id));
     userMoved.current = true;
@@ -138,7 +140,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
           setRegion(r);
           onRegion({ lat: r.latitude, lng: r.longitude });
         }}
-        accessibilityLabel="Map of shops"
+        accessibilityLabel={L.t("ms.map.label")}
       >
         {withCoords.map((s) => {
           const mem = memberships[s.merchant.id] ?? null;
@@ -159,7 +161,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
                   e.stopPropagation();
                   fitIds(cluster.members);
                 }}
-                accessibilityLabel={`${cluster.members.length} shops here. Zoom in`}
+                accessibilityLabel={L.t("ms.map.shopsHere", { n: cluster.members.length })}
               >
                 <ClusterPin count={cluster.members.length} />
               </Marker>
@@ -179,7 +181,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, ExploreMapProps>(function
               tracksViewChanges={false}
               anchor={anchor}
               zIndex={selected ? 10 : mem ? 2 : 1}
-              accessibilityLabel={pinLabel(s, mem)}
+              accessibilityLabel={pinLabel(L, s, mem)}
             >
               <ShopPin shop={s} membership={mem} selected={selected} bare={bare} side={side} />
             </Marker>

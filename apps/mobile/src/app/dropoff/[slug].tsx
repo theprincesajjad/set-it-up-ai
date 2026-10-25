@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t as tCopy } from "../../copy/en-CA";
 import { featureOff } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
 import { addDays, torontoToday } from "../../lib/restaurant";
@@ -70,7 +69,7 @@ export default function Dropoff() {
               setSlot(null);
               void q.refetch();
             } catch (e) {
-              setError(errorMessage(e, { network: tCopy("err.network"), server: tCopy("err.server") }));
+              setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
             } finally {
               setBusy(false);
             }
@@ -95,7 +94,7 @@ export default function Dropoff() {
         setError(t("sv.d.taken"));
         setSlot(null);
         void q.refetch();
-      } else setError(errorMessage(e, { network: tCopy("err.network"), server: tCopy("err.server") }));
+      } else setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }

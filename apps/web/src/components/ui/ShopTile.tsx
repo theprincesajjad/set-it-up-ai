@@ -1,10 +1,13 @@
 "use client";
 import { BellOff, ChevronRight } from "lucide-react";
-import { placeKind } from "@/lib/place";
+import { placeKindLabel } from "@ll/shared";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { formatDistance, formatNumber, unitFor } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { distanceL } from "@/lib/i18n/formatL";
+import { unitCaption } from "@/lib/units";
 import { SponsoredBadge } from "./Badge";
 
 export interface ShopTileShop {
@@ -59,6 +62,8 @@ export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: 
 }
 
 export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, sponsored, subtitle, href, className }: ShopTileProps) {
+  const L = useLocaleOrEnglish();
+  const { t, locale } = L;
   const [coverFailed, setCoverFailed] = useState(false);
   const name = (
     <span className="flex min-w-0 items-center gap-1.5">
@@ -66,7 +71,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
       {muted ? (
         <>
           <BellOff aria-hidden className="size-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-          <span className="sr-only">(muted)</span>
+          <span className="sr-only">{t("wp.ui.muted")}</span>
         </>
       ) : null}
     </span>
@@ -95,7 +100,7 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
     );
   }
 
-  const second = subtitle ?? ([shop.neighbourhood, shop.distanceM != null ? formatDistance(shop.distanceM) : null].filter(Boolean).join(" · ") || null);
+  const second = subtitle ?? ([shop.neighbourhood, shop.distanceM != null ? distanceL(L, shop.distanceM) : null].filter(Boolean).join(" · ") || null);
   const body = (
     <>
       <ShopLogo shop={shop} size={variant === "compact" ? 40 : 44} />
@@ -107,11 +112,11 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
           {variant === "wallet" && balance ? (
             <span className="shrink-0 whitespace-nowrap">
               <span className={cn("text-headline tabular-nums", balance.value === 0 ? "text-fg-muted" : "text-accent-text")}>{formatNumber(balance.value)}</span>
-              <span className="text-meta text-fg-muted"> {unitFor(balance.terminology, balance.value)}</span>
+              <span className="text-meta text-fg-muted"> {unitCaption(locale, balance.value, balance.terminology)}</span>
             </span>
           ) : null}
         </div>
-        {second ? <div className={cn("truncate text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKind(shop.vertical)}</div> : null}
+        {second ? <div className={cn("truncate text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKindLabel(locale, shop.vertical)}</div> : null}
       </div>
       {href && variant !== "compact" ? <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" /> : null}
     </>

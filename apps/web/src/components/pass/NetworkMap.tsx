@@ -14,6 +14,7 @@ import type { LngLatBoundsLike, Map as MlMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { networkApi } from "@ll/shared";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { clusterPins, densestGroup, labelledAnchors, type Box, type PinGroup } from "@/lib/mapCluster";
 import { loadCornerStyle, mapMode, webglAvailable } from "./mapStyle";
 import { MapCluster, MapPin } from "./MapPin";
@@ -59,6 +60,7 @@ function boundsOf(ml: typeof import("maplibre-gl"), pts: { lat: number; lng: num
 }
 
 export default function NetworkMap({ items, selected, onSelect, me, onFail, fitAllSignal = 0, onBackgroundTap, padding = DEFAULT_PADDING }: NetworkMapProps) {
+  const { t } = useLocaleOrEnglish();
   const PADDING = padding;
   const bgTap = useRef(onBackgroundTap);
   useEffect(() => {
@@ -213,11 +215,11 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
     if (me) {
       const el = document.createElement("div");
       el.setAttribute("role", "img");
-      el.setAttribute("aria-label", "You are here");
+      el.setAttribute("aria-label", t("wp.map.youHere"));
       el.className = "size-4 rounded-full border-[3px] border-[#FFFFFF] bg-location shadow-[0_0_0_10px_rgba(47,123,246,0.18),0_1px_3px_rgba(0,0,0,0.3)]";
       meMarker.current = new ml.Marker({ element: el }).setLngLat([me.lng, me.lat]).addTo(m);
     }
-  }, [ready, me]);
+  }, [ready, me, t]);
 
   // Selection changes priority (the selected pin always stays visible).
   useEffect(() => {
@@ -261,7 +263,7 @@ export default function NetworkMap({ items, selected, onSelect, me, onFail, fitA
   return (
     <div className="absolute inset-0 [&_.maplibregl-ctrl-bottom-left]:z-[4] [&_.maplibregl-ctrl-attrib]:m-1.5! [&_.maplibregl-ctrl-attrib]:scale-90">
       {/* Inline style: maplibre-gl.css sets .maplibregl-map { position: relative } outside Tailwind layers. */}
-      <div ref={box} style={{ position: "absolute", inset: 0 }} role="region" aria-label="Map of shops" />
+      <div ref={box} style={{ position: "absolute", inset: 0 }} role="region" aria-label={t("ms.map.label")} />
       {Object.entries(els).map(([id, el]) => {
         const s = located.find((x) => x.merchant.id === id);
         const g = anchorOf.get(id);

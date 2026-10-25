@@ -7,13 +7,13 @@ import { ListGroup } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ShopTile } from "@/components/ui/ShopTile";
-import { copy } from "@/copy/en-CA";
 import { isApiError } from "@/lib/api/errors";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, formatTime } from "@/lib/format";
-import { LocaleScope } from "@/lib/i18n";
-import { getLocaleForProfile } from "@/lib/i18n/server";
+import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { getLocale, getLocaleForProfile } from "@/lib/i18n/server";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 
 export const dynamic = "force-dynamic";
@@ -22,11 +22,14 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<str
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const locale = await getLocale();
+  const t = translator(locale);
+  const day = (iso: string) => (locale === "en" ? formatDate(iso) : new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric", timeZone: "America/Toronto" }).format(new Date(iso)));
   try {
     const c = await publicServerApi().public.campaign(id);
-    return { title: `${c.name} · ${c.neighbourhood.name}`, description: c.description ?? `Visit ${c.goalVisits} shops on ${c.neighbourhood.name} between ${formatDate(c.startsAt)} and ${formatDate(c.endsAt)}.` };
+    return { title: `${c.name} · ${c.neighbourhood.name}`, description: c.description ?? t("wp.t.campaignDesc", { goal: c.goalVisits, hood: c.neighbourhood.name, from: day(c.startsAt), to: day(c.endsAt) }) };
   } catch {
-    return { title: "Neighbourhood campaign" };
+    return { title: t("wp.t.campaign") };
   }
 }
 
@@ -35,16 +38,16 @@ const KIND_KEY = { passport: "sh.camp.passport", points_weekend: "sh.camp.points
 /** /c/<id>: public BIA campaign page (campaigns.md GET /v1/public/campaigns/:id). */
 export default async function CampaignPage({ params, searchParams }: Props) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
+  const me = await getMe();
+  const locale = await getLocaleForProfile(sp, me?.user.locale);
+  const t = translator(locale);
   let c: campaignsApi.PublicCampaign;
   try {
     c = await publicServerApi().public.campaign(id);
   } catch (e) {
     if (isApiError(e) && (e.status === 404 || e.status === 400)) notFound();
-    return <ErrorState title="Can't load this campaign right now" description={copy.err.network} action={<Button variant="secondary" href={`/c/${encodeURIComponent(id)}`}>Try again</Button>} />;
+    return <ErrorState title={t("wp.err.campaign")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/c/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
   }
-  const me = await getMe();
-  const locale = await getLocaleForProfile(sp, me?.user.locale);
-  const t = translator(locale);
   const en = locale === "en";
   const fmt = (iso: string) => (en ? `${formatDate(iso, true)}, ${formatTime(iso)}` : `${new Intl.DateTimeFormat(LOCALES[locale].bcp47, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" }).format(new Date(iso))}`);
   let mine: campaignsApi.MyCampaign | null = null;
@@ -65,6 +68,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
     <div className="flex flex-col gap-6 pt-2">
+      <LanguageSwitcher className="self-start" />
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-meta text-fg-muted">
           <span className="lowercase">{c.neighbourhood.name}</span>
@@ -86,7 +90,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
               {mine.progress.visited} / {mine.progress.goal}
             </span>
           </div>
-          <ProgressBar value={mine.progress.visited} max={mine.progress.goal} tone="accent" showValue={false} label={t("sh.camp.progress")} valueText={en ? `${mine.progress.visited} of ${mine.progress.goal} shops` : `${mine.progress.visited} / ${mine.progress.goal}`} />
+          <ProgressBar value={mine.progress.visited} max={mine.progress.goal} tone="accent" showValue={false} label={t("sh.camp.progress")} valueText={t("ms.camp.ofShops", { visited: mine.progress.visited, goal: mine.progress.goal })} />
           {mine.progress.completedAt ? <p className="text-meta text-fg">{t("sh.camp.inDraw")}</p> : null}
         </div>
       ) : null}

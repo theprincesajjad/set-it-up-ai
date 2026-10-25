@@ -27,6 +27,8 @@ export function EmptyState({ icon: Icon, title, description, action, secondaryAc
 }
 
 /** Same layout as EmptyState with a retry. */
-export function ErrorState({ title = "Something went wrong on our end", description = "Try again in a moment.", action, icon = CloudOff, className }: Partial<EmptyStateProps>) {
+// Server-safe (icons are passed in by server pages), so no locale hook here: customer pages always pass a translated title and
+// description; these English defaults are the shop-side (dashboard) wording.
+export function ErrorState({ title = "Something went wrong on our end", /* l10n-ok */ description = "Try again in a moment.", /* l10n-ok */ action, icon = CloudOff, className }: Partial<EmptyStateProps>) {
   return <EmptyState icon={icon} tone="danger" title={title} description={description} action={action} className={className} />;
 }

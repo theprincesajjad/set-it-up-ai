@@ -16,6 +16,13 @@ export function ScanPanel({ onScan, hint }: { onScan: (payload: string) => void;
   const stream = useRef<MediaStream | null>(null);
   const [state, setState] = useState<"off" | "starting" | "on" | "denied" | "unsupported">("off");
   const last = useRef({ value: "", at: 0 });
+  // The panel is server-rendered, so it is on screen before React has attached the scanner's key listener (CounterApp).
+  // Keys typed in that gap are lost, so mark the moment hydration and its effects are done: "ready" means a scan will land.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReady(true);
+  }, []);
 
   const stop = useCallback(() => {
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -86,7 +93,7 @@ export function ScanPanel({ onScan, hint }: { onScan: (payload: string) => void;
   }, [state, onScan]);
 
   return (
-    <section aria-label="Scan a card" className="relative flex min-h-[250px] flex-col items-center justify-end overflow-hidden rounded-[20px] bg-fg px-6 pb-6 pt-8 text-center text-bg">
+    <section aria-label="Scan a card" data-scan-ready={ready ? "true" : "false"} aria-busy={!ready} className="relative flex min-h-[250px] flex-col items-center justify-end overflow-hidden rounded-[20px] bg-fg px-6 pb-6 pt-8 text-center text-bg">
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
       <span aria-hidden className="absolute left-1/2 top-6 size-[150px] -translate-x-1/2 rounded-[28px] border-[3px] border-bg/90" />
       <div className="relative mt-[170px]">

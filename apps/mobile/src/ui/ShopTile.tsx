@@ -1,7 +1,8 @@
 import { Image, Pressable, StyleSheet, View } from "react-native";
-import { formatNumber, unitLabel } from "../lib/award";
-import { formatDistance } from "../lib/format";
-import { placeKind } from "../lib/explore";
+import { formatNumber } from "../lib/award";
+import { placeKindLabel } from "@ll/shared";
+import { formatDistanceL, unitLabelL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { typo, useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
 import { BellOff } from "./icons";
@@ -28,9 +29,10 @@ const HEX = /^#[0-9a-f]{6}$/i;
  */
 export function ShopLogo({ shop, size = 44, round = true }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name" | "brandColor">; size?: number; round?: boolean }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const radius = round ? size / 2 : Math.round(size * 0.28);
   if (shop.logoUrl) {
-    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.bgSubtle }} accessibilityIgnoresInvertColors accessibilityLabel={`${shop.name} logo`} />;
+    return <Image source={{ uri: shop.logoUrl }} style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.bgSubtle }} accessibilityIgnoresInvertColors accessibilityLabel={t("ui.logoOf", { shop: shop.name })} />;
   }
   const brand = shop.brandColor && HEX.test(shop.brandColor) ? shop.brandColor : null;
   if (!brand) {
@@ -96,6 +98,8 @@ export interface ShopTileProps {
  */
 export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted, onPress, selected, divider = true }: ShopTileProps) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   if (variant === "hero") {
     return (
       <View style={styles.hero}>
@@ -106,10 +110,10 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
             <Text variant="title" accessibilityRole="header" numberOfLines={2} style={{ flexShrink: 1 }}>
               {shop.name}
             </Text>
-            {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
+            {muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel={t("ui.muted")} /> : null}
           </View>
           <Text variant="placeSubtitle" color="fgMuted" numberOfLines={1}>
-            {subtitle ?? placeKind(shop.vertical)}
+            {subtitle ?? placeKindLabel(L.locale, shop.vertical)}
           </Text>
         </View>
       </View>
@@ -117,8 +121,8 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
   }
 
   const size = variant === "compact" ? 36 : 44;
-  const sub = rewardReady ? (subtitle ?? "reward ready") : (subtitle ?? [shop.neighbourhood, formatDistance(shop.distanceM)].filter(Boolean).join(" · "));
-  const a11y = [shop.name, balance ? `${formatNumber(balance.value)} ${balance.terminology}` : null, rewardReady ? "Reward ready" : null, sub, muted ? "Muted" : null].filter(Boolean).join(". ");
+  const sub = rewardReady ? (subtitle ?? t("sh.wallet.rewardReady")) : (subtitle ?? [shop.neighbourhood, formatDistanceL(L, shop.distanceM)].filter(Boolean).join(" · "));
+  const a11y = [shop.name, balance ? `${formatNumber(balance.value)} ${balance.terminology}` : null, rewardReady ? t("sh.nt.reward_ready") : null, sub, muted ? t("ui.muted") : null].filter(Boolean).join(". ");
   const zero = !!balance && balance.value === 0;
   const row = (pressed: boolean) => (
     <View style={[styles.row, { minHeight: variant === "compact" ? 56 : 68 }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
@@ -134,7 +138,7 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
           {balance ? (
             <Text variant="bodyStrong" color={zero ? "fgMuted" : "accentText"} tabular numberOfLines={1}>
               <CountUp value={balance.value} format={formatNumber} variant="headline" color={zero ? "fgMuted" : "accentText"} />
-              <Text variant="meta" color="fgMuted">{` ${unitLabel(balance.terminology, balance.value)}`}</Text>
+              <Text variant="meta" color="fgMuted">{` ${unitLabelL(L, balance.terminology, balance.value)}`}</Text>
             </Text>
           ) : null}
         </View>
@@ -144,7 +148,7 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
           </Text>
         ) : null}
       </View>
-      {divider ? <View style={[styles.divider, { backgroundColor: c.line, left: size + 12 }]} /> : null}
+      {divider ? <View style={[styles.divider, { backgroundColor: c.line, start: size + 12 }]} /> : null}
     </View>
   );
   return onPress ? (
@@ -159,7 +163,7 @@ export function ShopTile({ shop, variant, balance, subtitle, rewardReady, muted,
 const styles = StyleSheet.create({
   logo: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
-  divider: { position: "absolute", right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  divider: { position: "absolute", end: 0, bottom: 0, height: StyleSheet.hairlineWidth },
   hero: { flexDirection: "row", alignItems: "center", gap: 12 },
   titleLine: { flexDirection: "row", alignItems: "baseline", gap: 6 },
 });

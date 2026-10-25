@@ -179,13 +179,20 @@ export const cashPriceCents = (priceCents: number, bps: number) => Math.round((p
  * Public menu: only available + orderable items. Caller checks orders.order_ahead.
  * Restaurant extras (lang, dietary filters, cash price) apply only when the shop has those features.
  */
-export async function publicMenu(db: DbOrTx, merchant: Merchant, q: restaurantApi.PublicMenuQuery = { halal: false, veg: false, without: [] }, now: Date = new Date()): Promise<commerceApi.PublicMenuResponse> {
-  const [catalog, locs, features, province, payInApp] = await Promise.all([
+export async function publicMenu(
+  db: DbOrTx,
+  merchant: Merchant,
+  q: restaurantApi.PublicMenuQuery = { halal: false, veg: false, without: [] },
+  now: Date = new Date(),
+  /** Features the caller already resolved for this merchant (each resolution is three queries). */
+  resolved?: Awaited<ReturnType<typeof getMerchantFeatures>>,
+): Promise<commerceApi.PublicMenuResponse> {
+  const features = resolved ?? (await getMerchantFeatures(db, merchant));
+  const [catalog, locs, province, payInApp] = await Promise.all([
     getCatalog(db, merchant.id),
     db.select().from(locations).where(and(eq(locations.merchantId, merchant.id), eq(locations.active, true))).orderBy(asc(locations.createdAt)),
-    getMerchantFeatures(db, merchant),
     merchantProvince(db, merchant),
-    paymentsReady(db, merchant),
+    paymentsReady(db, merchant, features),
   ]);
   const dietOn = features["restaurant.dietary_tags"].enabled;
   const langOn = features["restaurant.multilingual_menu"].enabled;

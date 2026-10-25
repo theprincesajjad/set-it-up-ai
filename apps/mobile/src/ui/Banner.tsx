@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { CircleAlert, CircleCheck, Info, WifiOff, type LucideIcon } from "./icons";
 import { Text } from "./Text";
@@ -74,25 +75,26 @@ export function OfflineBanner({
   retrying?: boolean;
   onPress?: () => void;
 }) {
+  const { t } = useLocale();
   if (mode === "customer") {
     if (online) return null;
     return (
       <Banner variant="neutral" icon={WifiOff}>
-        You're offline. Your card still works.
+        {t("ui.offlineCard")}
       </Banner>
     );
   }
   if (stale && (pending ?? 0) > 0) {
     return (
       <Banner variant="danger" solid icon={WifiOff} onPress={onPress}>
-        {`${pending} ${pending === 1 ? "award hasn't" : "awards haven't"} sent for 24 h. Check the connection.`}
+        {t("ui.awardsStuck", { n: pending ?? 0 })}
       </Banner>
     );
   }
   if (!online || (pending ?? 0) > 0) {
     const n = pending ?? 0;
     // Never "0 waiting": offline with nothing queued says what will happen (polish-audit C18).
-    const label = online ? `Sending · ${n} waiting` : n === 0 ? "Offline · awards save on this phone" : `Offline · ${n} waiting to send`;
+    const label = online ? t("ui.sendingWaiting", { n }) : n === 0 ? t("ui.offlineSaves") : t("ui.offlineWaiting", { n });
     return (
       <Banner variant="warning" solid icon={WifiOff} busy={retrying} onPress={onPress}>
         {label}
@@ -102,7 +104,7 @@ export function OfflineBanner({
   if (sentJustNow) {
     return (
       <Banner variant="success" solid>
-        {`Back online · ${sentJustNow} sent`}
+        {t("ui.backOnline", { n: sentJustNow })}
       </Banner>
     );
   }

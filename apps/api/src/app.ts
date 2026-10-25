@@ -3,7 +3,8 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { AppContext } from "./context.js";
 import { verifyAccessToken } from "./lib/auth.js";
-import { HttpError } from "./lib/errors.js";
+import { HttpError, tooMany } from "./lib/errors.js";
+import { countHits, recordHit } from "./lib/rate-limit.js";
 import { registerRoutes } from "./routes/index.js";
 
 declare module "fastify" {
@@ -16,8 +17,11 @@ declare module "fastify" {
   }
 }
 
+const MISS_LIMIT = 40;
+const MISS_WINDOW_MS = 10 * 60_000;
+
 export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: opts.logger ?? false, trustProxy: true, bodyLimit: 5 * 1024 * 1024 });
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: typeof ctx.config.trustProxy === "number" ? (_addr: string, hop: number) => hop < (ctx.config.trustProxy as number) : ctx.config.trustProxy, bodyLimit: 5 * 1024 * 1024 });
   app.decorate("ctx", ctx);
   app.decorateRequest("authUser", null);
 
@@ -55,9 +59,31 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
     if (h?.startsWith("Bearer ")) req.authUser = await verifyAccessToken(ctx, h.slice(7));
   });
 
+  // Enumeration guard for the public pages that are opened by a secret link or code: an address that keeps
+  // asking for links that do not exist is slowed down. The tokens themselves carry 128+ bits, so this is
+  // defence in depth (and a cheap way to spot a scanner), not the primary control.
+  const GUARDED = /^\/v1\/public\/(tiffin\/driver|tickets|reviews|catering|splits|quotes|invoices|payments|join|whatsapp\/pay|messaging\/unsubscribe|onboarding\/unsubscribe)\b/;
+  app.addHook("preHandler", async (req) => {
+    if (!GUARDED.test(req.url) || countHits(ctx, `miss:${req.ip}`, MISS_WINDOW_MS) < MISS_LIMIT) return;
+    throw tooMany("Too many links that don't exist. Check the link, or try again in a few minutes.");
+  });
+  app.addHook("onResponse", async (req, reply) => {
+    if (!GUARDED.test(req.url)) return;
+    // 404/410: a link that does not exist or has expired. 400/403 only where the credential is a query parameter (unsubscribe, pay page).
+    const credentialInQuery = /\/public\/(messaging\/unsubscribe|onboarding\/unsubscribe|whatsapp\/pay)/.test(req.url);
+    if ([404, 410].includes(reply.statusCode) || (credentialInQuery && [400, 403].includes(reply.statusCode))) recordHit(ctx, `miss:${req.ip}`, MISS_WINDOW_MS);
+  });
+
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof HttpError) {
-      return reply.status(err.statusCode).send({ error: { code: err.code, message: err.message, details: err.details } });
+      // Provider error text (`cause`, `reason`) is for our logs, never for the caller: it can name accounts, keys or internals.
+      let details = err.details;
+      if (details && typeof details === "object" && ("cause" in details || (err.code === "invalid_signature" && "reason" in details))) {
+        const { cause, reason, ...rest } = details as Record<string, unknown>;
+        req.log.warn({ code: err.code, cause, reason }, "error detail withheld from response");
+        details = Object.keys(rest).length ? rest : undefined;
+      }
+      return reply.status(err.statusCode).send({ error: { code: err.code, message: err.message, details } });
     }
     const e = err as { statusCode?: number; message?: string; validation?: unknown };
     if (e.statusCode && e.statusCode < 500) {

@@ -141,22 +141,21 @@ export function useSetNotificationPref() {
   });
 }
 
-/** Settings groups, in catalogue order. "Points and rewards" · "Orders and repairs" · "Offers". */
-export const PREF_GROUPS: { title: string; titleKey: MessageKey; channel: customerApi.AndroidChannelId; note?: string; noteKey?: MessageKey }[] = [
-  { title: "Points and rewards", titleKey: "sh.set.groupPoints", channel: "points" },
-  { title: "Orders and repairs", titleKey: "sh.set.groupOrders", channel: "orders" },
-  { title: "Offers", titleKey: "sh.set.groupOffers", channel: "offers", note: "Only from shops you've said yes to, at most one a day, never 9 pm to 8 am.", noteKey: "sh.set.offersNote" },
+/** Settings groups, in catalogue order: points and rewards, orders and repairs, offers. Titles and notes come from the catalog (`titleKey`, `noteKey`). */
+export const PREF_GROUPS: { titleKey: MessageKey; channel: customerApi.AndroidChannelId; noteKey?: MessageKey }[] = [
+  { titleKey: "sh.set.groupPoints", channel: "points" },
+  { titleKey: "sh.set.groupOrders", channel: "orders" },
+  { titleKey: "sh.set.groupOffers", channel: "offers", noteKey: "sh.set.offersNote" },
 ];
 
-export function groupPrefs(items: customerApi.NotificationPrefDto[]): { title: string; titleKey: MessageKey; channel: customerApi.AndroidChannelId; note?: string; noteKey?: MessageKey; items: customerApi.NotificationPrefDto[] }[] {
+export function groupPrefs(items: customerApi.NotificationPrefDto[]): { titleKey: MessageKey; channel: customerApi.AndroidChannelId; noteKey?: MessageKey; items: customerApi.NotificationPrefDto[] }[] {
   return PREF_GROUPS.map((g) => ({
-    title: g.title,
     titleKey: g.titleKey,
     channel: g.channel,
     noteKey: g.noteKey,
-    note: g.note,
     items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel),
   })).filter((g) => g.items.length > 0);
 }
 
-export const CHANNEL_LABELS: Record<customerApi.NotificationChannel, string> = { push: "Push", sms: "Text", email: "Email" };
+/** Catalog key for a delivery channel word ("app", "text", "email"). */
+export const CHANNEL_KEYS: Record<customerApi.NotificationChannel, MessageKey> = { push: "sh.ch.push", sms: "sh.ch.sms", email: "sh.ch.email" };

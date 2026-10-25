@@ -2,6 +2,7 @@
 import { CircleAlert } from "lucide-react";
 import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export interface FieldShellProps {
   id: string;
@@ -19,11 +20,12 @@ export interface FieldShellProps {
 
 /** Label above, hint/error below, wired with aria-describedby. Shared by every input. */
 export function FieldShell({ id, label, hint, error, optionalLabel, required, count, children, hideLabel, gapClass }: FieldShellProps) {
+  const { t } = useLocaleOrEnglish();
   return (
     <div className={cn("flex flex-col", gapClass ?? "gap-1.5")}>
       <label htmlFor={id} className={cn("text-meta-strong text-fg", hideLabel && "sr-only")}>
         {label}
-        {optionalLabel && !required ? <span className="font-normal text-fg-muted"> (optional)</span> : null}
+        {optionalLabel && !required ? <span className="font-normal text-fg-muted"> {t("auth.m.name.optional")}</span> : null}
       </label>
       {children}
       <div className="flex items-start justify-between gap-3">

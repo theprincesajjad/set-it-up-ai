@@ -4,6 +4,8 @@
  * subtitle and the list fallback sections. Pure so it's unit tested.
  */
 import { MAP_CATEGORIES, verticalCategory, type MapCategoryId } from "@ll/design-tokens";
+import { placeKindLabel } from "@ll/shared";
+import { formatPtsL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
 export { MAP_CATEGORIES };
@@ -134,6 +136,15 @@ export function pinSubtitle(vertical: string, m: PinMembership | null, extra: { 
   }
   const word = /stamp/i.test(m.terminology) ? (m.balance === 1 ? "stamp" : "stamps") : /star/i.test(m.terminology) ? (m.balance === 1 ? "star" : "stars") : "pts";
   return { text: `${m.balance.toLocaleString("en-CA")} ${word}`, accent: false };
+}
+
+/** `pinSubtitle` in the shopper's language (English keeps the wording above). */
+export function pinSubtitleL(L: L, vertical: string, m: PinMembership | null, extra: { promoLine?: string | null; perk?: string | null } = {}): { text: string; accent: boolean } {
+  if (L.locale === "en") return pinSubtitle(vertical, m, extra);
+  if (!m) return { text: shopLine({ promoLine: extra.promoLine, perk: extra.perk, kind: placeKindLabel(L.locale, vertical) }), accent: false };
+  if (m.rewardsAvailableCount > 0) return { text: L.t(m.rewardsAvailableCount > 1 ? "sh.wallet.rewardsReadyN" : "sh.wallet.rewardReady", { n: m.rewardsAvailableCount }), accent: true };
+  if (m.earnType === "stamps" && m.stampGoal && m.stampGoal > 0) return { text: L.t("ms.stampsProgress", { n: Math.min(m.balance, m.stampGoal), goal: m.stampGoal }), accent: false };
+  return { text: formatPtsL(L, m.balance, m.terminology), accent: false };
 }
 
 /** A pin on screen: bubble centre in px, and how much its label matters. */

@@ -2,16 +2,18 @@ import type { customerApi } from "@ll/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { t } from "../copy/en-CA";
 import { useCampaigns, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { RedeemConfirmSheet } from "../features/customer/sheets";
-import { promoEnds } from "../lib/format";
+import { promoEndsL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { useOnline } from "../state/network";
 import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Text, Trophy } from "../ui";
 
 /** 6.1 Rewards: Ready / All shops / Passport. */
 export default function Rewards() {
   const params = useLocalSearchParams<{ tab?: string }>();
+  const L = useLocale();
+  const { t } = L;
   const [tab, setTab] = useState<"ready" | "all" | "passport">(params.tab === "passport" ? "passport" : "ready");
   const online = useOnline();
   const wallet = useWallet();
@@ -23,12 +25,12 @@ export default function Rewards() {
   const ready = loaded.filter((d) => d.rewards.some((r) => r.affordable));
 
   return (
-    <Screen back largeTitle title="Rewards" refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
+    <Screen back largeTitle title={t("sh.tab.rewards")} refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
       <SegmentedControl
         options={[
-          { value: "ready", label: "Ready" },
-          { value: "all", label: "All shops" },
-          { value: "passport", label: "Passport" },
+          { value: "ready", label: t("sh.rc.ready") },
+          { value: "all", label: t("ms.allShops") },
+          { value: "passport", label: t("sh.camp.passport") },
         ]}
         value={tab}
         onChange={setTab}
@@ -37,7 +39,7 @@ export default function Rewards() {
 
       {tab === "ready" && !wallet.isLoading ? (
         ready.length === 0 ? (
-          <EmptyState icon={Gift} title={t("empty.rewardsReady.title")} body={t("empty.rewardsReady.body")} actionLabel={t("empty.rewardsReady.action")} onAction={() => setTab("all")} />
+          <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} body={t("sh.rewards.emptyBody")} actionLabel={t("sh.rewards.seeShops")} onAction={() => setTab("all")} />
         ) : (
           ready.map((d) => {
             const rs = d.rewards.filter((r) => r.affordable);
@@ -52,7 +54,7 @@ export default function Rewards() {
                     terminology={d.membership.terminology}
                     state="available"
                     divider={i < rs.length - 1}
-                    disabledReason={online ? null : t("err.redeem.offlineCustomer")}
+                    disabledReason={online ? null : t("cp.err.offlineRedeem")}
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
                 ))}
@@ -75,7 +77,7 @@ export default function Rewards() {
                   divider={false}
                   onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)}
                 />
-                {rs.length === 0 ? <Text color="fgMuted">This shop hasn't added rewards yet.</Text> : null}
+                {rs.length === 0 ? <Text color="fgMuted">{t("ms.noRewardsYet")}</Text> : null}
                 {rs.map((r, i) => (
                   <RewardCard
                     key={r.id}
@@ -84,7 +86,7 @@ export default function Rewards() {
                     terminology={d.membership.terminology}
                     state={r.affordable ? "available" : "locked"}
                     divider={i < rs.length - 1}
-                    disabledReason={online ? null : t("err.redeem.offlineCustomer")}
+                    disabledReason={online ? null : t("cp.err.offlineRedeem")}
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
                 ))}
@@ -95,18 +97,18 @@ export default function Rewards() {
 
       {tab === "passport" ? (
         (campaigns.data?.items ?? []).length === 0 ? (
-          <EmptyState icon={Trophy} title={t("empty.campaigns.title")} body={t("empty.campaigns.body")} />
+          <EmptyState icon={Trophy} title={t("cp.empty.campaignsTitle")} body={t("cp.empty.campaignsBody")} />
         ) : (
           (campaigns.data?.items ?? []).map((cmp) => (
-            <Card key={cmp.id} onPress={() => router.push(`/campaigns/${cmp.id}`)} accessibilityLabel={`${cmp.name}. ${cmp.progress.visited} of ${cmp.progress.goal} shops visited.`}>
+            <Card key={cmp.id} onPress={() => router.push(`/campaigns/${cmp.id}`)} accessibilityLabel={t("ms.camp.a11y", { name: cmp.name, visited: cmp.progress.visited, goal: cmp.progress.goal })}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text variant="headline" style={{ flex: 1 }}>
                   {cmp.name}
                 </Text>
-                <Badge tone={cmp.status === "live" ? "success" : "neutral"}>{cmp.status === "live" ? "live" : cmp.status === "scheduled" ? "starts soon" : "ended"}</Badge>
+                <Badge tone={cmp.status === "live" ? "success" : "neutral"}>{cmp.status === "live" ? t("ms.camp.badgeLive") : cmp.status === "scheduled" ? t("ms.camp.badgeSoon") : t("ms.camp.badgeEnded")}</Badge>
               </View>
               <Text variant="meta" color="fgMuted">
-                {[cmp.neighbourhood.name.toLowerCase(), promoEnds(cmp.endsAt)].filter(Boolean).join(" · ")}
+                {[cmp.neighbourhood.name.toLowerCase(), promoEndsL(L, cmp.endsAt)].filter(Boolean).join(" · ")}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} height={4} valueLabel={`${cmp.progress.visited} / ${cmp.progress.goal}`} />

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import { t } from "../../copy/en-CA";
 import { ShopBody, ShopCardCta, useShopModel } from "../../features/customer/ShopBody";
+import { useLocale } from "../../lib/i18n";
 import { useOnline } from "../../state/network";
 import { ErrorState, Screen, SkeletonList } from "../../ui";
 
@@ -8,6 +8,7 @@ import { ErrorState, Screen, SkeletonList } from "../../ui";
 export default function ShopDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const online = useOnline();
+  const { t } = useLocale();
   const model = useShopModel(slug);
   if (model.shop.isLoading) {
     return (
@@ -19,7 +20,7 @@ export default function ShopDetail() {
   if (!model.shop.data) {
     return (
       <Screen back>
-        <ErrorState offline={!online} message={online ? "This shop isn't on the network right now." : t("err.network")} onRetry={() => model.shop.refetch()} />
+        <ErrorState offline={!online} message={online ? t("ms.shop.offNetwork") : t("auth.err.network")} onRetry={() => model.shop.refetch()} />
       </Screen>
     );
   }

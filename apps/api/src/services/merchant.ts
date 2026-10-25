@@ -35,7 +35,7 @@ import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { getMerchantFeatures, getRolloutStages } from "./features.js";
 import { writeAudit } from "./admin-audit.js";
-import { getOnboardingChecklist, recordMilestone, visitedMembers } from "./onboarding.js";
+import { getOnboardingChecklist, recordMilestone, userLocale, visitedMembers } from "./onboarding.js";
 
 export type Merchant = typeof merchants.$inferSelect;
 export type LocationRow = typeof locations.$inferSelect;
@@ -390,13 +390,13 @@ export async function countActiveMembers(db: DbOrTx, merchantId: string): Promis
   return visitedMembers(db, merchantId);
 }
 
-export { getOnboardingChecklist };
+export { getOnboardingChecklist, userLocale };
 
 export async function completeOnboardingStep(ctx: AppContext, merchantId: string, actorUserId: string, step: string) {
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "onboarding.step_completed", entity: "merchant", entityId: merchantId, data: { step } });
   const key = ({ qr_kit: "qr_printed", staff: "staff_added", pos: "pos_connected" } as const)[step as "qr_kit" | "staff" | "pos"];
   if (key) await recordMilestone(ctx.db, merchantId, key, ctx.now());
-  return getOnboardingChecklist(ctx, merchantId);
+  return getOnboardingChecklist(ctx, merchantId, await userLocale(ctx.db, actorUserId));
 }
 
 // ---------------------------------------------------------------------------

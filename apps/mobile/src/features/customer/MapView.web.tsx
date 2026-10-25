@@ -13,7 +13,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pressable, StyleSheet, View } from "react-native";
-import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitle, type PinMembership, type PinPlan } from "../../lib/explore";
+import { labelHeight, labelWidth, pinPlan, pinPriority, pinSubtitleL, type PinMembership, type PinPlan } from "../../lib/explore";
+import { useLocale } from "../../lib/i18n";
 import { useTheme } from "../../theme";
 import { ClusterPin, PIN_ANCHOR_X, PIN_WIDTH, pinLabel, ShopPin } from "./ShopPin";
 
@@ -52,6 +53,7 @@ type Props = {
 };
 
 export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMap({ shops, memberships, center, showsUser, selectedId, onSelect, onRegion, onFail, topInset, bottomInset, chrome }, ref) {
+  const L = useLocale();
   const { scheme, c } = useTheme();
   const host = useRef<HTMLElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -148,7 +150,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
         x: p.x,
         y: p.y,
         priority: pinPriority({ selected: s.merchant.id === selectedId, rewardReady: (mem?.rewardsAvailableCount ?? 0) > 0, member: !!mem, openNow: s.openNow, distanceMetres: s.distanceMetres }),
-        w: labelWidth(s.merchant.name, pinSubtitle(s.merchant.vertical, mem ?? null).text),
+        w: labelWidth(s.merchant.name, pinSubtitleL(L, s.merchant.vertical, mem ?? null).text),
         h: labelHeight(s.merchant.name),
       };
     });
@@ -213,7 +215,7 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
   }, [showsUser, ready]);
 
   return (
-    <View style={StyleSheet.absoluteFill} accessibilityLabel="Map of shops">
+    <View style={StyleSheet.absoluteFill} accessibilityLabel={L.t("ms.map.label")}>
       {/* maplibre adds .maplibregl-map { position: relative } to its container, so it gets its own 100% box. */}
       <View ref={host as never} style={{ width: "100%", height: "100%" }} />
       {withCoords.map((s) => {
@@ -222,11 +224,11 @@ export const ExploreMap = forwardRef<ExploreMapHandle, Props>(function ExploreMa
         const cluster = s.merchant.id !== selectedId ? layout?.clusters.get(s.merchant.id) : undefined;
         return createPortal(
           cluster ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`${cluster.members.length} shops here. Zoom in`} onPress={() => fitIds(cluster.members)} style={{ width: PIN_WIDTH }}>
+            <Pressable accessibilityRole="button" accessibilityLabel={L.t("ms.map.shopsHere", { n: cluster.members.length })} onPress={() => fitIds(cluster.members)} style={{ width: PIN_WIDTH }}>
               <ClusterPin count={cluster.members.length} />
             </Pressable>
           ) : (
-            <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
+            <Pressable accessibilityRole="button" accessibilityLabel={pinLabel(L, s, memberships[s.merchant.id] ?? null)} onPress={() => cb.current.onSelect(s.merchant.id)} style={{ width: PIN_WIDTH }}>
               <ShopPin shop={s} membership={memberships[s.merchant.id] ?? null} selected={s.merchant.id === selectedId} bare={!!layout && !layout.labeled.has(s.merchant.id)} side={layout?.left.has(s.merchant.id) ? "left" : "right"} />
             </Pressable>
           ),

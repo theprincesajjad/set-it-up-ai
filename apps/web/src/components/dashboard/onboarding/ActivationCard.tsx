@@ -1,25 +1,27 @@
 "use client";
-import type { merchantApi } from "@ll/shared";
+import { normalizeLocale, t, type merchantApi } from "@ll/shared";
 import { Dot, QuietLink } from "@/components/dashboard/kit";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { leadingMarkPct, membersLine, paceTone, stepsLeft } from "@/lib/dashboard/onboarding";
+import { leadingMarkPct, paceTone, stepsLeft } from "@/lib/dashboard/onboarding";
+import { useMerchant } from "../MerchantContext";
 
 /**
  * Home, first 30 days (docs/research/merchant-onboarding.md). One number that matters (members who visited),
  * whether that is enough for today's date, the four milestones, and one concrete next move.
  */
 export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist; base: string }) {
+  const L = normalizeLocale(useMerchant().me.user.locale) ?? "en";
   const a = c.activation;
   const pct = a.target > 0 ? Math.min(100, (a.members / a.target) * 100) : 0;
   const mark = leadingMarkPct(a);
   const left = stepsLeft(c);
   return (
-    <section aria-label="Your first 30 days" className="flex flex-col gap-5 rounded-card border border-line p-5 md:p-6">
+    <section aria-label={t(L, "ob.card.title")} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card border border-line p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">Your first 30 days</p>
-          <h2 className="display mt-1 text-title text-fg">{membersLine(a.members, a.target)}</h2>
+          <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">{t(L, "ob.card.title")}</p>
+          <h2 className="display mt-1 text-title text-fg">{t(L, "ob.card.membersLine", { members: a.members, target: a.target })}</h2>
         </div>
         <Dot tone={paceTone(a.pace)} className="rounded-full bg-bg-subtle px-3 py-1.5">
           {a.paceLabel}
@@ -27,26 +29,26 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
       </div>
 
       <div>
-        <div role="progressbar" aria-label="Active members" aria-valuemin={0} aria-valuemax={a.target} aria-valuenow={a.members} className="relative h-2 w-full rounded-full bg-bg-muted">
+        <div role="progressbar" aria-label={t(L, "ob.card.activeMembers")} aria-valuemin={0} aria-valuemax={a.target} aria-valuenow={a.members} className="relative h-2 w-full rounded-full bg-bg-muted">
           <div className="h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
           <span aria-hidden className="absolute -top-1 h-4 w-px bg-accent" style={{ insetInlineStart: `${mark}%` }} />
         </div>
         <div className="relative mt-2 flex justify-between text-caption text-fg-muted">
           <span>0</span>
           <span className="text-accent-text">
-            {a.leadingMembers} by day {a.leadingByDay} is the pace that gets you to {a.target}
+            {t(L, "ob.card.pace", { lead: a.leadingMembers, day: a.leadingByDay, target: a.target })}
           </span>
-          <span>{a.target} = active shop</span>
+          <span>{t(L, "ob.card.targetLine", { target: a.target })}</span>
         </div>
       </div>
 
-      <ol className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4" aria-label="Milestones">
+      <ol className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4" aria-label={t(L, "ob.card.milestones")}>
         {a.milestones.map((m) => (
           <li key={m.key} className="min-w-0">
             <span className="flex items-center gap-2 text-body text-fg">
               <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full border-[1.5px]", m.at ? "border-fg bg-fg" : "border-line-strong")} />
               {m.label}
-              <span className="sr-only">{m.at ? " (reached)" : " (not yet)"}</span>
+              <span className="sr-only">{" "}{m.at ? t(L, "ob.card.reached") : t(L, "ob.card.notYet")}</span>
             </span>
             <span className="ms-[18px] block text-caption text-fg-muted">{m.detail}</span>
           </li>
@@ -65,7 +67,7 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
 
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <h3 className="text-body-strong text-fg">Where members came from</h3>
+          <h3 className="text-body-strong text-fg">{t(L, "ob.card.sources")}</h3>
           {a.sources.length ? (
             <ul className="mt-2 divide-y divide-line">
               {a.sources.map((s) => (
@@ -76,13 +78,13 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-meta text-fg-muted">Nobody has joined yet.</p>
+            <p className="mt-2 text-meta text-fg-muted">{t(L, "ob.card.none")}</p>
           )}
         </div>
         <div>
           <div className="flex items-center justify-between">
-            <h3 className="text-body-strong text-fg">Setup left</h3>
-            <QuietLink href={`${base}/setup`}>Setup guide</QuietLink>
+            <h3 className="text-body-strong text-fg">{t(L, "ob.card.setupLeft")}</h3>
+            <QuietLink href={`${base}/setup`}>{t(L, "ob.card.guide")}</QuietLink>
           </div>
           {left.length || c.later.some((s) => !s.done) ? (
             <ul className="mt-2 divide-y divide-line">
@@ -90,7 +92,7 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
                 <li key={s.key} className="flex min-h-9 items-center justify-between text-body text-fg">
                   {s.label}
                   <QuietLink href={`${base}/setup?step=${s.key}`} chevron={false}>
-                    Do it
+                    {t(L, "ob.card.doIt")}
                   </QuietLink>
                 </li>
               ))}
@@ -99,12 +101,12 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
                 .map((s) => (
                   <li key={s.key} className="flex min-h-9 items-center justify-between text-body text-fg-muted">
                     {s.label}
-                    <span className="text-caption">Optional</span>
+                    <span className="text-caption">{t(L, "ob.card.optional")}</span>
                   </li>
                 ))}
             </ul>
           ) : (
-            <p className="mt-2 text-meta text-fg-muted">Everything is set up.</p>
+            <p className="mt-2 text-meta text-fg-muted">{t(L, "ob.card.allSet")}</p>
           )}
         </div>
       </div>

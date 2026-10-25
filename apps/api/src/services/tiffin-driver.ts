@@ -11,6 +11,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
+import { allow } from "../lib/rate-limit.js";
 import { HttpError, badRequest, notFound, tooMany } from "../lib/errors.js";
 import { notifyCustomer } from "./commerceShared.js";
 import { inQuietHours } from "./notifications.js";
@@ -21,17 +22,10 @@ import { sendSms } from "./opt-out.js";
 
 type Link = typeof tiffinDriverLinks.$inferSelect;
 const LATE_GAP_MS = 15 * 60_000;
-const hits = new WeakMap<AppContext, Map<string, number[]>>();
 
 /** 120 requests a minute per token: plenty for a driver tapping through a route, hard for a scraper. */
 function rateLimit(ctx: AppContext, key: string) {
-  let m = hits.get(ctx);
-  if (!m) hits.set(ctx, (m = new Map()));
-  const now = ctx.now().getTime();
-  const recent = (m.get(key) ?? []).filter((t) => now - t < 60_000);
-  if (recent.length >= 120) throw tooMany("Too many requests. Wait a moment.");
-  recent.push(now);
-  m.set(key, recent);
+  if (!allow(ctx, `driver:${key}`, 120, 60_000)) throw tooMany("Too many requests. Wait a moment.");
 }
 
 const expiryFor = (date: string) => new Date(localInstant(addDays(date, 1), 0).getTime() - 1000);

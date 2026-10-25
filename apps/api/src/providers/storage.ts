@@ -2,15 +2,21 @@
  * Object storage for merchant uploads (ticket photos). No third-party account is needed to run the product:
  *  - MemoryStorage: tests. Keeps bytes in a map and hands back a fake URL.
  *  - DiskStorage: development and single-host installs. Writes under UPLOADS_DIR (default ./data/uploads) and the API
- *    serves them from GET /v1/public/uploads/:key. Keys are random, so a URL is unguessable but not secret.
+ *    serves them from GET /v1/public/uploads/:key.
  *
- * A production object store (S3, R2, GCS) plugs in by passing `providers.storage` to createProviders; nothing else changes.
- * Use `getStorage(ctx)`; never construct a provider in a route.
+ * Nothing is served from a permanent link. The database stores only the relative path (`/v1/public/uploads/<key>`);
+ * every time an upload is shown, `uploadSigner(ctx)` turns it into a short-lived HMAC-signed URL
+ * (`?exp=<unix seconds>&sig=<hmac>`, UPLOAD_URL_TTL_SECONDS) that the serving route verifies for signature and expiry.
+ * A production object store (S3, R2, GCS) plugs in by passing `providers.storage` to createProviders and
+ * implementing `signedUrl` (a presigned GET); the callers do not change. Use `getStorage(ctx)`; never construct a
+ * provider in a route.
  */
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { UPLOAD_LINK_MINUTES } from "@ll/shared";
 import type { AppContext } from "../context.js";
+import { hmacSha256, safeEqual } from "../lib/crypto.js";
 
 export interface StoredObject {
   url: string;
@@ -24,6 +30,11 @@ export interface StorageProvider {
   get?(key: string): Promise<{ body: Buffer; contentType: string } | null>;
   /** Remove an object (retention and account deletion). Resolves true when something was removed; a missing object is not an error. */
   delete?(key: string): Promise<boolean>;
+  /**
+   * A time-limited URL for reading the object. Hosted stores implement this with their own presigned GET. Providers
+   * that leave it out (disk, memory) are served by the API route, signed with the API's own HMAC secret.
+   */
+  signedUrl?(key: string, expiresAt: Date): string;
 }
 
 const UPLOAD_KEY = /([0-9a-f-]{36}\/[0-9a-f]{32}\.[a-z]+)(?:[?#].*)?$/;
@@ -58,15 +69,52 @@ export function sniffImage(body: Buffer): string | null {
 /** Path (no origin) at which the API serves an upload. Stored values use this form so they survive a change of API host or port. */
 export const UPLOAD_PATH = "/v1/public/uploads/";
 
-/** Store form: our own origin is dropped from an upload URL; anything else (a hosted store's CDN URL) is kept as given. */
+/**
+ * Store form: our own origin and any signature (`?exp=&sig=`) are dropped from an upload URL, leaving the permanent
+ * relative path; anything else (a link the shop pasted) is kept as given.
+ */
 export function toStoredUploadUrl(url: string, publicApiUrl: string): string {
   const base = publicApiUrl.replace(/\/+$/, "");
-  return url.startsWith(`${base}${UPLOAD_PATH}`) ? url.slice(base.length) : url;
+  const path = url.startsWith(UPLOAD_PATH) ? url : url.startsWith(`${base}${UPLOAD_PATH}`) ? url.slice(base.length) : null;
+  if (path === null) return url;
+  const key = storageKeyFromUrl(path);
+  return key ? `${UPLOAD_PATH}${key}` : path;
 }
 
-/** Read form: a stored relative upload path becomes an absolute URL on the API's public origin. */
-export function resolveUploadUrl(url: string, publicApiUrl: string): string {
-  return url.startsWith(UPLOAD_PATH) ? `${publicApiUrl.replace(/\/+$/, "")}${url}` : url;
+/** How long a signed photo link works. Links are made fresh each time a photo is shown, so this only has to outlive a page view. */
+export const UPLOAD_URL_TTL_SECONDS = UPLOAD_LINK_MINUTES * 60;
+
+const uploadSignature = (secret: string, key: string, exp: number) => hmacSha256(secret, `upload:${key}:${exp}`);
+
+/** A signed, expiring URL on the API's public origin for one stored object. */
+export function signUploadUrl(secret: string, publicApiUrl: string, key: string, expiresAt: Date): string {
+  const exp = Math.floor(expiresAt.getTime() / 1000);
+  return `${publicApiUrl.replace(/\/+$/, "")}${UPLOAD_PATH}${key}?exp=${exp}&sig=${uploadSignature(secret, key, exp)}`;
+}
+
+/** Checks the `exp` and `sig` query values of an upload request. Signature first, so an expired but forged link reads as invalid. */
+export function checkUploadSignature(secret: string, key: string, exp: unknown, sig: unknown, now: Date): "ok" | "invalid" | "expired" {
+  if (typeof exp !== "string" || typeof sig !== "string" || !/^\d{1,12}$/.test(exp) || !/^[0-9a-f]{64}$/.test(sig)) return "invalid";
+  if (!safeEqual(sig, uploadSignature(secret, key, Number(exp)))) return "invalid";
+  return now.getTime() >= Number(exp) * 1000 ? "expired" : "ok";
+}
+
+export type UploadSigner = (stored: string) => string;
+
+/**
+ * Read-time resolver for a stored upload value. One of ours (a relative upload path, or any URL carrying our key
+ * shape) becomes a signed URL that expires `ttlSeconds` from now; anything else (a link the shop pasted, an
+ * unsigned legacy URL on a hosted store) is returned unchanged.
+ */
+export function uploadSigner(ctx: AppContext, ttlSeconds = UPLOAD_URL_TTL_SECONDS): UploadSigner {
+  const expiresAt = new Date(ctx.now().getTime() + ttlSeconds * 1000);
+  const provider = getStorage(ctx);
+  return (stored) => {
+    const key = storageKeyFromUrl(stored);
+    if (!key) return stored;
+    if (provider.signedUrl) return provider.signedUrl(key, expiresAt);
+    return stored.startsWith(UPLOAD_PATH) || stored.startsWith(ctx.config.publicApiUrl.replace(/\/+$/, "")) ? signUploadUrl(ctx.config.jwtSecret, ctx.config.publicApiUrl, key, expiresAt) : stored;
+  };
 }
 
 function newKey(merchantId: string, contentType: string): string {

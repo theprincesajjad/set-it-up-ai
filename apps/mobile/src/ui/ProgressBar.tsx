@@ -1,4 +1,5 @@
 import { StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Text } from "./Text";
 
@@ -17,12 +18,13 @@ export interface ProgressBarProps {
 /** Thin bar: track bgMuted, fill accent (points) or fg. */
 export function ProgressBar({ value, max, label, valueLabel, tone = "brand", valueText, height = 6 }: ProgressBarProps) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return (
     <View
       accessible
       accessibilityRole="progressbar"
-      accessibilityValue={{ min: 0, max, now: Math.min(value, max), text: valueText ?? `${value} of ${max}` }}
+      accessibilityValue={{ min: 0, max, now: Math.min(value, max), text: valueText ?? t("ui.progressOf", { value, max }) }}
       accessibilityLabel={label}
       style={{ gap: 6 }}
     >

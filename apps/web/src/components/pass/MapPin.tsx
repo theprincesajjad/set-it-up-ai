@@ -1,15 +1,16 @@
 "use client";
-import type { networkApi } from "@ll/shared";
-import { placeKind } from "@/lib/place";
+import { placeKindLabel, type networkApi } from "@ll/shared";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { cn } from "@/lib/cn";
-import { formatPoints } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { unitsText } from "@/lib/units";
+import type { L } from "@/lib/i18n/formatL";
 
 /** The italic grey line under a place name: my balance, a live offer, or what kind of place it is. */
-export function pinSubtitle(shop: networkApi.ShopListItemDto): string {
-  if (shop.isMember && shop.myBalance != null) return `your ${formatPoints(shop.myBalance, shop.terminology, false)}`;
-  if (shop.hasPromo) return "offer on now";
-  return placeKind(shop.merchant.vertical);
+export function pinSubtitle(L: L, shop: networkApi.ShopListItemDto): string {
+  if (shop.isMember && shop.myBalance != null) return L.t("wp.map.yourBal", { amount: unitsText(L.locale, shop.myBalance, shop.terminology, false) });
+  if (shop.hasPromo) return L.t("wp.map.offerNow");
+  return placeKindLabel(L.locale, shop.merchant.vertical);
 }
 
 /**
@@ -21,8 +22,10 @@ export function pinSubtitle(shop: networkApi.ShopListItemDto): string {
  * `moreCount` > 0: overlapping shops were folded into this pin; a "+N" bubble zooms in on them.
  */
 export function MapPin({ shop, selected, onSelect, showLabel = true, compact = false, moreCount = 0, onExpand }: { shop: networkApi.ShopListItemDto; selected: boolean; onSelect: () => void; showLabel?: boolean; compact?: boolean; moreCount?: number; onExpand?: () => void }) {
+  const L = useLocaleOrEnglish();
+  const { t, locale } = L;
   const name = shop.merchant.name;
-  const sub = pinSubtitle(shop);
+  const sub = pinSubtitle(L, shop);
   const size = compact && !selected ? 28 : 34;
   return (
     <span className="relative flex items-center">
@@ -33,7 +36,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
           onSelect();
         }}
         aria-pressed={selected}
-        aria-label={`${name}${shop.isMember && shop.myBalance != null ? `, ${formatPoints(shop.myBalance, shop.terminology)}` : ""}${shop.hasPromo ? ", has an offer" : ""}`}
+        aria-label={`${name}${shop.isMember && shop.myBalance != null ? `, ${unitsText(locale, shop.myBalance, shop.terminology)}` : ""}${shop.hasPromo ? `, ${t("wp.map.hasOffer")}` : ""}`}
         className="group relative flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
       >
         <span className="relative flex w-[34px] shrink-0 justify-center after:absolute after:-inset-[5px] after:content-['']">
@@ -67,7 +70,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
             e.stopPropagation();
             onExpand();
           }}
-          aria-label={`${moreCount} more ${moreCount === 1 ? "shop" : "shops"} here, zoom in`}
+          aria-label={t("wp.map.moreHere", { n: moreCount })}
           className="absolute -start-1.5 -top-1.5 z-[1] inline-flex h-4 min-w-4 cursor-pointer items-center justify-center rounded-full bg-[#0B0B0C] px-1 text-[10px] font-semibold tabular-nums text-[#FFFFFF] after:absolute after:-inset-3 after:content-[''] focus-visible:focus-ring"
         >
           +{moreCount}
@@ -79,6 +82,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
 
 /** Count bubble for overlapping shops (none of them mine): a small black capsule with the number. Tap zooms in. */
 export function MapCluster({ count, onExpand }: { count: number; onExpand: () => void }) {
+  const { t } = useLocaleOrEnglish();
   return (
     <button
       type="button"
@@ -86,7 +90,7 @@ export function MapCluster({ count, onExpand }: { count: number; onExpand: () =>
         e.stopPropagation();
         onExpand();
       }}
-      aria-label={`${count} shops here, zoom in`}
+      aria-label={t("ms.map.shopsHere", { n: count })}
       className="group relative flex w-[34px] cursor-pointer items-center justify-center after:absolute after:-inset-[5px] after:content-[''] focus-visible:outline-none"
     >
       <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border-[1.5px] border-[#FFFFFF] bg-[#0B0B0C] px-1.5 text-[12px] font-semibold tabular-nums text-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">

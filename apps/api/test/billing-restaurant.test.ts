@@ -6,7 +6,7 @@ import { getPayments } from "../src/providers/payments.js";
 import { getMerchantFeatures } from "../src/services/features.js";
 import { computeFees } from "../src/services/fees.js";
 import { createConnectPayment, refundConnectPayment } from "../src/services/payments.js";
-import { createMerchant, createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createTestEnv, createUser, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
 import { call, fake, paidMerchant } from "./commerce-fixtures.js";
 
 let env: TestEnv;
@@ -232,11 +232,19 @@ describe("fees", () => {
 describe("charge mode", () => {
   const pay = (m: Awaited<ReturnType<typeof paidMerchant>>, key = "k1") =>
     createConnectPayment(env.ctx, m.merchant, { amountCents: 5000, applicationFeeCents: 50, description: "test", metadata: { ll_kind: "order", ll_id: "x", merchant_id: m.merchant.id }, idempotencyKey: key });
-  const setMode = (token: string, id: string, chargeMode: string) => send(token, "PUT", `/v1/admin/merchants/${id}/charge-mode`, { chargeMode });
+  let adminId = "";
+  let adminToken = "";
+  // Changing a shop's charge mode is a write inside the shop: the admin opens a support session first.
+  const setMode = async (token: string, id: string, chargeMode: string) => {
+    if (token === adminToken && (await env.db.select({ id: merchants.id }).from(merchants).where(eq(merchants.id, id))).length) await openSupportSession(env, adminId, id);
+    return send(token, "PUT", `/v1/admin/merchants/${id}/charge-mode`, { chargeMode });
+  };
 
   async function admin() {
     const u = await createUser(env.db, { platformRole: "admin" });
-    return tokenFor(env, u);
+    adminId = u.id;
+    adminToken = await tokenFor(env, u);
+    return adminToken;
   }
 
   it("destination is the default, and direct stays off while STRIPE_DIRECT_CHARGES is off", async () => {

@@ -16,7 +16,7 @@ import * as pickupSvc from "../../services/pickup.js";
 import * as rebookingSvc from "../../services/rebooking.js";
 import * as serviceSettingsSvc from "../../services/service-settings.js";
 import * as ticketsSvc from "../../services/tickets.js";
-import { IMAGE_TYPES, MAX_UPLOAD_BYTES, getStorage, sniffImage } from "../../providers/storage.js";
+import { IMAGE_TYPES, MAX_UPLOAD_BYTES, UPLOAD_PATH, getStorage, sniffImage, uploadSigner } from "../../providers/storage.js";
 
 type MerchantParams = { merchantId: string };
 type TicketParams = MerchantParams & { ticketId: string };
@@ -43,7 +43,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const real = sniffImage(body);
     if (!real) throw badRequest("That file isn't a photo we can read.");
     const stored = await getStorage(ctx).put({ merchantId: staff.merchant.id, contentType: real, body });
-    return reply.status(201).send({ url: stored.url, contentType: real, bytes: body.length });
+    // The URL is signed and short-lived: the photo form sends it back and the API stores only the permanent path.
+    return reply.status(201).send({ url: uploadSigner(ctx)(`${UPLOAD_PATH}${stored.key}`), contentType: real, bytes: body.length });
   });
 
   // ---------------------------------------------------------------- shop settings: terms, warranty, tips
@@ -83,7 +84,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/tickets", async (req) => {
     const staff = await staffFor(req, "staff", ["service.tickets"]);
     const q = parse(serviceApi.listTicketsQuery, req.query);
-    return ticketsSvc.listTickets(ctx.db, staff.merchant, q, { now: ctx.now, publicWebUrl: ctx.config.publicWebUrl, publicApiUrl: ctx.config.publicApiUrl });
+    return ticketsSvc.listTickets(ctx.db, staff.merchant, q, { now: ctx.now, publicWebUrl: ctx.config.publicWebUrl, signUpload: uploadSigner(ctx) });
   });
 
   app.get<{ Params: TicketParams }>("/merchants/:merchantId/tickets/:ticketId", async (req) => {
@@ -227,7 +228,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get("/me/tickets", async (req) => {
     const user = requireUser(req);
     const q = parse(paginationQuery, req.query);
-    return ticketsSvc.listMyTickets(ctx.db, user.id, q, ctx.config.publicApiUrl);
+    return ticketsSvc.listMyTickets(ctx.db, user.id, q, uploadSigner(ctx));
   });
 
   app.get<{ Params: { ticketId: string } }>("/me/tickets/:ticketId", async (req) => {

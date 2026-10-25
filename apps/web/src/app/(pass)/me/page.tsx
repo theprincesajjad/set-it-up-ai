@@ -6,7 +6,6 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
-import { copy } from "@/copy/en-CA";
 import { getServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { formatDate } from "@ll/shared";
@@ -14,7 +13,10 @@ import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getLocaleForProfile, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "My card", robots: { index: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("sh.fs.ctaCard"), robots: { index: false } };
+}
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -31,7 +33,10 @@ export default async function MePage({ searchParams }: Props) {
   }
   const api = await getServerApi();
   const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[])]).catch(() => null);
-  if (!data) return <ErrorState title="Can't load your card right now" description={copy.err.network} action={<Button variant="secondary" href="/me">Try again</Button>} />;
+  if (!data) {
+    const t = await getT(sp);
+    return <ErrorState title={t("wp.err.card")} description={t("auth.err.network")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
+  }
   const [profile, wallet, card, campaigns] = data;
   // The shopper's own language: ?lang= / the saved choice, else the language on their profile.
   const locale = await getLocaleForProfile(sp, profile.locale);

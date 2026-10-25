@@ -3,7 +3,6 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { DateField, InfoRow, ManualDueCard, StatusBadge, subTone, useCountdownText, useMoney, useNow, usePayment, useSetup } from "../../features/restaurant/components";
 import { rk, useInvalidateTiffin, useMySubscription, useUpcoming } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
@@ -69,7 +68,7 @@ export default function TiffinSubscription() {
         ? t("tcb.row.paidBy", { method: t(`tcb.m.${ch.paidMethod}` as const), date: ch.receivedOn ? date(dayToDate(ch.receivedOn), { day: "numeric", month: "short" }) : "" }).trim()
         : t(`rest.charge.${ch.status}` as const);
   const per = t(sub.plan.cadence === "weekly" ? "rest.perWeek" : "rest.perMonth");
-  const fail = (e: unknown) => setError(isApiError(e) && e.code === "cutoff_passed" ? t("rest.tiffin.cutoffPassed") : errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+  const fail = (e: unknown) => setError(isApiError(e) && e.code === "cutoff_passed" ? t("rest.tiffin.cutoffPassed") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
   const run = async <T,>(key: NonNullable<typeof busy>, fn: () => Promise<T>, then?: (r: T) => void) => {
     setBusy(key);
     setError(null);

@@ -11,7 +11,8 @@ import { restaurantApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
-import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
+import { allow } from "../lib/rate-limit.js";
 import { computeFees } from "./fees.js";
 import { createConnectPayment, refundConnectPayment } from "./payments.js";
 import { requirePaymentsReady } from "./commerceShared.js";
@@ -185,6 +186,8 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
   if (split.status === "paid") throw conflict("This share is already paid");
   if (tenderOf(split) !== "link") throw conflict("This share is paid at the table, not by link");
   if (order.status === "cancelled" || order.status === "refunded" || order.paymentStatus === "paid") throw conflict("This bill is closed");
+  // Each distinct tip starts a new PaymentIntent at Stripe: cap how many a single link can start.
+  if (!allow(ctx, `split-pay:${split.id}`, 20, 3_600_000)) throw tooMany("Too many payment attempts on this link. Try again in an hour, or pay the shop directly.");
   const accountId = await requirePaymentsReady(ctx.db, merchant);
   const amount = split.amountCents + body.tipCents;
   // Split shares are order payments: same rule as the whole bill (0% paid/restaurant, 1.5% Free). No customer fee on shares.
@@ -200,7 +203,7 @@ export async function paySplit(ctx: AppContext, token: string, body: z.infer<typ
       idempotencyKey: `split:${split.id}:pi:${body.tipCents}`,
     });
   } catch (err) {
-    throw new HttpError(502, "payment_error", "We couldn't start the payment. Please try again.", { cause: (err as Error).message });
+    throw new HttpError(502, "payment_error", "We couldn't start the payment. Please try again.");
   }
   const [updated] = await ctx.db.update(orderSplits).set({ tipCents: body.tipCents, stripePaymentIntentId: pi.id }).where(and(eq(orderSplits.id, split.id), eq(orderSplits.status, "open"))).returning();
   if (!updated) throw conflict("This share was just paid");

@@ -324,10 +324,18 @@ export interface AreaFunnel {
   /** Day 7 / day 30 calls due and not logged. */
   checkInsDue: number;
 }
+/** What MRR is made of: plan subscriptions (Plus, Pro), restaurant tiers, and the add-ons on top. Sums to `mrrCents`. */
+export interface MrrSplit {
+  plansCents: number;
+  restaurantCents: number;
+  whatsappCents: number;
+  extraLocationsCents: number;
+  otherAddOnsCents: number;
+}
 export interface AdminOverview {
   generatedAt: string;
   pace: { month: number; plannedEndOfMonth: number; plannedToday: number; actual: number; delta: number; areasOpened: number; areasPlanned: number };
-  money: { mrrCents: number; payingShops: number; byPlan: { plus: number; pro: number; restaurant: number }; feeRevenue30dCents: number; volume30dCents: number };
+  money: { mrrCents: number; mrrSplit: MrrSplit; payingShops: number; byPlan: { plus: number; pro: number; restaurant: number }; feeRevenue30dCents: number; volume30dCents: number };
   activation: { signed: number; activated: number; rate: number; goal: number };
   costs: { monthCents: number; perShopCents: number; shops: number };
   funnel: AreaFunnel[];
@@ -356,6 +364,8 @@ export interface AdminCosts {
 export const chargeModeSchema = z.enum(["destination", "direct"]);
 export interface MerchantMoney {
   mrrCents: number;
+  /** Subscription (plan or restaurant tier) and add-ons; sums to `mrrCents`. */
+  mrrSplit: { subscriptionCents: number; addOnCents: number };
   subscriptionStatus: string | null;
   renewsOn: string | null;
   fees30dCents: number;

@@ -1,6 +1,8 @@
+"use client";
 import { Info, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
 
@@ -40,14 +42,16 @@ export function Badge({ tone = "neutral", icon: Icon, iconEnd: IconEnd, dot, chi
   );
 }
 
-export function ComingSoonBadge({ label = "Coming soon" }: { label?: string }) {
-  return <Badge tone="neutral">{label}</Badge>;
+export function ComingSoonBadge({ label }: { label?: string }) {
+  const { t } = useLocaleOrEnglish();
+  return <Badge tone="neutral">{label ?? t("ui.comingSoon")}</Badge>;
 }
 
 export function SponsoredBadge() {
+  const { t } = useLocaleOrEnglish();
   return (
     <Badge tone="neutral" iconEnd={Info}>
-      Sponsored
+      {t("ui.sponsored")}
     </Badge>
   );
 }
@@ -66,11 +70,12 @@ const STATUS_TONES: Record<string, Record<string, BadgeTone>> = {
   campaign: { draft: "neutral", scheduled: "info", live: "success", ended: "neutral", cancelled: "neutral" },
 };
 
+// l10n-ok: shop-side status words (dashboard); customer pages pass a translated `label` to StatusBadge.
 const STATUS_LABELS: Record<string, Record<string, string>> = {
-  ticket: { quote_sent: "Needs approval", waiting_parts: "Waiting for parts", in_progress: "In progress", picked_up: "Picked up", intake: "Dropped off" },
-  quote: { sent: "Needs your approval" },
+  ticket: { quote_sent: "Needs approval", waiting_parts: "Waiting for parts", in_progress: "In progress", picked_up: "Picked up", intake: "Dropped off" }, // l10n-ok
+  quote: { sent: "Needs your approval" }, // l10n-ok
   rollout: { hidden: "Hidden", beta: "Beta", ga: "Live" },
-  order: { picked_up: "Picked up" },
+  order: { picked_up: "Picked up" }, // l10n-ok
 };
 
 export type StatusDomain = keyof typeof STATUS_TONES;

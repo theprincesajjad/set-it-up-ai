@@ -87,4 +87,29 @@ describe("nudges", () => {
     expect(nudgeText("nudge_d25", a).subject).toBe("5 days left to reach 25");
     expect(nudgeText("nudge_d7", a).body).toContain("19 to go");
   });
+  it("English is word for word what owners got before the texts were translated", () => {
+    const a = { shopName: "Sunrise Bakery", members: 6, daysLeft: 5, target: 25, tillLine: "Want a stamp on that today?", url: "https://example.ca/m/1/setup" };
+    expect(nudgeText("nudge_d1", a)).toEqual({ subject: "Give your first stamp at Sunrise Bakery", body: "Sunrise Bakery is set up but nobody has been stamped yet. It takes three minutes: scan your own QR, then add a stamp. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d3", a)).toEqual({ subject: "6 on the card so far", body: 'Sunrise Bakery: 6 members so far. Try saying this at the till today: "Want a stamp on that today?" https://example.ca/m/1/setup' });
+    expect(nudgeText("nudge_d3", { ...a, members: 1 }).body).toContain("1 member so far");
+    expect(nudgeText("nudge_d7", a)).toEqual({ subject: "A week in: 6 members", body: "Sunrise Bakery has 6 members after a week. Shops that reach 12 by day 14 almost always reach 25. 19 to go. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d14", a)).toEqual({ subject: "Two weeks in: 6 members", body: "Sunrise Bakery has 6 members at day 14, a little behind. We will call you this week to help you get the next few. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d25", a)).toEqual({ subject: "5 days left to reach 25", body: "Sunrise Bakery is 19 members from active. 5 days left in your first 30. https://example.ca/m/1/setup" });
+  });
+  it("is written in the owner's language, with the shop, the numbers and the link intact", () => {
+    const a = { shopName: "Sarson Dhaba", members: 6, daysLeft: 5, target: 25, tillLine: "Want a stamp on that today?", url: "https://example.ca/m/1/setup" };
+    for (const locale of ["hi", "ur", "pa"] as const) {
+      for (const k of ["nudge_d1", "nudge_d3", "nudge_d7", "nudge_d14", "nudge_d25"] as const) {
+        const t = nudgeText(k, a, locale);
+        expect(t.subject.replace("Sarson Dhaba", ""), `${locale} ${k}`).not.toMatch(/[A-Za-z]{4,}/);
+        expect(t.body, `${locale} ${k}`).toContain("https://example.ca/m/1/setup");
+        expect(t.body, `${locale} ${k}`).toContain("Sarson Dhaba");
+        expect(t.body, `${locale} ${k}`).not.toContain("{");
+        expect(t.body.length, `${locale} ${k}`).toBeLessThan(420);
+        expect(t.body).not.toBe(nudgeText(k, a).body);
+      }
+    }
+    expect(nudgeText("nudge_d25", a, "hi").subject).toContain("25");
+    expect(nudgeText("nudge_d25", a, "hi").subject).toContain("5");
+  });
 });

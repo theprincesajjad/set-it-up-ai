@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Tiffin plans · ${s.name}`, description: `Home-style meals on a weekly or monthly plan from ${s.name}.`, alternates: { canonical: `/shops/${slug}/tiffin` } };
+    return { title: `${t("rc.tf.title")} · ${s.name}`, description: t("wp.t.tiffinDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/tiffin` } };
   } catch {
-    return { title: "Tiffin plans" };
+    return { title: t("rc.tf.title") };
   }
 }
 

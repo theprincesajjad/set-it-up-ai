@@ -92,6 +92,17 @@ export function t(locale: Locale, key: MessageKey, vars?: Vars): string {
   return vars || msg.includes("{") ? formatMessage(locale, msg, vars) : msg;
 }
 
+/**
+ * For a right-to-left language: a message that opens with a Latin run ("Local Loyalty کی خبریں") would be laid out left to
+ * right by the browser's first-strong rule. A leading RLM (U+200F) makes the Urdu text decide the paragraph direction.
+ * Text inside isolates (the wrapped shop and customer names) is ignored when looking for the first letter.
+ */
+export function withRtlMark(locale: Locale, text: string): string {
+  if (LOCALES[locale].dir !== "rtl" || !text) return text;
+  const outside = text.replace(/[\u2066\u2067\u2068][\s\S]*?\u2069/g, "");
+  return /^[^\p{L}]*\p{Script=Latin}/u.test(outside) ? `\u200F${text}` : text;
+}
+
 /** Bind a locale once: `const tr = translator("ur"); tr("menu.add")`. */
 export function translator(locale: Locale) {
   return (key: MessageKey, vars?: Vars) => t(locale, key, vars);

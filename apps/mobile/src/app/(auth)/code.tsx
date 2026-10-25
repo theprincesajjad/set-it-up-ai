@@ -104,7 +104,7 @@ export default function CodeStep() {
           {t("auth.err.tooMany")}
         </Text>
       ) : (
-        <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start", marginLeft: -4 }} disabled={resendIn > 0} onPress={() => resend()} loading={verifying}>
+        <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start", marginStart: -4 }} disabled={resendIn > 0} onPress={() => resend()} loading={verifying}>
           {resendIn > 0 ? t("auth.otp.resendIn", { time: formatCountdown(resendIn) }) : t("auth.otp.resend")}
         </Button>
       )}

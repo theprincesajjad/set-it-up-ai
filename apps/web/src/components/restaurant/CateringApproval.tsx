@@ -98,7 +98,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
   const lines = e.lineItems.map((l) => {
     const perGuest = /\s\(per guest\)$/.test(l.description);
     const tray = /\s\(tray\)$/.test(l.description);
-    const serviceLine = e.serviceChargeBps > 0 && l.description.startsWith("Service charge");
+    const serviceLine = e.serviceChargeBps > 0 && l.description.startsWith("Service charge"); // l10n-ok: matches the line description the API stores
     const name = serviceLine ? `${t("tcb.q.service", { pct: percent(e.serviceChargeBps / 100) })}${data.event.tax?.registered === false ? "" : ` (${t("tcb.q.serviceTax")})`}` : l.description.replace(/\s\((per guest|tray)\)$/, "");
     const detail = perGuest ? t("rc.ca.perGuestLine", { n: number(l.quantity), price: money(l.unitPriceCents) }) : tray ? t("rc.ca.trayLine", { n: l.quantity, price: money(l.unitPriceCents) }) : l.quantity > 1 ? t("rc.ca.qtyLine", { n: number(l.quantity), price: money(l.unitPriceCents) }) : null;
     return { name, detail, total: l.totalCents };

@@ -3,8 +3,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage } from "../../api/client";
-import { t } from "../../copy/en-CA";
-import { formatMoney, formatPts } from "../../lib/award";
+import { formatMoneyL, formatPtsL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { Banner, Button, Card, ConfirmDialog, ErrorState, OrderTracker, Screen, Section, SkeletonList, Text } from "../../ui";
@@ -12,6 +12,9 @@ import { Banner, Button, Card, ConfirmDialog, ErrorState, OrderTracker, Screen, 
 /** Order detail: tracker (polls while open), items, totals. */
 export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const L = useLocale();
+  const { t } = L;
+  const formatMoney = (c: number) => formatMoneyL(L, c);
   const qc = useQueryClient();
   const order = useQuery({
     queryKey: qk.order(id ?? ""),
@@ -23,13 +26,13 @@ export default function OrderDetail() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   if (order.isLoading) return <Screen back><SkeletonList rows={3} /></Screen>;
-  if (!order.data) return <Screen back><ErrorState message="We couldn't find this order." onRetry={() => order.refetch()} /></Screen>;
+  if (!order.data) return <Screen back><ErrorState message={t("ms.order.notFound")} onRetry={() => order.refetch()} /></Screen>;
   const o = order.data;
   return (
-    <Screen back title={`Order #${o.number}`} onRefresh={() => order.refetch()} refreshing={order.isRefetching}>
+    <Screen back title={t("ms.order.title", { n: o.number })} onRefresh={() => order.refetch()} refreshing={order.isRefetching}>
       <Text variant="title">{o.merchantName}</Text>
       <OrderTracker order={o} />
-      <Section title="Items">
+      <Section title={t("ms.order.items")}>
         <Card>
           {o.items.map((it) => (
             <View key={it.id} style={{ flexDirection: "row", gap: 8, paddingVertical: 4 }}>
@@ -37,29 +40,29 @@ export default function OrderDetail() {
               <Text tabular>{formatMoney(it.lineTotalCents)}</Text>
             </View>
           ))}
-          {o.discountCents > 0 ? <Row label="Reward" value={`-${formatMoney(o.discountCents)}`} /> : null}
-          <Row label="Tax" value={formatMoney(o.taxCents)} />
-          {o.tipCents > 0 ? <Row label="Tip" value={formatMoney(o.tipCents)} /> : null}
-          <Row label="Total" value={formatMoney(o.totalCents)} strong />
+          {o.discountCents > 0 ? <Row label={t("ui.reward")} value={`-${formatMoney(o.discountCents)}`} /> : null}
+          <Row label={t("rc.ca.tax")} value={formatMoney(o.taxCents)} />
+          {o.tipCents > 0 ? <Row label={t("sv.i.tipLine")} value={formatMoney(o.tipCents)} /> : null}
+          <Row label={t("cart.total")} value={formatMoney(o.totalCents)} strong />
           <Text variant="bodySm" color="fgMuted">
-            {o.paymentMethod === "at_pickup" ? "Pay at pickup." : o.paymentStatus === "paid" ? "Paid in the app." : "Payment pending."}
+            {o.paymentMethod === "at_pickup" ? t("ms.order.payAtPickup") : o.paymentStatus === "paid" ? t("ms.order.paidInApp") : t("ms.order.payPending")}
           </Text>
-          {o.pointsEarned > 0 ? <Text variant="bodySm" color="onSuccessSubtle">{`You earned ${formatPts(o.pointsEarned, "points")}.`}</Text> : null}
-          {o.notes ? <Text variant="bodySm" color="fgMuted">{`Note: ${o.notes}`}</Text> : null}
+          {o.pointsEarned > 0 ? <Text variant="bodySm" color="onSuccessSubtle">{t("ms.order.earned", { amount: formatPtsL(L, o.pointsEarned, "points") })}</Text> : null}
+          {o.notes ? <Text variant="bodySm" color="fgMuted">{t("ms.order.note", { note: o.notes })}</Text> : null}
         </Card>
       </Section>
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {o.status === "pending" ? (
         <Button variant="secondary" onPress={() => setConfirm(true)}>
-          Cancel order
+          {t("ms.order.cancel")}
         </Button>
       ) : null}
       <ConfirmDialog
         visible={confirm}
-        title="Cancel this order?"
-        body="The shop hasn't started it yet. Any reward you used goes back to your card."
-        confirmLabel="Cancel order"
-        cancelLabel="Keep order"
+        title={t("ms.order.cancelTitle")}
+        body={t("ms.order.cancelBody")}
+        confirmLabel={t("ms.order.cancel")}
+        cancelLabel={t("ms.order.keep")}
         loading={busy}
         onCancel={() => setConfirm(false)}
         onConfirm={async () => {
@@ -69,7 +72,7 @@ export default function OrderDetail() {
             qc.setQueryData(qk.order(o.id), res);
             void qc.invalidateQueries({ queryKey: qk.orders });
           } catch (e) {
-            setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+            setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
           } finally {
             setBusy(false);
             setConfirm(false);

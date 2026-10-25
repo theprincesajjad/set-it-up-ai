@@ -2,9 +2,8 @@ import { BRAND, customerApi } from "@ll/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
-import { t } from "../../copy/en-CA";
 import { useWallet } from "../../features/customer/queries";
-import { termWord } from "../../lib/award";
+import { termWordL } from "../../lib/formatL";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useLocale } from "../../lib/i18n";
@@ -16,12 +15,15 @@ export default function ShopsAndMessages() {
   const wallet = useWallet();
   const qc = useQueryClient();
   const toast = useToast();
-  const { t: lt } = useLocale();
+  const L = useLocale();
+  const { t: lt } = L;
   const { prefs, updatePrefs } = useSession();
   const [open, setOpen] = useState<customerApi.MembershipDto | null>(null);
   const [granting, setGranting] = useState<customerApi.MembershipDto | null>(null);
   const [agree, setAgree] = useState(false);
   const items = wallet.data?.items ?? [];
+  // CASL: what the shopper reads is what is recorded. The API's English sentence in English, the faithful translation otherwise.
+  const consentText = (shop: string) => (L.locale === "en" ? customerApi.marketingConsentText(shop) : lt("auth.consent.merchantApp", { shop, brand: BRAND.name }));
 
   const refresh = () => qc.invalidateQueries({ queryKey: qk.wallet });
 
@@ -29,18 +31,18 @@ export default function ShopsAndMessages() {
     try {
       await api.me.withdrawConsent(m.id);
       await refresh();
-      toast(t("consent.withdrawn", { shop: m.merchant.name, terminology: termWord(m.terminology) }));
+      toast(lt("cp.consent.withdrawn", { shop: m.merchant.name, terminology: termWordL(L, m.terminology) }));
     } catch {
-      toast({ tone: "error", message: t("err.network") });
+      toast({ tone: "error", message: lt("auth.err.network") });
     }
   };
   const grant = async (m: customerApi.MembershipDto) => {
     try {
-      await api.me.grantConsent(m.id, customerApi.marketingConsentText(m.merchant.name));
+      await api.me.grantConsent(m.id, consentText(m.merchant.name));
       await refresh();
-      toast(t("ok.consent.on", { shop: m.merchant.name }));
+      toast(lt("cp.ok.consentOn", { shop: m.merchant.name }));
     } catch {
-      toast({ tone: "error", message: t("err.network") });
+      toast({ tone: "error", message: lt("auth.err.network") });
     } finally {
       setGranting(null);
       setAgree(false);
@@ -50,9 +52,9 @@ export default function ShopsAndMessages() {
     try {
       await api.me.setMuted(m.id, muted);
       await refresh();
-      toast(muted ? t("ok.muted", { shop: m.merchant.name, terminology: termWord(m.terminology) }) : t("ok.unmuted", { shop: m.merchant.name }));
+      toast(muted ? lt("cp.ok.muted", { shop: m.merchant.name, terminology: termWordL(L, m.terminology) }) : lt("cp.ok.unmuted", { shop: m.merchant.name }));
     } catch {
-      toast({ tone: "error", message: t("err.network") });
+      toast({ tone: "error", message: lt("auth.err.network") });
     }
   };
   const current = open ? (items.find((x) => x.id === open.id) ?? open) : null;
@@ -61,7 +63,7 @@ export default function ShopsAndMessages() {
     <Screen back title={lt("sh.you.shopsMessages")}>
       <Text color="fgMuted">{lt("sh.shops.intro")}</Text>
       {items.length === 0 ? (
-        <EmptyState icon={Store} title={t("empty.wallet.title")} body={t("empty.wallet.body")} />
+        <EmptyState icon={Store} title={lt("sh.wallet.emptyTitle")} body={lt("cp.empty.walletBody")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
           {items.map((m, i) => (
@@ -111,10 +113,10 @@ export default function ShopsAndMessages() {
       >
         {granting ? (
           <ConsentCheckbox
-            text={customerApi.marketingConsentText(granting.merchant.name)}
+            text={consentText(granting.merchant.name)}
             checked={agree}
             onChange={setAgree}
-            caption={t("consent.merchant.caption.v1", { shop: granting.merchant.name })}
+            caption={lt("auth.consent.caption", { sender: granting.merchant.name, brand: BRAND.name })}
           />
         ) : null}
       </Sheet>

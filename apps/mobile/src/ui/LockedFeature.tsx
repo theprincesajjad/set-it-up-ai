@@ -1,6 +1,7 @@
 import { radii } from "@ll/design-tokens";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Button } from "./Button";
 import { Check, type LucideIcon } from "./icons";
@@ -9,6 +10,7 @@ import { Text } from "./Text";
 /** Staff-only "coming soon" line with Notify me. Never shown to customers, never "Upgrade". */
 export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: LucideIcon; title: string; body: string; onNotify?: () => void }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const [notified, setNotified] = useState(false);
   return (
     <View style={[styles.card, { borderColor: c.line }]}>
@@ -32,7 +34,7 @@ export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: Luc
         disabled={notified}
         style={{ alignSelf: "flex-start" }}
       >
-        {notified ? "We'll let you know" : "Notify me"}
+        {notified ? t("ui.notified") : t("ui.notifyMe")}
       </Button>
     </View>
   );

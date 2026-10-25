@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
-import { formatPts, lockedRewardCopy } from "../lib/award";
-import { formatShortDate } from "../lib/format";
+import { formatPtsL, formatShortDateL, unitLabelL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -29,6 +29,8 @@ export interface RewardCardProps {
  */
 export function RewardCard({ reward, balance, terminology, state, onRedeem, redeemedAt, disabledReason, shopName, divider = true }: RewardCardProps) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const toGo = Math.max(0, reward.pointsCost - balance);
   return (
     <View style={[styles.wrap, divider ? { borderBottomColor: c.line, borderBottomWidth: StyleSheet.hairlineWidth } : null]}>
@@ -36,22 +38,22 @@ export function RewardCard({ reward, balance, terminology, state, onRedeem, rede
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodyStrong">{reward.name}</Text>
           <Text variant="meta" color="fgMuted">
-            {[shopName, formatPts(reward.pointsCost, terminology)].filter(Boolean).join(" · ")}
+            {[shopName, formatPtsL(L, reward.pointsCost, terminology)].filter(Boolean).join(" · ")}
           </Text>
         </View>
         {state === "available" && onRedeem ? (
-          <Button size="sm" onPress={onRedeem} disabled={!!disabledReason} accessibilityLabel={`Redeem ${reward.name}`}>
-            Redeem
+          <Button size="sm" onPress={onRedeem} disabled={!!disabledReason} accessibilityLabel={t("ui.redeemReward", { reward: reward.name })}>
+            {t("sh.rc.redeem")}
           </Button>
         ) : null}
-        {state === "available" && !onRedeem ? <Badge tone="accent">Ready</Badge> : null}
-        {state === "redeemed" ? <Badge tone="success">{redeemedAt ? `Redeemed ${formatShortDate(redeemedAt)}` : "Redeemed"}</Badge> : null}
+        {state === "available" && !onRedeem ? <Badge tone="accent">{t("sh.rc.ready")}</Badge> : null}
+        {state === "redeemed" ? <Badge tone="success">{redeemedAt ? t("ui.redeemedOn", { date: formatShortDateL(L, redeemedAt) }) : t("sh.wallet.redeemed")}</Badge> : null}
       </View>
       {state === "locked" ? (
         <View style={{ marginTop: 10, gap: 6 }}>
-          <ProgressBar value={balance} max={reward.pointsCost} tone="accent" height={4} valueText={`${balance} of ${reward.pointsCost} ${terminology}`} />
+          <ProgressBar value={balance} max={reward.pointsCost} tone="accent" height={4} valueText={`${t("ui.progressOf", { value: L.number(balance), max: L.number(reward.pointsCost) })} ${unitLabelL(L, terminology, reward.pointsCost)}`} />
           <Text variant="meta" color="fgMuted">
-            {lockedRewardCopy(toGo, terminology)}
+            {t("sh.wallet.toGo", { amount: formatPtsL(L, toGo, terminology) })}
           </Text>
         </View>
       ) : null}

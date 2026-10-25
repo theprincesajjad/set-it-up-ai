@@ -120,6 +120,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
 
   return (
     <div className="flex flex-col gap-6">
+      {/* l10n-ok: shop-side preview banner (the shop previews its own quote; the customer never sees it) */}
       {preview ? <Banner tone="info">Preview: this is what the customer sees. Opening it does not mark the quote as opened.</Banner> : null}
       <header className="flex items-center gap-3">
         <ShopLogo shop={{ name: shopName, vertical: shop.vertical, logoUrl: shop.logoUrl }} size={44} />

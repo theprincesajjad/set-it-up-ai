@@ -5,11 +5,13 @@
  * fail on an unknown token and on any hard-coded fee or price that disagrees with plans.ts.
  *
  * Inline tokens: {{plan.free.name}} {{plan.plus.price}} {{plan.pro.annual}} {{restaurant.growth.price}}
- *   {{retention.phoneTranscriptDays}} (see retention.ts) {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
+ *   {{retention.phoneTranscriptDays}} (see retention.ts) {{upload.linkMinutes}} {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
  *   {{fee.appointmentCheckout}} {{fee.customerService}} {{founding.firstYearPct}} ...
  * Blocks: {{table.plans}} {{table.restaurant}} {{table.addons}} {{table.fees}} {{list.free}} {{list.plus}} {{list.pro}}
  */
-import { RETENTION, retentionLabel, type RetentionKey } from "./retention.js";
+import { RETENTION, UPLOAD_LINK_MINUTES, retentionLabel, type RetentionKey } from "./retention.js";
+
+export type LegalLang = "en" | "fr";
 import { ADD_ONS, ADD_ON_IDS, FEATURES, FEES, FOUNDING_OFFER, FREE_FOREVER, PAID_FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS } from "./plans.js";
 
 const money = (cents: number): string => {
@@ -18,7 +20,8 @@ const money = (cents: number): string => {
 };
 const pct = (bps: number): string => `${Number((bps / 100).toFixed(2))}%`;
 
-export function legalTokens(): Record<string, string> {
+/** The French pages (docs/legal/fr) use the same tokens; only the unit words of the retention periods and the minutes differ. */
+export function legalTokens(lang: LegalLang = "en"): Record<string, string> {
   const t: Record<string, string> = {};
   for (const id of PLAN_IDS) {
     const p = PLANS[id];
@@ -46,7 +49,8 @@ export function legalTokens(): Record<string, string> {
   t["fee.appointmentCheckout"] = pct(FEES.appointmentCheckoutBps);
   t["fee.customerService"] = money(FEES.customerServiceFeeCents);
   t["fee.manual"] = "0%";
-  for (const k of Object.keys(RETENTION) as RetentionKey[]) t[`retention.${k}`] = retentionLabel(k);
+  for (const k of Object.keys(RETENTION) as RetentionKey[]) t[`retention.${k}`] = retentionLabel(k, lang);
+  t["upload.linkMinutes"] = `${UPLOAD_LINK_MINUTES} minutes`;
   t["founding.firstYearPct"] = `${FOUNDING_OFFER.firstYearPct}%`;
   t["founding.lifetimePct"] = `${FOUNDING_OFFER.lifetimePct}%`;
   t["founding.slots"] = String(FOUNDING_OFFER.slotsPerCorridor);
@@ -81,8 +85,8 @@ export function legalTokens(): Record<string, string> {
 }
 
 /** Replace every {{token}}; throws on an unknown one so a typo fails the build instead of printing a wrong number. */
-export function fillLegalTokens(md: string): string {
-  const tokens = legalTokens();
+export function fillLegalTokens(md: string, lang: LegalLang = "en"): string {
+  const tokens = legalTokens(lang);
   return md.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, key: string) => {
     const v = tokens[key];
     if (v === undefined) throw new Error(`Unknown legal token {{${key}}}`);

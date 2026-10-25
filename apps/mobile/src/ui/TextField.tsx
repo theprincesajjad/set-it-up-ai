@@ -1,6 +1,7 @@
 import { radii } from "@ll/design-tokens";
 import { forwardRef, useState } from "react";
 import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { typo, useTheme } from "../theme";
 import { CircleAlert } from "./icons";
 import { Text } from "./Text";
@@ -22,6 +23,7 @@ export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function 
   ref,
 ) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const [focused, setFocused] = useState(false);
   const borderColor = error ? c.negative : focused ? c.fg : c.lineStrong;
   return (
@@ -31,7 +33,7 @@ export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function 
         {optionalLabel ? (
           <Text variant="metaStrong" color="fgSubtle">
             {" "}
-            (optional)
+            {t("auth.m.name.optional")}
           </Text>
         ) : null}
       </Text>

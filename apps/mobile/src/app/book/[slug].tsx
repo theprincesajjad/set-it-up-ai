@@ -5,7 +5,6 @@ import { Check, CreditCard } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { errorMessage as apiError, isApiError } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { ChipGroup, useMoney, usePayment, useSetup } from "../../features/restaurant/components";
 import { featureOff } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
@@ -22,7 +21,7 @@ const DAYS = 14;
  * Book a visit (Figma M1 and M2): pick a stylist and services, pick a time, read the policy, then pay the deposit
  * or save a card on the shop's web page, and land on the appointment. Same steps as /shops/<slug>/book.
  */
-const errorMessage = (e: unknown) => apiError(e, { network: copy("err.network"), server: copy("err.server") });
+const errorMessage = (e: unknown, t: (key: "auth.err.network" | "auth.err.server") => string) => apiError(e, { network: t("auth.err.network"), server: t("auth.err.server") });
 
 export default function Book() {
   const { slug, service, staff } = useLocalSearchParams<{ slug: string; service?: string; staff?: string }>();
@@ -76,7 +75,7 @@ export default function Book() {
       const first = mine.days.find((d) => d.times.length);
       if (first && !mine.days.find((d) => d.date === day)?.times.length) setDay(first.date);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errorMessage(e, t));
     } finally {
       setLoadingTimes(false);
     }
@@ -143,7 +142,7 @@ export default function Book() {
         setError(t("bk.taken"));
         setSlot(null);
         void loadTimes();
-      } else setError(errorMessage(e));
+      } else setError(errorMessage(e, t));
     } finally {
       setBusy(false);
     }

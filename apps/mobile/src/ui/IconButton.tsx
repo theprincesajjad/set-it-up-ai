@@ -48,5 +48,5 @@ export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center", gap: 4 },
   circle: { alignItems: "center", justifyContent: "center" },
-  dot: { position: "absolute", top: 6, right: 6, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
+  dot: { position: "absolute", top: 6, end: 6, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
 });

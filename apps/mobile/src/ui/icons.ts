@@ -3,7 +3,9 @@
  * what we use (the barrel import pulls in ~1,500 icons).
  * Stroke 2 everywhere (brand.md § 6).
  */
-import type { LucideIcon } from "lucide-react-native";
+import type { LucideIcon, LucideProps } from "lucide-react-native";
+import { createElement } from "react";
+import { useLocale } from "../lib/i18n";
 
 import Coffee from "lucide-react-native/icons/coffee";
 import UtensilsCrossed from "lucide-react-native/icons/utensils-crossed";
@@ -46,9 +48,9 @@ import User from "lucide-react-native/icons/user";
 import Delete from "lucide-react-native/icons/delete";
 import X from "lucide-react-native/icons/x";
 import Check from "lucide-react-native/icons/check";
-import ChevronRight from "lucide-react-native/icons/chevron-right";
+import ChevronRightLtr from "lucide-react-native/icons/chevron-right";
 import ChevronDown from "lucide-react-native/icons/chevron-down";
-import ChevronLeft from "lucide-react-native/icons/chevron-left";
+import ChevronLeftLtr from "lucide-react-native/icons/chevron-left";
 import Phone from "lucide-react-native/icons/phone";
 import Navigation from "lucide-react-native/icons/navigation";
 import Globe from "lucide-react-native/icons/globe";
@@ -138,9 +140,9 @@ export {
   Delete,
   X,
   Check,
-  ChevronRight,
+  ChevronRightLtr,
   ChevronDown,
-  ChevronLeft,
+  ChevronLeftLtr,
   Phone,
   Navigation,
   Globe,
@@ -215,3 +217,18 @@ export const verticalIcons: Record<string, LucideIcon> = {
 export function verticalIcon(componentName: string): LucideIcon {
   return verticalIcons[componentName] ?? Store;
 }
+
+/**
+ * Directional chevrons point the other way in a right-to-left language (back is "forward", next is "back").
+ * `ChevronLeftLtr` / `ChevronRightLtr` stay fixed for icons that rotate (accordions) rather than mean a direction.
+ */
+const FLIP = { transform: [{ scaleX: -1 }] } as const;
+function mirrored(Icon: LucideIcon): LucideIcon {
+  const C = (props: LucideProps) => {
+    const { isRtl } = useLocale();
+    return createElement(Icon, isRtl ? { ...props, style: [props.style, FLIP] } : props);
+  };
+  return C as unknown as LucideIcon;
+}
+export const ChevronRight = mirrored(ChevronRightLtr);
+export const ChevronLeft = mirrored(ChevronLeftLtr);

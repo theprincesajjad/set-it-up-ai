@@ -5,7 +5,7 @@ import { Banner } from "@/components/ui/Banner";
 import { buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { browserApi } from "@/lib/api/browser";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { PaymentBox, pollUntil } from "./PaymentBox";
 
 /** Where "Back to the app" lands (apps/mobile/src/features/deepLinks.ts). */
@@ -18,7 +18,7 @@ const APP_LINK: Record<restaurantApi.PaymentIntentKind, string> = {
 
 /** /pay/intent/<id>?cs=<secret>: what the app is asking you to pay, card payment, then a way back to the app. */
 export function IntentPayView({ paymentIntentId, clientSecret, initial }: { paymentIntentId: string; clientSecret: string; initial: restaurantApi.PaymentIntentView }) {
-  const { t, info } = useLocale();
+  const { t, info } = useLocaleOrEnglish();
   // Always two decimals on a payment page ($130.00, not $130), unlike the compact shared formatter.
   const money = (cents: number, currency: string) => new Intl.NumberFormat(info.bcp47, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(cents / 100);
   const [data, setData] = useState(initial);

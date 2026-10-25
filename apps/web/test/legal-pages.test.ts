@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ADD_ONS, ADD_ON_IDS, FEES, FREE_FOREVER, FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS, RETENTION, legalTokens } from "@ll/shared";
-import { LEGAL_DOCS, renderLegalMarkdown } from "../src/lib/legal";
+import { ADD_ONS, ADD_ON_IDS, FEES, FREE_FOREVER, FEATURES, PLANS, PLAN_IDS, RESTAURANT_PLANS, RESTAURANT_TIERS, RETENTION, UPLOAD_LINK_MINUTES, legalTokens } from "@ll/shared";
+import { LEGAL_DOCS, LEGAL_DOCS_FR, loadLegalDoc, renderLegalMarkdown } from "../src/lib/legal";
 
 const DIR = path.resolve(__dirname, "../../../docs/legal");
 const raw = (slug: keyof typeof LEGAL_DOCS) => readFileSync(path.join(DIR, LEGAL_DOCS[slug].file), "utf8");
@@ -103,6 +103,113 @@ describe("privacy policy retention and deletion text match the code", () => {
   });
   it("says deletion reaches the newer records and that a STOP entry is kept", () => {
     for (const w of ["appointment notes", "tiffin addresses", "WhatsApp chats", "phone transcripts", "review comments", "quote signatures", "wait-list entries", "referral links", "wallet passes", "push tokens", "replied STOP"]) expect(md.toLowerCase(), w).toContain(w.toLowerCase());
+  });
+});
+
+/** Every page that is published: the four English ones and the French ones. Internal notes belong in counsel-notes.md, never here. */
+const PUBLISHED = [
+  ...(Object.keys(LEGAL_DOCS) as (keyof typeof LEGAL_DOCS)[]).map((slug) => ({ id: slug, lang: "en" as const, file: LEGAL_DOCS[slug].file })),
+  ...(Object.keys(LEGAL_DOCS_FR) as (keyof typeof LEGAL_DOCS_FR)[]).map((slug) => ({ id: `${slug} (fr)`, lang: "fr" as const, file: LEGAL_DOCS_FR[slug].file })),
+];
+/** Placeholders for facts we do not have yet. Anything else in square brackets is a drafting note and is not allowed. */
+const PLACEHOLDERS = new Set([
+  "date", "0.1-draft", "Local Loyalty Inc.", "Canadian/Ontario", "address", "link", "support email", "email", "phone", "name", "name, email", "provider, Canadian region", "provider, region", "map tile provider", "analytics and crash reporting",
+  "0.1-brouillon", "nom", "courriel", "adresse", "courriel d'assistance", "fournisseur, région canadienne", "fournisseur, région", "fournisseur de tuiles cartographiques", "analytique et rapports de plantage",
+]);
+const INTERNAL = [/counsel/i, /\bVERIFY\b/, /finance note/i, /checklist/i, /bracketed/i, /drafting note/i, /\bTODO\b|\bTBD\b|\bFIXME\b/, /to draft/i, /model cost/i, /expected redemption/i, /balance sheet/i, /traduction/i, /à faire réviser/i, /a lawyer should/i, /engineering/i, /Drop rewards/i, /class action/i, /\[[^\]]*\b(?:confirm|check|decide|recommended)\b/i];
+const brackets = (md: string) => [...md.replace(/\[[^\]]*\]\([^)]*\)/g, "").matchAll(/\[([^\]\n]*)\]/g)].map((m) => m[1]!);
+
+describe("every published legal page is clean of internal notes", () => {
+  for (const p of PUBLISHED) {
+    const source = readFileSync(path.join(DIR, p.file), "utf8");
+    // The heading and blockquote at the top are the draft banner ("have a lawyer review" / "à faire réviser par un juriste"); the page replaces them with its own banner.
+    const body = source.replace(/^# [^\n]*\n+(> [^\n]*\n)*/, "");
+    const published = renderLegalMarkdown(source, p.lang).md;
+    it(`${p.id}: no Counsel, VERIFY, checklist, finance or drafting notes in the published text or in the source`, () => {
+      // The source is checked too, banner aside: a note the renderer happened to strip would still sit in the repo's published source.
+      for (const re of INTERNAL) {
+        expect(published, `${p.file}: ${re}`).not.toMatch(re);
+        expect(body, `${p.file} (source): ${re}`).not.toMatch(re);
+      }
+    });
+    it(`${p.id}: square brackets are only placeholders for facts, never notes`, () => {
+      for (const b of brackets(source)) expect(PLACEHOLDERS.has(b), `[${b}] in ${p.file}`).toBe(true);
+    });
+    it(`${p.id}: keeps its draft banner (the page adds it) and no unresolved tokens`, () => {
+      const r = renderLegalMarkdown(source, p.lang);
+      expect(r.isDraft).toBe(true);
+      expect(r.md).not.toMatch(/\{\{|\}\}|^# (?:DRAFT|BROUILLON)/m);
+      expect(r.md).not.toMatch(/^> /m);
+    });
+  }
+
+  it("the detector catches the kinds of note that used to be there", () => {
+    for (const note of ["- Counsel: check these caps.", "Items marked **VERIFY** must be confirmed", "*Counsel checklist:*", "[To draft with counsel.]", "Bracketed items are placeholders.", "**Finance note.** The model books", "[A French version of this policy is required before we serve Quebec shoppers.]", "Traduction — à faire réviser"]) {
+      expect(INTERNAL.some((re) => re.test(note)) || brackets(note).some((b) => !PLACEHOLDERS.has(b)), note).toBe(true);
+    }
+  });
+
+  it("the notes are kept for counsel in docs/legal/counsel-notes.md", () => {
+    const notes = readFileSync(path.join(DIR, "counsel-notes.md"), "utf8");
+    for (const kept of ["Finance note", "goodwill conversion", "Schedule B", "reimbursement", "age floor", "Counsel checklist", "Drop rewards app", "Traduction — à faire réviser: Politique de confidentialité", "Traduction — à faire réviser: Conditions des récompenses", "Traduction — à faire réviser: avis de transcription téléphonique"]) expect(notes, kept).toContain(kept);
+  });
+});
+
+describe("French pages (Law 25)", () => {
+  const en = { privacy: raw("privacy"), rewards: raw("rewards") };
+  const fr = (slug: keyof typeof LEGAL_DOCS_FR) => readFileSync(path.join(DIR, LEGAL_DOCS_FR[slug].file), "utf8");
+  const tokensIn = (md: string) => [...md.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)].map((m) => m[1]!).sort();
+
+  it("use exactly the same {{tokens}} as the English pages, so the numbers cannot differ", () => {
+    for (const slug of ["privacy", "rewards"] as const) expect(tokensIn(fr(slug)), slug).toEqual(tokensIn(en[slug]));
+  });
+  it("print the retention periods from RETENTION in French", () => {
+    const md = renderLegalMarkdown(fr("privacy"), "fr").md;
+    const t = legalTokens("fr");
+    for (const k of ["phoneTranscriptDays", "whatsappMessageDays", "repairPhotoMonths", "reviewFeedbackMonths", "tiffinAddressMonths", "appointmentMonths", "allergyNoteDays", "driverLinkDays", "abandonedHoldDays"] as const) {
+      expect(fr("privacy"), k).toContain(`{{retention.${k}}}`);
+      expect(md, k).toContain(t[`retention.${k}`]!);
+    }
+    expect(t["retention.phoneTranscriptDays"]).toBe(`${RETENTION.phoneTranscriptDays} jours`);
+    expect(t["retention.repairPhotoMonths"]).toBe(`${RETENTION.repairPhotoMonths} mois`);
+    expect(t["retention.driverLinkDays"]).toBe(`${RETENTION.driverLinkDays} jours`);
+    expect(t["upload.linkMinutes"]).toBe(`${UPLOAD_LINK_MINUTES} minutes`);
+    expect(md).not.toMatch(/\b\d+ (?:days|months)\b/);
+  });
+  it("keep every number the rewards terms promise (90, 30, 60, 10 days)", () => {
+    for (const [slug, nums] of [["rewards", ["90 jours", "30 jours", "60 jours", "10 jours ouvrables"]]] as const) {
+      const md = renderLegalMarkdown(fr(slug), "fr").md;
+      for (const n of nums) expect(md, n).toContain(n);
+    }
+    expect(Array.from(en.rewards.matchAll(/\*\*(\d+) (?:days|business days)/g), (m) => m[1]).sort()).toEqual(Array.from(fr("rewards").matchAll(/\*\*(\d+) (?:jours|jours ouvrables)/g), (m) => m[1]).sort());
+  });
+  it("carry the privacy promises and the Quebec section", () => {
+    const md = renderLegalMarkdown(fr("privacy"), "fr").md;
+    for (const w of ["Loi 25", "Commission d'accès à l'information", "Nous ne vendons pas vos renseignements personnels", "LCAP", "STOP", "Stripe", "Twilio", "Meta WhatsApp Cloud API", "Resend", "transcription", "Responsable de la protection des renseignements personnels", "tiffin", "halal"]) expect(md.toLowerCase(), w).toContain(w.toLowerCase());
+    expect(md).toContain("jour et mois seulement");
+    expect(md).toContain("**Chaque boutique voit uniquement votre activité dans cette boutique.**");
+  });
+  it("section by section, the French has as many sections as the English", () => {
+    for (const slug of ["privacy", "rewards"] as const) {
+      const heads = (md: string) => [...md.matchAll(/^## (\d+)\./gm)].map((m) => m[1]);
+      expect(heads(fr(slug)), slug).toEqual(heads(en[slug]));
+    }
+  });
+  it("the English privacy policy tells the shopper about the French version and the signed photo links", () => {
+    const md = rendered("privacy");
+    expect(md).toContain("/legal/privacy?lang=fr");
+    expect(md).toContain(`signed link that stops working after ${UPLOAD_LINK_MINUTES} minutes`);
+    expect(md).toContain("never served from a permanent link");
+  });
+  it("renders to HTML at /legal/<doc>?lang=fr with the French title and the same draft handling", async () => {
+    const privacy = await loadLegalDoc("privacy", "fr");
+    expect(privacy.title).toBe("Politique de confidentialité");
+    expect(privacy.isDraft).toBe(true);
+    expect(privacy.html).toContain("<h1>Local Loyalty — Politique de confidentialité</h1>".replace("Local Loyalty", "Local Loyalty"));
+    expect(privacy.html).not.toMatch(/\{\{|à faire réviser|Traduction/);
+    const rewards = await loadLegalDoc("rewards", "fr");
+    expect(rewards.title).toBe("Conditions des récompenses");
+    expect(rewards.html).toContain("Vos points n&#39;expirent jamais");
   });
 });
 

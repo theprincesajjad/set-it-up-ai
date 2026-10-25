@@ -1,6 +1,6 @@
 # DRAFT — have a lawyer review
 
-> **DRAFT — have a lawyer review.** Not legal advice. Bracketed items are placeholders. These terms are written to avoid the problems that led to complaints and a class action against Toronto's Drop rewards app over hard-to-redeem points (PRD, [Wikipedia](<https://en.wikipedia.org/wiki/Drop_(loyalty_program)>)). Every rule below is meant to be simple, visible and honoured at the counter.
+> **DRAFT — have a lawyer review.** Not legal advice.
 
 # Local Loyalty — Rewards Terms
 
@@ -14,7 +14,7 @@ These Rewards Terms explain how points work on Local Loyalty. They form part of 
 2. **Points from a shop are redeemable at that shop**, at the reward values shown in the app and on the counter display.
 3. **Network Rewards** (bonuses funded by Local Loyalty, marked with the network badge) are redeemable at **any** participating shop that accepts Network Rewards, as shown in the app.
 4. You can always see your balance, your history and what you can redeem today, for every shop, in the app or wallet pass, or by asking at the counter.
-5. If a shop changes its program, points you have already earned keep their value for at least **[90] days**, and you are told in advance.
+5. If a shop changes its program, points you have already earned keep their value for at least **90 days**, and you are told in advance.
 6. Points are not cash. They cannot be bought, sold or transferred, and they cannot be exchanged for cash except where the law requires.
 
 ## 2. Who issues your points
@@ -25,7 +25,7 @@ These Rewards Terms explain how points work on Local Loyalty. They form part of 
 
 ## 3. Earning
 
-- You earn when the merchant records your visit or purchase: by phone number, by scanning your pass, or automatically from a connected point-of-sale system. Ask staff to record it at the time of purchase. Missing points can be added by the merchant within **[30] days** with a receipt.
+- You earn when the merchant records your visit or purchase: by phone number, by scanning your pass, or automatically from a connected point-of-sale system. Ask staff to record it at the time of purchase. Missing points can be added by the merchant within **30 days** with a receipt.
 - **Excluded items.** Some products cannot earn or be redeemed against, by law or by merchant choice. They are shown as "no-earn".
   - **At pharmacies, prescriptions and pharmacy services never earn points and cannot be paid for with points**, as required by Ontario pharmacy rules. Only front-store purchases count.
   - **Alcohol, tobacco, vaping, cannabis and lottery products do not earn** unless the app shows otherwise for a specific shop, and only where permitted by law.
@@ -43,20 +43,20 @@ These Rewards Terms explain how points work on Local Loyalty. They form part of 
 
 A merchant may change its earn rates or reward catalog going forward. When a change would make an existing reward cost more points or would remove a reward:
 
-- you are notified in the app at least **[30] days** before the change;
-- for at least **[90] days** you can redeem points you already hold at the **old** values.
+- you are notified in the app at least **30 days** before the change;
+- for at least **90 days** you can redeem points you already hold at the **old** values.
 
 Local Loyalty will not change the value of Network Rewards you already hold.
 
 ## 6. If a shop leaves the network or closes
 
-- **The merchant leaves Local Loyalty.** It must keep honouring your points for at least **[60] days** after you are notified. Your balance and the last day to redeem are shown in the app, and we send you a reminder.
+- **The merchant leaves Local Loyalty.** It must keep honouring your points for at least **60 days** after you are notified. Your balance and the last day to redeem are shown in the app, and we send you a reminder.
 - **The merchant closes permanently without notice.** We will tell you as soon as we know. We cannot guarantee value issued by a closed business.
 - **Network Rewards** are unaffected; use them at any other participating shop.
 
 ## 7. If Local Loyalty shuts down
 
-We will give at least **[90] days' notice**:
+We will give at least **90 days' notice**:
 
 - Merchant points remain redeemable directly with each merchant, which can export its member balances.
 - Network Rewards can be redeemed during the notice period.

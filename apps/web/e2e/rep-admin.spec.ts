@@ -162,4 +162,37 @@ test.describe("founder's console (desktop)", () => {
     await row.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(reason).first()).toBeVisible();
   });
+  test("inside a shop the banner starts a support session with one reason; writes are refused until then", async ({ page }) => {
+    await signIn(page, ADMIN);
+    const t = await token(ADMIN);
+    const list = await api<{ items: { id: string; name: string }[] }>("/v1/admin/merchants?q=Hearth", t);
+    const shop = list.items[0]!;
+    const write = (welcomeBonus: number) => fetch(`${API}/v1/merchants/${shop.id}/program`, { method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify({ welcomeBonus }) });
+    const refused = await write(7);
+    expect(refused.status).toBe(403);
+    expect(((await refused.json()) as { error: { code: string } }).error.code).toBe("support_session_required");
+
+    await page.goto(`/m/${shop.id}`);
+    const banner = page.getByTestId("support-banner");
+    await expect(banner).toContainText("start a support session");
+    const start = banner.getByRole("button", { name: "Start support session" });
+    await expect(start).toBeDisabled();
+    await banner.getByLabel("Reason (audit log)").fill(`e2e banner ${Date.now() % 100000}`);
+    await start.click();
+    await expect(banner).toContainText("Support session open until");
+    expect((await write(7)).status).toBe(200);
+    await banner.getByRole("button", { name: "End session" }).click();
+    await expect(banner).toContainText("start a support session");
+    expect((await write(8)).status).toBe(403);
+  });
+
+  test("Today splits MRR into plans, restaurant tiers and add-ons", async ({ page }) => {
+    await signIn(page, ADMIN);
+    await page.goto("/admin");
+    const split = page.getByTestId("mrr-split");
+    await expect(split).toBeVisible();
+    for (const label of ["Plus and Pro", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
+    const o = await api<{ money: { mrrCents: number; mrrSplit: Record<string, number> } }>("/v1/admin/overview", await token(ADMIN));
+    expect(Object.values(o.money.mrrSplit).reduce((a, b) => a + b, 0)).toBe(o.money.mrrCents);
+  });
 });

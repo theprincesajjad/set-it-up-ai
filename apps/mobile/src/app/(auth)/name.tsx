@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { radii } from "@ll/design-tokens";
 import { errorMessage } from "../../api/client";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { firstName, formatPts } from "../../lib/award";
 import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";

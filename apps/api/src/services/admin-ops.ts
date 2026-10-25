@@ -4,8 +4,8 @@
  * visits and usage counters; the only assumptions are the unit costs and launch plan in @ll/shared/launch.
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
-import { invoices, leads, merchantMembers, merchants, neighbourhoods, orders, subscriptions, supportSessions, tiffinCharges, users, type DbOrTx } from "@ll/db";
-import { AT_RISK, LAUNCH_PLAN, PLANS, RESTAURANT_PLANS, FOUNDING_OFFER, UNIT_COSTS, adminApi, messagingCostCents, planPace } from "@ll/shared";
+import { invoices, leads, merchantAddOns, merchantMembers, merchants, neighbourhoods, orders, subscriptions, supportSessions, tiffinCharges, users, type DbOrTx } from "@ll/db";
+import { ADD_ONS, AT_RISK, LAUNCH_PLAN, PLANS, RESTAURANT_PLANS, FOUNDING_OFFER, UNIT_COSTS, adminApi, messagingCostCents, planPace } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
@@ -23,6 +23,42 @@ export function subscriptionMrrCents(sub: Pick<SubRow, "plan" | "restaurantTier"
   const plan = sub.restaurantTier ? RESTAURANT_PLANS[sub.restaurantTier] : PLANS[sub.plan];
   const monthly = sub.interval === "year" ? plan.annualPriceCents / 12 : plan.priceCents;
   return Math.round(foundingOffer && sub.restaurantTier ? monthly * (1 - FOUNDING_OFFER.firstYearPct / 100) : monthly);
+}
+
+/**
+ * Monthly recurring revenue (cents) of one add-on row. A yearly subscription pays ten months up front for
+ * add-ons (see billing-restaurant `addOnAmount`), so its monthly share is a twelfth of that. WhatsApp packs are
+ * billed once per billing period, so they count as one pack per month.
+ */
+export function addOnMrrCents(addOnId: string, quantity: number, interval: "month" | "year"): number {
+  const def = (ADD_ONS as Record<string, (typeof ADD_ONS)[keyof typeof ADD_ONS] | undefined>)[addOnId];
+  if (!def) return 0;
+  const monthly = interval === "year" ? (def.priceCents * 10) / 12 : def.priceCents;
+  return Math.round(monthly * Math.max(1, quantity));
+}
+
+type AddOnSplitKey = "whatsappCents" | "extraLocationsCents" | "otherAddOnsCents";
+const addOnBucket = (id: string): AddOnSplitKey => (id === "whatsapp_1000" ? "whatsappCents" : id === "extra_location" ? "extraLocationsCents" : "otherAddOnsCents");
+
+/** Add-on MRR per paying shop, from active merchant_add_ons rows on a shop whose subscription is paying. */
+async function addOnMrrByMerchant(db: DbOrTx, subs: { s: SubRow }[], merchantId?: string) {
+  const interval = new Map<string, "month" | "year">();
+  for (const { s } of subs) if (subscriptionMrrCents(s) > 0 && !interval.has(s.merchantId)) interval.set(s.merchantId, s.interval === "year" ? "year" : "month");
+  const rows = await db
+    .select()
+    .from(merchantAddOns)
+    .where(and(eq(merchantAddOns.status, "active"), merchantId ? eq(merchantAddOns.merchantId, merchantId) : undefined));
+  const out = new Map<string, { whatsappCents: number; extraLocationsCents: number; otherAddOnsCents: number; totalCents: number }>();
+  for (const r of rows) {
+    const iv = interval.get(r.merchantId);
+    if (!iv) continue;
+    const c = addOnMrrCents(r.addOnId, r.quantity, iv);
+    const cur = out.get(r.merchantId) ?? { whatsappCents: 0, extraLocationsCents: 0, otherAddOnsCents: 0, totalCents: 0 };
+    cur[addOnBucket(r.addOnId)] += c;
+    cur.totalCents += c;
+    out.set(r.merchantId, cur);
+  }
+  return out;
 }
 
 const PAYING_STATUSES = ["active", "past_due"] as const;
@@ -107,6 +143,7 @@ export async function adminOverview(ctx: AppContext): Promise<adminApi.AdminOver
 
   // Money
   let mrr = 0;
+  const split = { plansCents: 0, restaurantCents: 0, whatsappCents: 0, extraLocationsCents: 0, otherAddOnsCents: 0 };
   const byPlan = { plus: 0, pro: 0, restaurant: 0 };
   const payingIds = new Set<string>();
   for (const { s, founding } of subs) {
@@ -114,9 +151,17 @@ export async function adminOverview(ctx: AppContext): Promise<adminApi.AdminOver
     if (!c) continue;
     mrr += c;
     payingIds.add(s.merchantId);
+    if (s.restaurantTier) split.restaurantCents += c;
+    else split.plansCents += c;
     if (s.restaurantTier) byPlan.restaurant++;
     else if (s.plan === "pro") byPlan.pro++;
     else byPlan.plus++;
+  }
+  for (const a of (await addOnMrrByMerchant(ctx.db, subs)).values()) {
+    mrr += a.totalCents;
+    split.whatsappCents += a.whatsappCents;
+    split.extraLocationsCents += a.extraLocationsCents;
+    split.otherAddOnsCents += a.otherAddOnsCents;
   }
   let feeTotal = 0;
   let volume = 0;
@@ -164,7 +209,7 @@ export async function adminOverview(ctx: AppContext): Promise<adminApi.AdminOver
   return {
     generatedAt: now.toISOString(),
     pace: { month: pace.month, plannedEndOfMonth: pace.plannedEndOfMonth, plannedToday: pace.plannedToday, actual: pace.actual, delta: pace.delta, areasOpened: opened, areasPlanned: Math.max(planned, LAUNCH_PLAN.areasPerMonth) },
-    money: { mrrCents: mrr, payingShops: payingIds.size, byPlan, feeRevenue30dCents: feeTotal, volume30dCents: volume },
+    money: { mrrCents: mrr, mrrSplit: split, payingShops: payingIds.size, byPlan, feeRevenue30dCents: feeTotal, volume30dCents: volume },
     activation: { signed: all.length, activated, rate: all.length ? Math.round((activated / all.length) * 1000) / 1000 : 0, goal: LAUNCH_PLAN.activationGoal },
     costs: { monthCents: costMonth, perShopCents: all.length ? Math.round(costMonth / all.length) : 0, shops: all.length },
     funnel,
@@ -219,10 +264,11 @@ export async function adminCosts(ctx: AppContext): Promise<adminApi.AdminCosts> 
   const [all, subs, fees] = await Promise.all([ctx.db.select().from(merchants).where(ne(merchants.status, "closed")), liveSubscriptions(ctx.db), feesSince(ctx.db, since)]);
   const subBy = new Map<string, number>();
   for (const { s, founding } of subs) subBy.set(s.merchantId, (subBy.get(s.merchantId) ?? 0) + subscriptionMrrCents(s, founding));
+  const addOnBy = await addOnMrrByMerchant(ctx.db, subs);
   const shops: adminApi.ShopCostRow[] = all
     .map((m) => {
       const c = shopCost(m);
-      const sub = subBy.get(m.id) ?? 0;
+      const sub = (subBy.get(m.id) ?? 0) + (addOnBy.get(m.id)?.totalCents ?? 0);
       const fee = fees.get(m.id)?.fee ?? 0;
       return { merchantId: m.id, name: m.name, plan: m.plan, smsCredits: m.smsCreditsUsed, whatsappMessages: m.whatsappCreditsUsed, messagingCents: c.messagingCents, infraCents: c.infraCents, costCents: c.totalCents, subscriptionCents: sub, feeCents30d: fee, marginCents: sub + fee - c.totalCents };
     })
@@ -246,12 +292,15 @@ export async function merchantMoney(ctx: AppContext, merchantId: string): Promis
     ctx.db.select().from(subscriptions).where(and(eq(subscriptions.merchantId, merchantId), inArray(subscriptions.status, ["active", "past_due", "trialing"]))).orderBy(desc(subscriptions.createdAt)),
     feesSince(ctx.db, new Date(ctx.now().getTime() - 30 * DAY), merchantId),
   ]);
-  const mrr = subs.reduce((a, s) => a + subscriptionMrrCents(s, m.foundingOffer), 0);
+  const baseMrr = subs.reduce((a, s) => a + subscriptionMrrCents(s, m.foundingOffer), 0);
+  const addOns = (await addOnMrrByMerchant(ctx.db, subs.map((s) => ({ s })), merchantId)).get(merchantId);
+  const mrr = baseMrr + (addOns?.totalCents ?? 0);
   const top = subs[0] ?? null;
   const f = fees.get(merchantId);
   const c = shopCost(m);
   return {
     mrrCents: mrr,
+    mrrSplit: { subscriptionCents: baseMrr, addOnCents: addOns?.totalCents ?? 0 },
     subscriptionStatus: top?.status ?? null,
     renewsOn: top?.currentPeriodEnd ? top.currentPeriodEnd.toISOString().slice(0, 10) : null,
     fees30dCents: f?.fee ?? 0,
@@ -287,9 +336,9 @@ export async function startSupportSession(ctx: AppContext, actorUserId: string, 
   return serializeSession(s!, u?.name ?? null, now);
 }
 
-export async function endSupportSession(ctx: AppContext, actorUserId: string, sessionId: string) {
+export async function endSupportSession(ctx: AppContext, actorUserId: string, sessionId: string, isAdmin = true) {
   const [s] = await ctx.db.select().from(supportSessions).where(eq(supportSessions.id, sessionId)).limit(1);
-  if (!s) throw notFound("Support session");
+  if (!s || (!isAdmin && s.adminUserId !== actorUserId)) throw notFound("Support session");
   if (s.endedAt) return serializeSession(s, null, ctx.now());
   const [u] = await ctx.db.update(supportSessions).set({ endedAt: ctx.now() }).where(eq(supportSessions.id, sessionId)).returning();
   await writeAudit(ctx.db, { actorUserId, merchantId: s.merchantId, action: "support.session_ended", entity: "support_session", entityId: sessionId, data: { startedBy: s.adminUserId } });

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { addDays, todayIso } from "@/lib/restaurant/util";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
@@ -16,12 +16,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string; itemId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Pre-order a degh · ${s.name}`, description: `Reserve a degh at ${s.name}: pick the size, the day and a pickup window.`, robots: { index: false, follow: true } };
+    return { title: `${t("wp.t.preorder")} · ${s.name}`, description: t("wp.t.preorderDesc", { shop: s.name }), robots: { index: false, follow: true } };
   } catch {
-    return { title: "Pre-order a degh" };
+    return { title: t("wp.t.preorder") };
   }
 }
 

@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
-import { useLocale } from "@/lib/i18n/client";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitsText } from "@/lib/units";
 
 /** wa.me link that opens WhatsApp with the invite text typed in. */
@@ -21,7 +21,7 @@ export function whatsappUrl(text: string): string {
 }
 
 export function InviteSheet({ open, onClose, membership }: { open: boolean; onClose: () => void; membership: Pick<customerApi.MembershipDto, "id" | "merchant" | "terminology"> }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useLocaleOrEnglish();
   const toast = useToast();
   const [ref, setRef] = useState<customerApi.ReferralResponse | null>(null);
   const [failed, setFailed] = useState(false);

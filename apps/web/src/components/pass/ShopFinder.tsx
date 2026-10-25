@@ -6,13 +6,13 @@
  */
 import { ChevronDown, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { networkApi } from "@ll/shared";
-import { categoryLabels } from "@ll/design-tokens";
-import { copy } from "@/copy/en-CA";
+import { placeKindLabel, type MessageKey, type networkApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
-import { formatDistance, formatPoints } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { distanceL } from "@/lib/i18n/formatL";
+import { unitsText } from "@/lib/units";
 import { Banner } from "@/components/ui/Banner";
 import { StatusDot } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +33,19 @@ export interface ShopFinderProps {
 }
 
 export type Toggle = "mine" | "open" | "offers";
-export const TOGGLE_LABELS: Record<Toggle, string> = { mine: "my shops", open: "open now", offers: "offers" };
+/** Catalog key for each filter capsule (shown lowercase). */
+export const TOGGLE_KEYS: Record<Toggle, MessageKey> = { mine: "ms.aud.mine", open: "ms.map.openNow", offers: "sh.set.groupOffers" };
+/** Catalog key for each category caption on the rail and the list filter. */
+export const CATEGORY_KEYS: Record<MapCategoryId, MessageKey> = {
+  all: "ms.cat.all",
+  coffee: "sh.disc.row.coffee",
+  bakery: "ms.cat.bakery",
+  eat: "ms.cat.eat",
+  shops: "sh.disc.row.shops",
+  beauty: "sh.disc.row.beauty",
+  repair: "sh.disc.row.repair",
+  services: "sh.disc.row.services",
+} as Record<MapCategoryId, MessageKey>;
 
 /** Everything the map chrome and the list share. */
 export interface FinderState {
@@ -56,6 +68,7 @@ export interface FinderState {
 }
 
 export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood }: ShopFinderProps) {
+  const { t } = useLocaleOrEnglish();
   const [items, setItems] = useState(initial);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<MapCategoryId>("all");
@@ -91,7 +104,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   }, [q, hood, coords]);
 
   function locate() {
-    if (!("geolocation" in navigator)) return setNotice(copy.err.locationDenied);
+    if (!("geolocation" in navigator)) return setNotice(t("cp.err.location"));
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (p) => {
@@ -101,7 +114,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
       },
       () => {
         setLocating(false);
-        setNotice(copy.err.locationDenied);
+        setNotice(t("cp.err.location"));
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
@@ -134,21 +147,21 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   return (
     <div className="flex flex-col gap-5 pb-4">
       <div className="flex items-end justify-between gap-3 pt-2">
-        <h1 className="display text-large-title text-fg">Shops near you</h1>
-        <SegmentedControl label="View" value={view} onChange={setView} options={[{ value: "map", label: "Map" }, { value: "list", label: "List" }]} />
+        <h1 className="display text-large-title text-fg">{t("wp.t.mapTitle")}</h1>
+        <SegmentedControl label={t("wp.map.viewLabel")} value={view} onChange={setView} options={[{ value: "map", label: t("sh.nav.map") }, { value: "list", label: t("wp.map.list") }]} />
       </div>
       <div className="flex flex-col gap-3">
         <label className="relative block">
-          <span className="sr-only">Search shops</span>
+          <span className="sr-only">{t("sh.wallet.search")}</span>
           <Search aria-hidden className="pointer-events-none absolute start-3.5 top-1/2 size-[18px] -translate-y-1/2 text-fg-muted" strokeWidth={1.75} />
-          <input type="search" placeholder="Search coffee, books, repair" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 w-full rounded-full bg-bg-subtle ps-10 pe-4 text-body text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg" />
+          <input type="search" placeholder={t("wp.map.searchPh")} value={q} onChange={(e) => setQ(e.target.value)} className="h-11 w-full rounded-full bg-bg-subtle ps-10 pe-4 text-body text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg" />
         </label>
         <FilterRow state={state} />
         {categories.length > 2 ? (
-          <div role="group" aria-label="Categories" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+          <div role="group" aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
             {categories.map((c) => (
               <Chip key={c} selected={cat === c} onClick={() => setCat(c)} icon={<CategoryIcon category={c} size={18} />}>
-                {categoryLabels[c]}
+                {t(CATEGORY_KEYS[c])}
               </Chip>
             ))}
           </div>
@@ -156,7 +169,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
       </div>
       {notice ? <Banner tone="info">{notice}</Banner> : null}
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      {mapFailed && view === "map" ? <Banner tone="info">The map couldn&apos;t load on this device, so here&apos;s the list.</Banner> : null}
+      {mapFailed && view === "map" ? <Banner tone="info">{t("wp.map.failed")}</Banner> : null}
       <div id="list" aria-live="polite" aria-busy={loading}>
         {loading && !items.length ? (
           <div className="flex flex-col gap-3">
@@ -179,9 +192,9 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
         ) : (
           <EmptyState
             icon={Search}
-            title={q ? copy.empty.mapSearch(q).title : copy.empty.noNeighbourhood.title}
-            description={q ? copy.empty.mapSearch(q).body : copy.empty.noNeighbourhood.body}
-            action={q ? <Button variant="secondary" onClick={() => setQ("")}>{copy.empty.mapSearch(q).action}</Button> : undefined}
+            title={q ? t("cp.empty.mapSearchTitle", { query: q }) : t("cp.empty.noHoodTitle")}
+            description={q ? t("cp.empty.mapSearchBody") : t("cp.empty.noHoodBody")}
+            action={q ? <Button variant="secondary" onClick={() => setQ("")}>{t("ms.map.clearSearch")}</Button> : undefined}
           />
         )}
       </div>
@@ -191,12 +204,14 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
 
 /** One line of facts under a shop name: kind, distance, open, my balance. */
 export function ShopLine({ s }: { s: networkApi.ShopListItemDto }) {
-  const bits = [verticalLabel(s.merchant.vertical), s.distanceMetres != null ? formatDistance(s.distanceMetres) : s.location?.address].filter(Boolean);
+  const L = useLocaleOrEnglish();
+  const { t, locale } = L;
+  const bits = [locale === "en" ? verticalLabel(s.merchant.vertical) : placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address].filter(Boolean);
   return (
     <span className="inline-flex min-w-0 items-center gap-x-2">
       <span className="truncate">{bits.join(" · ")}</span>
-      {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"} className="shrink-0">{s.openNow ? "Open" : "Closed"}</StatusDot> : null}
-      {s.isMember && s.myBalance != null ? <span className="shrink-0 font-semibold text-accent-text">{formatPoints(s.myBalance, s.terminology)}</span> : null}
+      {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"} className="shrink-0">{s.openNow ? t("ui.hours.open") : t("ui.hours.closed")}</StatusDot> : null}
+      {s.isMember && s.myBalance != null ? <span className="shrink-0 font-semibold text-accent-text">{unitsText(locale, s.myBalance, s.terminology)}</span> : null}
     </span>
   );
 }
@@ -204,16 +219,17 @@ export function ShopLine({ s }: { s: networkApi.ShopListItemDto }) {
 /** Neighbourhood capsule + filter capsules ("my shops", "open now", "offers"), lowercase. */
 export function FilterRow({ state, floating }: { state: FinderState; floating?: boolean }) {
   const { neighbourhoods, hood, setHood, coords, availableToggles, toggles, flip } = state;
+  const { t } = useLocaleOrEnglish();
   const current = neighbourhoods.find((n) => n.slug === hood);
   return (
-    <div role="group" aria-label="Filters" className={cn("no-scrollbar flex gap-2 overflow-x-auto", floating ? "-mx-4 px-4 py-1" : "-mx-4 px-4")}>
+    <div role="group" aria-label={t("rc.mn.filters")} className={cn("no-scrollbar flex gap-2 overflow-x-auto", floating ? "-mx-4 px-4 py-1" : "-mx-4 px-4")}>
       {neighbourhoods.length > 1 && !coords ? (
         <label className={cn("relative inline-flex h-9 shrink-0 items-center gap-1 rounded-full ps-3.5 pe-3 text-meta-strong text-fg", floating ? "bg-bg shadow-float" : "border border-line bg-bg")}>
-          <span className="sr-only">Neighbourhood</span>
-          <span aria-hidden>{(current?.name ?? "everywhere").toLowerCase()}</span>
+          <span className="sr-only">{t("wp.map.hood")}</span>
+          <span aria-hidden>{(current?.name ?? t("wp.map.everywhere")).toLowerCase()}</span>
           <ChevronDown aria-hidden className="size-3.5 text-fg-muted" strokeWidth={2} />
           <select value={hood ?? ""} onChange={(e) => setHood(e.target.value || null)} className="absolute inset-0 cursor-pointer opacity-0">
-            <option value="">Everywhere</option>
+            <option value="">{t("wp.map.everywhere").replace(/^./, (ch) => ch.toUpperCase())}</option>
             {neighbourhoods.map((n) => (
               <option key={n.slug} value={n.slug}>
                 {n.name}
@@ -222,9 +238,9 @@ export function FilterRow({ state, floating }: { state: FinderState; floating?: 
           </select>
         </label>
       ) : null}
-      {availableToggles.map((t) => (
-        <Chip key={t} selected={toggles.has(t)} onClick={() => flip(t)} floating={floating}>
-          {TOGGLE_LABELS[t]}
+      {availableToggles.map((tg) => (
+        <Chip key={tg} selected={toggles.has(tg)} onClick={() => flip(tg)} floating={floating}>
+          {t(TOGGLE_KEYS[tg]).toLowerCase()}
         </Chip>
       ))}
     </div>

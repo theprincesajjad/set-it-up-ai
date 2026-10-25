@@ -52,12 +52,12 @@ export function QuoteApproval({
   error?: string | null;
 }) {
   const { c } = useTheme();
-  const { t, money, date, number } = useLocale();
+  const { t, money, date, number, isRtl } = useLocale();
   const needsSignature = quote.totalCents >= SIGNATURE_THRESHOLD_CENTS;
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
   const [touched, setTouched] = useState(false);
-  const signature = needsSignature ? name.trim() : defaultName?.trim() || "Approved in app";
+  const signature = needsSignature ? name.trim() : defaultName?.trim() || "Approved in app"; // l10n-ok: stored as the signature value, never shown as UI text
   const valid = needsSignature ? signature.length >= 2 : agree;
   const expired = quote.status === "expired";
   const pct = quote.totalCents > 0 && quote.depositCents > 0 ? Math.round((quote.depositCents / quote.totalCents) * 100) : 0;
@@ -81,7 +81,7 @@ export function QuoteApproval({
             .map(([k, v]) => (
               <View key={k} style={styles.line}>
                 <Text variant="bodySm" color="fgMuted" style={{ flex: 1 }}>{k}</Text>
-                <Text variant="bodySm" style={{ flexShrink: 1, textAlign: "right" }}>{v}</Text>
+                <Text variant="bodySm" style={{ flexShrink: 1, textAlign: isRtl ? "left" : "right" }}>{v}</Text>
               </View>
             ))}
         </View>

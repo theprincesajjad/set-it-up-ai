@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { browserApi } from "@/lib/api/browser";
-import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, t as translate, type Locale, type LocaleInfo, type MessageKey, type TranslationsJson, type Vars } from "@ll/shared";
+import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, t as translate, withRtlMark, type Locale, type LocaleInfo, type MessageKey, type TranslationsJson, type Vars } from "@ll/shared";
 
 export const LOCALE_COOKIE = "ll_lang";
 
@@ -41,10 +41,11 @@ function buildValue(locale: Locale, setLocale: (next: Locale) => void): LocaleVa
     dir: LOCALES[locale].dir,
     t: (key, vars) => {
       const rtl = LOCALES[locale].dir === "rtl";
-      if (!rtl || !vars) return translate(locale, key, vars);
+      if (!rtl) return translate(locale, key, vars);
+      if (!vars) return withRtlMark(locale, translate(locale, key));
       const v: Vars = {};
       for (const [k, x] of Object.entries(vars)) v[k] = LATIN_VARS.has(k) && x != null && x !== "" ? `${FSI}${x}${PDI}` : x;
-      return translate(locale, key, v);
+      return withRtlMark(locale, translate(locale, key, v));
     },
     rich: (key, vars) => {
       if (!vars) return translate(locale, key);

@@ -10,15 +10,15 @@ import { WEB_URL } from "../../config";
 import { useLocale } from "../../lib/i18n";
 import { addDays, dayToDate, dietBadges, paymentUrl, setupUrl, torontoToday, weekdayOf, type CountdownParts, type DietaryLike } from "../../lib/restaurant";
 import { ui, useTheme } from "../../theme";
-import { Badge, Button, Chip, ChevronLeft, ChevronRight, IconButton, Minus, Plus, Text } from "../../ui";
+import { Badge, Button, Chip, ChevronLeft, ChevronRight, ChevronRightLtr, IconButton, Minus, Plus, Text } from "../../ui";
 
 /**
  * `money` for the app language. In right-to-left text the currency sign would jump to the wrong side of the digits
  * ("$54" shows as "54$"), so the amount is wrapped in a left-to-right isolate there.
  */
 export function useMoney() {
-  const { money, isRtl } = useLocale();
-  return (cents: number): string => (isRtl ? `\u2066${money(cents)}\u2069` : money(cents));
+  const { money } = useLocale();
+  return (cents: number): string => money(cents);
 }
 
 /** One-letter weekday heads for hi / pa / en; Urdu has no usable narrow form in CLDR (it falls back to Latin letters), so it gets the short name. */
@@ -249,7 +249,7 @@ export function DateField({ label, value, onChange, min, max, isDisabled, busy, 
         <Text variant="body" color={value ? "fg" : "fgSubtle"} style={{ flex: 1 }}>
           {value ? date(dayToDate(value), { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : (placeholder ?? "")}
         </Text>
-        <ChevronRight size={18} color={c.fgSubtle} strokeWidth={2} style={{ transform: [{ rotate: open ? "-90deg" : "90deg" }] }} />
+        <ChevronRightLtr size={18} color={c.fgSubtle} strokeWidth={2} style={{ transform: [{ rotate: open ? "-90deg" : "90deg" }] }} />
       </Pressable>
       {hint && !open ? (
         <Text variant="meta" color="fgMuted">
@@ -275,12 +275,13 @@ export function DateField({ label, value, onChange, min, max, isDisabled, busy, 
 
 /** Label left in grey, value right: the quiet two-column rows of an order summary. */
 export function InfoRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  const { isRtl } = useLocale();
   return (
     <View style={styles.info}>
       <Text variant={strong ? "bodyStrong" : "body"} color={strong ? "fg" : "fgMuted"} style={{ flex: 1 }}>
         {label}
       </Text>
-      <Text variant={strong ? "bodyStrong" : "body"} tabular style={{ flexShrink: 1, textAlign: "right" }}>
+      <Text variant={strong ? "bodyStrong" : "body"} tabular style={{ flexShrink: 1, textAlign: isRtl ? "left" : "right" }}>
         {value}
       </Text>
     </View>

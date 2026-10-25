@@ -13,6 +13,7 @@ import {
   normalizeLocale,
   pickTranslation,
   t as translate,
+  withRtlMark,
   type Locale,
   type LocaleInfo,
   type MessageKey,
@@ -26,6 +27,17 @@ import { useSession } from "../../state/session";
 import { getJson, setJson } from "../../state/storage";
 
 const LOCALE_KEY = "ll.locale.v1";
+
+/**
+ * Variables that hold Latin runs or shop-written text (shop and customer names, reward names, amounts, links). In a right-to-left
+ * language `t()` wraps them in a first-strong isolate, so "$5 off" or "Sarson Dhaba" can't reorder the Urdu around it.
+ */
+const ISOLATED_VARS = new Set(["shop", "name", "amount", "price", "reward", "brand", "link", "url", "code", "phone", "total", "balance", "fee", "tax", "street", "address", "email", "item", "place", "hood", "staff", "service", "services", "label", "ref", "note", "notes", "hall", "prize", "headline", "text", "pickup", "card", "certifier", "sender", "deposit", "cost", "hours"]);
+function isolateVars(vars: Vars): Vars {
+  const out: Vars = {};
+  for (const [k, x] of Object.entries(vars)) out[k] = ISOLATED_VARS.has(k) && typeof x === "string" && x !== "" && !/^\d+$/.test(x) ? `\u2068${x}\u2069` : x;
+  return out;
+}
 
 export interface LocaleValue {
   locale: Locale;
@@ -83,9 +95,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       info: LOCALES[locale],
       dir: LOCALES[locale].dir,
       isRtl: LOCALES[locale].dir === "rtl",
-      t: (key, vars) => translate(locale, key, vars),
+      t: (key, vars) => withRtlMark(locale, translate(locale, key, vars && LOCALES[locale].dir === "rtl" ? isolateVars(vars) : vars)),
       setLocale,
-      money: (cents, currency) => formatCurrency(locale, cents, currency),
+      // Right-to-left text would put the currency sign on the wrong side ("$54" as "54$"): wrap the amount in a left-to-right isolate.
+      money: (cents, currency) => (LOCALES[locale].dir === "rtl" ? `\u2066${formatCurrency(locale, cents, currency)}\u2069` : formatCurrency(locale, cents, currency)),
       number: (n) => formatNumber(locale, n),
       date: (d, opts, tz) => formatDate(locale, d, opts, tz),
       time: (d, tz) => formatTime(locale, d, tz),
@@ -94,6 +107,16 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     [locale, setLocale],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/** Layout direction without requiring a provider (false outside one: tests, early boot). */
+export function useIsRtl(): boolean {
+  return useContext(Ctx)?.isRtl ?? false;
+}
+
+/** The active language without requiring a provider ("en" outside one). */
+export function useLocaleCode(): Locale {
+  return useContext(Ctx)?.locale ?? "en";
 }
 
 export function useLocale(): LocaleValue {
@@ -105,5 +128,10 @@ export function useLocale(): LocaleValue {
 /** Sets layout direction for everything below it (flex rows flip, start/end follow). Mounted once at the root. */
 export function LocaleRoot({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const { dir } = useLocale();
-  return <View style={[{ flex: 1, direction: dir }, style]}>{children}</View>;
+  // `dir` (not only the style) so react-native-web resolves start/end and marginStart/paddingStart for the whole subtree.
+  return (
+    <View {...({ dir } as object)} style={[{ flex: 1, direction: dir }, style]}>
+      {children}
+    </View>
+  );
 }

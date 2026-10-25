@@ -1,23 +1,22 @@
-import { categoryLabels, layout } from "@ll/design-tokens";
-import type { networkApi } from "@ll/shared";
+import { layout } from "@ll/design-tokens";
+import type { MessageKey, networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { t } from "../../copy/en-CA";
 import { useDeviceLocation } from "../../features/customer/location";
 import { ExploreMap, mapsAvailable, TORONTO, type ExploreMapHandle } from "../../features/customer/MapView";
 import { useProfile, useWallet } from "../../features/customer/queries";
 import { ShopBody, ShopCardCta, useShopModel } from "../../features/customer/ShopBody";
 import { useUnreadCount } from "../../features/customer/inbox";
 import { useHideTabBar } from "../../features/tabBar";
-import { AUDIENCE_LABELS, byDistance, exploreSections, filterShops, MAP_CATEGORIES, movedEnough, pinSubtitle, stripHeader, type Audience, type MapCategoryId, type PinMembership } from "../../lib/explore";
+import { byDistance, exploreSections, filterShops, MAP_CATEGORIES, movedEnough, pinSubtitleL, stripHeader, type Audience, type MapCategoryId, type PinMembership } from "../../lib/explore";
 import { shortHood } from "../../lib/discover";
-import { formatDistance } from "../../lib/format";
+import { formatDistanceL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
-import { perkHeadline, perkProgress } from "../../lib/perks";
+import { perkHeadlineL, perkProgress } from "../../lib/perks";
 import { shopMatchesHalal } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
@@ -60,12 +59,24 @@ import {
 
 type Shop = networkApi.ShopListItemDto;
 
+/** Catalog key for each map category caption (the rail and the list filter). */
+const CATEGORY_KEY: Record<MapCategoryId, MessageKey> = {
+  all: "ms.cat.all",
+  coffee: "sh.disc.row.coffee",
+  bakery: "ms.cat.bakery",
+  eat: "ms.cat.eat",
+  shops: "sh.disc.row.shops",
+  beauty: "sh.disc.row.beauty",
+  repair: "sh.disc.row.repair",
+};
+
 /**
  * Category rail (canvas Main.dc.html): 46 pt white circles holding 30 pt objects, 12 pt lowercase Bricolage
  * captions; the selected one gets a 2 pt black ring and a black caption.
  */
 function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChange: (c: MapCategoryId) => void; onMap: boolean }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail} accessibilityRole="tablist" style={{ overflow: "visible" }}>
       {MAP_CATEGORIES.map((cat) => {
@@ -74,7 +85,7 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
           <Pressable
             key={cat}
             accessibilityRole="tab"
-            accessibilityLabel={categoryLabels[cat]}
+            accessibilityLabel={t(CATEGORY_KEY[cat])}
             accessibilityState={{ selected: on }}
             onPress={() => {
               haptic.select();
@@ -96,7 +107,7 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
               <CategoryIcon category={cat} size={30} />
             </View>
             <Text style={disp(12, 700, 15)} rawColor={on ? c.fg : c.fgMuted}>
-              {categoryLabels[cat]}
+              {t(CATEGORY_KEY[cat])}
             </Text>
           </Pressable>
         );
@@ -141,7 +152,9 @@ export default function Explore() {
   const { prefs, updatePrefs } = useSession();
   const profile = useProfile();
   const wallet = useWallet();
-  const { t: tr } = useLocale();
+  const L = useLocale();
+  const { t: tr } = L;
+  const audienceLabel = (a: Audience) => (a === "all" ? tr("ms.allShops").toLowerCase() : tr(a === "mine" ? "ms.aud.mine" : "ms.aud.new"));
   const loc = useDeviceLocation(prefs.locationPrompted);
   const [prompt, setPrompt] = useState(!prefs.locationPrompted);
   const [mapOk, setMapOk] = useState(mapsAvailable());
@@ -235,7 +248,7 @@ export default function Explore() {
     const order: Audience[] = ["all", "mine", "new"];
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: [...order.map((a) => AUDIENCE_LABELS[a]), "Cancel"], cancelButtonIndex: order.length, title: "Show" },
+        { options: [...order.map((a) => audienceLabel(a)), tr("sh.priv.cancel")], cancelButtonIndex: order.length, title: tr("ms.map.show") },
         (i) => {
           const a = order[i];
           if (a) setAudience(a);
@@ -257,9 +270,9 @@ export default function Explore() {
   const float = !listMode && mapOk;
   const filters = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled" style={{ overflow: "visible" }}>
-      <MapChip float={float} label={audience === "all" ? "my shops" : AUDIENCE_LABELS[audience]} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={`Show: ${AUDIENCE_LABELS[audience]}`} />
-      <MapChip float={float} label="open now" dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
-      {readySet.size > 0 ? <MapChip float={float} label="rewards ready" selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
+      <MapChip float={float} label={audience === "all" ? tr("ms.aud.mine") : audienceLabel(audience)} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={tr("ms.map.showA11y", { label: audienceLabel(audience) })} />
+      <MapChip float={float} label={tr("ms.map.openNow")} dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
+      {readySet.size > 0 ? <MapChip float={float} label={tr("sh.pass.ready")} selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
       <MapChip float={float} label={tr("diet.halal").toLowerCase()} selected={halal} onPress={() => setHalal((v) => !v)} accessibilityLabel={tr("rest.filter.halal.a11y")} />
     </ScrollView>
   );
@@ -271,15 +284,15 @@ export default function Explore() {
         autoFocus
         value={q}
         onChangeText={setQ}
-        placeholder={placeName ? `Search ${placeName}` : "Search shops or streets"}
+        placeholder={placeName ? tr("ms.map.searchPlace", { place: placeName }) : tr("ms.map.searchPh")}
         placeholderTextColor={c.fgSubtle}
-        accessibilityLabel="Search shops"
+        accessibilityLabel={tr("sh.wallet.search")}
         returnKeyType="search"
         style={[typo("body"), { flex: 1, color: c.fg, paddingVertical: 8 }]}
       />
       <IconButton
         icon={X}
-        label="Close search"
+        label={tr("ms.map.closeSearch")}
         size={32}
         onPress={() => {
           setQ("");
@@ -293,27 +306,27 @@ export default function Explore() {
     <View style={styles.topRow}>{searchField}</View>
   ) : (
     <View style={styles.topRow}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Search shops" onPress={() => setSearching(true)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => setSearching(true)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
         <SearchGlyph size={20} color={c.fg} />
       </Pressable>
       <View style={{ flex: 1 }} />
       {listMode || !mapOk ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Show map" disabled={!mapOk} onPress={() => setListMode(false)} style={({ pressed }) => [styles.round, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.6 : mapOk ? 1 : 0.4 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.showMap")} disabled={!mapOk} onPress={() => setListMode(false)} style={({ pressed }) => [styles.round, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.6 : mapOk ? 1 : 0.4 }]}>
           <MapIcon size={20} color={c.fg} strokeWidth={1.9} />
         </Pressable>
       ) : null}
       {/* Grouped capsule (Corner): the neighbourhood ▾ · the bell with an accent dot while something is unread. */}
       <View style={[styles.group, { backgroundColor: c.bg }, floatShadow]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Neighbourhood: ${placeName ?? "not set"}. Change`} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.hoodA11y", { name: placeName ?? tr("ms.map.notSet") })} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
           <Text style={[disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
-            {shortHood(placeName) || "your street"}
+            {shortHood(placeName) || tr("ms.map.yourStreet")}
           </Text>
           <ChevronDownGlyph size={14} color={c.fg} />
         </Pressable>
         <View style={[styles.groupRule, { backgroundColor: c.line }]} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+          accessibilityLabel={unread > 0 ? tr("ms.map.notifUnread", { n: unread }) : tr("sh.activity.title")}
           onPress={() => {
             haptic.select();
             router.push("/notifications");
@@ -328,11 +341,11 @@ export default function Explore() {
   );
 
   const empty = q ? (
-    <EmptyState icon={Search} title={t("empty.mapSearch.title", { query: q })} body={t("empty.mapSearch.body")} actionLabel="Clear search" onAction={() => setQ("")} />
+    <EmptyState icon={Search} title={tr("cp.empty.mapSearchTitle", { query: q })} body={tr("cp.empty.mapSearchBody")} actionLabel={tr("ms.map.clearSearch")} onAction={() => setQ("")} />
   ) : audience !== "all" || openNow || readyOnly || category !== "all" ? (
     <EmptyState
-      title="Nothing matches those filters"
-      actionLabel="Clear filters"
+      title={tr("ms.map.noMatch")}
+      actionLabel={tr("rc.mn.clear")}
       onAction={() => {
         setAudience("all");
         setOpenNow(false);
@@ -342,7 +355,7 @@ export default function Explore() {
       }}
     />
   ) : (
-    <EmptyState icon={MapPin} title={t("empty.noNeighbourhood.title")} body={t("empty.noNeighbourhood.body")} actionLabel="Suggest my street" onAction={() => router.push("/settings/suggest")} />
+    <EmptyState icon={MapPin} title={tr("cp.empty.noHoodTitle")} body={tr("cp.empty.noHoodBody")} actionLabel={tr("ms.suggest.title")} onAction={() => router.push("/settings/suggest")} />
   );
 
   const sheets = (
@@ -353,7 +366,7 @@ export default function Explore() {
           setPrompt(false);
           updatePrefs({ locationPrompted: true });
         }}
-        title="See shops near you"
+        title={tr("ms.map.seeNear")}
         scroll={false}
         footer={
           <>
@@ -366,7 +379,7 @@ export default function Explore() {
                 await loc.request();
               }}
             >
-              Allow while using
+              {tr("ms.map.allowWhile")}
             </Button>
             <Button
               variant="ghost"
@@ -377,19 +390,19 @@ export default function Explore() {
                 updatePrefs({ locationPrompted: true });
               }}
             >
-              Not now
+              {tr("cp.action.notNow")}
             </Button>
           </>
         }
       >
-        <Text color="fgMuted">We use your location only while the app is open, to sort shops by distance. Or pick your neighbourhood.</Text>
+        <Text color="fgMuted">{tr("ms.map.locWhy")}</Text>
       </Sheet>
-      <Sheet visible={audienceOpen} onClose={() => setAudienceOpen(false)} title="Show" scroll={false}>
+      <Sheet visible={audienceOpen} onClose={() => setAudienceOpen(false)} title={tr("ms.map.show")} scroll={false}>
         <View>
           {(["all", "mine", "new"] as Audience[]).map((a, i) => (
             <ListRow
               key={a}
-              title={AUDIENCE_LABELS[a]}
+              title={audienceLabel(a)}
               selected={audience === a}
               divider={i < 2}
               onPress={() => {
@@ -400,13 +413,13 @@ export default function Explore() {
           ))}
         </View>
       </Sheet>
-      <Sheet visible={hoodOpen} onClose={() => setHoodOpen(false)} title="Your neighbourhood">
+      <Sheet visible={hoodOpen} onClose={() => setHoodOpen(false)} title={tr("ms.map.yourHood")}>
         <View>
           {(hoods.data?.items ?? []).map((h, i, arr) => (
             <ListRow
               key={h.id}
               title={h.name}
-              subtitle={`${h.shopCount} shops`}
+              subtitle={tr("sh.disc.shopsN", { n: h.shopCount })}
               selected={h.slug === hoodSlug}
               divider={i < arr.length - 1}
               onPress={() => {
@@ -418,18 +431,18 @@ export default function Explore() {
             />
           ))}
         </View>
-        {hoods.data?.items.length === 0 ? <Text color="fgMuted">{t("empty.noNeighbourhood.body")}</Text> : null}
+        {hoods.data?.items.length === 0 ? <Text color="fgMuted">{tr("cp.empty.noHoodBody")}</Text> : null}
         {mapOk ? (
           <Button
             variant="secondary"
             iconStart={List}
-            accessibilityLabel="Show list"
+            accessibilityLabel={tr("ms.map.showList")}
             onPress={() => {
               setHoodOpen(false);
               setListMode(true);
             }}
           >
-            Show as a list
+            {tr("ms.map.showAsList")}
           </Button>
         ) : null}
         {loc.status !== "granted" ? (
@@ -442,7 +455,7 @@ export default function Explore() {
               setHoodOpen(false);
             }}
           >
-            Use my location
+            {tr("ms.map.useLoc")}
           </Button>
         ) : null}
       </Sheet>
@@ -451,13 +464,13 @@ export default function Explore() {
 
   const row = (s: Shop, i: number, n: number) => {
     const mem = memberships[s.merchant.id] ?? null;
-    const sub = pinSubtitle(s.merchant.vertical, mem, s);
+    const sub = pinSubtitleL(L, s.merchant.vertical, mem, s);
     return (
       <ShopTile
         key={s.merchant.id}
         variant="list"
         shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor, distanceM: s.distanceMetres }}
-        subtitle={[sub.text, formatDistance(s.distanceMetres)].filter(Boolean).join(" · ")}
+        subtitle={[sub.text, formatDistanceL(L, s.distanceMetres)].filter(Boolean).join(" · ")}
         rewardReady={sub.accent}
         divider={i < n - 1}
         onPress={() => router.push(`/shop/${s.merchant.slug}`)}
@@ -476,13 +489,13 @@ export default function Explore() {
         </View>
         {loc.status === "denied" ? (
           <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-            <Banner variant="neutral" actionLabel="Turn on" onAction={() => Linking.openSettings()}>
-              {t("err.location.denied")}
+            <Banner variant="neutral" actionLabel={tr("sh.set.turnOn")} onAction={() => Linking.openSettings()}>
+              {tr("cp.err.location")}
             </Banner>
           </View>
         ) : null}
         <SectionList
-          sections={exploreSections(visible)}
+          sections={exploreSections(visible).map((x) => ({ ...x, title: x.title === "my shops" ? tr("ms.aud.mine") : tr("ms.map.nearby") }))}
           keyExtractor={(s) => s.merchant.id}
           renderItem={({ item, index, section }) => <View style={{ paddingHorizontal: 16 }}>{row(item, index, section.data.length)}</View>}
           renderSectionHeader={({ section }) => (
@@ -496,12 +509,12 @@ export default function Explore() {
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 16 }}>
               {/* Count in the display face, the place under it: no widow on long neighbourhood names. */}
               <View style={{ gap: 2 }}>
-                <Text variant="largeTitle" tabular>{`${visible.length} ${visible.length === 1 ? "shop" : "shops"}`}</Text>
+                <Text variant="largeTitle" tabular>{tr("sh.disc.shopsN", { n: visible.length })}</Text>
                 <Text variant="body" color="fgMuted">
-                  {stripHeader(visible.length, placeName).replace(/^\d+ shops? /, "").toLowerCase()}
+                  {L.locale === "en" ? stripHeader(visible.length, placeName).replace(/^\d+ shops? /, "").toLowerCase() : placeName ? tr("ms.map.inPlace", { place: placeName.toLowerCase() }) : tr("ms.map.onStrip")}
                 </Text>
               </View>
-              {perk && progress ? <PerkCard headline={perkHeadline(perk, hoodName)} {...progress} /> : null}
+              {perk && progress ? <PerkCard headline={perkHeadlineL(L, perk, hoodName)} {...progress} /> : null}
             </View>
           }
           ListEmptyComponent={
@@ -564,7 +577,7 @@ export default function Explore() {
       {sel ? (
         // Shop sheet up (canvas ShopSheet): the map chrome gives way to one round back button.
         <View style={[styles.top, { paddingTop: topY, paddingHorizontal: 16 }]} pointerEvents="box-none">
-          <Pressable accessibilityRole="button" accessibilityLabel="Back to map" onPress={() => setSelected(null)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.backToMap")} onPress={() => setSelected(null)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
             <ChevronLeftGlyph size={20} color={c.fg} />
           </Pressable>
         </View>
@@ -584,15 +597,15 @@ export default function Explore() {
               style={[styles.searchHere, { backgroundColor: c.fg }, floatShadow]}
             >
               <Text variant="mapLabel" rawColor={c.bg}>
-                search here
+                {tr("ms.map.searchHere")}
               </Text>
             </Pressable>
           </View>
         ) : null}
         {loc.status === "denied" ? (
           <View style={{ marginTop: 10, paddingHorizontal: 16 }}>
-            <Banner variant="neutral" actionLabel="Turn on" onAction={() => Linking.openSettings()}>
-              {t("err.location.denied")}
+            <Banner variant="neutral" actionLabel={tr("sh.set.turnOn")} onAction={() => Linking.openSettings()}>
+              {tr("cp.err.location")}
             </Banner>
           </View>
         ) : null}
@@ -620,7 +633,7 @@ export default function Explore() {
           <View style={styles.recenterRow} pointerEvents="box-none">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Recenter on my location"
+              accessibilityLabel={tr("ms.map.recenter")}
               onPress={recenter}
               style={({ pressed }) => [styles.recenter, { backgroundColor: c.fg, opacity: pressed ? 0.85 : 1 }, shadow("0 2px 10px rgba(0,0,0,.22)", { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 5 })]}
             >
@@ -641,14 +654,14 @@ export default function Explore() {
           onDismiss={() => setSelected(null)}
           accessibilityLabel={sel.merchant.name}
           corner={
-            <Pressable accessibilityRole="button" accessibilityLabel="Close shop" onPress={() => setSelected(null)} style={({ pressed }) => [styles.close, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.closeShop")} onPress={() => setSelected(null)} style={({ pressed }) => [styles.close, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.7 : 1 }]}>
               <CloseGlyph size={16} color={c.fg} />
             </Pressable>
           }
           footer={<ShopCardCta model={model} />}
         >
           <ScrollView scrollEnabled={detent === detents.length - 1} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 0, paddingBottom: insets.bottom + (model.membership ? 110 : 24) }}>
-            {model.shop.data ? <ShopBody model={model} variant="sheet" peek={detent === 0} /> : model.shop.isError ? <ErrorState message="This shop didn't load." onRetry={() => void model.shop.refetch()} /> : <SkeletonShop />}
+            {model.shop.data ? <ShopBody model={model} variant="sheet" peek={detent === 0} /> : model.shop.isError ? <ErrorState message={tr("ms.map.shopFail")} onRetry={() => void model.shop.refetch()} /> : <SkeletonShop />}
           </ScrollView>
         </DetentSheet>
       ) : null}
@@ -662,12 +675,12 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 10, minHeight: 44 },
   close: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  group: { flexDirection: "row", alignItems: "center", height: layout.chrome, borderRadius: 999, paddingLeft: 14, paddingRight: 6, gap: 8 },
+  group: { flexDirection: "row", alignItems: "center", height: layout.chrome, borderRadius: 999, paddingStart: 14, paddingEnd: 6, gap: 8 },
   groupItem: { flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome },
   groupRule: { width: hairline, height: 20, marginHorizontal: 2 },
   bell: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  bellDot: { position: "absolute", top: 6, right: 7, width: 8, height: 8, borderRadius: 4, borderWidth: 2, boxSizing: "content-box" },
-  searchField: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome, borderRadius: 999, paddingLeft: 14, paddingRight: 6 },
+  bellDot: { position: "absolute", top: 6, end: 7, width: 8, height: 8, borderRadius: 4, borderWidth: 2, boxSizing: "content-box" },
+  searchField: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, height: layout.chrome, borderRadius: 999, paddingStart: 14, paddingEnd: 6 },
   filters: { gap: 8, paddingHorizontal: 16 },
   mapChip: { height: 36, paddingHorizontal: 14, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 6 },
   openDot: { width: 7, height: 7, borderRadius: 4 },

@@ -1,6 +1,7 @@
 import { layout, radii, shadows, springs } from "@ll/design-tokens";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { shadow } from "./shadow";
 
@@ -30,6 +31,7 @@ export interface DetentSheetProps {
  */
 export function DetentSheet({ detents, index, onIndexChange, containerHeight, header, children, onDismiss, accessibilityLabel = "Shop", corner, footer }: DetentSheetProps) {
   const { c, isDark } = useTheme();
+  const { t } = useLocale();
   const maxH = detents[detents.length - 1] ?? 400;
   const offsetFor = (i: number) => maxH - (detents[Math.max(0, Math.min(detents.length - 1, i))] ?? 0);
   const y = useRef(new Animated.Value(maxH)).current;
@@ -83,8 +85,8 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
         <Pressable
           accessibilityRole="adjustable"
           accessibilityLabel={accessibilityLabel}
-          accessibilityHint="Double-tap to expand or collapse"
-          accessibilityValue={{ text: index === detents.length - 1 ? "Expanded" : "Collapsed" }}
+          accessibilityHint={t("ui.detentHint")}
+          accessibilityValue={{ text: index === detents.length - 1 ? t("ui.expanded") : t("ui.collapsed") }}
           onPress={() => onIndexChange((index + 1) % detents.length)}
           style={styles.grabberHit}
         >
@@ -106,7 +108,7 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
 
 const styles = StyleSheet.create({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, overflow: "hidden" },
-  corner: { position: "absolute", top: 33, right: 20 },
+  corner: { position: "absolute", top: 33, end: 20 },
   footer: { position: "absolute", left: 20, right: 20, bottom: 30 },
   // Canvas: 10 pt above the grabber, 18 pt under it.
   grabberHit: { alignItems: "center", justifyContent: "flex-start", paddingTop: 10, height: 33 },

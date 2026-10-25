@@ -1,3 +1,5 @@
+import { formatPtsL, type L } from "./formatL";
+
 /**
  * Neighbourhood perk progress ("Visit 3 shops on Roncesvalles this month → +50 pts").
  * The API exposes the perk rules (network.md, NetworkPerkDto) but not per-member
@@ -25,6 +27,14 @@ export function perkProgress(
   ).length;
   const goal = Math.max(1, perk.threshold);
   return { visited: Math.min(visited, goal), goal, done: visited >= goal };
+}
+
+/** `perkHeadline` in the shopper's language (English keeps the wording below). */
+export function perkHeadlineL(L: L, perk: PerkLike, place: string | null): string {
+  if (L.locale === "en") return perkHeadline(perk, place);
+  const window = perk.windowDays >= 28 && perk.windowDays <= 31 ? L.t("ms.perk.month") : perk.windowDays === 7 ? L.t("ms.perk.week") : L.t("ms.perk.days", { n: perk.windowDays });
+  const vars = { n: perk.threshold, window, pts: formatPtsL(L, perk.bonusPoints, "points"), place: place ?? "" };
+  return L.t(place ? "ms.perk.lineWhere" : "ms.perk.line", vars);
 }
 
 export function perkHeadline(perk: PerkLike, place: string | null): string {

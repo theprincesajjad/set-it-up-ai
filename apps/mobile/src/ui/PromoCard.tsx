@@ -1,6 +1,8 @@
 import { radii } from "@ll/design-tokens";
 import { Image, StyleSheet, View } from "react-native";
-import { formatDistance, promoEnds } from "../lib/format";
+import { unitWord, type Locale } from "@ll/shared";
+import { formatDistanceL, promoEndsL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { Badge, SponsoredBadge, type BadgeTone } from "./Badge";
 import { Button } from "./Button";
 import { Card } from "./Card";
@@ -24,20 +26,22 @@ export interface PromoCardProps {
 }
 
 /** Accent only when the promo is about points (2x, +50 pts). */
-function kindBadge(p: PromoCardProps["promo"], terminology?: string | null): { tone: BadgeTone; label: string } | null {
-  const word = terminology && terminology !== "points" ? terminology : "points";
+function kindBadge(p: PromoCardProps["promo"], terminology: string | null | undefined, locale: Locale, t: ReturnType<typeof useLocale>["t"]): { tone: BadgeTone; label: string } | null {
+  const word = unitWord(locale, terminology && terminology !== "points" ? terminology : "points");
   if (p.kind === "multiplier") return { tone: "accent", label: `${p.multiplierPct ? p.multiplierPct / 100 : 2}× ${word}` };
-  if (p.kind === "bonus_points") return { tone: "accent", label: word === "points" ? `+${p.bonusPoints ?? 0} pts` : `+${p.bonusPoints ?? 0} ${word}` };
-  if (p.kind === "discount") return { tone: "neutral", label: `${p.percentOff ?? 0}% off` };
-  if (p.kind === "event") return { tone: "neutral", label: "Event" };
+  if (p.kind === "bonus_points") return { tone: "accent", label: !terminology || terminology === "points" ? t("ui.promoPts", { n: p.bonusPoints ?? 0 }) : `+${p.bonusPoints ?? 0} ${word}` };
+  if (p.kind === "discount") return { tone: "neutral", label: t("ui.promoOff", { n: p.percentOff ?? 0 }) };
+  if (p.kind === "event") return { tone: "neutral", label: t("rc.ca.type") };
   return null;
 }
 
 /** Hairline card; same layout for organic and sponsored. */
 export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, joinLabel, onJoin, variant = "feed", hideShop, terminology }: PromoCardProps) {
-  const badge = kindBadge(promo, terminology);
-  const ends = promoEnds(promo.endsAt);
-  const a11y = [sponsored ? "Sponsored." : null, shop.name, promo.title, badge?.label, ends].filter(Boolean).join(" ");
+  const L = useLocale();
+  const { t, locale } = L;
+  const badge = kindBadge(promo, terminology, locale, t);
+  const ends = promoEndsL(L, promo.endsAt);
+  const a11y = [sponsored ? `${t("ui.sponsored")}.` : null, shop.name, promo.title, badge?.label, ends].filter(Boolean).join(" ");
   return (
     <Card onPress={onPress} accessibilityLabel={a11y} padded={false}>
       {promo.imageUrl && variant === "feed" ? <Image source={{ uri: promo.imageUrl }} style={styles.image} accessibilityIgnoresInvertColors /> : null}
@@ -51,7 +55,7 @@ export function PromoCard({ promo, shop, sponsored, onSponsoredInfo, onPress, jo
           </Text>
           {shop.distanceM != null ? (
             <Text variant="meta" color="fgMuted">
-              {formatDistance(shop.distanceM)}
+              {formatDistanceL(L, shop.distanceM)}
             </Text>
           ) : null}
         </View>

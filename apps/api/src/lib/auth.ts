@@ -4,7 +4,8 @@ import type { FastifyRequest } from "fastify";
 import { SignJWT, jwtVerify } from "jose";
 import { merchantStaff, merchants, users } from "@ll/db";
 import type { AppContext } from "../context.js";
-import { forbidden, notFound, unauthorized } from "./errors.js";
+import { forbidden, notFound, supportSessionRequired, unauthorized } from "./errors.js";
+import { hasActiveSupportSession } from "./support-session.js";
 
 export type PlatformRole = "none" | "rep" | "admin";
 export type StaffRole = "owner" | "manager" | "staff";
@@ -84,6 +85,8 @@ export async function requireStaff(
   if (user.platformRole === "admin" || (user.platformRole === "rep" && merchant.repUserId === user.id)) {
     // Acting inside a shop as platform staff: every change is written to the audit log (reads are not).
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      // Reads are open to support; a write needs an active support session with a reason on file.
+      if (!(await hasActiveSupportSession(ctx, user.id, merchantId))) throw supportSessionRequired(merchantId);
       await writeAudit(ctx.db, {
         actorUserId: user.id,
         merchantId,

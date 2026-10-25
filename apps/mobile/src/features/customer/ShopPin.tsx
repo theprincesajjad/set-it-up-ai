@@ -6,7 +6,9 @@
  */
 import type { networkApi } from "@ll/shared";
 import { View } from "react-native";
-import { pinSubtitle, type PinMembership } from "../../lib/explore";
+import { pinSubtitleL, type PinMembership } from "../../lib/explore";
+import type { L } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { useTheme } from "../../theme";
 import { PlaceBubble, shadow, Text } from "../../ui";
 
@@ -20,10 +22,11 @@ export const PIN_HEIGHT = 48;
 
 /** The selected pin is the bare 46 pt ringed bubble: the sheet below carries the name (canvas ShopSheet). */
 export function ShopPin({ shop, membership, selected, bare, side = "right" }: { shop: networkApi.ShopListItemDto; membership: PinMembership | null; selected: boolean; bare?: boolean; side?: "right" | "left" }) {
-  const sub = pinSubtitle(shop.merchant.vertical, membership, shop);
+  const L = useLocale();
+  const sub = pinSubtitleL(L, shop.merchant.vertical, membership, shop);
   const b = selected ? 46 : PIN_BUBBLE;
   return (
-    <View style={{ width: PIN_WIDTH, height: PIN_HEIGHT, justifyContent: "center" }} pointerEvents="none">
+    <View {...({ dir: "ltr" } as object)} style={{ width: PIN_WIDTH, height: PIN_HEIGHT, justifyContent: "center", direction: "ltr" }} pointerEvents="none">
       <View style={[{ position: "absolute" }, side === "left" ? { right: PIN_ANCHOR_X - b / 2 } : { left: PIN_ANCHOR_X - b / 2 }]}>
         <PlaceBubble name={shop.merchant.name} subtitle={sub.text} accent={sub.accent} vertical={shop.merchant.vertical} photoUrl={shop.merchant.logoUrl} selected={selected} bare={bare || selected} size={PIN_BUBBLE} side={side} />
       </View>
@@ -31,8 +34,8 @@ export function ShopPin({ shop, membership, selected, bare, side = "right" }: { 
   );
 }
 
-export function pinLabel(shop: networkApi.ShopListItemDto, membership: PinMembership | null): string {
-  return `${shop.merchant.name}, ${pinSubtitle(shop.merchant.vertical, membership, shop).text}`;
+export function pinLabel(L: L, shop: networkApi.ShopListItemDto, membership: PinMembership | null): string {
+  return `${shop.merchant.name}, ${pinSubtitleL(L, shop.merchant.vertical, membership, shop).text}`;
 }
 
 /** Overlapping pins fold into a black 24 pt count capsule (canvas), centred where the bubble would be. */

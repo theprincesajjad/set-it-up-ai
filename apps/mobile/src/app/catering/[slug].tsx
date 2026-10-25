@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { ChipGroup, DateField } from "../../features/restaurant/components";
 import { featureOff, rk } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
@@ -68,7 +67,7 @@ export default function CateringInquiry() {
       toast({ tone: "success", message: t("catering.thanks") });
       router.replace(`/events/${ev.id}`);
     } catch (e) {
-      setError(featureOff(e) ? t("rest.cat.notOffered") : errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+      setError(featureOff(e) ? t("rest.cat.notOffered") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }

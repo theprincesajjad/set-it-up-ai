@@ -17,10 +17,12 @@ import {
   rotateApiKey,
   setBetaOptIn,
   updateProfile,
+  userLocale,
 } from "../../services/merchant.js";
 import { dismissUpsell, setNudges } from "../../services/onboarding.js";
 import { recordFeatureInterest, requireFeature } from "../../services/features.js";
 import registerCustomers from "./customers.js";
+import registerExports from "./exports.js";
 import registerProgram from "./program.js";
 import { rejectMalformedIds } from "./params.js";
 import registerTeam from "./team.js";
@@ -80,7 +82,7 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
 
   app.get("/merchants/:merchantId/onboarding", async (req: MerchantReq) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    return getOnboardingChecklist(ctx, s.merchant.id);
+    return getOnboardingChecklist(ctx, s.merchant.id, await userLocale(ctx.db, s.user.id));
   });
 
   app.post("/merchants/:merchantId/onboarding/complete", async (req: MerchantReq) => {
@@ -146,4 +148,5 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   await registerTeam(app, ctx);
   await registerProgram(app, ctx);
   await registerCustomers(app, ctx);
+  await registerExports(app, ctx);
 }

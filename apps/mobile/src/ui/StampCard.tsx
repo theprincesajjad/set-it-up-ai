@@ -1,6 +1,7 @@
 import { springs } from "@ll/design-tokens";
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated, StyleSheet, View, useWindowDimensions } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Check, Gift } from "./icons";
 import { Text } from "./Text";
@@ -34,6 +35,7 @@ export function StampCard({
   compact?: boolean;
 }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const { width } = useWindowDimensions();
   const g = Math.max(1, goal);
   // Stamps are a balance: a full card is a reward ready; extra stamps carry over to the next card.
@@ -58,14 +60,14 @@ export function StampCard({
   return (
     <View
       accessible
-      accessibilityLabel={`${filled} of ${g} stamps.${toGo === 0 ? ` ${rewardName ?? "Reward"} is ready.` : rewardName ? ` ${toGo} more for a ${reward}.` : ""}${carry > 0 ? ` ${carry} extra carry over.` : ""}`}
+      accessibilityLabel={`${t("ui.stampsOf", { n: filled, goal: g })}${toGo === 0 ? ` ${t("ui.stampReady", { reward: rewardName ?? t("ui.reward") })}.` : rewardName ? ` ${t("ui.stampMore", { n: toGo, reward })}.` : ""}${carry > 0 ? ` ${t("ui.stampCarryA11y", { n: carry })}` : ""}`}
       style={{ gap: 10, alignSelf: "stretch" }}
     >
       {compact ? null : (
       <View style={styles.head}>
         {!compact ? (
           <Text variant="meta" color="fgMuted" style={{ flex: 1 }}>
-            {toGo === 0 ? `${rewardName ?? "Reward"} is ready` : rewardName ? `${toGo} more for a ${reward}` : `${toGo} to go`}
+            {toGo === 0 ? t("ui.stampReady", { reward: rewardName ?? t("ui.reward") }) : rewardName ? t("ui.stampMore", { n: toGo, reward }) : t("ui.stampToGo", { n: toGo })}
           </Text>
         ) : (
           <View style={{ flex: 1 }} />
@@ -100,7 +102,7 @@ export function StampCard({
         })}
       </View>
       {carry > 0 && !compact ? (
-        <Text variant="meta" color="fgMuted">{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
+        <Text variant="meta" color="fgMuted">{t("ui.stampCarry", { n: carry })}</Text>
       ) : null}
     </View>
   );

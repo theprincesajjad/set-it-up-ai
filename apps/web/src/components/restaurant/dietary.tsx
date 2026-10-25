@@ -1,6 +1,6 @@
 "use client";
 import type { MessageKey } from "@ll/shared";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { ChiliDots, Pill } from "./ui";
 
 type Dietary = { halal?: boolean; zabihah?: boolean; vegetarian?: boolean; vegan?: boolean; jain?: boolean; glutenFree?: boolean; spice?: number; halalCertifier?: string };
@@ -12,7 +12,7 @@ export function dietaryKeys(d: Dietary | null | undefined): MessageKey[] {
 }
 
 export function DietaryPills({ dietary }: { dietary: Dietary | null | undefined }) {
-  const { t } = useLocale();
+  const { t } = useLocaleOrEnglish();
   const keys = dietaryKeys(dietary);
   if (!keys.length && !dietary?.spice) return null;
   return (

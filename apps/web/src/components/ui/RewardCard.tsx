@@ -1,9 +1,10 @@
 "use client";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
-import { unitsText } from "@/lib/units";
+import { unitCaption, unitsText } from "@/lib/units";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { ProgressBar } from "./ProgressBar";
@@ -51,11 +52,11 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
             {t("sh.rc.redeem")}
           </Button>
         ) : null}
-        {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{locale === "en" ? `${unitsText(locale, toGo, terminology)} to go` : t("sh.wallet.toGo", { amount: unitsText(locale, toGo, terminology) })}</span> : null}
-        {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? (locale === "en" ? `Redeemed ${formatDate(redeemedAt)}` : t("sh.rc.redeemedOn", { date: date(redeemedAt, { month: "short", day: "numeric" }) })) : t("sh.wallet.redeemed")}</Badge> : null}
+        {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{t("sh.wallet.toGo", { amount: unitsText(locale, toGo, terminology) })}</span> : null}
+        {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? t("sh.rc.redeemedOn", { date: locale === "en" ? formatDate(redeemedAt) : date(redeemedAt, { month: "short", day: "numeric" }) }) : t("sh.wallet.redeemed")}</Badge> : null}
       </div>
       {state === "locked" ? (
-        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={locale === "en" ? `${balance} of ${reward.pointsCost} ${terminology}` : t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: terminology })} />
+        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
       ) : null}
       {reward.description || reward.terms ? <p className="mt-2 text-meta text-fg-muted">{reward.terms ?? reward.description}</p> : null}
       {state === "redeeming" ? <div className="mt-3">{children}</div> : null}

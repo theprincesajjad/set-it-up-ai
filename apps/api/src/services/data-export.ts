@@ -37,7 +37,10 @@ import {
 } from "@ll/db";
 import type { customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
-import { resolveUploadUrl } from "../providers/storage.js";
+import { uploadSigner } from "../providers/storage.js";
+
+/** The shopper downloads one file and reads it later, so its photo links last longer than a page view (still hours, not forever). */
+const EXPORT_PHOTO_TTL_SECONDS = 60 * 60;
 
 const SECRET_KEYS = new Set(["approvalToken", "statusToken", "payToken", "authToken", "token"]);
 /** A row without the fields that would let someone else act as the customer. */
@@ -48,6 +51,7 @@ const cleanAll = <T extends Record<string, unknown>>(rows: T[]) => rows.map(clea
 
 export async function moduleExport(ctx: AppContext, userId: string, phone: string | null): Promise<customerApi.DataExportModules> {
   const db = ctx.db;
+  const signUpload = uploadSigner(ctx, EXPORT_PHOTO_TTL_SECONDS);
   const none = [] as never[];
   const merchantRows = await db.select({ id: merchants.id, name: merchants.name }).from(merchants);
   const shop = new Map(merchantRows.map((m) => [m.id, m.name]));
@@ -120,7 +124,7 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
     serviceTickets: tickets.map((t) => ({
       ...clean(t),
       merchantName: shop.get(t.merchantId) ?? null,
-      photos: (t.photos ?? []).map((u) => resolveUploadUrl(u, ctx.config.publicApiUrl)),
+      photos: (t.photos ?? []).map(signUpload),
       timeline: tEvents.filter((e) => e.ticketId === t.id).map(clean),
       quotes: tQuotes.filter((q) => q.ticketId === t.id).map(clean),
     })),

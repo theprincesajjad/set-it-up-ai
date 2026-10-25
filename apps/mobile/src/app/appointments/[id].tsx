@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { errorMessage as apiError, isApiError } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { addAppointmentToCalendar } from "../../features/customer/addToCalendar";
 import { InfoRow, useMoney } from "../../features/restaurant/components";
 import { useLocale } from "../../lib/i18n";
@@ -15,7 +14,7 @@ import { disp, useTheme } from "../../theme";
 import { Badge, Banner, Button, Chip, ErrorState, Screen, SkeletonList, Text } from "../../ui";
 
 /** One appointment: when, who, the cost and the policy in words, with change the time and cancel. */
-const errorMessage = (e: unknown) => apiError(e, { network: copy("err.network"), server: copy("err.server") });
+const errorMessage = (e: unknown, t: (key: "auth.err.network" | "auth.err.server") => string) => apiError(e, { network: t("auth.err.network"), server: t("auth.err.server") });
 
 export default function Appointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -65,7 +64,7 @@ export default function Appointment() {
       setNote({ variant: "success", text: [t("bk.manage.cancelled"), r.feeCharged ? t("bk.manage.feeCharged", { fee: money(r.feeCents) }) : null, !inside && a!.depositPaidAt ? t("bk.manage.refund") : null].filter(Boolean).join(" ") });
       await refresh();
     } catch (e) {
-      setNote({ variant: "danger", text: errorMessage(e) });
+      setNote({ variant: "danger", text: errorMessage(e, t) });
     } finally {
       setBusy(false);
     }
@@ -80,7 +79,7 @@ export default function Appointment() {
       setNote({ variant: "success", text: [t("bk.manage.rescheduled", { when: when(r.appointment.startsAt) }), r.feeCharged ? t("bk.manage.feeCharged", { fee: money(r.feeCents) }) : null].filter(Boolean).join(" ") });
       await refresh();
     } catch (e) {
-      setNote({ variant: "danger", text: isApiError(e) && e.code === "slot_taken" ? t("bk.taken") : errorMessage(e) });
+      setNote({ variant: "danger", text: isApiError(e) && e.code === "slot_taken" ? t("bk.taken") : errorMessage(e, t) });
     } finally {
       setBusy(false);
     }

@@ -6,11 +6,14 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Your catering quote", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("rc.ca.title"), robots: { index: false, follow: false } };
+}
 
 type Props = { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

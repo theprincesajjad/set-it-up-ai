@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Info, type LucideIcon } from "./icons";
 import { Text } from "./Text";
@@ -63,17 +64,19 @@ export function StatusDot({ open, label }: { open: boolean; label: string }) {
 
 /** "Sponsored" label (neutral, trailing info icon). Tapping opens "Why you're seeing this". */
 export function SponsoredBadge({ onPress }: { onPress?: () => void }) {
+  const { t } = useLocale();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Sponsored. Why you're seeing this" onPress={onPress} hitSlop={12}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("ui.sponsoredWhy")} onPress={onPress} hitSlop={12}>
       <Badge tone="neutral" trailingIcon={Info}>
-        Sponsored
+        {t("ui.sponsored")}
       </Badge>
     </Pressable>
   );
 }
 
 export function ComingSoonBadge() {
-  return <Badge tone="neutral">Coming soon</Badge>;
+  const { t } = useLocale();
+  return <Badge tone="neutral">{t("ui.comingSoon")}</Badge>;
 }
 
 const styles = StyleSheet.create({

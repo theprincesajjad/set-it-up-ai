@@ -3,6 +3,7 @@
  * so the tab bar, card button and gift slot match the artboards exactly. Everything else is Lucide.
  */
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { useLocale } from "../lib/i18n";
 
 type P = { size?: number; color: string; strokeWidth?: number; filled?: boolean };
 
@@ -120,16 +121,18 @@ export function CloseGlyph({ size = 16, color, strokeWidth = 2.2 }: P) {
 }
 
 export function ChevronLeftGlyph({ size = 20, color, strokeWidth = 2 }: P) {
+  const { isRtl } = useLocale();
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
+    <Svg style={isRtl ? { transform: [{ scaleX: -1 }] } : undefined} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
       <Path d="M15 6l-6 6 6 6" />
     </Svg>
   );
 }
 
 export function ChevronRightGlyph({ size = 16, color, strokeWidth = 2 }: P) {
+  const { isRtl } = useLocale();
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
+    <Svg style={isRtl ? { transform: [{ scaleX: -1 }] } : undefined} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
       <Path d="M9 6l6 6-6 6" />
     </Svg>
   );

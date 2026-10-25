@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { ChipGroup, DateField, InfoRow, useMoney } from "../../features/restaurant/components";
 import { featureOff, rk, useHalls } from "../../features/restaurant/queries";
 import { useLocale } from "../../lib/i18n";
@@ -136,7 +135,7 @@ function HoldSheet({ slug, hall, onClose }: { slug: string | undefined; hall: Ha
       toast({ tone: "success", message: t("rest.bk.held") });
       router.push("/events?tab=halls");
     } catch (e) {
-      setError(isApiError(e) && e.status === 409 ? t("rest.bk.taken") : featureOff(e) ? t("rest.bk.notOffered") : errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+      setError(isApiError(e) && e.status === 409 ? t("rest.bk.taken") : featureOff(e) ? t("rest.bk.notOffered") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }

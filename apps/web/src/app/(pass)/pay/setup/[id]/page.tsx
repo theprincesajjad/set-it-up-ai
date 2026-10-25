@@ -7,11 +7,14 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 // The client secret is in the query: keep it out of referrers and search indexes.
-export const metadata: Metadata = { title: "Change payment method", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("wp.t.changePay"), robots: { index: false, follow: false }, referrer: "no-referrer" };
+}
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

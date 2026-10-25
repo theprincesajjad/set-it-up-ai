@@ -175,7 +175,7 @@ export const pushTokens = pgTable(
     platform: text("platform").notNull(), // ios | android | web
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("push_tokens_token_uq").on(t.token)],
+  (t) => [uniqueIndex("push_tokens_token_uq").on(t.token), index("push_tokens_user_idx").on(t.userId)],
 );
 
 // ---------------------------------------------------------------------------
@@ -806,7 +806,7 @@ export const walletPasses = pgTable(
     lastUpdatedAt: ts("last_updated_at").notNull().defaultNow(),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("wallet_passes_serial_uq").on(t.serialNumber)],
+  (t) => [uniqueIndex("wallet_passes_serial_uq").on(t.serialNumber), index("wallet_passes_user_idx").on(t.userId)],
 );
 
 export const walletDeviceRegistrations = pgTable(

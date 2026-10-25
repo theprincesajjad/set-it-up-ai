@@ -12,7 +12,7 @@ import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { decodeCursor, encodeCursor, iso, itemLabel, notifyCustomer } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
-import { resolveUploadUrl, toStoredUploadUrl } from "../providers/storage.js";
+import { UPLOAD_PATH, storageKeyFromUrl, toStoredUploadUrl, type UploadSigner, uploadSigner } from "../providers/storage.js";
 import { invoiceDto } from "./invoices.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { quoteDto } from "./quotes.js";
@@ -32,8 +32,8 @@ export interface TicketExtras {
   assignedStaff?: serviceApi.TicketDto["assignedStaff"];
   depositPaidCents?: number;
   publicWebUrl?: string;
-  /** Resolves stored relative upload paths in `photos` to absolute URLs. */
-  publicApiUrl?: string;
+  /** Turns stored upload paths in `photos` into short-lived signed URLs (read time). Without it the stored values are returned as they are. */
+  signUpload?: UploadSigner;
   now?: Date;
   timezone?: string;
 }
@@ -53,6 +53,21 @@ export function readyDays(t: Pick<Ticket, "readyAt" | "updatedAt" | "status">, n
   return Math.max(0, Math.floor((now.getTime() - (t.readyAt ?? t.updatedAt).getTime()) / DAY_MS));
 }
 
+/**
+ * Photo values as stored: the permanent relative path of an upload (whatever signed or hosted URL the form sent back),
+ * or a link the shop pasted, as given. Uploads are signed again each time they are read, so a key that belongs to
+ * another shop would get a valid link: refuse it here.
+ */
+export function storePhotos(ctx: AppContext, merchantId: string, urls: string[]): string[] {
+  return urls.map((u) => {
+    const stored = toStoredUploadUrl(u, ctx.config.publicApiUrl);
+    const key = storageKeyFromUrl(stored);
+    if (!key) return stored;
+    if (!key.startsWith(`${merchantId}/`)) throw badRequest("That photo belongs to another shop.");
+    return `${UPLOAD_PATH}${key}`;
+  });
+}
+
 export function ticketDto(t: Ticket, merchantName: string, opts: TicketExtras = {}): serviceApi.TicketDto {
   const staff = !opts.forCustomer;
   const now = opts.now;
@@ -68,7 +83,7 @@ export function ticketDto(t: Ticket, merchantName: string, opts: TicketExtras = 
     itemDetails: t.itemDetails,
     issue: t.issue,
     intakeNotes: opts.forCustomer ? null : t.intakeNotes,
-    photos: opts.publicApiUrl ? t.photos.map((u) => resolveUploadUrl(u, opts.publicApiUrl!)) : t.photos,
+    photos: opts.signUpload ? t.photos.map(opts.signUpload) : t.photos,
     status: t.status,
     assignedStaffId: t.assignedStaffId,
     promisedAt: iso(t.promisedAt),
@@ -196,7 +211,7 @@ export async function createTicket(ctx: AppContext, staff: StaffContext, input: 
         itemDetails: details,
         issue: body.issue,
         intakeNotes: body.intakeNotes ?? null,
-        photos: body.photos.map((u) => toStoredUploadUrl(u, ctx.config.publicApiUrl)),
+        photos: storePhotos(ctx, merchant.id, body.photos),
         status: "intake",
         assignedStaffId: body.assignedStaffId ?? null,
         promisedAt: body.promisedAt ? new Date(body.promisedAt) : null,
@@ -247,7 +262,7 @@ export async function getTicketDetail(ctx: AppContext, merchant: Merchant, ticke
   const summary = forCustomer ? undefined : await customerSummaryFor(ctx.db, merchant.id, ticket);
   const withToken = forCustomer ? ticket : await ensureStatusToken(ctx.db, ticket);
   return {
-    ticket: ticketDto(withToken, merchant.name, { forCustomer, customer, ...ex, publicWebUrl: ctx.config.publicWebUrl, publicApiUrl: ctx.config.publicApiUrl, now: ctx.now(), timezone: merchant.timezone }),
+    ticket: ticketDto(withToken, merchant.name, { forCustomer, customer, ...ex, publicWebUrl: ctx.config.publicWebUrl, signUpload: uploadSigner(ctx), now: ctx.now(), timezone: merchant.timezone }),
     events: events.map((e) => ({ id: e.id, status: e.status, note: e.note, visibleToCustomer: e.visibleToCustomer, actorUserId: forCustomer ? null : e.actorUserId, createdAt: e.createdAt.toISOString() })),
     quotes: qs.map((q) => quoteDto(q, ctx.config.publicWebUrl, !forCustomer)),
     invoices: invs.map((i) => invoiceDto(i, ctx.config.publicWebUrl)),
@@ -264,7 +279,7 @@ async function customerSummaryFor(db: DbOrTx, merchantId: string, ticket: Ticket
   return { pastTickets: past?.n ?? 0, lastTicketAt: past?.last ? new Date(past.last).toISOString() : null, balance: m?.balance ?? null, visits: (past?.n ?? 0) + 1 };
 }
 
-export async function listTickets(db: DbOrTx, merchant: Merchant, q: z.infer<typeof serviceApi.listTicketsQuery>, ctx?: { now: () => Date; publicWebUrl: string; publicApiUrl?: string }) {
+export async function listTickets(db: DbOrTx, merchant: Merchant, q: z.infer<typeof serviceApi.listTicketsQuery>, ctx?: { now: () => Date; publicWebUrl: string; signUpload?: UploadSigner }) {
   const conds: SQL[] = [eq(serviceTickets.merchantId, merchant.id)];
   if (q.status) {
     const statuses = q.status.split(",").map((s) => s.trim()) as TicketStatus[];
@@ -300,7 +315,7 @@ export async function listTickets(db: DbOrTx, merchant: Merchant, q: z.infer<typ
   const page = rows.slice(0, q.limit);
   const extras = await enrich(db, merchant, page.map((r) => r.t));
   return {
-    items: page.map((r) => ticketDto(r.t, merchant.name, { customer: { name: r.name, phone: r.phone, locale: r.locale }, ...extras.get(r.t.id), now, timezone: merchant.timezone, publicWebUrl: ctx?.publicWebUrl, publicApiUrl: ctx?.publicApiUrl })),
+    items: page.map((r) => ticketDto(r.t, merchant.name, { customer: { name: r.name, phone: r.phone, locale: r.locale }, ...extras.get(r.t.id), now, timezone: merchant.timezone, publicWebUrl: ctx?.publicWebUrl, signUpload: ctx?.signUpload })),
     nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.t) : null,
   };
 }
@@ -329,7 +344,7 @@ export async function ticketSummary(db: DbOrTx, merchant: Merchant, now: Date): 
   return out;
 }
 
-export async function listMyTickets(db: DbOrTx, userId: string, q: { limit: number; cursor?: string }, publicApiUrl?: string) {
+export async function listMyTickets(db: DbOrTx, userId: string, q: { limit: number; cursor?: string }, signUpload?: UploadSigner) {
   const conds: SQL[] = [eq(serviceTickets.userId, userId)];
   const cur = decodeCursor(q.cursor);
   if (cur) conds.push(or(lt(serviceTickets.createdAt, cur.createdAt), and(eq(serviceTickets.createdAt, cur.createdAt), lt(serviceTickets.id, cur.id)))!);
@@ -342,7 +357,7 @@ export async function listMyTickets(db: DbOrTx, userId: string, q: { limit: numb
     .limit(q.limit + 1);
   const page = rows.slice(0, q.limit);
   return {
-    items: page.map((r) => ticketDto(r.t, r.merchantName, { forCustomer: true, publicApiUrl })),
+    items: page.map((r) => ticketDto(r.t, r.merchantName, { forCustomer: true, signUpload })),
     nextCursor: rows.length > q.limit ? encodeCursor(page[page.length - 1]!.t) : null,
   };
 }
@@ -357,7 +372,7 @@ export async function updateTicket(ctx: AppContext, staff: StaffContext, ticketI
   if (body.itemDetails !== undefined) patch.itemDetails = body.itemDetails;
   if (body.issue !== undefined) patch.issue = body.issue;
   if (body.intakeNotes !== undefined) patch.intakeNotes = body.intakeNotes;
-  if (body.photos !== undefined) patch.photos = body.photos.map((u) => toStoredUploadUrl(u, ctx.config.publicApiUrl));
+  if (body.photos !== undefined) patch.photos = storePhotos(ctx, staff.merchant.id, body.photos);
   if (body.promisedAt !== undefined) patch.promisedAt = body.promisedAt ? new Date(body.promisedAt) : null;
   if (body.assignedStaffId !== undefined) patch.assignedStaffId = body.assignedStaffId;
   if (body.intakeChecklist !== undefined) patch.intakeChecklist = body.intakeChecklist;

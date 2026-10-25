@@ -7,16 +7,15 @@
  * Paid features (promos, discount cards, referrals) only appear when the API
  * returns them / the shop's `features` flags say so. No upgrade nags.
  */
-import { distanceMetres, type customerApi, type networkApi } from "@ll/shared";
+import { distanceMetres, placeKindLabel, type customerApi, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Linking, Platform, Pressable, Share, StyleSheet, View, useWindowDimensions } from "react-native";
-import { t } from "../../copy/en-CA";
-import { activityTitle } from "../../lib/activity";
-import { formatNumber, formatPts, termWord, unitLabel } from "../../lib/award";
-import { placeKind } from "../../lib/explore";
-import { formatDayTime, formatDistance, hoursRows, openStatus, rewardInSentence, signed } from "../../lib/format";
+import { activityTitleL } from "../../lib/activity";
+import { formatNumber } from "../../lib/award";
+import { signed } from "../../lib/format";
+import { expiryLineL, formatDayTimeL, formatDistanceL, formatPtsL, hoursRowsL, openPartsL, rewardInSentenceL, termWordL, unitLabelL } from "../../lib/formatL";
 import { displayPhone } from "../../lib/phone";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
@@ -67,6 +66,8 @@ export function useShopModel(slug: string | null | undefined) {
 }
 export type ShopModel = ReturnType<typeof useShopModel>;
 
+const lowerFirst = (x: string) => `${x.charAt(0).toLowerCase()}${x.slice(1)}`;
+
 /** Quick action tile (canvas): grey 56 pt tile, 20 pt glyph over a lowercase 12 pt label; four always fit. */
 function Action({ icon: Icon, label, onPress, disabled }: { icon: (p: { size?: number; color: string }) => React.ReactElement; label: string; onPress: () => void; disabled?: boolean }) {
   const { c } = useTheme();
@@ -90,13 +91,14 @@ function Action({ icon: Icon, label, onPress, disabled }: { icon: (p: { size?: n
 /** Stamp grid (canvas): up to 10 columns of 26 pt dots, accent when earned, the last slot the black gift. */
 export function StampGrid({ count, goal }: { count: number; goal: number }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const { width } = useWindowDimensions();
   const cols = Math.min(goal, 10);
   const inner = Math.min(width, 480) - 40 - 34;
   const slot = Math.max(18, Math.min(26, Math.floor((inner - (cols - 1) * 6) / cols)));
   const colW = (inner - (cols - 1) * 6) / cols;
   return (
-    <View style={styles.grid} accessible accessibilityLabel={`${count} of ${goal} stamps`}>
+    <View style={styles.grid} accessible accessibilityLabel={t("ui.stampsOf", { n: count, goal })}>
       {Array.from({ length: goal }, (_, i) => {
         const last = i === goal - 1;
         const on = i < count;
@@ -128,7 +130,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const [joining, setJoining] = useState(false);
   const [redeeming, setRedeeming] = useState<customerApi.MemberRewardDto | null>(null);
   const [muting, setMuting] = useState(false);
-  const { t: tr } = useLocale();
+  const L = useLocale();
+  const { t: tr } = L;
   const s = model.shop.data as networkApi.PublicShopResponse | undefined;
   if (!s) return null;
 
@@ -136,7 +139,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const walletItem = model.membership as (customerApi.MembershipDto & { features?: customerApi.CustomerFeaturesDto }) | null;
   const features = s.features ?? walletItem?.features;
   const loc = s.locations[0] ?? null;
-  const status = openStatus(loc?.hours ?? null, loc?.openNow);
+  const status = openPartsL(L, loc?.hours ?? null, loc?.openNow);
   const program = m?.program ?? s.program;
   const term = m?.terminology ?? program?.terminology ?? "points";
   const paused = m && !m.program;
@@ -146,7 +149,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const dropoffOn = !!features?.dropoffScheduling;
   const appointmentsOn = !!features?.appointments;
   const referralsOn = features?.referrals !== false && (m?.program?.referralBonus ?? 0) > 0;
-  const neighbours = s.memberCount != null ? `${s.memberCount.toLocaleString("en-CA")} neighbours are members` : null;
+  const neighbours = s.memberCount != null ? tr("shop.membersCount", { n: s.memberCount.toLocaleString("en-CA") }) : null;
   const dist = locState.coords && loc?.lat != null && loc.lng != null ? distanceMetres(locState.coords, { lat: loc.lat, lng: loc.lng }) : null;
   const rewardsList = model.detail.data?.rewards ?? s.rewards.map((r) => ({ ...r, affordable: false, pointsNeeded: r.pointsCost }));
   const discountCards = model.detail.data?.discountCards ?? s.discountCards;
@@ -163,22 +166,22 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
     try {
       await api.me.setMuted(m.id, !m.muted);
       await Promise.all([qc.invalidateQueries({ queryKey: qk.wallet }), qc.invalidateQueries({ queryKey: qk.membership(m.id) })]);
-      toast(m.muted ? t("ok.unmuted", { shop: s.merchant.name }) : t("ok.muted", { shop: s.merchant.name, terminology: termWord(term) }));
+      toast(m.muted ? tr("cp.ok.unmuted", { shop: s.merchant.name }) : tr("cp.ok.muted", { shop: s.merchant.name, terminology: termWordL(L, term) }));
     } catch {
-      toast({ tone: "error", message: t("err.network") });
+      toast({ tone: "error", message: tr("auth.err.network") });
     } finally {
       setMuting(false);
     }
   };
   const earnLine = program
     ? program.earnType === "per_dollar"
-      ? `${program.pointsPerDollar} ${program.pointsPerDollar === 1 ? "pt" : "pts"} per $1`
+      ? tr("ms.shop.earnPerDollar", { pts: L.locale === "en" ? `${program.pointsPerDollar} ${program.pointsPerDollar === 1 ? "pt" : "pts"}` : formatPtsL(L, program.pointsPerDollar, "points"), amount: L.money(100) })
       : program.earnType === "stamps"
-        ? `1 ${termWord(term, 1)} per visit · ${program.stampGoal} for a reward`
-        : `${formatPts(program.pointsPerVisit, term)} per visit`
+        ? tr("ms.shop.earnStamp", { unit: termWordL(L, term, 1), goal: program.stampGoal })
+        : tr("ms.shop.earnVisit", { amount: formatPtsL(L, program.pointsPerVisit, term) })
     : null;
-  const noEarn = s.merchant.vertical === "pharmacy" ? " · Prescriptions don't earn points" : "";
-  const kind = [placeKind(s.merchant.vertical), (loc?.address ?? s.merchant.neighbourhood?.name)?.toLowerCase()].filter(Boolean).join(" · ");
+  const noEarn = s.merchant.vertical === "pharmacy" ? ` · ${tr("ms.shop.rxNoEarn")}` : "";
+  const kind = [placeKindLabel(L.locale, s.merchant.vertical), (loc?.address ?? s.merchant.neighbourhood?.name)?.toLowerCase()].filter(Boolean).join(" · ");
 
   const ready = rewardsList.filter((r) => r.affordable);
   const goal = program?.stampGoal || 10;
@@ -194,11 +197,11 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         <Text style={disp(28, 800, 32, -0.01)} rawColor={c.accent} tabular>
           {isStamps ? String(filled) : formatNumber(m.balance)}
           <Text style={disp(15, 700, 18)} rawColor={c.fgMuted}>
-            {isStamps ? ` / ${goal} ${termWord(term, 2)}` : ` ${unitLabel(term, m.balance)}`}
+            {isStamps ? ` / ${goal} ${termWordL(L, term, 2)}` : ` ${unitLabelL(L, term, m.balance)}`}
           </Text>
         </Text>
-        <Text style={[ui(13, 600, 17), { flexShrink: 1, textAlign: "right" }]} rawColor={readyName ? c.accentText : c.fgMuted} numberOfLines={1}>
-          {readyName ? `${rewardInSentence(readyName)} ready` : m.nextReward ? `${m.nextReward.pointsNeeded} to ${rewardInSentence(m.nextReward.name)}` : ""}
+        <Text style={[ui(13, 600, 17), { flexShrink: 1, textAlign: L.isRtl ? "left" : "right" }]} rawColor={readyName ? c.accentText : c.fgMuted} numberOfLines={1}>
+          {readyName ? tr("sh.hero.readyAt", { reward: rewardInSentenceL(L, readyName) }) : m.nextReward ? tr("sh.hero.toReward", { unit: m.nextReward.pointsNeeded, reward: rewardInSentenceL(L, m.nextReward.name) }) : ""}
         </Text>
       </View>
       {isStamps ? (
@@ -209,23 +212,23 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         </View>
       ) : null}
       {carry > 0 ? (
-        <Text style={[ui(12, 400, 16), { marginTop: 10 }]} rawColor={c.fgMuted}>{`+${carry} extra ${carry === 1 ? "stamp carries" : "stamps carry"} over to your next card`}</Text>
+        <Text style={[ui(12, 400, 16), { marginTop: 10 }]} rawColor={c.fgMuted}>{tr("ui.stampCarry", { n: carry })}</Text>
       ) : null}
     </View>
   ) : (
     <View style={[styles.stampCard, { borderColor: c.line, gap: 6 }]}>
-      <Text style={ui(15, 600, 20)}>{earnLine ? `Earn ${earnLine}` : "Show your card at the counter to earn."}</Text>
-      {program?.welcomeBonus ? <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{`Get ${formatPts(program.welcomeBonus, term)} when you join.`}</Text> : null}
+      <Text style={ui(15, 600, 20)}>{earnLine ? tr("ms.shop.earn", { line: earnLine }) : tr("ms.shop.showToEarn")}</Text>
+      {program?.welcomeBonus ? <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("ms.join.getBonus", { amount: formatPtsL(L, program.welcomeBonus, term) })}</Text> : null}
       <Button size="md" fullWidth onPress={() => setJoining(true)} style={{ marginTop: 8 }}>
-        Join free
+        {tr("ms.shop.joinFree")}
       </Button>
     </View>
   );
 
-  const statusWord = status ? (status.open ? "open" : "closed") : null;
+  const statusWord = status ? status.word : null;
   const statusRest = [
-    status ? status.label.replace(/^(Open|Closed)( · )?/, "").replace(/^closes /, "until ") : "hours not listed",
-    dist != null ? formatDistance(dist) : null,
+    status ? status.rest : tr("ms.shop.hoursNotListed"),
+    dist != null ? formatDistanceL(L, dist) : null,
     neighbours,
   ].filter(Boolean);
 
@@ -233,12 +236,12 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
     <View>
       <View style={styles.head}>
         <ShopLogo shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} size={56} />
-        <View style={{ flex: 1, minWidth: 0, paddingRight: variant === "sheet" ? 50 : 0 }}>
+        <View style={{ flex: 1, minWidth: 0, paddingEnd: variant === "sheet" ? 50 : 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={[disp(22, 700, 26, -0.01), { flexShrink: 1 }]} accessibilityRole="header" numberOfLines={2}>
               {s.merchant.name}
             </Text>
-            {m?.muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel="Muted" /> : null}
+            {m?.muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel={tr("ui.muted")} /> : null}
           </View>
           <Text style={[ui(13, 400, 17), { fontStyle: "italic", marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
             {kind}
@@ -255,14 +258,14 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       <ShopDietary slug={s.merchant.slug} features={features} />
 
-      {paused ? <View style={{ marginTop: 16 }}><Banner variant="neutral">{`This shop has paused its program. Your ${formatPts(m!.balance, term)} are safe.`}</Banner></View> : null}
+      {paused ? <View style={{ marginTop: 16 }}><Banner variant="neutral">{tr("ms.shop.paused", { amount: formatPtsL(L, m!.balance, term) })}</Banner></View> : null}
       <View style={{ marginTop: 20 }}>{balance}</View>
 
       {(model.detail.data?.openRedemptions ?? []).map((r) => (
         <View key={r.id} style={{ marginTop: 12 }}>
           <Banner
             variant="neutral"
-            actionLabel="Show code"
+            actionLabel={tr("ms.shop.showCode")}
             onAction={() =>
               router.push({
                 pathname: "/redeem",
@@ -270,24 +273,24 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
               })
             }
           >
-            {`${r.rewardName}: a code is waiting to be shown at the counter.`}
+            {tr("ms.shop.codeWaiting", { reward: r.rewardName })}
           </Banner>
         </View>
       ))}
 
       <View style={styles.actions}>
-        <Action icon={DirectionsGlyph} label="directions" onPress={directions} disabled={!loc} />
-        <Action icon={CallGlyph} label="call" onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
-        <Action icon={WebsiteGlyph} label="website" onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
-        <Action icon={ShareGlyph} label="share" onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
+        <Action icon={DirectionsGlyph} label={tr("shop.directions").toLowerCase()} onPress={directions} disabled={!loc} />
+        <Action icon={CallGlyph} label={tr("shop.call").toLowerCase()} onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
+        <Action icon={WebsiteGlyph} label={tr("shop.website").toLowerCase()} onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
+        <Action icon={ShareGlyph} label={tr("ms.share").toLowerCase()} onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
       </View>
 
       <Text style={[disp(17, 800, 21), { marginTop: 24 }]} accessibilityRole="header">
-        rewards
+        {tr("shop.rewards").toLowerCase()}
       </Text>
       {rewardsList.length === 0 ? (
         <Text style={[ui(15, 400, 20), { paddingVertical: 14 }]} rawColor={c.fgMuted}>
-          This shop hasn't added rewards yet.
+          {tr("ms.noRewardsYet")}
         </Text>
       ) : null}
       {[...rewardsList]
@@ -299,7 +302,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             <Pressable
               key={r.id}
               accessibilityRole={canRedeem ? "button" : undefined}
-              accessibilityLabel={canRedeem ? `Redeem ${r.name}` : `${r.name}, ${formatPts(r.pointsCost, term)}${m ? `, ${toGo} to go` : ""}`}
+              accessibilityLabel={canRedeem ? tr("ui.redeemReward", { reward: r.name }) : `${r.name}, ${formatPtsL(L, r.pointsCost, term)}${m ? `, ${tr("ui.stampToGo", { n: toGo })}` : ""}`}
               disabled={!canRedeem || !online}
               onPress={() => setRedeeming(r)}
               style={({ pressed }) => [styles.rewardRow, { borderBottomColor: c.line, borderBottomWidth: i < all.length - 1 ? hairline : 0, opacity: pressed ? 0.7 : 1 }]}
@@ -307,16 +310,16 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={ui(15, 500, 20)}>{r.name}</Text>
                 <Text style={[ui(13, 400, 17), { marginTop: 2 }]} rawColor={c.fgMuted}>
-                  {formatPts(r.pointsCost, term)}
+                  {formatPtsL(L, r.pointsCost, term)}
                 </Text>
               </View>
               {m ? (
                 canRedeem ? (
                   <Text style={ui(13, 600, 17)} rawColor={c.accentText}>
-                    ready
+                    {tr("sh.rc.ready").toLowerCase()}
                   </Text>
                 ) : (
-                  <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{`${toGo} to go`}</Text>
+                  <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("ui.stampToGo", { n: toGo })}</Text>
                 )
               ) : null}
             </Pressable>
@@ -324,22 +327,22 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         })}
       {!online && ready.length > 0 ? (
         <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
-          {t("err.redeem.offlineCustomer")}
+          {tr("cp.err.offlineRedeem")}
         </Text>
       ) : null}
 
       {peek ? null : (
         <View style={{ gap: 18, marginTop: 24 }}>
           {orderAhead || ticketsOn || dropoffOn || appointmentsOn ? (
-            <Section title="Order and services">
-              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title="Order ahead" subtitle="Pick up at the counter, pay there" chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn} /> : null}
+            <Section title={tr("ms.shop.orderServices")}>
+              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn} /> : null}
               {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr("bk.shop.book")} subtitle={tr("bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
               {dropoffOn ? <ListRow leadingIcon={Ticket} title={tr("sv.d.link")} subtitle={tr("sv.d.linkSub")} chevron onPress={() => router.push(`/dropoff/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
               {ticketsOn ? (
                 <ListRow
                   leadingIcon={Ticket}
-                  title="My tickets here"
-                  subtitle={myTickets.length > 0 ? `${myTickets.length} repair${myTickets.length === 1 ? "" : "s"}` : "Drop off at the counter, then track it here"}
+                  title={tr("ms.shop.myTickets")}
+                  subtitle={myTickets.length > 0 ? tr("ms.shop.repairsN", { n: myTickets.length }) : tr("ms.shop.dropTrack")}
                   chevron
                   divider={false}
                   onPress={() => router.push("/orders")}
@@ -351,7 +354,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           <ShopRestaurantRows shop={s} features={features} />
 
           {s.promos.length > 0 || discountCards.length > 0 ? (
-            <Section title="Offers" rule={false}>
+            <Section title={tr("sh.set.groupOffers")} rule={false}>
               {s.promos.map((p) => (
                 <PromoCard key={p.id} variant="compact" hideShop terminology={term} promo={p} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
               ))}
@@ -359,7 +362,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                 <Pressable
                   key={dc.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Open ${dc.name}`}
+                  accessibilityLabel={tr("ms.shop.open", { name: dc.name })}
                   onPress={() => router.push({ pathname: "/discount", params: { name: dc.name, percentOff: String(dc.percentOff), amountOffCents: String(dc.amountOffCents), terms: dc.terms ?? "", shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "" } })}
                 >
                   <DiscountCard card={dc} shop={s.merchant} live={false} />
@@ -369,7 +372,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           ) : null}
 
           {m && referralsOn ? (
-            <ListRow leadingIcon={UserPlus} title="Invite a friend" subtitle={`You both get ${formatPts(m.program!.referralBonus, term)}`} chevron divider={false} onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
+            <ListRow leadingIcon={UserPlus} title={tr("sh.inv.title")} subtitle={tr("ms.shop.bothGet", { amount: formatPtsL(L, m.program!.referralBonus, term) })} chevron divider={false} onPress={() => router.push({ pathname: "/referrals", params: { memberId: m.id } })} />
           ) : null}
 
           <ShopWhatsapp shop={s} features={features} />
@@ -377,8 +380,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           {m ? (
             <ListRow
               leadingIcon={BellOff}
-              title={m.muted ? "Unmute this shop" : "Mute this shop"}
-              subtitle={m.muted ? "Offers from this shop are off" : `No offers from this shop. Your ${termWord(term)} keep working.`}
+              title={m.muted ? tr("ms.shop.unmute") : tr("sh.priv.mute")}
+              subtitle={m.muted ? tr("ms.shop.offersOff") : tr("ms.shop.muteSub", { unit: termWordL(L, term) })}
               divider={false}
               onPress={toggleMute}
             />
@@ -386,10 +389,10 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
           {model.detail.data && model.detail.data.history.items.length > 0 ? (
             <Section
-              title="Your visits"
+              title={tr("ms.shop.yourVisits")}
               action={
-                <Button variant="ghost" size="sm" style={{ marginRight: -4 }} onPress={() => router.push({ pathname: "/history", params: { memberId: m!.id } })}>
-                  See all
+                <Button variant="ghost" size="sm" style={{ marginEnd: -4 }} onPress={() => router.push({ pathname: "/history", params: { memberId: m!.id } })}>
+                  {tr("ms.shop.seeAll")}
                 </Button>
               }
             >
@@ -397,8 +400,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                 <ListRow
                   key={tx.id}
                   divider={i < all.length - 1}
-                  title={activityTitle(tx, term)}
-                  subtitle={formatDayTime(tx.createdAt)}
+                  title={activityTitleL(L, tx, term)}
+                  subtitle={formatDayTimeL(L, tx.createdAt)}
                   trailing={
                     <Text variant="bodyStrong" color={tx.points > 0 ? "accentText" : "fgMuted"} tabular>
                       {signed(tx.points)}
@@ -409,21 +412,21 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             </Section>
           ) : null}
 
-          <Section title="About">
+          <Section title={tr("shop.about")}>
             <View style={{ gap: 14, paddingTop: 12 }}>
               {s.merchant.description ? <Text>{s.merchant.description}</Text> : null}
               <Text variant="meta" color="fgMuted">
-                {`${earnLine ?? "Ask at the counter"}${noEarn}${m ? ` · ${m.expiryDisclosure.charAt(0).toLowerCase()}${m.expiryDisclosure.slice(1).replace(/\.$/, "")}` : ""}`}
+                {`${earnLine ?? tr("ms.shop.askCounter")}${noEarn}${m ? ` · ${lowerFirst(expiryLineL(L, m)).replace(/[.।۔]$/, "")}` : ""}`}
               </Text>
               {loc ? (
-                <Pressable accessibilityRole="button" accessibilityLabel={`${loc.address}. Get directions`} onPress={directions} style={{ gap: 2 }}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.shop.getDirections", { address: loc.address })} onPress={directions} style={{ gap: 2 }}>
                   <Text variant="bodyStrong">{loc.address}</Text>
-                  <Text variant="meta" color="fgMuted">{`${loc.city}${loc.postalCode ? ` ${loc.postalCode}` : ""}${dist != null ? ` · ${formatDistance(dist, true)}` : ""}`}</Text>
+                  <Text variant="meta" color="fgMuted">{`${loc.city}${loc.postalCode ? ` ${loc.postalCode}` : ""}${dist != null ? ` · ${formatDistanceL(L, dist, true)}` : ""}`}</Text>
                 </Pressable>
               ) : null}
               {loc ? (
                 <View style={{ gap: 4 }}>
-                  {hoursRows(loc.hours).map((h) => (
+                  {hoursRowsL(L, loc.hours).map((h) => (
                     <View key={h.day} style={{ flexDirection: "row" }}>
                       <Text variant={h.today ? "bodyStrong" : "body"} color={h.today ? "fg" : "fgMuted"} style={{ flex: 1 }}>
                         {h.day}
@@ -433,7 +436,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                       </Text>
                     </View>
                   ))}
-                  {!loc.hours ? <Text color="fgMuted">Hours not listed. Call ahead.</Text> : null}
+                  {!loc.hours ? <Text color="fgMuted">{tr("ms.shop.hoursCall")}</Text> : null}
                 </View>
               ) : null}
               {s.merchant.instagram || s.merchant.phone || neighbours ? (
@@ -446,7 +449,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                       onPress={() => Linking.openURL(s.merchant.instagram!.startsWith("http") ? s.merchant.instagram! : `https://instagram.com/${s.merchant.instagram!.replace(/^@/, "")}`)}
                     />
                   ) : null}
-                  {s.merchant.phone ? <ListRow title="Phone" subtitle={displayPhone(s.merchant.phone)} chevron onPress={() => Linking.openURL(`tel:${s.merchant.phone}`)} divider={!!neighbours} /> : null}
+                  {s.merchant.phone ? <ListRow title={tr("ms.phone")} subtitle={displayPhone(s.merchant.phone)} chevron onPress={() => Linking.openURL(`tel:${s.merchant.phone}`)} divider={!!neighbours} /> : null}
                   {neighbours ? <ListRow title={neighbours} divider={false} /> : null}
                 </View>
               ) : null}
@@ -484,17 +487,18 @@ const styles = StyleSheet.create({
 /** The pinned black capsule under the shop (canvas): members open My card to redeem at the counter. */
 export function ShopCardCta({ model }: { model: ShopModel }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   if (!model.shop.data || !model.membership) return null;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Show my card to redeem"
+      accessibilityLabel={t("ms.shop.showCardRedeem")}
       onPress={() => router.push("/card")}
       style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.fg, opacity: pressed ? 0.88 : 1 }]}
     >
       <CardQrIcon size={20} color={c.bg} />
       <Text style={ui(16, 600, 20)} rawColor={c.bg}>
-        show my card to redeem
+        {t("ms.shop.showCardRedeem").toLowerCase()}
       </Text>
     </Pressable>
   );

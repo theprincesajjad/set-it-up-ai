@@ -8,13 +8,13 @@ import type { FastifyInstance } from "fastify";
 import { merchants, serviceTickets } from "@ll/db";
 import { commerceApi, restaurantApi, serviceApi, tipsEnabledFor } from "@ll/shared";
 import type { AppContext } from "../../context.js";
-import { notFound } from "../../lib/errors.js";
-import { getStorage } from "../../providers/storage.js";
+import { HttpError, notFound } from "../../lib/errors.js";
+import { checkUploadSignature, getStorage } from "../../providers/storage.js";
 import { parse } from "../../lib/validate.js";
 import { slotFeature, listSlots } from "../../services/bookings.js";
 import { publicMenu } from "../../services/catalog.js";
 import { loadMerchant, paymentsReady } from "../../services/commerceShared.js";
-import { requireFeature } from "../../services/features.js";
+import { getMerchantFeatures, requireFeature, requireFeatureFrom } from "../../services/features.js";
 import { getInvoiceByToken, invoiceDto, invoiceFeature, invoiceTipInfo, payInvoice, previewInvoicePoints } from "../../services/invoices.js";
 import { depositPayment, getQuoteByToken, isExpired, markQuoteViewed, quoteDto, respondToQuote } from "../../services/quotes.js";
 import { merchantTax } from "../../services/tax.js";
@@ -29,18 +29,33 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   const publicMerchant = (m: typeof merchants.$inferSelect) => ({ name: m.name, slug: m.slug, logoUrl: m.logoUrl, phone: m.phone, vertical: m.vertical });
 
-  // ---------------------------------------------------------------- uploads (dev disk storage; hosted stores serve their own URLs)
-  app.get<{ Params: { merchantId: string; file: string } }>("/public/uploads/:merchantId/:file", async (req, reply) => {
-    const obj = await getStorage(ctx).get?.(`${req.params.merchantId}/${req.params.file}`);
+  // ---------------------------------------------------------------- uploads (dev disk storage; hosted stores presign their own URLs)
+  // Only signed, unexpired links are served (providers/storage.ts). The signature covers the key and the expiry, so
+  // neither can be changed, and a key without a signature is not readable at all.
+  app.get<{ Params: { merchantId: string; file: string }; Querystring: { exp?: string; sig?: string } }>("/public/uploads/:merchantId/:file", async (req, reply) => {
+    const key = `${req.params.merchantId}/${req.params.file}`;
+    const now = ctx.now();
+    const verdict = checkUploadSignature(ctx.config.jwtSecret, key, req.query.exp, req.query.sig, now);
+    if (verdict === "invalid") throw new HttpError(403, "invalid_link", "This photo link is not valid.");
+    if (verdict === "expired") throw new HttpError(403, "link_expired", "This photo link has expired. Reload the page to get a new one.");
+    const obj = await getStorage(ctx).get?.(key);
     if (!obj) throw notFound("Photo");
-    return reply.header("content-type", obj.contentType).header("cache-control", "public, max-age=31536000, immutable").header("x-content-type-options", "nosniff").send(obj.body);
+    const left = Math.max(0, Number(req.query.exp) - Math.floor(now.getTime() / 1000));
+    return reply
+      .header("content-type", obj.contentType)
+      .header("cache-control", `private, max-age=${left}`)
+      .header("x-content-type-options", "nosniff")
+      .header("referrer-policy", "no-referrer")
+      .send(obj.body);
   });
 
   // ---------------------------------------------------------------- menu & slots
   app.get<{ Params: { slug: string } }>("/public/shops/:slug/menu", async (req) => {
     const m = await merchantBySlug(req.params.slug);
-    await requireFeature(ctx.db, m, "orders.order_ahead");
-    return publicMenu(ctx.db, m, parse(restaurantApi.publicMenuQuery, req.query), ctx.now());
+    // Resolve the shop's features once: the gate, the menu's dietary/language switches and "can pay in app" all read them.
+    const features = await getMerchantFeatures(ctx.db, m);
+    requireFeatureFrom(features, "orders.order_ahead");
+    return publicMenu(ctx.db, m, parse(restaurantApi.publicMenuQuery, req.query), ctx.now(), features);
   });
 
   app.get<{ Params: { slug: string } }>("/public/shops/:slug/slots", async (req) => {

@@ -1,6 +1,7 @@
 import { radii } from "@ll/design-tokens";
 import { forwardRef, useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { typo, useTheme } from "../theme";
 import { Text } from "./Text";
 
@@ -20,6 +21,7 @@ export interface OtpFieldProps {
  */
 export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function OtpField({ value, onChange, onComplete, error, autoFocus, length = 6 }, ref) {
   const { c } = useTheme();
+  const { t: tr } = useLocale();
   const inner = useRef<TextInputInstance>(null);
   const shake = useRef(new Animated.Value(0)).current;
 
@@ -45,7 +47,7 @@ export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function Ot
 
   return (
     <Pressable onPress={() => inner.current?.focus()} accessible={false}>
-      <Animated.View style={[styles.row, { transform: [{ translateX: shake }] }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Animated.View {...({ dir: "ltr" } as object)} style={[styles.row, { transform: [{ translateX: shake }] }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {Array.from({ length }, (_, i) => {
           const active = i === Math.min(value.length, length - 1);
           return (
@@ -78,7 +80,7 @@ export const OtpField = forwardRef<TextInputInstance, OtpFieldProps>(function Ot
         autoComplete="one-time-code"
         maxLength={length}
         autoFocus={autoFocus}
-        accessibilityLabel={`${length}-digit code`}
+        accessibilityLabel={tr("ui.digitCode", { n: length })}
         caretHidden
         style={[typo("keypad"), styles.hidden]}
       />

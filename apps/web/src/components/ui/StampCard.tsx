@@ -1,6 +1,9 @@
+"use client";
 import { Check, Gift } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { unitCaption } from "@/lib/units";
 
 export interface StampCardProps {
   stamps: number;
@@ -20,28 +23,30 @@ export interface StampCardProps {
  * Stamp row/grid (v2): earned stamps are solid accent dots with a check, unearned ones are hairline
  * rings with their number, the last slot is the gift. The accent here IS the points.
  */
-export function StampCard({ stamps, goal, rewardName = "reward", newlyEarned = [], header, className, terminology = "stamps", frame = "card" }: StampCardProps) {
+export function StampCard({ stamps, goal, rewardName, newlyEarned = [], header, className, terminology = "stamps", frame = "card" }: StampCardProps) {
+  const { t, locale } = useLocaleOrEnglish();
+  const rewardLabel = rewardName ?? t("ui.reward").toLowerCase();
   const g = Math.max(1, Math.min(12, goal || 10));
   const onCard = stamps >= g ? g : stamps % g;
   const ready = stamps >= g;
   const carry = stamps > g ? stamps - g : 0;
   const cols = g <= 6 ? g : g === 8 ? 4 : g === 9 ? 5 : g === 10 ? 5 : 6;
   const toGo = Math.max(0, g - onCard);
-  const reward = `${rewardName.charAt(0).toLowerCase()}${rewardName.slice(1)}`;
+  const reward = `${rewardLabel.charAt(0).toLowerCase()}${rewardLabel.slice(1)}`;
 
   return (
     <div className={cn(frame === "card" && "rounded-card border border-line bg-bg p-4", className)}>
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="min-w-0 flex-1">
           {header ?? (
-            <p className="text-body-strong text-fg">{ready ? <span className="text-accent-text">{rewardName} is ready</span> : `${toGo} more for a ${reward}`}</p>
+            <p className="text-body-strong text-fg">{ready ? <span className="text-accent-text">{t("ui.stampReady", { reward: rewardLabel })}</span> : t("ui.stampMore", { n: toGo, reward })}</p>
           )}
         </div>
         <span className="shrink-0 text-meta tabular-nums text-fg-muted">
           <span className="font-semibold text-fg">{onCard}</span> / {g}
         </span>
       </div>
-      <div role="img" aria-label={`${onCard} of ${g} ${terminology}. ${ready ? `${rewardName} is ready.` : `${toGo} more for a ${rewardName}.`}`} className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: rewardLabel })}.`} className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {Array.from({ length: g }, (_, i) => {
           const filled = i < onCard;
           const last = i === g - 1;
@@ -60,7 +65,7 @@ export function StampCard({ stamps, goal, rewardName = "reward", newlyEarned = [
           );
         })}
       </div>
-      {carry > 0 ? <p className="mt-3 text-meta text-fg-muted">+{carry} on your next card</p> : null}
+      {carry > 0 ? <p className="mt-3 text-meta text-fg-muted">{t("wp.ui.carry", { n: carry })}</p> : null}
     </div>
   );
 }

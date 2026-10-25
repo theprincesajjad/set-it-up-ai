@@ -11,6 +11,7 @@ import { useState } from "react";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { env } from "@/lib/env";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { formatMoney } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +29,7 @@ export interface PaymentBoxProps {
 }
 
 export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, onPaid }: PaymentBoxProps) {
+  const { t } = useLocaleOrEnglish();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (env.stripePublishableKey) {
@@ -35,7 +37,9 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
   }
   return (
     <div className="flex flex-col gap-3 rounded-card border border-dashed border-line-strong/60 p-4">
+      {/* l10n-ok: shown only when Stripe is not configured (local development) */}
       <p className="text-meta-strong text-fg">Test payment (development)</p>
+      {/* l10n-ok: development-only notice */}
       <p className="text-meta text-fg-muted">Stripe isn&apos;t configured on this site, so this simulates a successful card payment through the API&apos;s fake payments provider. Nothing is charged.</p>
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <Button
@@ -55,7 +59,7 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
           }
         }}
       >
-        {label ?? `Pay ${formatMoney(amountCents)}`}
+        {label ?? t("ms.ticket.pay", { amount: formatMoney(amountCents) })}
       </Button>
     </div>
   );

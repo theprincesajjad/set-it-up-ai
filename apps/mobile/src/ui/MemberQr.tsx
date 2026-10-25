@@ -1,6 +1,7 @@
 import { radii } from "@ll/design-tokens";
 import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { groupMemberCode } from "../lib/award";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { QrCode } from "./QrCode";
 import { Text } from "./Text";
@@ -9,6 +10,7 @@ import { Text } from "./Text";
 export function MemberQr({ payload, memberCode, name, size }: { payload: string; memberCode: string; name?: string | null; size?: number }) {
   const { width } = useWindowDimensions();
   const { c } = useTheme();
+  const { t } = useLocale();
   const qr = size ?? Math.max(220, Math.min(280, Math.round(width * 0.7)));
   return (
     <View style={[styles.card, { backgroundColor: c.qrBg }]}>
@@ -18,7 +20,7 @@ export function MemberQr({ payload, memberCode, name, size }: { payload: string;
         </Text>
       ) : null}
       <View style={{ padding: 12, backgroundColor: c.qrBg }}>
-        <QrCode value={payload} size={qr} accessibilityLabel={`Your member QR code. Member number ${memberCode.split("").join(" ")}`} />
+        <QrCode value={payload} size={qr} accessibilityLabel={t("ui.memberQr", { code: memberCode.split("").join(" ") })} />
       </View>
       <Text rawColor="#0B0B0C" center selectable style={styles.code}>
         {groupMemberCode(memberCode)}

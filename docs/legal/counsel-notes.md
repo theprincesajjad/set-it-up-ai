@@ -1,6 +1,6 @@
 # Counsel and finance notes (not published)
 
-Notes that used to sit inside the public pages in this folder. The pages are rendered on the website, so anything that is for counsel or for finance lives here instead. A web test (`apps/web/test/legal-pages.test.ts`) fails if a "Finance note" or a "Counsel" note reappears in the Rewards Terms.
+Notes that used to sit inside the public pages in this folder. The pages are rendered on the website, so anything that is for counsel, finance or drafting lives here instead: "Counsel:" lines, VERIFY flags, drafting notes in brackets, checklists and the status of the French translations. A web test (`apps/web/test/legal-pages.test.ts`) fails if any of them reappears on a published page (English or French). Pages keep only the "DRAFT: not in effect" banner and the bracketed placeholders for facts we do not have yet (company name, dates, contact details, vendors).
 
 ## Rewards Terms
 
@@ -23,3 +23,49 @@ Notes that used to sit inside the public pages in this folder. The pages are ren
 - The retention periods in section 6 are set in `packages/shared/src/retention.ts` and run by the `privacy.retention` job. Tests: `apps/api/test/retention.test.ts`.
 - The do-not-contact list (`comm_opt_outs`) survives account deletion on purpose. Counsel: confirm that keeping a phone number for that single purpose is acceptable under PIPEDA and Law 25, or whether it should be stored hashed.
 - Counsel: the periods are engineering's proposals (90 days, 24 months, 12 months, 30 days, 7 days, 30 days); confirm them, and the Quebec position on allergy notes as sensitive information.
+
+## Merchant Agreement
+
+- **1.1 "equivalent".** Scope of "equivalent" when a Free feature is replaced, and whether to commit to a minimum notice period if the whole Service is discontinued (see 11.3).
+- **2.1 export.** The export now covers every kind of Merchant Customer Data, as CSV and one ZIP (Settings, Privacy, "Your data"), on paid plans and for 90 days after leaving. Counsel: confirm that exporting members' phone numbers, WhatsApp and phone-order text and review comments to the merchant is consistent with the merchant being responsible for CASL and PIPEDA (section 2.4). What we did to respect consent: each member row carries the marketing consent (when, how, exact wording), the shop mute and the STOP list for text and WhatsApp; the reviews file carries `may_follow_up` (consent on file, not muted, not STOPped); customers who deleted their account appear without personal details; links, tokens, signature IP and device and Stripe identifiers are never exported.
+- **2.6 and Schedule B.** Draft Schedule B (data processing); it allocates the controller-like roles. The published Schedule B is one sentence that restates section 2; replace it with the real schedule.
+- **3.2 reimbursement.** Mechanics and tax treatment (HST on reimbursed rewards). The page now says "the retail value shown" within 30 days by Stripe transfer or monthly credit. The open alternative is "the agreed reimbursement rate". Decide.
+- **2.3, 10.2, bracketed numbers.** The groups of 10 for aggregate statistics, the 14 days' notice before suspension and the 30-day reimbursement were bracketed proposals; they are now printed without brackets. Confirm them.
+- **8 caps.** Check the limitation-of-liability caps.
+- **12 General.** Assignment; force majeure; a French-language version of the Merchant Agreement for Quebec merchants (not translated yet).
+- **Schedule C.** Pharmacy addendum: the page states the three obligations; draft the full addendum.
+- **Delivery.** Merchants accept this as a click-through at setup, or the rep collects a signature on the tablet. The plain-language summary leads on purpose: a merchant should be able to read it in two minutes.
+
+## Customer Terms of Service
+
+- Confirm the age floor (16) and the parental-consent rules for 13 to 15.
+- Check enforceability of the limit of liability against consumers in Ontario and Quebec.
+- We intend no mandatory arbitration and no class-action waiver for consumers (stated on the page). Ontario's CPA limits these, and the Drop lesson suggests transparency is the better defence.
+- Counsel checklist: age floor; Quebec carve-outs (language, Law 25, Quebec CPA); consistency with CASL consent flows; whether CPA Part IV internet-agreement disclosures apply to any paid customer feature; the limitation-of-liability wording.
+- The bracketed numbers in the Rewards Terms (90, 30, 60 days) and in the Privacy Policy (3 years inactivity, 3 years consent, 6 years tax, age 16, groups of 10) were engineering proposals; they are printed without brackets. Confirm them.
+
+## Rewards Terms: drafting note
+
+These terms are written to avoid the problems that led to complaints and a class action against Toronto's Drop rewards app over hard-to-redeem points (PRD; https://en.wikipedia.org/wiki/Drop_(loyalty_program)). Every rule is meant to be simple, visible and honoured at the counter.
+
+## Privacy Policy: counsel checklist (moved off the page)
+
+- Confirm the vendor list and data locations, and the processors' contracts (Stripe, Twilio, Meta WhatsApp, Resend, Expo, the photo store).
+- Inactivity deletion (3 years) versus non-expiring points: reconcile, for example by keeping a minimal balance record.
+- The age floor.
+- Whether precise location for nearby push needs express opt-in wording (recommended: yes).
+- Retention periods for transcripts, messages, photos and feedback, and whether account deletion must reach every module in section 2 (it does; see the first list above).
+- Whether storing allergy notes, phone transcripts and halal or dietary information raises sensitivity under PIPEDA and Law 25.
+- A Quebec Law 25 annex (privacy impact assessments for transfers outside Quebec, privacy-by-default settings, a confidentiality incident register). The French version now exists (below).
+- A cookie and tracking notice for the website.
+- Uploaded photos (repair tickets) are no longer served from permanent links. Each time a photo is shown the API signs a link (HMAC, expires after 15 minutes, `UPLOAD_LINK_MINUTES` in `packages/shared/src/retention.ts`); the database keeps only the storage path. The policy says so in section 4. A hosted object store plugs in by implementing `signedUrl` on the storage provider (a presigned GET). The shopper's own data download contains photo links valid for one hour. Photos were the only uploads: menu and catering images are links the shop pastes, not uploads.
+
+## French versions (Quebec, Law 25): Traduction — à faire réviser
+
+All of the following are machine-assisted translations written by engineering and have not been read by a lawyer or a translator. Each needs a review by a Quebec lawyer or a certified translator before the policy is relied on for Quebec shoppers. The pages carry the same DRAFT banner as the English ones (in French) and no mention of this status.
+
+- **Traduction — à faire réviser: Politique de confidentialité** (`docs/legal/fr/privacy-policy.md`, published at `/legal/privacy?lang=fr`). Check the terms of art: "renseignements personnels", "responsable de la protection des renseignements personnels", "incident de confidentialité", "facteurs relatifs à la vie privée", "format technologique structuré et couramment utilisé", "LCAP". Section 8 names the Loi 25 by its short name; counsel should confirm the full citation.
+- **Traduction — à faire réviser: Conditions des récompenses** (`docs/legal/fr/rewards-terms.md`, published at `/legal/rewards?lang=fr`). Check "Récompenses du réseau", "SDC" (Business Improvement Area), "points de commerçant", "laissez-passer numérique" (wallet pass).
+- **Traduction — à faire réviser: avis de transcription téléphonique** (`TRANSCRIPT_NOTICE.fr` in `apps/api/src/services/phone.ts`, spoken in fr-CA after the shop's own language and English, before the order prompt, on every call). The notice is French only; callers still order in the shop's four languages.
+- The Customer Terms of Service and the Merchant Agreement are not translated. Counsel to decide whether Quebec requires French versions of those before launch (Charter of the French language: contracts of adhesion).
+- A native speaker should check that the placeholders ([date], [courriel], [nom] ...) are filled in both languages when the English ones are.

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { DriverRun } from "@/components/restaurant/DriverRun";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Your run", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("wp.t.run"), robots: { index: false, follow: false } };
+}
 
 type Props = { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

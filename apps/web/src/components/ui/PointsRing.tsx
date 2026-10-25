@@ -1,5 +1,8 @@
+"use client";
 import { cn } from "@/lib/cn";
-import { formatNumber, unitFor } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { unitCaption, unitsText } from "@/lib/units";
 
 const SIZES = { 64: { stroke: 5, text: "text-[20px] leading-6" }, 120: { stroke: 7, text: "text-[34px] leading-9" }, 200: { stroke: 9, text: "text-[56px] leading-[56px]" } } as const;
 
@@ -16,16 +19,17 @@ export interface PointsRingProps {
 
 /** Circular progress to the next reward. v2: thin black ring on a grey track; accent once the reward is ready. */
 export function PointsRing({ balance, goal, terminology = "points", rewardName, size = 120, className, showCaption = true }: PointsRingProps) {
+  const { t, locale } = useLocaleOrEnglish();
   const { stroke, text } = SIZES[size];
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const ready = goal > 0 && balance >= goal;
   const pct = goal > 0 ? Math.min(1, balance / goal) : 0;
   const toGo = Math.max(0, goal - balance);
-  const unit = unitFor(terminology, balance);
+  const unit = unitCaption(locale, balance, terminology);
   const a11y = goal > 0
-    ? `${formatNumber(balance)} of ${formatNumber(goal)} ${terminology}.${rewardName ? ready ? ` ${rewardName} is ready.` : ` ${toGo} ${terminology} to ${rewardName}.` : ""}`
-    : `${formatNumber(balance)} ${terminology}.`;
+    ? `${t("sh.rc.progress", { have: formatNumber(balance), need: formatNumber(goal), unit: unitCaption(locale, 2, terminology) })}.${rewardName ? (ready ? ` ${t("ui.stampReady", { reward: rewardName })}.` : ` ${t("sh.hero.toReward", { unit: unitsText(locale, toGo, terminology, false), reward: rewardName })}.`) : ""}`
+    : `${formatNumber(balance)} ${unitCaption(locale, 2, terminology)}.`;
 
   return (
     <div className={cn("flex flex-col items-center gap-2", className)}>
@@ -50,7 +54,7 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
         </div>
       </div>
       {showCaption && rewardName && goal > 0 ? (
-        <p className="text-center text-meta text-fg-muted">{ready ? <span className="font-semibold text-accent-text">{rewardName} is ready</span> : `${formatNumber(toGo)} ${unitFor(terminology, toGo)} to ${rewardName}`}</p>
+        <p className="text-center text-meta text-fg-muted">{ready ? <span className="font-semibold text-accent-text">{t("ui.stampReady", { reward: rewardName })}</span> : t("sh.hero.toReward", { unit: unitsText(locale, toGo, terminology), reward: rewardName })}</p>
       ) : null}
     </div>
   );

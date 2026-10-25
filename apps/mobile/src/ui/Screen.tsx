@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useRef, type ReactNode } from "react";
 import { Animated, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { IconButton } from "./IconButton";
 import { ChevronLeft } from "./icons";
@@ -73,6 +74,7 @@ export function Screen({
   collapseTitle,
 }: ScreenProps) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
   const y = useRef(new Animated.Value(0)).current;
@@ -108,7 +110,7 @@ export function Screen({
     <SafeAreaView edges={floatingBack ? edges.filter((e) => e !== "top") : edges} style={[styles.root, { backgroundColor: bg }]}>
       {barShown ? (
         <View style={[styles.bar, { backgroundColor: bg }]}>
-          <View style={styles.side}>{back ? <IconButton icon={ChevronLeft} label="Back" variant="secondary" size={36} onPress={goBack} /> : null}</View>
+          <View style={styles.side}>{back ? <IconButton icon={ChevronLeft} label={t("rc.back")} variant="secondary" size={36} onPress={goBack} /> : null}</View>
           <Animated.View style={[styles.center, { opacity: smallTitleOpacity }]} accessibilityElementsHidden={largeTitle} importantForAccessibility={largeTitle ? "no-hide-descendants" : "auto"}>
             <Text variant="headline" numberOfLines={1} accessibilityRole={largeTitle ? undefined : "header"}>
               {shownTitle}
@@ -134,7 +136,7 @@ export function Screen({
       )}
       {floatingBack ? (
         <View style={[styles.floatingBack, { top: insets.top + 8 }]}>
-          <IconButton icon={ChevronLeft} label="Back" variant="float" size={36} onPress={goBack} />
+          <IconButton icon={ChevronLeft} label={t("rc.back")} variant="float" size={36} onPress={goBack} />
         </View>
       ) : null}
       {footer ? <View style={[styles.footer, { borderTopColor: c.line, backgroundColor: bg, paddingBottom: Math.max(12, tabBar ? tabSpace : 0) }]}>{footer}</View> : null}
@@ -175,6 +177,6 @@ const styles = StyleSheet.create({
   /** No app bar: keep the first line off the status bar / notch edge. */
   noBar: { paddingTop: 16 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  floatingBack: { position: "absolute", left: layout.gutterMobile, borderRadius: 999, ...shadows.none.native },
+  floatingBack: { position: "absolute", start: layout.gutterMobile, borderRadius: 999, ...shadows.none.native },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28 },
 });

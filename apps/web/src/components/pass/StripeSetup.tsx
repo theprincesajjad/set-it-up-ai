@@ -3,7 +3,7 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useState } from "react";
-import { copy } from "@/copy/en-CA";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { stripeAppearance } from "@/lib/stripeAppearance";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,7 @@ export interface StripeSetupProps {
 }
 
 function Form({ label, onSucceeded }: Omit<StripeSetupProps, "publishableKey" | "clientSecret">) {
+  const { t } = useLocaleOrEnglish();
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -36,7 +37,7 @@ function Form({ label, onSucceeded }: Omit<StripeSetupProps, "publishableKey" | 
         setError(null);
         const { error: err } = await stripe.confirmSetup({ elements, redirect: "if_required", confirmParams: { return_url: window.location.href } });
         if (err) {
-          setError(err.type === "card_error" || err.type === "validation_error" ? (err.message ?? copy.err.paymentDeclined) : copy.err.paymentDeclined);
+          setError(err.type === "card_error" || err.type === "validation_error" ? (err.message ?? t("wp.pay.declined")) : t("wp.pay.declined"));
           setBusy(false);
           return;
         }

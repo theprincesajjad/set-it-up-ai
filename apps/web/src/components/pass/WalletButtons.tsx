@@ -17,9 +17,11 @@
  * and set NEXT_PUBLIC_WALLET_BADGES=1. Until then these render the official wording in a black
  * capsule with a neutral wallet glyph (we must not imitate either company's logo).
  */
+"use client";
 import type { ButtonHTMLAttributes } from "react";
 import { walletApi } from "@ll/shared";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { Spinner } from "@/components/ui/Spinner";
 
 const OFFICIAL = process.env.NEXT_PUBLIC_WALLET_BADGES === "1";
@@ -47,7 +49,9 @@ function WalletGlyph() {
 }
 
 function Badge({ platform, loading, href, fullWidth, placeholder, className, disabled, ...rest }: WalletBadgeProps & { platform: Platform }) {
-  const label = walletApi.WALLET_BUTTON_TEXT[platform];
+  const { t, locale } = useLocaleOrEnglish();
+  // English keeps the official wording; hi / ur / pa say "Add to ..." in one line (the two-line lockup is English only).
+  const label = locale === "en" ? walletApi.WALLET_BUTTON_TEXT[platform] : t(platform === "apple" ? "ms.wallet.addApple" : "ms.wallet.addGoogle");
   const official = OFFICIAL && !placeholder;
   const shape =
     platform === "apple"
@@ -69,9 +73,9 @@ function Badge({ platform, loading, href, fullWidth, placeholder, className, dis
   ) : (
     <>
       <WalletGlyph />
-      {platform === "apple" ? (
+      {platform === "apple" && locale === "en" ? (
         <span className="flex flex-col items-start leading-none">
-          <span className="text-[11px] font-medium tracking-[0.01em]">Add to</span>
+          <span className="text-[11px] font-medium tracking-[0.01em]">Add to</span> {/* l10n-ok: official English lockup */}
           <span className="text-[17px] font-semibold tracking-[-0.01em]">Apple Wallet</span>
         </span>
       ) : (

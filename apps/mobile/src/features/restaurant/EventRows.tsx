@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage } from "../../api/client";
-import { t as copy } from "../../copy/en-CA";
 import { useLocale } from "../../lib/i18n";
 import { bookingNeedsDeposit, holdLeft, refundIfCancelled, refundTiers } from "../../lib/restaurant";
 import { api } from "../../state/api";
@@ -45,7 +44,7 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
       if (deposit?.clientSecret) await pay(deposit);
       else toast({ message: t("rest.bk.payAtShop") });
     } catch (e) {
-      setError(errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(null);
     }
@@ -58,7 +57,7 @@ export function BookingRow({ booking, last }: { booking: restaurantApi.HallBooki
       setConfirm(false);
       toast({ message: r.depositRefundCents > 0 ? t("rest.bk.cancelledRefund", { amount: money(r.depositRefundCents) }) : t("rest.bk.cancelled") });
     } catch (e) {
-      setError(errorMessage(e, { network: copy("err.network"), server: copy("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
       setConfirm(false);
     } finally {
       setBusy(null);

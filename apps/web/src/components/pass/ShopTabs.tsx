@@ -1,15 +1,17 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import { Tabs } from "@/components/ui/Tabs";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 /** Rewards / Promos / About tabs on the shop page (references.md §5, Neo Financial merchant page). */
 export function ShopTabs({ panels }: { panels: { id: string; label: string; count?: number; content: ReactNode }[] }) {
+  const { t } = useLocaleOrEnglish();
   const [tab, setTab] = useState(panels[0]?.id ?? "");
   const active = panels.find((p) => p.id === tab) ?? panels[0];
   return (
     <div className="flex flex-col gap-5">
       <Tabs
-        label="Shop"
+        label={t("wp.shop.tabs")}
         value={active?.id ?? ""}
         onChange={setTab}
         items={panels.map((p) => ({

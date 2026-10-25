@@ -134,6 +134,12 @@ export function llApi(c: ApiClient) {
     },
     /** Everything under /v1/merchants/:merchantId (dashboard, counter, Phase 2/3 tools). */
     merchant: (merchantId: string) => merchantEndpoints(c, merchantId),
+    /** Support sessions for an admin on any shop and a rep on the shops they signed. */
+    support: {
+      current: (merchantId: string) => c.get<{ session: adminApi.SupportSession | null }>(`/v1/support/merchants/${enc(merchantId)}/session`),
+      start: (merchantId: string, reason: string) => c.post<adminApi.SupportSession>(`/v1/support/merchants/${enc(merchantId)}/session`, { reason }),
+      end: (id: string) => c.post<adminApi.SupportSession>(`/v1/support/sessions/${enc(id)}/end`, {}),
+    },
     rep: {
       leads: (q: Q = {}) => c.get<PageOf<repApi.Lead>>("/v1/rep/leads", { query: q }),
       lead: (id: string) => c.get<repApi.LeadDetail>(`/v1/rep/leads/${enc(id)}`),

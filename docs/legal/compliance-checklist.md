@@ -64,7 +64,7 @@ The 10 fair information principles, and what each means for us:
   - Notify affected individuals, and other organizations that can reduce the harm.
   - **Keep records of *all* breaches for 24 months.**
   - Write a 1-page incident-response plan now.
-- ☐ **Roles and data ownership.** The merchant owns its customer relationship and can export its member list (CSV export is Free in plans.ts). Local Loyalty owns the network account (one login across shops). Document in the merchant agreement who is responsible for what. When a merchant uses member data for its own marketing, the merchant is accountable for its CASL and PIPEDA compliance.
+- ☐ **Roles and data ownership.** The merchant owns its customer relationship and can export all of its customer data (CSV for every kind of record and one ZIP, on a paid plan and free for 90 days after leaving: `apps/api/src/services/merchant-export.ts`, tests in `apps/api/test/merchant-export.test.ts`). Local Loyalty owns the network account (one login across shops). Document in the merchant agreement who is responsible for what. When a merchant uses member data for its own marketing, the merchant is accountable for its CASL and PIPEDA compliance.
 - ☐ **Data residency.** Host the primary database and backups in a Canadian region where practical (PRD non-functional requirement). Disclose the cross-border processors (Stripe, Twilio, Meta WhatsApp Cloud API, Resend, Expo, Apple/Google, the photo store, map tiles, analytics providers, which may process data in the US). PIPEDA permits transfers with transparency and contractual safeguards.
 - ☐ **Location.** Use coarse or approximate location by default. Get precise location only with opt-in for nearby features; do not store location history beyond 30 days.
 - ☐ **Minors.** Accounts are 16+ unless counsel approves otherwise (**VERIFY** with counsel). No targeted promos to known minors.
@@ -180,7 +180,7 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 
 **Phone AI (restaurant.phone_ai)**
 
-- ☑ The greeting says the call is turned into text and the text is saved, in English, Hindi, Urdu and Punjabi, before the order prompt (`TRANSCRIPT_NOTICE` in `services/phone.ts`; test in `apps/api/test/phone.test.ts`). ☐ Have a native speaker of each language check the wording.
+- ☑ The greeting says the call is turned into text and the text is saved, in English, French, Hindi, Urdu and Punjabi, before the order prompt (`TRANSCRIPT_NOTICE` in `services/phone.ts`; test in `apps/api/test/phone.test.ts`). ☐ Have a native speaker of each language check the wording.
 - ☐ If we ever store or record call **audio**, change the notice (recording), and add audio to the privacy policy and the retention schedule. Today only the speech-to-text result is stored (`phone_calls.transcript`).
 - ☐ Provider settings: turn off provider-side call recording and transcription retention (Twilio) unless the notice covers it. **VERIFY**
 - ☐ A person confirms every phone order before it becomes an order (`confirmCall`); keep it that way, since that is what lets us say no automated decision is made about the caller. Law 25 requires telling people when a decision is based exclusively on automated processing.
@@ -190,7 +190,7 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 **Retention (nothing is deleted automatically yet; decide the periods, then build the jobs)**
 
 - ☑ **Phone transcripts and WhatsApp messages**: deleted by the `privacy.retention` job after the period in `packages/shared/src/retention.ts` (`services/retention.ts`).
-- ☑ **Uploaded repair photos**: files deleted from the object store (`StorageProvider.delete`) then the links, 24 months after the ticket closes. ☐ Still open: signed, expiring photo URLs before launch. **VERIFY**
+- ☑ **Uploaded repair photos**: files deleted from the object store (`StorageProvider.delete`) then the links, 24 months after the ticket closes. ☑ Photos are served only through short-lived HMAC-signed URLs, made at read time (15 minutes; `providers/storage.ts`, tests in `apps/api/test/uploads-signed.test.ts`); the database keeps only the storage path, and the privacy policy says so (section 4). ☐ Before launch with a hosted object store: implement `signedUrl` (presigned GET) on that provider.
 - ☑ **Review feedback** (`review_requests.feedback`, `reply_body`): deleted after the period in `retention.ts`.
 - ☑ **Tiffin addresses** and notes: cleared after the period for cancelled subscriptions; driver link rows deleted after the period (links expire the same night).
 - ☑ **Allergy notes** on orders cleared after the period once the order is done; WhatsApp allergy notes with the chat. Free text a customer chose to give a shop: do not use it for marketing or analytics.
@@ -204,7 +204,7 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 - ☐ **Driver links** show a customer's name, phone and address for one route and one day: keep the token unguessable, expiry the same night, rate limit (120 a minute) and no search-engine indexing.
 - ☐ **E-signature and approval records** for quotes and catering keep the signer's IP and device: list them in the privacy policy (done) and keep them as long as the dispute period.
 - ☐ **Privacy impact assessment** for the new modules and for the phone assistant (voice, transcripts, a third-party speech-to-text) before launch; required before transfers outside Quebec if we serve Quebec.
-- ☐ **French:** any phone notice and message for Quebec shoppers in French; the notice currently covers English, Hindi, Urdu and Punjabi only.
+- ◐ **French:** the phone notice now includes French (fr-CA) and the privacy policy and rewards terms have French versions at `/legal/privacy?lang=fr` and `/legal/rewards?lang=fr`. ☐ Have a Quebec lawyer or certified translator review all three (see `counsel-notes.md`). ☐ Decide whether the Terms of Service and Merchant Agreement need French versions.
 
 ## 12. Platform policies
 

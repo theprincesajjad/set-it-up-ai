@@ -2,6 +2,7 @@
  * Rep console: leads pipeline, done-for-you merchant creation, QR kits,
  * activation tracking with day-7/day-30 check-ins, commission summary.
  */
+import { startSupportSession } from "./admin-ops.js";
 import { and, asc, desc, eq, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { auditLogs, leadActivities, leads, merchantMembers, merchants, type DbOrTx } from "@ll/db";
 import { repApi } from "@ll/shared";
@@ -210,6 +211,8 @@ export async function createMerchantForOwner(ctx: AppContext, rep: AuthUser, bod
     await ctx.db.insert(leadActivities).values({ leadId: lead.id, repUserId: rep.id, kind: "note", outcome: "signed", notes: `Merchant created: ${merchant.name}`, createdAt: ctx.now() });
   }
   await sendStaffInvite(ctx, { merchantName: merchant.name, role: "owner", email: owner.email ?? null, phone: owner.email ? null : ownerUser.phone });
+  // The done-for-you setup is the reason on file: the rep can configure the shop they just created.
+  await startSupportSession(ctx, rep.id, merchant.id, "Done-for-you setup", undefined);
   return { merchant, ownerUserId: ownerUser.id };
 }
 

@@ -3,16 +3,22 @@ import type { networkApi } from "@ll/shared";
 import { ShopFinder } from "@/components/pass/ShopFinder";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
-import { copy } from "@/copy/en-CA";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
+import { LocaleScope } from "@/lib/i18n";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Shops near you", description: "Every independent shop on the network, near you.", alternates: { canonical: "/map" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("wp.t.mapTitle"), description: t("wp.t.mapDesc"), alternates: { canonical: "/map" } };
+}
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function MapPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
   const neighbourhood = typeof sp.neighbourhood === "string" ? sp.neighbourhood : null;
   let shops: networkApi.ShopListItemDto[];
   let hoods: networkApi.NeighbourhoodDto[] = [];
@@ -26,7 +32,11 @@ export default async function MapPage({ searchParams }: Props) {
       publicServerApi().network.neighbourhoods().then((r) => r.items).catch(() => []),
     ]);
   } catch {
-    return <ErrorState title="Can't load shops right now" description={copy.err.network} action={<Button variant="secondary" href="/map">Try again</Button>} />;
+    return <ErrorState title={t("wp.err.shops")} description={t("auth.err.network")} action={<Button variant="secondary" href="/map">{t("rc.tryAgain")}</Button>} />;
   }
-  return <ShopFinder initial={shops} neighbourhoods={hoods} neighbourhood={neighbourhood} />;
+  return (
+    <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+      <ShopFinder initial={shops} neighbourhoods={hoods} neighbourhood={neighbourhood} />
+    </LocaleScope>
+  );
 }

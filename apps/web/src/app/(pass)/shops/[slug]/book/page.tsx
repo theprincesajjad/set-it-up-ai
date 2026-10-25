@@ -8,7 +8,7 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Book a visit · ${s.name}`, description: `Pick a stylist, services and a time at ${s.name}.`, alternates: { canonical: `/shops/${slug}/book` } };
+    return { title: `${t("bk.title")} · ${s.name}`, description: t("wp.t.bookDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/book` } };
   } catch {
-    return { title: "Book a visit" };
+    return { title: t("bk.title") };
   }
 }
 

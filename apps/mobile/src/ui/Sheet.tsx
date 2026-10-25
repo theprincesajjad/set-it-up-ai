@@ -2,6 +2,7 @@ import { layout, radii, shadows, springs } from "@ll/design-tokens";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Button, type ButtonVariant } from "./Button";
 import { IconButton } from "./IconButton";
@@ -25,6 +26,7 @@ export interface SheetProps {
  */
 export function Sheet({ visible, onClose, title, children, footer, scroll = true }: SheetProps) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const reduce = useReducedMotion();
@@ -50,7 +52,7 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrim }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
         </Animated.View>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Animated.View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.bg, paddingBottom: insets.bottom + 16, transform: [{ translateY }] }, shadows.float.native]}>
@@ -60,7 +62,7 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
                 <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
                   {title}
                 </Text>
-                <IconButton icon={X} label="Close" variant="secondary" size={32} onPress={onClose} />
+                <IconButton icon={X} label={t("sh.card.close")} variant="secondary" size={32} onPress={onClose} />
               </View>
             ) : null}
             {scroll ? (

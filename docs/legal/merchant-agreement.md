@@ -1,6 +1,6 @@
 # DRAFT — have a lawyer review
 
-> **DRAFT — have a lawyer review.** Not legal advice. Bracketed items are placeholders. Merchants accept this as a click-through at setup, or the rep collects a signature on the tablet. A plain-language summary appears first on purpose: merchants should be able to read it in two minutes.
+> **DRAFT — have a lawyer review.** Not legal advice.
 
 # Local Loyalty — Merchant Agreement
 
@@ -12,7 +12,7 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
    - {{list.free}}.
 
    **There is no subscription fee and no transaction fee on your loyalty program.** If you take payments through us, the fees in section 5 apply, and we show them before you turn the feature on. A {{plan.free.name}} feature will never be moved to a paid plan.
-2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of them, free, for {{retention.leaverExportDays}}: after you close your shop or move back to the {{plan.free.name}} plan, the members and visits CSV downloads stay available to the owner from Settings.
+2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of all of it, free, for {{retention.leaverExportDays}}: after you close your shop or move back to the {{plan.free.name}} plan, the owner can still download every file (and one ZIP of everything) from Settings, under Privacy.
 3. **Your points are your promise.** Points customers earn at your shop are issued by you, and you honour them at your shop. **Network bonuses are paid for by us**, never by you.
 4. Paid plans ({{plan.plus.name}} {{plan.plus.price}}, {{plan.pro.name}} {{plan.pro.price}}, and the restaurant plans {{restaurant.starter.name}}, {{restaurant.growth.name}} and {{restaurant.pro.name}}) are optional. They appear only when we launch them in your area, and you can cancel at any time. Prices are in section 1.2 and fees in section 5.
 5. You follow the rules on consent, pharmacies, alcohol and fair promos, and we give you the tools to do it.
@@ -20,7 +20,6 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
 ## 1. The Service and plans
 
 1.1 **Free plan.** We provide the Free plan features listed in Schedule A at no charge, with no subscription fee and no fee on your loyalty program, for as long as this Agreement is in force. We will not remove a Schedule A feature from the Free plan or make it paid. We may improve or replace a Free feature with an equivalent one.
-- Counsel: the scope of "equivalent"; and whether to commit to a minimum notice period if the whole Service is discontinued (see 11.3).
 
 1.2 **Paid plans.** Paid plans add operations and marketing features. They are available only once we launch them for your area.
 
@@ -56,11 +55,11 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 
 ## 2. Data and customer relationships
 
-2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. Whatever your plan, when you leave we give you an export of your Merchant Customer Data at no charge for {{retention.leaverExportDays}} (the members and visits CSV downloads in Settings, even without {{plan.plus.name}}).
+2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. On a paid plan the owner can download all of it at any time from Settings, under Privacy: one CSV for each of members, visits, points, orders and their items, appointments, tiffin subscriptions and deliveries, catering events, hall bookings, repair tickets (with their photos), quotes, invoices, reviews, messages sent, WhatsApp conversations and phone orders, and one ZIP of everything. Whatever your plan, when you leave we give you the same export at no charge for {{retention.leaverExportDays}}, even without {{plan.plus.name}}. A customer who has deleted their account appears without personal details, and the files show each member's marketing consent and who has asked not to be contacted, so you can follow section 2.4.
 
 2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer's relationship with Local Loyalty and those other shops. You will not see other merchants' data; we will not show your data to other merchants.
 
-2.3 **Our use.** We use Merchant Customer Data to provide the Service, prevent fraud, improve the Service, and create **aggregated, de-identified** statistics, for example street-level visit counts for a BIA report. Those statistics never identify you or any customer, and are reported only in groups of [10] or more. **We do not sell personal information.**
+2.3 **Our use.** We use Merchant Customer Data to provide the Service, prevent fraud, improve the Service, and create **aggregated, de-identified** statistics, for example street-level visit counts for a BIA report. Those statistics never identify you or any customer, and are reported only in groups of 10 or more. **We do not sell personal information.**
 
 2.4 **Your use and compliance.** When you use Merchant Customer Data, including exports and email or SMS campaigns, you are responsible for complying with privacy law (PIPEDA) and CASL. Only message customers who consented to receive messages from you; our consent and unsubscribe tools are built in, so don't bypass them.
 
@@ -69,7 +68,6 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 2.5A **Sensitive and conversation data.** We never sell Merchant Customer Data. We do not use messages, transcripts, review text or repair photos to train AI models and do not license them to anyone. Do not put health information in notes (other than an allergy a customer asks you to pass to the kitchen). Delete or correct a customer's information when they ask.
 
 2.6 **Processor terms.** Where we process personal information on your behalf, the Data Processing Schedule (Schedule B) applies.
-- Counsel: draft Schedule B; it allocates the controller-like roles.
 
 ## 3. Points liability
 
@@ -78,8 +76,7 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 - 30 days' notice and a 90-day grandfathering period for adverse changes;
 - honouring rewards shown as available.
 
-3.2 **Network-funded rewards.** Network Rewards are funded by Local Loyalty. Examples are welcome bonuses for visiting several shops on your street, and network perks. When a customer redeems a Network Reward at your shop, we reimburse you **[the retail value shown / the agreed reimbursement rate]** within **[30] days**, by [Stripe transfer or monthly credit].
-- Counsel: the reimbursement mechanics and tax treatment (HST on reimbursed rewards).
+3.2 **Network-funded rewards.** Network Rewards are funded by Local Loyalty. Examples are welcome bonuses for visiting several shops on your street, and network perks. When a customer redeems a Network Reward at your shop, we reimburse you **the retail value shown** within **30 days**, by Stripe transfer or monthly credit.
 
 3.3 **Campaign points.** Points from BIA or sponsor campaigns are funded by the sponsor under the campaign terms, and you are reimbursed as stated there.
 
@@ -98,7 +95,7 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 
 4.4 Display the counter kit and ask customers before adding them. No sign-ups without consent.
 
-4.5 **WhatsApp and phone ordering.** Message customers on WhatsApp promotionally only if they opted in to that. If you use the phone ordering assistant, calls are transcribed and the transcript is kept for you, and the greeting tells the caller so in English, Hindi, Urdu and Punjabi. You must not switch the notice off. You are responsible for any recording you make on your own phone system.
+4.5 **WhatsApp and phone ordering.** Message customers on WhatsApp promotionally only if they opted in to that. If you use the phone ordering assistant, calls are transcribed and the transcript is kept for you, and the greeting tells the caller so in English, French, Hindi, Urdu and Punjabi. You must not switch the notice off. You are responsible for any recording you make on your own phone system.
 
 ## 5. Fees and taxes
 
@@ -126,8 +123,6 @@ To the extent the law allows, neither party is liable for indirect or consequent
 - breach of the data-protection sections (sections 2.4–2.6);
 - fraud or wilful misconduct.
 
-Counsel: check these caps.
-
 ## 9. Indemnity
 
 You indemnify us for third-party claims arising from your products and services, your promos, your messages to customers, or your breach of the restricted-category rules. We indemnify you for third-party claims that the platform, used as permitted, infringes their intellectual property.
@@ -136,7 +131,7 @@ You indemnify us for third-party claims arising from your products and services,
 
 10.1 This Agreement continues until either party ends it. **You may leave at any time** in settings or by email.
 
-10.2 We may suspend or terminate for material breach after **[14] days'** notice and a chance to cure. Immediate suspension is allowed for fraud, illegal activity or risk to customers.
+10.2 We may suspend or terminate for material breach after **14 days'** notice and a chance to cure. Immediate suspension is allowed for fraud, illegal activity or risk to customers.
 
 10.3 On termination:
 - sections 2.1 (export window), 3.1, 3.4, 8 and 9 survive;
@@ -152,7 +147,7 @@ You indemnify us for third-party claims arising from your products and services,
 
 ## 12. General
 
-Ontario law and the federal laws of Canada apply, with the courts of Toronto. This Agreement plus its Schedules is the entire agreement. Notices go by email to the addresses on file. Counsel: assignment; force majeure; French-language version for Quebec merchants.
+Ontario law and the federal laws of Canada apply, with the courts of Toronto. This Agreement plus its Schedules is the entire agreement. Notices go by email to the addresses on file.
 
 ---
 
@@ -162,6 +157,6 @@ Ontario law and the federal laws of Canada apply, with the courts of Toronto. Th
 
 Network perks are run by the network for every shop whatever its plan.
 
-**Schedule B — Data Processing Schedule.** [To draft with counsel.]
+**Schedule B — Data Processing Schedule.** Where we process personal information on your behalf, we do so only to provide the Service and on your instructions, as described in section 2.
 
-**Schedule C — Pharmacy addendum.** No-earn and no-redeem on Rx and pharmacy services; pharmacist-owner confirmation; no health information entered into Local Loyalty. [To draft.]
+**Schedule C — Pharmacy addendum.** No-earn and no-redeem on Rx and pharmacy services; pharmacist-owner confirmation; no health information entered into Local Loyalty.

@@ -10,7 +10,6 @@ const OWNER = {
   email: "owner+pinecone-coffee@example.com",
   password: "localloyalty-demo",
 };
-test.describe.configure({ retries: 1 }); // dev-server compile can add a second to a cold first scan
 test.use({
   viewport: { width: 1280, height: 900 },
   isMobile: false,
@@ -99,6 +98,9 @@ async function signIn(page: Page, next: string) {
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
   await expect(page.getByRole("region", { name: "Scan a card" })).toBeVisible();
+  // The scan panel is server-rendered, so it shows before the page can hear a scanner. Keys typed in that gap are lost
+  // (the flake: an empty keypad, or only the last digit). `data-scan-ready` is set once hydration and effects are done.
+  await expect(page.locator('section[aria-label="Scan a card"][data-scan-ready="true"]')).toBeVisible();
 }
 
 test("cold scan stamps in under 3 seconds and undo reverses it", async ({

@@ -4,6 +4,7 @@ import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId,
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 
+
 type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"] };
 
 /** Active add-on ids per merchant (merchant_add_ons.status = active). */
@@ -52,7 +53,11 @@ export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promi
 
 /** Throws 402 feature_locked unless the merchant can use the feature. */
 export async function requireFeature(db: DbOrTx, merchant: Merchant, key: FeatureKey): Promise<void> {
-  const features = await getMerchantFeatures(db, merchant);
+  requireFeatureFrom(await getMerchantFeatures(db, merchant), key);
+}
+
+/** Same check against features already resolved by the caller (each resolution is three queries). */
+export function requireFeatureFrom(features: Record<FeatureKey, FeatureState>, key: FeatureKey): void {
   const f = features[key];
   if (!f.enabled) throw featureLocked(FEATURES[key].name, f.lockedReason ?? "plan");
 }

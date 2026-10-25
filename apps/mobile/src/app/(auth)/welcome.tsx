@@ -1,5 +1,5 @@
 import { palette } from "@ll/design-tokens";
-import { BRAND, type networkApi } from "@ll/shared";
+import { BRAND, placeKindLabel, type networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Linking, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -10,9 +10,18 @@ import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Button, LogoMark, PlaceBubble, ShopLogo, Text } from "../../ui";
 
+/** Made-up shop names for the street still; proper names, not translated. */
+const SAMPLE_SHOPS = {
+  coffee: "Pinecone Coffee", // l10n-ok: fictional shop name
+  bakery: "Hearth & Crumb", // l10n-ok: fictional shop name
+  eat: "Nonna's Table", // l10n-ok: fictional shop name
+  beauty: "Bloom Hair", // l10n-ok: fictional shop name
+};
+
 /** A still of the product, not an illustration: a pale street with four places on it. */
 function StreetStill({ width }: { width: number }) {
   const { isDark } = useTheme();
+  const { t, locale } = useLocale();
   const land = isDark ? palette.map.landDark : palette.map.land;
   const road = isDark ? palette.map.roadDark : palette.map.road;
   const h = Math.round(width * 0.82);
@@ -22,16 +31,16 @@ function StreetStill({ width }: { width: number }) {
       <View style={[styles.road, { backgroundColor: road, top: -40, bottom: -40, left: width * 0.58, width: 12, transform: [{ rotate: "8deg" }] }]} />
       <View style={[styles.road, { backgroundColor: road, top: h * 0.12, left: -40, right: -40, height: 8, transform: [{ rotate: "6deg" }] }]} />
       <View style={[styles.pin, { top: h * 0.08, left: width * 0.08 }]}>
-        <PlaceBubble name="Pinecone Coffee" subtitle="7 / 10 stamps" category="coffee" />
+        <PlaceBubble name={SAMPLE_SHOPS.coffee} subtitle={t("ms.stampsProgress", { n: 7, goal: 10 })} category="coffee" />
       </View>
       <View style={[styles.pin, { top: h * 0.3, left: width * 0.5 }]}>
-        <PlaceBubble name="Hearth & Crumb" subtitle="reward ready" accent category="bakery" />
+        <PlaceBubble name={SAMPLE_SHOPS.bakery} subtitle={t("sh.wallet.rewardReady")} accent category="bakery" />
       </View>
       <View style={[styles.pin, { top: h * 0.56, left: width * 0.12 }]}>
-        <PlaceBubble name="Nonna's Table" subtitle="restaurant" category="eat" />
+        <PlaceBubble name={SAMPLE_SHOPS.eat} subtitle={placeKindLabel(locale, "restaurant")} category="eat" />
       </View>
       <View style={[styles.pin, { top: h * 0.76, left: width * 0.46 }]}>
-        <PlaceBubble name="Bloom Hair" subtitle="salon" category="beauty" />
+        <PlaceBubble name={SAMPLE_SHOPS.beauty} subtitle={placeKindLabel(locale, "salon")} category="beauty" />
       </View>
     </View>
   );

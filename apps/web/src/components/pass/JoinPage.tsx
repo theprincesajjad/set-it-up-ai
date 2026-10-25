@@ -19,9 +19,9 @@ export async function joinMetadata({ params, searchParams }: JoinPageProps): Pro
   const t = await getT(await searchParams);
   try {
     const info = await publicServerApi().public.joinInfo(code);
-    return { title: t("auth.join.joinShop", { shop: info.merchant.name }), description: `Earn rewards at ${info.merchant.name}. No app needed. Free. Takes 30 seconds.`, robots: { index: false } };
+    return { title: t("auth.join.joinShop", { shop: info.merchant.name }), description: t("wp.t.joinDesc", { shop: info.merchant.name }), robots: { index: false } };
   } catch {
-    return { title: "Join", robots: { index: false } };
+    return { title: t("sh.wallet.join"), robots: { index: false } };
   }
 }
 

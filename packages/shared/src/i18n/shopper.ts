@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE, type Locale } from "./locales.js";
-import { t } from "./t.js";
+import { t, type MessageKey } from "./t.js";
 
 /**
  * "120 points", "1 stamp", "3 stars": a shop's own unit word with its count, in the shopper's language.
@@ -26,4 +26,12 @@ export function unitWord(locale: Locale, terminology: string): string {
     if (lower === "stamps" || lower === "stamp") return t(locale, "sh.n.unitStamps");
   }
   return terminology || "points";
+}
+
+const PLACE_KINDS = ["cafe", "restaurant", "bakery", "bar", "grocery", "pharmacy", "retail", "bookstore", "florist", "pet", "salon", "barber", "spa", "fitness", "repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"] as const;
+
+/** The short, lowercase kind of place under a shop name ("café", "bakery") in the shopper's language; "shop" when unknown. */
+export function placeKindLabel(locale: Locale, vertical: string | null | undefined): string {
+  const k = (PLACE_KINDS as readonly string[]).includes(vertical ?? "") ? vertical : "other";
+  return t(locale, `sh.kind.${k}` as MessageKey);
 }

@@ -6,6 +6,8 @@
  * API, the dashboard and the admin funnel agree on the same words and numbers.
  */
 import { FOUNDING_OFFER, RESTAURANT_PLANS, PLANS } from "./plans.js";
+import type { Locale } from "./i18n/locales.js";
+import { t } from "./i18n/t.js";
 import type { Vertical } from "./verticals.js";
 
 export const ACTIVATION = {
@@ -307,19 +309,24 @@ export function dueNudge(args: { hoursSinceSignup: number; members: number; firs
   return due.length ? due[due.length - 1]!.key : null;
 }
 
-export function nudgeText(key: NudgeKey, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string }): { subject: string; body: string } {
+/**
+ * The setup reminder in the owner's language (`users.locale`; English when it is missing or not one of ours).
+ * The shop name, the till line (what the owner says to customers) and the link stay as they are.
+ */
+export function nudgeText(key: NudgeKey, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string }, locale: Locale = "en"): { subject: string; body: string } {
   const n = args.members;
   const left = Math.max(0, args.target - n);
+  const v = { shop: args.shopName, n, left, days: args.daysLeft, target: args.target, till: args.tillLine, url: args.url, lead: ACTIVATION.leadingMembers, day: ACTIVATION.leadingByDay };
   switch (key) {
     case "nudge_d1":
-      return { subject: `Give your first stamp at ${args.shopName}`, body: `${args.shopName} is set up but nobody has been stamped yet. It takes three minutes: scan your own QR, then add a stamp. ${args.url}` };
+      return { subject: t(locale, "ob.nudge.d1.subject", v), body: t(locale, "ob.nudge.d1.body", v) };
     case "nudge_d3":
-      return { subject: `${n} on the card so far`, body: `${args.shopName}: ${n} member${n === 1 ? "" : "s"} so far. Try saying this at the till today: "${args.tillLine}" ${args.url}` };
+      return { subject: t(locale, "ob.nudge.d3.subject", v), body: t(locale, "ob.nudge.d3.body", v) };
     case "nudge_d7":
-      return { subject: `A week in: ${n} members`, body: `${args.shopName} has ${n} members after a week. Shops that reach 12 by day 14 almost always reach 25. ${left} to go. ${args.url}` };
+      return { subject: t(locale, "ob.nudge.d7.subject", v), body: t(locale, "ob.nudge.d7.body", v) };
     case "nudge_d14":
-      return { subject: `Two weeks in: ${n} members`, body: `${args.shopName} has ${n} members at day 14, a little behind. We will call you this week to help you get the next few. ${args.url}` };
+      return { subject: t(locale, "ob.nudge.d14.subject", v), body: t(locale, "ob.nudge.d14.body", v) };
     case "nudge_d25":
-      return { subject: `${args.daysLeft} days left to reach ${args.target}`, body: `${args.shopName} is ${left} members from active. ${args.daysLeft} days left in your first 30. ${args.url}` };
+      return { subject: t(locale, "ob.nudge.d25.subject", v), body: t(locale, "ob.nudge.d25.body", v) };
   }
 }

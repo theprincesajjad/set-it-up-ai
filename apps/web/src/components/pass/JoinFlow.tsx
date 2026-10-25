@@ -19,6 +19,7 @@ import { otpErrorMessage } from "@/lib/auth/otpErrors";
 import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { firstName, formatPoints } from "@/lib/format";
 import { formatE164, toE164, validateNanp } from "@/lib/phone";
 import { howYouEarn } from "@/lib/program";
@@ -329,6 +330,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             </button>
           </p>
           <OtpField value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
+          {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
           {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" size="lg" fullWidth loading={busy}>
             {t("auth.join.continue")}
@@ -458,7 +460,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           <div className="flex items-center gap-4 rounded-card border border-line p-4">
             <PointsRing balance={m.balance} goal={goal} terminology={m.terminology} size={64} showCaption={false} />
             <div className="min-w-0">
-              <p className="display text-title tabular-nums text-accent-text">{formatPoints(m.balance, m.terminology, false)}</p>
+              <p className="display text-title tabular-nums text-accent-text">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
               {m.nextReward ? <p className="text-meta text-fg-muted">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
             </div>
           </div>

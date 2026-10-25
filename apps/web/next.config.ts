@@ -36,6 +36,12 @@ const nextConfig: NextConfig = {
       { source: "/rewards-terms", destination: "/legal/rewards", permanent: true },
     ];
   },
+  async rewrites() {
+    return [
+      // French (fr-CA) legal pages for Law 25: /legal/privacy?lang=fr is served by the static /legal/fr/privacy page (src/lib/legal.ts).
+      { source: "/legal/:doc(privacy|rewards)", has: [{ type: "query", key: "lang", value: "fr" }], destination: "/legal/fr/:doc" },
+    ];
+  },
   async headers() {
     return [
       {

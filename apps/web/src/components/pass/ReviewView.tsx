@@ -8,7 +8,7 @@ import { ShopLogo } from "@/components/ui/ShopTile";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 
@@ -19,7 +19,7 @@ const restaurantApi = restaurantCustomerApi(browserClient);
  * review. Both show at every rating, in the same place and weight (Google's policy: ask every guest the same way, never gate by rating).
  */
 export function ReviewView({ token, initial }: { token: string; initial: whatsappApi.PublicReviewView }) {
-  const { number, t, rich } = useLocale();
+  const { number, t, rich } = useLocaleOrEnglish();
   const shop = initial.merchant;
   const [rating, setRating] = useState<number>(initial.rating ?? 0);
   const [feedback, setFeedback] = useState("");

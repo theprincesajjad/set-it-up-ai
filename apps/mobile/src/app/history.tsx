@@ -3,11 +3,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
-import { t } from "../copy/en-CA";
 import { useWallet } from "../features/customer/queries";
-import { activityTitle, groupByDay } from "../lib/activity";
-import { formatMoney } from "../lib/award";
-import { formatDate, formatTime, signed } from "../lib/format";
+import { activityTitleL, groupByDayL } from "../lib/activity";
+import { signed } from "../lib/format";
+import { formatDateL, formatMoneyL, formatTimeL, termWordL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { api } from "../state/api";
 import { Button, Chip, EmptyState, ErrorState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../ui";
 
@@ -16,6 +16,9 @@ type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 /** Points history (was the Activity tab): grouped by day, filter chips by shop, detail sheet with the transaction id. Reached from a shop's "your visits" and from Activity. */
 export default function PointsHistory() {
   const params = useLocalSearchParams<{ memberId?: string }>();
+  const L = useLocale();
+  const { t } = L;
+  const formatMoney = (c: number) => formatMoneyL(L, c);
   const wallet = useWallet();
   const memberships = wallet.data?.items ?? [];
   const [shop, setShop] = useState<string | null>(params.memberId ?? null);
@@ -46,13 +49,13 @@ export default function PointsHistory() {
     getNextPageParam: (last) => (Object.values(last.cursors).some((c) => c) ? last.cursors : undefined),
   });
   const rows = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.rows), [q.data]);
-  const groups = groupByDay(rows);
+  const groups = groupByDayL(L, rows);
 
   return (
-    <Screen back title="Points history" largeTitle={!params.memberId}>
+    <Screen back title={t("sh.activity.history")} largeTitle={!params.memberId}>
       {memberships.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
-          <Chip label="All shops" selected={!shop} onPress={() => setShop(null)} />
+          <Chip label={t("ms.allShops")} selected={!shop} onPress={() => setShop(null)} />
           {memberships.map((m) => (
             <Chip key={m.id} label={m.merchant.name} selected={shop === m.id} onPress={() => setShop(m.id)} />
           ))}
@@ -61,9 +64,9 @@ export default function PointsHistory() {
       {q.isLoading || wallet.isLoading ? (
         <SkeletonRows rows={6} />
       ) : q.isError && rows.length === 0 ? (
-        <ErrorState message="Your activity didn't load." onRetry={() => void q.refetch()} />
+        <ErrorState message={t("sh.inbox.loadFail")} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={History} title={t("empty.activity.title")} body={t("empty.activity.body", { terminology: "points" })} actionLabel={t("empty.activity.action")} onAction={() => router.push("/map")} />
+        <EmptyState icon={History} title={t("sh.activity.emptyTitle")} body={t("cp.empty.activityBody", { terminology: termWordL(L, "points") })} actionLabel={t("sh.wallet.empty")} onAction={() => router.push("/map")} />
       ) : (
         groups.map((g) => (
           <Section key={g.label} title={g.label}>
@@ -73,8 +76,8 @@ export default function PointsHistory() {
                   key={tx.id}
                   divider={i < g.items.length - 1}
                   leading={<ShopLogo shop={tx.membership.merchant} size={44} />}
-                  title={activityTitle(tx, tx.membership.terminology, tx.membership.merchant.name)}
-                  subtitle={[tx.membership.merchant.name, formatTime(tx.createdAt), tx.amountCents ? formatMoney(tx.amountCents) : null].filter(Boolean).join(" · ")}
+                  title={activityTitleL(L, tx, tx.membership.terminology, tx.membership.merchant.name)}
+                  subtitle={[tx.membership.merchant.name, formatTimeL(L, tx.createdAt), tx.amountCents ? formatMoney(tx.amountCents) : null].filter(Boolean).join(" · ")}
                   trailing={
                     <Text variant="headline" color={tx.reversed ? "fgSubtle" : tx.points > 0 ? "accentText" : "fgMuted"} tabular style={tx.reversed ? { textDecorationLine: "line-through" } : null}>
                       {signed(tx.points)}
@@ -89,22 +92,22 @@ export default function PointsHistory() {
       )}
       {q.hasNextPage ? (
         <Button variant="secondary" loading={q.isFetchingNextPage} onPress={() => q.fetchNextPage()}>
-          Show more
+          {t("sh.wallet.showMore")}
         </Button>
       ) : null}
-      <Sheet visible={!!open} onClose={() => setOpen(null)} title={open ? activityTitle(open, open.membership.terminology, open.membership.merchant.name) : ""}>
+      <Sheet visible={!!open} onClose={() => setOpen(null)} title={open ? activityTitleL(L, open, open.membership.terminology, open.membership.merchant.name) : ""}>
         {open ? (
           <View style={{ gap: 8 }}>
-            <Text>{`${open.membership.merchant.name} · ${formatDate(open.createdAt)} ${formatTime(open.createdAt)}`}</Text>
-            {open.amountCents ? <Text>{`Purchase ${formatMoney(open.amountCents)}`}</Text> : null}
+            <Text>{`${open.membership.merchant.name} · ${formatDateL(L, open.createdAt)} ${formatTimeL(L, open.createdAt)}`}</Text>
+            {open.amountCents ? <Text>{t("ms.hist.purchase", { amount: formatMoney(open.amountCents) })}</Text> : null}
             {open.breakdown.map((b) => (
               <Text key={b} variant="meta" color="fgMuted">
                 {b}
               </Text>
             ))}
-            {open.reversed ? <Text color="fgMuted">This transaction was reversed.</Text> : null}
-            <Text variant="caption" color="fgMuted" selectable>{`Transaction ${open.id}`}</Text>
-            <Text variant="meta" color="fgMuted">{`Something wrong? Contact ${open.membership.merchant.name}.`}</Text>
+            {open.reversed ? <Text color="fgMuted">{t("ms.hist.reversed")}</Text> : null}
+            <Text variant="caption" color="fgMuted" selectable>{t("ms.hist.txn", { id: open.id })}</Text>
+            <Text variant="meta" color="fgMuted">{t("ms.hist.wrong", { shop: open.membership.merchant.name })}</Text>
           </View>
         ) : null}
       </Sheet>

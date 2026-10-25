@@ -134,6 +134,13 @@
       "when": 1792883954911,
       "tag": "0018_priv",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792890350059,
+      "tag": "0019_harden",
+      "breakpoints": true
     }
   ]
 }

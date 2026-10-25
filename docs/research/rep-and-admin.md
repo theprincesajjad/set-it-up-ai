@@ -121,9 +121,9 @@ Everything below is built (see the report for check counts). Migration: `package
 ## 8. Open items
 
 1. Founder to confirm plan A (no paid reps); then hide Earnings and the commission fields.
-2. MRR counts the subscription row only. Add-on revenue (WhatsApp packs, extra location) is not in MRR yet.
+2. ~~MRR counts the subscription row only.~~ Done (harden team): MRR now includes add-ons and restaurant tiers and Today shows the split.
 3. SMS and WhatsApp cost is estimated from monthly credit counters at assumed unit prices. A true ledger needs Twilio and Meta usage webhooks.
 4. Rep and street-day screens are English only (internal tools). If Hindi, Urdu or Punjabi-speaking reps join, translate with the glossary.
 5. Leads have a pin only when a rep taps "Pin this door"; there is no geocoder, so imported leads fall back to address order.
-6. Support sessions are advisory: they record reason and window, and writes are audited, but the API does not yet refuse an admin write outside an active session (that would break existing admin flows and tests).
+6. ~~Support sessions are advisory.~~ Done (harden team): an admin or rep write inside a shop is refused with 403 `support_session_required` without an active, reasoned session; the shop banner starts one with a reason in one click.
 7. The "Activation" admin page (another team) and this Today page both show activation; reconcile once both settle.

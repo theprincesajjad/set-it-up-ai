@@ -5,11 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { errorMessage } from "../api/client";
-import { t } from "../copy/en-CA";
 import { useBrightScreen } from "../features/customer/brightness";
 import { useMembershipDetail } from "../features/customer/queries";
 import { groupCode } from "../lib/award";
 import { formatCountdown } from "../lib/format";
+import { useLocale } from "../lib/i18n";
 import { secondsLeft } from "../lib/serverClock";
 import { api } from "../state/api";
 import { qk } from "../state/query";
@@ -23,6 +23,7 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 export default function Redeem() {
   const p = useLocalSearchParams<{ redemptionId: string; code: string; rewardName: string; createdAt: string; expiresAt?: string; memberId: string; shopName: string; vertical: string; logoUrl?: string; brandColor?: string; slug?: string }>();
   const { c } = useTheme();
+  const { t } = useLocale();
   const qc = useQueryClient();
   useBrightScreen("redeem-code");
   const [state, setState] = useState<"waiting" | "confirmed" | "expired" | "cancelled">("waiting");
@@ -50,7 +51,7 @@ export default function Redeem() {
     else if (seenOpen.current) {
       setState("confirmed");
       haptic.success();
-      AccessibilityInfo.announceForAccessibility(t("ok.redeem.customer", { reward: p.rewardName }));
+      AccessibilityInfo.announceForAccessibility(t("cp.ok.redeemCustomer", { reward: p.rewardName }));
       void qc.invalidateQueries({ queryKey: qk.wallet });
       setTimeout(() => (router.canGoBack() ? router.back() : router.replace("/map")), 4000);
     }
@@ -73,7 +74,7 @@ export default function Redeem() {
       await qc.invalidateQueries({ queryKey: qk.membership(p.memberId) });
       router.back();
     } catch (e) {
-      setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
       setConfirmCancel(false);
@@ -86,7 +87,7 @@ export default function Redeem() {
         <View style={{ alignItems: "center", gap: 16 }} accessibilityLiveRegion="assertive">
           <SuccessCheck size={64} color={c.positive} />
           <Text variant="largeTitle" center style={{ textTransform: "none" }}>
-            {t("ok.redeem.customer", { reward: p.rewardName })}
+            {t("cp.ok.redeemCustomer", { reward: p.rewardName })}
           </Text>
           <Text color="fgMuted" center>
             {p.shopName}
@@ -100,7 +101,7 @@ export default function Redeem() {
     <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
       {/* Leaving keeps the code open (the shop page shows "a code is waiting"); Cancel code is the bottom action. */}
       <View style={styles.top}>
-        <IconButton icon={X} label="Close. The code stays open" variant="secondary" size={36} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} />
+        <IconButton icon={X} label={t("ms.redeem.closeKeep")} variant="secondary" size={36} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} />
       </View>
       <View style={styles.body}>
         <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null, brandColor: p.brandColor || null }} size={56} />
@@ -114,14 +115,14 @@ export default function Redeem() {
         </View>
         {state === "expired" ? (
           <>
-            <Banner variant="neutral">{t("err.redeem.expired")}</Banner>
+            <Banner variant="neutral">{t("cp.err.redeemExpired")}</Banner>
             <Button size="lg" fullWidth onPress={() => router.replace(p.slug ? `/shop/${p.slug}` : "/rewards")}>
-              {t("action.getNewCode")}
+              {t("cp.action.getNewCode")}
             </Button>
           </>
         ) : (
           <>
-            <View style={[styles.codeBox, { borderColor: c.line }]} accessible accessibilityLabel={`Code ${(p.code ?? "").split("").join(" ")}`}>
+            <View style={[styles.codeBox, { borderColor: c.line }]} accessible accessibilityLabel={t("ms.redeem.codeA11y", { code: (p.code ?? "").split("").join(" ") })}>
               <Text variant="code" center>
                 {groupCode(p.code ?? "")}
               </Text>
@@ -133,7 +134,7 @@ export default function Redeem() {
               {/* Waiting is a status, not points: a neutral pulsing dot (polish-audit M30). */}
               <PulseDot color={c.fgMuted} />
               <Text variant="meta" color="fgMuted" tabular accessibilityLiveRegion={left !== null && left <= 60 ? "polite" : "none"}>
-                {`Waiting for staff${left !== null ? ` · expires in ${formatCountdown(left)}` : ""}`}
+                {left !== null ? t("ms.redeem.waitingExp", { time: formatCountdown(left) }) : t("ms.redeem.waiting")}
               </Text>
             </View>
           </>
@@ -142,19 +143,19 @@ export default function Redeem() {
       </View>
       {state === "waiting" ? (
         <Button variant="ghost" fullWidth onPress={() => setConfirmCancel(true)}>
-          Cancel code
+          {t("ms.redeem.cancelCode")}
         </Button>
       ) : (
         <Button variant="secondary" fullWidth onPress={() => router.back()}>
-          Close
+          {t("sh.card.close")}
         </Button>
       )}
       <ConfirmDialog
         visible={confirmCancel}
-        title="Cancel this code?"
-        body="Your points go back to your card. You can get a new code anytime."
-        confirmLabel="Cancel code"
-        cancelLabel="Keep code"
+        title={t("ms.redeem.cancelTitle")}
+        body={t("ms.redeem.cancelBody")}
+        confirmLabel={t("ms.redeem.cancelCode")}
+        cancelLabel={t("ms.redeem.keep")}
         loading={busy}
         onCancel={() => setConfirmCancel(false)}
         onConfirm={cancel}

@@ -9,14 +9,17 @@ import {
   ACTIVATION,
   BRAND,
   NUDGE_RULES,
-  OWNER_SMS_STOP_LINE,
-  PACE_LABEL,
   daysSince,
   dueNudge,
+  LOCALES,
+  normalizeLocale,
   nudgeText,
   paceFor,
   playbookFor,
+  t,
   upsellMoment,
+  type Locale,
+  type MessageKey,
   type MilestoneKey,
   type NudgeKey,
   type adminApi,
@@ -85,29 +88,40 @@ export async function recordVisitMilestones(ctx: AppContext, tx: DbOrTx, merchan
 // ---------------------------------------------------------------------------
 // Owner view
 // ---------------------------------------------------------------------------
-const STEP_LABELS: Record<merchantApi.OnboardingStepKey, string> = {
-  program: "Program confirmed",
-  first_stamp: "Give your first stamp",
-  qr_kit: "Print the QR stand",
-  staff: "Staff and counter app",
-  first_members: "First 25 members",
-  profile: "Logo, about text and GST/HST",
-  pos: "Connect your POS",
+// The words the owner reads come from the shared catalog (ob.*) in the owner's language (users.locale); English is the default.
+const STEP_KEYS: Record<merchantApi.OnboardingStepKey, MessageKey> = {
+  program: "ob.step.program",
+  first_stamp: "ob.step.first_stamp",
+  qr_kit: "ob.step.qr_kit",
+  staff: "ob.step.staff",
+  first_members: "ob.step.first_members",
+  profile: "ob.step.profile",
+  pos: "ob.step.pos",
 };
 const CORE: merchantApi.OnboardingStepKey[] = ["program", "first_stamp", "qr_kit", "staff", "first_members"];
 const LATER: merchantApi.OnboardingStepKey[] = ["profile", "pos"];
 
 const SOURCE_OF: Record<string, merchantApi.OnboardingSource["source"]> = { phone: "counter", pos: "counter", import: "counter", qr: "qr", app: "link", web: "link", wallet: "link", campaign: "link", referral: "link" };
-const SOURCE_LABEL: Record<merchantApi.OnboardingSource["source"], string> = { counter: "At the counter, asked by staff", qr: "QR stand", link: "Join link", other: "Other" };
+const SOURCE_KEY: Record<merchantApi.OnboardingSource["source"], MessageKey> = { counter: "ob.src.counter", qr: "ob.src.qr", link: "ob.src.link", other: "ob.src.other" };
 
-function minutesLabel(min: number): string {
-  if (min < 1) return "under a minute later";
-  if (min < 90) return `${Math.round(min)} min later`;
-  if (min < 48 * 60) return `${Math.round(min / 60)} h later`;
-  return `day ${Math.floor(min / 1440)}`;
+function minutesLabel(locale: Locale, min: number): string {
+  if (min < 1) return t(locale, "ob.min.under");
+  if (min < 90) return t(locale, "ob.min.min", { n: Math.round(min) });
+  if (min < 48 * 60) return t(locale, "ob.min.hours", { n: Math.round(min / 60) });
+  return t(locale, "ob.min.day", { n: Math.floor(min / 1440) });
 }
 
-export async function getOnboardingChecklist(ctx: AppContext, merchantId: string): Promise<merchantApi.OnboardingChecklist> {
+/** An owner's language from `users.locale` ("hi", "pa-IN", "en-CA" ...); English when it is not one of ours. */
+export const ownerLocale = (raw: string | null | undefined): Locale => normalizeLocale(raw) ?? "en";
+
+/** The language the signed-in person reads the dashboard card in: their own `users.locale`. */
+export async function userLocale(db: DbOrTx, userId: string | null | undefined): Promise<Locale> {
+  if (!userId) return "en";
+  const [u] = await db.select({ locale: users.locale }).from(users).where(eq(users.id, userId)).limit(1);
+  return ownerLocale(u?.locale);
+}
+
+export async function getOnboardingChecklist(ctx: AppContext, merchantId: string, locale: Locale = "en"): Promise<merchantApi.OnboardingChecklist> {
   const db = ctx.db;
   const now = ctx.now();
   const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
@@ -137,14 +151,14 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   };
   const detail: Record<merchantApi.OnboardingStepKey, string | null> = {
     program: program ? `${program.earnType.replace("_", " ")} · ${program.terminology}` : null,
-    first_stamp: firstStamp ? null : "Waiting for your first stamp",
+    first_stamp: firstStamp ? null : t(locale, "ob.step.waiting"),
     qr_kit: null,
-    staff: `${Number(staffRow?.n ?? 0)} team member(s)`,
-    first_members: `${Math.min(members, target)} of ${target} members have visited`,
+    staff: t(locale, "ob.step.team", { n: Number(staffRow?.n ?? 0) }),
+    first_members: t(locale, "ob.step.members", { have: Math.min(members, target), target }),
     profile: null,
     pos: null,
   };
-  const mk = (key: merchantApi.OnboardingStepKey) => ({ key, label: STEP_LABELS[key], done: done[key], detail: detail[key] });
+  const mk = (key: merchantApi.OnboardingStepKey) => ({ key, label: t(locale, STEP_KEYS[key], { target: 25 }), done: done[key], detail: detail[key] });
   const steps = CORE.map(mk);
   const later = LATER.map(mk);
   const current = steps.find((s) => !s.done)?.key ?? "done";
@@ -162,15 +176,15 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     const s = SOURCE_OF[r.via] ?? "other";
     bySource.set(s, (bySource.get(s) ?? 0) + Number(r.n));
   }
-  const sources = (["counter", "qr", "link", "other"] as const).filter((s) => bySource.get(s)).map((s) => ({ source: s, label: SOURCE_LABEL[s], count: bySource.get(s)! }));
+  const sources = (["counter", "qr", "link", "other"] as const).filter((s) => bySource.get(s)).map((s) => ({ source: s, label: t(locale, SOURCE_KEY[s]), count: bySource.get(s)! }));
   const milestones: merchantApi.OnboardingMilestone[] = [
-    { key: "signed_up", label: "Signed up", at: iso(m.createdAt), detail: m.createdAt.toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "America/Toronto" }) },
-    { key: "first_stamp", label: "First stamp", at: iso(stampAt), detail: stampAt ? minutesLabel(firstStampMinutes!) : "Not yet" },
-    { key: "members_10", label: "10 members", at: iso(at10), detail: at10 ? `Day ${daysSince(m.createdAt, at10)}` : members >= 1 ? `Needs ${Math.max(0, 10 - members)} more` : "Not yet" },
-    { key: "activated", label: `${target} members`, at: iso(atActive), detail: atActive ? `Day ${daysSince(m.createdAt, atActive)}` : `Needs ${Math.max(0, target - members)} more` },
+    { key: "signed_up", label: t(locale, "ob.ms.signedUp"), at: iso(m.createdAt), detail: m.createdAt.toLocaleDateString(LOCALES[locale].bcp47, { month: "short", day: "numeric", timeZone: "America/Toronto" }) },
+    { key: "first_stamp", label: t(locale, "ob.ms.firstStamp"), at: iso(stampAt), detail: stampAt ? minutesLabel(locale, firstStampMinutes!) : t(locale, "ob.ms.notYet") },
+    { key: "members_10", label: t(locale, "ob.ms.members", { n: 10 }), at: iso(at10), detail: at10 ? t(locale, "ob.ms.day", { n: daysSince(m.createdAt, at10) }) : members >= 1 ? t(locale, "ob.ms.needs", { n: Math.max(0, 10 - members) }) : t(locale, "ob.ms.notYet") },
+    { key: "activated", label: t(locale, "ob.ms.members", { n: target }), at: iso(atActive), detail: atActive ? t(locale, "ob.ms.day", { n: daysSince(m.createdAt, atActive) }) : t(locale, "ob.ms.needs", { n: Math.max(0, target - members) }) },
   ];
   const playbook = playbookFor(m.vertical);
-  const nextMove = nextMoveFor({ firstStamp, qrDone: done.qr_kit, staffDone: done.staff, activated, pace, members, target, sources, playbook });
+  const nextMove = nextMoveFor(locale, { firstStamp, qrDone: done.qr_kit, staffDone: done.staff, activated, pace, members, target, sources, playbook });
   const paying = m.plan !== "free" || !!m.restaurantTier;
   const dismissed = ms.get("upsell_dismissed");
   const upsellRaw = upsellMoment({
@@ -202,7 +216,7 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
       leadingMembers: ACTIVATION.leadingMembers,
       leadingByDay: ACTIVATION.leadingByDay,
       pace,
-      paceLabel: pace === "activated" || pace === "late" ? PACE_LABEL[pace] : `${PACE_LABEL[pace]} · day ${Math.min(day + 1, ACTIVATION.windowDays)} of ${ACTIVATION.windowDays}`,
+      paceLabel: pace === "activated" || pace === "late" ? t(locale, `ob.pace.${pace}` as MessageKey) : t(locale, "ob.pace.dayOf", { label: t(locale, `ob.pace.${pace}` as MessageKey), day: Math.min(day + 1, ACTIVATION.windowDays), total: ACTIVATION.windowDays }),
       firstStampMinutes,
       milestones,
       sources,
@@ -220,21 +234,22 @@ async function foundingSpotsLeft(db: DbOrTx, m: Merchant): Promise<number | null
   return Math.max(0, 20 - Number(row?.n ?? 0));
 }
 
-function nextMoveFor(a: { firstStamp: boolean; qrDone: boolean; staffDone: boolean; activated: boolean; pace: string; members: number; target: number; sources: merchantApi.OnboardingSource[]; playbook: ReturnType<typeof playbookFor> }): merchantApi.OnboardingActivation["nextMove"] {
-  if (!a.firstStamp) return { title: "Give your first stamp", body: a.playbook.firstStampHint, cta: "Stamp yourself", path: "/setup?step=first_stamp" };
-  if (a.activated) return { title: "You are an active shop", body: "Your regulars are on the card. Connect your POS so stamps happen on their own.", cta: "Connect POS", path: "/integrations" };
-  if (!a.qrDone) return { title: "Print the QR stand", body: "Customers join in 30 seconds with no app. Put it next to the card machine.", cta: "Print QR stand", path: "/locations/kit" };
-  if (!a.staffDone && a.members >= 3) return { title: "Add your first cashier", body: "Every person at the till can stamp from their own phone, and members join faster when staff ask.", cta: "Add staff", path: "/setup?step=staff" };
+function nextMoveFor(locale: Locale, a: { firstStamp: boolean; qrDone: boolean; staffDone: boolean; activated: boolean; pace: string; members: number; target: number; sources: merchantApi.OnboardingSource[]; playbook: ReturnType<typeof playbookFor> }): merchantApi.OnboardingActivation["nextMove"] {
+  if (!a.firstStamp) return { title: t(locale, "ob.step.first_stamp"), body: a.playbook.firstStampHint, cta: t(locale, "ob.move.first.cta"), path: "/setup?step=first_stamp" };
+  if (a.activated) return { title: t(locale, "ob.move.active.title"), body: t(locale, "ob.move.active.body"), cta: t(locale, "ob.move.active.cta"), path: "/integrations" };
+  if (!a.qrDone) return { title: t(locale, "ob.step.qr_kit"), body: t(locale, "ob.move.qr.body"), cta: t(locale, "ob.step.qr_kit"), path: "/locations/kit" };
+  if (!a.staffDone && a.members >= 3) return { title: t(locale, "ob.move.staff.title"), body: t(locale, "ob.move.staff.body"), cta: t(locale, "ob.move.staff.cta"), path: "/setup?step=staff" };
   const counter = a.sources.find((s) => s.source === "counter")?.count ?? 0;
   const qr = a.sources.find((s) => s.source === "qr")?.count ?? 0;
-  const tail = a.members > 0 && counter + qr > 0 ? ` ${counter} of your ${a.members} joined at the counter, ${qr} from the QR stand.` : "";
-  return { title: "Best next move", body: `Say it at the till: "${a.playbook.tillLine}"${tail}`, cta: "Open counter", path: "/counter" };
+  const tail = a.members > 0 && counter + qr > 0 ? ` ${t(locale, "ob.move.best.tail", { counter, members: a.members, qr })}` : "";
+  return { title: t(locale, "ob.move.best.title"), body: t(locale, "ob.move.best.body", { till: a.playbook.tillLine, tail }), cta: t(locale, "ob.move.best.cta"), path: "/counter" };
 }
 
 export async function dismissUpsell(ctx: AppContext, merchantId: string, actorUserId: string) {
+  const locale = await userLocale(ctx.db, actorUserId);
   await ctx.db.insert(merchantMilestones).values({ merchantId, key: "upsell_dismissed", reachedAt: ctx.now() }).onConflictDoUpdate({ target: [merchantMilestones.merchantId, merchantMilestones.key], set: { reachedAt: ctx.now() } });
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "onboarding.upsell_dismissed", entity: "merchant", entityId: merchantId, data: {} });
-  return getOnboardingChecklist(ctx, merchantId);
+  return getOnboardingChecklist(ctx, merchantId, locale);
 }
 
 export function nudgeUnsubscribeToken(ctx: AppContext, merchantId: string): string {
@@ -259,7 +274,7 @@ export async function setNudges(ctx: AppContext, merchantId: string, actorUserId
   if (enabled) await removeMilestone(ctx.db, merchantId, "nudges_off");
   else await recordMilestone(ctx.db, merchantId, "nudges_off", ctx.now());
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "onboarding.nudges", entity: "merchant", entityId: merchantId, data: { enabled } });
-  return getOnboardingChecklist(ctx, merchantId);
+  return getOnboardingChecklist(ctx, merchantId, await userLocale(ctx.db, actorUserId));
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +282,7 @@ export async function setNudges(ctx: AppContext, merchantId: string, actorUserId
 // ---------------------------------------------------------------------------
 async function ownerOf(db: DbOrTx, merchantId: string) {
   const [o] = await db
-    .select({ name: users.name, email: users.email, phone: users.phone })
+    .select({ name: users.name, email: users.email, phone: users.phone, locale: users.locale })
     .from(merchantStaff)
     .innerJoin(users, eq(users.id, merchantStaff.userId))
     .where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.role, "owner")))
@@ -309,19 +324,25 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
     // Earlier nudges that are now moot are marked sent too, so a late shop gets one message, not a pile.
     for (const r of NUDGE_RULES) if (r.key !== key && (now.getTime() - m.createdAt.getTime()) / 3_600_000 >= r.afterHours && !sentKeys.has(r.key) && r.afterHours < NUDGE_RULES.find((x) => x.key === key)!.afterHours) await recordMilestone(ctx.db, m.id, r.key, now, { skipped: true });
     const day = daysSince(m.createdAt, now);
-    const text = nudgeText(key, {
-      shopName: m.name,
-      members,
-      daysLeft: Math.max(0, ACTIVATION.windowDays - day),
-      target: ctx.config.activationThreshold,
-      tillLine: playbookFor(m.vertical).tillLine,
-      url: `${ctx.config.publicWebUrl.replace(/\/$/, "")}/m/${m.id}/setup`,
-    });
+    // In the owner's own language (users.locale); the shop name, the till line and the link stay as they are.
+    const locale = ownerLocale(owner.locale);
+    const text = nudgeText(
+      key,
+      {
+        shopName: m.name,
+        members,
+        daysLeft: Math.max(0, ACTIVATION.windowDays - day),
+        target: ctx.config.activationThreshold,
+        tillLine: playbookFor(m.vertical).tillLine,
+        url: `${ctx.config.publicWebUrl.replace(/\/$/, "")}/m/${m.id}/setup`,
+      },
+      locale,
+    );
     // CASL: say who we are and give a one-step way out. The link works with one tap and no sign-in.
     const stopUrl = nudgeUnsubscribeUrl(ctx, m.id);
     try {
-      if (smsTo) await sendSms(ctx, smsTo, `${BRAND.name}: ${text.body}\n${OWNER_SMS_STOP_LINE}, or unsubscribe: ${stopUrl}`);
-      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}\n\n--\n${BRAND.name} sent this because you set up a shop with us. Stop these setup reminders: ${stopUrl}` });
+      if (smsTo) await sendSms(ctx, smsTo, `${BRAND.name}: ${text.body}\n${t(locale, "ob.smsFoot", { stop: t(locale, "ob.stopLine"), url: stopUrl })}`);
+      else await ctx.providers.email.send({ to: owner.email!, subject: text.subject, text: `${text.body}\n\n--\n${t(locale, "ob.emailFoot", { brand: BRAND.name, url: stopUrl })}` });
       sent += 1;
     } catch (err) {
       console.error("[onboarding.nudge]", m.id, err);

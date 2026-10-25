@@ -4,8 +4,10 @@
  * Data only from existing APIs (campaigns, network shops, wallet). No upgrade prompts.
  */
 import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
+import { LOCALES, placeKindLabel } from "@ll/shared";
 import { placeKind } from "./explore";
 import { formatDistance } from "./format";
+import { formatDistanceL, openPartsL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
 /** "Roncesvalles Village" → "roncesvalles" (the canvas voice: short, lowercase). */
@@ -151,4 +153,49 @@ export function shopSubtitle(
 export function promoWindowLine(multiplier: number, noun: string, endHour: number): string {
   const h = endHour % 12 === 0 ? 12 : endHour % 12;
   return `${multiplier}× ${noun} till ${h} ${endHour >= 12 && endHour < 24 ? "pm" : "am"}`;
+}
+
+/** `heroCopy` in the shopper's language (English keeps the canvas wording above). */
+export function heroCopyL(L: L, c: HeroCampaign, now = new Date()): { eyebrow: string; headline: string; progress: { value: number; max: number } | null } {
+  if (L.locale === "en") return heroCopy(c, now);
+  const end = new Date(c.endsAt);
+  let date: string;
+  try {
+    date = new Intl.DateTimeFormat(LOCALES[L.locale].bcp47, { month: "short", day: "numeric" }).format(end);
+  } catch {
+    date = `${MONTHS[end.getMonth()]} ${end.getDate()}`;
+  }
+  const prize = c.prize ? c.prize.replace(/^win\s+/i, "").replace(/\.$/, "") : null;
+  const headline =
+    c.kind === "passport"
+      ? prize
+        ? L.t("sh.disc.heroPassport", { goal: c.goalVisits, prize })
+        : L.t("sh.camp.stepVisit", { goal: c.goalVisits })
+      : c.kind === "multiplier" && c.multiplierPct
+        ? L.t("sh.camp.stepMult", { n: c.multiplierPct / 100 })
+        : c.bonusPoints > 0
+          ? L.t("sh.camp.stepBonus", { n: c.bonusPoints })
+          : c.name;
+  const g = c.progress?.goal ?? c.goalVisits;
+  return {
+    eyebrow: `${c.name}${end.getTime() > now.getTime() ? ` · ${L.t("sh.disc.endsOn", { date })}` : ""}`,
+    headline,
+    progress: c.kind === "passport" && g > 0 ? { value: Math.min(c.progress?.visited ?? 0, g), max: g } : null,
+  };
+}
+
+/** `shopSubtitle` in the shopper's language: the line under a shop on Discover. */
+export function shopSubtitleL(
+  L: L,
+  s: DiscoverShop & { promoLine?: string | null; perk?: string | null },
+  hours: Parameters<typeof openPartsL>[1],
+  openNow: boolean | null | undefined,
+  opts: { progress?: { n: number; goal: number } | null; promoLine?: string | null; perk?: string | null } = {},
+): string {
+  const progress = opts.progress && opts.progress.goal > 0 ? L.t("ms.disc.yourProgress", { n: Math.min(opts.progress.n, opts.progress.goal), goal: opts.progress.goal }) : null;
+  const kind = placeKindLabel(L.locale, s.merchant.vertical);
+  const parts = openPartsL(L, hours, openNow);
+  const when = parts?.open ? L.t("sh.disc.open") : parts?.rest ?? null;
+  const meta = [kind, formatDistanceL(L, s.distanceMetres), when].filter(Boolean).join(" · ");
+  return shopLine({ progress, promoLine: opts.promoLine ?? s.promoLine ?? null, perk: opts.perk ?? s.perk ?? null, kind, meta });
 }

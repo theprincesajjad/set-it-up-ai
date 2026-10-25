@@ -1,12 +1,13 @@
 "use client";
-import { Download, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { YourDataPanel } from "@/components/dashboard/YourDataPanel";
 import { TaxStatus } from "@/components/dashboard/TaxStatus";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +16,6 @@ import { ShopLogo } from "@/components/ui/ShopTile";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
-import { BFF_BASE } from "@/lib/api/browser";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
 import { useAction } from "@/lib/dashboard/useApi";
 
@@ -200,39 +200,7 @@ function CounterTab() {
 }
 
 function Privacy() {
-  const { api, enabled } = useMerchant();
-  const csv = enabled("customers.csv_export");
-  // A shop that left (closed, or back on Free) can still export for 90 days even without the CSV feature (merchant agreement 2.1).
-  const [until, setUntil] = useState<string | null>(null);
-  useEffect(() => {
-    if (csv) return;
-    let live = true;
-    api.exportWindow().then((w) => live && setUntil(w.until)).catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [api, csv]);
-  if (!csv && !until)
-    return (
-      <Panel title="Your data" description="Your members and their history belong to you.">
-        <p className="text-meta text-fg">Need a copy of your data? Email help@localloyalty.example and we&apos;ll send it within 30 days.</p>
-        <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
-      </Panel>
-    );
-  return (
-    <Panel title="Your data" description="Download every member and every ledger entry as CSV. Customers' other shops are never included.">
-      {!csv && until ? <p className="mb-3 text-meta text-fg">Your free export is open until {new Date(until).toLocaleDateString("en-CA", { dateStyle: "long" })}.</p> : null}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" iconStart={Download} href={`${BFF_BASE}${api.base}/customers/export.csv`}>
-          Export members
-        </Button>
-        <Button variant="secondary" iconStart={Download} href={`${BFF_BASE}${api.base}/activity/export.csv`}>
-          Export activity
-        </Button>
-      </div>
-      <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
-    </Panel>
-  );
+  return <YourDataPanel />;
 }
 
 function Danger() {

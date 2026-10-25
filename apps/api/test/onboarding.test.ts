@@ -16,8 +16,8 @@ const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 const DAY = 86_400_000;
 
 const owners = new Map<string, Awaited<ReturnType<typeof createUser>>>();
-async function signup(vertical = "cafe", name = "Sunrise Bakery") {
-  const owner = await createUser(env.db, { email: `o${Math.random().toString(36).slice(2)}@example.com` });
+async function signup(vertical = "cafe", name = "Sunrise Bakery", locale?: string) {
+  const owner = await createUser(env.db, { email: `o${Math.random().toString(36).slice(2)}@example.com`, ...(locale ? { locale } : {}) });
   const token = await tokenFor(env, owner);
   const res = await env.app.inject({ method: "POST", url: "/v1/merchants", headers: auth(token), payload: { name, vertical, address: "2210 Danforth Ave", phone: "(416) 555-0134" } });
   expect(res.statusCode).toBe(201);
@@ -158,6 +158,23 @@ describe("upsell moment", () => {
   });
 });
 
+describe("activation card in the owner's language", () => {
+  it("the checklist words follow users.locale and stay English by default", async () => {
+    const hi = await signup("cafe", "Sarson Dhaba", "hi");
+    const c = await checklist(hi.id);
+    expect(c.activation.paceLabel).toContain("दिन");
+    expect(c.steps.map((s: { label: string }) => s.label)).toContain("अपना पहला स्टैम्प दें");
+    expect(c.activation.nextMove.cta).toBe("ख़ुद को स्टैम्प दें");
+    expect(c.activation.milestones[0].label).toBe("साइन अप किया");
+    const en = await signup("cafe", "Sunrise Bakery");
+    const e = await checklist(en.id);
+    expect(e.activation.nextMove.cta).toBe("Stamp yourself");
+    expect(e.activation.milestones[1]).toMatchObject({ label: "First stamp", detail: "Not yet" });
+    const pa = await signup("cafe", "Pind Cafe", "pa-IN");
+    expect((await checklist(pa.id)).activation.milestones[3].label).toBe("25 ਮੈਂਬਰ");
+  });
+});
+
 describe("setup nudges", () => {
   it("sends day-1 once when there is no first stamp, then a day-3 text, never twice", async () => {
     const { id, owner } = await signup("cafe");
@@ -172,6 +189,27 @@ describe("setup nudges", () => {
     env.clock.now = new Date(env.clock.now.getTime() + 2 * DAY);
     expect((await runOnboardingNudges(env.ctx)).sent).toBe(1);
     expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain("0 members so far");
+  });
+
+  it("writes the reminder in the owner's language (users.locale) and keeps the STOP keyword", async () => {
+    const { id, owner } = await signup("cafe", "Sarson Dhaba", "hi-IN");
+    await signup("cafe", "Shop pa", "pa");
+    await signup("cafe", "Shop ur", "ur");
+    await signup("cafe", "Shop fr", "fr-CA");
+    env.clock.now = new Date(env.clock.now.getTime() + 25 * 3_600_000);
+    const before = env.ctx.providers.outbox.sms.length;
+    await runOnboardingNudges(env.ctx);
+    const sent = env.ctx.providers.outbox.sms.slice(before);
+    const hi = sent.find((m) => m.to === owner.phone)!;
+    expect(hi.body).toContain("अपना QR स्कैन करें");
+    expect(hi.body).toContain("Sarson Dhaba");
+    expect(hi.body).toContain(`/m/${id}/setup`);
+    expect(hi.body).toContain("STOP");
+    expect(hi.body).not.toContain("Reply STOP to stop");
+    const texts = sent.map((m) => m.body);
+    expect(texts.some((b) => b.includes("ਸਟੈਂਪ"))).toBe(true);
+    expect(texts.some((b) => b.includes("اسٹامپ"))).toBe(true);
+    expect(texts.some((b) => b.includes("add a stamp"))).toBe(true);
   });
 
   it("a late shop gets one message, not a pile", async () => {

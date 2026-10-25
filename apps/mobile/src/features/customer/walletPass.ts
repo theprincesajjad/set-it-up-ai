@@ -20,6 +20,7 @@ import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Platform } from "react-native";
 import { isApiError } from "../../api/client";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 
 export type WalletPlatform = "apple" | "google";
@@ -64,6 +65,7 @@ export async function addToWallet(opts: { method?: "link" | "download" } = {}): 
 }
 
 export function useAddToWallet(opts: { method?: "link" | "download" } = {}) {
+  const { t } = useLocale();
   const platform = walletPlatform();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,11 +90,11 @@ export function useAddToWallet(opts: { method?: "link" | "download" } = {}) {
     const r = await addToWallet({ method: opts.method });
     if (r === "unavailable") {
       setAvailable(false);
-      setError("Wallet passes aren't available right now. Your card in the app works at the counter.");
-    } else if (r === "failed") setError("Couldn't open your wallet. Check your connection and try again.");
+      setError(t("ms.wallet.off"));
+    } else if (r === "failed") setError(t("ms.wallet.openFail"));
     setBusy(false);
     return r;
-  }, [opts.method]);
+  }, [opts.method, t]);
 
   return { platform, buttonText: platform ? walletApi.WALLET_BUTTON_TEXT[platform] : null, available, add, busy, error };
 }

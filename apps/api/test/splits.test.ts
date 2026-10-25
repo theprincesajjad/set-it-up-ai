@@ -179,4 +179,17 @@ describe("cash shares", () => {
     const list = (await call(env, m.ownerToken, "GET", splitsUrl(m, tab.id))).body;
     expect(list.items.map((i: { paidWith: string }) => i.paidWith)).toEqual(["cash", "card"]);
   });
+  it("caps how many payments one pay link can start, so a leaked link cannot spam PaymentIntents", async () => {
+    const { m, tab } = await table();
+    const r = await call(env, m.ownerToken, "POST", splitsUrl(m, tab.id), { mode: "even", ways: 2 });
+    const [a, b] = r.body.items as { payToken: string }[];
+    for (let tip = 0; tip < 20; tip++) expect((await call(env, null, "POST", `/v1/public/splits/${a!.payToken}/pay`, { tipCents: tip * 10 })).status).toBe(200);
+    const blocked = await call(env, null, "POST", `/v1/public/splits/${a!.payToken}/pay`, { tipCents: 999 });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe("rate_limited");
+    // Another guest's link is separate, and the hour slides.
+    expect((await call(env, null, "POST", `/v1/public/splits/${b!.payToken}/pay`, {})).status).toBe(200);
+    env.clock.now = new Date(env.clock.now.getTime() + 61 * 60_000);
+    expect((await call(env, null, "POST", `/v1/public/splits/${a!.payToken}/pay`, { tipCents: 999 })).status).toBe(200);
+  });
 });

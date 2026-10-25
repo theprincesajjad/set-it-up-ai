@@ -38,7 +38,7 @@ export function SwitchRow({
       </View>
       {/* RN-web positions the thumb with physical offsets, so in an RTL language (Urdu) it slides off the track. The
           switch itself stays LTR; the row around it still mirrors. */}
-      <View style={Platform.OS === "web" ? styles.ltr : undefined}>
+      <View {...(Platform.OS === "web" ? ({ dir: "ltr" } as object) : {})} style={Platform.OS === "web" ? styles.ltr : undefined}>
         <RNSwitch
           accessibilityLabel={label}
           value={value}

@@ -6,7 +6,7 @@ import { onColor, shopInitials } from "@/lib/shopAvatar";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Earn rewards at this shop";
+export const alt = "Earn rewards at this shop"; // l10n-ok: social-card image is rendered once for crawlers; it has no Indic fonts or request language
 
 /** Shop social card (v2): "Earn rewards at {Shop}" on white; the shop's own colour only in its avatar. */
 export default async function ShopOg({ params }: { params: Promise<{ slug: string }> }) {
@@ -27,7 +27,7 @@ export default async function ShopOg({ params }: { params: Promise<{ slug: strin
     /* generic card */
   }
   const fonts = await ogFonts();
-  const display = fonts.length ? "Bricolage Grotesque" : undefined;
+  const display = fonts.length ? "Bricolage Grotesque" : undefined; // l10n-ok: font family name
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: tint, padding: 72, color: ink }}>
@@ -45,7 +45,8 @@ export default async function ShopOg({ params }: { params: Promise<{ slug: strin
             {where ? <div style={{ fontSize: 32, color: "#6B6B70", fontStyle: "italic" }}>{where.toLowerCase()}</div> : null}
           </div>
         </div>
-        <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1.02, letterSpacing: -1.6, fontFamily: display, display: "flex" }}>{`earn rewards at ${name.toLowerCase()}`}</div>
+        <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1.02, letterSpacing: -1.6, fontFamily: display, display: "flex" }}>{`earn rewards at ${name.toLowerCase()}`}</div> {/* l10n-ok: English social card (see alt) */}
+        {/* l10n-ok: English social card (see alt) */}
         <div style={{ fontSize: 30, display: "flex", color: "#6B6B70" }}>Part of {BRAND.name} · No app needed · Free</div>
       </div>
     ),

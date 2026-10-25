@@ -133,11 +133,15 @@ describe("phone webhook and call handling (Pro)", () => {
     expect(first.statusCode).toBe(200);
     expect(first.headers["content-type"]).toContain("text/xml");
     expect(first.body).toContain("<Gather");
-    // The call is transcribed and stored, so the greeting says so, in all four languages, before the prompt.
-    for (const [lang, code] of [["en", "en-CA"], ["hi", "hi-IN"], ["ur", "ur-PK"], ["pa", "pa-guru-IN"]] as const) {
+    // The call is transcribed and stored, so the greeting says so, in English, French, Hindi, Urdu and Punjabi, before the prompt.
+    for (const [lang, code] of [["en", "en-CA"], ["fr", "fr-CA"], ["hi", "hi-IN"], ["ur", "ur-PK"], ["pa", "pa-guru-IN"]] as const) {
       expect(first.body).toContain(`<Say language="${code}">${TRANSCRIPT_NOTICE[lang]}</Say>`);
     }
     expect(first.body.indexOf("turned into text")).toBeLessThan(first.body.indexOf("After the tone"));
+    // French is spoken as the notice only; the caller is not switched to French for the order, and the shop's own language still leads.
+    expect(first.body).toMatch(/<Gather[^>]*language="en-CA"/);
+    expect(first.body.indexOf("fr-CA")).toBeGreaterThan(first.body.indexOf("turned into text"));
+    expect(first.body.indexOf("fr-CA")).toBeLessThan(first.body.indexOf("After the tone"));
     expect(await env.db.select().from(phoneCalls)).toHaveLength(0);
 
     const second = await hook(shop, { CallSid: "CA1", From: "+14165550177", SpeechResult: "Hi, two chicken biryani and one garlic naan, pickup in 20 minutes", Language: "en-US" });

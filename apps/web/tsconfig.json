@@ -81,7 +81,11 @@
     ".next-ops/types/**/*.ts",
     ".next-ops/dev/types/**/*.ts",
     ".next-shop/types/**/*.ts",
-    ".next-shop/dev/types/**/*.ts"
+    ".next-shop/dev/types/**/*.ts",
+    ".next-harden/types/**/*.ts",
+    ".next-harden/dev/types/**/*.ts",
+    ".next-l10n/types/**/*.ts",
+    ".next-l10n/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

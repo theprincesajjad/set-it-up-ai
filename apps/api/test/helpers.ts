@@ -1,4 +1,4 @@
-import { createPgliteDb, featureOverrides, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
+import { createPgliteDb, featureOverrides, supportSessions, loyaltyPrograms, merchantCategories, merchantStaff, merchants, neighbourhoods, rewards, users, type Db } from "@ll/db";
 import type { FastifyInstance } from "fastify";
 import type { FeatureKey } from "@ll/shared";
 import { buildApp } from "../src/app.js";
@@ -78,4 +78,13 @@ export async function grantFeatures(env: Pick<TestEnv, "db">, merchantId: string
     .insert(featureOverrides)
     .values(keys.map((key) => ({ merchantId, key, enabled, reason: "test pilot" })))
     .onConflictDoUpdate({ target: [featureOverrides.merchantId, featureOverrides.key], set: { enabled } });
+}
+
+/** An open, reasoned 30-minute support session: admins and reps may write inside a shop only while one exists. */
+export async function openSupportSession(env: Pick<TestEnv, "db" | "clock">, userId: string, merchantId: string, reason = "Test support session") {
+  const [s] = await env.db
+    .insert(supportSessions)
+    .values({ adminUserId: userId, merchantId, reason, startedAt: env.clock.now, expiresAt: new Date(env.clock.now.getTime() + 30 * 60_000) })
+    .returning();
+  return s!;
 }

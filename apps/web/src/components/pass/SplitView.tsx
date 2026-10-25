@@ -5,7 +5,7 @@ import type { restaurantApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
@@ -16,7 +16,7 @@ type TipChoice = (typeof TIPS)[number] | "custom";
 
 /** /pay/split/<token>: a guest's share, tip picker, card payment and the paid state. */
 export function SplitView({ token, initial }: { token: string; initial: restaurantApi.PublicSplitResponse }) {
-  const { t, money, number: num } = useLocale();
+  const { t, money, number: num } = useLocaleOrEnglish();
   const [data, setData] = useState(initial);
   const [choice, setChoice] = useState<TipChoice>(15);
   const [custom, setCustom] = useState("");

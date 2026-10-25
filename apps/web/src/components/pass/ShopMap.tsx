@@ -8,12 +8,11 @@
  * WebGL or tiles the page falls back to the list (`onFail`).
  */
 import { LocateFixed, Maximize2, Search, X } from "lucide-react";
-import { placeKind } from "@/lib/place";
+import { placeKindLabel } from "@ll/shared";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { networkApi } from "@ll/shared";
-import { categoryLabels } from "@ll/design-tokens";
 import { LogoMark } from "@/components/site/Brand";
 import { StatusDot } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -22,12 +21,15 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import { formatDistance, formatPoints } from "@/lib/format";
-import { FilterRow, type FinderState } from "./ShopFinder";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { distanceL } from "@/lib/i18n/formatL";
+import { unitsText } from "@/lib/units";
+import { CATEGORY_KEYS, FilterRow, type FinderState } from "./ShopFinder";
 
 const NetworkMap = dynamic(() => import("./NetworkMap"), { ssr: false, loading: () => <div className="absolute inset-0 bg-ll-map-land dark:bg-ll-map-land-dark" /> });
 
 export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { items: networkApi.ShopListItemDto[]; state: FinderState; notice?: string | null; onDismissNotice?: () => void; onFail: (reason: string) => void }) {
+  const { t } = useLocaleOrEnglish();
   const [selected, setSelected] = useState<string | null>(null);
   const [fitAll, setFitAll] = useState(0);
   const located = items.filter((s) => s.location?.lat != null && s.location?.lng != null);
@@ -45,28 +47,28 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
 
   return (
     <div className="fixed inset-0 z-[30] overflow-hidden bg-ll-map-land dark:bg-ll-map-land-dark">
-      <h1 className="sr-only">Shops near you</h1>
+      <h1 className="sr-only">{t("wp.t.mapTitle")}</h1>
       <NetworkMap items={items} selected={sel?.merchant.id ?? null} onSelect={setSelected} me={state.coords} onFail={onFail} fitAllSignal={fitAll} onBackgroundTap={() => setSelected(null)} />
 
       {/* Top chrome */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] md:px-6 md:pt-5">
         <div data-map-obstacle className="pointer-events-auto flex items-center gap-2 md:w-fit md:min-w-[560px]">
-          <Link href="/" aria-label="Home" className="chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
+          <Link href="/" aria-label={t("auth.notFound.home")} className="chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
             <LogoMark size={22} />
           </Link>
           <label className="chrome relative flex h-11 min-w-0 flex-1 items-center rounded-full md:max-w-[420px]">
-            <span className="sr-only">Search shops</span>
+            <span className="sr-only">{t("sh.wallet.search")}</span>
             <Search aria-hidden className="pointer-events-none absolute start-3.5 size-[18px] text-fg-muted" strokeWidth={1.75} />
             <input
               type="search"
-              placeholder="search shops"
+              placeholder={t("sh.wallet.search").toLowerCase()}
               value={state.q}
               onChange={(e) => state.setQ(e.target.value)}
               className="h-full w-full min-w-0 rounded-full bg-transparent ps-10 pe-4 text-body text-fg outline-none placeholder:text-fg-muted focus-visible:ring-2 focus-visible:ring-fg"
             />
           </label>
           <div className="md:ms-auto">
-            <SegmentedControl label="View" value={state.view} onChange={state.setView} options={[{ value: "map", label: "Map" }, { value: "list", label: "List" }]} floating />
+            <SegmentedControl label={t("wp.map.viewLabel")} value={state.view} onChange={state.setView} options={[{ value: "map", label: t("sh.nav.map") }, { value: "list", label: t("wp.map.list") }]} floating />
           </div>
         </div>
         <div className="pointer-events-auto flex">
@@ -77,24 +79,24 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
         {notice ? (
           <div data-map-obstacle className="chrome pointer-events-auto flex items-start gap-3 rounded-card px-4 py-3 text-meta text-fg md:max-w-[420px]">
             <p className="flex-1">{notice}</p>
-            <button type="button" aria-label="Dismiss" onClick={onDismissNotice} className="text-fg-muted hover:text-fg">
+            <button type="button" aria-label={t("wp.map.dismiss")} onClick={onDismissNotice} className="text-fg-muted hover:text-fg">
               <X aria-hidden className="size-4" />
             </button>
           </div>
         ) : null}
-        {!located.length ? <p data-map-obstacle className="chrome pointer-events-auto w-fit rounded-full px-4 py-2 text-meta text-fg">nothing here with these filters</p> : null}
+        {!located.length ? <p data-map-obstacle className="chrome pointer-events-auto w-fit rounded-full px-4 py-2 text-meta text-fg">{t("wp.map.nothing")}</p> : null}
       </div>
 
       {/* Map controls (right) */}
       <div data-map-obstacle className={cn("pointer-events-none absolute end-4 z-[3] flex flex-col items-end gap-2.5 transition-[bottom] duration-200 ease-sheet md:end-6", sel ? "bottom-[calc(252px+env(safe-area-inset-bottom))] md:bottom-[124px]" : "bottom-[calc(112px+env(safe-area-inset-bottom))] md:bottom-[124px]")}>
         {/* Desktop only: on phones the List switch already gives the overview. */}
-        <button type="button" aria-label="Show all shops" title="Show all shops" onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto hidden size-10 items-center justify-center rounded-full text-fg focus-visible:focus-ring md:inline-flex">
+        <button type="button" aria-label={t("wp.map.showAll")} title={t("wp.map.showAll")} onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto hidden size-10 items-center justify-center rounded-full text-fg focus-visible:focus-ring md:inline-flex">
           <Maximize2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
         </button>
         <button
           type="button"
-          aria-label={state.coords ? "Sorted by distance from you" : "Use my location"}
-          title="Use my location"
+          aria-label={state.coords ? t("wp.map.sorted") : t("ms.map.useLoc")}
+          title={t("ms.map.useLoc")}
           onClick={state.locate}
           className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-fg text-bg shadow-float focus-visible:focus-ring"
         >
@@ -106,7 +108,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
       {state.categories.length > 2 ? (
         <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2]", sel && "max-md:hidden")}>
           <div aria-hidden className="absolute inset-x-0 bottom-0 h-[112px] bg-linear-to-t from-[#FFFFFF] from-35% via-[#FFFFFF]/80 to-[#FFFFFF]/0 dark:from-ll-map-land-dark dark:via-ll-map-land-dark/85 dark:to-transparent" />
-          <div data-map-obstacle role="group" aria-label="Categories" className="no-scrollbar pointer-events-auto relative mx-auto flex w-fit max-w-full gap-0.5 overflow-x-auto px-3 pt-2 pb-[max(22px,env(safe-area-inset-bottom))] md:pb-6">
+          <div data-map-obstacle role="group" aria-label={t("wp.cat.label")} className="no-scrollbar pointer-events-auto relative mx-auto flex w-fit max-w-full gap-0.5 overflow-x-auto px-3 pt-2 pb-[max(22px,env(safe-area-inset-bottom))] md:pb-6">
             {state.categories.map((c) => {
               const on = state.cat === c;
               return (
@@ -114,7 +116,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
                   <span className={cn("flex size-10 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-[#0B0B0C]" : "group-hover:scale-105")}>
                     <CategoryIcon category={c} size={24} />
                   </span>
-                  <span className={cn("display text-[12px] leading-[14px] lowercase", on ? "text-fg" : "text-fg-muted")}>{categoryLabels[c]}</span>
+                  <span className={cn("display text-[12px] leading-[14px] lowercase", on ? "text-fg" : "text-fg-muted")}>{t(CATEGORY_KEYS[c])}</span>
                 </button>
               );
             })}
@@ -129,8 +131,10 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
 
 /** Shop sheet (foundations.md "Shop sheet"): grabber, avatar + name + italic vertical line, open dot, my progress, one black action. */
 function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () => void }) {
-  const kind = placeKind(s.merchant.vertical);
-  const where = s.distanceMetres != null ? formatDistance(s.distanceMetres) : s.location?.address;
+  const L = useLocaleOrEnglish();
+  const { t, locale } = L;
+  const kind = placeKindLabel(locale, s.merchant.vertical);
+  const where = s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address;
   return (
     <section
       data-map-obstacle
@@ -145,25 +149,25 @@ function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () 
           <h2 className="text-headline text-fg">{s.merchant.name}</h2>
           <p className="truncate text-meta italic text-fg-muted">{[kind, where].filter(Boolean).join(" · ")}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-fg">
-            {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"}>{s.openNow ? "Open now" : "Closed"}</StatusDot> : null}
-            {s.memberCount ? <span className="text-fg-muted">{s.memberCount} neighbours are members</span> : null}
+            {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"}>{s.openNow ? t("ms.map.openNow").replace(/^./, (ch) => ch.toUpperCase()) : t("ui.hours.closed")}</StatusDot> : null}
+            {s.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: s.memberCount })}</span> : null}
           </div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted after:absolute after:-inset-2 hover:text-fg focus-visible:focus-ring">
+        <button type="button" onClick={onClose} aria-label={t("sh.card.close")} className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted after:absolute after:-inset-2 hover:text-fg focus-visible:focus-ring">
           <X aria-hidden className="size-4" strokeWidth={2} />
         </button>
       </div>
       {s.isMember && s.myBalance != null ? (
         <div className="mt-4 flex items-baseline justify-between border-t border-line pt-3">
-          <span className="text-meta text-fg-muted">Your balance</span>
-          <span className="display text-title tabular-nums text-accent-text">{formatPoints(s.myBalance, s.terminology, false)}</span>
+          <span className="text-meta text-fg-muted">{t("wp.map.balance")}</span>
+          <span className="display text-title tabular-nums text-accent-text">{unitsText(locale, s.myBalance, s.terminology, false)}</span>
         </div>
       ) : s.hasPromo ? (
-        <p className="mt-4 border-t border-line pt-3 text-meta text-fg">An offer is on now. Members hear about new ones first.</p>
+        <p className="mt-4 border-t border-line pt-3 text-meta text-fg">{t("wp.map.offerOn")}</p>
       ) : null}
       <div className="mt-4 flex gap-2">
         <Button size="lg" fullWidth href={`/shops/${s.merchant.slug}`}>
-          {s.isMember ? "View" : "Join"}
+          {s.isMember ? t("wp.map.view") : t("sh.wallet.join")}
         </Button>
       </div>
     </section>

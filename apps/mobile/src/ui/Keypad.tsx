@@ -1,5 +1,6 @@
 import { radii, touchTargets } from "@ll/design-tokens";
 import { Pressable, StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { haptic } from "./haptics";
 import { Delete } from "./icons";
@@ -26,6 +27,7 @@ const ROWS: KeypadKey[][] = [
 /** 3 x 4 keypad: grey keys, black tabular digits, 72 pt (kiosk 88), haptic tick, long-press delete = clear. */
 export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadProps) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const h = Math.max(touchTargets.keypad, keyHeight ?? (size === "kiosk" ? touchTargets.kiosk : touchTargets.keypad));
   const press = (k: KeypadKey) => {
     if (disabled) return;
@@ -37,7 +39,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
       {ROWS.map((row, r) => (
         <View key={r} style={styles.row}>
           {row.map((k) => {
-            const label = k === "back" ? "Delete" : k === "clear" ? "Clear" : k;
+            const label = k === "back" ? t("ui.delete") : k === "clear" ? t("ui.clear") : k;
             const fn = k === "back" || k === "clear";
             return (
               <Pressable
@@ -52,7 +54,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
                   <Delete size={26} color={c.fg} strokeWidth={1.75} />
                 ) : k === "clear" ? (
                   <Text variant="bodyStrong" color="fgMuted">
-                    Clear
+                    {t("ui.clear")}
                   </Text>
                 ) : (
                   <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={[{ fontWeight: "500", fontSize: 30, lineHeight: 36 }, size === "kiosk" ? { fontSize: 36, lineHeight: 42 } : null]}>

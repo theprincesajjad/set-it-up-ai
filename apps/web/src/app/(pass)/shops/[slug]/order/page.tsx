@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Order for pickup · ${s.name}`, robots: { index: false, follow: false } };
+    return { title: `${t("rs.orderPickup")} · ${s.name}`, robots: { index: false, follow: false } };
   } catch {
-    return { title: "Order for pickup", robots: { index: false, follow: false } };
+    return { title: t("rs.orderPickup"), robots: { index: false, follow: false } };
   }
 }
 

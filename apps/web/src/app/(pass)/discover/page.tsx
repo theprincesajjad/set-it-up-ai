@@ -1,5 +1,5 @@
 import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
-import { LOCALES, translator, type Locale, type MessageKey } from "@ll/shared";
+import { BRAND, LOCALES, placeKindLabel, translator, type Locale, type MessageKey } from "@ll/shared";
 import type { campaignsApi, customerApi, networkApi } from "@ll/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -9,22 +9,26 @@ import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { LocaleScope } from "@/lib/i18n";
-import { getLocaleForProfile } from "@/lib/i18n/server";
+import { getLocaleForProfile, getT } from "@/lib/i18n/server";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
-import { placeKind } from "@/lib/place";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Discover", description: "What's on along your street: the live neighbourhood campaign and the shops near you.", robots: { index: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("sh.disc.title"), description: t("wp.t.discoverDesc"), robots: { index: false } };
+}
 
-const ROWS: { id: VerticalCategory; title: string; chip: string }[] = [
-  { id: "coffee", title: "coffee", chip: "coffee" },
-  { id: "bakery", title: "bakeries", chip: "bakeries" },
-  { id: "eat", title: "places to eat", chip: "eat" },
-  { id: "shops", title: "shops", chip: "shops" },
-  { id: "beauty", title: "beauty", chip: "beauty" },
-  { id: "services", title: "services", chip: "services" },
-  { id: "repair", title: "repair", chip: "repair" },
-];
+const ROWS: { id: VerticalCategory }[] = [{ id: "coffee" }, { id: "bakery" }, { id: "eat" }, { id: "shops" }, { id: "beauty" }, { id: "services" }, { id: "repair" }];
+/** The short chip caption; the row title above each shelf is the longer `sh.disc.row.*` ("places to eat"). */
+const CHIP_KEY: Record<VerticalCategory, MessageKey> = {
+  coffee: "sh.disc.row.coffee",
+  bakery: "sh.disc.row.bakery",
+  eat: "ms.cat.eat",
+  shops: "sh.disc.row.shops",
+  beauty: "sh.disc.row.beauty",
+  services: "sh.disc.row.services",
+  repair: "sh.disc.row.repair",
+};
 const CHIP_ORDER: VerticalCategory[] = ["coffee", "bakery", "services", "repair", "eat", "shops", "beauty"];
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
@@ -47,6 +51,7 @@ function hero(c: campaignsApi.MyCampaign | campaignsApi.PublicCampaign, locale: 
   const end = new Date(c.endsAt);
   const prize = c.prize ? c.prize.replace(/^win\s+/i, "").replace(/\.$/, "") : null;
   const ends = locale === "en" ? `${MONTHS[end.getMonth()]} ${end.getDate()}` : new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric" }).format(end);
+  // l10n-ok: English branch
   const english = `visit ${c.goalVisits} shops, ${prize ? `win ${prize}` : c.bonusPoints ? `get ${c.bonusPoints} bonus points` : "finish the passport"}`;
   const ask = locale === "en" ? english : prize ? t("sh.disc.heroPassport", { goal: c.goalVisits, prize }) : t("sh.camp.stepVisit", { goal: c.goalVisits });
   const headline = c.kind === "passport" ? ask : c.name;
@@ -95,7 +100,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
         <CategoryIcon category="bakery" size={76} className="absolute left-[calc(100%-104px)] top-[132px] rotate-[10deg]" />
         <CategoryIcon category="beauty" size={58} className="absolute left-[calc(100%-162px)] top-[176px] -rotate-[14deg]" />
         <div className="absolute inset-x-5 top-[58px] flex justify-between">
-          <span className="display text-[15px] leading-[18px] text-white">local loyalty</span>
+          <span className="display text-[15px] leading-[18px] text-white">{BRAND.name.toLowerCase()}</span>
           <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-9 items-center justify-center rounded-full bg-white/[.12] text-white">
             <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
           </Link>
@@ -112,14 +117,14 @@ export default async function DiscoverPage({ searchParams }: Props) {
         ) : null}
       </section>
 
-      <nav aria-label="Categories" className="no-scrollbar mt-4 flex gap-2 overflow-x-auto px-4">
+      <nav aria-label={t("wp.cat.label")} className="no-scrollbar mt-4 flex gap-2 overflow-x-auto px-4">
         <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold tracking-normal", !only ? "bg-fg text-bg" : "bg-bg-subtle text-fg")}>
           {t("sh.disc.forYou")}
           <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
         </Link>
         {chips.map((c) => (
           <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-[14px] font-bold tracking-normal", only === c.id ? "bg-fg text-bg" : "bg-bg-subtle text-fg")}>
-            {locale === "en" ? c.chip : t(ROW_KEY[c.id])}
+            {t(CHIP_KEY[c.id])}
           </Link>
         ))}
       </nav>
@@ -155,7 +160,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
                     {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-accent-soft px-[9px] text-[12px] font-semibold text-accent-text">{t("sh.wallet.rewardReady")}</span> : null}
                   </span>
                   <span className="display mt-2.5 block truncate text-[15px] font-bold tracking-normal text-fg">{s.merchant.name.toLowerCase()}</span>
-                  <span className="mt-0.5 block truncate text-[12px] text-fg-muted">{[locale === "en" ? placeKind(s.merchant.vertical) : null, s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>
+                  <span className="mt-0.5 block truncate text-[12px] text-fg-muted">{[placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>
                 </Link>
               </li>
             ))}

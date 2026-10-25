@@ -30,7 +30,9 @@ export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupB
   if (env.stripePublishableKey) return <StripeSetup publishableKey={env.stripePublishableKey} clientSecret={clientSecret} label={label} onSucceeded={onSaved} />;
   return (
     <div className="flex flex-col gap-3 rounded-card border border-dashed border-line-strong/60 p-4">
+      {/* l10n-ok: shown only when Stripe is not configured (local development) */}
       <p className="text-meta-strong text-fg">Test card (development)</p>
+      {/* l10n-ok: development-only notice */}
       <p className="text-meta text-fg-muted">Stripe isn&apos;t configured on this site, so this saves a test card through the API&apos;s fake payments provider. Nothing is charged.</p>
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <Button

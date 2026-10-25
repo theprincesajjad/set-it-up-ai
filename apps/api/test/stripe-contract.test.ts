@@ -21,7 +21,7 @@ import { startCheckout } from "../src/services/billing.js";
 import { createConnectPayment, refundConnectPayment } from "../src/services/payments.js";
 import { loadConfig } from "../src/config.js";
 import { rollBilling } from "../src/services/tiffin.js";
-import { createMerchant, createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createTestEnv, createUser, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
 import { PAID_FEATURES, setStage } from "./commerce-fixtures.js";
 
 interface Recorded {
@@ -968,6 +968,7 @@ describe("charge-mode change and saved tiffin methods", () => {
       rows.push(r!);
     }
     const admin = await createUser(env.db, { platformRole: "admin" });
+    await openSupportSession(env, admin.id, merchant.id);
     const res = await env.app.inject({ method: "PUT", url: `/v1/admin/merchants/${merchant.id}/charge-mode`, headers: { authorization: `Bearer ${await tokenFor(env, admin)}` }, payload: { chargeMode: "direct" } });
     expect(res.json()).toMatchObject({ merchantId: merchant.id, chargeMode: "direct", directChargesEnabled: true, tiffinSubscriptionsReset: 2 });
     expect(calls).toHaveLength(0);

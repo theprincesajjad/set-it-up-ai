@@ -5,10 +5,13 @@ import { Heading } from "@/components/restaurant/ui";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { TiffinManage } from "@/components/restaurant/TiffinManage";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "My tiffin", robots: { index: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("rc.tm.title"), robots: { index: false } };
+}
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 

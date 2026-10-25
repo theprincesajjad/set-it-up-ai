@@ -9,6 +9,11 @@ export interface Config {
   publicApiUrl: string;
   publicWebUrl: string;
   corsOrigins: string[];
+  /**
+   * How many proxy hops to trust for the client address (X-Forwarded-For). `true` trusts every hop, which lets a
+   * caller pick its own address and walk around per-address limits, so production defaults to one hop (the load balancer).
+   */
+  trustProxy: boolean | number;
   /** Merchants need this many active members to count as "activated". */
   activationThreshold: number;
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
@@ -46,6 +51,14 @@ export interface Config {
   };
 }
 
+function parseTrustProxy(v: string | undefined, isProd: boolean): boolean | number {
+  if (v === undefined || v === "") return isProd ? 1 : true;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : isProd ? 1 : true;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const nodeEnv = (env.NODE_ENV as Config["env"]) ?? "development";
   const isProd = nodeEnv === "production";
@@ -62,6 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     encryptionKey: required("ENCRYPTION_KEY", "0".repeat(64)),
     publicApiUrl: env.PUBLIC_API_URL ?? "http://localhost:4000",
     publicWebUrl: env.PUBLIC_WEB_URL ?? "http://localhost:3000",
+    trustProxy: parseTrustProxy(env.TRUST_PROXY_HOPS, isProd),
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:8081").split(",").map((s) => s.trim()),
     activationThreshold: Number(env.ACTIVATION_THRESHOLD ?? 25),
     sms: {

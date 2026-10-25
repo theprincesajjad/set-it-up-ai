@@ -18,3 +18,6 @@ export const conflict = (message: string) => new HttpError(409, "conflict", mess
 export const featureLocked = (feature: string, reason: "plan" | "rollout") =>
   new HttpError(402, "feature_locked", reason === "plan" ? `Upgrade to use ${feature}` : `${feature} is coming soon`, { feature, reason });
 export const tooMany = (message: string) => new HttpError(429, "rate_limited", message);
+/** An admin or rep tried to change something inside a shop without an active, reasoned support session. */
+export const supportSessionRequired = (merchantId: string) =>
+  new HttpError(403, "support_session_required", "Start a support session with a reason before changing this shop", { merchantId });

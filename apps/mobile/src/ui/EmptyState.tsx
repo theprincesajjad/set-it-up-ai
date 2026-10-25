@@ -1,4 +1,5 @@
 import { StyleSheet, View } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Button } from "./Button";
 import { CircleAlert, CloudOff, type LucideIcon } from "./icons";
@@ -56,15 +57,16 @@ export function EmptyState({ icon: Icon, title, body, actionLabel, onAction, sec
 /** One sentence + retry (polish-audit S9). The sentence says what failed in plain words. */
 export function ErrorState({ message, onRetry, offline }: { message?: string; onRetry?: () => void; offline?: boolean }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const Icon = offline ? CloudOff : CircleAlert;
   return (
     <View style={styles.wrap} accessibilityRole="alert">
       <Icon size={22} color={offline ? c.fgMuted : c.negative} strokeWidth={1.75} />
-      <Text variant="body">{message ?? (offline ? "You're offline. This will load when you're back." : "This didn't load. Check your connection and try again.")}</Text>
+      <Text variant="body">{message ?? (offline ? t("ui.offlineLoad") : t("ui.loadFail"))}</Text>
       {onRetry ? (
         <View style={styles.actions}>
           <Button variant="secondary" size="sm" onPress={onRetry}>
-            Try again
+            {t("rc.tryAgain")}
           </Button>
         </View>
       ) : null}

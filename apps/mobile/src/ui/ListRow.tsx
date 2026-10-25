@@ -45,7 +45,7 @@ export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing,
       </View>
       {trailing}
       {chevron ? <ChevronRight size={18} color={c.fgSubtle} strokeWidth={2} /> : null}
-      {divider ? <View style={[styles.divider, { left: hasLeading ? (leading ? 56 : 40) : 0, backgroundColor: c.line }]} /> : null}
+      {divider ? <View style={[styles.divider, { start: hasLeading ? (leading ? 56 : 40) : 0, backgroundColor: c.line }]} /> : null}
     </View>
   );
   if (!onPress) return content(false);
@@ -60,5 +60,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   icon: { width: 28, alignItems: "flex-start", justifyContent: "center" },
   text: { flex: 1, gap: 2 },
-  divider: { position: "absolute", right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  divider: { position: "absolute", end: 0, bottom: 0, height: StyleSheet.hairlineWidth },
 });

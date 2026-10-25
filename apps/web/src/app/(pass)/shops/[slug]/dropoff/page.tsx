@@ -8,19 +8,20 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await publicServerApi().public.shop(slug);
-    return { title: `Book a drop-off · ${s.merchant.name}`, alternates: { canonical: `/shops/${slug}/dropoff` } };
+    return { title: `${t("sv.d.link")} · ${s.merchant.name}`, alternates: { canonical: `/shops/${slug}/dropoff` } };
   } catch {
-    return { title: "Book a drop-off" };
+    return { title: t("sv.d.link") };
   }
 }
 

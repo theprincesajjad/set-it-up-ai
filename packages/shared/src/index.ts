@@ -16,3 +16,4 @@ export * from "./birthday.js";
 export * from "./legal-tokens.js";
 export * from "./retention.js";
 export * from "./opt-out.js";
+export * from "./merchant-export.js";

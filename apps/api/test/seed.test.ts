@@ -46,7 +46,7 @@ import {
   tiffinCharges,
 } from "@ll/db";
 import { DEMO_CREDENTIALS, seedDemo } from "../src/seed.js";
-import { resolveUploadUrl, toStoredUploadUrl } from "../src/providers/storage.js";
+import { toStoredUploadUrl, uploadSigner } from "../src/providers/storage.js";
 import { campaignProgress, campaigns, neighbourhoodManagers } from "@ll/db";
 import { ledgerBalance } from "../src/services/ledger.js";
 import { createTestEnv, type TestEnv } from "./helpers.js";
@@ -183,7 +183,7 @@ describe("core modules on the pilot shops", () => {
     expect(new Set(inv.map((i) => i.status))).toEqual(new Set(["open", "paid"]));
   });
 
-  it("ticket photos are stored as relative upload paths and resolve to the API's public URL when read", async () => {
+  it("ticket photos are stored as relative upload paths and resolve to signed, expiring URLs on the API's public origin when read", async () => {
     const id = await slugToId("fix-it-phone-lab");
     const ts = await env.db.select().from(serviceTickets).where(eq(serviceTickets.merchantId, id));
     const photos = ts.flatMap((t) => t.photos);
@@ -194,14 +194,18 @@ describe("core modules on the pilot shops", () => {
     const list = await env.app.inject({ method: "GET", url: `/v1/merchants/${id}/tickets?limit=100`, headers });
     const shown: string[] = list.json().items.flatMap((t: { photos: string[] }) => t.photos);
     expect(shown.length).toBe(photos.length);
-    for (const u of shown) expect(u.startsWith(`${env.ctx.config.publicApiUrl}/v1/public/uploads/`)).toBe(true);
+    for (const u of shown) expect(u).toMatch(new RegExp(`^${env.ctx.config.publicApiUrl}/v1/public/uploads/[0-9a-f-]{36}/[0-9a-f]{32}\\.png\\?exp=\\d+&sig=[0-9a-f]{64}$`));
   });
 
   it("upload URLs follow the API origin: stripped on write, resolved on read, foreign URLs left alone", () => {
     expect(toStoredUploadUrl("http://localhost:4000/v1/public/uploads/a/b.png", "http://localhost:4000/")).toBe("/v1/public/uploads/a/b.png");
     expect(toStoredUploadUrl("https://cdn.example.com/x.png", "http://localhost:4000")).toBe("https://cdn.example.com/x.png");
-    expect(resolveUploadUrl("/v1/public/uploads/a/b.png", "http://localhost:4530/")).toBe("http://localhost:4530/v1/public/uploads/a/b.png");
-    expect(resolveUploadUrl("https://cdn.example.com/x.png", "http://localhost:4530")).toBe("https://cdn.example.com/x.png");
+    const key = "00000000-0000-0000-0000-000000000001/0123456789abcdef0123456789abcdef.png";
+    // a signed link coming back from the browser is stored as the permanent path again
+    expect(toStoredUploadUrl(`http://localhost:4000/v1/public/uploads/${key}?exp=1&sig=${"a".repeat(64)}`, "http://localhost:4000")).toBe(`/v1/public/uploads/${key}`);
+    const sign = uploadSigner({ ...env.ctx, config: { ...env.ctx.config, publicApiUrl: "http://localhost:4530/" } });
+    expect(sign(`/v1/public/uploads/${key}`)).toMatch(new RegExp(`^http://localhost:4530/v1/public/uploads/${key}\\?exp=\\d+&sig=[0-9a-f]{64}$`));
+    expect(sign("https://cdn.example.com/x.png")).toBe("https://cdn.example.com/x.png");
   });
 
   it("the BIA demo login manages Roncesvalles with campaigns in every state", async () => {

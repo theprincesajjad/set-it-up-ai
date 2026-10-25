@@ -1,8 +1,8 @@
 import { radii } from "@ll/design-tokens";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { formatMoney } from "../lib/award";
-import { formatDate } from "../lib/format";
+import { formatDateL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Badge } from "./Badge";
 import { ShopLogo } from "./ShopTile";
@@ -21,6 +21,8 @@ export function DiscountCard({
   live?: boolean;
 }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const v = { ink: c.fg };
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -28,7 +30,7 @@ export function DiscountCard({
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, [live]);
-  const value = card.percentOff > 0 ? `${card.percentOff}% off` : formatMoney(card.amountOffCents) + " off";
+  const value = card.percentOff > 0 ? t("ui.promoOff", { n: card.percentOff }) : t("ui.amountOff", { amount: L.money(card.amountOffCents) });
   const clock = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   return (
     <View style={[styles.card, { backgroundColor: c.bg, borderColor: c.line }]} accessible accessibilityLabel={`${shop.name} ${card.name}, ${value}. ${card.terms ?? ""}`}>
@@ -37,7 +39,7 @@ export function DiscountCard({
         <Text variant="metaStrong" rawColor={v.ink} style={{ flex: 1 }}>
           {shop.name}
         </Text>
-        <Badge tone="success">Valid today</Badge>
+        <Badge tone="success">{t("ui.validToday")}</Badge>
       </View>
       <Text variant="displayNumber" rawColor={v.ink}>
         {value}
@@ -56,7 +58,7 @@ export function DiscountCard({
             {memberName ?? ""}
           </Text>
           <Text variant="bodyStrong" rawColor={v.ink} tabular>
-            {`${formatDate(now)} ${clock}`}
+            {`${formatDateL(L, now)} ${clock}`}
           </Text>
         </View>
       ) : null}

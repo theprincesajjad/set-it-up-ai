@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, invoices, leadActivities, leads, merchants, neighbourhoods, orders, subscriptions, supportSessions } from "@ll/db";
 import { atRiskShops, subscriptionMrrCents } from "../src/services/admin-ops.js";
 import { awardPurchase } from "../src/services/ledger.js";
-import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
+import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
 beforeEach(async () => {
@@ -207,6 +207,7 @@ describe("founder's console", () => {
     const admin = await person("admin", "Ada Admin");
     const m = await createMerchant(env);
     const url = `/v1/admin/merchants/${m.merchant.id}/charge-mode`;
+    await openSupportSession(env, admin.user.id, m.merchant.id, "Change merchant of record");
     expect((await call("PUT", url, admin.token, { chargeMode: "direct", reason: "ok" })).statusCode).toBe(400);
     expect((await call("PUT", url, admin.token, { chargeMode: "direct", reason: "Merchant of record per owner" })).statusCode).toBe(409);
     await env.db.update(merchants).set({ stripeAccountId: "acct_test", stripeChargesEnabled: true }).where(eq(merchants.id, m.merchant.id));
@@ -287,9 +288,9 @@ describe("founder's console", () => {
     await env.db.update(merchants).set({ stripeAccountId: "acct_x" }).where(eq(merchants.id, m.merchant.id));
     const steps: [string, () => Promise<{ statusCode: number }>][] = [
       ["feature.stage_changed", () => call("PUT", "/v1/admin/features/promos.basic/stage", admin.token, { stage: "beta", note: "test" })],
+      ["support.session_started", () => call("POST", `/v1/admin/merchants/${m.merchant.id}/support-sessions`, admin.token, { reason: "test reason" })],
       ["merchant.status_changed", () => call("POST", `/v1/admin/merchants/${m.merchant.id}/status`, admin.token, { status: "paused", reason: "test" })],
       ["billing.charge_mode_changed", () => call("PUT", `/v1/admin/merchants/${m.merchant.id}/charge-mode`, admin.token, { chargeMode: "direct", reason: "test reason" })],
-      ["support.session_started", () => call("POST", `/v1/admin/merchants/${m.merchant.id}/support-sessions`, admin.token, { reason: "test reason" })],
       ["neighbourhood.updated", () => call("PATCH", `/v1/admin/neighbourhoods/${hood.id}`, admin.token, { notes: "x" })],
       ["perk.created", () => call("POST", "/v1/admin/perks", admin.token, { neighbourhoodId: null, name: "Perk", ruleType: "distinct_merchants", threshold: 2, windowDays: 30, bonusPoints: 10, active: true })],
       ["user.platform_role_changed", () => call("PUT", `/v1/admin/users/${rep.user.id}/role`, admin.token, { platformRole: "none" })],

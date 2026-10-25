@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { StyleSheet, TextInput, View, type TextInputInstance } from "react-native";
 import { applyPhoneEdit, formatNanp, toE164 } from "../lib/phone";
+import { useLocale } from "../lib/i18n";
 import { typo, useTheme } from "../theme";
 import { CircleAlert } from "./icons";
 import { Text } from "./Text";
@@ -18,13 +19,14 @@ export interface PhoneFieldProps {
 
 /** NANP PhoneField with "+1" chip and as-you-type "(416) 555-0123" formatting (system.md § PhoneField). */
 export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(function PhoneField(
-  { label = "Mobile number", digits, onChangeDigits, onChangeE164, error, hint, autoFocus, onSubmitEditing },
+  { label, digits, onChangeDigits, onChangeE164, error, hint, autoFocus, onSubmitEditing },
   ref,
 ) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <View style={styles.wrap}>
-      <Text variant="metaStrong" color="fgMuted">{label}</Text>
+      <Text variant="metaStrong" color="fgMuted">{label ?? t("auth.phone.label")}</Text>
       <View style={[styles.field, { backgroundColor: c.bg, borderColor: error ? c.negative : c.lineStrong, borderWidth: error ? 2 : 1 }]}>
         <View style={[styles.chip, { backgroundColor: c.bgSubtle }]} accessibilityElementsHidden importantForAccessibility="no">
           <Text variant="bodyStrong" color="fgMuted">
@@ -45,7 +47,7 @@ export const PhoneField = forwardRef<TextInputInstance, PhoneFieldProps>(functio
           autoFocus={autoFocus}
           placeholder="(416) 555-0123"
           placeholderTextColor={c.fgSubtle}
-          accessibilityLabel={label}
+          accessibilityLabel={label ?? t("auth.phone.label")}
           accessibilityHint={error ?? hint ?? undefined}
           onSubmitEditing={onSubmitEditing}
           returnKeyType="done"

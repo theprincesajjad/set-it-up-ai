@@ -3,6 +3,7 @@ import { adminApi } from "@ll/shared";
 import { z } from "zod";
 import type { AppContext } from "../../context.js";
 import { requirePlatformRole } from "../../lib/auth.js";
+import { requireSupportSession } from "../../lib/support-session.js";
 import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/admin.js";
 import * as ops from "../../services/admin-ops.js";
@@ -15,7 +16,13 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     rejectMalformedIds(app);
     // Every route here is admin-only.
     app.addHook("preHandler", async (req) => {
-      requirePlatformRole(req, "admin");
+      const admin = requirePlatformRole(req, "admin");
+      // Changing a shop from the admin console needs an active, reasoned support session for that shop (reads do not).
+      const merchantId = (req.params as { merchantId?: string }).merchantId;
+      const route = req.routeOptions.url ?? "";
+      if (merchantId && route.includes("/admin/merchants/:merchantId") && !route.endsWith("/support-sessions") && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+        await requireSupportSession(ctx, admin.id, merchantId);
+      }
     });
     await routes(app, ctx);
   });

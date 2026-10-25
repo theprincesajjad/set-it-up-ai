@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Share, StyleSheet, View } from "react-native";
 import { useCampaigns } from "../../features/customer/queries";
-import { formatShortDate } from "../../lib/format";
+import { formatShortDateL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Banner, Button, Check, ErrorState, Screen, Section, ShopLogo, ShopTile, SkeletonRows, SkeletonShop, Text } from "../../ui";
@@ -11,6 +12,8 @@ import { Banner, Button, Check, ErrorState, Screen, Section, ShopLogo, ShopTile,
 export default function CampaignDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const mine = useCampaigns();
   const my = mine.data?.items.find((x) => x.id === id) ?? null;
   const pub = useQuery({ queryKey: ["campaign", id], queryFn: () => api.network.campaign(id!), enabled: !!id && !my });
@@ -30,7 +33,7 @@ export default function CampaignDetail() {
   if (!cmp) {
     return (
       <Screen back>
-        <ErrorState message="This campaign isn't running any more." />
+        <ErrorState message={t("ms.camp.gone")} />
       </Screen>
     );
   }
@@ -49,7 +52,7 @@ export default function CampaignDetail() {
         <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {cmp.name}
         </Text>
-        <Text variant="meta" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDate(cmp.startsAt)}–${formatShortDate(cmp.endsAt)}`}</Text>
+        <Text variant="meta" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDateL(L, cmp.startsAt)}–${formatShortDateL(L, cmp.endsAt)}`}</Text>
         {cmp.prize ? (
           <Text variant="bodyStrong" style={{ marginTop: 6 }}>
             {cmp.prize}
@@ -60,24 +63,24 @@ export default function CampaignDetail() {
 
       {my?.progress.completedAt ? (
         <View style={{ gap: 12 }}>
-          <Banner variant="success">{ended ? `You visited ${done} shops.` : "You did it. You're entered in the draw."}</Banner>
+          <Banner variant="success">{ended ? t("ms.camp.visitedN", { n: done }) : t("ms.camp.didIt")}</Banner>
           {!ended ? (
-            <Button variant="secondary" onPress={() => Share.share({ message: `I finished the ${cmp.name}! Visit ${goal} shops on ${cmp.neighbourhood.name} to enter.` })} style={{ alignSelf: "flex-start" }}>
-              Share
+            <Button variant="secondary" onPress={() => Share.share({ message: t("ms.camp.share", { name: cmp.name, goal, hood: cmp.neighbourhood.name }) })} style={{ alignSelf: "flex-start" }}>
+              {t("ms.share")}
             </Button>
           ) : null}
         </View>
       ) : ended ? (
-        <Banner variant="neutral">{`This campaign has ended. You visited ${done} shops.`}</Banner>
+        <Banner variant="neutral">{t("ms.camp.ended", { n: done })}</Banner>
       ) : null}
 
-      <Section title="Your passport">
+      <Section title={t("ms.camp.yourPassport")}>
         <View style={{ gap: 14, paddingTop: 14 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
             <Text variant="displayNumber" tabular>{`${done} / ${goal}`}</Text>
-            <Text variant="meta" color="fgMuted">{`shops visited · ${Math.max(0, goal - done)} to go`}</Text>
+            <Text variant="meta" color="fgMuted">{t("ms.camp.visitedToGo", { n: Math.max(0, goal - done) })}</Text>
           </View>
-          <View style={styles.grid} accessible accessibilityLabel={`${done} of ${goal} shops visited · ${Math.max(0, goal - done)} to go`}>
+          <View style={styles.grid} accessible accessibilityLabel={t("ms.camp.gridA11y", { done, goal, n: Math.max(0, goal - done) })}>
             {cmp.merchants.map((m) => {
               const v = visited.has(m.id);
               return (
@@ -97,13 +100,13 @@ export default function CampaignDetail() {
         </View>
       </Section>
 
-      <Section title="Participating shops">
+      <Section title={t("ms.camp.shopsHead")}>
         {merchants.map((m, i) => (
           <ShopTile
             key={m.id}
             variant="list"
             shop={{ ...brief(m), distanceM: byId.get(m.id)?.distanceMetres ?? null }}
-            subtitle={[visited.has(m.id) ? "visited" : "not visited yet", byId.get(m.id)?.location?.address].filter(Boolean).join(" · ")}
+            subtitle={[visited.has(m.id) ? t("ms.camp.shopVisited") : t("ms.camp.shopNotYet"), byId.get(m.id)?.location?.address].filter(Boolean).join(" · ")}
             divider={i < merchants.length - 1}
             onPress={() => router.push(`/shop/${m.slug}`)}
           />
@@ -116,5 +119,5 @@ export default function CampaignDetail() {
 const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   stamp: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  check: { position: "absolute", right: -2, bottom: -2, width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  check: { position: "absolute", end: -2, bottom: -2, width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
 });

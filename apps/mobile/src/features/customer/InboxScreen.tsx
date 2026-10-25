@@ -70,7 +70,7 @@ function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boole
           <Text style={[ui(15, 600, 20), { flex: 1 }]} numberOfLines={2}>
             {n.title}
           </Text>
-          <Text style={[ui(12, 400, 16), { paddingLeft: 8, marginTop: 2 }]} rawColor={c.fgSubtle}>
+          <Text style={[ui(12, 400, 16), { paddingStart: 8, marginTop: 2 }]} rawColor={c.fgSubtle}>
             {when}
           </Text>
         </View>

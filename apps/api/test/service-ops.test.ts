@@ -74,7 +74,7 @@ describe("photo upload", () => {
     const ok = await raw(m.ownerToken, `${base(m)}/uploads`, PNG, "image/png");
     expect(ok.status).toBe(201);
     expect(ok.body).toMatchObject({ contentType: "image/png", bytes: PNG.length });
-    expect(ok.body.url).toMatch(new RegExp(`^https://uploads.test/${m.merchant.id}/[0-9a-f]{32}\\.png$`));
+    expect(ok.body.url).toMatch(new RegExp(`^${env.ctx.config.publicApiUrl}/v1/public/uploads/${m.merchant.id}/[0-9a-f]{32}\\.png\\?exp=\\d+&sig=[0-9a-f]{64}$`));
     expect(store.objects.size).toBe(1);
 
     expect((await raw(m.ownerToken, `${base(m)}/uploads`, Buffer.from("<script>alert(1)</script>"), "text/html")).status).toBe(415);
@@ -93,12 +93,14 @@ describe("photo upload", () => {
     const store = new MemoryStorage();
     env.ctx.providers.storage = store;
     const up = await raw(m.ownerToken, `${base(m)}/uploads`, PNG, "image/png");
-    const key = up.body.url.replace("https://uploads.test/", "");
-    const res = await env.app.inject({ method: "GET", url: `/v1/public/uploads/${key}` });
+    const signed = new URL(up.body.url);
+    const key = signed.pathname.replace("/v1/public/uploads/", "");
+    const res = await env.app.inject({ method: "GET", url: `${signed.pathname}${signed.search}` });
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("image/png");
     expect(res.headers["x-content-type-options"]).toBe("nosniff");
-    expect((await env.app.inject({ method: "GET", url: `/v1/public/uploads/${m.merchant.id}/${"0".repeat(32)}.png` })).statusCode).toBe(404);
+    // the bare permanent path is not served at all (see uploads-signed.test.ts for expiry and tampering)
+    expect((await env.app.inject({ method: "GET", url: `/v1/public/uploads/${key}` })).statusCode).toBe(403);
   });
 });
 

@@ -4,12 +4,12 @@ import { en, type MessageKey, type whatsappApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { browserApi } from "@/lib/api/browser";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { PaymentBox, pollUntil } from "./PaymentBox";
 
 /** /pay/order/<orderId>?t=<token>: order summary and card payment for a WhatsApp order. */
 export function OrderPayView({ orderId, token, initial }: { orderId: string; token: string; initial: whatsappApi.WhatsappPayView }) {
-  const { info, number, t, rich } = useLocale();
+  const { info, number, t, rich } = useLocaleOrEnglish();
   // Always two decimals on a payment page ($14.00, not $14), unlike the compact shared formatter.
   const money = (cents: number) => new Intl.NumberFormat(info.bcp47, { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol" }).format(cents / 100);
   const [data, setData] = useState(initial);

@@ -13,6 +13,7 @@ import { requirePlatformRole, requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import * as billing from "../../services/billing.js";
 import * as restaurant from "../../services/billing-restaurant.js";
+import { requireSupportSession } from "../../lib/support-session.js";
 import { setChargeMode } from "../../services/payments.js";
 
 type P = { Params: { merchantId: string } };
@@ -95,6 +96,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const admin = requirePlatformRole(req, "admin");
     const merchantId = parse(z.uuid(), req.params.merchantId);
     const body = parse(billingApi.setChargeModeBody, req.body);
+    await requireSupportSession(ctx, admin.id, merchantId);
     return setChargeMode(ctx, admin.id, merchantId, body.chargeMode, body.reason);
   });
 }

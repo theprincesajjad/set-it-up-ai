@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { env } from "@/lib/env";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Menu · ${s.name}`, description: `See the menu at ${s.name}. Halal, vegetarian and spice levels shown.`, alternates: { canonical: `/shops/${slug}/menu` } };
+    return { title: `${t("menu.title")} · ${s.name}`, description: t("wp.t.menuDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/menu` } };
   } catch {
-    return { title: "Menu" };
+    return { title: t("menu.title") };
   }
 }
 

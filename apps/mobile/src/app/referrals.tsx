@@ -3,9 +3,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, Share, View } from "react-native";
 import { useWallet } from "../features/customer/queries";
-import { formatPts } from "../lib/award";
+import { formatPtsL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
-import { unitLabel } from "@ll/shared";
 import { api } from "../state/api";
 import { qk } from "../state/query";
 import { Badge, Button, Card, Chip, EmptyState, Screen, Share2, SkeletonList, Text, UserPlus } from "../ui";
@@ -13,7 +12,8 @@ import { Badge, Button, Card, Chip, EmptyState, Screen, Share2, SkeletonList, Te
 /** Invite a friend: single-use referral code per shop, shared with the OS share sheet. */
 export default function Referrals() {
   const params = useLocalSearchParams<{ memberId?: string }>();
-  const { t, locale } = useLocale();
+  const L = useLocale();
+  const { t } = L;
   const wallet = useWallet();
   const qc = useQueryClient();
   const shops = (wallet.data?.items ?? []).filter((m) => (m.program?.referralBonus ?? 0) > 0);
@@ -24,7 +24,7 @@ export default function Referrals() {
   if (!wallet.isLoading && shops.length === 0) {
     return (
       <Screen back title={t("sh.inv.title")}>
-        <EmptyState icon={UserPlus} title="No referral rewards yet" body="When a shop you've joined offers a referral bonus, you can invite friends here." />
+        <EmptyState icon={UserPlus} title={t("ms.ref.emptyTitle")} body={t("ms.ref.emptyBody")} />
       </Screen>
     );
   }
@@ -42,9 +42,7 @@ export default function Referrals() {
           <Text variant="title">{selected?.merchant.name}</Text>
           <Text color="fgMuted">
             {ref.data.bonusPoints > 0
-              ? locale === "en"
-                ? `You and your friend each get ${formatPts(ref.data.bonusPoints, selected?.terminology)} when they join.`
-                : t("sh.inv.bonus", { bonus: unitLabel(locale, selected?.terminology ?? "points", ref.data.bonusPoints) })
+              ? t("sh.inv.bonus", { bonus: formatPtsL(L, ref.data.bonusPoints, selected?.terminology) })
               : t("sh.inv.noBonus")}
           </Text>
           <View style={{ alignItems: "center", paddingVertical: 16 }}>

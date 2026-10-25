@@ -5,7 +5,6 @@ import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import { Linking, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { usePhase2, useWallet } from "../../features/customer/queries";
 import { api } from "../../state/api";
 import { useLocale } from "../../lib/i18n";
@@ -34,10 +33,10 @@ export default function Privacy() {
       const data = await api.me.exportData();
       const file = new File(Paths.cache, `my-${BRAND.shortName.toLowerCase()}-data.json`);
       file.write(JSON.stringify(data, null, 2));
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: "Your data" });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: lt("sh.priv.data") });
       toast({ tone: "success", message: lt("sh.priv.m.dlReady") });
     } catch (e) {
-      toast({ tone: "error", message: errorMessage(e, { network: t("err.network"), server: t("err.server") }) });
+      toast({ tone: "error", message: errorMessage(e, { network: lt("auth.err.network"), server: lt("auth.err.server") }) });
     } finally {
       setExporting(false);
     }
@@ -52,7 +51,7 @@ export default function Privacy() {
       router.replace({ pathname: "/welcome" });
       toast(lt("sh.priv.m.deleted"));
     } catch (e) {
-      setError(isApiError(e) && e.status === 409 ? e.message : errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(isApiError(e) && e.status === 409 ? e.message : errorMessage(e, { network: lt("auth.err.network"), server: lt("auth.err.server") }));
     } finally {
       setDeleting(false);
       setConfirm(false);
@@ -73,7 +72,7 @@ export default function Privacy() {
         <TextField label={lt("sh.priv.deleteType")} value={typed} onChangeText={setTyped} autoCapitalize="characters" />
         {error ? <Banner variant="danger">{error}</Banner> : null}
         <Button variant="danger" iconStart={Trash2} disabled={typed !== "DELETE" || openWork} onPress={() => setConfirm(true)}>
-          {t("destructive.deleteAccount")}
+          {lt("sh.priv.delete")}
         </Button>
       </Section>
       <View>
@@ -85,7 +84,7 @@ export default function Privacy() {
         visible={confirm}
         title={lt("sh.priv.deleteTitle")}
         body={lt("sh.priv.m.cantUndo")}
-        confirmLabel={t("destructive.deleteAccount")}
+        confirmLabel={lt("sh.priv.delete")}
         loading={deleting}
         onCancel={() => setConfirm(false)}
         onConfirm={del}

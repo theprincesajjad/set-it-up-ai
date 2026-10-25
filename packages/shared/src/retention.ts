@@ -30,9 +30,13 @@ export const RETENTION = {
 
 export type RetentionKey = keyof typeof RETENTION;
 
+/** How long a signed photo link works (apps/api/src/providers/storage.ts). The privacy policy prints it as {{upload.linkMinutes}}. */
+export const UPLOAD_LINK_MINUTES = 15;
+
 /** "90 days", "24 months", "1 day": the wording the policy prints. */
-export function retentionLabel(key: RetentionKey): string {
+export function retentionLabel(key: RetentionKey, lang: "en" | "fr" = "en"): string {
   const n: number = RETENTION[key];
+  if (lang === "fr") return `${n} ${key.endsWith("Months") ? "mois" : n === 1 ? "jour" : "jours"}`;
   const unit = key.endsWith("Months") ? "month" : "day";
   return `${n} ${unit}${n === 1 ? "" : "s"}`;
 }

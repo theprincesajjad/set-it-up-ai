@@ -141,9 +141,9 @@ export async function requirePaymentsReady(db: DbOrTx, merchant: Merchant): Prom
   return merchant.stripeAccountId;
 }
 
-export async function paymentsReady(db: DbOrTx, merchant: Merchant): Promise<boolean> {
+export async function paymentsReady(db: DbOrTx, merchant: Merchant, resolved?: Awaited<ReturnType<typeof getMerchantFeatures>>): Promise<boolean> {
   if (!merchant.stripeAccountId || !merchant.stripeChargesEnabled) return false;
-  const f = await getMerchantFeatures(db, merchant);
+  const f = resolved ?? (await getMerchantFeatures(db, merchant));
   return f["payments.in_app"].enabled;
 }
 

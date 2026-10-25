@@ -48,24 +48,26 @@ export function languageFromCode(code: string | undefined | null): "en" | "hi" |
   return c === "en" || c === "hi" || c === "ur" || c === "pa" ? c : null;
 }
 
-const SPEECH_LANG: Record<string, string> = { en: "en-CA", hi: "hi-IN", ur: "ur-PK", pa: "pa-guru-IN" };
+const SPEECH_LANG: Record<string, string> = { en: "en-CA", fr: "fr-CA", hi: "hi-IN", ur: "ur-PK", pa: "pa-guru-IN" };
 const esc = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
 
 /**
  * Spoken before the caller says anything: the call is turned into text and the text is kept (phone_calls.transcript),
- * so the caller must be told (PIPEDA openness and consent; Quebec Law 25). All four languages, the shop's first.
- * Wording to be checked by a native speaker of each language before launch.
+ * so the caller must be told (PIPEDA openness and consent; Quebec Law 25, which needs French). English, French (fr-CA), Hindi,
+ * Urdu and Punjabi, the shop's own language first. French is the notice only: callers still order in the shop's four languages.
+ * Wording to be checked by a native speaker of each language before launch (the French is listed in docs/legal/counsel-notes.md).
  */
-export const TRANSCRIPT_NOTICE: Record<"en" | "hi" | "ur" | "pa", string> = {
+export const TRANSCRIPT_NOTICE: Record<"en" | "fr" | "hi" | "ur" | "pa", string> = {
   en: "This call is turned into text by an automated assistant, and the text is saved so the shop can prepare your order. If you do not want this, please hang up.",
+  fr: "Cet appel est converti en texte par un assistant automatisé, et le texte est conservé afin que la boutique puisse préparer votre commande. Si vous ne le souhaitez pas, veuillez raccrocher.",
   hi: "यह कॉल एक स्वचालित सहायक द्वारा टेक्स्ट में बदली जाती है, और आपका ऑर्डर तैयार करने के लिए वह टेक्स्ट सहेजा जाता है। यदि आप ऐसा नहीं चाहते, तो कृपया फ़ोन रख दें।",
   ur: "یہ کال ایک خودکار معاون کے ذریعے متن میں تبدیل کی جاتی ہے، اور آپ کا آرڈر تیار کرنے کے لیے وہ متن محفوظ کیا جاتا ہے۔ اگر آپ یہ نہیں چاہتے تو براہِ کرم فون بند کر دیں۔",
   pa: "ਇਹ ਕਾਲ ਇੱਕ ਆਟੋਮੈਟਿਕ ਸਹਾਇਕ ਦੁਆਰਾ ਟੈਕਸਟ ਵਿੱਚ ਬਦਲੀ ਜਾਂਦੀ ਹੈ, ਅਤੇ ਤੁਹਾਡਾ ਆਰਡਰ ਤਿਆਰ ਕਰਨ ਲਈ ਉਹ ਟੈਕਸਟ ਸੰਭਾਲਿਆ ਜਾਂਦਾ ਹੈ। ਜੇ ਤੁਸੀਂ ਇਹ ਨਹੀਂ ਚਾਹੁੰਦੇ, ਤਾਂ ਕਿਰਪਾ ਕਰਕੇ ਫ਼ੋਨ ਰੱਖ ਦਿਓ।",
 };
 
-/** The notice in all four languages, `first` leading, each as a <Say> tagged with its own language. */
+/** The notice in every language, `first` leading, each as a <Say> tagged with its own language. */
 export function noticeSays(first: "en" | "hi" | "ur" | "pa"): string {
-  const order = [first, ...(["en", "hi", "ur", "pa"] as const).filter((l) => l !== first)];
+  const order = [first, ...(["en", "fr", "hi", "ur", "pa"] as const).filter((l) => l !== first)];
   return order.map((l) => `<Say language="${SPEECH_LANG[l]}">${esc(TRANSCRIPT_NOTICE[l])}</Say>`).join("");
 }
 

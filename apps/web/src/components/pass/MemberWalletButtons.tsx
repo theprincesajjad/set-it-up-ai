@@ -7,10 +7,12 @@
 import { useEffect, useState } from "react";
 import { Banner } from "@/components/ui/Banner";
 import { browserApi } from "@/lib/api/browser";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { platform } from "./JoinFlow";
 import { WalletButtons } from "./WalletButtons";
 
 export function MemberWalletButtons({ className }: { className?: string }) {
+  const { t } = useLocaleOrEnglish();
   const [os, setOs] = useState<"ios" | "android" | "other">("other");
   const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean } | null>(null);
   const [busy, setBusy] = useState<"apple" | "google" | null>(null);
@@ -25,7 +27,7 @@ export function MemberWalletButtons({ className }: { className?: string }) {
       .catch(() => setAvailable({ apple: false, google: false }));
   }, []);
   if (!available) return null;
-  const unavailable = "Wallet passes aren't available right now. Your card at /me works at the counter.";
+  const unavailable = t("wp.wallet.off");
   const go = async (p: "apple" | "google") => {
     setBusy(p);
     setError(null);

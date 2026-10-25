@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useBrightScreen } from "../features/customer/brightness";
+import { useLocale } from "../lib/i18n";
 import { useSession } from "../state/session";
 import { useTheme } from "../theme";
 import { Button, DiscountCard, Text } from "../ui";
@@ -10,6 +11,7 @@ import { Button, DiscountCard, Text } from "../ui";
 export default function DiscountFull() {
   const p = useLocalSearchParams<{ name: string; percentOff: string; amountOffCents: string; terms?: string; shopName: string; vertical: string; logoUrl?: string }>();
   const { c } = useTheme();
+  const { t } = useLocale();
   const { user } = useSession();
   useBrightScreen("discount-card");
   return (
@@ -20,11 +22,11 @@ export default function DiscountFull() {
         memberName={user?.name}
       />
       <Text color="fgMuted" center>
-        Show this at the counter.
+        {t("ui.order.showAtCounter")}
       </Text>
       <View>
         <Button variant="secondary" fullWidth onPress={() => router.back()}>
-          Close
+          {t("sh.card.close")}
         </Button>
       </View>
     </SafeAreaView>

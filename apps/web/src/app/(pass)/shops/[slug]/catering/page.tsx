@@ -6,7 +6,7 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +14,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = await getT();
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `Catering · ${s.name}`, description: `Ask ${s.name} for a catering quote.`, alternates: { canonical: `/shops/${slug}/catering` } };
+    return { title: `${t("rc.links.catering")} · ${s.name}`, description: t("wp.t.cateringDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/catering` } };
   } catch {
-    return { title: "Catering" };
+    return { title: t("rc.links.catering") };
   }
 }
 

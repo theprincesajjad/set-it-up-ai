@@ -2,7 +2,7 @@
 import { ShieldCheck } from "lucide-react";
 import type { restaurantWebApi } from "@ll/shared";
 import { cn } from "@/lib/cn";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { halalBanner } from "@/lib/restaurant/halal";
 
 /**
@@ -11,7 +11,7 @@ import { halalBanner } from "@/lib/restaurant/halal";
  * print nothing the owner did not say; past its date the certifier name is withheld (the API already hides it).
  */
 export function HalalBlock({ cert, variant = "menu", className }: { cert: restaurantWebApi.PublicHalalCertification; variant?: "shop" | "menu"; className?: string }) {
-  const { t, date } = useLocale();
+  const { t, date } = useLocaleOrEnglish();
   const b = halalBanner(cert, t, (d) => date(`${d}T12:00:00Z`, { month: "short", year: "numeric" }, "UTC"));
   return (
     <section aria-label={t("halal.label")} className={cn("flex flex-col gap-0.5 rounded-card bg-bg-subtle px-4 py-3", className)}>

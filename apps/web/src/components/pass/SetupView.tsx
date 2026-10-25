@@ -5,14 +5,14 @@ import { Banner } from "@/components/ui/Banner";
 import { buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { browserApi } from "@/lib/api/browser";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 import { SetupBox } from "./SetupBox";
 import { pollUntil } from "./PaymentBox";
 import { cardLabel } from "./cardLabel";
 
 /** /pay/setup/<id>?cs=<secret>: where the mobile app (no Stripe SDK) sends "change card" for a tiffin subscription. Same shape as IntentPayView, without a charge. */
 export function SetupView({ setupIntentId, clientSecret, initial }: { setupIntentId: string; clientSecret: string; initial: tiffinApi.SetupIntentView }) {
-  const { t } = useLocale();
+  const { t } = useLocaleOrEnglish();
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
   const [slow, setSlow] = useState(false);

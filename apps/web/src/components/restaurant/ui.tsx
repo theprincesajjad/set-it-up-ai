@@ -6,11 +6,11 @@ import type { ReactNode } from "react";
 import { spiceKey } from "@ll/shared";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { cn } from "@/lib/cn";
-import { useLocale } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n";
 
 /** Lowercase Bricolage heading like the canvas for English; the locale's own face (never lowercased) for hi / ur / pa. */
 export function Heading({ children, level = 1, className, plain }: { children: ReactNode; level?: 1 | 2 | 3; className?: string; /** Sentence-case Inter semibold (service-business screens); the default is the lowercase display face. */ plain?: boolean }) {
-  const { locale } = useLocale();
+  const { locale } = useLocaleOrEnglish();
   const Tag = `h${level}` as "h1";
   const size = level === 1 ? "text-large-title" : level === 2 ? "text-title" : "text-headline";
   return <Tag className={cn(size, "text-fg", plain ? "font-semibold" : locale === "en" ? "display lowercase" : "font-bold", className)}>{children}</Tag>;
@@ -28,9 +28,9 @@ export function BigNumber({ children, tone = "fg", className }: { children: Reac
 /** Bidi isolate so "$12.50" and "30%" keep their shape inside right-to-left (Urdu) sentences. */
 const isolate = (s: string) => `\u2066${s}\u2069`;
 
-/** `useLocale()` with amounts and numbers isolated for RTL. */
+/** `useLocaleOrEnglish()` with amounts and numbers isolated for RTL. */
 export function useFmt() {
-  const l = useLocale();
+  const l = useLocaleOrEnglish();
   const rtl = l.dir === "rtl";
   const wrap = (s: string) => (rtl ? isolate(s) : s);
   return { ...l, money: (c: number, cur?: string) => wrap(l.money(c, cur)), moneyExact: (c: number, cur?: string) => wrap(l.moneyExact(c, cur)), number: (n: number) => wrap(l.number(n)), percent: (n: number) => wrap(`${l.number(n)}%`) };
@@ -87,7 +87,7 @@ export function FactList({ rows }: { rows: { label: string; value: ReactNode }[]
 
 /** 0-3 chili dots; rendered only for spice 1+. The label names the level for screen readers. */
 export function ChiliDots({ level }: { level: number }) {
-  const { t } = useLocale();
+  const { t } = useLocaleOrEnglish();
   if (!level || level < 1) return null;
   return (
     <span role="img" aria-label={`${t("spice.label")}: ${t(spiceKey(level))}`} title={t(spiceKey(level))} className="inline-flex items-center gap-[3px]">
@@ -108,7 +108,7 @@ export function Pill({ children, tone = "neutral", className }: { children: Reac
 
 /** Quantity stepper: 44px round buttons, live region for the value. */
 export function Stepper({ value, min = 1, max = 20, onChange, label, format }: { value: number; min?: number; max?: number; onChange: (n: number) => void; label: string; format?: (n: number) => string }) {
-  const { number } = useLocale();
+  const { number } = useLocaleOrEnglish();
   const btn = "inline-flex size-11 items-center justify-center rounded-full border border-line bg-bg text-fg transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring disabled:text-fg-subtle disabled:hover:bg-bg";
   return (
     <div role="group" aria-label={label} className="inline-flex items-center gap-4">

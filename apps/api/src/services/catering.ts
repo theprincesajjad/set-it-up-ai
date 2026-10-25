@@ -13,7 +13,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
-import { badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
@@ -442,6 +442,8 @@ export async function approveEvent(ctx: AppContext, event: CateringEvent, args: 
   }
   if (event.status !== "quoted") throw conflict(event.status === "cancelled" ? "This event was cancelled" : "This quote is no longer open for approval");
   if (signatureName.length < 2) throw badRequest("Type your full name to sign");
+  // A quote cannot be signed once the event date has passed.
+  if (event.eventDate < localDate(ctx.now(), merchant.timezone || "America/Toronto")) throw new HttpError(410, "quote_expired", "This quote has expired because the event date has passed. Ask the shop for a new one.");
   const now = ctx.now();
   const noDeposit = event.depositCents === 0;
   const [updated] = await ctx.db

@@ -3,7 +3,7 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useState } from "react";
-import { copy } from "@/copy/en-CA";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { stripeAppearance } from "@/lib/stripeAppearance";
 import { formatMoney } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
@@ -24,6 +24,7 @@ export interface StripePaymentProps {
 }
 
 function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "publishableKey" | "clientSecret">) {
+  const { t } = useLocaleOrEnglish();
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -38,7 +39,7 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
         setError(null);
         const { error: err } = await stripe.confirmPayment({ elements, redirect: "if_required", confirmParams: { return_url: window.location.href } });
         if (err) {
-          setError(err.type === "card_error" ? err.message ?? copy.err.paymentDeclined : copy.err.paymentDeclined);
+          setError(err.type === "card_error" ? err.message ?? t("wp.pay.declined") : t("wp.pay.declined"));
           setBusy(false);
           return;
         }
@@ -49,9 +50,9 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
       <PaymentElement options={{ layout: "tabs", wallets: { applePay: "auto", googlePay: "auto" } }} />
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <Button type="submit" size="lg" fullWidth loading={busy} disabled={!stripe}>
-        {label ?? `Pay ${formatMoney(amountCents)}`}
+        {label ?? t("ms.ticket.pay", { amount: formatMoney(amountCents) })}
       </Button>
-      <p className="text-center text-meta text-fg-muted">Payments processed securely by Stripe.</p>
+      <p className="text-center text-meta text-fg-muted">{t("rc.stripe")}</p>
     </form>
   );
 }

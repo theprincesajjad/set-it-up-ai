@@ -2,6 +2,7 @@
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export interface ModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ export interface ModalProps {
  * focus restoration come from the browser (system.md §3 Modal + Sheet).
  */
 export function Modal({ open, onClose, title, description, children, actions, variant = "dialog", size = "sm", icon, titleClassName }: ModalProps) {
+  const { t } = useLocaleOrEnglish();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -85,7 +87,7 @@ export function Modal({ open, onClose, title, description, children, actions, va
               ) : null}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg after:absolute after:-inset-2 after:content-[''] focus-visible:focus-ring">
+          <button type="button" onClick={onClose} aria-label={t("sh.card.close")} className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg after:absolute after:-inset-2 after:content-[''] focus-visible:focus-ring">
             <X aria-hidden className="size-4" strokeWidth={2} />
           </button>
         </div>

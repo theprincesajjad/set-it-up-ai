@@ -4,9 +4,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { useOrderAhead } from "../../features/customer/queries";
-import { formatMoney } from "../../lib/award";
+import { formatMoneyL } from "../../lib/formatL";
 import { addToCart, cartCount, cartSubtotal, orderItems, pickupChoices, setQuantity, unitPrice, type CartLine, type CartModifier } from "../../lib/cart";
 import { newIdempotencyKey } from "../../lib/ids";
 import { useLocale } from "../../lib/i18n";
@@ -28,7 +27,8 @@ function HalalNote({ cert, date }: { cert: NonNullable<commerceApi.PublicMenuRes
 export default function OrderAhead() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const qc = useQueryClient();
-  const { t: tr, money, pick, time, date } = useLocale();
+  const L = useLocale();
+  const { t: tr, money, pick, time, date } = L;
   const menu = useOrderAhead(slug);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [item, setItem] = useState<commerceApi.CatalogItemDto | null>(null);
@@ -53,11 +53,11 @@ export default function OrderAhead() {
   if (menu.isError || !m) {
     const locked = isApiError(menu.error) && menu.error.status === 402;
     return (
-      <Screen back title="Order ahead">
+      <Screen back title={tr("ms.oa.title")}>
         {locked ? (
-          <LockedFeature icon={ShoppingBag} title="Order ahead" body={t("soon.orderAhead")} />
+          <LockedFeature icon={ShoppingBag} title={tr("ms.oa.title")} body={tr("cp.soon.orderAhead")} />
         ) : (
-          <ErrorState message={t("err.network")} onRetry={() => menu.refetch()} />
+          <ErrorState message={tr("auth.err.network")} onRetry={() => menu.refetch()} />
         )}
       </Screen>
     );
@@ -93,7 +93,7 @@ export default function OrderAhead() {
       router.replace(`/orders/${res.order.id}`);
     } catch (e) {
       if (isApiError(e) && e.status < 500) setIdemKey(newIdempotencyKey());
-      setError(isApiError(e) && e.code === "item_unavailable" ? "Something in your order just sold out. Check your cart." : errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      setError(isApiError(e) && e.code === "item_unavailable" ? tr("ms.oa.soldOut") : errorMessage(e, { network: tr("auth.err.network"), server: tr("auth.err.server") }));
     } finally {
       setPlacing(false);
     }
@@ -113,8 +113,8 @@ export default function OrderAhead() {
     >
       <LanguageSwitcher />
       {m.halalCertification ? <HalalNote cert={m.halalCertification} date={date} /> : null}
-      <Text color="fgMuted">{`Pick up at ${location?.name ?? m.merchant.name}${location?.address ? `, ${location.address}` : ""}. Pay at pickup.`}</Text>
-      {sections.length === 0 ? <EmptyState icon={ShoppingBag} title="Nothing to order right now" body="Check back later." /> : null}
+      <Text color="fgMuted">{tr("ms.oa.pickupLine", { place: `${location?.name ?? m.merchant.name}${location?.address ? `, ${location.address}` : ""}` })}</Text>
+      {sections.length === 0 ? <EmptyState icon={ShoppingBag} title={tr("ms.oa.nothingTitle")} body={tr("ms.oa.nothingBody")} /> : null}
       {sections.map((sec) => (
         <Section key={sec.title} title={sec.title}>
           <Card padded={false} style={{ paddingHorizontal: 16 }}>
@@ -158,7 +158,7 @@ export default function OrderAhead() {
             <Text variant="label">{g.name}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {g.options.map((o) => (
-                <Chip key={o.name} label={o.priceCents ? `${o.name} +${formatMoney(o.priceCents)}` : o.name} selected={(choice[g.name] ?? g.options[0]?.name) === o.name} onPress={() => setChoice((c) => ({ ...c, [g.name]: o.name }))} />
+                <Chip key={o.name} label={o.priceCents ? `${o.name} +${formatMoneyL(L, o.priceCents)}` : o.name} selected={(choice[g.name] ?? g.options[0]?.name) === o.name} onPress={() => setChoice((c) => ({ ...c, [g.name]: o.name }))} />
               ))}
             </View>
           </View>
@@ -181,14 +181,14 @@ export default function OrderAhead() {
               <Text variant="bodyStrong">{l.name}</Text>
               {l.modifiers.length ? <Text variant="bodySm" color="fgMuted">{l.modifiers.map((x) => x.option).join(", ")}</Text> : null}
             </View>
-            <IconButton icon={Minus} label={`One less ${l.name}`} onPress={() => setCart((c) => setQuantity(c, l.key, l.quantity - 1))} />
+            <IconButton icon={Minus} label={tr("ms.oa.less", { name: l.name })} onPress={() => setCart((c) => setQuantity(c, l.key, l.quantity - 1))} />
             <Text variant="bodyStrong" tabular>
               {String(l.quantity)}
             </Text>
-            <IconButton icon={Plus} label={`One more ${l.name}`} onPress={() => setCart((c) => setQuantity(c, l.key, l.quantity + 1))} />
+            <IconButton icon={Plus} label={tr("ms.oa.more", { name: l.name })} onPress={() => setCart((c) => setQuantity(c, l.key, l.quantity + 1))} />
           </View>
         ))}
-        <Text variant="bodySm" color="fgMuted">{`About ${formatMoney(cartSubtotal(cart))} before tax. The shop confirms the total.`}</Text>
+        <Text variant="bodySm" color="fgMuted">{tr("ms.oa.about", { amount: formatMoneyL(L, cartSubtotal(cart)) })}</Text>
         <Text variant="label">{tr("checkout.pickupTime")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {m.pickupSlots && (slots.data?.items.length ?? 0) > 0
@@ -199,7 +199,7 @@ export default function OrderAhead() {
                 <Chip key={d.toISOString()} label={i === 0 ? `${tr("checkout.asap")} · ${time(d)}` : time(d)} selected={pickupAt === d.toISOString()} onPress={() => { setPickupAt(d.toISOString()); setSlotId(null); }} />
               ))}
         </ScrollView>
-        <TextField label="Note for the shop" optionalLabel value={notes} onChangeText={setNotes} maxLength={500} placeholder="Oat milk please" />
+        <TextField label={tr("ms.oa.note")} optionalLabel value={notes} onChangeText={setNotes} maxLength={500} placeholder={tr("ms.oa.notePh")} />
         {error ? <Banner variant="danger">{error}</Banner> : null}
       </Sheet>
     </Screen>

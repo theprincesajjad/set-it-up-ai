@@ -1,24 +1,27 @@
 import type { serviceApi } from "@ll/shared";
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { formatDayTime } from "../lib/format";
+import type { MessageKey } from "@ll/shared";
+import { formatDayTimeL } from "../lib/formatL";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Check, Hourglass, X } from "./icons";
 import { Text } from "./Text";
 
 type TicketStatus = serviceApi.TicketDto["status"];
 
-export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
-  intake: "Dropped off",
-  diagnosing: "Diagnosing",
-  quote_sent: "Quote ready",
-  approved: "Approved",
-  in_progress: "Work started",
-  waiting_parts: "Waiting for parts",
-  ready: "Ready for pickup",
-  picked_up: "Picked up",
-  declined: "Quote declined",
-  cancelled: "Cancelled",
+/** Catalog key for each repair-ticket status; translate with `t(TICKET_STATUS_KEYS[status])`. */
+export const TICKET_STATUS_KEYS: Record<TicketStatus, MessageKey> = {
+  intake: "ui.ticket.intake",
+  diagnosing: "ui.ticket.diagnosing",
+  quote_sent: "ui.ticket.quote_sent",
+  approved: "ui.ticket.approved",
+  in_progress: "ui.ticket.in_progress",
+  waiting_parts: "ui.ticket.waiting_parts",
+  ready: "ui.ticket.ready",
+  picked_up: "ui.ticket.picked_up",
+  declined: "ui.ticket.declined",
+  cancelled: "ui.ticket.cancelled",
 };
 
 const STEPS: TicketStatus[] = ["intake", "diagnosing", "quote_sent", "approved", "in_progress", "ready", "picked_up"];
@@ -26,6 +29,8 @@ const STEPS: TicketStatus[] = ["intake", "diagnosing", "quote_sent", "approved",
 /** Vertical ticket timeline (system.md § Timeline). The quote_sent step renders `quoteSlot` inline. */
 export function Timeline({ status, events, quoteSlot }: { status: TicketStatus; events: serviceApi.TicketEventDto[]; quoteSlot?: ReactNode }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const stopped = status === "declined" || status === "cancelled";
   const steps: TicketStatus[] = status === "waiting_parts" ? [...STEPS.slice(0, 5), "waiting_parts", ...STEPS.slice(5)] : [...STEPS];
   const lastEventFor = (s: TicketStatus) => [...events].reverse().find((e) => e.status === s);
@@ -46,7 +51,7 @@ export function Timeline({ status, events, quoteSlot }: { status: TicketStatus; 
         const ev = lastEventFor(s);
         const nodeColor = bad ? c.danger : waiting ? c.warning : done || current ? c.brand : c.border;
         return (
-          <View key={`${s}-${i}`} style={styles.step} accessible accessibilityLabel={`${TICKET_STATUS_LABELS[s]}${done ? ", done" : current ? ", current step" : ", upcoming"}${ev ? `, ${formatDayTime(ev.createdAt)}` : ""}`}>
+          <View key={`${s}-${i}`} style={styles.step} accessible accessibilityLabel={`${t(TICKET_STATUS_KEYS[s])}, ${done ? t("ui.ticket.done") : current ? t("ui.ticket.current") : t("ui.ticket.upcoming")}${ev ? `, ${formatDayTimeL(L, ev.createdAt)}` : ""}`}>
             <View style={styles.rail}>
               <View
                 style={[
@@ -60,11 +65,11 @@ export function Timeline({ status, events, quoteSlot }: { status: TicketStatus; 
             </View>
             <View style={styles.content}>
               <Text variant={current ? "bodyStrong" : "body"} color={done || current ? "fg" : "fgMuted"}>
-                {TICKET_STATUS_LABELS[s]}
+                {t(TICKET_STATUS_KEYS[s])}
               </Text>
               {ev ? (
                 <Text variant="caption" color="fgMuted">
-                  {formatDayTime(ev.createdAt)}
+                  {formatDayTimeL(L, ev.createdAt)}
                 </Text>
               ) : null}
               {ev?.note ? (

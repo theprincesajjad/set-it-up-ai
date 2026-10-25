@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View, type DimensionValue, type StyleProp, type ViewStyle } from "react-native";
+import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 
 /** Opacity pulse 0.6 → 1 over 1.2 s (static if reduced motion). Shown after 150 ms to avoid flash. */
@@ -31,8 +32,9 @@ export function Skeleton({ width = "100%", height = 16, radius = 8, style }: { w
 
 /** Region placeholder with one "Loading..." label for screen readers. */
 export function SkeletonList({ rows = 3, rowHeight = 88 }: { rows?: number; rowHeight?: number }) {
+  const { t } = useLocale();
   return (
-    <View accessible accessibilityLabel="Loading..." accessibilityState={{ busy: true }} style={{ gap: 12 }}>
+    <View accessible accessibilityLabel={t("ui.skeleton.loading")} accessibilityState={{ busy: true }} style={{ gap: 12 }}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} height={rowHeight} radius={12} />
       ))}
@@ -46,8 +48,9 @@ export function SkeletonList({ rows = 3, rowHeight = 88 }: { rows?: number; rowH
  */
 export function SkeletonRows({ rows = 4, avatar = 44, trailing = true, height = 68 }: { rows?: number; avatar?: number; trailing?: boolean; height?: number }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
-    <View accessible accessibilityLabel="Loading" accessibilityState={{ busy: true }}>
+    <View accessible accessibilityLabel={t("rc.loading")} accessibilityState={{ busy: true }}>
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: height }}>
           {avatar ? <Skeleton width={avatar} height={avatar} radius={avatar / 2} /> : null}
@@ -56,7 +59,7 @@ export function SkeletonRows({ rows = 4, avatar = 44, trailing = true, height = 
             <Skeleton width={`${40 - ((i * 7) % 14)}%`} height={11} radius={4} />
           </View>
           {trailing ? <Skeleton width={36} height={16} radius={4} /> : null}
-          {i < rows - 1 ? <View style={{ position: "absolute", left: avatar ? avatar + 12 : 0, right: 0, bottom: 0, height: 0.5, backgroundColor: c.line }} /> : null}
+          {i < rows - 1 ? <View style={{ position: "absolute", start: avatar ? avatar + 12 : 0, end: 0, bottom: 0, height: 0.5, backgroundColor: c.line }} /> : null}
         </View>
       ))}
     </View>
@@ -65,8 +68,9 @@ export function SkeletonRows({ rows = 4, avatar = 44, trailing = true, height = 
 
 /** The shop header + balance block while a shop loads (sheet and page): avatar, name, place line, status, a bar. */
 export function SkeletonShop() {
+  const { t } = useLocale();
   return (
-    <View accessible accessibilityLabel="Loading" accessibilityState={{ busy: true }} style={{ gap: 18 }}>
+    <View accessible accessibilityLabel={t("rc.loading")} accessibilityState={{ busy: true }} style={{ gap: 18 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Skeleton width={56} height={56} radius={28} />
         <View style={{ flex: 1, gap: 8 }}>
