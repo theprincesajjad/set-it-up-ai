@@ -91,3 +91,23 @@ describe("withRtlMark", () => {
     expect(withRtlMark("ur", "")).toBe("");
   });
 });
+
+describe("plural counts that are already formatted", () => {
+  it("reads \"10,000\" as 10000 and prints it as given (no NaN in hi, ur, pa)", () => {
+    for (const l of ["hi", "ur", "pa"] as const) {
+      const out = t(l, "auth.unit.points", { n: "10,000" });
+      expect(out).not.toContain("NaN");
+      expect(out).toContain("10,000");
+    }
+    expect(t("en", "auth.unit.points", { n: "1" })).toBe("1 point");
+    expect(t("en", "auth.unit.points", { n: 12 })).toBe("12 points");
+  });
+});
+
+describe("plural counts written in local digits", () => {
+  it("reads ۲ and ٢ and २ as 2", () => {
+    expect(t("ur", "rc.tm.servings", { n: "۲" })).toContain("۲");
+    expect(t("ur", "rc.tm.servings", { n: "۲" })).not.toContain("NaN");
+    expect(t("hi", "auth.unit.points", { n: "१२" })).not.toContain("NaN");
+  });
+});

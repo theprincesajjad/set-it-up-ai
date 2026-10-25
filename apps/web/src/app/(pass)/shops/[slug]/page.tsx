@@ -29,7 +29,7 @@ import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { howYouEarn } from "@/lib/program";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { formatCurrency, translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
+import { LOCALES, formatCurrency, translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
 import { publicRestaurantApi } from "@/lib/restaurant/server";
 import { whatsappChatUrl } from "@/lib/restaurant/share";
 
@@ -333,7 +333,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
 
       {!membership && joinInfo && !rest ? (
-        <StickyJoin label={t("auth.join.joinShop", { shop: m.name })} />
+        <StickyJoin label={t("auth.join.joinShop", { shop: LOCALES[locale].dir === "rtl" ? `\u2068${m.name}\u2069` : m.name })} />
       ) : null}
     </LocaleScope>
   );

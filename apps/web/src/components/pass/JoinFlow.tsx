@@ -288,7 +288,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
         <header className="flex items-center gap-3.5 pt-2">
           <ShopLogo shop={info.merchant} size={56} />
           <div className="min-w-0">
-            <p className="truncate text-headline text-fg">{shop}</p>
+            <p className="truncate text-headline text-fg"><bdi>{shop}</bdi></p>
             <p className="truncate text-meta italic text-fg-muted">{[locale === "en" ? placeKind(info.merchant.vertical) : null, info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
           </div>
         </header>
@@ -442,7 +442,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <ShopLogo shop={info.merchant} size={40} />
-          <p className="min-w-0 truncate text-meta text-fg-muted">{info.merchant.name}</p>
+          <p className="min-w-0 truncate text-meta text-fg-muted"><bdi>{info.merchant.name}</bdi></p>
         </div>
         <div className="flex flex-col gap-1">
           <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none" role="status">

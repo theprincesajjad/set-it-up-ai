@@ -149,7 +149,7 @@ function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () 
       <div className="flex items-start gap-3">
         <ShopLogo shop={s.merchant} size={56} />
         <div className="min-w-0 flex-1 pt-0.5">
-          <h2 className="text-headline text-fg">{s.merchant.name}</h2>
+          <h2 className="text-headline text-fg"><bdi>{s.merchant.name}</bdi></h2>
           <p className="truncate text-meta italic text-fg-muted">{[kind, where].filter(Boolean).join(" · ")}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-fg">
             {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"}>{s.openNow ? t("ms.map.openNow").replace(/^./, (ch) => ch.toUpperCase()) : t("ui.hours.closed")}</StatusDot> : null}

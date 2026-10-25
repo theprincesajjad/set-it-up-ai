@@ -134,7 +134,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
             { label: t("rc.ca.guests"), value: number(e.headcount) },
             ...(e.venueName || e.venueAddress ? [{ label: t("rc.ca.venue"), value: [e.venueName, e.venueAddress].filter(Boolean).join(", ") }] : []),
             { label: t("rc.ca.service"), value: serviceLabel(t, e.service) },
-            ...(e.dietaryNotes ? [{ label: t("rc.ca.diet"), value: e.dietaryNotes }] : []),
+            ...(e.dietaryNotes ? [{ label: t("rc.ca.diet"), value: <bdi>{e.dietaryNotes}</bdi> }] : []),
           ]}
         />
       </Section>

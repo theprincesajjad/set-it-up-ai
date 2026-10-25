@@ -146,7 +146,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
       ) : null}
 
       {live ? (
-        <p className="rounded-card bg-bg-subtle p-4 text-body text-fg">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil) }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</p>
+        <p className="rounded-card bg-bg-subtle p-4 text-body text-fg">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil).replace(/\.$/, "") }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</p>
       ) : null}
 
       {mode === "move" ? (
@@ -173,7 +173,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
         </div>
       ) : mode === "cancel" ? (
         <div className="flex flex-col gap-3">
-          <Banner tone="info">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil) }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</Banner>
+          <Banner tone="info">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil).replace(/\.$/, "") }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</Banner>
           <Button size="lg" variant="danger" fullWidth loading={busy} onClick={cancel}>{t("bk.manage.confirmCancel")}</Button>
           <Button size="lg" variant="secondary" fullWidth onClick={() => setMode("view")}>{t("bk.manage.keep")}</Button>
         </div>

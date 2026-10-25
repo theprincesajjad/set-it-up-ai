@@ -141,7 +141,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
 
       {ev ? (
         <Section title={t("sv.q.eventHeading")}>
-          {q.diagnosis ? <p className="text-body text-fg-muted">{q.diagnosis}</p> : null}
+          {q.diagnosis ? <p dir="auto" className="text-body text-fg-muted">{q.diagnosis}</p> : null}
           <FactList
             rows={[
               ...(ev.date ? [{ label: t("sv.q.eventDate"), value: day(ev.date) }] : []),
@@ -153,7 +153,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
         </Section>
       ) : q.diagnosis ? (
         <Section plain title={t("sv.q.whatWeFound")}>
-          <p className="text-body text-fg-muted">{q.diagnosis}</p>
+          <p dir="auto" className="text-body text-fg-muted">{q.diagnosis}</p>
         </Section>
       ) : null}
 

@@ -297,7 +297,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
         >
           <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} className="text-[15px]" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[16px] font-medium leading-[21px] text-fg">{m.merchant.name}</span>
+            <span className="block truncate text-[16px] font-medium leading-[21px] text-fg"><bdi>{m.merchant.name}</bdi></span>
             <span className={cn("mt-0.5 block truncate text-[13px] leading-[17px]", ready ? "text-accent-text" : "text-fg-muted")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
               <span aria-hidden className="mt-2 block h-[3px] w-[150px] overflow-hidden rounded-full bg-bg-muted">
@@ -501,7 +501,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
           <div className="flex flex-col items-center gap-4 pt-1">
             <div className="flex items-center gap-2.5">
               <ShopLogo shop={membership.merchant} size={32} />
-              <p className="text-body-strong text-fg">{membership.merchant.name}</p>
+              <p className="text-body-strong text-fg"><bdi>{membership.merchant.name}</bdi></p>
             </div>
             <p className="display text-large-title text-fg">{active.redemption.rewardName}</p>
             <RedeemCode code={active.redemption.code} rewardName={t("sh.wallet.yourCode")} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
@@ -530,7 +530,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
                 <ShopLogo shop={m.merchant} size={32} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-body-strong text-fg">{m.nextReward!.name}</p>
-                  <p className="truncate text-meta text-fg-muted">{m.merchant.name}</p>
+                  <p className="truncate text-meta text-fg-muted"><bdi>{m.merchant.name}</bdi></p>
                 </div>
                 <span className="shrink-0 text-meta tabular-nums text-fg-muted">{t("sh.wallet.toGo", { amount: unitsText(locale, m.nextReward!.pointsNeeded, m.terminology) })}</span>
               </div>
@@ -547,7 +547,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
         <section key={m.id} aria-label={m.merchant.name} className="flex flex-col gap-3">
           <div className="flex items-center gap-2.5 px-1">
             <ShopLogo shop={m.merchant} size={24} />
-            <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{m.merchant.name}</h2>
+            <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg"><bdi>{m.merchant.name}</bdi></h2>
             <span className="text-meta tabular-nums text-fg-muted">{unitsText(locale, m.balance, m.terminology)}</span>
           </div>
           {details[m.id] ? <MemberRewards membership={m} detail={details[m.id]!} onChanged={onChanged} /> : <SkeletonCard />}
@@ -692,7 +692,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
           <li key={m.id} className="flex flex-col py-3">
             <p className="flex items-center gap-2.5 py-1 text-body-strong text-fg">
               <ShopLogo shop={m.merchant} size={24} />
-              <span className="min-w-0 flex-1 truncate">{m.merchant.name}</span>
+              <span className="min-w-0 flex-1 truncate"><bdi>{m.merchant.name}</bdi></span>
               {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">{t("sh.priv.offersOn")}</StatusDot> : null}
             </p>
             <Switch label={t("sh.priv.offersBy")} ariaLabel={t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? t("sh.priv.since", { date: locale === "en" ? formatDate(m.marketingConsent.grantedAt) : date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) }) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />

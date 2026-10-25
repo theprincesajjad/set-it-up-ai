@@ -23,7 +23,7 @@ export function TicketStatusView({ token, initial }: { token: string; initial: s
   const stamp = (iso: string) => date(iso, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ);
   const steps: TimelineStep[] = data.events.map((e, i, all) => ({
     id: `${i}`,
-    label: e.status ? t(`sv.step.${e.status}` as MessageKey) : (e.note ?? ""),
+    label: e.status ? t(`sv.step.${e.status}` as MessageKey) : (e.note ? `\u2068${e.note}\u2069` : ""),
     state: i === all.length - 1 && tk.status !== "picked_up" ? "current" : "done",
     at: null,
     note: <span className="text-fg-muted">{stamp(e.createdAt)}</span>,
@@ -35,7 +35,7 @@ export function TicketStatusView({ token, initial }: { token: string; initial: s
       <div className="flex flex-col gap-1">
         <p className="text-meta text-fg-muted"><bdi>{t("sv.t.kicker", { shop: shop.name, n: tk.number })}</bdi></p>
         <Heading>{t(`sv.step.${tk.status}` as MessageKey)}</Heading>
-        <p className="text-body text-fg-muted">{tk.itemLabel}, {tk.issue}.{tk.promisedAt && tk.status !== "ready" && tk.status !== "picked_up" ? ` ${t("sv.t.promised", { date: date(tk.promisedAt, { weekday: "short", month: "short", day: "numeric" }, TZ) })}` : ""}</p>
+        <p dir="auto" className="text-body text-fg-muted">{tk.itemLabel}, {tk.issue}.{tk.promisedAt && tk.status !== "ready" && tk.status !== "picked_up" ? ` ${t("sv.t.promised", { date: date(tk.promisedAt, { weekday: "short", month: "short", day: "numeric" }, TZ) })}` : ""}</p>
       </div>
 
       {quote?.approvalUrl && tk.status === "quote_sent" ? (

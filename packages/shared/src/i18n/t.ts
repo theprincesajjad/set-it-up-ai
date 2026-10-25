@@ -21,6 +21,11 @@ function closeBrace(s: string, start: number): number {
 }
 
 const ruleCache = new Map<string, Intl.PluralRules>();
+/** Digits of any script (Arabic-Indic, Devanagari, Gurmukhi) as 0-9, so a formatted count still picks a plural branch. */
+function asciiDigits(s: string): string {
+  return s.replace(/[\u0660-\u0669\u06f0-\u06f9\u0966-\u096f\u0a66-\u0a6f]/g, (c) => String(c.charCodeAt(0) & 0xf)).replace(/\u066b/g, ".");
+}
+
 function pluralCategory(locale: Locale, n: number): string {
   const tag = LOCALES[locale].bcp47;
   let r = ruleCache.get(tag);
@@ -64,7 +69,9 @@ export function formatMessage(locale: Locale, template: string, vars: Vars = {})
       if (m[2] === undefined) {
         out += v === undefined || v === null ? `{${name}}` : String(v);
       } else {
-        const n = Number(v ?? 0);
+        // A pre-formatted count ("10,000") picks the branch by its value and prints as given.
+        const shown = typeof v === "string" && v.trim() !== "" ? v : undefined;
+        const n = Number(typeof v === "string" ? asciiDigits(v).replace(/[,\u066c\u060c\s]/g, "") : (v ?? 0));
         const branches = new Map<string, string>();
         const body = m[2];
         let j = 0;
@@ -78,7 +85,7 @@ export function formatMessage(locale: Locale, template: string, vars: Vars = {})
           j = close + 1;
         }
         const chosen = branches.get(`=${n}`) ?? branches.get(pluralCategory(locale, n)) ?? branches.get("other") ?? "";
-        out += formatMessage(locale, chosen.replace(/#/g, String(n)), vars);
+        out += formatMessage(locale, chosen.replace(/#/g, shown ?? String(n)), vars);
       }
     }
     i = end + 1;

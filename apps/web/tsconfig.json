@@ -85,7 +85,9 @@
     ".next-harden/types/**/*.ts",
     ".next-harden/dev/types/**/*.ts",
     ".next-vqa-dash2/types/**/*.ts",
-    ".next-vqa-dash2/dev/types/**/*.ts"
+    ".next-vqa-dash2/dev/types/**/*.ts",
+    ".next-final-cust/types/**/*.ts",
+    ".next-final-cust/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
