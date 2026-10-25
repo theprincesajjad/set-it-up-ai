@@ -65,6 +65,7 @@ import { awardPurchase, findOrCreateCustomerByPhone, generateMemberCode, redeemR
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { computeTax } from "../services/tax.js";
 import { seedRestaurantDesk } from "./restaurantsDesk.js";
+import { MENU_CATEGORIES } from "./restaurantMenuCategories.js";
 
 const DAY = 86400000;
 const MIN = 60000;
@@ -548,8 +549,27 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   // ---- Catalog ----
   for (const sh of shops) {
     if (!sh.s.menu.length) continue;
-    const cats = await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, sh.id));
-    const food = cats.find((c) => c.name === "Food") ?? cats[0] ?? null;
+    // Menu tabs: the shop's own categories (restaurantMenuCategories.ts), replacing the single default "Food" one.
+    const plan = MENU_CATEGORIES[sh.s.slug];
+    let catIdOf = (_dishName: string): string | null => null;
+    if (plan) {
+      const known = new Set(sh.s.menu.map((d) => d.name));
+      const placed = new Set(plan.flatMap((c) => c.dishes));
+      for (const n of placed) if (!known.has(n)) throw new Error(`Seed menu categories for ${sh.s.slug}: unknown dish "${n}"`);
+      for (const n of known) if (!placed.has(n)) throw new Error(`Seed menu categories for ${sh.s.slug}: dish "${n}" has no category`);
+      await db.delete(merchantCategories).where(eq(merchantCategories.merchantId, sh.id));
+      const made = await db
+        .insert(merchantCategories)
+        .values(plan.map((c, k) => ({ merchantId: sh.id, name: c.name, sortOrder: k, translations: Object.fromEntries((["hi", "ur", "pa"] as const).map((lang, j) => [lang, { name: c.tr[j]! }])) as Translations })))
+        .returning({ id: merchantCategories.id, name: merchantCategories.name });
+      const idByName = new Map(made.map((c) => [c.name, c.id] as const));
+      const byDish = new Map(plan.flatMap((c) => c.dishes.map((n) => [n, idByName.get(c.name)!] as const)));
+      catIdOf = (n) => byDish.get(n) ?? null;
+    } else {
+      const cats = await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, sh.id));
+      const food = cats.find((c) => c.name === "Food") ?? cats[0] ?? null;
+      catIdOf = () => food?.id ?? null;
+    }
     const rows = sh.s.menu.map((d, idx) => {
       const base: DietaryTags = {};
       if (sh.s.halal) {
@@ -570,7 +590,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
       return {
         id: randomUUID(),
         merchantId: sh.id,
-        categoryId: food?.id ?? null,
+        categoryId: catIdOf(d.name),
         name: d.name,
         description: d.desc ?? null,
         priceCents: d.price,

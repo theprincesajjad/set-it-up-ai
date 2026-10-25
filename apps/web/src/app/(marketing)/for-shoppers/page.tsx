@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { BRAND, LOCALES, normalizeLocale, translator, type Locale, type MessageKey } from "@ll/shared";
+import { BRAND, formatDate, normalizeLocale, translator, type Locale, type MessageKey } from "@ll/shared";
 import { Faq } from "@/components/marketing/Faq";
 import { ShopperCardPhone } from "@/components/marketing/ShopperCard";
 import { MHeading, MSection } from "@/components/marketing/Section";
@@ -62,7 +62,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
     pub.public.liveCampaigns().then((r) => r.items).catch(() => []),
   ]);
   const campaign = live[0] ?? null;
-  const endsOn = campaign ? new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric", timeZone: "America/Toronto" }).format(new Date(campaign.endsAt)) : "";
+  const endsOn = campaign ? formatDate(locale, campaign.endsAt, { month: "short", day: "numeric" }) : "";
   return (
     <LocaleScope locale={locale}>
       <section className="overflow-hidden">

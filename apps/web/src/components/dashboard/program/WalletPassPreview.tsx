@@ -48,7 +48,7 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
             })}
           </div>
         ) : (
-          <p className="mt-4 text-[13px] text-fg-muted">{model.rewardName ? `${Math.max(0, model.goal - model.balance)} to ${model.rewardName}` : model.sentence}</p>
+          <p className="mt-4 text-[13px] text-fg-muted">{model.rewardName ? (model.balance >= model.goal ? `${model.rewardName} ready to redeem` : `${model.goal - model.balance} to ${model.rewardName}`) : model.sentence}</p>
         )}
         {stamps ? <p className="mt-4 text-[14px] font-medium text-fg">{stampsLeft(goal - filled, model.rewardName)}</p> : null}
         <div className="mt-4 flex h-[100px] items-center justify-center rounded-[14px] bg-bg-subtle text-[13px] text-fg-muted">QR code · {memberCode}</div>

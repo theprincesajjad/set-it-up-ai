@@ -1,0 +1,2 @@
+ALTER TABLE "merchant_categories" ADD COLUMN "sort_order" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "merchant_categories" ADD COLUMN "translations" jsonb DEFAULT '{}'::jsonb NOT NULL;

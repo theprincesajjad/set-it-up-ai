@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { en, type MessageKey, type whatsappApi } from "@ll/shared";
+import { en, formatCurrency, type MessageKey, type whatsappApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { browserApi } from "@/lib/api/browser";
@@ -9,9 +9,9 @@ import { PaymentBox, pollUntil } from "./PaymentBox";
 
 /** /pay/order/<orderId>?t=<token>: order summary and card payment for a WhatsApp order. */
 export function OrderPayView({ orderId, token, initial }: { orderId: string; token: string; initial: whatsappApi.WhatsappPayView }) {
-  const { info, number, t, rich } = useLocaleOrEnglish();
+  const { locale, number, t, rich } = useLocaleOrEnglish();
   // Always two decimals on a payment page ($14.00, not $14), unlike the compact shared formatter.
-  const money = (cents: number) => new Intl.NumberFormat(info.bcp47, { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol" }).format(cents / 100);
+  const money = (cents: number) => formatCurrency(locale, cents, "CAD", true);
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
   const { merchant: shop, order, payment } = data;

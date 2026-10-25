@@ -1,5 +1,5 @@
 import { verticalCategory, type VerticalCategory } from "@ll/design-tokens";
-import { BRAND, LOCALES, placeKindLabel, translator, type Locale, type MessageKey } from "@ll/shared";
+import { BRAND, formatDate, placeKindLabel, translator, type Locale, type MessageKey } from "@ll/shared";
 import type { campaignsApi, customerApi, networkApi } from "@ll/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -50,7 +50,7 @@ const ROW_KEY: Record<VerticalCategory, MessageKey> = {
 function hero(c: campaignsApi.MyCampaign | campaignsApi.PublicCampaign, locale: Locale, t: ReturnType<typeof translator>) {
   const end = new Date(c.endsAt);
   const prize = c.prize ? c.prize.replace(/^win\s+/i, "").replace(/\.$/, "") : null;
-  const ends = locale === "en" ? `${MONTHS[end.getMonth()]} ${end.getDate()}` : new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric" }).format(end);
+  const ends = locale === "en" ? `${MONTHS[end.getMonth()]} ${end.getDate()}` : formatDate(locale, end, { month: "short", day: "numeric" });
   // l10n-ok: English branch
   const english = `visit ${c.goalVisits} shops, ${prize ? `win ${prize}` : c.bonusPoints ? `get ${c.bonusPoints} bonus points` : "finish the passport"}`;
   const ask = locale === "en" ? english : prize ? t("sh.disc.heroPassport", { goal: c.goalVisits, prize }) : t("sh.camp.stepVisit", { goal: c.goalVisits });

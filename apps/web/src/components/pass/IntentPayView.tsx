@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { restaurantApi } from "@ll/shared";
+import { formatCurrency, type restaurantApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
@@ -18,9 +18,9 @@ const APP_LINK: Record<restaurantApi.PaymentIntentKind, string> = {
 
 /** /pay/intent/<id>?cs=<secret>: what the app is asking you to pay, card payment, then a way back to the app. */
 export function IntentPayView({ paymentIntentId, clientSecret, initial }: { paymentIntentId: string; clientSecret: string; initial: restaurantApi.PaymentIntentView }) {
-  const { t, info } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
   // Always two decimals on a payment page ($130.00, not $130), unlike the compact shared formatter.
-  const money = (cents: number, currency: string) => new Intl.NumberFormat(info.bcp47, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(cents / 100);
+  const money = (cents: number, currency: string) => formatCurrency(locale, cents, currency, true);
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
   const [slow, setSlow] = useState(false);

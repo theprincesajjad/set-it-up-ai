@@ -281,6 +281,38 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     expect(JSON.stringify(page.json())).toContain("Nawab Biryani House");
   });
 
+  it("restaurant menus are split into real categories, in tab order, translated, and the public menu localises the tab names", async () => {
+    const slugs = ["nawab-biryani-house", "lahori-karahi-and-bbq", "shree-thali-and-tiffin", "sarson-dhaba", "meethi-mithai-and-chai", "padma-bangladeshi-kitchen", "jaffna-kottu-house", "kabul-garden-grill"];
+    for (const slug of slugs) {
+      const id = await slugToId(slug);
+      const cats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, id)).orderBy(merchantCategories.sortOrder);
+      const items = await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, id));
+      expect(cats.length, slug).toBeGreaterThanOrEqual(4);
+      expect(cats.some((c) => c.name === "Food"), slug).toBe(false);
+      expect(cats.map((c) => c.sortOrder), slug).toEqual(cats.map((_, k) => k));
+      expect(items.every((i) => i.categoryId && cats.some((c) => c.id === i.categoryId)), slug).toBe(true);
+      for (const c of cats) {
+        expect(c.translations.hi?.name, `${slug} ${c.name}`).toMatch(/[\u0900-\u097F]/);
+        expect(c.translations.ur?.name, `${slug} ${c.name}`).toMatch(/[\u0600-\u06FF]/);
+        expect(c.translations.pa?.name, `${slug} ${c.name}`).toMatch(/[\u0A00-\u0A7F]/);
+        expect(items.some((i) => i.categoryId === c.id), `${slug} ${c.name} is empty`).toBe(true);
+      }
+    }
+    // Nawab matches the Figma tabs: Biryani, Curries, Tandoor, Breads, Sweets & chai (+ the Degh pots).
+    const nawab = await slugToId("nawab-biryani-house");
+    const nawabCats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, nawab)).orderBy(merchantCategories.sortOrder);
+    expect(nawabCats.map((c) => c.name)).toEqual(["Biryani", "Curries", "Tandoor", "Breads", "Sweets & chai", "Pre-order pots"]);
+    const en = await env.app.inject({ method: "GET", url: "/v1/public/shops/nawab-biryani-house/menu" });
+    expect(en.statusCode).toBe(200);
+    expect((en.json().categories as { name: string }[]).map((c) => c.name)).toEqual(["Biryani", "Curries", "Tandoor", "Breads", "Sweets & chai", "Pre-order pots"]);
+    const ur = await env.app.inject({ method: "GET", url: "/v1/public/shops/nawab-biryani-house/menu?lang=ur" });
+    const urCats = ur.json().categories as { name: string; nameEn?: string }[];
+    expect(urCats[0]).toMatchObject({ name: "بریانی", nameEn: "Biryani" });
+    expect(urCats.every((c) => /[\u0600-\u06FF]/.test(c.name))).toBe(true);
+    const pa = await env.app.inject({ method: "GET", url: "/v1/public/shops/sarson-dhaba/menu?lang=pa" });
+    expect((pa.json().categories as { name: string }[]).map((c) => c.name)).toEqual(["ਕਰੀ", "ਤੰਦੂਰ", "ਰੋਟੀਆਂ", "ਪੀਣ ਵਾਲੇ ਪਦਾਰਥ", "ਮਿੱਠਾ"]);
+  });
+
   it("menus carry halal claims with a certifier, dietary tags and accurate translations", async () => {
     const nawab = await slugToId("nawab-biryani-house");
     const items = await env.db.select().from(catalogItems).where(eq(catalogItems.merchantId, nawab));

@@ -148,6 +148,13 @@
       "when": 1792899382426,
       "tag": "0020_perf",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792935235219,
+      "tag": "0021_menucats",
+      "breakpoints": true
     }
   ]
 }

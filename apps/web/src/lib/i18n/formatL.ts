@@ -4,7 +4,7 @@
  * with the language's own tag and the catalog for the fixed words. Pass `{ locale, t }` from `useLocale()` or
  * `{ locale, t: translator(locale) }` on the server.
  */
-import { LOCALES, placeKindLabel, type Locale, type MessageKey, type Vars } from "@ll/shared";
+import { formatDate, placeKindLabel, type Locale, type MessageKey, type Vars } from "@ll/shared";
 import type { customerApi, networkApi } from "@ll/shared";
 import { formatDistance } from "../format";
 import { openCore, openStatus, weekRows } from "../hours";
@@ -18,18 +18,15 @@ export interface L {
 
 const WEEK = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
+/** Deterministic (names from shared tables, not the runtime's ICU data). Dates here are fixed UTC wall-clock dates, never "now". */
 function intl(locale: Locale, d: Date, opts: Intl.DateTimeFormatOptions): string {
-  try {
-    return new Intl.DateTimeFormat(LOCALES[locale].bcp47, opts).format(d);
-  } catch {
-    return new Intl.DateTimeFormat("en-CA", opts).format(d);
-  }
+  return formatDate(locale, d, opts, "UTC");
 }
 
 /** "17:30" in the language's own clock style ("5:30 pm", "५:३० ..." never: Latin digits stay, the am/pm word follows the language). */
 export function hhmmL(locale: Locale, hhmm: string): string {
   const [h = "0", m = "0"] = hhmm.split(":");
-  return intl(locale, new Date(2000, 0, 1, Number(h), Number(m)), { hour: "numeric", minute: Number(m) ? "2-digit" : undefined });
+  return intl(locale, new Date(Date.UTC(2000, 0, 1, Number(h), Number(m))), { hour: "numeric", minute: Number(m) ? "2-digit" : undefined });
 }
 
 /** "Open · closes 6 pm" / "Closed · opens Mon 8 am", localised. */
@@ -39,7 +36,7 @@ export function openStatusL(L: L, hours: networkApi.OpeningHours | null | undefi
   if (!c) return null;
   if (c.kind === "closes") return { open: true, label: L.t("ui.hours.openCloses", { time: hhmmL(L.locale, c.hhmm!) }) };
   if (c.kind === "opens") {
-    const day = c.sameDay ? "" : `${intl(L.locale, new Date(2000, 0, 2 + WEEK.indexOf(c.dayKey!)), { weekday: "short" })} `;
+    const day = c.sameDay ? "" : `${intl(L.locale, new Date(Date.UTC(2000, 0, 2 + WEEK.indexOf(c.dayKey!))), { weekday: "short" })} `;
     return { open: false, label: L.t("ui.hours.closedOpens", { time: `${day}${hhmmL(L.locale, c.hhmm!)}` }) };
   }
   return { open: c.open, label: L.t(c.open ? "ui.hours.open" : "ui.hours.closed") };
@@ -52,7 +49,7 @@ export function weekRowsL(L: L, hours: networkApi.OpeningHours | null | undefine
   const order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   return rows.map((r, i) => {
     const ranges = hours[order[i]!] ?? [];
-    return { day: intl(L.locale, new Date(2000, 0, 3 + i), { weekday: "long" }), text: ranges.length ? ranges.map(([o, c]) => `${hhmmL(L.locale, o)}–${hhmmL(L.locale, c)}`).join(", ") : L.t("ui.hours.closed") };
+    return { day: intl(L.locale, new Date(Date.UTC(2000, 0, 3 + i)), { weekday: "long" }), text: ranges.length ? ranges.map(([o, c]) => `${hhmmL(L.locale, o)}–${hhmmL(L.locale, c)}`).join(", ") : L.t("ui.hours.closed") };
   });
 }
 

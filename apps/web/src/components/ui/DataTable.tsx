@@ -138,12 +138,12 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-body-strong text-fg">{titleCol?.cell(r)}</div>
                     {subCols.length ? (
-                      <div className="truncate text-meta text-fg-muted">
-                        {subCols.map((c, i) => (
-                          <span key={c.key}>
-                            {i > 0 ? " · " : ""}
+                      <div className="text-meta text-fg-muted">
+                        {/* One line per column: a bar or a chip next to a dangling " · " read as a broken row. */}
+                        {subCols.map((c) => (
+                          <div key={c.key} className="truncate">
                             {c.cell(r)}
-                          </span>
+                          </div>
                         ))}
                       </div>
                     ) : null}

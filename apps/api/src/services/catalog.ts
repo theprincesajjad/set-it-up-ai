@@ -36,7 +36,7 @@ export function itemDto(i: Item, restaurant = false): commerceApi.CatalogItemDto
 }
 
 export function categoryDto(c: Category): commerceApi.CatalogCategoryDto {
-  return { id: c.id, name: c.name, earnEligible: c.earnEligible, discountEligible: c.discountEligible };
+  return { id: c.id, name: c.name, earnEligible: c.earnEligible, discountEligible: c.discountEligible, ...(Object.keys(c.translations ?? {}).length ? { translations: c.translations } : {}) };
 }
 
 async function assertCategory(db: DbOrTx, merchantId: string, categoryId: string | null | undefined) {
@@ -61,7 +61,7 @@ export async function getCatalog(db: DbOrTx, merchantId: string): Promise<commer
   const [m] = await db.select({ tier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   const restaurant = !!m?.tier;
   const [cats, items] = await Promise.all([
-    db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, merchantId)).orderBy(asc(merchantCategories.name)),
+    db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, merchantId)).orderBy(asc(merchantCategories.sortOrder), asc(merchantCategories.name)),
     db.select().from(catalogItems).where(eq(catalogItems.merchantId, merchantId)).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)),
   ]);
   return { categories: cats.map(categoryDto), items: items.map((i) => itemDto(i, restaurant)) };
@@ -229,7 +229,12 @@ export async function publicMenu(
   return {
     merchant: { id: merchant.id, slug: merchant.slug, name: merchant.name, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, timezone: merchant.timezone },
     locations: locs.map((l) => ({ id: l.id, name: l.name, address: l.address, hours: l.hours ?? null })),
-    categories: catalog.categories.map((c) => ({ ...c, items: items.filter((i) => i.categoryId === c.id) })).filter((c) => c.items.length > 0),
+    categories: catalog.categories
+      .map(({ translations, ...c }) => {
+        const name = lang !== "en" ? translations?.[lang]?.name : undefined;
+        return { ...c, ...(name ? { name, nameEn: c.name } : {}), items: items.filter((i) => i.categoryId === c.id) };
+      })
+      .filter((c) => c.items.length > 0),
     uncategorized: items.filter((i) => !i.categoryId),
     tax: { province, label: tax.label, ratePpm: tax.ratePpm },
     payInApp,

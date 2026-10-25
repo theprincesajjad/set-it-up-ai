@@ -127,7 +127,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
               <p className="mt-3 font-display text-display-number text-accent-text tabular">{formatNumber(balance)}</p>
               <p className="text-meta text-fg-muted">
                 Sam has {formatPoints(balance, model.terminology)}
-                {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for a ${model.rewardName.toLowerCase()}` : model.rewardName ? ` · ${Math.max(0, model.goal - model.balance)} to ${model.rewardName}` : ""}
+                {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for a ${model.rewardName.toLowerCase()}` : model.rewardName ? (model.balance >= model.goal ? ` · ${model.rewardName} ready` : ` · ${model.goal - model.balance} to ${model.rewardName}`) : ""}
               </p>
             </div>
             <p className="mt-auto text-caption font-normal text-fg-muted">What staff see after an award. Customers get the same balance on their card.</p>

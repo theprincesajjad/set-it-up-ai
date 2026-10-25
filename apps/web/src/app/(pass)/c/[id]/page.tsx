@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { LOCALES, translator, type campaignsApi } from "@ll/shared";
+import { formatDate as formatDateL10n, translator, type campaignsApi } from "@ll/shared";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const locale = await getLocale();
   const t = translator(locale);
-  const day = (iso: string) => (locale === "en" ? formatDate(iso) : new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric", timeZone: "America/Toronto" }).format(new Date(iso)));
+  const day = (iso: string) => (locale === "en" ? formatDate(iso) : formatDateL10n(locale, iso, { month: "short", day: "numeric" }));
   try {
     const c = await publicServerApi().public.campaign(id);
     return { title: `${c.name} · ${c.neighbourhood.name}`, description: c.description ?? t("wp.t.campaignDesc", { goal: c.goalVisits, hood: c.neighbourhood.name, from: day(c.startsAt), to: day(c.endsAt) }) };
@@ -49,7 +49,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     return <ErrorState title={t("wp.err.campaign")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/c/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
   }
   const en = locale === "en";
-  const fmt = (iso: string) => (en ? `${formatDate(iso, true)}, ${formatTime(iso)}` : `${new Intl.DateTimeFormat(LOCALES[locale].bcp47, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" }).format(new Date(iso))}`);
+  const fmt = (iso: string) => (en ? `${formatDate(iso, true)}, ${formatTime(iso)}` : `${formatDateL10n(locale, iso, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
   let mine: campaignsApi.MyCampaign | null = null;
   if (me) {
     try {

@@ -77,6 +77,10 @@ export interface CatalogCategoryDto {
   name: string;
   earnEligible: boolean;
   discountEligible: boolean;
+  /** Restaurant menus: the tab name in hi / ur / pa. Public menu: dropped, `name` is already in the requested language. */
+  translations?: Record<string, { name?: string }>;
+  /** Public menu in hi / ur / pa: the shop's own (English) tab name. */
+  nameEn?: string;
 }
 
 export interface CatalogItemDto {

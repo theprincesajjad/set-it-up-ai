@@ -375,6 +375,10 @@ export const merchantCategories = pgTable(
     earnEligible: boolean("earn_eligible").notNull().default(true),
     discountEligible: boolean("discount_eligible").notNull().default(true),
     externalIds: jsonb("external_ids").$type<Record<string, string>>().notNull().default({}),
+    /** Menu tab order (ascending, then name). */
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** Restaurant menus: the tab name in hi / ur / pa, { hi: { name } }. */
+    translations: jsonb("translations").$type<Translations>().notNull().default({}),
     createdAt: createdAt(),
   },
   (t) => [index("merchant_categories_merchant_idx").on(t.merchantId)],

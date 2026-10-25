@@ -16,9 +16,9 @@ export interface ListRow {
 export function ListSection({ title, right, rows, empty, loading, footer }: { title: string; right?: ReactNode; rows: ListRow[]; empty?: ReactNode; loading?: boolean; footer?: ReactNode }) {
   return (
     <section aria-label={title} className="min-w-0 flex-1">
-      <div className="flex items-baseline justify-between gap-3 border-b border-line pb-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-line pb-2.5">
         <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
-        {right ? <span className="truncate text-[13px] text-fg-muted">{right}</span> : null}
+        {right ? <span className="text-[13px] text-fg-muted">{right}</span> : null}
       </div>
       {loading ? (
         <SkeletonRows rows={4} />

@@ -1,5 +1,5 @@
 "use client";
-import { LOCALES } from "@ll/shared";
+import { formatDate as formatDateL10n } from "@ll/shared";
 import { Info } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -46,12 +46,12 @@ function kindBadge(p: PromoCardPromo, L: L) {
 
 function meta(p: PromoCardPromo, L: L) {
   const { t, locale } = L;
-  const day = (d: Date, withWeekday = false) => (locale === "en" ? formatDate(d, withWeekday) : new Intl.DateTimeFormat(LOCALES[locale].bcp47, { month: "short", day: "numeric", ...(withWeekday ? { weekday: "short" } : {}), timeZone: "America/Toronto" }).format(d));
+  const day = (d: Date, withWeekday = false) => (locale === "en" ? formatDate(d, withWeekday) : formatDateL10n(locale, d, { month: "short", day: "numeric", ...(withWeekday ? { weekday: "short" } : {}) }));
   if (p.endsAt) {
     const end = new Date(p.endsAt);
     const days = (end.getTime() - Date.now()) / 86_400_000;
     if (days < 1) return t("ui.promoToday");
-    if (days < 7) return t("ui.promoEndsDay", { day: new Intl.DateTimeFormat(locale === "en" ? "en-CA" : LOCALES[locale].bcp47, { weekday: "short", timeZone: "America/Toronto" }).format(end) });
+    if (days < 7) return t("ui.promoEndsDay", { day: formatDateL10n(locale, end, { weekday: "short" }) });
     return t("ui.promoEndsDate", { date: day(end) });
   }
   if (p.startsAt && new Date(p.startsAt).getTime() > Date.now()) return t("wp.ui.startsOn", { date: day(new Date(p.startsAt), true) });
