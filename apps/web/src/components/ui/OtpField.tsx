@@ -2,6 +2,7 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { useHydratedValue } from "@/lib/useHydratedValue";
 
 export interface OtpFieldProps {
   value: string;
@@ -45,6 +46,9 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
     if (code.length < length) completed.current = null;
   };
 
+  // A code typed (or autofilled) before hydration: adopt it, which also fires onComplete for a full code.
+  const hydratedRef = useHydratedValue<HTMLInputElement>(value, (dom) => set(dom), inputRef);
+
   // Web OTP API (Android Chrome): fills the code from the SMS automatically.
   useEffect(() => {
     if (typeof window === "undefined" || !("OTPCredential" in window)) return;
@@ -69,7 +73,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
       </label>
       <div dir="ltr" className={cn("relative w-fit", error && "motion-safe:animate-[ll-otp-shake_220ms_ease-in-out]")} onClick={() => inputRef.current?.focus()}>
         <input
-          ref={inputRef}
+          ref={hydratedRef}
           id={id}
           value={value}
           onChange={(e) => set(e.target.value)}

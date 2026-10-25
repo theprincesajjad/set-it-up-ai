@@ -76,19 +76,15 @@ export async function repairQuote(): Promise<{ token: string }> {
 }
 
 /**
- * Type a 10-digit number into the page's "Mobile number" field and prove the page is hydrated. The field is a controlled
- * input that re-formats to (416) 555-0123; a fill that lands before React attaches its handlers is thrown away (the raw
- * digits stay in the box and the value never gets formatted), so retry the fill until the formatted value shows.
+ * Type a 10-digit number into the page's "Mobile number" field and check it landed formatted. A plain fill is enough:
+ * digits typed before React hydrates are adopted into state on mount (useHydratedValue; e2e/slow-hydration.spec.ts holds
+ * the JS back 3 s to prove it), so no retry loop is needed. Kept as a helper for the formatted-value assertion.
  */
 export async function fillPhone(page: Page, digits: string) {
   const field = page.getByLabel("Mobile number");
   await expect(field).toBeVisible();
-  await expect(async () => {
-    // Clear first: refilling the digits already sitting in the box is not a change to React, so it would not fire onChange.
-    await field.fill("", { timeout: 5_000 });
-    await field.fill(digits, { timeout: 5_000 });
-    await expect(field).toHaveValue(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`, { timeout: 2_000 });
-  }).toPass({ timeout: 30_000, intervals: [250, 500, 1_000] });
+  await field.fill(digits);
+  await expect(field).toHaveValue(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`);
 }
 
 /**

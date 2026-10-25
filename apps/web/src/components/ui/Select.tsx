@@ -2,6 +2,7 @@
 import { ChevronDown } from "lucide-react";
 import { useId, type SelectHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { adoptedChangeEvent, useHydratedValue } from "@/lib/useHydratedValue";
 import { FieldShell, describedBy, inputBase } from "./TextField";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -17,10 +18,19 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 export function Select({ label, hint, error, options, placeholder, className, hideLabel, ...rest }: SelectProps) {
   const auto = useId();
   const id = rest.id ?? auto;
+  const { ref: forwardedRef, ...selectProps } = rest as typeof rest & { ref?: React.Ref<HTMLSelectElement> };
+  // A choice made before hydration is adopted into the parent's state (see useHydratedValue).
+  const selectRef = useHydratedValue<HTMLSelectElement>(
+    typeof rest.value === "string" ? rest.value : "",
+    (_dom, el) => {
+      if (typeof rest.value === "string") rest.onChange?.(adoptedChangeEvent(el));
+    },
+    forwardedRef,
+  );
   return (
     <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required} hideLabel={hideLabel}>
       <div className="relative">
-        <select {...rest} id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)} className={cn(inputBase, "appearance-none pe-10", className)}>
+        <select {...selectProps} ref={selectRef} id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)} className={cn(inputBase, "appearance-none pe-10", className)}>
           {placeholder ? <option value="">{placeholder}</option> : null}
           {options.map((o) => (
             <option key={o.value} value={o.value}>

@@ -1,4 +1,5 @@
 "use client";
+import { useHydratedValue } from "@/lib/useHydratedValue";
 import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
@@ -41,6 +42,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
   const [avLoading, setAvLoading] = useState(false);
   const [avError, setAvError] = useState(false);
   const [notes, setNotes] = useState("");
+  const notesRef = useHydratedValue<HTMLTextAreaElement>(notes, setNotes);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<{ tone: "danger" | "info"; text: string } | null>(null);
   const [booked, setBooked] = useState<Booked | null>(null);
@@ -289,7 +291,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
         ) : null}
         <label className="flex flex-col gap-1.5">
           <span className="text-meta-strong text-fg">{t("bk.notes")}</span>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
+          <textarea ref={notesRef} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
         </label>
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {wantsSignIn && !signedIn ? <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("bk.cta.signIn")} intro={t("bk.signIn.hint")} /> : null}

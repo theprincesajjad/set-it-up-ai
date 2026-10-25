@@ -7,6 +7,7 @@
  * sheet (a bottom sheet on phones, a floating panel on desktop). maplibre-gl loads lazily; without
  * WebGL or tiles the page falls back to the list (`onFail`).
  */
+import { useHydratedValue } from "@/lib/useHydratedValue";
 import { LocateFixed, Maximize2, Search, X } from "lucide-react";
 import { placeKindLabel } from "@ll/shared";
 import dynamic from "next/dynamic";
@@ -29,6 +30,7 @@ import { CATEGORY_KEYS, FilterRow, type FinderState } from "./ShopFinder";
 const NetworkMap = dynamic(() => import("./NetworkMap"), { ssr: false, loading: () => <div className="absolute inset-0 bg-ll-map-land dark:bg-ll-map-land-dark" /> });
 
 export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { items: networkApi.ShopListItemDto[]; state: FinderState; notice?: string | null; onDismissNotice?: () => void; onFail: (reason: string) => void }) {
+  const searchRef = useHydratedValue<HTMLInputElement>(state.q, state.setQ);
   const { t } = useLocaleOrEnglish();
   const [selected, setSelected] = useState<string | null>(null);
   const [fitAll, setFitAll] = useState(0);
@@ -60,6 +62,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
             <span className="sr-only">{t("sh.wallet.search")}</span>
             <Search aria-hidden className="pointer-events-none absolute start-3.5 size-[18px] text-fg-muted" strokeWidth={1.75} />
             <input
+              ref={searchRef}
               type="search"
               placeholder={t("sh.wallet.search").toLowerCase()}
               value={state.q}

@@ -2,6 +2,7 @@
 import { forwardRef, useId, useState, type ChangeEvent } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { useHydratedValue } from "@/lib/useHydratedValue";
 import { digitsAfterEdit, formatNanp, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
 import { FieldShell, describedBy, inputBase } from "./TextField";
 
@@ -47,6 +48,22 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
   const showValidation = ((blurred && digits.length > 0) || !!forceValidate) && validation !== "ok";
   const message = error ?? (showValidation ? t(validation === "invalid" ? "auth.phone.invalid" : "auth.phone.incomplete") : null);
 
+  // Digits typed before hydration sit raw in the box: take them into state and format them.
+  const inputRef = useHydratedValue<HTMLInputElement>(
+    display,
+    (dom, el) => {
+      const next = normalizeDigits(dom);
+      if (next === digits) {
+        el.value = display;
+        return;
+      }
+      if (value === undefined) setInner(next);
+      onChangeDigits?.(next);
+      onChangeE164?.(toE164(next));
+    },
+    ref,
+  );
+
   function onChange(e: ChangeEvent<HTMLInputElement>) {
     const next = digitsAfterEdit(display, e.target.value, e.target.selectionStart);
     if (value === undefined) setInner(next);
@@ -63,7 +80,7 @@ export const PhoneField = forwardRef<HTMLInputElement, PhoneFieldProps>(function
           </span>
         ) : null}
         <input
-          ref={ref}
+          ref={inputRef}
           id={id}
           name={name}
           type="tel"

@@ -4,6 +4,7 @@
  * map with floating capsule chrome (ShopMap). The list is one tap away and is the fallback when
  * the map can't load (no WebGL / tiles).
  */
+import { useHydratedValue } from "@/lib/useHydratedValue";
 import { ChevronDown, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeKindLabel, type MessageKey, type networkApi } from "@ll/shared";
@@ -71,6 +72,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   const { t } = useLocaleOrEnglish();
   const [items, setItems] = useState(initial);
   const [q, setQ] = useState("");
+  const searchRef = useHydratedValue<HTMLInputElement>(q, setQ);
   const [cat, setCat] = useState<MapCategoryId>("all");
   const [toggles, setToggles] = useState<Set<Toggle>>(new Set());
   const [hood, setHood] = useState<string | null>(initialHood ?? null);
@@ -154,7 +156,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
         <label className="relative block">
           <span className="sr-only">{t("sh.wallet.search")}</span>
           <Search aria-hidden className="pointer-events-none absolute start-3.5 top-1/2 size-[18px] -translate-y-1/2 text-fg-muted" strokeWidth={1.75} />
-          <input type="search" placeholder={t("wp.map.searchPh")} value={q} onChange={(e) => setQ(e.target.value)} className="h-11 w-full rounded-full bg-bg-subtle ps-10 pe-4 text-body text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg" />
+          <input ref={searchRef} type="search" placeholder={t("wp.map.searchPh")} value={q} onChange={(e) => setQ(e.target.value)} className="h-11 w-full rounded-full bg-bg-subtle ps-10 pe-4 text-body text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg" />
         </label>
         <FilterRow state={state} />
         {categories.length > 2 ? (

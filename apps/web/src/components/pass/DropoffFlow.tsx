@@ -1,4 +1,5 @@
 "use client";
+import { useHydratedValue } from "@/lib/useHydratedValue";
 import { CalendarPlus, CircleCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
@@ -26,6 +27,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
   const [day, setDay] = useState<string | null>(null);
   const [slot, setSlot] = useState<commerceApi.SlotDto | null>(null);
   const [notes, setNotes] = useState("");
+  const notesRef = useHydratedValue<HTMLTextAreaElement>(notes, setNotes);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<{ tone: "danger" | "info"; text: string } | null>(null);
   const [booked, setBooked] = useState<commerceApi.BookingDto | null>(null);
@@ -161,7 +163,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
           </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-meta-strong text-fg">{t("sv.d.notes")}</span>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} placeholder={t("sv.d.notesHint")} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
+            <textarea ref={notesRef} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} placeholder={t("sv.d.notesHint")} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
           </label>
           <p className="text-meta text-fg-muted">{t("sv.d.policy")}</p>
         </>

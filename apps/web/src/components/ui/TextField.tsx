@@ -3,6 +3,7 @@ import { CircleAlert } from "lucide-react";
 import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { adoptedChangeEvent, useHydratedValue } from "@/lib/useHydratedValue";
 
 export interface FieldShellProps {
   id: string;
@@ -80,16 +81,26 @@ export function TextField(props: TextFieldProps) {
   const len = typeof rest.value === "string" ? rest.value.length : 0;
   const count = showCount && rest.maxLength ? `${len}/${rest.maxLength}` : undefined;
   const aria = { "aria-invalid": error ? true : undefined, "aria-describedby": describedBy(id, error, hint) };
+  // Text typed before hydration is adopted into the parent's state (see useHydratedValue). Uncontrolled fields keep their DOM value anyway.
+  const { ref: forwardedRef, ...fieldProps } = rest as typeof rest & { ref?: React.Ref<HTMLInputElement | HTMLTextAreaElement> };
+  const fieldRef = useHydratedValue<HTMLInputElement | HTMLTextAreaElement>(
+    typeof rest.value === "string" ? rest.value : "",
+    (_dom, el) => {
+      if (typeof rest.value === "string") (rest.onChange as ((e: unknown) => void) | undefined)?.(adoptedChangeEvent(el));
+    },
+    forwardedRef,
+  );
 
   return (
     <FieldShell id={id} label={label} hint={hint} error={error} optionalLabel={optionalLabel} required={rest.required} count={count} hideLabel={hideLabel}>
       {rest.type === "textarea" ? (
-        <textarea {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)} id={id} {...aria} className={cn(inputBase, "min-h-28 py-3", rest.className)} />
+        <textarea {...(fieldProps as TextareaHTMLAttributes<HTMLTextAreaElement>)} ref={fieldRef as React.Ref<HTMLTextAreaElement>} id={id} {...aria} className={cn(inputBase, "min-h-28 py-3", rest.className)} />
       ) : (
         <div className="relative flex items-center">
           {prefix ? <span className="pointer-events-none absolute start-3 text-body text-fg-muted">{prefix}</span> : null}
           <input
-            {...(rest as InputHTMLAttributes<HTMLInputElement>)}
+            {...(fieldProps as InputHTMLAttributes<HTMLInputElement>)}
+            ref={fieldRef as React.Ref<HTMLInputElement>}
             id={id}
             {...aria}
             className={cn(inputBase, prefix && "ps-8", suffix && (suffix.length > 4 ? "pe-[4.5rem]" : "pe-12"), rest.className)}
