@@ -43,6 +43,17 @@ async function pineconeId(): Promise<string> {
 
 const randPhone = () => `647${String(Math.floor(2000000 + Math.random() * 7999999))}`;
 
+/** A random phone whose last 4 digits match no member of the shop yet, so the counter shows "No one ends in". */
+async function freshPhone(merchantId: string): Promise<string> {
+  const t = await apiToken(OWNER);
+  for (let i = 0; i < 20; i++) {
+    const phone = randPhone();
+    const r = await fetch(`${API}/v1/merchants/${merchantId}/counter/lookup?q=${phone.slice(-4)}`, { headers: { authorization: `Bearer ${t}` } });
+    if (((await r.json()) as { items: unknown[] }).items.length === 0) return phone;
+  }
+  throw new Error("No free last-4 found for the counter test");
+}
+
 /** Pricing v2: paid features are hidden; a pilot override turns them on for one shop (and is removed after). */
 async function pilot(merchantId: string, keys: string[], on: boolean) {
   const admin = await apiToken(ADMIN);
@@ -96,7 +107,7 @@ test("owner: web counter award, undo and repeat customer", async ({ page }) => {
   const id = await pineconeId();
   await signIn(page, OWNER, `/m/${id}/counter`);
   await expect(page.getByRole("heading", { level: 1, name: "Counter" })).toBeVisible();
-  const phone = randPhone();
+  const phone = await freshPhone(id);
   for (const d of phone.slice(-4)) await page.getByRole("group", { name: "Keypad" }).getByRole("button", { name: d, exact: true }).click();
   await expect(page.getByRole("heading", { name: /^No one ends in/ })).toBeVisible();
   await page.screenshot({ path: shot("04-counter-new-customer"), fullPage: true });
