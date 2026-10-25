@@ -8,7 +8,7 @@ import { browserApi } from "@/lib/api/browser";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
 
-const cents = (n: number) => (Math.abs(n) < 100 ? `${(n / 100).toFixed(2)}`.replace(/^/, "$") : formatMoney(n));
+const cents = (n: number) => (Math.abs(n) < 100 ? `${n < 0 ? "-" : ""}$${Math.abs(n / 100).toFixed(2)}` : formatMoney(n));
 
 /** What each shop costs us (texts, WhatsApp, hosting) against what it pays (plan and platform fees). */
 export default function CostsPage() {

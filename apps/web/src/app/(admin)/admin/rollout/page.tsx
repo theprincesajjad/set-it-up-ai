@@ -35,7 +35,7 @@ export default function RolloutPage() {
                   <Table label={g.title} className="min-w-[960px] table-fixed">
                     <thead>
                       <tr>
-                        <Th>Feature</Th>
+                        <Th className="w-[240px]">Feature</Th>
                         <Th className="w-[110px]">Plan</Th>
                         <Th className="w-[180px]">Stage</Th>
                         <Th className="w-[200px]">Unlock target</Th>
@@ -49,7 +49,7 @@ export default function RolloutPage() {
                         <tr key={f.key} className="[&:last-child>td]:border-b-0" data-feature={f.key}>
                           <Td className="py-2">
                             <p className="font-medium text-fg">{f.name}</p>
-                            <p className="font-mono text-[11px] text-fg-muted">{f.key}</p>
+                            <p className="truncate font-mono text-[11px] text-fg-muted">{f.key}</p>
                           </Td>
                           <Td className="text-fg-muted">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Td>
                           <Td>

@@ -25,7 +25,7 @@ export default function RepMerchantsPage() {
     { key: "signed", header: "Signed", mobile: "hidden", sortValue: (m) => m.createdAt, cell: (m) => formatDate(m.createdAt) },
     { key: "active", header: "Active members", mobile: "subtitle", sortValue: (m) => m.activeMembers, cell: (m) => <ProgressBar className="min-w-32" value={m.activeMembers} max={m.target} valueText={`${m.activeMembers} / ${m.target}`} /> },
     { key: "days", header: "Days", align: "end", mobile: "hidden", sortValue: (m) => m.daysSinceSignup, cell: (m) => m.daysSinceSignup },
-    { key: "next", header: "Next check-in", mobile: "subtitle", cell: (m) => { const c = m.checkIns.find((x) => !x.doneAt); return c ? `${c.due ? "Due: " : ""}day ${c.day} · ${formatDate(c.dueAt)}` : "Done"; } },
+    { key: "next", header: "Next check-in", mobile: "subtitle", cell: (m) => { const c = m.checkIns.find((x) => !x.doneAt); return <span className="block">{c ? `${c.due ? "Due: " : ""}day ${c.day} · ${formatDate(c.dueAt)}` : "Done"}</span>; } },
   ];
   return (
     <div className="flex flex-col gap-4">

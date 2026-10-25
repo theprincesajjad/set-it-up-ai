@@ -50,7 +50,7 @@ function Invoices() {
           { label: "Overdue", dot: "negative", value: formatMoney(s?.overdueCents ?? 0).replace(/\.00$/, ""), caption: s?.overdueCount ? `${n(s.overdueCount, "invoice", "invoices")}, oldest ${s.oldestOverdueDays} days` : "Nothing overdue" },
           { label: "Paid this month", dot: "neutral", value: formatMoney(s?.paidThisMonthCents ?? 0).replace(/\.00$/, ""), caption: n(s?.paidThisMonthCount ?? 0, "invoice", "invoices") },
           { label: "Deposits held", dot: "neutral", value: formatMoney(s?.depositsHeldCents ?? 0).replace(/\.00$/, ""), caption: `On ${n(s?.depositsHeldQuotes ?? 0, "approved quote", "approved quotes")}` },
-          { label: "Average time to pay", dot: "neutral", value: s?.avgDaysToPay == null ? "None yet" : `${s.avgDaysToPay} days`, caption: "From sent to paid" },
+          { label: "Average time to pay", dot: "neutral", value: s?.avgDaysToPay == null ? "None yet" : `${Math.max(0, s.avgDaysToPay)} days`, caption: "From sent to paid" },
         ]}
       />
       <TextField type="search" label="Search invoices" hideLabel placeholder="Customer, phone, invoice or ticket number" value={q} onChange={(e) => setQ(e.target.value)} />

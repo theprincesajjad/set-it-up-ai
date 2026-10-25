@@ -38,7 +38,7 @@ export default function NeighbourhoodsPage() {
       <PageHeader title="Areas & perks" description="The launch calendar (opens, street day, who walks it), BIA details and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
       <Async state={hoods}>
         {(d) => (
-          <ul className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-px overflow-hidden rounded-card border border-line md:grid-cols-2 xl:grid-cols-3 [&>li]:bg-bg md:[&>li]:shadow-[0_0_0_1px_var(--ll-color-line)]">
             {d.items.map((h) => (
               <li key={h.id}>
                 <div className="flex h-full flex-col gap-4 bg-bg p-5">
