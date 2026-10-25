@@ -98,6 +98,15 @@ describe("privacy policy retention and deletion text match the code", () => {
     }
     expect(t["retention.phoneTranscriptDays"]).toBe(`${RETENTION.phoneTranscriptDays} days`);
   });
+  it("covers the AI sales assistant: says it is an AI, names Anthropic as the processor and prints its retention period in both languages", () => {
+    const t = legalTokens();
+    expect(raw("privacy")).toContain("{{retention.salesAgentDays}}");
+    expect(md).toContain(t["retention.salesAgentDays"]!);
+    for (const w of ["AI assistant", "Anthropic", "typing HUMAN", "may not use these chats to train"]) expect(md, w).toContain(w);
+    const fr = renderLegalMarkdown(readFileSync(path.join(DIR, "fr/privacy-policy.md"), "utf8"), "fr").md;
+    for (const w of ["assistant IA", "Anthropic", "HUMAN"]) expect(fr, w).toContain(w);
+    expect(fr).toContain(legalTokens("fr")["retention.salesAgentDays"]!);
+  });
   it("has no bracketed target periods and no engineering notes left", () => {
     for (const bad of ["[90 days]", "[24 months]", "[12 months]", "these periods are targets", "not yet built", "Counsel and engineering", "confirm that deletion also reaches"]) expect(md, bad).not.toContain(bad);
   });

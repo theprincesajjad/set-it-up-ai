@@ -26,6 +26,7 @@ import {
   orderSplits,
   orders,
   phoneCalls,
+  salesAgentConversations,
   preorderWaitlist,
   quotes,
   rebookingNudges,
@@ -127,6 +128,9 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
       await tx.update(whatsappSessions).set({ phone: sql`'deleted-' || ${id}::text`, userId: null, cart: [], allergyNote: null, marketingOptInAt: null, state: "opted_out", takenOverAt: null, takenOverBy: null, updatedAt: now }).where(eq(whatsappSessions.id, id));
     }
   }
+
+  // Sales assistant chats (our own WhatsApp number and the website chat), keyed by the number or the verified owner: deleted with their messages.
+  count("salesAgentChats", await tx.delete(salesAgentConversations).where(phone ? or(eq(salesAgentConversations.verifiedUserId, userId), eq(salesAgentConversations.phone, phone)) : eq(salesAgentConversations.verifiedUserId, userId)).returning({ id: salesAgentConversations.id }));
 
   // Phone calls (keyed by the caller's number): transcript, drafted order and number.
   if (phone) count("phoneCalls", await tx.update(phoneCalls).set({ transcript: null, draftOrder: null, fromPhone: "[deleted]" }).where(eq(phoneCalls.fromPhone, phone)).returning({ id: phoneCalls.id }));

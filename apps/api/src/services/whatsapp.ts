@@ -32,6 +32,7 @@ import { ADD_ONS, BRAND, RESTAURANT_PLANS, whatsappApi, type restaurantApi } fro
 import type { AppContext } from "../context.js";
 import { sha256 } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { handleWhatsAppInbound, isPlatformMessage } from "./sales-agent/channels.js";
 import { getWhatsApp, parseInboundWebhook, type InboundWhatsAppMessage } from "../providers/whatsapp.js";
 import { writeAudit } from "./admin-audit.js";
 import { findOrCreateUserByPhone, normalizePhone, orderPayUrl, placeChannelOrder, verifyOrderPayToken } from "./channel-orders.js";
@@ -473,6 +474,13 @@ export async function handleWebhook(ctx: AppContext, body: unknown): Promise<Web
       continue;
     }
     try {
+      // The platform's own number belongs to the sales assistant, not to a shop (services/sales-agent).
+      if (isPlatformMessage(ctx, msg)) {
+        await handleWhatsAppInbound(ctx, msg);
+        await ctx.db.update(webhookEvents).set({ status: "processed", processedAt: ctx.now() }).where(eq(webhookEvents.id, evt.id));
+        res.processed++;
+        continue;
+      }
       const merchant = await merchantForInbound(ctx, msg);
       if (!merchant) {
         await ctx.db.update(webhookEvents).set({ status: "unmatched", processedAt: ctx.now() }).where(eq(webhookEvents.id, evt.id));

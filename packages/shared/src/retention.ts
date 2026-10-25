@@ -24,6 +24,8 @@ export const RETENTION = {
   driverLinkDays: 30,
   /** Unpaid appointment and hall holds that lapsed, kept this long before the row is deleted. */
   abandonedHoldDays: 7,
+  /** Sales assistant chats (web and WhatsApp): messages, tool calls and the contact's number, after the last message. */
+  salesAgentDays: 90,
   /** After a shop closes or falls back to Free it can still download its members and visits CSV for this long, free (merchant agreement 2.1). */
   leaverExportDays: 90,
 } as const;

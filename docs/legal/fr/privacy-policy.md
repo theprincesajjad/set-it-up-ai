@@ -62,6 +62,7 @@ Nous recueillons uniquement ce dont une fonction a besoin. Ce que vous communiqu
 | **Événements de traiteur et de banquet** : type et date de l'événement, nombre de convives, lieu et adresse, menu, notes alimentaires, soumission, votre approbation et votre signature, dépôt | Vous et la boutique | Soumissionner, confirmer et facturer un événement |
 | **Demandes d'avis et commentaires d'avis** : votre note et tout commentaire privé, si vous avez ouvert ou cliqué sur le lien, la réponse de la boutique | Vous et la boutique | Permettre à une boutique de savoir en privé comment elle s'en est tirée et de proposer un avis public sur Google. Un avis public sur Google est publié sur Google, et non chez nous |
 | **Messages WhatsApp** : votre numéro WhatsApp, votre langue, les messages que vous et la boutique envoyez, votre panier, votre note d'allergie et si vous avez accepté de recevoir du marketing | Vous et la boutique | Prendre votre commande et envoyer des mises à jour |
+| **Conversations avec notre assistant IA** (le clavardage du site et notre propre numéro WhatsApp, pour les propriétaires de boutique et les personnes qui envisagent de se joindre à nous) : les messages que vous et l'assistant échangez, votre langue, le numéro de téléphone d'où vous écrivez ou que vous nous donnez, la page de départ, ce que l'assistant a consulté ou fait pour vous (par exemple une piste enregistrée ou un lien d'inscription envoyé; jamais de numéros complets ni de codes dans son journal), une note de notre équipe si une personne a pris le relais et une cote (pouce) de notre équipe | Vous et notre équipe | Répondre à vos questions sur les prix et la configuration, lancer votre inscription, vous passer à une personne et vérifier la qualité de nos réponses |
 | **Transcriptions d'appels téléphoniques** : votre numéro de téléphone et une **transcription textuelle de ce que vous dites** lorsque vous appelez la ligne de commande d'une boutique, avec la langue et la commande que nous en avons rédigée. Nous ne conservons pas l'audio des appels | Vous | Rédiger votre commande afin que la boutique la confirme. Une personne de la boutique la vérifie et la confirme |
 | Inscriptions à une liste d'attente pour des articles limités (nom, téléphone, libellé du consentement) | Vous | Vous prévenir lorsqu'un article revient |
 
@@ -86,11 +87,14 @@ Nous utilisons vos renseignements pour :
 - gérer le programme de chaque boutique et les Récompenses du réseau;
 - envoyer des messages de service (codes de vérification, récompense prête, commande prête, confirmations et rappels de réservation, mises à jour de livraison, avis de soumission et de facture);
 - envoyer des messages promotionnels **seulement avec votre consentement**;
+- répondre à vos questions avec notre **assistant IA** (voir ci-dessous);
 - rédiger une commande à partir d'un appel téléphonique ou d'un message WhatsApp pour qu'une boutique la confirme (une personne la confirme; rien n'est facturé du seul fait de la rédaction);
 - prévenir la fraude et les abus;
 - améliorer le Service;
 - produire des statistiques **agrégées et dépersonnalisées** pour les boutiques et les sociétés de développement commercial (SDC), par exemple « les visites dans la rue ont augmenté de 18 % pendant la semaine du passeport », communiquées seulement pour des groupes de 10 personnes ou plus;
 - respecter nos obligations légales.
+
+**Notre assistant IA.** Sur notre site et sur notre propre numéro WhatsApp, un assistant IA répond aux questions sur le forfait {{plan.free.name}}, les forfaits payants, les frais et la configuration, en anglais, en hindi, en ourdou et en pendjabi. Il vous dit dès son premier message qu'il est une IA, et vous pouvez demander une personne en tout temps en écrivant HUMAN. Il peut consulter nos prix et nos politiques, enregistrer vos coordonnées comme piste, vous envoyer un lien d'inscription, noter une demande d'appel avec notre fondateur et, seulement après que vous avez prouvé que vous êtes propriétaire d'une boutique en saisissant un code envoyé par texto à votre téléphone, vous montrer le forfait de votre propre boutique et créer un lien de paiement pour celle-ci. Il ne voit aucune autre boutique ni personne. Il ne prend jamais de décision à votre sujet : il ne peut ni approuver, ni refuser, ni modifier un prix, et tout ce dont il n'est pas certain est transmis à une personne. Pour le faire fonctionner, le texte de la conversation est traité par notre fournisseur de services **Anthropic** (le modèle d'IA), qui peut le traiter aux États-Unis. Selon notre entente, Anthropic ne peut pas utiliser ces conversations pour entraîner ses modèles, et nous non plus. N'écrivez pas de numéro de carte, de mot de passe ni de renseignement de santé dans la conversation. Répondez STOP sur WhatsApp et nous cessons d'écrire à ce numéro.
 
 Si nous souhaitons utiliser vos renseignements à une nouvelle fin, nous vous le demanderons d'abord.
 
@@ -110,7 +114,8 @@ Des **fournisseurs de services** traitent des données pour nous en vertu d'un c
 - **Cloudflare R2** (stockage de fichiers pour les photos téléversées; conservé en Amérique du Nord). Une photo n'est jamais servie par un lien permanent : chaque fois qu'elle est affichée, elle reçoit un lien signé qui cesse de fonctionner après {{upload.linkMinutes}};
 - **Stripe** (paiements, cartes enregistrées, versements aux boutiques);
 - **Twilio** (messages texte et ligne téléphonique, y compris la reconnaissance vocale pour les commandes téléphoniques);
-- **Meta WhatsApp Cloud API** (messages WhatsApp);
+- **Meta WhatsApp Cloud API** (messages WhatsApp, y compris le numéro de notre assistant IA);
+- **Anthropic** (le modèle d'IA derrière notre assistant de vente et de soutien; il traite pour nous le texte de ces conversations);
 - **Resend** (courriel);
 - **Expo, Apple et Google** (notifications push; laissez-passer Apple et Google Wallet);
 - [fournisseur de tuiles cartographiques] (la carte dans l'application et sur le site Web);
@@ -138,6 +143,7 @@ Certains sont situés aux **États-Unis** ou dans d'autres pays, ou peuvent y tr
 - Si un compte est inactif depuis **3 ans**, nous vous en avisons, puis nous supprimons ou anonymisons les renseignements personnels. Avant cela, nous vous donnons la possibilité d'échanger ou de conserver vos points.
 - Les registres de consentement sont conservés au moins 3 ans après la fin de la relation. Les registres de transactions sont conservés comme l'exigent les règles fiscales (6 ans).
 - **Transcriptions d'appels téléphoniques :** conservées {{retention.phoneTranscriptDays}} après l'appel, puis supprimées, avec le texte de la commande que nous en avons rédigée et le numéro de l'appelant. La commande confirmée elle-même demeure.
+- **Conversations avec l'assistant IA :** les messages, le registre de ce que l'assistant a consulté ou fait et le numéro sont supprimés {{retention.salesAgentDays}} après le dernier message. Une piste enregistrée pour vous suit les règles des pistes, pas celle-ci.
 - **Messages WhatsApp :** le texte des messages est supprimé {{retention.whatsappMessageDays}} après son envoi. Les paniers et les notes d'allergie d'une conversation devenue silencieuse sont effacés en même temps.
 - **Photos de réparation et dossiers de billets :** conservés pendant la durée du billet et {{retention.repairPhotoMonths}} après sa fermeture (récupéré ou annulé, période de garantie et de différends). Ensuite, les photos (les fichiers et les liens), les détails de l'article, les notes et le registre de signature de la soumission sont supprimés. Les montants des soumissions et des factures demeurent pour la comptabilité de la boutique.
 - **Notes d'allergie et notes alimentaires :** une note d'allergie sur une commande est effacée {{retention.allergyNoteDays}} après que la commande a été ramassée ou annulée. Les notes alimentaires d'un abonnement de tiffin suivent la règle des tiffins ci-dessous. Les notes d'allergie et alimentaires ne sont pas utilisées pour le marketing ni pour l'analytique.

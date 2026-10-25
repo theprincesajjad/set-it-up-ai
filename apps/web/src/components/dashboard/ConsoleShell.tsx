@@ -1,6 +1,6 @@
 "use client";
 import {
-  BarChart3, ClipboardList, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
+  BarChart3, ClipboardList, MessageCircle, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
@@ -13,7 +13,7 @@ import { Shell } from "./Shell";
 const ICONS: Record<string, LucideIcon> = {
   today: LayoutDashboard, day: Footprints, costs: Coins, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package,
   network: BarChart3, rollout: Gauge, plans: CreditCard, neighbourhoods: MapPinned, users: Users, ads: Flag, campaigns: ClipboardList, audit: History,
-  overview: LayoutDashboard, shops: Store, reports: FileText, onboarding: Rocket,
+  overview: LayoutDashboard, shops: Store, reports: FileText, onboarding: Rocket, salesAgent: MessageCircle,
 };
 
 export type ConsoleKind = "rep" | "admin" | "bia";
@@ -34,6 +34,7 @@ const NAV: Record<ConsoleKind, { key: string; href: string; label: string; group
     { key: "rollout", href: "/admin/rollout", label: "Rollout", group: "b" },
     { key: "campaigns", href: "/admin/campaigns", label: "BIA campaigns", group: "b" },
     { key: "ads", href: "/admin/ads", label: "Ads review", group: "b" },
+    { key: "salesAgent", href: "/admin/sales-agent", label: "Sales agent", group: "b" },
     { key: "users", href: "/admin/users", label: "Users & roles", group: "c" },
     { key: "audit", href: "/admin/audit", label: "Audit log", group: "c" },
   ],

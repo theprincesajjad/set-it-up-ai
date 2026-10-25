@@ -63,6 +63,8 @@ export interface Providers {
   payments?: import("./payments.js").PaymentsProvider;
   /** WhatsApp Cloud API. Optional: use getWhatsApp(ctx) from ./whatsapp.js, which falls back to the fake. */
   whatsapp?: import("./whatsapp.js").WhatsAppProvider;
+  /** The sales assistant's model client. Optional: undefined = Anthropic when ANTHROPIC_API_KEY is set; null = none (tests). Use llmFor(ctx) from services/sales-agent/agent.ts. */
+  salesAgentLlm?: import("../services/sales-agent/llm.js").LlmClient | null;
   /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
   storage?: import("./storage.js").StorageProvider;
 }

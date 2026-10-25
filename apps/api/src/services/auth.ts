@@ -24,7 +24,7 @@ import { findOrCreateCustomerByPhone, generateMemberCode } from "./ledger.js";
 import { authUserDto } from "./serializers.js";
 
 type User = typeof users.$inferSelect;
-type OtpPurpose = "phone_login" | "email_login";
+type OtpPurpose = "phone_login" | "email_login" | "agent_verify";
 
 const BCRYPT_ROUNDS = 10;
 /** PINs have a tiny keyspace, so online rate limiting is the real protection; keep hashing fast for the counter. */
@@ -123,6 +123,33 @@ export async function startPhoneOtp(ctx: AppContext, phoneInput: string, opts: {
   const intro = opts.context ? `${code} is your code to join ${opts.context} on ${BRAND.name}.` : `${code} is your ${BRAND.name} code.`;
   await ctx.providers.sms.send(phone, `${intro} It expires in 10 minutes. Don't share it.`);
   return otpStartResponse(ctx, code);
+}
+
+/**
+ * The sales assistant's owner check (services/sales-agent): a code to the phone, typed back in the chat. It proves
+ * the person holds the number; it does not sign anyone in (no session, no token). Own purpose, so a login code cannot
+ * be replayed here or the other way round.
+ */
+export async function startAgentVerification(ctx: AppContext, phoneInput: string): Promise<void> {
+  const phone = requirePhone(phoneInput);
+  const code = await createOtp(ctx, "agent_verify", phone);
+  await ctx.providers.sms.send(phone, `${code} is your ${BRAND.name} code to check it's you in our chat. It expires in 10 minutes. Don't share it.`);
+}
+
+export type AgentVerification = { ok: true } | { ok: false; reason: "wrong" | "expired" | "locked"; attemptsLeft?: number };
+export async function checkAgentVerification(ctx: AppContext, phoneInput: string, code: string): Promise<AgentVerification> {
+  const phone = requirePhone(phoneInput);
+  try {
+    await consumeOtp(ctx, "agent_verify", phone, code);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof HttpError && err.code === "invalid_code") {
+      const left = (err.details as { attemptsLeft?: number } | undefined)?.attemptsLeft;
+      return left === undefined ? { ok: false, reason: "expired" } : { ok: false, reason: "wrong", attemptsLeft: left };
+    }
+    if (err instanceof HttpError && err.statusCode === 429) return { ok: false, reason: "locked" };
+    throw err;
+  }
 }
 
 export async function startEmailOtp(ctx: AppContext, emailInput: string): Promise<authApi.OtpStartResponse> {

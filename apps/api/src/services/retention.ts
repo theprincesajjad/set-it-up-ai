@@ -19,6 +19,7 @@ import {
   phoneCalls,
   quotes,
   reviewRequests,
+  salesAgentConversations,
   serviceTickets,
   ticketEvents,
   tiffinDriverLinks,
@@ -59,6 +60,16 @@ export async function purgeWhatsappMessages(ctx: AppContext): Promise<{ messages
       .returning({ id: whatsappSessions.id }),
   );
   return { messages, sessions };
+}
+
+/**
+ * Sales assistant chats (web and WhatsApp, our own number): the whole conversation (messages, tool-call records, the number)
+ * once it has been quiet for the period, whatever its status (a hand-off nobody picked up in that long is stale; the lead, if one
+ * was created, is the follow-up record and follows the rep console's own rules).
+ */
+export async function purgeSalesAgentChats(ctx: AppContext): Promise<number> {
+  const cutoff = daysAgo(ctx.now(), RETENTION.salesAgentDays);
+  return gone(await ctx.db.delete(salesAgentConversations).where(lt(salesAgentConversations.lastActivityAt, cutoff)).returning({ id: salesAgentConversations.id }));
 }
 
 /**
@@ -197,6 +208,7 @@ export async function runRetention(ctx: AppContext): Promise<RetentionReport> {
     appointments: await scrubAppointments(ctx),
     holdAppointments: holds.appointments,
     holdHalls: holds.halls,
+    salesAgentChats: await purgeSalesAgentChats(ctx),
   };
   if (Object.values(report).some((n) => n > 0)) await ctx.db.insert(auditLogs).values({ actorUserId: null, action: "retention.run", entity: "system", data: report, createdAt: ctx.now() });
   return report;

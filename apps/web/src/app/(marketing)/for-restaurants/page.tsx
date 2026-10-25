@@ -42,6 +42,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 export default async function ForRestaurantsPage({ searchParams }: Props) {
   const locale = await pageLocale(await searchParams);
   const t = (k: Parameters<typeof translate>[1]) => translate(locale, k);
+  const waUrl = whatsappUrl(R.bookWhatsappText);
   const c = appCommission(500_000);
   const prices = RESTAURANT_TIERS.map((tier) => ({ tier, name: RESTAURANT_PLANS[tier].name.replace(/^Restaurant /, ""), price: moneyShort(RESTAURANT_PLANS[tier].priceCents) }));
   return (
@@ -151,9 +152,11 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
           <div className="grid gap-12 md:grid-cols-2">
             <div>
               <MHeading eyebrow={t("mkt.rest.form.eyebrow")} title={t("mkt.rest.form.title")} sub={t("mkt.rest.form.sub")} className="mb-8!" />
-              <Button variant="secondary" size="lg" href={whatsappUrl(R.bookWhatsappText)} className="rounded-full!">
-                {t("mkt.rest.form.whatsapp")}
-              </Button>
+              {waUrl ? (
+                <Button variant="secondary" size="lg" href={waUrl} className="rounded-full!">
+                  {t("mkt.rest.form.whatsapp")}
+                </Button>
+              ) : null}
             </div>
             <div className="rounded-sheet bg-bg-subtle p-6 md:p-8">
               <ContactForm kind="restaurant" />

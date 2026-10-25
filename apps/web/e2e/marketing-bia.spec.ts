@@ -202,7 +202,7 @@ test.describe("for restaurants", () => {
     });
   });
 
-  test("founding strip shows the API's spots; Urdu sample reads right to left; WhatsApp opens wa.me", async ({ page }) => {
+  test("founding strip shows the API's spots; Urdu sample reads right to left; no WhatsApp button without a number", async ({ page }) => {
     const founding = (await call<{ corridors: { name: string; taken: number; total: number }[] }>("GET", "/v1/public/restaurants/founding")).json.corridors;
     await page.goto("/for-restaurants");
     const open = founding.filter((c) => c.total - c.taken > 0).sort((a, b) => b.total - b.taken - (a.total - a.taken) || a.name.localeCompare(b.name));
@@ -212,8 +212,8 @@ test.describe("for restaurants", () => {
     await expect(ticket).toContainText("چکن بریانی");
     expect(await ticket.evaluate((e) => e.closest("[dir]")?.getAttribute("dir"))).toBe("rtl");
     expect(await ticket.evaluate((e) => e.closest("[lang]")?.getAttribute("lang"))).toMatch(/^ur/);
-    const wa = page.getByRole("link", { name: "Message us on WhatsApp" });
-    await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/\d+\?text=/);
+    // No NEXT_PUBLIC_WHATSAPP_NUMBER in this build: the WhatsApp button is hidden, never a placeholder link.
+    await expect(page.getByRole("link", { name: "Message us on WhatsApp" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
   });
 

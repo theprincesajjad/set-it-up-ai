@@ -44,6 +44,14 @@ export interface Config {
   push: { provider: "console" | "expo"; expoAccessToken?: string };
   /** WhatsApp Cloud API (Meta Graph). Without an access token the fake provider is used. */
   whatsapp: { provider: "fake" | "meta"; accessToken?: string; appSecret?: string; verifyToken?: string; apiVersion: string };
+  /**
+   * Our own sales and support assistant (services/sales-agent). Needs ANTHROPIC_API_KEY to answer; without it the chat
+   * still opens (disclosure, STOP/START, hand-off to a person) and every message goes to the admin queue.
+   * SALES_AGENT_WHATSAPP_NUMBER is the platform number prospects message (display number, digits ok);
+   * SALES_AGENT_WHATSAPP_PHONE_NUMBER_ID its Meta phone number id (inbound webhooks and sends use it).
+   * SALES_AGENT_ENABLED=0 hides the widget and ignores the platform number. SALES_AGENT_MODEL / _EFFORT tune the model.
+   */
+  salesAgent: { enabled: boolean; apiKey?: string; model: string; effort: "low" | "medium" | "high"; fallbacks: boolean; whatsappNumber?: string; whatsappPhoneNumberId?: string; adminEmail?: string };
   /** Phone ordering webhook (Twilio-style). The signature is checked with `authToken` (falls back to TWILIO_AUTH_TOKEN). */
   phone: { authToken?: string };
   /** TIFFIN_PAD=1 lets tiffin subscribers pay by pre-authorized debit (Stripe acss_debit). */
@@ -130,6 +138,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       appSecret: env.WHATSAPP_APP_SECRET,
       verifyToken: env.WHATSAPP_VERIFY_TOKEN,
       apiVersion: env.WHATSAPP_API_VERSION ?? "v21.0",
+    },
+    salesAgent: {
+      enabled: env.SALES_AGENT_ENABLED !== "0",
+      apiKey: env.ANTHROPIC_API_KEY || undefined,
+      model: env.SALES_AGENT_MODEL || "claude-opus-5-5",
+      effort: env.SALES_AGENT_EFFORT === "medium" || env.SALES_AGENT_EFFORT === "high" ? env.SALES_AGENT_EFFORT : "low",
+      fallbacks: env.SALES_AGENT_FALLBACKS !== "0",
+      whatsappNumber: env.SALES_AGENT_WHATSAPP_NUMBER?.replace(/\D/g, "") || undefined,
+      whatsappPhoneNumberId: env.SALES_AGENT_WHATSAPP_PHONE_NUMBER_ID || undefined,
+      adminEmail: env.SALES_AGENT_ADMIN_EMAIL || undefined,
     },
     phone: { authToken: env.PHONE_WEBHOOK_AUTH_TOKEN ?? env.TWILIO_AUTH_TOKEN },
     tiffin: { padEnabled: env.TIFFIN_PAD === "1" },

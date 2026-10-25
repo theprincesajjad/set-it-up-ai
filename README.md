@@ -62,6 +62,25 @@ Demo logins (seed):
 To run against a real Postgres, set `DATABASE_URL=postgres://…` and run
 `pnpm db:migrate`. All configuration is in `apps/api/.env.example`.
 
+### Sales and support assistant (our own AI agent)
+
+The marketing site's chat widget and our own WhatsApp number talk to one assistant (`apps/api/src/services/sales-agent`) that answers
+prospective and existing shop owners' questions and starts sign-ups. Admin console: `/admin/sales-agent`. Docs:
+`docs/engineering/api/sales-agent.md`, evals: `docs/engineering/sales-agent-evals.md`.
+
+| Variable | Where | What it does |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | API | Turns the assistant on. Without it the chat still opens, says it is an AI and hands every message to the admin queue. Model `SALES_AGENT_MODEL` (default `claude-opus-5-5`), `SALES_AGENT_EFFORT` (`low` default), `SALES_AGENT_FALLBACKS=0` to turn the server-side safety fallback off. |
+| `SALES_AGENT_WHATSAPP_NUMBER` | API | The platform WhatsApp number prospects message (display number). Unset: no WhatsApp door and the widget hides its WhatsApp link. |
+| `SALES_AGENT_WHATSAPP_PHONE_NUMBER_ID` | API | That number's Meta phone number id, used to match inbound webhooks and to send. Needs the usual `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`. |
+| `SALES_AGENT_ENABLED=0` | API | Switches the whole assistant off (widget hidden, platform number ignored). |
+| `SALES_AGENT_ADMIN_EMAIL` | API | Who is emailed on a hand-off or a founder-call request (default the support address). |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | Web | Digits, international format, behind every "Message us on WhatsApp" button. **Unset: the button is hidden.** Set it to the same number as `SALES_AGENT_WHATSAPP_NUMBER`. |
+| `DOCS_DIR` | API | Only if the API is deployed without the repo's `docs/` folder: where the assistant reads `sales/agent-faq.md` and `legal/*.md` from. |
+
+Try it with no key: `pnpm dev:api`, open the site, ask a question: you get the AI disclosure and the message lands in `/admin/sales-agent`. With a key:
+`ANTHROPIC_API_KEY=… pnpm --filter @ll/api eval:sales-agent` runs the 40-question eval against the real model.
+
 ## Checks
 
 ```bash

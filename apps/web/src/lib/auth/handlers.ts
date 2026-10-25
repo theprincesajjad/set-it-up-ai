@@ -40,7 +40,7 @@ export function counterStaffToken(req: Request, apiPath: string): string | null 
   return t && /^\/v1\/merchants\/[0-9a-f-]{36}\/counter\//i.test(apiPath) ? t : null;
 }
 
-const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user-agent", "accept-language"];
+const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user-agent", "accept-language", "x-agent-session"];
 const PASS_RESPONSE_HEADERS = ["content-type", "content-disposition", "cache-control", "last-modified", "etag"];
 
 /**

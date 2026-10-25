@@ -240,7 +240,7 @@ describe("runRetention", () => {
     await env.db.insert(phoneCalls).values({ merchantId: merchant.id, fromPhone: nextPhone(), transcript: "x", createdAt: past(ago.days(RETENTION.phoneTranscriptDays)) });
     const r = await runRetention(env.ctx);
     expect(r.phoneCalls).toBe(1);
-    expect(Object.keys(r).sort()).toEqual(["allergyNotes", "appointments", "driverLinks", "holdAppointments", "holdHalls", "phoneCalls", "photoFiles", "reviewFeedback", "tickets", "tiffinAddresses", "whatsappMessages", "whatsappSessions"]);
+    expect(Object.keys(r).sort()).toEqual(["allergyNotes", "appointments", "driverLinks", "holdAppointments", "holdHalls", "phoneCalls", "photoFiles", "reviewFeedback", "salesAgentChats", "tickets", "tiffinAddresses", "whatsappMessages", "whatsappSessions"]);
     expect(await env.db.select().from(auditLogs).where(eq(auditLogs.action, "retention.run"))).toHaveLength(1);
     const again = await runRetention(env.ctx);
     expect(Object.values(again).every((n) => n === 0)).toBe(true);

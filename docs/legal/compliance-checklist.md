@@ -227,3 +227,41 @@ Added Oct 24, 2026 after `docs/business/data-strategy.md`. Status shows what the
 6. Contest rules template.
 7. A breach-response plan.
 8. Canadian-region hosting.
+
+## 12. Sales and support AI assistant (website chat and our own WhatsApp number)
+
+Added Oct 25, 2026. Code: `apps/api/src/services/sales-agent/*`, `packages/shared/src/sales-agent.ts`. Research and sources: `docs/research/sales-agent.md`. Status shows what the code does today.
+
+**WhatsApp Business policy (Meta)**
+
+- ☑ **Automation is allowed for a business's own customer conversations**, with prompt, clear and direct escalation paths: "HUMAN" (in en, hi, ur, pa) and the `escalate_to_human` tool hand the chat to a person in the console. Meta's January 15, 2026 change bans AI providers whose assistant is the product itself (general-purpose chatbots); ours answers questions about our own service, which is the permitted use. ☐ **VERIFY** the current text of the WhatsApp Business Solution Terms and Messaging Policy when the number is registered, and that the display name and business category describe us, not an AI product.
+- ☑ **Opt-in:** a person who messages our number first is in the customer-service window; we only reply to them. We send nothing business-initiated from this number (no templates, no broadcasts), so no template approval or marketing opt-in is needed. ☐ If we ever send a follow-up outside the window it needs an approved template and an opt-in captured in the flow; decide before building it.
+- ☑ **24-hour window:** a person's reply from the console is refused outside 24 hours after the contact's last message (`sendWhatsAppText`; test in `apps/api/test/sales-agent.test.ts`).
+- ☑ **STOP / START:** the same word list and the same `comm_opt_outs` table as every other sender. After STOP nothing is sent except the one confirmation; START resumes (`handleInbound`).
+- ☐ Register the number as its own WhatsApp Business account (not a merchant's); set `SALES_AGENT_WHATSAPP_NUMBER` and `SALES_AGENT_WHATSAPP_PHONE_NUMBER_ID`; point the existing webhook at it.
+
+**Disclosure, consent and privacy**
+
+- ☑ The first message of every chat says it is an AI assistant, in the person's language, how to reach a person and (WhatsApp) how to stop. Fixed text in code, not model output (`AGENT_TEXTS`, packages/shared/src/sales-agent.ts). ☐ Have a native speaker of Hindi, Urdu and Punjabi check the wording.
+- ☑ Privacy policy (English and French) covers the assistant, names **Anthropic** as a service provider that processes the chat text (possibly in the US), says it does not train on it, and prints the retention period from `RETENTION.salesAgentDays` (90 days). ☐ **VERIFY** the data-processing and no-training terms of the Anthropic account we use (commercial API terms; zero-data-retention is not required for this assistant) and that the account's region and retention settings match the policy.
+- ☑ Retention: `purgeSalesAgentChats` (job `privacy.retention`) deletes conversations, messages and tool records 90 days after the last message. Account deletion deletes the chats tied to that number or verified owner (`privacy-scrub.ts`).
+- ☑ Log minimisation: tool-call records and audit rows carry masked numbers and emails; the server never logs message text; error logs carry the error class only; the SMS code is checked in code and never stored or sent to the model.
+- ☑ No automated decision about a person: the assistant cannot approve, refuse or price anything outside `plans.ts`; anything uncertain goes to a person (Law 25 transparency about automated processing).
+- ☐ Quebec: the disclosure and the widget have no French version yet. If we market in Quebec, add `fr` to `AGENT_TEXTS` and `WIDGET_TEXTS`.
+
+**CASL**
+
+- ☑ The assistant sends nothing unsolicited and no marketing. A lead it saves is created only after the person confirmed, with the contact details they gave, and says what the team will do with them; replies to an inquiry are covered by the implied-consent period for inquiries (6 months, CASL s. 10(10)), and every follow-up still names us and gives an unsubscribe. ☐ **VERIFY** with counsel how reps follow up on leads created this way.
+- ☐ Sender identification on the platform WhatsApp number: the business profile shows our name, a mailing address and a contact method.
+
+**Competition Act and what it may promise**
+
+- ☑ The assistant states only figures that appear in `plans.ts` (plans, annual prices, add-ons, fees, founding offer and its derived prices), in a tool result this turn, or in the person's own message; otherwise the reply is held back, retried once, and handed to a person (`guard.ts`). Prices are always "before HST"; the fee table includes the 1% on deposits and the pass-through card fees, so there is no drip pricing in the chat.
+- ☑ It will not promise results, guarantees, risk-free or money-back terms, a free trial, refunds or dates. Unknowns ("how will HST appear on invoices", custom deals, integrations, refunds) are "I'll check with the team" plus a hand-off.
+- ☑ Legal text is quoted as a draft until counsel signs it off.
+
+**Operations**
+
+- ☑ Owner look-ups and checkout links need an SMS code to the owner's number; the code is sent only to a number that belongs to an owner, the answer is the same either way (no probing), and tools take no merchant or user id from the chat.
+- ☐ Decide who watches the hand-off queue and in what hours; the queue is `/admin/sales-agent` and each hand-off emails `SALES_AGENT_ADMIN_EMAIL` (default `BRAND.supportEmail`).
+- ☐ Cost ceiling: `SALES_AGENT` limits are 30 messages per conversation per hour, 40 per contact per hour, 3,000 per day in total (`SALES_AGENT_LIMITS`). Set an Anthropic spend limit on the key as a second ceiling.

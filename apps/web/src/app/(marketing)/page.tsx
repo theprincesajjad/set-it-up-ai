@@ -29,6 +29,7 @@ const L = copy.landing;
  * network, kind of shop, restaurant band, named comparison, BIA band, FAQ, book a visit. One form, one conversion goal.
  */
 export default function Home() {
+  const waUrl = whatsappUrl(L.book.whatsappText);
   return (
     <>
       {/* 1. Hero: editorial headline left, the real product right. */}
@@ -143,9 +144,11 @@ export default function Home() {
         <div className="grid gap-12 md:grid-cols-2">
           <div>
             <MHeading eyebrow={L.book.eyebrow} title={L.book.title} sub={L.book.sub} className="mb-8!" />
-            <Button variant="secondary" size="lg" href={whatsappUrl(L.book.whatsappText)} className="rounded-full!">
-              {L.book.whatsapp}
-            </Button>
+            {waUrl ? (
+              <Button variant="secondary" size="lg" href={waUrl} className="rounded-full!">
+                {L.book.whatsapp}
+              </Button>
+            ) : null}
           </div>
           <div className="rounded-sheet border border-line bg-bg p-6 md:p-8">
             <ContactForm kind="visit" />

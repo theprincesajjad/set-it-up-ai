@@ -36,14 +36,16 @@ const CHIPS: { value: merchantApi.CreateMerchantBody["vertical"]; label: string 
 
 export interface SignupWizardProps {
   signedInName?: string | null;
+  /** From the sales assistant's link (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
+  prefill?: { shop?: string; vertical?: string; phone?: string };
   neighbourhoods: networkApi.NeighbourhoodDto[];
 }
 
-export function SignupWizard({ signedInName, neighbourhoods }: SignupWizardProps) {
+export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWizardProps) {
   const router = useRouter();
   const [account, setAccount] = useState({ name: "", email: "", password: "" });
-  const [shop, setShop] = useState({ name: "", vertical: "", address: "", neighbourhoodSlug: "" });
-  const [phone, setPhone] = useState("");
+  const [shop, setShop] = useState({ name: prefill?.shop ?? "", vertical: prefill?.vertical ?? "", address: "", neighbourhoodSlug: "" });
+  const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<React.ReactNode>(null);
   const [busy, setBusy] = useState(false);

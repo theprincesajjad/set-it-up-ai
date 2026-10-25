@@ -33,6 +33,7 @@ import { restaurantOpsEndpoints } from "./restaurantOps";
 import { restaurantDeskEndpoints } from "./restaurantDesk";
 import { publicSplitEndpoints, restaurantKitchenEndpoints } from "./restaurantKitchen";
 import { restaurantWebEndpoints } from "./restaurantWeb";
+import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgent";
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
 import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
 
@@ -57,6 +58,7 @@ export function llApi(c: ApiClient) {
       feed: (q: Partial<networkApi.FeedQuery> = {}) =>
         c.get<networkApi.FeedResponse>("/v1/network/feed", { query: q as Record<string, string | number | undefined> }),
     },
+    salesAgent: publicSalesAgentEndpoints(c),
     public: {
       shop: (slug: string) => c.get<networkApi.PublicShopResponse>(`/v1/public/shops/${enc(slug)}`, { anonymous: true }),
       joinInfo: (qrCode: string) => c.get<networkApi.JoinInfoResponse>(`/v1/public/join/${enc(qrCode)}`, { anonymous: true }),
@@ -158,6 +160,7 @@ export function llApi(c: ApiClient) {
       syncOutcomes: (items: (repApi.LeadOutcomeBody & { leadId: string })[]) => c.post<repApi.OutcomeSyncResult>("/v1/rep/outcomes/sync", { items }),
     },
     admin: {
+      salesAgent: adminSalesAgentEndpoints(c),
       dashboard: () => c.get<adminApi.NetworkDashboard>("/v1/admin/dashboard"),
       onboardingFunnel: (days = 90) => c.get<adminApi.OnboardingFunnel>("/v1/admin/onboarding/funnel", { query: { days } }),
       overview: () => c.get<adminApi.AdminOverview>("/v1/admin/overview"),

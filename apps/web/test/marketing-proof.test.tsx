@@ -6,7 +6,7 @@ import { upcomingFestivals, festivalLine } from "@/components/marketing/Festival
 import { LIVE_PROOF_MIN_SHOPS, liveProofStats } from "@/components/marketing/LiveProof";
 import { ReportSummary, ReportTiles } from "@/components/marketing/ReportMock";
 import { SampleReportCard } from "@/components/marketing/SampleReportCard";
-import { whatsappUrl } from "@/lib/marketing/whatsapp";
+import { whatsappNumber, whatsappUrl } from "@/lib/marketing/whatsapp";
 import { campaignReportRows } from "@/lib/reportCsv";
 import { boardMeetingInDays, boardMeetingSoon } from "@/lib/leads";
 
@@ -80,8 +80,10 @@ describe("lead helpers and links", () => {
     expect(boardMeetingSoon({ boardMeetingAt: null }, now)).toBe(false);
     expect(boardMeetingInDays({ boardMeetingAt: "2026-11-04" }, now)).toBe(1);
   });
-  it("opens WhatsApp through wa.me with the text encoded", () => {
-    const u = whatsappUrl("Hi, I run a restaurant");
-    expect(u).toMatch(/^https:\/\/wa\.me\/\d+\?text=Hi%2C%20I%20run%20a%20restaurant$/);
+  it("opens WhatsApp through wa.me with the text encoded, and has no link at all without a configured number", () => {
+    expect(whatsappUrl("Hi, I run a restaurant", "+1 (416) 555-0142")).toBe("https://wa.me/14165550142?text=Hi%2C%20I%20run%20a%20restaurant");
+    expect(whatsappUrl(undefined, "14165550142")).toBe("https://wa.me/14165550142");
+    for (const unset of [undefined, "", "   ", "abc", "12345"]) expect(whatsappUrl("Hi", unset), String(unset)).toBeNull();
+    expect(whatsappNumber("")).toBeNull();
   });
 });

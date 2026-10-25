@@ -62,6 +62,7 @@ We collect only what a feature needs. What you share depends on which shops and 
 | **Catering and banquet events**: event type and date, headcount, venue and address, menu, dietary notes, quote, your approval and signature record, deposit | You and the shop | Quote, confirm and bill an event |
 | **Review requests and review feedback**: your rating and any private comment, whether you opened or clicked the link, the shop's reply | You and the shop | Let a shop hear how it did privately and offer a public Google review. A public Google review is posted to Google, not to us |
 | **WhatsApp messages**: your WhatsApp number, language, the messages you and the shop send, your cart, allergy note, and whether you opted in to marketing | You and the shop | Take your order and send updates |
+| **Chats with our AI assistant** (the website chat and our own WhatsApp number, for shop owners and people thinking of joining): the messages you and the assistant send, your language, the phone number you chat from or give us, the page you started on, what the assistant looked up or did for you (for example a lead it saved or a sign-up link it sent, never full phone numbers or codes in its log), a note from our team if a person took over, and a thumbs rating from our team | You and our team | Answer your questions about pricing and set-up, start your sign-up, pass you to a person, and check the quality of our answers |
 | **Phone-call transcripts**: your phone number and a **text transcript of what you say** when you call a shop's ordering line, with the language and the order we drafted from it. We do not keep call audio | You | Draft your order for the shop to confirm. A person at the shop checks and confirms the order |
 | Waitlist entries for limited items (name, phone, the consent wording) | You | Tell you when an item returns |
 
@@ -86,11 +87,14 @@ We use your information to:
 - run each shop's program and Network Rewards;
 - send service messages (verification codes, reward-ready, order-ready, booking confirmations and reminders, delivery updates, quote and invoice notices);
 - send promotional messages **only with your consent**;
+- answer questions with our **AI assistant** (see below);
 - draft an order from a phone call or WhatsApp message for a shop to confirm (a person confirms; nothing is charged because of the draft alone);
 - prevent fraud and abuse;
 - improve the Service;
 - produce **aggregated, de-identified** statistics for shops and Business Improvement Areas, for example "visits on the street rose 18% during the passport week", reported only in groups of 10 or more people;
 - meet legal obligations.
+
+**Our AI assistant.** On our website and on our own WhatsApp number an AI assistant answers questions about {{plan.free.name}}, the paid plans, fees and set-up, in English, Hindi, Urdu and Punjabi. It tells you it is an AI in its first message and you can ask for a person at any time by typing HUMAN. It can look up our prices and policies, save your details as a lead, send you a sign-up link, note a request for a call with our founder, and, only after you prove you own a shop by typing a code we text to your phone, show you your own shop's plan and create a checkout link for it. It cannot see any other shop or person. It never decides anything about you by itself: it cannot approve, refuse or change a price, and anything it is not sure about goes to a person. To run it, the text of the chat is processed by our service provider **Anthropic** (the AI model), which may process it in the United States. Under our agreement Anthropic may not use these chats to train its models, and neither do we. Do not put card numbers, passwords or health information in the chat. Reply STOP on WhatsApp and we stop messaging that number.
 
 If we want to use your information for a new purpose, we will ask you first.
 
@@ -110,7 +114,8 @@ If we want to use your information for a new purpose, we will ask you first.
 - **Cloudflare R2** (file storage for uploaded photos; kept in North America). A photo is never served from a permanent link: each time it is shown it gets a signed link that stops working after {{upload.linkMinutes}};
 - **Stripe** (payments, saved cards, payouts to shops);
 - **Twilio** (SMS and the phone line, including speech-to-text for phone orders);
-- **Meta WhatsApp Cloud API** (WhatsApp messages);
+- **Meta WhatsApp Cloud API** (WhatsApp messages, including our AI assistant's number);
+- **Anthropic** (the AI model behind our sales and support assistant; it processes the text of those chats for us);
 - **Resend** (email);
 - **Expo, Apple and Google** (push notifications; Apple and Google Wallet passes);
 - [map tile provider] (the map in the app and website);
@@ -139,6 +144,7 @@ Some are located in, or may process data in, the **United States** or other coun
 - Consent records are kept for at least 3 years after the relationship ends. Transaction records are kept as required for tax purposes (6 years).
 - **Phone-call transcripts:** kept for {{retention.phoneTranscriptDays}} after the call, then deleted, together with the order text we drafted from it and the caller's number. The confirmed order itself stays.
 - **WhatsApp messages:** message text is deleted {{retention.whatsappMessageDays}} after it was sent. Carts and allergy notes on a chat that has gone quiet are cleared at the same time.
+- **AI assistant chats:** the messages, the record of what the assistant looked up or did, and the number are deleted {{retention.salesAgentDays}} after the last message. A lead we saved for you follows the rules for leads, not this one.
 - **Repair photos and ticket records:** kept for the life of the ticket and {{retention.repairPhotoMonths}} after it closes (picked up or cancelled, the warranty and dispute period). Then the photos (the files and the links), item details, notes and the quote signature record are deleted. Quote and invoice amounts stay for the shop's accounts.
 - **Allergy and dietary notes:** an allergy note on an order is cleared {{retention.allergyNoteDays}} after the order is picked up or cancelled. Dietary notes on a tiffin subscription follow the tiffin rule below. Allergy and dietary notes are not used for marketing or analytics.
 - **Review feedback** (your private comment and the shop's reply) is deleted {{retention.reviewFeedbackMonths}} after it was given. The star rating stays and does not identify you.

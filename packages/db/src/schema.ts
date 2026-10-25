@@ -2261,3 +2261,73 @@ export const rateLimitCounters = pgTable(
   },
   (t) => [index("rate_limit_counters_expires_idx").on(t.expiresAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Sales and support assistant (apps/api/src/services/sales-agent): our own AI agent on the platform WhatsApp number
+// and the marketing site's web chat. Prospects and owners, not shoppers: nothing here is a merchant's data.
+// ---------------------------------------------------------------------------
+export const salesAgentConversations = pgTable(
+  "sales_agent_conversations",
+  {
+    id: id(),
+    /** whatsapp | web */
+    channel: text("channel").notNull(),
+    /** WhatsApp: the sender's E.164 number. Web: sha256 of the session token (the token itself is never stored). */
+    contactKey: text("contact_key").notNull(),
+    /** A number we can text (WhatsApp sender, or one typed in the web chat). Cleared by retention. */
+    phone: text("phone"),
+    contactName: text("contact_name"),
+    language: text("language").notNull().default("en"),
+    /** open | handoff | human | closed */
+    status: text("status").notNull().default("open"),
+    /** Page path the web visitor started on. */
+    page: text("page"),
+    /** Counts user messages; an action runs only on a later turn than the one that asked for confirmation. */
+    turn: integer("turn").notNull().default(0),
+    /** The one action waiting for the user's yes: { id, tool, args, turn, summary }. */
+    pendingAction: jsonb("pending_action").$type<{ id: string; tool: string; args: Record<string, unknown>; turn: number; summary: string } | null>(),
+    /** Phone a code was sent to, until the user types it (checked in code, never by the model). */
+    otpPhone: text("otp_phone"),
+    otpSentAt: ts("otp_sent_at"),
+    verifiedPhone: text("verified_phone"),
+    verifiedUserId: uuid("verified_user_id").references(() => users.id, { onDelete: "set null" }),
+    verifiedAt: ts("verified_at"),
+    leadId: uuid("lead_id").references(() => leads.id, { onDelete: "set null" }),
+    handoffReason: text("handoff_reason"),
+    handoffAt: ts("handoff_at"),
+    takenOverBy: uuid("taken_over_by").references(() => users.id, { onDelete: "set null" }),
+    takenOverAt: ts("taken_over_at"),
+    callRequestAt: ts("call_request_at"),
+    callRequestNote: text("call_request_note"),
+    disclosedAt: ts("disclosed_at"),
+    /** WhatsApp 24-hour window: the user's last inbound message. */
+    lastInboundAt: ts("last_inbound_at"),
+    lastActivityAt: ts("last_activity_at").notNull().defaultNow(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("sales_agent_conv_contact_uq").on(t.channel, t.contactKey), index("sales_agent_conv_status_idx").on(t.status, t.lastActivityAt), index("sales_agent_conv_activity_idx").on(t.lastActivityAt)],
+);
+
+export const salesAgentMessages = pgTable(
+  "sales_agent_messages",
+  {
+    id: id(),
+    conversationId: uuid("conversation_id").notNull().references(() => salesAgentConversations.id, { onDelete: "cascade" }),
+    /** user | assistant | human | system */
+    role: text("role").notNull(),
+    body: text("body").notNull(),
+    /** Tools the assistant ran for this reply: name, masked input, ok, short summary, ms. */
+    toolCalls: jsonb("tool_calls").$type<{ name: string; input: Record<string, unknown>; ok: boolean; summary: string; ms: number }[]>().notNull().default(sql`'[]'::jsonb`),
+    /** up | down, set by an admin in the review console. */
+    feedback: text("feedback"),
+    /** Why the reply was replaced or flagged by a guardrail (price_mismatch, promise, ...). */
+    guard: text("guard"),
+    humanUserId: uuid("human_user_id").references(() => users.id, { onDelete: "set null" }),
+    model: text("model"),
+    usage: jsonb("usage").$type<Record<string, number> | null>(),
+    providerMessageId: text("provider_message_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sales_agent_msg_conv_idx").on(t.conversationId, t.createdAt)],
+);

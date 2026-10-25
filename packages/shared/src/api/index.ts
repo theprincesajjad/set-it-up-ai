@@ -22,3 +22,4 @@ export * as i18nApi from "./i18n.js";
 export * as paymentsManualApi from "./payments-manual.js";
 export * as appointmentsApi from "./appointments.js";
 export * as restaurantWebApi from "./restaurant-web.js";
+export * as salesAgentApi from "./sales-agent.js";
