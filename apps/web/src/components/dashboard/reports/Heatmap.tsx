@@ -11,10 +11,10 @@ const hourLabel = (h: number) => (h > 12 ? String(h - 12) : String(h));
 export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?: string }) {
   const outside = visitsOutsideWindow(data.matrix);
   return (
-    <section aria-label="When people come in" className="min-w-0 rounded-card border border-line p-6">
+    <section aria-label="When people come in" className="min-w-0 rounded-card border border-line p-4 md:p-6">
       <h2 className="text-[16px] font-semibold text-fg">When people come in</h2>
       <div aria-hidden className="mt-4 overflow-x-auto">
-        <div className="grid min-w-[480px] gap-1" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
+        <div className="grid gap-1" style={{ gridTemplateColumns: "30px repeat(12, minmax(0, 1fr))" }}>
           <span />
           {HEAT_HOURS.map((h) => (
             <span key={h} className="text-center text-[11px] text-fg-muted">{hourLabel(h)}</span>

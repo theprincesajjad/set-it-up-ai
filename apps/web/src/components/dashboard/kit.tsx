@@ -66,7 +66,7 @@ export function Panel({ title, description, action, children, className, footer,
   return (
     <As aria-labelledby={title && As === "section" ? id : undefined} className={cn("min-w-0 overflow-hidden rounded-card border border-line bg-bg", outer)}>
       {title || action ? (
-        <div className={cn("flex items-start justify-between gap-3 px-5 pt-4", !padded && "border-b border-line pb-3")}>
+        <div className={cn("flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-5 pt-4", !padded && "border-b border-line pb-3")}>
           <div className="min-w-0">
             {title ? (
               <h2 id={id} className="text-body-strong text-fg">
@@ -131,7 +131,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
               {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent", info: "bg-location" }[s.dot])} /> : null}
               {s.label}
             </dt>
-            <dd className="mt-1.5 text-[30px] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
+            <dd className="mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
               {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
             </dd>
             <dd className="mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
@@ -303,7 +303,7 @@ export function Capsules<T extends string>({ options, value, onChange, label, cl
 /** Compact segmented switch for ranges and views (h-8, muted track). */
 export function Segmented<T extends string>({ options, value, onChange, label, className }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex h-8 items-center rounded-input bg-bg-subtle p-0.5", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex min-h-8 max-w-full items-stretch rounded-input bg-bg-subtle p-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -311,7 +311,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={cn("h-7 rounded-[8px] px-2.5 text-meta transition-colors focus-visible:focus-ring", o.value === value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
+          className={cn("min-h-7 rounded-[8px] whitespace-nowrap px-2.5 py-1 text-meta leading-tight transition-colors focus-visible:focus-ring", o.value === value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
         >
           {o.label}
         </button>

@@ -24,7 +24,7 @@ const TEXT = "Inter, var(--font-inter), ui-sans-serif, system-ui, -apple-system,
  */
 export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: string; street: string; joinUrl: string; scale?: number }) {
   const short = joinUrl.replace(/^https?:\/\//, "");
-  const s1 = shopName.length <= 28 ? shopName : "here";
+  const longName = shopName.length > 28;
   return (
     <div className="qr-stand relative bg-[#FFFFFF] text-[#0B0B0C]" style={{ width: `${105 * scale}mm`, height: `${148 * scale}mm` }}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 105 148" width="100%" height="100%" role="img" aria-label={`QR stand for ${shopName}: Scan to join`} className="absolute inset-0">
@@ -45,10 +45,16 @@ export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: st
           </text>
           <g fontFamily={TEXT} fontSize="4.2" fontWeight="500" fill="#6B6B70">
             <text x="52.5" y="54">
-              earn points at{" "}
-              <tspan fontWeight="600" fill="#0B0B0C">
-                {s1}
-              </tspan>
+              {longName ? (
+                <tspan fontWeight="600" fill="#0B0B0C">earn points here</tspan>
+              ) : (
+                <>
+                  earn points at{" "}
+                  <tspan fontWeight="600" fill="#0B0B0C">
+                    {shopName}
+                  </tspan>
+                </>
+              )}
             </text>
             <text x="52.5" y="59.5">
               and every shop on{" "}

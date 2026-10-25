@@ -488,6 +488,10 @@ export default function Counter() {
     if (state.step === "nomatch") {
       return <NoMatch digits={state.digits} onTryAgain={nextCustomer} onNew={() => { setPhoneMode(true); dispatch({ type: "toEntry" }); }} />;
     }
+    // Redeeming from the reward screen leaves the step on "reward", so the success card has to win over it.
+    if (panel?.kind === "redeemSuccess") {
+      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
+    }
     if (state.step === "reward") {
       const m = state.member;
       return (
@@ -503,9 +507,6 @@ export default function Counter() {
           onBack={nextCustomer}
         />
       );
-    }
-    if (panel?.kind === "redeemSuccess") {
-      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
     }
     if (state.step === "success" && program && program.earnType !== "per_dollar" && state.view.name !== undefined && !panel) {
       return <StampedScreen view={state.view} program={program} onNext={nextCustomer} />;

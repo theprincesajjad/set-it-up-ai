@@ -8,7 +8,7 @@
 import { Menu, Search, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { CommandMenu, type CommandSearch } from "./CommandMenu";
 import { Kbd } from "./kit";
@@ -65,8 +65,13 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
     if (last && last[0]!.group === i.group) last.push(i);
     else groups.push([i]);
   }
+  const ref = useRef<HTMLElement>(null);
+  // A long nav scrolls inside the sidebar; keep the current page's row in view instead of half cut off at the bottom.
+  useEffect(() => {
+    ref.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+  }, [pathname]);
   return (
-    <nav aria-label="Main" className="flex flex-col gap-4">
+    <nav ref={ref} aria-label="Main" className="flex flex-col gap-4">
       {groups.map((g, gi) => {
         const label = g[0]!.groupLabel;
         const list = (

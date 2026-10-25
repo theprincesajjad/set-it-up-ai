@@ -33,9 +33,10 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
           <div className="h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
           <span aria-hidden className="absolute -top-1 h-4 w-px bg-accent" style={{ insetInlineStart: `${mark}%` }} />
         </div>
-        <div className="relative mt-2 flex justify-between text-caption text-fg-muted">
+        <div className="relative mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-caption text-fg-muted">
           <span>0</span>
-          <span className="text-accent-text">
+          {/* On a phone the three labels cannot share a line, so the pace sentence drops under the bar. */}
+          <span className="order-last basis-full text-accent-text md:order-none md:basis-auto">
             {t(L, "ob.card.pace", { lead: a.leadingMembers, day: a.leadingByDay, target: a.target })}
           </span>
           <span>{t(L, "ob.card.targetLine", { target: a.target })}</span>

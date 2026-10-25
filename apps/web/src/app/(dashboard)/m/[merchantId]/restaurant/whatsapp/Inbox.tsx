@@ -34,6 +34,7 @@ export function Inbox({ sessions, connected, onSetup, onTemplates }: { sessions:
         {sessions.data && !items.length ? (
           <div className="p-5">
             <EmptyState
+              className="sm:flex-col sm:items-start"
               title="No chats yet"
               description="A chat shows up here when a guest messages your WhatsApp number, or when you record their opt-in under Setup."
               action={!connected ? <Button size="sm" variant="secondary" onClick={onSetup}>Connect WhatsApp</Button> : undefined}

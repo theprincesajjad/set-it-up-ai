@@ -228,6 +228,10 @@ export function Composer({ onSent }: { onSent?: () => void }) {
             <textarea
               id="msg-body"
               rows={3}
+              ref={(el) => {
+                // Grow with the text so a long message is never hidden behind a scroll on a phone.
+                if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }
+              }}
               value={body}
               maxLength={channel === "sms" ? messagingApi.SMS_MAX_BODY : channel === "push" ? messagingApi.PUSH_MAX_BODY : messagingApi.EMAIL_MAX_BODY}
               onChange={(e) => {

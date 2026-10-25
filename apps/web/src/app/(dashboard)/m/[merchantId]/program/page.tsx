@@ -75,12 +75,12 @@ function Step({ n, title, children, last }: { n: number; title: string; children
 /** A settings row on the "At the counter" card: title and hint left, the control right. */
 function SettingRow({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-16 items-center justify-between gap-6 border-t border-line py-3">
+    <div className="flex min-h-16 flex-col items-start justify-between gap-2 border-t border-line py-3 sm:flex-row sm:items-center sm:gap-6">
       <div className="min-w-0">
         <p className="text-[15px] font-medium text-fg">{title}</p>
         {hint ? <p className="text-[13px] text-fg-muted">{hint}</p> : null}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="shrink-0 max-sm:self-stretch">{children}</div>
     </div>
   );
 }
@@ -144,6 +144,8 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
   const term = draft.terminology;
   const mode = earnModeOf(draft);
   const stampsMode = draft.earnType !== "per_dollar";
+  /** Only a true stamp card has a stamp goal; a per-visit points program (salons, repair) states what a reward costs in points. */
+  const stampCard = draft.earnType === "stamps";
 
   async function save() {
     setSaving(true);
@@ -194,7 +196,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
     <div className="pb-16">
       <PageHeader
         title="Rewards"
-        description="Your stamp card. The preview shows exactly what customers see."
+        description={stampCard ? "Your stamp card. The preview shows exactly what customers see." : "How customers earn points and what they cost. The preview shows exactly what customers see."}
         actions={
           <>
             <ToolbarButton icon={Eye} onClick={() => setPreviewOpen(true)} className="lg:hidden">Preview</ToolbarButton>
@@ -207,9 +209,9 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-6">
           <section className="rounded-card border border-line p-6" aria-label="Set up your card">
-            <Step n={1} title={stampsMode ? "What earns a stamp" : "What earns points"}>
+            <Step n={1} title={stampCard ? "What earns a stamp" : "What earns points"}>
               <div id="earn" className="flex flex-col gap-4">
-                <Segmented label="Earn type" value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} options={modeOptions} className="self-start" />
+                <Segmented label="Earn type" value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} options={modeOptions} className="self-start flex-wrap" />
                 {mode === "purchase" ? (
                   <TextField label="Minimum purchase" inputMode="decimal" prefix="$" hint="Stops $1 stamps. Set it to your cheapest drink." value={draft.minSpendCents ? (draft.minSpendCents / 100).toFixed(2) : ""} onChange={(e) => set("minSpendCents", Math.round((Number.parseFloat(e.target.value) || 0) * 100))} error={shown.minSpendCents} />
                 ) : null}
@@ -219,8 +221,8 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </div>
             </Step>
 
-            <Step n={2} title={stampsMode ? "Stamps to earn a reward" : "Points to earn a reward"}>
-              {stampsMode ? (
+            <Step n={2} title={stampCard ? "Stamps to earn a reward" : "Points to earn a reward"}>
+              {stampCard ? (
                 <div className="flex flex-wrap items-center gap-4" role="group" aria-label="Stamp goal">
                   <IconButton icon={Minus} variant="secondary" size={40} label="Fewer stamps" disabled={draft.stampGoal <= STAMP_GOAL_MIN} onClick={() => set("stampGoal", clampStampGoal(draft.stampGoal - 1))} />
                   <output aria-label="Stamp goal" className="min-w-10 text-center font-display text-[40px] font-bold leading-none tabular-nums text-fg">{draft.stampGoal}</output>
