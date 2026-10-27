@@ -207,10 +207,10 @@ describe("policy settings", () => {
   it("reads and saves the cancel window, no-show fee and tips; only managers change them", async () => {
     const s = await salon();
     const url = `${s.base}/appointments/settings`;
-    expect((await call(env, s.simran.token, "GET", url)).body).toEqual({ cancelWindowHours: 24, noShowFeeCents: 0, tipsEnabled: null, tipsOn: false, tipPresets: [15, 20, 25], tax: { applies: true, name: "HST" } });
+    expect((await call(env, s.simran.token, "GET", url)).body).toEqual({ cancelWindowHours: 24, noShowFeeCents: 0, tipsEnabled: null, tipsOn: false, tipPresets: [15, 20, 25], tax: { applies: true, name: "HST" }, taxStatus: "registered" });
     expect((await call(env, s.simran.token, "PUT", url, { noShowFeeCents: 2500 })).status).toBe(403);
     const saved = await call(env, s.desk.token, "PUT", url, { cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipPresets: [10, 15, 20, 25] });
-    expect(saved.body).toEqual({ cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipsOn: true, tipPresets: [10, 15, 20, 25], tax: { applies: true, name: "HST" } });
+    expect(saved.body).toEqual({ cancelWindowHours: 48, noShowFeeCents: 3000, tipsEnabled: true, tipsOn: true, tipPresets: [10, 15, 20, 25], tax: { applies: true, name: "HST" }, taxStatus: "registered" });
     expect((await call(env, s.desk.token, "PUT", url, { cancelWindowHours: -1 })).status).toBe(400);
     expect((await call(env, s.desk.token, "PUT", url, { tipPresets: [] })).status).toBe(400);
     // The public page shows the new policy; the fee is a snapshot taken when the booking is made.
