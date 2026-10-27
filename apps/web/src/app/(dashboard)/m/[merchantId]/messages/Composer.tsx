@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { checkPharmacyText, messagingApi, pharmacyTextMessage } from "@ll/shared";
+import { beautyClaimMessage, checkBeautyClaims, checkPharmacyText, isBeautySupplyVertical, messagingApi, pharmacyTextMessage } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
@@ -52,6 +52,8 @@ export function Composer({ onSent }: { onSent?: () => void }) {
   const [usage, setUsage] = useState<messagingApi.SmsUsage | null>(null);
   // Pharmacy: a message can only be about the front store. Checked as you type (the server checks again on create, edit and send).
   const rxCheck = m.vertical === "pharmacy" ? checkPharmacyText(`${channel === "sms" ? "" : subject}\n${body}`) : { ok: true as const };
+  // Beauty supply: no treatment claims (Health Canada treats a cosmetic with one as a drug). Same pattern, same server check.
+  const claimCheck = isBeautySupplyVertical(m.vertical) ? checkBeautyClaims(`${channel === "sms" ? "" : subject}\n${body}`) : { ok: true as const, term: undefined };
   const segment = AUDIENCES.find((a) => a.key === aud)!.segment;
   const selected = counts[aud] ?? null;
   const term = detail.program?.terminology ?? "stamps";
@@ -230,6 +232,12 @@ export function Composer({ onSent }: { onSent?: () => void }) {
             <p className="mt-1">{pharmacyTextMessage(rxCheck, "Your message")} To tell someone an order is ready, use Pickup ready at the counter.</p>
           </div>
         ) : null}
+        {!claimCheck.ok ? (
+          <div role="alert" data-testid="beauty-claims-blocked" className="rounded-input bg-negative/10 p-3 text-meta text-fg">
+            <p className="font-semibold text-negative">This can&apos;t be sent</p>
+            <p className="mt-1">{beautyClaimMessage(claimCheck, "Your message")}</p>
+          </div>
+        ) : null}
         <div className="flex flex-col gap-2">
           <label htmlFor="msg-body" className="text-[14px] font-medium text-fg">Message</label>
           <div className="rounded-[14px] border border-line px-4 py-3.5 focus-within:border-fg">
@@ -298,7 +306,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
             <Button variant="secondary" size="md" loading={testing} disabled={busy} onClick={() => void sendTest()} className="rounded-full px-5 text-[14px]">
               Send me a test
             </Button>
-            <Button size="md" loading={busy} disabled={!recipients || !rxCheck.ok} onClick={() => setConfirm(true)} className="rounded-full px-5 text-[14px]">
+            <Button size="md" loading={busy} disabled={!recipients || !rxCheck.ok || !claimCheck.ok} onClick={() => setConfirm(true)} className="rounded-full px-5 text-[14px]">
               {sendLabel(mode, recipients, channel)}
             </Button>
           </div>

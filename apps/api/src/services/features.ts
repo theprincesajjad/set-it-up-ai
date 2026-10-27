@@ -155,6 +155,8 @@ export interface CustomerFeatures {
   dropoffScheduling: boolean;
   /** Customers can book a stylist and a time (booking.appointments). */
   appointments: boolean;
+  /** Customers can join the shop's walk-in line (booking.walkin_queue). */
+  walkinQueue: boolean;
   /** Customers can book classes and join memberships (booking.classes). */
   classes: boolean;
   inAppPayments: boolean;
@@ -177,6 +179,7 @@ const CUSTOMER_FEATURE_KEYS = {
   serviceTickets: "service.tickets",
   dropoffScheduling: "booking.dropoff_scheduling",
   appointments: "booking.appointments",
+  walkinQueue: "booking.walkin_queue",
   classes: "booking.classes",
   inAppPayments: "payments.in_app",
   promos: "promos.basic",

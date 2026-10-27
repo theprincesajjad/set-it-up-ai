@@ -53,6 +53,8 @@ export const staffAddBody = z.object({
   serviceId: uuidSchema.nullish(),
   requestedStaffId: uuidSchema.nullish(),
   textConsent: z.boolean().default(false),
+  /** tablet: typed in on the door tablet (the same form a customer sees); staff: added by the front desk. */
+  source: z.enum(["staff", "tablet"]).default("staff"),
 });
 export type StaffAddBody = z.input<typeof staffAddBody>;
 

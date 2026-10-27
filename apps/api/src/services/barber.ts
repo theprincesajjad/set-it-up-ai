@@ -5,7 +5,7 @@
  * The line feeds the existing calendar: starting a person creates a walk-in appointment for the barber (source walk_in,
  * in_service), so checkout, the tip to that barber, points and rebooking are all the existing ones. Nothing here moves money.
  */
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { appointments, familyMembers, invoices, merchantStaff, merchants, preferredStaff, queueEntries, services, staffPay, users, walkinQueues } from "@ll/db";
 import { QUEUE_DEFAULT_MINUTES, QUEUE_LIVE, QUEUE_MAX_FAMILY, QUEUE_SKIP_BACK, estimateWaitMin, normalizeLocale, translator, type barberApi, type Locale, type QueueChair, type QueuePerson } from "@ll/shared";
@@ -196,7 +196,7 @@ async function snapshot(ctx: AppContext, merchant: Merchant): Promise<Snapshot> 
   const busy = await ctx.db
     .select({ staffId: appointments.staffId, customerName: appointments.customerName, startsAt: appointments.startsAt, endsAt: appointments.endsAt, id: appointments.id, items: appointments.items })
     .from(appointments)
-    .where(and(eq(appointments.merchantId, merchant.id), inArray(appointments.status, ["arrived", "in_service"]), isNotNull(appointments.staffId), lt(appointments.startsAt, now), sql`${appointments.endsAt} > ${now}`));
+    .where(and(eq(appointments.merchantId, merchant.id), inArray(appointments.status, ["arrived", "in_service"]), isNotNull(appointments.staffId), lte(appointments.startsAt, now), sql`${appointments.endsAt} > ${now}`));
   const chairs = t.map((b) => {
     const a = busy.find((x) => x.staffId === b.id);
     const c = called.find((x) => x.calledStaffId === b.id);
@@ -319,7 +319,7 @@ async function loadService(ctx: AppContext, merchantId: string, serviceId: strin
 export async function join(ctx: AppContext, merchant: Merchant, input: JoinInput, authUser: AuthUser | null): Promise<barberApi.JoinQueueResponse> {
   const now = ctx.now();
   const s = await snapshot(ctx, merchant);
-  if (input.source !== "staff" && !s.settings.open) throw new HttpError(409, "queue_closed", "The line is closed right now.");
+  if (input.source === "join" && !s.settings.open) throw new HttpError(409, "queue_closed", "The line is closed right now.");
   if (s.waiting.length + s.called.length >= s.settings.maxWaiting) throw new HttpError(409, "queue_full", "The line is full right now. Please try again later.");
 
   let userId: string | null = authUser?.id ?? null;
@@ -394,7 +394,7 @@ function assertMayAct(staff: StaffContext, staffId: string) {
 }
 
 export async function addByStaff(ctx: AppContext, staff: StaffContext, body: z.output<typeof barberApi.staffAddBody>): Promise<barberApi.QueueActionResponse> {
-  const r = await join(ctx, staff.merchant, { name: body.name, phone: body.phone, serviceId: body.serviceId, requestedStaffId: body.requestedStaffId, textConsent: body.textConsent, familyMemberIds: [], source: "staff" }, null);
+  const r = await join(ctx, staff.merchant, { name: body.name, phone: body.phone, serviceId: body.serviceId, requestedStaffId: body.requestedStaffId, textConsent: body.textConsent, familyMemberIds: [], source: body.source }, null);
   const e = await entryOf(ctx, staff.merchant.id, r.entries[0]!.id);
   return { entry: await present(ctx, staff.merchant, e) };
 }

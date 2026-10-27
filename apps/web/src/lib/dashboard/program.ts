@@ -92,7 +92,7 @@ export function rewardPresets(vertical: string): { label: string; name: string; 
 }
 
 /** Verticals where the "categories that don't earn" table applies (pharmacy rx, grocery lottery and tobacco, retail gift cards). */
-export const CATEGORY_VERTICALS: readonly string[] = ["pharmacy", "grocery", "retail"];
+export const CATEGORY_VERTICALS: readonly string[] = ["beauty_supply", "pharmacy", "grocery", "retail"];
 
 /**
  * Show the no-earn categories table for pharmacy, grocery and retail, or for any shop whose POS has synced categories.

@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { LOCALE_LIST, type merchantApi } from "@ll/shared";
 import { StaffScheduleSheet } from "@/components/dashboard/calendar/StaffScheduleSheet";
+import { PaySheet } from "@/components/dashboard/queue/PaySheet";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Empty, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -41,6 +42,7 @@ export default function StaffPage() {
   const [remove, setRemove] = useState<merchantApi.StaffMember | null>(null);
   const [edit, setEdit] = useState<merchantApi.StaffMember | null>(null);
   const [schedule, setSchedule] = useState<merchantApi.StaffMember | null>(null);
+  const [pay, setPay] = useState<merchantApi.StaffMember | null>(null);
   const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
   const [station, setStation] = useState("");
   const act = useAction();
@@ -93,6 +95,11 @@ export default function StaffPage() {
                             Hours and services
                           </Button>
                         ) : null}
+                        {enabled("staff.payouts") && role !== "staff" ? (
+                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setPay(s)}>
+                            How paid
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
                           Language and station
                         </Button>
@@ -116,6 +123,7 @@ export default function StaffPage() {
       </Async>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <StaffScheduleSheet open={!!schedule} onClose={() => setSchedule(null)} member={schedule} />
+      <PaySheet open={!!pay} onClose={() => setPay(null)} member={pay} />
 
       <Modal
         open={invite}

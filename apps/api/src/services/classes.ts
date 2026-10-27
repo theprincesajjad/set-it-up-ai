@@ -866,7 +866,8 @@ export async function roster(ctx: AppContext, merchant: Merchant, sessionId: str
   const memberRows = bs.length ? await ctx.db.select({ id: merchantMembers.id, userId: merchantMembers.userId }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchant.id), inArray(merchantMembers.userId, bs.map((x) => x.b.userId)))) : [];
   const waiting = bs.filter((x) => x.b.status === "waitlisted").sort((a, c) => (a.b.waitlistedAt?.getTime() ?? 0) - (c.b.waitlistedAt?.getTime() ?? 0) || a.b.id.localeCompare(c.b.id));
   const rows: classesApi.RosterRowDto[] = [];
-  for (const x of bs) {
+  // The waitlist reads in line order, after everyone holding a spot.
+  for (const x of [...bs.filter((y) => y.b.status !== "waitlisted"), ...waiting]) {
     rows.push({
       bookingId: x.b.id,
       memberId: memberRows.find((m) => m.userId === x.b.userId)?.id ?? null,

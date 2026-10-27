@@ -38,6 +38,7 @@ import { awardPurchase, generateMemberCode, redeemReward } from "../services/led
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { CORE_SHOP_FEATURES, seedCoreModules } from "./core.js";
 import { BIA_DEMO, seedBiaDemo } from "./bia.js";
+import { seedBarbersBeauty } from "./barbers.js";
 import { seedServiceOps } from "./serviceOps.js";
 import { seedRepAdmin } from "./repAdmin.js";
 import { backfillMilestones } from "../services/onboarding.js";
@@ -151,6 +152,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     await seedAppointmentSalons(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedClassStudios(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedPharmacyDemo(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+    await seedBarbersBeauty(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedServiceOps(db, { log });
     await seedBiaDemo(db, { log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
@@ -438,6 +440,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   await seedAppointmentSalons(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedClassStudios(db, ctx, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedPharmacyDemo(db, ctx, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+  clock.now = new Date();
+  await seedBarbersBeauty(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedServiceOps(db, { log });
   await seedBiaDemo(db, { log });
   await seedRepAdmin(db, { repId: rep.id, log });

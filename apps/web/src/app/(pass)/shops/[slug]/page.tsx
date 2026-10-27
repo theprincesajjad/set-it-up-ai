@@ -193,6 +193,13 @@ export default async function ShopPage({ params, searchParams }: Props) {
           <p className="text-center text-meta text-fg-muted">{t("bk.shop.bookSub")}</p>
         </div>
       ) : null}
+      {shop.features?.walkinQueue ? (
+        <div className="flex flex-col gap-2">
+          <Button size="lg" fullWidth variant={shop.features?.appointments ? "secondary" : "primary"} href={`${base}/queue`}>
+            {t("q.join")}
+          </Button>
+        </div>
+      ) : null}
       {shop.features?.classes ? (
         <div className="flex flex-col gap-2">
           <Button size="lg" fullWidth variant={shop.features?.appointments ? "secondary" : "primary"} href={`${base}/classes`}>

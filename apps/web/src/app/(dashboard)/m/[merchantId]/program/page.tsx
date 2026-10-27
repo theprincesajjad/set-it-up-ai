@@ -326,7 +326,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
 
           {vertical === "grocery" && draft.earnType === "per_dollar" && primary?.rewardType === "amount_off" ? <RewardCost pointsPerDollar={draft.pointsPerDollar} pointsCost={primary.pointsCost} rewardValueCents={primary.value} /> : null}
 
-          <div id="categories" className={pharmacy ? "order-first" : undefined}>
+          <div id="categories" className={pharmacy || vertical === "beauty_supply" ? "order-first" : undefined}>
             <CategoriesEditor categories={categories} onChange={setCategories} />
           </div>
 

@@ -223,6 +223,8 @@ export interface CustomerFeaturesDto {
   dropoffScheduling?: boolean;
   /** Customers can book a stylist and a time at this shop (absent from older servers: treat as off). */
   appointments?: boolean;
+  /** Customers can join this shop's walk-in line (absent from older servers: treat as off). */
+  walkinQueue?: boolean;
   /** Customers can book classes and join memberships at this studio (absent from older servers: treat as off). */
   classes?: boolean;
   inAppPayments: boolean;
@@ -339,6 +341,8 @@ export interface DataExportModules {
   classCharges?: unknown[];
   bookings: unknown[];
   rebookingNudges: unknown[];
+  familyMembers: unknown[];
+  myBarber: unknown[];
   tiffinSubscriptions: unknown[];
   cateringEvents: unknown[];
   hallBookings: unknown[];

@@ -205,3 +205,18 @@ API: estimate maths; order and skip rule; text once; renter privacy (appointment
 - Counsel: CRA position on chair renters, the wording of the report, EI for the owner (V); the OPC wording for a first name of a child (V); where a hair-growth claim falls (V).
 - Pilot: peak dates before Eid and Diwali in the GTA; whether shops want a cap lower than 30; whether a cash tip should be logged per client by the barber rather than at the till.
 - Mobile app screens for the queue, if shops want them over the phone browser.
+
+## 9. What was built, and where the build differs from the frames
+
+Every item in section 7 is built: schema and migration `0026_barb`, `barberApi`, the walk-in line (staff board, door tablet, phone join and status pages), pay and payouts with the renter privacy rule, "my barber", family members, the beauty claims guard (server and as-you-type in the message composer), the `beauty_supply` vertical, three seeded shops, the API doc (`docs/engineering/api/barber.md`) and the pricing line. Tests are listed in the build report; the QA matrix rows are 108 to 117 in `docs/design/qa-matrix-staff.md` and the customer rows at the end of `docs/design/qa-matrix-customer.md`.
+
+Differences from the Figma frames, each on purpose:
+
+- **M2 has no "Change barber" button.** A person who wants another barber leaves and joins again (one tap, same place cannot be kept anyway because the estimate and order change). It saves a state with its own rules (does the person keep their place?).
+- **"My barber" lives on the join page, not on the family page.** Signed-in customers get their barber pre-selected on the join form and picking another saves the choice; there is no separate card screen for it in this pass. The family page is just the family (title "Family"), reached from the join page and `/me/family`. The stamp card line in M3 ("6 of 8 cuts, counts for you and Aiden") is not built: stamps already go to the parent's card, there is no new card screen in this pass.
+- **Frame 1** shows "Queue open" as a pill and "Call next for Marcus" in the header; the build has "Close the line", "Door tablet" and "Add someone" and puts "Call next" on each chair. The stat "About" shows the number and the caption "for someone joining now".
+- **Frame 3** shows a week with $4,860 of services; the seed shows whatever has been paid this week to date, and a renter's "takes home" can be negative early in the week because the whole week's rent is charged against it.
+- **Frame 4**: categories use the shared "Categories that don't earn" editor placed first on the Rewards page (the way the pharmacy page does it), with Gift cards locked; the stylist pro card is on Discount cards, and the "This can't be sent" box is the message composer's own check.
+- **Mobile app**: no native screens in this pass (section 5).
+
+Not found in this pass (stay as open questions in section 8): GTA peak dates, CRA and EI position for chair renters, the OPC wording for a child's first name, and where a hair-growth claim falls with Health Canada.

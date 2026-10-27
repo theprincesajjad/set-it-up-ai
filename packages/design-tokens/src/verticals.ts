@@ -94,6 +94,7 @@ const seeds: Record<Vertical, Seed> = {
   salon: { emoji: "💅", icon: "sparkles", category: "beauty" },
   barber: { emoji: "💈", icon: "scissors", category: "beauty" },
   spa: { emoji: "🧖", icon: "leaf", category: "beauty" },
+  beauty_supply: { emoji: "🧴", icon: "sparkles", category: "beauty" },
   fitness: { emoji: "🏋️", icon: "dumbbell", category: "services" },
   repair_electronics: { emoji: "📱", icon: "monitor-smartphone", category: "repair" },
   repair_auto: { emoji: "🚗", icon: "car", category: "repair" },
