@@ -165,6 +165,7 @@ test.describe("the member's side", () => {
     await expect(pay).toBeDisabled();
     await page.getByRole("checkbox").check();
     await pay.click();
+    await expect(page.getByText("Test payment (development)")).toBeVisible({ timeout: 20_000 });
     await pay.last().click();
     await expect(page.getByText(/Your membership is active/)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "OK", exact: true }).click();
