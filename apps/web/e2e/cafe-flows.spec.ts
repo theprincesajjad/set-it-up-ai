@@ -54,7 +54,11 @@ async function setup() {
 const randPhone = () =>
   `647${String(Math.floor(2000000 + Math.random() * 7999999))}`;
 
-/** A member who exists but has not been stamped today: created by an award, then that award is undone. */
+/**
+ * A member who exists but has not been stamped today: created by an award, then that award is undone.
+ * `unit` is what one stamp earns at this shop right now, read from that first award (not hard-coded): Pinecone runs
+ * double-stamp promos on Tuesdays and weekday afternoons, so a stamp is worth 1 or 2 depending on the clock.
+ */
 async function member(
   token: string,
   id: string,
@@ -62,6 +66,7 @@ async function member(
   phone = randPhone(),
 ) {
   const res = await call<{
+    pointsEarned: number;
     transactionId: string;
     member: { memberId: string; memberCode: string };
   }>("POST", `/v1/merchants/${id}/counter/award`, token, {
@@ -75,7 +80,12 @@ async function member(
     token,
     {},
   );
-  return { phone, code: res.member.memberCode, memberId: res.member.memberId };
+  return {
+    phone,
+    code: res.member.memberCode,
+    memberId: res.member.memberId,
+    unit: res.pointsEarned,
+  };
 }
 
 async function balance(
@@ -118,7 +128,7 @@ test("cold scan stamps in under 3 seconds and undo reverses it", async ({
     timeout: 3000,
   });
   expect(Date.now() - started).toBeLessThan(3000);
-  expect(await balance(token, id, m)).toBe(before + 1);
+  expect(await balance(token, id, m)).toBe(before + m.unit);
   // Exactly one award; undo reverses it.
   await page.getByRole("button", { name: /^Undo \d+s$/ }).click();
   await expect.poll(() => balance(token, id, m)).toBe(before);
@@ -146,7 +156,7 @@ test("one match by last four digits stamps exactly once", async ({ page }) => {
     { timeout: 3000 },
   );
   await page.waitForTimeout(800);
-  expect(await balance(token, id, m)).toBe(before + 1);
+  expect(await balance(token, id, m)).toBe(before + m.unit);
 });
 
 test("two matches show a list and nothing is stamped until one is tapped", async ({
@@ -176,7 +186,7 @@ test("two matches show a list and nothing is stamped until one is tapped", async
   await list.getByRole("button", { name: "Stamp Twin Two" }).click();
   await expect(page.getByRole("heading", { name: "Twin Two" })).toBeVisible();
   await page.waitForTimeout(800);
-  expect(await balance(token, id, b)).toBe(beforeB + 1);
+  expect(await balance(token, id, b)).toBe(beforeB + b.unit);
   expect(await balance(token, id, a)).toBe(beforeA);
 });
 

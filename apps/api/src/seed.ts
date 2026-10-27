@@ -3,6 +3,7 @@
  * Uses DATABASE_URL (default: local PGlite at ./.pglite/dev). Safe to re-run:
  * it skips if the demo neighbourhood already exists.
  */
+import "./lib/testClock.js";
 import { pathToFileURL } from "node:url";
 import { connect } from "@ll/db";
 import { loadConfig } from "./config.js";

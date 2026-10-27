@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import "./e2e/test-clock";
 
 /**
  * Drives the real app against a running, seeded API. Start both first (see docs/engineering/web.md):
