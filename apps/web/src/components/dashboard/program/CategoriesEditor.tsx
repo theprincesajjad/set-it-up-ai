@@ -18,6 +18,7 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [why, setWhy] = useState<string | null>(null);
+  const pharmacy = detail.merchant.vertical === "pharmacy";
   // Compliance for pharmacy, grocery and retail (or a connected POS with synced categories). Cafés never see it; their stored categories stay.
   if (!categoriesVisible(detail.merchant.vertical, categories, enabled("integrations.pos_auto_award"))) return null;
   const replace = (c: merchantApi.Category) => onChange(categories.some((x) => x.id === c.id) ? categories.map((x) => (x.id === c.id ? c : x)) : [...categories, c]);
@@ -31,7 +32,11 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
   };
   return (
     <Panel title="Categories that don't earn" description="Match these to your POS categories so the right items earn. Points never apply to regulated categories.">
-      {detail.merchant.vertical === "pharmacy" ? <Banner tone="info" className="mt-3">{copy.misc.pharmacyRule}</Banner> : null}
+      {pharmacy ? (
+        <Banner tone="info" className="mt-3" title={copy.misc.pharmacyLockedTitle}>
+          {copy.misc.pharmacyLockedBody}
+        </Banner>
+      ) : null}
       {error ? <Banner tone="danger" className="mt-3">{error}</Banner> : null}
       <ul className="flex flex-col divide-y divide-line border-y border-line">
         {categories.map((c) => (
@@ -40,6 +45,7 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
               <p className="flex items-center gap-2 text-meta-strong text-fg">
                 {c.protected ? <Lock aria-hidden className="size-3.5 text-fg-muted" strokeWidth={1.75} /> : null}
                 {c.name}
+                {c.protected && pharmacy ? <span className="whitespace-nowrap rounded-full bg-fg px-2 py-0.5 text-[11px] font-medium text-bg" data-testid="locked-tag" title="Locked by Ontario pharmacy rules">Locked</span> : null}
                 {c.protected ? (
                   <button type="button" onClick={() => setWhy(why === c.id ? null : c.id)} aria-expanded={why === c.id} className="text-meta font-normal text-fg-muted underline underline-offset-4">
                     Why?
@@ -55,7 +61,9 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
             </div>
             {why === c.id ? (
               <p className="mt-2 rounded-input bg-bg-subtle p-3 text-meta text-fg">
-                Ontario rules don&apos;t allow loyalty points or discounts as an inducement on prescriptions and pharmacy services, and points on tobacco, lottery and gift cards aren&apos;t allowed either. This category is always locked off, for every shop on the network.
+                {pharmacy
+                  ? copy.misc.pharmacyLockedWhy
+                  : "Ontario rules don't allow loyalty points or discounts as an inducement on prescriptions and pharmacy services, and points on tobacco, lottery and gift cards aren't allowed either. This category is always locked off, for every shop on the network."}
               </p>
             ) : null}
           </li>
@@ -74,11 +82,21 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
           }
         }}
       >
-        <TextField label="New category" hideLabel placeholder="New category, e.g. Gift wrap" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField label="New category" hideLabel placeholder={pharmacy ? "New category, e.g. Vitamins" : "New category, e.g. Gift wrap"} value={name} onChange={(e) => setName(e.target.value)} hint={pharmacy ? copy.misc.pharmacyAddHint : undefined} />
         <Button type="submit" variant="secondary" iconStart={Plus}>
           Add
         </Button>
       </form>
+      {pharmacy ? (
+        <div className="mt-5 rounded-input bg-bg-subtle p-4" data-testid="pharmacy-also-blocked">
+          <p className="text-meta-strong text-fg">Also blocked for this shop</p>
+          <ul className="mt-2 list-disc space-y-1 ps-5 text-meta text-fg-muted">
+            {copy.misc.pharmacyAlsoBlocked.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Panel>
   );
 }

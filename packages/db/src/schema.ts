@@ -291,6 +291,10 @@ export const merchants = pgTable(
     dropoffDaysAhead: integer("dropoff_days_ahead").notNull().default(14),
     /** Local dates (YYYY-MM-DD) the shop is closed for drop-offs; rolling slot generation skips them. */
     dropoffBlockedDates: jsonb("dropoff_blocked_dates").$type<string[]>().notNull().default([]),
+    /** Pharmacies: when the pharmacist-owner confirmed the Schedule C setup (no earn or discount on Rx and pharmacy services, no health information entered), and who. */
+    pharmacyConfirmedAt: ts("pharmacy_confirmed_at"),
+    pharmacyConfirmedByName: text("pharmacy_confirmed_by_name"),
+    pharmacyConfirmedByUserId: uuid("pharmacy_confirmed_by_user_id").references(() => users.id),
     /** Stripe Connect account state, synced from account.updated webhooks. */
     stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
@@ -374,6 +378,8 @@ export const merchantCategories = pgTable(
     name: text("name").notNull(),
     earnEligible: boolean("earn_eligible").notNull().default(true),
     discountEligible: boolean("discount_eligible").notNull().default(true),
+    /** Pharmacy dispensary (Rx, pharmacy services, dispensing fees): locked off for earning and discounts, can't be renamed or deleted. Survives a rename. */
+    dispensary: boolean("dispensary").notNull().default(false),
     externalIds: jsonb("external_ids").$type<Record<string, string>>().notNull().default({}),
     /** Menu tab order (ascending, then name). */
     sortOrder: integer("sort_order").notNull().default(0),
@@ -1058,6 +1064,12 @@ export const catalogItems = pgTable(
     soldOutUntil: ts("sold_out_until"),
     /** Size / spice / add-on groups for web ordering: the server prices from these ids. */
     options: jsonb("options").$type<ItemOptions>(),
+    /** Grocers and butchers: sold by weight. unitPriceCents is per weightUnit; priceCents is the estimate for one portion of nominalWeightG. */
+    weightUnit: text("weight_unit").$type<"kg" | "lb">(),
+    unitPriceCents: integer("unit_price_cents"),
+    nominalWeightG: integer("nominal_weight_g"),
+    /** false = zero-rated basic grocery (raw meat, flour, rice): no GST/HST. */
+    taxable: boolean("taxable").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [index("catalog_items_merchant_idx").on(t.merchantId)],
@@ -1109,6 +1121,8 @@ export const orders = pgTable(
     allergyNote: text("allergy_note"),
     /** Last "balance due at pickup" reminder sent to the guest (one per few hours). */
     balanceRemindedAt: ts("balance_reminded_at"),
+    /** Butcher counter: when the weigh-in set the final price (grocery.counter_preorders). */
+    weighedAt: ts("weighed_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1133,7 +1147,99 @@ export const orderItems = pgTable("order_items", {
   /** KDS: queued | cooking | ready */
   kitchenStatus: text("kitchen_status").notNull().default("queued"),
   notes: text("notes"),
+  /** Sold by weight: snapshot of the price per unit at order time; actualWeightG and weighedCents are set at the scale. */
+  weightUnit: text("weight_unit").$type<"kg" | "lb">(),
+  perUnitCents: integer("per_unit_cents"),
+  actualWeightG: integer("actual_weight_g"),
+  /** The line total after weighing (replaces unitPriceCents * quantity). */
+  weighedCents: integer("weighed_cents"),
+  /** false = zero-rated: not part of the taxable base. */
+  taxable: boolean("taxable").notNull().default(true),
 });
+
+// ---------------------------------------------------------------------------
+// Grocers and halal butchers (docs/research/grocers.md): weekly flyer deals and pantry (restock) reminders
+// ---------------------------------------------------------------------------
+export const groceryDeals = pgTable(
+  "grocery_deals",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    /** each | kg | lb */
+    priceUnit: text("price_unit").notNull().default("each"),
+    packSizeG: integer("pack_size_g"),
+    wasPriceCents: integer("was_price_cents"),
+    memberOnly: boolean("member_only").notNull().default(false),
+    limitPerCustomer: integer("limit_per_customer"),
+    /** A season id from the grocer calendar (packages/shared/src/grocery.ts). */
+    seasonId: text("season_id"),
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    endsOn: date("ends_on", { mode: "string" }).notNull(),
+    note: text("note"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("grocery_deals_merchant_idx").on(t.merchantId, t.startsOn, t.endsOn)],
+);
+
+/** A bulk staple the shop reminds about (20 lb atta, 20 lb basmati, ghee). */
+export const pantryItems = pgTable(
+  "pantry_items",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    defaultIntervalDays: integer("default_interval_days").notNull().default(42),
+    catalogItemId: uuid("catalog_item_id").references(() => catalogItems.id, { onDelete: "set null" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [index("pantry_items_merchant_idx").on(t.merchantId)],
+);
+
+/**
+ * One household's history with one staple. `remind` is the customer's yes (express consent, recorded with who asked and where);
+ * the marketing consent on merchant_members is checked as well. `history` keeps the last purchase times (ISO) the cadence is learned from.
+ */
+export const pantryEntries = pgTable(
+  "pantry_entries",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    pantryItemId: uuid("pantry_item_id").notNull().references(() => pantryItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    history: jsonb("history").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    lastBoughtAt: ts("last_bought_at").notNull(),
+    intervalDays: integer("interval_days").notNull(),
+    remind: boolean("remind").notNull().default(false),
+    remindConsentAt: ts("remind_consent_at"),
+    /** counter (the cashier asked) | pass (the customer switched it on) */
+    remindConsentSource: text("remind_consent_source"),
+    remindConsentBy: uuid("remind_consent_by").references(() => users.id, { onDelete: "set null" }),
+    lastRemindedAt: ts("last_reminded_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("pantry_entries_item_user_uq").on(t.pantryItemId, t.userId), index("pantry_entries_merchant_idx").on(t.merchantId, t.remind)],
+);
+
+/** Every restock text, so Reports can say how many came back within 7 days. */
+export const pantryReminders = pgTable(
+  "pantry_reminders",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").notNull().references(() => pantryEntries.id, { onDelete: "cascade" }),
+    sentAt: ts("sent_at").notNull().defaultNow(),
+    /** sent | skipped */
+    status: text("status").notNull().default("sent"),
+  },
+  (t) => [index("pantry_reminders_merchant_idx").on(t.merchantId, t.sentAt)],
+);
 
 // ---------------------------------------------------------------------------
 // Service (Pro): tickets, quotes, deposits, invoices, scheduling
@@ -1471,6 +1577,253 @@ export const appointments = pgTable(
     index("appointments_merchant_staff_starts_idx").on(t.merchantId, t.staffId, t.startsAt),
     index("appointments_user_starts_idx").on(t.userId, t.startsAt),
   ],
+);
+
+// ---------------------------------------------------------------------------
+// Classes and memberships (docs/research/fitness-studios.md): yoga, pilates, boxing, dance and women-only studios
+// ---------------------------------------------------------------------------
+/** One row per studio: the cancel window, the late fee and the freeze and renewal rules. Defaults apply until a studio saves. */
+export const classSettings = pgTable("class_settings", {
+  merchantId: uuid("merchant_id").primaryKey().references(() => merchants.id, { onDelete: "cascade" }),
+  /** Free cancel until this many hours before the class; later, the credit is used (and members pay lateFeeCents). */
+  cancelWindowHours: integer("cancel_window_hours").notNull().default(12),
+  /** Charged to a membership's saved card on a late cancel or no-show. 0 = no fee. */
+  lateFeeCents: integer("late_fee_cents").notNull().default(0),
+  /** The waitlist stops promoting this many minutes before the start. */
+  waitlistCutoffMinutes: integer("waitlist_cutoff_minutes").notNull().default(120),
+  /** Longest single freeze, in days. */
+  freezeMaxDays: integer("freeze_max_days").notNull().default(30),
+  /** Freezes allowed in a 12-month contract. */
+  freezesPerYear: integer("freezes_per_year").notNull().default(2),
+  /** Fixed-term renewal notice goes out this many days before the term ends (Ontario: 30 to 90). */
+  renewalNoticeDays: integer("renewal_notice_days").notNull().default(60),
+  /** Extra studio terms printed on the membership agreement and the booking sheet. */
+  termsNote: text("terms_note"),
+  /** Check-in awards the visit through the loyalty ledger. */
+  awardOnCheckIn: boolean("award_on_check_in").notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const classTypes = pgTable(
+  "class_types",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    durationMin: integer("duration_min").notNull().default(60),
+    capacity: integer("capacity").notNull().default(16),
+    /** Women-only room: women instructor and members, no photos. Shown to customers before they book. */
+    womenOnly: boolean("women_only").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    translations: jsonb("translations").$type<Translations>().notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("class_types_merchant_idx").on(t.merchantId, t.active)],
+);
+
+export const classSessions = pgTable(
+  "class_sessions",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").notNull().references(() => locations.id),
+    classTypeId: uuid("class_type_id").references(() => classTypes.id, { onDelete: "set null" }),
+    /** Copied from the class type at creation so renaming a type does not rewrite history. */
+    name: text("name").notNull(),
+    instructorName: text("instructor_name"),
+    room: text("room"),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    capacity: integer("capacity").notNull(),
+    womenOnly: boolean("women_only").notNull().default(false),
+    /** scheduled | cancelled */
+    status: text("status").notNull().default("scheduled"),
+    cancelledAt: ts("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    /** Weekly repeats made in one go share a series. */
+    seriesId: uuid("series_id"),
+    notes: text("notes"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("class_sessions_merchant_starts_idx").on(t.merchantId, t.startsAt)],
+);
+
+/** What a studio sells: a single class, a pack (also the intro offer when introOnly) or a membership. */
+export const classProducts = pgTable(
+  "class_products",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** drop_in | pack | membership */
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    priceCents: integer("price_cents").notNull(),
+    /** Pack: classes included. */
+    credits: integer("credits"),
+    /** Pack: days the credits last after purchase (Ontario caps a prepaid fitness agreement at one year). */
+    validDays: integer("valid_days"),
+    /** Intro offer: only for someone with no earlier purchase or booking at the studio, once. */
+    introOnly: boolean("intro_only").notNull().default(false),
+    /** Membership: months in the term; null = month to month. */
+    termMonths: integer("term_months"),
+    /** Membership: classes in each billing month; null = unlimited. */
+    classesPerMonth: integer("classes_per_month"),
+    taxable: boolean("taxable").notNull().default(true),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("class_products_merchant_idx").on(t.merchantId, t.kind, t.active)],
+);
+
+/** A bought pack or intro offer: credits that each book one class. */
+export const classPasses = pgTable(
+  "class_passes",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    productId: uuid("product_id").references(() => classProducts.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    creditsTotal: integer("credits_total").notNull(),
+    creditsLeft: integer("credits_left").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    introOffer: boolean("intro_offer").notNull().default(false),
+    /** pending (awaiting payment) | active | used_up | expired | refunded */
+    status: text("status").notNull().default("pending"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("class_passes_user_idx").on(t.userId, t.merchantId, t.status), index("class_passes_merchant_idx").on(t.merchantId, t.status)],
+);
+
+/**
+ * A recurring membership. Billed one period at a time like tiffin: each period is one class_charges row (unique per
+ * membership + period start) and the period only advances when that charge is paid. Renewals charge the saved method
+ * off-session. The agreement the member accepted is stored verbatim: it is the "written copy" Ontario requires.
+ */
+export const classMemberships = pgTable(
+  "class_memberships",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    productId: uuid("product_id").references(() => classProducts.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    /** pending (awaiting first payment) | active | frozen | past_due | cancelled | expired */
+    status: text("status").notNull().default("pending"),
+    /** Price per period before tax, cents. */
+    priceCents: integer("price_cents").notNull(),
+    taxable: boolean("taxable").notNull().default(true),
+    termMonths: integer("term_months"),
+    classesPerMonth: integer("classes_per_month"),
+    startDate: date("start_date").notNull(),
+    /** Fixed term: the day the term ends. */
+    termEndsOn: date("term_ends_on"),
+    currentPeriodStart: date("current_period_start"),
+    currentPeriodEnd: date("current_period_end"),
+    nextBillingDate: date("next_billing_date"),
+    frozenFrom: date("frozen_from"),
+    frozenUntil: date("frozen_until"),
+    freezesUsed: integer("freezes_used").notNull().default(0),
+    /** The member asked to cancel; billing stops and the membership ends on this day. */
+    cancelEffectiveOn: date("cancel_effective_on"),
+    cancelledAt: ts("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    /** member | studio | cooling_off */
+    cancelledBy: text("cancelled_by"),
+    /** The agreement text shown and accepted at sign-up, and when. */
+    agreementText: text("agreement_text").notNull(),
+    agreementAcceptedAt: ts("agreement_accepted_at"),
+    /** Last day of the 10-day cooling-off right (full refund). */
+    coolingOffEndsOn: date("cooling_off_ends_on"),
+    renewalNoticeSentAt: ts("renewal_notice_sent_at"),
+    /** The member told us not to renew when the fixed term ends. */
+    declineRenewal: boolean("decline_renewal").notNull().default(false),
+    stripeCustomerId: text("stripe_customer_id"),
+    paymentMethodId: text("payment_method_id"),
+    paymentMethodBrand: text("payment_method_brand"),
+    paymentMethodLast4: text("payment_method_last4"),
+    setupIntentId: text("setup_intent_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("class_memberships_merchant_idx").on(t.merchantId, t.status), index("class_memberships_user_idx").on(t.userId, t.merchantId), index("class_memberships_billing_idx").on(t.status, t.nextBillingDate)],
+);
+
+export const classBookings = pgTable(
+  "class_bookings",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull().references(() => classSessions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    /** held (waiting for a drop-in payment) | booked | waitlisted | attended | cancelled | late_cancelled | no_show */
+    status: text("status").notNull().default("booked"),
+    /** customer | staff */
+    source: text("source").notNull().default("customer"),
+    /** membership | pass | drop_in | comp. Null while waitlisted: nothing is used until a spot opens. */
+    payWith: text("pay_with"),
+    passId: uuid("pass_id").references(() => classPasses.id, { onDelete: "set null" }),
+    membershipId: uuid("membership_id").references(() => classMemberships.id, { onDelete: "set null" }),
+    /** The credit was handed back (cancelled in time, class cancelled, or the studio excused a late cancel). */
+    creditReturned: boolean("credit_returned").notNull().default(false),
+    holdExpiresAt: ts("hold_expires_at"),
+    waitlistedAt: ts("waitlisted_at"),
+    promotedAt: ts("promoted_at"),
+    checkedInAt: ts("checked_in_at"),
+    cancelledAt: ts("cancelled_at"),
+    feeChargedAt: ts("fee_charged_at"),
+    reminderSentAt: ts("reminder_sent_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // One live booking per person per class (a cancelled one does not count, so they can book again).
+    uniqueIndex("class_bookings_live_uq").on(t.sessionId, t.userId).where(sql`${t.status} in ('held', 'booked', 'waitlisted', 'attended')`),
+    index("class_bookings_session_idx").on(t.sessionId, t.status),
+    index("class_bookings_user_idx").on(t.userId, t.merchantId),
+  ],
+);
+
+/** Money moved for classes: membership periods, packs, drop-ins and late fees. */
+export const classCharges = pgTable(
+  "class_charges",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    /** membership | pack | drop_in | late_fee */
+    kind: text("kind").notNull(),
+    membershipId: uuid("membership_id").references(() => classMemberships.id, { onDelete: "set null" }),
+    passId: uuid("pass_id").references(() => classPasses.id, { onDelete: "set null" }),
+    bookingId: uuid("booking_id").references(() => classBookings.id, { onDelete: "set null" }),
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    /** What the customer pays, tax included. */
+    amountCents: integer("amount_cents").notNull(),
+    taxCents: integer("tax_cents").notNull().default(0),
+    platformFeeCents: integer("platform_fee_cents").notNull().default(0),
+    /** pending | processing | paid | failed | refunded */
+    status: text("status").notNull().default("pending"),
+    /** card | cash | etransfer | comp: how a paid charge was settled. */
+    paymentMethod: text("payment_method"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    paidAt: ts("paid_at"),
+    refundedAt: ts("refunded_at"),
+    /** Automatic attempts on a membership period (the first day, then the second and the fifth day after). */
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptOn: date("last_attempt_on"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("class_charges_period_uq").on(t.membershipId, t.periodStart), index("class_charges_merchant_idx").on(t.merchantId, t.createdAt), index("class_charges_user_idx").on(t.userId)],
 );
 
 /** Per-merchant counters for human-friendly order/ticket/invoice numbers. */

@@ -25,6 +25,14 @@ import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
 import { requireFeature } from "./features.js";
 import { iso, serializeLocation, serializeProgram, uniqueQrCode } from "./merchant.js";
+import { assertPharmacyText, isPharmacy, pharmacyVisitEarnError } from "./pharmacy-guard.js";
+import { isDispensaryCategoryName } from "@ll/shared";
+
+/** The shop's vertical, for the pharmacy guards below (one small read). */
+async function verticalOf(db: DbOrTx, merchantId: string): Promise<{ vertical: string }> {
+  const [m] = await db.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  return m ?? { vertical: "" };
+}
 
 type Body<T extends z.ZodType> = z.infer<T>;
 
@@ -44,6 +52,8 @@ export async function updateProgram(ctx: AppContext, merchantId: string, actorUs
     throw badRequest("Points expiry must be at least 12 months of inactivity");
   }
   const next = { ...current, ...body };
+  // Pharmacies earn on front-store dollars only: a visit or a stamp may include a prescription.
+  if (isPharmacy(await verticalOf(ctx.db, merchantId)) && next.earnType !== "per_dollar") throw pharmacyVisitEarnError();
   if (next.earnType === "per_dollar" && next.pointsPerDollar < 1) throw badRequest("Points per dollar must be at least 1");
   if (next.earnType !== "per_dollar" && next.pointsPerVisit < 1) throw badRequest("Points per visit must be at least 1");
   if (next.earnType === "stamps" && next.stampGoal < 1) throw badRequest("Set how many stamps earn the reward");
@@ -93,8 +103,16 @@ async function getReward(db: DbOrTx, merchantId: string, id: string) {
   return r;
 }
 
+async function checkRewardText(ctx: AppContext, merchantId: string, r: { name?: string | null; description?: string | null }) {
+  if (!r.name && !r.description) return;
+  const shop = await verticalOf(ctx.db, merchantId);
+  assertPharmacyText(shop, r.name, "The reward name");
+  assertPharmacyText(shop, r.description, "The reward description");
+}
+
 export async function createReward(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createRewardBody>) {
   validateReward(body);
+  await checkRewardText(ctx, merchantId, body);
   const [r] = await ctx.db.insert(rewards).values({ merchantId, ...body }).returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.created", entity: "reward", entityId: r!.id });
   return serializeReward(r!);
@@ -103,6 +121,7 @@ export async function createReward(ctx: AppContext, merchantId: string, actorUse
 export async function updateReward(ctx: AppContext, merchantId: string, actorUserId: string, id: string, body: Body<typeof merchantApi.updateRewardBody>) {
   const cur = await getReward(ctx.db, merchantId, id);
   validateReward({ rewardType: body.rewardType ?? cur.rewardType, value: body.value ?? cur.value });
+  await checkRewardText(ctx, merchantId, body);
   const [r] = await ctx.db.update(rewards).set(body).where(and(eq(rewards.id, id), eq(rewards.merchantId, merchantId))).returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.updated", entity: "reward", entityId: id, data: body });
   return serializeReward(r!);
@@ -174,7 +193,7 @@ export async function deleteVipLevel(ctx: AppContext, merchantId: string, actorU
 /**
  * Regulated categories that can never earn points or be discounted.
  * Ontario: no loyalty inducements on prescriptions or pharmacy services
- * (OCP policy, O. Reg. 681/93); tobacco, lottery and gift cards likewise.
+ * (O. Reg. 264/16 s. 34 under the Drug and Pharmacies Regulation Act, O. Reg. 130/17 s. 6 under the Pharmacy Act, 1991; OCP loyalty points policy); tobacco, lottery and gift cards likewise.
  */
 const REGULATED = /(prescription|\brx\b|pharmacy services?|dispensing|tobacco|cigarette|vape|lottery|lotto|gift ?cards?)/i;
 export const isRegulatedCategory = (name: string) => REGULATED.test(name);
@@ -185,7 +204,7 @@ const serializeCategory = (c: CategoryRow): merchantApi.Category => ({
   name: c.name,
   earnEligible: c.earnEligible,
   discountEligible: c.discountEligible,
-  protected: isRegulatedCategory(c.name),
+  protected: c.dispensary || isRegulatedCategory(c.name),
   externalIds: c.externalIds,
   ...(Object.keys(c.translations ?? {}).length ? { translations: c.translations } : {}),
   createdAt: c.createdAt.toISOString(),
@@ -199,8 +218,8 @@ export const regulatedCategoryError = (name: string) =>
     { category: name },
   );
 
-function assertCategoryAllowed(name: string, earnEligible: boolean, discountEligible: boolean) {
-  if (isRegulatedCategory(name) && (earnEligible || discountEligible)) throw regulatedCategoryError(name);
+function assertCategoryAllowed(name: string, earnEligible: boolean, discountEligible: boolean, locked = false) {
+  if ((locked || isRegulatedCategory(name)) && (earnEligible || discountEligible)) throw regulatedCategoryError(name);
 }
 
 export async function listCategories(db: DbOrTx, merchantId: string) {
@@ -223,14 +242,16 @@ async function requireTranslationsFeature(ctx: AppContext, merchantId: string) {
 
 export async function createCategory(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createCategoryBody>) {
   // Regulated names default to no-earn/no-discount; explicitly asking for earn/discount is an error.
-  const regulated = isRegulatedCategory(body.name);
+  // At a pharmacy, anything that names the dispensary (medication, vaccine, blister pack...) is locked too, and stays locked if renamed.
+  const dispensary = isPharmacy(await verticalOf(ctx.db, merchantId)) && isDispensaryCategoryName(body.name);
+  const regulated = dispensary || isRegulatedCategory(body.name);
   const earnEligible = body.earnEligible ?? !regulated;
   const discountEligible = body.discountEligible ?? !regulated;
-  assertCategoryAllowed(body.name, earnEligible, discountEligible);
+  assertCategoryAllowed(body.name, earnEligible, discountEligible, dispensary);
   if (body.translations) await requireTranslationsFeature(ctx, merchantId);
   const [c] = await ctx.db
     .insert(merchantCategories)
-    .values({ merchantId, name: body.name, earnEligible, discountEligible, externalIds: body.externalIds ?? {}, translations: body.translations ?? {} })
+    .values({ merchantId, name: body.name, earnEligible, discountEligible, dispensary, externalIds: body.externalIds ?? {}, translations: body.translations ?? {} })
     .returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "category.created", entity: "category", entityId: c!.id, data: body });
   return serializeCategory(c!);
@@ -242,9 +263,9 @@ export async function updateCategory(ctx: AppContext, merchantId: string, actorU
   const nextEarn = body.earnEligible ?? cur.earnEligible;
   const nextDiscount = body.discountEligible ?? cur.discountEligible;
   // Renaming a protected category doesn't unlock it: check both old and new names.
-  assertCategoryAllowed(cur.name, nextEarn, nextDiscount);
-  if (body.name) assertCategoryAllowed(body.name, nextEarn, nextDiscount);
-  if (isRegulatedCategory(cur.name) && body.name && !isRegulatedCategory(body.name)) {
+  assertCategoryAllowed(cur.name, nextEarn, nextDiscount, cur.dispensary);
+  if (body.name) assertCategoryAllowed(body.name, nextEarn, nextDiscount, cur.dispensary);
+  if ((cur.dispensary || isRegulatedCategory(cur.name)) && body.name && body.name !== cur.name && (cur.dispensary || !isRegulatedCategory(body.name))) {
     throw new HttpError(422, "no_earn_category", `"${cur.name}" is a regulated category and can't be renamed.`, { category: cur.name });
   }
   const [c] = await ctx.db
@@ -258,7 +279,7 @@ export async function updateCategory(ctx: AppContext, merchantId: string, actorU
 
 export async function deleteCategory(ctx: AppContext, merchantId: string, actorUserId: string, id: string) {
   const cur = await getCategory(ctx.db, merchantId, id);
-  if (isRegulatedCategory(cur.name)) {
+  if (cur.dispensary || isRegulatedCategory(cur.name)) {
     throw new HttpError(422, "no_earn_category", `"${cur.name}" keeps regulated sales out of your loyalty program and can't be deleted.`, { category: cur.name });
   }
   const [item] = await ctx.db.select({ id: catalogItems.id }).from(catalogItems).where(eq(catalogItems.categoryId, id)).limit(1);
@@ -295,15 +316,22 @@ async function resolveExclusions(db: DbOrTx, merchantId: string, requested: stri
   const cats = await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, merchantId));
   const ids = new Set(cats.map((c) => c.id));
   for (const id of requested) if (!ids.has(id)) throw badRequest("Unknown category in exclusions");
-  return [...new Set([...requested, ...cats.filter((c) => !c.discountEligible).map((c) => c.id)])];
+  return [...new Set([...requested, ...cats.filter((c) => !c.discountEligible || c.dispensary).map((c) => c.id)])];
 }
 
 export async function listDiscountCards(db: DbOrTx, merchantId: string) {
   return (await db.select().from(discountCards).where(eq(discountCards.merchantId, merchantId)).orderBy(asc(discountCards.createdAt))).map(serializeCard);
 }
 
+async function checkCardText(ctx: AppContext, merchantId: string, b: { name?: string | null; terms?: string | null }) {
+  const shop = await verticalOf(ctx.db, merchantId);
+  assertPharmacyText(shop, b.name, "The card name");
+  assertPharmacyText(shop, b.terms, "The card terms");
+}
+
 export async function createDiscountCard(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createDiscountCardBody>) {
   if (!body.percentOff && !body.amountOffCents) throw badRequest("Set a percent or amount off");
+  await checkCardText(ctx, merchantId, body);
   const excludedCategoryIds = await resolveExclusions(ctx.db, merchantId, body.excludedCategoryIds);
   const [c] = await ctx.db.insert(discountCards).values({ merchantId, ...body, excludedCategoryIds }).returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "discount_card.created", entity: "discount_card", entityId: c!.id });
@@ -313,6 +341,7 @@ export async function createDiscountCard(ctx: AppContext, merchantId: string, ac
 export async function updateDiscountCard(ctx: AppContext, merchantId: string, actorUserId: string, id: string, body: Body<typeof merchantApi.updateDiscountCardBody>) {
   const [cur] = await ctx.db.select().from(discountCards).where(and(eq(discountCards.id, id), eq(discountCards.merchantId, merchantId))).limit(1);
   if (!cur) throw notFound("Discount card");
+  await checkCardText(ctx, merchantId, body);
   const excludedCategoryIds = await resolveExclusions(ctx.db, merchantId, body.excludedCategoryIds ?? cur.excludedCategoryIds);
   const [c] = await ctx.db.update(discountCards).set({ ...body, excludedCategoryIds }).where(eq(discountCards.id, id)).returning();
   if (!c!.percentOff && !c!.amountOffCents) throw badRequest("Set a percent or amount off");
@@ -395,9 +424,16 @@ export async function getPromo(db: DbOrTx, merchantId: string, id: string) {
   return p;
 }
 
+async function checkPromoText(ctx: AppContext, merchantId: string, p: { title?: string | null; body?: string | null }) {
+  const shop = await verticalOf(ctx.db, merchantId);
+  assertPharmacyText(shop, p.title, "The promo title");
+  assertPharmacyText(shop, p.body, "The promo text");
+}
+
 export async function createPromo(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createPromoBody>) {
   const { publish, startsAt, endsAt, ...rest } = body;
   const shape = { ...rest, startsAt: new Date(startsAt), endsAt: endsAt ? new Date(endsAt) : null };
+  await checkPromoText(ctx, merchantId, rest);
   await validatePromo(ctx.db, merchantId, shape);
   const now = ctx.now();
   if (publish && shape.endsAt && shape.endsAt <= now) throw badRequest("This promo would already be over");
@@ -420,6 +456,7 @@ export async function updatePromo(ctx: AppContext, merchantId: string, actorUser
   const set: Partial<typeof promos.$inferInsert> = { ...rest };
   if (startsAt !== undefined) set.startsAt = new Date(startsAt);
   if (endsAt !== undefined) set.endsAt = endsAt ? new Date(endsAt) : null;
+  await checkPromoText(ctx, merchantId, rest);
   await validatePromo(ctx.db, merchantId, { ...cur, ...set } as PromoShape);
   const [p] = await ctx.db.update(promos).set(set).where(eq(promos.id, id)).returning();
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "promo.updated", entity: "promo", entityId: id, data: body });

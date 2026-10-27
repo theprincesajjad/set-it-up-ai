@@ -1,6 +1,7 @@
 import { Globe, MessageCircle, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { GroceryBlock } from "@/components/grocery/GroceryBlock";
 import { HalalBlock } from "@/components/restaurant/HalalBlock";
 import { PopularRow } from "@/components/restaurant/PopularRow";
 import { RestaurantLinks } from "@/components/restaurant/RestaurantLinks";
@@ -117,6 +118,10 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const rest: restaurantWebApi.PublicRestaurantResponse | null = maybeRestaurant ? await publicRestaurantApi().restaurant(slug).catch(() => null) : null;
   let restMenu: commerceApi.PublicMenuResponse | null = null;
   if (rest && (rest.popular.length || rest.features.preorder)) restMenu = await publicRestaurantApi().menu(slug, { lang: locale }).catch(() => null);
+  // Grocers and butchers: this week's flyer and the butcher counter's pre-order items (docs/research/grocers.md).
+  const groceryShop = m.vertical === "grocery";
+  const flyer = groceryShop ? await publicServerApi().public.flyer(slug).catch(() => null) : null;
+  const butcher = groceryShop && !rest ? await publicRestaurantApi().restaurant(slug).catch(() => null) : null;
   const menuItems = restMenu ? [...restMenu.categories.flatMap((c) => c.items), ...restMenu.uncategorized] : [];
   const popularItems = rest ? rest.popular.map((id) => menuItems.find((i) => i.id === id)).filter((i): i is commerceApi.CatalogItemDto => !!i) : [];
   const base = `/shops/${encodeURIComponent(m.slug)}`;
@@ -197,6 +202,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         </div>
       ) : null}
       {quickRow}
+      {groceryShop ? <GroceryBlock shopName={m.name} slug={m.slug} flyer={flyer} preorderItems={butcher?.preorderItems ?? []} member={!!membership} /> : null}
       {rest ? <WeekendPots weekend={rest.weekend} items={rest.preorderItems} /> : null}
       {rest ? <PopularRow slug={m.slug} items={popularItems} /> : null}
 

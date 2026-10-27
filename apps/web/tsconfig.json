@@ -43,7 +43,11 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "*.ts",
-    "*.mts"
+    "*.mts",
+    ".next-rx/types/**/*.ts",
+    ".next-rx/dev/types/**/*.ts",
+    ".next-fit/types/**/*.ts",
+    ".next-fit/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

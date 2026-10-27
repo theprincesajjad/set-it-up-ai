@@ -30,6 +30,7 @@ import {
 import { RETENTION, daysAgo, monthsAgo } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { deleteStoredPhotos } from "./privacy-scrub.js";
+import { purgePharmacyMessages } from "./pharmacy.js";
 
 export type RetentionReport = Record<string, number>;
 const gone = (rows: unknown[]) => rows.length;
@@ -162,6 +163,35 @@ export async function scrubAppointments(ctx: AppContext): Promise<number> {
   );
 }
 
+/**
+ * Pharmacy appointments: once the visit is over by RETENTION.pharmacyAppointmentDays, the booking stops pointing at a person. The customer link,
+ * the name typed at the desk, any note and the appointment type are removed; the time slot, length and status stay, so the calendar and
+ * a count of bookings still work. Nothing is left that says who had which service.
+ */
+export async function scrubPharmacyAppointments(ctx: AppContext): Promise<number> {
+  const cutoff = daysAgo(ctx.now(), RETENTION.pharmacyAppointmentDays);
+  const generic = sql`jsonb_build_array(jsonb_build_object('serviceId', null, 'name', 'Pharmacy appointment', 'durationMin', 0, 'priceCents', 0))`;
+  return gone(
+    await ctx.db
+      .update(appointments)
+      .set({ userId: null, customerName: null, notes: null, clientNote: null, items: sql`coalesce((select jsonb_agg(jsonb_build_object('serviceId', null, 'name', 'Pharmacy appointment', 'durationMin', (e->>'durationMin')::int, 'priceCents', 0)) from jsonb_array_elements(${appointments.items}) e), ${generic})`, updatedAt: appointments.updatedAt })
+      .where(
+        and(
+          lt(appointments.endsAt, cutoff),
+          sql`exists (select 1 from merchants m where m.id = ${appointments.merchantId} and m.vertical = 'pharmacy')`,
+          or(
+            isNotNull(appointments.userId),
+            isNotNull(appointments.customerName),
+            isNotNull(appointments.notes),
+            isNotNull(appointments.clientNote),
+            sql`exists (select 1 from jsonb_array_elements(${appointments.items}) e where e->>'name' <> 'Pharmacy appointment')`,
+          ),
+        ),
+      )
+      .returning({ id: appointments.id }),
+  );
+}
+
 /** Unpaid holds that lapsed (a chair held for a customer who never paid, a hall hold nobody confirmed) are deleted after the period. */
 export async function purgeAbandonedHolds(ctx: AppContext): Promise<{ appointments: number; halls: number }> {
   const cutoff = daysAgo(ctx.now(), RETENTION.abandonedHoldDays);
@@ -206,6 +236,8 @@ export async function runRetention(ctx: AppContext): Promise<RetentionReport> {
     tiffinAddresses: await scrubTiffinAddresses(ctx),
     allergyNotes: await scrubAllergyNotes(ctx),
     appointments: await scrubAppointments(ctx),
+    pharmacyAppointments: await scrubPharmacyAppointments(ctx),
+    pharmacyMessages: await purgePharmacyMessages(ctx),
     holdAppointments: holds.appointments,
     holdHalls: holds.halls,
     salesAgentChats: await purgeSalesAgentChats(ctx),

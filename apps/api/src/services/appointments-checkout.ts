@@ -19,6 +19,7 @@ import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { appointmentDto, getAppointment, type Appointment } from "./appointments.js";
 import { nextNumber } from "./counters.js";
+import { isPharmacy, pharmacyNoCheckout } from "./pharmacy-guard.js";
 import { platformFeeFor } from "./fees.js";
 import { markInvoicePaid, sendInvoice, voidInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone, redeemReward } from "./ledger.js";
@@ -49,6 +50,8 @@ export function checkoutInvoiceDto(i: Invoice, publicWebUrl: string): appointmen
 
 export async function checkout(ctx: AppContext, staff: StaffContext, id: string, body: z.output<typeof appointmentsApi.checkoutBody>): Promise<appointmentsApi.CheckoutResponse> {
   const merchant = staff.merchant;
+  // A pharmacy appointment is never billed or rewarded here (no invoice, no points, no reward): completion goes through the status change.
+  if (isPharmacy(merchant)) throw pharmacyNoCheckout();
   let a = await getAppointment(ctx.db, merchant.id, id);
 
   // A second checkout: a paid invoice is final (return it); an unpaid one is voided and rebuilt.

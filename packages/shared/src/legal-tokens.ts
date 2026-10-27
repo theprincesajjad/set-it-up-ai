@@ -6,7 +6,7 @@
  *
  * Inline tokens: {{plan.free.name}} {{plan.plus.price}} {{plan.pro.annual}} {{restaurant.growth.price}}
  *   {{retention.phoneTranscriptDays}} (see retention.ts) {{upload.linkMinutes}} {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
- *   {{fee.appointmentCheckout}} {{fee.customerService}} {{founding.firstYearPct}} ...
+ *   {{fee.appointmentCheckout}} {{fee.classes}} {{fee.customerService}} {{founding.firstYearPct}} ...
  * Blocks: {{table.plans}} {{table.restaurant}} {{table.addons}} {{table.fees}} {{list.free}} {{list.plus}} {{list.pro}}
  */
 import { RETENTION, UPLOAD_LINK_MINUTES, retentionLabel, type RetentionKey } from "./retention.js";
@@ -47,6 +47,7 @@ export function legalTokens(lang: LegalLang = "en"): Record<string, string> {
   t["fee.depositInvoice"] = pct(FEES.depositInvoiceBps);
   t["fee.tiffin"] = pct(FEES.tiffinBps);
   t["fee.appointmentCheckout"] = pct(FEES.appointmentCheckoutBps);
+  t["fee.classes"] = pct(FEES.classBps);
   t["fee.customerService"] = money(FEES.customerServiceFeeCents);
   t["fee.manual"] = "0%";
   for (const k of Object.keys(RETENTION) as RetentionKey[]) t[`retention.${k}`] = retentionLabel(k, lang);
@@ -75,6 +76,7 @@ export function legalTokens(lang: LegalLang = "en"): Record<string, string> {
     `| Deposits (catering, banquet, quotes, online appointment deposits and no-show fees) and invoices | ${t["fee.depositInvoice"]} |`,
     `| Tiffin subscription billing | ${t["fee.tiffin"]} |`,
     `| Appointment checkout taken through the calendar (counter or pay link) | ${t["fee.appointmentCheckout"]} |`,
+    `| Class bookings, class packs and membership billing paid online, and late-cancel or no-show fees charged to a saved card | ${t["fee.classes"]} |`,
     `| Payments you record by hand (Interac e-transfer, cash, cheque) | ${t["fee.manual"]} |`,
   ].join("\n");
   const names = (keys: readonly string[]) => keys.map((k) => FEATURES[k as keyof typeof FEATURES].name).join("; ");

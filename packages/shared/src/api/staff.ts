@@ -53,6 +53,8 @@ const awardFields = z.object({
   amountCents: centsSchema.optional(),
   /** Itemised purchase so no-earn categories (prescriptions, alcohol...) are excluded. */
   lines: z.array(purchaseLineSchema).max(200).optional(),
+  /** Part of amountCents that never earns (tobacco, lottery, alcohol, gift cards, bills). Ignored when lines are given. */
+  notCountedCents: centsSchema.optional(),
   locationId: uuidSchema.optional(),
   /** Customer's name, used only when the phone is new to the network. */
   customerName: z.string().trim().min(1).max(120).optional(),
@@ -63,6 +65,11 @@ const awardFields = z.object({
    * quantity × pointsPerVisit as one transaction and one visit. Ignored for per_dollar. Default 1.
    */
   quantity: z.number().int().min(1).max(10).optional(),
+  /**
+   * Pharmacies only (and required there when the sale is an amount with no itemised lines): the cashier confirms the total has no
+   * prescriptions or pharmacy services. Saved with the sale. Ignored by every other kind of shop.
+   */
+  frontStoreOnly: z.boolean().optional(),
 });
 
 /** POST .../counter/award */
@@ -78,12 +85,14 @@ export const redeemBody = z.object({
   /** Eligible subtotal, to compute percent-off rewards. */
   subtotalCents: centsSchema.optional(),
   locationId: uuidSchema.optional(),
+  /** Pharmacies: the cashier confirms the reward is applied to front-store items only. */
+  frontStoreOnly: z.boolean().optional(),
   idempotencyKey: idempotencyKeySchema.optional(),
 });
 export type RedeemBody = z.infer<typeof redeemBody>;
 
 /** POST .../counter/redemptions/verify */
-export const verifyRedemptionBody = z.object({ code: z.string().trim().min(4).max(12) });
+export const verifyRedemptionBody = z.object({ code: z.string().trim().min(4).max(12), frontStoreOnly: z.boolean().optional() });
 export type VerifyRedemptionBody = z.infer<typeof verifyRedemptionBody>;
 
 /** GET .../counter/today?locationId= */
@@ -113,6 +122,7 @@ export const syncRedeemEvent = z.object({
   rewardId: uuidSchema,
   subtotalCents: centsSchema.optional(),
   locationId: uuidSchema.optional(),
+  frontStoreOnly: z.boolean().optional(),
 });
 export const syncEvent = z.discriminatedUnion("type", [syncAwardEvent, syncRedeemEvent]);
 export type SyncEvent = z.infer<typeof syncEvent>;

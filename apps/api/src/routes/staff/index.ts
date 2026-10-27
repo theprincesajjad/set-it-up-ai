@@ -42,7 +42,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post(`${base}/redemptions/verify`, async (req: Req) => {
     const staff = await staffOf(req);
     const body = parse(staffApi.verifyRedemptionBody, req.body);
-    return verifyRedemptionCode(ctx, staff, body.code);
+    return verifyRedemptionCode(ctx, staff, body.code, body.frontStoreOnly);
   });
 
   app.get(`${base}/today`, async (req: Req) => {

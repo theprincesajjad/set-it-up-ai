@@ -205,8 +205,8 @@ export function createEndpoints(c: ApiClient) {
         c.post<staffApi.AwardResponse>(`${counter(merchantId)}/award`, body, { auth: "staff", idempotencyKey: body.idempotencyKey, timeoutMs: 6000 }),
       redeem: (merchantId: string, body: staffApi.RedeemBody & { idempotencyKey: string }) =>
         c.post<staffApi.CounterRedemptionResponse>(`${counter(merchantId)}/redeem`, body, { auth: "staff", idempotencyKey: body.idempotencyKey }),
-      verifyRedemption: (merchantId: string, code: string) =>
-        c.post<staffApi.CounterRedemptionResponse>(`${counter(merchantId)}/redemptions/verify`, { code }, { auth: "staff" }),
+      verifyRedemption: (merchantId: string, code: string, frontStoreOnly?: boolean) =>
+        c.post<staffApi.CounterRedemptionResponse>(`${counter(merchantId)}/redemptions/verify`, { code, ...(frontStoreOnly ? { frontStoreOnly } : {}) }, { auth: "staff" }),
       today: (merchantId: string, locationId?: string) => c.get<staffApi.TodayResponse>(`${counter(merchantId)}/today`, { query: { locationId }, auth: "staff" }),
       activity: (merchantId: string, locationId?: string, limit = 25) =>
         c.get<staffApi.ActivityResponse>(`${counter(merchantId)}/activity`, { query: { locationId, limit }, auth: "staff" }),

@@ -107,7 +107,7 @@ export async function overview(ctx: AppContext, merchant: Merchant, q: reportsAp
       .from(visits)
       .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, new Date(now.getTime() - 30 * DAY)), lte(visits.createdAt, now))),
   ]);
-  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n), pointsLiability: await pointsLiability(ctx.db, merchant.id) };
+  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n), pointsLiability: await pointsLiability(ctx.db, merchant.id), scope: merchant.vertical === "pharmacy" ? "front_store" : "all" };
 }
 
 /**

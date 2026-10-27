@@ -39,12 +39,15 @@ export async function tokenFor(env: TestEnv, user: { id: string; platformRole: "
   return signAccessToken(env.ctx, { id: user.id, platformRole: user.platformRole });
 }
 
-/** A merchant with an owner, a program, a reward and a no-earn category. */
-export async function createMerchant(env: TestEnv, opts: { earnType?: "per_dollar" | "per_visit" | "stamps"; neighbourhoodId?: string; welcomeBonus?: number; slug?: string } = {}) {
+/**
+ * A merchant with an owner, a program, a reward and a no-earn category. A retail shop unless `vertical` says otherwise: this helper used to make a
+ * pharmacy, which has its own locked rules (apps/api/test/pharmacy.test.ts); pharmacy tests ask for `vertical: "pharmacy"`.
+ */
+export async function createMerchant(env: TestEnv, opts: { earnType?: "per_dollar" | "per_visit" | "stamps"; neighbourhoodId?: string; welcomeBonus?: number; slug?: string; vertical?: string } = {}) {
   const owner = await createUser(env.db, { email: `owner${phoneSeq}@example.com` });
   const [m] = await env.db
     .insert(merchants)
-    .values({ slug: opts.slug ?? `shop-${phoneSeq++}`, name: "Test Shop", vertical: "pharmacy", neighbourhoodId: opts.neighbourhoodId ?? null, status: "active" })
+    .values({ slug: opts.slug ?? `shop-${phoneSeq++}`, name: "Test Shop", vertical: opts.vertical ?? "retail", neighbourhoodId: opts.neighbourhoodId ?? null, status: "active" })
     .returning();
   await env.db.insert(merchantStaff).values({ merchantId: m!.id, userId: owner.id, role: "owner" });
   const [program] = await env.db

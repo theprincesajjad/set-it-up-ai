@@ -56,8 +56,8 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Café & Retail",
     priceCents: 3900,
     annualPriceCents: 39000,
-    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks, order-ahead and appointment booking.",
-    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers"],
+    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks, order-ahead, appointment booking, and class schedules with packs and memberships.",
+    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers", "Yoga & fitness studios"],
     smsPerMonth: 500,
   },
   pro: {
@@ -140,6 +140,12 @@ export const FEES = {
   tiffinBps: 100,
   /** Checkout taken through the appointment calendar (counter or in person): 0%, card processing at cost. Online deposits still pay depositInvoiceBps. */
   appointmentCheckoutBps: 0,
+  /**
+   * Class bookings paid online (drop-ins, packs, intro offers), membership billing (the monthly auto-renew charge) and
+   * late-cancel or no-show fees charged to a saved card: 1%, card processing at cost. Front-desk payments recorded by
+   * hand (cash, e-transfer) carry none. Same rate as tiffin billing: recurring billing is where we do the work.
+   */
+  classBps: 100,
 } as const;
 
 export const ROLLOUT_STAGES = ["hidden", "beta", "ga"] as const;
@@ -165,6 +171,11 @@ export interface FeatureDef {
   /** Restaurant pack features: enabled by the merchant's restaurant tier, not by plan. */
   pack?: "restaurant";
   packTier?: RestaurantTier;
+  /**
+   * Only for shops of this vertical (grocers and butchers: "grocery"). A café or a Starter restaurant on the same plan never gets
+   * it, so a plan feature built for one trade cannot open another trade's paid module. An admin override still wins.
+   */
+  vertical?: string;
   /**
    * Platform lever (e.g. network perks): configured by admins/BIAs and applied
    * network-wide regardless of a merchant's plan. Not a merchant plan feature,
@@ -213,6 +224,14 @@ export const FEATURE_KEYS = [
   "booking.pickup_slots",
   "booking.appointments",
   "service.rebooking",
+  // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Café & Retail, no pack.
+  "booking.classes",
+  "memberships.recurring",
+  // Grocers and halal butchers (docs/research/grocers.md): sold inside Café & Retail, no pack.
+  "grocery.flyer",
+  "grocery.counter_preorders",
+  "grocery.pantry_reminders",
+  "grocery.whatsapp_orders",
   // ---- Pro (everything in Plus, plus) ----
   "service.tickets",
   "service.quote_approval",
@@ -319,6 +338,14 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
     f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios.", "plus", 2, 100),
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
+    f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
+    f("memberships.recurring", "Memberships", "Monthly and fixed-term memberships billed automatically to the card on file, with freezes, renewal notices and Ontario-compliant cancellation.", "plus", 2, 100),
+    ...[
+    f("grocery.flyer", "Weekly flyer", "Weekly deals on your shop page, by text and as WhatsApp copy, tied to Diwali, Eid and Lunar New Year.", "plus", 2, 100),
+    f("grocery.counter_preorders", "Butcher counter pre-orders", "Pre-orders by weight with deposits, pick-up hours, a weigh-in at the scale and qurbani bookings for Eid al-Adha.", "plus", 2, 100),
+    f("grocery.pantry_reminders", "Pantry reminders", "A text when a member who asked is about to run out of a bulk staple such as a 20 lb bag of atta.", "plus", 2, 100),
+    f("grocery.whatsapp_orders", "WhatsApp list orders", "Answer WhatsApp order lists inside the 24 hour window and turn them into pick-up orders with a pay link.", "plus", 2, 100),
+    ].map((d): FeatureDef => ({ ...d, vertical: "grocery" })),
     // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
     f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),
@@ -378,6 +405,8 @@ export interface FeatureContext {
   override?: boolean | null;
   /** The merchant's restaurant pack tier, if they bought it. */
   restaurantTier?: RestaurantTier | null;
+  /** The merchant's vertical, for features that belong to one trade (FeatureDef.vertical). */
+  vertical?: string | null;
   /** Active add-on ids (merchant_add_ons). banquet_module / phone_ai unlock their feature on Growth. */
   addOns?: readonly string[];
 }
@@ -393,6 +422,7 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (ctx.override === true) return true;
   if (ctx.override === false) return false;
   if (ctx.stage === "hidden") return false;
+  if (def.vertical && ctx.vertical !== def.vertical) return false;
   if (def.pack === "restaurant") {
     if (!ctx.restaurantTier) return false;
     if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;

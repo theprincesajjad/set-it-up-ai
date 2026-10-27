@@ -14,7 +14,8 @@ import { appointments, invoices, merchantMembers, merchants, pushTokens, rebooki
 import { normalizeLocale, serviceApi, t, type Locale } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
-import { HttpError, conflict, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import { getMerchantFeatures } from "./features.js";
 import { localDate, reserveSmsCredits, smsAllowance } from "./messaging.js";
 import { messageDeliveries } from "@ll/db";
@@ -52,6 +53,8 @@ const addDaysLocal = (date: string, n: number) => {
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
 
 export async function rebookingCandidates(ctx: AppContext, merchant: Merchant): Promise<Candidate[]> {
+  // A "time for your next flu shot" text would tie a person to a pharmacy service: pharmacies get no rebooking reminders.
+  if (isPharmacy(merchant)) return [];
   const now = ctx.now();
   const today = localDate(now, merchant.timezone);
   const rules = await ctx.db.select().from(services).where(and(eq(services.merchantId, merchant.id), eq(services.active, true), isNotNull(services.rebookAfterDays)));
@@ -283,6 +286,7 @@ export async function listRules(ctx: AppContext, merchant: Merchant): Promise<se
 }
 
 export async function setRule(ctx: AppContext, merchant: Merchant, serviceId: string, body: z.infer<typeof serviceApi.rebookRuleBody>): Promise<serviceApi.RebookRuleDto> {
+  if (isPharmacy(merchant) && body.rebookAfterDays) throw badRequest("Pharmacies can't send rebooking reminders");
   const [row] = await ctx.db.update(services).set({ rebookAfterDays: body.rebookAfterDays, updatedAt: ctx.now() }).where(and(eq(services.id, serviceId), eq(services.merchantId, merchant.id))).returning();
   if (!row) throw notFound("Service");
   return { serviceId: row.id, name: row.name, rebookAfterDays: row.rebookAfterDays };

@@ -19,9 +19,10 @@ describe("legal fee text matches fees.ts", () => {
       expect(label(platformFeeBpsFor("invoice", p))).toBe(t["fee.depositInvoice"]);
       expect(label(platformFeeBpsFor("tiffin", p))).toBe(t["fee.tiffin"]);
       expect(label(platformFeeBpsFor("appointment_checkout", p))).toBe(t["fee.appointmentCheckout"]);
+      expect(label(platformFeeBpsFor("class", p))).toBe(t["fee.classes"]);
       expect(label(platformFeeBpsFor("manual", p))).toBe(t["fee.manual"]);
     }
-    expect(FEE_KINDS).toHaveLength(6);
+    expect(FEE_KINDS).toHaveLength(7);
   });
   it("customer service fee", () => {
     const f = computeFees({ kind: "order", amountCents: 1000, plan: "plus", customerServiceFee: true });

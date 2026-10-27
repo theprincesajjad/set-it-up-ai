@@ -34,6 +34,7 @@ import { addDays, zonedToUtc } from "./bookings.js";
 import { iso } from "./commerceShared.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
+import { assertNoPharmacyNotes, isPharmacy, pharmacyServiceFields } from "./pharmacy-guard.js";
 
 export type Merchant = typeof merchants.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
@@ -171,9 +172,16 @@ async function setServiceStaff(db: DbOrTx, merchantId: string, serviceId: string
   if (add.length) await db.insert(staffServices).values(add.map((userId) => ({ merchantId, userId, serviceId })));
 }
 
+/** The shop's vertical: pharmacies get fixed appointment settings (see pharmacy-guard.ts). */
+async function verticalOf(db: DbOrTx, merchantId: string) {
+  const [m] = await db.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  return m ?? { vertical: "" };
+}
+
 export async function createService(db: DbOrTx, merchantId: string, body: z.output<typeof appointmentsApi.createServiceBody>): Promise<appointmentsApi.ServiceDto> {
   await assertCategory(db, merchantId, body.categoryId);
-  const { staffIds, ...fields } = body;
+  const { staffIds, ...rawFields } = body;
+  const fields = isPharmacy(await verticalOf(db, merchantId)) ? { ...rawFields, ...(await pharmacyServiceFields(db, merchantId, rawFields)) } : rawFields;
   const [row] = await db.insert(services).values({ ...fields, merchantId, description: fields.description ?? null, categoryId: fields.categoryId ?? null, rebookAfterDays: fields.rebookAfterDays ?? null, translations: fields.translations ?? {} }).returning();
   if (staffIds?.length) await setServiceStaff(db, merchantId, row!.id, staffIds);
   return (await serviceDtos(db, [row!]))[0]!;
@@ -188,7 +196,8 @@ export async function getService(db: DbOrTx, merchantId: string, serviceId: stri
 export async function updateService(ctx: AppContext, merchantId: string, serviceId: string, body: z.output<typeof appointmentsApi.updateServiceBody>): Promise<appointmentsApi.ServiceDto> {
   const cur = await getService(ctx.db, merchantId, serviceId);
   await assertCategory(ctx.db, merchantId, body.categoryId);
-  const { staffIds, ...fields } = body;
+  const { staffIds, ...rawFields } = body;
+  const fields = isPharmacy(await verticalOf(ctx.db, merchantId)) ? { ...rawFields, ...(await pharmacyServiceFields(ctx.db, merchantId, { name: rawFields.name ?? cur.name, description: rawFields.description !== undefined ? rawFields.description : cur.description })) } : rawFields;
   const next = { ...cur, ...fields };
   if (cur.kind === "appointment" && next.durationMin < 5) throw badRequest("An appointment service needs at least 5 minutes");
   if (next.priceCents > 0 && next.depositCents > next.priceCents) throw badRequest("The deposit can't be more than the price");
@@ -289,6 +298,7 @@ export async function deleteTimeOff(db: DbOrTx, merchantId: string, timeOffId: s
 
 export async function putStaffServices(db: DbOrTx, merchantId: string, userId: string, body: z.output<typeof appointmentsApi.putStaffServicesBody>): Promise<appointmentsApi.StaffServiceDto[]> {
   await assertBookableStaff(db, merchantId, [userId]);
+  if (isPharmacy(await verticalOf(db, merchantId)) && body.services.some((s) => s.priceCents)) throw badRequest("Pharmacy appointments have no price");
   const ids = [...new Set(body.services.map((s) => s.serviceId))];
   if (ids.length) {
     const found = await db.select({ id: services.id }).from(services).where(and(eq(services.merchantId, merchantId), eq(services.kind, "appointment"), inArray(services.id, ids)));
@@ -313,7 +323,10 @@ export async function settingsDto(ctx: AppContext, m: Merchant): Promise<appoint
 export async function updateSettings(ctx: AppContext, merchant: Merchant, body: z.output<typeof appointmentsApi.appointmentSettingsBody>): Promise<appointmentsApi.AppointmentSettingsDto> {
   const patch: Partial<typeof merchants.$inferInsert> = {};
   if (body.cancelWindowHours !== undefined) patch.cancelWindowHours = body.cancelWindowHours;
-  if (body.noShowFeeCents !== undefined) patch.noShowFeeCents = body.noShowFeeCents;
+  if (body.noShowFeeCents !== undefined) {
+    if (isPharmacy(merchant) && body.noShowFeeCents > 0) throw badRequest("Pharmacy appointments have no no-show fee");
+    patch.noShowFeeCents = body.noShowFeeCents;
+  }
   if (body.tipsEnabled !== undefined) patch.tipsEnabled = body.tipsEnabled;
   if (body.tipPresets !== undefined) patch.tipPresets = body.tipPresets;
   if (!Object.keys(patch).length) return settingsDto(ctx, merchant);
@@ -644,6 +657,9 @@ async function assertStaffMember(db: DbOrTx, merchantId: string, staffId: string
 export async function createAppointment(ctx: AppContext, staff: StaffContext, body: z.output<typeof appointmentsApi.createAppointmentBody>): Promise<appointmentsApi.AppointmentDto> {
   const merchant = staff.merchant;
   requireManagerForForce(staff, body.force);
+  assertNoPharmacyNotes(merchant, body.notes, body.clientNote);
+  // Custom lines (a free-text name and price) would put anything on the appointment: a pharmacy books its appointment types only.
+  if (isPharmacy(merchant) && body.items.length) throw badRequest("Pharmacy appointments use the appointment types only");
   const now = ctx.now();
   const walkIn = body.source === "walk_in";
   const loc = await resolveLocation(ctx.db, merchant.id, body.locationId);
@@ -680,7 +696,7 @@ export async function createAppointment(ctx: AppContext, staff: StaffContext, bo
         groupId: body.groupId ?? null,
         notes: body.notes ?? null,
         clientNote: body.clientNote ?? null,
-        noShowFeeCents: merchant.noShowFeeCents || null,
+        noShowFeeCents: isPharmacy(merchant) ? null : merchant.noShowFeeCents || null,
         createdAt: now,
         updatedAt: now,
       })
@@ -693,6 +709,8 @@ export async function createAppointment(ctx: AppContext, staff: StaffContext, bo
 export async function updateAppointment(ctx: AppContext, staff: StaffContext, id: string, body: z.output<typeof appointmentsApi.updateAppointmentBody>): Promise<appointmentsApi.AppointmentDto> {
   const merchant = staff.merchant;
   requireManagerForForce(staff, body.force);
+  assertNoPharmacyNotes(merchant, body.notes, body.clientNote);
+  if (isPharmacy(merchant) && body.items) throw badRequest("Pharmacy appointments use the appointment types only");
   const cur = await getAppointment(ctx.db, merchant.id, id);
   if (!ACTIVE.includes(cur.status)) throw conflict(`This appointment is ${cur.status.replace("_", " ")}`);
   const staffChanged = body.staffId !== undefined && body.staffId !== cur.staffId;

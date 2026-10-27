@@ -38,7 +38,7 @@ import { writeAudit } from "./admin-audit.js";
 import { findOrCreateUserByPhone, normalizePhone, orderPayUrl, placeChannelOrder, verifyOrderPayToken } from "./channel-orders.js";
 import { notifyListeners, paymentsReady, type NotifyArgs } from "./commerceShared.js";
 import { getIntegration } from "./integrations.js";
-import { isFeatureOn, requireFeature } from "./features.js";
+import { isAnyFeatureOn, isFeatureOn, requireFeature, WHATSAPP_INBOX_FEATURES } from "./features.js";
 import { personalize, resolveAudience, segmentCondition } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
 import { isOptedOut, recordPhoneOptOut, recordPhoneResubscribe } from "./opt-out.js";
@@ -140,9 +140,12 @@ export const webhookUrl = (ctx: AppContext) => `${ctx.config.publicApiUrl.replac
 export async function getSettings(ctx: AppContext, merchant: Merchant): Promise<whatsappApi.WhatsappSettings> {
   const integ = await getIntegration(ctx.db, merchant.id, "whatsapp");
   const fresh = (await ctx.db.select().from(merchants).where(eq(merchants.id, merchant.id)).limit(1))[0] ?? merchant;
-  const [notifications, ordering, marketing] = await Promise.all(
-    (["restaurant.whatsapp_notifications", "restaurant.whatsapp_ordering", "restaurant.whatsapp_marketing"] as const).map((k) => isFeatureOn(ctx.db, merchant, k)),
-  );
+  // The inbox and replies are on for restaurants (notifications) and for grocers (WhatsApp list orders).
+  const [notifications, ordering, marketing] = await Promise.all([
+    isAnyFeatureOn(ctx.db, merchant, WHATSAPP_INBOX_FEATURES),
+    isFeatureOn(ctx.db, merchant, "restaurant.whatsapp_ordering"),
+    isFeatureOn(ctx.db, merchant, "restaurant.whatsapp_marketing"),
+  ]);
   const s = (integ?.settings ?? {}) as Record<string, unknown>;
   return {
     connected: integ?.status === "connected",
@@ -592,7 +595,7 @@ export async function getPayView(ctx: AppContext, orderId: string, token: string
   }
   return {
     merchant: { name: m?.name ?? "", slug: m?.slug ?? "", logoUrl: m?.logoUrl ?? null },
-    order: { id: o.id, number: o.number, totalCents: o.totalCents, status: o.status, paymentStatus: o.paymentStatus, items: items.map((i) => ({ name: i.name, quantity: i.quantity, lineTotalCents: i.unitPriceCents * i.quantity })) },
+    order: { id: o.id, number: o.number, totalCents: o.totalCents, status: o.status, paymentStatus: o.paymentStatus, items: items.map((i) => ({ name: i.name, quantity: i.quantity, lineTotalCents: i.weighedCents ?? i.unitPriceCents * i.quantity })) },
     payment,
   };
 }

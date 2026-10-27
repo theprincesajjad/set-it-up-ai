@@ -3,6 +3,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { PLANS } from "@ll/shared";
 import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
+import { GroceryHome } from "@/components/dashboard/grocery/GroceryHome";
 import { HourlyShape } from "@/components/dashboard/home/HourlyShape";
 import { PromoResult } from "@/components/dashboard/home/PromoResult";
 import { RewardsWaiting } from "@/components/dashboard/home/RewardsWaiting";
@@ -17,7 +18,7 @@ import { RestaurantHome } from "@/components/dashboard/restaurant/RestaurantHome
 import { Button } from "@/components/ui/Button";
 import { firstName, formatNumber } from "@/lib/format";
 import { dayLine, homeMode, hoursNote, shortAddress, weekdayName } from "@/lib/dashboard/home";
-import { enabledSet, hasRestaurantFeature } from "@/lib/dashboard/nav";
+import { enabledSet, hasGroceryFeature, hasRestaurantFeature } from "@/lib/dashboard/nav";
 import { greeting } from "@/lib/dashboard/time";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 
@@ -40,7 +41,7 @@ export default function HomePage() {
  * `?mode=morning|close` forces a mode for QA. Staff see the day's counter numbers only.
  */
 function Home() {
-  const { api, base, detail, role, me, enabled } = useMerchant();
+  const { api, base, detail, role, me, enabled, features } = useMerchant();
   const manager = role !== "staff";
   const params = useSearchParams();
   const now = useNow();
@@ -75,6 +76,8 @@ function Home() {
         <>
           {today.error && !d ? <ErrorLine message={today.error} onRetry={() => void today.reload()} /> : null}
           <TodayStats mode={mode} data={d} weekday={weekday} yesterdayWeekday={yesterdayWeekday} terminology={term} vertical={m.vertical} base={base} loading={today.loading} />
+
+          {m.vertical === "grocery" && hasGroceryFeature(enabledSet(features.features)) ? <GroceryHome /> : null}
 
           {ob && !ob.activatedAt ? <ActivationCard c={ob} base={base} /> : null}
           {ob && ob.activatedAt ? (

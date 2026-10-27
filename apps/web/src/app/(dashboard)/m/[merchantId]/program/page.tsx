@@ -9,6 +9,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PageSkeleton } from "@/components/dashboard/PageStates";
 import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
 import { CategoriesEditor } from "@/components/dashboard/program/CategoriesEditor";
+import { RewardCost } from "@/components/dashboard/program/RewardCost";
 import { RewardsEditor } from "@/components/dashboard/program/RewardsEditor";
 import { VipEditor } from "@/components/dashboard/program/VipEditor";
 import { ErrorLine, PageHeader, Panel, QuietButton, Segmented, ToolbarButton } from "@/components/dashboard/kit";
@@ -100,7 +101,9 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
   const { api, detail, setDetail, enabled } = useMerchant();
   const vertical = detail.merchant.vertical;
   const birthday = enabled("loyalty.birthday_bonus");
-  const referrals = enabled("loyalty.referrals");
+  // A pharmacy can't pay for a referral (O. Reg. 264/16 s. 34 para 2) and earns on front-store dollars only (docs/research/pharmacies-wellness.md).
+  const pharmacy = vertical === "pharmacy";
+  const referrals = enabled("loyalty.referrals") && !pharmacy;
   const vipOn = enabled("loyalty.vip_levels");
   const moreWays = birthday || referrals || vipOn;
   const toast = useToast();
@@ -185,8 +188,8 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
   }
 
   const modeOptions: { value: EarnMode; label: string }[] = [
-    ...(enabled("loyalty.visits") || enabled("loyalty.stamps") ? [{ value: "visit" as const, label: "One per visit" }, { value: "purchase" as const, label: "One per purchase over a minimum" }] : []),
-    { value: "dollar", label: "Points per dollar" },
+    ...(!pharmacy && (enabled("loyalty.visits") || enabled("loyalty.stamps")) ? [{ value: "visit" as const, label: "One per visit" }, { value: "purchase" as const, label: "One per purchase over a minimum" }] : []),
+    { value: "dollar", label: pharmacy ? "Points per dollar of front-store sales" : "Points per dollar" },
   ];
   const unit = term === "points" ? "pts" : term;
   const rewardNoun = rewardDraft.name || "a reward";
@@ -320,6 +323,8 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </p>
             </section>
           )}
+
+          {vertical === "grocery" && draft.earnType === "per_dollar" && primary?.rewardType === "amount_off" ? <RewardCost pointsPerDollar={draft.pointsPerDollar} pointsCost={primary.pointsCost} rewardValueCents={primary.value} /> : null}
 
           <div id="categories">
             <CategoriesEditor categories={categories} onChange={setCategories} />

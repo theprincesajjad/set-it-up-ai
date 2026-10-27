@@ -39,6 +39,7 @@ import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { customerFeaturesFor, isFeatureOn, requireFeature, type CustomerFeatures } from "./features.js";
 import { ensureMember, generateMemberCode, postTransaction, redeemReward, reverseTransaction } from "./ledger.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import {
   affordable,
   cardsForMember,
@@ -432,7 +433,9 @@ async function rewardReferral(tx: Tx, merchantId: string, ref: typeof referrals.
     .returning({ id: referrals.id });
   if (!claimed) return { points: 0, member: null };
   const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchantId)).limit(1);
-  const bonus = program?.active ? program.referralBonus : 0;
+  // A pharmacy can't pay anyone for bringing in a patient (O. Reg. 264/16 s. 34 para 2).
+  const [shop] = await tx.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const bonus = program?.active && !isPharmacy(shop) ? program.referralBonus : 0;
   if (bonus <= 0) return { points: 0, member: null };
   const r = await postTransaction(tx, {
     merchantId,
@@ -457,6 +460,7 @@ async function rewardReferral(tx: Tx, merchantId: string, ref: typeof referrals.
 
 export async function getOrCreateReferral(ctx: AppContext, userId: string, memberId: string, fresh: boolean): Promise<customerApi.ReferralResponse> {
   const row = await ownMembershipRow(ctx.db, userId, memberId);
+  if (isPharmacy(row.merchant)) throw new HttpError(422, "pharmacy_no_referrals", "Referral rewards are not available at pharmacies.");
   await requireFeature(ctx.db, row.merchant, "loyalty.referrals");
   let code: string | undefined;
   if (!fresh) {

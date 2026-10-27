@@ -71,16 +71,34 @@ The 10 fair information principles, and what each means for us:
 - ☐ **Minors.** Accounts are 16+ unless counsel approves otherwise (**VERIFY** with counsel). No targeted promos to known minors.
 - ☐ **Privacy impact assessment** before launching nearby push, ads targeting and BIA data reports.
 
-## 3. Pharmacies: Ontario College of Pharmacists and O. Reg. 681/93
+## 3. Pharmacies: Drug and Pharmacies Regulation Act, Pharmacy Act, OCP policy and PHIPA
 
-Ontario prohibits loyalty points, bonuses or inducements tied to **prescriptions and pharmacy services** ([OCP policy](https://ocpinfo.com/pharmacy-professionals/rules-and-standards-of-the-profession/practice-policies-guidelines/loyalty-points-program/), [O. Reg. 681/93](https://www.ontario.ca/laws/regulation/930681/v1), cited in the PRD).
+**The rule, checked against the text on e-Laws on Oct 26, 2026** (full reading and sources in `docs/research/pharmacies-wellness.md`). The regulation older drafts of this checklist cited, O. Reg. 681/93, was **revoked on May 5, 2017**. The current rules are:
 
-- ☐ Pharmacy onboarding template: **`loyalty.no_earn_categories` is ON by default**, with Rx, dispensing fees and professional services (vaccinations, medication reviews and other pharmacy services) set to no-earn. This feature already exists in plans.ts.
-- ☐ **No redemption against prescriptions or pharmacy services**, including network points earned elsewhere. **No network perk** may be triggered by a pharmacy visit that involves a prescription. Count only front-store purchases.
-- ☐ Digital discount cards at pharmacies must exclude Rx and pharmacy services. The PRD already requires the excluded category.
-- ☐ Pharmacist-owner signs a pharmacy addendum confirming the setup. Rep checklist: verify the excluded categories at install.
-- ☐ Never collect, store or display prescription data, which is health information. Pharmacies award points only on the front-store subtotal.
-- ☐ **VERIFY** with OCP or counsel whether bonuses for pharmacy *visits* (as opposed to purchases) are permitted. Default: not permitted.
+- **O. Reg. 264/16 s. 34 para 3** (General, under the *Drug and Pharmacies Regulation Act*): it is a conflict of interest for a pharmacy owner or designated manager to offer a **benefit** (any incentive or inducement of more than nominal value, including a rebate, credit or gift) to a patient in relation to the sale of a drug or the provision of pharmacy services, other than (i) an adjustment in the fee or amount charged to that patient for that drug or service, or (ii) a free item of nominal value for maintaining or promoting well-being or health. **Para 2** bars a benefit to a person by reason of referring a patient to the pharmacy (so no referral rewards).
+- **O. Reg. 130/17 s. 6(c)** (Professional Misconduct and Conflict of Interest, *Pharmacy Act, 1991*): the same rule for each pharmacist.
+- **O. Reg. 264/16 s. 29**: pharmacy advertising must not be false or misleading, must be dignified and verifiable, must not contain testimonials, comparative statements or endorsements about the quality of drugs or services, and must not make safety, effectiveness or indication claims for Schedule I drugs.
+- **OCP loyalty points policy** (July 2004, still published): no bonus points, loyalty points or air miles on prescriptions, prescription services or other professional services; points may not be redeemed or used as legal tender for prescriptions; paying with a rewards credit card is allowed unless a special inducement is offered; incentives on items that do not need a prescription remain permitted. The 2003 decision was upheld by the Ontario Superior Court in June 2004.
+- **PHIPA** (*Personal Health Information Protection Act, 2004*): a pharmacy is a health information custodian. The fact that someone is a patient of the pharmacy, or got a vaccine, is personal health information (s. 4(1)(b)). A custodian may not use personal health information for **marketing** without express consent (s. 33). Front-store data, kept separate, is ordinary personal information under PIPEDA.
+
+Product checks (each has a test in `apps/api/test/pharmacy.test.ts`):
+
+- ☑ **Locked dispensary categories** (Prescriptions, Pharmacy services, Dispensing fees and compounding) are created for every pharmacy, can't be turned on, renamed or deleted, and look-alike names (medication, vaccine, blister pack and the like) are locked on creation and stay locked after a rename.
+- ☑ **Front-store subtotal confirmed on every sale** (counter, mobile counter) and on every reward use; amount-only sales are refused without it; uncategorised lines earn nothing; a sale with nothing from the front store records no visit, no member, no welcome bonus and no network perk; what is recorded is the front-store amount, never the prescription part.
+- ☑ **No points or stamps for a visit.** (A visit may include a prescription.) Bonuses for pharmacy *visits* are therefore not offered; the earlier "VERIFY with OCP" item is closed by not building them.
+- ☑ **No referral rewards** at pharmacies (O. Reg. 264/16 s. 34 para 2).
+- ☑ **No dispensary or health wording** in rewards, promos, discount-card names and terms, messages, automations, manual point adjustments, appointment types, customer tags and notes. An exclusion sentence ("Not valid on prescriptions or pharmacy services") is the one allowed way to mention them.
+- ☑ **Discount cards** always exclude every locked category. Seniors cards on front-store items are allowed (they are not tied to a drug or a pharmacy service).
+- ☑ **No imported opening balances** at pharmacies (we cannot tell whether another program earned them on prescriptions).
+- ☑ **Appointments** (vaccines, medication reviews): free to book, no price, deposit, no-show fee, points, reward, invoice, notes or reason, no rebooking reminder and no review request; reminders say "appointment", never the service; the name, phone and appointment type are removed 30 days after the visit.
+- ☑ **Order-ready text** is one fixed message in the customer's language; it never names the order, the customer, a price or an offer; the customer asked for it at the counter; the log is deleted after 30 days.
+- ☑ **Reports** count front-store sales only and say so.
+- ☑ **Pharmacist-owner confirmation** (Schedule C) is recorded on the Pharmacy rules page with the owner's name and date.
+- ☑ **POS**: only front-store lines are kept and awarded.
+- ☐ **Counsel and OCP.** Written sign-off from Ontario health-privacy counsel that (a) a fixed "your order is ready" text through this product is not personal health information, (b) the Pharmacy rules page replaces the paper Schedule C, and (c) the front-store seniors card is outside s. 34. Ask OCP whether an advertised front-store discount card is read as an "inducement" when handed out at the dispensary counter. Until answered: sign and signage at the front-store till only, never at drop-off or pickup.
+- ☐ **Rep checklist at install**: confirm the three locked categories, the confirmation on the Pharmacy rules page, no sign at the dispensary counter, and that the POS category mapping sends Rx to Prescriptions.
+- ☐ **Banner agreements** (IDA, Guardian, Pharmasave, Remedy'sRx and others) may restrict a local program: the rep logs "banner check".
+- ☐ **Health claims in our own copy and in shops' offers** (Competition Act ss. 52 and 74.01, *Food and Drugs Act* s. 9 and the *Natural Health Products Regulations*): no cure, prevent, boost-immunity or "clinically proven" wording on vitamins and supplements; a product's health claim must be the one on its licence and substantiated before it is made. The seeded demo copy and the pharmacy template are free of such claims; shops write their own text, and the text check blocks condition and drug names but cannot judge a claim. See `docs/research/pharmacies-wellness.md` §3.
 
 ## 4. Alcohol (AGCO) and other restricted products
 

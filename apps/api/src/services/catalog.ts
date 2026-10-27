@@ -1,12 +1,12 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
 import { and, asc, eq } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
-import { restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
+import { portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import type { AppContext } from "../context.js";
 import { paymentsReady } from "./commerceShared.js";
-import { getMerchantFeatures, requireFeature } from "./features.js";
+import { getMerchantFeatures, isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import { publicCertification } from "./halal.js";
 import { merchantProvince, taxLabel } from "./tax.js";
 
@@ -30,7 +30,7 @@ export function itemDto(i: Item, restaurant = false): commerceApi.CatalogItemDto
     sortOrder: i.sortOrder,
     createdAt: i.createdAt.toISOString(),
     ...(restaurant
-      ? { dietary: i.dietary, translations: i.translations, preorderOnly: i.preorderOnly, leadTimeHours: i.leadTimeHours, serves: i.serves, depositBps: i.depositBps, station: i.station, options: i.options ?? null, cookMinutes: i.cookMinutes, recipe: i.recipe ?? null, soldOutUntil: i.soldOutUntil ? i.soldOutUntil.toISOString() : null }
+      ? { dietary: i.dietary, translations: i.translations, preorderOnly: i.preorderOnly, leadTimeHours: i.leadTimeHours, serves: i.serves, depositBps: i.depositBps, station: i.station, options: i.options ?? null, cookMinutes: i.cookMinutes, recipe: i.recipe ?? null, soldOutUntil: i.soldOutUntil ? i.soldOutUntil.toISOString() : null, weightUnit: i.weightUnit ?? null, unitPriceCents: i.unitPriceCents ?? null, nominalWeightG: i.nominalWeightG ?? null, taxable: i.taxable }
       : {}),
   };
 }
@@ -58,8 +58,7 @@ function assertModifiers(mods: { name: string; options: { name: string }[] }[] |
 }
 
 export async function getCatalog(db: DbOrTx, merchantId: string): Promise<commerceApi.CatalogResponse> {
-  const [m] = await db.select({ tier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  const restaurant = !!m?.tier;
+  const restaurant = await isRestaurantShop(db, merchantId);
   const [cats, items] = await Promise.all([
     db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, merchantId)).orderBy(asc(merchantCategories.sortOrder), asc(merchantCategories.name)),
     db.select().from(catalogItems).where(eq(catalogItems.merchantId, merchantId)).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)),
@@ -75,6 +74,8 @@ const RESTAURANT_ITEM_FIELDS: { keys: readonly (keyof commerceApi.UpdateCatalogI
   { keys: ["station"], feature: "restaurant.kds" },
   { keys: ["cookMinutes", "recipe"], feature: "restaurant.degh_preorders" },
   { keys: ["options"], feature: "restaurant.dietary_tags" },
+  // Grocers and butchers: sold by weight, zero-rated groceries.
+  { keys: ["weightUnit", "unitPriceCents", "nominalWeightG", "taxable"], feature: "grocery.counter_preorders" },
 ];
 
 async function gateRestaurantFields(db: DbOrTx, merchantId: string, body: commerceApi.UpdateCatalogItemBody) {
@@ -82,7 +83,11 @@ async function gateRestaurantFields(db: DbOrTx, merchantId: string, body: commer
   if (!used.length) return;
   const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!m) throw notFound("Merchant");
-  for (const g of used) await requireFeature(db, m, g.feature);
+  for (const g of used) {
+    // Pre-order fields belong to a restaurant's degh pre-orders or a butcher counter: either unlocks them.
+    if (g.feature === "restaurant.degh_preorders") await requireAnyFeature(db, m, PREORDER_FEATURES);
+    else await requireFeature(db, m, g.feature);
+  }
 }
 
 function normaliseDietary(d: NonNullable<commerceApi.CreateCatalogItemBody["dietary"]>) {
@@ -118,14 +123,34 @@ export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<t
       cookMinutes: body.cookMinutes ?? 0,
       recipe: body.recipe ?? null,
       options: body.options ?? null,
+      ...weightFields(body, null),
     })
     .returning();
   return itemDto(row!, restaurant || !!(await isRestaurantShop(db, merchantId)));
 }
 
+/** Restaurant-tier shops and butcher counters get the extended item fields (pre-order rules, weight, tax). */
 async function isRestaurantShop(db: DbOrTx, merchantId: string): Promise<boolean> {
-  const [m] = await db.select({ tier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  return !!m?.tier;
+  const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) return false;
+  return !!m.restaurantTier || (await isFeatureOn(db, m, "grocery.counter_preorders"));
+}
+
+/**
+ * Sold-by-weight columns from a body (merged over the current item on update). The estimate price of one portion is derived from
+ * the price per kg or lb and the portion's weight, so the two never disagree; the scale sets the final price at pick-up.
+ */
+function weightFields(body: Pick<commerceApi.UpdateCatalogItemBody, "weightUnit" | "unitPriceCents" | "nominalWeightG" | "taxable">, cur: Item | null): Partial<typeof catalogItems.$inferInsert> {
+  const out: Partial<typeof catalogItems.$inferInsert> = {};
+  if (body.taxable !== undefined) out.taxable = body.taxable;
+  const touched = body.weightUnit !== undefined || body.unitPriceCents !== undefined || body.nominalWeightG !== undefined;
+  if (!touched) return out;
+  const unit = body.weightUnit !== undefined ? body.weightUnit : (cur?.weightUnit ?? null);
+  const per = body.unitPriceCents !== undefined ? body.unitPriceCents : (cur?.unitPriceCents ?? null);
+  const nominal = body.nominalWeightG !== undefined ? body.nominalWeightG : (cur?.nominalWeightG ?? null);
+  if (unit == null) return { ...out, weightUnit: null, unitPriceCents: null, nominalWeightG: null };
+  if (per == null || nominal == null) throw badRequest("A weighed item needs a price per kg or lb and the weight of one portion");
+  return { ...out, weightUnit: unit, unitPriceCents: per, nominalWeightG: nominal, priceCents: portionPriceCents(per, unit, nominal) };
 }
 
 export async function updateItem(db: DbOrTx, merchantId: string, itemId: string, body: z.infer<typeof commerceApi.updateCatalogItemBody>) {
@@ -135,6 +160,11 @@ export async function updateItem(db: DbOrTx, merchantId: string, itemId: string,
   const patch: Partial<typeof catalogItems.$inferInsert> = {};
   for (const k of ["name", "description", "priceCents", "categoryId", "imageUrl", "modifiers", "available", "orderable", "sortOrder", "translations", "preorderOnly", "leadTimeHours", "serves", "depositBps", "station", "options", "cookMinutes", "recipe"] as const) {
     if (body[k] !== undefined) (patch as Record<string, unknown>)[k] = body[k];
+  }
+  if (["weightUnit", "unitPriceCents", "nominalWeightG", "taxable"].some((k) => (body as Record<string, unknown>)[k] !== undefined)) {
+    const [cur] = await db.select().from(catalogItems).where(and(eq(catalogItems.id, itemId), eq(catalogItems.merchantId, merchantId))).limit(1);
+    if (!cur) throw notFound("Catalog item");
+    Object.assign(patch, weightFields(body, cur));
   }
   if (body.dietary !== undefined) patch.dietary = normaliseDietary(body.dietary);
   if (body.soldOutUntil !== undefined) patch.soldOutUntil = body.soldOutUntil ? new Date(body.soldOutUntil) : null;
@@ -276,7 +306,7 @@ export async function getDualPricing(db: DbOrTx, merchant: Merchant): Promise<re
 }
 
 export async function setPreorderCap(ctx: AppContext, merchant: Merchant, cap: number | null): Promise<restaurantApi.PreorderSettingsResponse> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   await ctx.db.update(merchants).set({ preorderDailyCap: cap, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
   return { preorderDailyCap: cap };
 }

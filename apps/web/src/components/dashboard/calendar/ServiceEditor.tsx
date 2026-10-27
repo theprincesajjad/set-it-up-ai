@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { appointmentsApi, merchantApi } from "@ll/shared";
+import { PHARMACY_SERVICE_PRESETS, type appointmentsApi, type merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { SidePanel } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -35,10 +35,12 @@ export function ServiceEditor({
   categories: merchantApi.Category[];
   onSaved: () => void | Promise<void>;
 }) {
-  const { api } = useMerchant();
+  const { api, detail } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const repair = kind === "repair_line";
+  // Pharmacy: an appointment type is a name and a length. No price, deposit, group, rebooking or tax (docs/research/pharmacies-wellness.md).
+  const pharmacy = detail.merchant.vertical === "pharmacy" && !repair;
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [minutes, setMinutes] = useState("30");
@@ -81,7 +83,7 @@ export function ServiceEditor({
   const errs = {
     name: !name.trim() ? "Give it a name." : undefined,
     minutes: !repair && (Number(minutes) < 5 || Number(minutes) > 720) ? "Use 5 to 720 minutes." : undefined,
-    price: price === "" || Number.isNaN(Number(price)) ? "Add a price (0 for free)." : undefined,
+    price: !pharmacy && (price === "" || Number.isNaN(Number(price))) ? "Add a price (0 for free)." : undefined,
     deposit: toCents(deposit) > toCents(price) && toCents(price) > 0 ? "The deposit can't be more than the price." : undefined,
   };
 
@@ -94,13 +96,13 @@ export function ServiceEditor({
       name: name.trim(),
       description: desc.trim() || null,
       durationMin: Number(minutes || 0),
-      priceCents: toCents(price),
-      priceFrom: from,
-      depositCents: repair ? 0 : toCents(deposit),
+      priceCents: pharmacy ? 0 : toCents(price),
+      priceFrom: pharmacy ? false : from,
+      depositCents: repair || pharmacy ? 0 : toCents(deposit),
       bufferMin: Number(buffer || 0),
-      categoryId: category || null,
-      rebookAfterDays: rebook ? Number(rebook) : null,
-      taxable,
+      categoryId: pharmacy ? null : category || null,
+      rebookAfterDays: pharmacy ? null : rebook ? Number(rebook) : null,
+      taxable: pharmacy ? false : taxable,
       active,
       translations,
       ...(repair ? {} : { staffIds: who }),
@@ -130,22 +132,32 @@ export function ServiceEditor({
       }
     >
       <div className="flex flex-col gap-4">
-        <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} error={tried ? errs.name : undefined} />
-        <TextField label="Description" optionalLabel value={desc} onChange={(e) => setDesc(e.target.value)} />
+        {pharmacy ? (
+          <div role="group" aria-label="Appointment type presets" className="flex flex-wrap gap-2" data-testid="pharmacy-presets">
+            {PHARMACY_SERVICE_PRESETS.map((p) => (
+              <button key={p} type="button" aria-pressed={name === p} onClick={() => setName(p)} className="h-9 rounded-full border border-line px-4 text-[13px] font-medium text-fg hover:bg-bg-subtle aria-pressed:border-fg aria-pressed:bg-fg aria-pressed:text-bg">
+                {p}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <TextField label={pharmacy ? "Appointment type" : "Name"} hint={pharmacy ? "Name the type of appointment, never the reason or a condition." : undefined} value={name} onChange={(e) => setName(e.target.value)} error={tried ? errs.name : undefined} />
+        {pharmacy ? null : <TextField label="Description" optionalLabel value={desc} onChange={(e) => setDesc(e.target.value)} />}
         <div className="grid grid-cols-2 gap-3">
           {!repair ? <TextField label="Length" inputMode="numeric" suffix="min" value={minutes} onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))} error={tried ? errs.minutes : undefined} /> : null}
-          <TextField label="Price" inputMode="decimal" prefix="$" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} error={tried ? errs.price : undefined} />
+          {pharmacy ? null : <TextField label="Price" inputMode="decimal" prefix="$" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} error={tried ? errs.price : undefined} />}
         </div>
-        <Switch label="Show as “from” price" checked={from} onChange={setFrom} />
-        {!repair ? (
+        {pharmacy ? null : <Switch label="Show as “from” price" checked={from} onChange={setFrom} />}
+        {pharmacy ? <TextField label="Clean-up time after" inputMode="numeric" suffix="min" value={buffer} onChange={(e) => setBuffer(e.target.value.replace(/\D/g, ""))} /> : null}
+        {!repair && !pharmacy ? (
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Deposit" optionalLabel inputMode="decimal" prefix="$" hint="Taken online, credited at checkout." value={deposit} onChange={(e) => setDeposit(e.target.value.replace(/[^\d.]/g, ""))} error={tried ? errs.deposit : undefined} />
             <TextField label="Clean-up time after" inputMode="numeric" suffix="min" value={buffer} onChange={(e) => setBuffer(e.target.value.replace(/\D/g, ""))} />
           </div>
         ) : null}
-        <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Hair, Threading, Nails. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
-        <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint="The usual gap between visits. Used for rebooking nudges." value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />
-        <Switch label="Charge tax" description="Added at checkout when your shop is registered for GST/HST. Turn it off for a service with no tax." checked={taxable} onChange={setTaxable} />
+        {pharmacy ? null : <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Hair, Threading, Nails. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />}
+        {pharmacy ? null : <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint="The usual gap between visits. Used for rebooking nudges." value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />}
+        {pharmacy ? null : <Switch label="Charge tax" description="Added at checkout when your shop is registered for GST/HST. Turn it off for a service with no tax." checked={taxable} onChange={setTaxable} />}
         <Switch label={active ? "Bookable" : "Hidden from booking"} checked={active} onChange={setActive} />
         {!repair && staff.length ? (
           <fieldset className="flex flex-col gap-1.5">

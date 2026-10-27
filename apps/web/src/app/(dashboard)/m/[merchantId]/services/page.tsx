@@ -1,7 +1,7 @@
 "use client";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import type { appointmentsApi } from "@ll/shared";
+import { RETENTION, type appointmentsApi } from "@ll/shared";
 import { ServiceEditor } from "@/components/dashboard/calendar/ServiceEditor";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { PageHeader, Segmented, Tag } from "@/components/dashboard/kit";
@@ -22,7 +22,9 @@ export default function ServicesPage() {
 }
 
 function Services() {
-  const { api, enabled, role } = useMerchant();
+  const { api, enabled, role, detail } = useMerchant();
+  // Pharmacist appointments (flu shot, vaccine, medication review): no price, no deposit, no points, no rebooking (docs/research/pharmacies-wellness.md).
+  const pharmacy = detail.merchant.vertical === "pharmacy";
   const both = enabled("booking.appointments") && enabled("service.tickets");
   // Repair shops see the same table as their price list.
   const [kind, setKind] = useState<appointmentsApi.ServiceKind>(enabled("booking.appointments") ? "appointment" : "repair_line");
@@ -43,18 +45,19 @@ function Services() {
       </span>
     ) },
     ...(!repair ? [{ key: "duration", header: "Length", mobile: "subtitle" as const, sortValue: (s: Service) => s.durationMin, cell: (s: Service) => <span className="tabular text-fg-muted">{duration(s.durationMin)}</span> }] : []),
-    { key: "price", header: "Price", align: "end", mobile: "trailing", sortValue: (s) => s.priceCents, cell: (s) => <span className="tabular">{s.priceFrom ? "from " : ""}{money(s.priceCents)}</span> },
-    ...(!repair ? [{ key: "deposit", header: "Deposit", align: "end" as const, mobile: "hidden" as const, sortValue: (s: Service) => s.depositCents, cell: (s: Service) => <span className="tabular text-fg-muted">{s.depositCents ? money(s.depositCents) : "None"}</span> }] : []),
+    { key: "price", header: "Price", align: "end", mobile: "trailing", sortValue: (s) => s.priceCents, cell: (s) => (pharmacy ? <span className="text-fg-muted">Not charged here</span> : <span className="tabular">{s.priceFrom ? "from " : ""}{money(s.priceCents)}</span>) },
+    ...(pharmacy ? [{ key: "points", header: "Points", align: "end" as const, mobile: "hidden" as const, cell: () => <span className="text-fg-muted">None</span> }] : []),
+    ...(!repair && !pharmacy ? [{ key: "deposit", header: "Deposit", align: "end" as const, mobile: "hidden" as const, sortValue: (s: Service) => s.depositCents, cell: (s: Service) => <span className="tabular text-fg-muted">{s.depositCents ? money(s.depositCents) : "None"}</span> }] : []),
     ...(!repair ? [{ key: "staff", header: "Who", mobile: "subtitle" as const, cell: (s: Service) => <span className="truncate text-fg-muted">{s.staffIds.length ? s.staffIds.map(nameOf).filter(Boolean).join(", ") : "Anyone"}</span> }] : []),
-    { key: "rebook", header: "Rebook after", align: "end", mobile: "hidden", sortValue: (s) => s.rebookAfterDays ?? 0, cell: (s) => <span className="tabular text-fg-muted">{s.rebookAfterDays ? `${s.rebookAfterDays} days` : "Not set"}</span> },
+    ...(pharmacy ? [] : [{ key: "rebook", header: "Rebook after", align: "end" as const, mobile: "hidden" as const, sortValue: (s: Service) => s.rebookAfterDays ?? 0, cell: (s: Service) => <span className="tabular text-fg-muted">{s.rebookAfterDays ? `${s.rebookAfterDays} days` : "Not set"}</span> }]),
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         flush
-        title={repair ? "Price list" : "Services & prices"}
-        description={repair ? "Canned lines for quotes and invoices. Pick them when you write a quote." : "What clients can book online and at the desk, how long it takes and what it costs."}
+        title={repair ? "Price list" : pharmacy ? "Pharmacist appointments" : "Services & prices"}
+        description={repair ? "Canned lines for quotes and invoices. Pick them when you write a quote." : pharmacy ? "Types people can book online. We keep that a booking exists, not why." : "What clients can book online and at the desk, how long it takes and what it costs."}
         actions={
           <>
             {both ? <Segmented label="Kind" value={kind} onChange={setKind} options={[{ value: "appointment", label: "Services" }, { value: "repair_line", label: "Price list" }]} /> : null}
@@ -73,6 +76,12 @@ function Services() {
         onRowClick={manager ? (s) => setEdit(s) : undefined}
         empty={<span className="text-fg-muted">{repair ? "No lines yet. Add the jobs you quote most." : "No services yet. Add what you offer, with how long it takes and the price."}</span>}
       />
+      {pharmacy ? (
+        <div className="grid gap-6 md:grid-cols-2" data-testid="pharmacy-keep">
+          <PharmacyKeep title="What we keep about a booking" tone="keep" items={["The day, time and length", "The appointment type you named", "The customer's first name and phone, to send a reminder", `After ${RETENTION.pharmacyAppointmentDays} days the name, phone and type are removed. Only a count stays.`]} />
+          <PharmacyKeep title="What we never ask for or keep" tone="never" items={["Health card number, medication, condition or reason for the visit", "Notes on the booking", "Payment, deposits or no-show fees", "Points or discounts on a pharmacy service"]} />
+        </div>
+      ) : null}
       {manager ? (
         <ServiceEditor
           open={!!edit}
@@ -87,5 +96,21 @@ function Services() {
         />
       ) : null}
     </div>
+  );
+}
+
+function PharmacyKeep({ title, items, tone }: { title: string; items: string[]; tone: "keep" | "never" }) {
+  return (
+    <section className="rounded-card border border-line p-5">
+      <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
+      <ul className="mt-3 flex flex-col gap-2">
+        {items.map((t) => (
+          <li key={t} className="flex gap-2.5 text-[13px] text-fg">
+            <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${tone === "keep" ? "bg-positive" : "bg-negative"}`} />
+            {t}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

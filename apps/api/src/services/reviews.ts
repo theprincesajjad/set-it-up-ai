@@ -24,6 +24,7 @@ import { randomCode, randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import { decodeCursor, encodeCursor } from "./commerceShared.js";
 import { isFeatureOn, requireFeature } from "./features.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import { smsAllowance, withFooter } from "./messaging.js";
 import { ensureMember } from "./ledger.js";
 import { canSendTransactional, getSession, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
@@ -66,6 +67,8 @@ export async function consentedChannels(ctx: AppContext, merchant: Merchant, use
 export async function scheduleReviewRequest(ctx: AppContext, a: { merchantId: string; userId: string; sourceId: string }): Promise<Request | null> {
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, a.merchantId)).limit(1);
   if (!merchant || !merchant.googleReviewUrl) return null;
+  // Testimonials about the quality of a pharmacy's drugs or services are restricted advertising (O. Reg. 264/16 s. 29(1)(d)).
+  if (isPharmacy(merchant)) return null;
   if (!(await isFeatureOn(ctx.db, merchant, "restaurant.reviews"))) return null;
   const now = ctx.now();
   const [dupe] = await ctx.db

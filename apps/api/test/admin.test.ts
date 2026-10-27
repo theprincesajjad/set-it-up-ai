@@ -41,7 +41,7 @@ describe("admin", () => {
     const d = (await get("/v1/admin/dashboard")).json();
     expect(d.merchants.total).toBe(3);
     expect(d.merchants.byStatus.active).toBe(3);
-    expect(d.merchants.byVertical).toEqual([{ vertical: "pharmacy", count: 3 }]);
+    expect(d.merchants.byVertical).toEqual([{ vertical: "retail", count: 3 }]);
     expect(d.merchants.byNeighbourhood.find((h: { name: string }) => h.name === "roncesvalles")).toMatchObject({ merchants: 2, activated: 2 });
     expect(d).toMatchObject({ activatedMerchants: 2, customers: 2, multiShopCustomers: 1, multiShopPct: 0.5, memberships: 3 });
     expect(d.weeklyVisits).toHaveLength(8);

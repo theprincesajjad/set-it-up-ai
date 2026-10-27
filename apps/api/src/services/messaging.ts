@@ -37,6 +37,8 @@ import { writeAudit } from "./admin-audit.js";
 import { iso } from "./merchant.js";
 import { decodeCursor, encodeCursor } from "./merchant-customers.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
+import { assertPharmacyText, isPharmacy } from "./pharmacy-guard.js";
+import { checkPharmacyText } from "@ll/shared";
 import { recordPhoneOptOut } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -100,6 +102,12 @@ export function personalize(text: string, p: Personal, merchantName: string, ter
     .replace(/\{\{\s*balance\s*\}\}/g, String(p.balance))
     .replace(/\{\{\s*terminology\s*\}\}/g, terminology)
     .replace(/\{\{\s*merchant\s*\}\}/g, merchantName);
+}
+
+/** A pharmacy's message can only be about the front store (services/pharmacy-guard.ts). Checked on create, edit, send and every automation run. */
+function assertPharmacyContent(merchant: Pick<Merchant, "vertical">, subject: string | null | undefined, body: string | null | undefined) {
+  assertPharmacyText(merchant, subject, "The subject");
+  assertPharmacyText(merchant, body, "The message");
 }
 
 function validateContent(channel: Channel, subject: string | null | undefined, body: string) {
@@ -333,6 +341,8 @@ export async function sendCampaign(ctx: AppContext, merchantId: string, messageI
     const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
     if (!merchant) throw notFound("Merchant");
     if (merchant.status === "paused" || merchant.status === "closed") throw conflict("This shop is paused; messages can't be sent");
+    // Last look, for a draft or a scheduled message written before these rules (or by a script): a pharmacy never sends dispensary text.
+    assertPharmacyContent(merchant, claimed.subject, claimed.body);
     const channel = claimed.channel;
     await requireChannel(ctx.db, merchant, channel);
     // Promotional texts never go out in quiet hours (21:00 to 08:00 shop time): queue until 08:00.
@@ -539,6 +549,7 @@ export async function deliverTestToSelf(
 
 export async function createCampaign(ctx: AppContext, merchant: Merchant, actorUserId: string, body: messagingApi.CreateMessageBody) {
   validateContent(body.channel, body.subject, body.body);
+  assertPharmacyContent(merchant, body.subject, body.body);
   await requireChannel(ctx.db, merchant, body.channel);
   const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
   if (scheduledAt && scheduledAt <= ctx.now() && !body.sendNow) throw badRequest("Pick a time in the future, or send now");
@@ -565,6 +576,7 @@ export async function updateCampaign(ctx: AppContext, merchant: Merchant, actorU
   if (cur.status !== "draft" && cur.status !== "scheduled") throw conflict(`A ${cur.status} message can't be edited`);
   const channel = body.channel ?? cur.channel;
   validateContent(channel, body.subject !== undefined ? body.subject : cur.subject, body.body ?? cur.body);
+  assertPharmacyContent(merchant, body.subject !== undefined ? body.subject : cur.subject, body.body ?? cur.body);
   if (body.channel && body.channel !== cur.channel) await requireChannel(ctx.db, merchant, body.channel);
   const set: Partial<typeof messages.$inferInsert> = {};
   if (body.channel) set.channel = body.channel;
@@ -710,6 +722,7 @@ export async function upsertAutomation(ctx: AppContext, merchant: Merchant, acto
     await requireChannel(ctx.db, merchant, body.channel);
   }
   validateContent(body.channel, body.subject ?? (body.channel === "email" ? AUTOMATION_META[kind].subject : null), body.body);
+  assertPharmacyContent(merchant, body.subject, body.body);
   const [existing] = await ctx.db.select().from(messages).where(and(eq(messages.merchantId, merchant.id), eq(messages.automation, kind))).limit(1);
   const prevCfg = (existing?.segment ?? {}) as AutomationConfig;
   const wasEnabled = existing?.status === "scheduled";
@@ -804,6 +817,7 @@ export async function runAutomations(ctx: AppContext): Promise<number> {
     .where(and(isNotNull(messages.automation), eq(messages.status, "scheduled"), inArray(merchants.status, ["onboarding", "active"])));
   let total = 0;
   for (const { msg, merchant } of rows) {
+    if (isPharmacy(merchant) && (!checkPharmacyText(msg.body).ok || !checkPharmacyText(msg.subject).ok)) continue;
     const features = await getMerchantFeatures(ctx.db, merchant);
     if (!features["marketing.automations"].enabled) continue;
     if (!features[msg.channel === "sms" ? "marketing.sms" : "marketing.email"].enabled) continue;

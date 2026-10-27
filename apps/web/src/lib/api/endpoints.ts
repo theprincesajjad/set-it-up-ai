@@ -35,7 +35,10 @@ import { publicSplitEndpoints, restaurantKitchenEndpoints } from "./restaurantKi
 import { restaurantWebEndpoints } from "./restaurantWeb";
 import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgent";
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
+import { classEndpoints, myClassEndpoints, publicClassEndpoints } from "./classes";
 import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
+import { pharmacyEndpoints } from "./pharmacy";
+import { groceryEndpoints, myGroceryEndpoints, publicGroceryEndpoints } from "./grocery";
 
 const enc = encodeURIComponent;
 type Q = Record<string, string | number | boolean | undefined | null>;
@@ -60,6 +63,8 @@ export function llApi(c: ApiClient) {
     },
     salesAgent: publicSalesAgentEndpoints(c),
     public: {
+      // Grocer's weekly flyer (grocery.ts)
+      ...publicGroceryEndpoints(c),
       shop: (slug: string) => c.get<networkApi.PublicShopResponse>(`/v1/public/shops/${enc(slug)}`, { anonymous: true }),
       joinInfo: (qrCode: string) => c.get<networkApi.JoinInfoResponse>(`/v1/public/join/${enc(qrCode)}`, { anonymous: true }),
       joinStart: (qrCode: string, body: networkApi.PublicJoinBody) =>
@@ -75,6 +80,8 @@ export function llApi(c: ApiClient) {
       ...publicServiceEndpoints(c),
       // Appointment booking: services, policy and availability (appointments.ts)
       ...publicAppointmentEndpoints(c),
+      // Class schedule, offers and policy for a studio (classes.ts)
+      ...publicClassEndpoints(c),
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
       liveCampaigns: () => c.get<{ items: campaignsApi.PublicCampaign[] }>("/v1/public/live-campaigns", { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
@@ -93,6 +100,8 @@ export function llApi(c: ApiClient) {
       ...publicSplitEndpoints(c),
     },
     me: {
+      // Pantry reminders the customer has asked for (grocery.ts): api.me.pantry(), api.me.setPantry(id, on)
+      ...myGroceryEndpoints(c),
       profile: () => c.get<customerApi.ProfileDto>("/v1/me"),
       updateProfile: (body: customerApi.UpdateProfileBody) => c.patch<customerApi.ProfileDto>("/v1/me", body),
       deleteAccount: () => c.delete<void>("/v1/me", { confirm: "DELETE" }),
@@ -129,6 +138,8 @@ export function llApi(c: ApiClient) {
       ...myBookingEndpoints(c),
       // Appointments: book, list, move, cancel (appointments.ts)
       ...myAppointmentEndpoints(c),
+      // Classes: book, waitlist, packs, memberships (classes.ts)
+      ...myClassEndpoints(c),
     },
     merchants: {
       mine: () => c.get<PageOf<merchantApi.MyMerchant>>("/v1/merchants"),
@@ -253,7 +264,7 @@ function counterEndpoints(c: ApiClient, b: string, headers?: Record<string, stri
       c.post<staffApi.AwardResponse>(`${b}/counter/award`, { ...body, idempotencyKey }, { idempotencyKey, ...h }),
     redeem: (body: Omit<staffApi.RedeemBody, "idempotencyKey">, idempotencyKey: string) =>
       c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redeem`, { ...body, idempotencyKey }, { idempotencyKey, ...h }),
-    verify: (code: string) => c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redemptions/verify`, { code }, h),
+    verify: (code: string, frontStoreOnly?: boolean) => c.post<staffApi.CounterRedemptionResponse>(`${b}/counter/redemptions/verify`, { code, ...(frontStoreOnly ? { frontStoreOnly } : {}) }, h),
     today: (locationId?: string) => c.get<staffApi.TodayResponse>(`${b}/counter/today`, { query: { locationId }, ...h }),
     activity: (q: Q = {}) => c.get<staffApi.ActivityResponse>(`${b}/counter/activity`, { query: q, ...h }),
     undo: (transactionId: string, reason = "Undo at counter") =>
@@ -269,14 +280,20 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...restaurantOpsEndpoints(c, b),
     // Restaurant pack ordering: menu settings, pre-orders, kitchen display, split bills (restaurantKitchen.ts)
     ...restaurantKitchenEndpoints(c, b),
+    // Pharmacy rules, owner confirmation and the order-ready text (pharmacy.ts)
+    ...pharmacyEndpoints(c, b),
     // Repair and drop-off operations: board summary, phone approval, photos, invoices, rebooking, drop-off settings (serviceOps.ts)
     ...serviceOpsEndpoints(c, b),
     // Appointment calendar, price list, staff hours, checkout (appointments.ts)
     ...appointmentEndpoints(c, b),
+    // Class schedule, roster, door check-in, offers and members (classes.ts)
+    ...classEndpoints(c, b),
     // Restaurant desk: Home, busy mode, phone lookup and balance reminders (restaurantDesk.ts)
     ...restaurantDeskEndpoints(c, b),
     // Restaurant customer pages, owner side: halal certification, private feedback actions (restaurantWeb.ts)
     ...restaurantWebEndpoints(c, b),
+    // Grocers and butchers: weekly flyer, weigh-in, Eid plan, pantry reminders (grocery.ts)
+    ...groceryEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),

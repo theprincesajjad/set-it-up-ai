@@ -22,6 +22,11 @@ describe("nav gating by vertical", () => {
   it("a pharmacy shows Discount cards", () => {
     expect(nav(PAID, "pharmacy")).toContain("discount-cards");
   });
+  it("only a pharmacy shows Pharmacy rules, and it gets the calendar for appointments", () => {
+    expect(nav(PAID, "pharmacy")).toContain("pharmacy");
+    expect(nav([...PAID, "booking.appointments"], "pharmacy")).toContain("calendar");
+    for (const v of ["cafe", "grocery", "retail", "salon"]) expect(nav(PAID, v), v).not.toContain("pharmacy");
+  });
   it("a repair shop shows tickets and no calendar", () => {
     const k = nav([...PAID, "booking.appointments"], "repair_electronics");
     expect(k).toContain("tickets");

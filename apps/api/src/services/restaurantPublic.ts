@@ -8,7 +8,7 @@ import { catalogItems, merchants, orderItems, orders } from "@ll/db";
 import { restaurantApi, restaurantWebApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { addDays } from "./bookings.js";
-import { isFeatureOn } from "./features.js";
+import { isAnyFeatureOn, isFeatureOn, PREORDER_FEATURES } from "./features.js";
 import { publicCertification } from "./halal.js";
 import { availability } from "./preorderPlanning.js";
 
@@ -36,7 +36,7 @@ export function weekendDates(today: string): string[] {
 export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Promise<restaurantWebApi.PublicRestaurantResponse> {
   const now = ctx.now();
   const pickup = await isFeatureOn(ctx.db, merchant, "orders.order_ahead");
-  const deghOn = pickup && (await isFeatureOn(ctx.db, merchant, "restaurant.degh_preorders"));
+  const deghOn = pickup && (await isAnyFeatureOn(ctx.db, merchant, PREORDER_FEATURES));
   const dietOn = await isFeatureOn(ctx.db, merchant, "restaurant.dietary_tags");
   const items = pickup ? await ctx.db.select().from(catalogItems).where(and(eq(catalogItems.merchantId, merchant.id), eq(catalogItems.available, true), eq(catalogItems.orderable, true))).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)) : [];
   const preorderItems = deghOn ? items.filter((i) => i.preorderOnly) : [];

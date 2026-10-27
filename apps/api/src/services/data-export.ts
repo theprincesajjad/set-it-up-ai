@@ -9,6 +9,10 @@
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import {
   appointments,
+  classBookings,
+  classCharges,
+  classMemberships,
+  classPasses,
   bookings,
   cateringEvents,
   commOptOuts,
@@ -65,6 +69,10 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
 
   const appts = await db.select().from(appointments).where(eq(appointments.userId, userId)).orderBy(asc(appointments.startsAt));
   const bks = await db.select().from(bookings).where(eq(bookings.userId, userId));
+  const classBks = await db.select().from(classBookings).where(eq(classBookings.userId, userId)).orderBy(asc(classBookings.createdAt));
+  const classPs = await db.select().from(classPasses).where(eq(classPasses.userId, userId)).orderBy(asc(classPasses.createdAt));
+  const classMs = await db.select().from(classMemberships).where(eq(classMemberships.userId, userId)).orderBy(asc(classMemberships.createdAt));
+  const classCs = await db.select().from(classCharges).where(eq(classCharges.userId, userId)).orderBy(asc(classCharges.createdAt));
   const nudges = await db.select().from(rebookingNudges).where(eq(rebookingNudges.userId, userId));
 
   const subs = await db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.userId, userId)).orderBy(asc(tiffinSubscriptions.createdAt));
@@ -103,6 +111,10 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
   return {
     orders: ords.map((o) => ({ ...clean(o), merchantName: shop.get(o.merchantId) ?? null, items: items.filter((i) => i.orderId === o.id).map(clean), splits: splits.filter((s) => s.orderId === o.id).map(clean) })),
     appointments: named(appts),
+    classBookings: named(classBks),
+    classPasses: named(classPs),
+    classMemberships: named(classMs),
+    classCharges: named(classCs),
     bookings: named(bks),
     rebookingNudges: named(nudges),
     tiffinSubscriptions: subs.map((s) => ({

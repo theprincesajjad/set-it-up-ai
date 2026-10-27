@@ -56,6 +56,8 @@ export interface OverviewReport {
   activeMembers30d: number;
   /** Outstanding points right now (not range-bound). */
   pointsLiability: PointsLiability;
+  /** "front_store" for a pharmacy: every number counts front-store sales only (prescriptions, services and appointments are never counted). */
+  scope: "all" | "front_store";
 }
 
 /**

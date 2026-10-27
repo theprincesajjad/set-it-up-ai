@@ -23,7 +23,7 @@ Last updated: [date] · Version [0.1-draft]
 - **We do not sell your personal information.** BIA and neighbourhood reports are aggregated and never identify you.
 - Marketing messages are opt-in, **separately for each shop**, and you can unsubscribe at any time.
 - We store our main database in **Canada** where practical. Some service providers, such as payments and SMS, may process data in the US.
-- We **never collect prescription or health records**. At pharmacies only front-store purchases count. If you tell a restaurant about an allergy, that note goes only to that restaurant.
+- We **never collect prescription or health records**. At pharmacies only front-store purchases count: prescriptions, vaccines, medication reviews and other pharmacy services never earn points or discounts, are never the subject of a message or an offer, and we keep nothing about them except that an appointment was booked. If you tell a restaurant about an allergy, that note goes only to that restaurant.
 - Features like orders, appointments, tiffin delivery, catering, WhatsApp and phone ordering collect more, only when you use them. Section 2 lists everything.
 
 ## 2. What we collect
@@ -46,7 +46,7 @@ We collect only what a feature needs. What you share depends on which shops and 
 | --- | --- | --- |
 | Orders: items, pickup time, notes, **allergy notes you add for the kitchen**, tip, totals, payment status | You and the shop | Fill your order |
 | **Menu data about food**, such as halal, zabihah, vegetarian, vegan, Jain, gluten-free, spice level and allergen tags | Set by each shop for its own menu items | Let you filter a menu. These are the shop's own statements about its food, not information about you |
-| **Appointments**: services, times, staff chosen, notes you add, deposit and no-show fee records, reminder history | You and the shop | Run your booking, send reminders, protect the shop from no-shows |
+| **Appointments**: services, times, staff chosen, notes you add, deposit and no-show fee records, reminder history. **At a pharmacy** (a flu shot, a vaccine, a medication review): only the day, time and length, the type of appointment the pharmacy named, and your first name and phone number for the reminder. No notes, no health card number, no reason for the visit, no payment | You and the shop | Run your booking, send reminders, protect the shop from no-shows |
 | Card on file for a no-show fee (held by Stripe; we keep only brand and last 4 digits) | You, through Stripe | Charge a fee you agreed to |
 | **Repair and service tickets**: item details (for example make, model, serial or plate), your description, **photos you or the shop upload of the item**, status updates | You and the shop | Run repairs and quotes |
 | Quotes, approvals and e-signatures: your typed name, the time, your IP address and device, the quote version | You | A record that you approved the work and the price |
@@ -75,7 +75,9 @@ We collect only what a feature needs. What you share depends on which shops and 
 | Device and usage data: app version, crash logs, IP address in security and audit logs | Your device | Security, fraud prevention, fixing bugs |
 | Messages with support | You | Help you |
 
-We do not collect government ID, prescription or other health records, precise location history or your contacts. Allergy and dietary notes are text you choose to give a shop so it can serve you safely; please do not enter other health information.
+We do not collect government ID, prescription or other health records, precise location history or your contacts.
+
+**Pharmacies.** A pharmacy keeps its health records in its own pharmacy system, under Ontario's health privacy law (*Personal Health Information Protection Act, 2004*), and none of that comes to us. In Local Loyalty a pharmacy shop is a front-store loyalty program only: Ontario's pharmacy rules do not allow points, discounts or gifts on prescriptions or pharmacy services, so we block them, and the pharmacy cannot attach notes or tags to you, send you messages about prescriptions, refills or medicines, or pay anyone to refer you. A pharmacy's "your order is ready" text is one fixed sentence that never says what the order is. Pharmacy shops are excluded from every data product we may license in the future. Their front-store visits count only in the neighbourhood totals that shops and Business Improvement Areas see, in groups of 10 or more people. Allergy and dietary notes are text you choose to give a shop so it can serve you safely; please do not enter other health information.
 
 **We do not sell personal information.** None of the above, including messages, transcripts, review text and photos, is sold, licensed to data buyers, or used to train AI models.
 
@@ -151,6 +153,7 @@ Some are located in, or may process data in, the **United States** or other coun
 - **Tiffin addresses and driver links:** a driver link stops working the same night and its record is deleted after {{retention.driverLinkDays}}. Your address, postal code and delivery and dietary notes are kept while your subscription is active and for {{retention.tiffinAddressMonths}} after it ends.
 - **Location:** we do not keep a location history.
 - **Appointments:** notes and the name typed at the desk are deleted {{retention.appointmentMonths}} after the visit. The booking and its payment record stay.
+- **Pharmacies:** a pharmacy appointment stops pointing at a person {{retention.pharmacyAppointmentDays}} after the visit: your name, phone number and the type of appointment are removed and only the time slot stays, as a count. A pharmacy's "your order is ready" and appointment reminder texts, and their copies in our delivery log and your inbox, are deleted {{retention.pharmacyMessageDays}} after they were sent.
 - **Unpaid holds:** a booking or hall hold that lapsed without payment is deleted {{retention.abandonedHoldDays}} later.
 - These deletions run automatically, several times a day.
 

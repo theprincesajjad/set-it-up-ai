@@ -11,7 +11,7 @@ const WEEKDAYS = restaurantApi.WEEKDAYS;
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
-import { requireFeature } from "./features.js";
+import { requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type CapFields = Pick<Merchant, "preorderDailyCap" | "preorderCapByWeekday" | "preorderOverrides" | "preorderPerHourCap">;
@@ -66,12 +66,12 @@ export function capFor(m: CapFields, dateKey: string): { cap: number | null; not
 }
 
 export async function getRules(ctx: AppContext, merchant: Merchant): Promise<restaurantApi.PreorderRulesResponse> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   return rulesDto(merchant);
 }
 
 export async function saveRules(ctx: AppContext, merchant: Merchant, body: z.infer<typeof restaurantApi.preorderRulesBody>): Promise<restaurantApi.PreorderRulesResponse> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   const patch: Partial<typeof merchants.$inferInsert> = {};
   if (body.preorderDailyCap !== undefined) patch.preorderDailyCap = body.preorderDailyCap;
   if (body.capByWeekday) {
@@ -247,7 +247,7 @@ export async function openHours(db: DbOrTx, merchantId: string, dateKey: string)
 }
 
 export async function availability(ctx: AppContext, merchant: Merchant, q: z.infer<typeof restaurantApi.preorderAvailabilityQuery>): Promise<restaurantApi.PreorderAvailabilityResponse> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   const [item] = await ctx.db.select().from(catalogItems).where(and(eq(catalogItems.id, q.itemId), eq(catalogItems.merchantId, merchant.id))).limit(1);
   if (!item || !item.available || !item.orderable) throw notFound("Dish");
   const now = ctx.now();

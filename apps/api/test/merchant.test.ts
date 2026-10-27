@@ -360,9 +360,10 @@ describe("loyalty program configuration", () => {
       payload: { title: "2x on Rx", kind: "multiplier", multiplierPct: 200, categoryId: rx.id, startsAt: "2026-11-01T00:00:00Z" },
     });
     expect(promo.statusCode).toBe(422);
-    // And prescriptions still earn nothing.
-    const r = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 5000, categoryId: rx.id }] });
-    expect(r.earn.basePoints).toBe(0);
+    // And prescriptions still earn nothing: a sale that is only a prescription is not recorded at all (apps/api/test/pharmacy.test.ts).
+    await expect(awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 5000, categoryId: rx.id }] })).rejects.toMatchObject({ code: "pharmacy_no_front_store" });
+    const mixed = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 5000, categoryId: rx.id }, { amountCents: 1000, categoryId: front.id }] });
+    expect(mixed.earn.basePoints).toBe(10);
   });
 
   it("Pricing v2: a free shop can't create or edit paid program features, but keeps, reads and deletes its data", async () => {

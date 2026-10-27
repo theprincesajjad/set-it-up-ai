@@ -13,7 +13,7 @@ import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import { normalizePhone } from "./channel-orders.js";
 import { notifyCustomer } from "./commerceShared.js";
-import { requireFeature } from "./features.js";
+import { requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import { orderCancelledHooks, balanceDueCents } from "./orders.js";
 import { addDaysKey, capFor, dateKeyIn, potRowsOnDay } from "./preorderPlanning.js";
 import { canSendTransactional, getSession, renderTemplateText, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
@@ -31,7 +31,7 @@ const nth = (n: number) => (n === 1 ? "first" : n === 2 ? "second" : n === 3 ? "
 // Join
 // ---------------------------------------------------------------------------
 export async function joinWaitlist(ctx: AppContext, merchant: Merchant, body: z.infer<typeof restaurantApi.waitlistBody>): Promise<restaurantApi.WaitlistResponse> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   const [item] = await ctx.db.select().from(catalogItems).where(and(eq(catalogItems.id, body.itemId), eq(catalogItems.merchantId, merchant.id))).limit(1);
   if (!item || !item.preorderOnly) throw notFound("Dish");
   const today = dateKeyIn(ctx.now(), merchant.timezone);
@@ -61,7 +61,7 @@ export async function joinWaitlist(ctx: AppContext, merchant: Merchant, body: z.
 
 /** Staff view of the wait list for a date range, oldest first. */
 export async function listWaitlist(ctx: AppContext, merchant: Merchant, from: string, to: string): Promise<restaurantApi.WaitlistEntryDto[]> {
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   const rows = await ctx.db
     .select({ w: preorderWaitlist, dish: catalogItems.name })
     .from(preorderWaitlist)

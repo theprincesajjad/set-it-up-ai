@@ -35,7 +35,7 @@ const hour12 = (hhmm: string) => {
  * the bill with the deposit and the cancel rule, then the phone number as the account and the deposit by card or Apple Pay.
  */
 export function PreorderView({ shop, menu, item, availability, restaurant, signedIn, userName, devAutofill }: { shop: Shop; menu: commerceApi.PublicMenuResponse; item: Item; availability: restaurantApi.PreorderAvailabilityResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; signedIn: boolean; userName: string; devAutofill?: boolean }) {
-  const { t, money, number, date, pick, locale } = useFmt();
+  const { t, money, moneyExact, number, date, pick, locale } = useFmt();
   const router = useRouter();
   const p = pick(item);
   const [ids, setIds] = useState<string[]>(() => defaultOptionIds(item));
@@ -198,7 +198,13 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
       {hero}
       <div className="flex flex-col gap-2 pt-2">
         <Heading className="break-words">{p.name}</Heading>
-        <p className="text-meta italic text-fg-muted">{[item.serves ? t("menu.serves", { n: number(item.serves) }) : null, t("rs.pre.meta")].filter(Boolean).join(" · ")}</p>
+        <p className="text-meta italic text-fg-muted">{[item.serves ? t("menu.serves", { n: number(item.serves) }) : null, item.weightUnit ? null : t("rs.pre.meta")].filter(Boolean).join(" · ")}</p>
+        {item.weightUnit && item.unitPriceCents ? (
+          <>
+            <p className="text-body-strong text-fg">{t("gr.butcher.estimate", { price: money(item.priceCents) })} · {t("gr.butcher.perUnit", { price: moneyExact(item.unitPriceCents), unit: item.weightUnit })}</p>
+            <p className="text-meta text-fg-muted">{t("gr.butcher.scaleNote")}</p>
+          </>
+        ) : null}
         {p.description ? <p className="text-body text-fg-muted">{p.description}</p> : null}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <DietaryPills dietary={item.dietary} />

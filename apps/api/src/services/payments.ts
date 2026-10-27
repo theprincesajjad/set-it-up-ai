@@ -24,6 +24,7 @@ import { onSplitPayment } from "./splits.js";
 import { onCateringDeposit } from "./catering.js";
 import { onHallDeposit } from "./banquet.js";
 import { onCardSaved as onAppointmentCardSaved, onDeposit as onAppointmentDeposit } from "./appointments-booking.js";
+import { onClassPayment, onClassSetup } from "./class-memberships.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -226,6 +227,12 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
       customerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
       errorCode: pi.last_payment_error?.code ?? null,
     });
+  else if (kind === "class")
+    await onClassPayment(ctx, id, String(pi.id), outcome, {
+      paymentMethodId: typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null),
+      customerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
+      errorCode: pi.last_payment_error?.code ?? null,
+    });
   else if (kind === "catering_deposit") await onCateringDeposit(ctx, id, String(pi.id), outcome);
   else if (kind === "hall_deposit") await onHallDeposit(ctx, id, String(pi.id), outcome);
   else if (kind === "appointment_deposit")
@@ -239,10 +246,11 @@ async function onPaymentIntent(ctx: AppContext, pi: Obj, outcome: "succeeded" | 
 async function onSetupIntent(ctx: AppContext, si: Obj) {
   const kind = si.metadata?.ll_kind as string | undefined;
   const id = si.metadata?.ll_id as string | undefined;
-  if ((kind !== "tiffin_setup" && kind !== "appointment_setup") || !id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+  if ((kind !== "tiffin_setup" && kind !== "appointment_setup" && kind !== "class_setup") || !id || !/^[0-9a-f-]{36}$/i.test(id)) return;
   const pm = typeof si.payment_method === "string" ? si.payment_method : si.payment_method?.id;
   if (!pm) return;
   if (kind === "appointment_setup") await onAppointmentCardSaved(ctx, id, String(si.id), String(pm));
+  else if (kind === "class_setup") await onClassSetup(ctx, id, String(si.id), String(pm));
   else await onTiffinSetup(ctx, id, String(si.id), String(pm));
 }
 

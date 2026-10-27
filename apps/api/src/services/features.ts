@@ -6,7 +6,7 @@ import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 import { rowsOf } from "../lib/sql.js";
 
 
-type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"] };
+type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"]; vertical?: string | null };
 
 /** Active add-on ids per merchant (merchant_add_ons.status = active). */
 export async function activeAddOns(db: DbOrTx, merchantIds: string[]): Promise<Map<string, string[]>> {
@@ -72,7 +72,7 @@ export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promi
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
     const stage = stageOf(inputs, key);
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, addOns: inputs.addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, vertical: merchant.vertical, addOns: inputs.addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -127,7 +127,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, addOns: inputs.addOns.get(m.id), stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, vertical: m.vertical, addOns: inputs.addOns.get(m.id), stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }
@@ -137,7 +137,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
 /** Same as enabledFeaturesFor, when only merchant ids are at hand. */
 export async function enabledFeaturesByMerchantId(db: DbOrTx, ids: string[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   if (!ids.length) return new Map();
-  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
+  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier, vertical: merchants.vertical }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
   return enabledFeaturesFor(db, rows, keys);
 }
 
@@ -197,4 +197,25 @@ export async function customerFeaturesFor(db: DbOrTx, list: Merchant[]): Promise
     out.set(m.id, Object.fromEntries(Object.entries(CUSTOMER_FEATURE_KEYS).map(([k, key]) => [k, set.has(key)])) as unknown as CustomerFeatures);
   }
   return out;
+}
+
+/**
+ * Pre-orders run on one engine: a restaurant's biryani pots (restaurant.degh_preorders) and a butcher counter's goats, cuts and
+ * qurbani (grocery.counter_preorders) share caps, Eid rules, deposits, pick-up hours and the wait list.
+ */
+export const PREORDER_FEATURES = ["restaurant.degh_preorders", "grocery.counter_preorders"] as const satisfies readonly FeatureKey[];
+/** The WhatsApp inbox (replies in the 24 hour window, pay links): restaurants and grocers. */
+export const WHATSAPP_INBOX_FEATURES = ["restaurant.whatsapp_notifications", "grocery.whatsapp_orders"] as const satisfies readonly FeatureKey[];
+
+/** Throws 402 feature_locked unless at least one of the features is on (the error names the first). */
+export async function requireAnyFeature(db: DbOrTx, merchant: Merchant, keys: readonly FeatureKey[]): Promise<void> {
+  const f = await getMerchantFeatures(db, merchant);
+  if (keys.some((k) => f[k].enabled)) return;
+  requireFeatureFrom(f, keys[0]!);
+}
+
+/** Never throws: is at least one of the features on? */
+export async function isAnyFeatureOn(db: DbOrTx, merchant: Merchant, keys: readonly FeatureKey[]): Promise<boolean> {
+  const on = (await enabledFeaturesFor(db, [merchant], keys)).get(merchant.id);
+  return !!on && on.size > 0;
 }

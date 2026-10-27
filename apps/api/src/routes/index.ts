@@ -33,6 +33,9 @@ import appointments from "./appointments/index.js";
 import restaurantWeb from "./restaurant-web/index.js";
 import support from "./support/index.js";
 import salesAgent from "./sales-agent/index.js";
+import pharmacy from "./pharmacy/index.js";
+import classes from "./classes/index.js";
+import grocery from "./grocery/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -69,4 +72,7 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await restaurantWeb(app, ctx);
   await support(app, ctx);
   await salesAgent(app, ctx);
+  await pharmacy(app, ctx);
+  await classes(app, ctx);
+  await grocery(app, ctx);
 }

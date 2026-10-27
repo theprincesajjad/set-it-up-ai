@@ -9,7 +9,7 @@ import { requireStaff, requireUser } from "../../lib/auth.js";
 import { forbidden } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { verifyHubSignature, verifyWebhookChallenge } from "../../providers/whatsapp.js";
-import { requireFeature } from "../../services/features.js";
+import { requireAnyFeature, WHATSAPP_INBOX_FEATURES } from "../../services/features.js";
 import * as svc from "../../services/whatsapp.js";
 import * as inbox from "../../services/whatsappInbox.js";
 import { rejectMalformedIds } from "../merchant/params.js";
@@ -44,13 +44,13 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   // ---- Shop settings ----
   app.get("/merchants/:merchantId/whatsapp/settings", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return svc.getSettings(ctx, s.merchant);
   });
 
   app.put("/merchants/:merchantId/whatsapp/settings", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return svc.saveSettings(ctx, s.merchant, s.user.id, parse(whatsappApi.whatsappSettingsBody, req.body));
   });
 
@@ -62,52 +62,52 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
 
   app.get("/merchants/:merchantId/whatsapp/sessions", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return { items: await inbox.listInbox(ctx, s.merchant.id) };
   });
 
   // ---- Inbox: one chat, a reply from a person, take over from the assistant, the guest panel ----
   app.get("/merchants/:merchantId/whatsapp/sessions/:sessionId/messages", async (req: Req<{ sessionId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return inbox.messagesFor(ctx, s.merchant, req.params.sessionId);
   });
 
   app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/messages", async (req: Req<{ sessionId: string }>, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     const body = parse(restaurantApi.sendChatMessageBody, req.body);
     return reply.status(201).send(await inbox.sendFromStaff(ctx, s, req.params.sessionId, body.text));
   });
 
   app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/takeover", async (req: Req<{ sessionId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return inbox.takeOver(ctx, s, req.params.sessionId);
   });
 
   app.post("/merchants/:merchantId/whatsapp/sessions/:sessionId/release", async (req: Req<{ sessionId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return inbox.release(ctx, s, req.params.sessionId);
   });
 
   app.get("/merchants/:merchantId/whatsapp/sessions/:sessionId/guest", async (req: Req<{ sessionId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return inbox.guestPanel(ctx, s.merchant, req.params.sessionId);
   });
 
   // ---- Consent ----
   app.post("/merchants/:merchantId/whatsapp/opt-ins", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     return svc.recordOptIn(ctx, s.merchant, s.user.id, parse(whatsappApi.optInBody, req.body));
   });
 
   app.post("/merchants/:merchantId/whatsapp/opt-outs", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    await requireFeature(ctx.db, s.merchant, "restaurant.whatsapp_notifications");
+    await requireAnyFeature(ctx.db, s.merchant, WHATSAPP_INBOX_FEATURES);
     const body = parse(whatsappApi.optInBody.pick({ phone: true }).required(), req.body);
     return svc.recordOptOut(ctx, s.merchant, body.phone, "merchant", s.user.id);
   });

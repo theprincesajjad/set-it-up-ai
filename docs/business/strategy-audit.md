@@ -46,7 +46,7 @@ Nothing in `model.py` or its existing outputs was changed. All 32 existing CSVs 
 | Stripe Canada online card rate | 2.9% + $0.30 | (V) PRD via Xero |
 | Ontario minimum wage | $17.95/hr from Oct 1, 2026 | (V) PRD |
 | SMS cost | $0.022/segment incl. carrier fees | (V) Twilio rate, plus an estimate for carrier fees |
-| No points on prescriptions | OCP policy, O. Reg. 681/93 | (V) |
+| No points on prescriptions | OCP policy; O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6 (O. Reg. 681/93 was revoked in 2017) | (V) |
 | Plus $39 / Pro $79, 0.75% platform fee | plans.ts | Decided (not market-tested) |
 | 400 shops by month 3 (31 of 35 storefronts per area) | | (A) The finance team already calls this "not realistic as planned" |
 | 60% activation (25+ active members) | | (A) PRD target, built for **in-person** setup |

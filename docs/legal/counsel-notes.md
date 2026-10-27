@@ -33,7 +33,7 @@ Notes that used to sit inside the public pages in this folder. The pages are ren
 - **2.3, 10.2, bracketed numbers.** The groups of 10 for aggregate statistics, the 14 days' notice before suspension and the 30-day reimbursement were bracketed proposals; they are now printed without brackets. Confirm them.
 - **8 caps.** Check the limitation-of-liability caps.
 - **12 General.** Assignment; force majeure; a French-language version of the Merchant Agreement for Quebec merchants (not translated yet).
-- **Schedule C.** Pharmacy addendum: the page states the three obligations; draft the full addendum.
+- **Schedule C.** Pharmacy addendum: drafted in full (seven points, Oct 26, 2026) and confirmed in the product on the Pharmacy rules page. Counsel to review: (a) that a fixed order-ready text is not personal health information under PHIPA; (b) whether the in-product confirmation can replace a signed addendum; (c) the 30-day removal period for pharmacy appointment details; (d) whether a front-store seniors discount card handed out at the dispensary counter is read as an inducement; (e) the pharmacy advertising rule on testimonials (O. Reg. 264/16 s. 29(1)(d)) as it applies to the public Google review link we do not offer pharmacies.
 - **Delivery.** Merchants accept this as a click-through at setup, or the rep collects a signature on the tablet. The plain-language summary leads on purpose: a merchant should be able to read it in two minutes.
 
 ## Customer Terms of Service
@@ -59,6 +59,17 @@ These terms are written to avoid the problems that led to complaints and a class
 - A Quebec Law 25 annex (privacy impact assessments for transfers outside Quebec, privacy-by-default settings, a confidentiality incident register). The French version now exists (below).
 - A cookie and tracking notice for the website.
 - Uploaded photos (repair tickets) are no longer served from permanent links. Each time a photo is shown the API signs a link (HMAC, expires after 15 minutes, `UPLOAD_LINK_MINUTES` in `packages/shared/src/retention.ts`); the database keeps only the storage path. The policy says so in section 4. A hosted object store plugs in by implementing `signedUrl` on the storage provider (a presigned GET). The shopper's own data download contains photo links valid for one hour. Photos were the only uploads: menu and catering images are links the shop pastes, not uploads.
+
+## Class studios and memberships (booking.classes, memberships.recurring): counsel checklist
+
+Built in `apps/api/src/services/class-memberships.ts`; rules and sources in `docs/research/fitness-studios.md` section 2. Not yet read by a lawyer. All of this is unverified against the statute text: we could not open e-Laws in the build session and worked from the Ontario government page (dated Aug 12, 2021) and legal-information summaries.
+
+- **Ontario Consumer Protection Act, 2002, "personal development services" agreements** (gyms, studios, martial arts, dance; $50 or more in advance). What the product does: stores the agreement text and acceptance time as the written copy; 10-day cooling-off with a full refund; no term or pack validity over a year; fixed terms get a renewal notice 30 to 90 days before the end and only renew after one; no initiation fee exists. Questions: (1) does a month-to-month membership need a renewal notice every month, or is cancel-any-time enough; (2) cancellation rights for relocation, disability and death (we only offer cooling-off, end of month, and a studio decision to end now and refund the last payment); (3) the refund deadline (15 or 30 days; we refund at once through Stripe); (4) whether a class pack is an agreement under the Act; (5) the Consumer Protection Act, 2023 (Royal Assent Dec 6, 2023, not proclaimed in the sources we found) and its regulations.
+- **Agreement wording** is English only and generated from the offer (`buildAgreement`). Counsel should approve the template before launch, then translate (hi, ur, pa, fr).
+- **HST**: tax is added only when the studio says it is registered; late-cancel and no-show fees carry no tax in our model; no children's recreation exemption is modelled.
+- **Women-only classes**: a studio's own rule, stated on the class and the booking sheet; we do not collect or verify gender or religion. Confirm the Human Rights Code footing (special programs, s. 14) and the wording a studio should use.
+- **Late-cancel and no-show fees** are charged to a saved card off-session; confirm the disclosure (it is on the booking sheet and in the agreement) is enough under the Act and card-network rules.
+- **Account deletion** removes the member's name from the stored agreement and ends the membership; money records stay with amounts only (same approach as the other modules).
 
 ## French versions (Quebec, Law 25): Traduction — à faire réviser
 

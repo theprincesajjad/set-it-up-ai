@@ -33,6 +33,7 @@ import {
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { ensureLockedCategories } from "./pharmacy-guard.js";
 import { getMerchantFeatures, getRolloutStages } from "./features.js";
 import { writeAudit } from "./admin-audit.js";
 import { getOnboardingChecklist, recordMilestone, userLocale, visitedMembers } from "./onboarding.js";
@@ -246,6 +247,8 @@ export async function applyVerticalTemplate(tx: Tx, merchantId: string, vertical
     const [row] = await tx.insert(merchantCategories).values({ merchantId, ...c }).returning({ id: merchantCategories.id });
     categoryIds.push(row!.id);
   }
+  // A pharmacy always has its dispensary categories, locked (and any look-alike name is locked too).
+  if (vertical === "pharmacy") await ensureLockedCategories(tx, merchantId);
 
   let rewardIds: string[] = [];
   const [hasReward] = await tx.select({ id: rewards.id }).from(rewards).where(eq(rewards.merchantId, merchantId)).limit(1);

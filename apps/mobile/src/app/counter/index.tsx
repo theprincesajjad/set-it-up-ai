@@ -164,7 +164,7 @@ export default function Counter() {
       setCodeBusy(true);
       setCodeError(null);
       try {
-        const res = await api.counter.verifyRedemption(merchantId, value);
+        const res = await api.counter.verifyRedemption(merchantId, value, vertical === "pharmacy" ? true : undefined);
         setCodeOpen(false);
         setCode("");
         showRedeemSuccess(res);
@@ -237,6 +237,8 @@ export default function Counter() {
     const body = {
       ...awardRef(cust),
       ...(categoryId ? { lines: [{ amountCents: amount, categoryId }] } : amountCents !== undefined ? { amountCents } : {}),
+      // Pharmacy: the "Front store" chip is the cashier's confirmation that the total has no prescriptions or pharmacy services.
+      ...(vertical === "pharmacy" && !categoryId ? { frontStoreOnly: true } : {}),
       ...(config.locationId ? { locationId: config.locationId } : {}),
       ...(cust.kind === "new" && newName.trim() ? { customerName: newName.trim() } : {}),
       ...qty,
@@ -371,7 +373,8 @@ export default function Counter() {
     setRedeemBusy(true);
     setRedeemError(null);
     try {
-      const res = await api.counter.redeem(merchantId, { memberId: redeemMember.memberId, rewardId, locationId: config.locationId ?? undefined, idempotencyKey: newIdempotencyKey() });
+      // Pharmacy: a reward goes on front-store items only (the server asks for this confirmation).
+      const res = await api.counter.redeem(merchantId, { memberId: redeemMember.memberId, rewardId, locationId: config.locationId ?? undefined, ...(vertical === "pharmacy" ? { frontStoreOnly: true } : {}), idempotencyKey: newIdempotencyKey() });
       setRedeemOpen(false);
       showRedeemSuccess(res);
     } catch (e) {
@@ -592,7 +595,7 @@ export default function Counter() {
           ) : null}
           {state.error ? <View style={{ marginTop: 12 }}><Banner variant="danger">{state.error}</Banner></View> : null}
           <View style={styles.bottom}>
-            <AwardButton label={mainLabel} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId)} onPress={() => award(q)} />
+            <AwardButton label={mainLabel} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId) || (vertical === "pharmacy" && !!categoryId)} onPress={() => award(q)} />
             <View style={styles.row}>
               {member ? (
                 <CounterSecondary

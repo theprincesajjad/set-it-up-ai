@@ -26,6 +26,10 @@ export const RETENTION = {
   abandonedHoldDays: 7,
   /** Sales assistant chats (web and WhatsApp): messages, tool calls and the contact's number, after the last message. */
   salesAgentDays: 90,
+  /** Pharmacy appointments: the name, phone and appointment type are removed this long after the appointment (the booking is kept as a count only). */
+  pharmacyAppointmentDays: 30,
+  /** Pharmacy order-ready and reminder texts (our delivery log and the customer's inbox copy). */
+  pharmacyMessageDays: 30,
   /** After a shop closes or falls back to Free it can still download its members and visits CSV for this long, free (merchant agreement 2.1). */
   leaverExportDays: 90,
 } as const;

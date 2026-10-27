@@ -87,7 +87,7 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 4.1 Give accurate business information. Keep staff logins secure, one login per staff member. Award points only for genuine purchases or visits.
 
 4.2 **Restricted categories:**
-- **Pharmacies.** Prescriptions, dispensing fees and pharmacy services are configured as no-earn and no-redeem, as required by Ontario pharmacy rules, and you must not override this. The pharmacist or owner confirms the setup in Schedule C.
+- **Pharmacies.** Prescriptions, dispensing fees and pharmacy services are configured as no-earn and no-redeem, as required by Ontario pharmacy rules, and you must not override this. The pharmacist-owner confirms the setup in Schedule C, on the Pharmacy rules page in the dashboard. The product enforces Schedule C on the server: you cannot turn the locks off, and a sale, reward, message or appointment that breaks them is refused.
 - **Alcohol.** Alcohol is no-earn by default at licensed venues. Alcohol promotions must comply with AGCO rules, and no supplier may fund your placements.
 - We do not onboard cannabis, tobacco or vape retailers.
 
@@ -159,4 +159,12 @@ Network perks are run by the network for every shop whatever its plan.
 
 **Schedule B — Data Processing Schedule.** Where we process personal information on your behalf, we do so only to provide the Service and on your instructions, as described in section 2.
 
-**Schedule C — Pharmacy addendum.** No-earn and no-redeem on Rx and pharmacy services; pharmacist-owner confirmation; no health information entered into Local Loyalty.
+**Schedule C — Pharmacy addendum.** Applies to every shop set up as a pharmacy.
+
+1. **No benefit on prescriptions or pharmacy services.** Prescriptions, dispensing fees, compounding and pharmacy services (including vaccines and medication reviews) never earn points, are never discounted and cannot be paid for with points or rewards. Ontario's pharmacy rules do not allow a loyalty benefit, rebate, credit or gift in relation to the sale of a drug or a pharmacy service (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6, and the Ontario College of Pharmacists' loyalty points policy).
+2. **Front store only.** Points are earned only on front-store dollars. Your cashier confirms, at every sale, that the total has no prescriptions or pharmacy services. Points for a visit or a stamp, referral rewards, and points carried over from another program are not available to pharmacies.
+3. **What you may say.** Offers, rewards, messages and discount-card terms are about the front store. You may state that an offer is not valid on prescriptions or pharmacy services. You will not mention prescriptions, refills, vaccines, medications or a health condition in an offer or message, and you will not make health claims about products that the product's licence and your evidence do not support.
+4. **No health information in Local Loyalty.** You will not enter prescription, medication, condition, health card or other health information into Local Loyalty, including in notes, tags, appointment types or point-adjustment reasons. Health records stay in your pharmacy system, under the *Personal Health Information Protection Act, 2004*.
+5. **Appointments.** Booking a vaccine or medication review through Local Loyalty records only that a booking exists: the time, the length, the type of appointment you named, and the customer's first name and phone number for the reminder. Those details are removed 30 days after the appointment.
+6. **Order-ready texts.** The "order is ready" text is a fixed sentence that does not name the order. Send it only to a customer who asked for it.
+7. **Confirmation.** The pharmacist-owner or designated manager confirms this addendum on the Pharmacy rules page, with their full name. The date and name are kept. You will tell us if the pharmacy's ownership or designated manager changes.

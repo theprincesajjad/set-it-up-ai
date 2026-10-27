@@ -57,6 +57,7 @@ Demo logins (seed):
 | Counter staff | `staff+pinecone-coffee@example.com` / `localloyalty-demo`, PIN `1234` |
 | Restaurant pack (Ridgeway Plaza, Mississauga) | `owner+<slug>@example.com` / `localloyalty-demo` for `nawab-biryani-house` (Pro), `lahori-karahi-and-bbq`, `shree-thali-and-tiffin`, `zeenat-catering` (Growth), `sarson-dhaba`, `meethi-mithai-and-chai`, `padma-bangladeshi-kitchen`, `jaffna-kottu-house`, `kabul-garden-grill` (Starter), `rangrez-beauty-studio` (salon, network only) |
 | Restaurant staff | `staff+nawab-biryani-house-tandoor@example.com` (Punjabi, tandoor station), `staff+nawab-biryani-house-manager@example.com` (Urdu), also `-curry`, `-rice`; `staff+sarson-dhaba-counter@example.com`, `staff+shree-thali-and-tiffin-kitchen@example.com`, `staff+zeenat-catering-manager@example.com`, `staff+lahori-karahi-and-bbq-manager@example.com`. All `localloyalty-demo`, PIN `1234` |
+| Grocer and halal butcher (Ridgeway Plaza) | `owner+annapurna-grocers-and-spices@example.com` (grocer: flyer, pantry reminders, WhatsApp), `owner+al-noor-halal-meats@example.com` (halal butcher: pre-orders, weigh-in, Eid plan) / `localloyalty-demo`; counter `staff+annapurna-grocers-and-spices-counter@example.com` (Punjabi), `staff+al-noor-halal-meats-counter@example.com` (Urdu), PIN `1234` |
 | Customer | any seeded phone (e.g. `+16475551000`) — the code is printed by the API and auto-filled in dev |
 
 To run against a real Postgres, set `DATABASE_URL=postgres://…` and run

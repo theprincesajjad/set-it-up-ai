@@ -375,6 +375,7 @@ export function commerceType(dataType: unknown): NotificationType | null {
     case "hall_update":
       return "hall_update";
     case "booking_reminder":
+    case "class_reminder":
       return "booking_reminder";
     default:
       return null;

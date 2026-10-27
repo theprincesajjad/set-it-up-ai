@@ -42,7 +42,10 @@ import { seedServiceOps } from "./serviceOps.js";
 import { seedRepAdmin } from "./repAdmin.js";
 import { backfillMilestones } from "../services/onboarding.js";
 import { seedAppointmentSalons } from "./appointments.js";
+import { seedClassStudios } from "./classes.js";
+import { seedPharmacyDemo } from "./pharmacy.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
+import { GROCER_SHOPS, seedGrocers } from "./grocers.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
 
 const DAY = 86400000;
@@ -126,6 +129,7 @@ function credentialsList(): SeedResult["credentials"] {
     { role: "bia", email: DEMO_CREDENTIALS.bia.email, password: DEMO_CREDENTIALS.bia.password, merchant: "Roncesvalles Village BIA" },
     ...MERCHANTS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: m.name })),
     ...RESTAURANT_SHOPS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: `${m.name} (${m.tier ? `restaurant ${m.tier}` : "network shop"})` })),
+    ...GROCER_SHOPS.map((m) => ({ role: "owner", email: DEMO_CREDENTIALS.ownerEmail(m.slug), password: DEMO_CREDENTIALS.ownerPassword, merchant: `${m.name} (grocer, Plus)` })),
   ];
 }
 
@@ -143,7 +147,10 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     const skipClock = { now: new Date() };
     await seedCoreModules(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { seed: opts.seed, log });
     await seedRestaurantCorridor(db, { config: opts.config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
+    await seedGrocers(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
     await seedAppointmentSalons(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+    await seedClassStudios(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+    await seedPharmacyDemo(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedServiceOps(db, { log });
     await seedBiaDemo(db, { log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
@@ -422,10 +429,15 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
 
   // ---- Ridgeway Plaza restaurant corridor (restaurant pack demo) ----
   const corridor = await seedRestaurantCorridor(db, { config, ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
+  // ---- Grocers and halal butcher in the same corridor (docs/research/grocers.md) ----
+  clock.now = new Date();
+  await seedGrocers(db, ctx, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, staffPin: DEMO_CREDENTIALS.staffPin, log });
 
   // ---- Appointment salons: Bloom Hair Studio (Roncesvalles) and Rangrez Beauty Studio (Ridgeway Plaza) ----
   clock.now = new Date();
   await seedAppointmentSalons(db, ctx, clock, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+  await seedClassStudios(db, ctx, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
+  await seedPharmacyDemo(db, ctx, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
   await seedServiceOps(db, { log });
   await seedBiaDemo(db, { log });
   await seedRepAdmin(db, { repId: rep.id, log });

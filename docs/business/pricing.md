@@ -31,6 +31,7 @@ The invariant still holds: a free-forever feature can never be gated. Admins can
 - **Reports:** advanced reports (retention cohorts, network overlap, promo results).
 - **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
 - **Appointments:** the staff-column calendar, services and prices, staff hours and time off, online booking with a deposit or a card on file, walk-ins, reminders and no-show protection, and checkout with a tip for the stylist (`booking.appointments`). Founder default until told otherwise: salons, barbers, threading, henna and bridal artists buy Café & Retail at $39, with no per-chair charge.
+- **Classes and memberships** (`booking.classes`, `memberships.recurring`): class schedule with capacity and a waitlist that fills itself, drop-ins, class packs and intro offers, recurring memberships billed to the card on file with freezes, renewal notices and the Ontario 10-day cooling-off refund, late-cancel fees, and door check-in with the member card. Founder decision (keep today's plan structure): yoga, pilates, boxing, dance, bhangra, women-only and small-gym studios buy Café & Retail at $39, with no per-room or per-member charge and no add-on. Online class money carries the 1% fee below; money taken by hand at the desk carries none. See `docs/research/fitness-studios.md` section 4.
 
 ## Service: $99/mo ($990/yr), 1,500 SMS/mo included
 
@@ -82,6 +83,7 @@ Card processing (Stripe's standard rate) is passed through at cost on every paym
 | Deposits (catering, banquet, quotes) and invoices | 1% |
 | Online appointment deposits and no-show fees | 1% |
 | Appointment checkout taken through the calendar (counter or pay link) | 0% (card processing at cost) |
+| Class bookings, packs and intro offers paid online, membership billing, and late-cancel or no-show fees on a saved card (`FEES.classBps`, kind `class`) | 1% |
 | Tiffin subscription billing | 1% |
 | Payments you record by hand (Interac e-transfer, cash, cheque) | 0% |
 
@@ -104,7 +106,7 @@ Note: every payment path now uses `computeFees()`. Café & Retail and Service sh
 
 Every paid feature ships **hidden**. An admin moves it hidden → beta → GA once the network gate is met: `unlockAtMerchants` is 100 active merchants for Plus features and 40 for Pro features. Until then:
 
-- **Pilot shops** get paid features through admin per-merchant overrides (Admin → Rollout → Overrides). The demo seed does this for Pinecone Coffee, Hearth & Crumb and Village Apothecary.
+- **Pilot shops** get paid features through admin per-merchant overrides (Admin → Rollout → Overrides). The demo seed does this for Pinecone Coffee, Hearth & Crumb and Village Apothecary, and for the class studios Sakina Studio and Rise Yoga Studio.
 - **Existing data stays** when a shop doesn't have a feature: promos, VIP levels, discount cards, webhooks and POS connections are kept but stop applying. Customers don't see that shop's promos or discount cards. VIP multipliers and promo boosts don't apply to earn. POS events are logged as "paused" and webhooks stop sending. Merchants can still read and delete their data.
 
 ## Why

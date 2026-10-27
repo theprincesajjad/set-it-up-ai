@@ -17,7 +17,7 @@ import { addDays, zonedToUtc } from "./bookings.js";
 import { iso } from "./commerceShared.js";
 import { findOrCreateUserByPhone } from "./channel-orders.js";
 import { nextNumber } from "./counters.js";
-import { isFeatureOn, requireFeature } from "./features.js";
+import { isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import * as ordersSvc from "./orders.js";
 import { assertPreorderCapacity, buildPlan, capFor, localMidnightUtc, overrideLeadHours, rulesDto, waitlistCounts, type PlanInputLine } from "./preorderPlanning.js";
 import { computeTax, merchantProvince } from "./tax.js";
@@ -296,7 +296,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
   const isPreorder = body.kind === "preorder";
   let pickupAt: Date | null = null;
   if (isPreorder) {
-    await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+    await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
     if (!body.pickupAt) throw badRequest("Choose a pickup time for the pre-order");
     pickupAt = new Date(body.pickupAt);
   } else if (body.pickupAt) pickupAt = new Date(body.pickupAt);
@@ -317,7 +317,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
   }
   const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
   const cashDiscount = body.tender === "cash" && !isPreorder ? await ordersSvc.cashDiscountFor(ctx.db, merchant, subtotal) : 0;
-  const tax = computeTax(subtotal - cashDiscount, await merchantProvince(ctx.db, merchant));
+  const tax = computeTax(ordersSvc.taxableBaseCents(lines, cashDiscount), await merchantProvince(ctx.db, merchant));
   const total = subtotal - cashDiscount + tax.taxCents + body.tipCents;
   depositCents = Math.min(depositCents, total);
 
@@ -370,7 +370,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
       })
       .returning();
     await tx.insert(orderItems).values(
-      lines.map((l) => ({ orderId: o!.id, catalogItemId: l.catalogItemId, name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents, modifiers: l.modifiers, categoryId: l.categoryId, station: l.station })),
+      lines.map((l) => ({ orderId: o!.id, catalogItemId: l.catalogItemId, name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents, modifiers: l.modifiers, categoryId: l.categoryId, station: l.station, weightUnit: l.weightUnit, perUnitCents: l.perUnitCents, taxable: l.taxable })),
     );
     return o!;
   });
@@ -385,7 +385,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
 // ---------------------------------------------------------------------------
 export async function listPreorders(ctx: AppContext, staff: StaffContext, q: z.infer<typeof restaurantApi.preordersQuery>): Promise<restaurantApi.PreordersResponse> {
   const merchant = staff.merchant;
-  await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+  await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
   const tz = merchant.timezone;
   const today = ordersSvc.localDateKey(ctx.now(), tz);
   const from = q.from ?? today;

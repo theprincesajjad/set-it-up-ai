@@ -817,3 +817,29 @@ Added by the `tail` pass. The tab names on the demo restaurants' public menus (`
 | Mithai | मिठाई | مٹھائی | ਮਿਠਾਈ |
 | Festival boxes | त्योहार बॉक्स | تہوار باکس | ਤਿਉਹਾਰ ਡੱਬੇ |
 | Catering packages | कैटरिंग पैकेज | کیٹرنگ پیکجز | ਕੈਟਰਿੰਗ ਪੈਕੇਜ |
+
+### `rx.*` pharmacy order-ready text, reminders and booking privacy line (6)
+
+Added Oct 26, 2026 with the pharmacy vertical (`docs/research/pharmacies-wellness.md`). Read by seniors, so plain words. Not yet read by a native speaker.
+
+- `rx.pickup.ready`: "{shop}: your order is ready for pickup." The one fixed order-ready text. It must never say what the order is; do not add a word for "medicine" or "prescription".
+- `rx.pickup.title`: "{shop}: order ready" (push title and inbox title).
+- `rx.appt.word`: "appointment". Used in place of the service name in reminders, so a lock screen never says "flu shot". Use the common spoken loanword (अपॉइंटमेंट, اپائنٹمنٹ, ਅਪਾਇੰਟਮੈਂਟ), not a formal medical term.
+- `rx.book.privacyTitle`, `rx.book.privacyBody`: "No notes, no health details" and "We only record that you booked. Bring your health card to the pharmacy." Shown in place of the notes field at a pharmacy.
+- `rx.book.noCharge`: "No charge here". Shown instead of a price on a pharmacy appointment type.
+
+### `gr.*` grocer and butcher texts, flyer and pantry reminders (20)
+
+Added Oct 27, 2026 with the grocer vertical (`docs/research/grocers.md`). Not yet read by a native speaker.
+
+- `gr.msg.restock`, `gr.msg.restockTitle`: the consent-based "your {item} may be running out" text, always with the STOP line. Keep it a question, never a promise that stock is low.
+- `gr.msg.weighed`: the text after the butcher weighs an order: weight, final total, balance due at pick-up.
+- `gr.flyer.*`: the weekly flyer on the shop page. "Member" is the price for card holders; "per 100 g" is the unit price line (Ontario shoppers compare by it).
+- `gr.butcher.*`: the butcher counter on the shop page. `scaleNote` says the final price is set on the scale at pick-up. Use the shop-floor words (तराज़ू, ترازو, ਤੱਕੜੀ), not formal ones.
+- `gr.pantry.*`: "your pantry" on the shopper's pass: the list of bulk items with a reminder switch. Keep "STOP" in Latin letters.
+
+| English | Hindi | Urdu | Punjabi |
+| --- | --- | --- | --- |
+| Butcher counter | मीट काउंटर | میٹ کاؤنٹر | ਮੀਟ ਕਾਊਂਟਰ |
+| Weekly deals | इस हफ़्ते की डील | اس ہفتے کی ڈیلز | ਇਸ ਹਫ਼ਤੇ ਦੀਆਂ ਡੀਲਾਂ |
+| Pantry | रसोई का स्टॉक | کچن کا اسٹاک | ਰਸੋਈ ਦਾ ਸਟਾਕ |

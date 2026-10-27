@@ -139,9 +139,15 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     stampGoal: 0,
     terminology: "points",
     welcomeBonus: 50,
-    rewards: [{ name: "$5 off", pointsCost: 500, rewardType: "amount_off", value: 500 }],
+    // 1 point per $1 and $5 off at 1,000 points is 0.5% back. Independent grocers net about 2%, so 1% back (the old 500-point
+    // reward) would be half the profit. Fixed dollars only: a percent-off reward on a mixed basket costs more than planned.
+    rewards: [
+      { name: "$5 off", pointsCost: 1000, rewardType: "amount_off", value: 500 },
+      { name: "$10 off", pointsCost: 2000, rewardType: "amount_off", value: 1000 },
+    ],
     categories: [
       { name: "Groceries", earnEligible: true, discountEligible: true },
+      { name: "Butcher counter", earnEligible: true, discountEligible: true },
       { name: "Tobacco, vapes & lottery", earnEligible: false, discountEligible: false },
       { name: "Alcohol", earnEligible: false, discountEligible: false },
       { name: "Gift & prepaid cards", earnEligible: false, discountEligible: false },
@@ -159,11 +165,12 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     welcomeBonus: 50,
     rewards: [{ name: "$5 off front store", pointsCost: 500, rewardType: "amount_off", value: 500 }],
     // Ontario: no points or inducements on prescriptions or pharmacy services
-    // (OCP policy, O. Reg. 681/93). Enforced as a no-earn, no-discount category.
+    // (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6; OCP loyalty points policy). Enforced as a locked no-earn, no-discount category.
     categories: [
       { name: "Front store", earnEligible: true, discountEligible: true },
       { name: "Prescriptions", earnEligible: false, discountEligible: false },
       { name: "Pharmacy services", earnEligible: false, discountEligible: false },
+      { name: "Dispensing fees and compounding", earnEligible: false, discountEligible: false },
     ],
     discountCard: { name: "Seniors 10% off", percentOff: 10, terms: "Front-store items only. Not valid on prescriptions or pharmacy services." },
     upsellPlan: "plus",

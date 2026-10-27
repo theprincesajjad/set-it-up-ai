@@ -31,6 +31,7 @@ import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { enabledFeaturesFor } from "./features.js";
+import { assertPharmacyText, isPharmacy, nothingFrontStore, pharmacyAwardPlan } from "./pharmacy-guard.js";
 import { recordVisitMilestones } from "./onboarding.js";
 import { enqueueOutbox, kickOutbox, registerOutboxHandler } from "./outbox.js";
 
@@ -529,6 +530,8 @@ export interface AwardArgs {
   consent?: ConsentInput | null;
   /** Visit/stamp programs: items in this visit (e.g. 2 coffees = 2 stamps), 1-10, default 1. Ignored for per_dollar. */
   quantity?: number;
+  /** Pharmacies: the cashier confirmed the whole sale is front store (no prescriptions or pharmacy services). */
+  frontStoreOnly?: boolean;
 }
 
 export interface AwardResult {
@@ -622,11 +625,14 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       }
     }
 
-    const lines: PurchaseLine[] = args.lines?.length ? args.lines : [{ amountCents: Math.max(0, args.amountCents ?? 0) }];
-    const amountCents = lines.reduce((s, l) => s + Math.max(0, l.amountCents), 0);
+    const rawLines: PurchaseLine[] = args.lines?.length ? args.lines : [{ amountCents: Math.max(0, args.amountCents ?? 0) }];
+    // Pharmacies: per-dollar only, a front-store confirmation for amount-only sales, uncategorised lines earn nothing (services/pharmacy.ts).
+    const rx = isPharmacy(merchant) ? pharmacyAwardPlan(program, args, rawLines) : null;
+    const lines: PurchaseLine[] = rx?.lines ?? rawLines;
+    let amountCents = lines.reduce((s, l) => s + Math.max(0, l.amountCents), 0);
     // Only lines tagged with a category can fall in a no-earn one; an amount-only stamp needs no category read.
-    const cats = lines.some((l) => l.categoryId) ? await tx.select({ id: merchantCategories.id, earn: merchantCategories.earnEligible }).from(merchantCategories).where(eq(merchantCategories.merchantId, merchant.id)) : [];
-    const noEarn = cats.filter((c) => !c.earn).map((c) => c.id);
+    const cats = lines.some((l) => l.categoryId) ? await tx.select({ id: merchantCategories.id, earn: merchantCategories.earnEligible, dispensary: merchantCategories.dispensary }).from(merchantCategories).where(eq(merchantCategories.merchantId, merchant.id)) : [];
+    const noEarn = [...cats.filter((c) => !c.earn || c.dispensary).map((c) => c.id), ...(rx?.extraNoEarn ?? [])];
     const boosts = await activeBoosts(tx, merchant, now);
     let vipMultiplier = 1;
     // VIP multipliers are a paid feature (loyalty.vip_levels); levels are kept but don't boost earn while it's off.
@@ -642,6 +648,11 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       boosts,
       vipMultiplier,
     });
+    // A pharmacy sale with nothing from the front store is not a visit: no member, no welcome bonus, no bonus points, no network perk.
+    // Throwing rolls back everything this transaction did (including a member it just created).
+    if (rx && earn.eligibleCents <= 0) throw nothingFrontStore();
+    // Front-store reporting: what a pharmacy records (the sale, the visit, lifetime spend) is the front-store amount, never the prescription part of a mixed sale.
+    if (rx) amountCents = earn.eligibleCents;
 
     let transaction: LedgerTransaction | null = null;
     if (earn.totalPoints > 0) {
@@ -901,6 +912,9 @@ export async function adjustPoints(
   if (!args.reason.trim()) throw badRequest("A reason is required for manual adjustments");
   if (args.points === 0) throw badRequest("Adjustment cannot be zero");
   const r = await ctx.db.transaction(async (tx) => {
+    // A pharmacy can't hand out points by hand for a prescription or a health reason: the reason is checked like any other label.
+    const [shop] = await tx.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, args.merchantId)).limit(1);
+    if (shop) assertPharmacyText(shop, args.reason, "The reason", { mode: "label" });
     const posted = await postTransaction(tx, {
       merchantId: args.merchantId,
       memberId: args.memberId,

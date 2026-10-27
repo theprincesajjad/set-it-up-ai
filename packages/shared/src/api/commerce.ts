@@ -51,6 +51,15 @@ export const createCatalogItemBody = z.object({
   soldOutUntil: isoDateTime.nullish(),
   /** Size, spice and add-on groups (web ordering). Needs restaurant.degh_preorders or restaurant.dietary_tags. */
   options: itemOptionsSchema.nullish(),
+  /**
+   * Grocers and butchers (grocery.counter_preorders): sold by weight. `unitPriceCents` is per kg or lb and `nominalWeightG` is
+   * the weight of one portion; the server sets priceCents (the estimate) from the two. The final price is set at the scale.
+   */
+  weightUnit: z.enum(["kg", "lb"]).nullish(),
+  unitPriceCents: centsSchema.min(1).nullish(),
+  nominalWeightG: z.number().int().min(1).max(300_000).nullish(),
+  /** false = zero-rated (raw meat, flour, rice, most basic groceries): no GST/HST on this item. Default true. */
+  taxable: z.boolean().optional(),
 });
 export type CreateCatalogItemBody = z.input<typeof createCatalogItemBody>;
 
@@ -114,6 +123,11 @@ export interface CatalogItemDto {
   nameEn?: string;
   /** Public menu: card price is priceCents; set when the shop shows a cash price (restaurant.dual_pricing). */
   cashPriceCents?: number;
+  /** Grocers and butchers: sold by weight. priceCents is the estimate for one portion of nominalWeightG; the scale sets the final price. */
+  weightUnit?: "kg" | "lb" | null;
+  unitPriceCents?: number | null;
+  nominalWeightG?: number | null;
+  taxable?: boolean;
 }
 
 /** GET /v1/merchants/:merchantId/catalog */
@@ -222,6 +236,10 @@ export interface OrderItemDto {
   modifiers: { name: string; option: string; priceCents: number }[];
   categoryId: string | null;
   lineTotalCents: number;
+  /** Sold by weight: the price per kg or lb, and what the scale read once weighed (then lineTotalCents is the weighed price). */
+  weightUnit?: "kg" | "lb" | null;
+  perUnitCents?: number | null;
+  actualWeightG?: number | null;
 }
 
 export interface OrderDto {

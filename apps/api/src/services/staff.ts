@@ -9,7 +9,7 @@
  *
  * Points only change through ledger.ts.
  */
-import { and, desc, eq, gt, gte, inArray, isNull, like, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNull, like, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   auditLogs,
@@ -17,6 +17,7 @@ import {
   ledgerTransactions,
   locations,
   loyaltyPrograms,
+  merchantCategories,
   merchantMembers,
   merchants,
   messageDeliveries,
@@ -48,6 +49,7 @@ import { enabledFeaturesByMerchantId, enabledFeaturesFor } from "./features.js";
 import { shopDate } from "./member-stats.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 import { sendSms } from "./opt-out.js";
+import { assertPharmacyRedeem } from "./pharmacy-guard.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Member = typeof merchantMembers.$inferSelect;
@@ -244,12 +246,24 @@ export const counterKey = (key: string) => `counter:${key}`;
 export interface AwardInput extends CustomerRef {
   amountCents?: number;
   lines?: { amountCents: number; categoryId?: string | null; itemId?: string | null; quantity?: number }[];
+  /** Part of amountCents that never earns (tobacco, lottery, alcohol, gift cards, bills): becomes a line in a no-earn category. */
+  notCountedCents?: number;
   locationId?: string;
   customerName?: string;
   consent?: customerApi.ConsentBody;
   idempotencyKey: string;
   /** Visit/stamp programs: stamps for this visit (1-10). */
   quantity?: number;
+  /** Pharmacies: the cashier confirmed the total has no prescriptions or pharmacy services. */
+  frontStoreOnly?: boolean;
+}
+
+/** The shop's no-earn category for "Not counted" amounts typed at the counter: the first one it has, else one is made. */
+async function notCountedCategoryId(db: DbOrTx, merchantId: string): Promise<string> {
+  const [cat] = await db.select({ id: merchantCategories.id }).from(merchantCategories).where(and(eq(merchantCategories.merchantId, merchantId), eq(merchantCategories.earnEligible, false))).orderBy(asc(merchantCategories.createdAt)).limit(1);
+  if (cat) return cat.id;
+  const [made] = await db.insert(merchantCategories).values({ merchantId, name: "Not counted", earnEligible: false, discountEligible: false }).returning({ id: merchantCategories.id });
+  return made!.id;
 }
 
 async function doAward(
@@ -261,13 +275,21 @@ async function doAward(
   if (input.locationId) requireUuid(input.locationId, "Location");
   const who = opts.resolved ?? (await resolveCustomer(ctx.db, staff.merchant.id, input));
   const consent: ConsentInput | null = input.consent ? { text: input.consent.text, source: opts.consentSource ?? "counter_staff" } : null;
+  let lines = input.lines;
+  if (!lines && input.notCountedCents && input.amountCents != null) {
+    if (input.notCountedCents > input.amountCents) throw badRequest("The part that doesn't count is more than the total.");
+    lines = [
+      { amountCents: input.amountCents - input.notCountedCents },
+      { amountCents: input.notCountedCents, categoryId: await notCountedCategoryId(ctx.db, staff.merchant.id) },
+    ];
+  }
   const result = await awardPurchase(ctx, {
     merchantId: staff.merchant.id,
     merchant: staff.merchant,
     ...(who.member ? { memberId: who.member.id } : who.userId ? { userId: who.userId } : { phone: who.phone! }),
     customerName: input.customerName ?? null,
-    amountCents: input.amountCents,
-    lines: input.lines,
+    amountCents: lines ? undefined : input.amountCents,
+    lines,
     source: "staff_app",
     locationId: input.locationId ?? null,
     staffUserId: staff.user.id,
@@ -277,6 +299,7 @@ async function doAward(
     joinedVia: who.joinedVia,
     consent,
     quantity: input.quantity,
+    frontStoreOnly: input.frontStoreOnly,
   });
   // ensureMember only stores consent for new or not-yet-consented members; an existing member resolved by id needs it here.
   if (consent && who.member && !result.duplicate) {
@@ -400,10 +423,13 @@ export interface RedeemInput {
   rewardId: string;
   subtotalCents?: number;
   locationId?: string;
+  /** Pharmacies: the cashier confirmed the reward goes on front-store items only. */
+  frontStoreOnly?: boolean;
   idempotencyKey: string;
 }
 
 export async function redeem(ctx: AppContext, staff: StaffContext, input: RedeemInput): Promise<staffApi.CounterRedemptionResponse> {
+  assertPharmacyRedeem(staff.merchant, input.frontStoreOnly);
   requireUuid(input.rewardId, "Reward");
   if (input.locationId) requireUuid(input.locationId, "Location");
   const who = await resolveCustomer(ctx.db, staff.merchant.id, { memberId: input.memberId });
@@ -421,7 +447,8 @@ export async function redeem(ctx: AppContext, staff: StaffContext, input: Redeem
 }
 
 /** Staff enters the 6-char code a customer issued in the app; marks it used exactly once. */
-export async function verifyRedemptionCode(ctx: AppContext, staff: StaffContext, codeInput: string): Promise<staffApi.CounterRedemptionResponse> {
+export async function verifyRedemptionCode(ctx: AppContext, staff: StaffContext, codeInput: string, frontStoreOnly?: boolean): Promise<staffApi.CounterRedemptionResponse> {
+  assertPharmacyRedeem(staff.merchant, frontStoreOnly);
   const code = codeInput.trim().toUpperCase();
   const [used] = await ctx.db
     .update(redemptions)

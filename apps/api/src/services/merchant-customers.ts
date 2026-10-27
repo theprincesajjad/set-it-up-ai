@@ -17,7 +17,8 @@ import {
 } from "@ll/db";
 import { maskPhone, toMonthDay, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
-import { badRequest, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, notFound } from "../lib/errors.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import { parseCsvObjects, toCsv } from "./csv.js";
 import { adjustPoints, ensureMember, findOrCreateCustomerByPhone, postTransaction, reverseTransaction } from "./ledger.js";
 import { writeAudit } from "./admin-audit.js";
@@ -287,6 +288,11 @@ export async function getCustomerDetail(ctx: AppContext, merchantId: string, mem
 
 export async function updateCustomer(ctx: AppContext, merchantId: string, actorUserId: string, memberId: string, body: { notes?: string | null; tags?: string[] }) {
   await loadMember(ctx.db, merchantId, memberId);
+  // A pharmacy keeps no notes or tags on customers: free text next to a person at a pharmacy is how health information gets in.
+  const [shop] = await ctx.db.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (isPharmacy(shop) && ((body.notes ?? "").trim() || (body.tags ?? []).length)) {
+    throw new HttpError(422, "pharmacy_no_notes", "Pharmacies can't keep notes or tags on customers. Health information must stay in your pharmacy system, not here.");
+  }
   const set: Partial<typeof merchantMembers.$inferInsert> = {};
   if (body.notes !== undefined) set.notes = body.notes;
   if (body.tags !== undefined) set.tags = [...new Set(body.tags.map((t) => t.toLowerCase()))];
@@ -436,6 +442,9 @@ export async function importCustomersCsv(ctx: AppContext, merchantId: string, ac
   };
   const seen = new Set<string>();
   const label = body.sourceName?.trim() || "previous loyalty program";
+  const [shop] = await ctx.db.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const rxShop = isPharmacy(shop);
+  let rxPointsDropped = false;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
@@ -453,7 +462,12 @@ export async function importCustomersCsv(ctx: AppContext, merchantId: string, ac
     }
     seen.add(phone);
     const pointsRaw = pick(row, "points", "balance", "points_balance");
-    const points = pointsRaw === "" ? 0 : Number(pointsRaw.replace(/,/g, ""));
+    let points = pointsRaw === "" ? 0 : Number(pointsRaw.replace(/,/g, ""));
+    // A pharmacy can't import an opening balance: we can't know whether another program earned those points on prescriptions.
+    if (rxShop && points > 0) {
+      points = 0;
+      rxPointsDropped = true;
+    }
     if (!Number.isInteger(points) || points < 0) {
       fail(`Points must be a whole number of 0 or more (got "${pointsRaw}")`);
       continue;
@@ -538,6 +552,7 @@ export async function importCustomersCsv(ctx: AppContext, merchantId: string, ac
       fail(err instanceof Error ? err.message : "Could not import row");
     }
   }
+  if (rxPointsDropped) result.warnings.push({ row: 0, message: "Opening points were not imported. A pharmacy can't carry over points, because we can't tell whether they were earned on prescriptions." });
   if (!body.dryRun) {
     await writeAudit(ctx.db, {
       actorUserId,

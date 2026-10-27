@@ -66,7 +66,9 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   const [error, setError] = useState<string | null>(null);
 
   const isPre = mode === "preorder";
-  const copy = COPY[mode];
+  // A grocer or butcher has no kitchen screen: the same sheet takes a phone or WhatsApp order and a pre-order for pick-up.
+  const grocer = !enabled("restaurant.kds") && (enabled("grocery.counter_preorders") || enabled("grocery.whatsapp_orders"));
+  const copy = grocer ? { ...COPY[mode], subtitle: mode === "preorder" ? "Book a pick-up day and hour. Caps, notice and the deposit still apply." : "Type what they say. It shows as a phone order.", send: mode === "preorder" ? COPY[mode].send : "Place order" } : COPY[mode];
   const menu = useMemo(
     () => (catalog.data?.items ?? []).filter((i) => i.available && i.orderable && !!i.preorderOnly === isPre && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > nowMs())),
     [catalog.data, isPre],
@@ -138,7 +140,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
     };
     const r = await act.run(() => api.orderTools.counterOrder(body));
     if (r) {
-      toast({ message: isPre ? `Pre-order #${r.number} booked` : `Order #${r.number} sent to the kitchen`, tone: "success" });
+      toast({ message: isPre ? `Pre-order #${r.number} booked` : `Order #${r.number} ${grocer ? "placed" : "sent to the kitchen"}`, tone: "success" });
       onPlaced?.(r);
       onClose();
     } else setError(act.error);
@@ -252,7 +254,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
             <TextField type="textarea" label="Notes for the kitchen" optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} className={cn("min-h-16")} />
           </div>
         </div>
-        {isPre && !enabled("restaurant.degh_preorders") ? <Banner tone="warning">Pre-orders need the Growth tier.</Banner> : null}
+        {isPre && !enabled("restaurant.degh_preorders") && !enabled("grocery.counter_preorders") ? <Banner tone="warning">Pre-orders need the Growth tier.</Banner> : null}
       </div>
     </Sheet>
   );

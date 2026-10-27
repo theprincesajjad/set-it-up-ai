@@ -255,7 +255,8 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     const [hood] = await env.db.select().from(neighbourhoods).where(eq(neighbourhoods.slug, "ridgeway-plaza"));
     expect(hood).toMatchObject({ city: "Mississauga", province: "ON", status: "pilot" });
     const shops = await env.db.select().from(merchants).where(eq(merchants.neighbourhoodId, hood!.id));
-    expect(shops.length).toBe(10);
+    // Other trades (grocers, studios, pharmacies) join the same plaza; the ten restaurants are all here.
+    expect(shops.length).toBeGreaterThanOrEqual(10);
     const tier = (slug: string) => shops.find((m) => m.slug === slug)!.restaurantTier;
     expect(tier("nawab-biryani-house")).toBe("pro");
     for (const s of ["lahori-karahi-and-bbq", "shree-thali-and-tiffin", "zeenat-catering"]) expect(tier(s)).toBe("growth");
@@ -265,7 +266,7 @@ describe("Ridgeway Plaza restaurant corridor", () => {
     expect(shops.filter((m) => m.foundingOffer).map((m) => m.slug).sort()).toEqual(["meethi-mithai-and-chai", "nawab-biryani-house", "shree-thali-and-tiffin"]);
     expect(shops.every((m) => m.languages.length >= 1 && m.status === "active")).toBe(true);
     expect(shops.find((m) => m.slug === "nawab-biryani-house")).toMatchObject({ cashDiscountBps: 300, whatsappNumber: expect.any(String) });
-    expect(shops.filter((m) => m.whatsappNumber).map((m) => m.slug).sort()).toEqual(["lahori-karahi-and-bbq", "nawab-biryani-house"]);
+    expect(shops.filter((m) => m.whatsappNumber && m.restaurantTier).map((m) => m.slug).sort()).toEqual(["lahori-karahi-and-bbq", "nawab-biryani-house"]);
     expect(shops.find((m) => m.slug === "lahori-karahi-and-bbq")!.preorderDailyCap).toBe(12);
     const [perk] = await env.db.select().from(networkPerks).where(eq(networkPerks.neighbourhoodId, hood!.id));
     expect(perk).toMatchObject({ threshold: 3, bonusPoints: 50 });
@@ -595,5 +596,24 @@ describe("seedDemo: appointment salons", () => {
     await seedDemo(env.db, { customers: 30, days: 45, config: env.ctx.config });
     const after = await env.db.select({ n: sql<number>`count(*)::int` }).from(appointments);
     expect(after[0]!.n).toBe(before[0]!.n);
+  });
+});
+
+describe("seedDemo: Ridgeway grocer and halal butcher", () => {
+  it("seeds both shops in the plaza with the grocery features, members, deals, pantry and butcher pre-orders", async () => {
+    const { groceryDeals, pantryEntries, pantryItems } = await import("@ll/db");
+    const shops = await env.db.select().from(merchants).where(inArray(merchants.slug, ["annapurna-grocers-and-spices", "al-noor-halal-meats"]));
+    expect(shops.map((m) => m.slug).sort()).toEqual(["al-noor-halal-meats", "annapurna-grocers-and-spices"]);
+    expect(shops.every((m) => m.vertical === "grocery" && m.neighbourhoodId)).toBe(true);
+    for (const m of shops) {
+      expect((await env.db.select().from(groceryDeals).where(eq(groceryDeals.merchantId, m.id))).length).toBeGreaterThan(0);
+      expect((await env.db.select().from(merchantMembers).where(eq(merchantMembers.merchantId, m.id))).length).toBeGreaterThan(0);
+    }
+    const annapurna = shops.find((m) => m.slug === "annapurna-grocers-and-spices")!;
+    expect((await env.db.select().from(pantryItems).where(eq(pantryItems.merchantId, annapurna.id))).length).toBeGreaterThan(0);
+    expect((await env.db.select().from(pantryEntries).where(eq(pantryEntries.merchantId, annapurna.id))).length).toBeGreaterThan(0);
+    const alNoor = shops.find((m) => m.slug === "al-noor-halal-meats")!;
+    const pre = await env.db.select().from(orders).where(and(eq(orders.merchantId, alNoor.id), eq(orders.kind, "preorder")));
+    expect(pre.length).toBeGreaterThan(0);
   });
 });

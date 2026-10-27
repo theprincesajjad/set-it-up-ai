@@ -94,6 +94,11 @@ export const copy = {
     openUntil: (time: string) => `Open · closes ${time}`,
     closedUntil: (time: string) => `Closed · opens ${time}`,
     pharmacyRule: "Prescriptions and pharmacy services don't earn points, as Ontario rules require.",
+    pharmacyLockedTitle: "Prescriptions and pharmacy services can never earn points or be discounted",
+    pharmacyLockedBody: "Ontario pharmacy rules do not allow a loyalty benefit on prescriptions or pharmacy services (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6). We lock those rows for every pharmacy. You cannot turn them on, rename them or delete them.",
+    pharmacyLockedWhy: "A reward on a prescription or a pharmacy service is an inducement under Ontario's pharmacy conflict-of-interest rules, so it can put your accreditation and your pharmacists' licences at risk. The lock also protects you when a new cashier or a POS import tries to count Rx. Points on the front store are fine.",
+    pharmacyAlsoBlocked: ["Points for a visit or a stamp (a visit may include a prescription)", "Referral rewards (a benefit for referring a patient)", "Rewards, offers and messages that mention prescriptions, refills, vaccines or medications", "Notes and tags on a customer"],
+    pharmacyAddHint: "Names like Rx, medication, vaccine or dispensing are locked automatically.",
   },
   ticketStatus: {
     intake: "Dropped off",

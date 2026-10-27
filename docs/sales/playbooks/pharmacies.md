@@ -6,9 +6,10 @@ Template: `pharmacy` · Wave 2 · Later plan: Plus · Last updated: Oct 21, 2026
 
 ## The law, in plain words
 
-- **No points, bonuses, discounts or inducements on prescriptions or pharmacy services.** This is Ontario law and Ontario College of Pharmacists (OCP) policy (O. Reg. 681/93, OCP loyalty points policy; links in the PRD).
+- **No points, bonuses, discounts or inducements on prescriptions or pharmacy services.** This is Ontario law and Ontario College of Pharmacists (OCP) policy (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6, plus the OCP loyalty points policy; links in docs/research/pharmacies-wellness.md).
 - **Front-store items are fine:** vitamins, cosmetics, snacks, household goods, greeting cards.
-- The `pharmacy` template creates three categories: **Front store** (earns, discountable), **Prescriptions** (no earn, no discount), **Pharmacy services** (no earn, no discount: flu shots, med reviews, etc.). These are locked. **You never change them.**
+- The `pharmacy` template creates four categories: **Front store** (earns, discountable), **Prescriptions**, **Pharmacy services** (flu shots, vaccines, med reviews) and **Dispensing fees and compounding** (none of the three earn or discount). These are locked on the server. **You never change them.**
+- **Three more locks** the pharmacist will ask about: no points for a *visit* or a stamp (a visit may include a prescription), no referral rewards (a benefit for referring a patient is its own conflict-of-interest rule), and no messages or offers that mention prescriptions, refills, vaccines or a health condition. The cashier ticks "no prescriptions or pharmacy services in this total" on every sale.
 - The seniors' discount card in the template says: "Front-store items only. Not valid on prescriptions or pharmacy services."
 - We are not their lawyer. Tell the pharmacist: "Please check this against your own OCP obligations; we built it to the policy, but you're the licence holder."
 
@@ -40,7 +41,7 @@ Template: `pharmacy` · Wave 2 · Later plan: Plus · Last updated: Oct 21, 2026
 
 1. Show the template categories first: **Prescriptions: no earn, no discount** (locked). *"This is the first thing I want you to see."*
 2. Scan the demo QR; welcome 50 points.
-3. Staff: phone number, $42 front-store purchase → 42 points. Show a mixed basket where a prescription line earns 0.
+3. Staff: phone number, $42 front-store purchase, tick *no prescriptions or pharmacy services in this total* → 42 points. Show a mixed basket where a prescription line earns 0.
 4. Show the digital **Seniors 10% off** card with its terms.
 5. Network map: other shops nearby.
 
@@ -88,4 +89,4 @@ Template: `pharmacy` · Wave 2 · Later plan: Plus · Last updated: Oct 21, 2026
 ## Future upsell (Plus)
 
 Signals: lots of front-store pickup by phone; seasonal promos (cold and flu season front-store items); wants to text opted-in customers about front-store sales.
-Plus pitch (later): SMS and email to opted-in members about front-store offers, pickup alerts for front-store orders. Never tie messages to prescriptions.
+Plus pitch: SMS and email to opted-in members about front-store offers, a fixed "your order is ready for pickup" text (never names the order), and flu-shot and medication-review booking that stores only that a booking exists. Never tie messages to prescriptions.

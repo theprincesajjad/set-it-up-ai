@@ -13,7 +13,7 @@ import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { bookSlotTx, cancelBookingsForOrder } from "./bookings.js";
 import { decodeCursor, encodeCursor, formatLocalDateTime, iso, loadMerchant, notifyCustomer, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
-import { getMerchantFeatures, isFeatureOn, requireFeature } from "./features.js";
+import { getMerchantFeatures, isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import { computeFees } from "./fees.js";
 import { busyActive, quotedWaitMinutes } from "./busyMode.js";
 import { assertPreorderCapacity, overrideLeadHours } from "./preorderPlanning.js";
@@ -50,6 +50,20 @@ export function balanceDueCents(o: Pick<Order, "status" | "paymentStatus" | "kin
   if (o.paymentStatus === "paid" || o.paymentStatus === "refunded" || o.status === "cancelled" || o.status === "refunded") return 0;
   return Math.max(0, o.totalCents - (o.kind === "preorder" && o.depositPaidAt ? o.depositCents + o.customerFeeCents : 0));
 }
+
+/**
+ * What GST/HST is charged on: the taxable lines, less their share of a reward discount. Zero-rated groceries (raw meat, flour, rice;
+ * `taxable: false`) are left out. With no zero-rated line this is the subtotal less the discount, as before.
+ */
+export function taxableBaseCents(lines: { lineTotalCents: number; taxable: boolean }[], discountCents: number): number {
+  const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
+  const taxable = lines.filter((l) => l.taxable).reduce((s, l) => s + l.lineTotalCents, 0);
+  if (taxable === subtotal) return Math.max(0, subtotal - discountCents);
+  return Math.max(0, taxable - Math.round((discountCents * taxable) / Math.max(1, subtotal)));
+}
+
+/** A line's price: what the scale made it when it was weighed, else the unit price times the quantity. */
+export const lineCents = (i: Pick<OrderItem, "unitPriceCents" | "quantity" | "weighedCents">): number => i.weighedCents ?? i.unitPriceCents * i.quantity;
 
 export function orderDto(o: Order, items: OrderItem[], merchantName: string, customer?: { name: string | null; phone: string | null }): commerceApi.OrderDto {
   return {
@@ -95,7 +109,8 @@ export function orderDto(o: Order, items: OrderItem[], merchantName: string, cus
       unitPriceCents: i.unitPriceCents,
       modifiers: i.modifiers,
       categoryId: i.categoryId,
-      lineTotalCents: i.unitPriceCents * i.quantity,
+      lineTotalCents: lineCents(i),
+      ...(i.weightUnit ? { weightUnit: i.weightUnit, perUnitCents: i.perUnitCents, actualWeightG: i.actualWeightG } : {}),
     })),
     ...(customer ? { customer } : {}),
   };
@@ -154,6 +169,10 @@ export interface PricedLine {
   preorderOnly: boolean;
   leadTimeHours: number;
   depositBps: number;
+  /** Butcher counter: sold by weight (price per kg or lb at order time) and whether GST/HST applies. */
+  weightUnit: "kg" | "lb" | null;
+  perUnitCents: number | null;
+  taxable: boolean;
 }
 
 /**
@@ -224,6 +243,9 @@ export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<
       preorderOnly: item.preorderOnly,
       leadTimeHours: item.leadTimeHours,
       depositBps: item.depositBps,
+      weightUnit: item.weightUnit ?? null,
+      perUnitCents: item.weightUnit ? item.unitPriceCents ?? null : null,
+      taxable: item.taxable,
     };
   });
 }
@@ -300,8 +322,8 @@ export function rewardDiscountForLines(
 }
 
 /** Purchase lines for awardPurchase: post-discount, per item & category so no-earn categories apply. */
-export function earnLines(items: Pick<OrderItem, "unitPriceCents" | "quantity" | "categoryId" | "catalogItemId">[], discountCents: number, eligibleFor: (categoryId: string | null) => boolean): PurchaseLine[] {
-  const totals = items.map((i) => i.unitPriceCents * i.quantity);
+export function earnLines(items: Pick<OrderItem, "unitPriceCents" | "quantity" | "categoryId" | "catalogItemId" | "weighedCents">[], discountCents: number, eligibleFor: (categoryId: string | null) => boolean): PurchaseLine[] {
+  const totals = items.map((i) => lineCents(i));
   const eligibleIdx = items.map((i, idx) => (eligibleFor(i.categoryId) ? idx : -1)).filter((i) => i >= 0);
   const eligibleTotal = eligibleIdx.reduce((s, i) => s + totals[i]!, 0);
   const share = new Array<number>(items.length).fill(0);
@@ -343,7 +365,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   if (body.slotId) await requireFeature(ctx.db, merchant, "booking.pickup_slots");
   const isPreorder = body.kind === "preorder";
   if (isPreorder) {
-    await requireFeature(ctx.db, merchant, "restaurant.degh_preorders");
+    await requireAnyFeature(ctx.db, merchant, PREORDER_FEATURES);
     if (body.slotId) throw badRequest("Pre-orders are picked up at a time you choose, not a pickup slot");
     if (!body.pickupAt) throw badRequest("Choose a pickup time for your pre-order");
   }
@@ -406,7 +428,8 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   };
 
   const province = await merchantProvince(ctx.db, merchant);
-  const tax = computeTax(subtotal - discount, province);
+  // Zero-rated groceries (raw meat, flour, rice) carry no GST/HST: tax is on the taxable lines only, less their share of any reward discount.
+  const tax = computeTax(taxableBaseCents(lines, discount), province);
   const commissionFree = await isFeatureOn(ctx.db, merchant, "restaurant.commission_free");
   // Pre-orders pay the deposit online (none configured: everything is paid at pickup).
   // The deposit is a share of the whole bill, tax included ("30% deposit" on the confirmation page).
@@ -488,6 +511,9 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
           modifiers: l.modifiers,
           categoryId: l.categoryId,
           station: l.station,
+          weightUnit: l.weightUnit,
+          perUnitCents: l.perUnitCents,
+          taxable: l.taxable,
         })),
       );
       if (body.slotId) {

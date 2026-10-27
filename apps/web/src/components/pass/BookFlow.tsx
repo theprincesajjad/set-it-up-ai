@@ -53,6 +53,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
   const staffName = staffId ? (data.staff.find((s) => s.id === staffId)?.name ?? "") : "";
   const sel = useMemo(() => summarize(data.services, ids, staffId), [data.services, ids, staffId]);
   const picked = data.services.filter((s) => ids.includes(s.id));
+  // Pharmacy: free to book, no card, no notes, no price shown (docs/research/pharmacies-wellness.md).
+  const pharmacy = !!data.shop.pharmacy;
   const takesCards = data.policy.takesCards;
   const deposit = takesCards ? sel.depositCents : 0;
   const fee = takesCards ? data.policy.noShowFeeCents : 0;
@@ -129,7 +131,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: notes.trim() || null });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);
@@ -289,10 +291,17 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
             <button type="button" disabled={!slot || busy} onClick={submit} className="text-body-strong text-fg focus-visible:focus-ring disabled:text-fg-subtle">{t("bk.card.add")}</button>
           </div>
         ) : null}
-        <label className="flex flex-col gap-1.5">
-          <span className="text-meta-strong text-fg">{t("bk.notes")}</span>
-          <textarea ref={notesRef} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
-        </label>
+        {pharmacy ? (
+          <div className="rounded-card bg-bg-subtle p-4" data-testid="pharmacy-privacy">
+            <p className="text-body-strong text-fg">{t("rx.book.privacyTitle")}</p>
+            <p className="mt-1 text-meta text-fg-muted">{t("rx.book.privacyBody")}</p>
+          </div>
+        ) : (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-meta-strong text-fg">{t("bk.notes")}</span>
+            <textarea ref={notesRef} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
+          </label>
+        )}
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {wantsSignIn && !signedIn ? <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("bk.cta.signIn")} intro={t("bk.signIn.hint")} /> : null}
         <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
@@ -344,12 +353,12 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
                   <span className="block text-body-strong text-fg">{p.name}</span>
                   <span className="block text-meta text-fg-muted">{staffName ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}{s.depositCents > 0 && takesCards ? ` · ${t("bk.depositHold", { amount: money(s.depositCents) })}` : ""}</span>
                 </span>
-                <span className="shrink-0 text-headline tabular-nums text-fg">{s.priceFrom ? <span className="text-body font-normal">{t("bk.from", { price: money(v.priceCents) })}</span> : money(v.priceCents)}</span>
+                <span className="shrink-0 text-headline tabular-nums text-fg">{pharmacy ? <span className="text-meta font-normal text-fg-muted">{t("rx.book.noCharge")}</span> : s.priceFrom ? <span className="text-body font-normal">{t("bk.from", { price: money(v.priceCents) })}</span> : money(v.priceCents)}</span>
               </button>
             </li>
           );
         })}
-        <li>
+        {pharmacy ? null : <li>
           <a href={shop.phone ? `tel:${shop.phone}` : `/shops/${encodeURIComponent(shop.slug)}`} className="flex min-h-[64px] items-center gap-3 py-3 focus-visible:focus-ring">
             <span aria-hidden className="size-7 shrink-0 rounded-full border border-line-strong" />
             <span className="min-w-0 flex-1">
@@ -358,7 +367,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
             </span>
             <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted rtl:rotate-180" strokeWidth={1.75} />
           </a>
-        </li>
+        </li>}
       </ul>
       {!visible.length ? <Banner tone="info">{t("bk.noServices")}</Banner> : null}
       <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
@@ -366,7 +375,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-meta text-fg-muted">{t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) })}</p>
-              <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p>
+              {pharmacy ? null : <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p>}
             </div>
             {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
           </div>

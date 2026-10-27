@@ -49,6 +49,7 @@ import {
 } from "@/lib/dashboard/counter";
 import { CountUp } from "@/components/ui/CountUp";
 import { Spinner } from "@/components/ui/Spinner";
+import { GroceryExtras, notCountedCents, type GroceryCounter } from "./GroceryExtras";
 import {
   formatMoney,
   formatPoints,
@@ -64,6 +65,8 @@ import { ScanPanel } from "./ScanPanel";
 import { StampRow } from "./StampRow";
 
 type CounterApi = MerchantEndpoints["counter"];
+
+const FRONT_STORE_PROMPT = "Confirm the total has no prescriptions or pharmacy services.";
 
 type Phase =
   /** Scan first: viewfinder, 4 digits, keypad. */
@@ -108,6 +111,13 @@ export interface CounterAppProps {
   };
   /** Where the toast and auto-return timers read the clock (tests). */
   clock?: () => number;
+  /**
+   * Pharmacy: every sale and every redeem needs the cashier to tick "no prescriptions or pharmacy services" first
+   * (docs/research/pharmacies-wellness.md). The tick is sent as frontStoreOnly and the server refuses without it.
+   */
+  frontStoreRule?: boolean;
+  /** Grocers: the "Not counted" amount and the bulk-item chips on the amount screen (docs/research/grocers.md). Omit for every other shop. */
+  grocery?: GroceryCounter | null;
 }
 
 /**
@@ -126,6 +136,8 @@ export function CounterApp({
   signedInName,
   pin,
   clock = Date.now,
+  frontStoreRule = false,
+  grocery = null,
 }: CounterAppProps) {
   const [mode, setMode] = useState<"scan" | "verify">("scan");
   // The counter is server-rendered, so it is on screen before React can hear a tap or a scanner's keystrokes (the key
@@ -157,6 +169,15 @@ export function CounterApp({
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [frontStore, setFrontStore] = useState(false);
+  const [notCounted, setNotCounted] = useState("");
+  const [bulk, setBulk] = useState<string[]>([]);
+  const [bulkRemind, setBulkRemind] = useState(false);
+  const frontStoreRef = useRef(false);
+  const tickFrontStore = useCallback((v: boolean) => {
+    frontStoreRef.current = v;
+    setFrontStore(v);
+  }, []);
   const [code, setCode] = useState("");
   const [recent, setRecent] = useState<staffApi.ActivityItemDto[]>([]);
   const [stampsToday, setStampsToday] = useState<number | null>(null);
@@ -296,16 +317,20 @@ export function CounterApp({
     setPhase({ kind: "idle" });
     setEntry("");
     setCents("");
+    setNotCounted("");
+    setBulk([]);
+    setBulkRemind(false);
     setQty(1);
     setShowRewards(false);
     setError(null);
     setNewName("");
     setNewPhone("");
     setConsent(false);
+    tickFrontStore(false);
     awardKey.current = null;
     redeemKey.current = null;
     scanner.current = EMPTY_SCANNER;
-  }, [setEntry]);
+  }, [setEntry, tickFrontStore]);
 
   // The stamped screen goes back to scan after 3 s on its own (Next customer does it now).
   useEffect(() => {
@@ -324,6 +349,10 @@ export function CounterApp({
         setError("Enter the purchase amount first.");
         return;
       }
+      if (frontStoreRule && !frontStoreRef.current) {
+        setError(FRONT_STORE_PROMPT);
+        return;
+      }
       awardKey.current ??= newIdempotencyKey("counter");
       setBusy(true);
       setError(null);
@@ -333,7 +362,14 @@ export function CounterApp({
         amountCents: perDollar ? centsFromKeypad(cents) : undefined,
         quantity: perDollar || qty === 1 ? undefined : qty,
         locationId,
+        ...(frontStoreRule ? { frontStoreOnly: true } : {}),
+        ...(grocery && notCountedCents(notCounted) > 0 ? { notCountedCents: notCountedCents(notCounted) } : {}),
       };
+      if (grocery && notCountedCents(notCounted) > centsFromKeypad(cents)) {
+        setBusy(false);
+        setError("The part that doesn't count is more than the total.");
+        return;
+      }
       const p = phaseRef.current;
       const before =
         from ??
@@ -342,6 +378,16 @@ export function CounterApp({
       try {
         const res = await api.award(body, awardKey.current);
         awardKey.current = null;
+        // Bulk items bought: log each so the shop can text before the household runs out (only with their yes).
+        if (grocery && bulk.length && !res.duplicate) {
+          for (const id of bulk) {
+            try {
+              await grocery.logPantry({ memberId: res.member.memberId, pantryItemId: id, remind: bulkRemind });
+            } catch {
+              // The points are in; the log is a convenience and can be tapped again at the next visit.
+            }
+          }
+        }
         const at = clock();
         setPhase({
           kind: "awarded",
@@ -402,12 +448,17 @@ export function CounterApp({
       qty,
       locationId,
       perDollar,
+      frontStoreRule,
       program,
       loadRecent,
       saveQueue,
       clock,
       undoSeconds,
       setEntry,
+      grocery,
+      notCounted,
+      bulk,
+      bulkRemind,
     ],
   );
 
@@ -474,6 +525,10 @@ export function CounterApp({
 
   const redeem = useCallback(
     async (member: staffApi.MemberSummaryDto, rewardId: string) => {
+      if (frontStoreRule && !frontStoreRef.current) {
+        setError(FRONT_STORE_PROMPT);
+        return;
+      }
       redeemKey.current ??= newIdempotencyKey("redeem");
       setBusy(true);
       setError(null);
@@ -485,6 +540,7 @@ export function CounterApp({
             locationId,
             subtotalCents:
               perDollar && cents ? centsFromKeypad(cents) : undefined,
+            ...(frontStoreRule ? { frontStoreOnly: true } : {}),
           },
           redeemKey.current,
         );
@@ -505,7 +561,7 @@ export function CounterApp({
         setBusy(false);
       }
     },
-    [api, locationId, perDollar, cents, loadRecent],
+    [api, locationId, perDollar, cents, loadRecent, frontStoreRule],
   );
 
   const undo = useCallback(
@@ -536,10 +592,11 @@ export function CounterApp({
   const verify = useCallback(async () => {
     if (code.trim().length < 4)
       return setError("Enter the code on the customer's screen.");
+    if (frontStoreRule && !frontStoreRef.current) return setError(FRONT_STORE_PROMPT);
     setBusy(true);
     setError(null);
     try {
-      const res = await api.verify(code.trim().toUpperCase());
+      const res = await api.verify(code.trim().toUpperCase(), frontStoreRule ? true : undefined);
       setPhase({ kind: "redeemed", res });
       setMode("scan");
       setCode("");
@@ -554,7 +611,7 @@ export function CounterApp({
     } finally {
       setBusy(false);
     }
-  }, [api, code, loadRecent]);
+  }, [api, code, loadRecent, frontStoreRule]);
 
   // Hardware keyboard: a scanner types the payload fast and presses Enter; slow digits feed the 4-digit entry;
   // while a member is on screen (per-dollar) digits feed the amount; Esc is "next customer".
@@ -748,6 +805,17 @@ export function CounterApp({
               ) : null}
             </div>
           </div>
+
+          {frontStoreRule ? (
+            <div className="rounded-card bg-bg-subtle px-4 py-3" data-testid="front-store-confirm">
+              <Checkbox
+                checked={frontStore}
+                onChange={tickFrontStore}
+                label="This total has no prescriptions or pharmacy services"
+                caption="Required every time. It is saved with the sale."
+              />
+            </div>
+          ) : null}
 
           {pinOpen && pin ? (
             <PinPad
@@ -1071,6 +1139,7 @@ export function CounterApp({
               onRedeem={(id) => void redeem(phase.member, id)}
               onVerify={() => setMode("verify")}
               onClear={reset}
+              extras={grocery ? <GroceryExtras grocery={grocery} cents={cents} notCounted={notCounted} setNotCounted={setNotCounted} bulk={bulk} setBulk={setBulk} remind={bulkRemind} setRemind={setBulkRemind} /> : null}
             />
           ) : null}
 
@@ -1462,7 +1531,9 @@ function MemberPanel({
   onRedeem,
   onVerify,
   onClear,
+  extras,
 }: {
+  extras?: React.ReactNode;
   member: staffApi.MemberSummaryDto;
   program: ProgramForCounter;
   busy: boolean;
@@ -1568,6 +1639,7 @@ function MemberPanel({
       {perDollar ? (
         <div className="mt-6">
           <AmountPad cents={cents} setCents={setCents} />
+          {extras}
         </div>
       ) : (
         <div className="mt-9">

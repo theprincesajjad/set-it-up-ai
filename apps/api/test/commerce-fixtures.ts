@@ -53,8 +53,8 @@ export const HOURS = {
  * A merchant on a paid plan with every paid feature GA, a location with
  * hours, and (by default) a Connect account that can take charges.
  */
-export async function paidMerchant(env: TestEnv, opts: { plan?: PlanId; connect?: boolean; stage?: RolloutStage; slug?: string } = {}) {
-  const base = await createMerchant(env, { slug: opts.slug });
+export async function paidMerchant(env: TestEnv, opts: { plan?: PlanId; connect?: boolean; stage?: RolloutStage; slug?: string; vertical?: string } = {}) {
+  const base = await createMerchant(env, { slug: opts.slug, vertical: opts.vertical });
   await setStage(env, PAID_FEATURES, opts.stage ?? "ga");
   await setPlan(env, base.merchant.id, opts.plan ?? "pro");
   const [location] = await env.db.insert(locations).values({ merchantId: base.merchant.id, name: "Main", address: "123 Roncesvalles Ave", qrCode: `QR${Math.random().toString(36).slice(2, 10)}`, hours: HOURS }).returning();

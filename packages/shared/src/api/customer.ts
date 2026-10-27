@@ -330,6 +330,11 @@ export interface ReferralResponse {
 export interface DataExportModules {
   orders: unknown[];
   appointments: unknown[];
+  /** Class studios: bookings, packs, memberships (with the agreement text) and the money for them. */
+  classBookings?: unknown[];
+  classPasses?: unknown[];
+  classMemberships?: unknown[];
+  classCharges?: unknown[];
   bookings: unknown[];
   rebookingNudges: unknown[];
   tiffinSubscriptions: unknown[];

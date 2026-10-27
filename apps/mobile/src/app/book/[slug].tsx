@@ -133,7 +133,7 @@ export default function Book() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.appointments.book({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: notes.trim() || null });
+      const r = await api.appointments.book({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: data?.shop.pharmacy ? null : notes.trim() || null });
       setBooked(r);
       if (r.confirmed) router.replace(`/appointments/${r.appointment.id}`);
       else setStep("pay");
@@ -216,7 +216,14 @@ export default function Book() {
             </View>
           </View>
         ) : null}
-        <TextField label={t("bk.notes")} value={notes} onChangeText={setNotes} multiline maxLength={400} />
+        {data.shop.pharmacy ? (
+          <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}>
+            <Text variant="bodyStrong">{t("rx.book.privacyTitle")}</Text>
+            <Text variant="meta" color="fgMuted">{t("rx.book.privacyBody")}</Text>
+          </View>
+        ) : (
+          <TextField label={t("bk.notes")} value={notes} onChangeText={setNotes} multiline maxLength={400} />
+        )}
         {error ? <Banner variant="danger">{error}</Banner> : null}
       </Screen>
     );

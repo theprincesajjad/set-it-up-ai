@@ -27,7 +27,7 @@ These Rewards Terms explain how points work on Local Loyalty. They form part of 
 
 - You earn when the merchant records your visit or purchase: by phone number, by scanning your pass, or automatically from a connected point-of-sale system. Ask staff to record it at the time of purchase. Missing points can be added by the merchant within **30 days** with a receipt.
 - **Excluded items.** Some products cannot earn or be redeemed against, by law or by merchant choice. They are shown as "no-earn".
-  - **At pharmacies, prescriptions and pharmacy services never earn points and cannot be paid for with points**, as required by Ontario pharmacy rules. Only front-store purchases count.
+  - **At pharmacies, prescriptions and pharmacy services never earn points and cannot be paid for with points**, as required by Ontario pharmacy rules. Only front-store purchases count. A pharmacy gives no points for a visit or a stamp, no reward for referring a friend, and does not carry over points from another program.
   - **Alcohol, tobacco, vaping, cannabis and lottery products do not earn** unless the app shows otherwise for a specific shop, and only where permitted by law.
 - Points for returned or refunded purchases are removed. If you have already redeemed them, your balance may go negative until you earn again; we never charge you money for a negative balance.
 - Bonuses (welcome, birthday, double-points days, referrals, network perks) follow the rules shown on each offer. Referral bonuses go to real new members only.

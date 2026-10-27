@@ -11,10 +11,10 @@ import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, typ
 export type StaffRole = "owner" | "manager" | "staff";
 
 /** Sidebar groups, drawn with a small gap between them; only the groups in NAV_GROUP_LABELS get a heading. */
-export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop" | "r-today" | "r-sell" | "r-menu" | "r-talk" | "r-loyalty" | "r-more";
+export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop" | "r-today" | "r-sell" | "r-menu" | "r-talk" | "r-loyalty" | "r-more" | "g-sell" | "g-talk" | "g-loyalty";
 
 /** Small heading over a sidebar group (canvas "Complete your setup" row style: 12px, muted). */
-export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant", "r-today": "today", "r-sell": "sell ahead", "r-menu": "menu", "r-talk": "talk to guests", "r-loyalty": "loyalty" };
+export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant", "r-today": "today", "r-sell": "sell ahead", "r-menu": "menu", "r-talk": "talk to guests", "r-loyalty": "loyalty", "g-sell": "sell ahead", "g-talk": "talk to customers", "g-loyalty": "loyalty" };
 
 export interface NavEntry {
   key: string;
@@ -39,6 +39,10 @@ export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
   tickets: ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices"],
   catalog: ["orders.order_ahead"],
   calendar: ["booking.appointments"],
+  // Class studios (docs/research/fitness-studios.md): schedule + roster, offers + members, door check-in.
+  classes: ["booking.classes"],
+  "class-offers": ["booking.classes", "memberships.recurring"],
+  "class-door": ["booking.classes"],
   invoices: ["service.invoices"],
   rebooking: ["service.rebooking"],
   // Appointment services for salons; the same table is the repair shop's price list.
@@ -46,6 +50,11 @@ export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
   slots: ["booking.pickup_slots", "booking.dropoff_scheduling"],
   ads: ["ads.sponsored_listing", "ads.sponsored_promo", "ads.map_pin"],
   campaigns: ["campaigns.neighbourhood"],
+  // Grocers and butchers (docs/research/grocers.md).
+  "grocery-butcher": ["grocery.counter_preorders"],
+  "grocery-flyer": ["grocery.flyer"],
+  "grocery-pantry": ["grocery.pantry_reminders"],
+  "grocery-whatsapp": ["grocery.whatsapp_orders"],
 };
 
 /**
@@ -127,9 +136,14 @@ export function navUnlocked(key: string, enabled: Set<FeatureKey>): boolean {
  */
 export const LOYALTY_FIRST_VERTICALS: readonly string[] = ["cafe", "bakery", "bookstore", "retail", "grocery", "pharmacy", "florist", "pet"];
 /** Discount cards (show-to-save front-store cards) only make sense for these. */
-export const DISCOUNT_CARD_VERTICALS: readonly string[] = ["pharmacy", "grocery", "retail"];
+export const DISCOUNT_CARD_VERTICALS: readonly string[] = ["pharmacy", "retail"];
+/** Grocers and halal butchers (docs/research/grocers.md): butcher counter, weekly flyer, pantry reminders, WhatsApp list orders. */
+export const GROCERY_FEATURES: readonly FeatureKey[] = ["grocery.counter_preorders", "grocery.flyer", "grocery.pantry_reminders", "grocery.whatsapp_orders"];
+export const hasGroceryFeature = (enabled: Set<FeatureKey>) => GROCERY_FEATURES.some((k) => enabled.has(k));
 /** Appointment businesses (staff calendar) and drop-off repair businesses (tickets). */
 export const APPOINTMENT_VERTICALS: readonly string[] = ["salon", "barber", "spa"];
+/** Class studios (yoga, pilates, boxing, dance, gyms): they live in the class schedule, not in orders, tickets or pickup slots. */
+export const STUDIO_VERTICALS: readonly string[] = ["fitness"];
 export const REPAIR_VERTICALS: readonly string[] = ["repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"];
 /** Sections a loyalty-first shop only sees on Pro or a restaurant tier. */
 const PRO_ONLY_FOR_LOYALTY_FIRST: readonly string[] = ["tickets", "slots", "orders", "catalog"];
@@ -150,17 +164,22 @@ function stageGa(key: string, stages: ShopNavContext["stages"]): boolean {
 
 /** Vertical and rollout gating on top of feature gating (cafes-retail.md 7.8). Pure; `shop` omitted = feature gating only. */
 export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNavContext): boolean {
+  // The pharmacy rules page (what is locked, the pharmacist-owner confirmation, retention) exists for pharmacies only.
+  if (key === "pharmacy") return shop?.vertical === "pharmacy";
   if (!navUnlocked(key, enabled)) return false;
   if (!shop) return true;
   // Salons, barbers and spas live in the calendar: no repair tickets unless they also bought the Service plan. Repair shops get no calendar.
   if (key === "tickets" && shop.vertical && APPOINTMENT_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   if (key === "calendar" && shop.vertical && REPAIR_VERTICALS.includes(shop.vertical)) return false;
+  // A studio's sidebar is classes, members and the door; the café and repair sections stay out of its way unless it bought them.
+  if (shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && ["orders", "catalog", "slots", "discount-cards"].includes(key) && !hasRestaurantFeature(enabled)) return false;
+  if (key === "tickets" && shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   // Order-ahead and the menu/catalog are the food-and-retail counter; repair and appointment shops run on tickets, invoices and the calendar (service-businesses.md 4.1).
   if ((key === "orders" || key === "catalog") && shop.vertical && !hasRestaurantFeature(enabled) && [...APPOINTMENT_VERTICALS, ...REPAIR_VERTICALS].includes(shop.vertical)) return false;
   if ((key === "ads" || key === "campaigns") && !stageGa(key, shop.stages)) return false;
   if (key === "discount-cards" && shop.vertical && !DISCOUNT_CARD_VERTICALS.includes(shop.vertical)) return false;
   if (PRO_ONLY_FOR_LOYALTY_FIRST.includes(key) && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical)) {
-    return shop.plan === "pro" || hasRestaurantFeature(enabled);
+    return shop.plan === "pro" || hasRestaurantFeature(enabled) || (shop.vertical === "grocery" && hasGroceryFeature(enabled));
   }
   return true;
 }
@@ -170,9 +189,14 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
   const counter: NavEntry = { key: "counter", href: `${base}/counter`, label: "Counter", group: "main" };
   // Front-desk staff run the day from the calendar (appointment shops), so it is the one extra section they get.
   const calendar: NavEntry = { key: "calendar", href: `${base}/calendar`, label: "Calendar", group: "commerce" };
-  if (role === "staff") return [home, counter, ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : [])];
+  // Front-desk staff also get the class schedule and the door at a studio.
+  const classes: NavEntry = { key: "classes", href: `${base}/classes`, label: "Class schedule", group: "commerce" };
+  const door: NavEntry = { key: "class-door", href: `${base}/classes/door`, label: "Door check-in", group: "commerce" };
+  if (role === "staff") return [home, counter, ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
   // Restaurants get one sidebar grouped by when it is used (restaurantNav below); everyone else keeps the flat list.
   if (hasRestaurantFeature(enabled)) return buildRestaurantNav(base, role, enabled, shop);
+  // Grocers and butchers: sell ahead (butcher counter, flyer), talk to customers (WhatsApp, pantry reminders), loyalty (grocery-nav below).
+  if (shop?.vertical === "grocery" && hasGroceryFeature(enabled)) return buildGroceryNav(base, role, enabled, shop);
 
   const items: NavEntry[] = [
     home,
@@ -187,12 +211,16 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
     { key: "tickets", href: `${base}/tickets`, label: "Tickets", group: "commerce" },
     { key: "invoices", href: `${base}/invoices`, label: "Invoices", group: "commerce" },
     calendar,
+    classes,
+    { key: "class-offers", href: `${base}/classes/offers`, label: "Memberships & passes", group: "commerce" },
+    door,
     { key: "services", href: `${base}/services`, label: enabled.has("service.tickets") && !enabled.has("booking.appointments") ? "Price list" : "Services & prices", group: "commerce" },
     { key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "commerce" },
     { key: "rebooking", href: `${base}/rebooking`, label: "Rebooking", group: "commerce" },
     { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "commerce" },
     { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
     { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
+    { key: "pharmacy", href: `${base}/pharmacy`, label: "Pharmacy rules", group: "shop" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
     { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
@@ -252,9 +280,43 @@ function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureK
   return out;
 }
 
+/**
+ * Grocer sidebar (docs/research/grocers.md, frame D1): the counter first, then what they sell ahead of time (the butcher counter with
+ * its pre-orders and Eid plan, the weekly flyer, orders), who they talk to (WhatsApp list orders, pantry reminders, messages) and the
+ * loyalty program. The repair, appointment and class sections stay out of the way.
+ */
+function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
+  const g = (slug: string, label: string, group: NavGroup): NavEntry => ({ key: `grocery-${slug}`, href: `${base}/grocery/${slug}`, label, group });
+  const out: NavEntry[] = [
+    { key: "home", href: base, label: "Home", group: "main", exact: true },
+    { key: "counter", href: `${base}/counter`, label: "Counter", group: "main" },
+  ];
+  if (enabled.has("grocery.counter_preorders")) out.push(g("butcher", "Butcher counter", "g-sell"));
+  if (enabled.has("grocery.flyer")) out.push(g("flyer", "Weekly flyer", "g-sell"));
+  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "g-sell" });
+  if (navVisible("catalog", enabled, shop) && !enabled.has("grocery.counter_preorders")) out.push({ key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "g-sell" });
+  if (enabled.has("grocery.whatsapp_orders")) out.push(g("whatsapp", "WhatsApp", "g-talk"));
+  if (enabled.has("grocery.pantry_reminders")) out.push(g("pantry", "Pantry reminders", "g-talk"));
+  const rest: NavEntry[] = [
+    { key: "messages", href: `${base}/messages`, label: "Messages", group: "g-talk" },
+    { key: "customers", href: `${base}/customers`, label: "Customers", group: "g-loyalty" },
+    { key: "program", href: `${base}/program`, label: "Rewards", group: "g-loyalty" },
+    { key: "promos", href: `${base}/promos`, label: "Promos", group: "g-loyalty" },
+    { key: "reports", href: `${base}/reports`, label: "Reports", group: "g-loyalty" },
+    { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
+    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
+    { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
+    { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
+    { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
+    { key: "billing", href: `${base}/billing`, label: "Billing & plans", group: "shop" },
+  ];
+  out.push(...rest.filter((i) => navVisible(i.key, enabled, shop) && (i.key !== "billing" || role === "owner")));
+  return out;
+}
+
 /** Which nav keys a role may open directly (route guard for staff deep links). */
 export function canOpen(role: StaffRole, key: string): boolean {
-  if (role === "staff") return key === "home" || key === "counter" || key === "calendar";
+  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "classes" || key === "class-door" || key === "grocery";
   if (key === "billing") return role === "owner";
   return true;
 }

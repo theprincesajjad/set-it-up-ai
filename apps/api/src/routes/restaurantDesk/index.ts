@@ -13,7 +13,7 @@ import { notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { normalizePhone } from "../../services/channel-orders.js";
 import { requirePermission } from "../../services/commerceShared.js";
-import { requireFeature } from "../../services/features.js";
+import { requireAnyFeature, PREORDER_FEATURES } from "../../services/features.js";
 import { busyState, setBusy } from "../../services/busyMode.js";
 import { joinWaitlist, listWaitlist, remindBalance } from "../../services/preorderWaitlist.js";
 import { requireAnyRestaurantFeature, restaurantBadges, restaurantHome } from "../../services/restaurantHome.js";
@@ -58,7 +58,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     // ---------------------------------------------------------------- balance reminders
     app.post<{ Params: MerchantParams & { orderId: string } }>("/merchants/:merchantId/orders/:orderId/remind-balance", async (req) => {
       const staff = await staffFor(req, "staff");
-      await requireFeature(ctx.db, staff.merchant, "restaurant.degh_preorders");
+      await requireAnyFeature(ctx.db, staff.merchant, PREORDER_FEATURES);
       await requirePermission(ctx, staff, "orders.manage");
       return remindBalance(ctx, staff, req.params.orderId);
     });

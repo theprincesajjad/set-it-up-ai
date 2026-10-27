@@ -8,6 +8,7 @@ import { connect } from "@ll/db";
 import { loadConfig } from "./config.js";
 import { DEMO_CREDENTIALS, seedDemo } from "./seed/demo.js";
 import { STAFF_LOGINS } from "./seed/restaurants.js";
+import { GROCER_STAFF_LOGINS } from "./seed/grocers.js";
 
 export { seedDemo, DEMO_CREDENTIALS };
 export type { SeedOptions, SeedResult } from "./seed/demo.js";
@@ -31,6 +32,7 @@ async function main() {
     for (const c of r.credentials) console.log(`${c.role.padEnd(6)} ${c.email.padEnd(48)} ${c.password}${c.merchant ? `   (${c.merchant})` : ""}`);
     console.log(`${"staff".padEnd(6)} ${"staff+pinecone-coffee@example.com".padEnd(48)} ${DEMO_CREDENTIALS.ownerPassword}   (Pinecone Coffee Co., counter PIN ${DEMO_CREDENTIALS.staffPin})`);
     for (const st of STAFF_LOGINS) console.log(`${"staff".padEnd(6)} ${st.email.padEnd(48)} ${DEMO_CREDENTIALS.ownerPassword}   (${st.shop}, ${st.name}, ${st.locale}${st.station ? `, ${st.station} station` : ""}, PIN ${DEMO_CREDENTIALS.staffPin})`);
+    for (const st of GROCER_STAFF_LOGINS) console.log(`${"staff".padEnd(6)} ${st.email.padEnd(48)} ${DEMO_CREDENTIALS.ownerPassword}   (${st.shop}, ${st.name}, ${st.locale}, PIN ${DEMO_CREDENTIALS.staffPin})`);
     console.log("Customers sign in by phone OTP, e.g. +16475551000 … (console SMS provider prints the code).");
   } finally {
     await db.$close();

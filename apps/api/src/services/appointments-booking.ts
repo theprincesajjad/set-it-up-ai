@@ -32,6 +32,7 @@ import { iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./comme
 import { requireFeature } from "./features.js";
 import { platformFeeFor } from "./fees.js";
 import { merchantProvince } from "./tax.js";
+import { assertNoPharmacyNotes, isPharmacy } from "./pharmacy-guard.js";
 import { chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
 import { getPayments } from "../providers/payments.js";
 
@@ -66,9 +67,9 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
     .sort((a, b) => a.name.localeCompare(b.name));
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return {
-    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null },
+    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
     tax: salesTaxCopy({ province: await merchantProvince(ctx.db, merchant), taxRegistered: merchant.taxRegistered }),
-    policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: merchant.noShowFeeCents, takesCards: cardsOk },
+    policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: isPharmacy(merchant) ? 0 : merchant.noShowFeeCents, takesCards: isPharmacy(merchant) ? false : cardsOk },
     services: rows.map((s) => ({
       id: s.id,
       name: s.name,
@@ -256,9 +257,17 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
   const svcs = await loadAppointmentServices(ctx.db, merchant.id, body.serviceIds, { requireActive: true });
   const overrides = await ctx.db.select().from(staffServices).where(and(eq(staffServices.merchantId, merchant.id), eq(staffServices.userId, staffId)));
   const r = itemsFor(svcs, staffId, overrides);
+  const rx = isPharmacy(merchant);
+  // A pharmacy appointment is free to book: no deposit, no card on file, no no-show fee, no notes (a note is where health information would go).
+  assertNoPharmacyNotes(merchant, body.notes);
+  if (rx) {
+    r.items = r.items.map((i) => ({ ...i, priceCents: 0 }));
+    r.totalCents = 0;
+    r.depositCents = 0;
+  }
   const cardsOk = await paymentsReady(ctx.db, merchant);
   const deposit = cardsOk && r.depositCents >= MIN_CHARGE_CENTS ? r.depositCents : 0;
-  const fee = merchant.noShowFeeCents;
+  const fee = rx ? 0 : merchant.noShowFeeCents;
   const hold = deposit > 0 || (cardsOk && fee > 0);
   const row = await guardOverlap(async () => {
     const [a] = await ctx.db
@@ -412,6 +421,7 @@ export function feeDue(a: Pick<Appointment, "noShowFeeCents" | "depositCents" | 
  * (and the provider key repeats the same charge if a retry races). 409 no_card_on_file without a saved card.
  */
 export async function chargeFee(ctx: AppContext, merchant: Merchant, a: Appointment, reason: string): Promise<{ charged: boolean; cents: number }> {
+  if (isPharmacy(merchant)) return { charged: false, cents: 0 };
   const cents = feeDue(a, merchant);
   if (a.feeChargedAt) return { charged: true, cents };
   if (cents === 0) {
@@ -571,7 +581,8 @@ export async function sendReminders(ctx: AppContext): Promise<number> {
     const [loc] = await ctx.db.select({ address: locations.address }).from(locations).where(eq(locations.id, a.locationId)).limit(1);
     const locale = await localeOf(ctx, a.userId!);
     const t = translator(locale);
-    const vars = { service: a.items.map((i) => i.name).join(", ") || "-", shop: m.name, when: near ? timeText(a.startsAt, m.timezone, locale) : whenText(a.startsAt, m.timezone, locale), address: loc?.address ?? "", link: manageLink(ctx, m, a) };
+    // A reminder on a lock screen must not say why someone is going to a pharmacy: it says "appointment".
+    const vars = { service: isPharmacy(m) ? t("rx.appt.word") : a.items.map((i) => i.name).join(", ") || "-", shop: m.name, when: near ? timeText(a.startsAt, m.timezone, locale) : whenText(a.startsAt, m.timezone, locale), address: loc?.address ?? "", link: manageLink(ctx, m, a) };
     const body = t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
     await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
     sent++;

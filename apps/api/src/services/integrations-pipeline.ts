@@ -21,6 +21,8 @@ import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { apiContextFor, categoryMap, findConnectedByAccount, getIntegration, locationForExternal, markDisconnected, type Integration } from "./integrations.js";
 import { awardPurchase, postTransaction, reverseTransaction, type AwardResult } from "./ledger.js";
+import { frontStoreLinesOnly } from "./pharmacy.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import { notifyPassUpdate } from "./wallet.js";
 import { emitMerchantEvent } from "./webhooks-out.js";
 
@@ -231,8 +233,14 @@ export async function applyPosPurchase(ctx: AppContext, integ: Integration, p: P
 
   const idempotencyKey = `${provider}:${p.externalId}`;
   const locationId = await locationForExternal(ctx.db, merchantId, provider, p.externalLocationId);
-  const lines = await mapLines(ctx, merchantId, provider, p);
-  const stored: StoredPurchase = { ...p, mappedLines: lines };
+  let lines = await mapLines(ctx, merchantId, provider, p);
+  let stored: StoredPurchase = { ...p, mappedLines: lines };
+  // A pharmacy's POS may also ring up prescriptions: keep and award front-store lines only; a sale with none is not ours to hold.
+  if (isPharmacy(await merchantRow(ctx, merchantId))) {
+    lines = await frontStoreLinesOnly(ctx.db, merchantId, lines);
+    if (!lines.length) return { status: "ignored", purchaseRef: p.externalId, error: "Nothing from the front store in this sale" };
+    stored = { ...p, lines: [], totalCents: lines.reduce((n, l) => n + l.amountCents, 0), mappedLines: lines };
+  }
 
   const [already] = await ctx.db
     .select({ id: ledgerTransactions.id, memberId: ledgerTransactions.memberId })

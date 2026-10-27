@@ -81,8 +81,8 @@ describe("BIA neighbourhoods", () => {
     const r = await call("GET", `/v1/admin/neighbourhoods/${hood.id}/merchants`, biaToken);
     expect(r.statusCode).toBe(200);
     expect(r.json().items).toEqual([
-      { id: b.merchant.id, name: "Abe Books", slug: b.merchant.slug, vertical: "pharmacy", status: "onboarding", activated: false, activatedAt: null, logoUrl: null },
-      { id: a.merchant.id, name: "Zed Cafe", slug: a.merchant.slug, vertical: "pharmacy", status: "active", activated: true, activatedAt: env.clock.now.toISOString(), logoUrl: null },
+      { id: b.merchant.id, name: "Abe Books", slug: b.merchant.slug, vertical: "retail", status: "onboarding", activated: false, activatedAt: null, logoUrl: null },
+      { id: a.merchant.id, name: "Zed Cafe", slug: a.merchant.slug, vertical: "retail", status: "active", activated: true, activatedAt: env.clock.now.toISOString(), logoUrl: null },
     ]);
     expect((await call("GET", `/v1/admin/neighbourhoods/${other.id}/merchants`, biaToken)).statusCode).toBe(403);
     expect((await call("GET", `/v1/admin/neighbourhoods/${other.id}/merchants`, await tokenFor(env, admin))).json().items).toHaveLength(1);

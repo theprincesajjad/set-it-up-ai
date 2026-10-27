@@ -408,7 +408,7 @@ export interface PublicBookingPolicyDto {
   takesCards: boolean;
 }
 export interface PublicServicesResponse {
-  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null };
+  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; pharmacy?: boolean };
   /** `applies` only when the shop is registered for GST/HST; `name` is what to call it ("HST"). */
   tax: { applies: boolean; name: string };
   policy: PublicBookingPolicyDto;

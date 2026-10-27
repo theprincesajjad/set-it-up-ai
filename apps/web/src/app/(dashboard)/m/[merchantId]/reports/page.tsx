@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { HBarList } from "@/components/dashboard/Charts";
 import { Heatmap } from "@/components/dashboard/reports/Heatmap";
+import { Banner } from "@/components/ui/Banner";
 import { Empty, ErrorLine, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -91,6 +92,11 @@ export default function ReportsPage() {
         ]}
       />
 
+      {overview.data?.scope === "front_store" ? (
+        <Banner tone="info" title="These numbers count front-store sales only">
+          Prescriptions, pharmacy services and appointments are never counted, so nothing here can reveal who uses the dispensary.
+        </Banner>
+      ) : null}
       {overview.error && !overview.data ? <ErrorLine message={overview.error} onRetry={overview.reload} /> : null}
 
       {tab === "overview" ? (
