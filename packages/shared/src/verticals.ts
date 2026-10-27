@@ -164,7 +164,8 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     pointsPerVisit: 0,
     stampGoal: 0,
     terminology: "points",
-    welcomeBonus: 50,
+    // Never a welcome bonus at a pharmacy: points for joining or for a first visit are a visit-based benefit.
+    welcomeBonus: 0,
     rewards: [{ name: "$5 off front store", pointsCost: 500, rewardType: "amount_off", value: 500 }],
     // Ontario: no points or inducements on prescriptions or pharmacy services
     // (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6; OCP loyalty points policy). Enforced as a locked no-earn, no-discount category.

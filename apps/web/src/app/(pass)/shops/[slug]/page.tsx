@@ -188,9 +188,9 @@ export default async function ShopPage({ params, searchParams }: Props) {
       {shop.features?.appointments ? (
         <div className="flex flex-col gap-2">
           <Button size="lg" fullWidth href={`${base}/book`}>
-            {t("bk.shop.book")}
+            {t(m.vertical === "pharmacy" ? "rx.shop.book" : "bk.shop.book")}
           </Button>
-          <p className="text-center text-meta text-fg-muted">{t("bk.shop.bookSub")}</p>
+          <p className="text-center text-meta text-fg-muted">{t(m.vertical === "pharmacy" ? "rx.shop.bookSub" : "bk.shop.bookSub")}</p>
         </div>
       ) : null}
       {shop.features?.walkinQueue ? (
@@ -254,7 +254,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                   <ListGroup title={t("shop.howEarn")} as="div">
                     <div className="flex flex-col gap-1 py-3.5">
                       <p dir="auto" className="text-body-strong text-fg">{howYouEarnL(L, program, formatCurrency(locale, 100))}</p>
-                      {program.welcomeBonus > 0 ? (
+                      {program.welcomeBonus > 0 && m.vertical !== "pharmacy" ? (
                         <p className="text-meta text-fg">
                           {t("shop.welcomeBonus", { points: unitsText(locale, program.welcomeBonus, terminology, false) })}
                         </p>

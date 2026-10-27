@@ -452,17 +452,27 @@ export async function start(ctx: AppContext, staff: StaffContext, entryId: strin
   return { entry: await present(ctx, merchant, row!), appointmentId: created.id };
 }
 
-/** Skip: the first time the person goes back two places; the second time they are off the line. */
+/** The state a skip changed, so Undo can put it back exactly (the response carries it; nothing is stored). */
+function undoOf(e: Entry): barberApi.SkipUndo {
+  return { status: e.status as "waiting" | "called", skips: e.skips, positionAt: e.positionAt.toISOString(), calledAt: e.calledAt ? e.calledAt.toISOString() : null, calledStaffId: e.calledStaffId, notifiedNextAt: e.notifiedNextAt ? e.notifiedNextAt.toISOString() : null };
+}
+
+/**
+ * Skip is for someone who was called and did not answer: the first time the person goes back two places; the second time they are off the line.
+ * Someone who was never called is not skipped (call them first, or remove them). The response says how to undo it.
+ */
 export async function skip(ctx: AppContext, staff: StaffContext, entryId: string): Promise<barberApi.QueueActionResponse> {
   const merchant = staff.merchant;
   const e = await entryOf(ctx, merchant.id, entryId);
   if (e.status !== "waiting" && e.status !== "called") throw conflict("This person is no longer waiting");
+  if (e.status !== "called") throw conflict("Call them first. Skip is for someone who was called and did not answer; use Remove if they left.");
   if (e.calledStaffId) assertMayAct(staff, e.calledStaffId);
   const now = ctx.now();
+  const undo = undoOf(e);
   if (e.skips >= 1) {
     const [row] = await ctx.db.update(queueEntries).set({ status: "no_show", finishedAt: now, updatedAt: now }).where(eq(queueEntries.id, e.id)).returning();
     await notifyNext(ctx, merchant);
-    return { entry: await present(ctx, merchant, row!) };
+    return { entry: await present(ctx, merchant, row!), undo };
   }
   const s = await snapshot(ctx, merchant);
   const rest = s.waiting.filter((w) => w.id !== e.id);
@@ -472,6 +482,20 @@ export async function skip(ctx: AppContext, staff: StaffContext, entryId: string
   const [row] = await ctx.db.update(queueEntries).set({ status: "waiting", skips: e.skips + 1, positionAt, calledAt: null, calledStaffId: null, notifiedNextAt: null, updatedAt: now }).where(eq(queueEntries.id, e.id)).returning();
   await sendText(ctx, merchant, row!, "skipped", {});
   await notifyNext(ctx, merchant);
+  return { entry: await present(ctx, merchant, row!), undo };
+}
+
+/** Undo a skip within a minute: put the person back as they were (called, on the same barber, in the same place). */
+export async function undoSkip(ctx: AppContext, staff: StaffContext, entryId: string, u: barberApi.SkipUndo): Promise<barberApi.QueueActionResponse> {
+  const merchant = staff.merchant;
+  const e = await entryOf(ctx, merchant.id, entryId);
+  const now = ctx.now();
+  if ((e.status !== "waiting" && e.status !== "no_show") || e.skips !== u.skips + (e.status === "no_show" ? 0 : 1) || now.getTime() - e.updatedAt.getTime() > 60_000) throw conflict("That skip can't be undone any more");
+  const [row] = await ctx.db
+    .update(queueEntries)
+    .set({ status: u.status, skips: u.skips, positionAt: new Date(u.positionAt), calledAt: u.calledAt ? new Date(u.calledAt) : null, calledStaffId: u.calledStaffId, notifiedNextAt: u.notifiedNextAt ? new Date(u.notifiedNextAt) : null, finishedAt: null, updatedAt: now })
+    .where(eq(queueEntries.id, e.id))
+    .returning();
   return { entry: await present(ctx, merchant, row!) };
 }
 

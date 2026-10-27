@@ -52,7 +52,7 @@ export default function Appointment() {
   const policy = !inside ? t("bk.manage.cancelFree", { when: when(a.freeChangeUntil).replace(/\.$/, "") }) : fee > 0 && a.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(fee) }) : t("bk.manage.cancelLate");
 
   async function addToCalendar() {
-    const r = await addAppointmentToCalendar(a!, t("bk.done.calendar"));
+    const r = await addAppointmentToCalendar(a!, t("bk.done.calendar"), t("rx.ics.title"));
     if (r === "failed") setNote({ variant: "danger", text: t("bk.calendarFailed") });
   }
 

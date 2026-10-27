@@ -61,8 +61,16 @@ export function pharmacyAwardPlan<L extends { amountCents: number; categoryId?: 
   return { lines: lines.map((l) => (l.categoryId ? l : { ...l, categoryId: UNCLASSIFIED_CATEGORY })), extraNoEarn: [UNCLASSIFIED_CATEGORY] };
 }
 
+/** A pharmacy cannot award or redeem until its pharmacist-owner has confirmed the rules (and given the OCP accreditation number). */
+export const pharmacyNotConfirmed = () =>
+  new HttpError(422, "pharmacy_not_confirmed", "The pharmacist-owner needs to confirm the pharmacy rules before points can be given. Open Pharmacy rules and confirm; it takes a minute.");
+export function assertPharmacyConfirmed(m: Pick<Merchant, "vertical" | "pharmacyConfirmedAt">): void {
+  if (isPharmacy(m) && !m.pharmacyConfirmedAt) throw pharmacyNotConfirmed();
+}
+
 /** Redeeming (staff or a customer's code) at a pharmacy needs the same cashier confirmation: the reward goes on front-store items. */
-export function assertPharmacyRedeem(m: Pick<Merchant, "vertical">, frontStoreOnly: boolean | undefined): void {
+export function assertPharmacyRedeem(m: Pick<Merchant, "vertical"> & { pharmacyConfirmedAt?: Date | null }, frontStoreOnly: boolean | undefined): void {
+  if (isPharmacy(m) && "pharmacyConfirmedAt" in m && !m.pharmacyConfirmedAt) throw pharmacyNotConfirmed();
   if (isPharmacy(m) && frontStoreOnly !== true) {
     throw new HttpError(422, "front_store_confirmation_required", "Confirm the reward is applied to front-store items only. A reward can never be used on a prescription or a pharmacy service.");
   }

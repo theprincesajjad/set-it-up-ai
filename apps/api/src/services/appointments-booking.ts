@@ -237,14 +237,15 @@ function weekdayTimeText(at: Date, tz: string, locale: Locale): string {
 }
 
 /**
- * The fixed pharmacy reminder: shop, the time, a link to change it, the STOP line. It never says what the appointment is for, and the
+ * The fixed pharmacy reminder: the time, a link to change it, the STOP line. It names neither the shop nor what the appointment is for
+ * (a lock screen must not show that someone uses a pharmacist), and the
  * same words go out the day before and two hours before, so what the booked screen shows is exactly what the phone gets.
  */
 export function pharmacyReminderText(ctx: AppContext, m: Pick<Merchant, "name" | "slug" | "timezone">, a: Pick<Appointment, "id" | "startsAt">, locale: Locale): { body: string; sms: string } {
   const t = translator(locale);
   // In a right-to-left language the shop name, the time and the link are isolated, so the Latin runs do not reorder the sentence around them.
   const iso = (x: string) => (LOCALES[locale].dir === "rtl" ? `\u2068${x}\u2069` : x);
-  const body = t("rx.appt.reminder", { shop: iso(m.name), when: iso(weekdayTimeText(a.startsAt, m.timezone, locale)), link: iso(manageLink(ctx, m, a)) });
+  const body = t("rx.appt.reminder", { when: iso(weekdayTimeText(a.startsAt, m.timezone, locale)), link: iso(manageLink(ctx, m, a)) });
   return { body, sms: `${body} ${t("bk.msg.stop")}` };
 }
 
@@ -254,8 +255,12 @@ async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointme
   if (!a.userId) return;
   const locale = await localeOf(ctx, a.userId);
   const t = translator(locale);
-  const body = t("bk.msg.confirmed", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) });
-  await notifyCustomer(ctx, { userId: a.userId, merchantId: merchant.id, title: t("bk.msg.confirmedTitle", { shop: merchant.name }), body, smsBody: `${body} ${t("bk.msg.stop")}`, data: { type: "appointment_confirmed", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
+  // A pharmacy confirmation, like its reminder, names neither the shop nor the service: it can show on a lock screen.
+  const rx = isPharmacy(merchant);
+  const body = rx
+    ? t("rx.appt.confirmed", { when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) })
+    : t("bk.msg.confirmed", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) });
+  await notifyCustomer(ctx, { userId: a.userId, merchantId: merchant.id, title: rx ? t("rx.appt.titleBooked") : t("bk.msg.confirmedTitle", { shop: merchant.name }), body, smsBody: `${body} ${t("bk.msg.stop")}`, data: { type: "appointment_confirmed", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
 }
 
 // ---------------------------------------------------------------------------
@@ -608,7 +613,7 @@ export async function sendReminders(ctx: AppContext): Promise<number> {
     const vars = { service: isPharmacy(m) ? t("rx.appt.word") : a.items.map((i) => i.name).join(", ") || "-", shop: m.name, when: near ? timeText(a.startsAt, m.timezone, locale) : whenText(a.startsAt, m.timezone, locale), address: loc?.address ?? "", link: manageLink(ctx, m, a) };
     const fixed = isPharmacy(m) ? pharmacyReminderText(ctx, m, a, locale) : null;
     const body = fixed?.body ?? t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
-    await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: fixed?.sms ?? `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
+    await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: isPharmacy(m) ? t("rx.appt.titleReminder") : t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: fixed?.sms ?? `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
     sent++;
   }
   return sent;

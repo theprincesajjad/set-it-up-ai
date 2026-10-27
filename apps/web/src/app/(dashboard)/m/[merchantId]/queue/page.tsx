@@ -1,8 +1,10 @@
 "use client";
 import { Plus, Tablet } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { barberApi } from "@ll/shared";
 import { AddToLine } from "@/components/dashboard/queue/AddToLine";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, PageHeader, StatBlock } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -25,6 +27,7 @@ export default function QueuePage() {
 function Board() {
   const { api, base, me, role } = useMerchant();
   const toast = useToast();
+  const router = useRouter();
   const act = useAction();
   const [add, setAdd] = useState(false);
   const state = useApi(() => api.barber.board(), [api], { pollMs: 10_000 });
@@ -37,6 +40,29 @@ function Board() {
     if (r && ok) toast({ message: ok, tone: "success" });
     await state.reload();
     return r;
+  }
+  // Skip is for someone who was called and did not answer. The second skip takes them off the line, so it asks first; both can be undone for 10 s.
+  const [confirmSkip, setConfirmSkip] = useState<barberApi.QueueEntryDto | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<barberApi.QueueEntryDto | null>(null);
+  async function skip(e: barberApi.QueueEntryDto) {
+    const r = await act.run(() => api.barber.skip(e.id));
+    await state.reload();
+    const undo = r?.undo;
+    if (r && undo) {
+      toast({
+        message: r.entry.status === "no_show" ? `${e.name} is off the line` : `${e.name} goes back two places`,
+        tone: "success",
+        duration: 10_000,
+        action: { label: "Undo", onClick: () => void act.run(() => api.barber.undoSkip(e.id, undo)).then(() => state.reload()) },
+      });
+    }
+  }
+  // Done finishes the chair; the visit still needs its payment, tip and stamp, so the toast and the board offer Check out.
+  async function finish(entryId: string) {
+    const r = await act.run(() => api.barber.done(entryId));
+    await state.reload();
+    const appt = r?.entry.appointmentId;
+    if (r && appt) toast({ message: `${r.entry.name} is done. Take payment next.`, tone: "success", duration: 12_000, action: { label: "Check out", onClick: () => router.push(`${base}/calendar?appt=${appt}&checkout=1`) } });
   }
   const callFor = (entry: barberApi.QueueEntryDto, staffId: string) => run(() => api.barber.call(entry.id, staffId), `${entry.name} was texted if they asked`);
   const myChair = b?.chairs.find((c) => c.staffId === myId);
@@ -90,7 +116,7 @@ function Board() {
                   </div>
                   <Dot tone="accent">Called, on the way to {b.chairs.find((c) => c.staffId === e.calledStaffId)?.name ?? "a chair"}</Dot>
                   <Button size="sm" onClick={() => run(() => api.barber.start(e.id))}>In the chair</Button>
-                  <Button size="sm" variant="ghost" onClick={() => run(() => api.barber.skip(e.id))}>Skip</Button>
+                  <Button size="sm" variant="ghost" onClick={() => (e.skips >= 1 ? setConfirmSkip(e) : skip(e))}>Skip</Button>
                 </li>
               ))}
               {b.waiting.map((e) => (
@@ -103,7 +129,7 @@ function Board() {
                   <span className="text-meta text-fg-muted tabular">waiting {e.waitedMin} min</span>
                   {e.textedNext ? <span className="rounded-pill bg-bg-muted px-2 py-0.5 text-meta text-positive-text">Text sent: you&apos;re next</span> : null}
                   <Button size="sm" variant="secondary" disabled={!myChair?.takesWalkIns && role === "staff"} onClick={() => callFor(e, myChair?.takesWalkIns ? myId : (b.chairs.find((c) => c.state === "free" && c.takesWalkIns)?.staffId ?? myId))}>Call</Button>
-                  <Button size="sm" variant="ghost" onClick={() => run(() => api.barber.skip(e.id))}>Skip</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(e)}>Remove</Button>
                 </li>
               ))}
             </ul>
@@ -125,7 +151,7 @@ function Board() {
                       size="sm"
                       variant={a.kind === "call-next" ? "primary" : "secondary"}
                       onClick={() => {
-                        if (a.kind === "done" && c.entryId) return run(() => api.barber.done(c.entryId!));
+                        if (a.kind === "done" && c.entryId) return finish(c.entryId);
                         if (a.kind === "start" && c.entryId) return run(() => api.barber.start(c.entryId!));
                         if (a.kind === "call-next" && next) return callFor(next, c.staffId);
                       }}
@@ -143,10 +169,28 @@ function Board() {
           })}
           <div className="rounded-card bg-bg-subtle px-4 py-3.5">
             <p className="text-meta-strong text-fg">No-show rule</p>
-            <p className="mt-1 text-meta text-fg-muted">Called and no answer after {b?.settings.callHoldMinutes ?? 5} minutes: Skip puts them back 2 places and texts them again. A second skip takes them off. No fee, no card needed.</p>
+            <p className="mt-1 text-meta text-fg-muted">Called and no answer after {b?.settings.callHoldMinutes ?? 5} minutes: Skip puts them back 2 places and texts them again. A second skip takes them off. Skip only works on someone you have called. No fee, no card needed.</p>
           </div>
         </section>
       </div>
+      <ConfirmDialog
+        open={!!confirmSkip}
+        onClose={() => setConfirmSkip(null)}
+        title={`Take ${confirmSkip?.name ?? "them"} off the line?`}
+        body="They were already skipped once. Skipping again removes them and they would have to join again. You can undo it for a few seconds."
+        confirmLabel="Take off the line"
+        danger
+        onConfirm={() => (confirmSkip ? skip(confirmSkip) : undefined)}
+      />
+      <ConfirmDialog
+        open={!!confirmRemove}
+        onClose={() => setConfirmRemove(null)}
+        title={`Remove ${confirmRemove?.name ?? "them"}?`}
+        body="Use this when someone left. They drop off the line and are not texted."
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => (confirmRemove ? run(() => api.barber.remove(confirmRemove.id)) : undefined)}
+      />
       <AddToLine open={add} onClose={() => setAdd(false)} board={b} onAdded={() => state.reload()} />
     </div>
   );

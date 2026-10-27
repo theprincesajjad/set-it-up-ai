@@ -27,7 +27,7 @@ describe("plans", () => {
       expect(isFeatureEnabled(k, { plan: "free", stage: "ga" })).toBe(true);
     }
   });
-  it("puts promos, marketing, VIP, CSV and integrations on Plus, hidden at launch", () => {
+  it("puts promos, marketing, VIP, CSV and integrations on Plus, live at launch (trade tools self-serve)", () => {
     const plus: FeatureKey[] = [
       "promos.basic",
       "promos.double_points",
@@ -52,8 +52,8 @@ describe("plans", () => {
     ];
     for (const k of plus) {
       expect(FEATURES[k].minPlan, k).toBe("plus");
-      expect(FEATURES[k].defaultStage, k).toBe("hidden");
-      expect(FEATURES[k].unlockAtMerchants, k).toBe(100);
+      expect(FEATURES[k].defaultStage, k).toBe(k === "promos.push_nearby" ? "hidden" : "ga");
+      expect(FEATURES[k].unlockAtMerchants, k).toBe(k === "promos.push_nearby" ? 100 : 0);
       expect(isFeatureEnabled(k, { plan: "free", stage: "ga" }), k).toBe(false);
       expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" }), k).toBe(true);
       // Pro includes Plus.
@@ -61,11 +61,11 @@ describe("plans", () => {
     }
     for (const k of ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices", "booking.dropoff_scheduling", "staff.permissions"] as const) {
       expect(FEATURES[k].minPlan).toBe("pro");
-      expect(FEATURES[k].defaultStage).toBe("hidden");
+      expect(FEATURES[k].defaultStage).toBe("ga");
       expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" })).toBe(false);
     }
-    // Every paid feature ships hidden; only FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
-    for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe("hidden");
+    // Every paid trade tool ships live (founder decision 2026-10-27); only network-wide extras ship hidden. Outside PAID_FEATURES: FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
+    for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe(FEATURES[k].networkGated ? "hidden" : "ga");
     expect(FEATURE_KEYS.filter((k) => !FREE_FOREVER.includes(k) && !PAID_FEATURES.includes(k) && !RESTAURANT_FEATURES.includes(k)).sort()).toEqual(
       ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "campaigns.neighbourhood", "network.perks"].sort(),
     );
@@ -87,8 +87,8 @@ describe("plans", () => {
     expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "ga" })).toBe(true);
     expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "beta" })).toBe(false);
     expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "beta", betaOptIn: true })).toBe(true);
-    expect(isPlanAvailable("plus", {})).toBe(false);
-    expect(isPlanAvailable("plus", { "orders.order_ahead": "ga" })).toBe(true);
+    expect(isPlanAvailable("plus", {})).toBe(true);
+    expect(isPlanAvailable("plus", { "orders.order_ahead": "hidden" })).toBe(true);
   });
 });
 
@@ -150,7 +150,42 @@ describe("restaurant pack", () => {
     expect(isFeatureEnabled("restaurant.banquet", { plan: "free", stage: "ga", restaurantTier: "starter", addOns: ["banquet_module"] })).toBe(false);
     expect(isFeatureEnabled("restaurant.banquet", { ...g, stage: "hidden", addOns: ["banquet_module"] })).toBe(false);
   });
-  it("does not make Plus purchasable just because restaurant features are live", () => {
-    expect(isPlanAvailable("plus", {})).toBe(false);
+  it("keeps Plus purchasable on its own trade tools, not because restaurant features are live", () => {
+    expect(isPlanAvailable("plus", {})).toBe(true);
+    expect(isPlanAvailable("plus", Object.fromEntries(FEATURE_KEYS.filter((k) => !RESTAURANT_FEATURES.includes(k) && FEATURES[k].minPlan === "plus").map((k) => [k, "hidden"])))).toBe(false);
+  });
+});
+
+describe("trade tools self-serve (founder decision 2026-10-27)", () => {
+  it("gates only network-wide extras; every other paid feature ships live", () => {
+    const gated = FEATURE_KEYS.filter((k) => FEATURES[k].networkGated).sort();
+    expect(gated).toEqual(["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "campaigns.neighbourhood", "promos.push_nearby"].sort());
+    for (const k of FEATURE_KEYS) {
+      const d = FEATURES[k];
+      expect(d.defaultStage, k).toBe(d.networkGated ? "hidden" : "ga");
+      if (d.networkGated) expect(d.unlockAtMerchants, k).toBeGreaterThanOrEqual(100);
+      else expect(d.unlockAtMerchants, k).toBe(0);
+    }
+  });
+  it("a new shop gets its trade tools on its plan without an override", () => {
+    const stage = (k: FeatureKey) => FEATURES[k].defaultStage;
+    const on = (k: FeatureKey, ctx: Omit<Parameters<typeof isFeatureEnabled>[1], "stage">) => isFeatureEnabled(k, { ...ctx, stage: stage(k) });
+    expect(on("booking.appointments", { plan: "plus" })).toBe(true);
+    expect(on("booking.classes", { plan: "plus" })).toBe(true);
+    expect(on("booking.walkin_queue", { plan: "plus" })).toBe(true);
+    expect(on("pets.daycare", { plan: "plus", vertical: "pet" })).toBe(true);
+    expect(on("pets.daycare", { plan: "plus", vertical: "cafe" })).toBe(false);
+    expect(on("orders.order_ahead", { plan: "free", restaurantTier: "starter" })).toBe(true);
+    expect(on("restaurant.tiffin", { plan: "free", restaurantTier: "starter" })).toBe(false);
+    expect(on("restaurant.tiffin", { plan: "free", restaurantTier: "growth" })).toBe(true);
+    expect(on("service.tickets", { plan: "pro" })).toBe(true);
+    // network extras stay shut, even on Pro, until an admin flips them
+    expect(on("ads.sponsored_promo", { plan: "pro" })).toBe(false);
+    expect(on("campaigns.neighbourhood", { plan: "pro" })).toBe(false);
+  });
+  it("pharmacist appointments are free for pharmacies, paid for everyone else", () => {
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(true);
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "salon" })).toBe(false);
+    expect(isFeatureEnabled("booking.classes", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(false);
   });
 });

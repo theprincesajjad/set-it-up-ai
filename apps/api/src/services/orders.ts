@@ -48,7 +48,7 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 /** What the customer still owes: deposit orders owe the balance, unpaid orders owe the total. */
 export function balanceDueCents(o: Pick<Order, "status" | "paymentStatus" | "kind" | "totalCents" | "depositCents" | "customerFeeCents" | "depositPaidAt">): number {
   if (o.paymentStatus === "paid" || o.paymentStatus === "refunded" || o.status === "cancelled" || o.status === "refunded") return 0;
-  return Math.max(0, o.totalCents - (o.kind === "preorder" && o.depositPaidAt ? o.depositCents + o.customerFeeCents : 0));
+  return Math.max(0, o.totalCents - ((o.kind === "preorder" || o.kind === "banquet") && o.depositPaidAt ? o.depositCents + o.customerFeeCents : 0));
 }
 
 /**

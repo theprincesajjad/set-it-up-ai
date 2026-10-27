@@ -29,6 +29,8 @@ export interface ParsedOrder {
   pickupInMinutes?: number;
   /** "at 6 pm", "tonight": kept as a note, the shop confirms the time. */
   pickupNote?: string;
+  /** A spoken clock time ("at 8", "8 baje", "آٹھ بجے"). `meridiem` is set only when the caller said am or pm. */
+  pickupClock?: { hour: number; minute: number; meridiem?: "am" | "pm"; said: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -178,9 +180,37 @@ interface Hit {
 
 const PICKUP_IN = /\bin (?:about |around )?(an?|\d{1,3}|one|two|three|four|five|ten|fifteen|twenty|thirty|forty five|forty-five) ?(minutes?|mins?|hours?|hrs?)\b/;
 const PICKUP_AT = /\b(?:at|around|by) (\d{1,2}(?::\d{2})?) ?(am|pm)?\b|\b(tonight|this evening|this afternoon|tomorrow|for lunch|for dinner|after maghrib)\b/;
+// "8 baje", "sade chhe baje", "आठ बजे", "साढ़े छह बजे", "آٹھ بجے", "ساڑھے چھ بجے", "ਅੱਠ ਵਜੇ": a number, then the word for o'clock.
+const alt = (words: string[]) => `(?:${words.map((w) => normalize(w)).join("|")})`;
+const BAJE = alt(["baje", "bajay", "bajey", "bje", "bajae", "बजे", "बजकर", "بجے", "بجئے", "ਵਜੇ"]);
+const SADE = alt(["sade", "saade", "साढ़े", "साढे", "साड़े", "ساڑھے", "ਸਾਢੇ"]);
+const PICKUP_CLOCK = new RegExp(`(?:^| )(?:(${SADE}) )?(\\d{1,2}(?::\\d{2})?|[\\p{L}\\p{M}]+) ${BAJE}(?= |$)`, "u");
+
+function wordHour(w: string): number | null {
+  const n = /^\d/.test(w) ? Number(w.split(":")[0]) : NUMBER_WORDS[w];
+  return n === undefined || Number.isNaN(n) ? null : n;
+}
+
+/** A spoken clock time, and the text with that phrase taken out so its number is not read as a quantity. */
+function clockHint(t: string): { clock?: NonNullable<ParsedOrder["pickupClock"]>; rest: string } {
+  const b = PICKUP_CLOCK.exec(t);
+  if (b) {
+    const hour = wordHour(b[2]!);
+    if (hour !== null && hour >= 1 && hour <= 12) {
+      const minute = b[2]!.includes(":") ? Number(b[2]!.split(":")[1]) : b[1] ? 30 : 0;
+      return { clock: { hour, minute, said: b[0].trim() }, rest: t.replace(b[0], " ") };
+    }
+  }
+  const a = /\b(?:at|around|by) (\d{1,2})(?::(\d{2}))?(?: ?(am|pm))?\b/.exec(t);
+  if (a && (a[3] || a[2] || Number(a[1]) <= 12)) {
+    const hour = Number(a[1]);
+    if (hour >= 1 && hour <= 12) return { clock: { hour, minute: a[2] ? Number(a[2]) : 0, ...(a[3] ? { meridiem: a[3] as "am" | "pm" } : {}), said: a[0] }, rest: t.replace(a[0], " ") };
+  }
+  return { rest: t };
+}
 const WORD_MIN: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, ten: 10, fifteen: 15, twenty: 20, thirty: 30, "forty five": 45, "forty-five": 45 };
 
-function pickupHints(text: string): Pick<ParsedOrder, "pickupInMinutes" | "pickupNote"> {
+function pickupHints(text: string): Pick<ParsedOrder, "pickupInMinutes" | "pickupNote" | "pickupClock"> {
   const t = normalize(text).replace(/ (\d{1,2}) (\d{2}) /g, " $1:$2 ");
   const m = PICKUP_IN.exec(t);
   if (m) {
@@ -188,6 +218,8 @@ function pickupHints(text: string): Pick<ParsedOrder, "pickupInMinutes" | "picku
     const mins = /^h/.test(m[2]!) ? n * 60 : n;
     if (mins > 0 && mins <= 24 * 60) return { pickupInMinutes: mins };
   }
+  const { clock } = clockHint(t);
+  if (clock) return { pickupClock: clock, pickupNote: `Pickup at ${clock.said}`.replace(/\s+/g, " ").trim() };
   const a = PICKUP_AT.exec(t);
   if (a) return { pickupNote: `Pickup ${a[0]}`.replace(/\s+/g, " ").trim() };
   return {};
@@ -200,7 +232,8 @@ function pickupHints(text: string): Pick<ParsedOrder, "pickupInMinutes" | "picku
  */
 export function extractOrderLines(text: string, items: MenuMatchItem[], opts: { minScore?: number } = {}): ParsedOrder {
   const minScore = opts.minScore ?? 0.8;
-  const tokens = normalize(text).split(" ").filter(Boolean);
+  // The spoken time ("8 baje") is not a quantity: take it out before reading quantities.
+  const tokens = clockHint(normalize(text).replace(/ (\d{1,2}) (\d{2}) /g, " $1:$2 ")).rest.split(" ").filter(Boolean);
   const cands = candidatesFor(items);
   const hits: Hit[] = [];
 

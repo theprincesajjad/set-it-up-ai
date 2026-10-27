@@ -32,6 +32,7 @@ import type { AppContext } from "../context.js";
 import type { AuthUser } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, featureLocked, forbidden, notFound } from "../lib/errors.js";
 import { getRolloutStages, requireFeature } from "./features.js";
+import { isPharmacy } from "./pharmacy-guard.js";
 import { postTransaction, visitHooks, type VisitHook } from "./ledger.js";
 import { hoodDto, shopCountSql } from "./network.js";
 
@@ -417,6 +418,8 @@ export async function myCampaigns(ctx: AppContext, userId: string, q: { lat?: nu
 // Visit hook: progress, bonuses, completion
 // ---------------------------------------------------------------------------
 export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, program, member, visitId, at, source }) => {
+  // A pharmacy neither pays nor counts toward "visit N new shops" bonuses (a visit is not a front-store sale).
+  if (isPharmacy(merchant)) return;
   // The live campaigns at this shop, with this customer's progress in the same read.
   const live = await tx
     .select({ c: campaigns, progress: campaignProgress })

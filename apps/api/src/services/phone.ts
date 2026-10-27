@@ -29,13 +29,38 @@ type Draft = NonNullable<Call["draftOrder"]> & { unmatched?: string[]; ambiguous
 /** Matches below this score are flagged for a look before confirming. */
 const SURE_SCORE = 0.9;
 
-/** Pure: transcript + menu -> draft order. `now` anchors "in 30 minutes". */
-export function parseTranscript(transcript: string, menu: MenuMatchItem[], now: Date): { draft: Draft; parsed: ParsedOrder } {
+/** The offset of `tz` from UTC at an instant, in ms. */
+function tzOffsetMs(at: Date, tz: string): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at).map((x) => [x.type, x.value]));
+  return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second)) - Math.floor(at.getTime() / 1000) * 1000;
+}
+
+/**
+ * A spoken clock time ("8 baje") as the next such time today in the shop's zone. With no am or pm: 1 to 9 is the evening, 10 and 11 the
+ * morning if that is still ahead, 12 is noon. A time already gone today gives null: the draft keeps the words as a note and no time.
+ */
+export function clockToPickup(clock: NonNullable<ParsedOrder["pickupClock"]>, now: Date, tz: string): Date | null {
+  const h = clock.meridiem === "pm" ? (clock.hour % 12) + 12 : clock.meridiem === "am" ? clock.hour % 12 : null;
+  const hours = h !== null ? [h] : clock.hour === 12 ? [12] : clock.hour >= 10 ? [clock.hour, clock.hour + 12] : [clock.hour + 12];
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now).split("-").map(Number) as [number, number, number];
+  for (const hh of hours) {
+    const guess = Date.UTC(day[0], day[1] - 1, day[2], hh, clock.minute);
+    const first = guess - tzOffsetMs(new Date(guess), tz);
+    const at = new Date(guess - tzOffsetMs(new Date(first), tz));
+    if (at.getTime() > now.getTime()) return at;
+  }
+  return null;
+}
+
+/** Pure: transcript + menu -> draft order. `now` anchors "in 30 minutes" and "8 baje" (in the shop's `tz`). */
+export function parseTranscript(transcript: string, menu: MenuMatchItem[], now: Date, tz = "America/Toronto"): { draft: Draft; parsed: ParsedOrder } {
   const parsed = extractOrderLines(transcript, menu);
+  const clockAt = parsed.pickupClock ? clockToPickup(parsed.pickupClock, now, tz) : null;
   const draft: Draft = {
     items: parsed.lines.map((l) => ({ catalogItemId: l.catalogItemId, name: l.name, quantity: l.quantity, ...(l.score < SURE_SCORE ? { uncertain: true } : {}) })),
-    ...(parsed.pickupInMinutes ? { pickupAt: new Date(now.getTime() + parsed.pickupInMinutes * 60_000).toISOString() } : {}),
-    ...(parsed.pickupNote ? { notes: parsed.pickupNote } : {}),
+    ...(parsed.pickupInMinutes ? { pickupAt: new Date(now.getTime() + parsed.pickupInMinutes * 60_000).toISOString() } : clockAt ? { pickupAt: clockAt.toISOString() } : {}),
+    // A time we could not place (already gone today, or no am or pm said) stays a note for staff to confirm.
+    ...(parsed.pickupNote && !(clockAt && parsed.pickupClock?.meridiem) ? { notes: parsed.pickupNote + (clockAt && !parsed.pickupClock?.meridiem ? ", check am or pm" : clockAt ? "" : ", check the time") } : {}),
     unmatched: parsed.unmatched,
     ambiguous: parsed.ambiguous.map((a) => ({ phrase: a.phrase, quantity: a.quantity, options: a.options })),
   };
@@ -167,7 +192,7 @@ export async function ingestCall(ctx: AppContext, merchant: Merchant, call: Inco
     return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. After the tone, tell us what you would like to order and a time for pickup.`, gatherAction: selfUrl, language: SPEECH_LANG[lang], notices: noticeSays(lang) }), row: null };
   }
   const menu = await menuFor(ctx, merchant.id);
-  const { draft } = parseTranscript(call.transcript, menu, ctx.now());
+  const { draft } = parseTranscript(call.transcript, menu, ctx.now(), merchant.timezone);
   const status = draft.items.length ? "drafted" : "received";
   const [existing] = await ctx.db.select().from(phoneCalls).where(and(eq(phoneCalls.merchantId, merchant.id), eq(phoneCalls.providerCallId, call.callSid))).limit(1);
   let row: Call;

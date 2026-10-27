@@ -41,6 +41,7 @@ import { BIA_DEMO, seedBiaDemo } from "./bia.js";
 import { seedBarbersBeauty } from "./barbers.js";
 import { seedPets } from "./pets.js";
 import { seedAuto } from "./auto.js";
+import { dayKey, toMinutes, zonedToUtc } from "../services/bookings.js";
 import { seedServiceOps } from "./serviceOps.js";
 import { seedRepAdmin } from "./repAdmin.js";
 import { backfillMilestones } from "../services/onboarding.js";
@@ -52,6 +53,7 @@ import { GROCER_SHOPS, seedGrocers } from "./grocers.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
 
 const DAY = 86400000;
+const TORONTO_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" });
 
 export const DEMO_CREDENTIALS = {
   admin: { email: "admin@localloyalty.example", password: "localloyalty-admin" },
@@ -310,7 +312,14 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
         const day = Math.min(days - 1, joinedDay + R.int(0, days - joinedDay - 1));
         if (usedDays.has(day)) continue;
         usedDays.add(day);
-        const at = new Date(historyStart.getTime() + day * DAY + R.int(8 * 60, 19 * 60) * 60000 + 4 * 3600_000); // 8:00–19:00 Toronto ≈ UTC+4/5
+        // A visit lands inside the shop's own opening hours on that Toronto day (the draw is still 8:00-19:00 so the random stream is unchanged).
+        const drawn = R.int(8 * 60, 19 * 60);
+        const localDate = TORONTO_DATE.format(new Date(historyStart.getTime() + day * DAY));
+        const span = shop.data.hours[dayKey(localDate)]?.[0];
+        const open = span ? toMinutes(span[0]) : 8 * 60;
+        const close = span ? toMinutes(span[1]) : 19 * 60;
+        const minute = open + Math.floor(((drawn - 8 * 60) / (11 * 60)) * Math.max(15, close - open - 15));
+        const at = zonedToUtc(localDate, minute, "America/Toronto");
         if (at > nowReal || at < shop.createdAt) continue;
         events.push({ at, phone, name, consent, shop });
       }

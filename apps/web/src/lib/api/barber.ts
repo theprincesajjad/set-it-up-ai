@@ -18,6 +18,7 @@ export function barberEndpoints(c: ApiClient, b: string) {
       call: (id: string, staffId: string) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/call`, { staffId }),
       start: (id: string) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/start`, {}),
       skip: (id: string) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/skip`, {}),
+      undoSkip: (id: string, undo: barberApi.SkipUndo) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/undo-skip`, undo),
       done: (id: string) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/done`, {}),
       remove: (id: string) => c.post<barberApi.QueueActionResponse>(`${b}/queue/${enc(id)}/remove`, {}),
       staffPay: () => c.get<{ items: barberApi.StaffPayDto[] }>(`${b}/staff-pay`),

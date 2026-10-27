@@ -54,7 +54,10 @@ export async function updateProgram(ctx: AppContext, merchantId: string, actorUs
   }
   const next = { ...current, ...body };
   // Pharmacies earn on front-store dollars only: a visit or a stamp may include a prescription.
-  if (isPharmacy(await verticalOf(ctx.db, merchantId)) && next.earnType !== "per_dollar") throw pharmacyVisitEarnError();
+  const rxShop = isPharmacy(await verticalOf(ctx.db, merchantId));
+  if (rxShop && next.earnType !== "per_dollar") throw pharmacyVisitEarnError();
+  // ...and never pay for joining or for a first visit: the welcome bonus stays 0 at a pharmacy.
+  if (rxShop) body = { ...body, welcomeBonus: 0 };
   if (next.earnType === "per_dollar" && next.pointsPerDollar < 1) throw badRequest("Points per dollar must be at least 1");
   if (next.earnType !== "per_dollar" && next.pointsPerVisit < 1) throw badRequest("Points per visit must be at least 1");
   if (next.earnType === "stamps" && next.stampGoal < 1) throw badRequest("Set how many stamps earn the reward");

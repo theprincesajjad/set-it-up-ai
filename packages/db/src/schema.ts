@@ -294,6 +294,8 @@ export const merchants = pgTable(
     /** Pharmacies: when the pharmacist-owner confirmed the Schedule C setup (no earn or discount on Rx and pharmacy services, no health information entered), and who. */
     pharmacyConfirmedAt: ts("pharmacy_confirmed_at"),
     pharmacyConfirmedByName: text("pharmacy_confirmed_by_name"),
+    /** Pharmacies: the Ontario College of Pharmacists accreditation number the owner typed when confirming. */
+    pharmacyOcpNumber: text("pharmacy_ocp_number"),
     pharmacyConfirmedByUserId: uuid("pharmacy_confirmed_by_user_id").references(() => users.id),
     /** Stripe Connect account state, synced from account.updated webhooks. */
     stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
@@ -2079,6 +2081,8 @@ export const tiffinSubscriptions = pgTable(
     priceCents: integer("price_cents").notNull(),
     /** card | pad (pre-authorized debit) */
     paymentMethod: text("payment_method").notNull().default("card"),
+    /** Billing cadence override: "monthly" bills a weekly plan once a month. Null = the plan's own cadence. */
+    billingCadence: text("billing_cadence"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     /** Stripe Customer for this user on the merchant's side (the connected account for direct charges, the platform otherwise). */
     stripeCustomerId: text("stripe_customer_id"),

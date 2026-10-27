@@ -162,7 +162,7 @@ describe("the barber picks, skip and the chair", () => {
     expect((await env.db.select().from(appointments).where(eq(appointments.id, appt.id)))[0]!.status).toBe("completed");
   });
 
-  it("the first skip moves a person back two places, the second takes them off", async () => {
+  it("the first skip moves a called person back two places, the second takes them off, and Undo puts them back", async () => {
     const s = await shop();
     const toks: string[] = [];
     for (const [i, n] of ["A", "B", "C", "D"].entries()) {
@@ -172,13 +172,44 @@ describe("the barber picks, skip and the chair", () => {
     const board = await call(env, s.owner, "GET", `${s.base}/queue`);
     const a = board.body.waiting[0];
     expect(a.name).toBe("A");
+    // Someone who was never called cannot be skipped.
+    const early = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/skip`);
+    expect(early.status).toBe(409);
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${a.id}/call`, { staffId: s.marcus.user.id });
     const sk = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/skip`);
     expect(sk.body.entry).toMatchObject({ status: "waiting", skips: 1, position: 3 });
     const order = (await call(env, s.owner, "GET", `${s.base}/queue`)).body.waiting.map((w: { name: string }) => w.name);
     expect(order).toEqual(["B", "C", "A", "D"]);
+    // Undo restores the call and the place.
+    const un = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/undo-skip`, sk.body.undo);
+    expect(un.status).toBe(200);
+    expect(un.body.entry).toMatchObject({ status: "called", skips: 0, calledStaffId: s.marcus.user.id });
+    expect((await call(env, s.owner, "GET", `${s.base}/queue`)).body.waiting.map((w: { name: string }) => w.name)).toEqual(["B", "C", "D"]);
+    // Skip again, then call again and skip a second time.
+    const sk1 = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/skip`);
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${a.id}/call`, { staffId: s.marcus.user.id });
+    expect(sk1.body.entry.skips).toBe(1);
     const sk2 = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/skip`);
     expect(sk2.body.entry.status).toBe("no_show");
     expect((await call(env, null, "GET", `/v1/public/queue/${toks[0]}`)).body.state).toBe("no_show");
+    const un2 = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/undo-skip`, sk2.body.undo);
+    expect(un2.body.entry).toMatchObject({ status: "called", skips: 1 });
+    // After a minute it can't be undone.
+    const sk3 = await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/skip`);
+    env.clock.now = new Date(env.clock.now.getTime() + 61_000);
+    expect((await call(env, s.desk.token, "POST", `${s.base}/queue/${a.id}/undo-skip`, sk3.body.undo)).status).toBe(409);
+  });
+
+  it("a visit marked Done on the line can still be checked out, with a tip, and earns its stamp", async () => {
+    const s = await shop();
+    const r = await join(s, { name: "Omar", phone: "416-555-0271", serviceId: s.cut.id });
+    const id = r.body.entries[0].id;
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/call`, { staffId: s.marcus.user.id });
+    const st = await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/start`);
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/done`);
+    const co = await call(env, s.marcus.token, "POST", `${s.base}/appointments/${st.body.appointmentId}/checkout`, { mode: "counter", counterMethod: "cash", tipCents: 500 });
+    expect(co.status).toBe(200);
+    expect(co.body.invoice).toMatchObject({ status: "paid", tipCents: 500 });
   });
 
   it("a named barber's estimate counts only their own line and the anyone people", async () => {

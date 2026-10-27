@@ -297,6 +297,8 @@ export interface TodayReportDto {
   today: {
     visits: number;
     typicalVisitsFullDay: number;
+    /** Typical visits on the same weekdays up to this time of day. */
+    typicalVisitsSoFar: number;
     newMembers: number;
     newViaQr: number;
     stampsGiven: number;

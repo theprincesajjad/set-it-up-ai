@@ -7,7 +7,7 @@ export interface PharmacyRulesResponse {
   pharmacy: boolean;
   rules: { id: string; text: string }[];
   lockedCategories: { id: string; name: string; earnEligible: boolean; discountEligible: boolean }[];
-  confirmation: { confirmedAt: string; confirmedByName: string } | null;
+  confirmation: { confirmedAt: string; confirmedByName: string; ocpNumber: string | null } | null;
   retention: { appointmentDays: number; messageDays: number };
 }
 
@@ -15,6 +15,8 @@ export interface PharmacyRulesResponse {
 export const confirmBody = z.object({
   /** The pharmacist-owner or designated manager, typed in full. */
   name: z.string().trim().min(3).max(120),
+  /** The pharmacy's Ontario College of Pharmacists accreditation number (digits, 4 to 10). Spaces and dashes are ignored. */
+  ocpNumber: z.string().trim().transform((v) => v.replace(/[\s#-]/g, "")).pipe(z.string().regex(/^\d{4,10}$/, "Enter the OCP accreditation number (digits only)")),
   /** The tick box: "no prescriptions or pharmacy services earn points or discounts, and no health information is entered". */
   agree: z.literal(true),
 });

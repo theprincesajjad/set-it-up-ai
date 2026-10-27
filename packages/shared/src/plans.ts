@@ -8,10 +8,11 @@
  *     wallet pass, the customer directory and basic reports. No fee on loyalty,
  *     unlimited members. (Unlimited staff and locations are kept free per the
  *     founder's earlier instruction; whether they stay free is an open question.)
- *  2. Everything else is on Plus ($39) or Pro ($79) and ships "hidden": it rolls
- *     out only after the network has enough merchants. Until a feature's rollout
- *     stage is "ga" (or "beta" for opted-in merchants) it is hidden from everyone,
- *     paying or not, except pilot shops with an admin per-merchant override.
+ *  2. Everything else is on Café & Retail ($39), Service ($99) or the restaurant pack. Trade tools
+ *     ship "ga": a new shop subscribes and uses them at once (founder decision 2026-10-27).
+ *     Only network-wide extras (FeatureDef.networkGated: sponsored promos and listings, map pins,
+ *     BIA campaigns, nearby push) ship "hidden" until the network has 100 shops; an admin
+ *     override still unlocks them early for a pilot shop.
  *  3. Invariant: a FREE_FOREVER feature is never gated (admins can't hide it and
  *     it can't move to a paid plan; tests enforce this). Pre-launch we moved
  *     promos, marketing, VIP/birthday/referrals, discount cards, CSV and
@@ -65,7 +66,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Service",
     priceCents: 9900,
     annualPriceCents: 99000,
-    blurb: "Everything in Plus, plus service tickets, quote approvals, deposits, invoices and scheduling.",
+    blurb: "Everything in Café & Retail, plus service tickets, quote approvals, deposits, invoices and scheduling.",
     bestFor: ["Repair", "Auto", "Alterations", "Print shops"],
     smsPerMonth: 1500,
   },
@@ -182,7 +183,22 @@ export interface FeatureDef {
    * so it is not part of FREE_FOREVER.
    */
   platform?: boolean;
+  /**
+   * Network-wide extra (sponsored promos and listings, map pins as ads, BIA campaigns, nearby push): it only works once the
+   * network is big enough, so it waits for the 100-shop gate and ships "hidden" until an admin flips it.
+   * Founder decision, 2026-10-27 ("Trade tools self-serve"): every OTHER paid feature is a trade tool and ships "ga",
+   * so a new shop can subscribe to it right away. Set automatically for phase 3; set it by hand with `network(...)`.
+   */
+  networkGated?: boolean;
+  /**
+   * Verticals that get this feature without a paid plan (pharmacist appointments are free for pharmacies; the shop
+   * still needs the vertical, an admin override still wins). Everyone else needs `minPlan`.
+   */
+  freeForVerticals?: readonly string[];
 }
+
+/** Active shops before a network-wide extra opens (the 100-shop gate). */
+export const NETWORK_GATE_SHOPS = 100;
 
 export const FEATURE_KEYS = [
   // ---- Free forever (Phase 1): loyalty + reporting ----
@@ -278,6 +294,23 @@ export const FEATURE_KEYS = [
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
+/** Marks a feature as a network-wide extra (see FeatureDef.networkGated). */
+const network = (d: FeatureDef): FeatureDef => ({ ...d, networkGated: true });
+
+/**
+ * One rule for every feature, including ones added later: a feature is a trade tool (ships "ga", no gate) unless it is
+ * networkGated (phase 3 or marked with network()). Network-gated features ship "hidden" and wait for NETWORK_GATE_SHOPS.
+ */
+const settle = (d: FeatureDef): FeatureDef => {
+  const networkGated = d.networkGated ?? d.phase === 3;
+  return {
+    ...d,
+    networkGated,
+    defaultStage: networkGated ? "hidden" : "ga",
+    unlockAtMerchants: networkGated ? d.unlockAtMerchants || NETWORK_GATE_SHOPS : 0,
+  };
+};
+
 const f = (
   key: FeatureKey,
   name: string,
@@ -337,7 +370,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("marketing.email", "Email & push campaigns", "Email and push opted-in members (CASL compliant).", "plus", 2, 100),
     f("marketing.sms", "SMS campaigns", "Text opted-in members. Included SMS each month.", "plus", 2, 100),
     f("marketing.automations", "Automations", "Win-back, we-miss-you and reward-ready messages.", "plus", 2, 100),
-    f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100),
+    network(f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100)),
     f("customers.csv_export", "CSV export", "Export your customers and activity.", "plus", 2, 100),
     f("customers.csv_import", "Import & migrate", "Bring members from another loyalty app.", "plus", 2, 100),
     f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "plus", 2, 100),
@@ -347,7 +380,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe. No platform fee on online orders; 1% on deposits and invoices.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
-    f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios.", "plus", 2, 100),
+    { ...f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios. Free for pharmacies (pharmacist appointments).", "plus", 2, 100), freeForVerticals: ["pharmacy"] as const },
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
     f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "plus", 2, 100),
@@ -399,7 +432,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("ads.sponsored_promo", "Sponsored promo", "Boost a promo across the network.", "free", 3, 300),
     f("ads.map_pin", "Featured map pin", "Highlighted pin on the network map.", "free", 3, 300),
     f("campaigns.neighbourhood", "Neighbourhood campaigns", "BIA-run street-wide points events.", "free", 3, 100),
-  ].map((d) => [d.key, d]),
+  ].map((d) => [d.key, settle(d)]),
 ) as Record<FeatureKey, FeatureDef>;
 
 /**
@@ -448,7 +481,7 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (def.pack === "restaurant") {
     if (!ctx.restaurantTier) return false;
     if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;
-  } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan]) return false;
+  } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan] && !(ctx.vertical && def.freeForVerticals?.includes(ctx.vertical))) return false;
   if (ctx.stage === "beta") return ctx.betaOptIn === true;
   return true;
 }
@@ -473,4 +506,23 @@ export function isPlanAvailable(
   return FEATURE_KEYS.some(
     (k) => FEATURES[k].minPlan === plan && !FEATURES[k].pack && (stages[k] ?? FEATURES[k].defaultStage) !== "hidden",
   );
+}
+
+/** What a shop has to do to get a feature. One answer for the pricing page, billing, gate cards and the sales assistant. */
+export type FeatureOffer =
+  | { kind: "network"; unlockAtMerchants: number }
+  | { kind: "restaurant"; tier: RestaurantTier; name: string; priceCents: number }
+  | { kind: "plan"; plan: "plus" | "pro"; name: string; priceCents: number }
+  | { kind: "free" };
+
+export function featureOffer(key: FeatureKey): FeatureOffer {
+  const d = FEATURES[key];
+  if (d.networkGated) return { kind: "network", unlockAtMerchants: d.unlockAtMerchants };
+  if (d.pack === "restaurant") {
+    const p = RESTAURANT_PLANS[d.packTier ?? "starter"];
+    return { kind: "restaurant", tier: p.tier, name: p.name, priceCents: p.priceCents };
+  }
+  if (d.minPlan === "free") return { kind: "free" };
+  const plan = PLANS[d.minPlan];
+  return { kind: "plan", plan: d.minPlan as "plus" | "pro", name: plan.name, priceCents: plan.priceCents };
 }

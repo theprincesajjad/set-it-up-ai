@@ -109,10 +109,16 @@ Note: every payment path now uses `computeFees()`. Café & Retail and Service sh
 
 ## Rollout
 
-Every paid feature ships **hidden**. An admin moves it hidden → beta → GA once the network gate is met: `unlockAtMerchants` is 100 active merchants for Plus features and 40 for Pro features. Until then:
+**Decision, 2026-10-27 (founder): "Trade tools self-serve."** A new shop subscribes to its own trade's tools right away, with no 100-shop wait and no admin override. That covers calendar and booking, ordering and pre-orders, classes and memberships, the walk-in line and payouts, pets, grocer tools, auto care, the restaurant tiers (including tiffin, catering and banquet) and pharmacist appointments. Café & Retail ($39), Service ($99) and the restaurant ladder ($99 / $199 / $349) are all buyable today, with one status and one price everywhere (pricing page, billing, gate cards, sales assistant).
 
-- **Pilot shops** get paid features through admin per-merchant overrides (Admin → Rollout → Overrides). The demo seed does this for Pinecone Coffee, Hearth & Crumb and Village Apothecary, and for the class studios Sakina Studio and Rise Yoga Studio.
-- **Existing data stays** when a shop doesn't have a feature: promos, VIP levels, discount cards, webhooks and POS connections are kept but stop applying. Customers don't see that shop's promos or discount cards. VIP multipliers and promo boosts don't apply to earn. POS events are logged as "paused" and webhooks stop sending. Merchants can still read and delete their data.
+Only **network-wide extras** wait for the gate, because they are worth nothing without a big network: sponsored promos, sponsored listings, map pins as ads, BIA neighbourhood campaigns, and nearby push promos. They ship **hidden** and an admin moves them hidden → beta → GA once the network has 100 active shops (`NETWORK_GATE_SHOPS`; 300 for ads). Until then a shop sees "Opens when the network reaches N shops" and a "Notify me" button.
+
+How it is built: `FeatureDef.networkGated` in `packages/shared/src/plans.ts`. It is set for every phase 3 feature and by hand with `network(...)`. Every other feature, including ones added later, is a trade tool and ships GA (`settle()` sets `defaultStage` and `unlockAtMerchants`; a new `f(...)` needs no extra flag). A feature can also set `freeForVerticals`: pharmacist appointments (`booking.appointments`) are **free for pharmacy shops** (docs/audits/pharmacies.md P1); every other shop needs Café & Retail. Trade features that are tied to one vertical (`vertical`: pets, grocery, auto) switch on with the plan for shops of that vertical: pet shops' four pet features are on with Café & Retail (docs/audits/pet-care.md P1).
+
+- **Admin overrides still work** (Admin → Rollout → Overrides) and still win, for example to give a pilot shop a network extra early or to switch a trade tool off for one shop.
+- **Existing data stays** when a shop doesn't have a feature: promos, VIP levels, discount cards, webhooks and POS connections are kept but stop applying. Merchants can still read and delete their data.
+- **Locked cards name the plan.** A feature that is off because of the plan says "On Café & Retail, $39 a month", "On Restaurant Growth, $199 a month" (tiffin, catering) or "On Restaurant Pro, $349 a month" (banquet), with a button to that plan's checkout. Tiffin and catering need Growth, not Starter.
+- **Class fee:** 1% on online class sales and membership billing, none on desk sales. A cap was considered and not adopted (a $1,200 annual membership pays $12, still below card-network-style fees elsewhere); revisit if studios push back.
 
 ## Why
 

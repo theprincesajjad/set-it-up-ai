@@ -28,6 +28,17 @@ export function vsTypical(visits: number, typical: number, weekday: string): { t
   return { text: `${pct > 0 ? "+" : ""}${pct}% vs a typical ${weekday} (${typical})`, good: pct > 0 ? true : pct < 0 ? false : null };
 }
 
+/**
+ * Today so far against a typical day up to the same time. On a small base a percentage swings wildly,
+ * so under 8 typical visits it says the counts ("about 3 by now") instead of "-100%".
+ */
+export function vsTypicalSoFar(visits: number, typicalSoFar: number, weekday: string): { text: string; good: boolean | null } | null {
+  if (typicalSoFar <= 0) return null;
+  if (typicalSoFar < 8) return { text: `A typical ${weekday} has about ${typicalSoFar} by now`, good: visits > typicalSoFar ? true : visits < typicalSoFar ? false : null };
+  const pct = Math.round(((visits - typicalSoFar) / typicalSoFar) * 100);
+  return { text: `${pct > 0 ? "+" : ""}${pct}% vs a typical ${weekday} by now (${typicalSoFar})`, good: pct > 0 ? true : pct < 0 ? false : null };
+}
+
 /** "7a", "8" ... "12p", "1": the Figma axis labels (am/pm only at the ends and at noon). */
 export function hourTick(hour: number): string {
   if (hour === 7) return "7a";

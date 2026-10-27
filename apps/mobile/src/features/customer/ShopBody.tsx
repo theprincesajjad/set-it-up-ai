@@ -338,7 +338,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
           {orderAhead || ticketsOn || dropoffOn || appointmentsOn || classesOn ? (
             <Section title={tr("ms.shop.orderServices")}>
               {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn || classesOn} /> : null}
-              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr("bk.shop.book")} subtitle={tr("bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || classesOn} /> : null}
+              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.book" : "bk.shop.book")} subtitle={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.bookSub" : "bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || classesOn} /> : null}
               {classesOn ? <ListRow leadingIcon={Dumbbell} title={tr("cl.app.shopRow")} subtitle={tr("cl.app.shopRowSub")} chevron onPress={() => router.push(`/classes/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
               {dropoffOn ? <ListRow leadingIcon={Ticket} title={tr("sv.d.link")} subtitle={tr("sv.d.linkSub")} chevron onPress={() => router.push(`/dropoff/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
               {ticketsOn ? (

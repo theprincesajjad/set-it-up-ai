@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   try {
     const s = await loadShopBrief(slug);
-    return { title: `${t("bk.title")} · ${s.name}`, description: t("wp.t.bookDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/book` } };
+    return { title: `${t("bk.title")} · ${s.name}`, description: t(s.vertical === "pharmacy" ? "rx.book.desc" : "wp.t.bookDesc", { shop: s.name }), alternates: { canonical: `/shops/${slug}/book` } };
   } catch {
     return { title: t("bk.title") };
   }

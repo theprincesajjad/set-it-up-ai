@@ -53,7 +53,7 @@ export async function rulesFor(ctx: AppContext, m: Merchant): Promise<pharmacyAp
     pharmacy,
     rules: pharmacy ? PHARMACY_RULES.map((r) => ({ id: r.id, text: r.text })) : [],
     lockedCategories: cats.map((c) => ({ id: c.id, name: c.name, earnEligible: c.earnEligible, discountEligible: c.discountEligible })),
-    confirmation: m.pharmacyConfirmedAt && m.pharmacyConfirmedByName ? { confirmedAt: m.pharmacyConfirmedAt.toISOString(), confirmedByName: m.pharmacyConfirmedByName } : null,
+    confirmation: m.pharmacyConfirmedAt && m.pharmacyConfirmedByName ? { confirmedAt: m.pharmacyConfirmedAt.toISOString(), confirmedByName: m.pharmacyConfirmedByName, ocpNumber: m.pharmacyOcpNumber ?? null } : null,
     retention: { appointmentDays: RETENTION.pharmacyAppointmentDays, messageDays: RETENTION.pharmacyMessageDays },
   };
 }
@@ -64,8 +64,8 @@ export async function confirmPharmacy(ctx: AppContext, staff: StaffContext, body
   if (staff.role !== "owner" && !staff.impersonated) throw forbidden("Only the owner can confirm the pharmacy rules");
   await ensureLockedCategories(ctx.db, m.id);
   const now = ctx.now();
-  const [row] = await ctx.db.update(merchants).set({ pharmacyConfirmedAt: now, pharmacyConfirmedByName: body.name, pharmacyConfirmedByUserId: staff.user.id, updatedAt: now }).where(eq(merchants.id, m.id)).returning();
-  await writeAudit(ctx.db, { actorUserId: staff.user.id, merchantId: m.id, action: "pharmacy.confirmed", entity: "merchant", entityId: m.id, data: { name: body.name } });
+  const [row] = await ctx.db.update(merchants).set({ pharmacyConfirmedAt: now, pharmacyConfirmedByName: body.name, pharmacyOcpNumber: body.ocpNumber, pharmacyConfirmedByUserId: staff.user.id, updatedAt: now }).where(eq(merchants.id, m.id)).returning();
+  await writeAudit(ctx.db, { actorUserId: staff.user.id, merchantId: m.id, action: "pharmacy.confirmed", entity: "merchant", entityId: m.id, data: { name: body.name, ocpNumber: body.ocpNumber } });
   return rulesFor(ctx, row!);
 }
 

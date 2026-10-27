@@ -111,10 +111,30 @@ describe("transcript parser (pure)", () => {
     const a = parseTranscript("one chicken biryani, pickup in 30 minutes", menu, new Date("2026-11-03T15:00:00Z"));
     expect(a.draft.pickupAt).toBe("2026-11-03T15:30:00.000Z");
     expect(parseTranscript("one chicken biryani in an hour", menu, new Date("2026-11-03T15:00:00Z")).draft.pickupAt).toBe("2026-11-03T16:00:00.000Z");
-    const b = parseTranscript("one chicken biryani for pickup at 6 pm", menu, new Date());
-    expect(b.draft.notes).toMatch(/at 6 pm/);
-    expect(b.draft.pickupAt).toBeUndefined();
+    // 10:00 am in Toronto (EST).
+    const morning = new Date("2026-11-03T15:00:00Z");
+    const b = parseTranscript("one chicken biryani for pickup at 6 pm", menu, morning);
+    expect(b.draft.pickupAt).toBe("2026-11-03T23:00:00.000Z");
+    expect(b.draft.notes).toBeUndefined();
     expect(parseTranscript("", menu, new Date()).draft.items).toEqual([]);
+  });
+
+  it("reads a spoken clock time in English, Hindi, Urdu and Punjabi, and never turns it into a quantity", () => {
+    const morning = new Date("2026-11-03T15:00:00Z");
+    const a = parseTranscript("two chicken biryani 8 baje", menu, morning);
+    expect(a.draft.items.map((i) => `${i.quantity} ${i.name}`)).toEqual(["2 Chicken Biryani"]);
+    expect(a.draft.pickupAt).toBe("2026-11-04T01:00:00.000Z");
+    expect(a.draft.notes).toMatch(/check am or pm/);
+    expect(parseTranscript("do chicken biryani, आठ बजे", menu, morning).draft.pickupAt).toBe("2026-11-04T01:00:00.000Z");
+    expect(parseTranscript("do chicken biryani, آٹھ بجے", menu, morning).draft.pickupAt).toBe("2026-11-04T01:00:00.000Z");
+    expect(parseTranscript("do chicken biryani, ਅੱਠ ਵਜੇ", menu, morning).draft.pickupAt).toBe("2026-11-04T01:00:00.000Z");
+    expect(parseTranscript("do chicken biryani, साढ़े छह बजे", menu, morning).draft.pickupAt).toBe("2026-11-03T23:30:00.000Z");
+    // Eleven with no am or pm is the morning only while that is still ahead.
+    expect(parseTranscript("one chicken biryani 11 baje", menu, morning).draft.pickupAt).toBe("2026-11-03T16:00:00.000Z");
+    // Already gone today: no time guessed, the words stay as a note for staff.
+    const late = parseTranscript("one chicken biryani 8 baje", menu, new Date("2026-11-04T02:00:00Z"));
+    expect(late.draft.pickupAt).toBeUndefined();
+    expect(late.draft.notes).toMatch(/8 baje.*check the time/);
   });
 
   it("builds TwiML", () => {

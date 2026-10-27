@@ -13,7 +13,8 @@ import type { AcceptedMethods, ManualInstructions } from "./payments-manual.js";
 const isoDate = z.iso.date();
 const isoMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 
-export const TIFFIN_CADENCES = ["weekly", "monthly"] as const;
+/** trial = a single paid meal day (no renewal). */
+export const TIFFIN_CADENCES = ["weekly", "monthly", "trial"] as const;
 export type TiffinCadence = (typeof TIFFIN_CADENCES)[number];
 export const TIFFIN_FULFILMENTS = ["delivery", "pickup"] as const;
 export type TiffinFulfilment = (typeof TIFFIN_FULFILMENTS)[number];
@@ -254,6 +255,8 @@ export interface ChargeDto {
 export interface SubscriptionDto {
   id: string;
   status: TiffinSubStatus;
+  /** How often this subscriber is billed: the plan's cadence, or monthly for a weekly plan billed once a month. */
+  billingCadence?: TiffinCadence;
   plan: { id: string; name: string; cadence: TiffinCadence; daysOfWeek: number[]; cutoffHours: number };
   servings: number;
   fulfilment: TiffinFulfilment;
@@ -437,9 +440,32 @@ export const subscribeBody = z
     dietaryNotes: z.string().trim().max(500).optional(),
     startDate: isoDate,
     paymentMethod: z.enum(TIFFIN_PAYMENT_METHODS).default("card"),
+    /** Bill a weekly plan once a month (4.33 weeks, hand-paid methods). Omit to bill at the plan's own cadence. */
+    billingCadence: z.enum(["weekly", "monthly"]).optional(),
+    /** The name the kitchen will see; saved on the customer's profile when they have none. */
+    name: z.string().trim().min(1).max(80).optional(),
   })
   .refine((b) => b.fulfilment === "pickup" || (!!b.address && !!b.postalCode), { message: "Delivery needs an address and postal code", path: ["address"] });
 export type SubscribeBody = z.input<typeof subscribeBody>;
+
+/** POST /tiffin/subscribers: the kitchen adds a regular who phones in. Hand-paid (e-transfer or cash) only. */
+export const addSubscriberBody = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    phone: z.string().trim().min(7).max(20),
+    planId: uuidSchema,
+    servings: z.number().int().min(1).max(20).default(1),
+    fulfilment: z.enum(TIFFIN_FULFILMENTS).default("delivery"),
+    address: z.string().trim().min(3).max(300).optional(),
+    addressNotes: z.string().trim().max(500).optional(),
+    postalCode: z.string().trim().min(3).max(10).optional(),
+    dietaryNotes: z.string().trim().max(500).optional(),
+    startDate: isoDate,
+    paymentMethod: z.enum(["etransfer", "cash"]).default("etransfer"),
+    billingCadence: z.enum(["weekly", "monthly"]).optional(),
+  })
+  .refine((b) => b.fulfilment === "pickup" || (!!b.address && !!b.postalCode), { message: "Delivery needs an address and postal code", path: ["address"] });
+export type AddSubscriberBody = z.input<typeof addSubscriberBody>;
 
 export const updateMySubscriptionBody = z.object({
   address: z.string().trim().min(3).max(300).optional(),

@@ -140,9 +140,22 @@ export interface JoinQueueResponse {
   status: QueueStatusResponse;
 }
 
+/** What a skip changed, handed back so Undo can restore it. */
+export const skipUndo = z.object({
+  status: z.enum(["waiting", "called"]),
+  skips: z.number().int().min(0),
+  positionAt: z.string(),
+  calledAt: z.string().nullable(),
+  calledStaffId: uuidSchema.nullable(),
+  notifiedNextAt: z.string().nullable(),
+});
+export type SkipUndo = z.infer<typeof skipUndo>;
+
 export interface QueueActionResponse {
   entry: QueueEntryDto;
   appointmentId?: string | null;
+  /** Present on a skip: send it back to undo the skip within a minute. */
+  undo?: SkipUndo;
 }
 
 // ---- pay and payouts

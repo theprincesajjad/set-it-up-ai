@@ -140,7 +140,8 @@ export async function seedRestaurantDesk(ctx: AppContext, log: (m: string) => vo
     });
     await db.insert(orderItems).values(p.lines.map(([i, q]) => ({ orderId: id, catalogItemId: i.id, name: i.name, quantity: q, unitPriceCents: i.priceCents, station: i.station, kitchenStatus: "queued" })));
     if (p.who === 4) hiraOrder = { id, number };
-    if (p.paid) await db.update(orders).set({ paymentStatus: "paid", paidAt: created, depositPaidAt: created }).where(eq(orders.id, id));
+    // A paid deposit is "authorized" with depositPaidAt set; "paid" would mean the whole bill is settled, which hid the balance on the card.
+    if (p.paid) await db.update(orders).set({ depositPaidAt: created }).where(eq(orders.id, id));
   }
 
   // ---- an allergy on the open WhatsApp ticket ----

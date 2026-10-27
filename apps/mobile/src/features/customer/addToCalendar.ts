@@ -11,15 +11,15 @@ import { WEB_URL } from "../../config";
 import { ICS_MIME, ICS_UTI, appointmentIcs, icsFileName, manageUrl } from "../../lib/appointmentCalendar";
 
 export type CalendarResult = "shared" | "opened_web" | "failed";
-type Appt = Pick<appointmentsApi.MyAppointmentDto, "id" | "items" | "startsAt" | "endsAt" | "merchant">;
+type Appt = Pick<appointmentsApi.MyAppointmentDto, "id" | "items" | "startsAt" | "endsAt" | "merchant"> & { reminderText?: string };
 
-export async function addAppointmentToCalendar(a: Appt, dialogTitle: string): Promise<CalendarResult> {
+export async function addAppointmentToCalendar(a: Appt, dialogTitle: string, privateTitle?: string): Promise<CalendarResult> {
   try {
     if (Platform.OS !== "web" && (await Sharing.isAvailableAsync())) {
       const file = new File(Paths.cache, icsFileName(a));
       if (file.exists) file.delete();
       file.create();
-      file.write(appointmentIcs(a, WEB_URL));
+      file.write(appointmentIcs(a, WEB_URL, new Date(), privateTitle));
       await Sharing.shareAsync(file.uri, { mimeType: ICS_MIME, UTI: ICS_UTI, dialogTitle });
       return "shared";
     }

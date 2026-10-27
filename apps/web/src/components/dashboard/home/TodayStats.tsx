@@ -3,7 +3,7 @@ import type { reportsApi } from "@ll/shared";
 import { StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { formatNumber } from "@/lib/format";
 import { formatTime } from "@/lib/format";
-import { rewardNoun, vsTypical, type HomeMode } from "@/lib/dashboard/home";
+import { rewardNoun, vsTypical, vsTypicalSoFar, type HomeMode } from "@/lib/dashboard/home";
 
 /** Four numbers across the top of Home: 7 am answers "is today normal", at close "how was today". */
 export function TodayStats({ mode, data, weekday, yesterdayWeekday, terminology, vertical, base, loading }: { mode: HomeMode; data: reportsApi.TodayReportDto | null; weekday: string; yesterdayWeekday: string; terminology: string; vertical?: string; base: string; loading?: boolean }) {
@@ -32,7 +32,7 @@ export function TodayStats({ mode, data, weekday, yesterdayWeekday, terminology,
         ]
       : [
           (() => {
-            const d = t ? vsTypical(t.visits, t.typicalVisitsFullDay, weekday) : null;
+            const d = t ? vsTypicalSoFar(t.visits, t.typicalVisitsSoFar ?? 0, weekday) : null;
             return { label: "Visits today", value: t ? formatNumber(t.visits) : "–", delta: d, caption: t && !d ? "No typical day to compare yet" : undefined };
           })(),
           { label: "New members", value: t ? formatNumber(t.newMembers) : "–", caption: t ? joinCaption(t.newMembers, t.newViaQr) : undefined, href: `${base}/customers` },

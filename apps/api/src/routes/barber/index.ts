@@ -44,6 +44,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/call", async (req) => svc.call(ctx, await queueStaff(req), req.params.entryId, parse(barberApi.callBody, req.body)));
   app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/start", async (req) => svc.start(ctx, await queueStaff(req), req.params.entryId));
   app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/skip", async (req) => svc.skip(ctx, await queueStaff(req), req.params.entryId));
+  app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/undo-skip", async (req) => svc.undoSkip(ctx, await queueStaff(req), req.params.entryId, parse(barberApi.skipUndo, req.body)));
   app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/done", async (req) => svc.done(ctx, await queueStaff(req), req.params.entryId));
   app.post<{ Params: EntryParams }>("/merchants/:merchantId/queue/:entryId/remove", async (req) => svc.remove(ctx, await queueStaff(req), req.params.entryId, "left"));
 

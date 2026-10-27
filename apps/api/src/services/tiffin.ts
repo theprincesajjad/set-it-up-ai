@@ -38,6 +38,8 @@ import { localDate } from "./messaging.js";
 import { inQuietHours, loadPrefs, sendNotification } from "./notifications.js";
 import { acceptedMethods, addLedger, assertNotFuture, etransferOffer, liveLedger, manualInstructions, newReferenceCode, receiptLine, settingsOf, stripeReady, todayFor, voidLedger } from "./manual-payments.js";
 import { merchantProvince } from "./tax.js";
+import { findOrCreateUserByPhone } from "./channel-orders.js";
+import { awardPurchase } from "./ledger.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Plan = typeof tiffinPlans.$inferSelect;
@@ -106,9 +108,14 @@ export function earliestEligible(ctx: AppContext, plan: Pick<Plan, "cutoffHours"
   return d;
 }
 
-const isServiceDay = (plan: Pick<Plan, "daysOfWeek">, sub: Pick<Sub, "startDate">, date: string) => date >= sub.startDate && plan.daysOfWeek.includes(dowOf(date));
-const serviceDates = (plan: Pick<Plan, "daysOfWeek">, sub: Pick<Sub, "startDate">, from: string, to: string) => dateRange(from, to).filter((d) => isServiceDay(plan, sub, d));
-export const periodEndFor = (cadence: string, start: string) => (cadence === "weekly" ? addDays(start, 6) : addDays(addMonths(start, 1), -1));
+/** A trial plan is one meal day: the subscription's start date, nothing after it. */
+const isServiceDay = (plan: Pick<Plan, "daysOfWeek" | "cadence">, sub: Pick<Sub, "startDate">, date: string) => (plan.cadence === "trial" ? date === sub.startDate : date >= sub.startDate && plan.daysOfWeek.includes(dowOf(date)));
+const serviceDates = (plan: Pick<Plan, "daysOfWeek" | "cadence">, sub: Pick<Sub, "startDate">, from: string, to: string) => dateRange(from, to).filter((d) => isServiceDay(plan, sub, d));
+export const periodEndFor = (cadence: string, start: string) => (cadence === "trial" ? start : cadence === "weekly" ? addDays(start, 6) : addDays(addMonths(start, 1), -1));
+/** How this subscriber is billed: a weekly plan can be billed monthly (the hand-paid default), otherwise the plan's own cadence. */
+export const cadenceOf = (sub: Pick<Sub, "billingCadence">, plan: Pick<Plan, "cadence">): string => (plan.cadence === "weekly" && sub.billingCadence === "monthly" ? "monthly" : plan.cadence);
+/** A weekly price stretched over a month (52/12 weeks). */
+export const monthlyOfWeekly = (weeklyCents: number) => Math.round((weeklyCents * 52) / 12);
 
 // ---------------------------------------------------------------------------
 // Money
@@ -117,13 +124,16 @@ export const priceFor = (plan: Pick<Plan, "priceCents" | "extraServingCents" | "
   plan.priceCents + plan.extraServingCents * (servings - 1) + (fulfilment === "delivery" ? plan.deliveryFeeCents : 0);
 
 /** The meal part of a period price (the delivery fee is never credited). */
-export const foodCents = (sub: Pick<Sub, "priceCents" | "fulfilment">, plan: Pick<Plan, "deliveryFeeCents">) => Math.max(0, sub.priceCents - (sub.fulfilment === "delivery" ? plan.deliveryFeeCents : 0));
+export const foodCents = (sub: Pick<Sub, "priceCents" | "fulfilment"> & { billingCadence?: string | null }, plan: Pick<Plan, "deliveryFeeCents"> & { cadence?: string }) => {
+  const fee = plan.cadence === "weekly" && sub.billingCadence === "monthly" ? monthlyOfWeekly(plan.deliveryFeeCents) : plan.deliveryFeeCents;
+  return Math.max(0, sub.priceCents - (sub.fulfilment === "delivery" ? fee : 0));
+};
 
 /** Credit for skipped meal days: per-meal price x skipped servings (the whole household), rounded once. */
 export const creditFor = (food: number, skippedDays: number, serviceDays: number) => (serviceDays > 0 ? Math.min(food, Math.round((food * skippedDays) / serviceDays)) : 0);
 
 /** Monthly recurring revenue for one subscription (weekly x 52/12). */
-export const mrrOf = (cadence: string, priceCents: number) => (cadence === "weekly" ? Math.round((priceCents * 52) / 12) : priceCents);
+export const mrrOf = (cadence: string, priceCents: number) => (cadence === "trial" ? 0 : cadence === "weekly" ? monthlyOfWeekly(priceCents) : priceCents);
 
 // ---------------------------------------------------------------------------
 // DTOs
@@ -185,6 +195,7 @@ export function subDto(s: Sub, plan: Plan, route: Pick<Route, "name"> | null): t
   return {
     id: s.id,
     status: s.status as tiffinApi.TiffinSubStatus,
+    billingCadence: cadenceOf(s, plan) as tiffinApi.TiffinCadence,
     plan: { id: plan.id, name: plan.name, cadence: plan.cadence as tiffinApi.TiffinCadence, daysOfWeek: plan.daysOfWeek, cutoffHours: plan.cutoffHours },
     servings: s.servings,
     fulfilment: s.fulfilment as tiffinApi.TiffinFulfilment,
@@ -595,7 +606,7 @@ async function ensureCharge(ctx: AppContext, sub: Sub, plan: Plan, periodStart: 
       merchantId: sub.merchantId,
       subscriptionId: sub.id,
       periodStart,
-      periodEnd: periodEndFor(plan.cadence, periodStart),
+      periodEnd: periodEndFor(cadenceOf(sub, plan), periodStart),
       amountCents: amount,
       creditCents: credit,
       taxCents,
@@ -739,16 +750,46 @@ async function settleCharge(ctx: AppContext, chargeId: string, paymentIntentId: 
     if (m) await saveMethod(ctx, m, sub.id, paid.paymentMethodId);
   }
   await advanceSubscription(ctx, charge, sub);
+  await awardTiffinPoints(ctx, charge, sub);
+}
+
+/**
+ * A paid period earns the subscriber points in the kitchen's own program (once per charge: key `tiffin:<chargeId>`).
+ * Dollar programs count the food and fees before tax; stamp programs give one stamp per meal day in the period.
+ * A kitchen with no loyalty program, or one that is paused, simply earns nothing: the subscription is not affected.
+ */
+async function awardTiffinPoints(ctx: AppContext, charge: Charge, sub: Sub): Promise<void> {
+  try {
+    const [plan] = await ctx.db.select().from(tiffinPlans).where(eq(tiffinPlans.id, sub.planId)).limit(1);
+    const days = plan ? serviceDates(plan, sub, charge.periodStart, charge.periodEnd).length : 1;
+    await awardPurchase(ctx, {
+      merchantId: charge.merchantId,
+      userId: sub.userId,
+      amountCents: Math.max(0, charge.amountCents - charge.taxCents),
+      quantity: Math.max(1, days),
+      source: "customer_app",
+      locationId: null,
+      idempotencyKey: `tiffin:${charge.id}`,
+      externalRef: `tiffin:${charge.referenceCode ?? charge.id}`,
+      ignoreCooldown: true,
+      joinedVia: "app",
+    });
+  } catch (err) {
+    if (err instanceof HttpError && err.statusCode < 500) return;
+    if (ctx.config.env !== "test") console.error("[tiffin points]", charge.id, err);
+  }
 }
 
 /** A paid charge moves the subscription into its period and out of pending / past due. */
 async function advanceSubscription(ctx: AppContext, charge: Charge, sub: Sub): Promise<void> {
+  const [plan] = await ctx.db.select({ cadence: tiffinPlans.cadence }).from(tiffinPlans).where(eq(tiffinPlans.id, sub.planId)).limit(1);
+  const isTrial = plan?.cadence === "trial";
   const advance = !sub.currentPeriodStart || charge.periodStart >= sub.currentPeriodStart;
   await ctx.db
     .update(tiffinSubscriptions)
     .set({
       ...(sub.status === "pending" || sub.status === "past_due" ? { status: "active" } : {}),
-      ...(advance ? { currentPeriodStart: charge.periodStart, currentPeriodEnd: charge.periodEnd, nextBillingDate: addDays(charge.periodEnd, 1) } : {}),
+      ...(advance ? { currentPeriodStart: charge.periodStart, currentPeriodEnd: charge.periodEnd, nextBillingDate: isTrial ? null : addDays(charge.periodEnd, 1) } : {}),
       updatedAt: ctx.now(),
     })
     .where(eq(tiffinSubscriptions.id, sub.id));
@@ -884,7 +925,7 @@ export async function rollBilling(ctx: AppContext): Promise<{ charged: number; s
     .from(tiffinSubscriptions)
     .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
     .innerJoin(merchants, eq(merchants.id, tiffinSubscriptions.merchantId))
-    .where(and(inArray(tiffinSubscriptions.status, ["active", "paused"]), lte(tiffinSubscriptions.nextBillingDate, today)));
+    .where(and(inArray(tiffinSubscriptions.status, ["active", "paused"]), ne(tiffinPlans.cadence, "trial"), lte(tiffinSubscriptions.nextBillingDate, today)));
   let charged = 0;
   let settled = 0;
   let errors = 0;
@@ -968,7 +1009,7 @@ export async function generateDeliveries(ctx: AppContext, date: string, opts: { 
     .innerJoin(merchants, eq(merchants.id, tiffinSubscriptions.merchantId))
     .where(and(...conds));
   const dow = dowOf(date);
-  let candidates = rows.filter((r) => r.plan.daysOfWeek.includes(dow));
+  let candidates = rows.filter((r) => r.plan.daysOfWeek.includes(dow) && isServiceDay(r.plan, r.sub, date));
   if (!opts.merchantId && candidates.length) {
     const ms = [...new Map(candidates.map((r) => [r.merchant.id, r.merchant])).values()];
     const on = await enabledFeaturesFor(ctx.db, ms, ["restaurant.tiffin"]);
@@ -1025,9 +1066,26 @@ export async function sendMenuNotifications(ctx: AppContext, date: string): Prom
   return sent;
 }
 
+/** A trial is one meal day: once that day has passed the subscription ends on its own (nothing renews). */
+export async function finishTrials(ctx: AppContext): Promise<number> {
+  const today = todayOf(ctx);
+  const rows = await ctx.db
+    .select({ id: tiffinSubscriptions.id })
+    .from(tiffinSubscriptions)
+    .innerJoin(tiffinPlans, eq(tiffinPlans.id, tiffinSubscriptions.planId))
+    .where(and(eq(tiffinPlans.cadence, "trial"), eq(tiffinSubscriptions.status, "active"), lt(tiffinSubscriptions.startDate, today)));
+  if (!rows.length) return 0;
+  await ctx.db
+    .update(tiffinSubscriptions)
+    .set({ status: "cancelled", cancelledAt: ctx.now(), cancelReason: "Trial day finished", nextBillingDate: null, updatedAt: ctx.now() })
+    .where(inArray(tiffinSubscriptions.id, rows.map((r) => r.id)));
+  return rows.length;
+}
+
 /** The whole daily pass: resume paused, roll billing, generate tomorrow, send menus. Safe to run any number of times. */
 export async function runDaily(ctx: AppContext): Promise<{ resumed: number; billing: Awaited<ReturnType<typeof rollBilling>>; deliveries: number; menus: number }> {
   const resumed = await autoResume(ctx);
+  await finishTrials(ctx);
   const billing = await rollBilling(ctx);
   const tomorrow = addDays(todayOf(ctx), 1);
   const { created } = await generateDeliveries(ctx, tomorrow);
@@ -1179,7 +1237,7 @@ export async function kitchen(ctx: AppContext, merchantId: string, date: string)
     .innerJoin(users, eq(users.id, tiffinSubscriptions.userId))
     .where(and(eq(tiffinSubscriptions.merchantId, merchantId), inArray(tiffinSubscriptions.status, ["active", "paused", "cancelled"]), lte(tiffinSubscriptions.startDate, date)));
   const dow = dowOf(date);
-  const day = subs.filter((s) => s.plan.daysOfWeek.includes(dow));
+  const day = subs.filter((s) => s.plan.daysOfWeek.includes(dow) && isServiceDay(s.plan, s.sub, date));
   const ids = day.map((s) => s.sub.id);
   const [dels, skips, menus, plans] = await Promise.all([
     ids.length ? ctx.db.select().from(tiffinDeliveries).where(and(eq(tiffinDeliveries.date, date), inArray(tiffinDeliveries.subscriptionId, ids))) : Promise.resolve([] as Delivery[]),
@@ -1275,7 +1333,7 @@ async function kitchenExtras(ctx: AppContext, merchantId: string, date: string, 
   // The soonest skip cutoff still open: the next meal day of each active plan.
   let nextCutoff: { at: Date; date: string } | null = null;
   const now = ctx.now();
-  for (const p of plans.filter((x) => x.active)) {
+  for (const p of plans.filter((x) => x.active && x.cadence !== "trial")) {
     for (let d = todayOf(ctx), i = 0; i < 14; d = addDays(d, 1), i++) {
       if (!p.daysOfWeek.includes(dowOf(d))) continue;
       const at = cutoffAt(p, d);
@@ -1406,7 +1464,7 @@ export async function revenue(ctx: AppContext, merchantId: string, month?: strin
   for (const { sub, plan } of billing) {
     const e = byPlan.get(plan.id) ?? { planId: plan.id, planName: plan.name, activeSubscribers: 0, mrrCents: 0 };
     e.activeSubscribers++;
-    e.mrrCents += mrrOf(plan.cadence, sub.priceCents);
+    e.mrrCents += mrrOf(cadenceOf(sub, plan), sub.priceCents);
     byPlan.set(plan.id, e);
   }
   const activeAtStart = rows.filter((r) => r.sub.createdAt < startAt && (!r.sub.cancelledAt || r.sub.cancelledAt >= startAt)).length;
@@ -1505,9 +1563,9 @@ export async function publicPlans(ctx: AppContext, merchant: Merchant, q: z.outp
   };
 }
 
-export async function subscribe(ctx: AppContext, userId: string, body: z.output<typeof tiffinApi.subscribeBody>): Promise<tiffinApi.SubscribeResponse> {
+export async function subscribe(ctx: AppContext, userId: string, body: z.output<typeof tiffinApi.subscribeBody>, opts: { merchantId?: string } = {}): Promise<tiffinApi.SubscribeResponse> {
   const [plan] = await ctx.db.select().from(tiffinPlans).where(eq(tiffinPlans.id, body.planId)).limit(1);
-  if (!plan || !plan.active) throw notFound("Plan");
+  if (!plan || !plan.active || (opts.merchantId && plan.merchantId !== opts.merchantId)) throw notFound("Plan");
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, plan.merchantId)).limit(1);
   if (!merchant || merchant.status === "closed") throw notFound("Plan");
   await requireFeature(ctx.db, merchant, "restaurant.tiffin");
@@ -1521,6 +1579,9 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   const today = todayOf(ctx);
   if (body.startDate < today) throw badRequest("The start date is in the past");
   if (body.startDate > addDays(today, 60)) throw badRequest("Start within the next 60 days");
+  if (plan.cadence === "trial" && !plan.daysOfWeek.includes(dowOf(body.startDate))) throw badRequest("Pick a day this kitchen cooks for this plan");
+  if (body.billingCadence === "monthly" && plan.cadence !== "weekly") throw badRequest("Only a weekly plan can be billed monthly");
+  if (body.billingCadence === "monthly" && !manual) throw badRequest("Monthly billing of a weekly plan is for e-transfer and cash");
   // A kitchen that takes e-transfer or cash needs no Stripe account; card and bank debit do.
   if (!manual && !stripeReady(merchant)) throw conflict("This kitchen can't take payments yet");
   const [dupe] = await ctx.db
@@ -1531,8 +1592,10 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   if (dupe) throw conflict("You already have this plan. Manage it from your subscriptions.");
 
   const now = ctx.now();
-  const price = priceFor(plan, body.servings, body.fulfilment);
-  const periodEnd = periodEndFor(plan.cadence, body.startDate);
+  const billingCadence = plan.cadence === "weekly" && body.billingCadence === "monthly" ? "monthly" : null;
+  const price = billingCadence ? monthlyOfWeekly(priceFor(plan, body.servings, body.fulfilment)) : priceFor(plan, body.servings, body.fulfilment);
+  const periodEnd = periodEndFor(billingCadence ?? plan.cadence, body.startDate);
+  if (body.name) await ctx.db.update(users).set({ name: body.name }).where(and(eq(users.id, userId), or(isNull(users.name), eq(users.name, ""))));
   let [sub] = await ctx.db
     .insert(tiffinSubscriptions)
     .values({
@@ -1550,9 +1613,10 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
       startDate: body.startDate,
       currentPeriodStart: body.startDate,
       currentPeriodEnd: periodEnd,
-      nextBillingDate: addDays(periodEnd, 1),
+      nextBillingDate: plan.cadence === "trial" ? null : addDays(periodEnd, 1),
       priceCents: price,
       paymentMethod: body.paymentMethod,
+      billingCadence,
       createdAt: now,
       updatedAt: now,
     })
@@ -1574,6 +1638,18 @@ export async function subscribe(ctx: AppContext, userId: string, body: z.output<
   const [settledCharge] = await ctx.db.select().from(tiffinCharges).where(eq(tiffinCharges.id, charge.id)).limit(1);
   const [freshSub] = await ctx.db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.id, row.sub.id)).limit(1);
   return { subscription: subDto(freshSub ?? row.sub, row.plan, row.route), charge: chargeDto(settledCharge!), payment, manual: manual ? manualFor(merchant, row.sub.paymentMethod, settledCharge!) : null };
+}
+
+/**
+ * The kitchen adds a regular who phones in: finds or creates the customer by phone, then subscribes them the way they would
+ * themselves (hand-paid: they get the e-transfer details by text, the kitchen records the money). The kitchen's own people
+ * can start someone before their first payment lands; that is the "start on trust" setting on the payments page.
+ */
+export async function addSubscriber(ctx: AppContext, merchantId: string, body: z.output<typeof tiffinApi.addSubscriberBody>): Promise<tiffinApi.SubscribeResponse> {
+  const user = await findOrCreateUserByPhone(ctx, body.phone, body.name);
+  if (!user) throw badRequest("That phone number can't be used");
+  const { name: _n, phone: _p, ...rest } = body;
+  return subscribe(ctx, user.id, { ...rest, name: body.name }, { merchantId });
 }
 
 /** What the customer needs to pay by hand: the shop's e-transfer email and the charge's reference code (cash gets plain words). */
@@ -1676,7 +1752,8 @@ async function upcomingFor(ctx: AppContext, rows: (SubRow & { merchant?: { id: s
         servings: sub.servings,
         fulfilment: sub.fulfilment as tiffinApi.TiffinFulfilment,
         cutoffAt: cutoff.toISOString(),
-        canSkip: sub.status === "active" && status === "scheduled" && ctx.now().getTime() <= cutoff.getTime(),
+        // A skipped day stays changeable until the cutoff: the customer can put it back (Undo).
+        canSkip: sub.status === "active" && (status === "scheduled" || status === "skipped") && ctx.now().getTime() <= cutoff.getTime(),
         menu: menuFor(menus.filter((x) => x.merchantId === sub.merchantId), plan.id, date)?.items ?? [],
       });
     }

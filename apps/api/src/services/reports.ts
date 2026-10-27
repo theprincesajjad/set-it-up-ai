@@ -630,6 +630,19 @@ export async function today(ctx: AppContext, merchant: Merchant): Promise<report
   const typicalTodayKeys = sameWeekday(7);
   const typicalDay = (keys: string[]) => reportsApi.typicalFromWeeks(keys.map(dayTotal)) ?? 0;
 
+  const nowLocal = localParts(now, tz);
+  const nowHour = Number(nowLocal.hhmm.slice(0, 2));
+  const nowFraction = Number(nowLocal.hhmm.slice(3, 5)) / 60;
+  const typicalSoFar = Math.round(
+    mean1(
+      typicalTodayKeys.map((k) => {
+        let n = 0;
+        for (let h = 0; h < nowHour; h++) n += hourOf(k, h);
+        return n + hourOf(k, nowHour) * nowFraction;
+      }),
+    ),
+  );
+
   const newBy = (key: string, via?: string) => newMemberRows.filter((r) => r.d === key && (!via || r.via === via)).reduce((a, r) => a + num(r.n), 0);
 
   // Regulars and slipping come from visit rhythm.
@@ -734,6 +747,8 @@ export async function today(ctx: AppContext, merchant: Merchant): Promise<report
     today: {
       visits: dayTotal(todayKey),
       typicalVisitsFullDay: typicalDay(typicalTodayKeys),
+      // The same weekdays up to this time of day, so "so far today" is compared with "so far on a typical day".
+      typicalVisitsSoFar: typicalSoFar,
       newMembers: newBy(todayKey),
       newViaQr: newBy(todayKey, "qr"),
       stampsGiven: earnRows.reduce((a, r) => a + r.points, 0),

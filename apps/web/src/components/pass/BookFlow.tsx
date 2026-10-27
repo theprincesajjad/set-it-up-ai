@@ -186,7 +186,10 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
   if (step === "done" && finished) {
     const url = typeof window !== "undefined" ? `${window.location.origin}/shops/${shop.slug}/book/${finished.id}` : undefined;
     const download = () => {
-      const ics = buildIcs({ uid: finished.id, title: `${finished.items.map((i) => i.name).join(", ")} · ${shop.name}`, startsAt: finished.startsAt, endsAt: finished.endsAt, location: finished.merchant.address, description: url, url });
+      // A pharmacy visit goes into the calendar as a bare "Appointment": no service, shop, address or link (calendars sync and share).
+      const ics = pharmacy
+        ? buildIcs({ uid: finished.id, title: t("rx.ics.title"), startsAt: finished.startsAt, endsAt: finished.endsAt })
+        : buildIcs({ uid: finished.id, title: `${finished.items.map((i) => i.name).join(", ")} · ${shop.name}`, startsAt: finished.startsAt, endsAt: finished.endsAt, location: finished.merchant.address, description: url, url });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
       a.download = "appointment.ics";

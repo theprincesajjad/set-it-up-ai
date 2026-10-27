@@ -1,6 +1,6 @@
 "use client";
 import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { AppointmentSheet } from "@/components/dashboard/calendar/AppointmentSheet";
 import { CalendarDay, type MoveRequest } from "@/components/dashboard/calendar/CalendarDay";
@@ -64,6 +64,7 @@ function Calendar() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [ask, setAsk] = useState<Ask>(null);
   const [now, setNow] = useState(() => new Date());
+  const pendingCheckout = useRef<string | null>(null);
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
@@ -73,6 +74,13 @@ function Calendar() {
     const d = new URLSearchParams(globalThis.location.search).get("date");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d);
+    // ?appt=<id>&checkout=1 opens a visit and its checkout (the walk-in line's Done button links here).
+    const q = new URLSearchParams(globalThis.location.search);
+    const a = q.get("appt");
+    if (a) {
+      setSelectedId(a);
+      if (q.get("checkout") === "1") pendingCheckout.current = a;
+    }
   }, []);
 
   const staff = useMemo(() => staffState.data?.items ?? [], [staffState.data]);
@@ -86,6 +94,14 @@ function Calendar() {
   const appts = useAppointments(api, staffState.data?.setup.ready ? range : null);
   const items = appts.items;
   const selected = items.find((a) => a.id === selectedId) ?? null;
+  useEffect(() => {
+    if (pendingCheckout.current && selectedId === pendingCheckout.current && items.some((i) => i.id === selectedId)) {
+      pendingCheckout.current = null;
+      // One-time: the deep link asked for this visit's checkout and it has now loaded.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSheet({ kind: "checkout" });
+    }
+  }, [selectedId, items]);
 
   const columns = useMemo(() => {
     if (view === "week") return weekColumns(weekStart(date), staff.find((s) => s.userId === chosenStaff) ?? null, items);

@@ -147,7 +147,7 @@ describe("plates and plans", () => {
   });
   it("features are Café & Retail ($39) for their trade and never free", () => {
     for (const k of ["auto.vehicles", "auto.tires", "auto.wash"] as const) {
-      expect(FEATURES[k]).toMatchObject({ minPlan: "plus", defaultStage: "hidden" });
+      expect(FEATURES[k]).toMatchObject({ minPlan: "plus", defaultStage: "ga" });
       expect(FREE_FOREVER).not.toContain(k);
     }
     const ga = { stage: "ga" as const, plan: "plus" as const };

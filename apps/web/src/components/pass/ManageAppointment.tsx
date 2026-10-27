@@ -96,7 +96,11 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
   }
   function download() {
     const url = `${window.location.origin}/shops/${slug}/book/${appt.id}`;
-    const ics = buildIcs({ uid: appt.id, title: `${appt.items.map((i) => i.name).join(", ")} · ${appt.merchant.name}`, startsAt: appt.startsAt, endsAt: appt.endsAt, location: appt.merchant.address, description: url, url });
+    // A pharmacy visit goes into the calendar as a bare "Appointment": no service, shop, address or link (calendars sync and share).
+    const rx = Boolean(appt.reminderText);
+    const ics = rx
+      ? buildIcs({ uid: appt.id, title: t("rx.ics.title"), startsAt: appt.startsAt, endsAt: appt.endsAt })
+      : buildIcs({ uid: appt.id, title: `${appt.items.map((i) => i.name).join(", ")} · ${appt.merchant.name}`, startsAt: appt.startsAt, endsAt: appt.endsAt, location: appt.merchant.address, description: url, url });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
     a.download = "appointment.ics";

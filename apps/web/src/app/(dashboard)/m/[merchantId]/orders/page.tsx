@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { Capsules, EmptyState, ErrorLine, PageHeader, Segmented, SkeletonRows, StatusDot } from "@/components/dashboard/kit";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatMoney, formatTime } from "@/lib/format";
 import { hasRestaurantFeature, enabledSet } from "@/lib/dashboard/nav";
 import { relativeTime } from "@/lib/dashboard/time";
-import { chipOf, splitLine, type OrderChip } from "@/lib/restaurant/orders";
+import { chipOf, depositLine, isEventOrder, splitLine, type OrderChip } from "@/lib/restaurant/orders";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type Order = commerceApi.OrderDto;
@@ -152,7 +153,8 @@ function Orders() {
 
 function OrderCard({ o, view, restaurant, canSplitIt, selected, onMove, onSplit, onCancel }: { o: Order; view: "open" | "done"; restaurant: boolean; canSplitIt: boolean; selected: boolean; onMove: (o: Order, s: commerceApi.UpdateOrderStatusBody["status"]) => void; onSplit: () => void; onCancel: () => void }) {
   const who = o.customer?.name && !/^\s*$/.test(o.customer.name) ? o.customer.name : o.customer?.phone ? formatPhone(o.customer.phone) : "Customer";
-  const pickup = o.pickupAt ? `pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `placed ${relativeTime(o.createdAt)}`;
+  const event = isEventOrder(o);
+  const pickup = event ? `${o.kind === "banquet" ? "hall booking" : "catering"} · placed ${relativeTime(o.createdAt)}` : o.pickupAt ? `pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `placed ${relativeTime(o.createdAt)}`;
   return (
     <article aria-label={`Order ${o.number}`} className={cn("flex h-full flex-col gap-2.5 rounded-card border bg-bg p-5", selected ? "border-2 border-fg" : "border-line")}>
       <header className="flex items-start justify-between gap-3">
@@ -181,8 +183,7 @@ function OrderCard({ o, view, restaurant, canSplitIt, selected, onMove, onSplit,
       <p className="text-meta text-fg-muted tabular">
         {o.depositCents > 0 ? (
           <span className="font-medium text-fg">
-            Deposit {formatMoney(o.depositCents)} {o.depositPaidAt ? "paid" : "not paid yet"}
-            {o.balanceDueCents > 0 ? ` · ${formatMoney(o.balanceDueCents)} due at pickup` : " · nothing left to pay"}
+            {depositLine(o, formatMoney)}
           </span>
         ) : o.paymentMethod === "in_app" ? (
           `Paid online · ${formatMoney(o.totalCents)}${o.paymentStatus === "paid" ? "" : ` (${o.paymentStatus})`}`
@@ -191,7 +192,13 @@ function OrderCard({ o, view, restaurant, canSplitIt, selected, onMove, onSplit,
         )}
         {o.cashDiscountCents > 0 ? ` · cash price ${formatMoney(o.cashDiscountCents)} off` : ""}
       </p>
-      {view === "open" ? (
+      {view === "open" && event ? (
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+          <Link href={`/m/${o.merchantId}/restaurant/${o.kind === "banquet" ? "banquet" : "catering"}`} className="text-meta font-medium text-fg underline underline-offset-2">
+            Open the {o.kind === "banquet" ? "booking" : "event"}
+          </Link>
+        </div>
+      ) : view === "open" ? (
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {(NEXT[o.status] ?? []).map((n, idx) => (
             <Button key={n.status} size="sm" variant={idx === 0 || n.status === "ready" ? "primary" : "secondary"} onClick={() => onMove(o, n.status)}>

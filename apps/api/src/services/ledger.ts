@@ -32,7 +32,7 @@ import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { enabledFeaturesFor } from "./features.js";
-import { assertPharmacyText, isPharmacy, nothingFrontStore, pharmacyAwardPlan } from "./pharmacy-guard.js";
+import { assertPharmacyConfirmed, assertPharmacyText, isPharmacy, nothingFrontStore, pharmacyAwardPlan } from "./pharmacy-guard.js";
 import { recordVisitMilestones } from "./onboarding.js";
 import { enqueueOutbox, kickOutbox, registerOutboxHandler } from "./outbox.js";
 
@@ -325,7 +325,9 @@ export async function ensureMember(ctx: AppContext, tx: Tx, args: EnsureMemberAr
   await memberAccount(tx, inserted);
   let member = inserted;
   const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, args.merchantId)).limit(1);
-  if (!args.skipWelcomeBonus && program?.active && program.welcomeBonus > 0) {
+  // A pharmacy never pays a welcome bonus: points for joining are a benefit for a visit, which may be a prescription visit.
+  const [shopRow] = !args.skipWelcomeBonus && program?.active && program.welcomeBonus > 0 ? await tx.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, args.merchantId)).limit(1) : [];
+  if (!args.skipWelcomeBonus && program?.active && program.welcomeBonus > 0 && !isPharmacy(shopRow)) {
     const r = await postTransaction(tx, {
       merchantId: args.merchantId,
       memberId: inserted.id,
@@ -590,6 +592,9 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       }
     }
 
+    // A pharmacy cannot give points until its pharmacist-owner has confirmed the rules.
+    assertPharmacyConfirmed(merchant);
+
     // Resolve the member.
     let member: Member;
     let lockedMember: Member | undefined;
@@ -785,13 +790,15 @@ const PERK_WINDOW_DAYS = sql.raw('"network_perks"."window_days"');
 /** Network-funded bonus when a customer visits N distinct shops in the neighbourhood. */
 async function applyNetworkPerks(tx: Tx, merchant: Merchant, program: typeof loyaltyPrograms.$inferSelect, member: Member, now: Date, source: TxSource) {
   if (!merchant.neighbourhoodId) return null;
+  // A pharmacy never pays or counts toward a "visit N shops" perk (a visit is not a front-store sale).
+  if (isPharmacy(merchant)) return null;
   // One read: the perks that apply here, whether this customer already has each, and (only when not) how many distinct
   // shops they visited in the perk's window. A customer who has them all, or no perk exists, costs one statement.
   const perks = await tx
     .select({
       perk: networkPerks,
       already: sql<boolean>`exists (select 1 from ${networkPerkAwards} where ${networkPerkAwards.perkId} = ${PERK_ID} and ${networkPerkAwards.userId} = ${member.userId})`,
-      shops: sql<number>`case when exists (select 1 from ${networkPerkAwards} where ${networkPerkAwards.perkId} = ${PERK_ID} and ${networkPerkAwards.userId} = ${member.userId}) then 0 else (select count(distinct ${visits.merchantId})::int from ${visits} where ${visits.userId} = ${member.userId} and ${visits.neighbourhoodId} = ${merchant.neighbourhoodId} and ${visits.createdAt} >= ${now.toISOString()}::timestamptz - ${PERK_WINDOW_DAYS} * interval '1 day') end`,
+      shops: sql<number>`case when exists (select 1 from ${networkPerkAwards} where ${networkPerkAwards.perkId} = ${PERK_ID} and ${networkPerkAwards.userId} = ${member.userId}) then 0 else (select count(distinct ${visits.merchantId})::int from ${visits} where ${visits.userId} = ${member.userId} and ${visits.merchantId} not in (select "id" from "merchants" where "vertical" = 'pharmacy') and ${visits.neighbourhoodId} = ${merchant.neighbourhoodId} and ${visits.createdAt} >= ${now.toISOString()}::timestamptz - ${PERK_WINDOW_DAYS} * interval '1 day') end`,
     })
     .from(networkPerks)
     .where(and(eq(networkPerks.active, true), or(eq(networkPerks.neighbourhoodId, merchant.neighbourhoodId), isNull(networkPerks.neighbourhoodId))));
