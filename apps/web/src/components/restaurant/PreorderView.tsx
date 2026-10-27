@@ -205,6 +205,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
             <p className="text-meta text-fg-muted">{t("gr.butcher.scaleNote")}</p>
           </>
         ) : null}
+        {availability.plan ? <p className="text-body text-fg-muted">{t(availability.plan.moved ? "gr.pre.eidMoved" : "gr.pre.eid", { date: dayLabel(availability.plan.start, { weekday: "short", day: "numeric", month: "long", year: "numeric" }) })}</p> : null}
         {p.description ? <p dir="auto" className="text-body text-fg-muted">{p.description}</p> : null}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <DietaryPills dietary={item.dietary} />

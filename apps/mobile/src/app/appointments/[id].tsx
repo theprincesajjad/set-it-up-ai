@@ -95,11 +95,17 @@ export default function Appointment() {
       {note ? <Banner variant={note.variant}>{note.text}</Banner> : null}
       <View>
         {a.items.map((i, k) => (
-          <InfoRow key={`${i.name}${k}`} label={`${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}${a.staffName ? ` · ${a.staffName}` : ""}`} value={money(i.priceCents)} />
+          <InfoRow key={`${i.name}${k}`} label={`${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}${a.staffName ? ` · ${a.staffName}` : ""}`} value={a.reminderText ? "" : money(i.priceCents)} />
         ))}
-        <InfoRow strong label={a.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")} value={money(a.totalCents)} />
+        {a.reminderText ? null : <InfoRow strong label={a.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")} value={money(a.totalCents)} />}
       </View>
       {a.merchant.address ? <Text variant="meta" color="fgMuted">{a.merchant.address}</Text> : null}
+      {live && a.reminderText ? (
+        <View style={[styles.policy, { backgroundColor: c.bgSubtle, gap: 4 }]} testID="pharmacy-reminder" accessibilityLabel={t("rx.book.reminderTitle")}>
+          <Text variant="caption" color="fgMuted" style={{ textTransform: "uppercase", letterSpacing: 0.5, fontWeight: "600" }}>{t("rx.book.reminderTitle")}</Text>
+          <Text>{a.reminderText}</Text>
+        </View>
+      ) : null}
       {live ? <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}><Text>{policy}</Text></View> : null}
       {mode === "move" ? (
         <View style={{ gap: 12 }}>

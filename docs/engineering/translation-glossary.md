@@ -843,3 +843,20 @@ Added Oct 27, 2026 with the grocer vertical (`docs/research/grocers.md`). Not ye
 | Butcher counter | मीट काउंटर | میٹ کاؤنٹر | ਮੀਟ ਕਾਊਂਟਰ |
 | Weekly deals | इस हफ़्ते की डील | اس ہفتے کی ڈیلز | ਇਸ ਹਫ਼ਤੇ ਦੀਆਂ ਡੀਲਾਂ |
 | Pantry | रसोई का स्टॉक | کچن کا اسٹاک | ਰਸੋਈ ਦਾ ਸਟਾਕ |
+
+### v4 open items: restock page, Eid pick-up days, pharmacy reminder card, class screens in the app (28)
+
+Added Oct 27, 2026 (grocers, fitness studios and pharmacies open items). Written by the build team in all four languages, not yet read by a native speaker. Placeholders and plural branches match across the four languages.
+
+- `gr.restock.*` (12): the one-item reserve page a restock text opens (`/shops/<slug>/restock/<itemId>`). `ready` is "price, ready Saturday from 9 am"; `window` is a pick-up window "Sat 9 am to 12" (the end is the hour alone); `remind` is a plural ("every week", "every # weeks"); `payNote` says nothing is charged now (the order is paid at the counter); `turnOff` is a quiet text link, not a button; `goneTitle` and `goneBody` are shown when the item was switched off or has no catalog item.
+- `gr.pre.eid`, `gr.pre.eidMoved` (2): the line under a qurbani item: "Eid al-Adha, {date} (date confirmed after moon sighting)." or "(moved after moon sighting)". Use the community's name for the festival (ईद अल-अज़हा, عید الاضحیٰ, ਈਦ ਅਲ-ਅਜ਼ਹਾ) and the plain word for moon sighting ("चाँद दिखने", "چاند نظر آنے", "ਚੰਨ ਦਿਸਣ").
+- `rx.appt.reminder` (1): the one fixed pharmacy reminder text, "{shop}: your appointment is {when}. Change it: {link}." It is the exact SMS the pharmacy customer gets (the STOP line is added after it) and it is shown in the booked screen. It must never name the service: use the loanword for appointment (अपॉइंटमेंट, اپائنٹمنٹ, ਅਪਾਇੰਟਮੈਂਟ) and no word for vaccine, shot, medicine or prescription.
+- `rx.book.reminderTitle` (1): "Reminder we will send", the small heading of that card.
+- `cl.app.*` (12): the class screens in the Expo app (`apps/mobile/src/app/classes`). `shopRow` and `shopRowSub` are the row on the shop page; `tabSchedule` and `tabCard` the bottom tabs (the middle tab reuses `cl.ui.passes.title`); `joinTitle` ("Join {name}") and `readFirst` the agreement screen; `payOnWeb` says card payment happens on a secure web page, then the person comes back; `renews`, `minutes`, `zeroToday` and `anyClass` are short fragments on the schedule, the booking sheet and the passes screen. The rest of those screens reuses the `cl.ui.*` strings the web pages already carry.
+
+| English | Hindi | Urdu | Punjabi |
+| --- | --- | --- | --- |
+| Reserve it | रिज़र्व करें | ریزرو کریں | ਰਿਜ਼ਰਵ ਕਰੋ |
+| Pick-up time | पिकअप का समय | پک اپ کا وقت | ਪਿਕਅੱਪ ਦਾ ਸਮਾਂ |
+| Reminder we will send | हम यह रिमाइंडर भेजेंगे | ہم یہ یاد دہانی بھیجیں گے | ਅਸੀਂ ਇਹ ਰਿਮਾਈਂਡਰ ਭੇਜਾਂਗੇ |
+| Schedule | शेड्यूल | شیڈول | ਸ਼ੈਡਿਊਲ |

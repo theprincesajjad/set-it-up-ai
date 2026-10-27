@@ -34,6 +34,8 @@ export function groceryEndpoints(c: ApiClient, b: string) {
 export function publicGroceryEndpoints(c: ApiClient) {
   return {
     flyer: (slug: string) => c.get<groceryApi.PublicFlyerResponse>(`/v1/public/shops/${enc(slug)}/flyer`, { anonymous: true }),
+    /** The staple a restock text links to (frame 12). */
+    pantryItem: (slug: string, itemId: string) => c.get<groceryApi.PublicPantryItemResponse>(`/v1/public/shops/${enc(slug)}/pantry/${enc(itemId)}`, { anonymous: true, cache: "no-store" }),
   };
 }
 

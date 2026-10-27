@@ -5,7 +5,7 @@
  */
 import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { catalogItems, locations, merchants, orderItems, orders, preorderWaitlist, type DbOrTx } from "@ll/db";
-import { restaurantApi } from "@ll/shared";
+import { getFestival, isQurbaniName, resolveFestivalDates, restaurantApi } from "@ll/shared";
 
 const WEEKDAYS = restaurantApi.WEEKDAYS;
 import type { z } from "zod";
@@ -100,6 +100,22 @@ export async function saveRules(ctx: AppContext, merchant: Merchant, body: z.inf
 /** Minimum notice (hours) the shop's override sets for a pickup day; null when no override applies. */
 export function overrideLeadHours(m: CapFields & Pick<Merchant, "timezone">, pickupAt: Date): number | null {
   return capFor(m, dateKeyIn(pickupAt, m.timezone)).leadHours;
+}
+
+/** The label on the one-day date rules the grocer's Eid plan writes ("Eid al-Adha day 1"). */
+export const EID_PLAN_LABEL = "Eid al-Adha day";
+
+/**
+ * The shop's Eid al-Adha pick-up days that are still ahead (or today), from the date rules the Eid plan saved. They already follow
+ * moon sighting (moving Eid moves the rules). Null when the shop has not set a plan or every day has passed.
+ */
+export function eidPlanDays(m: Pick<Merchant, "preorderOverrides" | "festivalOverrides">, today: string): { dates: string[]; start: string; moved: boolean } | null {
+  const rules = (m.preorderOverrides ?? []).filter((o) => o.label.startsWith(EID_PLAN_LABEL) && o.to >= today).sort((a, b) => a.from.localeCompare(b.from));
+  if (!rules.length) return null;
+  const dates = rules.map((o) => o.from);
+  const f = getFestival("eid_al_adha");
+  const r = f ? resolveFestivalDates(f, dates[0]!.slice(0, 4), m.festivalOverrides) : null;
+  return { dates, start: dates[0]!, moved: !!r?.moved };
 }
 
 /** Pots already booked, one row per order line, for a local pickup day. */
@@ -256,8 +272,12 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
   const to = q.to && q.to < addDaysKey(from, 60) ? q.to : addDaysKey(from, 29);
   if (to < from) throw badRequest("'to' is before 'from'");
   const days: restaurantApi.PreorderAvailabilityDay[] = [];
-  const waiting = await waitlistCounts(ctx.db, merchant.id, from, to);
-  for (let d = from; d <= to; d = addDaysKey(d, 1)) {
+  // Qurbani is picked up on the shop's Eid plan days, not on a rolling window from today.
+  const plan = isQurbaniName(item.name) ? eidPlanDays(merchant, today) : null;
+  const dates: string[] = plan ? plan.dates : [];
+  if (!plan) for (let d = from; d <= to; d = addDaysKey(d, 1)) dates.push(d);
+  const waiting = await waitlistCounts(ctx.db, merchant.id, dates[0]!, dates.at(-1)!);
+  for (const d of dates) {
     const { cap, note, leadHours: ovLead } = capFor(merchant, d);
     const lead = Math.max(item.leadTimeHours, ovLead ?? 0);
     const earliest = now.getTime() + lead * 3_600_000;
@@ -279,5 +299,5 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
     days.push({ date: d, potsLeft, full: !closed && potsLeft != null && potsLeft <= 0, closed, waiting: waiting.get(d) ?? 0, tooSoon, windows, note });
     if (days.length >= 60) break;
   }
-  return { itemId: item.id, leadHours: item.leadTimeHours, perHourCap: merchant.preorderPerHourCap, days };
+  return { itemId: item.id, leadHours: item.leadTimeHours, perHourCap: merchant.preorderPerHourCap, days, ...(plan ? { plan: { kind: "eid_al_adha" as const, start: plan.start, moved: plan.moved } } : {}) };
 }

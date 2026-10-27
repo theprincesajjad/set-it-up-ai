@@ -29,6 +29,7 @@ import {
   CallGlyph,
   CardQrIcon,
   DirectionsGlyph,
+  Dumbbell,
   DiscountCard,
   GiftGlyph,
   hairline,
@@ -148,6 +149,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const ticketsOn = !!features?.serviceTickets || myTickets.length > 0;
   const dropoffOn = !!features?.dropoffScheduling;
   const appointmentsOn = !!features?.appointments;
+  const classesOn = !!features?.classes;
   const referralsOn = features?.referrals !== false && (m?.program?.referralBonus ?? 0) > 0;
   const neighbours = s.memberCount != null ? tr("shop.membersCount", { n: s.memberCount.toLocaleString("en-CA") }) : null;
   const dist = locState.coords && loc?.lat != null && loc.lng != null ? distanceMetres(locState.coords, { lat: loc.lat, lng: loc.lng }) : null;
@@ -333,10 +335,11 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <View style={{ gap: 18, marginTop: 24 }}>
-          {orderAhead || ticketsOn || dropoffOn || appointmentsOn ? (
+          {orderAhead || ticketsOn || dropoffOn || appointmentsOn || classesOn ? (
             <Section title={tr("ms.shop.orderServices")}>
-              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn} /> : null}
-              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr("bk.shop.book")} subtitle={tr("bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
+              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn || classesOn} /> : null}
+              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr("bk.shop.book")} subtitle={tr("bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || classesOn} /> : null}
+              {classesOn ? <ListRow leadingIcon={Dumbbell} title={tr("cl.app.shopRow")} subtitle={tr("cl.app.shopRowSub")} chevron onPress={() => router.push(`/classes/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
               {dropoffOn ? <ListRow leadingIcon={Ticket} title={tr("sv.d.link")} subtitle={tr("sv.d.linkSub")} chevron onPress={() => router.push(`/dropoff/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
               {ticketsOn ? (
                 <ListRow

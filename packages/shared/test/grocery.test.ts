@@ -4,6 +4,7 @@ import {
   gapsDays,
   gramsPerUnit,
   isGrocerSeasonId,
+  isQurbaniName,
   per100gCents,
   per100gLabel,
   formatWeight,
@@ -98,5 +99,12 @@ describe("grocery features", () => {
       expect(isFeatureEnabled(d.key, ctx)).toBe(true);
       expect(isFeatureEnabled(d.key, { ...(ctx as object), vertical: "cafe" } as never)).toBe(false);
     }
+  });
+});
+
+describe("qurbani items", () => {
+  it("knows a qurbani item by its name, in the shop's words and the community's", () => {
+    for (const n of ["Whole goat, qurbani", "Cow share, qurbani (one of seven)", "Qurbani sheep", "Udhiyah goat", "قربانی کا بکرا", "कुर्बानी बकरा", "ਕੁਰਬਾਨੀ ਬੱਕਰਾ"]) expect(isQurbaniName(n), n).toBe(true);
+    for (const n of ["Aqiqah goat", "Goat curry cut", "Atta 20 lb", "Whole chicken"]) expect(isQurbaniName(n), n).toBe(false);
   });
 });

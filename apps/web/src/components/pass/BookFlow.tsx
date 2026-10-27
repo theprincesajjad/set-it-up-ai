@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
+import { ReminderCard } from "@/components/pass/ReminderCard";
 import { SetupBox } from "@/components/pass/SetupBox";
 import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { Banner } from "@/components/ui/Banner";
@@ -202,6 +203,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
           {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
         </section>
+        <ReminderCard text={finished.reminderText} />
         <div className="flex flex-col gap-3">
           <Button size="lg" fullWidth onClick={download}>{t("bk.done.calendar")}</Button>
           <Button size="lg" variant="secondary" fullWidth href={`/shops/${encodeURIComponent(shop.slug)}/book/${finished.id}`}>{t("bk.done.manage")}</Button>

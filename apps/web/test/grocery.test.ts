@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FeatureKey } from "@ll/shared";
 import { buildMerchantNav, canOpen } from "@/lib/dashboard/nav";
-import { BUTCHER_STATUS, dealDates, dealPerUnitLine, dealPriceLabel, daysWords, deltaWords, intervalWords, priceToCents, rewardCostLine, seasonFlyerLine, weighPreview, weightToGrams } from "@/lib/grocery";
+import { BUTCHER_STATUS, dealDates, dealPerUnitLine, dealPriceLabel, daysWords, deltaWords, intervalWords, priceToCents, restockEveryWeeks, restockWindows, rewardCostLine, seasonFlyerLine, weighPreview, weightToGrams } from "@/lib/grocery";
 
 describe("deal words", () => {
   it("prices a pack, a kg and a lb", () => {
@@ -94,5 +94,42 @@ describe("grocer sidebar", () => {
     expect(canOpen("staff", "grocery")).toBe(true);
     expect(canOpen("staff", "billing")).toBe(false);
     expect(nav(GROC)).toContain("billing");
+  });
+});
+
+describe("restock reserve page windows (frame 12)", () => {
+  const hours = { mon: [["09:00", "17:00"]], tue: [["09:00", "17:00"]], sat: [["09:00", "16:00"]] } as Record<string, [string, string][]>;
+  const wall = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "America/Toronto", hour: "2-digit", minute: "2-digit" });
+
+  it("offers three-hour windows on the first open day, starting on the hour, ending when the shop closes", () => {
+    // Friday evening in Toronto: the shop is closed Sat? No: Saturday opens 09:00.
+    const w = restockWindows(hours, new Date("2026-11-06T23:00:00Z"));
+    expect(w.map((x) => [x.date, x.start, x.end])).toEqual([
+      ["2026-11-07", "09:00", "12:00"],
+      ["2026-11-07", "12:00", "15:00"],
+      ["2026-11-07", "15:00", "16:00"],
+    ]);
+    expect(wall(w[0]!.iso)).toBe("09:00");
+  });
+
+  it("starts today when the shop is open and an hour's notice is left, and never offers a time that has passed", () => {
+    // Monday 10:20 Toronto: earliest pick-up 11:20, rounded to 11:30 steps by the pick-up grid.
+    const w = restockWindows(hours, new Date("2026-11-02T15:20:00Z"));
+    expect(w[0]!.date).toBe("2026-11-02");
+    for (const x of w) expect(new Date(x.iso).getTime()).toBeGreaterThanOrEqual(new Date("2026-11-02T16:20:00Z").getTime());
+    expect(w.length).toBeGreaterThan(0);
+    expect(w.at(-1)!.end <= "17:00").toBe(true);
+  });
+
+  it("is empty when nothing is open in the next days, and when hours are missing it falls back to a default day", () => {
+    expect(restockWindows({ sun: [["09:00", "17:00"]] } as Record<string, [string, string][]>, new Date("2026-11-02T15:00:00Z"))).toEqual([]);
+    expect(restockWindows(null, new Date("2026-11-02T15:00:00Z")).length).toBeGreaterThan(0);
+  });
+
+  it("says every N weeks from the days a purchase lasts", () => {
+    expect(restockEveryWeeks(42)).toBe(6);
+    expect(restockEveryWeeks(30)).toBe(4);
+    expect(restockEveryWeeks(7)).toBe(1);
+    expect(restockEveryWeeks(3)).toBe(1);
   });
 });

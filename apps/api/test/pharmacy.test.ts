@@ -17,6 +17,7 @@ import { runRetention, scrubPharmacyAppointments } from "../src/services/retenti
 import { ensureLockedCategories } from "../src/services/pharmacy.js";
 import { zonedToUtc } from "../src/services/bookings.js";
 import { call, customer, paidMerchant, staffMember } from "./commerce-fixtures.js";
+import { signAccessToken } from "../src/lib/auth.js";
 import { createTestEnv, createUser, grantFeatures, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
@@ -345,6 +346,39 @@ describe("pharmacist appointments keep only that a booking exists", () => {
     // Public booking page: the shop is marked a pharmacy, no card is taken, no fee.
     const pub = await call(env, null, "GET", `/v1/public/shops/${c.merchant.slug}/booking`);
     if (pub.status === 200) expect(pub.body).toMatchObject({ shop: { pharmacy: true }, policy: { takesCards: false, noShowFeeCents: 0 } });
+  });
+
+  it("the booked screen shows the exact fixed reminder text, and that is the text the phone gets, day before and two hours before", async () => {
+    const c = await clinic();
+    const who = await customer(env);
+    await env.db.update(users).set({ locale: "en" }).where(eq(users.id, who.user.id));
+    const r = await call(env, who.token, "POST", "/v1/me/appointments", { serviceIds: [c.flu.body.id], staffId: null, startsAt: at("2026-11-05 10:00") });
+    expect(r.status).toBe(201);
+    const shown = r.body.appointment.reminderText as string;
+    const link = `${env.ctx.config.publicWebUrl}/shops/${c.merchant.slug}/book/${r.body.appointment.id}`;
+    // Shop, weekday and time, a link to change it, the STOP line. No service, no address, no price.
+    expect(shown).toMatch(new RegExp(`^${c.merchant.name}: your appointment is Thu,? 10:00 am\\. Change it: `));
+    expect(shown).toContain(link);
+    expect(shown.endsWith("Reply STOP to opt out.")).toBe(true);
+    expect(shown.toLowerCase()).not.toMatch(/flu|shot|vaccin|medic|prescri|rx|\$/);
+    // The same text over GET (the manage page and the app read it there).
+    const again = await call(env, who.token, "GET", `/v1/me/appointments/${r.body.appointment.id}`);
+    expect(again.body.appointment.reminderText).toBe(shown);
+    // Day before, then two hours before: both are that text.
+    const sms = env.ctx.providers.outbox.sms;
+    env.clock.now = new Date(at("2026-11-04 10:30"));
+    expect(await sendReminders(env.ctx)).toBe(1);
+    expect(sms.filter((x) => x.to === who.user.phone).at(-1)!.body).toBe(shown);
+    env.clock.now = new Date(at("2026-11-05 08:30"));
+    expect(await sendReminders(env.ctx)).toBe(1);
+    expect(sms.filter((x) => x.to === who.user.phone).at(-1)!.body).toBe(shown);
+    // In the customer's own language, with the same fixed words.
+    await env.db.update(users).set({ locale: "ur-CA" }).where(eq(users.id, who.user.id));
+    const fresh = await signAccessToken(env.ctx, { id: who.user.id, platformRole: "none" }); // the clock moved past the first token
+    const ur = await call(env, fresh, "GET", `/v1/me/appointments/${r.body.appointment.id}`);
+    expect(ur.body.appointment.reminderText).toContain("اپائنٹمنٹ");
+    expect(ur.body.appointment.reminderText).toContain("STOP");
+    expect(ur.body.appointment.reminderText).toContain(link);
   });
 
   it("staff can't add notes or custom lines, checkout is closed (no invoice, no points, no reward), and no-show fees never charge", async () => {

@@ -191,6 +191,12 @@ export interface PreorderAvailabilityResponse {
   leadHours: number;
   perHourCap: number | null;
   days: PreorderAvailabilityDay[];
+  /**
+   * Set for a qurbani item at a shop with an Eid al-Adha plan: `days` are then exactly the plan's pick-up days (moon-sighting
+   * adjusted, each with its own animal cap), not a rolling window. `start` is the first Eid day; `moved` is true when the shop
+   * moved it after moon sighting.
+   */
+  plan?: { kind: "eid_al_adha"; start: string; moved: boolean } | null;
 }
 /** Words a guest agrees to when joining the wait list (CASL express consent for this one message). */
 export const WAITLIST_CONSENT_TEXT = "Message me once if a pot opens up for this day. I can reply STOP at any time.";

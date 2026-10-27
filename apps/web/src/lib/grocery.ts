@@ -3,6 +3,7 @@
  * the weigh-in preview, the season strip and the pantry words. No React, so they are unit-tested (test/grocery.test.ts).
  */
 import { formatWeight, gramsPerUnit, per100gLabel, rewardBackPct, weighedLineCents, type GrocerSeason, type groceryApi } from "@ll/shared";
+import { pickupDays } from "@/lib/restaurant/order";
 
 export type WeightUnit = "kg" | "lb";
 
@@ -93,3 +94,46 @@ export const BUTCHER_STATUS: Record<groceryApi.GroceryHomeResponse["butcher"][nu
   paid: { label: "Paid", tone: "positive" },
   unpaid: { label: "Pay at pick-up", tone: "neutral" },
 };
+
+// ---------------------------------------------------------------------------
+// Restock reserve page (frame 12): pick-up windows for a staple that is already on the shelf
+// ---------------------------------------------------------------------------
+export interface RestockWindow {
+  /** Shop-local YYYY-MM-DD. */
+  date: string;
+  /** Wall clock "09:00" and "12:00". */
+  start: string;
+  end: string;
+  /** The instant the order asks for: the start of the window. */
+  iso: string;
+}
+
+const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const clock = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/**
+ * Up to three three-hour windows on the first day the shop is open with an hour's notice ("Sat 9 am to 12", "Sat 12 to 4"),
+ * from the opening hours. The order asks for the start of the window. Empty when nothing is bookable in the next four days.
+ */
+export function restockWindows(hours: Parameters<typeof pickupDays>[0], now: Date, noticeMin = 60): RestockWindow[] {
+  const day = pickupDays(hours, now, noticeMin, 4)[0];
+  if (!day || !day.times.length) return [];
+  const last = minutesOf(day.times[day.times.length - 1]!.hhmm) + 15;
+  const out: RestockWindow[] = [];
+  let startMin = minutesOf(day.times[0]!.hhmm);
+  // Start on the hour when the first time is within 15 minutes of it, so "9 am" not "9:15".
+  startMin = Math.ceil(startMin / 60) * 60 - startMin <= 15 ? Math.ceil(startMin / 60) * 60 : startMin;
+  while (out.length < 3 && startMin < last) {
+    const t = day.times.find((x) => minutesOf(x.hhmm) >= startMin);
+    if (!t) break;
+    const end = Math.min(minutesOf(t.hhmm) + 180, last);
+    out.push({ date: day.date, start: t.hhmm, end: clock(end), iso: t.iso });
+    startMin = end;
+  }
+  return out;
+}
+
+/** "every 6 weeks" from the days a purchase lasts (42 days). Rounds to whole weeks, never below one. */
+export function restockEveryWeeks(intervalDays: number): number {
+  return Math.max(1, Math.round(intervalDays / 7));
+}

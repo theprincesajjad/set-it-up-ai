@@ -5,7 +5,7 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { auditLogs, commOptOuts, merchantMembers, merchantStaff, messageDeliveries, messages, orderItems, orders, serviceTickets, users, visits } from "@ll/db";
+import { auditLogs, classBookings, classCharges, classMemberships, classPasses, classSessions, commOptOuts, locations, merchantMembers, merchantStaff, messageDeliveries, messages, orderItems, orders, serviceTickets, users, visits } from "@ll/db";
 import { MERCHANT_EXPORTS, MERCHANT_EXPORT_KEYS, RETENTION } from "@ll/shared";
 import { MemoryStorage, UPLOAD_PATH } from "../src/providers/storage.js";
 import { setMerchantStatus } from "../src/services/admin.js";
@@ -155,6 +155,86 @@ describe("the ZIP", () => {
     const all = Object.values(zip).map((b) => strFromU8(b)).join("\n");
     for (const secret of ["rev-tok", "q-tok", "inv-tok", "st-tok", "tok-cat", "split-tok", "203.0.113.9", "SECRET UA", "cus_x", "cus_t", "pm_x", "pm_t"]) expect(all, secret).not.toContain(secret);
     for (const [name, bytes] of Object.entries(zip)) if (name.endsWith(".csv")) expect(strFromU8(bytes).split("\r\n")[0]!.toLowerCase(), name).not.toMatch(/token|stripe|ip_address|user_agent|signature_ip/);
+  });
+});
+
+describe("class data: classes, bookings, passes, memberships and charges", () => {
+  /** A women-only class with one booking on a membership, one on a pack, a waitlisted guest, a pack, a membership and its charges. */
+  async function studio(m: Shop) {
+    const { s } = m;
+    const [loc] = await env.db.insert(locations).values({ merchantId: m.id, name: "Studio A", address: "1523 Birchmount Rd", qrCode: `qr-class-${m.id.slice(0, 8)}` }).returning();
+    const [cls] = await env.db.insert(classSessions).values({ merchantId: m.id, locationId: loc!.id, name: "Bhangra Cardio", instructorName: "Simran G.", room: "Studio A", startsAt: new Date("2026-11-09T23:30:00Z"), endsAt: new Date("2026-11-10T00:30:00Z"), capacity: 16, womenOnly: true, notes: "Bring a water bottle" }).returning();
+    const [pass] = await env.db.insert(classPasses).values({ merchantId: m.id, userId: s.user.id, name: "10-class pack", creditsTotal: 10, creditsLeft: 7, expiresAt: new Date("2026-12-20T05:00:00Z"), status: "active" }).returning();
+    const [mem] = await env.db.insert(classMemberships).values({ merchantId: m.id, userId: s.user.id, name: "Unlimited monthly", status: "active", priceCents: 12900, startDate: "2026-10-12", currentPeriodStart: "2026-10-12", currentPeriodEnd: "2026-11-11", nextBillingDate: "2026-11-12", agreementText: "MEMBERSHIP AGREEMENT\nMember: Sam Secret\nSECRET agreement body", agreementAcceptedAt: new Date("2026-10-12T14:00:00Z"), coolingOffEndsOn: "2026-10-22", cancelReason: "SECRET moving away", paymentMethodBrand: "visa", paymentMethodLast4: "4242", stripeCustomerId: "cus_SECRETSTRIPE", paymentMethodId: "pm_SECRETSTRIPE", setupIntentId: "seti_SECRETSTRIPE" }).returning();
+    const [b1] = await env.db.insert(classBookings).values({ merchantId: m.id, sessionId: cls!.id, userId: s.user.id, status: "attended", payWith: "membership", membershipId: mem!.id, checkedInAt: new Date("2026-11-09T23:20:00Z") }).returning();
+    const guest = await createUser(env.db, { name: "Waitlist Wanda", email: "wanda@example.com" });
+    await env.db.insert(classBookings).values({ merchantId: m.id, sessionId: cls!.id, userId: guest.id, status: "waitlisted", waitlistedAt: new Date("2026-11-08T12:00:00Z") });
+    await env.db.insert(classCharges).values({ merchantId: m.id, userId: s.user.id, kind: "membership", membershipId: mem!.id, periodStart: "2026-10-12", periodEnd: "2026-11-11", amountCents: 14577, taxCents: 1677, platformFeeCents: 146, status: "paid", paymentMethod: "card", stripePaymentIntentId: "pi_SECRETSTRIPE", paidAt: new Date("2026-10-12T14:01:00Z"), attempts: 1 });
+    await env.db.insert(classCharges).values({ merchantId: m.id, userId: s.user.id, kind: "pack", passId: pass!.id, amountCents: 11300, taxCents: 1300, status: "paid", paymentMethod: "card" });
+    return { cls: cls!, mem: mem!, pass: pass!, b1: b1!, guest };
+  }
+
+  it("has a file for each, with the shop's rows and the money in dollars", async () => {
+    const m = await shop();
+    const { cls, mem, pass } = await studio(m);
+    expect(await csv(m, "classes").then((c) => c.rows)).toEqual([expect.objectContaining({ class_id: cls.id, name: "Bhangra Cardio", instructor: "Simran G.", room: "Studio A", location: "Studio A", capacity: "16", booked: "1", attended: "1", waitlisted: "1", women_only: "true", status: "scheduled" })]);
+    const bookings = (await csv(m, "class-bookings")).rows;
+    expect(bookings).toHaveLength(2);
+    expect(bookings.find((b) => b.customer_name === "Sam Secret")).toMatchObject({ class_name: "Bhangra Cardio", status: "attended", paid_with: "membership", membership_id: mem.id, women_only: "true", checked_in_at: "2026-11-09T23:20:00.000Z" });
+    expect(bookings.find((b) => b.customer_name === "Waitlist Wanda")).toMatchObject({ status: "waitlisted", paid_with: "", waitlisted_at: "2026-11-08T12:00:00.000Z" });
+    expect((await csv(m, "class-passes")).rows).toEqual([expect.objectContaining({ pass_id: pass.id, customer_name: "Sam Secret", pass: "10-class pack", credits_total: "10", credits_left: "7", status: "active" })]);
+    expect((await csv(m, "class-memberships")).rows).toEqual([expect.objectContaining({ membership: "Unlimited monthly", status: "active", price_per_period: "129.00", next_billing_date: "2026-11-12", agreement_accepted_at: "2026-10-12T14:00:00.000Z", card_brand: "visa", card_last4: "4242" })]);
+    const charges = (await csv(m, "class-charges")).rows;
+    expect(charges.map((c) => [c.kind, c.amount, c.tax, c.platform_fee, c.status])).toEqual([["membership", "145.77", "16.77", "1.46", "paid"], ["pack", "113.00", "13.00", "0.00", "paid"]]);
+  });
+
+  it("never carries card or Stripe identifiers, or the agreement text with its member name", async () => {
+    const m = await shop();
+    await studio(m);
+    const all = [];
+    for (const k of ["classes", "class-bookings", "class-passes", "class-memberships", "class-charges"]) all.push((await get(m, `${k}.csv`)).text);
+    const text = all.join("\n");
+    expect(text).not.toMatch(/SECRETSTRIPE|cus_|pm_|seti_|pi_/);
+    expect(text).not.toContain("SECRET agreement body");
+    for (const k of ["classes", "class-bookings", "class-passes", "class-memberships", "class-charges"]) expect((await csv(m, k)).headers.join(",").toLowerCase(), k).not.toMatch(/token|stripe|payment_method_id|intent|agreement_text|ip_address/);
+  });
+
+  it("scopes the class files to the one shop", async () => {
+    const a = await shop();
+    await studio(a);
+    const b = await other();
+    for (const k of ["classes", "class-bookings", "class-passes", "class-memberships", "class-charges"]) expect((await csv(b, k)).rows, k).toHaveLength(0);
+    const zip = await unzip(a);
+    for (const k of ["classes", "class_bookings", "class_passes", "class_memberships", "class_charges"]) expect(Object.keys(zip)).toContain(`${k}.csv`);
+    expect(strFromU8(zip["class_bookings.csv"]!)).not.toContain("Zed");
+  });
+
+  it("says whether the customer may be texted: consent on file, not muted, not STOPped, and a deleted account is nobody", async () => {
+    const m = await shop();
+    const { guest } = await studio(m);
+    const may = async (file: string, name: string) => (await csv(m, file)).rows.find((r) => r.customer_name === name)!.may_text;
+    expect(await may("class-bookings", "Sam Secret")).toBe("false"); // the fixture's customer replied STOP
+    await env.db.update(commOptOuts).set({ resubscribedAt: env.clock.now }).where(eq(commOptOuts.phone, m.s.phone));
+    expect(await may("class-bookings", "Sam Secret")).toBe("true");
+    expect(await may("class-memberships", "Sam Secret")).toBe("true");
+    expect(await may("class-bookings", "Waitlist Wanda")).toBe("false"); // never joined the shop's list, no consent
+    await env.db.update(merchantMembers).set({ muted: true }).where(eq(merchantMembers.id, m.s.member.id));
+    expect(await may("class-bookings", "Sam Secret")).toBe("false");
+    expect(await may("class-memberships", "Sam Secret")).toBe("false");
+    void guest;
+  });
+
+  it("a customer who deleted their account has no name, phone, reason or card in the class files, but the amounts stay", async () => {
+    const m = await shop();
+    await studio(m);
+    await deleteAccount(env.ctx, m.s.user.id);
+    const bookings = (await csv(m, "class-bookings")).rows;
+    expect(bookings.find((b) => b.status === "attended" || b.status === "cancelled")).toMatchObject({ customer_name: "", phone: "", may_text: "false" });
+    expect((await csv(m, "class-memberships")).rows[0]).toMatchObject({ customer_name: "", phone: "", cancel_reason: "", card_brand: "", card_last4: "", may_text: "false", price_per_period: "129.00" });
+    expect((await csv(m, "class-passes")).rows[0]).toMatchObject({ customer_name: "", phone: "", credits_total: "10" });
+    expect((await csv(m, "class-charges")).rows.map((c) => [c.customer_name, c.amount])).toEqual([["", "145.77"], ["", "113.00"]]);
+    const all = Object.values(await unzip(m)).map((b) => strFromU8(b)).join("\n");
+    for (const gone of ["sam@example.com", m.s.phone, "SECRET", "Sam Secret"]) expect(all, gone).not.toContain(gone);
   });
 });
 

@@ -454,6 +454,11 @@ export interface MyAppointmentDto {
   freeChangeUntil: string;
   feeChargedAt: string | null;
   notes: string | null;
+  /**
+   * Pharmacies only: the exact reminder text we will text for this booking (no service, no health details), in the customer's
+   * language and with the STOP line. The booked screen shows it as "Reminder we will send".
+   */
+  reminderText?: string;
 }
 export interface PaymentRefDto {
   paymentIntentId: string;

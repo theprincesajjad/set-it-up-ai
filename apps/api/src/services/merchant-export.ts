@@ -19,6 +19,11 @@ import { zipSync, strToU8 } from "fflate";
 import {
   appointments,
   cateringEvents,
+  classBookings,
+  classCharges,
+  classMemberships,
+  classPasses,
+  classSessions,
   commOptOuts,
   hallBookings,
   halls,
@@ -132,6 +137,79 @@ const BUILDERS: Record<MerchantExportKey, Build> = {
     return toCsv(
       ["appointment_id", "starts_at", "ends_at", "customer_name", "phone", "location", "status", "source", "services", "deposit", "deposit_paid_at", "no_show_fee", "fee_charged_at", "arrived_at", "completed_at", "cancelled_at", "cancel_reason", "notes", "client_note", "created_at"],
       rows.map(({ a, locationName }) => [a.id, a.startsAt, a.endsAt, deskName(p, a.userId, a.customerName), who(p, a.userId).phone, locationName, a.status, a.source, json(a.items), dollars(a.depositCents), a.depositPaidAt, dollars(a.noShowFeeCents), a.feeChargedAt, a.arrivedAt, a.completedAt, a.cancelledAt, a.cancelReason, a.notes, a.clientNote, a.createdAt]),
+    );
+  },
+
+  async classes(ctx, merchantId) {
+    const rows = await ctx.db.select({ s: classSessions, locationName: locations.name }).from(classSessions).leftJoin(locations, eq(locations.id, classSessions.locationId)).where(eq(classSessions.merchantId, merchantId)).orderBy(asc(classSessions.startsAt), asc(classSessions.id));
+    const bookings = await ctx.db.select({ sessionId: classBookings.sessionId, status: classBookings.status }).from(classBookings).where(eq(classBookings.merchantId, merchantId));
+    const count = new Map<string, Record<string, number>>();
+    for (const b of bookings) {
+      const c = count.get(b.sessionId) ?? {};
+      c[b.status] = (c[b.status] ?? 0) + 1;
+      count.set(b.sessionId, c);
+    }
+    return toCsv(
+      ["class_id", "name", "starts_at", "ends_at", "instructor", "room", "location", "capacity", "booked", "attended", "waitlisted", "late_cancelled", "no_show", "women_only", "status", "cancelled_at", "cancel_reason", "series_id", "notes", "created_at"],
+      rows.map(({ s, locationName }) => {
+        const c = count.get(s.id) ?? {};
+        return [s.id, s.name, s.startsAt, s.endsAt, s.instructorName, s.room, locationName, s.capacity, (c.booked ?? 0) + (c.attended ?? 0) + (c.held ?? 0), c.attended ?? 0, c.waitlisted ?? 0, c.late_cancelled ?? 0, c.no_show ?? 0, s.womenOnly, s.status, s.cancelledAt, s.cancelReason, s.seriesId, s.notes, s.createdAt];
+      }),
+    );
+  },
+
+  async "class-bookings"(ctx, merchantId) {
+    const rows = await ctx.db
+      .select({ b: classBookings, name: classSessions.name, startsAt: classSessions.startsAt, womenOnly: classSessions.womenOnly, consent: merchantMembers.marketingConsentAt, muted: merchantMembers.muted })
+      .from(classBookings)
+      .innerJoin(classSessions, eq(classSessions.id, classBookings.sessionId))
+      .leftJoin(merchantMembers, and(eq(merchantMembers.merchantId, classBookings.merchantId), eq(merchantMembers.userId, classBookings.userId)))
+      .where(eq(classBookings.merchantId, merchantId))
+      .orderBy(asc(classSessions.startsAt), asc(classBookings.createdAt), asc(classBookings.id));
+    const p = await peopleById(ctx, rows.map((r) => r.b.userId));
+    const sms = await stopped(ctx, "sms");
+    return toCsv(
+      ["booking_id", "class_id", "class_name", "class_starts_at", "women_only", "customer_name", "phone", "status", "booked_by", "paid_with", "pass_id", "membership_id", "credit_returned", "waitlisted_at", "promoted_at", "checked_in_at", "cancelled_at", "late_fee_charged_at", "booked_at", "may_text"],
+      rows.map(({ b, name, startsAt, womenOnly, consent, muted }) => {
+        const person = who(p, b.userId);
+        // Same test as the other files: a deleted account is nobody, and a text needs consent on file, not muted, no STOP.
+        const mayText = !!person.name && !!consent && !muted && !(person.phone && sms.has(person.phone));
+        return [b.id, b.sessionId, name, startsAt, womenOnly, person.name, person.phone, b.status, b.source, b.payWith, b.passId, b.membershipId, b.creditReturned, b.waitlistedAt, b.promotedAt, b.checkedInAt, b.cancelledAt, b.feeChargedAt, b.createdAt, mayText];
+      }),
+    );
+  },
+
+  async "class-passes"(ctx, merchantId) {
+    const rows = await ctx.db.select().from(classPasses).where(eq(classPasses.merchantId, merchantId)).orderBy(asc(classPasses.createdAt), asc(classPasses.id));
+    const p = await peopleById(ctx, rows.map((r) => r.userId));
+    return toCsv(["pass_id", "bought_at", "customer_name", "phone", "pass", "credits_total", "credits_left", "expires_at", "intro_offer", "status"], rows.map((r) => [r.id, r.createdAt, who(p, r.userId).name, who(p, r.userId).phone, r.name, r.creditsTotal, r.creditsLeft, r.expiresAt, r.introOffer, r.status]));
+  },
+
+  async "class-memberships"(ctx, merchantId) {
+    const rows = await ctx.db
+      .select({ m: classMemberships, consent: merchantMembers.marketingConsentAt, muted: merchantMembers.muted })
+      .from(classMemberships)
+      .leftJoin(merchantMembers, and(eq(merchantMembers.merchantId, classMemberships.merchantId), eq(merchantMembers.userId, classMemberships.userId)))
+      .where(eq(classMemberships.merchantId, merchantId))
+      .orderBy(asc(classMemberships.createdAt), asc(classMemberships.id));
+    const p = await peopleById(ctx, rows.map((r) => r.m.userId));
+    const sms = await stopped(ctx, "sms");
+    return toCsv(
+      ["membership_id", "created_at", "customer_name", "phone", "membership", "status", "price_per_period", "taxable", "term_months", "classes_per_month", "start_date", "term_ends_on", "period_start", "period_end", "next_billing_date", "frozen_from", "frozen_until", "freezes_used", "decline_renewal", "renewal_notice_sent_at", "agreement_accepted_at", "cooling_off_ends_on", "cancel_effective_on", "cancelled_at", "cancelled_by", "cancel_reason", "card_brand", "card_last4", "may_text"],
+      rows.map(({ m, consent, muted }) => {
+        const person = who(p, m.userId);
+        const mayText = !!person.name && !!consent && !muted && !(person.phone && sms.has(person.phone));
+        return [m.id, m.createdAt, person.name, person.phone, m.name, m.status, dollars(m.priceCents), m.taxable, m.termMonths, m.classesPerMonth, m.startDate, m.termEndsOn, m.currentPeriodStart, m.currentPeriodEnd, m.nextBillingDate, m.frozenFrom, m.frozenUntil, m.freezesUsed, m.declineRenewal, m.renewalNoticeSentAt, m.agreementAcceptedAt, m.coolingOffEndsOn, m.cancelEffectiveOn, m.cancelledAt, m.cancelledBy, person === NOBODY ? null : m.cancelReason, person === NOBODY ? null : m.paymentMethodBrand, person === NOBODY ? null : m.paymentMethodLast4, mayText];
+      }),
+    );
+  },
+
+  async "class-charges"(ctx, merchantId) {
+    const rows = await ctx.db.select().from(classCharges).where(eq(classCharges.merchantId, merchantId)).orderBy(asc(classCharges.createdAt), asc(classCharges.id));
+    const p = await peopleById(ctx, rows.map((r) => r.userId));
+    return toCsv(
+      ["charge_id", "created_at", "customer_name", "kind", "membership_id", "pass_id", "booking_id", "period_start", "period_end", "amount", "tax", "platform_fee", "status", "paid_with", "paid_at", "refunded_at", "attempts", "last_attempt_on"],
+      rows.map((c) => [c.id, c.createdAt, who(p, c.userId).name, c.kind, c.membershipId, c.passId, c.bookingId, c.periodStart, c.periodEnd, dollars(c.amountCents), dollars(c.taxCents), dollars(c.platformFeeCents), c.status, c.paymentMethod, c.paidAt, c.refundedAt, c.attempts, c.lastAttemptOn]),
     );
   },
 
@@ -279,6 +357,7 @@ export async function buildExportZip(ctx: AppContext, merchant: { id: string; na
     "Using these files",
     "  You are responsible for using them lawfully (PIPEDA, CASL). Only send promotions to members with a marketing_consent_at in members.csv who are not muted and have not replied STOP (stopped_sms, stopped_whatsapp).",
     "  reviews.csv has may_follow_up: false means do not contact that customer about their review.",
+    "  class_bookings.csv and class_memberships.csv have may_text: false means do not text that customer (no consent on file, muted, STOPped, or the account was deleted).",
     "",
   ].join("\r\n");
   entries["README.txt"] = strToU8(readme);

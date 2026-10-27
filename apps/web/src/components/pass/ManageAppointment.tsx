@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { BigNumber, Heading, Pill, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { PaymentBox } from "@/components/pass/PaymentBox";
+import { ReminderCard } from "@/components/pass/ReminderCard";
 import { SetupBox } from "@/components/pass/SetupBox";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -104,6 +105,8 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
   }
 
   const m = appt.merchant;
+  // A pharmacy visit is free and shows no price (the reminder text is only set for pharmacies).
+  const rx = !!appt.reminderText;
   return (
     <div className="flex flex-col gap-6">
       <ShopHead shop={m} href={`/shops/${encodeURIComponent(m.slug)}`} />
@@ -123,15 +126,16 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
               <p className="text-body-strong text-fg">{i.name}</p>
               <p className="text-meta text-fg-muted">{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}</p>
             </div>
-            <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>
+            {rx ? null : <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>}
           </li>
         ))}
-        <li className="flex items-center justify-between py-3">
+        {rx ? null : <li className="flex items-center justify-between py-3">
           <span className="text-body-strong text-fg">{appt.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")}</span>
           <BigNumber className="text-[28px]">{money(appt.totalCents)}</BigNumber>
-        </li>
+        </li>}
       </ul>
       {m.address ? <p className="text-meta text-fg-muted">{m.address}</p> : null}
+      {live ? <ReminderCard text={appt.reminderText} /> : null}
 
       {/* A held booking (deposit or card not done yet) is not confirmed: say so and let the customer finish it from here, as at the end of the booking flow. */}
       {appt.status === "booked" && appt.pending ? (

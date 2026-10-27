@@ -64,9 +64,10 @@ export default async function PreorderPage({ params, searchParams }: Props) {
   let unavailable = false;
   try {
     availability = await api.availability(slug, { itemId, from: today, to: addDays(today, 13) });
-    // Items that need days of notice (a qurbani goat: 14 days) have nothing bookable in the next two weeks. Start the window where the notice ends.
+    // Qurbani follows the shop's Eid plan: the API returns exactly its pick-up days. Other items that need days of notice have nothing
+    // bookable in the next two weeks, so start the window where the notice ends.
     const noticeDays = Math.floor((availability.leadHours ?? 0) / 24);
-    if (noticeDays >= 2) availability = await api.availability(slug, { itemId, from: addDays(today, noticeDays), to: addDays(today, noticeDays + 13) });
+    if (!availability.plan && noticeDays >= 2) availability = await api.availability(slug, { itemId, from: addDays(today, noticeDays), to: addDays(today, noticeDays + 13) });
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404)) unavailable = true;
     else

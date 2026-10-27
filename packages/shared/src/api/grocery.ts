@@ -258,9 +258,18 @@ export interface PantrySendResponse {
   skipped: number;
 }
 
+/**
+ * GET /v1/public/shops/:slug/pantry/:itemId: the one staple a restock text links to (frame 12). No login, no household data:
+ * the item's name and which catalog item to reserve. The page reads the price and tax from the public menu.
+ */
+export interface PublicPantryItemResponse {
+  shop: { name: string; slug: string };
+  item: { id: string; name: string; catalogItemId: string | null; defaultIntervalDays: number };
+}
+
 /** GET /v1/me/pantry: what the signed-in customer has asked shops to remind them about. */
 export interface MyPantryResponse {
-  items: { entryId: string; shop: { id: string; name: string; slug: string }; itemName: string; remind: boolean; intervalDays: number; nextTextOn: string | null }[];
+  items: { entryId: string; itemId: string; shop: { id: string; name: string; slug: string }; itemName: string; remind: boolean; intervalDays: number; nextTextOn: string | null }[];
 }
 export const myPantryBody = z.object({ remind: z.boolean() });
 

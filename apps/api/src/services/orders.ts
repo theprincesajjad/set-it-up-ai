@@ -5,7 +5,7 @@
  */
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orderSplits, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
-import { rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
+import { isQurbaniName, rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -16,7 +16,7 @@ import { nextNumber } from "./counters.js";
 import { getMerchantFeatures, isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import { computeFees } from "./fees.js";
 import { busyActive, quotedWaitMinutes } from "./busyMode.js";
-import { assertPreorderCapacity, overrideLeadHours } from "./preorderPlanning.js";
+import { assertPreorderCapacity, dateKeyIn, eidPlanDays, overrideLeadHours } from "./preorderPlanning.js";
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
@@ -393,6 +393,13 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     const earliest = new Date(now.getTime() + leadHours * 3_600_000);
     if (pickupAt!.getTime() < earliest.getTime()) {
       throw new HttpError(409, "preorder_lead_time", `These items need ${leadHours} hours' notice. Earliest pickup is ${formatLocalDateTime(earliest, merchant.timezone).replace(/\.$/, "")}.`, { leadTimeHours: leadHours, earliestPickupAt: earliest.toISOString() });
+    }
+    // Qurbani is only picked up on the Eid plan's days (moon-sighting adjusted), not on any day the notice allows.
+    if (lines.some((l) => l.preorderOnly && isQurbaniName(l.name))) {
+      const plan = eidPlanDays(merchant, dateKeyIn(now, merchant.timezone));
+      if (plan && !plan.dates.includes(dateKeyIn(pickupAt!, merchant.timezone))) {
+        throw new HttpError(409, "qurbani_day", `Qurbani is picked up on Eid days: ${plan.dates.join(", ")}. Choose one of those days.`, { days: plan.dates });
+      }
     }
     potsRequested = lines.filter((l) => l.preorderOnly).reduce((s, l) => s + l.quantity, 0);
     depositBase = lines.reduce((s, l) => s + (l.lineTotalCents * l.depositBps) / 10_000, 0);

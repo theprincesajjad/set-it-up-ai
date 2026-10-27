@@ -4,7 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { manualPayments, merchantMembers, merchants, orders, orderItems, pantryEntries } from "@ll/db";
+import { manualPayments, merchantMembers, merchants, orders, orderItems, pantryEntries, pantryItems } from "@ll/db";
 import { createTestEnv, grantFeatures, nextPhone, type TestEnv } from "./helpers.js";
 import { call, customer, deliver, fake, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
 import { signAccessToken } from "../src/lib/auth.js";
@@ -322,6 +322,59 @@ describe("Eid al-Adha plan", () => {
     expect(late.body.error.code).toBe("preorder_lead_time");
   });
 
+  it("the customer's qurbani days are the Eid plan's days with their own caps, not 14 days from now", async () => {
+    const { g, whole } = await eidShop();
+    const avail = (itemId = whole.id) => call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/preorders/availability?itemId=${itemId}`);
+    // No plan saved yet: the rolling window from today, no plan marker.
+    const before = await avail();
+    expect(before.status).toBe(200);
+    expect(before.body.plan ?? null).toBeNull();
+    expect(before.body.days[0].date).toBe("2027-04-20");
+    expect(before.body.days).toHaveLength(30);
+
+    await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid`, { year: 2027, days: [{ cap: 5 }, { cap: 7 }, { cap: 6 }], leadHours: 336 });
+    const planned = await avail();
+    expect(planned.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-16", moved: false });
+    expect(planned.body.days.map((d: { date: string; potsLeft: number; note: string }) => [d.date, d.potsLeft, d.note])).toEqual([
+      ["2027-05-16", 5, "Eid al-Adha day 1"],
+      ["2027-05-17", 7, "Eid al-Adha day 2"],
+      ["2027-05-18", 6, "Eid al-Adha day 3"],
+    ]);
+    // 14 days of notice from 20 April is 4 May: all three Eid days are bookable.
+    expect(planned.body.days.every((d: { tooSoon: boolean }) => !d.tooSoon)).toBe(true);
+
+    // Moon sighting moves Eid by a day: the days the customer sees follow, caps stay with their day.
+    await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid/moved`, { year: 2027, start: "2027-05-17" });
+    const moved = await avail();
+    expect(moved.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-17", moved: true });
+    expect(moved.body.days.map((d: { date: string; potsLeft: number }) => [d.date, d.potsLeft])).toEqual([["2027-05-17", 5], ["2027-05-18", 7], ["2027-05-19", 6]]);
+
+    // Booked animals come off the day's cap the customer sees.
+    const c = await customer(env);
+    const book = (pickupAt: string, itemId = whole.id) => call(env, c.token, "POST", "/v1/me/orders", { merchantId: g.merchant.id, locationId: g.location.id, items: [{ catalogItemId: itemId, quantity: 1 }], kind: "preorder", pickupAt, paymentMethod: "in_app", idempotencyKey: `q-${Math.random().toString(36).slice(2)}` });
+    expect((await book("2027-05-17T12:00:00.000Z")).status).toBe(201);
+    expect((await avail()).body.days[0]).toMatchObject({ date: "2027-05-17", potsLeft: 4 });
+
+    // A day outside the plan is refused for qurbani, even though the notice would allow it.
+    const off = await book("2027-05-10T12:00:00.000Z");
+    expect(off.status).toBe(409);
+    expect(off.body.error.code).toBe("qurbani_day");
+    expect(off.body.error.details?.days ?? off.body.error.days).toEqual(["2027-05-17", "2027-05-18", "2027-05-19"]);
+
+    // Another pre-order item (an aqiqah goat) keeps the rolling window and any day.
+    const aqiqah = await call(env, g.ownerToken, "POST", `${g.url}/catalog/items`, { name: "Aqiqah goat", priceCents: 1, weightUnit: "kg", unitPriceCents: 2400, nominalWeightG: 20_000, taxable: false, preorderOnly: true, leadTimeHours: 72, depositBps: 2500 });
+    const other = await avail(aqiqah.body.id);
+    expect(other.body.plan ?? null).toBeNull();
+    expect(other.body.days).toHaveLength(30);
+    expect((await book("2027-05-10T12:00:00.000Z", aqiqah.body.id)).status).toBe(201);
+
+    // After Eid has passed the plan no longer limits anything.
+    env.clock.now = new Date("2027-05-25T15:00:00Z");
+    const after = await avail();
+    expect(after.body.plan ?? null).toBeNull();
+    expect(after.body.days[0].date).toBe("2027-05-25");
+  });
+
   it("moon sighting moves Eid by a day and the pick-up days follow; more than three days is refused", async () => {
     const { g } = await eidShop();
     await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid`, { year: 2027, days: [{ cap: 5 }, { cap: 4 }], leadHours: 72 });
@@ -488,6 +541,76 @@ describe("pantry reminders", () => {
     // Someone else's reminder is not theirs to touch.
     const other = await customer(env);
     expect((await call(env, other.token, "PUT", `/v1/me/pantry/${mine.body.items[0].entryId}`, { remind: false })).status).toBe(404);
+  });
+
+  it("the restock text links to a one-item reserve page for that staple, not the generic order page", async () => {
+    const { g, itemId } = await pantry();
+    const a = await member(g);
+    await log(g, a.memberId, itemId, true);
+    env.clock.now = day(38);
+    await sendPantryReminders(env.ctx, g.merchant);
+    const text = env.ctx.providers.outbox.sms.at(-1)!.body;
+    expect(text).toContain(`/shops/${g.merchant.slug}/restock/${itemId}`);
+    expect(text).not.toContain("/order");
+    expect(text).toContain("STOP");
+    const { users } = await import("@ll/db");
+    const [mm] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, a.memberId));
+    await env.db.update(users).set({ locale: "ur-CA" }).where(eq(users.id, mm!.userId));
+    await env.db.update(pantryEntries).set({ lastRemindedAt: null }).where(eq(pantryEntries.pantryItemId, itemId));
+    await sendPantryReminders(env.ctx, g.merchant);
+    expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain(`/restock/${itemId}?lang=ur`);
+  });
+
+  it("the public reserve page reads the staple without login: active items of this shop with the feature on, nothing else", async () => {
+    const { g, itemId } = await pantry();
+    const item = await call(env, g.ownerToken, "POST", `${g.url}/catalog/items`, { name: "Aashirvaad atta 20 lb", priceCents: 2499 });
+    await call(env, g.ownerToken, "PATCH", `${g.url}/grocery/pantry/items/${itemId}`, { catalogItemId: item.body.id });
+    const ok = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/${itemId}`);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ shop: { name: "Annapurna Grocers", slug: g.merchant.slug }, item: { id: itemId, name: "Atta 20 lb", catalogItemId: item.body.id, defaultIntervalDays: 42 } });
+    // No household data in it.
+    expect(JSON.stringify(ok.body)).not.toMatch(/phone|userId|history/);
+    expect((await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/not-an-id`)).status).toBe(404);
+    expect((await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/00000000-0000-4000-8000-000000000000`)).status).toBe(404);
+    expect((await call(env, null, "GET", `/v1/public/shops/no-such-shop/pantry/${itemId}`)).status).toBe(404);
+    // Another shop's link does not open this item.
+    const other = await paidMerchant(env, { plan: "plus" });
+    expect((await call(env, null, "GET", `/v1/public/shops/${other.merchant.slug}/pantry/${itemId}`)).status).toBe(404);
+    // Archived, or the feature switched off: gone.
+    await call(env, g.ownerToken, "PATCH", `${g.url}/grocery/pantry/items/${itemId}`, { active: false });
+    expect((await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/${itemId}`)).status).toBe(404);
+    const off = await paidMerchant(env, { plan: "free" });
+    const [row] = await env.db.insert(pantryItems).values({ merchantId: off.merchant.id, name: "X", defaultIntervalDays: 42 }).returning();
+    expect((await call(env, null, "GET", `/v1/public/shops/${off.merchant.slug}/pantry/${row!.id}`)).status).toBe(404);
+  });
+
+  it("reserving from the restock page is the ordinary pickup order: one unit, pay at the counter, the item's own price", async () => {
+    const { g, itemId } = await pantry();
+    const item = await call(env, g.ownerToken, "POST", `${g.url}/catalog/items`, { name: "Aashirvaad atta 20 lb", priceCents: 2499, taxable: false });
+    await call(env, g.ownerToken, "PATCH", `${g.url}/grocery/pantry/items/${itemId}`, { catalogItemId: item.body.id });
+    const c = await customer(env);
+    const pub = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/${itemId}`);
+    const pickupAt = new Date(env.ctx.now().getTime() + 26 * 3_600_000).toISOString();
+    const r = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: g.merchant.id, locationId: g.location.id, items: [{ catalogItemId: pub.body.item.catalogItemId, quantity: 1, modifiers: [] }], pickupAt, paymentMethod: "at_pickup", kind: "pickup", channel: "web", idempotencyKey: "restock-000001" });
+    expect(r.status).toBe(201);
+    expect(r.body.order).toMatchObject({ kind: "pickup", paymentMethod: "at_pickup", subtotalCents: 2499 });
+    expect(r.body.order.items).toHaveLength(1);
+    expect(r.body.order.items[0]).toMatchObject({ name: "Aashirvaad atta 20 lb", quantity: 1 });
+    // A double tap is the same order.
+    const again = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: g.merchant.id, locationId: g.location.id, items: [{ catalogItemId: pub.body.item.catalogItemId, quantity: 1, modifiers: [] }], pickupAt, paymentMethod: "at_pickup", kind: "pickup", channel: "web", idempotencyKey: "restock-000001" });
+    expect(again.body.order.id).toBe(r.body.order.id);
+  });
+
+  it("the customer's reminder list names the item so the reserve page can find the right switch", async () => {
+    const { g, itemId } = await pantry();
+    const a = await member(g);
+    await log(g, a.memberId, itemId, true);
+    const [mm] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, a.memberId));
+    const token = await signAccessToken(env.ctx, { id: mm!.userId, platformRole: "none" });
+    const mine = await call(env, token, "GET", "/v1/me/pantry");
+    expect(mine.body.items[0].itemId).toBe(itemId);
+    const off = await call(env, token, "PUT", `/v1/me/pantry/${mine.body.items[0].entryId}`, { remind: false });
+    expect(off.body.itemId).toBe(itemId);
   });
 
   it("owners add and archive items; the counter sees only active ones", async () => {

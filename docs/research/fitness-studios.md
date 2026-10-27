@@ -148,7 +148,7 @@ Every piece maps to a job above. Anything that maps to none is in section 5.
 - **SMS class reminders for everyone.** Push is free; texts are for a waitlist spot and a failed payment.
 - **Pre-open memberships and the trust-account rule.** If a studio sells before it opens, Ontario requires the money be held by a trust corporation (S, Ontario.ca). We do not support pre-opening sales; the studio should sell once it is open.
 - **A cross-merchant partner offer** (see 2.5). Open item.
-- **Customer mobile app screens.** The web pages work at 390 and are linked from the app's shop page later; the mobile counter already scans member cards. Open item.
+- **Customer mobile app screens.** Built in the v4 pass: schedule, booking sheet, passes and membership (freeze, change card, cancel) and the agreement, on the same API as the web pages; card payments hand off to the web pay page like the rest of the app.
 
 ## 6. Design
 
@@ -208,5 +208,5 @@ API tests (`apps/api/test/classes.test.ts`): pricing and gating; weekly series a
 
 1. **Counsel:** the whole of section 2.2 (renewal notices on month-to-month plans, relocation, disability and death, refund deadline, whether packs are agreements, the Consumer Protection Act, 2023), the HST treatment of late fees and children's programs, and the women-only wording. The agreement text is English only until counsel signs off the wording.
 2. **Pilot three studios** (a yoga studio, a women-only studio, a bhangra or boxing studio) before flipping `booking.classes` to beta. Measure: first-month attendance of new members, intro-offer conversion to a membership, failed-payment recovery, late-cancel fee complaints.
-3. Customer mobile screens, merchant CSV export of class data, equipment or spot booking, waivers, a cross-merchant partner offer, translating the agreement.
+3. Equipment or spot booking, waivers, a cross-merchant partner offer, translating the agreement. (Built in the v4 pass: the customer screens in the Expo app, frames 05 to 08, and the owner's CSV export of classes, bookings, passes, memberships and charges.)
 4. The default late fee is $0 and the default window 12 hours: confirm with pilot owners.

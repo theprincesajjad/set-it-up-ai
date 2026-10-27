@@ -55,7 +55,7 @@ import { createCampaign, localDate, reserveSmsCredits, smsAllowance } from "./me
 import { inQuietHours } from "./notifications.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
 import { lineCents, loadOrderDto, taxableBaseCents } from "./orders.js";
-import { localMidnightUtc, potRowsOnDay, saveRules, waitlistCounts } from "./preorderPlanning.js";
+import { EID_PLAN_LABEL, localMidnightUtc, potRowsOnDay, saveRules, waitlistCounts } from "./preorderPlanning.js";
 import { computeTax, merchantProvince } from "./tax.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -308,7 +308,7 @@ export async function weighOrder(ctx: AppContext, staff: StaffContext, orderId: 
 // ===========================================================================
 // Butcher counter: Eid al-Adha plan
 // ===========================================================================
-const EID_LABEL = "Eid al-Adha day";
+const EID_LABEL = EID_PLAN_LABEL;
 
 /** The year of the next Eid al-Adha that has not finished, or the one asked for. */
 function eidYear(merchant: Merchant, today: string, asked?: number): number {
@@ -540,10 +540,16 @@ export async function pantryOverview(ctx: AppContext, merchant: Merchant): Promi
   return { items: await listPantryItems(ctx, merchant), due, members: people.size, last30: { sent: sent.length, boughtWithin7Days: back }, askText: PANTRY_ASK("20 lb atta") };
 }
 
+/** /shops/<slug>/restock/<pantryItemId>: the page a restock text opens. */
+export function restockUrl(ctx: AppContext, merchant: Pick<Merchant, "slug">, itemId: string, locale: string): string {
+  return `${ctx.config.publicWebUrl.replace(/\/$/, "")}/shops/${merchant.slug}/restock/${itemId}${locale === "en" ? "" : `?lang=${locale}`}`;
+}
+
 /** The text a household gets, in its own language. Names the shop, ends with the STOP line. */
-export function restockText(ctx: AppContext, merchant: Pick<Merchant, "name" | "slug">, c: { locale: ReturnType<typeof normalizeLocale>; name: string | null; itemName: string }) {
+export function restockText(ctx: AppContext, merchant: Pick<Merchant, "name" | "slug">, c: { locale: ReturnType<typeof normalizeLocale>; name: string | null; itemName: string; itemId: string }) {
   const locale = c.locale ?? "en";
-  const vars = { name: (c.name ?? "").trim().split(/\s+/)[0] || "", item: c.itemName, shop: merchant.name, url: `${ctx.config.publicWebUrl.replace(/\/$/, "")}/shops/${merchant.slug}/order${locale === "en" ? "" : `?lang=${locale}`}` };
+  // The link opens a one-item reserve page for this staple, not the shop's generic order page.
+  const vars = { name: (c.name ?? "").trim().split(/\s+/)[0] || "", item: c.itemName, shop: merchant.name, url: restockUrl(ctx, merchant, c.itemId, locale) };
   return { title: t(locale, "gr.msg.restockTitle", vars), body: t(locale, "gr.msg.restock", vars).replace(/^\s*,\s*/, "") };
 }
 
@@ -552,7 +558,7 @@ async function sendRestock(ctx: AppContext, merchant: Merchant, c: Candidate): P
   if (!c.canText || !c.phone) return "skipped";
   if (inQuietHours(now, merchant.timezone)) return "quiet";
   if (!(await reserveSmsCredits(ctx.db, merchant, 1))) return "no_credits";
-  const { body } = restockText(ctx, merchant, { locale: c.locale, name: c.name, itemName: c.item.name });
+  const { body } = restockText(ctx, merchant, { locale: c.locale, name: c.name, itemName: c.item.name, itemId: c.item.id });
   let status = "sent";
   let providerId: string | null = null;
   let error: string | null = null;
@@ -609,6 +615,14 @@ export async function runPantryReminders(ctx: AppContext): Promise<number> {
 }
 
 // ---------------------------------------------------------------- the customer's side
+/** The staple a restock text links to. A shop without pantry reminders, or an item the shop switched off, is a 404 (not a paywall). */
+export async function publicPantryItem(ctx: AppContext, merchant: Merchant, itemId: string): Promise<groceryApi.PublicPantryItemResponse> {
+  if (!(await isFeatureOn(ctx.db, merchant, "grocery.pantry_reminders"))) throw notFound("Item");
+  const [item] = await ctx.db.select().from(pantryItems).where(and(eq(pantryItems.id, itemId), eq(pantryItems.merchantId, merchant.id), eq(pantryItems.active, true))).limit(1);
+  if (!item) throw notFound("Item");
+  return { shop: { name: merchant.name, slug: merchant.slug }, item: { id: item.id, name: item.name, catalogItemId: item.catalogItemId, defaultIntervalDays: item.defaultIntervalDays } };
+}
+
 export async function myPantry(ctx: AppContext, userId: string): Promise<groceryApi.MyPantryResponse> {
   const rows = await ctx.db
     .select({ entry: pantryEntries, item: pantryItems, m: merchants })
@@ -620,6 +634,7 @@ export async function myPantry(ctx: AppContext, userId: string): Promise<grocery
   return {
     items: rows.map((r) => ({
       entryId: r.entry.id,
+      itemId: r.item.id,
       shop: { id: r.m.id, name: r.m.name, slug: r.m.slug },
       itemName: r.item.name,
       remind: r.entry.remind,
@@ -644,7 +659,7 @@ export async function setMyPantry(ctx: AppContext, userId: string, entryId: stri
   const now = ctx.now();
   const patch = remind && !row.entry.remind ? { remind, remindConsentAt: now, remindConsentSource: "pass", remindConsentBy: userId, updatedAt: now } : { remind, updatedAt: now };
   const [e] = await ctx.db.update(pantryEntries).set(patch).where(eq(pantryEntries.id, entryId)).returning();
-  return { entryId, shop: { id: row.m.id, name: row.m.name, slug: row.m.slug }, itemName: row.item.name, remind: e!.remind, intervalDays: e!.intervalDays, nextTextOn: e!.remind ? localDate(pantryRemindAt(e!.lastBoughtAt, e!.intervalDays), row.m.timezone) : null };
+  return { entryId, itemId: row.item.id, shop: { id: row.m.id, name: row.m.name, slug: row.m.slug }, itemName: row.item.name, remind: e!.remind, intervalDays: e!.intervalDays, nextTextOn: e!.remind ? localDate(pantryRemindAt(e!.lastBoughtAt, e!.intervalDays), row.m.timezone) : null };
 }
 
 // ===========================================================================

@@ -204,3 +204,7 @@ Unit tests cover the pure modules in `src/lib` (incl. `explore.ts`: filters, pin
 - **Kiosk.** "Pending check-in → staff taps Add stamp" needs an API that doesn't exist yet, so per-dollar check-ins only enrol. The kiosk check-in body has no name field, so the kiosk doesn't ask for one.
 - **Member cache.** The last 200 members seen on a counter device are cached in AsyncStorage (names and masked phones only), not encrypted. They are cleared on sign-out.
 - **SMS autofill.** OTP autofill relies on iOS `oneTimeCode` and Android autofill. The Android SMS Retriever API is not integrated.
+
+## Class studios
+
+`apps/mobile/src/app/classes/` holds the customer class screens (fitness frames 05 to 08): `[slug].tsx` the schedule with the booking sheet, `passes.tsx` passes, membership, freeze, change card and cancel, `join/[productId].tsx` the agreement before the card. Pure logic is in `src/lib/classes.ts` (tests in `classes.test.ts`); data hooks in `src/features/classes/queries.ts`; the shop screen shows the entry row when `features.classes` is on. All strings are the `cl.ui.*` keys the web pages use plus `cl.app.*`.

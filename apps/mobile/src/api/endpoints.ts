@@ -8,6 +8,7 @@ import type {
   appointmentsApi,
   authApi,
   campaignsApi,
+  classesApi,
   commerceApi,
   customerApi,
   integrationsApi,
@@ -114,6 +115,23 @@ export function createEndpoints(c: ApiClient) {
       book: (body: appointmentsApi.CreateMyAppointmentBody) => c.post<appointmentsApi.CreateMyAppointmentResponse>("/v1/me/appointments", body),
       cancel: (id: string) => c.post<appointmentsApi.MyAppointmentChangeResponse>(`/v1/me/appointments/${enc(id)}/cancel`, {}),
       reschedule: (id: string, body: appointmentsApi.RescheduleMyAppointmentBody) => c.post<appointmentsApi.MyAppointmentChangeResponse>(`/v1/me/appointments/${enc(id)}/reschedule`, body),
+    },
+
+    /** Classes and memberships (booking.classes, memberships.recurring): the studio's schedule and the person's passes. Same routes as the web pages. */
+    classes: {
+      studio: (slug: string) => c.get<classesApi.PublicClassesResponse>(`/v1/public/shops/${enc(slug)}/classes`, { auth: "optional" }),
+      mine: (merchantId?: string) => c.get<classesApi.MyClassesResponse>("/v1/me/classes", { query: { merchantId } }),
+      book: (body: { sessionId: string; use?: "auto" | "drop_in"; waitlist?: boolean }) => c.post<classesApi.BookClassResponse>("/v1/me/classes/bookings", body),
+      cancelBooking: (id: string) => c.post<classesApi.CancelBookingResponse>(`/v1/me/classes/bookings/${enc(id)}/cancel`, {}),
+      buyPack: (productId: string) => c.post<classesApi.PurchaseResponse>("/v1/me/classes/purchases", { productId }),
+      agreement: (productId: string, startDate?: string) => c.get<classesApi.AgreementDto>(`/v1/me/classes/products/${enc(productId)}/agreement`, { query: { startDate } }),
+      join: (body: { productId: string; agreementHash: string; startDate?: string }) => c.post<classesApi.JoinMembershipResponse>("/v1/me/classes/memberships", { ...body, acceptAgreement: true }),
+      freeze: (id: string, days: number) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/freeze`, { days }),
+      cancelMembership: (id: string, reason?: string) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/cancel`, { reason }),
+      keepMembership: (id: string) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/keep`, {}),
+      declineRenewal: (id: string) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/decline-renewal`, {}),
+      payMembership: (id: string) => c.post<classesApi.PurchaseResponse>(`/v1/me/classes/memberships/${enc(id)}/pay`, {}),
+      cardSetup: (id: string) => c.post<classesApi.MembershipSetupResponse>(`/v1/me/classes/memberships/${enc(id)}/card`, {}),
     },
 
     commerce: {

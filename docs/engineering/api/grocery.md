@@ -42,8 +42,12 @@ Catalog (`/catalog/items`) accepts `weightUnit`, `unitPriceCents`, `nominalWeigh
 | Method and path | Auth | Returns |
 | --- | --- | --- |
 | `GET /v1/public/shops/:slug/flyer` | none | `PublicFlyerResponse`: only live deals; closed shops are `404` |
-| `GET /v1/me/pantry` | user | `MyPantryResponse`: the shopper's bulk items with the next reminder date and the switch |
+| `GET /v1/public/shops/:slug/pantry/:itemId` | none | `PublicPantryItemResponse`: the one staple a restock text links to (name and the catalog item to reserve; no household data). `404` for another shop's item, an archived one, a shop without `grocery.pantry_reminders`, or a malformed id |
+| `GET /v1/public/shops/:slug/preorders/availability?itemId` | none | `PreorderAvailabilityResponse`. For a qurbani item (`isQurbaniName`) at a shop with an upcoming Eid plan, `days` are exactly the plan's pick-up days (moon-sighting adjusted, each with its own cap and notice) and `plan: { kind: "eid_al_adha", start, moved }` is set; otherwise the rolling window |
+| `GET /v1/me/pantry` | user | `MyPantryResponse`: the shopper's bulk items (with `itemId`) with the next reminder date and the switch |
 | `PUT /v1/me/pantry/:entryId` | user | `myPantryBody` `{ remind }`; switching on needs the shop's text consent, otherwise `409` |
+
+Restock text link: `restockUrl` is `/shops/<slug>/restock/<pantryItemId>` (with `?lang=` outside English). The page is the ordinary pickup order for one unit of the item's catalog item (`POST /v1/me/orders`, `kind: pickup`, `paymentMethod: at_pickup`, a pick-up window from the shop's hours); there is no separate reserve endpoint. Placing a pre-order for a qurbani item on a day outside the Eid plan is `409 qurbani_day` (`details.days`).
 
 ## Job
 

@@ -223,6 +223,8 @@ export interface CustomerFeaturesDto {
   dropoffScheduling?: boolean;
   /** Customers can book a stylist and a time at this shop (absent from older servers: treat as off). */
   appointments?: boolean;
+  /** Customers can book classes and join memberships at this studio (absent from older servers: treat as off). */
+  classes?: boolean;
   inAppPayments: boolean;
   /**
    * Paid (Plus) loyalty-marketing features. When off, the API already hides the

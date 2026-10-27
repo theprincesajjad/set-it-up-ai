@@ -219,3 +219,11 @@ export function upcomingGrocerSeasons(today: string, days: number, overrides?: F
 /** Every festival-calendar id a grocer season can point at (for validating a deal's tag). */
 export const GROCER_SEASON_IDS: readonly string[] = GROCER_SEASONS.map((s) => s.id);
 export const isGrocerSeasonId = (id: string): boolean => GROCER_SEASON_IDS.includes(id) || FESTIVALS.some((f) => f.id === id);
+
+/**
+ * A qurbani (Eid al-Adha sacrifice) item, by its name: "Whole goat, qurbani", "Cow share, qurbani (one of seven)", "Udhiyah sheep".
+ * Qurbani is only picked up on the shop's Eid plan days; an aqiqah goat or a weekend curry cut is not.
+ */
+export function isQurbaniName(name: string): boolean {
+  return /qurb[aā]ni|udh?iy?ah|udhiya|ضحیہ|قربانی|कुर्बानी|क़ुर्बानी|ਕੁਰਬਾਨੀ/i.test(name);
+}

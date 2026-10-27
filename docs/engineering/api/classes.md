@@ -46,6 +46,8 @@ Base `/v1/merchants/:merchantId/classes`.
 
 ## Customer (signed in)
 
+Customer entry points: `CustomerFeaturesDto.classes` (`booking.classes`) is on the public shop page and the wallet, so the web shop page and the app's shop screen show a "Classes and memberships" row only for studios that have it. The web pages are `/shops/<slug>/classes` and `/me/classes`; the Expo app has the same screens (`apps/mobile/src/app/classes/[slug].tsx` schedule and booking sheet, `classes/passes.tsx` passes, membership, freeze and cancel, `classes/join/[productId].tsx` the agreement) on the routes below. Card payments (a drop-in, a pack, a membership, a changed card) hand off to the web pay page, as everywhere in the app.
+
 | Method and path | Notes |
 | --- | --- |
 | `GET /v1/me/classes?merchantId` | passes (active or pending), memberships (live, or ended in the last 30 days, with the agreement text, card, next payment, cooling-off state), upcoming bookings, `introEligible` |
@@ -60,6 +62,10 @@ Base `/v1/merchants/:merchantId/classes`.
 | `POST /v1/me/classes/memberships/:id/decline-renewal` | fixed term only |
 | `POST /v1/me/classes/memberships/:id/pay` | pay a failed or open period: `{ payment }` |
 | `POST /v1/me/classes/memberships/:id/card` | a SetupIntent to change the card; the webhook saves it and retries a past-due period |
+
+## Owner export
+
+`GET /v1/merchants/:id/exports/{classes,class-bookings,class-passes,class-memberships,class-charges}.csv` (and the ZIP) are part of the owner's data export, see `merchant.md`.
 
 ## Jobs
 

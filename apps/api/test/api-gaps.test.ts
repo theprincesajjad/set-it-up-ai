@@ -146,6 +146,7 @@ describe("public member counts and customer features", () => {
       // Booking entry points: a drop-off time (repair) and a stylist and time (appointments), both off here.
       dropoffScheduling: false,
       appointments: false,
+      classes: false,
     });
     let list = (await call("GET", "/v1/network/shops")).json();
     expect(list.items[0].memberCount).toBeNull();
@@ -180,6 +181,7 @@ describe("public member counts and customer features", () => {
       // Booking entry points: a drop-off time (repair) and a stylist and time (appointments), both off here.
       dropoffScheduling: false,
       appointments: false,
+      classes: false,
     });
   });
 });

@@ -102,6 +102,8 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
   const taxableById = new Map((serviceIds.length ? await ctx.db.select({ id: services.id, taxable: services.taxable }).from(services).where(inArray(services.id, serviceIds)) : []).map((x) => [x.id, x.taxable] as const));
   const provinces = new Map<string, string>();
   for (const m of ms) provinces.set(m.id, await merchantProvince(ctx.db, m));
+  const rxUsers = [...new Set(rows.filter((r) => r.userId && isPharmacy(ms.find((x) => x.id === r.merchantId))).map((r) => r.userId!))];
+  const rxLocale = new Map((rxUsers.length ? await ctx.db.select({ id: users.id, locale: users.locale }).from(users).where(inArray(users.id, rxUsers)) : []).map((u) => [u.id, normalizeLocale(u.locale) ?? "en"] as const));
   return rows.map((r): appointmentsApi.MyAppointmentDto => {
     const m = ms.find((x) => x.id === r.merchantId)!;
     const copy = salesTaxCopy({ province: provinces.get(m.id), taxRegistered: m.taxRegistered });
@@ -127,6 +129,7 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
       freeChangeUntil: new Date(r.startsAt.getTime() - m.cancelWindowHours * HOUR).toISOString(),
       feeChargedAt: iso(r.feeChargedAt),
       notes: r.notes,
+      ...(isPharmacy(m) && r.userId ? { reminderText: pharmacyReminderText(ctx, m, r, rxLocale.get(r.userId) ?? "en").sms } : {}),
     };
   });
 }
@@ -224,6 +227,24 @@ function whenText(at: Date, tz: string, locale: Locale): string {
 }
 function timeText(at: Date, tz: string, locale: Locale): string {
   return new Intl.DateTimeFormat(LOCALES[locale].bcp47, { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(at);
+}
+
+/** "Tue 3:15 p.m.": the one time format of a pharmacy reminder (weekday and time, nothing else). */
+function weekdayTimeText(at: Date, tz: string, locale: Locale): string {
+  // English writes "a.m." with a full stop; the sentence adds its own, so say "9:00 am" (the frame's "3:15 pm").
+  return new Intl.DateTimeFormat(LOCALES[locale].bcp47, { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" }).format(at).replace(/\s?([ap])\.m\./i, (_, x: string) => ` ${x.toLowerCase()}m`);
+}
+
+/**
+ * The fixed pharmacy reminder: shop, the time, a link to change it, the STOP line. It never says what the appointment is for, and the
+ * same words go out the day before and two hours before, so what the booked screen shows is exactly what the phone gets.
+ */
+export function pharmacyReminderText(ctx: AppContext, m: Pick<Merchant, "name" | "slug" | "timezone">, a: Pick<Appointment, "id" | "startsAt">, locale: Locale): { body: string; sms: string } {
+  const t = translator(locale);
+  // In a right-to-left language the shop name, the time and the link are isolated, so the Latin runs do not reorder the sentence around them.
+  const iso = (x: string) => (LOCALES[locale].dir === "rtl" ? `\u2068${x}\u2069` : x);
+  const body = t("rx.appt.reminder", { shop: iso(m.name), when: iso(weekdayTimeText(a.startsAt, m.timezone, locale)), link: iso(manageLink(ctx, m, a)) });
+  return { body, sms: `${body} ${t("bk.msg.stop")}` };
 }
 
 const manageLink = (ctx: AppContext, m: Pick<Merchant, "slug">, a: Pick<Appointment, "id">) => `${ctx.config.publicWebUrl}/shops/${m.slug}/book/${a.id}`;
@@ -583,8 +604,9 @@ export async function sendReminders(ctx: AppContext): Promise<number> {
     const t = translator(locale);
     // A reminder on a lock screen must not say why someone is going to a pharmacy: it says "appointment".
     const vars = { service: isPharmacy(m) ? t("rx.appt.word") : a.items.map((i) => i.name).join(", ") || "-", shop: m.name, when: near ? timeText(a.startsAt, m.timezone, locale) : whenText(a.startsAt, m.timezone, locale), address: loc?.address ?? "", link: manageLink(ctx, m, a) };
-    const body = t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
-    await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
+    const fixed = isPharmacy(m) ? pharmacyReminderText(ctx, m, a, locale) : null;
+    const body = fixed?.body ?? t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
+    await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: fixed?.sms ?? `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
     sent++;
   }
   return sent;

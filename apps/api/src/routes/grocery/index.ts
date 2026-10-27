@@ -119,6 +119,13 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
       return grocery.publicFlyer(ctx, m);
     });
 
+    // The staple a restock text links to: one item, no household data.
+    app.get<{ Params: { slug: string; itemId: string } }>("/public/shops/:slug/pantry/:itemId", async (req) => {
+      const [m] = await ctx.db.select().from(merchants).where(eq(merchants.slug, req.params.slug)).limit(1);
+      if (!m || m.status === "closed") throw notFound("Shop");
+      return grocery.publicPantryItem(ctx, m, req.params.itemId);
+    });
+
     // ---------------------------------------------------------------- the customer's reminders
     app.get("/me/pantry", async (req) => grocery.myPantry(ctx, requireUser(req).id));
 

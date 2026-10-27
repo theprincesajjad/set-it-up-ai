@@ -397,6 +397,8 @@ describe("online booking: deposit, card on file and the 10-minute hold", () => {
     expect(r.body.appointment.endsAt).toBe(plusMin(start, 160));
     expect(r.body.appointment.holdExpiresAt).toBe(plusMin(env.clock.now.toISOString(), 10));
     expect(r.body.confirmed).toBe(false);
+    // Only pharmacies carry the fixed reminder text; a salon's reminders name the service.
+    expect(r.body.appointment.reminderText).toBeUndefined();
     expect(r.body.setup).toBeNull();
     expect(r.body.deposit).toMatchObject({ amountCents: 4000 });
     // Deposits carry the 1% online fee and keep the card on the customer for a late-cancel or no-show fee.

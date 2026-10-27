@@ -28,6 +28,7 @@ export const SCAN_TARGETS = [
   // Mobile: customer screens, sheets and the shared UI pieces they use
   "apps/mobile/src/app/(tabs)",
   "apps/mobile/src/app/book",
+  "apps/mobile/src/app/classes",
   "apps/mobile/src/app/dropoff",
   "apps/mobile/src/app/tiffin",
   "apps/mobile/src/app/events",
@@ -55,6 +56,7 @@ export const SCAN_TARGETS = [
   "apps/mobile/src/app/referrals.tsx",
   "apps/mobile/src/app/rewards.tsx",
   "apps/mobile/src/app/settings",
+  "apps/mobile/src/features/classes",
   "apps/mobile/src/features/customer",
   "apps/mobile/src/features/restaurant",
   "apps/mobile/src/features/SessionExpiredSheet.tsx",

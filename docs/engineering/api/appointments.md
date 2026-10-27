@@ -104,6 +104,7 @@ The fee is snapshotted on the appointment (`no_show_fee_cents`) when it is booke
 - `appointments.reminders` every 5 minutes: text and push 24 hours and 2 hours before, transactional (shop, time, address,
   change link `/shops/<slug>/book/<id>`, "Reply STOP to opt out"), in the client's language (en, hi, ur, pa; keys `bk.msg.*`).
   A booking made inside 24 hours gets only the 2 hour text. Held and cancelled visits get nothing. Claims each row first.
+  Pharmacies get one fixed text at both marks (`rx.appt.reminder`, built by `pharmacyReminderText`): shop, weekday and time, the change link and the STOP line, never the service or the address. The customer DTO (`MyAppointmentDto.reminderText`, pharmacies only) carries the same text in the customer's language, which the booked screen shows as "Reminder we will send".
 - `appointments.hold_expiry` every minute: cancels holds past `hold_expires_at` (`cancel_reason hold_expired`).
 
 ## Customer pages

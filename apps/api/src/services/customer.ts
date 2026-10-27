@@ -616,6 +616,7 @@ const EXPORT_ALL_FEATURES: CustomerFeatures = {
   serviceTickets: true,
   dropoffScheduling: true,
   appointments: true,
+  classes: true,
   inAppPayments: true,
   promos: true,
   discountCards: true,
