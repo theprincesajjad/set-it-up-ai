@@ -9,13 +9,14 @@ import { merchants } from "@ll/db";
 import { appointmentsApi, type FeatureKey } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
-import { notFound } from "../../lib/errors.js";
+import { HttpError, notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { requirePermission } from "../../services/commerceShared.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/appointments.js";
 import * as booking from "../../services/appointments-booking.js";
 import * as checkoutSvc from "../../services/appointments-checkout.js";
+import { isOwnClientsOnly } from "../../services/barber.js";
 
 type MerchantParams = { merchantId: string };
 type ServiceParams = MerchantParams & { serviceId: string };
@@ -103,7 +104,10 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // ---------------------------------------------------------------- calendar
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/appointments", async (req) => {
     const staff = await staffFor(req);
-    return svc.listAppointments(ctx.db, staff.merchant, parse(appointmentsApi.listAppointmentsQuery, req.query), ctx.now());
+    const q = parse(appointmentsApi.listAppointmentsQuery, req.query);
+    // A chair renter who sees only their own clients gets only their own column (staff.payouts: own_clients_only).
+    if (await isOwnClientsOnly(ctx, staff)) q.staffId = staff.user.id;
+    return svc.listAppointments(ctx.db, staff.merchant, q, ctx.now());
   });
 
   app.post<{ Params: MerchantParams }>("/merchants/:merchantId/appointments", async (req, reply) => {
@@ -113,7 +117,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.get<{ Params: ApptParams }>("/merchants/:merchantId/appointments/:appointmentId", async (req) => {
     const staff = await staffFor(req);
-    return svc.appointmentDetail(ctx.db, staff.merchant, req.params.appointmentId);
+    const detail = await svc.appointmentDetail(ctx.db, staff.merchant, req.params.appointmentId);
+    if (detail.appointment.staffId !== staff.user.id && (await isOwnClientsOnly(ctx, staff))) throw new HttpError(403, "own_clients_only", "You see your own clients only.");
+    return detail;
   });
 
   app.patch<{ Params: ApptParams }>("/merchants/:merchantId/appointments/:appointmentId", async (req) => {

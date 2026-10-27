@@ -18,6 +18,9 @@ import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import {
   appointments,
   classBookings,
+  familyMembers,
+  preferredStaff,
+  queueEntries,
   classMemberships,
   bookings,
   cateringEvents,
@@ -91,6 +94,10 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   count("classMemberships", await tx.update(classMemberships).set({ stripeCustomerId: null, paymentMethodId: null, paymentMethodBrand: null, paymentMethodLast4: null, setupIntentId: null, nextBillingDate: null, status: sql`case when ${classMemberships.status} in ('cancelled','expired') then ${classMemberships.status} else 'cancelled' end`, cancelledAt: sql`coalesce(${classMemberships.cancelledAt}, ${now.toISOString()}::timestamptz)`, cancelReason: sql`coalesce(${classMemberships.cancelReason}, 'account_deleted')`, agreementText: sql`regexp_replace(${classMemberships.agreementText}, 'Member: [^\n]*', 'Member: deleted account')`, updatedAt: now }).where(eq(classMemberships.userId, userId)).returning({ id: classMemberships.id }));
   await tx.update(classBookings).set({ status: "cancelled", cancelledAt: now, holdExpiresAt: null, updatedAt: now }).where(and(eq(classBookings.userId, userId), inArray(classBookings.status, ["held", "booked", "waitlisted"])));
   count("bookings", await tx.update(bookings).set({ notes: null }).where(eq(bookings.userId, userId)).returning({ id: bookings.id }));
+  // Barbershops: family members (a first name each), their places in a line and "my barber" go with the account.
+  count("familyMembers", await tx.delete(familyMembers).where(eq(familyMembers.userId, userId)).returning({ id: familyMembers.id }));
+  await tx.delete(queueEntries).where(eq(queueEntries.userId, userId));
+  await tx.delete(preferredStaff).where(eq(preferredStaff.userId, userId));
   count("rebookingNudges", await tx.delete(rebookingNudges).where(eq(rebookingNudges.userId, userId)).returning({ id: rebookingNudges.id }));
 
   // Tiffin: address, notes, location, saved payment references, skip reasons and delivery notes; subscription ends.

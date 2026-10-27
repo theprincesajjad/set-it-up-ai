@@ -25,6 +25,7 @@ import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
 import { requireFeature } from "./features.js";
 import { iso, serializeLocation, serializeProgram, uniqueQrCode } from "./merchant.js";
+import { assertBeautyClaims } from "./beauty-guard.js";
 import { assertPharmacyText, isPharmacy, pharmacyVisitEarnError } from "./pharmacy-guard.js";
 import { isDispensaryCategoryName } from "@ll/shared";
 
@@ -107,7 +108,9 @@ async function checkRewardText(ctx: AppContext, merchantId: string, r: { name?: 
   if (!r.name && !r.description) return;
   const shop = await verticalOf(ctx.db, merchantId);
   assertPharmacyText(shop, r.name, "The reward name");
+  assertBeautyClaims(shop, r.name, "The reward name");
   assertPharmacyText(shop, r.description, "The reward description");
+  assertBeautyClaims(shop, r.description, "The reward description");
 }
 
 export async function createReward(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createRewardBody>) {
@@ -326,7 +329,9 @@ export async function listDiscountCards(db: DbOrTx, merchantId: string) {
 async function checkCardText(ctx: AppContext, merchantId: string, b: { name?: string | null; terms?: string | null }) {
   const shop = await verticalOf(ctx.db, merchantId);
   assertPharmacyText(shop, b.name, "The card name");
+  assertBeautyClaims(shop, b.name, "The card name");
   assertPharmacyText(shop, b.terms, "The card terms");
+  assertBeautyClaims(shop, b.terms, "The card terms");
 }
 
 export async function createDiscountCard(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createDiscountCardBody>) {
@@ -427,7 +432,9 @@ export async function getPromo(db: DbOrTx, merchantId: string, id: string) {
 async function checkPromoText(ctx: AppContext, merchantId: string, p: { title?: string | null; body?: string | null }) {
   const shop = await verticalOf(ctx.db, merchantId);
   assertPharmacyText(shop, p.title, "The promo title");
+  assertBeautyClaims(shop, p.title, "The promo title");
   assertPharmacyText(shop, p.body, "The promo text");
+  assertBeautyClaims(shop, p.body, "The promo text");
 }
 
 export async function createPromo(ctx: AppContext, merchantId: string, actorUserId: string, body: Body<typeof merchantApi.createPromoBody>) {

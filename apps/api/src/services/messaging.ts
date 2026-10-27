@@ -37,6 +37,7 @@ import { writeAudit } from "./admin-audit.js";
 import { iso } from "./merchant.js";
 import { decodeCursor, encodeCursor } from "./merchant-customers.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
+import { assertBeautyClaims } from "./beauty-guard.js";
 import { assertPharmacyText, isPharmacy } from "./pharmacy-guard.js";
 import { checkPharmacyText } from "@ll/shared";
 import { recordPhoneOptOut } from "./opt-out.js";
@@ -107,7 +108,9 @@ export function personalize(text: string, p: Personal, merchantName: string, ter
 /** A pharmacy's message can only be about the front store (services/pharmacy-guard.ts). Checked on create, edit, send and every automation run. */
 function assertPharmacyContent(merchant: Pick<Merchant, "vertical">, subject: string | null | undefined, body: string | null | undefined) {
   assertPharmacyText(merchant, subject, "The subject");
+  assertBeautyClaims(merchant, subject, "The subject");
   assertPharmacyText(merchant, body, "The message");
+  assertBeautyClaims(merchant, body, "The message");
 }
 
 function validateContent(channel: Channel, subject: string | null | undefined, body: string) {

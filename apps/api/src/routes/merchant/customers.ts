@@ -5,6 +5,7 @@ import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import { writeAudit } from "../../services/admin-audit.js";
+import { assertNotOwnClientsOnly } from "../../services/barber.js";
 import { requireFeature } from "../../services/features.js";
 import { exportWindow, requireCsvExport } from "../../services/leaver-export.js";
 import * as svc from "../../services/merchant-customers.js";
@@ -16,12 +17,14 @@ const csvName = (slug: string, what: string, now: Date) => `${slug}-${what}-${no
 export default async function registerCustomers(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/merchants/:merchantId/customers", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await assertNotOwnClientsOnly(ctx, s);
     await requireFeature(ctx.db, s.merchant, "customers.directory");
     return svc.listCustomers(ctx, s.merchant.id, parse(merchantApi.listCustomersQuery, req.query));
   });
 
   app.get("/merchants/:merchantId/customers/segment-counts", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await assertNotOwnClientsOnly(ctx, s);
     await requireFeature(ctx.db, s.merchant, "customers.directory");
     return svc.segmentCounts(ctx, s.merchant.id);
   });
@@ -57,6 +60,7 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
 
   app.get("/merchants/:merchantId/customers/:memberId", async (req: Req<{ memberId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await assertNotOwnClientsOnly(ctx, s);
     return svc.getCustomerDetail(ctx, s.merchant.id, req.params.memberId);
   });
 
@@ -67,6 +71,7 @@ export default async function registerCustomers(app: FastifyInstance, ctx: AppCo
 
   app.patch("/merchants/:merchantId/customers/:memberId", async (req: Req<{ memberId: string }>) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    await assertNotOwnClientsOnly(ctx, s);
     return svc.updateCustomer(ctx, s.merchant.id, s.user.id, req.params.memberId, parse(merchantApi.updateCustomerBody, req.body));
   });
 

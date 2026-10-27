@@ -24,6 +24,7 @@ import { platformFeeFor } from "./fees.js";
 import { markInvoicePaid, sendInvoice, voidInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone, redeemReward } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
+import { autoSetPreferred } from "./preferred-staff.js";
 import { priceLineItems } from "./quotes.js";
 
 type Invoice = typeof invoices.$inferSelect;
@@ -154,6 +155,7 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     return inv!;
   });
 
+  await autoSetPreferred(ctx, userId, merchant.id, a.staffId);
   if (counter) await markInvoicePaid(ctx, staff, invoice.id, { method: body.counterMethod, note: body.note ?? null });
   else await sendInvoice(ctx, staff, invoice.id);
 

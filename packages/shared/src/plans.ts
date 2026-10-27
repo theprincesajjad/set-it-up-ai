@@ -226,6 +226,8 @@ export const FEATURE_KEYS = [
   "service.rebooking",
   // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Café & Retail, no pack.
   "booking.classes",
+  "booking.walkin_queue",
+  "staff.payouts",
   "memberships.recurring",
   // Grocers and halal butchers (docs/research/grocers.md): sold inside Café & Retail, no pack.
   "grocery.flyer",
@@ -339,6 +341,8 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios.", "plus", 2, 100),
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
+    f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "plus", 2, 100),
+    f("staff.payouts", "Barber payouts and chair rental", "Per-barber services, tips, commission, rent and take-home for the week, and a renter who sees only their own clients.", "plus", 2, 100),
     f("memberships.recurring", "Memberships", "Monthly and fixed-term memberships billed automatically to the card on file, with freezes, renewal notices and Ontario-compliant cancellation.", "plus", 2, 100),
     ...[
     f("grocery.flyer", "Weekly flyer", "Weekly deals on your shop page, by text and as WhatsApp copy, tied to Diwali, Eid and Lunar New Year.", "plus", 2, 100),

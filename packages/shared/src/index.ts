@@ -20,3 +20,5 @@ export * from "./merchant-export.js";
 export * from "./sales-agent.js";
 export * from "./grocery.js";
 export * from "./pharmacy.js";
+export * from "./beauty.js";
+export * from "./queue.js";

@@ -14,6 +14,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
+import { autoSetPreferred } from "./preferred-staff.js";
 import {
   assertBookable,
   appointmentDto,
@@ -564,6 +565,7 @@ export async function setStatus(ctx: AppContext, staff: StaffContext, id: string
     fee = await chargeFee(ctx, merchant, row, "no-show");
   }
   if (body.status === "cancelled" && cur.depositPaidAt) await refundDeposit(ctx, merchant, cur, "requested_by_customer");
+  if (body.status === "completed") await autoSetPreferred(ctx, row.userId, merchant.id, row.staffId);
   return { appointment: await appointmentDto(ctx.db, (await getAppointment(ctx.db, merchant.id, id))), feeCharged: fee.charged, feeCents: fee.cents };
 }
 

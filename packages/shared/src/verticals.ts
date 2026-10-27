@@ -19,6 +19,7 @@ export const VERTICALS = [
   "salon",
   "barber",
   "spa",
+  "beauty_supply",
   "fitness",
   "repair_electronics",
   "repair_auto",
@@ -247,7 +248,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     terminology: "stamps",
     welcomeBonus: 0,
     rewards: [{ name: "Free cut", pointsCost: 8, rewardType: "free_item", value: 0 }],
-    categories: [{ name: "Cuts", earnEligible: true, discountEligible: true }],
+    categories: [{ name: "Cuts", earnEligible: true, discountEligible: true }, { name: "Kids' cuts", earnEligible: true, discountEligible: true }],
     upsellPlan: "pro",
   },
   spa: {
@@ -261,6 +262,26 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     rewards: [{ name: "$20 off", pointsCost: 1000, rewardType: "amount_off", value: 2000 }],
     categories: [{ name: "Services", earnEligible: true, discountEligible: true }],
     upsellPlan: "pro",
+  },
+  beauty_supply: {
+    label: "Beauty supply",
+    earnType: "per_dollar",
+    pointsPerDollar: 1,
+    pointsPerVisit: 0,
+    stampGoal: 0,
+    terminology: "points",
+    welcomeBonus: 50,
+    rewards: [{ name: "$10 off", pointsCost: 500, rewardType: "amount_off", value: 1000 }],
+    // Gift cards never earn. Product claims in texts and offers are checked (packages/shared/src/beauty.ts).
+    categories: [
+      { name: "Hair care", earnEligible: true, discountEligible: true },
+      { name: "Hair colour", earnEligible: true, discountEligible: true },
+      { name: "Tools and devices", earnEligible: true, discountEligible: true },
+      { name: "Wigs and extensions", earnEligible: true, discountEligible: true },
+      { name: "Gift cards", earnEligible: false, discountEligible: false },
+    ],
+    discountCard: { name: "Stylist pro card", percentOff: 10, terms: "Licensed stylists and barbers, hair care and colour. Show your licence once at the till. Not valid on gift cards or tools." },
+    upsellPlan: "plus",
   },
   fitness: {
     label: "Gym / studio",

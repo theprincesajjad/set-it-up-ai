@@ -26,3 +26,4 @@ export * as salesAgentApi from "./sales-agent.js";
 export * as groceryApi from "./grocery.js";
 export * as classesApi from "./classes.js";
 export * as pharmacyApi from "./pharmacy.js";
+export * as barberApi from "./barber.js";

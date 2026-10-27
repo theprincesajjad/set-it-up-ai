@@ -183,6 +183,13 @@
       "when": 1793057134900,
       "tag": "0025_pharmacy",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793092401621,
+      "tag": "0026_barb",
+      "breakpoints": true
     }
   ]
 }

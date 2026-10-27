@@ -2684,3 +2684,115 @@ export const salesAgentMessages = pgTable(
   },
   (t) => [index("sales_agent_msg_conv_idx").on(t.conversationId, t.createdAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Barbershops, threading bars and beauty supply (docs/research/barbers-beauty.md): walk-in queue, chair-renter pay,
+// "my barber", family members under one card
+// ---------------------------------------------------------------------------
+/** One row per shop that runs a walk-in line. Defaults apply until the shop saves. */
+export const walkinQueues = pgTable("walkin_queues", {
+  merchantId: uuid("merchant_id").primaryKey().references(() => merchants.id, { onDelete: "cascade" }),
+  /** The line takes new people only while this is on. */
+  open: boolean("open").notNull().default(false),
+  /** Used for the wait estimate until the shop has its own history. */
+  minutesPerCut: integer("minutes_per_cut").notNull().default(25),
+  /** Send the "you're next" text. */
+  textNext: boolean("text_next").notNull().default(true),
+  /** The line stops taking people at this size. */
+  maxWaiting: integer("max_waiting").notNull().default(30),
+  /** Minutes a called person has to arrive before the barber skips them. */
+  callHoldMinutes: integer("call_hold_minutes").notNull().default(5),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** A parent's family member: a first name and the consent time, nothing else (no minor's data beyond a first name). */
+export const familyMembers = pgTable(
+  "family_members",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    firstName: text("first_name").notNull(),
+    /** The parent or guardian agreed (checked box) at this time. */
+    consentAt: ts("consent_at").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("family_members_user_idx").on(t.userId)],
+);
+
+/** One person (or a family member) in a shop's walk-in line. */
+export const queueEntries = pgTable(
+  "queue_entries",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").references(() => locations.id),
+    /** The customer record (a guest gets one by phone, like the counter does). Family members use the parent's. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    familyMemberId: uuid("family_member_id").references(() => familyMembers.id, { onDelete: "set null" }),
+    /** People who joined together (a parent and kids). */
+    partyId: uuid("party_id"),
+    /** First name only. */
+    name: text("name").notNull(),
+    serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
+    serviceName: text("service_name").notNull().default("Cut"),
+    durationMin: integer("duration_min").notNull().default(25),
+    requestedStaffId: uuid("requested_staff_id").references(() => users.id, { onDelete: "set null" }),
+    /** waiting | called | in_service | done | no_show | left */
+    status: text("status").notNull().default("waiting"),
+    /** join (phone) | tablet | staff */
+    source: text("source").notNull().default("join"),
+    /** Public status page (/line/<token>). */
+    token: text("token").notNull(),
+    /** Order in the line; a skip moves it later. */
+    positionAt: ts("position_at").notNull().defaultNow(),
+    joinedAt: ts("joined_at").notNull().defaultNow(),
+    calledAt: ts("called_at"),
+    calledStaffId: uuid("called_staff_id").references(() => users.id, { onDelete: "set null" }),
+    startedAt: ts("started_at"),
+    finishedAt: ts("finished_at"),
+    appointmentId: uuid("appointment_id"),
+    textConsent: boolean("text_consent").notNull().default(false),
+    notifiedNextAt: ts("notified_next_at"),
+    notifiedCalledAt: ts("notified_called_at"),
+    skips: integer("skips").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("queue_entries_token_uq").on(t.token), index("queue_entries_merchant_status_idx").on(t.merchantId, t.status, t.positionAt), index("queue_entries_user_idx").on(t.userId)],
+);
+
+/** How a team member is paid, for the payouts report and who may see whose clients. No row = an employee with no split. */
+export const staffPay = pgTable(
+  "staff_pay",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** employee | commission | chair_rent */
+    model: text("model").notNull().default("employee"),
+    /** Commission: the share of services the shop keeps, in basis points (4000 = 40%). */
+    shopShareBps: integer("shop_share_bps").notNull().default(0),
+    /** Chair rent per week, in cents. Shown on the report, never collected. */
+    rentCentsWeek: integer("rent_cents_week").notNull().default(0),
+    /** This person sees only their own appointments, queue calls and payout row, and not the customer directory. */
+    ownClientsOnly: boolean("own_clients_only").notNull().default(false),
+    takesWalkIns: boolean("takes_walk_ins").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.merchantId, t.userId] })],
+);
+
+/** "My barber": the customer's usual staff member at a shop. auto = from the last completed visit; chosen = the customer's pick. */
+export const preferredStaff = pgTable(
+  "preferred_staff",
+  {
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    staffId: uuid("staff_id").references(() => users.id, { onDelete: "set null" }),
+    /** auto | chosen */
+    source: text("source").notNull().default("auto"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.merchantId] }), index("preferred_staff_staff_idx").on(t.merchantId, t.staffId)],
+);

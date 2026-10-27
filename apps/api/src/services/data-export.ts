@@ -10,6 +10,8 @@ import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import {
   appointments,
   classBookings,
+  familyMembers,
+  preferredStaff,
   classCharges,
   classMemberships,
   classPasses,
@@ -73,6 +75,8 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
   const classPs = await db.select().from(classPasses).where(eq(classPasses.userId, userId)).orderBy(asc(classPasses.createdAt));
   const classMs = await db.select().from(classMemberships).where(eq(classMemberships.userId, userId)).orderBy(asc(classMemberships.createdAt));
   const classCs = await db.select().from(classCharges).where(eq(classCharges.userId, userId)).orderBy(asc(classCharges.createdAt));
+  const family = await db.select().from(familyMembers).where(eq(familyMembers.userId, userId)).orderBy(asc(familyMembers.createdAt));
+  const myBarbers = await db.select().from(preferredStaff).where(eq(preferredStaff.userId, userId));
   const nudges = await db.select().from(rebookingNudges).where(eq(rebookingNudges.userId, userId));
 
   const subs = await db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.userId, userId)).orderBy(asc(tiffinSubscriptions.createdAt));
@@ -117,6 +121,8 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
     classCharges: named(classCs),
     bookings: named(bks),
     rebookingNudges: named(nudges),
+    familyMembers: family.map(clean),
+    myBarber: named(myBarbers),
     tiffinSubscriptions: subs.map((s) => ({
       ...clean(s),
       merchantName: shop.get(s.merchantId) ?? null,
