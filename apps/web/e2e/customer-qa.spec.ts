@@ -54,19 +54,14 @@ test("the salon pay page names the stylist the tip goes to", async ({ page }) =>
   const staff = (await call<{ items: { userId: string; name: string }[] }>("GET", `${base}/appointments/staff`, undefined, bloom.token)).items;
   const services = (await call<{ items: { id: string; name: string }[] }>("GET", `${base}/services`, undefined, bloom.token)).items;
   const cut = services.find((s) => s.name.startsWith("Cut"))!;
-  // The demo day is busy: take the first stylist whose chair is free right now.
-  let appt: { id: string } | null = null;
-  let stylist: { userId: string; name: string } | null = null;
-  for (const s of staff) {
-    try {
-      appt = await call<{ id: string }>("POST", `${base}/appointments`, { source: "walk_in", staffId: s.userId, serviceIds: [cut.id], customer: { phone: phone(), name: "Tipper Test" } }, bloom.token);
-      stylist = s;
-      break;
-    } catch (e) {
-      if (!String(e).includes("slot_taken")) throw e;
-    }
-  }
-  if (!appt || !stylist) throw new Error("No Bloom stylist is free for a walk-in");
+  // The demo day is busy: clear the first stylist's chair for the next hour, then walk in.
+  const stylist = staff[0]!;
+  const now = new Date();
+  const range = `from=${encodeURIComponent(new Date(now.getTime() - 3 * 3600_000).toISOString())}&to=${encodeURIComponent(new Date(now.getTime() + 2 * 3600_000).toISOString())}`;
+  const busy = (await call<{ items: { id: string; staffId: string; status: string; startsAt: string; endsAt: string }[] }>("GET", `${base}/appointments?${range}`, undefined, bloom.token)).items;
+  for (const x of busy.filter((i) => i.staffId === stylist.userId && ["booked", "arrived", "in_service"].includes(i.status) && new Date(i.endsAt) > now && new Date(i.startsAt) < new Date(now.getTime() + 60 * 60_000)))
+    await call("POST", `${base}/appointments/${x.id}/status`, { status: "cancelled" }, bloom.token);
+  const appt = await call<{ id: string }>("POST", `${base}/appointments`, { source: "walk_in", staffId: stylist.userId, serviceIds: [cut.id], customer: { phone: phone(), name: "Tipper Test" } }, bloom.token);
   const co = await call<{ invoice: { payUrl: string } }>("POST", `${base}/appointments/${appt.id}/checkout`, { mode: "link", tipCents: 0 }, bloom.token);
   await page.goto(new URL(co.invoice.payUrl).pathname);
   await expect(page.getByRole("heading", { name: `Add a tip for ${stylist.name}` })).toBeVisible();

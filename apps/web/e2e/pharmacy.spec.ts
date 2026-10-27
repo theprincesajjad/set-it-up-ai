@@ -41,7 +41,7 @@ test("rewards: the dispensary categories are locked, with the reason", async ({ 
   await expect(page.getByText("Prescriptions and pharmacy services can never earn points or be discounted")).toBeVisible();
   await expect(page.getByText("Ontario pharmacy rules do not allow a loyalty benefit")).toBeVisible();
   const locked = page.getByTestId("locked-tag");
-  expect(await locked.count()).toBeGreaterThanOrEqual(3);
+  await expect(locked.nth(2)).toBeVisible();
   await expect(page.getByTestId("pharmacy-also-blocked")).toContainText("Points for a visit or a stamp");
   // No visit or stamp mode, and no referral field, for a pharmacy.
   await expect(page.getByRole("radio", { name: /One per visit/ })).toHaveCount(0);
