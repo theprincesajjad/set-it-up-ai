@@ -26,13 +26,15 @@ describe.each(["hi", "ur", "pa"] as const)("formatL %s uses the shared name tabl
   const L = mk(loc);
   const n = DATE_NAMES[loc];
   const comma = n.comma;
+  // Urdu names the part of the day before the hour ("دوپہر 3:30"), as it is said; Hindi and Punjabi put am/pm after it.
+  const clock = (c: string, hour: number) => (loc === "ur" ? `${hour < 4 || hour >= 20 ? "رات" : hour < 12 ? "صبح" : hour < 16 ? "دوپہر" : "شام"} ${c}` : `${c} ${hour < 12 ? n.am : n.pm}`);
   it("formats time, dates and day-time", () => {
-    expect(formatTimeL(L, d)).toBe(`3:30 ${n.pm}`);
-    expect(formatTimeL(L, new Date(2026, 9, 25, 0, 5))).toBe(`12:05 ${n.am}`);
+    expect(formatTimeL(L, d)).toBe(clock("3:30", 15));
+    expect(formatTimeL(L, new Date(2026, 9, 25, 0, 5))).toBe(clock("12:05", 0));
     expect(formatShortDateL(L, d)).toBe(`25 ${n.monthsShort[9]}`);
     expect(formatDateL(L, d)).toBe(`${n.weekdaysShort[0]}${comma} 25 ${n.monthsShort[9]}`);
-    expect(formatDayTimeL(L, d)).toBe(`${n.weekdaysShort[0]} 3:30 ${n.pm}`);
-    expect(formatHhmmL(L, "09:00")).toBe(`9:00 ${n.am}`);
+    expect(formatDayTimeL(L, d)).toBe(`${n.weekdaysShort[0]} ${clock("3:30", 15)}`);
+    expect(formatHhmmL(L, "09:00")).toBe(clock("9:00", 9));
   });
   it("never touches Intl with the language's own tag", () => {
     const real = Intl.DateTimeFormat;
@@ -51,7 +53,7 @@ describe.each(["hi", "ur", "pa"] as const)("formatL %s uses the shared name tabl
     expect(promoEndsL(L, new Date(2026, 9, 30).toISOString(), d)).toBe("ui.promoEndsDay");
     expect(promoEndsL(L, new Date(2026, 10, 30).toISOString(), d)).toBe("ui.promoEndsDate");
     const rows = hoursRowsL(L, { mon: [["09:00", "17:00"]] } as never, d);
-    expect(rows[0]).toMatchObject({ day: n.weekdaysLong[1], text: `9:00 ${n.am}–5:00 ${n.pm}` });
+    expect(rows[0]).toMatchObject({ day: n.weekdaysLong[1], text: `${clock("9:00", 9)}–${clock("5:00", 17)}` });
     expect(rows[1]!.day).toBe(n.weekdaysLong[2]);
   });
 });

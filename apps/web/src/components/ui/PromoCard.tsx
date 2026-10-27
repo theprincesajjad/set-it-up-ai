@@ -65,13 +65,17 @@ function meta(p: PromoCardPromo, L: L) {
   return p.activeNow === false ? t("wp.ui.selectedDays") : null;
 }
 
+/** "On selected days" is what the schedule line says exactly, so the meta line is dropped (unless the promo ends or has not started). */
+function scheduleSaysItAll(p: PromoCardProps["promo"], when: string | null): boolean {
+  return Boolean(when) && !p.endsAt && !(p.startsAt && new Date(p.startsAt).getTime() > Date.now());
+}
+
 export function PromoCard({ promo, shop, sponsored, variant = "feed", href, terminology, showShop = true }: PromoCardProps) {
   const L = useLocaleOrEnglish();
   const { t, locale } = L;
   const [why, setWhy] = useState(false);
   const when = promoWhenL(L, promo);
-  // "On selected days" is what the schedule line below now says exactly.
-  const m = when && !promo.endsAt && !(promo.startsAt && new Date(promo.startsAt).getTime() > Date.now()) ? null : meta(promo, L);
+  const m = scheduleSaysItAll(promo, when) ? null : meta(promo, L);
   const content = (
     <>
       {promo.imageUrl && variant === "feed" ? (
