@@ -382,7 +382,7 @@ export function CounterApp({
         if (grocery && bulk.length && !res.duplicate) {
           for (const id of bulk) {
             try {
-              await grocery.logPantry({ memberId: res.member.memberId, pantryItemId: id, remind: bulkRemind });
+              await api.logPantry({ memberId: res.member.memberId, pantryItemId: id, remind: bulkRemind });
             } catch {
               // The points are in; the log is a convenience and can be tapped again at the next visit.
             }

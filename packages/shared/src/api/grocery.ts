@@ -122,6 +122,8 @@ export const weighBody = z.object({
     )
     .min(1)
     .max(50),
+  /** How the shop returns an excess deposit that was not paid by card (e-transfer or cash). Card deposits are refunded to the card. */
+  refundMethod: z.enum(["etransfer", "cash"]).default("etransfer"),
 });
 export type WeighBody = z.input<typeof weighBody>;
 
@@ -134,6 +136,11 @@ export interface WeighResponse {
   /** What the customer still owes at the till. */
   balanceDueCents: number;
   lines: { orderItemId: string; name: string; actualWeightG: number; lineTotalCents: number; estimatedCents: number }[];
+  /**
+   * Set when the weighed total came in under what the customer had already paid: the excess goes back. `card` was refunded to the
+   * customer's card through Stripe; `manual` was recorded as a refund the shop makes by hand (e-transfer or cash).
+   */
+  refund: { cents: number; mode: "card" | "manual"; method: "card" | "etransfer" | "cash" } | null;
 }
 
 export const eidPlanBody = z.object({

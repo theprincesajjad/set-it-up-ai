@@ -4,7 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { merchantMembers, merchants, orders, orderItems, pantryEntries } from "@ll/db";
+import { manualPayments, merchantMembers, merchants, orders, orderItems, pantryEntries } from "@ll/db";
 import { createTestEnv, grantFeatures, nextPhone, type TestEnv } from "./helpers.js";
 import { call, customer, deliver, fake, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
 import { signAccessToken } from "../src/lib/auth.js";
@@ -181,6 +181,66 @@ describe("butcher counter: sold by weight", () => {
     // The customer's own view shows the weighed price.
     const mine = await call(env, c.token, "GET", `/v1/me/orders/${id}`);
     expect(mine.body.items.find((i: { id: string }) => i.id === line)).toMatchObject({ actualWeightG: 2000, lineTotalCents: 2798 });
+  });
+
+  it("a weigh-in below the deposit refunds the excess to the card once, and weighing again never refunds the same money twice", async () => {
+    const { g, goat } = await butcher();
+    const c = await customer(env);
+    const r = await order(g, c.token, [{ catalogItemId: goat.id, quantity: 2 }]);
+    await deliver(env, fake(env).succeedPaymentIntent(r.body.payment.paymentIntentId));
+    const id = r.body.order.id as string;
+    const line = r.body.order.items[0].id as string;
+    const [before] = await env.db.select().from(orders).where(eq(orders.id, id));
+    expect(before!.depositPaidAt).toBeTruthy();
+    const paid = before!.depositCents + before!.customerFeeCents;
+    // 0.5 kg at $13.99 = $7.00: less than the deposit already paid.
+    const total = Math.round((1399 * 500) / 1000);
+    expect(total).toBeLessThan(paid);
+    const w = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 500 }] });
+    expect(w.status).toBe(200);
+    const excess = paid - w.body.totalCents;
+    expect(w.body.totalCents).toBe(total);
+    expect(w.body.refund).toEqual({ cents: excess, mode: "card", method: "card" });
+    expect(w.body.balanceDueCents).toBe(0);
+    expect(fake(env).refunds.filter((x) => x.paymentIntentId === r.body.payment.paymentIntentId).map((x) => x.amountCents)).toEqual([excess]);
+    const [after] = await env.db.select().from(orders).where(eq(orders.id, id));
+    expect(after!.depositCents).toBe(before!.depositCents - excess);
+    // Weigh the same again, or a little more: no second refund. A heavier weigh-in leaves a balance.
+    const same = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 500 }] });
+    expect(same.body.refund).toBeNull();
+    const heavy = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 2000 }] });
+    expect(heavy.body.refund).toBeNull();
+    expect(heavy.body.balanceDueCents).toBe(heavy.body.totalCents - (before!.depositCents - excess) - before!.customerFeeCents);
+    expect(fake(env).refunds.filter((x) => x.paymentIntentId === r.body.payment.paymentIntentId)).toHaveLength(1);
+    // The customer is told about the refund, not a balance.
+    const [msg] = await env.db.select().from(orders).where(eq(orders.id, id));
+    expect(msg!.weighedAt).toBeTruthy();
+  });
+
+  it("a deposit taken by hand is refunded by hand: a refund is recorded for e-transfer or cash, and nothing goes to Stripe", async () => {
+    const { g, goat } = await butcher();
+    const c = await customer(env);
+    const r = await order(g, c.token, [{ catalogItemId: goat.id, quantity: 2 }]);
+    const id = r.body.order.id as string;
+    const line = r.body.order.items[0].id as string;
+    // The shop took the deposit at the till (cash), so there is no card payment behind it.
+    const [row] = await env.db.update(orders).set({ paymentMethod: "at_pickup", stripePaymentIntentId: null, paymentStatus: "authorized", depositPaidAt: new Date(), customerFeeCents: 0 }).where(eq(orders.id, id)).returning();
+    const w = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 500 }], refundMethod: "cash" });
+    expect(w.status).toBe(200);
+    const excess = row!.depositCents - w.body.totalCents;
+    expect(excess).toBeGreaterThan(0);
+    expect(w.body.refund).toEqual({ cents: excess, mode: "manual", method: "cash" });
+    expect(w.body.balanceDueCents).toBe(0);
+    expect(fake(env).refunds).toHaveLength(0);
+    const ledger = await env.db.select().from(manualPayments).where(eq(manualPayments.subjectId, id));
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]).toMatchObject({ subjectType: "order_refund", method: "cash", amountCents: excess, merchantId: g.merchant.id });
+    // Weighing the same again refunds nothing more; a lower reading refunds only the difference (e-transfer is the default).
+    const same = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 500 }] });
+    expect(same.body.refund).toBeNull();
+    const lower = await call(env, g.ownerToken, "POST", `${g.url}/orders/${id}/weigh`, { lines: [{ orderItemId: line, actualWeightG: 400 }] });
+    expect(lower.body.refund).toEqual({ cents: w.body.totalCents - lower.body.totalCents, mode: "manual", method: "etransfer" });
+    expect((await env.db.select().from(manualPayments).where(eq(manualPayments.subjectId, id))).map((x) => x.amountCents)).toEqual([excess, w.body.totalCents - lower.body.totalCents]);
   });
 
   it("refuses weighing a line that is not sold by weight, a stranger's order, a closed order and an order paid in full", async () => {

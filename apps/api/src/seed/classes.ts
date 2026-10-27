@@ -220,6 +220,12 @@ async function seedStudio(
 }
 
 /** Seed the demo studios (see the file header). Safe to run again. */
+/** Logins the seed creates for Sakina Studio (printed by `pnpm seed`; the owner login for Rise Yoga is a regular demo owner). */
+export const SAKINA_LOGINS = [
+  { email: "owner+sakina-studio@example.com", role: "owner", shop: "Sakina Studio (women-only fitness studio)", name: "Sakina Raza" },
+  { email: "staff+sakina-studio-desk@example.com", role: "staff", shop: "Sakina Studio", name: "Hina Desk" },
+] as const;
+
 export async function seedClassStudios(db: Db, ctx: AppContext, opts: { ownerPassword: string; log?: (m: string) => void }): Promise<{ studios: number }> {
   const log = opts.log ?? (() => {});
   let studios = 0;

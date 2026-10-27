@@ -10,7 +10,8 @@ import { centsSchema } from "./common.js";
 
 export const MANUAL_METHODS = ["etransfer", "cash", "cheque", "other"] as const;
 export type ManualMethod = (typeof MANUAL_METHODS)[number];
-export const MANUAL_SUBJECT_TYPES = ["tiffin_charge", "catering_deposit", "catering_balance", "hall_instalment"] as const;
+export const MANUAL_SUBJECT_TYPES = ["tiffin_charge", "catering_deposit", "catering_balance", "hall_instalment", "order_refund"] as const;
+/** `order_refund` is money the shop hands back by hand (a butcher weigh-in below the deposit): the row's amount is what went out, not what came in. */
 export type ManualSubjectType = (typeof MANUAL_SUBJECT_TYPES)[number];
 export const MAX_GRACE_DAYS = 14;
 export const DEFAULT_GRACE_DAYS = 3;

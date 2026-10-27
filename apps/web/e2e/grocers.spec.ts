@@ -66,7 +66,7 @@ test("a deal made in the dashboard shows on the shop page with its price per 100
   const li = page.getByRole("listitem").filter({ hasText: title });
   await expect(li).toContainText("$21.99");
   await expect(li).toContainText("/100 g");
-  await expect(li).toContainText("Was $26.99");
+  await expect(li).toContainText("was $26.99");
   await page.screenshot({ path: shot("02-shop-flyer-1440"), fullPage: true });
 
   // The owner's list shows it too.
@@ -89,7 +89,7 @@ test("butcher counter lists pre-orders, weighing sets the final price, and the E
   const eid = await call<{ days: { date: string; label: string }[]; leadHours: number | null }>("GET", `${s.base}/grocery/butcher/eid`, undefined, s.token);
   expect(eid.status).toBe(200);
   expect(eid.body.days.length).toBeGreaterThanOrEqual(1);
-  expect(eid.body.days[0]!.label).toMatch(/Eid al-Adha day/);
+  expect(eid.body.days[0]!.label).toBe("Day 1");
 });
 
 test("pantry reminders: items, who is running low, and the owner never texts without a yes", async ({ page }) => {

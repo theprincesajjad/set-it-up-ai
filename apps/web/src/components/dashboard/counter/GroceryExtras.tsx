@@ -14,7 +14,6 @@ export interface GroceryCounter {
   pantryItems: { id: string; name: string }[];
   /** The line the cashier reads before ticking "asked". */
   askText: string;
-  logPantry: (b: { memberId: string; pantryItemId: string; remind?: boolean }) => Promise<unknown>;
 }
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;

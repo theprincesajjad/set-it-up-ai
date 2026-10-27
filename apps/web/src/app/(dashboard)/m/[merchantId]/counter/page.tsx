@@ -16,7 +16,7 @@ export default function CounterPage() {
   // Grocers: "Not counted" (tobacco, lottery, alcohol, gift cards) and the bulk-item chips that feed restock texts.
   const groceryShop = detail.merchant.vertical === "grocery";
   const pantry = useApi(groceryShop && enabled("grocery.pantry_reminders") ? () => api.grocery.counterPantryItems() : null, [api, groceryShop]);
-  const grocery = groceryShop ? { pantryItems: (pantry.data?.items ?? []).map((i) => ({ id: i.id, name: i.name })), askText: pantry.data?.askText ?? "", logPantry: api.grocery.logPantry } : null;
+  const grocery = groceryShop ? { pantryItems: (pantry.data?.items ?? []).map((i) => ({ id: i.id, name: i.name })), askText: pantry.data?.askText ?? "" } : null;
   if (!program)
     return (
       <Banner tone="warning" action={<Button size="sm" variant="ghost" href={`${base}/program`}>Set up program</Button>}>

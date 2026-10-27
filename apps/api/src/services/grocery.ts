@@ -48,6 +48,8 @@ import type { StaffContext } from "../lib/auth.js";
 import { badRequest, conflict, HttpError, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
 import { notifyCustomer } from "./commerceShared.js";
+import { addLedger, todayFor } from "./manual-payments.js";
+import { refundConnectPayment } from "./payments.js";
 import { isFeatureOn, requireAnyFeature, requireFeature, PREORDER_FEATURES } from "./features.js";
 import { createCampaign, localDate, reserveSmsCredits, smsAllowance } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
@@ -250,9 +252,27 @@ export async function weighOrder(ctx: AppContext, staff: StaffContext, orderId: 
     const total = subtotal - order.discountCents + tax.taxCents + order.tipCents + order.customerFeeCents;
     for (const i of next) if (grams.has(i.id)) await tx.update(orderItems).set({ actualWeightG: i.actualWeightG, weighedCents: i.weighedCents }).where(eq(orderItems.id, i.id));
     const now = ctx.now();
-    const [updated] = await tx.update(orders).set({ subtotalCents: subtotal, taxCents: tax.taxCents, totalCents: total, weighedAt: now, updatedAt: now }).where(eq(orders.id, order.id)).returning();
-    await writeAudit(tx, { actorUserId: staff.user.id, merchantId: merchant.id, action: "grocery.weighed", entity: "order", entityId: order.id, data: { lines: body.lines, totalCents: total } });
-    return { order: updated!, items: next };
+    // A weigh-in below what the customer already paid: the excess goes back (card refund, or a refund the shop makes by hand). The
+    // deposit then shrinks to what is kept, so weighing again never refunds the same money twice and the balance stays right.
+    const paidTowardsTotal = order.kind === "preorder" && order.depositPaidAt ? order.depositCents + order.customerFeeCents : 0;
+    const excess = Math.min(order.depositCents, Math.max(0, paidTowardsTotal - total));
+    const [updated] = await tx.update(orders).set({ subtotalCents: subtotal, taxCents: tax.taxCents, totalCents: total, depositCents: order.depositCents - excess, weighedAt: now, updatedAt: now }).where(eq(orders.id, order.id)).returning();
+    let refund: groceryApi.WeighResponse["refund"] = null;
+    if (excess > 0) {
+      if (order.paymentMethod === "in_app" && order.stripePaymentIntentId) {
+        try {
+          await refundConnectPayment(ctx, merchant, { paymentIntentId: order.stripePaymentIntentId, amountCents: excess, idempotencyKey: `order:${order.id}:weigh-refund:${updated!.depositCents}`, reason: "Weighed under the estimate" });
+        } catch (err) {
+          throw new HttpError(502, "refund_error", "We couldn't send the refund to the customer's card, so the weigh-in was not saved. Please try again.", { cause: (err as Error).message });
+        }
+        refund = { cents: excess, mode: "card", method: "card" };
+      } else {
+        await addLedger(ctx, staff, tx, { subjectType: "order_refund", subjectId: order.id, body: { method: body.refundMethod, amountCents: excess, receivedOn: todayFor(ctx, merchant), note: `Weigh-in came in ${money(excess)} under the deposit, order #${order.number}. Return it to the customer.`, sendReceipt: false } });
+        refund = { cents: excess, mode: "manual", method: body.refundMethod };
+      }
+    }
+    await writeAudit(tx, { actorUserId: staff.user.id, merchantId: merchant.id, action: "grocery.weighed", entity: "order", entityId: order.id, data: { lines: body.lines, totalCents: total, ...(refund ? { refund } : {}) } });
+    return { order: updated!, items: next, refund };
   });
   const o = await loadOrderDto(ctx.db, result.order, true);
   // Tell the customer the real price, in their language. Push only: weighing is not worth a text.
@@ -265,7 +285,9 @@ export async function weighOrder(ctx: AppContext, staff: StaffContext, orderId: 
     userId: result.order.userId,
     merchantId: merchant.id,
     title: merchant.name,
-    body: t(locale, "gr.msg.weighed", { shop: merchant.name, n: result.order.number, weight: `${Math.round((grams / (unit === "kg" ? 1000 : 453.59237)) * 100) / 100} ${unit}`, total: money(o.totalCents), balance: money(o.balanceDueCents) }),
+    body: result.refund
+      ? t(locale, "gr.msg.weighedRefund", { shop: merchant.name, n: result.order.number, weight: `${Math.round((grams / (unit === "kg" ? 1000 : 453.59237)) * 100) / 100} ${unit}`, total: money(o.totalCents), refund: money(result.refund.cents) })
+      : t(locale, "gr.msg.weighed", { shop: merchant.name, n: result.order.number, weight: `${Math.round((grams / (unit === "kg" ? 1000 : 453.59237)) * 100) / 100} ${unit}`, total: money(o.totalCents), balance: money(o.balanceDueCents) }),
     sms: false,
     data: { type: "order_status", orderId: result.order.id, status: result.order.status },
   }).catch(() => undefined);
@@ -279,6 +301,7 @@ export async function weighOrder(ctx: AppContext, staff: StaffContext, orderId: 
     lines: o.items
       .filter((i) => i.actualWeightG != null)
       .map((i) => ({ orderItemId: i.id, name: i.name, actualWeightG: i.actualWeightG!, lineTotalCents: i.lineTotalCents, estimatedCents: i.unitPriceCents * i.quantity })),
+    refund: result.refund,
   };
 }
 

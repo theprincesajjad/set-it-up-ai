@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ACCESS_COOKIE, REFRESH_COOKIE, accessTokenStale, jwtExpiry } from "@/lib/auth/cookies";
-import { forwardToApi, isBlockedBffPath, signIn } from "@/lib/auth/handlers";
+import { counterStaffToken, forwardToApi, isBlockedBffPath, signIn } from "@/lib/auth/handlers";
 
 const pair = (n: string) => ({
   accessToken: `at-${n}`,
@@ -37,6 +37,17 @@ describe("signIn", () => {
     const r = await signIn("/v1/auth/otp/verify", {}, {}, fetch);
     expect(r.status).toBe(400);
     expect(r.cookies).toEqual([]);
+  });
+});
+
+describe("counterStaffToken", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const req = () => new Request("http://web/api/ll/x", { headers: { "x-counter-staff-token": "tok-staff" } });
+  it("applies to counter calls, including a grocer's counter pantry log, and nothing else", () => {
+    expect(counterStaffToken(req(), `/v1/merchants/${id}/counter/award`)).toBe("tok-staff");
+    expect(counterStaffToken(req(), `/v1/merchants/${id}/grocery/counter/pantry`)).toBe("tok-staff");
+    expect(counterStaffToken(req(), `/v1/merchants/${id}/grocery/pantry/send`)).toBeNull();
+    expect(counterStaffToken(req(), `/v1/merchants/${id}/staff`)).toBeNull();
   });
 });
 

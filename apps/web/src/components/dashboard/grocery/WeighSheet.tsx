@@ -27,6 +27,9 @@ export function WeighSheet({ order, onClose, onDone }: { order: commerceApi.Orde
   const act = useAction();
   const lines = useMemo(() => weighedLines(order), [order]);
   const [vals, setVals] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((l) => [l.id, l.actualWeightG != null ? String(Math.round((l.actualWeightG / (l.weightUnit === "kg" ? 1000 : 453.59237)) * 100) / 100) : ""])));
+  // A deposit paid by card goes back to the card; one taken at the till goes back by hand.
+  const byHand = order.paymentMethod !== "in_app" && !!order.depositPaidAt && order.depositCents > 0;
+  const [refundMethod, setRefundMethod] = useState<"etransfer" | "cash">("etransfer");
   const grams = (l: Line) => weightToGrams(vals[l.id] ?? "", l.weightUnit!);
   const ready = lines.length > 0 && lines.every((l) => grams(l) != null);
   const estimate = (l: Line) => l.unitPriceCents * l.quantity;
@@ -34,10 +37,11 @@ export function WeighSheet({ order, onClose, onDone }: { order: commerceApi.Orde
   const estimated = lines.reduce((s, l) => s + estimate(l), 0);
 
   async function confirm() {
-    const body: groceryApi.WeighBody = { lines: lines.map((l) => ({ orderItemId: l.id, actualWeightG: grams(l)! })) };
+    const body: groceryApi.WeighBody = { lines: lines.map((l) => ({ orderItemId: l.id, actualWeightG: grams(l)! })), ...(byHand ? { refundMethod } : {}) };
     const r = await act.run(() => api.grocery.weigh(order.id, body));
     if (r) {
-      toast({ message: `Weighed. Total ${formatMoney(r.totalCents)}, ${r.balanceDueCents > 0 ? `${formatMoney(r.balanceDueCents)} left to pay` : "nothing left to pay"}.`, tone: "success" });
+      const back = r.refund ? (r.refund.mode === "card" ? ` ${formatMoney(r.refund.cents)} refunded to their card.` : ` Give ${formatMoney(r.refund.cents)} back by ${r.refund.method === "cash" ? "cash" : "e-transfer"}; it is recorded.`) : "";
+      toast({ message: `Weighed. Total ${formatMoney(r.totalCents)}, ${r.balanceDueCents > 0 ? `${formatMoney(r.balanceDueCents)} left to pay` : "nothing left to pay"}.${back}`, tone: "success" });
       onDone(r);
       onClose();
     }
@@ -87,6 +91,23 @@ export function WeighSheet({ order, onClose, onDone }: { order: commerceApi.Orde
             { label: "Deposit paid", value: <span className="tabular">{order.depositPaidAt ? formatMoney(order.depositCents) : "None"}</span> },
           ]}
         />
+        {order.depositPaidAt && order.totalCents - estimated + weighedTotal < order.depositCents + order.customerFeeCents ? (
+          <Banner tone="info">
+            The order now comes to less than the deposit. {byHand ? "The deposit was taken at the till, so you give the difference back yourself." : "The difference is refunded to the customer's card when you confirm."}
+          </Banner>
+        ) : null}
+        {byHand ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-meta-strong text-fg">If we owe them change, you return it by</p>
+            <div className="flex gap-2">
+              {(["etransfer", "cash"] as const).map((m) => (
+                <Button key={m} size="sm" variant={refundMethod === m ? "primary" : "secondary"} aria-pressed={refundMethod === m} onClick={() => setRefundMethod(m)}>
+                  {m === "cash" ? "Cash" : "E-transfer"}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <p className="text-caption text-fg-muted">Weigh on your approved (legal-for-trade) scale. The customer gets a message with the final weight and price. Tax is worked out when you confirm; raw meat carries none.</p>
       </div>
     </Sheet>

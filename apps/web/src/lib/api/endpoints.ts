@@ -27,7 +27,7 @@ import type {
   walletApi,
   whatsappApi,
 } from "@ll/shared";
-import type { CustomOccasion, FestivalDef, FestivalOccurrence, FestivalRelevance, FestivalTemplate, FestivalTradition } from "@ll/shared";
+import type { CustomOccasion, FestivalDef, FestivalOccurrence, FestivalRelevance, FestivalTemplate, FestivalTradition, groceryApi } from "@ll/shared";
 import type { ApiClient } from "./client";
 import { restaurantOpsEndpoints } from "./restaurantOps";
 import { restaurantDeskEndpoints } from "./restaurantDesk";
@@ -269,6 +269,8 @@ function counterEndpoints(c: ApiClient, b: string, headers?: Record<string, stri
     activity: (q: Q = {}) => c.get<staffApi.ActivityResponse>(`${b}/counter/activity`, { query: q, ...h }),
     undo: (transactionId: string, reason = "Undo at counter") =>
       c.post<staffApi.UndoResponse>(`${b}/counter/transactions/${enc(transactionId)}/undo`, { reason }, h),
+    /** A grocer's cashier logging a bulk item (pantry reminders); made as the PIN-switched staff member like every counter call. */
+    logPantry: (body: groceryApi.PantryLogBody) => c.post<groceryApi.PantryLogResponse>(`${b}/grocery/counter/pantry`, body, h),
   };
 }
 

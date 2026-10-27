@@ -32,12 +32,12 @@ export interface ForwardResult {
 }
 
 /**
- * A counter staff token (the `accessToken` from POST staff-pin/verify) the browser may send, for counter calls only,
+ * A counter staff token (the `accessToken` from POST staff-pin/verify) the browser may send, for counter calls only (the grocer's counter pantry log is one),
  * so awards are attributed to the staff member who typed their PIN. Never applies to any other path.
  */
 export function counterStaffToken(req: Request, apiPath: string): string | null {
   const t = req.headers.get("x-counter-staff-token");
-  return t && /^\/v1\/merchants\/[0-9a-f-]{36}\/counter\//i.test(apiPath) ? t : null;
+  return t && /^\/v1\/merchants\/[0-9a-f-]{36}\/(grocery\/)?counter\//i.test(apiPath) ? t : null;
 }
 
 const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user-agent", "accept-language", "x-agent-session"];

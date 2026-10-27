@@ -2,7 +2,7 @@
  * Grocers and halal butchers (docs/research/grocers.md): pure logic shared by the API, the dashboard and the customer pages.
  *
  *  - Weighed items: a price per kg or lb, the price of one portion, and the line total after the weigh-in at the scale.
- *  - Per-unit prices for the flyer ("$1.37 per 100 g").
+ *  - Per-unit prices for the flyer ("$1.37/100 g").
  *  - What a reward costs the shop as a share of spend (0.5% back is the grocery default).
  *  - Pantry cadence: how long a 20 lb bag of atta lasts one household, learned from that household's own purchases.
  *  - The grocer's season calendar: Diwali, Eid, Ramadan, Lunar New Year and friends, with when to start the stock-up flyer.

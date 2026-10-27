@@ -20,6 +20,8 @@ import { findOrCreateCustomerByPhone, generateMemberCode } from "../services/led
 import { ensureLockedCategories, pharmacyServiceFields } from "../services/pharmacy-guard.js";
 
 const SLUG = "village-apothecary";
+/** The pharmacist login the seed creates (printed by `pnpm seed`); the owner login is the shop's regular demo owner. */
+export const PHARMACY_LOGINS = [{ email: `staff+${SLUG}-amira@example.com`, role: "manager", shop: "Village Apothecary (pharmacy)", name: "Amira Rahman" }] as const;
 const MIN = 60_000;
 const TYPES: { name: string; min: number; buffer: number }[] = [
   { name: PHARMACY_SERVICE_PRESETS[0], min: 15, buffer: 5 },

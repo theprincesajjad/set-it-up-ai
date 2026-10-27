@@ -25,9 +25,8 @@ export function groceryEndpoints(c: ApiClient, b: string) {
       createPantryItem: (body: groceryApi.PantryItemBody) => c.post<groceryApi.PantryItemDto>(`${b}/grocery/pantry/items`, body),
       updatePantryItem: (id: string, body: Partial<groceryApi.PantryItemBody>) => c.patch<{ ok: true }>(`${b}/grocery/pantry/items/${enc(id)}`, body),
       sendPantry: (entryIds?: string[]) => c.post<groceryApi.PantrySendResponse>(`${b}/grocery/pantry/send`, entryIds ? { entryIds } : {}),
-      /** The counter: chips for what can be logged, and the tap that logs a purchase (remind = the customer said yes). */
+      /** The counter: chips for what can be logged. The tap that logs a purchase is `counter.logPantry` (it runs as the PIN-switched staff member). */
       counterPantryItems: () => c.get<{ items: groceryApi.PantryItemDto[]; askText: string }>(`${b}/grocery/counter/pantry-items`),
-      logPantry: (body: groceryApi.PantryLogBody) => c.post<groceryApi.PantryLogResponse>(`${b}/grocery/counter/pantry`, body),
     },
   };
 }
