@@ -123,6 +123,15 @@ describe("texts", () => {
   });
 });
 
+describe("order in line", () => {
+  it("keeps join order when people join at the same instant", async () => {
+    const s = await shop();
+    for (const [i, name] of ["Ali", "Bea", "Cyd", "Dev"].entries()) await join(s, { name, phone: `416-555-03${10 + i}` });
+    const board = await call(env, s.owner, "GET", `${s.base}/queue`);
+    expect(board.body.waiting.map((w: { name: string }) => w.name)).toEqual(["Ali", "Bea", "Cyd", "Dev"]);
+  });
+});
+
 describe("the barber picks, skip and the chair", () => {
   it("a barber calls anyone for their own chair, not for another barber's", async () => {
     const s = await shop();

@@ -315,6 +315,13 @@ async function loadService(ctx: AppContext, merchantId: string, serviceId: strin
   return { id: s.id as string | null, name: s.name, durationMin: Math.max(5, s.durationMin) };
 }
 
+/** The back of the line: strictly later than every place so far, so two joins in the same millisecond keep their order. */
+async function backOfLine(ctx: AppContext, merchantId: string, now: Date): Promise<Date> {
+  const [last] = await ctx.db.select({ at: sql<Date | null>`max(${queueEntries.positionAt})`.mapWith(queueEntries.positionAt) }).from(queueEntries).where(eq(queueEntries.merchantId, merchantId));
+  const lastAt = last?.at?.getTime() ?? 0;
+  return new Date(Math.max(now.getTime(), lastAt + 1));
+}
+
 /** Join the line. A guest gives a first name and (to get the text) a phone number; a signed-in customer can bring family members. */
 export async function join(ctx: AppContext, merchant: Merchant, input: JoinInput, authUser: AuthUser | null): Promise<barberApi.JoinQueueResponse> {
   const now = ctx.now();
@@ -349,9 +356,10 @@ export async function join(ctx: AppContext, merchant: Merchant, input: JoinInput
   }
 
   const partyId = family.length ? randomUUID() : null;
+  const at = await backOfLine(ctx, merchant.id, now);
   const rows: (typeof queueEntries.$inferInsert)[] = [
-    { merchantId: merchant.id, userId, partyId, name: input.name.trim(), serviceId: svc.id, serviceName: svc.name, durationMin: svc.durationMin, requestedStaffId: input.requestedStaffId ?? null, source: input.source, token: randomToken(18), positionAt: now, joinedAt: now, textConsent: input.textConsent },
-    ...family.map((f, i) => ({ merchantId: merchant.id, userId, familyMemberId: f.id, partyId, name: f.firstName, serviceId: kidSvc.id, serviceName: kidSvc.name, durationMin: kidSvc.durationMin, requestedStaffId: input.requestedStaffId ?? null, source: input.source, token: randomToken(18), positionAt: new Date(now.getTime() + i + 1), joinedAt: now, textConsent: false })),
+    { merchantId: merchant.id, userId, partyId, name: input.name.trim(), serviceId: svc.id, serviceName: svc.name, durationMin: svc.durationMin, requestedStaffId: input.requestedStaffId ?? null, source: input.source, token: randomToken(18), positionAt: at, joinedAt: now, textConsent: input.textConsent },
+    ...family.map((f, i) => ({ merchantId: merchant.id, userId, familyMemberId: f.id, partyId, name: f.firstName, serviceId: kidSvc.id, serviceName: kidSvc.name, durationMin: kidSvc.durationMin, requestedStaffId: input.requestedStaffId ?? null, source: input.source, token: randomToken(18), positionAt: new Date(at.getTime() + i + 1), joinedAt: now, textConsent: false })),
   ];
   const created = await ctx.db.insert(queueEntries).values(rows).returning();
   await notifyNext(ctx, merchant);
@@ -460,7 +468,7 @@ export async function skip(ctx: AppContext, staff: StaffContext, entryId: string
   const rest = s.waiting.filter((w) => w.id !== e.id);
   const idx = s.waiting.findIndex((w) => w.id === e.id);
   const anchor = idx >= 0 ? rest[Math.min(rest.length - 1, idx + QUEUE_SKIP_BACK - 1)] : undefined;
-  const positionAt = anchor && anchor.positionAt.getTime() > e.positionAt.getTime() ? new Date(anchor.positionAt.getTime() + 1) : now;
+  const positionAt = anchor && anchor.positionAt.getTime() > e.positionAt.getTime() ? new Date(anchor.positionAt.getTime() + 1) : await backOfLine(ctx, e.merchantId, now);
   const [row] = await ctx.db.update(queueEntries).set({ status: "waiting", skips: e.skips + 1, positionAt, calledAt: null, calledStaffId: null, notifiedNextAt: null, updatedAt: now }).where(eq(queueEntries.id, e.id)).returning();
   await sendText(ctx, merchant, row!, "skipped", {});
   await notifyNext(ctx, merchant);
