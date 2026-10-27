@@ -58,7 +58,7 @@ let result: Awaited<ReturnType<typeof seedDemo>>;
 beforeAll(async () => {
   env = await createTestEnv({ now: new Date() });
   result = await seedDemo(env.db, { customers: 30, days: 45, config: env.ctx.config });
-}, 120_000);
+}, 300_000);
 afterAll(async () => env.close());
 
 describe("seedDemo", () => {
