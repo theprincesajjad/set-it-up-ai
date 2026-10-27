@@ -26,7 +26,7 @@ export default function ClassRosterPage() {
 }
 
 function when(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { timeZone: "America/Toronto", weekday: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleString("en-CA", { timeZone: "America/Toronto", weekday: "short", hour: "numeric", minute: "2-digit" }).replace(/\s?([ap])\.m\./i, (_, x: string) => ` ${x.toUpperCase()}M`);
 }
 
 function Roster() {
@@ -59,7 +59,7 @@ function Roster() {
               flush
               back={{ href: `${base}/classes`, label: "Class schedule" }}
               title={s.name}
-              description={`${dayHeading(new Date(s.startsAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" }), todayOf())}, ${timeLabel(s.startsAt)} to ${timeLabel(s.endsAt)}${s.instructorName ? `, ${s.instructorName}` : ""}${s.womenOnly ? ". Women only." : ""}`}
+              description={`${dayHeading(new Date(s.startsAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" }), todayOf())}, ${timeLabel(s.startsAt)} to ${timeLabel(s.endsAt)}${s.instructorName ? `, ${s.instructorName}` : ""}${s.womenOnly ? `${s.instructorName?.endsWith(".") ? "" : "."} Women only.` : ""}`}
               actions={
                 cancelled ? (
                   <Tag>Cancelled</Tag>

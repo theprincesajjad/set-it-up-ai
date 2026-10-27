@@ -52,7 +52,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
   const day = days.find((d) => d.date === dayKey) ?? null;
   const slot = day?.windows.find((w) => w.start === win) ?? null;
   const { unitCents } = priceDish(item, ids);
-  const bill = preorderBill(unitCents, 1, item.depositBps ?? 0, menu.tax.ratePpm);
+  const bill = preorderBill(unitCents, 1, item.depositBps ?? 0, item.taxable === false ? 0 : menu.tax.ratePpm);
   const pickupAt = day && slot ? torontoInstant(day.date, slot.start) : null;
   const cutoffHours = restaurant?.cancelCutoffHours ?? availability.leadHours;
   const cutoff = pickupAt ? new Date(new Date(pickupAt).getTime() - cutoffHours * 3_600_000) : null;
@@ -205,7 +205,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
             <p className="text-meta text-fg-muted">{t("gr.butcher.scaleNote")}</p>
           </>
         ) : null}
-        {p.description ? <p className="text-body text-fg-muted">{p.description}</p> : null}
+        {p.description ? <p dir="auto" className="text-body text-fg-muted">{p.description}</p> : null}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <DietaryPills dietary={item.dietary} />
           {item.dietary?.allergens?.length ? <Pill>{t("rc.mn.allergens", { list: restaurantWebApi.dishAllergens(item.dietary.allergens).map((a) => t(`allergen.${a}` as const)).join(", ") })}</Pill> : null}
@@ -219,7 +219,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
           <Heading level={2}>
             <span id="pre-when">{t("rs.pre.when")}</span>
           </Heading>
-          <p className="text-meta text-fg-muted">{orderBy ? t("rs.pre.orderBy", { by: stamp(orderBy), day: dayLabel(day!.date, { weekday: "long" }) }) : t("rs.pre.notice", { hours: availability.leadHours })}</p>
+          <p className="text-meta text-fg-muted">{orderBy ? t(item.weightUnit ? "gr.pre.orderBy" : "rs.pre.orderBy", { by: stamp(orderBy), day: dayLabel(day!.date, { weekday: "long" }) }) : t(item.weightUnit ? "gr.pre.notice" : "rs.pre.notice", { hours: availability.leadHours })}</p>
         </div>
         <div role="radiogroup" aria-label={t("rs.pre.when")} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {days.map((d) => {
@@ -277,10 +277,12 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
           <span className="min-w-0 break-words">{summaryTitle}</span>
           <span className="shrink-0 tabular-nums">{money(bill.subtotal)}</span>
         </div>
-        <div className="flex justify-between text-fg-muted">
-          <span>{menu.tax.label}</span>
-          <span className="tabular-nums">{money(bill.tax)}</span>
-        </div>
+        {item.taxable === false ? null : (
+          <div className="flex justify-between text-fg-muted">
+            <span>{menu.tax.label}</span>
+            <span className="tabular-nums">{money(bill.tax)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-body-strong text-fg">
           <span>{t("orderPay.total")}</span>
           <span className="tabular-nums">{money(bill.total)}</span>

@@ -374,7 +374,7 @@ export function CounterApp({
       const before =
         from ??
         (p.kind === "member" || p.kind === "reward" ? p.member.balance : 0);
-      const label = awardLabel(program, centsFromKeypad(cents), qty);
+      const label = awardLabel(program, Math.max(0, centsFromKeypad(cents) - (grocery ? notCountedCents(notCounted) : 0)), qty);
       try {
         const res = await api.award(body, awardKey.current);
         awardKey.current = null;
@@ -1139,6 +1139,7 @@ export function CounterApp({
               onRedeem={(id) => void redeem(phase.member, id)}
               onVerify={() => setMode("verify")}
               onClear={reset}
+              excludedCents={grocery ? Math.min(notCountedCents(notCounted), centsFromKeypad(cents)) : 0}
               extras={grocery ? <GroceryExtras grocery={grocery} cents={cents} notCounted={notCounted} setNotCounted={setNotCounted} bulk={bulk} setBulk={setBulk} remind={bulkRemind} setRemind={setBulkRemind} /> : null}
             />
           ) : null}
@@ -1532,8 +1533,11 @@ function MemberPanel({
   onVerify,
   onClear,
   extras,
+  excludedCents = 0,
 }: {
   extras?: React.ReactNode;
+  /** Grocers: the part of the total that never earns ("Not counted"); the button shows points for the rest. */
+  excludedCents?: number;
   member: staffApi.MemberSummaryDto;
   program: ProgramForCounter;
   busy: boolean;
@@ -1684,7 +1688,7 @@ function MemberPanel({
           {busy ? (
             <Spinner />
           ) : (
-            awardLabel(program, centsFromKeypad(cents), qty)
+            awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty)
           )}
         </button>
         <div className="flex gap-2.5">

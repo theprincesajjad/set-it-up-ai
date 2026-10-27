@@ -198,7 +198,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
         <section className="flex flex-col gap-3 rounded-sheet bg-bg-subtle p-5" aria-label={t("bk.done.title")}>
           <CircleCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
           <Heading level={2}>{t("bk.done.title")}</Heading>
-          <p className="text-body text-fg-muted">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt) })}</p>
+          <p className="text-body text-fg-muted">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</p>
           {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
         </section>
@@ -317,7 +317,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
     <div className="flex flex-col gap-5 pb-28">
       {head}
       <div className="flex flex-col gap-2">
-        <Heading>{t("bk.title")}</Heading>
+        <Heading>{t(pharmacy ? "rx.book.title" : "bk.title")}</Heading>
         <p className="text-body text-fg-muted">{t("bk.intro", { shop: [shop.name, data.shop.address].filter(Boolean).join(", ") })}</p>
       </div>
       <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">

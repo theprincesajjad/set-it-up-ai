@@ -64,12 +64,12 @@ function Flyer() {
       cell: (x) => (
         <span className="block">
           <span className="font-semibold tabular text-accent-text">{dealPriceLabel(x)}</span>
-          {x.wasPriceCents ? <span className="block text-caption text-fg-muted">was {formatMoney(x.wasPriceCents)}</span> : null}
+          {x.wasPriceCents ? <span className="block whitespace-nowrap text-caption text-fg-muted">was {formatMoney(x.wasPriceCents)}</span> : null}
         </span>
       ),
     },
-    { key: "per", header: "Per unit", mobile: "hidden", cell: (x) => <span className="text-fg-muted tabular">{dealPerUnitLine(x) ?? "–"}</span> },
-    { key: "dates", header: "Dates", mobile: "subtitle", cell: (x) => <span className="text-fg-muted">{dealDates(x.startsOn, x.endsOn)}</span> },
+    { key: "per", header: "Per unit", mobile: "hidden", cell: (x) => <span className="whitespace-nowrap text-fg-muted tabular">{dealPerUnitLine(x) ?? "–"}</span> },
+    { key: "dates", header: "Dates", mobile: "subtitle", cell: (x) => <span className="whitespace-nowrap text-fg-muted">{dealDates(x.startsOn, x.endsOn)}</span> },
     {
       key: "for",
       header: "For",
@@ -139,6 +139,8 @@ function Flyer() {
         </section>
       ) : null}
 
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="flex min-w-0 flex-col gap-6">
       <Capsules
         label="Which deals"
         value={filter}
@@ -163,8 +165,43 @@ function Flyer() {
           />
         }
       />
+      </div>
+      {d ? <ShopPreview deals={d.deals.filter((x) => x.state === "live" && x.active)} whatsappText={d.whatsappText} /> : null}
+      </div>
       {d && d.textable === 0 ? <p className="text-caption text-fg-muted">No members have agreed to texts yet. Ask at the counter when you add someone.</p> : null}
       {sheet ? <DealSheet deal={sheet.deal} draft={sheet.draft} today={d?.today ?? ""} onClose={() => setSheet(null)} onSaved={() => void state.reload()} /> : null}
     </div>
+  );
+}
+
+/** Frame D4's right-hand card: the deals as a customer sees them on the shop page, and the WhatsApp text that goes with them. */
+function ShopPreview({ deals, whatsappText }: { deals: groceryApi.DealDto[]; whatsappText?: string | null }) {
+  const shown = deals.slice(0, 4);
+  return (
+    <aside aria-label="What customers see" className="hidden rounded-card border border-line p-5 xl:block">
+      <p className="text-caption text-fg-muted">What customers see</p>
+      <h2 className="mt-1 text-[20px] font-semibold leading-[26px] text-fg">This week</h2>
+      {shown.length ? (
+        <ul className="mt-3 divide-y divide-line border-t border-line">
+          {shown.map((x) => (
+            <li key={x.id} className="flex items-start justify-between gap-3 py-3">
+              <span className="text-body text-fg">{x.title}</span>
+              <span className="text-end">
+                <span className="block font-semibold tabular text-accent-text">{dealPriceLabel(x)}</span>
+                <span className="block text-caption text-fg-muted">{x.wasPriceCents ? `was ${formatMoney(x.wasPriceCents)}` : x.memberOnly ? "members" : x.limitPerCustomer ? `limit ${x.limitPerCustomer}` : ""}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-meta text-fg-muted">Nothing is running today, so the shop page shows no flyer.</p>
+      )}
+      {whatsappText ? (
+        <div className="mt-3 rounded-input bg-bg-subtle p-3">
+          <p className="text-meta-strong text-fg">Copy for WhatsApp</p>
+          <p className="mt-1 line-clamp-4 text-caption text-fg-muted">{whatsappText}</p>
+        </div>
+      ) : null}
+    </aside>
   );
 }

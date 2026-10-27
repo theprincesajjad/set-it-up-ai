@@ -240,7 +240,7 @@ export default function Book() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
             <View>
               <Text variant="meta" color="fgMuted">{ids.length ? t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) }) : t("bk.chooseTime")}</Text>
-              {ids.length && !data.shop.pharmacy ? <Text style={disp(22, 800, 26)}>{bookingLogic.totalText(t as never, data, sel, money)}</Text> : null}
+              {ids.length && !(data.shop.pharmacy && sel.priceCents <= 0) ? <Text style={disp(22, 800, 26)}>{bookingLogic.totalText(t as never, data, sel, money)}</Text> : null}
             </View>
             {ids.length && deposit > 0 ? <Text variant="meta" color="fgMuted">{t("bk.depositHold", { amount: money(deposit) })}</Text> : null}
           </View>
@@ -265,7 +265,7 @@ export default function Book() {
                 <Text variant="bodyStrong">{pick(s).name}</Text>
                 <Text variant="meta" color="fgMuted">{staffName ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}</Text>
               </View>
-              {data.shop.pharmacy ? <Text variant="meta" color="fgMuted">{t("rx.book.noCharge")}</Text> : <Text variant="headline" tabular>{s.priceFrom ? t("bk.from", { price: money(v.priceCents) }) : money(v.priceCents)}</Text>}
+              {data.shop.pharmacy && v.priceCents <= 0 ? <Text variant="meta" color="fgMuted">{t("rx.book.noCharge")}</Text> : <Text variant="headline" tabular>{s.priceFrom ? t("bk.from", { price: money(v.priceCents) }) : money(v.priceCents)}</Text>}
             </Pressable>
           );
         })}

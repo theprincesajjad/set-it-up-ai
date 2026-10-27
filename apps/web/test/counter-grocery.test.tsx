@@ -46,6 +46,8 @@ describe("<CounterApp> for a grocer", () => {
     await userEvent.keyboard("5500");
     await userEvent.type(screen.getByLabelText("Not counted"), "15");
     expect(screen.getByText("$40.00 counts")).toBeTruthy();
+    // The big button promises points on what counts ($40), not on the whole $55 till total.
+    expect(screen.getByRole("button", { name: "Award 40 pts" })).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Atta 20 lb" }));
     await userEvent.click(screen.getByRole("checkbox", { name: /said yes to a restock text/ }));
     await userEvent.click(screen.getByRole("button", { name: /Award/ }));

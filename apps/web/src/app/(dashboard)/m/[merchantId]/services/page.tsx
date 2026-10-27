@@ -61,7 +61,7 @@ function Services() {
         actions={
           <>
             {both ? <Segmented label="Kind" value={kind} onChange={setKind} options={[{ value: "appointment", label: "Services" }, { value: "repair_line", label: "Price list" }]} /> : null}
-            {manager ? <Button size="sm" iconStart={Plus} onClick={() => setEdit("new")}>{repair ? "Add a line" : "Add a service"}</Button> : null}
+            {manager ? <Button size="sm" iconStart={Plus} onClick={() => setEdit("new")}>{repair ? "Add a line" : pharmacy ? "Add appointment type" : "Add a service"}</Button> : null}
           </>
         }
       />

@@ -79,7 +79,8 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
     void s;
     return t("cl.ui.noPass");
   };
-  const untilText = (s: Sess) => when(new Date(new Date(s.startsAt).getTime() - data.policy.cancelWindowHours * 3_600_000).toISOString());
+  // "8:00 a.m." at the end of a sentence reads "a.m..": say "8:00 AM" where a full stop follows.
+  const untilText = (s: Sess) => when(new Date(new Date(s.startsAt).getTime() - data.policy.cancelWindowHours * 3_600_000).toISOString()).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`);
 
   async function book(s: Sess, use: "auto" | "drop_in") {
     if (!signedIn) return setWantsSignIn(true);
@@ -261,7 +262,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
               </div>
             )}
             <p className="text-meta text-fg-muted">{t("cl.ui.cancelRule", { until: untilText(flow.session) })}{data.policy.lateFeeCents ? ` ${t("cl.ui.cancelFee", { fee: money(data.policy.lateFeeCents) })}` : ""}</p>
-            {data.policy.termsNote ? <p className="text-meta text-fg-muted">{data.policy.termsNote}</p> : null}
+            {data.policy.termsNote ? <p dir="auto" className="text-meta text-fg-muted">{data.policy.termsNote}</p> : null}
             <div className="flex flex-col gap-2">
               <Button size="lg" fullWidth loading={busy} onClick={() => book(flow.session, "auto")}>{flow.session.booked >= flow.session.capacity ? t("cl.ui.joinWaitlist") : t("cl.ui.bookClass")}</Button>
               {dropIn && flow.session.booked < flow.session.capacity && !activeMembership && !passes.length ? <Button size="lg" fullWidth variant="secondary" loading={busy} onClick={() => book(flow.session, "drop_in")}>{t("cl.ui.payDropIn", { amount: money(dropIn.priceCents) })}</Button> : null}

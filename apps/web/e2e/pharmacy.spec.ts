@@ -125,7 +125,7 @@ test("appointments: types have no price, and the shopper books with no notes and
   await expect(page.getByText("Flu shot").first()).toBeVisible();
   await expect(page.getByText("Not charged here").first()).toBeVisible();
   await expect(page.getByTestId("pharmacy-keep")).toContainText("What we never ask for or keep");
-  await page.getByRole("button", { name: "Add a service" }).click();
+  await page.getByRole("button", { name: "Add appointment type" }).click();
   await expect(page.getByTestId("pharmacy-presets")).toBeVisible();
   await expect(page.getByLabel("Price")).toHaveCount(0);
   await expect(page.getByLabel("Deposit")).toHaveCount(0);

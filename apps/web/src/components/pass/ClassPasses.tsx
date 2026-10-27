@@ -124,7 +124,7 @@ export function ClassPasses() {
               <li key={b.id} className="flex flex-col gap-0.5 px-4 py-3">
                 <span className="text-meta-strong text-accent-text">{when(b.session.startsAt, b.merchant.timezone)}</span>
                 <span className="text-body-strong text-fg">{b.session.name}</span>
-                <span className="text-meta text-fg-muted">{b.status === "waitlisted" ? t("cl.ui.onWaitlist", { n: b.waitlistPosition ?? 1 }) : t("cl.ui.freeUntil", { when: when(b.freeCancelUntil, b.merchant.timezone) })}</span>
+                <span className="text-meta text-fg-muted">{b.status === "waitlisted" ? t("cl.ui.onWaitlist", { n: b.waitlistPosition ?? 1 }) : t("cl.ui.freeUntil", { when: when(b.freeCancelUntil, b.merchant.timezone).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</span>
               </li>
             ))}
           </ul>

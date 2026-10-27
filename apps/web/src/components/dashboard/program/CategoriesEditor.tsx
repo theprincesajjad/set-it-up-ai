@@ -41,8 +41,8 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
       <ul className="flex flex-col divide-y divide-line border-y border-line">
         {categories.map((c) => (
           <li key={c.id} className="py-2.5">
-            <div className="grid items-center gap-x-8 gap-y-1 sm:grid-cols-[1fr_auto_auto]">
-              <p className="flex items-center gap-2 text-meta-strong text-fg">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <p className="flex min-w-[12rem] flex-1 flex-wrap items-center gap-2 text-meta-strong text-fg">
                 {c.protected ? <Lock aria-hidden className="size-3.5 text-fg-muted" strokeWidth={1.75} /> : null}
                 {c.name}
                 {c.protected && pharmacy ? <span className="whitespace-nowrap rounded-full bg-fg px-2 py-0.5 text-[11px] font-medium text-bg" data-testid="locked-tag" title="Locked by Ontario pharmacy rules">Locked</span> : null}
@@ -52,10 +52,10 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
                   </button>
                 ) : null}
               </p>
-              <div className="sm:w-52">
+              <div className="sm:w-44">
                 <Switch label="Earns points" checked={c.earnEligible} disabled={c.protected} onChange={(v) => set(c, { earnEligible: v })} />
               </div>
-              <div className="sm:w-52">
+              <div className="sm:w-44">
                 <Switch label="Discounts apply" checked={c.discountEligible} disabled={c.protected} onChange={(v) => set(c, { discountEligible: v })} />
               </div>
             </div>
