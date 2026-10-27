@@ -42,7 +42,7 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
     done(null, Object.fromEntries(new URLSearchParams(body as string)));
   });
 
-  await app.register(cors, { origin: ctx.config.env === "production" ? ctx.config.corsOrigins : true, credentials: true });
+  await app.register(cors, { origin: ctx.config.env === "production" ? ctx.config.corsOrigins : true, credentials: true, methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] });
   if (ctx.config.env !== "test") {
     // Runs after the auth hook so signed-in traffic is limited per user. The
     // web app's server-side calls all come from one IP, so keying by IP alone
