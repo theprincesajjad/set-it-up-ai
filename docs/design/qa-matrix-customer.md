@@ -377,6 +377,17 @@ Scanned from `apps/web/src/app/(pass)`, `(marketing)` and `apps/mobile/src/app` 
 - Expo app: every file under `src/app` except the counter: tabs (discover, map, wallet, activity, you), card, qr, rewards, redeem, history, discount, referrals, notifications, orders, tiffin (list, detail, plans, plan form), events (list, detail, `e/<token>`), catering, banquet, book, dropoff, order-ahead, shop and `s/<slug>`, `j/<code>`, `q/<token>` and `quote/<token>`, tickets, appointments, campaigns, settings (language, notifications, privacy, profile, shops, suggest), the auth steps and the staff sign-in.
 - Not covered on purpose: `/dev/*` (development-only pages that do not exist in production).
 
+## Auto care (final build, auto)
+
+Rows A1 to A4 for the customer pages of the auto care module (`docs/research/auto-care.md`). Shot at 390 by `apps/web/e2e/auto-care.spec.ts` on the final build and compared with the Figma PNGs in `scratchpad/figma/auto-care/`. Hindi, Urdu and Punjabi strings are covered by the l10n scan and catalog parity tests, not read by a native speaker.
+
+| ID | Screen | State | Route | Figma frame (file / PNG) | Width | Languages | Light / dark | Purpose (research doc) | Result | Final build reviewed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A1 | My vehicles | a Civic with reminders from the garage, a stored summer set and swap days | /me/vehicles | auto-care/m1 (5:2) | 390 | en | light, dark | See what my car needs and book a tire swap day (auto-care §3 job 8). | intentional difference: the page also carries the odometer form, an Add a vehicle form and the swap day list under the reminders | full: `scratchpad/shots/auto-build/final/m1-my-vehicles-390-dark.png; light in e2e/screenshots/auto-care/m1-my-vehicles-390.png` next to the frame |
+| A2 | Approve an estimate | a vehicle estimate sent, not yet approved | /q/{token} | auto-care/m2 (5:33) | 390 | en | light, dark | See it is an estimate, its dates and the 10% ceiling before saying yes (auto-care §2.4). | match (the box, dates, part condition and parts line are above the price lines; the existing signature form follows) | full: `scratchpad/shots/auto-build/final/m2-approve-estimate-390-dark.png; light in e2e/screenshots/auto-care/m2-approve-estimate-390.png` next to the frame |
+| A3 | Invoice with the estimate | an invoice 5.6% over its approved estimate | /i/{token} | none (no frame; follows frame 4) | 390 | en | light, dark | Show the estimate, the percent over, odometer in and out, parts and the warranty (auto-care §2.4). | match (no frame; two boxes above the total) | full: `scratchpad/shots/auto-build/final/m2-invoice-390-dark.png; light in e2e/screenshots/auto-care/m2-invoice-390.png` next to the frame |
+| A4 | Wash membership card | not built | n/a | auto-care/m3 (5:66) | 390 | en | light, dark | A member gets in without a card and can leave without calling (auto-care §3 job 6). | not built: the member's plan card is the existing Passes page; a wash-branded card with a QR is an open item (research §9) | full: `none` next to the frame |
+
 ## Notes on how the shots were made
 
 - **Payment forms.** The QA build has no Stripe publishable key, so every payment form is the dev "Test payment" box that calls the fake provider; the Stripe Payment Element cannot be drawn offline. Every payment state (order, split, intent, setup, quote deposit, invoice, tip, catering deposit) was driven to its paid state through that box.
