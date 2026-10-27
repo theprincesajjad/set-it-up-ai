@@ -1,0 +1,64 @@
+# Audit: independent grocers and halal butchers (slug `grocers`)
+
+Oct 27, 2026. Reviewer played Meena (Annapurna Grocers & Spices, owner), Imtiaz (Al-Noor Halal Meats, owner) and a mother and a qurbani family (customers, 390 px). Stack: web :3700, API :4700, shopper app :3701. Screenshots are in `/tmp/claude-0/-home-user-set-it-up-ai/5a1e2619-40bd-5f60-81fb-50d449557f59/scratchpad/audit/grocers/` (file names below). "Verified" means I saw it. Everything else is labelled opinion.
+
+Data I created: one new shop (Bismillah Fresh Market, signed up through the form), customer +16475550952 (Ayesha) at Annapurna with one $132.48 award, one draft SMS flyer campaign at Annapurna, one pantry pick-up order (#3) as Priya at Annapurna. I moved Al-Noor's Eid date to May 17 and back to May 16. Nothing else was changed.
+
+## 1. Verdict
+
+- Owner: not today. A self-serve grocer signs up in about 2 minutes and gets a working points program, but every grocer feature (flyer, butcher counter, Eid plan, pantry reminders, WhatsApp) is behind "Coming with Café & Retail" and the plan is "coming soon", so there is nothing to pay for yet. Where the features are on (the seeded shops), the owner side is strong; the customer side of the butcher job is not finished.
+- Customer: for points, no, the reward is worth about 0.5% and takes months. For the restock reserve page and the weekly flyer, yes. For qurbani, not yet: the menu offers no way in, and a direct link fails with "too far ahead".
+- Single biggest blocker: a customer cannot start a butcher or qurbani order from the shop page or menu (no button, goat and lamb lines order by count with HST, no weight), so the "butcher counter" job is owner-only.
+
+## 2. What works (keep)
+
+- Signup to a live shop in one form; grocery type gets the right template (fixed $5 and $10 rewards, "Giving back 0.5%", regulated categories off). `n-home.png`, `n2-_program.png`.
+- Counter: "Not counted" field with a live "$113.98 counts" line, bulk-item chips and a clear restock ask. Award of $132.48 with $18.50 excluded came out at 113 points. `k3-nc.png`, `k4-done.png`.
+- Owner home: the Diwali banner (12 days out) with "Open the flyer", butcher counter today, "probably running low", flyer status. `a-home.png`.
+- Flyer editor: price per 100 g computed from pack size, was price, members-only, limit, season; copy for WhatsApp; preview of what customers see. `a-_grocery_flyer.png`.
+- Weigh sheet: per-line weight, estimate against weighed, deposit paid, "raw meat carries none" tax note. `w2-weigh.png`.
+- Moon-sighting move: moving May 16 to May 17 shifted the three pick-up days (May 17 to 19), moved "Bookings should open" to Mar 22, kept the per-day caps by "Day N", labelled "Moved from May 16" and offered "Back to May 16". `m-moved.png`.
+- Restock reserve page: opens on the one item, price, two pick-up windows, a name field, "Nothing is charged now", a per-item reminder switch. A logged-out visitor gets a phone and code box. Reserve produced order #3 with a tracker. `r1.png`, `r3-reserved.png`.
+- Four-language shop page: Urdu is right to left with isolated prices. `u-dark.png`.
+
+## 3. Findings
+
+| id | severity | who | area | where | what happened | what should happen | screenshot |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 | blocker | owner | business value | `/m/{newShop}/grocery/flyer`, `/grocery/butcher`, billing | A new grocer who signs up sees "Coming with Café & Retail. Notify me" on Flyer and Butcher; billing says Café & Retail is "Coming soon". No path to get the grocer features or to pay. | Pilot request that an admin approves in a day, or a visible "ask for pilot" with a promise; the grocer pitch must say what is live. | `n2-_grocery_flyer.png`, `n2-_billing.png` |
+| G2 | blocker | customer | customer value / UX | `/shops/al-noor-halal-meats` and `/menu` | Shop page has no butcher or pre-order block. Menu shows goat, lamb and chicken with a "+" and a bare "$13.99" (no "/kg", no estimate); qurbani items show "Pre-order" but no button, and tapping does nothing. The only entry is a URL `/preorder/{itemId}` that I found through the API. | Butcher block on the shop page; "/kg" and "about" on every weighed line; a Reserve button on qurbani lines. | `c-al-menu.png`, `c-alnoor.png` |
+| G3 | major | customer | UX / customer value | `/shops/al-noor-halal-meats/order` | Adding 1 goat curry cut makes an ordinary pick-up order: quantity 1, "As soon as possible (about 20 min)", HST $1.82 on $13.99. The owner's price list says "No (zero-rated)". The customer is shown tax the weigh sheet would not charge, and there is no weight or estimate. | Weighed lines use the pre-order flow with an estimate and no tax; no 20-minute promise on cut-to-order meat. | `c-g3.png` |
+| G4 | major | customer | UX | `/shops/al-noor-halal-meats/preorder/{cowShareId}` | Day chips ("Sun 16, 24 left") are selectable today and a time can be picked, but Reserve ends with "Pickup time is too far ahead" and no date. The plan opens Mar 21; the page never says so. | Show "Booking opens Mar 21" and a notify or wait option instead of live-looking days. | `q-cow5.png` |
+| G5 | major | customer | UX / trade fit | same page | Restaurant wording on a qurbani booking: heading "reserve your degh", "Pots are cooked fresh for you", "so we can start cooking"; the menu groups the animals under "degh". | "Reserve your qurbani" and plain wording; Hindi, Urdu and Punjabi need the same fix. | `q-cow4.png`, `c-al-menu.png` |
+| G6 | major | customer | trade fit | qurbani page | No quantity (a family books 2 or 7 shares), no "on behalf of" names, no choice of cut or bags, and "336 hours' notice" instead of "14 days". Aqiqah is counted in the Eid animal caps in the owner plan. | Quantity stepper, a names field, days not hours; keep aqiqah out of qurbani caps or make it a toggle. (opinion on aqiqah) | `q-goat.png`, `b-EidalAdha.png` |
+| G7 | major | owner | UX / trade fit | `/m/{al-noor}/grocery/butcher` "Take a pre-order" | The phone pre-order dialog offers only the three qurbani items at Al-Noor; goat leg and chicken, the daily job, are missing. At Annapurna it says "No pre-order dishes yet. Mark a degh as pre-order only in Menu & dietary." Copy also says "kitchen ticket" and "allergy red band". | List every butcher item with weight or count; butcher wording. | `w1-take-al.png`, `w1-take.png` |
+| G8 | major | owner | UX | `/m/{id}/orders` and customer tracker `/o/{id}` | Butcher orders show "Cooking", "Start preparing", tracker "Preparing". | "Cutting", "Weigh", "Ready" statuses for grocers. | `w3-orders.png`, `r3-reserved.png` |
+| G9 | major | customer | customer value | `/shops/annapurna-grocers-and-spices`, `/program` | $5 per $1,000 spent (0.5%). Seeded Priya has 233 points after 55 days, so at her pace the first $5 is about 8 months away. The shop page and Rewards say "reach in a month" and "get 50 points for today's shop". (Rate is affordable at 2% net margin; the pitch is weak.) | Keep the 0.5% but make the first reward reachable (for example a welcome $2 off at 400 points) or stop calling it easy; show "about N weeks at your usual shop". (opinion) | `a-_program.png`, `p-me.png` |
+| G10 | major | owner | UX | counter `/m/{id}/counter` at 820 px | The Award button is below the fold after keypad, Not counted, chips and the restock tick. Keypad has no decimal or "Not counted" keypad: the field needs the system keyboard. A line of five customers means about 6 to 8 touches each. | Sticky Award bar; a numeric keypad for Not counted; the chips collapsed until tapped. | `k3-nc.png` |
+| G11 | minor | owner | UX | `/m/{id}/grocery/flyer` "Text members" | Creates a draft and lands on Messages with Recipients 0 while the toast says "Draft ready for 21 members". The text is English only though members speak hi, ur, pa; it is two SMS segments, so 21 members cost 42 of the 500 included texts; a weekly flyer to 600 members would burn the allowance in one send. | Show recipients and segments; send in each member's language; price extra texts. | `f1-text.png` |
+| G12 | minor | owner | UX | signup, `/m/{id}/setup` | Grocery hidden under "Something else?" dropdown; no halal butcher type; neighbourhood list has only Ridgeway Plaza and Roncesvalles; setup says "Give your first stamp" for a points program. | Grocery and butcher chips; GTA neighbourhoods; "points" wording. | `s1-form.png`, `s3-after.png` |
+| G13 | minor | customer | UI | shop page, join form | "Your stamps work either way" and "Stamp added for Ayesha. 163 pts" on a points program. | Say points. | `c-shop.png`, `k4-done.png` |
+| G14 | minor | customer | UI | `/me` | Headline "767 points to $5 off at Annapurna" as the whole-wallet figure; points do not combine across Annapurna and Al-Noor. | Name the shop under the number or list each. | `p-me.png` |
+| G15 | minor | owner | trade fit | marketing home, `/pricing` | No grocer or butcher section anywhere; pricing lists no grocer features, though "and 28 more" in billing names them. Menu page says "Prices are before HST 13%" even on zero-rated meat. | Grocer card on "For shops"; fix tax footer. | `m-pricing.png`, `m-home.png` |
+| G16 | polish | owner | UI | `/program` | "$ off $5.00" in the rewards list; "Surprise expiry is what sank Drop" names a competitor in owner copy. | Clean strings. | `a-_program.png` |
+| G17 | polish | customer | trade fit | Urdu shop page | Item names, "$5 off" and "market" stay English or lower-case; hi, ur, pa still need a native reader (the research doc says so). | Native review. | `u-dark.png` |
+
+Not verified: shopper app screens past sign-in (profile save fails in the web export because the API allows only GET, HEAD and POST in CORS; treated as test-stack, not a finding); real SMS delivery of the restock text; qurbani booking with a real card; dark mode screenshots reviewed (taken in `u-dark.png`, not inspected); whether the Eid move texts booked families (no bookings existed, and the move screen does not say how many families it affects).
+
+## 4. Improvements (ranked)
+
+1. Open the grocer features to a signed-up grocer, by a pilot request button that an admin approves. Smallest change: a "Request pilot" action on the "Coming with Café & Retail" panel that writes a lead and shows a promise. Files: `apps/web/src/components/dashboard/...` (the coming-soon panel), `packages/shared/src/plans.ts`, `apps/web/src/lib/dashboard/nav.ts`.
+2. Give the customer a way in to the butcher counter. Smallest change: a "Butcher counter" block on the shop page linking to the menu, a "/kg" and "about" on weighed lines, a Reserve button for `preorderOnly` items. Files: `apps/web/src/components/grocery/GroceryBlock.tsx`, `apps/web/src/components/restaurant/MenuBrowser.tsx` (the `canPreorder` gate reads `features.preorder`, which grocers lack), `apps/web/src/app/(pass)/shops/[slug]/page.tsx`.
+3. Route weighed lines to the pre-order flow: estimate, no tax, no ASAP. Files: `apps/web/src/components/restaurant/OrderView.tsx`, `PreorderView.tsx`, `apps/web/src/lib/restaurant/order.ts`.
+4. Qurbani page: quantity, names, "days" instead of hours, "opens Mar 21" notice, grocer wording in all four languages. Files: `PreorderView.tsx`, `packages/shared/src/i18n/messages`, `apps/web/src/components/dashboard/grocery/EidPlan.tsx`.
+5. Let the owner's phone pre-order dialog list every butcher item. Files: `apps/web/src/components/dashboard/restaurant/TakeOrderSheet.tsx`, `apps/web/src/app/(dashboard)/m/[merchantId]/grocery/butcher/page.tsx`.
+6. Counter speed: sticky Award button, numeric Not counted keypad. Files: `apps/web/src/components/dashboard/counter/CounterApp.tsx`, `GroceryExtras.tsx`.
+7. Butcher status words (Cutting, Weigh) and points wording instead of stamps. Files: Orders page, order tracker, `packages/shared/src/i18n/messages`.
+8. Flyer text: show recipients and segments, send per language, price extra texts. Files: `services/grocery.ts` (API), flyer page, campaigns.
+9. A reachable first reward. Files: `packages/shared/src/verticals.ts`, `apps/web/src/lib/joinCopy.ts`.
+
+## 5. Self-serve check
+
+- Landing page to a live shop: about 2 minutes by the form (scripted 41 seconds including a retry of the type dropdown). Landing page to first point earned by a real customer: about 6 minutes by my count (form 2, scan and join on the shop page 15 seconds scripted, counter award 8 seconds scripted; a human adds the type, name and an amount). Customer join itself needs a code, then a first name.
+- Steps that need help: finding "Grocery / Market" (hidden in a dropdown); knowing the grocer features exist and cannot be turned on (G1); entering a butcher pre-order by phone (G7); qurbani booking before Mar 21 (G4).
+- Remove or default: default the grocer type to a visible chip; default the Not counted field to collapsed; hide "Coming soon" plans from a grocer or give them a request button; default the customer SMS to the member's language.
