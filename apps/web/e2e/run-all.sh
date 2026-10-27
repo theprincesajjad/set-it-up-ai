@@ -38,10 +38,19 @@ kill_tree() { # pid: stop it and everything it started (pnpm/npx wrap the real s
   kill "$1" 2>/dev/null || true
 }
 
+# next build/start add a custom dist dir to these two files; put them back afterwards.
+WEB_CONFIG_BACKUP="$(mktemp -d)"
+cp apps/web/tsconfig.json apps/web/next-env.d.ts "$WEB_CONFIG_BACKUP/"
+
 cleanup() {
   for pid in "${PIDS[@]:-}"; do
     [ -n "$pid" ] && kill_tree "$pid"
   done
+  cp "$WEB_CONFIG_BACKUP/tsconfig.json" "$WEB_CONFIG_BACKUP/next-env.d.ts" "$ROOT/apps/web/" 2>/dev/null || true
+  rm -rf "$WEB_CONFIG_BACKUP"
+  # The throw-away database (~60 MB) goes; the logs next to it stay.
+  [ -z "${E2E_DB_DIR:-}" ] && rm -rf "$DB_DIR/pg"
+  return 0
 }
 trap cleanup EXIT INT TERM
 
