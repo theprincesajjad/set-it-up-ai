@@ -45,7 +45,9 @@
     "*.ts",
     "*.mts",
     ".next-audit/types/**/*.ts",
-    ".next-audit/dev/types/**/*.ts"
+    ".next-audit/dev/types/**/*.ts",
+    ".next-auto/types/**/*.ts",
+    ".next-auto/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

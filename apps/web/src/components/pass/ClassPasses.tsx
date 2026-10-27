@@ -67,7 +67,7 @@ export function ClassPasses() {
   if (failed) return <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" onClick={() => void load()}>{t("rc.tryAgain")}</Button>} />;
   if (!data) return <Skeleton className="h-48 w-full rounded-card" />;
   const empty = !data.memberships.length && !data.passes.length && !data.bookings.length;
-  if (empty) return <EmptyState title={t("cl.ui.passes.none")} />;
+  if (empty) return <div className="flex flex-col gap-4">{banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}<EmptyState title={t("cl.ui.passes.none")} /></div>;
 
   return (
     <div className="flex flex-col gap-6">
