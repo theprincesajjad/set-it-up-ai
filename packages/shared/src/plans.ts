@@ -234,6 +234,11 @@ export const FEATURE_KEYS = [
   "grocery.counter_preorders",
   "grocery.pantry_reminders",
   "grocery.whatsapp_orders",
+  // Groomers, dog daycare and pet food stores (docs/research/pet-care.md): sold inside Café & Retail, no pack.
+  "pets.profiles",
+  "pets.daycare",
+  "pets.food_cards",
+  "pets.report_cards",
   // ---- Pro (everything in Plus, plus) ----
   "service.tickets",
   "service.quote_approval",
@@ -350,6 +355,12 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("grocery.pantry_reminders", "Pantry reminders", "A text when a member who asked is about to run out of a bulk staple such as a 20 lb bag of atta.", "plus", 2, 100),
     f("grocery.whatsapp_orders", "WhatsApp list orders", "Answer WhatsApp order lists inside the 24 hour window and turn them into pick-up orders with a pay link.", "plus", 2, 100),
     ].map((d): FeatureDef => ({ ...d, vertical: "grocery" })),
+    ...[
+    f("pets.profiles", "Pets and groom rebooking", "Pets under the owner with breed, size and coat, vaccine expiry dates with a photo of the certificate, a groom cadence per pet and a reminder text when a pet is due.", "plus", 2, 100),
+    f("pets.daycare", "Daycare check-in", "A day count against capacity and dogs per staff, a check-in that stops expired vaccines, prepaid packs and late-pickup minutes.", "plus", 2, 100),
+    f("pets.food_cards", "Pet food cards", "A buy-12-get-1 card per brand and bag size that cannot be redeemed early, and a text before a bag runs out.", "plus", 2, 100),
+    f("pets.report_cards", "Report cards", "A text with a private photo page after a groom or a daycare day.", "plus", 2, 100),
+    ].map((d): FeatureDef => ({ ...d, vertical: "pet" })),
     // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
     f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),

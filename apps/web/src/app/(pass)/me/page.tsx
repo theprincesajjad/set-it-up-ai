@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { campaignsApi, groceryApi } from "@ll/shared";
 import { PantryReminders } from "@/components/pass/PantryReminders";
+import { PetLinks } from "@/components/pass/PetLinks";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Wallet } from "@/components/pass/Wallet";
 import { PageFrame } from "@/components/restaurant/PageFrame";
@@ -33,18 +34,19 @@ export default async function MePage({ searchParams }: Props) {
     );
   }
   const api = await getServerApi();
-  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"])]).catch(() => null);
+  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0)]).catch(() => null);
   if (!data) {
     const t = await getT(sp);
     return <ErrorState title={t("wp.err.card")} description={t("auth.err.network")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
   }
-  const [profile, wallet, card, campaigns, pantry] = data;
+  const [profile, wallet, card, campaigns, pantry, petCount, foodCount] = data;
   // The shopper's own language: ?lang= / the saved choice, else the language on their profile.
   const locale = await getLocaleForProfile(sp, profile.locale);
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
       <Wallet profile={profile} wallet={wallet} card={card} campaigns={campaigns} endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))} />
       <PantryReminders items={pantry} />
+      <PetLinks pets={petCount} cards={foodCount} />
     </LocaleScope>
   );
 }

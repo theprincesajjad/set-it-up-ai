@@ -19,6 +19,11 @@ import {
   appointments,
   classBookings,
   familyMembers,
+  petVaccines,
+  petVisits,
+  pets,
+  foodCards,
+  daycarePacks,
   preferredStaff,
   queueEntries,
   classMemberships,
@@ -154,6 +159,17 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   const tickets = await tx.select({ id: serviceTickets.id, photos: serviceTickets.photos }).from(serviceTickets).where(eq(serviceTickets.userId, userId));
   report.serviceTickets = tickets.length;
   const photoUrls = tickets.flatMap((t) => t.photos ?? []);
+  // Pet care: pets, vaccine proof photos, visits and report cards, food cards and daycare packs go with the account (the proof and report photos are deleted from storage).
+  const myPets = await tx.select({ id: pets.id }).from(pets).where(eq(pets.userId, userId));
+  if (myPets.length) {
+    const petIds = myPets.map((p) => p.id);
+    const proofs = await tx.select({ u: petVaccines.proofUrl }).from(petVaccines).where(inArray(petVaccines.petId, petIds));
+    const shots = await tx.select({ u: petVisits.photoUrl }).from(petVisits).where(inArray(petVisits.petId, petIds));
+    photoUrls.push(...[...proofs, ...shots].map((x) => x.u).filter((u): u is string => !!u));
+  }
+  count("pets", await tx.delete(pets).where(eq(pets.userId, userId)).returning({ id: pets.id }));
+  await tx.delete(foodCards).where(eq(foodCards.userId, userId));
+  await tx.delete(daycarePacks).where(eq(daycarePacks.userId, userId));
   report.photos = photoUrls.length;
   if (tickets.length) {
     const ids = tickets.map((t) => t.id);

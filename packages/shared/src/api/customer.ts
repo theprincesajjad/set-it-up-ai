@@ -343,6 +343,8 @@ export interface DataExportModules {
   rebookingNudges: unknown[];
   familyMembers: unknown[];
   myBarber: unknown[];
+  pets: unknown[];
+  foodCards: unknown[];
   tiffinSubscriptions: unknown[];
   cateringEvents: unknown[];
   hallBookings: unknown[];

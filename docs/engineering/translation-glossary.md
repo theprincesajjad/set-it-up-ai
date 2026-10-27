@@ -236,6 +236,15 @@ What to look at first:
 - **Order and ticket statuses** (`ui.order.*`, `ui.ticket.*`) and the order tracker steps are short labels: tense and gender must agree with the thing they describe.
 - Latin tokens left as they are on purpose: QR, PIN, STOP, WhatsApp, Apple Wallet, Google Wallet, brand and shop names. Amounts and counts stay with the formatters.
 
+### Pet care (`pet.*`, 81 keys, added by the pet team, not reviewed by a native speaker)
+
+Customer text for pet shops (`docs/research/pet-care.md`): the groom reminder (`pet.msg.groomDue*`), the report-card text and its mood and "what we did" words (`pet.msg.report*`, `pet.mood.*`, `pet.moodLabel.*`, `pet.did.*`), the run-out text (`pet.msg.runOut*`), and the pages My pets, My food cards and a report card (`pet.my.*`, `pet.vax.*`, `pet.food.*`, `pet.visit.*`, kinds, sizes and coats). What to look at first:
+
+- The three texts are real SMS and each ends with the STOP line in Latin so the opt-out works. Check the pet's name and the shop's name read naturally next to the verb (the name is a placeholder, and in Urdu the name can sit in the middle of a right-to-left sentence).
+- `pet.mood.*` are sentence fragments that follow the pet's name ("Biscuit was happy today."); keep the gender neutral where the language allows. `pet.moodLabel.*` and `pet.did.*` are chip labels.
+- Coat and size words (`pet.coat.*`, `pet.size.*`): use the word a groomer's customer would say, not a dictionary term. Breed names are not translated.
+- `pet.vax.rabies`, `pet.vax.dhpp`, `pet.vax.bordetella`: the disease and vaccine names as a vet's clinic would write them for an owner in Hindi, Urdu and Punjabi; DHPP is a transliteration.
+
 ### `ui.*` shared widgets (order and ticket statuses, hours, distance, stamp card) (87)
 
 | Key | English |

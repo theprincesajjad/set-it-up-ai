@@ -1,7 +1,7 @@
 "use client";
 import {
   BarChart3, Blocks, CalendarClock, CalendarDays, Tags, ChevronsUpDown, ClipboardList, CreditCard, Gift, Home, IdCard, Mail, Megaphone, MapPin, Settings, ShoppingBag, Store, Tag, Users, UserCog,
-  Wrench, Beef, Newspaper, Repeat, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, type LucideIcon, Calculator, Check, Ticket, ScanLine,
+  Wrench, Beef, Newspaper, Repeat, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, PawPrint, Dog, Bone, type LucideIcon, Calculator, Check, Ticket, ScanLine,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -27,6 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   slots: CalendarClock, ads: Flag, campaigns: ClipboardList, calendar: CalendarDays, services: Tags,
   classes: CalendarDays, "class-offers": Ticket, "class-door": ScanLine,
   "grocery-butcher": Beef, "grocery-flyer": Newspaper, "grocery-whatsapp": MessageCircle, "grocery-pantry": Repeat,
+  pets: PawPrint, "groom-rebooking": Repeat, daycare: Dog, "food-cards": Bone,
 };
 
 /** Merchant switcher (avatar + name) with a small popover listing the owner's other shops. */

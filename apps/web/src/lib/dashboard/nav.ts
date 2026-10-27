@@ -42,6 +42,11 @@ export const NAV_FEATURES: Record<string, readonly FeatureKey[]> = {
   // Barbershops, threading bars (docs/research/barbers-beauty.md): the walk-in line and the payouts report.
   queue: ["booking.walkin_queue"],
   payouts: ["staff.payouts"],
+  // Groomers, daycare and pet food stores (docs/research/pet-care.md).
+  pets: ["pets.profiles"],
+  "groom-rebooking": ["pets.profiles"],
+  daycare: ["pets.daycare"],
+  "food-cards": ["pets.food_cards"],
   // Class studios (docs/research/fitness-studios.md): schedule + roster, offers + members, door check-in.
   classes: ["booking.classes"],
   "class-offers": ["booking.classes", "memberships.recurring"],
@@ -76,6 +81,8 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "staff.permissions",
   "integrations.pos_auto_award",
   "integrations.webhooks",
+  // Pet shops: report cards are a button on a pet's page and on the daycare day.
+  "pets.report_cards",
 ];
 
 /**
@@ -197,7 +204,15 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
   const door: NavEntry = { key: "class-door", href: `${base}/classes/door`, label: "Door check-in", group: "commerce" };
   const queue: NavEntry = { key: "queue", href: `${base}/queue`, label: "Walk-in line", group: "commerce" };
   const payouts: NavEntry = { key: "payouts", href: `${base}/payouts`, label: "Payouts", group: "commerce" };
-  if (role === "staff") return [home, counter, ...(enabled.has("booking.walkin_queue") ? [{ ...queue, group: "main" as NavGroup }] : []), ...(enabled.has("staff.payouts") ? [{ ...payouts, group: "main" as NavGroup }] : []), ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
+  // Pet shops: pets and groom rebooking, the daycare day, food cards (pets.ts nav entries).
+  const pet = (key: string, href: string, label: string, group: NavGroup): NavEntry => ({ key, href: `${base}${href}`, label, group });
+  const petEntries: NavEntry[] = [
+    pet("pets", "/pets", "Pets", "commerce"),
+    pet("groom-rebooking", "/groom-rebooking", "Groom rebooking", "commerce"),
+    pet("daycare", "/daycare", "Daycare today", "commerce"),
+    pet("food-cards", "/food-cards", "Food cards", "commerce"),
+  ];
+  if (role === "staff") return [home, counter, ...petEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(enabled.has("booking.walkin_queue") ? [{ ...queue, group: "main" as NavGroup }] : []), ...(enabled.has("staff.payouts") ? [{ ...payouts, group: "main" as NavGroup }] : []), ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
   // Restaurants get one sidebar grouped by when it is used (restaurantNav below); everyone else keeps the flat list.
   if (hasRestaurantFeature(enabled)) return buildRestaurantNav(base, role, enabled, shop);
   // Grocers and butchers: sell ahead (butcher counter, flyer), talk to customers (WhatsApp, pantry reminders), loyalty (grocery-nav below).
@@ -217,6 +232,7 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
     { key: "invoices", href: `${base}/invoices`, label: "Invoices", group: "commerce" },
     queue,
     calendar,
+    ...petEntries,
     payouts,
     classes,
     { key: "class-offers", href: `${base}/classes/offers`, label: "Memberships & passes", group: "commerce" },
@@ -323,7 +339,7 @@ function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>
 
 /** Which nav keys a role may open directly (route guard for staff deep links). */
 export function canOpen(role: StaffRole, key: string): boolean {
-  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "classes" || key === "class-door" || key === "grocery";
+  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "classes" || key === "class-door" || key === "grocery";
   if (key === "billing") return role === "owner";
   return true;
 }

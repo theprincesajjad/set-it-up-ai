@@ -11,6 +11,9 @@ import {
   appointments,
   classBookings,
   familyMembers,
+  foodCards,
+  pets,
+  petVaccines,
   preferredStaff,
   classCharges,
   classMemberships,
@@ -77,6 +80,9 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
   const classCs = await db.select().from(classCharges).where(eq(classCharges.userId, userId)).orderBy(asc(classCharges.createdAt));
   const family = await db.select().from(familyMembers).where(eq(familyMembers.userId, userId)).orderBy(asc(familyMembers.createdAt));
   const myBarbers = await db.select().from(preferredStaff).where(eq(preferredStaff.userId, userId));
+  const myPets = await db.select().from(pets).where(eq(pets.userId, userId)).orderBy(asc(pets.createdAt));
+  const myVax = myPets.length ? await db.select().from(petVaccines).where(inArray(petVaccines.petId, myPets.map((p) => p.id))) : [];
+  const myFood = await db.select().from(foodCards).where(eq(foodCards.userId, userId));
   const nudges = await db.select().from(rebookingNudges).where(eq(rebookingNudges.userId, userId));
 
   const subs = await db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.userId, userId)).orderBy(asc(tiffinSubscriptions.createdAt));
@@ -123,6 +129,8 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
     rebookingNudges: named(nudges),
     familyMembers: family.map(clean),
     myBarber: named(myBarbers),
+    pets: myPets.map((p) => ({ ...clean(p), vaccines: myVax.filter((v) => v.petId === p.id).map((v) => ({ kind: v.kind, expiresOn: v.expiresOn, proofPhoto: v.proofUrl ? signUpload(v.proofUrl) : null })) })),
+    foodCards: named(myFood),
     tiffinSubscriptions: subs.map((s) => ({
       ...clean(s),
       merchantName: shop.get(s.merchantId) ?? null,

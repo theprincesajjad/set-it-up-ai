@@ -2796,3 +2796,234 @@ export const preferredStaff = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.merchantId] }), index("preferred_staff_staff_idx").on(t.merchantId, t.staffId)],
 );
+
+// ---------------------------------------------------------------------------
+// Pet care (docs/research/pet-care.md): pets under the owner, vaccine proof, groom cadence, daycare, food cards, report cards
+// ---------------------------------------------------------------------------
+/** A pet belongs to its owner (a user) and follows them across shops. No vet records, no diagnoses, no microchip. */
+export const pets = pgTable(
+  "pets",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** dog | cat | other */
+    species: text("species").notNull().default("dog"),
+    breed: text("breed"),
+    /** small | medium | large | giant */
+    sizeBand: text("size_band").notNull().default("medium"),
+    /** short | double | curly | long_silky | wire | hairless */
+    coat: text("coat").notNull().default("short"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("pets_user_idx").on(t.userId)],
+);
+
+/** One row per pet and vaccine kind: an expiry date and an optional photo of the certificate (a stored upload path, shown by signed link). */
+export const petVaccines = pgTable(
+  "pet_vaccines",
+  {
+    id: id(),
+    petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
+    /** rabies | dhpp | bordetella | other */
+    kind: text("kind").notNull(),
+    expiresOn: date("expires_on").notNull(),
+    proofUrl: text("proof_url"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("pet_vaccines_pet_kind_uq").on(t.petId, t.kind)],
+);
+
+/** What one shop knows about a pet: groom cadence, a handling note only that shop's team sees, and the daycare temperament check. */
+export const petShop = pgTable(
+  "pet_shop",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
+    groomEveryWeeks: integer("groom_every_weeks"),
+    handlingNote: text("handling_note"),
+    /** none | passed | declined */
+    assessment: text("assessment").notNull().default("none"),
+    assessedAt: ts("assessed_at"),
+    assessedBy: uuid("assessed_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.merchantId, t.petId] })],
+);
+
+/** A visit (groom or daycare day) and the report card sent for it. Counts as the last groom for the cadence when kind = groom. */
+export const petVisits = pgTable(
+  "pet_visits",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** groom | daycare */
+    kind: text("kind").notNull().default("groom"),
+    at: ts("at").notNull().defaultNow(),
+    /** Report card (all optional). */
+    mood: text("mood"),
+    did: jsonb("did").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    note: text("note"),
+    photoUrl: text("photo_url"),
+    /** Public report-card page (/r/<token>); null until a card is sent. */
+    token: text("token"),
+    sentAt: ts("sent_at"),
+    expiresAt: ts("expires_at"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("pet_visits_token_uq").on(t.token), index("pet_visits_pet_idx").on(t.petId, t.at), index("pet_visits_merchant_idx").on(t.merchantId, t.at)],
+);
+
+/** A groom reminder text per pet and cycle (the visit it followed), so a pet is texted at most once per cycle. */
+export const petNudges = pgTable(
+  "pet_nudges",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
+    /** The groom visit this cycle follows. */
+    sinceVisitId: uuid("since_visit_id").references(() => petVisits.id, { onDelete: "set null" }),
+    /** sent | skipped */
+    action: text("action").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("pet_nudges_pet_idx").on(t.merchantId, t.petId, t.createdAt)],
+);
+
+/** One row per pet shop: daycare numbers and the required vaccine list (the shop's policy; only rabies is the law) and the groom reminder switch. */
+export const petSettings = pgTable("pet_settings", {
+  merchantId: uuid("merchant_id").primaryKey().references(() => merchants.id, { onDelete: "cascade" }),
+  capacity: integer("capacity").notNull().default(16),
+  dogsPerStaff: integer("dogs_per_staff").notNull().default(15),
+  staffOn: integer("staff_on").notNull().default(1),
+  requiredVaccines: jsonb("required_vaccines").$type<string[]>().notNull().default(sql`'["rabies","dhpp","bordetella"]'::jsonb`),
+  requireAssessment: boolean("require_assessment").notNull().default(true),
+  dropInCents: integer("drop_in_cents").notNull().default(4800),
+  /** Pack sizes the counter can sell: { days, priceCents, validDays }. */
+  packs: jsonb("packs").$type<{ days: number; priceCents: number; validDays: number }[]>().notNull().default(sql`'[{"days":5,"priceCents":22000,"validDays":120},{"days":10,"priceCents":42000,"validDays":180}]'::jsonb`),
+  /** Local closing time (HH:MM) and the grace minutes before a pickup counts as late. */
+  closesAt: text("closes_at").notNull().default("18:00"),
+  lateGraceMin: integer("late_grace_min").notNull().default(15),
+  autoGroomReminders: boolean("auto_groom_reminders").notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** A prepaid pack of daycare days for an owner (sold by hand; a day is used at check-in). */
+export const daycarePacks = pgTable(
+  "daycare_packs",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    daysTotal: integer("days_total").notNull(),
+    daysUsed: integer("days_used").notNull().default(0),
+    paidCents: integer("paid_cents").notNull().default(0),
+    purchasedAt: ts("purchased_at").notNull().defaultNow(),
+    expiresAt: ts("expires_at").notNull(),
+    soldBy: uuid("sold_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [index("daycare_packs_user_idx").on(t.merchantId, t.userId)],
+);
+
+/** A dog's day at daycare. */
+export const daycareStays = pgTable(
+  "daycare_stays",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Shop-local date (YYYY-MM-DD). */
+    day: date("day").notNull(),
+    /** expected | in | out | no_show | cancelled */
+    status: text("status").notNull().default("expected"),
+    packId: uuid("pack_id").references(() => daycarePacks.id, { onDelete: "set null" }),
+    /** pack | drop_in */
+    payKind: text("pay_kind").notNull().default("drop_in"),
+    checkInAt: ts("check_in_at"),
+    checkOutAt: ts("check_out_at"),
+    lateMinutes: integer("late_minutes").notNull().default(0),
+    overrideReason: text("override_reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("daycare_stays_pet_day_uq").on(t.merchantId, t.petId, t.day), index("daycare_stays_day_idx").on(t.merchantId, t.day)],
+);
+
+/** A food brand the shop runs a buy-N-get-1 card for. The shop sets the terms (in Canada the offer is the retailer's). */
+export const foodPrograms = pgTable(
+  "food_programs",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    brand: text("brand").notNull(),
+    /** Bags to buy; the next one is free. */
+    buyCount: integer("buy_count").notNull().default(12),
+    /** Bags count for this many months from the first of the cycle. */
+    expiryMonths: integer("expiry_months").notNull().default(12),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [index("food_programs_merchant_idx").on(t.merchantId)],
+);
+
+/** A product on a card: the brand's line and bag size. Cards count per product so the free bag matches what was bought. */
+export const foodSkus = pgTable(
+  "food_skus",
+  {
+    id: id(),
+    programId: uuid("program_id").notNull().references(() => foodPrograms.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    bagGrams: integer("bag_grams").notNull(),
+    active: boolean("active").notNull().default(true),
+  },
+  (t) => [index("food_skus_program_idx").on(t.programId)],
+);
+
+/** One customer's card for one product. punches = bags bought in this cycle; given = free bags handed out. */
+export const foodCards = pgTable(
+  "food_cards",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    programId: uuid("program_id").notNull().references(() => foodPrograms.id, { onDelete: "cascade" }),
+    skuId: uuid("sku_id").notNull().references(() => foodSkus.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    petId: uuid("pet_id").references(() => pets.id, { onDelete: "set null" }),
+    punches: integer("punches").notNull().default(0),
+    given: integer("given").notNull().default(0),
+    /** First bag of the current cycle; bags older than the program's expiry stop counting. */
+    cycleStartedAt: ts("cycle_started_at").notNull().defaultNow(),
+    lastBagAt: ts("last_bag_at").notNull().defaultNow(),
+    dailyGrams: integer("daily_grams"),
+    remind: boolean("remind").notNull().default(false),
+    remindConsentAt: ts("remind_consent_at"),
+    remindConsentSource: text("remind_consent_source"),
+    remindConsentBy: uuid("remind_consent_by").references(() => users.id, { onDelete: "set null" }),
+    lastRemindedAt: ts("last_reminded_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("food_cards_user_sku_uq").on(t.userId, t.skuId), index("food_cards_merchant_idx").on(t.merchantId, t.remind)],
+);
+
+/** Every bag bought or given, for undo and the audit trail. */
+export const foodEvents = pgTable(
+  "food_events",
+  {
+    id: id(),
+    cardId: uuid("card_id").notNull().references(() => foodCards.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** bag | free | undo */
+    kind: text("kind").notNull(),
+    qty: integer("qty").notNull().default(1),
+    staffId: uuid("staff_id").references(() => users.id, { onDelete: "set null" }),
+    at: ts("at").notNull().defaultNow(),
+  },
+  (t) => [index("food_events_card_idx").on(t.cardId, t.at)],
+);

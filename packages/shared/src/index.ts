@@ -22,3 +22,4 @@ export * from "./grocery.js";
 export * from "./pharmacy.js";
 export * from "./beauty.js";
 export * from "./queue.js";
+export * from "./pets.js";

@@ -36,6 +36,7 @@ import { restaurantWebEndpoints } from "./restaurantWeb";
 import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgent";
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
 import { barberEndpoints, myBarberEndpoints, publicBarberEndpoints } from "./barber";
+import { myPetEndpoints, petEndpoints, publicPetEndpoints } from "./pets";
 import { classEndpoints, myClassEndpoints, publicClassEndpoints } from "./classes";
 import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
 import { pharmacyEndpoints } from "./pharmacy";
@@ -83,6 +84,8 @@ export function llApi(c: ApiClient) {
       ...publicAppointmentEndpoints(c),
       // Walk-in line (barber.ts)
       ...publicBarberEndpoints(c),
+      // Report card pages (pets.ts)
+      ...publicPetEndpoints(c),
       // Class schedule, offers and policy for a studio (classes.ts)
       ...publicClassEndpoints(c),
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
@@ -143,6 +146,8 @@ export function llApi(c: ApiClient) {
       ...myAppointmentEndpoints(c),
       // Family members and "my barber" (barber.ts)
       ...myBarberEndpoints(c),
+      // My pets, vaccine proof and food cards (pets.ts)
+      ...myPetEndpoints(c),
       // Classes: book, waitlist, packs, memberships (classes.ts)
       ...myClassEndpoints(c),
     },
@@ -295,6 +300,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...appointmentEndpoints(c, b),
     // Walk-in line, payouts and pay (barber.ts)
     ...barberEndpoints(c, b),
+    // Pets, groom rebooking, daycare and food cards (pets.ts)
+    ...petEndpoints(c, b),
     // Class schedule, roster, door check-in, offers and members (classes.ts)
     ...classEndpoints(c, b),
     // Restaurant desk: Home, busy mode, phone lookup and balance reminders (restaurantDesk.ts)
