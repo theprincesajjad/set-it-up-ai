@@ -146,9 +146,10 @@ test("Done on the line leaves a visit that can be checked out, and Skip only wor
   // The toast offers Check out; it opens the calendar on that visit with the checkout sheet open.
   await page.getByRole("button", { name: "Check out" }).click();
   await page.waitForURL(/\/calendar\?appt=/);
-  await expect(page.getByRole("heading", { name: /Check out Checkout Cam/ })).toBeVisible();
-  await page.getByRole("button", { name: /^Take \$/ }).click();
-  await expect(page.getByText(/Paid, invoice #\d+/)).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "Check out" });
+  await expect(sheet.getByText("Check out Checkout Cam")).toBeVisible();
+  await sheet.getByRole("button", { name: /^Take \$/ }).click();
+  await expect(sheet.getByText(/Paid, invoice #\d+/)).toBeVisible();
   await page.screenshot({ path: shot("04-done-checkout-1440") });
   expect(started.appointmentId).toBeTruthy();
   await expect.poll(async () => (await call<{ state: string }>("GET", `/v1/public/queue/${joined.token}`)).state).toBe("done");

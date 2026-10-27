@@ -239,9 +239,10 @@ test("the pet page's Book groom opens a new appointment for that dog", async ({ 
   await page.goto(`/m/${m}/pets/${id}`);
   await page.getByRole("link", { name: "Book groom" }).click();
   await page.waitForURL(/\/calendar\?newFor=/);
-  await expect(page.getByRole("heading", { name: "New appointment" })).toBeVisible();
-  await expect(page.getByLabel("Dog")).toHaveValue(id);
-  await expect(page.getByText(/Biscuit is a medium dog: prices for that size are shown/)).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "New appointment" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByLabel("Dog")).toHaveValue(id);
+  await expect(sheet.getByText(/Biscuit is a medium dog: prices for that size are shown/)).toBeVisible();
   await page.screenshot({ path: shot("05-new-appointment-dog-1440") });
 });
 
