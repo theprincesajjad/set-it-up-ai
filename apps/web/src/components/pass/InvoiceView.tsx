@@ -9,6 +9,7 @@ import { BigNumber, Heading, useFmt } from "@/components/restaurant/ui";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
+import type { MessageKey } from "@ll/shared";
 import { PaymentBox, pollUntil } from "./PaymentBox";
 import { TipPicker, type TipValue } from "./TipPicker";
 
@@ -87,7 +88,7 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
         <ul>
           {inv.lineItems.map((l, i) => (
             <li key={i} className={cn("flex items-start justify-between gap-4 py-3", i > 0 && "border-t border-line")}>
-              <span className={cn("text-body", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{l.description}{l.quantity > 1 ? <span className="text-fg-muted"> × {number(l.quantity)}</span> : null}</span>
+              <span className={cn("text-body", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{l.description}{data.vehicle && l.kind === "part" && l.condition ? <span className="text-fg-muted">, {t(`auto.q.cond.${l.condition}` as MessageKey)}</span> : null}{l.quantity > 1 ? <span className="text-fg-muted"> × {number(l.quantity)}</span> : null}</span>
               <span className={cn("shrink-0 text-body tabular-nums", l.totalCents < 0 ? "text-positive-text" : "text-fg")}>{money(l.totalCents)}</span>
             </li>
           ))}
@@ -102,6 +103,26 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
           ) : null}
         </ul>
       </section>
+
+      {data.estimate ? (
+        <section aria-label={t("auto.i.estTitle")} className="flex flex-col gap-1 rounded-card bg-bg-subtle p-4">
+          <h2 className="text-body-strong text-fg">{t("auto.i.estTitle")}</h2>
+          <p className="flex justify-between gap-4 text-meta text-fg-muted"><span>{t("auto.i.estLine")}</span><span className="tabular-nums" dir="ltr">{money(data.estimate.totalCents)}</span></p>
+          <p className="flex justify-between gap-4 text-meta text-fg"><span>{t("auto.i.finalLine")}</span><span className="tabular-nums" dir="ltr">{money(inv.totalCents)}</span></p>
+          <p className="text-meta text-fg-muted">{data.estimate.percentOver > 0 ? t("auto.i.over", { pct: number(data.estimate.percentOver) }) : data.estimate.percentOver < 0 ? t("auto.i.under", { pct: number(-data.estimate.percentOver) }) : t("auto.i.same")}</p>
+          {data.estimate.approvedBy && data.estimate.approvedAt && data.estimate.method ? (
+            <p className="text-meta text-fg-muted">{t("auto.i.approvedBy", { name: data.estimate.approvedBy, date: date(data.estimate.approvedAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ), method: t(`auto.i.method.${data.estimate.method}` as MessageKey) })}</p>
+          ) : null}
+        </section>
+      ) : null}
+      {data.vehicle ? (
+        <section aria-label={data.vehicle.label} className="flex flex-col gap-1 rounded-card border border-line p-4 text-meta text-fg-muted">
+          <p className="text-body-strong text-fg"><bdi>{data.vehicle.label}</bdi></p>
+          {data.vehicle.odometerIn ? <p>{data.vehicle.odometerOut ? t("auto.i.odo", { inKm: data.vehicle.odometerIn, outKm: data.vehicle.odometerOut }) : t("auto.i.odoIn", { inKm: data.vehicle.odometerIn })}</p> : null}
+          {data.vehicle.partsReturn ? <p>{t(`auto.i.parts.${data.vehicle.partsReturn}` as MessageKey)}</p> : null}
+          <p>{t("auto.i.warranty", { days: number(data.vehicle.warrantyDays), km: number(data.vehicle.warrantyKm) })}</p>
+        </section>
+      ) : null}
 
       {tipOn ? (
         <TipPicker

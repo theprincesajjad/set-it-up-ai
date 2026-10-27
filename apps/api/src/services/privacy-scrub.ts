@@ -24,6 +24,10 @@ import {
   pets,
   foodCards,
   daycarePacks,
+  tireSets,
+  tireSwaps,
+  vehicles,
+  washVisits,
   preferredStaff,
   queueEntries,
   classMemberships,
@@ -170,6 +174,11 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   count("pets", await tx.delete(pets).where(eq(pets.userId, userId)).returning({ id: pets.id }));
   await tx.delete(foodCards).where(eq(foodCards.userId, userId));
   await tx.delete(daycarePacks).where(eq(daycarePacks.userId, userId));
+  // Auto care: vehicles (with plate, odometer readings, service log and reminder records), stored tire sets, swap bookings and wash visits.
+  count("vehicles", await tx.delete(vehicles).where(eq(vehicles.userId, userId)).returning({ id: vehicles.id }));
+  await tx.delete(tireSets).where(eq(tireSets.userId, userId));
+  await tx.delete(tireSwaps).where(eq(tireSwaps.userId, userId));
+  await tx.delete(washVisits).where(eq(washVisits.userId, userId));
   report.photos = photoUrls.length;
   if (tickets.length) {
     const ids = tickets.map((t) => t.id);

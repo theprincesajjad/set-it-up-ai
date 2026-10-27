@@ -353,6 +353,10 @@
   --ll-vertical-spa-on-accent: #FFFFFF;
   --ll-vertical-spa-tint: #F5F5F4;
   --ll-vertical-spa-ink: #0B0B0C;
+  --ll-vertical-beauty-supply-accent: #0B0B0C;
+  --ll-vertical-beauty-supply-on-accent: #FFFFFF;
+  --ll-vertical-beauty-supply-tint: #F5F5F4;
+  --ll-vertical-beauty-supply-ink: #0B0B0C;
   --ll-vertical-fitness-accent: #0B0B0C;
   --ll-vertical-fitness-on-accent: #FFFFFF;
   --ll-vertical-fitness-tint: #F5F5F4;
@@ -365,6 +369,10 @@
   --ll-vertical-repair-auto-on-accent: #FFFFFF;
   --ll-vertical-repair-auto-tint: #F5F5F4;
   --ll-vertical-repair-auto-ink: #0B0B0C;
+  --ll-vertical-car-wash-accent: #0B0B0C;
+  --ll-vertical-car-wash-on-accent: #FFFFFF;
+  --ll-vertical-car-wash-tint: #F5F5F4;
+  --ll-vertical-car-wash-ink: #0B0B0C;
   --ll-vertical-alterations-accent: #0B0B0C;
   --ll-vertical-alterations-on-accent: #FFFFFF;
   --ll-vertical-alterations-tint: #F5F5F4;
@@ -540,6 +548,10 @@
     --ll-vertical-spa-on-accent: #0B0B0C;
     --ll-vertical-spa-tint: #161618;
     --ll-vertical-spa-ink: #F5F5F4;
+    --ll-vertical-beauty-supply-accent: #F5F5F4;
+    --ll-vertical-beauty-supply-on-accent: #0B0B0C;
+    --ll-vertical-beauty-supply-tint: #161618;
+    --ll-vertical-beauty-supply-ink: #F5F5F4;
     --ll-vertical-fitness-accent: #F5F5F4;
     --ll-vertical-fitness-on-accent: #0B0B0C;
     --ll-vertical-fitness-tint: #161618;
@@ -552,6 +564,10 @@
     --ll-vertical-repair-auto-on-accent: #0B0B0C;
     --ll-vertical-repair-auto-tint: #161618;
     --ll-vertical-repair-auto-ink: #F5F5F4;
+    --ll-vertical-car-wash-accent: #F5F5F4;
+    --ll-vertical-car-wash-on-accent: #0B0B0C;
+    --ll-vertical-car-wash-tint: #161618;
+    --ll-vertical-car-wash-ink: #F5F5F4;
     --ll-vertical-alterations-accent: #F5F5F4;
     --ll-vertical-alterations-on-accent: #0B0B0C;
     --ll-vertical-alterations-tint: #161618;
@@ -727,6 +743,10 @@
   --ll-vertical-spa-on-accent: #0B0B0C;
   --ll-vertical-spa-tint: #161618;
   --ll-vertical-spa-ink: #F5F5F4;
+  --ll-vertical-beauty-supply-accent: #F5F5F4;
+  --ll-vertical-beauty-supply-on-accent: #0B0B0C;
+  --ll-vertical-beauty-supply-tint: #161618;
+  --ll-vertical-beauty-supply-ink: #F5F5F4;
   --ll-vertical-fitness-accent: #F5F5F4;
   --ll-vertical-fitness-on-accent: #0B0B0C;
   --ll-vertical-fitness-tint: #161618;
@@ -739,6 +759,10 @@
   --ll-vertical-repair-auto-on-accent: #0B0B0C;
   --ll-vertical-repair-auto-tint: #161618;
   --ll-vertical-repair-auto-ink: #F5F5F4;
+  --ll-vertical-car-wash-accent: #F5F5F4;
+  --ll-vertical-car-wash-on-accent: #0B0B0C;
+  --ll-vertical-car-wash-tint: #161618;
+  --ll-vertical-car-wash-ink: #F5F5F4;
   --ll-vertical-alterations-accent: #F5F5F4;
   --ll-vertical-alterations-on-accent: #0B0B0C;
   --ll-vertical-alterations-tint: #161618;

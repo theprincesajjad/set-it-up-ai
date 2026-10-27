@@ -16,6 +16,7 @@ import { platformFeeFor } from "./fees.js";
 import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { decodeCursor, encodeCursor, iso, itemLabel, loadMerchant, money, notifyCustomer, paymentsReady, requirePaymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
+import { requireApprovedEstimate } from "./auto-estimate.js";
 import { requireFeature } from "./features.js";
 import { awardPurchase } from "./ledger.js";
 import { approvedQuoteFor, lineItemDto, priceLineItems } from "./quotes.js";
@@ -187,9 +188,10 @@ export async function createInvoice(ctx: AppContext, staff: StaffContext, ticket
     if (!named) throw conflict("That quote isn't approved for this ticket");
     approved = named;
   }
+  await requireApprovedEstimate(ctx.db, ticket, "invoice");
   const quote = body.fromQuote ? approved : null;
   if (body.fromQuote && !quote) throw conflict("This ticket has no approved quote. Send fromQuote=false with the line items.");
-  const base: z.infer<typeof serviceApi.lineItemSchema>[] = (quote?.lineItems ?? []).map((l: LineItem) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind ?? "other", categoryId: l.categoryId ?? null }));
+  const base: z.infer<typeof serviceApi.lineItemSchema>[] = (quote?.lineItems ?? []).map((l: LineItem) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind ?? "other", categoryId: l.categoryId ?? null, condition: l.condition ?? null }));
   const all = [...base, ...body.extraLineItems];
   if (!all.length) throw badRequest("An invoice needs at least one line item");
   const priced = await priceLineItems(ctx.db, merchant, all);

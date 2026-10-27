@@ -45,7 +45,7 @@ export function QuotePanel({ quote, customerName, now, busy, canAct, onResend, o
       <ul className="mt-3 divide-y divide-line border-y border-line" aria-label="Quote lines">
         {quote.lineItems.map((l, i) => (
           <li key={i} className="flex items-baseline justify-between gap-4 py-2.5 text-body">
-            <span className={l.totalCents < 0 ? "text-positive-text" : "text-fg"}>{l.description}{l.quantity > 1 ? <span className="text-fg-muted"> × {l.quantity}</span> : null}</span>
+            <span className={l.totalCents < 0 ? "text-positive-text" : "text-fg"}>{l.description}{l.condition ? <span className="text-fg-muted">, {l.condition}</span> : null}{l.quantity > 1 ? <span className="text-fg-muted"> × {l.quantity}</span> : null}</span>
             <span className={`tabular ${l.totalCents < 0 ? "text-positive-text" : "text-fg"}`}>{formatMoney(l.totalCents)}</span>
           </li>
         ))}

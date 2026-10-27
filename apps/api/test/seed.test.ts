@@ -636,3 +636,37 @@ describe("seedDemo: Ridgeway grocer and halal butcher", () => {
     expect(pre.length).toBeGreaterThan(0);
   });
 });
+
+describe("seedDemo: Ridgeway car wash and garage", () => {
+  it("seeds a wash with plans and check-ins and a garage with cars, tire sets, swaps and vehicle estimates, and the wash check-in works on the seed", async () => {
+    const { classMemberships, classPasses, tireSets, tireSwaps, vehicleServices, vehicles, washVisits } = await import("@ll/db");
+    const [wash] = await env.db.select().from(merchants).where(eq(merchants.slug, "splash-auto-wash"));
+    const [garage] = await env.db.select().from(merchants).where(eq(merchants.slug, "wheelhouse-tire-and-auto"));
+    expect([wash?.vertical, garage?.vertical]).toEqual(["car_wash", "repair_auto"]);
+    const plans = await env.db.select().from(classMemberships).where(eq(classMemberships.merchantId, wash!.id));
+    expect(plans.map((p) => p.status).sort()).toEqual(["active", "active", "active", "active", "active", "frozen", "past_due"]);
+    expect((await env.db.select().from(classPasses).where(eq(classPasses.merchantId, wash!.id))).map((p) => p.creditsLeft)).toEqual([6]);
+    expect((await env.db.select().from(washVisits).where(eq(washVisits.merchantId, wash!.id))).length).toBeGreaterThan(25);
+    // The wash check-in works on the seed: the demo customer's plate matches an active plan.
+    const owner = await env.db.select().from(featureOverrides).where(and(eq(featureOverrides.merchantId, wash!.id), eq(featureOverrides.key, "auto.wash")));
+    expect(owner[0]?.enabled).toBe(true);
+    expect((await env.db.select().from(vehicles)).filter((v) => v.plateNorm === "BXTR481")).toHaveLength(1);
+    // Garage: readings and service logs make some reminders due, one tire day is full, and the four vehicle tickets are in their states.
+    expect((await env.db.select().from(vehicleServices).where(eq(vehicleServices.merchantId, garage!.id))).length).toBeGreaterThan(8);
+    expect((await env.db.select().from(tireSets).where(eq(tireSets.merchantId, garage!.id))).filter((s) => s.status === "stored")).toHaveLength(7);
+    const swaps = await env.db.select().from(tireSwaps).where(eq(tireSwaps.merchantId, garage!.id));
+    const byDay = new Map<string, number>();
+    for (const s of swaps) byDay.set(s.day, (byDay.get(s.day) ?? 0) + 1);
+    expect(Math.max(...byDay.values())).toBe(4);
+    const tickets = await env.db.select().from(serviceTickets).where(eq(serviceTickets.merchantId, garage!.id));
+    expect(tickets.map((t) => t.status).sort()).toEqual(["in_progress", "intake", "quote_sent", "ready"]);
+    expect(tickets.every((t) => t.itemKind === "vehicle" && t.itemDetails.mileage && t.itemDetails.vehicleId)).toBe(true);
+    const inv = await env.db.select().from(invoices).where(eq(invoices.merchantId, garage!.id));
+    expect(inv).toHaveLength(1);
+    const q = await env.db.select().from(quotes).where(and(eq(quotes.merchantId, garage!.id), eq(quotes.status, "approved")));
+    expect(q.map((x) => x.authorizedBy?.method).sort()).toEqual(["link", "phone"]);
+    // The seeded invoice is inside the 10% rule against the estimate it follows.
+    const phoneQuote = q.find((x) => x.authorizedBy?.method === "phone")!;
+    expect(inv[0]!.totalCents).toBeLessThanOrEqual(Math.floor(phoneQuote.totalCents * 1.1));
+  });
+});

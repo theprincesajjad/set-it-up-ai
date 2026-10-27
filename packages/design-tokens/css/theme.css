@@ -159,6 +159,10 @@
   --color-vertical-spa-on-accent: var(--ll-vertical-spa-on-accent);
   --color-vertical-spa-tint: var(--ll-vertical-spa-tint);
   --color-vertical-spa-ink: var(--ll-vertical-spa-ink);
+  --color-vertical-beauty-supply-accent: var(--ll-vertical-beauty-supply-accent);
+  --color-vertical-beauty-supply-on-accent: var(--ll-vertical-beauty-supply-on-accent);
+  --color-vertical-beauty-supply-tint: var(--ll-vertical-beauty-supply-tint);
+  --color-vertical-beauty-supply-ink: var(--ll-vertical-beauty-supply-ink);
   --color-vertical-fitness-accent: var(--ll-vertical-fitness-accent);
   --color-vertical-fitness-on-accent: var(--ll-vertical-fitness-on-accent);
   --color-vertical-fitness-tint: var(--ll-vertical-fitness-tint);
@@ -171,6 +175,10 @@
   --color-vertical-repair-auto-on-accent: var(--ll-vertical-repair-auto-on-accent);
   --color-vertical-repair-auto-tint: var(--ll-vertical-repair-auto-tint);
   --color-vertical-repair-auto-ink: var(--ll-vertical-repair-auto-ink);
+  --color-vertical-car-wash-accent: var(--ll-vertical-car-wash-accent);
+  --color-vertical-car-wash-on-accent: var(--ll-vertical-car-wash-on-accent);
+  --color-vertical-car-wash-tint: var(--ll-vertical-car-wash-tint);
+  --color-vertical-car-wash-ink: var(--ll-vertical-car-wash-ink);
   --color-vertical-alterations-accent: var(--ll-vertical-alterations-accent);
   --color-vertical-alterations-on-accent: var(--ll-vertical-alterations-on-accent);
   --color-vertical-alterations-tint: var(--ll-vertical-alterations-tint);

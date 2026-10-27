@@ -103,6 +103,7 @@ const KINDS: Record<string, string> = {
   fitness: "studio",
   repair_electronics: "phone repair",
   repair_auto: "auto shop",
+  car_wash: "car wash",
   alterations: "tailor",
   dry_cleaning: "dry cleaner",
   print_shop: "print shop",

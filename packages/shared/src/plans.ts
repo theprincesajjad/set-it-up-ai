@@ -175,7 +175,7 @@ export interface FeatureDef {
    * Only for shops of this vertical (grocers and butchers: "grocery"). A café or a Starter restaurant on the same plan never gets
    * it, so a plan feature built for one trade cannot open another trade's paid module. An admin override still wins.
    */
-  vertical?: string;
+  vertical?: string | readonly string[];
   /**
    * Platform lever (e.g. network perks): configured by admins/BIAs and applied
    * network-wide regardless of a merchant's plan. Not a merchant plan feature,
@@ -239,6 +239,10 @@ export const FEATURE_KEYS = [
   "pets.daycare",
   "pets.food_cards",
   "pets.report_cards",
+  // Car washes, garages and tire shops (docs/research/auto-care.md): sold inside Café & Retail, no pack. Estimates ride the Pro service tickets.
+  "auto.vehicles",
+  "auto.tires",
+  "auto.wash",
   // ---- Pro (everything in Plus, plus) ----
   "service.tickets",
   "service.quote_approval",
@@ -361,6 +365,9 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("pets.food_cards", "Pet food cards", "A buy-12-get-1 card per brand and bag size that cannot be redeemed early, and a text before a bag runs out.", "plus", 2, 100),
     f("pets.report_cards", "Report cards", "A text with a private photo page after a groom or a daycare day.", "plus", 2, 100),
     ].map((d): FeatureDef => ({ ...d, vertical: "pet" })),
+    { ...f("auto.vehicles", "Vehicles and service reminders", "Cars under the owner with year, make, model and an optional plate, odometer readings, service intervals by km or months whichever comes first, and a reminder text when a car is due.", "plus", 2, 100), vertical: ["repair_auto", "car_wash"] as const },
+    { ...f("auto.tires", "Tire season and storage", "A capacity plan for the fall and spring swap windows, customer swap booking that refuses a full day, and a tire storage record with rack, tread and a pickup text.", "plus", 2, 100), vertical: ["repair_auto"] as const },
+    { ...f("auto.wash", "Wash check-in", "Check a member in by plate, QR or phone with one wash a day, punch cards for non-members and a list of members who stopped coming.", "plus", 2, 100), vertical: ["car_wash"] as const },
     // ---- Pro (includes everything in Plus) ----
     f("service.tickets", "Service tickets", "Intake, item details, photos, status timeline.", "pro", 2, 40),
     f("service.quote_approval", "Quote approval", "Send quotes; customers approve in-app with e-signature log.", "pro", 2, 40),
@@ -437,7 +444,7 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (ctx.override === true) return true;
   if (ctx.override === false) return false;
   if (ctx.stage === "hidden") return false;
-  if (def.vertical && ctx.vertical !== def.vertical) return false;
+  if (def.vertical && !(typeof def.vertical === "string" ? ctx.vertical === def.vertical : !!ctx.vertical && def.vertical.includes(ctx.vertical))) return false;
   if (def.pack === "restaurant") {
     if (!ctx.restaurantTier) return false;
     if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;

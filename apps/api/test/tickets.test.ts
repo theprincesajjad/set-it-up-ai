@@ -13,9 +13,9 @@ describe("ticket staff permissions (Pro: staff.permissions)", () => {
     const m = await paidMerchant(env, { plan: "pro" });
     const intakeOnly = await staffMember(env, m.merchant.id, "staff", ["tickets.manage"]);
     const base = `/v1/merchants/${m.merchant.id}`;
-    const t = await call(env, intakeOnly.token, "POST", `${base}/tickets`, { customer: { phone: "416-555-0142" }, itemKind: "vehicle", itemDetails: { make: "Honda", model: "Civic", vin: "2HGFC2F59JH000000", plate: "CABC123", mileage: "84210" }, issue: "Brakes squeal" });
+    const t = await call(env, intakeOnly.token, "POST", `${base}/tickets`, { customer: { phone: "416-555-0142" }, itemKind: "device", itemDetails: { make: "Honda", model: "Civic", vin: "2HGFC2F59JH000000", plate: "CABC123", mileage: "84210" }, issue: "Brakes squeal" }); // a device ticket: vehicle tickets need an approved estimate before an invoice (auto.test.ts)
     expect(t.status).toBe(201);
-    expect(t.body.ticket).toMatchObject({ itemKind: "vehicle", itemDetails: { plate: "CABC123" } });
+    expect(t.body.ticket).toMatchObject({ itemKind: "device", itemDetails: { plate: "CABC123" } });
     const quote = { lineItems: [{ description: "Brake pads", quantity: 1, unitPriceCents: 12000, kind: "part" }] };
     const denied = await call(env, intakeOnly.token, "POST", `${base}/tickets/${t.body.ticket.id}/quotes`, quote);
     expect(denied.status).toBe(403);

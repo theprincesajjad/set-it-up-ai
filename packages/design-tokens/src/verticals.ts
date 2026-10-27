@@ -98,6 +98,7 @@ const seeds: Record<Vertical, Seed> = {
   fitness: { emoji: "🏋️", icon: "dumbbell", category: "services" },
   repair_electronics: { emoji: "📱", icon: "monitor-smartphone", category: "repair" },
   repair_auto: { emoji: "🚗", icon: "car", category: "repair" },
+  car_wash: { emoji: "🫧", icon: "sparkles", category: "services" },
   alterations: { emoji: "🧵", icon: "ruler", category: "repair" },
   dry_cleaning: { emoji: "👔", icon: "shirt", category: "services" },
   print_shop: { emoji: "🖨️", icon: "printer", category: "services" },

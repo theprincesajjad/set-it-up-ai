@@ -18,30 +18,32 @@ export interface BuilderLine {
   unit: string;
   kind: "labour" | "part" | "fee" | "other";
   serviceId?: string | null;
+  /** Vehicle parts: new, used or reconditioned (the Ontario guide for auto repair businesses asks for it on the estimate). */
+  condition?: "new" | "used" | "reconditioned" | null;
 }
 
-const blank = (kind: BuilderLine["kind"] = "part"): BuilderLine => ({ description: "", quantity: "1", unit: "", kind });
+const blank = (kind: BuilderLine["kind"] = "part", vehicle = false): BuilderLine => ({ description: "", quantity: "1", unit: "", kind, ...(vehicle && kind === "part" ? { condition: "new" as const } : {}) });
 
 /** Lines the server will price. A negative price is only valid on a fee line (a credit such as the diagnostic fee). */
 export function toInput(lines: BuilderLine[]): serviceApi.LineItemInput[] {
   return lines
     .filter((l) => l.description.trim() && l.unit.trim() !== "" && Number.isFinite(Number.parseFloat(l.unit)))
-    .map((l) => ({ description: l.description.trim(), quantity: Math.max(1, Number.parseInt(l.quantity, 10) || 1), unitPriceCents: Math.round(Number.parseFloat(l.unit) * 100), kind: l.kind, ...(l.serviceId ? { serviceId: l.serviceId } : {}) }));
+    .map((l) => ({ description: l.description.trim(), quantity: Math.max(1, Number.parseInt(l.quantity, 10) || 1), unitPriceCents: Math.round(Number.parseFloat(l.unit) * 100), kind: l.kind, ...(l.serviceId ? { serviceId: l.serviceId } : {}), ...(l.kind === "part" && l.condition ? { condition: l.condition } : {}) }));
 }
 
 export function linesFromQuote(q: serviceApi.QuoteDto): BuilderLine[] {
-  return q.lineItems.map((l) => ({ description: l.description, quantity: String(l.quantity), unit: (l.unitPriceCents / 100).toFixed(2), kind: l.kind }));
+  return q.lineItems.map((l) => ({ description: l.description, quantity: String(l.quantity), unit: (l.unitPriceCents / 100).toFixed(2), kind: l.kind, condition: l.condition ?? null }));
 }
 
 /**
  * Quote builder. Totals, tax and the 10% price cap come from the server (POST .../quotes/preview, 300 ms after the last
  * keystroke), so the shop sees exactly what the customer will: tax follows the shop's province, never a number in the browser.
  */
-export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent, onCancel, revising }: { ticketId: string; initialLines?: BuilderLine[]; initialDiagnosis?: string; onSent: () => Promise<void> | void; onCancel?: () => void; revising?: boolean }) {
+export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent, onCancel, revising, vehicle = false }: { ticketId: string; initialLines?: BuilderLine[]; initialDiagnosis?: string; onSent: () => Promise<void> | void; onCancel?: () => void; revising?: boolean; /** A vehicle ticket: each part says new, used or reconditioned. */ vehicle?: boolean }) {
   const { api, enabled } = useMerchant();
   const toast = useToast();
   const act = useAction();
-  const [lines, setLines] = useState<BuilderLine[]>(initialLines?.length ? initialLines : [blank("part"), { ...blank("labour"), description: "Labour" }]);
+  const [lines, setLines] = useState<BuilderLine[]>(initialLines?.length ? initialLines : [blank("part", vehicle), { ...blank("labour"), description: "Labour" }]);
   const [diagnosis, setDiagnosis] = useState(initialDiagnosis ?? "");
   const [deposit, setDeposit] = useState("0");
   const [search, setSearch] = useState("");
@@ -89,7 +91,7 @@ export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent,
                     aria-selected={false}
                     className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-start text-body hover:bg-bg-subtle focus-visible:focus-ring"
                     onClick={() => {
-                      setLines([...lines.filter((l) => l.description.trim() || l.unit), { description: s.name, quantity: "1", unit: (s.priceCents / 100).toFixed(2), kind: "part", serviceId: s.id }]);
+                      setLines([...lines.filter((l) => l.description.trim() || l.unit), { description: s.name, quantity: "1", unit: (s.priceCents / 100).toFixed(2), kind: "part", serviceId: s.id, ...(vehicle ? { condition: "new" as const } : {}) }]);
                       setSearch("");
                     }}
                   >
@@ -104,18 +106,25 @@ export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent,
       ) : null}
       <div className="mt-4 flex flex-col gap-2">
         {lines.map((l, i) => (
-          <div key={i} className="grid grid-cols-[1fr_64px_96px_40px] items-end gap-2 sm:grid-cols-[1fr_120px_64px_96px_40px]">
+          <div key={i} className={vehicle ? "grid grid-cols-[1fr_64px_96px_40px] items-end gap-2 sm:grid-cols-[1fr_110px_130px_64px_96px_40px]" : "grid grid-cols-[1fr_64px_96px_40px] items-end gap-2 sm:grid-cols-[1fr_120px_64px_96px_40px]"}>
             <TextField label={i === 0 ? "Description" : `Line ${i + 1}`} hideLabel={i > 0} value={l.description} onChange={(e) => set(i, { description: e.target.value })} />
             <div className="hidden sm:block">
               <Select hideLabel={i > 0} label="Type" value={l.kind} onChange={(e) => set(i, { kind: e.target.value as BuilderLine["kind"] })} options={[{ value: "part", label: "Part" }, { value: "labour", label: "Labour" }, { value: "fee", label: "Fee or credit" }, { value: "other", label: "Other" }]} />
             </div>
+            {vehicle ? (
+              <div className="hidden sm:block">
+                {l.kind === "part" ? (
+                  <Select hideLabel={i > 0} label="Condition" value={l.condition ?? ""} onChange={(e) => set(i, { condition: (e.target.value || null) as BuilderLine["condition"] })} placeholder="Pick one" options={[{ value: "new", label: "New" }, { value: "used", label: "Used" }, { value: "reconditioned", label: "Reconditioned" }]} />
+                ) : null}
+              </div>
+            ) : null}
             <TextField label="Qty" hideLabel={i > 0} inputMode="numeric" value={l.quantity} onChange={(e) => set(i, { quantity: e.target.value.replace(/\D/g, "") })} />
             <TextField label="Price" hideLabel={i > 0} inputMode="decimal" prefix="$" value={l.unit} onChange={(e) => set(i, { unit: e.target.value.replace(/[^\d.-]/g, "") })} />
             <IconButton icon={Trash2} label={`Remove line ${i + 1}`} size={40} onClick={() => setLines(lines.filter((_, j) => j !== i))} />
           </div>
         ))}
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" iconStart={Plus} onClick={() => setLines([...lines, blank()])}>Add line</Button>
+          <Button variant="ghost" size="sm" iconStart={Plus} onClick={() => setLines([...lines, blank("part", vehicle)])}>Add line</Button>
           <Button variant="ghost" size="sm" onClick={() => setLines([...lines, { description: "Diagnostic fee (credited)", quantity: "1", unit: "-30.00", kind: "fee" }])}>Credit the diagnostic fee</Button>
         </div>
       </div>
@@ -125,6 +134,7 @@ export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent,
         <dt className="text-body-strong">Total</dt><dd className="text-end text-body-strong tabular">{formatMoney(preview?.totalCents ?? 0)}</dd>
       </dl>
       {previewError ? <p className="mt-2 text-meta text-negative">{previewError}</p> : null}
+      {vehicle ? <p className="mt-3 rounded-card bg-bg-subtle px-3 py-2.5 text-meta text-fg-muted">A written estimate for a vehicle names the car and its odometer, each part as new, used or reconditioned, when it expires and when the work will be done (the ticket&apos;s promised time). Nothing is started until the customer approves it.</p> : null}
       {preview && preview.totalCents > 0 ? (
         <p className="mt-3 rounded-card bg-bg-subtle px-3 py-2.5 text-meta text-fg-muted">
           Customer sees: the final price will not be more than {formatMoney(preview.maxAuthorizedCents)}, 10% above this quote. Anything beyond that needs a new approval. We hold invoices to this, for every kind of repair.

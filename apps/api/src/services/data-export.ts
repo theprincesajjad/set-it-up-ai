@@ -13,6 +13,11 @@ import {
   familyMembers,
   foodCards,
   pets,
+  tireSets,
+  vehicleReadings,
+  vehicleServices,
+  vehicles,
+  washVisits,
   petVaccines,
   preferredStaff,
   classCharges,
@@ -83,6 +88,12 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
   const myPets = await db.select().from(pets).where(eq(pets.userId, userId)).orderBy(asc(pets.createdAt));
   const myVax = myPets.length ? await db.select().from(petVaccines).where(inArray(petVaccines.petId, myPets.map((p) => p.id))) : [];
   const myFood = await db.select().from(foodCards).where(eq(foodCards.userId, userId));
+  const myCars = await db.select().from(vehicles).where(eq(vehicles.userId, userId)).orderBy(asc(vehicles.createdAt));
+  const carIds = myCars.map((v) => v.id);
+  const carReadings = carIds.length ? await db.select().from(vehicleReadings).where(inArray(vehicleReadings.vehicleId, carIds)) : [];
+  const carServices = carIds.length ? await db.select().from(vehicleServices).where(inArray(vehicleServices.vehicleId, carIds)) : [];
+  const myTires = await db.select().from(tireSets).where(eq(tireSets.userId, userId));
+  const myWashes = await db.select().from(washVisits).where(eq(washVisits.userId, userId));
   const nudges = await db.select().from(rebookingNudges).where(eq(rebookingNudges.userId, userId));
 
   const subs = await db.select().from(tiffinSubscriptions).where(eq(tiffinSubscriptions.userId, userId)).orderBy(asc(tiffinSubscriptions.createdAt));
@@ -131,6 +142,9 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
     myBarber: named(myBarbers),
     pets: myPets.map((p) => ({ ...clean(p), vaccines: myVax.filter((v) => v.petId === p.id).map((v) => ({ kind: v.kind, expiresOn: v.expiresOn, proofPhoto: v.proofUrl ? signUpload(v.proofUrl) : null })) })),
     foodCards: named(myFood),
+    vehicles: myCars.map((v) => ({ ...clean(v), readings: carReadings.filter((r) => r.vehicleId === v.id).map((r) => ({ km: r.km, day: r.day, source: r.source })), services: carServices.filter((x) => x.vehicleId === v.id).map((x) => ({ service: x.serviceKey, doneOn: x.doneOn, km: x.km })) })),
+    tireSets: named(myTires),
+    washVisits: named(myWashes),
     tiffinSubscriptions: subs.map((s) => ({
       ...clean(s),
       merchantName: shop.get(s.merchantId) ?? null,

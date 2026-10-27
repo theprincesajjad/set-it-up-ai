@@ -18,6 +18,7 @@ import { getMerchantFeatures, requireFeature, requireFeatureFrom } from "../../s
 import { getInvoiceByToken, invoiceDto, invoiceFeature, invoiceTipInfo, payInvoice, previewInvoicePoints } from "../../services/invoices.js";
 import { depositPayment, getQuoteByToken, isExpired, markQuoteViewed, quoteDto, respondToQuote } from "../../services/quotes.js";
 import { merchantTax } from "../../services/tax.js";
+import { invoiceExtras } from "../../services/auto-estimate.js";
 import { getTicketByStatusToken, publicTicketStatus } from "../../services/tickets.js";
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -139,6 +140,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
       tip: { enabled: tipsOn, presets: merchant.tipPresets, baseCents: inv.subtotalCents, staff: tipsOn ? (await invoiceTipInfo(ctx.db, inv)).staff : null },
       taxLabel: inv.taxCents > 0 ? (await merchantTax(ctx.db, merchant, inv.subtotalCents)).label : null,
       pointsPreview: inv.status === "open" ? await previewInvoicePoints(ctx.db, inv) : inv.pointsEarned,
+      ...(await invoiceExtras(ctx.db, inv, ticket)),
     };
   });
 

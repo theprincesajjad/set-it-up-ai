@@ -17,6 +17,7 @@ import { invoiceDto } from "./invoices.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { quoteDto } from "./quotes.js";
 import { customerLocale, withLang } from "./service-messages.js";
+import { assertVehicleOwner, linkTicketVehicle, requireApprovedEstimate } from "./auto-estimate.js";
 
 export type Ticket = typeof serviceTickets.$inferSelect;
 type Merchant = typeof merchants.$inferSelect;
@@ -195,10 +196,11 @@ export async function createTicket(ctx: AppContext, staff: StaffContext, input: 
   await assertStaffMember(ctx.db, merchant.id, body.assignedStaffId);
   const terms = merchant.intakeTerms?.trim();
   if (terms && !body.termsAccepted) throw new HttpError(400, "terms_required", "The customer needs to accept the drop-off terms first.");
-  const details = { ...body.itemDetails, ...(body.items?.length ? { items: JSON.stringify(body.items.map((i) => ({ description: i.description, ...(i.tag ? { tag: i.tag } : {}) }))) } : {}) };
+  const details: Record<string, string> = { ...body.itemDetails, ...(body.items?.length ? { items: JSON.stringify(body.items.map((i) => ({ description: i.description, ...(i.tag ? { tag: i.tag } : {}) }))) } : {}) };
   const now = ctx.now();
   const ticket = await ctx.db.transaction(async (tx) => {
     const { user } = await findOrCreateCustomerByPhone(tx, phone, body.customer.name ?? null);
+    await assertVehicleOwner(tx, user.id, details.vehicleId);
     const number = await nextNumber(tx, merchant.id, "ticket");
     const [t] = await tx
       .insert(serviceTickets)
@@ -230,6 +232,7 @@ export async function createTicket(ctx: AppContext, staff: StaffContext, input: 
     }
     return t!;
   });
+  await linkTicketVehicle(ctx, merchant, ticket);
   return getTicketDetail(ctx, merchant, ticket, false);
 }
 
@@ -377,7 +380,9 @@ export async function updateTicket(ctx: AppContext, staff: StaffContext, ticketI
   if (body.assignedStaffId !== undefined) patch.assignedStaffId = body.assignedStaffId;
   if (body.intakeChecklist !== undefined) patch.intakeChecklist = body.intakeChecklist;
   if (body.shelfLocation !== undefined) patch.shelfLocation = body.shelfLocation?.trim() || null;
+  if (body.itemDetails !== undefined) await assertVehicleOwner(ctx.db, ticket.userId, body.itemDetails.vehicleId);
   const [row] = await ctx.db.update(serviceTickets).set(patch).where(eq(serviceTickets.id, ticket.id)).returning();
+  if (body.itemDetails !== undefined) await linkTicketVehicle(ctx, staff.merchant, row!);
   return getTicketDetail(ctx, staff.merchant, row!, false);
 }
 
@@ -393,6 +398,7 @@ export async function setTicketStatus(ctx: AppContext, staff: StaffContext, tick
   const ticket = await getMerchantTicket(ctx.db, merchant.id, ticketId);
   if (TERMINAL_TICKET_STATUSES.includes(ticket.status)) throw conflict(`Ticket is already ${ticket.status.replace("_", " ")}`);
   if (ticket.status === body.status) throw conflict(`Ticket is already ${body.status.replace("_", " ")}`);
+  if (body.status === "in_progress" || body.status === "waiting_parts" || body.status === "ready") await requireApprovedEstimate(ctx.db, ticket, "work");
   let openInvoice: typeof invoices.$inferSelect | undefined;
   [openInvoice] = await ctx.db.select().from(invoices).where(and(eq(invoices.ticketId, ticket.id), eq(invoices.merchantId, merchant.id), eq(invoices.status, "open"))).limit(1);
   if (body.status === "picked_up" && openInvoice && openInvoice.amountDueCents > 0 && !body.allowUnpaid) {

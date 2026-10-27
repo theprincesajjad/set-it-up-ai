@@ -213,6 +213,7 @@ const PLAYBOOK_BY_VERTICAL: Partial<Record<Vertical, PlaybookKey>> = {
   spa: "salon",
   repair_electronics: "repair",
   repair_auto: "repair",
+  car_wash: "retail",
   alterations: "repair",
   dry_cleaning: "repair",
   print_shop: "repair",

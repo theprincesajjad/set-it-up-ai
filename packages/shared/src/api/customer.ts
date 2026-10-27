@@ -345,6 +345,9 @@ export interface DataExportModules {
   myBarber: unknown[];
   pets: unknown[];
   foodCards: unknown[];
+  vehicles: unknown[];
+  tireSets: unknown[];
+  washVisits: unknown[];
   tiffinSubscriptions: unknown[];
   cateringEvents: unknown[];
   hallBookings: unknown[];

@@ -19,13 +19,14 @@ import { iso, itemLabel, loadMerchant, money, notifyCustomer, requirePaymentsRea
 import { getMerchantFeatures, requireFeature } from "./features.js";
 import { customerLocale, withLang } from "./service-messages.js";
 import { merchantTax } from "./tax.js";
+import { assertEstimateComplete } from "./auto-estimate.js";
 import { TERMINAL_TICKET_STATUSES, addTicketEvent, ensureStatusToken, getMerchantTicket, setTicketStatusRaw, type Ticket } from "./tickets.js";
 
 export type Quote = typeof quotes.$inferSelect;
 type Merchant = NonNullable<Awaited<ReturnType<typeof loadMerchant>>>;
 
 export function lineItemDto(l: LineItem): serviceApi.LineItemDto {
-  return { description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind ?? "other", categoryId: l.categoryId ?? null, totalCents: l.quantity * l.unitPriceCents };
+  return { description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind ?? "other", categoryId: l.categoryId ?? null, totalCents: l.quantity * l.unitPriceCents, ...(l.condition ? { condition: l.condition } : {}) };
 }
 
 export function quoteDto(q: Quote, publicWebUrl: string, forStaff: boolean): serviceApi.QuoteDto {
@@ -82,7 +83,7 @@ export async function priceLineItems(db: DbOrTx, merchant: Pick<Merchant, "id" |
     const found = await db.select({ id: merchantCategories.id }).from(merchantCategories).where(and(eq(merchantCategories.merchantId, merchant.id), inArray(merchantCategories.id, catIds)));
     if (found.length !== catIds.length) throw badRequest("Unknown category on a line item");
   }
-  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null, ...(l.serviceId ? { serviceId: l.serviceId } : {}), ...(l.taxable === false ? { taxable: false } : {}) }));
+  const lineItems: LineItem[] = input.map((l) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind, categoryId: l.categoryId ?? null, ...(l.serviceId ? { serviceId: l.serviceId } : {}), ...(l.taxable === false ? { taxable: false } : {}), ...(l.kind === "part" && l.condition ? { condition: l.condition } : {}) }));
   const subtotalCents = lineItems.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0);
   if (subtotalCents < 0) throw badRequest("Credits can't be more than the lines they apply to");
   // Tax comes from the shop's province and tax registration, never from the client.
@@ -150,6 +151,7 @@ export async function sendQuote(ctx: AppContext, staff: StaffContext, quoteId: s
   if (quote.status !== "draft" && quote.status !== "sent") throw conflict(`Quote is ${quote.status}`);
   const ticket = await getMerchantTicket(ctx.db, merchant.id, quote.ticketId);
   if (TERMINAL_TICKET_STATUSES.includes(ticket.status)) throw conflict(`Ticket is ${ticket.status.replace("_", " ")}`);
+  assertEstimateComplete(ticket, quote);
   const now = ctx.now();
   let updated = quote;
   if (quote.status === "draft") {

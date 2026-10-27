@@ -37,6 +37,7 @@ import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgen
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
 import { barberEndpoints, myBarberEndpoints, publicBarberEndpoints } from "./barber";
 import { myPetEndpoints, petEndpoints, publicPetEndpoints } from "./pets";
+import { autoEndpoints, myAutoEndpoints } from "./auto";
 import { classEndpoints, myClassEndpoints, publicClassEndpoints } from "./classes";
 import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
 import { pharmacyEndpoints } from "./pharmacy";
@@ -148,6 +149,8 @@ export function llApi(c: ApiClient) {
       ...myBarberEndpoints(c),
       // My pets, vaccine proof and food cards (pets.ts)
       ...myPetEndpoints(c),
+      // My vehicles, odometer readings and tire swaps (auto.ts)
+      ...myAutoEndpoints(c),
       // Classes: book, waitlist, packs, memberships (classes.ts)
       ...myClassEndpoints(c),
     },
@@ -302,6 +305,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...barberEndpoints(c, b),
     // Pets, groom rebooking, daycare and food cards (pets.ts)
     ...petEndpoints(c, b),
+    // Vehicles, service reminders, tire season and wash check-in (auto.ts)
+    ...autoEndpoints(c, b),
     // Class schedule, roster, door check-in, offers and members (classes.ts)
     ...classEndpoints(c, b),
     // Restaurant desk: Home, busy mode, phone lookup and balance reminders (restaurantDesk.ts)

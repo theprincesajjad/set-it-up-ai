@@ -869,3 +869,10 @@ Added Oct 27, 2026 (grocers, fitness studios and pharmacies open items). Written
 | Pick-up time | पिकअप का समय | پک اپ کا وقت | ਪਿਕਅੱਪ ਦਾ ਸਮਾਂ |
 | Reminder we will send | हम यह रिमाइंडर भेजेंगे | ہم یہ یاد دہانی بھیجیں گے | ਅਸੀਂ ਇਹ ਰਿਮਾਈਂਡਰ ਭੇਜਾਂਗੇ |
 | Schedule | शेड्यूल | شیڈول | ਸ਼ੈਡਿਊਲ |
+
+Added Oct 27, 2026 (auto care). Written by the build team in all four languages, not yet read by a native speaker.
+
+- `auto.msg.*` (3) and `auto.season.*` (3): the service reminder text, its title and the tire pickup text, and the season word that goes into it ("your winter tires", so the words are the genitive or adjective form: सर्दियों के, سردیوں کے, ਸਰਦੀਆਂ ਦੇ). The texts end with the STOP line like every other marketing text and never carry a plate.
+- `auto.my.*` (30) and `auto.tire.*` (17): My vehicles (`/me/vehicles`). Use the loanwords for odometer (ओडोमीटर, اوڈومیٹر, ਓਡੋਮੀਟਰ), tire (टायर, ٹائر, ਟਾਇਰ) and rack (रैक, ریک, ਰੈਕ). `auto.tire.fall` and `auto.tire.spring` say when the shop swaps tires. "Ride-hail" is राइड-हेल, رائیڈ ہیل, ਰਾਈਡ-ਹੇਲ; check whether Uber or Lyft is the word drivers use.
+- `auto.q.*` (7) and `auto.i.*` (16): the vehicle estimate and invoice lines. `auto.q.estTitle` is "This is an estimate" (अनुमान, تخمینہ, ਅੰਦਾਜ਼ਾ), not a quote; the page title still says quote (कोटेशन). `auto.i.warranty` states the 90 days or 5,000 km on new or reconditioned parts and labour and what it does not cover: a lawyer or a native speaker should read it before launch.
+

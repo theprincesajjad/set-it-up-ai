@@ -20,7 +20,7 @@ const STEP_KEYS = ["intake", "diagnosing", "quote_sent", "approved", "declined",
 
 function itemTitle(t: serviceApi.PublicQuoteResponse["ticket"]) {
   const d = t.itemDetails ?? {};
-  const item = [d.make, d.model].filter(Boolean).join(" ");
+  const item = [d.year, d.make, d.model].filter(Boolean).join(" ");
   return item || t.issue;
 }
 
@@ -52,6 +52,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
   const day = (d: string) => date(new Date(`${d}T12:00:00Z`), { weekday: "short", month: "short", day: "numeric" }, "UTC");
   const eventKey = (ev?.type ?? "") as string;
   const eventWord = t((["bridal", "wedding"].includes(eventKey) ? `sv.q.type.${eventKey}` : "sv.q.type.event") as MessageKey);
+  const vehicle = !ev && data.ticket.itemKind === "vehicle";
   const pct = q.totalCents > 0 && q.depositCents > 0 ? Math.round((q.depositCents / q.totalCents) * 100) : 0;
 
   async function reload() {
@@ -132,6 +133,12 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       <Heading>{ev ? t("sv.q.titleEvent", { event: eventWord }) : t("sv.q.title")}</Heading>
 
       {notice ? <Banner tone="success" icon={CircleCheck}>{notice}</Banner> : null}
+      {vehicle ? (
+        <Banner tone="info" title={t("auto.q.estTitle")}>
+          <span className="block">{t("auto.q.vehicle", { vehicle: itemTitle(data.ticket), km: data.ticket.itemDetails.mileage ?? "" })}</span>
+          <span className="block">{t("auto.q.dates", { given: q.sentAt ? date(q.sentAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ) : "", until: q.expiresAt ? date(q.expiresAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ) : "", done: data.promisedAt ? date(data.promisedAt, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ) : "" })}</span>
+        </Banner>
+      ) : null}
       {status === "approved" ? (
         <Banner tone="success" title={a?.method === "phone" ? t("sv.q.approvedPhone", { name: a.name, when: date(a.at, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ) }) : t("sv.q.approvedBy", { when: q.respondedAt ? date(q.respondedAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, TZ) : "", name: q.signatureName ?? "" })} />
       ) : null}
@@ -168,6 +175,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
                   <p className={cn("text-body", credit ? "text-positive-text" : "text-fg")}>{l.description}</p>
                   <p className="text-meta text-fg-muted">
                     {kindLabel(l, credit)}
+                    {vehicle && l.kind === "part" && l.condition ? `${kindLabel(l, credit) ? " · " : ""}${t(`auto.q.cond.${l.condition}` as MessageKey)}` : ""}
                     {l.quantity > 1 ? `${credit || l.kind !== "other" ? " · " : ""}${number(l.quantity)} × ${money(l.unitPriceCents)}` : ""}
                   </p>
                 </div>
@@ -200,6 +208,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       ) : null}
 
       {ev ? <p className="text-meta text-fg-muted">{t("sv.q.changes", { shop: shopName })}</p> : <p className="text-meta text-fg-muted">{t("sv.q.cap", { amount: money(q.maxAuthorizedCents) })}</p>}
+      {vehicle ? <p className="text-meta text-fg-muted">{t("auto.q.partsBack")}</p> : null}
 
       {data.terms ? (
         <Section plain title={t("sv.q.terms", { shop: shopName })}>

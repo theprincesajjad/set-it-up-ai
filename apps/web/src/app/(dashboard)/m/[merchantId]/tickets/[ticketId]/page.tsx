@@ -13,6 +13,7 @@ import { IntakePanel } from "@/components/dashboard/service/IntakePanel";
 import { InvoicePanel } from "@/components/dashboard/service/InvoicePanel";
 import { QuoteBuilder, linesFromQuote } from "@/components/dashboard/service/QuoteBuilder";
 import { QuotePanel } from "@/components/dashboard/service/QuotePanel";
+import { VehiclePanel } from "@/components/dashboard/service/VehiclePanel";
 import { StatusPanel } from "@/components/dashboard/service/StatusPanel";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -109,6 +110,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-6">
           <IntakePanel ticket={t} checkedInAt={checkedIn} />
+          {t.itemKind === "vehicle" ? <VehiclePanel ticket={t} quote={approved ?? latest} closed={closed} onSaved={onChange} /> : null}
           {latest && !revising && latest.status !== "declined" && latest.status !== "expired" ? (
             <QuotePanel
               quote={latest}
@@ -135,6 +137,7 @@ function Ticket({ d, onChange, reload }: { d: S.TicketDetailResponse; onChange: 
             <QuoteBuilder
               key={revising ? latest?.id : "new"}
               ticketId={t.id}
+              vehicle={t.itemKind === "vehicle"}
               revising={revising || !!latest}
               initialLines={revising && latest ? linesFromQuote(latest) : undefined}
               initialDiagnosis={revising ? (latest?.diagnosis ?? "") : undefined}

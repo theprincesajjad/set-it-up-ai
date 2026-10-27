@@ -19,7 +19,7 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 const DETAIL_FIELDS: Record<string, [string, string][]> = {
   device: [["make", "Make"], ["model", "Model"], ["imei", "IMEI / serial"]],
-  vehicle: [["make", "Make"], ["model", "Model"], ["plate", "Plate"], ["mileage", "Mileage"]],
+  vehicle: [["year", "Year"], ["make", "Make"], ["model", "Model"], ["plate", "Plate"], ["mileage", "Odometer (km)"]],
   garment: [["colour", "Colour"], ["size", "Size"]],
   other: [["description", "Item"]],
 };
@@ -42,7 +42,10 @@ type Kind = "device" | "vehicle" | "garment" | "other";
 function Intake() {
   const { api, base, detail, role } = useMerchant();
   const router = useRouter();
-  const bookingId = useSearchParams().get("bookingId");
+  const search = useSearchParams();
+  const bookingId = search.get("bookingId");
+  // From a vehicle page (docs/research/auto-care.md): the owner, the car and the last odometer reading are filled in.
+  const vehicleId = search.get("vehicleId");
   const settings = useApi(() => api.serviceOps.settings(), [api]);
   const terms = settings.data?.intakeTerms?.trim() || null;
   const [phone, setPhone] = useState<string | null>(null);
@@ -75,6 +78,22 @@ function Intake() {
     if (b.customerName) setName(b.customerName);
     if (b.notes) setIssue(b.notes);
   }, [booking.data, prefilled]);
+  const vehicle = useApi(vehicleId ? () => api.auto.vehicle(vehicleId) : null, [api, vehicleId]);
+  const [carFilled, setCarFilled] = useState(false);
+  useEffect(() => {
+    const v = vehicle.data;
+    if (!v || carFilled) return;
+    // Prefill once from the vehicle; the staff member can still change everything.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCarFilled(true);
+    setKind("vehicle");
+    if (v.ownerName) setName(v.ownerName);
+    if (v.ownerPhone) {
+      setPhone(v.ownerPhone);
+      setDigits(v.ownerPhone.replace(/\D/g, "").slice(-10));
+    }
+    setDetails({ ...(v.year ? { year: String(v.year) } : {}), make: v.make, model: v.model, ...(v.plate ? { plate: v.plate } : {}) });
+  }, [vehicle.data, carFilled]);
   const bookingPhone = booking.data?.customerPhone ?? null;
   useEffect(() => {
     if (bookingPhone && !phone) {
@@ -116,6 +135,7 @@ function Intake() {
             e.preventDefault();
             if (!phone) return act.setError("Enter the customer's mobile number.");
             if (!issue.trim()) return act.setError("Describe the problem.");
+            if (kind === "vehicle" && !/\d/.test(details.mileage ?? "")) return act.setError("Add the odometer reading. The Ontario guide asks for it on the estimate and again on the invoice.");
             if (terms && !accepted) return act.setError("The customer needs to accept the drop-off terms.");
             const list = multi ? items.filter((i) => i.description.trim()).map((i) => ({ description: i.description.trim(), ...(i.tag.trim() ? { tag: i.tag.trim() } : {}) })) : [];
             const r = await act.run(() =>
@@ -123,7 +143,7 @@ function Intake() {
                 customer: { phone, name: name.trim() || null },
                 locationId: detail.locations[0]?.id,
                 itemKind: kind,
-                itemDetails: Object.fromEntries(Object.entries(details).filter(([, v]) => v.trim())),
+                itemDetails: { ...Object.fromEntries(Object.entries(details).filter(([, v]) => v.trim())), ...(kind === "vehicle" && vehicleId ? { vehicleId } : {}) },
                 issue: issue.trim(),
                 intakeNotes: notes.trim() || null,
                 promisedAt: promised ? fromLocalInput(promised) : null,
@@ -157,7 +177,7 @@ function Intake() {
             </fieldset>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
-            {DETAIL_FIELDS[kind]!.map(([k, l]) => <TextField key={k} label={l} optionalLabel value={details[k] ?? ""} onChange={(e) => setDetails({ ...details, [k]: e.target.value })} />)}
+            {DETAIL_FIELDS[kind]!.map(([k, l]) => <TextField key={k} label={l} optionalLabel={!(kind === "vehicle" && k === "mileage")} required={kind === "vehicle" && k === "mileage"} hint={kind === "vehicle" && k === "mileage" && vehicle.data?.odometerKm ? `Last reading ${vehicle.data.odometerKm.toLocaleString("en-CA")} km` : undefined} inputMode={k === "mileage" || k === "year" ? "numeric" : undefined} value={details[k] ?? ""} onChange={(e) => setDetails({ ...details, [k]: e.target.value })} />)}
             {kind === "garment" || kind === "other" ? <TextField label="Shelf or rack" optionalLabel hint="Where you will put it, so it is easy to find." value={shelf} onChange={(e) => setShelf(e.target.value)} /> : null}
           </div>
           <TextField type="textarea" label="What's wrong" value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Cracked screen, touch works" />

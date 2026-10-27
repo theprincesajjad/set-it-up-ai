@@ -309,11 +309,11 @@ describe("invoice over the approved quote (10% rule, every item kind)", () => {
   for (const [kind, details] of [
     ["device", { make: "Apple", model: "iPhone 13" }],
     ["garment", { colour: "navy" }],
-    ["vehicle", { make: "Honda", model: "Civic", plate: "CABC123" }],
+    ["vehicle", { make: "Honda", model: "Civic", plate: "CABC123", mileage: "84210" }],
   ] as const) {
     it(`${kind}: within 10% is fine, above is 409 over_estimate, a re-approved quote resets the cap`, async () => {
       const m = await paidMerchant(env, { plan: "pro" });
-      const t = await newTicket(m, m.ownerToken, { itemKind: kind, itemDetails: details });
+      const t = await newTicket(m, m.ownerToken, { itemKind: kind, itemDetails: details, promisedAt: new Date(env.clock.now.getTime() + DAY).toISOString() });
       const q = await approvedQuote(m, m.ownerToken, t.ticket.id, 10000); // total $113.00, cap floor(113.00 x 1.10) = $124.30
       expect(maxAuthorizedCents(11300)).toBe(12430);
       const over = await call(env, m.ownerToken, "POST", `${base(m)}/tickets/${t.ticket.id}/invoices`, { extraLineItems: [{ description: "Extra", quantity: 1, unitPriceCents: 1100, kind: "part" }] });

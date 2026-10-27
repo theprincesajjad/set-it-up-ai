@@ -1307,7 +1307,7 @@ export type HalalCertification = { certifier: string; certificateNo?: string; sc
 export type ItemOptionGroup = { id: string; name: string; type: "single" | "multi"; required: boolean; priceMode: "delta" | "absolute"; options: { id: string; name: string; priceCents: number; serves?: number; note?: string; default?: boolean }[] };
 export type ItemOptions = { groups: ItemOptionGroup[] };
 
-export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null; /** false = no sales tax on this line (default true). */ taxable?: boolean };
+export type LineItem = { description: string; quantity: number; unitPriceCents: number; kind?: "labour" | "part" | "fee" | "other"; categoryId?: string | null; serviceId?: string | null; /** false = no sales tax on this line (default true). */ taxable?: boolean; /** Vehicle parts: new, used or reconditioned (Ontario guide for auto repair businesses). */ condition?: "new" | "used" | "reconditioned" | null };
 
 /** How a quote was approved: customer link, phone call (name, phone, time recorded), or at the counter. */
 export type QuoteAuthorization = { method: "link" | "phone" | "counter"; name: string; phone?: string | null; note?: string | null; at: string; staffId?: string | null };
@@ -3026,4 +3026,185 @@ export const foodEvents = pgTable(
     at: ts("at").notNull().defaultNow(),
   },
   (t) => [index("food_events_card_idx").on(t.cardId, t.at)],
+);
+
+// ---------------------------------------------------------------------------
+// Auto care (docs/research/auto-care.md): vehicles under the customer, service reminders by km or months,
+// tire season and storage, wash check-in. Estimates ride the existing tickets, quotes and invoices.
+// ---------------------------------------------------------------------------
+/** A car belongs to its owner (a user) and follows them across shops. The plate is optional, shown to staff of the owner's shops only, never in a message. No VIN is stored. */
+export const vehicles = pgTable(
+  "vehicles",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    year: integer("year"),
+    make: text("make").notNull(),
+    model: text("model").notNull(),
+    /** personal | rideshare (rideshare uses the shop's severe-service intervals) */
+    use: text("use").notNull().default("personal"),
+    plate: text("plate"),
+    /** Upper case letters and digits only, for matching at the wash. */
+    plateNorm: text("plate_norm"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("vehicles_user_idx").on(t.userId), index("vehicles_plate_idx").on(t.plateNorm)],
+);
+
+/** What one shop knows about a car: its own km a day override and a note. */
+export const vehicleShop = pgTable(
+  "vehicle_shop",
+  {
+    id: id(),
+    vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    kmPerDayOverride: integer("km_per_day_override"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("vehicle_shop_uq").on(t.vehicleId, t.merchantId)],
+);
+
+/** Odometer readings: from a shop (staff or a ticket) or from the owner (merchantId null). They give the km a day estimate. */
+export const vehicleReadings = pgTable(
+  "vehicle_readings",
+  {
+    id: id(),
+    vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "cascade" }),
+    km: integer("km").notNull(),
+    /** Shop-local day of the reading. */
+    day: date("day").notNull(),
+    /** staff | owner | ticket */
+    source: text("source").notNull().default("staff"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("vehicle_readings_vehicle_idx").on(t.vehicleId, t.day)],
+);
+
+/** A service done on a car at a shop: what the reminder counts from. */
+export const vehicleServices = pgTable(
+  "vehicle_services",
+  {
+    id: id(),
+    vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    serviceKey: text("service_key").notNull(),
+    doneOn: date("done_on").notNull(),
+    km: integer("km"),
+    ticketId: uuid("ticket_id").references(() => serviceTickets.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("vehicle_services_idx").on(t.merchantId, t.vehicleId, t.serviceKey, t.doneOn)],
+);
+
+/** One row per reminder text (or skip) for a car, service and due date: the guard against repeats. */
+export const vehicleNudges = pgTable(
+  "vehicle_nudges",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    serviceKey: text("service_key").notNull(),
+    dueOn: date("due_on").notNull(),
+    /** sent | skipped */
+    action: text("action").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("vehicle_nudges_uq").on(t.merchantId, t.vehicleId, t.serviceKey, t.dueOn)],
+);
+
+/** One row per shop: service intervals, automatic reminders, tire season and capacity, wash limits. Defaults apply until a shop saves. */
+export type AutoServiceDef = { key: string; label: string; everyKm: number | null; everyMonths: number | null; severeKm?: number | null; severeMonths?: number | null; active: boolean };
+export const autoSettings = pgTable("auto_settings", {
+  merchantId: uuid("merchant_id").primaryKey().references(() => merchants.id, { onDelete: "cascade" }),
+  /** Empty = the defaults in @ll/shared. */
+  services: jsonb("services").$type<AutoServiceDef[]>().notNull().default([]),
+  autoReminders: boolean("auto_reminders").notNull().default(false),
+  defaultKmPerDay: integer("default_km_per_day").notNull().default(40),
+  bays: integer("bays").notNull().default(2),
+  hoursPerDay: integer("hours_per_day").notNull().default(8),
+  minutesPerSwap: integer("minutes_per_swap").notNull().default(45),
+  fallStart: text("fall_start").notNull().default("10-15"),
+  fallEnd: text("fall_end").notNull().default("11-30"),
+  springStart: text("spring_start").notNull().default("03-25"),
+  springEnd: text("spring_end").notNull().default("04-30"),
+  pickupLeadDays: integer("pickup_lead_days").notNull().default(14),
+  washMaxPerDay: integer("wash_max_per_day").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** A customer's stored set of tires (the tire hotel). Tread is in tenths of a millimetre. */
+export const tireSets = pgTable(
+  "tire_sets",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+    rack: text("rack").notNull(),
+    /** winter | summer | all_weather */
+    season: text("season").notNull(),
+    /** Brand and size, free text. */
+    label: text("label"),
+    treadTenthsMm: integer("tread_tenths_mm"),
+    storedOn: date("stored_on").notNull(),
+    /** stored | picked_up */
+    status: text("status").notNull().default("stored"),
+    pickedUpOn: date("picked_up_on"),
+    /** The window start (YYYY-MM-DD) the pickup text was sent for; stops a second text for the same window. */
+    pickupNudgedFor: text("pickup_nudged_for"),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("tire_sets_merchant_idx").on(t.merchantId, t.status), index("tire_sets_user_idx").on(t.userId)],
+);
+
+/** A tire swap booked for a day. The day's capacity comes from the shop's bays, hours and minutes a swap. */
+export const tireSwaps = pgTable(
+  "tire_swaps",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+    day: date("day").notNull(),
+    /** booked | done | cancelled | no_show */
+    status: text("status").notNull().default("booked"),
+    /** customer | staff */
+    source: text("source").notNull().default("customer"),
+    tireSetId: uuid("tire_set_id").references(() => tireSets.id, { onDelete: "set null" }),
+    note: text("note"),
+    reminderSentAt: ts("reminder_sent_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("tire_swaps_merchant_day_idx").on(t.merchantId, t.day, t.status),
+    uniqueIndex("tire_swaps_live_uq").on(t.merchantId, t.userId, t.day).where(sql`${t.status} = 'booked'`),
+  ],
+);
+
+/** A wash counted at the tunnel or the till: a plan member's visit or a punch card wash. */
+export const washVisits = pgTable(
+  "wash_visits",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+    /** member | punch */
+    kind: text("kind").notNull(),
+    membershipId: uuid("membership_id").references(() => classMemberships.id, { onDelete: "set null" }),
+    passId: uuid("pass_id").references(() => classPasses.id, { onDelete: "set null" }),
+    /** plate | qr | phone | manual */
+    source: text("source").notNull().default("manual"),
+    staffId: uuid("staff_id").references(() => users.id, { onDelete: "set null" }),
+    /** Shop-local day, for the one-a-day rule. */
+    day: date("day").notNull(),
+    at: ts("at").notNull().defaultNow(),
+  },
+  (t) => [index("wash_visits_merchant_idx").on(t.merchantId, t.day), index("wash_visits_user_idx").on(t.userId, t.merchantId, t.day)],
 );

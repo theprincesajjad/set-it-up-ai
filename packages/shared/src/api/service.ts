@@ -110,6 +110,8 @@ export const lineItemSchema = z
     categoryId: uuidSchema.nullish(),
     /** Price-list entry this line came from (services table), used by rebooking. */
     serviceId: uuidSchema.nullish(),
+    /** A vehicle part is new, used or reconditioned; the estimate says which. */
+    condition: z.enum(["new", "used", "reconditioned"]).nullish(),
   })
   .refine((l) => l.unitPriceCents >= 0 || l.kind === "fee", { message: "Only a fee line can be a credit", path: ["unitPriceCents"] });
 export type LineItemInput = z.input<typeof lineItemSchema>;
@@ -222,6 +224,7 @@ export interface LineItemDto {
   kind: "labour" | "part" | "fee" | "other";
   categoryId: string | null;
   totalCents: number;
+  condition?: "new" | "used" | "reconditioned" | null;
 }
 
 export interface TicketEventDto {
@@ -444,6 +447,32 @@ export interface PublicInvoiceResponse {
   pointsPreview: number;
   /** "HST 13%", or null when the shop charges no tax. */
   taxLabel: string | null;
+  /** The estimate the customer approved for this ticket and how the invoice compares: the Ontario invoice must show it. Null when there was none. */
+  estimate: InvoiceEstimateDto | null;
+  /** Vehicle facts printed on the invoice (odometer in and out, replaced parts, warranty). Null unless the ticket is a vehicle. */
+  vehicle: InvoiceVehicleDto | null;
+}
+
+export interface InvoiceEstimateDto {
+  totalCents: number;
+  /** When the customer approved it and how: link, phone or counter. */
+  approvedAt: string | null;
+  approvedBy: string | null;
+  method: "link" | "phone" | "counter" | null;
+  /** Percent the invoice is over the estimate, one decimal; negative when under. */
+  percentOver: number;
+  maxAuthorizedCents: number;
+}
+export interface InvoiceVehicleDto {
+  label: string;
+  odometerIn: string | null;
+  odometerOut: string | null;
+  partsReturn: "offered" | "declined" | "not_applicable" | null;
+  warrantyDays: number;
+  warrantyKm: number;
+  warrantyExempt: string;
+  /** Dates: the estimate was given, work authorised, invoice made. */
+  estimateGivenAt: string | null;
 }
 
 /** GET /v1/public/tickets/:token: status page, no sign-in. */

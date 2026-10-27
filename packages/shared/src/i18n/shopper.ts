@@ -28,7 +28,7 @@ export function unitWord(locale: Locale, terminology: string): string {
   return terminology || "points";
 }
 
-const PLACE_KINDS = ["cafe", "restaurant", "bakery", "bar", "grocery", "pharmacy", "retail", "bookstore", "florist", "pet", "salon", "barber", "spa", "fitness", "repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"] as const;
+const PLACE_KINDS = ["cafe", "restaurant", "bakery", "bar", "grocery", "pharmacy", "retail", "bookstore", "florist", "pet", "salon", "barber", "spa", "fitness", "repair_electronics", "repair_auto", "car_wash", "alterations", "dry_cleaning", "print_shop"] as const;
 
 /** The short, lowercase kind of place under a shop name ("café", "bakery") in the shopper's language; "shop" when unknown. */
 export function placeKindLabel(locale: Locale, vertical: string | null | undefined): string {

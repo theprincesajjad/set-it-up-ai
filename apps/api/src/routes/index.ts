@@ -38,6 +38,7 @@ import classes from "./classes/index.js";
 import grocery from "./grocery/index.js";
 import barber from "./barber/index.js";
 import pets from "./pets/index.js";
+import auto from "./auto/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -79,4 +80,5 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await grocery(app, ctx);
   await barber(app, ctx);
   await pets(app, ctx);
+  await auto(app, ctx);
 }
