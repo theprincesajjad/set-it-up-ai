@@ -1,4 +1,3 @@
-import "./lib/testClock.js";
 import { connect } from "@ll/db";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";

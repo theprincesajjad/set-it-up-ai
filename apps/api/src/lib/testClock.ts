@@ -1,32 +1,19 @@
 /**
- * Test clock: shifts the process clock by a fixed number of milliseconds so date-dependent demo data (weekday promos,
- * festival windows, class schedules) is the same on every day of the week. The clock keeps ticking; only the origin moves.
+ * Promo test clock. Demo promos run on weekdays and hours (Pinecone: "Two-stamp Tuesdays", weekdays 2 to 4 pm), so what
+ * one stamp earns depends on the day the suite happens to run. Setting
  *
- *   TEST_CLOCK_OFFSET_MS=<signed ms>   added to every `new Date()` / `Date.now()` in this process
+ *   TEST_PROMO_NOW=2026-01-07T16:00:00Z      (any ISO instant)
  *
- * Never active when NODE_ENV=production. Import this module first in an entry point (server.ts, seed.ts) so every
- * later module sees the shifted Date. Database-side `now()` defaults are not shifted (they stay within a few days of it).
+ * makes the weekday and time-of-day checks of promos (`promoAppliesAt`, which also drives `activeNow` and the earn
+ * boost) read that instant in the shop's timezone. Only that check: every other clock, the promo's own start/end dates,
+ * seeds, tokens and the web app stay on real time, so nothing else can disagree about what "now" is.
+ *
+ * Ignored when NODE_ENV=production. The e2e runner (apps/web/e2e/run-all.sh) sets it to a Wednesday at 11:00 Toronto.
  */
-const RealDate = Date;
-
-export function installTestClock(env: NodeJS.ProcessEnv = process.env): number {
-  if (env.NODE_ENV === "production") return 0;
-  const raw = env.TEST_CLOCK_OFFSET_MS;
-  if (!raw) return 0;
-  const offset = Number(raw);
-  if (!Number.isFinite(offset) || offset === 0) return 0;
-  if (Date !== RealDate) return offset; // already installed
-  class ShiftedDate extends RealDate {
-    constructor(...args: unknown[]) {
-      if (args.length === 0) super(RealDate.now() + offset);
-      else super(...(args as [number]));
-    }
-    static override now(): number {
-      return RealDate.now() + offset;
-    }
-  }
-  globalThis.Date = ShiftedDate as unknown as DateConstructor;
-  return offset;
+export function promoClockAt(real: Date, env: NodeJS.ProcessEnv = process.env): Date {
+  if (env.NODE_ENV === "production") return real;
+  const raw = env.TEST_PROMO_NOW;
+  if (!raw) return real;
+  const t = new Date(raw);
+  return Number.isNaN(t.getTime()) ? real : t;
 }
-
-installTestClock();

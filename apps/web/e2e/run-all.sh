@@ -12,9 +12,9 @@
 #   API_PORT=4100  WEB_PORT=3100  NEXT_DIST_DIR=.next-e2e  E2E_DB_DIR=<dir for the throw-away database>
 #   PW_ARGS="e2e/web-pass.spec.ts"   run only some specs (still against the fresh stack)
 #   PW_RETRIES=0                     Playwright retries (default 0: a flaky test fails the run; PW_ARGS="--retries=N" also works, it comes later)
-#   E2E_CLOCK_WEEKDAY=wed            weekday the API, seed and specs pretend it is (mon..sun, default wed; "real" = no shift).
-#                                    Demo promos run on Tuesdays and weekday afternoons, so the default (Wednesday 11:00
-#                                    Toronto, the next one from now) keeps stamp/point deltas the same every day.
+#   E2E_CLOCK_WEEKDAY=wed            weekday the shops' promos think it is (mon..sun, default wed; "real" = real time).
+#                                    Pinecone's double-stamp promos run Tuesdays and weekdays 2-4 pm; the default keeps
+#                                    stamp/point deltas the same on every day the suite runs.
 #   SKIP_BUILD=1                     reuse the existing production build in NEXT_DIST_DIR (built against the same API port)
 #
 # Specs write screenshots under e2e/screenshots (tracked). Restore them afterwards with
@@ -61,10 +61,18 @@ for port in "$API_PORT" "$WEB_PORT"; do
   fi
 done
 
-# Fixed-weekday clock (apps/api/src/lib/testClock.ts, apps/web/e2e/test-clock.ts): the same offset for seed, API and specs.
-TEST_CLOCK_OFFSET_MS="${TEST_CLOCK_OFFSET_MS:-$(node apps/web/e2e/clock-offset.mjs "${E2E_CLOCK_WEEKDAY:-wed}")}"
-export TEST_CLOCK_OFFSET_MS
-echo "==> clock: weekday ${E2E_CLOCK_WEEKDAY:-wed} (offset ${TEST_CLOCK_OFFSET_MS} ms)"
+# Promo clock (apps/api/src/lib/testClock.ts): demo promos run on Tuesdays and weekday afternoons, so the API reads the
+# weekday and hour of promos from a fixed instant (11:00 Toronto on E2E_CLOCK_WEEKDAY, default Wednesday) in every run.
+# Everything else (seeds, tokens, the browser) stays on real time.
+case "${E2E_CLOCK_WEEKDAY:-wed}" in
+  mon) PROMO_DAY=05 ;; tue) PROMO_DAY=06 ;; wed) PROMO_DAY=07 ;; thu) PROMO_DAY=08 ;;
+  fri) PROMO_DAY=09 ;; sat) PROMO_DAY=10 ;; sun) PROMO_DAY=11 ;;
+  real) PROMO_DAY="" ;;
+  *) echo "E2E_CLOCK_WEEKDAY must be mon..sun or real" >&2; exit 1 ;;
+esac
+if [ -n "$PROMO_DAY" ] && [ -z "${TEST_PROMO_NOW:-}" ]; then TEST_PROMO_NOW="2026-01-${PROMO_DAY}T16:00:00Z"; fi # 11:00 EST
+[ -n "${TEST_PROMO_NOW:-}" ] && export TEST_PROMO_NOW
+echo "==> promo clock: ${TEST_PROMO_NOW:-real time}"
 
 rm -rf "$DB_DIR/pg"
 export DATABASE_URL="pglite://$DB_DIR/pg"

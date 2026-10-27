@@ -5,6 +5,7 @@
  * zero (member account vs. a merchant or network account). The cached
  * merchant_members.balance is updated in the same DB transaction.
  */
+import { promoClockAt } from "../lib/testClock.js";
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import {
   ledgerAccounts,
@@ -359,7 +360,7 @@ export function promoAppliesAt(p: Promo, at: Date, timeZone: string): boolean {
   if (p.startsAt > at) return false;
   if (p.endsAt && p.endsAt <= at) return false;
   if (p.daysOfWeek?.length || p.startTime || p.endTime) {
-    const { dow, hhmm } = localParts(at, timeZone);
+    const { dow, hhmm } = localParts(promoClockAt(at), timeZone); // TEST_PROMO_NOW pins weekday and hour in tests
     if (p.daysOfWeek?.length && !p.daysOfWeek.includes(dow)) return false;
     if (p.startTime && hhmm < p.startTime) return false;
     if (p.endTime && hhmm >= p.endTime) return false;
