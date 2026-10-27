@@ -95,6 +95,7 @@ Product checks (each has a test in `apps/api/test/pharmacy.test.ts`):
 - ☑ **Reports** count front-store sales only and say so.
 - ☑ **Pharmacist-owner confirmation** (Schedule C) is recorded on the Pharmacy rules page with the owner's name and date.
 - ☑ **POS**: only front-store lines are kept and awarded.
+- ☑ **Network overlap** never names a pharmacy in another shop's report (data-strategy never-sell list).
 - ☐ **Counsel and OCP.** Written sign-off from Ontario health-privacy counsel that (a) a fixed "your order is ready" text through this product is not personal health information, (b) the Pharmacy rules page replaces the paper Schedule C, and (c) the front-store seniors card is outside s. 34. Ask OCP whether an advertised front-store discount card is read as an "inducement" when handed out at the dispensary counter. Until answered: sign and signage at the front-store till only, never at drop-off or pickup.
 - ☐ **Rep checklist at install**: confirm the three locked categories, the confirmation on the Pharmacy rules page, no sign at the dispensary counter, and that the POS category mapping sends Rx to Prescriptions.
 - ☐ **Banner agreements** (IDA, Guardian, Pharmasave, Remedy'sRx and others) may restrict a local program: the rep logs "banner check".

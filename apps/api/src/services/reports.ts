@@ -381,7 +381,9 @@ export async function networkOverlap(ctx: AppContext, merchant: Merchant, window
   const [hood] = await ctx.db.select({ id: neighbourhoods.id, name: neighbourhoods.name }).from(neighbourhoods).where(eq(neighbourhoods.id, merchant.neighbourhoodId)).limit(1);
   const since = new Date(ctx.now().getTime() - windowDays * DAY);
   const myUsers = sql`(select ${merchantMembers.userId} from ${merchantMembers} where ${merchantMembers.merchantId} = ${merchant.id})`;
-  const where = and(eq(visits.neighbourhoodId, merchant.neighbourhoodId), ne(visits.merchantId, merchant.id), gte(visits.createdAt, since), sql`${visits.userId} in ${myUsers}`);
+  // A pharmacy never appears in another shop's overlap: that a group of customers also uses a pharmacy is health-adjacent (docs/business/data-strategy.md, never-sell list).
+  const notPharmacy = sql`${visits.merchantId} not in (select id from merchants where vertical = 'pharmacy')`;
+  const where = and(eq(visits.neighbourhoodId, merchant.neighbourhoodId), ne(visits.merchantId, merchant.id), gte(visits.createdAt, since), sql`${visits.userId} in ${myUsers}`, notPharmacy);
   const [tot] = await ctx.db
     .select({ users: sql<number>`count(distinct ${visits.userId})::int`, pairs: sql<number>`count(distinct (${visits.userId}, ${visits.merchantId}))::int` })
     .from(visits)

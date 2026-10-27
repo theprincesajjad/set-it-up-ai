@@ -19,6 +19,7 @@ import {
   halls,
   hallBookings,
   ledgerEntries,
+  ledgerTransactions,
   leads,
   merchantCategories,
   merchantMembers,
@@ -95,6 +96,24 @@ describe("seedDemo", () => {
     const [pharmacy] = await env.db.select().from(merchants).where(eq(merchants.slug, "village-apothecary"));
     const cats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, pharmacy!.id));
     expect(cats.find((c) => c.name === "Prescriptions")).toMatchObject({ earnEligible: false, discountEligible: false });
+  });
+
+  it("the demo pharmacy is set up the way a real one would be: locked categories, confirmation, free appointment types, no stored visit for a prescription", async () => {
+    const [pharmacy] = await env.db.select().from(merchants).where(eq(merchants.slug, "village-apothecary"));
+    const cats = await env.db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, pharmacy!.id));
+    for (const n of ["Prescriptions", "Pharmacy services", "Dispensing fees and compounding"]) expect(cats.find((c) => c.name === n), n).toMatchObject({ dispensary: true, earnEligible: false, discountEligible: false });
+    expect(pharmacy!.pharmacyConfirmedByName).toBe("Amira Rahman, B.Sc.Phm");
+    const types = await env.db.select().from(serviceRows).where(eq(serviceRows.merchantId, pharmacy!.id));
+    expect(types.map((t) => t.name).sort()).toEqual(["Flu shot", "Medication review", "Pharmacist consultation", "Vaccine appointment"]);
+    expect(types.every((t) => t.priceCents === 0 && t.depositCents === 0 && t.rebookAfterDays === null)).toBe(true);
+    const appts = await env.db.select().from(appointments).where(eq(appointments.merchantId, pharmacy!.id));
+    expect(appts).toHaveLength(5);
+    expect(appts.every((a) => a.notes === null && a.clientNote === null && a.items.every((i) => i.priceCents === 0))).toBe(true);
+    // Every visit at a pharmacy is a front-store sale: nothing recorded above the front-store amount.
+    const rxCat = cats.find((c) => c.name === "Prescriptions")!;
+    const tx = await env.db.select().from(ledgerTransactions).where(eq(ledgerTransactions.merchantId, pharmacy!.id));
+    expect(tx.length).toBeGreaterThan(0);
+    expect(JSON.stringify(tx.map((t) => t.breakdown))).not.toContain(rxCat.id);
   });
 
   it("keeps the ledger valid: entries sum to zero and cached balances match", async () => {

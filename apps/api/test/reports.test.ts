@@ -134,7 +134,7 @@ describe("reports", () => {
     const body = r.json();
     expect(body).toMatchObject({ myMembers: 7, sharedMembers: 6, avgOtherShops: 1.3, suppressedShops: 1 });
     expect(body.sharedPct).toBeCloseTo(0.857, 2);
-    expect(body.shops).toEqual([{ merchantId: big.merchant.id, name: "Test Shop", vertical: "pharmacy", sharedMembers: 6 }]);
+    expect(body.shops).toEqual([{ merchantId: big.merchant.id, name: "Test Shop", vertical: "retail", sharedMembers: 6 }]);
     // No identities anywhere in the payload.
     const raw = r.body;
     for (const ph of phones) expect(raw).not.toContain(ph);

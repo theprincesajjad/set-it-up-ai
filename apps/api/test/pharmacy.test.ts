@@ -477,6 +477,26 @@ describe("reports count the front store only", () => {
   });
 });
 
+describe("network overlap never names a pharmacy", () => {
+  it("another shop's overlap report leaves pharmacies out", async () => {
+    const hood = await (await import("./helpers.js")).createNeighbourhood(env.db);
+    const rx = await paidMerchant(env, { plan: "plus", vertical: "pharmacy" });
+    const cafe = await paidMerchant(env, { plan: "plus", vertical: "cafe" });
+    await env.db.update(merchants).set({ neighbourhoodId: hood.id }).where(eq(merchants.id, rx.merchant.id));
+    await env.db.update(merchants).set({ neighbourhoodId: hood.id }).where(eq(merchants.id, cafe.merchant.id));
+    await ensureLockedCategories(env.db, rx.merchant.id);
+    await grantFeatures(env, cafe.merchant.id, ["reports.advanced"]);
+    for (let i = 0; i < 12; i++) {
+      const phone = nextPhone();
+      await awardPurchase(env.ctx, { merchantId: cafe.merchant.id, phone, source: "staff_app", amountCents: 500 });
+      await awardPurchase(env.ctx, { merchantId: rx.merchant.id, phone, source: "staff_app", amountCents: 500, frontStoreOnly: true });
+    }
+    const r = await call(env, cafe.ownerToken, "GET", `/v1/merchants/${cafe.merchant.id}/reports/network-overlap`);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ sharedMembers: 0, shops: [], suppressedShops: 0 });
+  });
+});
+
 describe("the text checker", () => {
   it("blocks dispensary and health words, allows exclusion wording and front-store talk", () => {
     const bad = ["Your prescription is ready", "Refill reminder", "Transfer your Rx", "Book a flu shot", "10% off medications", "Diabetes supplies", "blood pressure checks", "Blister packs available", "MedsCheck this week"];

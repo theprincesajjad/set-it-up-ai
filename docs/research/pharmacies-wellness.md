@@ -114,6 +114,7 @@ Frame 09 in Figma shows this table. Evidence is the code read this session (repo
 | Appointments module: price, deposit, no-show fee and card on file, notes, checkout invoice with points and reward, reminders naming the service, rebooking nudges | **Change** | Job 3 and 9, section 2.4. Locked to free-to-book; see 4.3 |
 | Reminders and confirmations list the service name | **Change** | Job 4. They say "appointment" |
 | POS pipeline stored the whole sale (every line, including Rx) | **Change** | Job 8. Only front-store lines are kept |
+| Network overlap report ("your members also visit...") listed pharmacies by name to other shops | **Change** | `docs/business/data-strategy.md` never-sell list: pharmacy front-store use is health-adjacent. Pharmacies are left out of other shops' overlap |
 | Review requests, rebooking nudges | **Cut for pharmacies** | Section 2.1 (advertising s. 29) and PHIPA marketing; the review feature is restaurant-only already, now also guarded |
 | Sponsored ads policy that rejects pharmacy services and prescriptions | **Keep** | Already right |
 | Marketing consent per shop, quiet hours, STOP | **Keep** | Job 5. CASL |
