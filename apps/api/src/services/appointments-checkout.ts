@@ -60,7 +60,8 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     const [old] = await ctx.db.select().from(invoices).where(eq(invoices.id, a.invoiceId)).limit(1);
     if (old?.status === "paid") return { appointment: await appointmentDto(ctx.db, a), invoice: checkoutInvoiceDto(old, ctx.config.publicWebUrl), payUrl: null };
     if (old && old.status !== "void") await voidInvoice(ctx, staff, old.id);
-  } else if (a.status === "completed" || a.status === "cancelled" || a.status === "no_show") {
+  } else if (a.status === "cancelled" || a.status === "no_show") {
+    // A visit marked Done at the chair (the walk-in line) has no invoice yet: it can still be checked out.
     throw conflict(`This appointment is ${a.status.replace("_", " ")}`);
   }
 

@@ -46,6 +46,8 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt:
   const due = duePreview(appt.items, appt.depositPaidAt ? appt.depositCents : 0);
   const start = parts(appt.startsAt);
   const live = appt.status === "booked" || appt.status === "arrived" || appt.status === "in_service";
+  // A visit marked Done on the walk-in line has no invoice yet: it still needs its payment, tip and stamp.
+  const unpaidDone = appt.status === "completed" && !appt.invoiceId;
   const fee = appt.noShowFeeCents ? Math.max(0, appt.noShowFeeCents - (appt.depositPaidAt ? appt.depositCents : 0)) : 0;
   const minutes = appt.items.reduce((n, i) => n + i.durationMin, 0);
 
@@ -130,8 +132,8 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt:
         {appt.status === "arrived" ? (
           <Button size="lg" fullWidth loading={act.busy} onClick={() => run(() => api.appointments.status(appt.id, { status: "in_service", chargeFee: false }), "Started")}>Start service</Button>
         ) : null}
-        {live ? (
-          <Button size="lg" variant={appt.status === "in_service" ? "primary" : "secondary"} fullWidth onClick={onCheckout}>
+        {live || unpaidDone ? (
+          <Button size="lg" variant={appt.status === "in_service" || unpaidDone ? "primary" : "secondary"} fullWidth onClick={onCheckout}>
             Check out, {money(due.dueCents)} + tip
           </Button>
         ) : null}
