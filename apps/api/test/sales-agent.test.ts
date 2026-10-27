@@ -195,7 +195,7 @@ describe("tool use and grounding", () => {
     const p = (await getPricing(env.ctx, "all")) as Record<string, any>;
     expect(p.shop_plans.map((x: any) => x.monthly)).toEqual([legalTokens()["plan.free.price"], legalTokens()["plan.plus.price"], legalTokens()["plan.pro.price"]]);
     expect(p.shop_plans[0].status).toContain("open");
-    expect(p.shop_plans[1].status).toContain("not open to every shop yet");
+    expect(p.shop_plans[1].status).toBe("open now"); // trade tools self-serve: Café & Retail is buyable on day one
     expect(p.restaurant_plans.tiers.map((t: any) => t.monthly)).toEqual([legalTokens()["restaurant.starter.price"], legalTokens()["restaurant.growth.price"], legalTokens()["restaurant.pro.price"]]);
     expect(p.add_ons.find((a: any) => a.id === "whatsapp_1000").price).toBe(legalTokens()["addon.whatsapp_1000.price"]);
     expect(p.add_ons.find((a: any) => a.id === "phone_ai").price).toBe(`$${ADD_ONS.phone_ai.priceCents / 100}/month`);
@@ -565,7 +565,7 @@ describe("owner phone check (OTP) and account tools", () => {
     expect(rivalRow.stripeCustomerId).toBeNull();
   });
 
-  it("a shop plan that is not open yet is refused with a plain reason, not a link", async () => {
+  it("a shop plan is open from day one: the checkout link is created, not refused", async () => {
     const { mine } = await ownerChat();
     const phone = mine.owner.phone!;
     withModel(script(use("request_phone_verification", { phone }, "t1"), say("type the code")));
@@ -576,10 +576,11 @@ describe("owner phone check (OTP) and account tools", () => {
     withModel(m2);
     await web(code, a.body.sessionToken);
     const id = JSON.parse(toolResults(m2.calls[1]!)[0]!.content).confirmation_id;
-    const m3 = script(use("create_checkout_link", { ...args, confirmation_id: id }, "t2"), (r) => say(JSON.parse(toolResults(r)[0]!.content).error));
+    const m3 = script(use("create_checkout_link", { ...args, confirmation_id: id }, "t2"), (r) => say(String(JSON.parse(toolResults(r)[0]!.content).url ?? JSON.parse(toolResults(r)[0]!.content).error)));
     withModel(m3);
     const done = await web("yes", a.body.sessionToken);
-    expect(done.body.lines.at(-1).text).toBe("feature_locked");
+    expect(done.body.lines.at(-1).text).not.toBe("feature_locked");
+    expect(done.body.lines.at(-1).text).toMatch(/^https?:\/\//);
   });
 
   it("verification expires after an hour", async () => {
