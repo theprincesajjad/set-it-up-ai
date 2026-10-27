@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { overlappingPrefixes } from "@/lib/restaurant/tcb";
 import { FormGrid, Loader } from "../common";
 
 type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
@@ -31,6 +32,12 @@ export function RoutesTab({ gate }: { gate: Gate }) {
               action={canEdit ? <Button size="sm" onClick={() => setEdit("new")}>Add your first route</Button> : undefined}
             />
           ) : (
+            <>
+            {overlappingPrefixes(d.items).length ? (
+              <Banner tone="warning" title="Two routes claim the same postal code">
+                {overlappingPrefixes(d.items).map((o) => `${o.prefix} is on ${o.routes.join(" and ")}`).join(". ")}. New subscribers in that area go to whichever route comes first, so give each prefix to one route.
+              </Banner>
+            ) : null}
             <RowList label="Delivery routes">
               {d.items.map((r) => (
                 <Row
@@ -42,6 +49,7 @@ export function RoutesTab({ gate }: { gate: Gate }) {
                 />
               ))}
             </RowList>
+            </>
           )
         }
       </Loader>

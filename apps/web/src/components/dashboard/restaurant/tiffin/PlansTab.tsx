@@ -64,11 +64,11 @@ export function PlansTab({ gate }: { gate: Gate }) {
                 <Row
                   key={p.id}
                   title={p.name}
-                  meta={`${daysText(p.daysOfWeek)} · ${p.cadence === "monthly" ? "billed monthly" : "billed weekly"} · up to ${p.maxServings} servings · skip until ${p.cutoffHours} h before`}
+                  meta={`${daysText(p.daysOfWeek)} · ${p.cadence === "trial" ? "one-day trial" : p.cadence === "monthly" ? "billed monthly" : "billed weekly"} · up to ${p.maxServings} servings · skip until ${p.cutoffHours} h before`}
                   leading={<Dot tone={p.active ? "positive" : "neutral"}>{p.active ? "On" : "Off"}</Dot>}
                   trailing={
                     <span className="flex flex-col items-end">
-                      <span>{formatMoney(p.priceCents)}<span className="text-meta text-fg-muted">/{p.cadence === "monthly" ? "mo" : "wk"}</span></span>
+                      <span>{formatMoney(p.priceCents)}<span className="text-meta text-fg-muted">{p.cadence === "trial" ? " trial" : `/${p.cadence === "monthly" ? "mo" : "wk"}`}</span></span>
                       <span className="text-meta text-fg-muted">{p.subscriberCount ?? 0} {(p.subscriberCount ?? 0) === 1 ? "subscriber" : "subscribers"}</span>
                     </span>
                   }
@@ -114,7 +114,7 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const per = cadence === "monthly" ? "month" : "week";
+  const per = cadence === "monthly" ? "month" : cadence === "trial" ? "trial day" : "week";
 
   const save = async () => {
     const e: Record<string, string> = {};
@@ -168,7 +168,9 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
           <TextField type="textarea" label="What's in it" optionalLabel placeholder="Two rotis or rice, dal, one sabzi, salad. Cooked fresh each morning." value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-20" />
           <div className="flex flex-col gap-1.5">
             <GroupLabel>How it&apos;s billed</GroupLabel>
-            <Capsules label="Billing" value={cadence} onChange={setCadence} options={[{ value: "monthly", label: "Monthly" }, { value: "weekly", label: "Weekly" }]} />
+            <Capsules label="Billing" value={cadence} onChange={setCadence} options={[{ value: "monthly", label: "Monthly" }, { value: "weekly", label: "Weekly" }, { value: "trial", label: "One-day trial" }]} />
+            {cadence === "weekly" ? <p className="text-meta text-fg-muted">Customers who pay by e-transfer or cash can choose to pay once a month instead of every week. It is the default for them.</p> : null}
+            {cadence === "trial" ? <p className="text-meta text-fg-muted">One paid meal on a day the customer picks, with no renewal. A way to try your food before they subscribe.</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
             <GroupLabel>Days meals go out</GroupLabel>

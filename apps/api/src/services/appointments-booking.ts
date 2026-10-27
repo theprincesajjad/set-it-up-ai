@@ -8,7 +8,7 @@
  * deposit already paid counts toward the fee and is kept; before the window it is refunded.
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
-import { appointments, locations, merchants, services, staffHours, staffServices, users } from "@ll/db";
+import { appointments, locations, merchants, pets, services, staffHours, staffServices, users } from "@ll/db";
 import { LOCALES, appointmentsApi, normalizeLocale, salesTaxCopy, translator, type Locale } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -68,7 +68,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
     .sort((a, b) => a.name.localeCompare(b.name));
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return {
-    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
+    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
     tax: salesTaxCopy({ province: await merchantProvince(ctx.db, merchant), taxRegistered: merchant.taxRegistered }),
     policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: isPharmacy(merchant) ? 0 : merchant.noShowFeeCents, takesCards: isPharmacy(merchant) ? false : cardsOk },
     services: rows.map((s) => ({
@@ -105,6 +105,8 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
   for (const m of ms) provinces.set(m.id, await merchantProvince(ctx.db, m));
   const rxUsers = [...new Set(rows.filter((r) => r.userId && isPharmacy(ms.find((x) => x.id === r.merchantId))).map((r) => r.userId!))];
   const rxLocale = new Map((rxUsers.length ? await ctx.db.select({ id: users.id, locale: users.locale }).from(users).where(inArray(users.id, rxUsers)) : []).map((u) => [u.id, normalizeLocale(u.locale) ?? "en"] as const));
+  const petIds = [...new Set(rows.map((r) => r.petId).filter((x): x is string => !!x))];
+  const petNames = new Map((petIds.length ? await ctx.db.select({ id: pets.id, name: pets.name }).from(pets).where(inArray(pets.id, petIds)) : []).map((p) => [p.id, p.name] as const));
   return rows.map((r): appointmentsApi.MyAppointmentDto => {
     const m = ms.find((x) => x.id === r.merchantId)!;
     const copy = salesTaxCopy({ province: provinces.get(m.id), taxRegistered: m.taxRegistered });
@@ -130,6 +132,7 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
       freeChangeUntil: new Date(r.startsAt.getTime() - m.cancelWindowHours * HOUR).toISOString(),
       feeChargedAt: iso(r.feeChargedAt),
       notes: r.notes,
+      petName: r.petId ? (petNames.get(r.petId) ?? null) : null,
       ...(isPharmacy(m) && r.userId ? { reminderText: pharmacyReminderText(ctx, m, r, rxLocale.get(r.userId) ?? "en").sms } : {}),
     };
   });
@@ -292,6 +295,17 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
     r.totalCents = 0;
     r.depositCents = 0;
   }
+  // Their first name, when the account has none: the shop sees "Aisha" on the calendar, not "Walk-in".
+  const first = body.customerName?.trim().split(/\s+/)[0] ?? null;
+  const [who] = await ctx.db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+  if (first && !who?.name?.trim()) await ctx.db.update(users).set({ name: first }).where(eq(users.id, userId));
+  // A pet picked at booking must be the customer's own.
+  let petId: string | null = null;
+  if (body.petId) {
+    const [pet] = await ctx.db.select({ id: pets.id }).from(pets).where(and(eq(pets.id, body.petId), eq(pets.userId, userId))).limit(1);
+    if (!pet) throw badRequest("Pick one of your own pets");
+    petId = pet.id;
+  }
   const cardsOk = await paymentsReady(ctx.db, merchant);
   const deposit = cardsOk && r.depositCents >= MIN_CHARGE_CENTS ? r.depositCents : 0;
   const fee = rx ? 0 : merchant.noShowFeeCents;
@@ -303,6 +317,8 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
         merchantId: merchant.id,
         locationId: loc.id,
         userId,
+        customerName: who?.name?.trim() || first,
+        petId,
         staffId,
         requestedStaff: !!body.staffId,
         source: "online",

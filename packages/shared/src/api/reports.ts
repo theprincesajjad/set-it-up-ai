@@ -263,8 +263,16 @@ export function hourLabel(hour: number): string {
   return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
 }
 
+/** "8 to 10 am", "11 am to 1 pm": a two-hour bucket as a range a person can read. */
+export function hourRangeLabel(from: number, to: number): string {
+  const a = hourLabel(from);
+  const b = hourLabel(to);
+  const [an, ap] = a.split(" ") as [string, string];
+  return ap === b.split(" ")[1] ? `${an} to ${b}` : `${a} to ${b}`;
+}
+
 /**
- * "Weekdays 8 am": the most common weekday group (Weekdays or Weekends) and 2-hour bucket across
+ * "Weekdays 8 to 10 am": the most common weekday group (Weekdays or Weekends) and 2-hour bucket across
  * the most recent 12 visits. `slots` are newest first. Null with fewer than 4 visits. Ties go to
  * the larger group count, then the earlier bucket.
  */
@@ -278,7 +286,7 @@ export function usuallyLabel(slots: VisitSlot[]): string | null {
   const buckets = new Map<number, number>();
   for (const s of recent) if (group(s.dow) === bestGroup) buckets.set(s.hour - (s.hour % 2), (buckets.get(s.hour - (s.hour % 2)) ?? 0) + 1);
   const bestBucket = [...buckets.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]![0];
-  return `${bestGroup} ${hourLabel(bestBucket)}`;
+  return `${bestGroup} ${hourRangeLabel(bestBucket, bestBucket + 2)}`;
 }
 
 /** Counts in the last four same-weekday buckets → typical value (mean, rounded). Null with no history. */

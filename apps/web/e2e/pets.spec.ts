@@ -116,7 +116,9 @@ test("daycare: an expired shot and a missing temperament check block check-in, a
   await expect(page.getByText("In the room")).toBeVisible();
   const ziggy = page.getByRole("listitem").filter({ hasText: "Ziggy" });
   await expect(ziggy.getByText(/Bordetella expired on/)).toBeVisible();
-  await expect(ziggy.getByRole("button", { name: "Blocked" })).toBeDisabled();
+  // One state, not two: the blocked dog has no Check in button, only a way to fix the shots.
+  await expect(ziggy.getByRole("button", { name: "Check in" })).toHaveCount(0);
+  await expect(ziggy.getByRole("link", { name: "Update shots" })).toBeVisible();
   const luna = page.getByRole("listitem").filter({ hasText: "Luna" });
   await expect(luna.getByText(/No temperament check on file yet/)).toBeVisible();
   await page.screenshot({ path: shot("03-daycare-1440") });
@@ -190,4 +192,67 @@ test("the owner keeps vaccine proof current from their card and sees their food 
   await expect(page.getByText("Fromm Gold Adult 26 lb").first()).toBeVisible();
   await expect(page.getByText(/Tail & Kibble/).first()).toBeVisible();
   await page.screenshot({ path: shot("m2-food-card-390"), fullPage: true });
+});
+
+test("a dog owner books a groom for their dog: only the dog's size is priced, no bridal row, and the shop's card shows the dog and its handling note", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Sign in first (the dog list needs the account), with the seeded demo customer, then come back to the booking page.
+  await page.goto("/me/pets");
+  await fillPhone(page, "6475551000");
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "My pets" })).toBeVisible();
+  await page.goto("/shops/pawsh-grooming/book");
+  await expect(page.getByText("Which dog is this for?")).toBeVisible();
+  await page.getByRole("radio", { name: "Biscuit" }).click();
+  await expect(page.getByText(/Prices shown are for Biscuit's size/)).toBeVisible();
+  // A groomer's page has no wedding row, and Biscuit (medium) is priced as a medium dog only.
+  await expect(page.getByText("Bridal and events")).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Full groom \(medium dog\)/ })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /\(giant dog\)/ })).toHaveCount(0);
+  await page.screenshot({ path: shot("m3-book-dog-390"), fullPage: true });
+  await page.getByRole("checkbox", { name: /Full groom \(medium dog\)/ }).click();
+  await page.getByRole("button", { name: "Choose a time" }).click();
+  await page.getByRole("group", { name: "Pick a time" }).getByRole("button").and(page.locator(":not([disabled])")).last().click();
+  const times = page.getByRole("button", { name: /^\d{1,2}:\d{2}\s?[ap]\.?m\.?$/i });
+  await expect(times.first()).toBeVisible();
+  await times.first().click();
+  await page.getByRole("button", { name: /^Book/ }).last().click();
+  await expect(page.getByRole("heading", { name: "you are booked" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("next-visit").getByText(/for Biscuit/)).toBeVisible();
+  // The shop's list of the day (API) carries the dog, and the calendar card shows it with the handling note.
+  const owner = await login("owner+pawsh-grooming@example.com");
+  const m = await shopOf(owner);
+  const from = new Date().toISOString();
+  const to = new Date(Date.now() + 20 * 86_400_000).toISOString();
+  const list = await call<{ items: { pet: { name: string; handlingNote: string | null } | null; source: string }[] }>("GET", `/v1/merchants/${m}/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, undefined, owner);
+  const mine = list.items.find((a) => a.pet?.name === "Biscuit" && a.source === "online");
+  expect(mine?.pet?.handlingNote).toMatch(/Nervous at the dryer/);
+});
+
+test("the pet page's Book groom opens a new appointment for that dog", async ({ page }) => {
+  const owner = await login("owner+pawsh-grooming@example.com");
+  const m = await shopOf(owner);
+  const id = await petId(owner, m, "Biscuit");
+  await signIn(page, "owner+pawsh-grooming@example.com");
+  await page.goto(`/m/${m}/pets/${id}`);
+  await page.getByRole("link", { name: "Book groom" }).click();
+  await page.waitForURL(/\/calendar\?newFor=/);
+  await expect(page.getByRole("heading", { name: "New appointment" })).toBeVisible();
+  await expect(page.getByLabel("Dog")).toHaveValue(id);
+  await expect(page.getByText(/Biscuit is a medium dog: prices for that size are shown/)).toBeVisible();
+  await page.screenshot({ path: shot("05-new-appointment-dog-1440") });
+});
+
+test("the run-out text is the customer's own switch, with their yes spelled out beside it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/me/food");
+  await fillPhone(page, "6475551000");
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "My food cards" })).toBeVisible();
+  await expect(page.getByText(/Switching this on is your yes to one text from Tail & Kibble/).first()).toBeVisible();
+  await page.screenshot({ path: shot("m4-food-consent-390"), fullPage: true });
 });

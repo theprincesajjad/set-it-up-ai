@@ -109,6 +109,9 @@ export const EID_PLAN_LABEL = "Eid al-Adha day";
  * The shop's Eid al-Adha pick-up days that are still ahead (or today), from the date rules the Eid plan saved. They already follow
  * moon sighting (moving Eid moves the rules). Null when the shop has not set a plan or every day has passed.
  */
+/** Days before the first Eid pick-up day that qurbani booking opens (eight weeks; the owner's Eid plan says the same). */
+export const QURBANI_OPENS_DAYS = 56;
+
 export function eidPlanDays(m: Pick<Merchant, "preorderOverrides" | "festivalOverrides">, today: string): { dates: string[]; start: string; moved: boolean } | null {
   const rules = (m.preorderOverrides ?? []).filter((o) => o.label.startsWith(EID_PLAN_LABEL) && o.to >= today).sort((a, b) => a.from.localeCompare(b.from));
   if (!rules.length) return null;
@@ -278,7 +281,9 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
   if (!plan) for (let d = from; d <= to; d = addDaysKey(d, 1)) dates.push(d);
   const waiting = await waitlistCounts(ctx.db, merchant.id, dates[0]!, dates.at(-1)!);
   for (const d of dates) {
-    const { cap, note, leadHours: ovLead } = capFor(merchant, d);
+    const { cap: dayCap, note, leadHours: ovLead } = capFor(merchant, d);
+    // The daily cap counts pots and animals (pre-order-only items); a cut of meat or a tray bought by weight does not use it up.
+    const cap = item.preorderOnly ? dayCap : null;
     const lead = Math.max(item.leadTimeHours, ovLead ?? 0);
     const earliest = now.getTime() + lead * 3_600_000;
     const dayEnd = localMidnightUtc(addDaysKey(d, 1), merchant.timezone).getTime();
@@ -299,5 +304,5 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
     days.push({ date: d, potsLeft, full: !closed && potsLeft != null && potsLeft <= 0, closed, waiting: waiting.get(d) ?? 0, tooSoon, windows, note });
     if (days.length >= 60) break;
   }
-  return { itemId: item.id, leadHours: item.leadTimeHours, perHourCap: merchant.preorderPerHourCap, days, ...(plan ? { plan: { kind: "eid_al_adha" as const, start: plan.start, moved: plan.moved } } : {}) };
+  return { itemId: item.id, leadHours: item.leadTimeHours, perHourCap: merchant.preorderPerHourCap, days, ...(plan ? { plan: { kind: "eid_al_adha" as const, start: plan.start, moved: plan.moved, bookingsOpen: addDaysKey(plan.start, -QURBANI_OPENS_DAYS) } } : {}) };
 }

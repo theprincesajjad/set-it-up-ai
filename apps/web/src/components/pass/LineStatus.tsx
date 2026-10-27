@@ -48,11 +48,15 @@ export function LineStatus({ initial, shop }: { initial: barberApi.QueueStatusRe
           <ul className="flex flex-col divide-y divide-line border-y border-line text-body">
             <li className="flex justify-between gap-3 py-3"><span>{t("q.ahead", { n: s.ahead })}</span></li>
             {s.party.length ? <li className="flex justify-between gap-3 py-3"><span>{t("q.party", { names: s.party.map((p) => p.name).join(", ") })}</span></li> : null}
-            <li className="py-3 text-fg-muted">{t("q.textNote")}</li>
+            {s.partyDoneMin ? <li className="flex justify-between gap-3 py-3"><span>{t("q.partyDone", { n: s.party.length + 1, min: s.partyDoneMin })}</span></li> : null}
+            <li className="py-3 text-fg-muted">{s.textsYou ? t("q.textNote") : t("q.noTextNote")}</li>
           </ul>
         </>
       ) : null}
       {s.state === "called" ? <Banner tone="info">{t("q.calledAny")}</Banner> : null}
+      {s.state === "done" && s.pointsEarned ? (
+        <Banner tone="success" action={<Button variant="secondary" size="sm" href="/me">{t("q.openWallet")}</Button>}>{t("q.earned", { n: s.pointsEarned })}</Banner>
+      ) : null}
       {s.state === "waiting" || s.state === "called" ? (
         <Button
           variant="secondary"

@@ -27,7 +27,7 @@ export default function DaycarePage() {
 
 /** Daycare today (Figma frame 3): the count against capacity and dogs per staff, check in and out, and the dogs that cannot come in yet. */
 function Day() {
-  const { api, role, enabled, detail } = useMerchant();
+  const { api, base, role, enabled, detail } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const state = useApi(() => api.daycare.day(), [api], { pollMs: 20_000 });
@@ -97,7 +97,11 @@ function Day() {
                         {s.status === "expected" ? (
                           <>
                             <Button size="sm" variant="secondary" disabled={act.busy} onClick={() => void run(() => api.daycare.noShow(s.id), () => `${s.petName} marked as a no-show`)}>No-show</Button>
-                            <Button size="sm" disabled={act.busy || hard.length > 0 || (!!full && !manager)} onClick={() => void checkIn(s)}>{hard.length ? "Blocked" : "Check in"}</Button>
+                            {hard.length ? (
+                              <Button size="sm" variant="secondary" href={`${base}/pets/${s.petId}`}>{hard.some((b) => b.code === "vaccine") ? "Update shots" : `Open ${s.petName}`}</Button>
+                            ) : (
+                              <Button size="sm" disabled={act.busy || (!!full && !manager)} onClick={() => void checkIn(s)}>Check in</Button>
+                            )}
                           </>
                         ) : null}
                         {s.status === "in" ? (

@@ -305,7 +305,7 @@ export async function completeOAuth(ctx: AppContext, provider: string, query: Re
     .limit(1);
   const [m] = await ctx.db.select({ repUserId: merchants.repUserId }).from(merchants).where(eq(merchants.id, state.merchantId)).limit(1);
   if (!m) throw notFound("Merchant");
-  const allowed = (staff && staff.role !== "staff") || m.repUserId === state.userId || (await isAdmin(ctx, state.userId));
+  const allowed = (staff && (staff.role === "manager" || staff.role === "owner")) || m.repUserId === state.userId || (await isAdmin(ctx, state.userId));
   if (!allowed) throw new HttpError(403, "forbidden", "You no longer have access to connect integrations for this business");
   const existing = await getIntegration(ctx.db, state.merchantId, provider);
   const nonceHash = existing?.settings?._oauthNonce;

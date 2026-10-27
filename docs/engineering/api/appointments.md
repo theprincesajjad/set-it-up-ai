@@ -111,3 +111,10 @@ The fee is snapshotted on the appointment (`no_show_fee_cents`) when it is booke
 
 Web `/shops/<slug>/book` (and `/shops/<slug>/book/<id>` to change or cancel), phone `book/<slug>` and `appointments/<id>`.
 `?service=<id>&staff=<id>` opens the flow with those chosen (rebooking links).
+
+## Pets, names and starters
+
+- `petId` on `POST /appointments` and `POST /v1/me/appointments` (the customer's own pet only; staff booking with only a `petId` makes the pet's owner the client). `AppointmentDto.pet` carries name, size, coat, the shop's handling note and the worst vaccine state. Checkout with a pet logs the groom (`pet_visits`) once and accepts `nextGroomWeeks` (sets the dog's cadence at this shop); the response has `pet: { nextDueOn, groomEveryWeeks, logged }`.
+- `customerName` on `POST /v1/me/appointments` fills the account's first name when it has none, so the calendar shows a name; with none at all an online or desk-made booking shows "Client 1234" (last four of the phone), never "Walk-in".
+- `POST /services/starters` (manager): the usual services for the shop's vertical (`SERVICE_STARTERS`; a groomer's list is priced by dog size, `Full groom (large dog)`), skipping names it already has. A service with a size in brackets is shown only to a pet of that size (`serviceFitsSize`).
+- `GET /appointments/settings` has `taxStatus` (`registered`, `small`, `unset`). An unset shop adds no tax at checkout; the calendar says so and links to Settings, Tax.

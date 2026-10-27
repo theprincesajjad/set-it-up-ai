@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RESTAURANT_FEATURES, effectivePlan, FEATURES, FEES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
+import { RESTAURANT_FEATURES, effectivePlan, FEATURES, FEES, FEATURE_KEYS, FREE_FOREVER, PAID_FEATURES, PLANS, calculateEarn, isFeatureEnabled, featureOffer, isPlanAvailable, normalizePhone, type FeatureKey } from "../src/index.js";
 
 describe("plans", () => {
   it("keeps the loyalty program and reporting free forever (Pricing v2)", () => {
@@ -187,5 +187,20 @@ describe("trade tools self-serve (founder decision 2026-10-27)", () => {
     expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(true);
     expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "salon" })).toBe(false);
     expect(isFeatureEnabled("booking.classes", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(false);
+  });
+});
+
+describe("featureOffer: the plan, price and checkout a locked feature points at", () => {
+  it("names the real plan for each kind of feature", () => {
+    expect(featureOffer("booking.appointments")).toMatchObject({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 3900 });
+    expect(featureOffer("service.tickets")).toMatchObject({ kind: "plan", plan: "pro", name: "Service", priceCents: 9900 });
+    // Tiffin and catering are Growth ($199), not Starter ($99); banquet is Pro ($349).
+    expect(featureOffer("restaurant.tiffin")).toMatchObject({ kind: "restaurant", tier: "growth", priceCents: 19900 });
+    expect(featureOffer("restaurant.catering")).toMatchObject({ kind: "restaurant", tier: "growth", priceCents: 19900 });
+    expect(featureOffer("restaurant.banquet")).toMatchObject({ kind: "restaurant", tier: "pro", priceCents: 34900 });
+    expect(featureOffer("restaurant.dietary_tags")).toMatchObject({ kind: "restaurant", tier: "starter", priceCents: 9900 });
+    expect(featureOffer("ads.sponsored_promo")).toMatchObject({ kind: "network", unlockAtMerchants: 300 });
+    expect(featureOffer("campaigns.neighbourhood")).toMatchObject({ kind: "network", unlockAtMerchants: 100 });
+    expect(featureOffer("loyalty.points")).toEqual({ kind: "free" });
   });
 });

@@ -43,9 +43,9 @@ const ORDER_PHRASE: Record<Exclude<MsgLang, "en">, string> = {
 };
 
 /** The message in one language. English is the template itself; other languages are the greeting plus a plain call to order ahead. */
-export function festivalMessage(def: FestivalDef, template: FestivalTemplate, lang: MsgLang, shop: string, startDate: string, channel: "sms" | "email" | "whatsapp" = "whatsapp"): string {
+export function festivalMessage(def: FestivalDef, template: FestivalTemplate, lang: MsgLang, shop: string, startDate: string, channel: "sms" | "email" | "whatsapp" = "whatsapp", opts: { preview?: boolean } = {}): string {
   const base = channel === "email" ? template.body : channel === "sms" ? template.sms : template.whatsapp;
-  const fill = (t: string) => t.replace(/\{\{\s*merchant\s*\}\}/g, shop).replace(/\{\{\s*first_name\s*\}\}/g, "Sam").replace(/\{\{\s*festival_date\s*\}\}/g, formatFestivalDate(startDate));
+  const fill = (t: string) => t.replace(/\{\{\s*merchant\s*\}\}/g, shop).replace(/\{\{\s*first_name\s*\}\}/g, opts.preview ? "[first name]" : "{{first_name}}").replace(/\{\{\s*festival_date\s*\}\}/g, formatFestivalDate(startDate));
   if (lang === "en") return fill(base);
   const greeting = def.greeting[lang];
   if (!greeting) return fill(base);

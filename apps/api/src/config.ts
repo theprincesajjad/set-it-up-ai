@@ -37,6 +37,11 @@ export interface Config {
     provider: "r2" | "disk" | "memory";
     r2?: { accountId: string; accessKeyId: string; secretAccessKey: string; bucket: string; endpoint?: string; publicBase?: string };
   };
+  /**
+   * Address to map pin at signup (providers/geocoder.ts). GEOCODER_PROVIDER=nominatim|none; default nominatim in production
+   * (OpenStreetMap, one lookup per signup), none elsewhere so dev and tests never call out. GEOCODER_URL overrides the endpoint.
+   */
+  geocoder: { provider: "nominatim" | "none"; url: string; userAgent: string };
   /** Merchants need this many active members to count as "activated". */
   activationThreshold: number;
   sms: { provider: "console" | "twilio"; twilioAccountSid?: string; twilioAuthToken?: string; twilioFrom?: string; twilioMessagingServiceSid?: string };
@@ -151,6 +156,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     phone: { authToken: env.PHONE_WEBHOOK_AUTH_TOKEN ?? env.TWILIO_AUTH_TOKEN },
     tiffin: { padEnabled: env.TIFFIN_PAD === "1" },
+    geocoder: {
+      provider: env.GEOCODER_PROVIDER === "nominatim" || (isProd && env.GEOCODER_PROVIDER !== "none") ? "nominatim" : "none",
+      url: env.GEOCODER_URL ?? "https://nominatim.openstreetmap.org/search",
+      userAgent: env.GEOCODER_USER_AGENT ?? "LoyaltyLocal/1.0 (signup address lookup)",
+    },
     stripe: {
       secretKey: env.STRIPE_SECRET_KEY,
       webhookSecret: env.STRIPE_WEBHOOK_SECRET,

@@ -140,8 +140,10 @@ describe("profile, onboarding, features", () => {
     expect(r.statusCode).toBe(200);
     const f = Object.fromEntries(r.json().features.map((x: { key: string }) => [x.key, x]));
     expect(f["loyalty.points"].enabled).toBe(true);
-    expect(f["marketing.sms"]).toMatchObject({ enabled: false, lockedReason: "rollout", minPlan: "plus" });
-    expect(r.json().plansAvailable).toEqual({ free: true, plus: false, pro: false });
+    // A trade tool is locked by the plan (it can be bought), a network-wide extra by the rollout gate.
+    expect(f["marketing.sms"]).toMatchObject({ enabled: false, lockedReason: "plan", minPlan: "plus" });
+    expect(f["ads.sponsored_promo"]).toMatchObject({ enabled: false, lockedReason: "rollout" });
+    expect(r.json().plansAvailable).toEqual({ free: true, plus: true, pro: true });
     const staff = await addStaff(merchant.id, "manager");
     expect((await env.app.inject({ method: "PUT", url: `/v1/merchants/${merchant.id}/beta`, headers: auth(staff.token), payload: { optIn: true } })).statusCode).toBe(403);
     const b = await env.app.inject({ method: "PUT", url: `/v1/merchants/${merchant.id}/beta`, headers: auth(ownerToken), payload: { optIn: true } });

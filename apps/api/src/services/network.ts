@@ -5,8 +5,8 @@
  * promos, muted shops hidden).
  *
  * Visibility
- *  - Network map/list/feed: merchants with status "active" whose
- *    network.listing feature isn't switched off by an admin override.
+ *  - Network map/list/feed: merchants with status "active", or "onboarding" with at least one
+ *    member who has visited (listedSql), whose network.listing feature isn't switched off by an admin override.
  *  - Public shop page and QR join: "onboarding" or "active" (a shop seeds its
  *    first members while onboarding).
  */
@@ -44,6 +44,12 @@ type Point = { lat: number; lng: number };
 
 // Correlated subqueries reference the outer table by its qualified name: drizzle omits the
 // qualifier on single-table selects, which would bind the column to the inner table.
+/**
+ * A shop is on the map, in Discover and in search from its first member who has visited, not only after 25 (activation stays a rep
+ * metric, not a visibility gate: docs/audits/main-street-self-serve.md F1). A shop with no visited member yet is still reachable by its direct link.
+ */
+const listedSql = sql`("merchants"."status" = 'active' or ("merchants"."status" = 'onboarding' and exists (select 1 from merchant_members mm where mm.merchant_id = "merchants"."id" and mm.visit_count >= 1)))`;
+
 const listingNotDisabled = sql`not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = "merchants"."id" and fo.key = 'network.listing' and fo.enabled = false)`;
 
 function offsetCursor(cursor: string | undefined): number {
@@ -144,7 +150,7 @@ async function hoodBySlug(db: DbOrTx, slug: string) {
 // ---------------------------------------------------------------------------
 // Neighbourhoods
 // ---------------------------------------------------------------------------
-export const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = "neighbourhoods"."id" and m.status = 'active'
+export const shopCountSql = sql<number>`(select count(*)::int from ${merchants} m where m.neighbourhood_id = "neighbourhoods"."id" and (m.status = 'active' or (m.status = 'onboarding' and exists (select 1 from merchant_members mm where mm.merchant_id = m.id and mm.visit_count >= 1)))
   and not exists (select 1 from ${featureOverrides} fo where fo.merchant_id = m.id and fo.key = 'network.listing' and fo.enabled = false))`;
 
 export function hoodDto(n: typeof neighbourhoods.$inferSelect, shopCount: number): networkApi.NeighbourhoodDto {
@@ -192,7 +198,7 @@ export async function getNeighbourhood(ctx: AppContext, slug: string): Promise<n
     ctx.db
       .select({ id: merchants.id, timezone: merchants.timezone })
       .from(merchants)
-      .where(and(eq(merchants.neighbourhoodId, row.n.id), eq(merchants.status, "active"), listingNotDisabled)),
+      .where(and(eq(merchants.neighbourhoodId, row.n.id), listedSql, listingNotDisabled)),
   ]);
   const tz = new Map(shops.map((s) => [s.id, s.timezone]));
   const ps = (await windowPromos(ctx.db, shops.map((s) => s.id), now)).filter((p) => p.audience === "network" && promoAppliesAt(p, now, tz.get(p.merchantId)!));
@@ -298,7 +304,7 @@ export async function listShops(ctx: AppContext, q: networkApi.ShopsQuery, userI
     .leftJoin(loyaltyPrograms, eq(loyaltyPrograms.merchantId, merchants.id))
     .where(
       and(
-        eq(merchants.status, "active"),
+        listedSql,
         listingNotDisabled,
         hood ? eq(merchants.neighbourhoodId, hood.id) : undefined,
         q.vertical ? eq(merchants.vertical, q.vertical) : undefined,
@@ -380,7 +386,7 @@ export async function feed(ctx: AppContext, q: networkApi.FeedQuery, userId: str
   const shops = await ctx.db
     .select()
     .from(merchants)
-    .where(and(eq(merchants.status, "active"), listingNotDisabled, hood ? eq(merchants.neighbourhoodId, hood.id) : undefined));
+    .where(and(listedSql, listingNotDisabled, hood ? eq(merchants.neighbourhoodId, hood.id) : undefined));
   const byId = new Map(shops.map((m) => [m.id, m]));
   const ids = shops.map((m) => m.id);
   const [ps, locs, mine] = await Promise.all([windowPromos(ctx.db, ids, now), locationsByMerchant(ctx.db, ids), membershipsFor(ctx.db, userId, ids)]);
@@ -480,16 +486,16 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
 export async function publicPlans(ctx: AppContext): Promise<networkApi.PublicPlansResponse> {
   const [stages, [active], [hoods], [people], [streets]] = await Promise.all([
     getRolloutStages(ctx.db),
-    ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(eq(merchants.status, "active")),
+    ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(listedSql),
     ctx.db.select({ n: sql<number>`count(*)::int` }).from(neighbourhoods).where(inArray(neighbourhoods.status, ["pilot", "live"])),
     // Shoppers with a membership at an active shop, and how many hold two or more. Counts only, never ids.
     ctx.db
       .select({ members: sql<number>`count(*)::int`, multi: sql<number>`count(*) filter (where t.n >= 2)::int` })
-      .from(sql`(select ${merchantMembers.userId} as user_id, count(*) as n from ${merchantMembers} inner join ${merchants} on ${merchants.id} = ${merchantMembers.merchantId} where ${merchants.status} = 'active' group by ${merchantMembers.userId}) t`),
+      .from(sql`(select ${merchantMembers.userId} as user_id, count(*) as n from ${merchantMembers} inner join ${merchants} on ${merchants.id} = ${merchantMembers.merchantId} where (${merchants.status} = 'active' or (${merchants.status} = 'onboarding' and exists (select 1 from merchant_members mm where mm.merchant_id = ${merchants.id} and mm.visit_count >= 1))) group by ${merchantMembers.userId}) t`),
     ctx.db
       .select({ n: sql<number>`count(distinct ${neighbourhoods.id})::int` })
       .from(neighbourhoods)
-      .innerJoin(merchants, and(eq(merchants.neighbourhoodId, neighbourhoods.id), eq(merchants.status, "active")))
+      .innerJoin(merchants, and(eq(merchants.neighbourhoodId, neighbourhoods.id), listedSql))
       .where(inArray(neighbourhoods.status, ["pilot", "live"])),
   ]);
   const members = Number(people?.members ?? 0);

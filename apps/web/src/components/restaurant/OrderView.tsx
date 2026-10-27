@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { cartCount, cartSubtotal, idempotencyKeyFor, pickupDays, priceDish, pruneCart, taxOf, type CartLine, type Item, type PickupDay } from "@/lib/restaurant/order";
 import { dayDate } from "@/lib/restaurant/util";
+import { isWeighedLine } from "@/lib/restaurant/weighed";
 import { PayPanel } from "./PayPanel";
 import { ChoiceRow, Heading, ShopHead, Stepper, useFmt } from "./ui";
 import { useCart } from "./useCart";
@@ -67,11 +68,22 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
     setTime(d[0]?.times[0]?.iso ?? "");
   }
   const dayTimes = days?.find((d) => d.date === day)?.times ?? [];
-  const laterOk = when === "asap" || (!!time && dayTimes.some((x) => x.iso === time));
 
   const lines = cart.lines.filter((l) => byId.has(l.itemId));
   const subtotal = cartSubtotal({ lines }, byId);
-  const tax = taxOf(subtotal, menu.tax.ratePpm);
+  // Zero-rated groceries (raw meat, flour, rice) carry no tax: the server charges tax on the taxable lines only, so the preview does too.
+  const taxableSubtotal = cartSubtotal({ lines: lines.filter((l) => byId.get(l.itemId)?.taxable !== false) }, byId);
+  const tax = taxOf(taxableSubtotal, menu.tax.ratePpm);
+  const anyZeroRated = lines.some((l) => byId.get(l.itemId)?.taxable === false);
+  // Meat cut to order is never "ready in 20 minutes": the customer picks a time.
+  const cutToOrder = lines.some((l) => isWeighedLine(byId.get(l.itemId)!));
+  const laterOk = (when === "asap" && !cutToOrder) || (when === "later" && !!time && dayTimes.some((x) => x.iso === time));
+  useEffect(() => {
+    // Cut to order has no "as soon as possible": open the time picker.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (cutToOrder && when === "asap") chooseLater();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cutToOrder, when]);
   const total = subtotal + tax;
   const canPickup = restaurant ? restaurant.features.pickup && restaurant.acceptingOrders : true;
   const base = `/shops/${encodeURIComponent(shop.slug)}`;
@@ -171,11 +183,9 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
           label={t("rs.order.when")}
           value={when}
           onChange={(v) => (v === "later" ? chooseLater() : setWhen("asap"))}
-          options={[
-            { value: "asap", label: t("rs.order.asap", { min: number(quotedWait) }) },
-            { value: "later", label: t("rs.order.later") },
-          ]}
+          options={[...(cutToOrder ? [] : [{ value: "asap" as const, label: t("rs.order.asap", { min: number(quotedWait) }) }]), { value: "later" as const, label: t("rs.order.later") }]}
         />
+        {cutToOrder ? <p className="text-meta text-fg-muted">{t("gr.order.cutToOrder")}</p> : null}
         {when === "later" ? (
           days && days.length ? (
             <div className="flex flex-col gap-3">
@@ -245,10 +255,14 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
           <span>{t("rs.order.subtotal")}</span>
           <span className="tabular-nums">{money(subtotal)}</span>
         </div>
-        <div className="flex justify-between text-fg-muted">
-          <span>{menu.tax.label}</span>
-          <span className="tabular-nums">{money(tax)}</span>
-        </div>
+        {tax > 0 || !anyZeroRated ? (
+          <div className="flex justify-between text-fg-muted">
+            <span>{menu.tax.label}</span>
+            <span className="tabular-nums">{money(tax)}</span>
+          </div>
+        ) : (
+          <p className="text-meta text-fg-muted">{t("gr.order.zeroRated")}</p>
+        )}
         <div className="flex justify-between text-body-strong text-fg">
           <span>{t("orderPay.total")}</span>
           <span className="tabular-nums">{money(total)}</span>

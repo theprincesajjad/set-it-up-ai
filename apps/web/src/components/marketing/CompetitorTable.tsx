@@ -1,6 +1,7 @@
 import { BRAND } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { COMPETITORS, formatAsOf } from "@/lib/marketing/sources";
+import { PriceStrip } from "./PriceStrip";
 import { MHeading, MSection } from "./Section";
 
 export { COMPETITORS } from "@/lib/marketing/sources";
@@ -83,6 +84,7 @@ export function CompetitorTable() {
         ))}
         .
       </p>
+      <PriceStrip />
     </MSection>
   );
 }

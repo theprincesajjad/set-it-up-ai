@@ -27,4 +27,12 @@ describe("appointment calendar file", () => {
     expect(icsFileName({ merchant: { ...appt.merchant, slug: "!!" } })).toBe("shop-appointment.ics");
     expect(manageUrl("https://app.example///", appt)).toBe("https://app.example/shops/Bloom-Studio/book/9f1c2a40-0000-4000-8000-000000000001");
   });
+  it("writes a pharmacy visit as a bare Appointment: no service, shop, address or link", () => {
+    const rx = { ...appt, items: [{ serviceId: null, name: "Flu shot", durationMin: 15, priceCents: 0 }], merchant: { ...appt.merchant, name: "Village Apothecary", slug: "village-apothecary" }, reminderText: "Reminder: your appointment is Thu 10:00 am." };
+    const ics = appointmentIcs(rx, "https://app.example/", new Date("2026-11-01T12:00:00Z"), "Appointment").replace(/\r\n /g, "");
+    expect(ics).toContain("SUMMARY:Appointment");
+    expect(ics).toContain("DTSTART:20261104T150000Z");
+    for (const word of ["Flu", "Village", "Apothecary", "village-apothecary", "Roncesvalles", "LOCATION", "URL:"]) expect(ics, word).not.toContain(word);
+    expect(icsFileName(rx)).toBe("appointment.ics");
+  });
 });

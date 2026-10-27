@@ -23,6 +23,7 @@ export function appointmentEndpoints(c: ApiClient, b: string) {
       settings: () => c.get<appointmentsApi.AppointmentSettingsDto>(`${b}/appointments/settings`),
       saveSettings: (body: appointmentsApi.AppointmentSettingsBody) => c.put<appointmentsApi.AppointmentSettingsDto>(`${b}/appointments/settings`, body),
       services: (kind: appointmentsApi.ServiceKind = "appointment") => c.get<appointmentsApi.ServicesResponse>(`${b}/services`, { query: { kind } }),
+      addStarterServices: () => c.post<{ items: appointmentsApi.ServiceDto[] }>(`${b}/services/starters`, {}),
       createService: (body: appointmentsApi.CreateServiceBody) => c.post<appointmentsApi.ServiceDto>(`${b}/services`, body),
       updateService: (id: string, body: appointmentsApi.UpdateServiceBody) => c.patch<appointmentsApi.ServiceDto>(`${b}/services/${enc(id)}`, body),
       deleteService: (id: string) => c.delete<void>(`${b}/services/${enc(id)}`),

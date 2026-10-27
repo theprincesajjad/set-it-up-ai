@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { loadShopBrief } from "@/lib/restaurant/server";
+import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +40,12 @@ export default async function CateringInquiryPage({ params, searchParams }: Prop
       </PageFrame>
     );
   }
+  // "From about $X a guest": the cheapest tray on the menu, priced per person it serves. A hint, never a quote.
+  const menu = await publicRestaurantApi().menu(slug).catch(() => null);
+  const perGuest = menu ? [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized].filter((i) => (i.serves ?? 0) > 1 && i.priceCents > 0).map((i) => Math.round(i.priceCents / i.serves!)) : [];
   return (
     <PageFrame locale={locale}>
-      <CateringInquiryForm shop={shop} />
+      <CateringInquiryForm shop={shop} fromPerGuestCents={perGuest.length ? Math.min(...perGuest) : null} />
     </PageFrame>
   );
 }

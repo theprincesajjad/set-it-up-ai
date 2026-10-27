@@ -3,6 +3,7 @@ import { ScanLine } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { classesApi } from "@ll/shared";
+import { SalePanel } from "@/components/dashboard/classes/SalePanel";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -32,6 +33,11 @@ function Door() {
   const [value, setValue] = useState("");
   const [last, setLast] = useState<classesApi.CheckInResponse | null>(null);
   const door = useApi(() => api.classes.door(sessionId), [api, sessionId], { pollMs: 15_000 });
+  const products = useApi(() => api.classes.products(), [api]);
+  const [selling, setSelling] = useState(false);
+  const [lastRef, setLastRef] = useState<ReturnType<typeof classifyRef>>(null);
+  // Drop-in first, then packs and intro offers (a membership is signed up in the app, not paid at the desk).
+  const sellable = (products.data?.items ?? []).filter((p) => p.active && p.kind !== "membership").sort((a, b) => Number(b.kind === "drop_in") - Number(a.kind === "drop_in"));
   useEffect(() => input.current?.focus(), [last]);
 
   async function submit(e: React.FormEvent) {
@@ -40,8 +46,18 @@ function Door() {
     if (!ref) return act.setError("Scan a member card or type a 10-digit phone number.");
     const r = await act.run(() => api.classes.checkIn({ ...ref, sessionId, idempotencyKey: crypto.randomUUID() }));
     if (r) {
+      setLastRef(ref);
       setLast(r);
       setValue("");
+      await door.reload();
+    }
+  }
+  /** The desk sold them something: check them in again, now that they have a pass. */
+  async function afterSale() {
+    if (!lastRef) return;
+    const r = await act.run(() => api.classes.checkIn({ ...lastRef, sessionId, idempotencyKey: crypto.randomUUID() }));
+    if (r) {
+      setLast(r);
       await door.reload();
     }
   }
@@ -56,7 +72,7 @@ function Door() {
       />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
-          <form onSubmit={submit} className="flex items-center gap-3 rounded-card border border-fg px-4 py-3">
+          <form onSubmit={submit} className="flex min-w-0 items-center gap-3 rounded-card border border-fg px-4 py-3">
             <ScanLine aria-hidden className="size-5 shrink-0 text-fg-muted" />
             <input
               ref={input}
@@ -65,7 +81,7 @@ function Door() {
               aria-label="Member card, QR code or phone number"
               placeholder="Scan QR or enter phone / member code"
               autoComplete="off"
-              className="min-h-10 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-subtle"
+              className="min-h-10 min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-subtle"
             />
             <Button type="submit" loading={act.busy}>Look up</Button>
           </form>
@@ -80,17 +96,20 @@ function Door() {
                 {last.visitsThisMonth != null ? <div><dt className="text-fg-muted">This month</dt><dd className="text-body text-fg">{last.visitsThisMonth} visit{last.visitsThisMonth === 1 ? "" : "s"}</dd></div> : null}
                 {last.amountDueCents ? <div><dt className="text-fg-muted">Owed</dt><dd className="text-body text-fg">{money(last.amountDueCents)}</dd></div> : null}
               </dl>
+              {last.outcome === "no_pass" && last.member?.memberCode && sellable.length ? (
+                <div><Button onClick={() => setSelling(true)}>Sell drop-in</Button></div>
+              ) : null}
             </section>
           ) : null}
-          <section className="rounded-card border border-line px-5 py-4">
-            <h2 className="text-body-strong text-fg">Other outcomes the desk handles</h2>
+          <details className="rounded-card border border-line px-5 py-3">
+            <summary className="cursor-pointer text-body-strong text-fg">What each result means</summary>
             <ul className="mt-2 flex flex-col gap-1.5 text-meta text-fg-muted">
               <li>Not booked, class has room: they are added using their pass or membership.</li>
               <li>Not booked, class is full: offer the waitlist or a different class.</li>
-              <li>No pass: record a desk sale of a drop-in pack or intro offer, or send them the studio page.</li>
+              <li>No pass: tap Sell drop-in, take payment at the desk and they are checked in.</li>
               <li>Membership past due: tell them the amount; they pay from the app.</li>
             </ul>
-          </section>
+          </details>
         </div>
         <section aria-label="Arrived" className="flex flex-col gap-2">
           <h2 className="text-body-strong text-fg">Arrived, {s?.booked !== undefined ? `${door.data?.arrivals.length ?? 0} of ${s.booked}` : door.data?.arrivals.length ?? 0}</h2>
@@ -109,6 +128,13 @@ function Door() {
           )}
         </section>
       </div>
+      <SalePanel
+        open={selling}
+        onClose={() => setSelling(false)}
+        packs={sellable}
+        who={last?.member?.memberCode ? { memberCode: last.member.memberCode, label: last.member.name ?? last.member.maskedPhone ?? "this member" } : null}
+        onSaved={afterSale}
+      />
     </div>
   );
 }

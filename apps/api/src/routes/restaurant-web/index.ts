@@ -33,7 +33,8 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     // ---------------------------------------------------------------- public
     app.get<{ Params: { slug: string } }>("/public/shops/:slug/restaurant", async (req) => {
       const m = await shopBySlug(req.params.slug);
-      if (!m.restaurantTier) throw notFound("Shop");
+      // Grocers and butchers use the same answer (pick-up, pre-order items, the qurbani plan) for their counter.
+      if (!m.restaurantTier && m.vertical !== "grocery") throw notFound("Shop");
       return pub.publicRestaurant(ctx, m);
     });
 

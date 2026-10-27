@@ -83,6 +83,8 @@ const seeds: Record<Vertical, Seed> = {
   restaurant: { emoji: "🍽️", icon: "utensils-crossed", category: "eat" },
   restaurant_south_asian: { emoji: "🍛", icon: "utensils-crossed", category: "eat" },
   tiffin: { emoji: "🍱", icon: "package", category: "eat" },
+  caterer: { emoji: "🍲", icon: "utensils-crossed", category: "eat" },
+  banquet_hall: { emoji: "🎉", icon: "store", category: "eat" },
   bakery: { emoji: "🥐", icon: "croissant", category: "bakery" },
   bar: { emoji: "🍻", icon: "beer", category: "eat" },
   grocery: { emoji: "🧺", icon: "shopping-basket", category: "shops" },

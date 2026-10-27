@@ -98,7 +98,7 @@ describe("gating and price list", () => {
 
   it("keeps the new keys off the free-forever list and prices checkout at 0%", () => {
     expect(FREE_FOREVER).not.toContain("booking.appointments");
-    expect(FEATURES["booking.appointments"]).toMatchObject({ minPlan: "plus", defaultStage: "hidden" });
+    expect(FEATURES["booking.appointments"]).toMatchObject({ minPlan: "plus", defaultStage: "ga", freeForVerticals: ["pharmacy"] });
     expect(computeFees({ kind: "appointment_checkout", amountCents: 14_500, plan: "plus" })).toMatchObject({ platformFeeBps: 0, platformFeeCents: 0, merchantNetCents: 14_500 });
     expect(computeFees({ kind: "appointment_checkout", amountCents: 14_500, plan: "free" }).platformFeeCents).toBe(0);
     // Online deposits stay at 1%.

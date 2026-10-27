@@ -36,6 +36,8 @@ describe("customer filter chips", () => {
 
   it("says 'around' in the detail panel", () => {
     expect(usuallyAround("Weekdays 8 am")).toBe("Weekdays around 8 am");
+    // A range already says when: no "around".
+    expect(usuallyAround("Weekdays 8 to 10 am")).toBe("Weekdays 8 to 10 am");
     expect(usuallyAround(null)).toBeNull();
   });
 });

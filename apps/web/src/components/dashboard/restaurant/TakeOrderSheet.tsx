@@ -18,6 +18,7 @@ import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
+import { portionLabel } from "@/lib/restaurant/weighed";
 import { fromLocalInput } from "@/lib/dashboard/time";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
@@ -49,7 +50,7 @@ export function TakeOrderSheet({ open, mode, onClose, onPlaced, prefill }: { ope
 }
 
 function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClose: () => void; onPlaced?: (o: commerceApi.OrderDto) => void; prefill?: { phone?: string; name?: string; usual?: boolean } }) {
-  const { api, enabled } = useMerchant();
+  const { api, enabled, detail } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const catalog = useApi(() => api.catalog(), [api]);
@@ -67,16 +68,25 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
 
   const isPre = mode === "preorder";
   // A grocer or butcher has no kitchen screen: the same sheet takes a phone or WhatsApp order and a pre-order for pick-up.
-  const grocer = !enabled("restaurant.kds") && (enabled("grocery.counter_preorders") || enabled("grocery.whatsapp_orders"));
-  const copy = grocer ? { ...COPY[mode], subtitle: mode === "preorder" ? "Book a pick-up day and hour. Caps, notice and the deposit still apply." : "Type what they say. It shows as a phone order.", send: mode === "preorder" ? COPY[mode].send : "Place order" } : COPY[mode];
+  const grocer = detail.merchant.vertical === "grocery" || (!enabled("restaurant.kds") && (enabled("grocery.counter_preorders") || enabled("grocery.whatsapp_orders")));
+  const copy = grocer ? { ...COPY[mode], title: mode === "preorder" ? "Take a pre-order" : COPY[mode].title, subtitle: mode === "preorder" ? "Book a pick-up day and hour. Caps, notice and the deposit still apply." : "Type what they say. It shows as a phone order.", send: mode === "preorder" ? COPY[mode].send : "Place order" } : COPY[mode];
   const menu = useMemo(
-    () => (catalog.data?.items ?? []).filter((i) => i.available && i.orderable && !!i.preorderOnly === isPre && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > nowMs())),
-    [catalog.data, isPre],
+    () =>
+      (catalog.data?.items ?? []).filter(
+        // A butcher's pre-orders are every cut sold by weight as well as the animals; a restaurant's are its pre-order-only pots.
+        (i) => i.available && i.orderable && (isPre && grocer ? !!i.preorderOnly || !!i.weightUnit : !!i.preorderOnly === isPre) && !(i.soldOutUntil && new Date(i.soldOutUntil).getTime() > nowMs()),
+      ),
+    [catalog.data, isPre, grocer],
   );
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return needle ? menu.filter((i) => i.name.toLowerCase().includes(needle)) : menu;
   }, [menu, q]);
+  /** "1 kg": what one portion of a weighed cut weighs, for the line under its name. */
+  const lineUnit = (id: string) => {
+    const it = (catalog.data?.items ?? []).find((m) => m.id === id);
+    return it?.weightUnit && it.nominalWeightG ? portionLabel(it.nominalWeightG, it.weightUnit) : null;
+  };
   const total = lines.reduce((s, l) => s + l.priceCents * l.quantity, 0);
 
   // Who is calling: match the number to a member once it looks complete.
@@ -194,7 +204,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
                 <li key={l.catalogItemId} className="flex min-h-12 items-center gap-3 py-2">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-body text-fg">{l.name}</span>
-                    <span className="block text-meta text-fg-muted tabular">{formatMoney(l.priceCents)} each</span>
+                    <span className="block text-meta text-fg-muted tabular">{grocer && lineUnit(l.catalogItemId) ? `about ${formatMoney(l.priceCents)} each (${lineUnit(l.catalogItemId)})` : `${formatMoney(l.priceCents)} each`}</span>
                   </span>
                   <span className="inline-flex items-center rounded-full border border-line">
                     <button type="button" aria-label={`One fewer ${l.name}`} onClick={() => bump(l.catalogItemId, -1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
@@ -217,7 +227,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
 
           <div className="relative mt-1">
             <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-            <input type="search" aria-label="Find a dish" placeholder={isPre ? "Find a degh or tray" : "Find a dish"} value={q} onChange={(e) => setQ(e.target.value)} className="h-10 w-full rounded-input border border-line bg-bg ps-9 pe-3 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
+            <input type="search" aria-label="Find a dish" placeholder={isPre ? (grocer ? "Find a cut or an animal" : "Find a degh or tray") : "Find a dish"} value={q} onChange={(e) => setQ(e.target.value)} className="h-10 w-full rounded-input border border-line bg-bg ps-9 pe-3 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
           </div>
           {catalog.error && !catalog.data ? <ErrorLine message={catalog.error} onRetry={() => void catalog.reload()} /> : null}
           <ul aria-label="Menu" className="max-h-56 divide-y divide-line overflow-y-auto rounded-input border border-line">
@@ -226,13 +236,13 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
                 <li key={i.id}>
                   <button type="button" onClick={() => add(i.id, i.name, i.priceCents)} className="flex min-h-11 w-full items-center gap-3 px-3 py-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring">
                     <span className="min-w-0 flex-1 truncate text-body text-fg">{i.name}</span>
-                    <span className="shrink-0 text-meta text-fg-muted tabular">{formatMoney(i.priceCents)}</span>
+                    <span className="shrink-0 text-meta text-fg-muted tabular">{i.weightUnit && i.unitPriceCents ? `${formatMoney(i.unitPriceCents)}/${i.weightUnit}` : formatMoney(i.priceCents)}</span>
                     <Plus aria-hidden className="size-4 shrink-0 text-fg-muted" />
                   </button>
                 </li>
               ))
             ) : (
-              <li className="px-3 py-3 text-meta text-fg-muted">{catalog.loading ? "Loading the menu..." : menu.length ? "No dish matches that." : isPre ? "No pre-order dishes yet. Mark a degh as pre-order only in Menu & dietary." : "No dishes on the menu yet."}</li>
+              <li className="px-3 py-3 text-meta text-fg-muted">{catalog.loading ? "Loading the menu..." : menu.length ? "No dish matches that." : isPre ? (grocer ? "No butcher items yet. Add them in the Butcher counter page." : "No pre-order dishes yet. Mark a degh as pre-order only in Menu & dietary.") : "No dishes on the menu yet."}</li>
             )}
           </ul>
         </section>
@@ -248,10 +258,10 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
             </label>
           )}
           <div className="sm:col-span-2">
-            <TextField label="Allergy" optionalLabel value={allergy} onChange={(e) => setAllergy(e.target.value)} maxLength={200} placeholder="tree nuts, no onion..." hint="Shows as a red band on the kitchen ticket." />
+            <TextField label="Allergy" optionalLabel value={allergy} onChange={(e) => setAllergy(e.target.value)} maxLength={200} placeholder="tree nuts, no onion..." hint={grocer ? "Shown on the order." : "Shows as a red band on the kitchen ticket."} />
           </div>
           <div className="sm:col-span-2">
-            <TextField type="textarea" label="Notes for the kitchen" optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} className={cn("min-h-16")} />
+            <TextField type="textarea" label={grocer ? "Notes for the butcher" : "Notes for the kitchen"} optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} className={cn("min-h-16")} />
           </div>
         </div>
         {isPre && !enabled("restaurant.degh_preorders") && !enabled("grocery.counter_preorders") ? <Banner tone="warning">Pre-orders need the Growth tier.</Banner> : null}

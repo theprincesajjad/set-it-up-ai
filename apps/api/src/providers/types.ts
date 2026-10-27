@@ -67,4 +67,6 @@ export interface Providers {
   salesAgentLlm?: import("../services/sales-agent/llm.js").LlmClient | null;
   /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
   storage?: import("./storage.js").StorageProvider;
+  /** Address to map pin at signup. Optional: use geocoderFor(ctx) from services/geocode.ts, which builds it from config.geocoder. */
+  geocoder?: import("./geocoder.js").Geocoder;
 }

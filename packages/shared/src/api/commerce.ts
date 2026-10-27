@@ -290,6 +290,12 @@ export interface OrderDto {
   /** Single-order reads only: shop slug and address for the confirmation page. */
   merchantSlug?: string;
   shopAddress?: string | null;
+  /** Customer reads only: the shop's phone, whether they are in its program, and about what this order will earn when picked up. */
+  shopPhone?: string | null;
+  /** The shop's kind (grocery: a butcher cuts to order, so the tracker says "Cutting"). */
+  merchantVertical?: string;
+  isMember?: boolean;
+  pointsEstimate?: number;
   /** Pre-orders: the customer can cancel for a refund until this instant (null: no deposit rule). */
   cancelFreeUntil?: string | null;
 }

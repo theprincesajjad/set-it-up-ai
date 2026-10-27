@@ -1,7 +1,7 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
 import { and, asc, eq } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
-import { portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
+import { defaultSectionName, portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import type { AppContext } from "../context.js";
@@ -261,7 +261,7 @@ export async function publicMenu(
     locations: locs.map((l) => ({ id: l.id, name: l.name, address: l.address, hours: l.hours ?? null })),
     categories: catalog.categories
       .map(({ translations, ...c }) => {
-        const name = lang !== "en" ? translations?.[lang]?.name : undefined;
+        const name = lang !== "en" ? translations?.[lang]?.name?.trim() || defaultSectionName(c.name, lang) || undefined : undefined;
         return { ...c, ...(name ? { name, nameEn: c.name } : {}), items: items.filter((i) => i.categoryId === c.id) };
       })
       .filter((c) => c.items.length > 0),

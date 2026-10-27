@@ -65,7 +65,7 @@ export default async function ShopTiffinPage({ params, searchParams }: Props) {
   const servings = typeof sp.servings === "string" ? Number.parseInt(sp.servings, 10) : undefined;
   return (
     <PageFrame locale={locale}>
-      <TiffinPlans shop={shop} data={data} signedIn={!!me} initialPlanId={plan} initialServings={Number.isFinite(servings) ? servings : undefined} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
+      <TiffinPlans shop={shop} data={data} signedIn={!!me} initialPlanId={plan} initialServings={Number.isFinite(servings) ? servings : undefined} defaultName={me?.user.name ?? undefined} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );
 }

@@ -102,7 +102,8 @@ export const STAFF_PERMISSIONS = [
 export type StaffPermission = (typeof STAFF_PERMISSIONS)[number];
 
 /** Defaults when a staff member has no custom permission list (or staff.permissions is off). */
-const ROLE_DEFAULTS: Record<"staff" | "manager" | "owner", readonly StaffPermission[]> = {
+const ROLE_DEFAULTS: Record<"instructor" | "staff" | "manager" | "owner", readonly StaffPermission[]> = {
+  instructor: ["bookings.manage"],
   staff: ["orders.manage", "bookings.manage", "tickets.manage", "quotes.send", "invoices.manage"],
   manager: STAFF_PERMISSIONS,
   owner: STAFF_PERMISSIONS,

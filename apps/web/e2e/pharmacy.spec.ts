@@ -140,3 +140,35 @@ test("appointments: types have no price, and the shopper books with no notes and
   await expect(page.getByRole("textbox", { name: /note/i })).toHaveCount(0);
   await page.screenshot({ path: shot("06-book-390-desktop"), fullPage: true });
 });
+
+test("a new pharmacy: confirming the rules is a setup step, needs the OCP number, and points stay off until then", async ({ page }) => {
+  const tag = Math.random().toString(36).slice(2, 8);
+  const email = `rx-owner-${tag}@example.com`;
+  const reg = await call<{ accessToken: string }>("POST", "/v1/auth/register", { name: "Imran Qureshi", email, password: "pharmacy-e2e-1" });
+  const created = await call<{ merchant: { id: string } }>("POST", "/v1/merchants", { name: `Rx Setup ${tag}`, vertical: "pharmacy", address: "3250 Ridgecrest Blvd", phone: "(905) 555-0134" }, reg.body.accessToken);
+  const id = created.body.merchant.id;
+  const base = `/v1/merchants/${id}`;
+  const refused = await call<{ error: { code: string } }>("POST", `${base}/counter/award`, { phone: `+1647${String(Math.floor(2000000 + Math.random() * 7999999))}`, amountCents: 1000, frontStoreOnly: true, idempotencyKey: `rx-${tag}-1` }, reg.body.accessToken);
+  expect(refused.status).toBe(422);
+  expect(refused.body.error.code).toBe("pharmacy_not_confirmed");
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("pharmacy-e2e-1");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+  await page.goto(`/m/${id}/setup?step=pharmacy_rules`);
+  await expect(page.getByRole("heading", { name: "Pharmacist confirms the rules" })).toBeVisible();
+  await page.getByRole("link", { name: "Open pharmacy rules" }).click();
+  await expect(page.getByText("Your rep")).toHaveCount(0);
+  const confirm = page.getByRole("button", { name: "Confirm" });
+  await page.getByLabel(/I am the pharmacist-owner/).check();
+  await page.getByLabel("Your full name").fill("Imran Qureshi");
+  await expect(confirm).toBeDisabled(); // the OCP accreditation number is required
+  await page.getByLabel("OCP accreditation number").fill("1234567");
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(page.getByTestId("pharmacy-confirmation")).toContainText("OCP accreditation 1234567");
+  const ok = await call("POST", `${base}/counter/award`, { phone: `+1647${String(Math.floor(2000000 + Math.random() * 7999999))}`, amountCents: 1000, frontStoreOnly: true, idempotencyKey: `rx-${tag}-2` }, reg.body.accessToken);
+  expect(ok.status).toBe(200);
+});

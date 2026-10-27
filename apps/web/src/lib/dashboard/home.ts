@@ -103,7 +103,11 @@ export function hoursNote(hours: Record<string, [string, string][]> | null | und
   const wd = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, weekday: "short" }).format(now).toLowerCase().slice(0, 3);
   const today = hours?.[KEYS.includes(wd as (typeof KEYS)[number]) ? wd : "mon"]?.[0];
   if (!today) return null;
-  return mode === "morning" ? `opens ${hhmm12(today[0])}` : `closed ${hhmm12(today[1])}`;
+  if (mode === "morning") return `opens ${hhmm12(today[0])}`;
+  // "closes 7:00 pm" while the shop is still open, "closed 7:00 pm" once it has shut (the header reads as if it were closed all afternoon otherwise).
+  const [h, m] = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now).split(":").map(Number) as [number, number];
+  const [ch, cm] = today[1].split(":").map(Number) as [number, number];
+  return h * 60 + m < ch * 60 + cm ? `closes ${hhmm12(today[1])}` : `closed ${hhmm12(today[1])}`;
 }
 
 /** "412 Roncesvalles Ave" → "412 Roncesvalles" (street type dropped, as on the frames). */

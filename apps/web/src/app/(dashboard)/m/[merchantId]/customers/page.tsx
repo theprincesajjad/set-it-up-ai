@@ -11,7 +11,7 @@ import { Async } from "@/components/dashboard/PageStates";
 import { BFF_BASE } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate, formatNumber } from "@/lib/format";
-import { filterFromSegment, filterQuery, type CustomerFilter } from "@/lib/dashboard/customers";
+import { filterFromSegment, filterQuery, stampProgress, type CustomerFilter } from "@/lib/dashboard/customers";
 import { useApi } from "@/lib/dashboard/useApi";
 import { relativeTime } from "@/lib/dashboard/time";
 import { cn } from "@/lib/cn";
@@ -195,7 +195,7 @@ function Customers() {
                     </span>
                     <span className="block truncate text-caption font-normal text-fg-muted md:hidden">{c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet"}</span>
                   </Td>
-                  <Td className={cn("tabular", c.rewardAvailable && "text-accent-text")}>{goal ? `${formatNumber(c.balance)} / ${goal}` : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</Td>
+                  <Td className={cn("tabular", c.rewardAvailable && "text-accent-text")}>{goal ? stampProgress(c.balance, goal) : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</Td>
                   <Td className="hidden tabular sm:table-cell">{formatNumber(c.visits30d)}</Td>
                   <Td className={cn("hidden md:table-cell", c.isSlipping ? "text-negative" : undefined)}>{c.lastVisitAt ? lastVisitText(c.lastVisitAt) : <span className="text-fg-muted">No visits yet</span>}</Td>
                   <Td className="hidden text-fg-muted lg:table-cell">{c.usually ?? "–"}</Td>

@@ -67,18 +67,18 @@ describe("usuallyLabel", () => {
   });
   it("picks the most common weekday group and 2-hour bucket", () => {
     const slots = [wk(1, 8), wk(2, 9), wk(3, 8), wk(4, 8), wk(6, 11)];
-    expect(usuallyLabel(slots)).toBe("Weekdays 8 am");
+    expect(usuallyLabel(slots)).toBe("Weekdays 8 to 10 am");
   });
   it("calls out weekends", () => {
-    expect(usuallyLabel([wk(6, 10), wk(0, 11), wk(6, 10), wk(0, 10), wk(2, 8)])).toBe("Weekends 10 am");
+    expect(usuallyLabel([wk(6, 10), wk(0, 11), wk(6, 10), wk(0, 10), wk(2, 8)])).toBe("Weekends 10 am to 12 pm");
   });
   it("only looks at the 12 most recent visits (newest first)", () => {
     const recent = Array.from({ length: 12 }, () => wk(2, 14));
     const old = Array.from({ length: 20 }, () => wk(1, 7));
-    expect(usuallyLabel([...recent, ...old])).toBe("Weekdays 2 pm");
+    expect(usuallyLabel([...recent, ...old])).toBe("Weekdays 2 to 4 pm");
   });
   it("breaks ties toward the earlier bucket", () => {
-    expect(usuallyLabel([wk(1, 15), wk(1, 8), wk(2, 15), wk(2, 8)])).toBe("Weekdays 8 am");
+    expect(usuallyLabel([wk(1, 15), wk(1, 8), wk(2, 15), wk(2, 8)])).toBe("Weekdays 8 to 10 am");
   });
 });
 

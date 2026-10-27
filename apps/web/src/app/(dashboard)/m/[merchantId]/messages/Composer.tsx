@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { beautyClaimMessage, checkBeautyClaims, checkPharmacyText, isBeautySupplyVertical, messagingApi, pharmacyTextMessage } from "@ll/shared";
+import { PHARMACY_CHECK_NOTE_EN, beautyClaimMessage, checkBeautyClaims, checkPharmacyText, isBeautySupplyVertical, messagingApi, pharmacyTextMessage } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
@@ -226,6 +226,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
           </div>
         </div>
         {channel !== "sms" ? <TextField label={channel === "push" ? "Title" : "Subject"} optionalLabel={channel === "push"} value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={150} /> : null}
+        {m.vertical === "pharmacy" ? <p className="text-caption text-fg-muted" data-testid="pharmacy-check-note">{PHARMACY_CHECK_NOTE_EN}</p> : null}
         {!rxCheck.ok ? (
           <div role="alert" data-testid="pharmacy-text-blocked" className="rounded-input bg-negative/10 p-3 text-meta text-fg">
             <p className="font-semibold text-negative">This can&apos;t be sent</p>

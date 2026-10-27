@@ -10,7 +10,7 @@ import type { AppContext } from "../context.js";
 import { addDays } from "./bookings.js";
 import { isAnyFeatureOn, isFeatureOn, PREORDER_FEATURES } from "./features.js";
 import { publicCertification } from "./halal.js";
-import { availability } from "./preorderPlanning.js";
+import { availability, eidPlanDays, QURBANI_OPENS_DAYS } from "./preorderPlanning.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -33,17 +33,28 @@ export function weekendDates(today: string): string[] {
   return [sat, sun].filter((d) => d >= today);
 }
 
+/** The shop's Eid plan as a customer needs it: the first pick-up day and the day booking opens. Null with no plan. */
+export function qurbaniWindow(m: Pick<Merchant, "preorderOverrides" | "festivalOverrides">, today: string): NonNullable<restaurantWebApi.PublicRestaurantResponse["qurbani"]> | null {
+  const plan = eidPlanDays(m, today);
+  if (!plan) return null;
+  const bookingsOpen = addDays(plan.start, -QURBANI_OPENS_DAYS);
+  return { start: plan.start, bookingsOpen, open: bookingsOpen <= today, moved: plan.moved };
+}
+
 export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Promise<restaurantWebApi.PublicRestaurantResponse> {
   const now = ctx.now();
   const pickup = await isFeatureOn(ctx.db, merchant, "orders.order_ahead");
   const deghOn = pickup && (await isAnyFeatureOn(ctx.db, merchant, PREORDER_FEATURES));
   const dietOn = await isFeatureOn(ctx.db, merchant, "restaurant.dietary_tags");
+  const langOn = await isFeatureOn(ctx.db, merchant, "restaurant.multilingual_menu");
   const items = pickup ? await ctx.db.select().from(catalogItems).where(and(eq(catalogItems.merchantId, merchant.id), eq(catalogItems.available, true), eq(catalogItems.orderable, true))).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)) : [];
   const preorderItems = deghOn ? items.filter((i) => i.preorderOnly) : [];
   const regular = items.filter((i) => !i.preorderOnly);
 
+  const grocer = merchant.vertical === "grocery";
   let weekend: restaurantWebApi.PublicRestaurantResponse["weekend"] = [];
-  if (preorderItems.length) {
+  // "This weekend" pots are a restaurant idea (degh); a butcher counter books by pick-up day instead.
+  if (preorderItems.length && !grocer) {
     const today = localDay(now, merchant.timezone);
     const dates = weekendDates(today);
     const a = await availability(ctx, merchant, { itemId: preorderItems[0]!.id, from: dates[0]!, to: dates[dates.length - 1]! });
@@ -70,9 +81,11 @@ export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Pro
     weekend,
     popular,
     acceptingOrders: pickup && merchant.status !== "paused" && merchant.status !== "closed",
-    quotedWaitMin: pickup ? quotedWaitMinutes(merchant, now) : null,
+    // A butcher cuts to order: no "ready in 20 minutes" promise.
+    quotedWaitMin: pickup && !grocer ? quotedWaitMinutes(merchant, now) : null,
     whatsappNumber: merchant.whatsappNumber,
-    preorderItems: preorderItems.map((i) => ({ id: i.id, name: i.name, serves: i.serves, priceCents: i.priceCents, leadTimeHours: i.leadTimeHours, depositBps: i.depositBps })),
+    preorderItems: preorderItems.map((i) => ({ id: i.id, name: i.name, serves: i.serves, priceCents: i.priceCents, leadTimeHours: i.leadTimeHours, depositBps: i.depositBps, ...(langOn && i.translations && Object.keys(i.translations).length ? { translations: i.translations } : {}) })),
+    ...(grocer ? { qurbani: qurbaniWindow(merchant, localDay(now, merchant.timezone)) } : {}),
     cancelCutoffHours: merchant.preorderCancelCutoffHours,
     features: { pickup, preorder: preorderItems.length > 0 },
   };

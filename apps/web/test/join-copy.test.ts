@@ -7,6 +7,9 @@ describe("join copy", () => {
   it("headline", () => {
     expect(joinHeadline(stamps, "cafe")).toBe("get a stamp for today’s coffee");
     expect(joinHeadline({ ...stamps, earnType: "per_dollar", terminology: "points", welcomeBonus: 50 }, "grocery")).toBe("get 50 points for today’s shop");
+    // A pharmacy never says "today's visit" and never offers points for joining.
+    expect(joinHeadline({ ...stamps, earnType: "per_dollar", terminology: "points", welcomeBonus: 50 }, "pharmacy")).toBe("start earning on front-store purchases");
+    expect(joinHeadline(null, "pharmacy")).toBe("start earning on front-store purchases");
     expect(joinHeadline({ ...stamps, welcomeBonus: 0 }, "other")).toBe("start earning on today’s visit");
   });
   it("intro", () => {

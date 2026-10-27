@@ -186,8 +186,11 @@ const BAJE = alt(["baje", "bajay", "bajey", "bje", "bajae", "बजे", "बज
 const SADE = alt(["sade", "saade", "साढ़े", "साढे", "साड़े", "ساڑھے", "ਸਾਢੇ"]);
 const PICKUP_CLOCK = new RegExp(`(?:^| )(?:(${SADE}) )?(\\d{1,2}(?::\\d{2})?|[\\p{L}\\p{M}]+) ${BAJE}(?= |$)`, "u");
 
+/** The number words as `normalize` writes them: Urdu "آٹھ" has a combining madda that normalizing splits off. */
+const NORMAL_NUMBER_WORDS: Record<string, number> = Object.fromEntries(Object.entries(NUMBER_WORDS).map(([k, v]) => [normalize(k), v]));
+
 function wordHour(w: string): number | null {
-  const n = /^\d/.test(w) ? Number(w.split(":")[0]) : NUMBER_WORDS[w];
+  const n = /^\d/.test(w) ? Number(w.split(":")[0]) : NORMAL_NUMBER_WORDS[w];
   return n === undefined || Number.isNaN(n) ? null : n;
 }
 

@@ -6,8 +6,8 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
-import { useApi, useNow } from "@/lib/dashboard/useApi";
-import { until } from "@/lib/restaurant/tcb";
+import { useApi } from "@/lib/dashboard/useApi";
+import { cutoffSentence, groupDietNotes } from "@/lib/restaurant/tcb";
 import { DateNav, Loader, dayLabel, dietaryWords, todayISO } from "../common";
 
 export type TodayGo = "plans" | "subscribers-awaiting" | "subscribers-past-due" | "routes" | "deliveries" | "revenue";
@@ -22,7 +22,6 @@ export function TodayTab({ goPlans, go, gate }: { goPlans: () => void; go: (to: 
   const state = useApi(() => api.tiffin.kitchen(date), [api, date]);
   const awaiting = useApi(() => api.tiffin.awaiting(), [api]);
   const revenue = useApi(() => api.tiffin.revenue(), [api]);
-  const now = useNow();
   const d0 = state.data;
   return (
     <div className="flex flex-col gap-5">
@@ -32,7 +31,7 @@ export function TodayTab({ goPlans, go, gate }: { goPlans: () => void; go: (to: 
           {d0?.nextCutoffAt && d0.nextMealDate ? (
             <span className="inline-flex items-center gap-2 rounded-full bg-bg-subtle px-3 py-1.5 text-meta text-fg print:hidden">
               <span aria-hidden className="size-1.5 rounded-full bg-location" />
-              Skip cutoff for {formatDate(`${d0.nextMealDate}T12:00:00Z`, true)} in {until(d0.nextCutoffAt, now)}
+              {cutoffSentence(d0.nextCutoffAt, d0.nextMealDate)}
             </span>
           ) : null}
           <Button size="sm" variant="secondary" iconStart={Printer} className="print:hidden" onClick={() => window.print()} disabled={!state.data?.plans.length}>
@@ -143,14 +142,12 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
                     <p className="mt-1 text-meta text-fg-muted">No menu set for this day. Add one in the Menus tab so customers see what&apos;s coming.</p>
                   )}
                   {p.menuNotes ? <p className="mt-2 text-meta text-fg-muted">{p.menuNotes}</p> : null}
-                  {p.dietaryNotes.length ? (
-                    <p className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-meta">
-                      <Tag tone="accent">Allergy</Tag>
-                      <span className="min-w-0 text-fg">
-                        {p.dietaryNotes.map((n) => `${n.note}: ${n.customer ?? "Subscriber"} (${n.servings})`).join("; ")}
-                      </span>
+                  {groupDietNotes(p.dietaryNotes).map((g) => (
+                    <p key={g.note} className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-meta">
+                      <Tag tone={g.diet ? undefined : "accent"}>{g.diet ? "Diet" : "Allergy"}</Tag>
+                      <span className="min-w-0 text-fg">{g.note}: {g.people.join(", ")}</span>
                     </p>
-                  ) : null}
+                  ))}
                 </div>
               </div>
             </Section>
@@ -169,7 +166,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
           ) : null}
         </div>
       </div>
-      <aside className="flex min-w-0 flex-col gap-4 print:hidden" aria-label="Needs you and driver run">
+      <aside className="order-first flex min-w-0 flex-col gap-4 print:hidden lg:order-none" aria-label="Needs you and driver run">
         <section className="rounded-card border border-line p-5">
           <h3 className="text-headline text-fg">Needs you</h3>
           {needs.length ? (

@@ -1,7 +1,8 @@
 "use client";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { RETENTION, type appointmentsApi } from "@ll/shared";
+import { RETENTION, SERVICE_STARTERS, type appointmentsApi } from "@ll/shared";
+import { PolicyCard } from "@/components/dashboard/calendar/PolicyCard";
 import { ServiceEditor } from "@/components/dashboard/calendar/ServiceEditor";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { PageHeader, Segmented, Tag } from "@/components/dashboard/kit";
@@ -9,7 +10,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { duration, money } from "@/lib/dashboard/calendar";
-import { useApi } from "@/lib/dashboard/useApi";
+import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type Service = appointmentsApi.ServiceDto;
 
@@ -34,6 +35,10 @@ function Services() {
   const cats = useApi(() => api.categories(), [api]);
   const [edit, setEdit] = useState<Service | "new" | null>(null);
   const manager = role !== "staff";
+  const act = useAction();
+  // A new shop with no services yet gets the usual list for its trade in one tap (a groomer's is priced by dog size).
+  const starters = SERVICE_STARTERS[detail.merchant.vertical as keyof typeof SERVICE_STARTERS] ?? [];
+  const noServices = !repair && !!list.data && list.data.items.length === 0;
   const people = staff.data?.items ?? [];
   const nameOf = (id: string) => people.find((p) => p.userId === id)?.name.split(" ")[0] ?? "";
 
@@ -74,8 +79,18 @@ function Services() {
         error={list.error}
         onRetry={list.reload}
         onRowClick={manager ? (s) => setEdit(s) : undefined}
-        empty={<span className="text-fg-muted">{repair ? "No lines yet. Add the jobs you quote most." : "No services yet. Add what you offer, with how long it takes and the price."}</span>}
+        empty={
+          <span className="flex flex-col items-start gap-2 text-fg-muted">
+            {repair ? "No lines yet. Add the jobs you quote most." : "No services yet. Add what you offer, with how long it takes and the price."}
+            {noServices && manager && starters.length ? (
+              <Button size="sm" loading={act.busy} onClick={async () => { const r = await act.run(() => api.appointments.addStarterServices()); if (r) await list.reload(); }}>
+                Add the usual {detail.merchant.vertical === "pet" ? "groomer services, priced by dog size" : "services"}
+              </Button>
+            ) : null}
+          </span>
+        }
       />
+      {!repair && !pharmacy && enabled("booking.appointments") && manager ? <PolicyCard /> : null}
       {pharmacy ? (
         <div className="grid gap-6 md:grid-cols-2" data-testid="pharmacy-keep">
           <PharmacyKeep title="What we keep about a booking" tone="keep" items={["The day, time and length", "The appointment type you named", "The customer's first name and phone, to send a reminder", `After ${RETENTION.pharmacyAppointmentDays} days the name, phone and type are removed. Only a count stays.`]} />

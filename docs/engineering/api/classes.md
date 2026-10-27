@@ -31,10 +31,12 @@ Base `/v1/merchants/:merchantId/classes`.
 | `POST /bookings/:id/check-in` | | `RosterResponse`; marks attended and awards the visit once |
 | `POST /bookings/:id/mark` | `{ status: "no_show" \| "excused" }` | `RosterResponse` |
 | `POST /bookings/:id/move` | `{ position }` | `RosterResponse`; waitlist order |
+| `POST /bookings/:id/cancel` | `{ free? }` | `RosterResponse`; staff cancel a booking with the normal credit rule (`free` waives the late rule) |
+| `POST /bookings/:id/book-in` | `{ comp?, overCapacity? }` | `RosterResponse`; books a waitlisted person now with their pass or membership; `409 no_pass` with nothing to use (then `comp` books a guest), `409 class_full` unless `overCapacity` |
 | `POST /check-in` | `phone` or `memberCode` or `memberId`, `sessionId?`, `addIfNotBooked` | `CheckInResponse` with `outcome`: `checked_in`, `already_checked_in`, `added_and_checked_in`, `not_booked`, `class_full`, `no_pass`, `past_due`, `no_class`, plus `message`, `pass`, `pointsEarned`, `balance`, `visitsThisMonth`, `arrived`, `booked`. Default class: the one open now or starting in the next 2 hours (the one the member is booked into first) |
 | `GET /door?sessionId` | | `{ session, arrivals }` |
 | `GET /products`, `POST /products` (manager+), `PATCH /products/:id` (manager+) | `createProductBody` | `ProductDto` (`activeCount`, `soldLast30`) |
-| `POST /sales` | `productId` (a pack), `phone`/`memberCode`/`memberId`, `method: cash \| etransfer \| card_reader` | `201 MyPassDto`; paid by hand, no platform fee |
+| `POST /sales` | `productId` (a pack or a drop-in: a drop-in is sold as a one-class pass), `phone`/`memberCode`/`memberId`, `method: cash \| etransfer \| card_reader` | `201 MyPassDto`; paid by hand, no platform fee |
 | `GET /summary` | | `StudioSummaryResponse` (active members, MRR, cancels in 30 days, fill, waitlist, late cancels) |
 | `GET /members?q&status` (`memberships.recurring`, manager+) | | `{ items: StudioMemberDto[] }` with an `issue` line |
 | `POST /memberships/:id/cancel` (manager+) | `effective: now \| period_end`, `refundLast`, `reason` | members list |
@@ -53,6 +55,7 @@ Customer entry points: `CustomerFeaturesDto.classes` (`booking.classes`) is on t
 | `GET /v1/me/classes?merchantId` | passes (active or pending), memberships (live, or ended in the last 30 days, with the agreement text, card, next payment, cooling-off state), upcoming bookings, `introEligible` |
 | `POST /v1/me/classes/bookings` `{ sessionId, use: auto \| drop_in, waitlist }` | `201 { booking, payment, outcome: booked \| needs_payment \| waitlisted }`. `payment` is a PaymentIntent to confirm in the browser; the webhook books the held spot |
 | `POST /v1/me/classes/bookings/:id/cancel` | `{ booking, late, creditReturned, feeChargedCents }` |
+| `POST /v1/me/classes/passes/:id/pay`, `POST /v1/me/classes/passes/:id/cancel` | finish paying, or drop, a pack still `pending` ("Waiting for payment"); a payment that lands after the cancel is refunded. Memberships use `/memberships/:id/pay` and `/cancel` (a pending one cancels at once, nothing charged) |
 | `POST /v1/me/classes/purchases` `{ productId }` | buy a pack or intro offer: `{ pass, payment }`. A free offer activates at once. `409 intro_used` for a second intro offer |
 | `GET /v1/me/classes/products/:id/agreement?startDate` | `{ text, hash, totalPerPeriodCents, taxPerPeriodCents }` |
 | `POST /v1/me/classes/memberships` `{ productId, acceptAgreement: true, agreementHash, startDate? }` | `201 { membership, payment }`; `409 agreement_changed` if the text changed since it was read; `409` if the member already has one here |
@@ -80,3 +83,12 @@ Customer entry points: `CustomerFeaturesDto.classes` (`booking.classes`) is on t
 ## Privacy
 
 Account deletion cancels live memberships and upcoming bookings, drops saved-card references and removes the member's name from the stored agreement (`services/privacy-scrub.ts`). The customer data export includes `classBookings`, `classPasses`, `classMemberships` (with the agreement) and `classCharges`.
+
+
+## Instructor role
+
+`merchant_staff.role = instructor` ranks below `staff`, so every counter, customer and offer endpoint refuses it. The class endpoints that take `minRole instructor` are the session list (only classes whose `instructorUserId` is the caller), the roster, row check-in, `POST /check-in` and `GET /door`, and each checks the class is theirs (`403` otherwise). `GET /merchants/:id` and `/features` also allow it so the dashboard shell loads. A class gets its instructor from `instructorUserId` on `POST /sessions` or `PATCH /sessions/:id` (the name is filled from the login unless one is typed).
+
+## Class milestone reward
+
+`PUT /settings { milestoneClasses, milestoneRewardName }` keeps one loyalty reward priced at classes x the program's points per visit ("every 10 classes: a free guest pass"). `milestoneClasses: null` retires it. `409` when the program is per-dollar or gives no points per visit. The fitness vertical template ships two milestones (Free guest pass at 100 points, Free class at 250).

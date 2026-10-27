@@ -2,7 +2,7 @@
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { restaurantWebApi, type commerceApi, type restaurantApi } from "@ll/shared";
+import { isQurbaniName, restaurantWebApi, type commerceApi, type restaurantApi } from "@ll/shared";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -13,22 +13,17 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { defaultOptionIds, idempotencyKeyFor, preorderBill, priceDish, summaryLine, type Item } from "@/lib/restaurant/order";
-import { TZ, dayDate, torontoInstant } from "@/lib/restaurant/util";
+import { TZ, dayDate, todayIso, torontoInstant } from "@/lib/restaurant/util";
+import { isWeighedLine, noticeDays, portionLabel } from "@/lib/restaurant/weighed";
 import { DietaryPills } from "./dietary";
 import { OptionGroups } from "./OptionGroups";
 import { PayPanel } from "./PayPanel";
-import { Heading, Pill, useFmt } from "./ui";
+import { Heading, Pill, Stepper, useFmt } from "./ui";
 
 const api = restaurantCustomerApi(browserClient);
 
-type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null };
+type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; vertical?: string };
 type Day = restaurantApi.PreorderAvailabilityDay;
-
-/** "11 to 12": hours on a 12 hour clock without am and pm, the way the counter says them. */
-const hour12 = (hhmm: string) => {
-  const h = Number(hhmm.slice(0, 2)) % 24;
-  return String(h % 12 === 0 ? 12 : h % 12);
-};
 
 /**
  * /shops/<slug>/preorder/<itemId> (frames 12a and 12b): size, spice and add-ons, a day with pots left, a pickup window,
@@ -48,23 +43,41 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<commerceApi.PlaceOrderResponse | null>(null);
   const [days, setDays] = useState<Day[]>(availability.days);
+  const [today] = useState(() => todayIso());
+  const [qty, setQty] = useState(1);
+  const [behalf, setBehalf] = useState("");
 
   const day = days.find((d) => d.date === dayKey) ?? null;
   const slot = day?.windows.find((w) => w.start === win) ?? null;
   const { unitCents } = priceDish(item, ids);
-  const bill = preorderBill(unitCents, 1, item.depositBps ?? 0, item.taxable === false ? 0 : menu.tax.ratePpm);
+  const grocer = shop.vertical === "grocery";
+  const qurbani = isQurbaniName(item.name);
+  const cutToOrder = isWeighedLine(item);
+  // A family books 2 or 7 shares; a cut is booked by how many portions of its estimate weight.
+  const askQty = grocer && (qurbani || cutToOrder);
+  const maxQty = qurbani ? (/share/i.test(item.name) ? 7 : 5) : 20;
+  const room = qurbani && day?.potsLeft != null ? Math.max(1, Math.min(maxQty, day.potsLeft)) : maxQty;
+  const qtyNow = askQty ? Math.min(qty, room) : 1;
+  const bill = preorderBill(unitCents, qtyNow, item.depositBps ?? 0, item.taxable === false ? 0 : menu.tax.ratePpm);
+  const opensOn = availability.plan?.bookingsOpen && availability.plan.bookingsOpen > today ? availability.plan.bookingsOpen : null;
+  const days_ = noticeDays(availability.leadHours);
   const pickupAt = day && slot ? torontoInstant(day.date, slot.start) : null;
   const cutoffHours = restaurant?.cancelCutoffHours ?? availability.leadHours;
   const cutoff = pickupAt ? new Date(new Date(pickupAt).getTime() - cutoffHours * 3_600_000) : null;
   const orderBy = pickupAt ? new Date(new Date(pickupAt).getTime() - availability.leadHours * 3_600_000) : null;
+  /** "11 am", "12 pm": a pickup hour with its am or pm, so "11 to 12" is never ambiguous. */
+  const hourLabel = (d: string, hhmm: string) => {
+    const label = date(torontoInstant(d, hhmm), { hour: "numeric" }, TZ);
+    return locale === "en" ? label.replace(/\./g, "").replace(/[\u202f\u00a0]/g, " ").toLowerCase() : label;
+  };
   const dayLabel = (d: string, o: Intl.DateTimeFormatOptions) => date(dayDate(d), o, "UTC");
   /** No trailing full stop ("2:00 p.m."): the sentence adds its own. */
   const stamp = (d: Date) => date(d, { weekday: "short", hour: "numeric", minute: "2-digit" }, TZ).replace(/\.$/, "");
-  const ready = !!day && !!slot && !slot.full && !day.full;
+  const ready = !opensOn && !!day && !!slot && !slot.full && (!item.preorderOnly || !day.full);
   const base = `/shops/${encodeURIComponent(shop.slug)}`;
   const location = menu.locations[0];
 
-  const summaryTitle = summaryLine(item, p.name, ids, (name, n) => t("rs.pre.sizeServes", { name, n: number(n) }));
+  const summaryTitle = `${askQty && qtyNow > 1 ? `${number(qtyNow)} × ` : ""}${summaryLine(item, p.name, ids, (name, n) => t("rs.pre.sizeServes", { name, n: number(n) }))}`;
   const accentLeft = (n: number | null) => n !== null && n > 0 && n <= 3;
 
   // Refresh pots after "full" or a cap change under us.
@@ -84,9 +97,11 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
     try {
       if (name.trim() && name.trim() !== userName.trim()) await browserApi.me.updateProfile({ name: name.trim() });
       const method = bill.deposit > 0 ? "in_app" : "at_pickup";
+      // l10n-ok: the note is for the shop's staff, who read English
+      const ownerNote = askQty && behalf.trim() ? `${qurbani ? "Qurbani on behalf of" : "Note"}: ${behalf.trim().replace(/\s*\n+\s*/g, ", ")}`.slice(0, 500) : null;
       const res = await api.placeOrder(
-        { merchantId: menu.merchant.id, locationId: location.id, items: [{ catalogItemId: item.id, quantity: 1, modifiers: [], optionIds: ids }], pickupAt, paymentMethod: method, kind: "preorder", channel: "web", tipCents: 0 },
-        idempotencyKeyFor(shop.slug, JSON.stringify([item.id, [...ids].sort(), pickupAt, method])),
+        { merchantId: menu.merchant.id, locationId: location.id, items: [{ catalogItemId: item.id, quantity: qtyNow, modifiers: [], optionIds: ids }], pickupAt, paymentMethod: method, kind: "preorder", channel: "web", tipCents: 0, ...(ownerNote ? { notes: ownerNote } : {}) },
+        idempotencyKeyFor(shop.slug, JSON.stringify([item.id, [...ids].sort(), pickupAt, method, qtyNow, behalf.trim()])),
       );
       if (whatsapp && restaurant?.whatsappNumber) void api.whatsappConsent(menu.merchant.id, true, locale).catch(() => undefined);
       if (res.payment && res.order.paymentStatus !== "authorized" && res.order.paymentStatus !== "paid") setPlaced(res);
@@ -119,14 +134,14 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
           <button type="button" onClick={() => { setStep("choose"); setPlaced(null); }} aria-label={t("rc.back")} className="-ms-2 inline-flex size-11 items-center justify-center rounded-full text-fg hover:bg-bg-subtle focus-visible:focus-ring">
             <ChevronLeft aria-hidden className="size-6 rtl:rotate-180" strokeWidth={1.75} />
           </button>
-          <Heading>{t("rs.pre.reserveTitle")}</Heading>
+          <Heading>{grocer ? t(qurbani ? "gr.pre.reserveTitle" : "gr.pre.reserveTitleCut") : t("rs.pre.reserveTitle")}</Heading>
         </header>
 
         <section aria-label={t("rs.pre.summary")} className="rounded-card border border-line px-4 py-3">
           <p className="break-words text-body-strong text-fg">{summaryTitle}</p>
           {day && slot ? (
             <p className="text-meta text-fg-muted">
-              {dayLabel(day.date, { weekday: "short", month: "short", day: "numeric" })} · {t("rs.pre.pickupAt", { from: hour12(slot.start), to: hour12(slot.end) })} · <bdi>{shop.name}</bdi>
+              {dayLabel(day.date, { weekday: "short", month: "short", day: "numeric" })} · {t("rs.pre.pickupAt", { from: hourLabel(day.date, slot.start), to: hourLabel(day.date, slot.end) })} · <bdi>{shop.name}</bdi>
             </p>
           ) : null}
         </section>
@@ -198,13 +213,14 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
       {hero}
       <div className="flex flex-col gap-2 pt-2">
         <Heading className="break-words">{p.name}</Heading>
-        <p className="text-meta italic text-fg-muted">{[item.serves ? t("menu.serves", { n: number(item.serves) }) : null, item.weightUnit ? null : t("rs.pre.meta")].filter(Boolean).join(" · ")}</p>
+        <p className="text-meta italic text-fg-muted">{[item.serves ? t("menu.serves", { n: number(item.serves) }) : null, item.weightUnit ? null : t(grocer ? "gr.pre.meta" : "rs.pre.meta")].filter(Boolean).join(" · ")}</p>
         {item.weightUnit && item.unitPriceCents ? (
           <>
             <p className="text-body-strong text-fg">{t("gr.butcher.estimate", { price: money(item.priceCents) })} · {t("gr.butcher.perUnit", { price: moneyExact(item.unitPriceCents), unit: item.weightUnit })}</p>
             <p className="text-meta text-fg-muted">{t("gr.butcher.scaleNote")}</p>
           </>
         ) : null}
+        {opensOn ? <Banner tone="info">{t("gr.qurbani.opensBody", { date: dayLabel(opensOn, { month: "short", day: "numeric" }) })}</Banner> : null}
         {availability.plan ? <p className="text-body text-fg-muted">{t(availability.plan.moved ? "gr.pre.eidMoved" : "gr.pre.eid", { date: dayLabel(availability.plan.start, { weekday: "short", day: "numeric", month: "long", year: "numeric" }) })}</p> : null}
         {p.description ? <p dir="auto" className="text-body text-fg-muted">{p.description}</p> : null}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -215,17 +231,33 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
 
       <OptionGroups item={item} value={ids} onChange={setIds} idPrefix="pre" />
 
+      {askQty ? (
+        <section aria-labelledby="pre-qty" className="flex flex-col gap-3 border-t border-line pt-6">
+          <div className="flex items-center justify-between gap-4">
+            <span id="pre-qty" className="text-meta-strong text-fg">
+              {qurbani ? t(/share/i.test(item.name) ? "gr.pre.qtyShares" : "gr.pre.qtyAnimals") : t("gr.pre.qtyPortions", { weight: portionLabel(item.nominalWeightG ?? 1000, item.weightUnit ?? "kg") })}
+            </span>
+            <Stepper value={qtyNow} min={1} max={room} onChange={setQty} label={t(qurbani ? (/share/i.test(item.name) ? "gr.pre.qtyShares" : "gr.pre.qtyAnimals") : "rs.qty")} />
+          </div>
+          {qurbani ? (
+            <TextField label={t("gr.pre.behalf")} value={behalf} onChange={(e) => setBehalf(e.target.value)} maxLength={300} hint={t("gr.pre.behalfHint")} />
+          ) : null}
+        </section>
+      ) : null}
+
       <section aria-labelledby="pre-when" className="flex flex-col gap-3 border-t border-line pt-6">
         <div className="flex flex-col gap-1">
           <Heading level={2}>
             <span id="pre-when">{t("rs.pre.when")}</span>
           </Heading>
-          <p className="text-meta text-fg-muted">{orderBy ? t(item.weightUnit ? "gr.pre.orderBy" : "rs.pre.orderBy", { by: stamp(orderBy), day: dayLabel(day!.date, { weekday: "long" }) }) : t(item.weightUnit ? "gr.pre.notice" : "rs.pre.notice", { hours: availability.leadHours })}</p>
+          <p className="text-meta text-fg-muted">{orderBy ? t(grocer ? "gr.pre.orderBy" : "rs.pre.orderBy", { by: stamp(orderBy), day: dayLabel(day!.date, { weekday: "long" }) }) : days_ && grocer ? t("gr.pre.noticeDays", { days: days_ }) : t(grocer ? "gr.pre.notice" : "rs.pre.notice", { hours: availability.leadHours })}</p>
         </div>
         <div role="radiogroup" aria-label={t("rs.pre.when")} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {days.map((d) => {
-            const off = d.tooSoon || d.windows.length === 0;
-            const sub = d.closed ? t("rs.weekend.closed") : d.full ? t("rs.weekend.full") : off ? "" : d.potsLeft === null ? t("rs.weekend.open") : t("rs.pre.left", { n: number(d.potsLeft) });
+            const off = !!opensOn || d.tooSoon || d.windows.length === 0;
+            // Pots and animals are capped; a cut of meat is not, so a cut shows no "n left".
+            const capped = !!item.preorderOnly;
+            const sub = d.closed ? t("rs.weekend.closed") : capped && d.full ? t("rs.weekend.full") : off ? "" : !capped || d.potsLeft === null ? t("rs.weekend.open") : t("rs.pre.left", { n: number(d.potsLeft) });
             const on = d.date === dayKey;
             return (
               <button
@@ -248,9 +280,9 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
           })}
         </div>
 
-        {day?.full ? <WaitList shop={shop} itemId={item.id} day={day} defaultName={userName} /> : null}
+        {day?.full && item.preorderOnly ? <WaitList shop={shop} itemId={item.id} day={day} defaultName={userName} /> : null}
 
-        {day && !day.full ? (
+        {day && (!day.full || !item.preorderOnly) ? (
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-meta text-fg-muted">{t("rs.pre.window")}</legend>
             <div role="radiogroup" aria-label={t("rs.pre.window")} className="grid grid-cols-3 gap-2">
@@ -264,7 +296,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
                   onClick={() => setWin(w.start)}
                   className={cn("flex h-11 flex-col items-center justify-center rounded-full border px-2 text-body-strong transition-colors focus-visible:focus-ring", w.start === win ? "border-fg bg-fg text-bg" : w.full ? "border-line bg-bg text-fg-subtle" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
                 >
-                  <span className="leading-none">{t("rs.pre.windowLabel", { from: hour12(w.start), to: hour12(w.end) })}</span>
+                  <span className="leading-none">{t("rs.pre.windowLabel", { from: hourLabel(day.date, w.start), to: hourLabel(day.date, w.end) })}</span>
                   {w.full ? <span className="text-caption font-normal leading-none text-fg-subtle">{t("rs.pre.busy")}</span> : null}
                 </button>
               ))}
@@ -294,7 +326,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
               <span>{t("rs.pre.payNow", { pct: number(Math.round((item.depositBps ?? 0) / 100)) })}</span>
               <span className="tabular-nums">{deposit}</span>
             </p>
-            <p className="text-meta text-fg-muted">{cutoff ? t("rs.pre.cancelRule", { balance: money(bill.balance), when: stamp(cutoff) }) : t("rs.pre.cancelRuleGeneric", { balance: money(bill.balance) })}</p>
+            <p className="text-meta text-fg-muted">{cutoff ? t(grocer ? "gr.pre.cancelRule" : "rs.pre.cancelRule", { balance: money(bill.balance), when: stamp(cutoff) }) : t("rs.pre.cancelRuleGeneric", { balance: money(bill.balance) })}</p>
           </div>
         ) : (
           <p className="mt-2 text-meta text-fg-muted">{t("rs.pre.noDepositNote")}</p>

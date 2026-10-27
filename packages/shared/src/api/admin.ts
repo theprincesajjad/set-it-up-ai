@@ -236,7 +236,7 @@ export interface AdminMerchantDetail extends AdminMerchant {
   betaOptIn: boolean;
   smsCreditsUsed: number;
   onboardingStep: string;
-  staff: { userId: string; name: string | null; email: string | null; role: "owner" | "manager" | "staff" }[];
+  staff: { userId: string; name: string | null; email: string | null; role: "owner" | "manager" | "staff" | "instructor" }[];
   locations: number;
   overrides: { key: string; enabled: boolean; reason: string | null }[];
   /** Day-7 and day-30 follow-up calls: due date and whether one was logged. */

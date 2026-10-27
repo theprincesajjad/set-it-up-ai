@@ -21,6 +21,7 @@ import {
 } from "../../services/merchant.js";
 import { dismissUpsell, setNudges } from "../../services/onboarding.js";
 import { recordFeatureInterest, requireFeature } from "../../services/features.js";
+import { locateNewShop, relocateShop, requestStreet, streetStatus } from "../../services/geocode.js";
 import registerCustomers from "./customers.js";
 import registerExports from "./exports.js";
 import registerProgram from "./program.js";
@@ -48,6 +49,17 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
       const [row] = await ctx.db.select({ n: count() }).from(merchantStaff).where(and(eq(merchantStaff.userId, user.id), eq(merchantStaff.role, "owner")));
       if (Number(row?.n ?? 0) >= MAX_SELF_SERVE_MERCHANTS) throw tooMany("You've reached the limit of shops per account. Contact support to add more.");
     }
+    // New shops used to start "Closed" all week, which blanks the open-now line and filter. Start with 9 to 5:30, Monday to Saturday, and ask in setup.
+    if (!body.hours) body.hours = { mon: [["09:00", "17:30"]], tue: [["09:00", "17:30"]], wed: [["09:00", "17:30"]], thu: [["09:00", "17:30"]], fri: [["09:00", "17:30"]], sat: [["09:00", "17:30"]] };
+    // A pin from the address and the street it is on (nearest open neighbourhood), unless the caller already gave them.
+    if (body.lat === undefined && body.lng === undefined) {
+      const found = await locateNewShop(ctx, { address: body.address, city: body.city, postalCode: body.postalCode });
+      if (found.lat !== null && found.lng !== null) {
+        body.lat = found.lat;
+        body.lng = found.lng;
+        if (!body.neighbourhoodId && !body.neighbourhoodSlug && found.neighbourhoodId) body.neighbourhoodId = found.neighbourhoodId;
+      }
+    }
     const { merchant } = await createMerchantWithTemplate(ctx, { body, ownerUserId: user.id, actorUserId: user.id });
     reply.status(201);
     return loadMerchantDetail(ctx, merchant.id, "owner");
@@ -69,7 +81,7 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   });
 
   app.get("/merchants/:merchantId", async (req: MerchantReq) => {
-    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    const s = await requireStaff(ctx, req, req.params.merchantId, "instructor");
     return loadMerchantDetail(ctx, s.merchant.id, s.role);
   });
 
@@ -78,6 +90,22 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     const body = parse(merchantApi.updateProfileBody, req.body);
     await updateProfile(ctx, s.merchant.id, s.user.id, body);
     return loadMerchantDetail(ctx, s.merchant.id, s.role);
+  });
+
+  app.get("/merchants/:merchantId/street", async (req: MerchantReq): Promise<merchantApi.StreetStatusResponse> => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+    return streetStatus(ctx.db, s.merchant.id);
+  });
+
+  app.post("/merchants/:merchantId/locate", async (req: MerchantReq): Promise<merchantApi.StreetStatusResponse> => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    return relocateShop(ctx, s.merchant.id, s.user.id);
+  });
+
+  app.post("/merchants/:merchantId/street", async (req: MerchantReq): Promise<merchantApi.StreetStatusResponse> => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    const { name } = parse(merchantApi.streetRequestBody, req.body);
+    return requestStreet(ctx, s.merchant.id, s.user.id, name);
   });
 
   app.get("/merchants/:merchantId/onboarding", async (req: MerchantReq) => {
@@ -103,7 +131,7 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   });
 
   app.get("/merchants/:merchantId/features", async (req: MerchantReq) => {
-    const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+    const s = await requireStaff(ctx, req, req.params.merchantId, "instructor");
     return merchantFeaturesResponse(ctx.db, s.merchant);
   });
 

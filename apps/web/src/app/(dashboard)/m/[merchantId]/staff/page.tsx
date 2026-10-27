@@ -23,6 +23,7 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 const ROLES: { value: merchantApi.StaffRole; label: string; desc: string }[] = [
   { value: "staff", label: "Staff", desc: "Counter and Today only. Can undo their own awards for 15 minutes." },
+  { value: "instructor", label: "Instructor", desc: "Their own classes, class lists and check-in. No sales, customers or money." },
   { value: "manager", label: "Manager", desc: "Everything except billing and removing staff." },
   { value: "owner", label: "Owner", desc: "Everything, including billing and staff." },
 ];
@@ -46,6 +47,8 @@ export default function StaffPage() {
   const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
   const [station, setStation] = useState("");
   const act = useAction();
+  // Instructors only make sense where the studio runs classes.
+  const roles = ROLES.filter((r) => r.value !== "instructor" || enabled("booking.classes"));
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,7 +85,7 @@ export default function StaffPage() {
                               const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
                               if (r) await state.reload();
                             }} className="h-8 w-full rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle sm:w-auto">
-                              {ROLES.map((r) => (
+                              {roles.map((r) => (
                                 <option key={r.value} value={r.value}>
                                   {r.label}
                                 </option>
@@ -160,7 +163,7 @@ export default function StaffPage() {
           <TextField type="email" label="Email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} />
           <fieldset className="flex flex-col divide-y divide-line rounded-input border border-line">
             <legend className="mb-1 text-meta-strong text-fg">Role</legend>
-            {ROLES.map((r) => (
+            {roles.map((r) => (
               <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 px-3 py-2.5", newRole === r.value && "bg-bg-subtle")}>
                 <input type="radio" name="role" checked={newRole === r.value} onChange={() => setNewRole(r.value)} className="mt-0.5 size-4 accent-[var(--ll-color-fg)]" />
                 <span>

@@ -10,6 +10,7 @@ import { formatDistance } from "../format";
 import { openCore, openStatus, weekRows } from "../hours";
 import { howYouEarn } from "../program";
 import { unitsText } from "../units";
+import { rewardNameIn } from "./rewardName";
 
 export interface L {
   locale: Locale;
@@ -75,7 +76,7 @@ export function howYouEarnL(L: L, p: ProgramLike, amount: string): string {
 
 /** "Free drink" -> "free drink" inside a sentence (English only; the other scripts have no case). */
 export function rewardInSentenceL(L: L, name: string): string {
-  if (L.locale !== "en") return name;
+  if (L.locale !== "en") return rewardNameIn(L.locale, L.t, name);
   const m = /^([A-Z][a-z]+)(\b.*)$/.exec(name);
   return m ? `${m[1]!.toLowerCase()}${m[2]}` : name;
 }
@@ -86,4 +87,27 @@ export function expiryLineL(L: L, m: { expiryDisclosure: string; terminology: st
   const unit = unitsText(L.locale, 2, m.terminology, false).replace(/^[\d,.\s]+/, "");
   const months = m.program?.expiryMonths;
   return months ? L.t("sh.pass.expireAfter", { unit, months }) : L.t("sh.pass.neverExpire", { unit });
+}
+
+/** "Weekdays · 2 pm to 4 pm", "Tuesdays · all day", or null when the promo has no weekday or hours rule (the card's end date covers it). */
+export function promoWhenL(L: L, p: { daysOfWeek?: number[] | null; startTime?: string | null; endTime?: string | null }): string | null {
+  const { locale, t } = L;
+  const days = [...new Set(p.daysOfWeek ?? [])].sort();
+  if (!days.length && !p.startTime && !p.endTime) return null;
+  const key = days.join(",");
+  const dayName = (d: number, style: "long" | "short") => intl(locale, new Date(Date.UTC(2023, 0, 1 + d)), { weekday: style });
+  const dayLabel =
+    key === "1,2,3,4,5" ? t("wp.ui.promoWeekdays")
+    : key === "0,6" ? t("wp.ui.promoWeekends")
+    : !days.length || days.length === 7 ? t("wp.ui.promoEveryDay")
+    : days.length === 1 ? t("wp.ui.promoDayEvery", { day: dayName(days[0]!, "long") })
+    : days.map((d) => dayName(d, "short")).join(", ");
+  // English keeps the hand-written "2 pm" (Intl says "2 p.m."); the other languages go through Intl.
+  const clock = (hhmm: string) => {
+    if (locale !== "en") return hhmmL(locale, hhmm);
+    const [h = 0, m = 0] = hhmm.split(":").map(Number);
+    return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 && h < 24 ? "pm" : "am"}`; // l10n-ok: English branch (locale === "en") keeps the hand-written formats
+  };
+  const time = !p.startTime && !p.endTime ? t("wp.ui.promoAllDay") : t("wp.ui.promoRange", { from: clock(p.startTime ?? "00:00"), to: clock(p.endTime ?? "24:00") });
+  return `${dayLabel} · ${time}`;
 }

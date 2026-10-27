@@ -61,7 +61,7 @@ export const StaffColumn = forwardRef<
         </button>
       ))}
       {children}
-      {nowMinute !== null ? <div aria-hidden className="pointer-events-none absolute inset-x-0 z-30 h-0.5 bg-fg" style={{ top: minutesToPx(nowMinute - window[0]) }} /> : null}
+      {nowMinute !== null ? <div aria-hidden className="pointer-events-none absolute inset-x-0 z-[5] h-0.5 bg-fg" style={{ top: minutesToPx(nowMinute - window[0]) }} /> : null}
     </div>
   );
 });

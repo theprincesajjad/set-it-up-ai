@@ -28,10 +28,12 @@ export interface OrderTrackerProps {
   shopName: string;
   cancelReason?: string | null;
   refundCents?: number | null;
+  /** A butcher cuts to order: the middle step reads "Cutting". */
+  cutting?: boolean;
 }
 
 /** 4-step order tracker (system.md §6 OrderTracker). v2: large title + big order number, thin black progress. */
-export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, cancelReason, refundCents }: OrderTrackerProps) {
+export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, cancelReason, refundCents, cutting }: OrderTrackerProps) {
   const { t, locale, money, time } = useLocaleOrEnglish();
   if (status === "cancelled" || status === "refunded") {
     return (
@@ -59,7 +61,7 @@ export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, 
             <span aria-hidden className={cn("h-1 rounded-full", i <= idx ? "bg-fg" : "bg-bg-muted")} />
             <span className={cn("text-meta", i === idx ? "font-semibold text-fg" : "text-fg-muted")}>
               <span className="sr-only">{`${t(i < idx ? "wp.step.done" : i === idx ? "wp.step.current" : "wp.step.next")} `}</span>
-              {t(s.label)}
+              {t(cutting && s.id === "preparing" ? "gr.order.stepCutting" : s.label)}
             </span>
           </li>
         ))}

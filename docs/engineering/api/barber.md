@@ -15,7 +15,8 @@ A walk-in joins the line (`queue_entries`), a barber calls them, and starting th
 | `POST /v1/merchants/:id/queue` | staff | Add someone (front desk or the door tablet, `source: tablet`). First name, optional phone, `textConsent` |
 | `POST /queue/:entryId/call` `{ staffId }` | staff | A barber calls for their own chair (403 otherwise); a manager for anyone. 409 `already_called` when that barber already has someone on the way. Texts "your turn" if the person asked |
 | `POST /queue/:entryId/start` | staff | Creates the walk-in appointment, `in_service`. Family members: the parent's customer record with the child's first name on the visit |
-| `POST /queue/:entryId/skip` | staff | First skip: back two places, status `waiting`, `skips = 1`, one text. Second skip: `no_show`. No fee, no card |
+| `POST /queue/:entryId/skip` | staff | Only for someone who was **called** (409 otherwise; use `remove` for someone who left). First skip: back two places, status `waiting`, `skips = 1`, one text. Second skip: `no_show`. No fee, no card. The response carries `undo` |
+| `POST /queue/:entryId/undo-skip` | staff | Body is the `undo` object from the skip response; puts the person back (called, same barber and place). Within one minute of the skip |
 | `POST /queue/:entryId/done` | staff | Completes the appointment (no invoice: check out in the calendar) |
 | `POST /queue/:entryId/remove` | staff | `left` |
 | `GET /v1/public/shops/:slug/queue` | anyone | Open or closed, how many wait, the estimate, each barber's estimate, the services. `no-store` |
@@ -54,3 +55,5 @@ Per barber: **services** = subtotal of paid invoices on that barber's appointmen
 ## Seed
 
 `apps/api/src/seed/barbers.ts`: Crown & Fade Barbershop (5 barbers: three renters with own-clients-only, a commission barber, the owner at the desk; an open line with five waiting and one in the chair; a week of paid visits with tips; the demo customer +16475551000 has Marcus as "my barber" and Aiden and Zayn on her card), Arch & Thread Brow Bar (threading, commission, a line of three), Glow Beauty Supply (beauty supply template, stylist pro card, a draft message). Logins are printed by `pnpm --filter @ll/api seed`.
+
+**Door tablet** (`/door/<merchantId>`, no dashboard chrome): a route outside the dashboard layout, signed in as staff. A staff PIN (`POST /staff-pin/verify`) is needed to leave it; a signed-in member with no PIN is asked to set one first (`PUT /team/:userId/pin`). `/m/<id>/queue/door` redirects there. **Done** on the board links to `/m/<id>/calendar?appt=<id>&checkout=1`; checkout works on a visit completed with no invoice. The public status carries `textsYou` (a text will really go), `partyDoneMin` (a family's last cut), and `pointsEarned` once checked out; `GET /public/shops/:slug/queue` carries each barber's own `prices`.

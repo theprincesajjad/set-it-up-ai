@@ -51,7 +51,8 @@ Default cadence by coat (`defaultGroomWeeks`): curly 5, long and silky 4, double
 | `POST /food/cards/:id/redeem` | staff | **409 `not_earned`** with "N more bags to go" unless a free bag is owed. Atomic (optimistic on `given` and `punches`). When the card is then empty it restarts |
 | `POST /food/cards/:id/undo` | staff | Takes back the last bag tapped by the same person within 10 minutes |
 | `GET /food/runout`, `POST /food/runout/send` | staff | Cards with a daily amount and a yes, the day the bag runs out (`bagGrams / dailyGrams` days after the last bag) and the text date (5 days before). One text per bag. Job `pets.runout_reminders` does it at 10:00 shop time |
-| `GET /v1/me/food-cards`, `PUT /v1/me/food-cards/:id/remind` | owner | The owner switches the reminder off any time; on needs the shop's text consent and a daily amount (409 `no_consent`, 400) |
+| `GET /v1/me/food-cards`, `PUT /v1/me/food-cards/:id/remind` | owner | The owner's own switch is their yes to the run-out text (recorded with source `pass`, audit `consent.runout`); it needs a daily amount (400) and a shop they have not muted (409 `muted`). The counter cannot switch it on: `POST /food/punch` with `remind: true` returns `needsCustomerYes` |
+| `GET /public/shops/:slug/pets` | none | The food card deal and daycare packs for the shop page (`PublicPetInfoResponse`) |
 
 Free bags are not purchases and add nothing to the count. A free bag is the same product (and so the same size) as the card, so there is no "least valued" rule to police.
 

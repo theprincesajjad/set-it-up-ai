@@ -1,27 +1,25 @@
 "use client";
 import { Check, CreditCard } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { FEATURES, FEATURE_KEYS, FEES, PLANS, PLATFORM_PAYMENT_FEE_BPS, type FeatureKey, type PlanId, type billingApi } from "@ll/shared";
+import { useEffect, useRef, useState } from "react";
+import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { useNetworkShops } from "@/components/dashboard/FeatureTeaser";
-import { Dot, Meter, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
+import { Dot, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async, NoAccess } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
 import { RestaurantBilling } from "./RestaurantBilling";
-import { cn } from "@/lib/cn";
 import { formatDateYear, formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
-const HERO: Record<"plus" | "pro", FeatureKey> = { plus: "orders.order_ahead", pro: "service.tickets" };
+/** Shops that sell food on a restaurant tier see that ladder first (verticals set at signup). */
+const RESTAURANT_VERTICALS = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bakery"];
 const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
   [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
-  [`Why can't I buy ${PLANS.plus.name} yet?`, copy.soon.pricingNote],
+  [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your trade's tools switch on at once. Only network-wide extras (sponsored promos and listings, map pins, BIA campaigns) open when the network reaches ${NETWORK_GATE_SHOPS} shops.`],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
 ];
 
@@ -31,23 +29,23 @@ export default function BillingPage() {
   if (role !== "owner") return <NoAccess title="Billing is for the owner" body="Ask the shop owner to change plans." />;
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Paid tools switch on as the network grows." />
+      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Subscribe to the tools for your trade any time and cancel any time." />
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(b) => <Billing b={b} reload={state.reload} />}</Async>
     </div>
   );
 }
 
 function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload: () => Promise<void> }) {
-  const { api, base, enabled, merchantId } = useMerchant();
+  const { api, base, enabled, merchantId, detail } = useMerchant();
   const params = useSearchParams();
-  const toast = useToast();
-  const shops = useNetworkShops();
   const [period, setPeriod] = useState<"month" | "year">("month");
-  const [notified, setNotified] = useState<Set<string>>(new Set());
   const [cancel, setCancel] = useState(false);
   const act = useAction();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const sub = b.subscription;
+  const restaurantFirst = RESTAURANT_VERTICALS.includes(detail.merchant.vertical) || !!b.restaurantTier;
+  const subscribe = params.get("subscribe");
+  const autoRan = useRef(false);
 
   async function checkout(plan: "plus" | "pro") {
     const r = await act.run(() => api.billing.checkout({ plan, interval: period, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
@@ -61,8 +59,25 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
     }
   }
 
+  // A "Start Café & Retail" button on the pricing page lands here with ?subscribe=plus: go straight to the checkout once.
+  useEffect(() => {
+    if (autoRan.current || sub || (subscribe !== "plus" && subscribe !== "pro")) return;
+    autoRan.current = true;
+    void checkout(subscribe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, sub]);
+
+  const tier = params.get("tier");
+  const restaurant = <RestaurantBilling autoTier={subscribe?.startsWith("restaurant-") && !sub ? (subscribe.slice(11) as "starter" | "growth" | "pro") : null} recommended={tier === "starter" || tier === "growth" || tier === "pro" ? tier : null} />;
+
   return (
     <>
+      {params.get("welcome") === "restaurant" ? (
+        <Banner tone="success" title="Your shop is created.">
+          Pick the plan that turns on ordering, tiffin or catering, or add your menu first. Nothing is charged until you subscribe.{" "}
+          <a className="underline" href={`${base}/setup?step=trade_setup`}>Set up my menu first</a>
+        </Banner>
+      ) : null}
       {params.get("checkout") === "success" ? <Banner tone="success">Thanks. Your plan updates as soon as the payment confirms.</Banner> : null}
       {params.get("checkout") === "cancelled" ? <Banner tone="neutral">Checkout cancelled. Nothing was charged.</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -111,27 +126,27 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         )}
       </Panel>
 
+      {restaurantFirst ? restaurant : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-body-strong text-fg">Plans</h2>
+        <h2 className="text-body-strong text-fg">{restaurantFirst ? "Other plans" : "Plans"}</h2>
         {b.plans.some((p) => p.id !== "free" && p.available) ? <Segmented label="Billing period" value={period} onChange={setPeriod} options={[{ value: "month", label: "Monthly" }, { value: "year", label: "Pay yearly: 2 months free" }]} /> : null}
       </div>
       <ul className="-mt-3 grid gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-3">
         {b.plans.map((p) => {
           const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2 && !FEATURES[k].pack);
-          const target = Math.min(...feats.map((k) => FEATURES[k].unlockAtMerchants).filter((n) => n > 0), Infinity);
           const price = period === "year" ? p.annualPriceCents : p.priceCents;
           return (
             <li key={p.id}>
               <div className="flex h-full flex-col gap-3 bg-bg p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-body-strong text-fg">{p.name}</h3>
-                  {p.current ? <Dot tone="positive">Current</Dot> : p.id !== "free" && !p.available ? <Dot>Coming soon</Dot> : null}
+                  {p.current ? <Dot tone="positive">Current</Dot> : null}
                 </div>
-                <p className={cn("text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums", p.id !== "free" && !p.available ? "text-fg-muted" : "text-fg")}>
+                <p className="text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums text-fg">
                   {p.id === "free" ? "$0" : formatMoney(price).replace(".00", "")}
                   <span className="text-meta font-normal tracking-normal text-fg-muted">{p.id === "free" ? " forever" : period === "year" ? "/year, CAD" : "/month, CAD"}</span>
                 </p>
-                {p.id !== "free" && !p.available ? <p className="-mt-2 text-caption text-fg-muted">Planned price</p> : null}
                 <p className="text-meta text-fg">{p.blurb}</p>
                 <p className="text-caption font-normal text-fg-muted">Best for {p.bestFor.join(", ").toLowerCase()}</p>
                 <ul className="flex flex-col gap-1.5 border-t border-line pt-3 text-meta text-fg">
@@ -144,31 +159,10 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                   {feats.length > 8 && p.id !== "free" ? <li className="ps-[22px] text-fg-muted">and {feats.length - 8} more: {feats.slice(8).map((k) => FEATURES[k].name).join(", ")}</li> : null}
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 pt-2">
-                  {p.id === "free" ? null : p.available ? (
-                    !p.current && !sub ? (
-                      <Button loading={act.busy} onClick={() => checkout(p.id as "plus" | "pro")}>
-                        {`Start ${p.name}`}
-                      </Button>
-                    ) : null
-                  ) : (
-                    <>
-                      {Number.isFinite(target) && shops != null ? (
-                        <div>
-                          <div className="mb-1.5 flex justify-between text-caption font-normal text-fg-muted">
-                            <span>Switches on at {target} shops</span>
-                            <span className="tabular">{Math.min(shops, target)} / {target}</span>
-                          </div>
-                          <Meter value={Math.min(shops, target)} max={target} label={`${p.name}: network progress`} />
-                        </div>
-                      ) : null}
-                      <Button variant="secondary" size="sm" iconStart={notified.has(p.id) ? Check : undefined} disabled={notified.has(p.id)} onClick={async () => {
-                        await api.notifyFeature(HERO[p.id as "plus" | "pro"]).catch(() => undefined);
-                        setNotified((s) => new Set(s).add(p.id));
-                        toast("We'll email you when it's ready.");
-                      }}>
-                        {notified.has(p.id) ? "We'll email you" : "Notify me"}
-                      </Button>
-                    </>
+                  {p.id === "free" || p.current || sub ? null : (
+                    <Button loading={act.busy} onClick={() => checkout(p.id as "plus" | "pro")}>
+                      {`Subscribe to ${p.name}`}
+                    </Button>
                   )}
                 </div>
               </div>
@@ -178,7 +172,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       </ul>
       <p className="text-meta text-fg-muted">{copy.soon.pricingPromise}</p>
 
-      <RestaurantBilling />
+      {restaurantFirst ? null : restaurant}
 
       {enabled("payments.in_app") ? (
         <Section title="Payments in the app">

@@ -72,12 +72,12 @@ describe("public lead capture", () => {
 describe("feature notify-me", () => {
   it("records interest once per merchant (manager+), and admins see interestCount", async () => {
     const s = await shop();
-    const url = `${s.base}/features/orders.order_ahead/notify`;
+    const url = `${s.base}/features/promos.push_nearby/notify`;
     expect((await call("POST", url)).statusCode).toBe(401);
     expect((await call("POST", url, undefined, s.staffToken)).statusCode).toBe(403);
     const first = await call("POST", url, undefined, s.managerToken);
     expect(first.statusCode).toBe(201);
-    expect(first.json()).toMatchObject({ key: "orders.order_ahead", interested: true, createdAt: env.clock.now.toISOString() });
+    expect(first.json()).toMatchObject({ key: "promos.push_nearby", interested: true, createdAt: env.clock.now.toISOString() });
     const again = await call("POST", url, undefined, s.ownerToken);
     expect(again.statusCode).toBe(200);
     expect(await env.db.select().from(featureInterest).where(eq(featureInterest.merchantId, s.merchant.id))).toHaveLength(1);
@@ -87,11 +87,11 @@ describe("feature notify-me", () => {
     expect(released.json().error.code).toBe("feature_released");
 
     const other = await shop();
-    await call("POST", `${other.base}/features/orders.order_ahead/notify`, undefined, other.ownerToken);
+    await call("POST", `${other.base}/features/promos.push_nearby/notify`, undefined, other.ownerToken);
     const admin = await createUser(env.db, { platformRole: "admin" });
     const list = await call("GET", "/v1/admin/features", undefined, await tokenFor(env, admin));
     const items = list.json().items as { key: string; interestCount: number }[];
-    expect(items.find((f) => f.key === "orders.order_ahead")!.interestCount).toBe(2);
+    expect(items.find((f) => f.key === "promos.push_nearby")!.interestCount).toBe(2);
     expect(items.find((f) => f.key === "service.tickets")!.interestCount).toBe(0);
   });
 });
@@ -105,8 +105,9 @@ describe("public plans", () => {
     let body = res.json();
     expect(body.items.map((p: { id: string }) => p.id)).toEqual(["free", "plus", "pro"]);
     expect(body.items[0]).toMatchObject({ id: "free", available: true, features: [] });
-    expect(body.items[1].available).toBe(false);
-    expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead")).toMatchObject({ stage: "hidden", name: "Order-ahead" });
+    // Trade tools self-serve: both paid plans are open from day one and their features are live.
+    expect(body.items[1].available).toBe(true);
+    expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead")).toMatchObject({ stage: "ga", name: "Order-ahead" });
     expect(body.network).toEqual({ activeMerchants: 1, neighbourhoods: 1, members: 0, multiShopMemberPct: 0, liveStreets: 1 });
     expect(JSON.stringify(body)).not.toContain("Test Shop");
 
@@ -114,7 +115,7 @@ describe("public plans", () => {
     body = (await call("GET", "/v1/public/plans")).json();
     expect(body.items[1].available).toBe(true);
     expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead").stage).toBe("beta");
-    expect(body.items[2].available).toBe(false);
+    expect(body.items[2].available).toBe(true);
     res = await call("GET", "/v1/public/plans");
     expect(res.statusCode).toBe(200);
   });

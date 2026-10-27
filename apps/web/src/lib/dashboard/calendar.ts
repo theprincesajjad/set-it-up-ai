@@ -290,7 +290,7 @@ export const serviceSummary = (a: Pick<Appt, "items">) => a.items.map((i) => i.n
 /** Screen reader label: "Neha Sharma, cut and blow-dry, 9:00 to 10:15, Simran, paid". */
 export function blockLabel(a: Appt, tz = TZ): string {
   const status = a.status === "completed" ? (a.invoiceId ? "paid" : "done") : a.status === "no_show" ? "no-show" : a.status === "in_service" ? "in the chair" : a.status === "arrived" ? "arrived" : a.status === "cancelled" ? "cancelled" : a.depositPaidAt ? "deposit paid" : "booked";
-  return [a.customer.name, serviceSummary(a).toLowerCase(), timeRange(a, tz).replace(/ (am|pm)/g, ""), a.staffName?.split(" ")[0] ?? "unassigned", status].filter(Boolean).join(", ");
+  return [a.pet ? `${a.pet.name}, with ${a.customer.name}` : a.customer.name, serviceSummary(a).toLowerCase(), timeRange(a, tz).replace(/ (am|pm)/g, ""), a.staffName?.split(" ")[0] ?? "unassigned", status].filter(Boolean).join(", ");
 }
 
 /** Is a block the kind of thing that can be dragged? */

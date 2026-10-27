@@ -11,6 +11,7 @@ import { distanceMetres, placeKindLabel, type customerApi, type networkApi } fro
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
+import { WEB_URL } from "../../config";
 import { Linking, Platform, Pressable, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { activityTitleL } from "../../lib/activity";
 import { formatNumber } from "../../lib/award";
@@ -150,6 +151,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
   const dropoffOn = !!features?.dropoffScheduling;
   const appointmentsOn = !!features?.appointments;
   const classesOn = !!features?.classes;
+  const queueOn = !!features?.walkinQueue;
+  const petsOn = s.merchant.vertical === "pet";
   const referralsOn = features?.referrals !== false && (m?.program?.referralBonus ?? 0) > 0;
   const neighbours = s.memberCount != null ? tr("shop.membersCount", { n: s.memberCount.toLocaleString("en-CA") }) : null;
   const dist = locState.coords && loc?.lat != null && loc.lng != null ? distanceMetres(locState.coords, { lat: loc.lat, lng: loc.lng }) : null;
@@ -335,10 +338,12 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
       {peek ? null : (
         <View style={{ gap: 18, marginTop: 24 }}>
-          {orderAhead || ticketsOn || dropoffOn || appointmentsOn || classesOn ? (
+          {orderAhead || ticketsOn || dropoffOn || appointmentsOn || classesOn || queueOn || petsOn ? (
             <Section title={tr("ms.shop.orderServices")}>
-              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn || classesOn} /> : null}
-              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.book" : "bk.shop.book")} subtitle={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.bookSub" : "bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || classesOn} /> : null}
+              {orderAhead ? <ListRow leadingIcon={ShoppingBag} title={tr("ms.oa.title")} subtitle={tr("ms.shop.oaSub")} chevron onPress={() => router.push(`/order-ahead/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || appointmentsOn || classesOn || queueOn} /> : null}
+              {appointmentsOn ? <ListRow leadingIcon={Scissors} title={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.book" : "bk.shop.book")} subtitle={tr(s.merchant.vertical === "pharmacy" ? "rx.shop.bookSub" : "bk.shop.bookSub")} chevron onPress={() => router.push(`/book/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn || classesOn || queueOn} /> : null}
+              {queueOn ? <ListRow leadingIcon={Scissors} title={tr("q.join")} chevron onPress={() => Linking.openURL(`${WEB_URL}/shops/${s.merchant.slug}/queue`)} divider={ticketsOn || dropoffOn || classesOn || petsOn} /> : null}
+              {petsOn ? <ListRow leadingIcon={Scissors} title={tr("pet.my.title")} subtitle={tr("pet.add.cta")} chevron onPress={() => Linking.openURL(`${WEB_URL}/me/pets`)} divider={ticketsOn || dropoffOn || classesOn} /> : null}
               {classesOn ? <ListRow leadingIcon={Dumbbell} title={tr("cl.app.shopRow")} subtitle={tr("cl.app.shopRowSub")} chevron onPress={() => router.push(`/classes/${s.merchant.slug}`)} divider={ticketsOn || dropoffOn} /> : null}
               {dropoffOn ? <ListRow leadingIcon={Ticket} title={tr("sv.d.link")} subtitle={tr("sv.d.linkSub")} chevron onPress={() => router.push(`/dropoff/${s.merchant.slug}`)} divider={ticketsOn} /> : null}
               {ticketsOn ? (

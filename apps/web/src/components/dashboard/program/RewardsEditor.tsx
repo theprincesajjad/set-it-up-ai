@@ -68,8 +68,7 @@ export function RewardsEditor({ rewards, onChange }: { rewards: merchantApi.Rewa
               <div className="min-w-0 flex-1">
                 <p className="text-meta-strong text-fg">{r.name}</p>
                 <p className="text-meta text-fg-muted">
-                  {formatPoints(r.pointsCost, term)} · {TYPE_LABEL[r.rewardType]}
-                  {r.rewardType === "amount_off" ? ` ${formatMoney(r.value)}` : r.rewardType === "percent_off" ? ` ${r.value}%` : ""}
+                  {formatPoints(r.pointsCost, term)} · {r.rewardType === "amount_off" ? `${formatMoney(r.value)} off` : r.rewardType === "percent_off" ? `${r.value}% off` : TYPE_LABEL[r.rewardType]}
                 </p>
               </div>
               <div className="w-28">

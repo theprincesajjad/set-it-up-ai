@@ -7,7 +7,7 @@ import { useMerchant } from "./MerchantContext";
 
 /** One tap to the checkout for the plan that has a locked feature (Café & Retail, Service or a restaurant tier). Owners only. */
 export function SubscribeButton({ offer, size = "sm", variant = "primary", label }: { offer: Extract<FeatureOffer, { kind: "plan" | "restaurant" }>; size?: "sm" | "md"; variant?: "primary" | "secondary"; label?: string }) {
-  const { api, base } = useMerchant();
+  const { api, base, refresh } = useMerchant();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const price = `$${offer.priceCents / 100}`;
@@ -17,8 +17,19 @@ export function SubscribeButton({ offer, size = "sm", variant = "primary", label
     try {
       const origin = window.location.origin;
       const urls = { successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` };
-      const r = offer.kind === "plan" ? await api.billing.checkout({ plan: offer.plan, interval: "month", ...urls }) : await api.billing.restaurantCheckout({ tier: offer.tier, interval: "month", ...urls });
-      window.location.assign(r.url);
+      if (offer.kind === "restaurant") {
+        // Already on a lower restaurant tier: move up (prorated by Stripe) instead of opening a second checkout.
+        const mine = await api.billing.restaurant();
+        if (mine.subscription) {
+          await api.billing.restaurantChange(offer.tier);
+          await refresh();
+          setBusy(false);
+          return;
+        }
+        window.location.assign((await api.billing.restaurantCheckout({ tier: offer.tier, interval: "month", ...urls })).url);
+        return;
+      }
+      window.location.assign((await api.billing.checkout({ plan: offer.plan, interval: "month", ...urls })).url);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -29,7 +40,7 @@ export function SubscribeButton({ offer, size = "sm", variant = "primary", label
       <Button size={size} variant={variant} loading={busy} onClick={() => void go()}>
         {label ?? `Subscribe to ${offer.name}, ${price}/mo`}
       </Button>
-      {error ? <span role="alert" className="text-meta text-danger">{error}</span> : null}
+      {error ? <span role="alert" className="text-meta text-negative">{error}</span> : null}
     </span>
   );
 }

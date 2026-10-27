@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import type { campaignsApi, groceryApi } from "@ll/shared";
+import type { appointmentsApi, campaignsApi, groceryApi, tiffinApi } from "@ll/shared";
 import { PantryReminders } from "@/components/pass/PantryReminders";
+import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PetLinks } from "@/components/pass/PetLinks";
 import { VehicleLinks } from "@/components/pass/VehicleLinks";
+import { TiffinLinks } from "@/components/pass/TiffinLinks";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Wallet } from "@/components/pass/Wallet";
 import { PageFrame } from "@/components/restaurant/PageFrame";
@@ -10,6 +12,7 @@ import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { getServerApi } from "@/lib/api/server";
+import { serverRestaurantApi } from "@/lib/restaurant/server";
 import { getMe } from "@/lib/auth/session";
 import { formatDate } from "@ll/shared";
 import { LocaleScope } from "@/lib/i18n";
@@ -23,6 +26,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
+/** The soonest booking that is confirmed and still ahead. */
+function soonest(visits: appointmentsApi.MyAppointmentDto[]): appointmentsApi.MyAppointmentDto | null {
+  const now = Date.now();
+  return visits.filter((a) => a.status === "booked" && !a.pending && new Date(a.endsAt).getTime() > now).sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
+}
+
 export default async function MePage({ searchParams }: Props) {
   const me = await getMe();
   const sp = await searchParams;
@@ -35,19 +44,24 @@ export default async function MePage({ searchParams }: Props) {
     );
   }
   const api = await getServerApi();
-  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0), api.me.myVehicles().then((r) => r.vehicles.length).catch(() => 0)]).catch(() => null);
+  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0), api.me.myVehicles().then((r) => r.vehicles.length).catch(() => 0), serverRestaurantApi().then((r) => r.tiffin.mine()).then((r) => r.items).catch(() => [] as tiffinApi.MySubscriptionDto[]), api.me.appointments().then((r) => r.items).catch(() => [] as appointmentsApi.MyAppointmentDto[])]).catch(() => null);
   if (!data) {
     const t = await getT(sp);
     return <ErrorState title={t("wp.err.card")} description={t("auth.err.network")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
   }
-  const [profile, wallet, card, campaigns, pantry, petCount, foodCount, vehicleCount] = data;
+  const [profile, wallet, card, campaigns, pantry, petCount, foodCount, vehicleCount, tiffin, visits] = data;
+  // Your next visit.
+  const nextVisit = soonest(visits);
+  const petShop = wallet.items.find((m) => m.merchant.vertical === "pet")?.merchant.name ?? null;
   // The shopper's own language: ?lang= / the saved choice, else the language on their profile.
   const locale = await getLocaleForProfile(sp, profile.locale);
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+      {nextVisit ? <div className="mb-4"><NextVisitCard appt={nextVisit} /></div> : null}
       <Wallet profile={profile} wallet={wallet} card={card} campaigns={campaigns} endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))} />
+      <TiffinLinks items={tiffin} />
       <PantryReminders items={pantry} />
-      <PetLinks pets={petCount} cards={foodCount} />
+      <PetLinks pets={petCount} cards={foodCount} shop={petShop} />
       <VehicleLinks vehicles={vehicleCount} />
     </LocaleScope>
   );

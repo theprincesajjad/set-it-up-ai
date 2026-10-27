@@ -5,9 +5,11 @@
  *  - "Bought a bulk item?": one tap logs a 20 lb bag of atta so the shop can text before the customer runs out. The cashier asks once.
  * Pure display: CounterApp owns the state and sends it with the award.
  */
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Keypad } from "@/components/ui/Keypad";
 import { cn } from "@/lib/cn";
-import { centsFromKeypad } from "@/lib/dashboard/counter";
+import { applyKey, centsFromKeypad, keypadDisplay, type KeypadKey } from "@/lib/dashboard/counter";
 
 export interface GroceryCounter {
   /** What can be logged: active pantry items. Empty when the shop has not turned pantry reminders on. */
@@ -24,52 +26,73 @@ export function notCountedCents(v: string): number {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
+/** The "not counted" dollars as the till keypad's digits ("12.50" is "1250"): the keypad fills from the right like the purchase amount. */
+const digitsOf = (v: string): string => {
+  const c = notCountedCents(v);
+  return c > 0 ? String(c) : "";
+};
+
 export function GroceryExtras({ grocery, cents, notCounted, setNotCounted, bulk, setBulk, remind, setRemind }: { grocery: GroceryCounter; cents: string; notCounted: string; setNotCounted: (v: string) => void; bulk: string[]; setBulk: (v: string[]) => void; remind: boolean; setRemind: (v: boolean) => void }) {
   const total = centsFromKeypad(cents);
   const excluded = notCountedCents(notCounted);
   const over = excluded > total;
+  // Both start folded: most sales have neither, and the Award button should not be pushed off the screen by them.
+  const [ncOpen, setNcOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const ncShown = ncOpen || excluded > 0;
+  const bulkShown = bulkOpen || bulk.length > 0;
+  const press = (k: KeypadKey) => {
+    const next = applyKey(digitsOf(notCounted), k);
+    setNotCounted(next ? (centsFromKeypad(next) / 100).toFixed(2) : "");
+  };
   return (
-    <div className="mt-5 flex flex-col gap-4 border-t border-line pt-4">
+    <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">
       <div className="flex flex-col gap-2">
-        <label htmlFor="not-counted" className="text-meta-strong text-fg">Not counted</label>
-        <div className="flex items-center gap-3">
-          <div className="relative w-40">
-            <span aria-hidden className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-body text-fg-muted">$</span>
-            <input
-              id="not-counted"
-              inputMode="decimal"
-              autoComplete="off"
-              value={notCounted}
-              onChange={(e) => setNotCounted(e.target.value.replace(/[^0-9.]/g, ""))}
-              placeholder="0.00"
-              aria-invalid={over || undefined}
-              className="h-11 w-full rounded-input border border-line bg-bg ps-7 pe-3 text-body tabular-nums text-fg outline-none focus:border-fg focus:ring-1 focus:ring-fg aria-[invalid=true]:border-negative"
-            />
+        <button
+          type="button"
+          aria-expanded={ncShown}
+          aria-controls="not-counted-pad"
+          onClick={() => setNcOpen(!ncShown)}
+          className="flex min-h-11 items-center justify-between gap-3 rounded-input text-start focus-visible:focus-ring"
+        >
+          <span className="text-meta-strong text-fg">Not counted</span>
+          <span className={cn("text-meta tabular-nums", over ? "font-medium text-negative" : "text-fg-muted")}>
+            {over ? "More than the total." : excluded > 0 ? (total > 0 ? `${dollars(excluded)} · ${dollars(total - excluded)} counts` : dollars(excluded)) : "Tobacco, lottery, alcohol, gift cards, bills"}
+          </span>
+        </button>
+        {ncShown ? (
+          <div id="not-counted-pad" className="flex flex-col gap-2">
+            <output aria-live="polite" aria-label="Not counted" className={cn("block border-b px-1 py-2 text-end font-display text-display-number tabular-nums", over ? "border-negative text-negative" : "border-line text-fg")}>
+              {keypadDisplay(digitsOf(notCounted))}
+            </output>
+            <Keypad size="compact" onKey={press} label="Not counted keypad" />
           </div>
-          <p className={cn("text-meta", over ? "font-medium text-negative" : "text-fg-muted")}>
-            {over ? "More than the total." : excluded > 0 && total > 0 ? `${dollars(total - excluded)} counts` : "Tobacco, lottery, alcohol, gift cards, bills"}
-          </p>
-        </div>
+        ) : null}
       </div>
       {grocery.pantryItems.length ? (
         <div className="flex flex-col gap-2">
-          <p className="text-meta-strong text-fg" id="bulk-label">Bought a bulk item?</p>
-          <div role="group" aria-labelledby="bulk-label" className="flex flex-wrap gap-2">
-            {grocery.pantryItems.map((i) => {
-              const on = bulk.includes(i.id);
-              return (
-                <button
-                  key={i.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setBulk(on ? bulk.filter((x) => x !== i.id) : [...bulk, i.id])}
-                  className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
-                >
-                  {i.name}
-                </button>
-              );
-            })}
-          </div>
+          <button type="button" aria-expanded={bulkShown} aria-controls="bulk-chips" onClick={() => setBulkOpen(!bulkShown)} className="flex min-h-11 items-center justify-between gap-3 text-start focus-visible:focus-ring" id="bulk-label">
+            <span className="text-meta-strong text-fg">Bought a bulk item?</span>
+            <span className="text-meta text-fg-muted">{bulk.length ? `${bulk.length} picked` : "Tap to log one"}</span>
+          </button>
+          {bulkShown ? (
+            <div id="bulk-chips" role="group" aria-labelledby="bulk-label" className="flex flex-wrap gap-2">
+              {grocery.pantryItems.map((i) => {
+                const on = bulk.includes(i.id);
+                return (
+                  <button
+                    key={i.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setBulk(on ? bulk.filter((x) => x !== i.id) : [...bulk, i.id])}
+                    className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                  >
+                    {i.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {bulk.length ? <Checkbox checked={remind} onChange={setRemind} label="Customer said yes to a restock text" caption={`Ask: "${grocery.askText}" Only tick it if they say yes.`} /> : null}
         </div>
       ) : null}

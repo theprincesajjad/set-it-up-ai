@@ -6,7 +6,7 @@
  * never required: the counter links to a sheet to add Hindi, Urdu and Punjabi names.
  */
 import { Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { tiffinApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorLine, SaveBar, SidePanel as Sheet, SkeletonRows, Tag } from "@/components/dashboard/kit";
@@ -51,7 +51,7 @@ export function MenusTab({ goPlans, gate }: { goPlans: () => void; gate: Gate })
                   <button key={pl.id} type="button" onClick={goPlans} className="rounded-card border border-line p-4 text-start hover:bg-bg-subtle focus-visible:focus-ring">
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="text-body-strong text-fg">{pl.name}</span>
-                      <span className="tabular text-body-strong text-fg">{formatMoney(pl.priceCents)} / {pl.cadence === "monthly" ? "mo" : "wk"}</span>
+                      <span className="tabular text-body-strong text-fg">{formatMoney(pl.priceCents)}{pl.cadence === "trial" ? " trial day" : ` / ${pl.cadence === "monthly" ? "mo" : "wk"}`}</span>
                     </span>
                     <span className="mt-1 block text-meta text-fg-muted">{daysText(pl.daysOfWeek)} · {pl.mealsPerDay} {pl.mealsPerDay === 1 ? "meal" : "meals"} · cutoff {pl.cutoffHours} h · {pl.subscriberCount ?? 0} subscribers</span>
                     <span className="mt-2 flex flex-wrap gap-1">{dietaryWords(pl.dietary).map((w) => <Tag key={w}>{w}</Tag>)}</span>
@@ -93,6 +93,18 @@ function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: 
   const all = existing.flatMap((m) => m.items);
   const done = all.filter(translated).length;
 
+  // Typed but not saved is lost when the page closes or the week changes: ask first.
+  useEffect(() => {
+    if (!changed.length) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [changed.length]);
+  const goWeek = (d: string) => {
+    if (changed.length && !window.confirm("You have menu changes that are not saved. Leave this week without saving?")) return;
+    setWeek(weekStartISO(d));
+  };
+
   const setCell = (k: string, text: string) => setDraft((c) => ({ ...c, [k]: { text } }));
   const copyLast = async () => {
     const prev = await act.run(() => api.tiffin.menus({ from: addDaysISO(week, -7), to: addDaysISO(week, -1) }));
@@ -128,7 +140,7 @@ function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <DateNav label="Week" value={week} step={7} text={`${dayShort(week)} to ${dayShort(to)}`} onChange={(d) => setWeek(weekStartISO(d))} />
+        <DateNav label="Week" value={week} step={7} text={`${dayShort(week)} to ${dayShort(to)}`} onChange={goWeek} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="hidden text-meta text-fg-muted sm:inline">Hindi, Urdu, Punjabi names:</span>
           <button type="button" onClick={() => setWords(true)} className="inline-flex h-8 items-center rounded-full border border-line px-3 text-meta text-fg hover:bg-bg-subtle focus-visible:focus-ring">

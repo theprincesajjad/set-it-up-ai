@@ -10,6 +10,7 @@ import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { CompareTable, FreeCard, PLUS_TARGET, PaidCard } from "./PlanCards";
+import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
 
 export const revalidate = 300;
@@ -64,13 +65,15 @@ export default async function PricingPage({ searchParams }: Props) {
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
         <div className="mx-auto grid max-w-[1200px] items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
           <FreeCard />
-          <PaidCard id="plus" available={available.plus} />
-          <PaidCard id="pro" available={available.pro} />
+          <PaidCard id="plus" />
+          <PaidCard id="pro" />
         </div>
         <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-fg-muted md:px-8">
-          Café &amp; Retail and Service open to every shop when the network reaches {PLUS_TARGET} active shops{activeShops !== null ? ` (${activeShops} today)` : ""}. Pilot shops get them now. Your loyalty program never moves to a paid plan.
+          {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` The network has ${activeShops} active shops today.` : ""} Your loyalty program never moves to a paid plan.
         </p>
       </section>
+
+      <TradeRows />
 
       <RestaurantPricing />
 

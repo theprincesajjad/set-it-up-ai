@@ -34,7 +34,7 @@ function TierCard({ tier, featured }: { tier: RestaurantTier; featured?: boolean
         or {moneyShort(p.annualPriceCents)} a year · {p.whatsappPerMonth.toLocaleString("en-CA")} WhatsApp messages
       </p>
       <p className="mt-3 text-body text-fg">{P.restaurantLines[tier]}</p>
-      <Button href="/signup" variant={featured ? "primary" : "secondary"} fullWidth size="lg" className="mt-6">
+      <Button href={`/signup?plan=restaurant-${tier}`} variant={featured ? "primary" : "secondary"} fullWidth size="lg" className="mt-6">
         {`Start ${shortName(tier)}`}
       </Button>
       <div className="mt-8">

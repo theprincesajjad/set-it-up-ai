@@ -74,3 +74,43 @@ export function until(iso: string, now: number): string {
   const h = Math.floor((mins % 1440) / 60);
   return d ? `${d} d ${h} h` : `${h} h ${mins % 60} m`;
 }
+
+/** Postal prefixes that more than one route claims (L5V on A and B): auto-assign can't tell them apart. Prefix to route names, case-insensitive. */
+export function overlappingPrefixes(routes: { name: string; areas: string[] }[]): { prefix: string; routes: string[] }[] {
+  const by = new Map<string, Set<string>>();
+  for (const r of routes) for (const a of r.areas) {
+    const p = a.replace(/\s+/g, "").toUpperCase();
+    if (!p) continue;
+    const names = by.get(p) ?? new Set<string>();
+    names.add(r.name);
+    by.set(p, names);
+  }
+  return [...by.entries()].filter(([, n]) => n.size > 1).map(([prefix, n]) => ({ prefix, routes: [...n] })).sort((a, b) => a.prefix.localeCompare(b.prefix));
+}
+
+/** "Mon 8:00 a.m." style stamp for a skip cutoff, then the meal day: "Wed 8:00 a.m.: last skip for Thursday" (Toronto time). */
+export function cutoffSentence(cutoffAt: string, mealDate: string): string {
+  const when = new Date(cutoffAt);
+  const day = when.toLocaleDateString("en-CA", { weekday: "short", timeZone: "America/Toronto" });
+  const time = when.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" });
+  const meal = new Date(`${mealDate}T12:00:00Z`).toLocaleDateString("en-CA", { weekday: "long", timeZone: "UTC" });
+  return `${day} ${time}: last skip for ${meal}`;
+}
+
+const DIET_ONLY = /^(strict\s+)?(jain|vegetarian|vegan|halal|pure veg(etarian)?|no onion,? (or )?garlic)\.?$/i;
+
+/** The same note on several people reads once ("No peanuts: Ayesha (2), Hamza (1)"); a note that only names a diet (Jain) is a diet, not an allergy. */
+export function groupDietNotes(items: { customer: string | null; servings: number; note: string }[]): { note: string; diet: boolean; people: string[] }[] {
+  const by = new Map<string, { note: string; diet: boolean; people: string[] }>();
+  for (const n of items) {
+    const note = n.note.trim().replace(/\.$/, "");
+    const key = note.toLowerCase();
+    const g = by.get(key) ?? { note, diet: DIET_ONLY.test(n.note.trim()), people: [] };
+    g.people.push(`${n.customer?.split(" ")[0] ?? "Subscriber"} (${n.servings})`);
+    by.set(key, g);
+  }
+  return [...by.values()].sort((a, b) => Number(a.diet) - Number(b.diet));
+}
+
+/** A weekly price stretched over a month (52 weeks / 12), the same sum the server uses when a weekly plan is billed monthly. */
+export const monthlyOfWeekly = (weeklyCents: number) => Math.round((weeklyCents * 52) / 12);

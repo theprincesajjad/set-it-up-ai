@@ -59,7 +59,7 @@ function Pet() {
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="secondary" onClick={async () => { const r = await act.run(() => api.pets.reportCard(p.id, { kind: "groom", did: [], send: false })); if (r) { toast({ message: "Groom logged", tone: "success" }); await state.reload(); } }}>Log a groom</Button>
             {enabled("pets.report_cards") ? <Button size="sm" variant="secondary" onClick={() => setCard(true)}>Send report card</Button> : null}
-            {enabled("booking.appointments") ? <Button size="sm" href={`${base}/calendar`}>Book groom</Button> : null}
+            {enabled("booking.appointments") ? <Button size="sm" href={`${base}/calendar?newFor=${petId}`}>Book groom</Button> : null}
           </div>
         }
       />

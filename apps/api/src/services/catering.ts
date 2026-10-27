@@ -8,7 +8,7 @@
  */
 import { and, asc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { cateringEvents, catalogItems, hallBookings, halls, invoices, messageDeliveries, users, type DbOrTx } from "@ll/db";
-import { paymentsManualApi, salesTaxBps, type restaurantApi } from "@ll/shared";
+import { paymentsManualApi, restaurantApi, salesTaxBps } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -20,6 +20,7 @@ import { createConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { refundDeposit, refundSentence, resolveDepositRefund } from "./depositRefunds.js";
 import { formatLocalDateTime, iso, loadMerchant, merchantBrands, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { nextNumber } from "./counters.js";
+import { inQuietHours } from "./notifications.js";
 import { requireFeature } from "./features.js";
 import { sendInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
@@ -102,7 +103,9 @@ export async function staffDto(ctx: AppContext, e: CateringEvent) {
   const payments = await ledgerDtos(ctx.db, ["catering_deposit", "catering_balance"], e.id);
   const balancePaid = payments.filter((p) => p.subjectType === "catering_balance" && !p.voidedAt).reduce((s, p) => s + p.amountCents, 0);
   const merchant = await loadMerchant(ctx.db, e.merchantId);
-  return { ...dto, balanceCents: Math.max(0, dto.balanceCents - balancePaid), payments, dateClashes: await dateClashCount(ctx.db, e), ...(merchant ? { tax: await taxNote(ctx, merchant) } : {}) };
+  const balanceCents = Math.max(0, dto.balanceCents - balancePaid);
+  const owed = reminderPlan(e, balanceCents);
+  return { ...dto, balanceCents, reminder: { kind: owed?.kind ?? null, amountCents: owed?.amountCents ?? 0, lastRemindedAt: iso(e.lastRemindedAt) }, payments, dateClashes: await dateClashCount(ctx.db, e), ...(merchant ? { tax: await taxNote(ctx, merchant) } : {}) };
 }
 
 /** "HST 13% on 123456789RT0001", "No HST charged (small supplier)" or "tax status not set": what the quote and approval page say. */
@@ -622,14 +625,15 @@ export async function payOptions(ctx: AppContext, merchant: Merchant): Promise<{
 
 /** The refund tiers of the hall this event is booked into, so the customer sees the shop's policy before signing. */
 export async function cancellationTiers(db: DbOrTx, e: CateringEvent): Promise<{ minDaysBefore: number; refundBps: number }[] | null> {
-  if (!e.hallBookingId) return null;
+  // No hall: the standard catering terms (shown on every quote, and what the owner's cancel dialog suggests).
+  if (!e.hallBookingId) return [...restaurantApi.DEFAULT_CATERING_REFUND_POLICY.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore);
   const [row] = await db
     .select({ policy: halls.refundPolicy })
     .from(hallBookings)
     .innerJoin(halls, eq(halls.id, hallBookings.hallId))
     .where(eq(hallBookings.id, e.hallBookingId))
     .limit(1);
-  return row ? [...row.policy.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore) : null;
+  return row ? [...row.policy.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore) : [...restaurantApi.DEFAULT_CATERING_REFUND_POLICY.tiers].sort((a, b) => b.minDaysBefore - a.minDaysBefore);
 }
 
 /** Stamp the first time the customer opens the quote link (feeds "sent 2 days ago, not opened"). */
@@ -774,4 +778,94 @@ export async function cancelEvent(ctx: AppContext, staff: StaffContext, eventId:
     data: { type: "catering_cancelled", cateringEventId: e.id, ...(refundCents > 0 ? { refundCents } : {}) },
   });
   return row;
+}
+
+// ---------------------------------------------------------------------------
+// Deposit and balance reminders
+// ---------------------------------------------------------------------------
+/** What a reminder would chase: the deposit once the customer has signed, the balance once the event is confirmed. */
+export function reminderPlan(e: CateringEvent, balanceCents: number): { kind: "deposit" | "balance"; amountCents: number } | null {
+  if (e.status === "quoted" && e.approvedAt && !e.depositPaidAt && e.depositCents > 0) return { kind: "deposit", amountCents: e.depositCents };
+  if (e.status === "confirmed" && !e.invoiceId && balanceCents > 0) return { kind: "balance", amountCents: balanceCents };
+  return null;
+}
+
+/** Scheduled reminder steps in the order they go out; each is sent once. */
+const REMINDER_ORDER = ["dep1", "dep2", "dep3", "bal7", "bal2"] as const;
+type ReminderKey = (typeof REMINDER_ORDER)[number];
+
+const DAY_MS = 86_400_000;
+const ymdMs = (d: string) => Date.parse(`${d}T12:00:00Z`);
+
+/** Which step is due now: a deposit 2 and 5 days after signing (and again inside 10 days of the event); a balance 7 and 2 days before. */
+export function dueReminderKey(e: Pick<CateringEvent, "approvedAt" | "eventDate">, kind: "deposit" | "balance", now: Date, today: string): ReminderKey | null {
+  const daysToEvent = Math.round((ymdMs(e.eventDate) - ymdMs(today)) / DAY_MS);
+  if (daysToEvent < 0) return null;
+  if (kind === "deposit") {
+    const age = e.approvedAt ? (now.getTime() - e.approvedAt.getTime()) / DAY_MS : 0;
+    if (daysToEvent <= 10 && age >= 1) return "dep3";
+    if (age >= 5) return "dep2";
+    if (age >= 2) return "dep1";
+    return null;
+  }
+  if (daysToEvent <= 2) return "bal2";
+  if (daysToEvent <= 7) return "bal7";
+  return null;
+}
+
+async function balanceOwed(db: DbOrTx, e: CateringEvent): Promise<number> {
+  const paid = (await liveLedger(db, "catering_balance", e.id)).reduce((s, l) => s + l.amountCents, 0);
+  return Math.max(0, e.totalCents - (e.depositPaidAt ? e.depositCents : 0) - paid);
+}
+
+async function sendReminder(ctx: AppContext, merchant: Merchant, e: CateringEvent, plan: { kind: "deposit" | "balance"; amountCents: number }): Promise<void> {
+  const how = manualInstructions(merchant, plan.amountCents, e.referenceCode);
+  const pay = how ? ` Send ${money(how.amountCents)} by Interac e-transfer to ${how.email} and put ${how.referenceCode} in the message.` : "";
+  const link = e.quoteSentAt ? ` Details: ${ctx.config.publicWebUrl}/e/${e.approvalToken}` : "";
+  const title = plan.kind === "deposit" ? `${merchant.name}: your catering deposit` : `${merchant.name}: your catering balance`;
+  const body =
+    plan.kind === "deposit"
+      ? `A reminder: your ${money(plan.amountCents)} deposit holds ${e.eventDate} for catering #${e.number}.${pay}${link}`
+      : `A reminder: ${money(plan.amountCents)} is still to pay for your catering on ${e.eventDate} (#${e.number}).${pay}${link}`;
+  await notifyCustomer(ctx, { userId: e.userId, merchantId: merchant.id, title, body, data: { type: plan.kind === "deposit" ? "catering_deposit_due" : "catering_balance_due", cateringEventId: e.id } });
+}
+
+/**
+ * Job: nudge customers who have not paid. A deposit after the quote is signed (day 2, day 5, and again inside 10 days of the event),
+ * a balance a week and two days before the event. Each step goes out once (`last_reminder_key`); not between 21:00 and 08:00.
+ */
+export async function sendCateringReminders(ctx: AppContext): Promise<number> {
+  const now = ctx.now();
+  const rows = await ctx.db.select().from(cateringEvents).where(inArray(cateringEvents.status, ["quoted", "confirmed"])).limit(1000);
+  let sent = 0;
+  for (const e of rows) {
+    const merchant = await loadMerchant(ctx.db, e.merchantId);
+    if (!merchant) continue;
+    const tz = merchant.timezone || "America/Toronto";
+    if (inQuietHours(now, tz)) continue;
+    const plan = reminderPlan(e, e.status === "confirmed" ? await balanceOwed(ctx.db, e) : 0);
+    if (!plan) continue;
+    const key = dueReminderKey(e, plan.kind, now, localDate(now, tz));
+    if (!key || (e.lastReminderKey && REMINDER_ORDER.indexOf(e.lastReminderKey as ReminderKey) >= REMINDER_ORDER.indexOf(key))) continue;
+    const marked = await ctx.db
+      .update(cateringEvents)
+      .set({ lastReminderKey: key, lastRemindedAt: now })
+      .where(and(eq(cateringEvents.id, e.id), e.lastReminderKey ? eq(cateringEvents.lastReminderKey, e.lastReminderKey) : sql`${cateringEvents.lastReminderKey} is null`))
+      .returning({ id: cateringEvents.id });
+    if (!marked.length) continue;
+    await sendReminder(ctx, merchant, e, plan);
+    sent++;
+  }
+  return sent;
+}
+
+/** The owner's Remind button: send the deposit or balance reminder now (not more than once every 12 hours). */
+export async function remindNow(ctx: AppContext, staff: StaffContext, eventId: string): Promise<CateringEvent> {
+  const e = await getMerchantEvent(ctx.db, staff.merchant.id, eventId);
+  const plan = reminderPlan(e, e.status === "confirmed" ? await balanceOwed(ctx.db, e) : 0);
+  if (!plan) throw conflict("Nothing is waiting on a payment for this event");
+  if (e.lastRemindedAt && ctx.now().getTime() - e.lastRemindedAt.getTime() < 12 * 3_600_000) throw tooMany("You reminded this customer a moment ago. Try again later today.");
+  await sendReminder(ctx, staff.merchant, e, plan);
+  await ctx.db.update(cateringEvents).set({ lastRemindedAt: ctx.now() }).where(eq(cateringEvents.id, e.id));
+  return getMerchantEvent(ctx.db, staff.merchant.id, e.id);
 }

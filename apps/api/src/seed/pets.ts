@@ -17,7 +17,7 @@ import {
   daycarePacks, daycareStays, featureOverrides, foodCards, foodEvents, foodPrograms, foodSkus, locations, merchantStaff, merchants, neighbourhoods, petNudges, petSettings, petShop, petVaccines, petVisits, pets, services, staffHours, users,
   type Db,
 } from "@ll/db";
-import type { FeatureKey } from "@ll/shared";
+import { SERVICE_STARTERS, type FeatureKey } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomToken } from "../lib/crypto.js";
 import { localDate } from "../services/messaging.js";
@@ -158,11 +158,8 @@ async function seedGroomer(c: Ctx, shop: typeof merchants.$inferSelect, log: (m:
   if (done) return;
   const [loc] = await c.db.select().from(locations).where(and(eq(locations.merchantId, shop.id), eq(locations.active, true))).limit(1);
   const ownerId = (await c.db.select({ id: merchantStaff.userId }).from(merchantStaff).where(and(eq(merchantStaff.merchantId, shop.id), eq(merchantStaff.role, "owner"))).limit(1))[0]?.id;
-  await c.db.insert(services).values([
-    { merchantId: shop.id, kind: "appointment", name: "Full groom", durationMin: 90, priceCents: 9500, sort: 0 },
-    { merchantId: shop.id, kind: "appointment", name: "Bath and tidy", durationMin: 60, priceCents: 7000, sort: 1 },
-    { merchantId: shop.id, kind: "appointment", name: "Nail trim", durationMin: 15, priceCents: 2000, sort: 2 },
-  ]);
+  // The groomer's starter list: prices by dog size (a dog is shown only its own size at booking), no bridal line.
+  await c.db.insert(services).values(SERVICE_STARTERS.pet!.map((x, i) => ({ merchantId: shop.id, kind: "appointment" as const, name: x.name, durationMin: x.durationMin, priceCents: x.priceCents, rebookAfterDays: x.rebookAfterDays ?? null, sort: i })));
   if (loc && ownerId) {
     const days = (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const).flatMap((d, weekday) => (loc.hours?.[d] ?? []).map(([a, b]) => ({ merchantId: shop.id, locationId: loc.id, userId: ownerId, weekday, startsLocal: a, endsLocal: b })));
     if (days.length) await c.db.insert(staffHours).values(days).onConflictDoNothing();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { restaurantApi } from "@ll/shared";
-import { cleanItems, fromText, holdWord, nextAction, offeredMethods, toText, translated, until } from "@/lib/restaurant/tcb";
+import { cleanItems, cutoffSentence, fromText, groupDietNotes, holdWord, monthlyOfWeekly, nextAction, offeredMethods, overlappingPrefixes, toText, translated, until } from "@/lib/restaurant/tcb";
 
 const NOW = Date.parse("2026-10-23T15:00:00Z");
 const ev = (over: Partial<restaurantApi.CateringEventDto>) =>
@@ -74,5 +74,36 @@ describe("countdown wording", () => {
     expect(until("2026-10-24T05:20:00Z", NOW)).toBe("14 h 20 m");
     expect(until("2026-10-26T18:00:00Z", NOW)).toBe("3 d 3 h");
     expect(until("2026-10-20T00:00:00Z", NOW)).toBe("0 h 0 m");
+  });
+});
+
+describe("owner Today and routes wording", () => {
+  it("names the cutoff clock time and the meal day", () => {
+    expect(cutoffSentence("2026-10-28T12:00:00Z", "2026-10-29")).toBe("Wed 8:00 a.m.: last skip for Thursday");
+  });
+
+  it("reads a repeated allergy note once and keeps Jain out of the allergy line", () => {
+    const g = groupDietNotes([
+      { customer: "Ayesha Khan", servings: 2, note: "No peanuts." },
+      { customer: "Hamza Butt", servings: 1, note: "No peanuts" },
+      { customer: "Meera Shah", servings: 1, note: "Jain" },
+    ]);
+    expect(g).toEqual([
+      { note: "No peanuts", diet: false, people: ["Ayesha (2)", "Hamza (1)"] },
+      { note: "Jain", diet: true, people: ["Meera (1)"] },
+    ]);
+  });
+
+  it("flags a postal prefix that two routes both claim", () => {
+    const o = overlappingPrefixes([
+      { name: "Route A", areas: ["L5R", "L5V"] },
+      { name: "Route B", areas: ["l4z", "L5V"] },
+    ]);
+    expect(o).toEqual([{ prefix: "L5V", routes: ["Route A", "Route B"] }]);
+    expect(overlappingPrefixes([{ name: "A", areas: ["L5R"] }, { name: "B", areas: ["L4Z"] }])).toEqual([]);
+  });
+
+  it("stretches a weekly price over a month the same way the server does", () => {
+    expect(monthlyOfWeekly(6500)).toBe(28167);
   });
 });

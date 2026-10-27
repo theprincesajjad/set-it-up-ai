@@ -335,7 +335,8 @@ export async function promoResults(ctx: AppContext, merchant: Merchant): Promise
           .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, baseFrom), lt(visits.createdAt, start)));
         const baseDays = matchingDays(p, baseFrom, start, tz);
         const inWin = baseVisits.filter(({ at }) => inPromoWindow(p, at, tz)).length;
-        typicalPerDay = baseDays > 0 ? Math.round((inWin / baseDays) * 10) / 10 : 0;
+        // No visits in this window in the weeks before is not a baseline: say "not enough history" rather than "0 typical".
+        typicalPerDay = baseDays > 0 && inWin > 0 ? Math.round((inWin / baseDays) * 10) / 10 : null;
       }
       const reds = await ctx.db
         .select({ at: redemptions.createdAt })

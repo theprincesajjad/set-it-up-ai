@@ -1,6 +1,6 @@
 "use client";
 import { Check, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FEATURES, RESTAURANT_FEATURES, type RestaurantTier, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Dot, Meter, Panel, Section, Segmented, Table, TableWrap, Td, Th } from "@/components/dashboard/kit";
@@ -21,7 +21,7 @@ const pctText = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")
 const addedBy = (tier: RestaurantTier) => RESTAURANT_FEATURES.filter((k) => FEATURES[k].packTier === tier).map((k) => FEATURES[k].name);
 
 /** Restaurant pack: current tier, upgrade cards, add-ons, fee explainer and invoice history. */
-export function RestaurantBilling() {
+export function RestaurantBilling({ autoTier = null, recommended = null }: { autoTier?: RestaurantTier | null; recommended?: RestaurantTier | null }) {
   const { api } = useMerchant();
   const state = useApi(() => api.billing.restaurant(), [api]);
   const invoices = useApi(() => api.billing.invoices(), [api]);
@@ -31,6 +31,8 @@ export function RestaurantBilling() {
         <Pack
           r={r}
           invoices={invoices.data?.items ?? null}
+          autoTier={autoTier}
+          recommended={recommended}
           reload={async () => {
             await Promise.all([state.reload(), invoices.reload()]);
           }}
@@ -40,7 +42,7 @@ export function RestaurantBilling() {
   );
 }
 
-function Pack({ r, invoices, reload }: { r: billingApi.RestaurantBillingResponse; invoices: billingApi.InvoiceDto[] | null; reload: () => Promise<void> }) {
+function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.RestaurantBillingResponse; invoices: billingApi.InvoiceDto[] | null; reload: () => Promise<void>; autoTier: RestaurantTier | null; recommended: RestaurantTier | null }) {
   const { api, base } = useMerchant();
   const act = useAction();
   const [period, setPeriod] = useState<"month" | "year">("month");
@@ -59,6 +61,15 @@ function Pack({ r, invoices, reload }: { r: billingApi.RestaurantBillingResponse
     const res = await act.run(() => api.billing.restaurantCheckout({ tier, interval: period, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
     if (res) window.location.assign(res.url);
   }
+
+  // "Start Restaurant Growth" on the pricing page arrives as ?subscribe=restaurant-growth: open that checkout once.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || !autoTier || sub || !r.plans.some((p) => p.tier === autoTier)) return;
+    autoRan.current = true;
+    void choose(autoTier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTier, sub]);
 
   return (
     <>
@@ -110,7 +121,7 @@ function Pack({ r, invoices, reload }: { r: billingApi.RestaurantBillingResponse
                 <div className="flex h-full flex-col gap-3 bg-bg p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-body-strong text-fg">{p.name}</h4>
-                    {p.current ? <Dot tone="positive">Current</Dot> : null}
+                    {p.current ? <Dot tone="positive">Current</Dot> : recommended === p.tier && !current ? <Dot tone="accent">Recommended for you</Dot> : null}
                   </div>
                   <p className="text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums text-fg">
                     {money(price)}

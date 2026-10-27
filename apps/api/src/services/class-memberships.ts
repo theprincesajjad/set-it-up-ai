@@ -87,9 +87,9 @@ export async function updateProduct(ctx: AppContext, merchantId: string, id: str
   return productDto(p);
 }
 
-async function loadProduct(ctx: AppContext, merchantId: string, id: string, kind?: string): Promise<Product> {
+async function loadProduct(ctx: AppContext, merchantId: string, id: string, kind?: string | string[]): Promise<Product> {
   const [p] = await ctx.db.select().from(classProducts).where(and(eq(classProducts.id, id), eq(classProducts.merchantId, merchantId), eq(classProducts.active, true))).limit(1);
-  if (!p || (kind && p.kind !== kind)) throw notFound("Offer");
+  if (!p || (kind && ![kind].flat().includes(p.kind))) throw notFound("Offer");
   return p;
 }
 async function productMerchant(ctx: AppContext, productId: string): Promise<{ product: Product; merchant: Merchant }> {
@@ -262,7 +262,8 @@ export async function purchasePack(ctx: AppContext, userId: string, productId: s
 /** Desk sale of a pack or intro offer: paid by hand (cash, e-transfer, card reader), so no platform fee. */
 export async function recordSale(ctx: AppContext, staff: StaffContext, body: z.output<typeof classesApi.recordSaleBody>): Promise<classesApi.MyPassDto> {
   const merchant = staff.merchant;
-  const product = await loadProduct(ctx, merchant.id, body.productId, "pack");
+  // A drop-in sold at the desk is a one-class pass, used by the check-in that follows.
+  const product = await loadProduct(ctx, merchant.id, body.productId, ["pack", "drop_in"]);
   let userId: string;
   if (body.memberId) {
     const [m] = await ctx.db.select({ userId: merchantMembers.userId }).from(merchantMembers).where(and(eq(merchantMembers.id, body.memberId), eq(merchantMembers.merchantId, merchant.id))).limit(1);
@@ -383,7 +384,12 @@ async function settle(ctx: AppContext, charge: Charge, paymentIntentId: string |
   const merchant = await loadMerchant(ctx.db, charge.merchantId);
   if (!merchant) return;
   if (charge.kind === "pack" && charge.passId) {
-    await ctx.db.update(classPasses).set({ status: "active", updatedAt: now }).where(and(eq(classPasses.id, charge.passId), eq(classPasses.status, "pending")));
+    const activated = await ctx.db.update(classPasses).set({ status: "active", updatedAt: now }).where(and(eq(classPasses.id, charge.passId), eq(classPasses.status, "pending"))).returning({ id: classPasses.id });
+    // Paid after the customer cancelled the unpaid pack (the payment raced the cancel): give it back.
+    if (!activated.length) {
+      const [p] = await ctx.db.select({ status: classPasses.status }).from(classPasses).where(eq(classPasses.id, charge.passId)).limit(1);
+      if (p?.status === "refunded") await refundCharge(ctx, merchant, { chargeId: charge.id, kind: "pack" });
+    }
   } else if (charge.kind === "drop_in" && charge.bookingId) {
     await confirmDropIn(ctx, merchant, charge);
   } else if (charge.kind === "membership" && charge.membershipId) {
@@ -744,6 +750,37 @@ export async function payMine(ctx: AppContext, userId: string, id: string): Prom
   return { pass: null, payment };
 }
 
+/** Finish paying a pack that is still "Waiting for payment" (the customer left the card step). */
+export async function payPassMine(ctx: AppContext, userId: string, id: string): Promise<classesApi.PurchaseResponse> {
+  const [pass] = await ctx.db.select().from(classPasses).where(and(eq(classPasses.id, id), eq(classPasses.userId, userId))).limit(1);
+  if (!pass) throw notFound("Pass");
+  if (pass.status !== "pending") throw conflict("This pass is not waiting for payment");
+  const merchant = await loadMerchant(ctx.db, pass.merchantId);
+  if (!merchant) throw notFound("Studio");
+  const [charge] = await ctx.db.select().from(classCharges).where(and(eq(classCharges.passId, pass.id), inArray(classCharges.status, ["failed", "pending"]))).orderBy(desc(classCharges.createdAt)).limit(1);
+  if (!charge) throw conflict("Nothing is due");
+  let payment: classesApi.PaymentRefDto;
+  if (charge.status === "pending" && charge.stripePaymentIntentId) {
+    const pi = await retrieveConnectPayment(ctx, merchant, charge.stripePaymentIntentId);
+    payment = { paymentIntentId: pi.id, clientSecret: pi.clientSecret, amountCents: pi.amountCents };
+  } else {
+    const customerId = await ensurePayerCustomer(ctx, merchant, userId);
+    payment = await startPayment(ctx, merchant, charge, customerId, `${merchant.name}: ${pass.name}`, ctx.now().getTime());
+  }
+  return { pass: await passDto(ctx, pass), payment };
+}
+
+/** Drop a pack that was never paid for. */
+export async function cancelPassMine(ctx: AppContext, userId: string, id: string): Promise<{ ok: true }> {
+  const [pass] = await ctx.db.select().from(classPasses).where(and(eq(classPasses.id, id), eq(classPasses.userId, userId))).limit(1);
+  if (!pass) throw notFound("Pass");
+  if (pass.status !== "pending") throw conflict("This pass is already paid for. Ask the studio about a refund.");
+  const now = ctx.now();
+  await ctx.db.update(classPasses).set({ status: "refunded", updatedAt: now }).where(and(eq(classPasses.id, pass.id), eq(classPasses.status, "pending")));
+  await ctx.db.update(classCharges).set({ status: "failed" }).where(and(eq(classCharges.passId, pass.id), inArray(classCharges.status, ["pending", "failed"])));
+  return { ok: true };
+}
+
 /** A different card: a SetupIntent on the member's Stripe customer; the webhook saves the result. */
 export async function cardSetupMine(ctx: AppContext, userId: string, id: string): Promise<classesApi.MembershipSetupResponse> {
   const { m, merchant } = await myMembership(ctx, userId, id);
@@ -769,7 +806,7 @@ export async function listMembers(ctx: AppContext, merchant: Merchant, q: z.outp
     .select({ m: classMemberships, name: users.name, phone: users.phone })
     .from(classMemberships)
     .innerJoin(users, eq(users.id, classMemberships.userId))
-    .where(and(eq(classMemberships.merchantId, merchant.id), ne(classMemberships.status, "pending"), q.status === "all" ? undefined : q.status === "renewal_due" ? and(eq(classMemberships.status, "active"), sql`${classMemberships.termEndsOn} is not null`, isNull(classMemberships.renewalNoticeSentAt)) : eq(classMemberships.status, q.status)))
+    .where(and(eq(classMemberships.merchantId, merchant.id), q.status === "all" || q.status === "pending" ? undefined : ne(classMemberships.status, "pending"), q.status === "all" ? undefined : q.status === "pending" ? eq(classMemberships.status, "pending") : q.status === "renewal_due" ? and(eq(classMemberships.status, "active"), sql`${classMemberships.termEndsOn} is not null`, isNull(classMemberships.renewalNoticeSentAt)) : eq(classMemberships.status, q.status)))
     .orderBy(asc(classMemberships.status), desc(classMemberships.createdAt))
     .limit(300);
   const needle = q.q?.toLowerCase();
@@ -779,11 +816,14 @@ export async function listMembers(ctx: AppContext, merchant: Merchant, q: z.outp
     if (needle && !(r.name ?? "").toLowerCase().includes(needle) && !(r.phone ?? "").includes(needle)) continue;
     const m = r.m;
     let issue: string | null = null;
-    if (m.status === "past_due") issue = "Payment failed";
+    if (m.status === "pending") issue = "Card step not finished";
+    else if (m.status === "past_due") issue = "Payment failed";
     else if (m.cancelEffectiveOn) issue = `Ends ${fmtDate(addDays(m.cancelEffectiveOn, -1))}`;
+    // Past the last day a notice may go out (30 days before the term ends) the plan expires instead of renewing: say so.
+    else if (m.termEndsOn && !m.renewalNoticeSentAt && today >= addDays(m.termEndsOn, -classesApi.RENEWAL_NOTICE_MIN_DAYS)) issue = "Renewal notice overdue: it will end instead of renewing";
     else if (m.termEndsOn && !m.renewalNoticeSentAt && today >= addDays(m.termEndsOn, -90)) issue = "Renewal notice not sent yet";
     else if (m.status === "frozen" && m.frozenUntil) issue = `Frozen until ${fmtDate(m.frozenUntil)}`;
-    items.push({ membershipId: m.id, userId: m.userId, name: r.name, maskedPhone: maskedPhone(r.phone), offer: m.name, status: m.status as classesApi.MembershipStatus, priceCents: m.priceCents, nextBillingDate: m.nextBillingDate, termEndsOn: m.termEndsOn, cancelEffectiveOn: m.cancelEffectiveOn, frozenUntil: m.frozenUntil, issue, card: m.paymentMethodId ? { brand: m.paymentMethodBrand, last4: m.paymentMethodLast4 } : null });
+    items.push({ membershipId: m.id, userId: m.userId, name: r.name, maskedPhone: maskedPhone(r.phone), offer: m.name, status: m.status as classesApi.MembershipStatus, priceCents: m.priceCents, nextBillingDate: m.status === "cancelled" || m.status === "expired" || m.status === "pending" ? null : m.nextBillingDate, termEndsOn: m.termEndsOn, cancelEffectiveOn: m.cancelEffectiveOn, frozenUntil: m.frozenUntil, issue, card: m.paymentMethodId ? { brand: m.paymentMethodBrand, last4: m.paymentMethodLast4 } : null });
   }
   return { items };
 }

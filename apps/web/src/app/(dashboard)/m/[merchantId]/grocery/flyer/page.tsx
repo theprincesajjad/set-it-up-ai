@@ -50,7 +50,7 @@ function Flyer() {
   async function textMembers() {
     const r = await act.run(() => api.grocery.draftFlyerText());
     if (r) {
-      toast({ message: `Draft ready for ${r.audience} ${r.audience === 1 ? "member" : "members"}. Check it, then send.`, tone: "success" });
+      toast({ message: r.audience ? `Draft ready for ${r.audience} ${r.audience === 1 ? "member" : "members"}. Sending uses ${r.audience} of your included texts. The count on the draft fills in when you send.` : "Draft ready, but no member has agreed to texts yet. Check it before you send.", tone: "success" });
       router.push(`${base}/messages/${r.messageId}`);
     }
   }

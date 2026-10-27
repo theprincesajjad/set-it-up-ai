@@ -133,6 +133,27 @@ describe("seedDemo", () => {
     expect(spanDays).toBeGreaterThan(20);
   });
 
+  it("every demo visit falls inside the shop's opening hours in Toronto time, with afternoon traffic at the café", async () => {
+    const rows = await env.db
+      .select({
+        slug: merchants.slug,
+        hh: sql<number>`extract(hour from ${visits.createdAt} at time zone 'America/Toronto')::int`,
+        dow: sql<number>`extract(dow from ${visits.createdAt} at time zone 'America/Toronto')::int`,
+      })
+      .from(visits)
+      .innerJoin(merchants, eq(merchants.id, visits.merchantId))
+      .where(inArray(merchants.slug, ["pinecone-coffee", "hearth-and-crumb", "dog-eared-books"]));
+    expect(rows.length).toBeGreaterThan(50);
+    const open: Record<string, [number, number]> = { "pinecone-coffee": [7, 18], "hearth-and-crumb": [7, 17], "dog-eared-books": [10, 20] };
+    for (const r of rows) {
+      const [from, to] = open[r.slug]!;
+      expect(r.hh, `${r.slug} visit at ${r.hh}:00`).toBeGreaterThanOrEqual(from);
+      expect(r.hh, `${r.slug} visit at ${r.hh}:00`).toBeLessThan(to);
+    }
+    // The double-stamps promo (weekdays 2 to 4 pm) has traffic to measure.
+    expect(rows.filter((r) => r.slug === "pinecone-coffee" && r.dow >= 1 && r.dow <= 5 && r.hh >= 14 && r.hh < 16).length).toBeGreaterThan(0);
+  });
+
   it("demo admin can sign in and is an admin", async () => {
     const [admin] = await env.db.select().from(users).where(eq(users.email, DEMO_CREDENTIALS.admin.email));
     expect(admin!.platformRole).toBe("admin");

@@ -77,7 +77,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "POS & integrations" })).toBeVisible();
-  await expect(page.getByText(/More with Café & Retail: promos, texts and POS sync · coming soon/)).toBeVisible();
+  await expect(page.getByText(/More with Café & Retail, \$39 a month: promos, texts, POS sync and the tools for your trade/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
@@ -175,9 +175,10 @@ test("owner: program editor with live preview saves", async ({ page }) => {
 
 test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   const id = await pineconeId();
-  // Locked: the deep link shows a quiet coming-soon page, not the editor.
+  // Locked: the deep link names the plan and its price and offers the checkout, not the editor (trade tools self-serve).
   await signIn(page, OWNER, `/m/${id}/promos/new`);
-  await expect(page.getByText("Coming with Café & Retail")).toBeVisible();
+  await expect(page.getByText("On Café & Retail · $39 a month")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subscribe to Café & Retail, $39/mo" })).toBeVisible();
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();
@@ -308,7 +309,7 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
 
   // Clean up so the seed's defaults hold for later runs.
   await fetch(`${API}/v1/admin/features/orders.order_ahead/overrides/${id}`, { method: "DELETE", headers: { authorization: `Bearer ${await apiToken(ADMIN)}` } });
-  await fetch(`${API}/v1/admin/features/orders.order_ahead/stage`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${await apiToken(ADMIN)}` }, body: JSON.stringify({ stage: "hidden", note: "e2e reset" }) });
+  await fetch(`${API}/v1/admin/features/orders.order_ahead/stage`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${await apiToken(ADMIN)}` }, body: JSON.stringify({ stage: "ga", note: "e2e reset" }) });
   await ownerCtx.close();
 });
 
@@ -316,13 +317,16 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   const id = await pineconeId();
   await signIn(page, OWNER, `/m/${id}/billing`);
   await expect(page.getByRole("heading", { name: /You're on/ })).toBeVisible();
-  await expect(page.getByText("Coming soon").first()).toBeVisible();
+  // One honest status: both paid plans can be bought today, with a working button.
+  await expect(page.getByText("Coming soon")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Subscribe to Café & Retail" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subscribe to Service" })).toBeVisible();
   await page.screenshot({ path: shot("26-billing"), fullPage: true });
   await page.goto(`/m/${id}/integrations`);
   // Google Business Profile is free; paid connectors collapse into one quiet line.
   await expect(page.getByRole("heading", { name: "Google Business Profile" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Square" })).toHaveCount(0);
-  await expect(page.getByText("coming with Café & Retail")).toBeVisible();
+  await expect(page.getByText("part of Café & Retail, $39 a month")).toBeVisible();
   await page.screenshot({ path: shot("27-integrations"), fullPage: true });
   await pilot(id, ["marketing.email"], true);
   await page.goto(`/m/${id}/messages/new`);

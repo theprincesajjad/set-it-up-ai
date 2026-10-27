@@ -37,7 +37,7 @@ export function petEndpoints(c: ApiClient, b: string) {
       addProgram: (body: { brand: string; buyCount: number; expiryMonths: number }) => c.post<petApi.FoodProgramDto>(`${b}/food/programs`, body),
       addSku: (programId: string, body: { name: string; bagGrams: number }) => c.post<petApi.FoodSkuDto>(`${b}/food/programs/${enc(programId)}/skus`, body),
       cards: (memberId: string) => c.get<petApi.FoodCardLookupResponse>(`${b}/food/cards`, { query: { memberId } }),
-      punch: (body: { memberId: string; skuId: string; qty: number; dailyGrams?: number | null; petId?: string | null; remind?: boolean }) => c.post<petApi.FoodCardDto & { needsMarketingConsent: boolean }>(`${b}/food/punch`, body),
+      punch: (body: { memberId: string; skuId: string; qty: number; dailyGrams?: number | null; petId?: string | null; remind?: boolean }) => c.post<petApi.FoodCardDto & { needsCustomerYes: boolean }>(`${b}/food/punch`, body),
       redeem: (cardId: string) => c.post<petApi.FoodCardDto>(`${b}/food/cards/${enc(cardId)}/redeem`, {}),
       undo: (cardId: string) => c.post<petApi.FoodCardDto>(`${b}/food/cards/${enc(cardId)}/undo`, {}),
       runOut: () => c.get<petApi.RunOutResponse>(`${b}/food/runout`),
@@ -62,6 +62,7 @@ export function myPetEndpoints(c: ApiClient) {
 /** A report card page: public by its token. */
 export function publicPetEndpoints(c: ApiClient) {
   return {
+    petInfo: (slug: string) => c.get<petApi.PublicPetInfoResponse>(`/v1/public/shops/${enc(slug)}/pets`, { anonymous: true }),
     visit: (token: string) => c.get<petApi.PublicVisitResponse>(`/v1/public/visits/${enc(token)}`, { anonymous: true }),
   };
 }

@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { authApi, staffApi } from "@ll/shared";
+import { PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -66,7 +66,7 @@ import { StampRow } from "./StampRow";
 
 type CounterApi = MerchantEndpoints["counter"];
 
-const FRONT_STORE_PROMPT = "Confirm the total has no prescriptions or pharmacy services.";
+const FRONT_STORE_PROMPT = "Confirm the total has no prescriptions, pharmacy services or behind-the-counter (Schedule II or III) items.";
 
 type Phase =
   /** Scan first: viewfinder, 4 digits, keypad. */
@@ -180,6 +180,7 @@ export function CounterApp({
   }, []);
   const [code, setCode] = useState("");
   const [recent, setRecent] = useState<staffApi.ActivityItemDto[]>([]);
+  const [regulars, setRegulars] = useState<staffApi.MemberSummaryDto[]>([]);
   const [stampsToday, setStampsToday] = useState<number | null>(null);
   const [now, setNow] = useState(() => clock());
   const [announce, setAnnounce] = useState("");
@@ -192,6 +193,8 @@ export function CounterApp({
   const redeemKey = useRef<string | null>(null);
   const scanner = useRef(EMPTY_SCANNER);
   const perDollar = program.earnType === "per_dollar";
+  // Say the shop's own unit: a points shop never "adds a stamp".
+  const addedWord = !perDollar && program.terminology === "stamps" ? "Stamp added" : "Points added";
   const goal = program.stampGoal || 10;
   const [queue, setQueue] = useState<QueuedAward[]>([]);
   const [online, setOnline] = useState(true);
@@ -296,6 +299,12 @@ export function CounterApp({
     } catch {
       /* the activity strip is a convenience */
     }
+    try {
+      // Regulars not yet stamped today: one tap instead of four digits.
+      if (typeof api.regulars === "function") setRegulars((await api.regulars()).items);
+    } catch {
+      /* optional shortcut */
+    }
   }, [api, locationId]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -336,6 +345,13 @@ export function CounterApp({
   useEffect(() => {
     if (phase.kind !== "awarded") return;
     const t = setTimeout(() => reset(), AUTO_RETURN_MS);
+    return () => clearTimeout(t);
+  }, [phase, reset]);
+
+  // A redeem returns to scan too, but later than a stamp: the barista may still need "Undo redeem".
+  useEffect(() => {
+    if (phase.kind !== "redeemed") return;
+    const t = setTimeout(() => reset(), 10_000);
     return () => clearTimeout(t);
   }, [phase, reset]);
 
@@ -398,7 +414,7 @@ export function CounterApp({
         setNow(at);
         if (res.transactionId && !res.duplicate) setToast({ res, at });
         setAnnounce(
-          `${res.duplicate ? "Already added" : `Stamp added for ${firstName(res.member.name) || "the customer"}`}. ${formatPoints(res.balance, program.terminology)}. Undo is on screen for ${undoSeconds} seconds.`,
+          `${res.duplicate ? "Already added" : `${addedWord} for ${firstName(res.member.name) || "the customer"}`}. ${formatPoints(res.balance, program.terminology)}. Undo is on screen for ${undoSeconds} seconds.`,
         );
         void loadRecent();
       } catch (e) {
@@ -444,6 +460,7 @@ export function CounterApp({
     },
     [
       api,
+      addedWord,
       cents,
       qty,
       locationId,
@@ -687,7 +704,7 @@ export function CounterApp({
             {toast.res.member.name
               ? `${firstName(toast.res.member.name)} · `
               : ""}
-            Stamp added · {formatTime(new Date(toast.at))}
+            {addedWord} · {formatTime(new Date(toast.at))}
           </span>
           <button
             type="button"
@@ -811,8 +828,8 @@ export function CounterApp({
               <Checkbox
                 checked={frontStore}
                 onChange={tickFrontStore}
-                label="This total has no prescriptions or pharmacy services"
-                caption="Required every time. It is saved with the sale."
+                label={PHARMACY_FRONT_STORE_TICK_EN}
+                caption={PHARMACY_FRONT_STORE_CAPTION_EN}
               />
             </div>
           ) : null}
@@ -901,6 +918,34 @@ export function CounterApp({
               </p>
               <DigitBoxes value={entry} />
               <ScanKeypad onKey={onDigit} disabled={busy || !ready} />
+              {regulars.length && !perDollar ? (
+                <section aria-labelledby="regulars-title" className="flex flex-col gap-2">
+                  <h2 id="regulars-title" className="text-[13px] font-medium text-fg-muted">
+                    Regulars not in yet today · tap to {program.counterAutoStamp ? "stamp" : "open"}
+                  </h2>
+                  <ul className="flex flex-wrap gap-2" aria-label="Regulars">
+                    {regulars.map((m) => (
+                      <li key={m.memberId}>
+                        <button
+                          type="button"
+                          disabled={busy || !ready}
+                          aria-label={`${program.counterAutoStamp ? "Stamp" : "Open"} ${m.name ?? "member"}`}
+                          className="min-h-11 rounded-full border border-line px-4 text-[14px] font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-50"
+                          onClick={() => {
+                            if (isRewardReady(m, program)) setPhase({ kind: "reward", member: m });
+                            else if (program.counterAutoStamp) {
+                              phaseRef.current = { kind: "member", member: m };
+                              void award({ memberId: m.memberId }, {}, m.balance);
+                            } else setPhase({ kind: "member", member: m });
+                          }}
+                        >
+                          {firstName(m.name) || "Member"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               <div className="flex items-center justify-between text-[13px] text-fg-muted">
                 <span className="flex items-center gap-2">
                   <span
@@ -1226,6 +1271,7 @@ export function CounterApp({
                   </Button>
                 ) : null}
               </div>
+              <p className="mt-3 text-[12px] text-fg-muted">Returns to scan in 10 seconds</p>
             </section>
           ) : null}
         </div>
@@ -1378,11 +1424,7 @@ function Stamped({
       {res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).length ? (
         <p className="text-meta text-fg-muted">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
       ) : null}
-      {res.messages.map((msg) => (
-        <p key={msg} className="text-meta text-fg-muted">
-          {msg}
-        </p>
-      ))}
+      {/* Network perk and street-campaign progress ("1 of 3 shops visited") is for the customer's pass, not the barista's screen. */}
       <Button size="lg" fullWidth onClick={onNext} autoFocus className="mt-4">
         Next customer
       </Button>
@@ -1678,7 +1720,7 @@ function MemberPanel({
         </div>
       )}
 
-      <div className="mt-8 flex flex-col gap-2.5">
+      <div className={cn("mt-8 flex flex-col gap-2.5", !!extras && "sticky bottom-0 z-raised -mx-5 border-t border-line bg-bg px-5 pb-3 pt-3 sm:-mx-6 sm:px-6")}>
         <button
           type="button"
           disabled={busy}

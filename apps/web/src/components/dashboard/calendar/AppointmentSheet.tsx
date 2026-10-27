@@ -34,8 +34,8 @@ const STATUS: Record<string, { label: string; tone: DotTone }> = {
  * the client's note, last visits, and the actions that finish a visit: check in, start, check out, reschedule,
  * no-show (with the fee when a card is on file) and cancel.
  */
-export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt: Appt; staff: appointmentsApi.BookableStaffDto[]; onChanged: () => void | Promise<void>; onCheckout: () => void }) {
-  const { api, role } = useMerchant();
+export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus }: { appt: Appt; staff: appointmentsApi.BookableStaffDto[]; onChanged: () => void | Promise<void>; onCheckout: () => void; taxStatus?: appointmentsApi.AppointmentSettingsDto["taxStatus"] }) {
+  const { api, role, base } = useMerchant();
   const toast = useToast();
   const act = useAction();
   const detail = useApi(() => api.appointments.detail(appt.id), [api, appt.id, appt.status]);
@@ -76,6 +76,17 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt:
         </p>
       </div>
 
+      {appt.pet ? (
+        <div className="rounded-input border border-line px-3 py-2.5" data-testid="appt-pet">
+          <p className="text-body-strong text-fg">{appt.pet.name}</p>
+          <p className="text-meta text-fg-muted">{[appt.pet.breed, `${appt.pet.sizeBand} ${appt.pet.species}`, `${appt.pet.coat.replace("_", " ")} coat`].filter(Boolean).join(" · ")}</p>
+          {appt.pet.handlingNote ? <p className="mt-1.5 text-meta text-fg"><span className="font-medium">Handling:</span> {appt.pet.handlingNote}</p> : null}
+          <p className={`mt-1.5 text-caption ${appt.pet.vaccines === "expired" ? "text-negative" : appt.pet.vaccines === "expiring" ? "text-fg" : "text-fg-muted"}`}>
+            {appt.pet.vaccines === "expired" ? "A vaccine has expired." : appt.pet.vaccines === "expiring" ? "A vaccine expires soon." : appt.pet.vaccines === "none" ? "No vaccine dates on file." : "Vaccines are current."}{" "}
+            <a className="underline underline-offset-2" href={`${base}/pets/${appt.pet.id}`}>Open {appt.pet.name}</a>
+          </p>
+        </div>
+      ) : null}
       <ul className="divide-y divide-line border-y border-line">
         {appt.items.map((i, idx) => (
           <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-2.5">
@@ -102,7 +113,8 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout }: { appt:
           <span className="text-body-strong tabular text-fg">{money(due.dueCents)}</span>
         </li>
       </ul>
-      <p className="-mt-3 text-caption text-fg-muted">{duration(minutes)} of work. Tax is added when you check out.</p>
+      <p className="-mt-3 text-caption text-fg-muted">{duration(minutes)} of work. {taxStatus === "registered" ? "Tax is added when you check out." : taxStatus === "small" ? "No tax is added: you are set as a small supplier." : taxStatus === "unset" ? "No tax is added yet because your tax status is not set." : ""}</p>
+      {taxStatus === "unset" ? <p className="-mt-3 text-caption"><a className="text-fg underline underline-offset-2" href={`${base}/settings?tab=tax`}>Set your tax status</a></p> : null}
 
       {appt.clientNote || appt.notes ? (
         <div className="rounded-input bg-bg-subtle px-3 py-2.5">

@@ -334,7 +334,7 @@ describe("Eid al-Adha plan", () => {
 
     await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid`, { year: 2027, days: [{ cap: 5 }, { cap: 7 }, { cap: 6 }], leadHours: 336 });
     const planned = await avail();
-    expect(planned.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-16", moved: false });
+    expect(planned.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-16", moved: false, bookingsOpen: "2027-03-21" });
     expect(planned.body.days.map((d: { date: string; potsLeft: number; note: string }) => [d.date, d.potsLeft, d.note])).toEqual([
       ["2027-05-16", 5, "Eid al-Adha day 1"],
       ["2027-05-17", 7, "Eid al-Adha day 2"],
@@ -346,7 +346,7 @@ describe("Eid al-Adha plan", () => {
     // Moon sighting moves Eid by a day: the days the customer sees follow, caps stay with their day.
     await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid/moved`, { year: 2027, start: "2027-05-17" });
     const moved = await avail();
-    expect(moved.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-17", moved: true });
+    expect(moved.body.plan).toEqual({ kind: "eid_al_adha", start: "2027-05-17", moved: true, bookingsOpen: "2027-03-22" });
     expect(moved.body.days.map((d: { date: string; potsLeft: number }) => [d.date, d.potsLeft])).toEqual([["2027-05-17", 5], ["2027-05-18", 7], ["2027-05-19", 6]]);
 
     // Booked animals come off the day's cap the customer sees.
@@ -373,6 +373,44 @@ describe("Eid al-Adha plan", () => {
     const after = await avail();
     expect(after.body.plan ?? null).toBeNull();
     expect(after.body.days[0].date).toBe("2027-05-25");
+  });
+
+  it("qurbani booking opens eight weeks before Eid: before that the API says the date, and the page can show it", async () => {
+    const { g, whole } = await eidShop();
+    await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid`, { year: 2027, days: [{ cap: 5 }, { cap: 7 }, { cap: 6 }], leadHours: 336 });
+    env.clock.now = new Date("2027-02-01T15:00:00Z");
+    const avail = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/preorders/availability?itemId=${whole.id}`);
+    expect(avail.body.plan).toMatchObject({ start: "2027-05-16", bookingsOpen: "2027-03-21" });
+    const summary = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/restaurant`);
+    expect(summary.status).toBe(200);
+    expect(summary.body.qurbani).toEqual({ start: "2027-05-16", bookingsOpen: "2027-03-21", open: false, moved: false });
+    // A butcher cuts to order: no "ready in 20 minutes" promise and no weekend pots.
+    expect(summary.body.quotedWaitMin).toBeNull();
+    expect(summary.body.weekend).toEqual([]);
+    const c = await customer(env);
+    const early = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: g.merchant.id, locationId: g.location.id, items: [{ catalogItemId: whole.id, quantity: 1 }], kind: "preorder", pickupAt: "2027-05-16T12:00:00.000Z", paymentMethod: "in_app", idempotencyKey: "early-qurbani-1" });
+    expect(early.status).toBe(409);
+    expect(early.body.error.code).toBe("qurbani_not_open");
+    expect(early.body.error.message).toBe("Qurbani booking opens Mar 21.");
+    // The day it opens it books.
+    env.clock.now = new Date("2027-03-21T15:00:00Z");
+    c.token = await signAccessToken(env.ctx, { id: c.user.id, platformRole: "none" });
+    const open = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: g.merchant.id, locationId: g.location.id, items: [{ catalogItemId: whole.id, quantity: 1 }], kind: "preorder", pickupAt: "2027-05-16T12:00:00.000Z", paymentMethod: "in_app", idempotencyKey: "early-qurbani-2" });
+    expect(open.status).toBe(201);
+    expect((await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/restaurant`)).body.qurbani.open).toBe(true);
+  });
+
+  it("a cut sold by weight is booked by the day without using up the animal cap, and a restaurant-only summary still 404s for other shops", async () => {
+    const { g } = await eidShop();
+    await call(env, g.ownerToken, "PUT", `${g.url}/grocery/butcher/eid`, { year: 2027, days: [{ cap: 1 }, { cap: 1 }, { cap: 1 }], leadHours: 336 });
+    await env.db.update(merchants).set({ preorderDailyCap: 1 }).where(eq(merchants.id, g.merchant.id));
+    const cut = await call(env, g.ownerToken, "POST", `${g.url}/catalog/items`, { name: "Goat curry cut", priceCents: 1, weightUnit: "kg", unitPriceCents: 1399, nominalWeightG: 1000, taxable: false, leadTimeHours: 12, depositBps: 0 });
+    expect(cut.status).toBe(201);
+    const avail = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/preorders/availability?itemId=${cut.body.id}`);
+    expect(avail.status).toBe(200);
+    expect(avail.body.days.every((d: { potsLeft: number | null; full: boolean }) => d.potsLeft === null && !d.full)).toBe(true);
+    const shop = await paidMerchant(env, { plan: "plus" });
+    expect((await call(env, null, "GET", `/v1/public/shops/${shop.merchant.slug}/restaurant`)).status).toBe(404);
   });
 
   it("moon sighting moves Eid by a day and the pick-up days follow; more than three days is refused", async () => {

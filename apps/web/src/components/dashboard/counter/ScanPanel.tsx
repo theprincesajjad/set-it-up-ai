@@ -86,10 +86,10 @@ export function ScanPanel({ onScan, hint, ready }: { onScan: (payload: string) =
   }, [state, onScan]);
 
   return (
-    <section aria-label="Scan a card" data-scan-ready={ready ? "true" : "false"} aria-busy={!ready} className="relative flex min-h-[250px] flex-col items-center justify-end overflow-hidden rounded-[20px] bg-fg px-6 pb-6 pt-8 text-center text-bg">
+    <section aria-label="Scan a card" data-scan-ready={ready ? "true" : "false"} aria-busy={!ready} className="relative flex min-h-[250px] flex-col items-center justify-end overflow-hidden rounded-[20px] bg-fg px-6 pb-6 pt-8 text-center text-bg [@media(max-height:900px)]:min-h-[168px] [@media(max-height:900px)]:pb-4 [@media(max-height:900px)]:pt-5">
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
-      <span aria-hidden className="absolute left-1/2 top-6 size-[150px] -translate-x-1/2 rounded-[28px] border-[3px] border-bg/90" />
-      <div className="relative mt-[170px]">
+      <span aria-hidden className="absolute left-1/2 top-6 size-[150px] -translate-x-1/2 rounded-[28px] border-[3px] border-bg/90 [@media(max-height:900px)]:top-4 [@media(max-height:900px)]:size-[72px] [@media(max-height:900px)]:rounded-[18px]" />
+      <div className="relative mt-[170px] [@media(max-height:900px)]:mt-[84px]">
         <p className="font-display text-[26px] font-bold leading-8 tracking-[-0.01em]">Hold the card up</p>
         <p className="mt-2 text-[14px] leading-5 text-bg/60">{hint}</p>
         {state === "off" || state === "denied" ? (

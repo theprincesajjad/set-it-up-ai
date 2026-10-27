@@ -65,8 +65,10 @@ describe("deterministic date names", () => {
   it("formats times with the language's am/pm word, midnight and noon as 12", () => {
     expect(formatTime("hi", "2026-10-25T21:30:00Z")).toBe("5:30 अपराह्न");
     expect(formatTime("pa", "2026-10-25T13:05:00Z")).toBe("9:05 ਪੂ.ਦੁ.");
-    expect(formatTime("ur", "2026-10-25T16:00:00Z")).toBe("12:00 شام");
-    expect(formatTime("ur", "2026-10-25T04:00:00Z")).toBe("12:00 صبح");
+    expect(formatTime("ur", "2026-10-25T16:00:00Z")).toBe("دوپہر 12:00");
+    expect(formatTime("ur", "2026-10-26T03:00:00Z")).toBe("رات 11:00");
+    expect(formatTime("ur", "2026-10-25T22:00:00Z")).toBe("شام 6:00");
+    expect(formatTime("ur", "2026-10-25T04:00:00Z")).toBe("رات 12:00");
     expect(formatDate("pa", "2026-10-25T21:30:00Z", { weekday: "short", hour: "numeric", minute: "2-digit" })).toBe("ਐਤ, 5:30 ਬਾ.ਦੁ.");
   });
 

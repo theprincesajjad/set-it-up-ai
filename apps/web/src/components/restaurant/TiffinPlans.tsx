@@ -1,6 +1,6 @@
 "use client";
 import { CircleCheck } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { tiffinApi } from "@ll/shared";
 import { PaymentBox, pollUntil } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
@@ -12,6 +12,7 @@ import { browserClient } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
+import { monthlyOfWeekly } from "@/lib/restaurant/tcb";
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
 import { DietaryPills } from "./dietary";
 import { ManualDue, PayOptions, offeredMethods } from "./ManualDue";
@@ -22,12 +23,28 @@ const api = restaurantCustomerApi(browserClient);
 type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null };
 type Plan = tiffinApi.PublicPlanDto;
 
+const noopSubscribe = () => () => {};
+/** The saved subscribe form for this shop, or null (none saved, a private window, or on the server). Parsed once per read of the same text. */
+let lastRaw: string | null = null;
+let lastDraft: Record<string, unknown> | null = null;
+function readDraft(key: string): Record<string, unknown> | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (raw === lastRaw) return lastDraft;
+    lastRaw = raw;
+    lastDraft = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+    return lastDraft;
+  } catch {
+    return null;
+  }
+}
+
 export function planPrice(p: Pick<Plan, "priceCents" | "extraServingCents">, servings: number) {
   return p.priceCents + Math.max(0, servings - 1) * p.extraServingCents;
 }
 
 /** /shops/<slug>/tiffin: plans with the upcoming menu, servings stepper with live price, subscribe. */
-export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServings, devAutofill }: { shop: Shop; data: tiffinApi.PublicPlansResponse; signedIn: boolean; initialPlanId?: string; initialServings?: number; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
+export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServings, devAutofill, defaultName }: { shop: Shop; data: tiffinApi.PublicPlansResponse; signedIn: boolean; initialPlanId?: string; initialServings?: number; /** The name already on the customer's profile. */ defaultName?: string; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
   const { t, money, date, pick } = useFmt();
   const plans = data.plans;
   const [planId, setPlanId] = useState<string | null>(plans.some((p) => p.id === initialPlanId) ? initialPlanId! : null);
@@ -38,16 +55,52 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
   const [addressNotes, setAddressNotes] = useState("");
   const [dietNotes, setDietNotes] = useState("");
   const [start, setStart] = useState(addDays(todayIso(), 1));
+  const [name, setName] = useState(defaultName ?? "");
+  const [monthly, setMonthly] = useState(true);
+  const draftKey = `tcb.tiffin.draft.${shop.slug}`;
   const methods = offeredMethods(data.accepted ?? { card: true, pad: data.padEnabled, etransfer: false, cash: false });
   const [method, setMethod] = useState<tiffinApi.TiffinPaymentMethod>(methods[0] ?? "card");
-  const [errors, setErrors] = useState<Partial<Record<"address" | "postal" | "start", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"address" | "postal" | "start" | "name", string>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<tiffinApi.SubscribeResponse | null>(null);
   const [paid, setPaid] = useState<"no" | "checking" | "yes">("no");
 
+  // Signing in refreshes this page: keep what the customer already typed (plan, address, notes) so nothing has to be entered twice.
+  // The draft lives in sessionStorage; it is read after hydration (null on the server) and applied once.
+  const stored = useSyncExternalStore(noopSubscribe, () => readDraft(draftKey), () => null);
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const [restored, setRestored] = useState(false);
+  if (!restored && stored !== null) {
+    setRestored(true);
+    const d = stored;
+    if (typeof d.planId === "string" && plans.some((p) => p.id === d.planId) && !initialPlanId) setPlanId(d.planId);
+    if (typeof d.servings === "number") setServings(Math.max(1, d.servings));
+    if (d.fulfilment === "delivery" || d.fulfilment === "pickup") setFulfilment(d.fulfilment);
+    if (typeof d.address === "string") setAddress(d.address);
+    if (typeof d.postal === "string") setPostal(d.postal);
+    if (typeof d.addressNotes === "string") setAddressNotes(d.addressNotes);
+    if (typeof d.dietNotes === "string") setDietNotes(d.dietNotes);
+    if (typeof d.start === "string" && d.start >= todayIso()) setStart(d.start);
+    if (typeof d.name === "string" && !defaultName) setName(d.name);
+    if (typeof d.monthly === "boolean") setMonthly(d.monthly);
+    if (typeof d.method === "string" && (methods as string[]).includes(d.method)) setMethod(d.method as tiffinApi.TiffinPaymentMethod);
+  }
+  useEffect(() => {
+    if (!hydrated || result) return;
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({ planId, servings, fulfilment, address, postal, addressNotes, dietNotes, start, name, monthly, method }));
+    } catch {
+      /* ignore */
+    }
+  }, [hydrated, result, draftKey, planId, servings, fulfilment, address, postal, addressNotes, dietNotes, start, name, monthly, method]);
+
   const plan = plans.find((p) => p.id === planId) ?? null;
-  const cadence = (p: Plan) => t(p.cadence === "weekly" ? "rc.tf.weekly" : "rc.tf.monthly");
+  const handPaid = method === "etransfer" || method === "cash";
+  /** A weekly plan paid by hand is billed once a month by default (one e-transfer to chase, not four). */
+  const billedMonthly = (p: Plan) => p.cadence === "weekly" && handPaid && monthly;
+  const cadence = (p: Plan) => t(p.cadence === "trial" ? "tcb2.tf.trialDay" : billedMonthly(p) || p.cadence === "monthly" ? "rc.tf.monthly" : "rc.tf.weekly");
+  const priceOf = (p: Plan, n: number) => (billedMonthly(p) ? monthlyOfWeekly(planPrice(p, n)) : planPrice(p, n));
   const dayNames = (p: Plan) => [...p.daysOfWeek].sort((a, b) => a - b).map((d) => date(new Date(Date.UTC(2024, 0, 7 + d, 12)), { weekday: "short" }, "UTC")).join(" · ");
 
   function choose(p: Plan) {
@@ -65,6 +118,8 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
     if (fulfilment === "delivery" && address.trim().length < 3) e.address = t("rc.tf.errAddress");
     if (fulfilment === "delivery" && postal.trim().length < 3) e.postal = t("rc.tf.errPostal");
     if (!start || start < todayIso()) e.start = t("rc.tf.errStart");
+    else if (plan.cadence === "trial" && !plan.daysOfWeek.includes(dayDate(start).getUTCDay())) e.start = t("tcb2.tf.errTrialDay", { days: dayNames(plan) });
+    if (name.trim().length < 2) e.name = t("tcb2.tf.errName");
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
@@ -78,7 +133,14 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
         ...(dietNotes.trim() ? { dietaryNotes: dietNotes.trim() } : {}),
         startDate: start,
         paymentMethod: method,
+        ...(name.trim() ? { name: name.trim() } : {}),
+        ...(plan.cadence === "weekly" && handPaid ? { billingCadence: monthly ? ("monthly" as const) : ("weekly" as const) } : {}),
       });
+      try {
+        sessionStorage.removeItem(draftKey);
+      } catch {
+        /* ignore */
+      }
       setResult(r);
       if (!r.payment && !r.manual) setPaid("yes");
     } catch (err) {
@@ -154,7 +216,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
           {plans.map((p) => {
             const tr = pick({ name: p.name, description: p.description, translations: p.translations });
             const selected = p.id === planId;
-            const price = planPrice(p, selected ? servings : 1);
+            const price = priceOf(p, selected ? servings : 1);
             return (
               <li key={p.id} className={cn("rounded-card border p-4", selected ? "border-fg" : "border-line")}>
                 <div className="flex items-start justify-between gap-3">
@@ -170,6 +232,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {p.cadence === "trial" ? <Pill>{t("tcb2.tf.trialPill")}</Pill> : null}
                   <Pill>{dayNames(p)}</Pill>
                   {data.certifiedFoodHandler ? <Pill>{t("tcb.badge.certified")}</Pill> : null}
                   <Pill>{t("rc.tf.mealsPerDay", { n: p.mealsPerDay })}</Pill>
@@ -240,9 +303,24 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
                         <TextField type="textarea" label={`${t("rc.tf.addressNotes")} (${t("rc.optional")})`} hint={t("rc.tf.addressNotesHint")} value={addressNotes} onChange={(e) => setAddressNotes(e.target.value)} maxLength={500} rows={2} />
                       </>
                     ) : null}
+                    <TextField label={t("tcb2.tf.name")} hint={t("tcb2.tf.nameHint", { shop: shop.name })} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} autoComplete="name" maxLength={80} />
                     <TextField type="textarea" label={`${t("rc.tf.dietNotes")} (${t("rc.optional")})`} value={dietNotes} onChange={(e) => setDietNotes(e.target.value)} maxLength={500} rows={2} />
-                    <TextField type="date" label={t("rc.tf.startDate")} min={todayIso()} value={start} onChange={(e) => setStart(e.target.value)} error={errors.start} required />
+                    <TextField type="date" label={p.cadence === "trial" ? t("tcb2.tf.trialDate") : t("rc.tf.startDate")} min={todayIso()} value={start} onChange={(e) => setStart(e.target.value)} error={errors.start} required />
                     <PayOptions shop={shop.name} methods={methods} value={method} onChange={setMethod} etransfer={data.etransfer ?? null} amountCents={price} />
+                    {p.cadence === "weekly" && handPaid ? (
+                      <div className="flex flex-col gap-2">
+                        <FieldLabel>{t("tcb2.tf.billing")}</FieldLabel>
+                        <ChoiceRow
+                          label={t("tcb2.tf.billing")}
+                          value={monthly ? "monthly" : "weekly"}
+                          onChange={(v) => setMonthly(v === "monthly")}
+                          options={[
+                            { value: "monthly", label: t("tcb2.tf.billMonthly", { price: money(monthlyOfWeekly(planPrice(p, servings))) }) },
+                            { value: "weekly", label: t("tcb2.tf.billWeekly", { price: money(planPrice(p, servings)) }) },
+                          ]}
+                        />
+                      </div>
+                    ) : null}
                     {error ? <Banner tone="danger">{error}</Banner> : null}
                     {signedIn ? (
                       <Button type="submit" size="lg" fullWidth loading={busy}>

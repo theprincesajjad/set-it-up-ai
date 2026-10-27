@@ -26,6 +26,7 @@ import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { unitsText } from "@/lib/units";
 import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRowsL } from "@/lib/i18n/formatL";
+import { PetShopBlock } from "@/components/pass/PetShopBlock";
 import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { howYouEarn } from "@/lib/program";
 import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
@@ -75,6 +76,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
     return <ErrorState title={t("wp.err.shop")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/shops/${slug}`}>{t("rc.tryAgain")}</Button>} />;
   }
 
+  const petInfo = shop.merchant.vertical === "pet" ? await publicServerApi().public.petInfo(slug).catch(() => null) : null;
   const me = await getMe();
   let membership: customerApi.MembershipDto | null = null;
   if (me) {
@@ -114,7 +116,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
 
   // Restaurant pack shops lead with food: halal block, order buttons, this weekend's pots, most ordered, rewards last (frame 10).
   const f = shop.features;
-  const maybeRestaurant = !!(f?.dietaryTags || f?.tiffin || f?.catering || f?.banquet || f?.whatsapp);
+  const maybeRestaurant = m.vertical !== "grocery" && !!(f?.dietaryTags || f?.tiffin || f?.catering || f?.banquet || f?.whatsapp);
   const rest: restaurantWebApi.PublicRestaurantResponse | null = maybeRestaurant ? await publicRestaurantApi().restaurant(slug).catch(() => null) : null;
   let restMenu: commerceApi.PublicMenuResponse | null = null;
   if (rest && (rest.popular.length || rest.features.preorder)) restMenu = await publicRestaurantApi().menu(slug, { lang: locale }).catch(() => null);
@@ -122,6 +124,8 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const groceryShop = m.vertical === "grocery";
   const flyer = groceryShop ? await publicServerApi().public.flyer(slug).catch(() => null) : null;
   const butcher = groceryShop && !rest ? await publicRestaurantApi().restaurant(slug).catch(() => null) : null;
+  // The butcher counter: cuts sold by weight and the qurbani bookings come from the menu, in the guest's language.
+  const butcherMenu = butcher && (butcher.features.pickup || butcher.features.preorder) ? await publicRestaurantApi().menu(slug, { lang: locale }).catch(() => null) : null;
   const menuItems = restMenu ? [...restMenu.categories.flatMap((c) => c.items), ...restMenu.uncategorized] : [];
   const popularItems = rest ? rest.popular.map((id) => menuItems.find((i) => i.id === id)).filter((i): i is commerceApi.CatalogItemDto => !!i) : [];
   const base = `/shops/${encodeURIComponent(m.slug)}`;
@@ -159,7 +163,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       <ShopTile
         variant="hero"
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }}
-        subtitle={[kindL(L, m.vertical), m.neighbourhood?.name.toLowerCase()].filter(Boolean).join(" · ")}
+        subtitle={[kindL(L, m.vertical), locale === "en" ? m.neighbourhood?.name.toLowerCase() : m.neighbourhood?.name].filter(Boolean).join(" · ")}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
@@ -216,8 +220,9 @@ export default async function ShopPage({ params, searchParams }: Props) {
           <p className="text-center text-meta text-fg-muted">{t("sv.d.linkSub")}</p>
         </div>
       ) : null}
+      {petInfo ? <PetShopBlock info={petInfo} locale={locale} /> : null}
       {quickRow}
-      {groceryShop ? <GroceryBlock shopName={m.name} slug={m.slug} flyer={flyer} preorderItems={butcher?.preorderItems ?? []} member={!!membership} /> : null}
+      {groceryShop ? <GroceryBlock shopName={m.name} slug={m.slug} flyer={flyer} counter={{ items: butcherMenu ? [...butcherMenu.categories.flatMap((c) => c.items), ...butcherMenu.uncategorized] : [], qurbani: butcher?.qurbani ?? null, canReserve: !!butcher?.features.preorder }} member={!!membership} /> : null}
       {rest ? <WeekendPots weekend={rest.weekend} items={rest.preorderItems} /> : null}
       {rest ? <PopularRow slug={m.slug} items={popularItems} /> : null}
 
@@ -284,7 +289,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
             label: t("shop.promos"),
             count: shop.promos.length,
             content: shop.promos.length ? (
-              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
+              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} terminology={terminology} showShop={false} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
             ) : (
               <p className="py-6 text-center text-body text-fg-muted">{t("wp.shop.noOffers")}</p>
             ),

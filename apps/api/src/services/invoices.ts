@@ -367,7 +367,12 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
       userId: paid.userId,
       merchantId: merchant.id,
       title: `${merchant.name}: payment received`,
-      body: `Thanks! Invoice #${paid.number} is paid.${points > 0 ? ` You earned ${points} points at ${merchant.name}.` : ""}`,
+      // A visit paid from the calendar also says what the tip was, links the receipt and offers the next booking.
+      body: `Thanks! Invoice #${paid.number} is paid.${points > 0 ? ` You earned ${points} points at ${merchant.name}.` : ""}${
+        paid.appointmentId
+          ? `${paid.tipCents > 0 ? ` Your $${(paid.tipCents / 100).toFixed(2)} tip went to the team.` : ""} Receipt: ${ctx.config.publicWebUrl}/i/${paid.payToken}. Book your next visit: ${ctx.config.publicWebUrl}/shops/${merchant.slug}/book`
+          : ""
+      }`,
       sms: opts.inApp,
       data: { type: "invoice_paid", invoiceId: paid.id, ticketId: paid.ticketId, points },
     });

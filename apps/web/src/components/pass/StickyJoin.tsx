@@ -8,7 +8,7 @@ export function StickyJoin({ label, target = "join" }: { label: string; target?:
   useEffect(() => {
     const el = document.getElementById(target);
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => setHidden(!!e?.isIntersecting), { threshold: 0.15 });
+    const io = new IntersectionObserver(([e]) => setHidden(!!e?.isIntersecting), { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
   }, [target]);

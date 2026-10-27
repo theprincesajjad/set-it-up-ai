@@ -8,19 +8,21 @@ import { FreeCard, PaidCard } from "@/app/(marketing)/pricing/PlanCards";
 import { moneyShort } from "@/lib/marketing/text";
 
 describe("pricing cards", () => {
-  it("shows the real price in the normal text colour, with a status badge while the plan is pilot-only", () => {
-    const html = renderToStaticMarkup(<PaidCard id="plus" available={false} />);
+  it("shows the real price in the normal text colour with a working Start button, no pilot badge", () => {
+    const html = renderToStaticMarkup(<PaidCard id="plus" />);
     expect(html).toContain(">$39<");
     expect(html).toMatch(/text-fg[^-][^>]*>\$39</);
     expect(html).not.toContain("text-fg-subtle");
-    expect(html).toContain("Pilot shops now");
-    expect(html).toContain("Start free, ask for early access");
+    expect(html).not.toContain("Pilot shops now");
+    expect(html).not.toContain("early access");
+    expect(html).toContain('href="/signup?plan=plus"');
+    expect(html).toContain("Start Café &amp; Retail");
     expect(html).toContain(`or ${moneyShort(PLANS.plus.annualPriceCents)} a year`);
   });
-  it("drops the badge once the API says the plan is available", () => {
-    const html = renderToStaticMarkup(<PaidCard id="pro" available />);
+  it("sells Service at $99 with the same button", () => {
+    const html = renderToStaticMarkup(<PaidCard id="pro" />);
     expect(html).toContain(">$99<");
-    expect(html).not.toContain("Pilot shops now");
+    expect(html).toContain('href="/signup?plan=pro"');
     expect(html).toContain("Start Service");
   });
   it("keeps the free card to five plain lines", () => {

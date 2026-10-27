@@ -45,6 +45,7 @@ function mockApi() {
     verify: vi.fn(),
     today: vi.fn(async () => ({ date: "2026-10-23", visitCount: 3, newMembers: 0, pointsIssued: 94, redemptions: 0, items: [] })),
     activity: vi.fn(async () => ({ items: [] })),
+    regulars: vi.fn(async (): Promise<staffApi.RegularsResponse> => ({ items: [] })),
     undo: vi.fn(async () => ({ reversalTransactionId: "rv1", member: member() })),
   };
   return api as unknown as MerchantEndpoints["counter"] & typeof api;
@@ -136,6 +137,32 @@ describe("counter helpers", () => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("<CounterApp> stamp on tap", () => {
+  it("shows regulars not yet in today and stamps one with a single tap", async () => {
+    const api = mockApi();
+    const priya = member({ memberId: "22222222-2222-2222-2222-222222222222", name: "Priya Shah" });
+    api.regulars.mockResolvedValue({ items: [priya, member({ memberId: "33333333-3333-3333-3333-333333333333", name: "Omar Ali" })] });
+    render(<CounterApp api={api} program={stamps} shopName="Pinecone Coffee" locations={[{ id: "loc1", name: "Main" }]} />);
+    const tap = await screen.findByRole("button", { name: "Stamp Priya Shah" });
+    expect(screen.getByRole("button", { name: "Stamp Omar Ali" })).toBeTruthy();
+    await userEvent.click(tap);
+    await waitFor(() => expect(api.award).toHaveBeenCalledTimes(1));
+    expect(api.award.mock.calls[0]![0]).toMatchObject({ memberId: priya.memberId });
+    expect(api.lookup).not.toHaveBeenCalled();
+  });
+
+  it("opens the card instead when Stamp on scan is off, and shows no row for per-dollar shops", async () => {
+    const api = mockApi();
+    api.regulars.mockResolvedValue({ items: [member({ name: "Priya Shah" })] });
+    const { unmount } = render(<CounterApp api={api} program={confirmStamps} shopName="Shop" locations={[]} />);
+    expect(await screen.findByRole("button", { name: "Open Priya Shah" })).toBeTruthy();
+    unmount();
+    render(<CounterApp api={api} program={perDollar} shopName="Shop" locations={[]} />);
+    await waitFor(() => expect(api.regulars).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /Priya Shah/ })).toBeNull();
+  });
 });
 
 describe("<CounterApp> scan first", () => {

@@ -127,7 +127,9 @@ export interface PublicRestaurantResponse {
   quotedWaitMin: number | null;
   whatsappNumber: string | null;
   /** The shop's own pre-order items (degh, trays), in menu order. */
-  preorderItems: { id: string; name: string; serves: number | null; priceCents: number; leadTimeHours: number; depositBps: number }[];
+  preorderItems: { id: string; name: string; serves: number | null; priceCents: number; leadTimeHours: number; depositBps: number; translations?: Record<string, { name?: string; description?: string }> }[];
+  /** Grocers and butchers with an Eid al-Adha plan: its first pick-up day, when booking opens (eight weeks before) and whether it already has. */
+  qurbani?: { start: string; bookingsOpen: string; open: boolean; moved: boolean } | null;
   /** Pre-orders cancel free until this many hours before pickup; null = each dish's own notice period. */
   cancelCutoffHours: number | null;
   features: { pickup: boolean; preorder: boolean };

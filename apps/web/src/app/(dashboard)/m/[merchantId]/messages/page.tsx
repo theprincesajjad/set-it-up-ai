@@ -57,7 +57,7 @@ function MessagesPage() {
           <span className="text-[13px] text-fg-muted">Run on their own, once per person</span>
         </div>
         {!enabled("marketing.automations") ? (
-          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Automations come with Plus. A free drink waiting, a win-back text and a birthday treat send themselves.</p>
+          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Automations come with Café & Retail. A free drink waiting, a win-back text and a birthday treat send themselves.</p>
         ) : autos.loading && !autos.data ? (
           <SkeletonRows rows={3} />
         ) : (

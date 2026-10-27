@@ -18,7 +18,7 @@ const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong
  * text; a signed-in customer also gets "my barber" and the family on their card.
  */
 export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null }; data: barberApi.PublicQueueResponse; signedIn: boolean; meName?: string | null }) {
-  const { t } = useFmt();
+  const { t, money } = useFmt();
   const router = useRouter();
   const [name, setName] = useState(meName?.split(" ")[0] ?? "");
   const [phone, setPhone] = useState<string | null>(null);
@@ -41,7 +41,15 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
     }).catch(() => undefined);
   }, [signedIn, shop.slug, data.barbers]);
 
-  const estimate = data.estimateMin === null ? null : data.estimateMin <= 0 ? t("q.noWait") : t("q.estimate", { min: data.estimateMin });
+  // The wait and price for the barber you picked, and for the whole party when you bring family (served one after another).
+  const barber = data.barbers.find((b) => b.id === staffId) ?? null;
+  const waitMin = barber ? barber.estimateMin : data.estimateMin;
+  const svc = data.services.find((s) => s.id === serviceId) ?? null;
+  const partyCuts = 1 + picked.length;
+  const partyDone = partyCuts > 1 && waitMin !== null ? Math.ceil((waitMin + partyCuts * (svc?.durationMin ?? 25)) / 5) * 5 : null;
+  const waitLabel = (m: number | null) => (m === null ? null : m <= 0 ? t("q.noWait") : t("q.estimate", { min: m }));
+  const priceOf = (s: (typeof data.services)[number]) => (barber?.prices[s.id] ?? s.priceCents);
+  const estimate = waitLabel(waitMin);
   const closed = !data.open;
   const needsPhone = !signedIn;
   const nameErr = tried && !name.trim() ? t("q.nameRequired") : undefined;
@@ -69,7 +77,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
       <Heading plain>{t("q.title")}</Heading>
       <div className="flex flex-col gap-1 rounded-card bg-accent-soft px-4 py-3.5">
         <p className="text-title font-semibold text-accent-text">{closed ? t("q.closed") : (estimate ?? "")}</p>
-        {!closed ? <p className="text-meta text-fg-muted">{t("q.waitingNow", { n: data.waiting })}</p> : null}
+        {!closed ? <p className="text-meta text-fg-muted">{[t("q.waitingNow", { n: data.waiting }), barber ? t("q.withBarber", { name: barber.name.split(" ")[0] ?? "" }) : null, partyDone ? t("q.partyDone", { n: partyCuts, min: partyDone }) : null].filter(Boolean).join(" · ")}</p> : null}
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <TextField label={t("q.firstName")} value={name} onChange={(e) => setName(e.target.value)} error={nameErr} autoComplete="given-name" />
@@ -79,7 +87,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
           <legend className="text-meta text-fg-muted">{t("q.service")}</legend>
           <div className="flex flex-wrap gap-2">
             {data.services.map((s) => (
-              <button key={s.id} type="button" className={chip(serviceId === s.id)} onClick={() => setServiceId(s.id)}>{s.name}</button>
+              <button key={s.id} type="button" className={chip(serviceId === s.id)} onClick={() => setServiceId(s.id)}>{s.name}{priceOf(s) > 0 ? ` · ${money(priceOf(s))}` : ""}</button>
             ))}
           </div>
         </fieldset>
@@ -88,10 +96,10 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
         <fieldset className="flex flex-col gap-2">
           <legend className="text-meta text-fg-muted">{t("q.barber")}</legend>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={chip(staffId === "")} onClick={() => setStaffId("")}>{t("q.anyone")}</button>
+            <button type="button" className={chip(staffId === "")} onClick={() => setStaffId("")}>{t("q.anyone")}{waitLabel(data.estimateMin) ? ` · ${waitLabel(data.estimateMin)}` : ""}</button>
             {data.barbers.map((b) => (
-              <button key={b.id} type="button" className={chip(staffId === b.id)} onClick={() => setStaffId(b.id)} title={b.estimateMin === null ? undefined : t("q.barberWait", { name: b.name, min: b.estimateMin })}>
-                {b.name.split(" ")[0]}
+              <button key={b.id} type="button" className={chip(staffId === b.id)} onClick={() => setStaffId(b.id)} aria-label={b.estimateMin === null ? undefined : t("q.barberWait", { name: b.name, min: b.estimateMin })}>
+                {b.name.split(" ")[0]}{waitLabel(b.estimateMin) ? ` · ${waitLabel(b.estimateMin)}` : ""}
               </button>
             ))}
           </div>

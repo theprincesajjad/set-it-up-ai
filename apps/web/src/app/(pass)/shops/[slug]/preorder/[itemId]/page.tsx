@@ -9,6 +9,7 @@ import { isApiError } from "@/lib/api/errors";
 import { getMe } from "@/lib/auth/session";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { addDays, todayIso } from "@/lib/restaurant/util";
+import { isWeighedLine } from "@/lib/restaurant/weighed";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +58,8 @@ export default async function PreorderPage({ params, searchParams }: Props) {
     );
   }
   const item = [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized].find((i) => i.id === itemId);
-  if (!item || !item.preorderOnly) notFound();
+  // Pre-order-only dishes, and cuts sold by weight at a butcher counter, are booked here.
+  if (!item || !(item.preorderOnly || isWeighedLine(item))) notFound();
 
   const today = todayIso();
   let availability: restaurantApi.PreorderAvailabilityResponse | null = null;
@@ -80,7 +82,7 @@ export default async function PreorderPage({ params, searchParams }: Props) {
   if (unavailable || !availability)
     return (
       <PageFrame locale={locale}>
-        <EmptyState title={t("rs.pre.unavailable")} description={t("rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState title={t("rs.pre.unavailable")} description={t(shop.vertical === "grocery" ? "gr.pre.unavailableBody" : "rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const [restaurant, me] = await Promise.all([api.restaurant(slug).catch(() => null), getMe()]);

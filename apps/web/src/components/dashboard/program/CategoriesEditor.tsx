@@ -31,7 +31,7 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
     }
   };
   return (
-    <Panel title="Categories that don't earn" description="Match these to your POS categories so the right items earn. Points never apply to regulated categories.">
+    <Panel title="What each category earns" description="Switch off Earns points for anything that should not earn (gift cards, regulated items). Match these to your POS categories so the right items earn. Points never apply to regulated categories.">
       {pharmacy ? (
         <Banner tone="info" className="mt-3" title={copy.misc.pharmacyLockedTitle}>
           {copy.misc.pharmacyLockedBody}

@@ -25,6 +25,7 @@ import { markInvoicePaid, sendInvoice, voidInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone, redeemReward } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
 import { autoSetPreferred } from "./preferred-staff.js";
+import { logGroomFromCheckout } from "./pets.js";
 import { priceLineItems } from "./quotes.js";
 
 type Invoice = typeof invoices.$inferSelect;
@@ -163,7 +164,9 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
   const [fresh] = await ctx.db.select().from(invoices).where(eq(invoices.id, invoice.id)).limit(1);
   a = await getAppointment(ctx.db, merchant.id, id);
   const dto = checkoutInvoiceDto(fresh!, ctx.config.publicWebUrl);
-  return { appointment: await appointmentDto(ctx.db, a), invoice: dto, payUrl: counter ? null : dto.payUrl };
+  // A groom for a dog: the visit moves the dog's cadence (last groom and next due) and checkout may set the next date.
+  const pet = a.petId ? await logGroomFromCheckout(ctx, staff, a, body.nextGroomWeeks ?? null) : null;
+  return { appointment: await appointmentDto(ctx.db, a), invoice: dto, payUrl: counter ? null : dto.payUrl, pet };
 }
 
 export async function invoiceFor(ctx: AppContext, merchantId: string, a: Appointment) {

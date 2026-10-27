@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchantCategories, merchantMembers, orders } from "@ll/db";
 import { awardPurchase } from "../src/services/ledger.js";
-import { awardOrderPoints } from "../src/services/orders.js";
+import { awardOrderPoints, balanceDueCents } from "../src/services/orders.js";
 import { computeTax } from "../src/services/tax.js";
 import { createTestEnv, type TestEnv } from "./helpers.js";
 import { call, customer, deliver, fake, paidMerchant, staffMember } from "./commerce-fixtures.js";
@@ -232,5 +232,20 @@ describe("order-ahead", () => {
     await call(env, m.ownerToken, "POST", base, { status: "ready" });
     const done = await call(env, m.ownerToken, "POST", base, { status: "picked_up" });
     expect(done.body).toMatchObject({ paymentStatus: "paid", platformFeeCents: 0, pointsEarned: 15 });
+  });
+});
+
+describe("balance due on a deposit order", () => {
+  const base = { status: "accepted" as const, kind: "preorder", totalCents: 42714, depositCents: 12814, customerFeeCents: 0, depositPaidAt: new Date("2026-11-01T12:00:00Z"), paymentStatus: "authorized" as const };
+  it("is the total less the deposit paid (order #52: $299.00, not nothing)", () => {
+    expect(balanceDueCents(base)).toBe(29900);
+  });
+  it("counts a hall booking's deposit too, so a banquet card never says the whole bill is due at pickup", () => {
+    expect(balanceDueCents({ ...base, kind: "banquet" })).toBe(29900);
+  });
+  it("is nothing once it is paid, cancelled or refunded, and the whole bill when no deposit was paid", () => {
+    expect(balanceDueCents({ ...base, paymentStatus: "paid" })).toBe(0);
+    expect(balanceDueCents({ ...base, status: "cancelled" })).toBe(0);
+    expect(balanceDueCents({ ...base, depositPaidAt: null })).toBe(42714);
   });
 });

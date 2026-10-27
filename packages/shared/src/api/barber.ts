@@ -113,7 +113,8 @@ export interface PublicQueueResponse {
   open: boolean;
   waiting: number;
   estimateMin: number | null;
-  barbers: { id: string; name: string; estimateMin: number | null }[];
+  /** `prices`: this barber's own price for a service when it differs from the list price (serviceId to cents). */
+  barbers: { id: string; name: string; estimateMin: number | null; prices: Record<string, number> }[];
   services: { id: string; name: string; durationMin: number; priceCents: number }[];
 }
 
@@ -131,6 +132,12 @@ export interface QueueStatusResponse {
   calledBarberName: string | null;
   /** Family members who joined with this person (first names). */
   party: { name: string; position: number | null }[];
+  /** For a party: minutes until the last member's cut would be finished (estimateMin is only the first start). Null for one person. */
+  partyDoneMin: number | null;
+  /** True only when a text is really going to be sent (a phone and the box). The page promises a text only then. */
+  textsYou: boolean;
+  /** Once checked out: the points or stamps the visit earned, so the done page can say so. */
+  pointsEarned: number | null;
 }
 
 export interface JoinQueueResponse {

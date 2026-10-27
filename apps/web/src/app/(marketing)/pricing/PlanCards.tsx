@@ -1,6 +1,6 @@
 import { Check, Minus } from "lucide-react";
 import Link from "next/link";
-import { FEATURES, FEATURE_KEYS, FEES, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -15,7 +15,7 @@ const planFeatures = (id: PlanId) => PLAN_FEATURES.filter((k) => FEATURES[k].min
 
 /** What a paid card lists before "and N more": the features owners ask about first. Names come from FEATURES. */
 const HIGHLIGHTS: Record<"plus" | "pro", FeatureKey[]> = {
-  plus: ["promos.basic", "loyalty.vip_levels", "marketing.email", "marketing.sms", "integrations.pos_auto_award", "orders.order_ahead"],
+  plus: ["booking.appointments", "booking.classes", "booking.walkin_queue", "memberships.recurring", "orders.order_ahead", "promos.basic", "marketing.sms", "integrations.pos_auto_award"],
   pro: ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices", "booking.dropoff_scheduling", "staff.permissions"],
 };
 
@@ -26,14 +26,17 @@ const TABLE_GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
   { title: "Network", match: (k) => k.startsWith("network.") || k.startsWith("wallet.") },
   { title: "Promos and marketing", match: (k) => k.startsWith("promos.") || k.startsWith("marketing.") },
   { title: "Integrations", match: (k) => k.startsWith("integrations.") },
+  { title: "Booking, classes and the walk-in line", match: (k) => k.startsWith("booking.") && k !== "booking.pickup_slots" && k !== "booking.dropoff_scheduling" || k === "service.rebooking" || k.startsWith("memberships.") || k === "staff.payouts" },
+  { title: "Grocers and butchers", match: (k) => k.startsWith("grocery.") },
+  { title: "Pet shops", match: (k) => k.startsWith("pets.") },
+  { title: "Auto care", match: (k) => k.startsWith("auto.") },
   { title: "Orders and payments", match: (k) => k.startsWith("orders.") || k.startsWith("payments.") || k === "booking.pickup_slots" },
   { title: "Repair and service", match: (k) => k.startsWith("service.") || k === "booking.dropoff_scheduling" },
-  { title: "Team", match: (k) => k.startsWith("staff.") || k.startsWith("locations.") },
+  { title: "Team", match: (k) => (k.startsWith("staff.") && k !== "staff.payouts") || k.startsWith("locations.") },
 ];
 
-const PAID = PLAN_FEATURES.filter((k) => FEATURES[k].minPlan !== "free");
 /** Active shops at which the first paid features open to every shop (the lowest gate among Café & Retail features). */
-export const PLUS_TARGET = Math.min(...PAID.filter((k) => FEATURES[k].minPlan === "plus").map((k) => FEATURES[k].unlockAtMerchants).filter((n) => n > 0), 100);
+export const PLUS_TARGET = NETWORK_GATE_SHOPS;
 
 export const price = (id: PlanId) => (id === "free" ? "$0" : moneyShort(PLANS[id].priceCents));
 
@@ -84,7 +87,7 @@ export function FreeCard() {
 }
 
 /** Café & Retail and Service: the real price in the normal text colour. The badge text follows the API: no badge once the plan is available. */
-export function PaidCard({ id, available }: { id: "plus" | "pro"; available: boolean }) {
+export function PaidCard({ id }: { id: "plus" | "pro" }) {
   const plan = PLANS[id];
   const all = planFeatures(id);
   const keys = HIGHLIGHTS[id].filter((k) => all.includes(k));
@@ -93,7 +96,6 @@ export function PaidCard({ id, available }: { id: "plus" | "pro"; available: boo
     <div className="flex flex-col rounded-sheet border border-line bg-bg p-6 md:p-8">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-headline text-fg">{plan.name}</h2>
-        {available ? null : <Badge tone="neutral">{P.pilotBadge}</Badge>}
       </div>
       <p className="mt-5 flex items-baseline gap-2">
         <span className="display text-mkt-lg tabular-nums text-fg">{price(id)}</span>
@@ -103,15 +105,9 @@ export function PaidCard({ id, available }: { id: "plus" | "pro"; available: boo
         or {moneyShort(plan.annualPriceCents)} a year · {plan.smsPerMonth.toLocaleString("en-CA")} texts a month
       </p>
       <p className="mt-3 text-body text-fg">{id === "plus" ? P.plusLine : P.proLine}</p>
-      {available ? (
-        <Button href="/signup" fullWidth size="lg" className="mt-6">
-          {`Start ${plan.name}`}
-        </Button>
-      ) : (
-        <Button variant="secondary" fullWidth size="lg" href="/signup" className="mt-6">
-          {P.pilotCta}
-        </Button>
-      )}
+      <Button href={`/signup?plan=${id}`} fullWidth size="lg" className="mt-6">
+        {`Start ${plan.name}`}
+      </Button>
       <div className="mt-8">
         <h3 className="text-meta-strong text-fg-muted">{id === "plus" ? "Everything in Free, plus" : "Everything in Café & Retail, plus"}</h3>
         <ul className="mt-1">
@@ -179,6 +175,7 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
                     <th scope="row" className="py-3 pe-4 text-start font-normal">
                       <span className="text-fg">{f.name}</span>
                       <span className="block text-fg-muted">{f.description}</span>
+                      {f.networkGated ? <span className="mt-0.5 block text-fg-subtle">Opens when the network reaches {f.unlockAtMerchants} shops.</span> : null}
                     </th>
                     {plans.map((p) => (
                       <Cell key={p} on={PLAN_RANK[p] >= PLAN_RANK[f.minPlan]} soon={p !== "free" && !available[p] && f.minPlan !== "free"} />

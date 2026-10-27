@@ -4,7 +4,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { daycarePacks, foodCards, petNudges, petVisits, pets, users } from "@ll/db";
+import { appointments, daycarePacks, foodCards, petNudges, petVisits, pets, users } from "@ll/db";
 import { FEATURES, FREE_FOREVER, bagLastsDays, checkInBlocks, defaultGroomWeeks, foodCardState, groomDueOn, groomState, lateMinutes, runOutOn, vaccineStatus } from "@ll/shared";
 import { call, customer, paidMerchant, staffMember } from "./commerce-fixtures.js";
 import { createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
@@ -358,6 +358,12 @@ describe("daycare", () => {
     expect((await call(env, s.owner, "POST", `${s.base}/daycare/stays/${id}/check-in`, {})).body).toMatchObject({ ok: true, payKind: "drop_in" });
     day = (await call(env, s.owner, "GET", `${s.base}/daycare/day`)).body;
     expect(day).toMatchObject({ inRoom: 1, expected: 0, ratioNow: 1 });
+    // A shot that lapses while the dog is already in the room is flagged on the board too (the check used to run only at the door).
+    expect(day.items[0].blocks).toEqual([]);
+    await call(env, s.owner, "PUT", `${s.base}/pets/${pet.id}/vaccines/rabies`, { expiresOn: ymd(-1) });
+    day = (await call(env, s.owner, "GET", `${s.base}/daycare/day`)).body;
+    expect(day.items[0].blocks.map((b: { code: string }) => b.code)).toEqual(["vaccine"]);
+    await call(env, s.owner, "PUT", `${s.base}/pets/${pet.id}/vaccines/rabies`, { expiresOn: ymd(300) });
     expect((await call(env, s.owner, "POST", `${s.base}/daycare/stays/${id}/check-in`, {})).status).toBe(409);
     await jump(new Date("2026-11-04T23:40:00Z")); // 18:40 Toronto, closing 18:00 with 15 minutes grace
     const out = await call(env, s.owner, "POST", `${s.base}/daycare/stays/${id}/check-out`);
@@ -524,9 +530,13 @@ describe("food cards", () => {
     const yes = await member(s, { name: "Ana Reyes" });
     const pet = await addPet(yes.token, { name: "Hazel", sizeBand: "large" });
     const noConsent = await member(s, { consent: false, name: "Chris" });
-    expect((await punch(s, noConsent.memberId, { remind: true, dailyGrams: 360 })).body.needsMarketingConsent).toBe(true);
+    // A cashier cannot say yes for a customer: the counter sets the daily amount, and the customer switches the text on from their own card.
+    expect((await punch(s, noConsent.memberId, { remind: true, dailyGrams: 360 })).body).toMatchObject({ needsCustomerYes: true, remind: false });
     const r = await punch(s, yes.memberId, { remind: true, dailyGrams: 360, petId: pet.id });
-    expect(r.body).toMatchObject({ remind: true, dailyGrams: 360, runOutOn: ymd(32), remindOn: ymd(27), petName: "Hazel" });
+    expect(r.body).toMatchObject({ needsCustomerYes: true, remind: false, dailyGrams: 360, petName: "Hazel" });
+    const myCard = (await call(env, yes.token, "GET", "/v1/me/food-cards")).body.items[0];
+    const on = await call(env, yes.token, "PUT", `/v1/me/food-cards/${myCard.id}/remind`, { remind: true });
+    expect(on.body).toMatchObject({ remind: true, dailyGrams: 360, runOutOn: ymd(32), remindOn: ymd(27), petName: "Hazel" });
     // Not yet.
     expect((await call(env, s.owner, "POST", `${s.base}/food/runout/send`, {})).body).toEqual({ sent: 0, skipped: 0 });
     await jump(days(27));
@@ -545,13 +555,14 @@ describe("food cards", () => {
     await punch(s, yes.memberId);
     await jump(days(27));
     expect((await call(env, s.owner, "POST", `${s.base}/food/runout/send`, {})).body.sent).toBe(1);
-    // The owner switches it off from the pass; switching on needs the shop's consent.
+    // The owner switches it off from the pass; switching it on is their own yes (no shop-wide text consent needed).
     const mine = (await call(env, yes.token, "GET", "/v1/me/food-cards")).body.items[0];
     expect(mine).toMatchObject({ brand: "Fromm", remind: true, shop: { name: "Test Shop" } });
     expect((await call(env, yes.token, "PUT", `/v1/me/food-cards/${mine.id}/remind`, { remind: false })).body.remind).toBe(false);
     expect((await call(env, yes.token, "PUT", `/v1/me/food-cards/${mine.id}/remind`, { remind: true })).body.remind).toBe(true);
     const cNo = (await call(env, noConsent.token, "GET", "/v1/me/food-cards")).body.items[0];
-    expect((await call(env, noConsent.token, "PUT", `/v1/me/food-cards/${cNo.id}/remind`, { remind: true, dailyGrams: 300 })).status).toBe(409);
+    expect((await call(env, noConsent.token, "PUT", `/v1/me/food-cards/${cNo.id}/remind`, { remind: true, dailyGrams: 300 })).status).toBe(200);
+    expect((await env.db.select().from(foodCards).where(eq(foodCards.id, cNo.id)))[0]).toMatchObject({ remind: true, remindConsentSource: "pass" });
     expect((await call(env, yes.token, "PUT", `/v1/me/food-cards/${mine.id}/remind`, { remind: true, dailyGrams: 5 })).status).toBe(400);
     // Another customer cannot touch it.
     expect((await call(env, noConsent.token, "PUT", `/v1/me/food-cards/${mine.id}/remind`, { remind: false })).status).toBe(404);
@@ -573,6 +584,109 @@ describe("food cards", () => {
     // Another shop cannot see or use this shop's card.
     const s2 = await shop();
     expect((await call(env, s2.owner, "POST", `${s2.base}/food/punch`, { memberId: m.memberId, skuId: s.sku.id })).status).toBe(404);
+  });
+});
+
+describe("appointments and pets", () => {
+  const WEEK = [1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, startsLocal: "09:00", endsLocal: "17:00" }));
+  /** A groomer: the one-tap starter list, one groomer with hours, and a dog whose owner is a member. */
+  async function groomer() {
+    const s = await shop();
+    const groom = await staffMember(env, s.merchant.id, "staff");
+    await call(env, s.owner, "PUT", `${s.base}/staff/${groom.user.id}/hours`, { days: WEEK });
+    const starters = await call(env, s.owner, "POST", `${s.base}/services/starters`, {});
+    return { ...s, groom, starters };
+  }
+  const startsAt = "2026-11-05T15:00:00Z"; // Thu 10:00 Toronto
+
+  it("one tap adds a groomer's list priced by dog size, with no bridal line, and a second tap adds nothing", async () => {
+    const s = await groomer();
+    expect(s.starters.status).toBe(201);
+    const names = s.starters.body.items.map((x: { name: string }) => x.name);
+    expect(names).toContain("Full groom (small dog)");
+    expect(names).toContain("Full groom (giant dog)");
+    expect(names.some((n: string) => /bridal/i.test(n))).toBe(false);
+    const small = s.starters.body.items.find((x: { name: string }) => x.name === "Full groom (small dog)");
+    const giant = s.starters.body.items.find((x: { name: string }) => x.name === "Full groom (giant dog)");
+    expect(giant.priceCents).toBeGreaterThan(small.priceCents);
+    expect((await call(env, s.owner, "POST", `${s.base}/services/starters`, {})).body.items).toHaveLength(0);
+    // A café has no starter list, and only a manager can add one.
+    const cafe = await shop({ vertical: "cafe" });
+    expect((await call(env, cafe.owner, "POST", `${cafe.base}/services/starters`, {})).status).toBeGreaterThanOrEqual(400);
+    const desk = await staffMember(env, s.merchant.id, "staff");
+    expect((await call(env, desk.token, "POST", `${s.base}/services/starters`, {})).status).toBe(403);
+  });
+
+  it("a dog on the visit: its owner is the client, the card carries the dog and the handling note, and checkout logs the groom and sets the next date", async () => {
+    const s = await groomer();
+    const mina = await member(s);
+    const dog = await addPet(mina.token, { name: "Biscuit", sizeBand: "large" });
+    await call(env, s.owner, "PUT", `${s.base}/pets/${dog.id}/shop`, { handlingNote: "Nervous at the dryer. Clip nails last." });
+    const svc = s.starters.body.items.find((x: { name: string }) => x.name === "Full groom (large dog)");
+    // Someone else's dog cannot be put on another client's visit.
+    const stranger = await customer(env, { name: "Other Person" });
+    const theirs = await addPet(stranger.token, { name: "Nova" });
+    expect((await call(env, s.owner, "POST", `${s.base}/appointments`, { staffId: s.groom.user.id, serviceIds: [svc.id], startsAt, petId: theirs.id })).status).toBe(404);
+    const made = await call(env, s.owner, "POST", `${s.base}/appointments`, { staffId: s.groom.user.id, serviceIds: [svc.id], startsAt, petId: dog.id });
+    expect(made.status).toBe(201);
+    expect(made.body.customer.name).toBe("Mina Kapoor");
+    expect(made.body.pet).toMatchObject({ name: "Biscuit", sizeBand: "large", handlingNote: "Nervous at the dryer. Clip nails last.", vaccines: "none" });
+    // It shows on the day's list too.
+    const day = await call(env, s.owner, "GET", `${s.base}/appointments?from=2026-11-05T00:00:00Z&to=2026-11-06T00:00:00Z`);
+    expect(day.body.items[0].pet.name).toBe("Biscuit");
+    // Checkout: groom logged, cadence set to what the groomer picked, next due that many weeks out.
+    const co = await call(env, s.owner, "POST", `${s.base}/appointments/${made.body.id}/checkout`, { mode: "counter", counterMethod: "cash", nextGroomWeeks: 8 });
+    expect(co.status).toBe(200);
+    expect(co.body.pet).toMatchObject({ name: "Biscuit", groomEveryWeeks: 8, logged: true, nextDueOn: ymd(56) });
+    const visits = await env.db.select().from(petVisits).where(and(eq(petVisits.petId, dog.id), eq(petVisits.kind, "groom")));
+    expect(visits).toHaveLength(1);
+    const page = await call(env, s.owner, "GET", `${s.base}/pets/${dog.id}`);
+    expect(page.body.shop).toMatchObject({ groomEveryWeeks: 8, nextDueOn: ymd(56), lastGroomOn: ymd(0) });
+    // Checking out again returns the paid invoice and does not log another groom.
+    await call(env, s.owner, "POST", `${s.base}/appointments/${made.body.id}/checkout`, { mode: "counter", counterMethod: "cash" });
+    expect(await env.db.select().from(petVisits).where(eq(petVisits.petId, dog.id))).toHaveLength(1);
+  });
+
+  it("a customer books their own dog online and gives a first name; the calendar never says Walk-in", async () => {
+    const s = await groomer();
+    const mina = await member(s, { name: "" });
+    await env.db.update(users).set({ name: null }).where(eq(users.id, mina.user.id));
+    const dog = await addPet(mina.token, { name: "Biscuit", sizeBand: "small" });
+    const svc = s.starters.body.items.find((x: { name: string }) => x.name === "Full groom (small dog)");
+    const other = await customer(env, { name: "Other Person" });
+    const theirs = await addPet(other.token, { name: "Nova" });
+    const bad = await call(env, mina.token, "POST", "/v1/me/appointments", { serviceIds: [svc.id], startsAt, petId: theirs.id, customerName: "Mina" });
+    expect(bad.status).toBe(400);
+    const r = await call(env, mina.token, "POST", "/v1/me/appointments", { serviceIds: [svc.id], startsAt, petId: dog.id, customerName: "Mina Kapoor" });
+    expect(r.status).toBe(201);
+    expect(r.body.appointment.petName).toBe("Biscuit");
+    expect(r.body.appointment.merchant.address).toBeTruthy();
+    expect(r.body.appointment.policy).toMatchObject({ cancelWindowHours: expect.any(Number) });
+    expect((await env.db.select().from(users).where(eq(users.id, mina.user.id)))[0]!.name).toBe("Mina");
+    const cal = await call(env, s.owner, "GET", `${s.base}/appointments?from=2026-11-05T00:00:00Z&to=2026-11-06T00:00:00Z`);
+    expect(cal.body.items[0]).toMatchObject({ customer: { name: "Mina" }, pet: { name: "Biscuit" } });
+    // An online booker with no name at all is shown by the end of their number, not as a walk-in.
+    await env.db.update(users).set({ name: null }).where(eq(users.id, mina.user.id));
+    await env.db.update(appointments).set({ customerName: null }).where(eq(appointments.id, r.body.appointment.id));
+    const cal2 = await call(env, s.owner, "GET", `${s.base}/appointments?from=2026-11-05T00:00:00Z&to=2026-11-06T00:00:00Z`);
+    expect(cal2.body.items[0].customer.name).toMatch(/^Client \d{4}$/);
+  });
+
+  it("the public shop page can say the food card deal and the daycare packs, and a flagged dog already in the room", async () => {
+    const s = await shop();
+    await call(env, s.owner, "POST", `${s.base}/food/programs`, { brand: "Fromm", buyCount: 12 });
+    const r = await call(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/pets`);
+    expect(r.status).toBe(200);
+    expect(r.body.food).toEqual([{ brand: "Fromm", buyCount: 12 }]);
+    expect(r.body.packs.length).toBeGreaterThan(0);
+    expect(r.body.dropInCents).toBe(4800);
+    expect((await call(env, null, "GET", "/v1/public/shops/no-such-shop/pets")).status).toBe(404);
+  });
+
+  it("the public booking page tells the pet vertical apart so a groomer's page has no bridal row", async () => {
+    const s = await groomer();
+    const pub = await call(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/services`);
+    expect(pub.body.shop.vertical).toBe("pet");
   });
 });
 

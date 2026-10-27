@@ -7,6 +7,8 @@ export const ONBOARDING_STEPS_UI: Record<merchantApi.OnboardingStepKey, { title:
   staff: { title: "Staff and counter app", body: "Each person gets their own login for the counter. Skip this if you work alone." },
   first_members: { title: "Your first 25 members", body: "Activation goal: 25 members who have visited within 30 days. 12 by day 14 is the pace that gets you there." },
   profile: { title: "Your shop", body: "Tell customers who you are. This shows on your shop page and the neighbourhood map." },
+  pharmacy_rules: { title: "Pharmacist confirms the rules", body: "The pharmacist-owner confirms the rules and gives the pharmacy's OCP accreditation number. Points stay off until this is done. It takes a minute." },
+  trade_setup: { title: "Set up your trade", body: "The first things your customers need from you, for your kind of shop." },
   pos: { title: "Connect your POS", body: "Optional. Once connected, stamps and points happen on their own at the till." },
 };
 

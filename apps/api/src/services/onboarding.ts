@@ -4,10 +4,12 @@
  * @ll/shared onboarding.ts; this file reads the database and applies them.
  */
 import { and, count, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
-import { auditLogs, integrations, loyaltyPrograms, merchantMilestones, merchantMembers, merchantStaff, merchants, rewards, users, type DbOrTx } from "@ll/db";
+import { auditLogs, catalogItems, classSessions, integrations, loyaltyPrograms, merchantMilestones, merchantMembers, merchantStaff, merchants, rewards, services, users, type DbOrTx } from "@ll/db";
 import {
   ACTIVATION,
   BRAND,
+  activationFor,
+  tradeSetupFor,
   NUDGE_RULES,
   daysSince,
   dueNudge,
@@ -29,6 +31,7 @@ import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
+import { getMerchantFeatures } from "./features.js";
 import { isOptedOut, sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -71,12 +74,15 @@ export async function visitedMembers(db: DbOrTx, merchantId: string): Promise<nu
  * Called inside the visit transaction. Records first_stamp, members_10 and activated the moment each is reached,
  * and flips the shop to active at the activation threshold.
  */
-export async function recordVisitMilestones(ctx: AppContext, tx: DbOrTx, merchant: Pick<Merchant, "id" | "activatedAt" | "status">): Promise<boolean> {
+export async function recordVisitMilestones(ctx: AppContext, tx: DbOrTx, merchant: Pick<Merchant, "id" | "activatedAt" | "status"> & { vertical?: string }): Promise<boolean> {
   const members = await visitedMembers(tx, merchant.id);
   const at = ctx.now();
   if (members >= 1) await recordMilestone(tx, merchant.id, "first_stamp", at);
   if (members >= ACTIVATION.previewMembers) await recordMilestone(tx, merchant.id, "members_10", at);
-  if (merchant.activatedAt || members < ctx.config.activationThreshold) return false;
+  // A florist or a hardware store is active at 10 members, a café at 25 (activationFor).
+  if (merchant.activatedAt) return false;
+  const vertical = merchant.vertical ?? (await tx.select({ v: merchants.vertical }).from(merchants).where(eq(merchants.id, merchant.id)).limit(1))[0]?.v;
+  if (members < activationFor(vertical, ctx.config.activationThreshold).target) return false;
   await tx
     .update(merchants)
     .set({ activatedAt: at, status: merchant.status === "onboarding" ? "active" : merchant.status })
@@ -97,9 +103,22 @@ const STEP_KEYS: Record<merchantApi.OnboardingStepKey, MessageKey> = {
   first_members: "ob.step.first_members",
   profile: "ob.step.profile",
   pos: "ob.step.pos",
+  pharmacy_rules: "ob.step.pharmacy_rules",
+  // The label is per trade (ob.step.trade.<family>); this is the fallback.
+  trade_setup: "ob.step.trade.menu",
 };
 const CORE: merchantApi.OnboardingStepKey[] = ["program", "first_stamp", "qr_kit", "staff", "first_members"];
+/** A pharmacy's rules come right after the program: points stay off until the pharmacist-owner confirms them. */
+const CORE_PHARMACY: merchantApi.OnboardingStepKey[] = ["program", "pharmacy_rules", "first_stamp", "qr_kit", "staff", "first_members"];
 const LATER: merchantApi.OnboardingStepKey[] = ["profile", "pos"];
+
+/** Core steps for a shop: its trade's own step comes right after the program (a restaurant's menu comes first of all). */
+function coreFor(vertical: string): merchantApi.OnboardingStepKey[] {
+  if (vertical === "pharmacy") return CORE_PHARMACY;
+  const family = tradeSetupFor(vertical);
+  if (!family) return CORE;
+  return family === "menu" ? ["trade_setup", ...CORE] : ["program", "trade_setup", ...CORE.slice(1)];
+}
 
 const SOURCE_OF: Record<string, merchantApi.OnboardingSource["source"]> = { phone: "counter", pos: "counter", import: "counter", qr: "qr", app: "link", web: "link", wallet: "link", campaign: "link", referral: "link" };
 const SOURCE_KEY: Record<merchantApi.OnboardingSource["source"], MessageKey> = { counter: "ob.src.counter", qr: "ob.src.qr", link: "ob.src.link", other: "ob.src.other" };
@@ -126,7 +145,14 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   const now = ctx.now();
   const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!m) throw notFound("Merchant");
-  const [[program], [rewardRow], [staffRow], [posRow], marks, ms, members, sourceRows] = await Promise.all([
+  const family = tradeSetupFor(m.vertical);
+  const tradeCount = async () => {
+    if (!family) return 0;
+    const table = family === "services" ? services : family === "classes" ? classSessions : catalogItems;
+    const [r] = await db.select({ n: count() }).from(table).where(eq(table.merchantId, merchantId));
+    return Number(r?.n ?? 0);
+  };
+  const [[program], [rewardRow], [staffRow], [posRow], marks, ms, members, sourceRows, tradeItems] = await Promise.all([
     db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchantId)).limit(1),
     db.select({ n: count() }).from(rewards).where(and(eq(rewards.merchantId, merchantId), eq(rewards.active, true))),
     db.select({ n: count() }).from(merchantStaff).where(eq(merchantStaff.merchantId, merchantId)),
@@ -135,9 +161,11 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     milestonesFor(db, merchantId),
     visitedMembers(db, merchantId),
     db.select({ via: merchantMembers.joinedVia, n: count() }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchantId), gte(merchantMembers.visitCount, 1))).groupBy(merchantMembers.joinedVia),
+    tradeCount(),
   ]);
   const marked = new Set(marks.map((r) => (r.data as { step?: string } | null)?.step).filter(Boolean));
-  const target = ctx.config.activationThreshold;
+  const plan = activationFor(m.vertical, ctx.config.activationThreshold);
+  const target = plan.target;
   const activated = !!m.activatedAt || members >= target;
   const firstStamp = ms.has("first_stamp") || members >= 1 || !!m.activatedAt;
   const done: Record<merchantApi.OnboardingStepKey, boolean> = {
@@ -148,6 +176,8 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     first_members: activated,
     profile: (!!m.description && !!m.logoUrl) || marked.has("profile"),
     pos: Number(posRow?.n ?? 0) > 0 || marked.has("pos") || ms.has("pos_connected"),
+    pharmacy_rules: !!m.pharmacyConfirmedAt,
+    trade_setup: tradeItems > 0 || marked.has("trade_setup"),
   };
   const detail: Record<merchantApi.OnboardingStepKey, string | null> = {
     program: program ? `${program.earnType.replace("_", " ")} · ${program.terminology}` : null,
@@ -157,16 +187,19 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     first_members: t(locale, "ob.step.members", { have: Math.min(members, target), target }),
     profile: null,
     pos: null,
+    pharmacy_rules: m.pharmacyConfirmedAt && m.pharmacyConfirmedByName ? m.pharmacyConfirmedByName : null,
+    trade_setup: null,
   };
-  const mk = (key: merchantApi.OnboardingStepKey) => ({ key, label: t(locale, STEP_KEYS[key], { target: 25 }), done: done[key], detail: detail[key] });
-  const steps = CORE.map(mk);
+  const rx = m.vertical === "pharmacy";
+  const mk = (key: merchantApi.OnboardingStepKey) => ({ key, label: t(locale, rx && key === "first_stamp" ? "ob.step.first_sale" : key === "trade_setup" && family ? (`ob.step.trade.${family}` as MessageKey) : STEP_KEYS[key], { target }), done: done[key], detail: detail[key] });
+  const steps = coreFor(m.vertical).map(mk);
   const later = LATER.map(mk);
   const current = steps.find((s) => !s.done)?.key ?? "done";
   if (m.onboardingStep !== current) await db.update(merchants).set({ onboardingStep: current }).where(eq(merchants.id, merchantId));
 
   // Activation view
   const day = daysSince(m.createdAt, now);
-  const pace = paceFor({ day, members, activated, target, windowDays: ACTIVATION.windowDays });
+  const pace = paceFor({ day, members, activated, target, windowDays: plan.windowDays });
   const stampAt = ms.get("first_stamp") ?? null;
   const firstStampMinutes = stampAt ? Math.max(0, (stampAt.getTime() - m.createdAt.getTime()) / 60_000) : null;
   const at10 = ms.get("members_10") ?? null;
@@ -185,7 +218,9 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   ];
   const playbook = playbookFor(m.vertical);
   const nextMove = nextMoveFor(locale, { firstStamp, qrDone: done.qr_kit, staffDone: done.staff, activated, pace, members, target, sources, playbook });
-  const paying = m.plan !== "free" || !!m.restaurantTier;
+  // A pilot or override shop can have the paid features on a free plan: do not sell it what it already has.
+  const unlocked = await getMerchantFeatures(db, m);
+  const paying = m.plan !== "free" || !!m.restaurantTier || (playbookFor(m.vertical).upsell.plan === "plus" && unlocked["promos.basic"].enabled);
   const dismissed = ms.get("upsell_dismissed");
   const upsellRaw = upsellMoment({
     vertical: m.vertical,
@@ -208,15 +243,15 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     activationTarget: target,
     activatedAt: iso(m.activatedAt),
     activation: {
-      windowDays: ACTIVATION.windowDays,
+      windowDays: plan.windowDays,
       day,
-      daysLeft: Math.max(0, ACTIVATION.windowDays - day),
+      daysLeft: Math.max(0, plan.windowDays - day),
       members,
       target,
-      leadingMembers: ACTIVATION.leadingMembers,
-      leadingByDay: ACTIVATION.leadingByDay,
+      leadingMembers: plan.leadingMembers,
+      leadingByDay: plan.leadingByDay,
       pace,
-      paceLabel: pace === "activated" || pace === "late" ? t(locale, `ob.pace.${pace}` as MessageKey) : t(locale, "ob.pace.dayOf", { label: t(locale, `ob.pace.${pace}` as MessageKey), day: Math.min(day + 1, ACTIVATION.windowDays), total: ACTIVATION.windowDays }),
+      paceLabel: pace === "activated" || pace === "late" ? t(locale, `ob.pace.${pace}` as MessageKey, { have: members, target }) : t(locale, "ob.pace.dayOf", { label: t(locale, `ob.pace.${pace}` as MessageKey), day: Math.min(day + 1, plan.windowDays), total: plan.windowDays }),
       firstStampMinutes,
       milestones,
       sources,
@@ -335,13 +370,17 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
     const day = daysSince(m.createdAt, now);
     // In the owner's own language (users.locale); the shop name, the till line and the link stay as they are.
     const locale = ownerLocale(owner.locale);
+    const act = activationFor(m.vertical, ctx.config.activationThreshold);
     const text = nudgeText(
       key,
       {
         shopName: m.name,
         members,
-        daysLeft: Math.max(0, ACTIVATION.windowDays - day),
-        target: ctx.config.activationThreshold,
+        daysLeft: Math.max(0, act.windowDays - day),
+        target: act.target,
+        windowDays: act.windowDays,
+        leadingMembers: act.leadingMembers,
+        leadingByDay: act.leadingByDay,
         tillLine: playbookFor(m.vertical).tillLine,
         url: `${ctx.config.publicWebUrl.replace(/\/$/, "")}/m/${m.id}/setup`,
       },
@@ -391,6 +430,8 @@ export async function onboardingFunnel(ctx: AppContext, days: number): Promise<a
     const hasFirst = ms.has("first_stamp") || n >= 1 || !!s.activatedAt;
     const hasTen = ms.has("members_10") || n >= ACTIVATION.previewMembers || !!s.activatedAt;
     const isAct = !!s.activatedAt;
+    // Slow trades (a florist, a hardware store) are judged on their own target and window, not a café's.
+    const plan = activationFor(s.vertical, ctx.config.activationThreshold);
     if (hasFirst) first++;
     if (hasTen) ten++;
     if (isAct) act++;
@@ -400,16 +441,16 @@ export async function onboardingFunnel(ctx: AppContext, days: number): Promise<a
     v.signedUp++;
     if (isAct) v.activated++;
     vert.set(s.vertical, v);
-    if (now.getTime() - s.createdAt.getTime() >= ACTIVATION.windowDays * DAY) {
+    if (now.getTime() - s.createdAt.getTime() >= plan.windowDays * DAY) {
       old++;
-      if (s.activatedAt && s.activatedAt.getTime() - s.createdAt.getTime() <= ACTIVATION.windowDays * DAY) oldActive++;
+      if (s.activatedAt && s.activatedAt.getTime() - s.createdAt.getTime() <= plan.windowDays * DAY) oldActive++;
     }
     if (!hasFirst && now.getTime() - s.createdAt.getTime() >= ACTIVATION.stuckAfterHours * 3_600_000) {
       stuck++;
       need.push({ s, day, n, reason: "No first stamp" });
-    } else if (!isAct && day >= ACTIVATION.leadingByDay && day <= ACTIVATION.windowDays && n < ACTIVATION.leadingMembers) {
+    } else if (!isAct && day >= plan.leadingByDay && day <= plan.windowDays && n < plan.leadingMembers) {
       behind14++;
-      need.push({ s, day, n, reason: `${n} member${n === 1 ? "" : "s"}, needs ${ACTIVATION.leadingMembers} by day ${ACTIVATION.leadingByDay}` });
+      need.push({ s, day, n, reason: `${n} member${n === 1 ? "" : "s"}, needs ${plan.leadingMembers} by day ${plan.leadingByDay}` });
     }
   }
   need.sort((a, b) => (a.reason === "No first stamp" ? 0 : 1) - (b.reason === "No first stamp" ? 0 : 1) || b.day - a.day);

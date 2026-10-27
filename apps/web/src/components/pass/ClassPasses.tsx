@@ -16,7 +16,8 @@ import { errorMessage } from "@/lib/api/errors";
 import { withLang } from "@/lib/i18n/url";
 
 type Membership = classesApi.MyMembershipDto;
-type Ask = { kind: "cancel" | "freeze" | "agreement" | "pay" | "card"; m: Membership; payment?: classesApi.PaymentRefDto; setup?: classesApi.MembershipSetupResponse } | null;
+type Pass = classesApi.MyPassDto;
+type Ask = { kind: "cancel" | "freeze" | "agreement" | "pay" | "card" | "cancelPending" | "payPass"; m: Membership; pass?: Pass; payment?: classesApi.PaymentRefDto; setup?: classesApi.MembershipSetupResponse } | null;
 
 /**
  * /me/classes (Figma M3): every membership, pack and booked class. A membership always shows its price, the next
@@ -93,6 +94,12 @@ export function ClassPasses() {
             {m.inCoolingOff && m.coolingOffEndsOn ? <p className="rounded-input bg-accent-soft px-3 py-2 text-meta text-accent-text">{t("cl.ui.m.cooling", { date: day(m.coolingOffEndsOn) })}</p> : null}
             {m.cancelEffectiveOn ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.ending", { date: day(new Date(new Date(`${m.cancelEffectiveOn}T12:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10)) })}</p> : null}
             {m.renewalNoticeSentAt && m.termEndsOn && !m.declineRenewal && live ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.renewalNotice", { date: day(m.termEndsOn) })}</p> : null}
+            {m.status === "pending" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
+                <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancelPending", m })}>{t("cl.ui.m.cancelSignup")}</button>
+              </div>
+            ) : null}
             {live ? (
               <div className="flex flex-wrap gap-2">
                 {m.canFreeze ? <Button size="sm" variant="secondary" onClick={() => setAsk({ kind: "freeze", m })}>{t("cl.ui.m.freeze")}</Button> : null}
@@ -101,19 +108,29 @@ export function ClassPasses() {
                 {m.termEndsOn && m.renewalNoticeSentAt && !m.declineRenewal ? <Button size="sm" variant="ghost" onClick={() => run(() => browserApi.me.declineRenewal(m.id), t("cl.ui.m.declined"))}>{t("cl.ui.m.declineRenewal")}</Button> : null}
                 {m.cancelEffectiveOn ? <Button size="sm" variant="secondary" onClick={() => run(() => browserApi.me.keepMembership(m.id))}>{t("cl.ui.m.keep")}</Button> : <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancel", m })}>{t("cl.ui.m.cancel")}</button>}
               </div>
-            ) : (
+            ) : m.status === "pending" ? null : (
               <Button size="sm" variant="ghost" onClick={() => setAsk({ kind: "agreement", m })}>{t("cl.ui.m.agreement")}</Button>
             )}
           </section>
         );
       })}
       {data.passes.map((p) => (
-        <section key={p.id} className="flex flex-col gap-1 rounded-card border border-line p-4">
+        <section key={p.id} className="flex flex-col gap-2 rounded-card border border-line p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-body-strong text-fg">{p.name}</h2>
-            <p className="text-body-strong tabular text-accent-text">{t("cl.ui.passes.left", { left: p.creditsLeft, total: p.creditsTotal })}</p>
+            {p.status === "pending" ? (
+              <span className="rounded-full bg-bg-subtle px-2.5 py-0.5 text-caption text-fg">{t("cl.ui.passes.waiting")}</span>
+            ) : (
+              <p className="text-body-strong tabular text-accent-text">{t("cl.ui.passes.left", { left: p.creditsLeft, total: p.creditsTotal })}</p>
+            )}
           </div>
-          <p className="text-meta text-fg-muted"><bdi>{p.merchant.name}</bdi>. {t("cl.ui.passes.useBy", { date: date(p.expiresAt, { month: "short", day: "numeric" }) })}</p>
+          <p className="text-meta text-fg-muted"><bdi>{p.merchant.name}</bdi>{p.status === "pending" ? "" : <>. {t("cl.ui.passes.useBy", { date: date(p.expiresAt, { month: "short", day: "numeric" }) })}</>}</p>
+          {p.status === "pending" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payPass(p.id); if (r.payment) setAsk({ kind: "payPass", m: null as never, pass: p, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
+              <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancelPending", m: null as never, pass: p })}>{t("cl.ui.m.cancelSignup")}</button>
+            </div>
+          ) : null}
         </section>
       ))}
       {data.bookings.length ? (
@@ -133,6 +150,7 @@ export function ClassPasses() {
       ) : null}
 
       <Modal open={ask?.kind === "cancel"} onClose={() => setAsk(null)} title={t("cl.ui.m.cancelConfirm")} description={ask?.kind === "cancel" ? (ask.m.inCoolingOff ? t("cl.ui.m.cancelInside") : t("cl.ui.m.cancelAfter", { date: day(ask.m.termEndsOn && ask.m.termEndsOn >= (ask.m.currentPeriodEnd ?? "") ? ask.m.termEndsOn : ask.m.currentPeriodEnd) })) : undefined} actions={<><Button variant="secondary" onClick={() => setAsk(null)}>{t("cl.ui.m.back")}</Button><Button variant="danger" loading={busy} onClick={() => ask && run(async () => { const r = await browserApi.me.cancelMembership(ask.m.id); if (r.refundedCents) setBanner({ tone: "info", text: t("cl.ui.m.refunded", { amount: money(r.refundedCents) }) }); })}>{t("cl.ui.m.cancelGo")}</Button></>} />
+      <Modal open={ask?.kind === "cancelPending"} onClose={() => setAsk(null)} title={t("cl.ui.m.cancelSignupTitle")} description={t("cl.ui.m.cancelSignupBody")} actions={<><Button variant="secondary" onClick={() => setAsk(null)}>{t("cl.ui.m.back")}</Button><Button variant="danger" loading={busy} onClick={() => ask && run(async () => { if (ask.pass) await browserApi.me.cancelPass(ask.pass.id); else await browserApi.me.cancelMembership(ask.m.id); }, t("cl.ui.m.signupCancelled"))}>{t("cl.ui.m.cancelSignup")}</Button></>} />
       <Modal open={ask?.kind === "freeze"} onClose={() => setAsk(null)} title={t("cl.ui.m.freezeDays")} actions={<><Button variant="secondary" onClick={() => setAsk(null)}>{t("cl.ui.m.back")}</Button><Button loading={busy} onClick={() => ask && run(() => browserApi.me.freezeMembership(ask.m.id, Number(days)), t("cl.ui.m.freezeDone"))}>{t("cl.ui.m.freezeGo")}</Button></>}>
         <div className="flex gap-2" role="group" aria-label={t("cl.ui.m.freezeDays")}>
           {["7", "14", "30"].map((d) => (
@@ -145,6 +163,9 @@ export function ClassPasses() {
       </Modal>
       <Modal open={ask?.kind === "pay"} onClose={() => setAsk(null)} variant="sheet" title={t("cl.ui.m.payTitle")}>
         {ask?.kind === "pay" && ask.payment ? <PaymentBox paymentIntentId={ask.payment.paymentIntentId} clientSecret={ask.payment.clientSecret} amountCents={ask.payment.amountCents} label={t("cl.ui.pay", { amount: money(ask.payment.amountCents) })} onPaid={async () => { await pollUntil(async () => (await browserApi.me.classes()).memberships.some((x) => x.id === ask.m.id && x.status === "active"), { tries: 12, intervalMs: 800 }); await load(); setAsk(null); }} /> : null}
+      </Modal>
+      <Modal open={ask?.kind === "payPass"} onClose={() => setAsk(null)} variant="sheet" title={t("cl.ui.passes.payTitle")}>
+        {ask?.kind === "payPass" && ask.payment && ask.pass ? <PaymentBox paymentIntentId={ask.payment.paymentIntentId} clientSecret={ask.payment.clientSecret} amountCents={ask.payment.amountCents} label={t("cl.ui.pay", { amount: money(ask.payment.amountCents) })} onPaid={async () => { const id = ask.pass!.id; await pollUntil(async () => (await browserApi.me.classes()).passes.some((x) => x.id === id && x.status === "active"), { tries: 12, intervalMs: 800 }); await load(); setAsk(null); }} /> : null}
       </Modal>
       <Modal open={ask?.kind === "card"} onClose={() => setAsk(null)} variant="sheet" title={t("cl.ui.m.changeCard")}>
         {ask?.kind === "card" && ask.setup ? <SetupBox setupIntentId={ask.setup.setupIntentId} clientSecret={ask.setup.clientSecret} label={t("cl.ui.saveCard")} onSaved={async () => { await pollUntil(async () => (await browserApi.me.classes()).memberships.some((x) => x.id === ask.m.id && x.status !== "past_due"), { tries: 8, intervalMs: 700 }); await load(); setAsk(null); setBanner({ tone: "info", text: t("cl.ui.cardSaved") }); }} /> : null}

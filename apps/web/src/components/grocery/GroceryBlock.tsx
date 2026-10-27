@@ -3,17 +3,24 @@
  * A grocer's shop page, above the loyalty tabs (docs/research/grocers.md, frame C2): this week's flyer with the price per 100 g and
  * the members price, then the butcher counter's pre-order items. Strings are in all four languages (gr.* keys).
  */
-import type { groceryApi, restaurantWebApi } from "@ll/shared";
+import { isQurbaniName, type commerceApi, type groceryApi, type restaurantWebApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { Heading, Pill, useFmt } from "@/components/restaurant/ui";
 import { dayDate } from "@/lib/restaurant/util";
+import { isWeighedLine, portionLabel } from "@/lib/restaurant/weighed";
 
-export function GroceryBlock({ shopName, slug, flyer, preorderItems, member }: { shopName: string; slug: string; flyer: groceryApi.PublicFlyerResponse | null; preorderItems: restaurantWebApi.PublicRestaurantResponse["preorderItems"]; member: boolean }) {
+type Counter = { items: commerceApi.CatalogItemDto[]; qurbani: restaurantWebApi.PublicRestaurantResponse["qurbani"] | null; canReserve: boolean };
+
+export function GroceryBlock({ shopName, slug, flyer, counter, member }: { shopName: string; slug: string; flyer: groceryApi.PublicFlyerResponse | null; counter: Counter; member: boolean }) {
   const { t, money, moneyExact, number, date, pick } = useFmt();
   const deals = flyer?.deals ?? [];
-  if (!deals.length && !preorderItems.length) return null;
+  const cuts = counter.items.filter((i) => isWeighedLine(i)).slice(0, 5);
+  const animals = counter.items.filter((i) => i.preorderOnly && isQurbaniName(i.name));
+  if (!deals.length && !cuts.length && !animals.length) return null;
   const day = (d: string) => date(dayDate(d), { month: "short", day: "numeric" }, "UTC");
   const hasMemberDeal = deals.some((d) => d.memberOnly);
+  const book = (id: string) => `/shops/${encodeURIComponent(slug)}/preorder/${id}`;
+  const opensOn = counter.qurbani && !counter.qurbani.open ? counter.qurbani.bookingsOpen : null;
   return (
     <>
       {deals.length ? (
@@ -57,27 +64,55 @@ export function GroceryBlock({ shopName, slug, flyer, preorderItems, member }: {
           ) : null}
         </section>
       ) : null}
-      {preorderItems.length ? (
+      {cuts.length || animals.length ? (
         <section aria-labelledby="gr-butcher" className="flex flex-col gap-3">
-          <Heading level={2}>
-            <span id="gr-butcher">{t("gr.butcher.title")}</span>
-          </Heading>
+          <div>
+            <Heading level={2}>
+              <span id="gr-butcher">{t("gr.butcher.title")}</span>
+            </Heading>
+            <p className="text-meta text-fg-muted">{t("gr.butcher.sub")}</p>
+          </div>
           <ul className="divide-y divide-line rounded-card border border-line px-4">
-            {preorderItems.slice(0, 6).map((i) => (
+            {cuts.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-3 py-3.5">
                 <div className="min-w-0">
                   <p className="text-body-strong text-fg">
-                    <bdi>{pick({ name: i.name }).name}</bdi>
+                    <bdi>{pick(i).name}</bdi>
                   </p>
-                  <p className="text-meta text-fg-muted">{t("gr.butcher.estimate", { price: money(i.priceCents) })}</p>
+                  <p className="text-meta tabular-nums text-fg-muted">
+                    <bdi>
+                      {moneyExact(i.unitPriceCents!)}/{i.weightUnit}
+                    </bdi>
+                    {i.nominalWeightG ? ` · ${t("gr.menu.about", { price: money(i.priceCents), weight: portionLabel(i.nominalWeightG, i.weightUnit!) })}` : ""}
+                  </p>
                 </div>
-                <Button size="sm" variant="secondary" href={`/shops/${encodeURIComponent(slug)}/preorder/${i.id}`}>
-                  {t("gr.butcher.book")}
-                </Button>
+                {counter.canReserve ? (
+                  <Button size="sm" variant="secondary" href={book(i.id)} aria-label={t("rs.menu.preorderItem", { name: pick(i).name })}>
+                    {t("rs.pre.reserve")}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+            {animals.map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-3 py-3.5">
+                <div className="min-w-0">
+                  <p className="text-body-strong text-fg">
+                    <bdi>{pick(i).name}</bdi>
+                  </p>
+                  <p className="text-meta text-fg-muted">{[t("gr.butcher.estimate", { price: money(i.priceCents) }), opensOn ? t("gr.qurbani.opens", { date: day(opensOn) }) : null].filter(Boolean).join(" · ")}</p>
+                </div>
+                {counter.canReserve ? (
+                  <Button size="sm" variant="secondary" href={book(i.id)} aria-label={t("rs.menu.preorderItem", { name: pick(i).name })}>
+                    {t("rs.pre.reserve")}
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>
           <p className="text-caption text-fg-muted">{t("gr.butcher.scaleNote")}</p>
+          <Button variant="secondary" fullWidth href={`/shops/${encodeURIComponent(slug)}/menu`}>
+            {t("gr.butcher.seeAll")}
+          </Button>
         </section>
       ) : null}
     </>

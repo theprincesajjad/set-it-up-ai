@@ -7,7 +7,9 @@ export const STEP_COPY: Record<merchantApi.OnboardingStepKey, { label: string; a
   staff: { label: "Staff and counter app", action: "Invite staff", path: "/setup?step=staff" },
   first_members: { label: "First 25 members", action: "Open counter", path: "/counter" },
   profile: { label: "Logo, about text and GST/HST", action: "Add details", path: "/settings" },
+  pharmacy_rules: { label: "Pharmacist confirms the rules", action: "Confirm", path: "/pharmacy" },
   pos: { label: "Connect your POS", action: "Choose your POS", path: "/integrations" },
+  trade_setup: { label: "Set up your trade", action: "Set up", path: "/setup?step=trade_setup" },
 };
 
 /** Ordered for display: incomplete first, completed (leaf check, normal text) below. */

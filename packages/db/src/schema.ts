@@ -41,7 +41,7 @@ const ts = (name: string) => timestamp(name, { withTimezone: true });
 // Enums
 // ---------------------------------------------------------------------------
 export const platformRole = pgEnum("platform_role", ["none", "rep", "admin"]);
-export const staffRole = pgEnum("staff_role", ["owner", "manager", "staff"]);
+export const staffRole = pgEnum("staff_role", ["owner", "manager", "staff", "instructor"]);
 export const planId = pgEnum("plan_id", ["free", "plus", "pro"]);
 export const merchantStatus = pgEnum("merchant_status", ["onboarding", "active", "paused", "closed"]);
 export const earnType = pgEnum("earn_type", ["per_dollar", "per_visit", "stamps"]);
@@ -1548,6 +1548,8 @@ export const appointments = pgTable(
     status: text("status").notNull().default("booked"),
     /** A bridal party shares one group. */
     groupId: uuid("group_id"),
+    /** The pet this groom is for (pet shops): the calendar shows the dog and its handling note, checkout logs the groom. */
+    petId: uuid("pet_id").references(() => pets.id, { onDelete: "set null" }),
     notes: text("notes"),
     clientNote: text("client_note"),
     depositCents: integer("deposit_cents").notNull().default(0),
@@ -1603,6 +1605,10 @@ export const classSettings = pgTable("class_settings", {
   termsNote: text("terms_note"),
   /** Check-in awards the visit through the loyalty ledger. */
   awardOnCheckIn: boolean("award_on_check_in").notNull().default(true),
+  /** Milestone reward: every this many classes attended earns the reward below (a loyalty reward priced at classes x points per visit). */
+  milestoneClasses: integer("milestone_classes"),
+  milestoneRewardName: text("milestone_reward_name"),
+  milestoneRewardId: uuid("milestone_reward_id"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -1637,6 +1643,8 @@ export const classSessions = pgTable(
     /** Copied from the class type at creation so renaming a type does not rewrite history. */
     name: text("name").notNull(),
     instructorName: text("instructor_name"),
+    /** The instructor's own login (role Instructor): they see only the classes with their id here. */
+    instructorUserId: uuid("instructor_user_id").references(() => users.id, { onDelete: "set null" }),
     room: text("room"),
     startsAt: ts("starts_at").notNull(),
     endsAt: ts("ends_at").notNull(),
@@ -2278,6 +2286,10 @@ export const cateringEvents = pgTable(
     depositReceivedOn: date("deposit_received_on"),
     /** First time the customer opened the quote link. */
     quoteOpenedAt: ts("quote_opened_at"),
+    /** The last scheduled deposit/balance reminder sent (dep1, dep2, dep3, bal7, bal2), so each goes out once. */
+    lastReminderKey: text("last_reminder_key"),
+    /** Last time a deposit or balance reminder went out, scheduled or by the owner's Remind button. */
+    lastRemindedAt: ts("last_reminded_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

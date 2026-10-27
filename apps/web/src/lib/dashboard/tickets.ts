@@ -62,6 +62,12 @@ export function ageText(from: string | Date, now: Date): string {
   return `${d} ${d === 1 ? "day" : "days"}`;
 }
 
+/** "5 min ago", "2 days ago", and just "just now" (never "just now ago"). */
+export function agoText(from: string | Date, now: Date): string {
+  const t = ageText(from, now);
+  return t === "just now" ? t : `${t} ago`;
+}
+
 /** "due Fri 5 pm", "due today 5 pm", "overdue 1 day". */
 export function dueText(t: Pick<Ticket, "promisedAt" | "dueState">, now: Date): string | null {
   if (!t.promisedAt) return null;
@@ -108,7 +114,7 @@ export function cardModel(t: Ticket, now: Date): CardModel {
       break;
     case "quote_sent": {
       const sent = q?.sentAt ?? t.updatedAt;
-      statusLabel = `Quote sent ${ageText(sent, now)} ago`;
+      statusLabel = `Quote sent ${agoText(sent, now)}`;
       if (q) {
         const expires = q.expiresAt ? new Date(q.expiresAt).getTime() - now.getTime() : null;
         if (q.firstViewedAt) note = { text: `Quote ${formatMoney(q.totalCents)}, opened, not approved`, tone: "info" };

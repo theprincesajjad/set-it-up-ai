@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barHeights, hourTick, homeMode, promoHours, vsTypical, windowLabel } from "@/lib/dashboard/home";
+import { barHeights, hourTick, homeMode, promoHours, vsTypical, vsTypicalSoFar, windowLabel } from "@/lib/dashboard/home";
 
 describe("cafe home helpers", () => {
   it("switches at noon Toronto and honours ?mode=", () => {
@@ -11,6 +11,14 @@ describe("cafe home helpers", () => {
     expect(vsTypical(131, 127, "Tuesday")?.text).toBe("+3% vs a typical Tuesday (127)");
     expect(vsTypical(10, 0, "Tuesday")).toBeNull();
     expect(vsTypical(100, 127, "Tuesday")?.good).toBe(false);
+  });
+  it("compares today so far with the typical day up to now, in counts on a small base", () => {
+    // 3 pm with no visits: not "-100%", just what a typical day has by now.
+    expect(vsTypicalSoFar(0, 3, "Tuesday")).toEqual({ text: "A typical Tuesday has about 3 by now", good: false });
+    expect(vsTypicalSoFar(5, 3, "Tuesday")?.good).toBe(true);
+    expect(vsTypicalSoFar(0, 0, "Tuesday")).toBeNull();
+    expect(vsTypicalSoFar(66, 60, "Tuesday")?.text).toBe("+10% vs a typical Tuesday by now (60)");
+    expect(vsTypicalSoFar(45, 60, "Tuesday")?.text).toBe("-25% vs a typical Tuesday by now (60)");
   });
   it("axis ticks and bar scaling", () => {
     expect([7, 8, 12, 13].map(hourTick)).toEqual(["7a", "8", "12p", "1"]);

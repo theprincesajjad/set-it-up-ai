@@ -49,13 +49,18 @@ function crumb(pathname: string): string {
   return CRUMBS[seg] ?? (/^[0-9a-f-]{8,}$/i.test(seg) ? "Details" : seg.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase()));
 }
 
-function isActive(pathname: string, i: ShellNavItem) {
+function matches(pathname: string, i: ShellNavItem) {
   return i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`);
+}
+/** One row is current: when a longer entry also matches ("/classes/offers" inside "/classes"), the longer one wins. */
+function isActive(pathname: string, i: ShellNavItem, nav?: ShellNavItem[]) {
+  if (!matches(pathname, i)) return false;
+  return !nav?.some((o) => o !== i && o.href.length > i.href.length && matches(pathname, o));
 }
 
 /** Most specific nav entry for the current path (for the top bar title). */
 export function activeNav(pathname: string, nav: ShellNavItem[]): ShellNavItem | undefined {
-  return [...nav].sort((a, b) => b.href.length - a.href.length).find((i) => isActive(pathname, i) || pathname === i.href);
+  return [...nav].sort((a, b) => b.href.length - a.href.length).find((i) => matches(pathname, i) || pathname === i.href);
 }
 
 function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname: string; onNavigate?: () => void }) {
@@ -77,7 +82,7 @@ function NavList({ nav, pathname, onNavigate }: { nav: ShellNavItem[]; pathname:
         const list = (
         <ul key={gi} aria-label={label} className="flex flex-col gap-px">
           {g.map((i) => {
-            const active = isActive(pathname, i);
+            const active = isActive(pathname, i, nav);
             return (
               <li key={i.href}>
                 <Link
@@ -205,7 +210,7 @@ export function Shell({ nav, header, footer, notice, mobileTitle, topActions, se
       {bottomTabs ? (
         <nav aria-label="Sections" className="fixed inset-x-4 bottom-4 z-sticky mx-auto flex max-w-md items-center justify-between rounded-full border border-line bg-bg p-1.5 shadow-float lg:hidden print:hidden">
           {nav.map((i) => {
-            const active = isActive(pathname, i);
+            const active = isActive(pathname, i, nav);
             return (
               <Link
                 key={i.href}

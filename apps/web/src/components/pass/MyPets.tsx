@@ -26,7 +26,8 @@ export function MyPets() {
   useEffect(() => {
     void load();
   }, []);
-  const day = (ymd: string) => date(ymd, { month: "short", day: "numeric" }, "UTC");
+  const thisYear = String(new Date().getFullYear());
+  const day = (ymd: string) => date(ymd, ymd.startsWith(thisYear) ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" }, "UTC");
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
@@ -88,7 +89,7 @@ function PetCard({ pet, next, day, onChanged, onError }: { pet: petApi.PetDto; n
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-body-strong text-fg">{t(`pet.vax.${k}` as never)}</p>
-                  <p className="text-meta text-fg-muted">{v ? t("pet.vax.expiresOn", { date: day(v.expiresOn) }) : "—"}</p>
+                  <p className="text-meta text-fg-muted">{v ? t("pet.vax.expiresOn", { date: day(v.expiresOn) }) : "—"}{v?.proofUrl ? ` · ${t("pet.vax.onFile")}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   {v ? (

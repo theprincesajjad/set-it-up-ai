@@ -202,6 +202,8 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
     return route.continue();
   });
 
+  // The shop asks who is coming (first name), so its calendar never says "Walk-in".
+  await page.getByLabel("Your first name").fill("Tess");
   // Sign in with a new phone (the dev code is filled in), then book: the chair was taken meanwhile.
   await page.getByRole("button", { name: "Sign in to book" }).click();
   await page.locator("input[type=tel]").first().fill(phone().slice(2));
@@ -221,5 +223,16 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
   await expect(page.getByRole("heading", { name: "you are booked" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Add to calendar" })).toBeVisible();
+  // The confirmation is a next-visit card: when, where (with directions) and the cancel policy in words.
+  const next = page.getByTestId("next-visit");
+  await expect(next.getByText("Your next visit")).toBeVisible();
+  await expect(next.getByRole("link", { name: "Directions" })).toBeVisible();
+  await expect(next.getByText(/Change or cancel free until 24 hours before/)).toBeVisible();
   await page.screenshot({ path: shot("booked-390") });
+  // The wallet shows the same card, and the shop's calendar names the client "Tess", not "Walk-in".
+  await page.goto("/me");
+  await expect(page.getByTestId("next-visit")).toBeVisible();
+  await page.screenshot({ path: shot("wallet-next-visit-390") });
+  const online = await call<{ items: { source: string; customer: { name: string }; startsAt: string }[] }>("GET", `${c.base}/appointments?from=${encodeURIComponent(new Date().toISOString())}&to=${encodeURIComponent(new Date(Date.now() + 30 * 86_400_000).toISOString())}`, undefined, c.token);
+  expect(online.items.some((a) => a.source === "online" && a.customer.name === "Tess")).toBe(true);
 });

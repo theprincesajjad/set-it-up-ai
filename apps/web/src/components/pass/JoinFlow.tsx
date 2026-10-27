@@ -21,6 +21,7 @@ import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { firstName, formatPoints } from "@/lib/format";
+import { unitCaption } from "@/lib/units";
 import { formatE164, toE164, validateNanp } from "@/lib/phone";
 import { howYouEarn } from "@/lib/program";
 import { Banner } from "@/components/ui/Banner";
@@ -96,7 +97,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   const shop = info.merchant.name;
   const program = info.program;
   // CASL: the sentence the customer reads is the sentence we send. Unisolated (no bidi marks) for the stored record, `t` for display.
-  const consentText = translate(locale, "auth.consent.merchant", { shop });
+  const unit = unitCaption(locale, 2, program?.terminology ?? "points");
+  const consentText = translate(locale, "auth.consent.merchant", { shop, unit });
 
   const [step, setStep] = useState<JoinStep>(signedIn ? "details" : "phone");
   const [digits, setDigits] = useState("");
@@ -213,11 +215,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
 
   async function submitDetails(e: FormEvent) {
     e.preventDefault();
-    if (needsName && !name.trim()) {
-      setError(t("auth.err.required", { field: t("auth.join.firstName") }));
-      return;
-    }
-    await doJoin(consent, needsName ? name.trim() : null);
+    // The name is optional: "30 seconds, no account" should not stop at a text box. The shop sees "No name" until the member adds one.
+    await doJoin(consent, needsName && name.trim() ? name.trim() : null);
   }
 
   if (step === "joined" && result) {
@@ -227,7 +226,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   const consentBox = (
     <ConsentCheckbox
       version={locale === "en" ? copy.consent.merchantVersion : `${copy.consent.merchantVersion}.${locale}`}
-      text={t("auth.consent.merchant", { shop })}
+      text={t("auth.consent.merchant", { shop, unit })}
       checked={consent}
       onChange={setConsent}
       size="sm"
@@ -350,7 +349,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             {needsName ? t("auth.join.almost") : t("auth.join.welcomeBack", { name })}
           </h1>
           {needsName ? (
-            <TextField label={t("auth.join.firstName")} autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); if (error) setError(null); }} error={error} maxLength={60} autoFocus />
+            <TextField label={t("auth.join.firstNameOptional")} autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); if (error) setError(null); }} error={error} maxLength={60} autoFocus />
           ) : null}
           {/* Consent was offered on the first step; visitors who were already signed in skipped it. */}
           {signedIn ? consentBox : null}
@@ -493,6 +492,13 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           </a>
         </div>
       </div>
+
+      {info.merchant.vertical === "pet" ? (
+        <section aria-label={t("pet.add.cta")} data-testid="join-add-dog" className="flex flex-col gap-2 rounded-card border border-line p-4">
+          <p className="text-body text-fg">{t("pet.add.body", { shop: info.merchant.name })}</p>
+          <a className="self-start rounded-pill bg-fg px-4 py-2 text-meta-strong text-bg focus-visible:focus-ring" href="/me/pets">{t("pet.add.cta")}</a>
+        </section>
+      ) : null}
 
       {nearby.length ? (
         <section aria-labelledby="also-on" className="flex flex-col gap-3">

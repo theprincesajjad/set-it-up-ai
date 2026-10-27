@@ -4,7 +4,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { appointments, familyMembers, queueEntries, services, staffPay, users } from "@ll/db";
+import { appointments, familyMembers, notifications, queueEntries, services, staffPay, staffServices, users } from "@ll/db";
 import { FEATURES, FREE_FOREVER, checkBeautyClaims, estimateWaitMin, waitText } from "@ll/shared";
 import { call, customer, paidMerchant, staffMember } from "./commerce-fixtures.js";
 import { createTestEnv, tokenFor, type TestEnv } from "./helpers.js";
@@ -210,6 +210,11 @@ describe("the barber picks, skip and the chair", () => {
     const co = await call(env, s.marcus.token, "POST", `${s.base}/appointments/${st.body.appointmentId}/checkout`, { mode: "counter", counterMethod: "cash", tipCents: 500 });
     expect(co.status).toBe(200);
     expect(co.body.invoice).toMatchObject({ status: "paid", tipCents: 500 });
+    // The payment text says what the tip was, links the receipt and offers the next booking.
+    const note = (await env.db.select().from(notifications)).find((n) => n.body.includes("is paid"))!;
+    expect(note.body).toContain("$5.00 tip went to the team");
+    expect(note.body).toContain("Receipt:");
+    expect(note.body).toContain(`/shops/${s.merchant.slug}/book`);
   });
 
   it("a named barber's estimate counts only their own line and the anyone people", async () => {
@@ -257,6 +262,49 @@ describe("family members", () => {
     const other = await customer(env);
     const m = (await env.db.select().from(familyMembers).where(eq(familyMembers.userId, p.user.id)))[0]!;
     expect((await join(s, { name: "X", familyMemberIds: [m.id] }, other.token)).status).toBe(404);
+  });
+});
+
+describe("what the join page and the status page promise", () => {
+  it("shows each barber's own price, and a party's finish time (not only the first start)", async () => {
+    const s = await shop();
+    await env.db.insert(staffServices).values({ merchantId: s.merchant.id, userId: s.marcus.user.id, serviceId: s.cut.id, priceCents: (s.cut.priceCents ?? 0) + 1000 });
+    const pub = await call(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/queue`);
+    const marcus = pub.body.barbers.find((b: { id: string }) => b.id === s.marcus.user.id);
+    const ayo = pub.body.barbers.find((b: { id: string }) => b.id === s.ayo.user.id);
+    expect(marcus.prices[s.cut.id]).toBe((s.cut.priceCents ?? 0) + 1000);
+    expect(ayo.prices).toEqual({});
+    const p = await customer(env, { name: "Sajjad Parent" });
+    const kids = [] as string[];
+    for (const n of ["Aiden", "Zayn"]) kids.push((await call(env, p.token, "POST", "/v1/me/family", { firstName: n, consent: true })).body.id);
+    const r = await join(s, { name: "Sajjad", serviceId: s.cut.id, requestedStaffId: s.marcus.user.id, familyMemberIds: kids }, p.token);
+    const st = r.body.status;
+    expect(st.party).toHaveLength(2);
+    // Three cuts one after another: the last is done well after the first starts.
+    expect(st.partyDoneMin).toBeGreaterThan(st.estimateMin + 20);
+    // A single person has no party time.
+    const solo = await join(s, { name: "Solo", phone: "416-555-0299", serviceId: s.cut.id });
+    expect(solo.body.status.partyDoneMin).toBeNull();
+  });
+
+  it("promises a text only when one will really go, and tells the guest what they earned once checked out", async () => {
+    const s = await shop();
+    const noPhone = await join(s, { name: "Walkin" });
+    expect(noPhone.body.status.textsYou).toBe(false);
+    const phoneNoBox = await join(s, { name: "Pat", phone: "416-555-0290", textConsent: false });
+    expect(phoneNoBox.body.status.textsYou).toBe(false);
+    const yes = await join(s, { name: "Sam", phone: "416-555-0291", textConsent: true, serviceId: s.cut.id });
+    expect(yes.body.status.textsYou).toBe(true);
+    const id = yes.body.entries[0].id;
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/call`, { staffId: s.marcus.user.id });
+    const st = await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/start`);
+    await call(env, s.marcus.token, "POST", `${s.base}/queue/${id}/done`);
+    // Done but not yet paid: nothing earned to show.
+    expect((await call(env, null, "GET", `/v1/public/queue/${yes.body.token}`)).body.pointsEarned).toBeNull();
+    const co = await call(env, s.marcus.token, "POST", `${s.base}/appointments/${st.body.appointmentId}/checkout`, { mode: "counter", counterMethod: "cash" });
+    expect(co.status).toBe(200);
+    const after = (await call(env, null, "GET", `/v1/public/queue/${yes.body.token}`)).body;
+    expect(after.pointsEarned).toBe(co.body.invoice.pointsEarned > 0 ? co.body.invoice.pointsEarned : null);
   });
 });
 
@@ -331,6 +379,16 @@ describe("pay, payouts and renter privacy", () => {
     expect(dir.body.error?.code ?? dir.body.code).toBe("own_clients_only");
     const theirs = (await env.db.select().from(appointments).where(eq(appointments.staffId, s.ayo.user.id)))[0]!;
     expect((await call(env, s.marcus.token, "GET", `${s.base}/appointments/${theirs.id}`)).status).toBe(403);
+    // The counter lookup: a renter finds only people they have served by phone or last 4; the front desk finds anyone.
+    const theirUser = (await env.db.select().from(users).where(eq(users.id, theirs.userId!)))[0]!;
+    const mineAppt = (await env.db.select().from(appointments).where(eq(appointments.staffId, s.marcus.user.id)))[0]!;
+    const myUser = (await env.db.select().from(users).where(eq(users.id, mineAppt.userId!)))[0]!;
+    const last4 = (u: { phone: string | null }) => u.phone!.slice(-4);
+    const ayoFind = await call(env, s.marcus.token, "GET", `${s.base}/counter/lookup?q=${encodeURIComponent(theirUser.phone!)}`);
+    expect(ayoFind.body.items).toHaveLength(0);
+    expect((await call(env, s.marcus.token, "GET", `${s.base}/counter/lookup?q=${last4(theirUser)}`)).body.items.map((i: { name: string }) => i.name)).not.toContain(theirUser.name);
+    expect((await call(env, s.marcus.token, "GET", `${s.base}/counter/lookup?q=${encodeURIComponent(myUser.phone!)}`)).body.items).toHaveLength(1);
+    expect((await call(env, s.desk.token, "GET", `${s.base}/counter/lookup?q=${encodeURIComponent(theirUser.phone!)}`)).body.items).toHaveLength(1);
     // A commission barber without the privacy switch, and the front desk, see everything.
     expect((await call(env, s.ayo.token, "GET", `${s.base}/customers`)).status).toBe(200);
     expect((await call(env, s.desk.token, "GET", `${s.base}/appointments?from=2026-11-04T00:00:00Z&to=2026-11-05T23:00:00Z`)).body.items.length).toBe(3);
@@ -372,6 +430,12 @@ describe("beauty supply claims guard", () => {
     expect(ok.status).not.toBe(422);
     const rw = await call(env, glow.ownerToken, "POST", `/v1/merchants/${glow.merchant.id}/rewards`, { name: "Free dandruff cure", pointsCost: 100, rewardType: "free_item" });
     expect(rw.status).toBe(422);
+    // The public shop description is advertising too, and "treats dandruff" is caught.
+    const desc = await call(env, glow.ownerToken, "PATCH", `/v1/merchants/${glow.merchant.id}`, { description: "Shampoos that treat dandruff and stop hair loss." });
+    expect(desc.status).toBe(422);
+    expect(desc.body.error?.code ?? desc.body.code).toBe("beauty_claims");
+    expect((await call(env, glow.ownerToken, "PATCH", `/v1/merchants/${glow.merchant.id}`, { description: "Hair care, tools and colour for stylists and home." })).status).toBe(200);
+    expect((await call(env, other.ownerToken, "PATCH", `/v1/merchants/${other.merchant.id}`, { description: "Shampoos that treat dandruff." })).status).toBe(200);
   });
 });
 

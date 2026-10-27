@@ -110,7 +110,8 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
   const awaiting = byHand && sub.latestCharge?.status === "awaiting";
   const awaitingWord = t(sub.paymentMethod === "cash" ? "tcb.row.awaitingCash" : "tcb.row.awaitingEtransfer");
   const statusLabel: Record<Sub["status"], string> = { pending: awaiting ? awaitingWord : t("rc.tm.pending"), active: t("tiffin.active"), paused: t("tiffin.paused"), past_due: awaiting ? awaitingWord : t("rc.tm.pastDue"), cancelled: t("rc.tm.cancelled") };
-  const cadence = t(sub.plan.cadence === "weekly" ? "rc.tf.weekly" : "rc.tf.monthly");
+  const billing = sub.billingCadence ?? sub.plan.cadence;
+  const cadence = t(billing === "trial" ? "tcb2.tf.trialDay" : billing === "weekly" ? "rc.tf.weekly" : "rc.tf.monthly");
 
   async function run(key: string, fn: () => Promise<string | void>) {
     setBusy(key);

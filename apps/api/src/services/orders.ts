@@ -4,7 +4,7 @@
  * order is picked up (idempotency key `order:<id>`).
  */
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
-import { bookings, catalogItems, ledgerTransactions, locations, merchantCategories, merchantStaff, merchants, orderItems, orderSplits, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
+import { bookings, catalogItems, ledgerTransactions, locations, loyaltyPrograms, merchantCategories, merchantMembers, merchantStaff, merchants, orderItems, orderSplits, orders, redemptions, rewards, users, type DbOrTx } from "@ll/db";
 import { isQurbaniName, rewardDiscountCents, type commerceApi, type PurchaseLine } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -16,7 +16,7 @@ import { nextNumber } from "./counters.js";
 import { getMerchantFeatures, isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import { computeFees } from "./fees.js";
 import { busyActive, quotedWaitMinutes } from "./busyMode.js";
-import { assertPreorderCapacity, dateKeyIn, eidPlanDays, overrideLeadHours } from "./preorderPlanning.js";
+import { assertPreorderCapacity, dateKeyIn, eidPlanDays, overrideLeadHours, QURBANI_OPENS_DAYS, addDaysKey } from "./preorderPlanning.js";
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
@@ -139,16 +139,36 @@ export async function cancelFreeUntil(db: DbOrTx, order: Pick<Order, "id" | "kin
 }
 
 export async function loadOrderDto(db: DbOrTx, order: Order, withCustomer = false): Promise<commerceApi.OrderDto> {
-  const [m] = await db.select({ name: merchants.name, slug: merchants.slug, preorderCancelCutoffHours: merchants.preorderCancelCutoffHours }).from(merchants).where(eq(merchants.id, order.merchantId)).limit(1);
+  const [m] = await db.select({ name: merchants.name, slug: merchants.slug, vertical: merchants.vertical, preorderCancelCutoffHours: merchants.preorderCancelCutoffHours }).from(merchants).where(eq(merchants.id, order.merchantId)).limit(1);
   const items = (await itemsFor(db, [order.id])).get(order.id) ?? [];
   let customer: { name: string | null; phone: string | null } | undefined;
   if (withCustomer) {
     const [u] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, order.userId)).limit(1);
     customer = u ?? { name: null, phone: null };
   }
-  const [loc] = order.locationId ? await db.select({ address: locations.address, city: locations.city }).from(locations).where(eq(locations.id, order.locationId)).limit(1) : [];
+  const [loc] = order.locationId ? await db.select({ address: locations.address, city: locations.city, phone: locations.phone }).from(locations).where(eq(locations.id, order.locationId)).limit(1) : [];
   const until = m ? await cancelFreeUntil(db, order, m) : null;
-  return { ...orderDto(order, items, m?.name ?? "", customer), ...(m ? { merchantSlug: m.slug } : {}), shopAddress: loc ? [loc.address, loc.city].filter(Boolean).join(", ") : null, cancelFreeUntil: until ? until.toISOString() : null };
+  const dto = { ...orderDto(order, items, m?.name ?? "", customer), ...(m ? { merchantSlug: m.slug } : {}), shopAddress: loc ? [loc.address, loc.city].filter(Boolean).join(", ") : null, cancelFreeUntil: until ? until.toISOString() : null };
+  // The customer's own read also carries what the confirmation page needs: the shop's phone, and whether they are in its points program.
+  if (withCustomer) return dto;
+  const [shop] = await db.select({ phone: merchants.phone }).from(merchants).where(eq(merchants.id, order.merchantId)).limit(1);
+  const [member] = await db.select({ id: merchantMembers.id }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, order.merchantId), eq(merchantMembers.userId, order.userId))).limit(1);
+  const [program] = await db.select({ active: loyaltyPrograms.active, earnType: loyaltyPrograms.earnType, pointsPerDollar: loyaltyPrograms.pointsPerDollar, pointsPerVisit: loyaltyPrograms.pointsPerVisit, minSpendCents: loyaltyPrograms.minSpendCents, terminology: loyaltyPrograms.terminology }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, order.merchantId)).limit(1);
+  const live = program?.active && order.status !== "cancelled" && order.status !== "refunded";
+  return {
+    ...dto,
+    shopPhone: loc?.phone ?? shop?.phone ?? null,
+    ...(m ? { merchantVertical: m.vertical } : {}),
+    isMember: !!member,
+    // About what picking this up will earn (the ledger decides the exact number), so the page can say "you will earn" or "join to earn".
+    pointsEstimate: live && order.pointsEarned === 0 ? estimatePoints(program, order.subtotalCents - order.discountCents) : 0,
+  };
+}
+
+/** Points a spend would earn under the shop's rules, before any boost. 0 when the rules give nothing. */
+function estimatePoints(program: { earnType: string; pointsPerDollar: number; pointsPerVisit: number; minSpendCents: number }, eligibleCents: number): number {
+  if (eligibleCents < program.minSpendCents) return 0;
+  return program.earnType === "per_dollar" ? Math.floor(Math.max(0, eligibleCents) / 100) * program.pointsPerDollar : program.pointsPerVisit;
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +396,8 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   if (!body.slotId && body.pickupAt) {
     pickupAt = new Date(body.pickupAt);
     if (pickupAt.getTime() < now.getTime() - 60_000) throw badRequest("Pickup time is in the past");
-    if (pickupAt.getTime() > now.getTime() + (isPreorder ? MAX_PREORDER_AHEAD_MS : MAX_PICKUP_AHEAD_MS)) throw badRequest("Pickup time is too far ahead");
+    // A pre-order's own limit is checked below, after qurbani's "booking opens" rule has had its say (it names the date).
+    if (!isPreorder && pickupAt.getTime() > now.getTime() + MAX_PICKUP_AHEAD_MS) throw badRequest("Pickup time is too far ahead");
   }
 
   // Busy mode: an ASAP order gets the longer quoted pickup time while the kitchen is busy.
@@ -396,11 +417,17 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     }
     // Qurbani is only picked up on the Eid plan's days (moon-sighting adjusted), not on any day the notice allows.
     if (lines.some((l) => l.preorderOnly && isQurbaniName(l.name))) {
-      const plan = eidPlanDays(merchant, dateKeyIn(now, merchant.timezone));
+      const today = dateKeyIn(now, merchant.timezone);
+      const plan = eidPlanDays(merchant, today);
+      const opens = plan ? addDaysKey(plan.start, -QURBANI_OPENS_DAYS) : null;
+      if (plan && opens && today < opens) {
+        throw new HttpError(409, "qurbani_not_open", `Qurbani booking opens ${new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", month: "short", day: "numeric" }).format(new Date(`${opens}T12:00:00Z`))}.`, { opensOn: opens });
+      }
       if (plan && !plan.dates.includes(dateKeyIn(pickupAt!, merchant.timezone))) {
         throw new HttpError(409, "qurbani_day", `Qurbani is picked up on Eid days: ${plan.dates.join(", ")}. Choose one of those days.`, { days: plan.dates });
       }
     }
+    if (pickupAt!.getTime() > now.getTime() + MAX_PREORDER_AHEAD_MS) throw badRequest("Pickup time is too far ahead");
     potsRequested = lines.filter((l) => l.preorderOnly).reduce((s, l) => s + l.quantity, 0);
     depositBase = lines.reduce((s, l) => s + (l.lineTotalCents * l.depositBps) / 10_000, 0);
   } else {

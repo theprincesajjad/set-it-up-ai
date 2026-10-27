@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { appointments, familyMembers, invoices, merchantStaff, merchants, preferredStaff, queueEntries, services, staffPay, users, walkinQueues } from "@ll/db";
+import { appointments, familyMembers, invoices, merchantStaff, merchants, preferredStaff, queueEntries, services, staffPay, staffServices, users, walkinQueues } from "@ll/db";
 import { QUEUE_DEFAULT_MINUTES, QUEUE_LIVE, QUEUE_MAX_FAMILY, QUEUE_SKIP_BACK, estimateWaitMin, normalizeLocale, translator, type barberApi, type Locale, type QueueChair, type QueuePerson } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -253,7 +253,7 @@ export async function board(ctx: AppContext, staff: StaffContext): Promise<barbe
     called: s.called.filter(visible).map((e) => dto(e, null, s.names, s.parents, now)),
     inService: s.inService.filter((e) => !restricted || e.calledStaffId === staff.user.id).map((e) => dto(e, null, s.names, s.parents, now)),
     chairs,
-    stats: { waiting: s.waiting.length, longestWaitMin: longest, estimateMin: estimate, chairsTaking: s.chairs.filter((c) => c.takesWalkIns).length, chairsTotal: s.chairs.length, servedToday: today?.served ?? 0, noShowsToday: today?.noShows ?? 0 },
+    stats: { waiting: waiting.length, longestWaitMin: longest, estimateMin: estimate, chairsTaking: s.chairs.filter((c) => c.takesWalkIns).length, chairsTotal: s.chairs.length, servedToday: today?.served ?? 0, noShowsToday: today?.noShows ?? 0 },
     services: services_,
   };
 }
@@ -264,7 +264,12 @@ export async function publicQueue(ctx: AppContext, merchant: Merchant): Promise<
   const svc = await ctx.db.select({ id: services.id, name: services.name, durationMin: services.durationMin, priceCents: services.priceCents }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment"), eq(services.active, true))).orderBy(asc(services.sort), asc(services.name));
   const everyone = await estimateFor(ctx, s, s.waiting, null);
   const barbers = [];
-  for (const c of s.chairs.filter((c) => c.takesWalkIns)) barbers.push({ id: c.staffId, name: c.name, estimateMin: await estimateFor(ctx, s, s.waiting, c.staffId) });
+  const own = await ctx.db.select({ userId: staffServices.userId, serviceId: staffServices.serviceId, priceCents: staffServices.priceCents }).from(staffServices).where(eq(staffServices.merchantId, merchant.id));
+  for (const c of s.chairs.filter((c) => c.takesWalkIns)) {
+    const prices: Record<string, number> = {};
+    for (const r of own) if (r.userId === c.staffId && r.priceCents !== null) { const list = svc.find((x) => x.id === r.serviceId); if (list && list.priceCents !== r.priceCents) prices[r.serviceId] = r.priceCents; }
+    barbers.push({ id: c.staffId, name: c.name, estimateMin: await estimateFor(ctx, s, s.waiting, c.staffId), prices });
+  }
   return { shop: { name: merchant.name, slug: merchant.slug }, open: s.settings.open, waiting: s.waiting.length + s.called.length, estimateMin: everyone, barbers, services: svc };
 }
 
@@ -274,7 +279,25 @@ async function statusOf(ctx: AppContext, merchant: Merchant, e: Entry, s?: Snaps
   const ahead = idx >= 0 ? snap.waiting.slice(0, idx) : [];
   const estimate = e.status === "waiting" ? await estimateFor(ctx, snap, ahead, e.requestedStaffId) : null;
   const partyRows = e.partyId ? await ctx.db.select().from(queueEntries).where(and(eq(queueEntries.partyId, e.partyId), ne(queueEntries.id, e.id))) : [];
+  // A family is served one after another at a named barber: the whole party is done when the last cut is. Waiting members only.
+  let partyDoneMin: number | null = null;
+  if (e.status === "waiting" && estimate !== null) {
+    const rest = partyRows.filter((p) => snap.waiting.some((w) => w.id === p.id));
+    if (rest.length) {
+      const last = rest[rest.length - 1]!;
+      const lastStart = await estimateFor(ctx, snap, [...ahead, e, ...rest.slice(0, -1)], e.requestedStaffId);
+      if (lastStart !== null) partyDoneMin = Math.ceil((lastStart + last.durationMin) / 5) * 5;
+    }
+  }
+  let pointsEarned: number | null = null;
+  if (e.status === "done" && e.appointmentId) {
+    const [inv] = await ctx.db.select({ points: invoices.pointsEarned, status: invoices.status }).from(appointments).innerJoin(invoices, eq(invoices.id, appointments.invoiceId)).where(eq(appointments.id, e.appointmentId)).limit(1);
+    if (inv?.status === "paid" && inv.points > 0) pointsEarned = inv.points;
+  }
   return {
+    partyDoneMin,
+    textsYou: !!e.userId && e.textConsent,
+    pointsEarned,
     token: e.token,
     shop: { name: merchant.name, slug: merchant.slug },
     name: e.name,
@@ -475,8 +498,10 @@ export async function skip(ctx: AppContext, staff: StaffContext, entryId: string
     return { entry: await present(ctx, merchant, row!), undo };
   }
   const s = await snapshot(ctx, merchant);
-  const rest = s.waiting.filter((w) => w.id !== e.id);
-  const idx = s.waiting.findIndex((w) => w.id === e.id);
+  // A called person keeps the place they had in line (their position stays on the row), so "back two places" counts from there.
+  const inLine = [...s.waiting.filter((w) => w.id !== e.id), e].sort((a, b) => a.positionAt.getTime() - b.positionAt.getTime() || a.joinedAt.getTime() - b.joinedAt.getTime());
+  const rest = inLine.filter((w) => w.id !== e.id);
+  const idx = inLine.findIndex((w) => w.id === e.id);
   const anchor = idx >= 0 ? rest[Math.min(rest.length - 1, idx + QUEUE_SKIP_BACK - 1)] : undefined;
   const positionAt = anchor && anchor.positionAt.getTime() > e.positionAt.getTime() ? new Date(anchor.positionAt.getTime() + 1) : await backOfLine(ctx, e.merchantId, now);
   const [row] = await ctx.db.update(queueEntries).set({ status: "waiting", skips: e.skips + 1, positionAt, calledAt: null, calledStaffId: null, notifiedNextAt: null, updatedAt: now }).where(eq(queueEntries.id, e.id)).returning();

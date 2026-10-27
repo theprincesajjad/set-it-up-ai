@@ -72,6 +72,11 @@ const awardFields = z.object({
   frontStoreOnly: z.boolean().optional(),
 });
 
+/** GET .../counter/regulars: regulars not yet stamped today, for one-tap stamping. */
+export interface RegularsResponse {
+  items: MemberSummaryDto[];
+}
+
 /** POST .../counter/award */
 export const awardBody = awardFields
   .extend({ idempotencyKey: idempotencyKeySchema.optional() })

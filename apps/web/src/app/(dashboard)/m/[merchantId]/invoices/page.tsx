@@ -20,7 +20,9 @@ export default function InvoicesPage() {
 }
 
 function Invoices() {
-  const { api, base, role } = useMerchant();
+  const { api, base, role, enabled } = useMerchant();
+  // A salon or barber has no tickets: its invoices are the calendar's checkouts, so the repair wording (approved quotes) would be wrong.
+  const calendarShop = enabled("booking.appointments") && !enabled("service.tickets");
   const toast = useToast();
   const act = useAction();
   const [filter, setFilter] = useState<Filter>("all");
@@ -40,7 +42,7 @@ function Invoices() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Invoices" description="Every invoice comes from an approved quote. Customers pay by link, or you take payment at the counter." actions={<Capsules label="Show" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "open", label: "Open" }, { value: "overdue", label: "Overdue", count: s?.overdueCount || null, tone: "negative" }, { value: "paid", label: "Paid" }]} />} />
+      <PageHeader flush title="Invoices" description={calendarShop ? "Every checkout from the calendar makes an invoice here. Customers pay by link, or you take payment at the counter." : "Every invoice comes from an approved quote. Customers pay by link, or you take payment at the counter."} actions={<Capsules label="Show" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "open", label: "Open" }, { value: "overdue", label: "Overdue", count: s?.overdueCount || null, tone: "negative" }, { value: "paid", label: "Paid" }]} />} />
       <StatBlock
         label="Invoices at a glance"
         cols={5}
@@ -49,7 +51,7 @@ function Invoices() {
           { label: "Open", dot: "info", value: formatMoney(s?.openCents ?? 0).replace(/\.00$/, ""), caption: `${n(s?.openCount ?? 0, "invoice", "invoices")}${s?.openReadyTickets ? `, ${s.openReadyTickets} ready ${s.openReadyTickets === 1 ? "ticket" : "tickets"}` : ""}` },
           { label: "Overdue", dot: "negative", value: formatMoney(s?.overdueCents ?? 0).replace(/\.00$/, ""), caption: s?.overdueCount ? `${n(s.overdueCount, "invoice", "invoices")}, oldest ${s.oldestOverdueDays} days` : "Nothing overdue" },
           { label: "Paid this month", dot: "neutral", value: formatMoney(s?.paidThisMonthCents ?? 0).replace(/\.00$/, ""), caption: n(s?.paidThisMonthCount ?? 0, "invoice", "invoices") },
-          { label: "Deposits held", dot: "neutral", value: formatMoney(s?.depositsHeldCents ?? 0).replace(/\.00$/, ""), caption: `On ${n(s?.depositsHeldQuotes ?? 0, "approved quote", "approved quotes")}` },
+          { label: "Deposits held", dot: "neutral", value: formatMoney(s?.depositsHeldCents ?? 0).replace(/\.00$/, ""), caption: calendarShop ? "Held for online bookings" : `On ${n(s?.depositsHeldQuotes ?? 0, "approved quote", "approved quotes")}` },
           { label: "Average time to pay", dot: "neutral", value: s?.avgDaysToPay == null ? "None yet" : `${Math.max(0, s.avgDaysToPay)} days`, caption: "From sent to paid" },
         ]}
       />
@@ -90,7 +92,7 @@ function Invoices() {
           </Table>
         </TableWrap>
       ) : (
-        <EmptyState title={filter === "all" && !q ? "No invoices yet" : "No invoices match"} description={filter === "all" && !q ? "Send an invoice from an approved quote on a ticket and it shows up here." : "Try another filter or search."} />
+        <EmptyState title={filter === "all" && !q ? "No invoices yet" : "No invoices match"} description={filter === "all" && !q ? (calendarShop ? "Check a client out from the calendar and the invoice shows up here." : "Send an invoice from an approved quote on a ticket and it shows up here.") : "Try another filter or search."} />
       )}
       <SidePanel open={!!row} onClose={() => setSelected(null)} title={row ? `Invoice #${row.number}` : ""} subtitle={row ? `${row.customerName ?? "Customer"} · ${formatDate(row.createdAt)}` : undefined} label="Invoice detail" width={420}>
         {row ? (

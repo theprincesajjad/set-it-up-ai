@@ -5,6 +5,8 @@ import type { restaurantApi } from "@ll/shared";
 import { Capsules, EmptyState, Segmented, StatBlock, StatusDot, Row, RowList } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { errorMessage } from "@/lib/api/errors";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 import { Loader, addDaysISO, dayLabel, dayShort, todayISO } from "../common";
@@ -118,6 +120,26 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
   );
 }
 
+/** One tap: text the customer about the deposit they have not paid yet (the server limits it to one every 12 hours). */
+function RemindButton({ id }: { id: string }) {
+  const { api } = useMerchant();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button size="sm" variant="secondary" loading={busy} onClick={async () => {
+      setBusy(true);
+      try {
+        await api.catering.remind(id);
+        toast({ message: "Reminder sent", tone: "success" });
+      } catch (err) {
+        toast({ message: errorMessage(err), tone: "error" });
+      } finally {
+        setBusy(false);
+      }
+    }}>Remind</Button>
+  );
+}
+
 const BOARD: { key: string; label: string; hint: string; statuses: restaurantApi.CateringStatus[] }[] = [
   { key: "inquiry", label: "Inquiry", hint: STATUS_HINT.inquiry, statuses: ["inquiry"] },
   { key: "tasting", label: "Tasting", hint: STATUS_HINT.tasting, statuses: ["tasting"] },
@@ -143,7 +165,7 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
         cols={4}
         items={[
           { label: "Open quotes", value: formatMoney(sum.openQuotesCents), caption: unopened.length ? info(`${unopened.length} ${unopened.length === 1 ? "quote" : "quotes"}, sent ${Math.floor((now - Date.parse(unopened[0]!.quoteSentAt!)) / DAY)} days ago, not opened`) : "Waiting on customers" },
-          { label: "Deposits to collect", value: formatMoney(sum.depositsToCollectCents), caption: owing ? info(`${EVENT_TYPE_LABEL[owing.eventType]}, ${dayShort(owing.eventDate)} · awaiting deposit`) : "Nothing waiting" },
+          { label: "Deposits to collect", value: formatMoney(sum.depositsToCollectCents), caption: owing ? <span className="flex flex-wrap items-center gap-x-2 text-location">{`${EVENT_TYPE_LABEL[owing.eventType]}, ${dayShort(owing.eventDate)} · awaiting deposit`}<RemindButton id={owing.id} /></span> : "Nothing waiting" },
           { label: "Balances due in 14 days", value: formatMoney(sum.balancesDue14dCents), caption: soon ? `${EVENT_TYPE_LABEL[soon.eventType]}, ${dayShort(soon.eventDate)}` : "No events in the next 14 days" },
           { label: "Booked, next 8 weeks", value: formatMoney(sum.bookedNext8wCents), caption: `${sum.bookedNext8wEvents} ${sum.bookedNext8wEvents === 1 ? "event" : "events"} · ${formatNumber(guests)} guests` },
         ]}

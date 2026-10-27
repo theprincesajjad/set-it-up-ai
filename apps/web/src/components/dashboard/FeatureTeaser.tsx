@@ -1,13 +1,14 @@
 "use client";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { FEATURES, PLANS, type FeatureKey } from "@ll/shared";
+import { FEATURES, PLANS, featureOffer, type FeatureKey } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { useMerchant } from "./MerchantContext";
+import { SubscribeButton } from "./SubscribeButton";
 
 /** ux-copy.md §5 one-liners. */
 export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
@@ -98,21 +99,39 @@ export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?
  * Renders nothing when the feature is enabled.
  */
 export function FeatureTeaser({ featureKey, title, description }: { featureKey: FeatureKey; title?: string; description?: string }) {
-  const { feature, role, api, refresh, base } = useMerchant();
+  const { feature, role, api, refresh, base, detail } = useMerchant();
   const toast = useToast();
+  const shops = useNetworkShops();
   const f = feature(featureKey);
   const def = FEATURES[featureKey];
   if (!f || f.enabled) return null;
-  const state = f.lockedReason === "plan" && f.stage !== "hidden" ? "plan" : f.stage === "beta" ? "beta" : "hidden";
-  const plan = PLANS[def.minPlan];
+  const offer = featureOffer(featureKey);
+  const vertical = detail.merchant.vertical;
+  const verticals = def.vertical ? (typeof def.vertical === "string" ? [def.vertical] : [...def.vertical]) : null;
+  const wrongTrade = !!verticals && !verticals.includes(vertical);
+  // A network-wide extra waits for the 100-shop gate; a trade tool is bought on its plan; anything else an admin paused is "coming soon".
+  const state = offer.kind === "network" || f.stage === "hidden" ? "hidden" : f.stage === "beta" && !detail.merchant.betaOptIn ? "beta" : "plan";
+  const status =
+    wrongTrade
+      ? "Built for another kind of shop"
+      : state === "hidden"
+        ? offer.kind === "network"
+          ? `Opens when the network reaches ${offer.unlockAtMerchants} shops${shops != null ? ` (${shops} today)` : ""}`
+          : "Coming soon"
+        : state === "beta"
+          ? "In beta"
+          : offer.kind === "plan" || offer.kind === "restaurant"
+            ? `On ${offer.name} · $${offer.priceCents / 100} a month`
+            : "Not on your plan";
   return (
     // Same top and order as every page header (title, one line, then the state) — polish-audit D15.
     <div className="max-w-[560px]">
       <h1 className="text-title font-semibold text-fg">{title ?? f.name}</h1>
       <p className="mt-1 text-body text-fg-muted">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
-      <p className="mt-3 text-meta text-fg-muted">{state === "hidden" ? plan.id === "free" ? "Coming soon" : `Coming with ${plan.name}` : state === "beta" ? "In beta" : `On ${plan.name} · $${plan.priceCents / 100}/mo`}</p>
+      <p className="mt-3 text-meta text-fg-muted">{status}</p>
       <div className="mt-5 flex flex-wrap items-center gap-4">
-        {state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
+        {!wrongTrade && state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
+        {!wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? (role === "owner" ? <SubscribeButton offer={offer} /> : <span className="text-meta text-fg-muted">Ask the shop owner to subscribe.</span>) : null}
         {state === "beta" && role === "owner" ? (
           <Button
             variant="secondary"

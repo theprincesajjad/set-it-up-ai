@@ -196,7 +196,7 @@ export interface PreorderAvailabilityResponse {
    * adjusted, each with its own animal cap), not a rolling window. `start` is the first Eid day; `moved` is true when the shop
    * moved it after moon sighting.
    */
-  plan?: { kind: "eid_al_adha"; start: string; moved: boolean } | null;
+  plan?: { kind: "eid_al_adha"; start: string; moved: boolean; /** The day booking opens (eight weeks before `start`). Before it, the page says so instead of offering days. */ bookingsOpen?: string } | null;
 }
 /** Words a guest agrees to when joining the wait list (CASL express consent for this one message). */
 export const WAITLIST_CONSENT_TEXT = "Message me once if a pot opens up for this day. I can reply STOP at any time.";

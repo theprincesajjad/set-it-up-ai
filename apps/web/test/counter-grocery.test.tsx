@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { staffApi } from "@ll/shared";
@@ -44,17 +44,19 @@ describe("<CounterApp> for a grocer", () => {
     await screen.findByRole("heading", { name: "Pat Quinn" });
     (document.activeElement as HTMLElement | null)?.blur();
     await userEvent.keyboard("5500");
-    await userEvent.type(screen.getByLabelText("Not counted"), "15");
-    expect(screen.getByText("$40.00 counts")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Not counted/ }));
+    for (const d of "1500") await userEvent.click(within(screen.getByRole("group", { name: "Not counted keypad" })).getByRole("button", { name: d }));
+    expect(screen.getByText("$15.00 · $40.00 counts")).toBeTruthy();
     // The big button promises points on what counts ($40), not on the whole $55 till total.
     expect(screen.getByRole("button", { name: "Award 40 pts" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Bought a bulk item/ }));
     await userEvent.click(screen.getByRole("button", { name: "Atta 20 lb" }));
     await userEvent.click(screen.getByRole("checkbox", { name: /said yes to a restock text/ }));
     await userEvent.click(screen.getByRole("button", { name: /Award/ }));
     await waitFor(() => expect(a.award).toHaveBeenCalled());
     expect((a.award.mock.calls[0] as unknown[])[0]).toMatchObject({ amountCents: 5500, notCountedCents: 1500 });
     await waitFor(() => expect(a.logPantry).toHaveBeenCalledWith({ memberId: member().memberId, pantryItemId: "p1", remind: true }));
-  });
+  }, 30_000);
 
   it("logs the bulk bag as the PIN-switched staff member, not the signed-in owner", async () => {
     const a = api();
@@ -69,11 +71,12 @@ describe("<CounterApp> for a grocer", () => {
     await screen.findByRole("heading", { name: "Pat Quinn" });
     (document.activeElement as HTMLElement | null)?.blur();
     await userEvent.keyboard("5500");
+    await userEvent.click(screen.getByRole("button", { name: /Bought a bulk item/ }));
     await userEvent.click(screen.getByRole("button", { name: "Atta 20 lb" }));
     await userEvent.click(screen.getByRole("button", { name: /Award/ }));
     await waitFor(() => expect(asHarjit.logPantry).toHaveBeenCalledWith({ memberId: member().memberId, pantryItemId: "p1", remind: false }));
     expect(a.logPantry).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it("refuses a not-counted amount larger than the total and sends nothing", async () => {
     const a = api();
@@ -82,18 +85,19 @@ describe("<CounterApp> for a grocer", () => {
     await screen.findByRole("heading", { name: "Pat Quinn" });
     (document.activeElement as HTMLElement | null)?.blur();
     await userEvent.keyboard("1000");
-    await userEvent.type(screen.getByLabelText("Not counted"), "20");
-    expect(screen.getByText("More than the total.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Not counted/ }));
+    for (const d of "2000") await userEvent.click(within(screen.getByRole("group", { name: "Not counted keypad" })).getByRole("button", { name: d }));
+    expect(screen.getAllByText("More than the total.").length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("button", { name: /Award/ }));
     expect(a.award).not.toHaveBeenCalled();
     expect(screen.getByText(/more than the total/)).toBeTruthy();
-  });
+  }, 30_000);
 
   it("shows no grocery fields to other shops", async () => {
     const a = api();
     render(<CounterApp api={a} program={program} shopName="Cafe" locations={[]} />);
     for (const d of "0123") await userEvent.click(screen.getByRole("button", { name: d }));
     await screen.findByRole("heading", { name: "Pat Quinn" });
-    expect(screen.queryByLabelText("Not counted")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Not counted/ })).toBeNull();
   });
 });

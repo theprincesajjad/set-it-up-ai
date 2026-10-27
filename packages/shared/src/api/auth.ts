@@ -71,7 +71,7 @@ export type StaffPinSetBody = z.infer<typeof staffPinSetBody>;
 // Responses
 // ---------------------------------------------------------------------------
 export type PlatformRole = "none" | "rep" | "admin";
-export type StaffRole = "owner" | "manager" | "staff";
+export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
 /** The signed-in user's own profile (never another person's). */
 export interface AuthUserDto {

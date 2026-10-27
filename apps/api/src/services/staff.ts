@@ -46,7 +46,7 @@ import {
   type ConsentInput,
 } from "./ledger.js";
 import { enabledFeaturesByMerchantId, enabledFeaturesFor } from "./features.js";
-import { shopDate } from "./member-stats.js";
+import { memberRhythms, shopDate } from "./member-stats.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 import { sendSms } from "./opt-out.js";
 import { assertPharmacyRedeem } from "./pharmacy-guard.js";
@@ -151,20 +151,44 @@ export function parseMemberCode(input: string): string {
 
 const MEMBER_CODE_RE = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/;
 
-export async function lookup(ctx: AppContext, merchantId: string, qInput: string): Promise<staffApi.LookupResponse> {
+/**
+ * `onlyServedBy`: a chair renter who sees only their own clients finds people by phone or last 4 digits only among those they have served
+ * (an appointment or walk-in at their chair). Scanning the customer's own card still finds them, because the card is in front of them.
+ */
+export async function lookup(ctx: AppContext, merchantId: string, qInput: string, onlyServedBy?: string): Promise<staffApi.LookupResponse> {
   const q = qInput.trim();
+  const served = onlyServedBy ? sql`${users.id} in (select user_id from appointments where merchant_id = ${merchantId} and staff_id = ${onlyServedBy} and user_id is not null)` : undefined;
   const upper = q.toUpperCase();
   if (upper.startsWith(staffApi.QR_PAYLOAD_PREFIX) || MEMBER_CODE_RE.test(upper)) {
     const code = parseMemberCode(q);
     return { matchedBy: "member_code", items: await summaries(ctx.db, merchantId, and(eq(users.memberCode, code), isNull(users.deletedAt)), 1), normalizedPhone: null };
   }
   if (/^\d{4}$/.test(q)) {
-    return { matchedBy: "last4", items: await summaries(ctx.db, merchantId, like(users.phone, `%${q}`), 10), normalizedPhone: null };
+    return { matchedBy: "last4", items: await summaries(ctx.db, merchantId, and(like(users.phone, `%${q}`), served), 10), normalizedPhone: null };
   }
   const phone = normalizePhone(q);
   if (!phone) throw badRequest("Enter a phone number, the last 4 digits, or scan the member's QR code");
-  const items = await summaries(ctx.db, merchantId, eq(users.phone, phone), 1);
+  const items = await summaries(ctx.db, merchantId, and(eq(users.phone, phone), served), 1);
   return { matchedBy: "phone", items, normalizedPhone: items.length ? null : phone };
+}
+
+/**
+ * "Stamp on tap": up to six regulars (a visit pattern, not a guess) who have not been stamped today, most frequent first.
+ * The barista who knows Priya taps her name instead of keying digits. Same summary the 4-digit search returns.
+ */
+export async function regulars(ctx: AppContext, merchantId: string, timezone: string): Promise<staffApi.RegularsResponse> {
+  const now = ctx.now();
+  const today = shopDate(now, timezone);
+  const rhythms = await memberRhythms(ctx.db, merchantId, timezone, now);
+  const ids = [...rhythms.entries()]
+    .filter(([, r]) => r.isRegular && r.lastVisitAt && shopDate(r.lastVisitAt, timezone) !== today)
+    .sort((a, b) => b[1].visits30d - a[1].visits30d || (b[1].lastVisitAt!.getTime() - a[1].lastVisitAt!.getTime()))
+    .slice(0, 6)
+    .map(([id]) => id);
+  if (!ids.length) return { items: [] };
+  const items = await summaries(ctx.db, merchantId, and(inArray(merchantMembers.id, ids), isNull(users.deletedAt)), 6);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return { items: items.sort((a, b) => (order.get(a.memberId) ?? 0) - (order.get(b.memberId) ?? 0)) };
 }
 
 // ---------------------------------------------------------------------------
@@ -581,7 +605,7 @@ const UNDOABLE = new Set(["earn", "redeem"]);
 
 function canUndo(staff: StaffContext, tx: Pick<typeof ledgerTransactions.$inferSelect, "type" | "reversedAt" | "staffUserId" | "createdAt">, now: Date): boolean {
   if (!UNDOABLE.has(tx.type) || tx.reversedAt) return false;
-  if (staff.role !== "staff") return true;
+  if (staff.role === "owner" || staff.role === "manager") return true;
   return tx.staffUserId === staff.user.id && now.getTime() - tx.createdAt.getTime() <= staffApi.UNDO_WINDOW_MINUTES * 60_000;
 }
 

@@ -25,6 +25,8 @@ export function classEndpoints(c: ApiClient, b: string) {
       addToSession: (id: string, body: Record<string, unknown>) => c.post<classesApi.RosterResponse>(`${k}/sessions/${enc(id)}/bookings`, body),
       checkInRow: (bookingId: string) => c.post<classesApi.RosterResponse>(`${k}/bookings/${enc(bookingId)}/check-in`, {}),
       markBooking: (bookingId: string, status: "no_show" | "excused") => c.post<classesApi.RosterResponse>(`${k}/bookings/${enc(bookingId)}/mark`, { status }),
+      cancelBooking: (bookingId: string, free?: boolean) => c.post<classesApi.RosterResponse>(`${k}/bookings/${enc(bookingId)}/cancel`, free ? { free } : {}),
+      bookIn: (bookingId: string, body: { comp?: boolean; overCapacity?: boolean } = {}) => c.post<classesApi.RosterResponse>(`${k}/bookings/${enc(bookingId)}/book-in`, body),
       moveWaitlist: (bookingId: string, position: number) => c.post<classesApi.RosterResponse>(`${k}/bookings/${enc(bookingId)}/move`, { position }),
       checkIn: (body: { memberCode?: string; phone?: string; sessionId?: string; addIfNotBooked?: boolean; idempotencyKey?: string }) => c.post<classesApi.CheckInResponse>(`${k}/check-in`, body),
       door: (sessionId?: string) => c.get<classesApi.DoorResponse>(`${k}/door`, { query: { sessionId } }),
@@ -61,6 +63,8 @@ export function myClassEndpoints(c: ApiClient) {
     keepMembership: (id: string) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/keep`, {}),
     declineRenewal: (id: string) => c.post<classesApi.MembershipChangeResponse>(`/v1/me/classes/memberships/${enc(id)}/decline-renewal`, {}),
     payMembership: (id: string) => c.post<classesApi.PurchaseResponse>(`/v1/me/classes/memberships/${enc(id)}/pay`, {}),
+    payPass: (id: string) => c.post<classesApi.PurchaseResponse>(`/v1/me/classes/passes/${enc(id)}/pay`, {}),
+    cancelPass: (id: string) => c.post<{ ok: true }>(`/v1/me/classes/passes/${enc(id)}/cancel`, {}),
     membershipCardSetup: (id: string) => c.post<classesApi.MembershipSetupResponse>(`/v1/me/classes/memberships/${enc(id)}/card`, {}),
   };
 }

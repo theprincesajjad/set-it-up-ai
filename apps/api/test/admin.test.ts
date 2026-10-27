@@ -50,8 +50,11 @@ describe("admin", () => {
   it("feature rollout: stages, free-forever protection, audit, overrides, plan availability", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
     const list = (await get("/v1/admin/features")).json().items;
+    // Trade tools self-serve (2026-10-27): a paid trade tool ships GA with no gate; a network-wide extra ships hidden and waits for its gate.
     const sms = list.find((f: { key: string }) => f.key === "marketing.sms");
-    expect(sms).toMatchObject({ stage: "hidden", minPlan: "plus", unlockAtMerchants: FEATURES["marketing.sms"].unlockAtMerchants, activeMerchants: 1, readyToUnlock: false, freeForever: false });
+    expect(sms).toMatchObject({ stage: "ga", minPlan: "plus", unlockAtMerchants: 0, freeForever: false });
+    const push = list.find((f: { key: string }) => f.key === "promos.push_nearby");
+    expect(push).toMatchObject({ stage: "hidden", minPlan: "plus", unlockAtMerchants: FEATURES["promos.push_nearby"].unlockAtMerchants, activeMerchants: 1, readyToUnlock: false, freeForever: false });
     expect(list.find((f: { key: string }) => f.key === "loyalty.points").freeForever).toBe(true);
 
     // Free-forever features can only be GA.
@@ -69,21 +72,20 @@ describe("admin", () => {
     expect((await env.app.inject({ method: "PUT", url: `/v1/admin/features/loyalty.points/stage`, headers: auth(adminToken), payload: { stage: "ga" } })).statusCode).toBe(200);
     expect((await env.app.inject({ method: "PUT", url: `/v1/admin/features/nope.nope/stage`, headers: auth(adminToken), payload: { stage: "ga" } })).statusCode).toBe(404);
 
-    // Plans become purchasable when a paid feature leaves "hidden".
-    let plans = (await get("/v1/admin/plans")).json().items;
-    expect(plans.map((p: { available: boolean }) => p.available)).toEqual([true, false, false]);
-    const beta = await env.app.inject({ method: "PUT", url: `/v1/admin/features/marketing.sms/stage`, headers: auth(adminToken), payload: { stage: "beta", note: "Pilot on Roncy" } });
+    // Every plan is purchasable from day one: the trade tools on it are live.
+    const plans = (await get("/v1/admin/plans")).json().items;
+    expect(plans.map((p: { available: boolean }) => p.available)).toEqual([true, true, true]);
+    const beta = await env.app.inject({ method: "PUT", url: `/v1/admin/features/promos.push_nearby/stage`, headers: auth(adminToken), payload: { stage: "beta", note: "Pilot on Roncy" } });
     expect(beta.json()).toMatchObject({ stage: "beta", note: "Pilot on Roncy", updatedBy: admin.id });
-    plans = (await get("/v1/admin/plans")).json().items;
-    expect(plans[1]).toMatchObject({ id: "plus", available: true });
-    const [row] = await env.db.select().from(featureRollouts).where(eq(featureRollouts.key, "marketing.sms"));
+    const [row] = await env.db.select().from(featureRollouts).where(eq(featureRollouts.key, "promos.push_nearby"));
     expect(row!.stage).toBe("beta");
     const audit = (await get("/v1/admin/audit?action=feature.")).json().items;
-    expect(audit[0]).toMatchObject({ action: "feature.stage_changed", entityId: "marketing.sms", actorName: "Ada Admin", data: { from: "hidden", to: "beta" } });
+    expect(audit[0]).toMatchObject({ action: "feature.stage_changed", entityId: "promos.push_nearby", actorName: "Ada Admin", data: { from: "hidden", to: "beta" } });
 
-    // Merchant sees it as a beta (plan lock since they're free).
+    // The merchant sees the network-wide extra as not open yet (rollout), the trade tool as a plan lock (they are on Free).
     const f = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/features`, headers: auth(ownerToken) })).json();
-    expect(f.features.find((x: { key: string }) => x.key === "marketing.sms").lockedReason).toBe("rollout");
+    expect(f.features.find((x: { key: string }) => x.key === "promos.push_nearby").lockedReason).toBe("rollout");
+    expect(f.features.find((x: { key: string }) => x.key === "marketing.sms").lockedReason).toBe("plan");
 
     // Per-merchant override (pilot shop).
     await expect(requireFeature(env.db, merchant, "service.tickets")).rejects.toMatchObject({ statusCode: 402 });

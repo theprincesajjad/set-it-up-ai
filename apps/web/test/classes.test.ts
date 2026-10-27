@@ -98,11 +98,11 @@ describe("class navigation", () => {
     const k = nav(["promos.basic"], "fitness");
     for (const gone of ["classes", "class-offers", "class-door"]) expect(k).not.toContain(gone);
   });
-  it("front-desk staff get the schedule and the door, not the offers", () => {
+  it("front-desk staff get the schedule, the door and the desk sale page", () => {
     const k = nav(ON, "fitness", "staff");
-    expect(k).toEqual(expect.arrayContaining(["home", "counter", "classes", "class-door"]));
-    expect(k).not.toContain("class-offers");
+    expect(k).toEqual(expect.arrayContaining(["home", "counter", "classes", "class-door", "class-offers"]));
     expect(canOpen("staff", "classes")).toBe(true);
+    expect(canOpen("staff", "class-offers")).toBe(true);
     expect(canOpen("staff", "billing")).toBe(false);
   });
 });

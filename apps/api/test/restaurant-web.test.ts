@@ -1,7 +1,7 @@
 /** Restaurant customer web pages (desi1): halal certification, dish options, pre-order availability, shop summary, cancel rule, private feedback. */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { catalogItems, locations, merchants, orders, redemptions, reviewRequests, rewards, users, whatsappSessions, type ItemOptions } from "@ll/db";
+import { catalogItems, locations, merchantCategories, merchants, orders, redemptions, reviewRequests, rewards, users, whatsappSessions, type ItemOptions } from "@ll/db";
 import { sendHalalExpiryReminders } from "../src/services/halal.js";
 import { scheduleReviewRequest } from "../src/services/reviews.js";
 import { call, customer, deliver, fake } from "./commerce-fixtures.js";
@@ -344,6 +344,41 @@ describe("pre-order availability and the shop summary", () => {
     expect(r.body).toMatchObject({ weekend: [], features: { pickup: true, preorder: false }, preorderItems: [] });
     await env.db.update(merchants).set({ restaurantTier: null }).where(eq(merchants.id, s.merchant.id));
     expect((await req(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/restaurant`)).status).toBe(404);
+  });
+});
+
+describe("customer read of an order, and default section names", () => {
+  it("the confirmation page's data: shop phone, address, and what picking it up will earn", async () => {
+    const s = await restaurantShop(env, "growth");
+    await env.db.update(locations).set({ phone: "+14165550123" }).where(eq(locations.merchantId, s.merchant.id));
+    const c = await customer(env);
+    const r = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: s.merchant.id, locationId: s.location.id, items: [{ catalogItemId: s.items.chicken.id, quantity: 3 }], paymentMethod: "at_pickup", channel: "web", idempotencyKey: "confirm-page-001" });
+    expect(r.status).toBe(201);
+    const read = await call(env, c.token, "GET", `/v1/me/orders/${r.body.order.id}`);
+    expect(read.status).toBe(200);
+    expect(read.body).toMatchObject({ shopPhone: "+14165550123", isMember: false, merchantVertical: expect.any(String) });
+    expect(read.body.shopAddress).toEqual(expect.any(String));
+    // $42.00 at the program's rate: a number the page can promise ("about"), never negative.
+    expect(read.body.pointsEstimate).toBeGreaterThanOrEqual(0);
+    // Staff reads of the same order carry none of it (they are not the customer).
+    const staff = await call(env, s.ownerToken, "GET", `/v1/merchants/${s.merchant.id}/orders`);
+    expect(staff.body.items[0].shopPhone).toBeUndefined();
+  });
+
+  it("a guest in Urdu, Hindi or Punjabi gets common section names translated even when the owner typed none; the owner's words win", async () => {
+    const s = await restaurantShop(env, "pro");
+    const ur = await req(env, null, "GET", menuUrl(s, "?lang=ur"));
+    const names = (ur.body.categories as { name: string; nameEn?: string }[]).map((c) => [c.name, c.nameEn]);
+    expect(names).toContainEqual(["روٹیاں", "Breads"]);
+    expect(names).toContainEqual(["مشروبات", "Drinks"]);
+    const pa = await req(env, null, "GET", menuUrl(s, "?lang=pa"));
+    expect((pa.body.categories as { name: string }[]).map((c) => c.name)).toContain("ਰੋਟੀਆਂ");
+    await env.db.update(merchantCategories).set({ translations: { ur: { name: "ہماری روٹیاں" } } }).where(eq(merchantCategories.merchantId, s.merchant.id));
+    const own = await req(env, null, "GET", menuUrl(s, "?lang=ur"));
+    expect((own.body.categories as { name: string }[]).map((c) => c.name)).toContain("ہماری روٹیاں");
+    // English never shows a nameEn, and a name we have no word for stays as written.
+    const en = await req(env, null, "GET", menuUrl(s));
+    expect((en.body.categories as { nameEn?: string }[]).every((c) => c.nameEn === undefined)).toBe(true);
   });
 });
 

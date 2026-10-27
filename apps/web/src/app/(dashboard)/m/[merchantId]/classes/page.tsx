@@ -25,7 +25,7 @@ const DOT = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-
 
 function Schedule() {
   const { api, base, role } = useMerchant();
-  const manager = role !== "staff";
+  const manager = role === "owner" || role === "manager";
   const now = new Date(useNow());
   const today = todayOf(now);
   const [anchor, setAnchor] = useState(today);

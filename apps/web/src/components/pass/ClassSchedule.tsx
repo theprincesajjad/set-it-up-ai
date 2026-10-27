@@ -70,11 +70,16 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
   }, [data.sessions]);
   const when = (iso: string) => `${date(iso, { weekday: "short", month: "short", day: "numeric" }, data.shop.timezone)}, ${time(iso, data.shop.timezone)}`;
   const dropIn = data.products.find((p) => p.kind === "drop_in");
+  // A new student at a studio with a free intro class is offered it first, at the moment of booking.
+  const introFree = data.products.find((p) => p.kind === "pack" && p.introOnly && p.priceCents === 0);
   const activeMembership = my?.memberships.find((m) => m.status === "active");
   const passes = (my?.passes ?? []).filter((p) => p.status === "active" && p.creditsLeft > 0);
+  const noPass = !activeMembership && !passes.length;
+  const useIntro = !!introFree && noPass && (my ? my.introEligible : true);
   const payLine = (s: Sess): string => {
     if (activeMembership) return activeMembership.name;
     if (passes[0]) return `${passes[0].name}, ${t("cl.ui.passes.left", { left: passes[0].creditsLeft, total: passes[0].creditsTotal })}`;
+    if (useIntro) return introFree!.name;
     if (dropIn) return `${t("cl.ui.dropIn")}, ${money(dropIn.priceCents)}`;
     void s;
     return t("cl.ui.noPass");
@@ -90,7 +95,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
       const r = await browserApi.me.bookClass({ sessionId: s.id, use });
       if (r.outcome === "needs_payment" && r.payment) return setFlow({ kind: "pay-drop-in", session: s, payment: r.payment });
       await refresh();
-      setFlow({ kind: "done", text: r.outcome === "waitlisted" ? t("cl.ui.done.waitlisted", { n: r.booking.waitlistPosition ?? 1 }) : t("cl.ui.done.booked") });
+      setFlow({ kind: "done", text: r.outcome === "waitlisted" ? t(r.waitlistNeedsPass ? "cl.ui.done.waitlistedNoPass" : "cl.ui.done.waitlisted", { n: r.booking.waitlistPosition ?? 1 }) : t("cl.ui.done.booked") });
     } catch (e) {
       const code = isApiError(e) ? e.code : undefined;
       if (code === "no_pass" && dropIn && use === "auto") return setBanner(t("cl.ui.err.noPass"));
@@ -98,6 +103,20 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
     } finally {
       setBusy(false);
     }
+  }
+  /** The free first class is a pack of one: take it, then book on it. */
+  async function bookWithIntro(s: Sess) {
+    if (!signedIn) return setWantsSignIn(true);
+    setBusy(true);
+    setBanner(null);
+    try {
+      await browserApi.me.buyPack(introFree!.id);
+    } catch (e) {
+      setBusy(false);
+      return setBanner(errorMessage(e));
+    }
+    setBusy(false);
+    await book(s, "auto");
   }
   async function cancel(bookingId: string) {
     setBusy(true);
@@ -254,7 +273,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
             ) : null}
             {banner ? <Banner tone="danger">{banner}</Banner> : null}
             {flow.session.booked >= flow.session.capacity ? (
-              <p className="text-meta text-fg-muted">{t("cl.ui.waitlistRule")}</p>
+              <p className="text-meta text-fg-muted">{t(noPass ? "cl.ui.waitlistRuleNoPass" : "cl.ui.waitlistRule")}</p>
             ) : (
               <div className="rounded-card border border-line px-4 py-3">
                 <p className="text-caption text-fg-muted">{t("cl.ui.willUse")}</p>
@@ -264,8 +283,12 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
             <p className="text-meta text-fg-muted">{t("cl.ui.cancelRule", { until: untilText(flow.session) })}{data.policy.lateFeeCents ? ` ${t("cl.ui.cancelFee", { fee: money(data.policy.lateFeeCents) })}` : ""}</p>
             {data.policy.termsNote ? <p dir="auto" className="text-meta text-fg-muted">{data.policy.termsNote}</p> : null}
             <div className="flex flex-col gap-2">
-              <Button size="lg" fullWidth loading={busy} onClick={() => book(flow.session, "auto")}>{flow.session.booked >= flow.session.capacity ? t("cl.ui.joinWaitlist") : t("cl.ui.bookClass")}</Button>
-              {dropIn && flow.session.booked < flow.session.capacity && !activeMembership && !passes.length ? <Button size="lg" fullWidth variant="secondary" loading={busy} onClick={() => book(flow.session, "drop_in")}>{t("cl.ui.payDropIn", { amount: money(dropIn.priceCents) })}</Button> : null}
+              {useIntro && flow.session.booked < flow.session.capacity ? (
+                <Button size="lg" fullWidth loading={busy} onClick={() => bookWithIntro(flow.session)}>{t("cl.ui.useFreeFirst")}</Button>
+              ) : (
+                <Button size="lg" fullWidth loading={busy} onClick={() => book(flow.session, "auto")}>{flow.session.booked >= flow.session.capacity ? t("cl.ui.joinWaitlist") : t("cl.ui.bookClass")}</Button>
+              )}
+              {dropIn && flow.session.booked < flow.session.capacity && !activeMembership && !passes.length ? <Button size="lg" fullWidth variant="ghost" loading={busy} onClick={() => book(flow.session, "drop_in")}>{t("cl.ui.payDropIn", { amount: money(dropIn.priceCents) })}</Button> : null}
               {!signedIn ? <p className="text-center text-meta text-fg-muted">{t("cl.ui.signInToBook")}</p> : null}
             </div>
           </div>
@@ -330,6 +353,6 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
 
 function rule(p: Product, t: ReturnType<typeof useFmt>["t"]): string {
   if (p.kind === "drop_in") return t("cl.ui.rule.dropIn");
-  if (p.kind === "pack") return `${t("cl.ui.rule.pack", { n: p.credits ?? 1, days: p.validDays ?? 90 })}${p.introOnly ? `. ${t("cl.ui.intro")}` : ""}`;
+  if (p.kind === "pack") return `${t((p.credits ?? 1) === 1 ? "cl.ui.rule.pack1" : "cl.ui.rule.pack", { n: p.credits ?? 1, days: p.validDays ?? 90 })}${p.introOnly ? `. ${t("cl.ui.intro")}` : ""}`;
   return `${p.classesPerMonth ? t("cl.ui.nClassesMonth", { n: p.classesPerMonth }) : t("cl.ui.unlimited")}. ${p.termMonths ? t("cl.ui.termMonths", { n: p.termMonths }) : t("cl.ui.monthToMonth")}`;
 }

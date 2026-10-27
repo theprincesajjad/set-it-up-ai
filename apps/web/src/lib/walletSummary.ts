@@ -9,7 +9,7 @@ import { unitFor } from "./format";
 export interface WalletHeadline {
   kind: "ready" | "closest" | "none";
   value: number;
-  /** Under the number: "rewards ready", "stamps to a free drink at Pinecone". */
+  /** Under the number: "rewards ready", "stamps to go for a free drink at Pinecone". */
   label: string;
   /** Label without the shop name, for tight spots (card sheet). */
   shortLabel: string;
@@ -36,8 +36,26 @@ export function walletHeadline(items: M[]): WalletHeadline {
     .sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct || a.nextReward!.pointsNeeded - b.nextReward!.pointsNeeded)[0];
   if (closest?.nextReward) {
     const n = closest.nextReward.pointsNeeded;
-    const shortLabel = `${unitFor(closest.terminology, n, false)} to ${rewardPhrase(closest.nextReward.name)}`;
+    const shortLabel = `${unitFor(closest.terminology, n, false)} to go for ${rewardPhrase(closest.nextReward.name)}`;
     return { kind: "closest", value: n, label: `${shortLabel} at ${closest.merchant.name}`, shortLabel, context };
   }
   return { kind: "none", value: 0, label: "rewards ready", shortLabel: "rewards ready", context };
+}
+
+/**
+ * A barista's Undo within seconds (a wrong tap) is noise to the customer: "Visit +2" then "Reversal -2". Both rows leave
+ * the activity list when a reversal follows the entry it cancels by less than `windowMs` for the same shop and amount.
+ */
+export function hideQuickUndos<T extends { tx: { id: string; type: string; points: number; createdAt: string; reversed?: boolean }; m: { id: string } }>(rows: T[], windowMs = 15_000): T[] {
+  const hidden = new Set<string>();
+  for (const r of rows) {
+    if (r.tx.type !== "reversal") continue;
+    const at = Date.parse(r.tx.createdAt);
+    const original = rows.find((o) => o.m.id === r.m.id && !hidden.has(o.tx.id) && o.tx.id !== r.tx.id && o.tx.reversed && o.tx.points === -r.tx.points && at - Date.parse(o.tx.createdAt) >= 0 && at - Date.parse(o.tx.createdAt) <= windowMs);
+    if (original) {
+      hidden.add(r.tx.id);
+      hidden.add(original.tx.id);
+    }
+  }
+  return rows.filter((r) => !hidden.has(r.tx.id));
 }

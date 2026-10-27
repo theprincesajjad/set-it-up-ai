@@ -410,6 +410,14 @@ export interface CateringLineDto {
   unitPriceCents: number;
   totalCents: number;
 }
+export interface CateringReminderInfo {
+  kind: "deposit" | "balance" | null;
+  amountCents: number;
+  lastRemindedAt: string | null;
+}
+/** How the catering terms read before a customer signs: the share of the deposit given back by how far ahead they cancel. */
+export const DEFAULT_CATERING_REFUND_POLICY: { tiers: { minDaysBefore: number; refundBps: number }[] } = { tiers: [{ minDaysBefore: 14, refundBps: 10_000 }, { minDaysBefore: 7, refundBps: 5_000 }] };
+
 export interface CateringEventDto {
   id: string;
   merchantId: string;
@@ -462,6 +470,8 @@ export interface CateringEventDto {
   dateClashes?: number;
   /** Hand-recorded payments, newest last (staff view only). */
   payments?: ManualPaymentDto[];
+  /** Staff view: what a reminder would chase (deposit before the event is confirmed, balance after) and when the last one went out. */
+  reminder?: CateringReminderInfo;
   /** GST/HST status shown on the quote: registered (with number), small supplier, or not set. */
   tax?: { registered: boolean | null; number: string | null; label: string };
   /** Deposit returned on cancel (0 = none) and when. */

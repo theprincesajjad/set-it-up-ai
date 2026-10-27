@@ -4,7 +4,7 @@ import type { serviceApi } from "@ll/shared";
 import { Dot, Panel } from "@/components/dashboard/kit";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { ageText } from "@/lib/dashboard/tickets";
+import { agoText } from "@/lib/dashboard/tickets";
 
 /** The line above the quote: sent, opened, expires. "Opened, not approved" is the call-now signal. */
 export function quoteStatusLine(q: serviceApi.QuoteDto, now: Date): { text: string; tone: "info" | "positive" | "negative" | "neutral" }[] {
@@ -16,8 +16,8 @@ export function quoteStatusLine(q: serviceApi.QuoteDto, now: Date): { text: stri
   if (q.status === "expired") return [{ text: "Expired", tone: "neutral" }];
   if (q.status === "superseded") return [{ text: "Replaced by a newer quote", tone: "neutral" }];
   if (q.status === "draft") return [{ text: "Draft, not sent", tone: "neutral" }];
-  const out: { text: string; tone: "info" | "positive" | "negative" | "neutral" }[] = [{ text: q.sentAt ? `Sent ${ageText(q.sentAt, now)} ago by text` : "Sent", tone: "info" }];
-  out.push(q.firstViewedAt ? { text: `Opened ${ageText(q.firstViewedAt, now)} ago, not approved`, tone: "info" } : { text: "Not opened yet", tone: "neutral" });
+  const out: { text: string; tone: "info" | "positive" | "negative" | "neutral" }[] = [{ text: q.sentAt ? `Sent ${agoText(q.sentAt, now)} by text` : "Sent", tone: "info" }];
+  out.push(q.firstViewedAt ? { text: `Opened ${agoText(q.firstViewedAt, now)}, not approved`, tone: "info" } : { text: "Not opened yet", tone: "neutral" });
   if (q.expiresAt) {
     const left = new Date(q.expiresAt).getTime() - now.getTime();
     if (left > 0 && left < 36 * 3_600_000) out.push({ text: "Expires soon", tone: "negative" });

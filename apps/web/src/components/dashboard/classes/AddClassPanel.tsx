@@ -9,8 +9,15 @@ import { Select } from "@/components/ui/Select";
 import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
-import { startsAtFrom, todayOf } from "@/lib/dashboard/classes";
+import { addDays, startsAtFrom, todayOf } from "@/lib/dashboard/classes";
+import { useApi } from "@/lib/dashboard/useApi";
+import { cn } from "@/lib/cn";
 import { useAction } from "@/lib/dashboard/useApi";
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dowOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
+/** First date on or after `date` that falls on weekday `dow`. */
+const onOrAfter = (date: string, dow: number) => addDays(date, (dow - dowOf(date) + 7) % 7);
 
 const NEW = "__new";
 
@@ -27,6 +34,11 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
   const [date, setDate] = useState(defaultDate ?? todayOf());
   const [time, setTime] = useState("18:30");
   const [instructor, setInstructor] = useState("");
+  const [instructorId, setInstructorId] = useState("");
+  const [spots, setSpots] = useState("");
+  const [dows, setDows] = useState<number[]>([]);
+  const team = useApi(() => api.team(), [api]);
+  const teachers = (team.data?.items ?? []).filter((s) => s.role === "instructor");
   const [weeks, setWeeks] = useState("1");
   useEffect(() => {
     // Reset the form each time the panel opens.
@@ -59,7 +71,21 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
                   const t = await api.classes.createType({ name: name.trim(), durationMin: Number(duration) || 60, capacity: Number(capacity) || 16, womenOnly: women });
                   id = t.id;
                 }
-                return api.classes.createSessions({ classTypeId: id, startsAt: startsAtFrom(date, time), instructorName: instructor.trim() || null, repeatWeeks: Number(weeks) || 1 });
+                // Several weekdays at one time ("Mon Wed Fri 6:30"): one entry per day, each repeated weekly.
+                const days = dows.length ? [...dows].sort().map((d) => onOrAfter(date, d)) : [date];
+                const items: classesApi.ClassSessionDto[] = [];
+                for (const day of days) {
+                  const res = await api.classes.createSessions({
+                    classTypeId: id,
+                    startsAt: startsAtFrom(day, time),
+                    instructorName: instructor.trim() || null,
+                    ...(instructorId ? { instructorUserId: instructorId } : {}),
+                    ...(Number(spots) > 0 ? { capacity: Number(spots) } : {}),
+                    repeatWeeks: Number(weeks) || 1,
+                  });
+                  items.push(...res.items);
+                }
+                return { items };
               });
               if (r) {
                 toast({ message: r.items.length > 1 ? `${r.items.length} classes added` : "Class added", tone: "success" });
@@ -98,7 +124,20 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
           <TextField label="Day" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <TextField label="Start time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-meta-strong text-fg">Also on these days <span className="font-normal text-fg-muted">(optional)</span></p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Also on these days">
+            {WEEKDAYS.map((w, i) => (
+              <button key={w} type="button" aria-pressed={dows.includes(i)} onClick={() => setDows((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))} className={cn("min-h-10 min-w-12 rounded-input border px-3 text-meta-strong focus-visible:focus-ring", dows.includes(i) ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>{w}</button>
+            ))}
+          </div>
+          <p className="text-meta text-fg-muted">{dows.length ? "Each chosen day is added at this time and repeats weekly." : "Leave empty to add only the day above."}</p>
+        </div>
+        {teachers.length ? (
+          <Select label="Instructor login" value={instructorId} onChange={(e) => { setInstructorId(e.target.value); const t = teachers.find((x) => x.userId === e.target.value); if (t) setInstructor(t.name ?? ""); }} options={[{ value: "", label: "No login (just a name)" }, ...teachers.map((t) => ({ value: t.userId, label: t.name ?? t.email ?? "Instructor" }))]} />
+        ) : null}
         <TextField label="Instructor" optionalLabel value={instructor} onChange={(e) => setInstructor(e.target.value)} />
+        {!making ? <TextField label="Spots for this class" optionalLabel type="number" min={1} max={200} value={spots} onChange={(e) => setSpots(e.target.value)} hint={chosen ? `Leave empty for ${chosen.capacity}.` : undefined} /> : null}
         <TextField label="Repeat for this many weeks" type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(e.target.value)} hint="1 adds just this class." />
       </div>
     </SidePanel>

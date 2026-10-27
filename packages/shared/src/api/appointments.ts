@@ -152,7 +152,7 @@ export interface BookableStaffDto {
   userId: string;
   name: string;
   initials: string;
-  role: "owner" | "manager" | "staff";
+  role: "owner" | "manager" | "staff" | "instructor";
   hours: StaffHoursDto[];
   timeOff: TimeOffDto[];
   services: StaffServiceDto[];
@@ -183,11 +183,28 @@ export interface AppointmentCustomerDto {
   language: "en" | "hi" | "ur" | "pa";
 }
 
+/** The dog (or cat) a groom is for, as the calendar card shows it. The handling note is the shop's own note; only the shop's team sees it. */
+export interface AppointmentPetDto {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  sizeBand: string;
+  coat: string;
+  handlingNote: string | null;
+  /** The worst vaccine state: current | expiring | expired | none (none recorded). */
+  vaccines: "current" | "expiring" | "expired" | "none";
+  /** Cadence the shop uses for this pet, in weeks (for the "next groom" step at checkout). */
+  groomEveryWeeks: number;
+}
+
 export interface AppointmentDto {
   id: string;
   merchantId: string;
   locationId: string;
   customer: AppointmentCustomerDto;
+  /** The pet this visit is for, when one was picked (pet shops). */
+  pet?: AppointmentPetDto | null;
   staffId: string | null;
   staffName: string | null;
   requestedStaff: boolean;
@@ -254,12 +271,14 @@ export const createAppointmentBody = z
     notes: z.string().trim().max(1000).nullish(),
     clientNote: z.string().trim().max(1000).nullish(),
     groupId: uuidSchema.nullish(),
+    /** The pet this visit is for. With no customer given, the pet's owner is the customer. */
+    petId: uuidSchema.nullish(),
     /** Managers may book outside a person's working hours. */
     force: z.boolean().default(false),
   })
   .refine((b) => b.serviceIds.length + b.items.length > 0, { message: "Pick at least one service", path: ["serviceIds"] })
   .refine((b) => b.source === "walk_in" || !!b.startsAt, { message: "Pick a start time", path: ["startsAt"] })
-  .refine((b) => b.source === "walk_in" || !!b.customer || b.items.some((i) => i.serviceId === null), { message: "Add the client's name or phone", path: ["customer"] });
+  .refine((b) => b.source === "walk_in" || !!b.customer || !!b.petId || b.items.some((i) => i.serviceId === null), { message: "Add the client's name or phone", path: ["customer"] });
 export type CreateAppointmentBody = z.input<typeof createAppointmentBody>;
 
 export const updateAppointmentBody = z
@@ -271,6 +290,7 @@ export const updateAppointmentBody = z
     items: z.array(appointmentItemSchema).min(1).max(20).optional(),
     notes: z.string().trim().max(1000).nullable().optional(),
     clientNote: z.string().trim().max(1000).nullable().optional(),
+    petId: uuidSchema.nullable().optional(),
     /** Moving a client who asked for a stylist by name to someone else needs this. */
     confirmStaffChange: z.boolean().default(false),
     force: z.boolean().default(false),
@@ -298,6 +318,8 @@ export const checkoutBody = z.object({
     mode: z.enum(["link", "counter"]),
     counterMethod: z.enum(COUNTER_METHODS).default("card_terminal"),
     note: z.string().trim().max(300).nullish(),
+    /** A groom: weeks until the next one (sets the dog's cadence). Omit to keep the current cadence. */
+    nextGroomWeeks: z.number().int().min(1).max(26).nullish(),
     /** A walk-in with no client on file: add a phone to check out (and earn points). */
     customer: appointmentCustomerBody.optional(),
 });
@@ -324,6 +346,8 @@ export interface CheckoutResponse {
   invoice: CheckoutInvoiceDto;
   /** Pay link texted to the customer (mode link). */
   payUrl: string | null;
+  /** A groom for a pet was logged: the dog's cadence and when the next one is due. */
+  pet?: { id: string; name: string; groomEveryWeeks: number; nextDueOn: string; logged: boolean } | null;
 }
 
 export interface StatusResponse {
@@ -352,6 +376,8 @@ export interface AppointmentSettingsDto {
   tipPresets: number[];
   /** `applies` only when the shop is registered for GST/HST (checkout then adds `name` on taxable services). */
   tax: { applies: boolean; name: string };
+  /** registered: tax is added; small: a small supplier charges none; unset: the owner has not answered, so none is added yet. */
+  taxStatus: "registered" | "small" | "unset";
 }
 
 // ---------------------------------------------------------------------------
@@ -408,7 +434,7 @@ export interface PublicBookingPolicyDto {
   takesCards: boolean;
 }
 export interface PublicServicesResponse {
-  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; pharmacy?: boolean };
+  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; vertical?: string; pharmacy?: boolean };
   /** `applies` only when the shop is registered for GST/HST; `name` is what to call it ("HST"). */
   tax: { applies: boolean; name: string };
   policy: PublicBookingPolicyDto;
@@ -425,6 +451,10 @@ export const createMyAppointmentBody = z.object({
   /** A bridal party shares one group. */
   groupId: uuidSchema.nullish(),
   locationId: uuidSchema.optional(),
+  /** First name, when the account has none yet: the shop sees it on the calendar instead of "Walk-in". */
+  customerName: z.string().trim().min(1).max(60).nullish(),
+  /** One of the customer's own pets (pet shops). */
+  petId: uuidSchema.nullish(),
 });
 export type CreateMyAppointmentBody = z.input<typeof createMyAppointmentBody>;
 
@@ -454,6 +484,7 @@ export interface MyAppointmentDto {
   freeChangeUntil: string;
   feeChargedAt: string | null;
   notes: string | null;
+  petName: string | null;
   /**
    * Pharmacies only: the exact reminder text we will text for this booking (no service, no health details), in the customer's
    * language and with the STOP line. The booked screen shows it as "Reminder we will send".

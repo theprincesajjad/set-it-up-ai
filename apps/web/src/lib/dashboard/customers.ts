@@ -74,5 +74,12 @@ export function startOfMonthToronto(now: number = Date.now()): string {
   return new Date(Date.UTC(y, m - 1, 1, 5)).toISOString();
 }
 
+/** "13 / 10" reads as a mistake: with more than one reward earned it is "1 reward + 3" (stamps past the goal). */
+export function stampProgress(balance: number, goal: number): string {
+  if (goal > 0 && balance >= goal * 2) return `${Math.floor(balance / goal)} rewards + ${balance % goal}`;
+  if (goal > 0 && balance > goal) return `1 reward + ${balance - goal}`;
+  return `${balance} / ${goal}`;
+}
+
 /** "Weekdays 8 am" is shown as is; the panel says "Weekdays around 8 am". */
-export const usuallyAround = (usually: string | null | undefined) => (usually ? usually.replace(/^(Weekdays|Weekends) /, "$1 around ") : null);
+export const usuallyAround = (usually: string | null | undefined) => (usually ? (usually.includes(" to ") ? usually : usually.replace(/^(Weekdays|Weekends) /, "$1 around ")) : null);

@@ -7,7 +7,7 @@
  * door or key information. A groom report card is also the "last groom" the cadence counts from.
  */
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import { appointments, merchantMembers, merchants as merchantsTable, messageDeliveries, petNudges, petSettings, petShop, petVaccines, petVisits, pets, users } from "@ll/db";
+import { appointments, foodPrograms, merchantMembers, merchants as merchantsTable, messageDeliveries, petNudges, petSettings, petShop, petVaccines, petVisits, pets, users } from "@ll/db";
 import {
   GROOM_WEEKS_MAX,
   MAX_PETS_PER_OWNER,
@@ -19,6 +19,7 @@ import {
   translator,
   vaccineStatus,
   petApi,
+  type appointmentsApi,
   type Locale,
 } from "@ll/shared";
 import type { z } from "zod";
@@ -313,6 +314,30 @@ export async function logVisit(ctx: AppContext, merchant: Merchant, pet: PetRow,
   return row!;
 }
 
+/**
+ * Checkout of a groom with a pet on it: logs the groom (the dog's last groom and next due move), and when the groomer picked "next groom in N weeks"
+ * saves that as the dog's cadence at this shop. A groom already logged today for this dog (a report card sent earlier) is not logged twice.
+ */
+export async function logGroomFromCheckout(ctx: AppContext, staff: StaffContext, a: { petId: string | null; startsAt: Date }, nextWeeks: number | null): Promise<NonNullable<appointmentsApi.CheckoutResponse["pet"]> | null> {
+  const merchant = staff.merchant;
+  const [pet] = await ctx.db.select().from(pets).where(eq(pets.id, a.petId!)).limit(1);
+  if (!pet) return null;
+  const since = new Date(a.startsAt.getTime() - 12 * 3_600_000);
+  const [dupe] = await ctx.db.select({ id: petVisits.id }).from(petVisits).where(and(eq(petVisits.merchantId, merchant.id), eq(petVisits.petId, pet.id), eq(petVisits.kind, "groom"), gte(petVisits.at, since))).limit(1);
+  if (!dupe) await logVisit(ctx, merchant, pet, { kind: "groom", createdBy: staff.user.id });
+  const now = ctx.now();
+  if (nextWeeks) {
+    if (nextWeeks < 1 || nextWeeks > GROOM_WEEKS_MAX) throw badRequest("Cadence is 1 to 26 weeks.");
+    await ctx.db
+      .insert(petShop)
+      .values({ merchantId: merchant.id, petId: pet.id, groomEveryWeeks: nextWeeks, updatedAt: now })
+      .onConflictDoUpdate({ target: [petShop.merchantId, petShop.petId], set: { groomEveryWeeks: nextWeeks, updatedAt: now } });
+  }
+  const [shop] = await ctx.db.select({ w: petShop.groomEveryWeeks }).from(petShop).where(and(eq(petShop.merchantId, merchant.id), eq(petShop.petId, pet.id))).limit(1);
+  const weeks = shop?.w ?? defaultGroomWeeks(pet.coat);
+  return { id: pet.id, name: pet.name, groomEveryWeeks: weeks, nextDueOn: groomDueOn(localDate(now, merchant.timezone), weeks), logged: !dupe };
+}
+
 const firstName = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "";
 
 export function reportText(ctx: AppContext, merchant: Pick<Merchant, "name">, pet: { name: string }, locale: Locale, v: { mood: string | null; did: string[]; note: string | null }, url: string): { title: string; body: string } {
@@ -411,6 +436,16 @@ const settingsDto = (r: typeof petSettings.$inferSelect | undefined): petApi.Pet
 export async function getPetSettings(ctx: AppContext, merchantId: string): Promise<petApi.PetSettingsDto> {
   const [r] = await ctx.db.select().from(petSettings).where(eq(petSettings.merchantId, merchantId)).limit(1);
   return settingsDto(r);
+}
+
+/** What a pet shop's public page can promise: the food card deal (when it sells food cards) and the daycare packs (when it runs daycare). */
+export async function publicPetInfo(ctx: AppContext, merchant: Merchant): Promise<petApi.PublicPetInfoResponse> {
+  const food = (await isFeatureOn(ctx.db, merchant, "pets.food_cards"))
+    ? (await ctx.db.select({ brand: foodPrograms.brand, buyCount: foodPrograms.buyCount }).from(foodPrograms).where(and(eq(foodPrograms.merchantId, merchant.id), eq(foodPrograms.active, true))).orderBy(asc(foodPrograms.createdAt)))
+    : [];
+  const daycare = await isFeatureOn(ctx.db, merchant, "pets.daycare");
+  const st = daycare ? await getPetSettings(ctx, merchant.id) : null;
+  return { food, packs: st ? st.packs.map((p) => ({ days: p.days, priceCents: p.priceCents })) : [], dropInCents: st ? st.dropInCents : null };
 }
 
 export async function savePetSettings(ctx: AppContext, merchantId: string, body: z.output<typeof petApi.petSettingsBody>): Promise<petApi.PetSettingsDto> {

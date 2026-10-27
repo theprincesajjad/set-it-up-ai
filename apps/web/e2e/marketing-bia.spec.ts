@@ -146,10 +146,13 @@ test.describe("pricing", () => {
     const color = (l: typeof plus) => l.evaluate((e) => getComputedStyle(e).color);
     expect(await color(plus)).toBe(await color(free));
     expect(await color(pro)).toBe(await color(free));
-    // The seed has no paid feature out of "hidden", so the plans are pilot-only: the badge says so.
+    // Trade tools self-serve: both paid plans can be bought today, so no pilot badge and a working Start button on each.
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
-    const badges = page.locator("#shops").getByText("Pilot shops now");
-    await expect(badges).toHaveCount(plans.filter((p) => p.id !== "free" && !p.available).length);
+    expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
+    await expect(page.locator("#shops").getByText("Pilot shops now")).toHaveCount(0);
+    await expect(page.locator("#shops").getByRole("link", { name: "Start Café & Retail" })).toHaveAttribute("href", "/signup?plan=plus");
+    await expect(page.locator("#shops").getByRole("link", { name: "Start Service" })).toHaveAttribute("href", "/signup?plan=pro");
+    await expect(page.locator("#trades")).toContainText("Pharmacies");
     await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
     await page.goto("/pricing?compare=1");
     await expect(page.getByTestId("compare")).toHaveAttribute("open", "");

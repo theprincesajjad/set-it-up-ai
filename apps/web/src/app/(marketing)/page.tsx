@@ -9,6 +9,7 @@ import { LiveProof } from "@/components/marketing/LiveProof";
 import { JoinScreen, MapScreen, PhoneFrame, ToastMock, WalletScreen } from "@/components/marketing/Mocks";
 import { RestaurantBand } from "@/components/marketing/RestaurantBand";
 import { MHeading, MSection } from "@/components/marketing/Section";
+import { TradeStories } from "@/components/marketing/TradeStories";
 import { VerticalTemplates } from "@/components/marketing/VerticalTemplates";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -18,7 +19,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: { absolute: `${BRAND.name}: free loyalty for independent shops` },
-  description: "Free forever, no fee on loyalty. Unlimited locations. A loyalty program for your shop, shared with every shop on your block. We set it up in 20 minutes.",
+  description: "Free forever, no fee on loyalty. Unlimited locations. A loyalty program for your shop, shared with every shop on your block. Sign up and give your first stamp in about 5 minutes.",
   alternates: { canonical: "/" },
 };
 
@@ -44,7 +45,7 @@ export default function Home() {
                 Get started free
               </Button>
               <Button size="lg" variant="secondary" href="#book" className="rounded-full!">
-                Book a 20-minute visit
+                Prefer a hand? Book a visit
               </Button>
             </div>
             <p className="mt-5 text-meta text-fg-muted">{L.heroTrust}</p>
@@ -119,6 +120,8 @@ export default function Home() {
         <MHeading eyebrow={L.verticals.eyebrow} title={L.verticals.title} sub={L.verticals.sub} />
         <VerticalTemplates />
       </MSection>
+
+      <TradeStories />
 
       {/* 7. Restaurant band: the paying wedge. */}
       <RestaurantBand />

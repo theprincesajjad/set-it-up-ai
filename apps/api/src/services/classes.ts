@@ -16,12 +16,12 @@
  *  - Booking is serialised per class (the class row is locked), so the last spot is never sold twice.
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
-import { classBookings, classCharges, classMemberships, classPasses, classProducts, classSessions, classSettings, classTypes, locations, loyaltyPrograms, merchantMembers, merchants, users, type DbOrTx } from "@ll/db";
+import { classBookings, classCharges, classMemberships, classPasses, classProducts, classSessions, classSettings, classTypes, locations, loyaltyPrograms, merchantMembers, merchantStaff, merchants, rewards, users, type DbOrTx } from "@ll/db";
 import { classesApi, normalizeLocale, normalizePhone, salesTaxBps, salesTaxCopy, translator, type Locale, LOCALES } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
-import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, forbidden, notFound } from "../lib/errors.js";
 import { getPayments } from "../providers/payments.js";
 import { iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
@@ -62,6 +62,8 @@ export const DEFAULT_SETTINGS: classesApi.ClassSettingsDto = {
   renewalNoticeDays: 60,
   termsNote: null,
   awardOnCheckIn: true,
+  milestoneClasses: null,
+  milestoneRewardName: null,
 };
 
 export async function getSettings(db: DbOrTx, merchantId: string): Promise<classesApi.ClassSettingsDto> {
@@ -76,17 +78,44 @@ export async function getSettings(db: DbOrTx, merchantId: string): Promise<class
     renewalNoticeDays: r.renewalNoticeDays,
     termsNote: r.termsNote,
     awardOnCheckIn: r.awardOnCheckIn,
+    milestoneClasses: r.milestoneClasses,
+    milestoneRewardName: r.milestoneRewardName,
   };
 }
 
 export async function putSettings(ctx: AppContext, merchantId: string, body: z.output<typeof classesApi.classSettingsBody>): Promise<classesApi.ClassSettingsDto> {
   const cur = await getSettings(ctx.db, merchantId);
   const next = { ...cur, ...Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined)) } as classesApi.ClassSettingsDto;
+  if (next.milestoneClasses && !next.milestoneRewardName) next.milestoneRewardName = "Free guest pass";
+  const milestoneRewardId = await syncMilestoneReward(ctx, merchantId, next);
   await ctx.db
     .insert(classSettings)
-    .values({ merchantId, ...next, createdAt: ctx.now(), updatedAt: ctx.now() })
-    .onConflictDoUpdate({ target: classSettings.merchantId, set: { ...next, updatedAt: ctx.now() } });
+    .values({ merchantId, ...next, milestoneRewardId, createdAt: ctx.now(), updatedAt: ctx.now() })
+    .onConflictDoUpdate({ target: classSettings.merchantId, set: { ...next, milestoneRewardId, updatedAt: ctx.now() } });
   return next;
+}
+
+/**
+ * A class-count milestone ("every 10 classes: a free guest pass") is an ordinary loyalty reward priced at
+ * classes x the program's points per visit, so it shows on the member's card and redeems at the counter like any other.
+ * Turning it off retires the reward without deleting what members already earned toward it.
+ */
+async function syncMilestoneReward(ctx: AppContext, merchantId: string, s: classesApi.ClassSettingsDto): Promise<string | null> {
+  const [row] = await ctx.db.select({ id: classSettings.milestoneRewardId }).from(classSettings).where(eq(classSettings.merchantId, merchantId)).limit(1);
+  const existingId = row?.id ?? null;
+  if (!s.milestoneClasses) {
+    if (existingId) await ctx.db.update(rewards).set({ active: false }).where(and(eq(rewards.id, existingId), eq(rewards.merchantId, merchantId)));
+    return existingId;
+  }
+  const [program] = await ctx.db.select({ earnType: loyaltyPrograms.earnType, perVisit: loyaltyPrograms.pointsPerVisit }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchantId)).limit(1);
+  if (!program || program.earnType === "per_dollar" || !program.perVisit) throw conflict("Your rewards program has to give points per visit for a class milestone. Change it on the Rewards page first.");
+  const values = { name: s.milestoneRewardName!, description: `Every ${s.milestoneClasses} classes`, pointsCost: s.milestoneClasses * program.perVisit, rewardType: "free_item" as const, value: 0, active: true };
+  if (existingId) {
+    const [updated] = await ctx.db.update(rewards).set(values).where(and(eq(rewards.id, existingId), eq(rewards.merchantId, merchantId))).returning({ id: rewards.id });
+    if (updated) return updated.id;
+  }
+  const [created] = await ctx.db.insert(rewards).values({ merchantId, ...values, createdAt: ctx.now() }).returning({ id: rewards.id });
+  return created!.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +168,7 @@ async function countsFor(db: DbOrTx, sessionIds: string[], now: Date): Promise<M
 
 const freeCancelUntil = (s: Pick<Session, "startsAt">, windowHours: number) => new Date(s.startsAt.getTime() - windowHours * HOUR);
 
-export async function sessionDtos(ctx: AppContext, rows: Session[], opts: { userId?: string; windowHours?: number } = {}): Promise<classesApi.ClassSessionDto[]> {
+export async function sessionDtos(ctx: AppContext, rows: Session[], opts: { userId?: string; windowHours?: number; withInstructorId?: boolean } = {}): Promise<classesApi.ClassSessionDto[]> {
   const ids = rows.map((r) => r.id);
   const counts = await countsFor(ctx.db, ids, ctx.now());
   let mine = new Map<string, Booking>();
@@ -158,6 +187,8 @@ export async function sessionDtos(ctx: AppContext, rows: Session[], opts: { user
       classTypeId: s.classTypeId,
       name: s.name,
       instructorName: s.instructorName,
+      // The studio's own screens know which login teaches the class; the public page never gets the id.
+      ...(opts.withInstructorId ? { instructorUserId: s.instructorUserId } : {}),
       room: s.room,
       startsAt: s.startsAt.toISOString(),
       endsAt: s.endsAt.toISOString(),
@@ -181,17 +212,17 @@ async function waitlistPosition(db: DbOrTx, b: Booking): Promise<number> {
   return Number(r?.n ?? 0) + 1;
 }
 
-export async function listSessions(ctx: AppContext, merchant: Merchant, q: z.output<typeof classesApi.listSessionsQuery>, userId?: string): Promise<classesApi.SessionsResponse> {
+export async function listSessions(ctx: AppContext, merchant: Merchant, q: z.output<typeof classesApi.listSessionsQuery>, userId?: string, instructorUserId?: string): Promise<classesApi.SessionsResponse> {
   const from = q.from ? new Date(q.from) : new Date(ctx.now().getTime() - 6 * HOUR);
   const to = q.to ? new Date(q.to) : new Date(ctx.now().getTime() + 14 * 24 * HOUR);
   const rows = await ctx.db
     .select()
     .from(classSessions)
-    .where(and(eq(classSessions.merchantId, merchant.id), gte(classSessions.startsAt, from), lte(classSessions.startsAt, to), q.locationId ? eq(classSessions.locationId, q.locationId) : undefined))
+    .where(and(eq(classSessions.merchantId, merchant.id), gte(classSessions.startsAt, from), lte(classSessions.startsAt, to), q.locationId ? eq(classSessions.locationId, q.locationId) : undefined, instructorUserId ? eq(classSessions.instructorUserId, instructorUserId) : undefined))
     .orderBy(asc(classSessions.startsAt), asc(classSessions.id))
     .limit(500);
   const s = await getSettings(ctx.db, merchant.id);
-  return { items: await sessionDtos(ctx, rows, { userId, windowHours: s.cancelWindowHours }) };
+  return { items: await sessionDtos(ctx, rows, { userId, windowHours: s.cancelWindowHours, withInstructorId: !userId }) };
 }
 
 export async function createSessions(ctx: AppContext, merchant: Merchant, body: z.output<typeof classesApi.createSessionBody>): Promise<classesApi.CreateSessionsResponse> {
@@ -203,6 +234,7 @@ export async function createSessions(ctx: AppContext, merchant: Merchant, body: 
   const tz = merchant.timezone;
   const local = localParts(start, tz);
   const seriesId = body.repeatWeeks > 1 ? crypto.randomUUID() : null;
+  const instructor = await resolveInstructor(ctx, merchant.id, body.instructorUserId, body.instructorName);
   const values = Array.from({ length: body.repeatWeeks }, (_, i) => {
     // Repeat on the same wall-clock time, so a class stays at 6:30 PM across the November clock change.
     const startsAt = i === 0 ? start : zonedToUtc(addDays(local.date, 7 * i), local.minutes, tz);
@@ -211,7 +243,8 @@ export async function createSessions(ctx: AppContext, merchant: Merchant, body: 
       locationId: loc.id,
       classTypeId: type.id,
       name: type.name,
-      instructorName: body.instructorName ?? null,
+      instructorName: instructor.name,
+      instructorUserId: instructor.userId,
       room: body.room ?? null,
       startsAt,
       endsAt: new Date(startsAt.getTime() + type.durationMin * MIN),
@@ -228,6 +261,26 @@ export async function createSessions(ctx: AppContext, merchant: Merchant, body: 
   return { items: await sessionDtos(ctx, rows, { windowHours: s.cancelWindowHours }) };
 }
 
+/** A login picked as the instructor gives the class its name too; free text still works for someone without a login. */
+async function resolveInstructor(ctx: AppContext, merchantId: string, userId: string | null | undefined, typedName: string | null | undefined): Promise<{ userId: string | null; name: string | null }> {
+  if (!userId) return { userId: null, name: typedName ?? null };
+  const [row] = await ctx.db
+    .select({ name: users.name, role: merchantStaff.role })
+    .from(merchantStaff)
+    .innerJoin(users, eq(users.id, merchantStaff.userId))
+    .where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, userId)))
+    .limit(1);
+  if (!row) throw badRequest("That person is not on your team");
+  return { userId, name: typedName?.trim() || row.name || null };
+}
+
+/** An Instructor login sees and checks in only the classes it teaches. */
+export async function requireOwnSession(ctx: AppContext, staff: StaffContext, sessionId: string): Promise<void> {
+  if (staff.role !== "instructor") return;
+  const [s] = await ctx.db.select({ id: classSessions.id }).from(classSessions).where(and(eq(classSessions.id, sessionId), eq(classSessions.merchantId, staff.merchant.id), eq(classSessions.instructorUserId, staff.user.id))).limit(1);
+  if (!s) throw forbidden("You can only open the classes you teach");
+}
+
 async function loadSession(db: DbOrTx, merchantId: string, id: string): Promise<Session> {
   const [s] = await db.select().from(classSessions).where(and(eq(classSessions.id, id), eq(classSessions.merchantId, merchantId))).limit(1);
   if (!s) throw notFound("Class");
@@ -239,7 +292,11 @@ export async function updateSession(ctx: AppContext, merchant: Merchant, id: str
   if (cur.status === "cancelled") throw conflict("This class is cancelled");
   const type = cur.classTypeId ? (await ctx.db.select().from(classTypes).where(eq(classTypes.id, cur.classTypeId)).limit(1))[0] : null;
   const set: Partial<typeof classSessions.$inferInsert> = { updatedAt: ctx.now() };
-  if (body.instructorName !== undefined) set.instructorName = body.instructorName ?? null;
+  if (body.instructorUserId !== undefined || body.instructorName !== undefined) {
+    const next = await resolveInstructor(ctx, merchant.id, body.instructorUserId === undefined ? cur.instructorUserId : body.instructorUserId, body.instructorName === undefined ? cur.instructorName : body.instructorName);
+    set.instructorName = next.name;
+    set.instructorUserId = next.userId;
+  }
   if (body.room !== undefined) set.room = body.room ?? null;
   if (body.notes !== undefined) set.notes = body.notes ?? null;
   if (body.womenOnly !== undefined) set.womenOnly = body.womenOnly;
@@ -673,7 +730,11 @@ export async function bookMine(ctx: AppContext, userId: string, body: z.output<t
   if (!merchant || merchant.status === "closed") throw notFound("Studio");
   await requireFeature(ctx.db, merchant, "booking.classes");
   const r = await bookCore(ctx, { userId, merchant, session: s, source: "customer", use: body.use, waitlist: body.waitlist });
-  return { booking: (await myBookingDtos(ctx, [r.booking]))[0]!, payment: r.payment, outcome: r.outcome };
+  // Booking is the first-timer's first visit: they join the studio's loyalty program now, so the wallet is not empty until they attend.
+  await ensureStudioMember(ctx, merchant, userId).catch(() => undefined);
+  // The waitlist books people automatically only if they hold something to use: tell the ones who do not.
+  const waitlistNeedsPass = r.outcome === "waitlisted" ? !(await chooseCredit(ctx, merchant, userId, s)).choice : false;
+  return { booking: (await myBookingDtos(ctx, [r.booking]))[0]!, payment: r.payment, outcome: r.outcome, waitlistNeedsPass };
 }
 
 async function getMyBooking(ctx: AppContext, userId: string, id: string): Promise<Booking> {
@@ -913,6 +974,46 @@ export async function moveWaitlist(ctx: AppContext, merchant: Merchant, bookingI
   return roster(ctx, merchant, b.sessionId);
 }
 
+/**
+ * Staff cancel a booking ("can't come" by text) with the normal credit rule: inside the free window the credit goes back,
+ * after it the class is used up (and the late fee applies). `free` waives that for a good reason.
+ */
+export async function staffCancel(ctx: AppContext, merchant: Merchant, bookingId: string, opts: { free?: boolean } = {}): Promise<classesApi.RosterResponse> {
+  const [b] = await ctx.db.select().from(classBookings).where(and(eq(classBookings.id, bookingId), eq(classBookings.merchantId, merchant.id))).limit(1);
+  if (!b) throw notFound("Booking");
+  if (!["booked", "waitlisted", "held"].includes(b.status)) throw conflict(`This booking is ${b.status.replace("_", " ")}`);
+  const [s] = await ctx.db.select().from(classSessions).where(eq(classSessions.id, b.sessionId)).limit(1);
+  await cancelCore(ctx, merchant, b, s!, { forceFree: !!opts.free });
+  return roster(ctx, merchant, b.sessionId);
+}
+
+/**
+ * "Book in now" on a waitlist row: the person is booked with the first thing they can use (membership or pass). With nothing
+ * to use it says so (409 no_pass) unless the desk books them as a guest. A full class needs `overCapacity`.
+ */
+export async function bookInNow(ctx: AppContext, merchant: Merchant, bookingId: string, opts: { comp?: boolean; overCapacity?: boolean } = {}): Promise<classesApi.RosterResponse> {
+  const [b] = await ctx.db.select().from(classBookings).where(and(eq(classBookings.id, bookingId), eq(classBookings.merchantId, merchant.id), eq(classBookings.status, "waitlisted"))).limit(1);
+  if (!b) throw notFound("Waitlist entry");
+  const s = await loadSession(ctx.db, merchant.id, b.sessionId);
+  if (s.status !== "scheduled") throw conflict("This class was cancelled");
+  const now = ctx.now();
+  await ctx.db.transaction(async (tx) => {
+    const tctx = { ...ctx, db: tx } as unknown as AppContext;
+    await tx.select({ id: classSessions.id }).from(classSessions).where(eq(classSessions.id, s.id)).for("update");
+    if (!opts.overCapacity && (await takenSpots(tx, s.id, now)) >= s.capacity) throw new HttpError(409, "class_full", "The class is full. Cancel someone first, or add above capacity.");
+    if (opts.comp) {
+      await tx.update(classBookings).set({ status: "booked", payWith: "comp", promotedAt: now, updatedAt: now }).where(and(eq(classBookings.id, b.id), eq(classBookings.status, "waitlisted")));
+      return;
+    }
+    const { choice } = await chooseCredit(tctx, merchant, b.userId, s);
+    if (!choice) throw new HttpError(409, "no_pass", "They have no membership or pass. Sell a drop-in first, or book them as a guest.");
+    if (!(await useCredit(tx, choice, now))) throw conflict("That pass has no classes left");
+    await tx.update(classBookings).set({ status: "booked", payWith: choice.payWith, passId: choice.passId, membershipId: choice.membershipId, promotedAt: now, updatedAt: now }).where(and(eq(classBookings.id, b.id), eq(classBookings.status, "waitlisted")));
+  });
+  await notifyOne(ctx, merchant, s, b.userId, "promoted", {}, { sms: true });
+  return roster(ctx, merchant, b.sessionId);
+}
+
 export async function markBooking(ctx: AppContext, merchant: Merchant, bookingId: string, status: "no_show" | "excused"): Promise<classesApi.RosterResponse> {
   const [b] = await ctx.db.select().from(classBookings).where(and(eq(classBookings.id, bookingId), eq(classBookings.merchantId, merchant.id))).limit(1);
   if (!b) throw notFound("Booking");
@@ -933,13 +1034,13 @@ export async function markBooking(ctx: AppContext, merchant: Merchant, bookingId
 }
 
 /** The class a door scan means: the one open now or starting soonest in the next two hours (a late arrival still counts for 20 minutes after the start). */
-async function doorSession(ctx: AppContext, merchantId: string, sessionId?: string, userId?: string): Promise<Session | null> {
+async function doorSession(ctx: AppContext, merchantId: string, sessionId?: string, userId?: string, instructorUserId?: string): Promise<Session | null> {
   if (sessionId) return loadSession(ctx.db, merchantId, sessionId);
   const now = ctx.now();
   const rows = await ctx.db
     .select()
     .from(classSessions)
-    .where(and(eq(classSessions.merchantId, merchantId), eq(classSessions.status, "scheduled"), gt(classSessions.endsAt, now), lte(classSessions.startsAt, new Date(now.getTime() + 2 * HOUR))))
+    .where(and(eq(classSessions.merchantId, merchantId), eq(classSessions.status, "scheduled"), gt(classSessions.endsAt, now), lte(classSessions.startsAt, new Date(now.getTime() + 2 * HOUR)), instructorUserId ? eq(classSessions.instructorUserId, instructorUserId) : undefined))
     .orderBy(asc(classSessions.startsAt));
   if (!rows.length) return null;
   if (userId) {
@@ -950,8 +1051,10 @@ async function doorSession(ctx: AppContext, merchantId: string, sessionId?: stri
   return rows[0]!;
 }
 
-export async function door(ctx: AppContext, merchant: Merchant, sessionId?: string): Promise<classesApi.DoorResponse> {
-  const s = await doorSession(ctx, merchant.id, sessionId);
+export async function door(ctx: AppContext, staff: StaffContext, sessionId?: string): Promise<classesApi.DoorResponse> {
+  const merchant = staff.merchant;
+  if (sessionId) await requireOwnSession(ctx, staff, sessionId);
+  const s = await doorSession(ctx, merchant.id, sessionId, undefined, staff.role === "instructor" ? staff.user.id : undefined);
   if (!s) return { session: null, arrivals: [] };
   const st = await getSettings(ctx.db, merchant.id);
   const rows = await ctx.db
@@ -994,6 +1097,7 @@ export async function checkInRow(ctx: AppContext, staff: StaffContext, bookingId
   const [b] = await ctx.db.select().from(classBookings).where(and(eq(classBookings.id, bookingId), eq(classBookings.merchantId, staff.merchant.id))).limit(1);
   if (!b) throw notFound("Booking");
   if (b.status !== "booked" && b.status !== "attended") throw conflict(`This booking is ${b.status.replace("_", " ")}`);
+  await requireOwnSession(ctx, staff, b.sessionId);
   const [s] = await ctx.db.select().from(classSessions).where(eq(classSessions.id, b.sessionId)).limit(1);
   if (b.status === "booked") await attend(ctx, staff, b, s!);
   return roster(ctx, staff.merchant, b.sessionId);
@@ -1005,7 +1109,8 @@ export async function checkIn(ctx: AppContext, staff: StaffContext, body: z.outp
   const who = await resolveUser(ctx, merchant.id, body, false);
   const [u] = await ctx.db.select({ name: users.name, phone: users.phone, memberCode: users.memberCode }).from(users).where(eq(users.id, who.userId)).limit(1);
   const member = { memberId: who.memberId ?? "", name: u?.name ?? null, maskedPhone: maskedPhone(u?.phone ?? null), memberCode: u?.memberCode ?? null };
-  const s = await doorSession(ctx, merchant.id, body.sessionId, who.userId);
+  if (body.sessionId) await requireOwnSession(ctx, staff, body.sessionId);
+  const s = await doorSession(ctx, merchant.id, body.sessionId, who.userId, staff.role === "instructor" ? staff.user.id : undefined);
   const base = { member, pointsEarned: 0, balance: null as number | null, visitsThisMonth: null as number | null, amountDueCents: null as number | null, arrived: 0, booked: 0, pass: null as classesApi.CheckInResponse["pass"] };
   if (!s) return { ...base, outcome: "no_class", message: "There is no class open right now.", session: null };
   const st = await getSettings(ctx.db, merchant.id);

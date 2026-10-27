@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACTIVATION, VERTICALS, allPlaybooks, dueNudge, expectedMembers, nudgeText, paceFor, playbookFor, upsellMoment } from "../src/index.js";
+import { ACTIVATION, VERTICALS, activationFor, allPlaybooks, tradeSetupFor, dueNudge, expectedMembers, nudgeText, paceFor, playbookFor, upsellMoment } from "../src/index.js";
 
 describe("pace", () => {
   it("is a straight line to 25 in 30 days, and 12 by day 14 is on pace", () => {
@@ -25,7 +25,7 @@ describe("playbooks", () => {
       expect(p.tillLine.length).toBeGreaterThan(5);
       expect(p.tips).toHaveLength(3);
     }
-    expect(allPlaybooks().map((p) => p.key).sort()).toEqual(["cafe", "desi", "other", "pharmacy", "repair", "restaurant", "retail", "salon", "tiffin"]);
+    expect(allPlaybooks().map((p) => p.key).sort()).toEqual(["cafe", "desi", "events", "other", "pharmacy", "repair", "restaurant", "retail", "salon", "tiffin"]);
   });
   it("routes the new verticals and falls back for unknown ones", () => {
     expect(playbookFor("restaurant_south_asian").key).toBe("desi");
@@ -111,5 +111,25 @@ describe("nudges", () => {
     }
     expect(nudgeText("nudge_d25", a, "hi").subject).toContain("25");
     expect(nudgeText("nudge_d25", a, "hi").subject).toContain("5");
+  });
+});
+
+describe("trade-aware setup and activation", () => {
+  it("gives slow trades 10 in 60 days and daily trades 25 in 30", () => {
+    expect(activationFor("florist")).toEqual({ target: 10, windowDays: 60, leadingMembers: 5, leadingByDay: 30, slow: true });
+    for (const v of ["retail", "bookstore", "other", "repair_auto", "caterer"]) expect(activationFor(v).slow, v).toBe(true);
+    for (const v of ["cafe", "restaurant", "salon", "fitness", "pharmacy", "grocery"]) expect(activationFor(v), v).toMatchObject({ target: 25, windowDays: 30, slow: false });
+    expect(activationFor("florist", 3).target).toBe(3);
+  });
+  it("names each trade's first setup step", () => {
+    expect(tradeSetupFor("tiffin")).toBe("menu");
+    expect(tradeSetupFor("caterer")).toBe("menu");
+    expect(tradeSetupFor("banquet_hall")).toBe("menu");
+    expect(tradeSetupFor("salon")).toBe("services");
+    expect(tradeSetupFor("repair_electronics")).toBe("services");
+    expect(tradeSetupFor("fitness")).toBe("classes");
+    expect(tradeSetupFor("grocery")).toBe("catalog");
+    expect(tradeSetupFor("cafe")).toBeNull();
+    expect(tradeSetupFor("pharmacy")).toBeNull();
   });
 });

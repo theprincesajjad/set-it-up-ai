@@ -273,6 +273,7 @@ function counterEndpoints(c: ApiClient, b: string, headers?: Record<string, stri
   const h = headers ? { headers } : {};
   return {
     lookup: (q: string) => c.get<staffApi.LookupResponse>(`${b}/counter/lookup`, { query: { q }, ...h }),
+    regulars: () => c.get<staffApi.RegularsResponse>(`${b}/counter/regulars`, { ...h }),
     award: (body: Omit<staffApi.AwardBody, "idempotencyKey">, idempotencyKey: string) =>
       c.post<staffApi.AwardResponse>(`${b}/counter/award`, { ...body, idempotencyKey }, { idempotencyKey, ...h }),
     redeem: (body: Omit<staffApi.RedeemBody, "idempotencyKey">, idempotencyKey: string) =>
@@ -318,6 +319,9 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
+    street: () => c.get<merchantApi.StreetStatusResponse>(`${b}/street`),
+    requestStreet: (name: string) => c.post<merchantApi.StreetStatusResponse>(`${b}/street`, { name }),
+    locateShop: () => c.post<merchantApi.StreetStatusResponse>(`${b}/locate`, {}),
     completeStep: (step: "profile" | "program" | "staff" | "qr_kit" | "pos") =>
       c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/complete`, { step }),
     dismissUpsell: () => c.post<merchantApi.OnboardingChecklist>(`${b}/onboarding/upsell/dismiss`, {}),

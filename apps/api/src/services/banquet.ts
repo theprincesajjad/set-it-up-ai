@@ -180,11 +180,12 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
     const pkg = body.packageName ? hall.packages.find((p) => p.name === body.packageName) : null;
     if (body.packageName && !pkg) throw badRequest(`${hall.name} has no package called "${body.packageName}"`);
     const [clash] = await tx
-      .select({ id: hallBookings.id, status: hallBookings.status })
+      .select({ id: hallBookings.id, status: hallBookings.status, startsAt: hallBookings.startsAt, endsAt: hallBookings.endsAt })
       .from(hallBookings)
       .where(and(eq(hallBookings.hallId, hall.id), blocking(now), lt(hallBookings.startsAt, endsAt), gt(hallBookings.endsAt, startsAt)))
+      .orderBy(asc(hallBookings.startsAt))
       .limit(1);
-    if (clash) throw conflict(`${hall.name} is already ${clash.status === "confirmed" ? "booked" : "on hold"} for part of that time`);
+    if (clash) throw conflict(await clashMessage(tx, merchant, hall, clash, endsAt.getTime() - startsAt.getTime(), now));
     let event: typeof cateringEvents.$inferSelect | undefined;
     if (body.cateringEventId) {
       [event] = await tx.select().from(cateringEvents).where(and(eq(cateringEvents.id, body.cateringEventId), eq(cateringEvents.merchantId, merchant.id))).limit(1);
@@ -238,6 +239,26 @@ export async function createHold(ctx: AppContext, merchant: Merchant, userId: st
     data: { type: "hall_hold", hallBookingId: booking.b.id },
   });
   return { booking: bookingDto(booking.b, booking.hallName, booking.refundPolicy), deposit: await depositPayment(ctx, merchant, booking.b) };
+}
+
+/**
+ * "Noor Hall is already booked Sat, Nov 14, 6:00 pm to 11:00 pm", plus the nearest times that are free for an event as long as
+ * the one asked for: right after the clash (past any back-to-back bookings), and ending when the clash starts if that is open.
+ */
+async function clashMessage(db: DbOrTx, merchant: Merchant, hall: Hall, clash: { status: string; startsAt: Date; endsAt: Date }, durationMs: number, now: Date): Promise<string> {
+  const tz = merchant.timezone || "America/Toronto";
+  const overlapping = async (from: Date, to: Date) => db.select({ endsAt: hallBookings.endsAt }).from(hallBookings).where(and(eq(hallBookings.hallId, hall.id), blocking(now), lt(hallBookings.startsAt, to), gt(hallBookings.endsAt, from)));
+  let next = clash.endsAt;
+  for (let i = 0; i < 8; i++) {
+    const rows = await overlapping(next, new Date(next.getTime() + durationMs));
+    if (!rows.length) break;
+    next = new Date(Math.max(...rows.map((r) => r.endsAt.getTime())));
+  }
+  const beforeStart = new Date(clash.startsAt.getTime() - durationMs);
+  const beforeOpen = beforeStart > now && !(await overlapping(beforeStart, clash.startsAt)).length;
+  const what = `${hall.name} is already ${clash.status === "confirmed" ? "booked" : "on hold"} from ${formatLocalDateTime(clash.startsAt, tz)} to ${formatLocalDateTime(clash.endsAt, tz)}`;
+  const free = [`from ${formatLocalDateTime(next, tz)}`, ...(beforeOpen ? [`or an event that ends by ${formatLocalDateTime(clash.startsAt, tz)}, starting ${formatLocalDateTime(beforeStart, tz)}`] : [])];
+  return `${what}; nearest free time for this length: ${free.join(", ")}`.replace(/\.$/, "") + ".";
 }
 
 /** The schedule rows always add up to the booking total to the cent (the last row takes any rounding left over). */

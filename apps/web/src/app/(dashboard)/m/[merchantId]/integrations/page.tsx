@@ -5,7 +5,6 @@ import { useState } from "react";
 import { PLANS, type integrationsApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
-import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { PageHeader, Section, SkeletonRows, StatusDot, ToolbarButton } from "@/components/dashboard/kit";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -122,9 +121,9 @@ export default function IntegrationsPage() {
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-fg-muted">
                   <span className="text-fg">POS auto-award, Mailchimp, Zapier and webhooks</span>
                   <span aria-hidden>·</span>
-                  <span>coming with {PLANS.plus.name}</span>
+                  <span>part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month</span>
                   <span aria-hidden>·</span>
-                  <NotifyLink keys={["integrations.pos_auto_award", "integrations.webhooks"]} />
+                  <a href={`${base}/billing`} className="text-fg underline underline-offset-4">Subscribe</a>
                 </p>
               ) : null}
             </>

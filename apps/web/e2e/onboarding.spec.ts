@@ -46,11 +46,15 @@ test("signup is one screen and lands on the first stamp; the stamp shows up by i
   await expect(page.getByRole("heading", { level: 1 })).toContainText("get your shop on the street");
   await expect(page.getByRole("radio", { name: "Tiffin kitchen" })).toBeVisible();
   await expect(page.getByRole("radio", { name: "South Asian restaurant" })).toBeVisible();
+  // Gym / studio, pet shops, caterers and banquet halls are first-class choices, not hidden under "More types".
+  for (const t of ["Gym or studio", "Pet shop or groomer", "Caterer", "Banquet hall", "Grocer or butcher", "Auto care"]) await expect(page.getByRole("radio", { name: t })).toBeVisible();
   // Old fields are gone: nothing here is needed to give the first stamp.
   await expect(page.getByLabel(/Postal code/)).toHaveCount(0);
   await expect(page.getByLabel(/Shop email/)).toHaveCount(0);
   await page.getByLabel("Shop name").fill(`Sunrise Bakery ${rand()}`);
-  await page.getByLabel("Your name").fill("Priya Shah");
+  // Your name is not asked at signup any more (Settings, later).
+  await expect(page.getByLabel("Your name")).toHaveCount(0);
+  await expect(page.getByLabel("Neighbourhood")).toHaveCount(0);
   await page.getByRole("radio", { name: "Bakery" }).click();
   await expect(page.getByText(/We start you on: 1 stamp per visit/)).toBeVisible();
   await page.getByLabel(/Your mobile number/).fill("4165550134");
@@ -58,7 +62,7 @@ test("signup is one screen and lands on the first stamp; the stamp shows up by i
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("onboarding-e2e-1");
   await page.screenshot({ path: shot("01-signup"), fullPage: true });
-  await page.getByRole("button", { name: "Create my shop and give my first stamp" }).click();
+  await page.getByRole("button", { name: "Create my shop" }).click();
 
   await page.waitForURL(/\/m\/[^/]+\/setup\?step=first_stamp/);
   const id = new URL(page.url()).pathname.split("/")[2]!;

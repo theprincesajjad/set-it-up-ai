@@ -17,7 +17,7 @@ describe("withLang", () => {
 describe("CASL consent wording", () => {
   it("names the shop and says it is optional and how to stop, in every language", () => {
     for (const l of LOCALE_CODES) {
-      const text = t(l, "auth.consent.merchant", { shop: "Sarson Dhaba" });
+      const text = t(l, "auth.consent.merchant", { shop: "Sarson Dhaba", unit: "stamps" });
       expect(text, l).toContain("Sarson Dhaba");
       // The English line is text only, optional, unticked, and says how to stop: every language must say the same.
       expect(text, l).toContain("STOP");

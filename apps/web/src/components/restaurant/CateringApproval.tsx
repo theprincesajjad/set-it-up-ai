@@ -55,7 +55,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
     setError(null);
     try {
       const r = await api.catering.approve(token, name.trim(), payWith === "etransfer" && pay.etransfer ? "etransfer" : "card");
-      setData((d) => ({ ...d, event: r.event, canApprove: false, depositDue: r.event.status === "quoted" && r.event.depositCents > 0 && !r.event.depositPaidAt }));
+      setData((d) => ({ ...d, event: { ...r.event, tax: r.event.tax ?? d.event.tax }, canApprove: false, depositDue: r.event.status === "quoted" && r.event.depositCents > 0 && !r.event.depositPaidAt }));
       setManual(r.manual);
       if (r.deposit?.clientSecret) {
         setPayment({ paymentIntentId: r.deposit.paymentIntentId, clientSecret: r.deposit.clientSecret, amountCents: r.deposit.amountCents });
@@ -248,7 +248,7 @@ function PayWith({ pay, value, onChange, shop }: { pay: { card: boolean; etransf
   if (!pay.card) return null;
   const opts = [
     { v: "card" as const, title: t("tcb.q.payCard"), body: t("tcb.q.payCardBody") },
-    { v: "etransfer" as const, title: t("tcb.q.payEt"), body: t("tcb.pay.etransferBody", { shop }) },
+    { v: "etransfer" as const, title: t("tcb.q.payEt"), body: t("tcb2.q.etHold", { shop }) },
   ];
   return (
     <div role="radiogroup" aria-label={t("rc.ca.depositDue", { pct: "" }).trim()} className="flex flex-col gap-3">

@@ -45,12 +45,14 @@ function Payouts() {
       />
       <StatBlock
         label="Payout totals"
+        cols={mine ? 4 : 5}
         loading={!d}
         items={[
           { label: "Services", value: money(d?.totals.servicesCents ?? 0), caption: `from ${d?.totals.visits ?? 0} visits` },
           { label: "Tips", value: money(d?.totals.tipsCents ?? 0), caption: "to the barber they were left for" },
           { label: mine ? "Shop keeps" : "Shop keeps", value: money(d?.totals.shopKeepsCents ?? 0), caption: "commission and employee services" },
           { label: "Rent due", value: money(d?.totals.rentCents ?? 0), caption: `${d?.rows.filter((r) => r.model === "chair_rent").length ?? 0} renters` },
+          ...(mine ? [] : [{ label: "Shop income", value: money((d?.totals.shopKeepsCents ?? 0) + (d?.totals.rentCents ?? 0)), caption: "what the shop keeps plus rent" }]),
         ]}
       />
       <Async state={state} skeleton={<SkeletonRows rows={4} />}>
@@ -100,7 +102,7 @@ function Payouts() {
         </div>
         <div className="rounded-card border border-line px-5 py-4">
           <p className="text-meta-strong text-fg">How each number is made</p>
-          <p className="mt-1 text-meta text-fg-muted">Services are paid visits before tax and tip. Tips go to the barber they were left for, cash tips as recorded at the counter. Shop keeps is the commission share. Rent is the weekly amount, shown and not collected. Takes home is services minus what the shop keeps and rent, plus tips. An employee&apos;s wage is outside the app, so they take home their tips.</p>
+          <p className="mt-1 text-meta text-fg-muted">Services are paid visits before tax and tip. Tips go to the barber they were left for, cash tips as recorded at the counter. Shop keeps is the commission share. Rent is the weekly amount, shown and not collected. Takes home is services minus what the shop keeps and rent, plus tips. Rent is spread over the days shown, so early in the week it can show below zero until the cuts catch up. A free cut earned on the shop card is a discount on that visit, so it comes off the barber&apos;s services unless the shop covers it: tell chair renters before you put a shop-wide card on the stand. An employee&apos;s wage is outside the app, so they take home their tips.</p>
         </div>
       </div>
     </div>

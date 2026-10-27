@@ -45,7 +45,7 @@ export default function CalendarPage() {
   );
 }
 
-type Sheet = null | { kind: "new"; defaults: { date: string; minutes: number; staffId: string | null } } | { kind: "walkin" } | { kind: "checkout" };
+type Sheet = null | { kind: "new"; defaults: { date: string; minutes: number; staffId: string | null; petId?: string | null } } | { kind: "walkin" } | { kind: "checkout" };
 type Ask = null | { kind: "staff" | "hours"; move: MoveRequest; message?: string };
 
 function Calendar() {
@@ -76,6 +76,9 @@ function Calendar() {
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d);
     // ?appt=<id>&checkout=1 opens a visit and its checkout (the walk-in line's Done button links here).
     const q = new URLSearchParams(globalThis.location.search);
+    // ?newFor=<petId>: the pet page's "Book groom" opens a new appointment for that dog.
+    const nf = q.get("newFor");
+    if (nf) setSheet({ kind: "new", defaults: { date: d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayOf(), minutes: 10 * 60, staffId: null, petId: nf } });
     const a = q.get("appt");
     if (a) {
       setSelectedId(a);
@@ -98,7 +101,6 @@ function Calendar() {
     if (pendingCheckout.current && selectedId === pendingCheckout.current && items.some((i) => i.id === selectedId)) {
       pendingCheckout.current = null;
       // One-time: the deep link asked for this visit's checkout and it has now loaded.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSheet({ kind: "checkout" });
     }
   }, [selectedId, items]);
@@ -117,13 +119,13 @@ function Calendar() {
   // Open the chair that is in service (or the next one up) on first load, like the design.
   const [primed, setPrimed] = useState(false);
   useEffect(() => {
-    if (primed || !desktop || !items.length || date !== today) return;
+    if (primed || selectedId || !desktop || !items.length || date !== today) return;
     const pick = items.find((a) => a.status === "in_service") ?? items.find((a) => a.status === "arrived" || a.status === "booked");
     // One-time default selection once the day has loaded.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (pick) setSelectedId(pick.id);
     setPrimed(true);
-  }, [items, primed, desktop, date, today]);
+  }, [items, primed, selectedId, desktop, date, today]);
 
   const step = view === "week" ? 7 : 1;
   const go = useCallback((n: number) => setDate((d) => addDays(d, n * step)), [step]);
@@ -200,7 +202,7 @@ function Calendar() {
   const mobileCol = Math.min(mobileIdx, mobileMax);
   const sheetOpen = !!selected;
   const panel = selected ? (
-    <AppointmentSheet key={selected.id} appt={selected} staff={staff} onChanged={refresh} onCheckout={() => setSheet({ kind: "checkout" })} />
+    <AppointmentSheet key={selected.id} appt={selected} staff={staff} onChanged={refresh} onCheckout={() => setSheet({ kind: "checkout" })} taxStatus={settings.data?.taxStatus} />
   ) : null;
 
   return (
@@ -267,7 +269,7 @@ function Calendar() {
         onClose={() => setSheet(null)}
         staff={staff}
         services={services}
-        defaults={sheet?.kind === "new" ? sheet.defaults : { date, minutes: 10 * 60, staffId: null }}
+        defaults={sheet?.kind === "new" ? sheet.defaults : { date, minutes: 10 * 60, staffId: null, petId: null }}
         onCreated={async (a) => {
           setSelectedId(a.id);
           await refresh();

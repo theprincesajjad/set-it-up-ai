@@ -89,6 +89,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return out(await svc.voidEventPayment(ctx, staff, req.params.eventId, parse(paymentsManualApi.voidPaymentBody, req.body)));
   });
 
+  /** Remind the customer about the deposit (quote signed) or the balance (event confirmed). */
+  app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/remind", async (req) => {
+    const staff = await staffFor(req);
+    return out(await svc.remindNow(ctx, staff, req.params.eventId));
+  });
+
   app.post<{ Params: EventParams }>("/merchants/:merchantId/catering/:eventId/invoice", async (req, reply) => {
     const staff = await staffFor(req);
     return reply.status(201).send(await svc.convertToInvoice(ctx, staff, req.params.eventId, parse(restaurantApi.cateringInvoiceBody, req.body ?? {})));

@@ -68,7 +68,7 @@ export async function paidMerchant(env: TestEnv, opts: { plan?: PlanId; connect?
   return { ...base, merchant: merchant!, location: location! };
 }
 
-export async function staffMember(env: TestEnv, merchantId: string, role: "staff" | "manager" | "owner" = "staff", permissions: string[] | null = null) {
+export async function staffMember(env: TestEnv, merchantId: string, role: "staff" | "manager" | "owner" | "instructor" = "staff", permissions: string[] | null = null) {
   const user = await createUser(env.db);
   await env.db.insert(merchantStaff).values({ merchantId, userId: user.id, role, permissions });
   return { user, token: await tokenFor(env, user) };

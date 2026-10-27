@@ -21,3 +21,16 @@ describe("pharmacy rules (shared)", () => {
     for (const t of ["Shop our new shotglass collection", "Tissues, vitamins and sunscreen are 2x points", "Seniors Day on Tuesday", "Earn a point for every dollar"]) expect(checkPharmacyText(t).ok, t).toBe(true);
   });
 });
+
+describe("pharmacy text check, wider", () => {
+  it("catches Hindi, Urdu and Punjabi drug wording, health claims, referrals and a flu jab; leaves the front store alone", () => {
+    for (const t of ["दवाई पर 10% छूट", "ادویات پر رعایت", "ਦਵਾਈ ’ਤੇ ਛੋਟ", "Vitamin C boosts immunity", "Refer a friend, get $5", "Get your flu jab today"]) expect(checkPharmacyText(t).ok, t).toBe(false);
+    expect(checkPharmacyText("Vitamin C boosts immunity").kind).toBe("claim");
+    expect(checkPharmacyText("Refer a friend").kind).toBe("referral");
+    for (const t of ["Prefer a bag? Ask at the till", "Sweet treats this week", "Vitamins 2x points"]) expect(checkPharmacyText(t).ok, t).toBe(true);
+  });
+  it("locks copay, insurance, ODB, test strips and Schedule II or III category names", () => {
+    for (const n of ["Insurance copay", "Diabetes test strips", "ODB", "Schedule II", "Schedule 3 items", "Behind the counter", "Pseudoephedrine", "Codeine products"]) expect(isDispensaryCategoryName(n), n).toBe(true);
+    for (const n of ["Cough and cold", "Vitamins", "Skin care"]) expect(isDispensaryCategoryName(n), n).toBe(false);
+  });
+});

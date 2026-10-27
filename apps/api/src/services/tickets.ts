@@ -414,6 +414,13 @@ export async function setTicketStatus(ctx: AppContext, staff: StaffContext, tick
     const vars = { shop: merchant.name, item: texts.body === "sv.msg.ready" ? item.charAt(0).toUpperCase() + item.slice(1) : item, n: ticket.number, url: withLang(`${ctx.config.publicWebUrl}/t/${withToken.statusToken}`, locale) };
     let text = t(locale, texts.body, vars);
     if (body.note) text += ` ${body.note}`;
+    if (body.status === "ready") {
+      // Where to go and what is due, so the text is enough on its own.
+      const [loc] = await ctx.db.select({ address: locations.address }).from(locations).where(eq(locations.merchantId, merchant.id)).orderBy(asc(locations.createdAt)).limit(1);
+      const due = openInvoice && openInvoice.amountDueCents > 0 ? t(locale, "sv.msg.readyDue", { amount: `$${(openInvoice.amountDueCents / 100).toFixed(2)}` }) : "";
+      const where = loc?.address ? t(locale, "sv.msg.readyWhere", { address: loc.address }) : "";
+      text += [due, where].filter(Boolean).map((x) => ` ${x}`).join("");
+    }
     if (body.status === "ready" && openInvoice && openInvoice.amountDueCents > 0) text += t(locale, "sv.msg.payAhead", { url: withLang(`${ctx.config.publicWebUrl}/i/${openInvoice.payToken}`, locale) });
     await notifyCustomer(ctx, { userId: ticket.userId, merchantId: merchant.id, title: t(locale, texts.title, { shop: merchant.name }), body: text, data: { type: "ticket_status", ticketId: ticket.id, status: body.status } });
   }

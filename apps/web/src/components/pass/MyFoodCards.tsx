@@ -66,6 +66,7 @@ export function MyFoodCards() {
                   </div>
                   <SwitchControl checked={c.remind} disabled={busy === c.id || (!c.dailyGrams && !grams[c.id])} ariaLabel={`${t("pet.food.remind")}: ${c.brand} ${c.skuName}`} onChange={(v) => void toggle(c, v)} />
                 </div>
+                <p className="text-caption text-fg-muted">{t("pet.food.consent", { shop: c.shop?.name ?? "" })}</p>
                 {!c.dailyGrams ? <TextField label={t("pet.food.daily")} type="number" min={10} value={grams[c.id] ?? ""} onChange={(e) => setGrams((g) => ({ ...g, [c.id]: e.target.value }))} /> : null}
               </div>
             </li>

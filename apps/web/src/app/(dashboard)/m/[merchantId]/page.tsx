@@ -1,9 +1,9 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { PLANS } from "@ll/shared";
-import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { GroceryHome } from "@/components/dashboard/grocery/GroceryHome";
+import { StreetCard } from "@/components/dashboard/home/StreetCard";
 import { HourlyShape } from "@/components/dashboard/home/HourlyShape";
 import { PromoResult } from "@/components/dashboard/home/PromoResult";
 import { RewardsWaiting } from "@/components/dashboard/home/RewardsWaiting";
@@ -22,10 +22,29 @@ import { enabledSet, hasGroceryFeature, hasRestaurantFeature } from "@/lib/dashb
 import { greeting } from "@/lib/dashboard/time";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 
+/** What Café & Retail switches on for a trade, in the owner's words (the Home line that sells the plan). */
+const TRADE_TOOLS: Record<string, string> = {
+  salon: "calendar and online booking",
+  barber: "calendar, the walk-in line and payouts",
+  spa: "calendar and online booking",
+  fitness: "classes and memberships",
+  pet: "pets, groom reminders and daycare",
+  grocery: "the weekly flyer and butcher counter",
+  repair_auto: "vehicles, service reminders and tire season",
+  car_wash: "wash check-in and plans",
+};
+
 const plural = (n: number, word: string) => `${formatNumber(n)} ${word}${n === 1 ? "" : "s"}`;
 
 export default function HomePage() {
-  const { role, features } = useMerchant();
+  const { role, features, base } = useMerchant();
+  const router = useRouter();
+  const instructor = role === "instructor";
+  // An instructor has no Home: their day is the class list.
+  useEffect(() => {
+    if (instructor) router.replace(`${base}/classes`);
+  }, [instructor, router, base]);
+  if (instructor) return null;
   // Restaurants land on their own Home (open orders, pots, festival, channels); staff keep the counter view below.
   if (role !== "staff" && hasRestaurantFeature(enabledSet(features.features))) return <RestaurantHome />;
   return (
@@ -62,6 +81,10 @@ function Home() {
   const yesterdayWeekday = weekdayName(new Date(now - 86_400_000));
   const sub = [dayLine(nowDate), loc ? shortAddress(loc.address) : null, hoursNote(loc?.hours ?? m.hours, mode, nowDate)].filter(Boolean).join(" · ");
   const d = today.data;
+  // A brand-new shop has no members, stamps or visits yet: skip the empty lists and let the setup card lead.
+  const brandNew = !!d && !!ob && ob.activeMembers === 0 && d.today.visits === 0 && d.rewardsWaiting.count === 0 && d.slipping.count === 0 && d.staff.length === 0;
+  // The "first 30 days" meter retires once the window is over, however many members the shop has.
+  const showActivation = !!ob && !ob.activatedAt && ob.activation.day <= ob.activation.windowDays;
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,16 +102,18 @@ function Home() {
 
           {m.vertical === "grocery" && hasGroceryFeature(enabledSet(features.features)) ? <GroceryHome /> : null}
 
-          {ob && !ob.activatedAt ? <ActivationCard c={ob} base={base} /> : null}
+          {ob && showActivation ? <ActivationCard c={ob} base={base} /> : null}
+          <StreetCard />
           {ob && ob.activatedAt ? (
             <UpsellCard upsell={ob.upsell} base={base} activeLine={`You are an active shop: ${ob.activeMembers} members visited`} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} />
           ) : null}
           {ob && !ob.activatedAt ? <UpsellCard upsell={ob.upsell} base={base} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
 
-          {d ? (mode === "close" || d.hourly.typical.some((v) => v > 0) ? <HourlyShape mode={mode} hourly={d.hourly} weekday={weekday} promo={enabled("promos.basic") ? d.promoWindow : null} /> : null) : today.loading ? <div className="skeleton h-[270px] w-full rounded-card" /> : null}
+          {d ? (!brandNew && (mode === "close" || d.hourly.typical.some((v) => v > 0)) ? <HourlyShape mode={mode} hourly={d.hourly} weekday={weekday} promo={enabled("promos.basic") ? d.promoWindow : null} /> : null) : today.loading ? <div className="skeleton h-[270px] w-full rounded-card" /> : null}
 
           {mode === "close" && d?.promoWindow && enabled("promos.basic") ? <PromoResult promo={d.promoWindow} weekday={weekday} base={base} /> : null}
 
+          {brandNew ? null : (
           <div className="flex flex-col gap-8 lg:flex-row">
             {mode === "morning" ? (
               <RewardsWaiting data={d?.rewardsWaiting ?? null} base={base} terminology={term} vertical={m.vertical} now={nowDate} loading={today.loading} />
@@ -97,10 +122,12 @@ function Home() {
             )}
             <SlippingAway data={d?.slipping ?? null} base={base} canMessage={canMessage} loading={today.loading} />
           </div>
+          )}
 
           {upsellKeys.length === 3 ? (
             <p className="border-t border-line pt-4 text-[13px] text-fg-muted">
-              More with {PLANS.plus.name}: promos, texts and POS sync · coming soon · <NotifyLink keys={[...upsellKeys]} className="text-[13px] no-underline" />
+              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}promos, texts, POS sync and the tools for your trade ·{" "}
+              <a href={`${base}/billing`} className="text-fg underline underline-offset-4">Subscribe</a>
             </p>
           ) : null}
         </>

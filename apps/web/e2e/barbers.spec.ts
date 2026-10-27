@@ -94,17 +94,64 @@ test("the barber calls the next person, puts them in the chair and finishes", as
   await expect.poll(async () => (await call<{ state: string }>("GET", `/v1/public/queue/${joined.token}`)).state).toBe("done");
 });
 
-test("the door tablet joins someone without leaving the page", async ({ page }) => {
+test("the door tablet is a page of its own with no dashboard menu, joins someone, and needs a staff PIN to leave", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
+  const owner = await login("owner+crown-and-fade@example.com");
+  const m = await shopOf(owner);
+  // The tablet's signed-in staff member has a PIN (it asks for one first when there is none).
+  const me = await call<{ user: { id: string } }>("GET", "/v1/auth/me", undefined, owner);
+  await call("PUT", `/v1/merchants/${m}/team/${me.user.id}/pin`, { pin: "4242" }, owner);
   await signIn(page, "owner+crown-and-fade@example.com");
-  const m = await shopOf(await login("owner+crown-and-fade@example.com"));
   await page.goto(`/m/${m}/queue/door`);
+  await page.waitForURL(`**/door/${m}`);
   await expect(page.getByRole("heading", { name: "Walk in? Join the line" })).toBeVisible();
+  // Nothing of the dashboard is on it: no sidebar, no client list, no owner name or email.
+  await expect(page.getByRole("link", { name: "Customers" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Payouts" })).toHaveCount(0);
+  await expect(page.getByText("owner+crown-and-fade@example.com")).toHaveCount(0);
   await page.getByLabel("First name").fill("Door Dan");
   await page.getByRole("button", { name: "Beard trim" }).click();
   await page.screenshot({ path: shot("02-door-1024") });
   await page.getByRole("button", { name: "Join the line" }).click();
-  await expect(page.getByText(/Door Dan, you are in line/)).toBeVisible();
+  // No phone, so no text is promised: the tablet says to watch the screen.
+  await expect(page.getByText(/Door Dan, you are number \d+/)).toBeVisible();
+  await expect(page.getByText(/No text will be sent/)).toBeVisible();
+  // Leaving the tablet needs the PIN.
+  await page.getByRole("button", { name: "Staff" }).click();
+  await page.getByLabel("Staff PIN").fill("1111");
+  await page.getByRole("button", { name: "Leave the tablet" }).click();
+  await expect(page.getByText(/not right/i)).toBeVisible();
+  await page.getByLabel("Staff PIN").fill("4242");
+  await page.getByRole("button", { name: "Leave the tablet" }).click();
+  await page.waitForURL(`**/m/${m}/queue`);
+});
+
+test("Done on the line leaves a visit that can be checked out, and Skip only works on someone who was called", async ({ page }) => {
+  const owner = await login("owner+crown-and-fade@example.com");
+  const m = await shopOf(owner);
+  const base = `/v1/merchants/${m}`;
+  const who = `+1${newPhone()}`;
+  const joined = await call<{ token: string; entries: { id: string }[] }>("POST", "/v1/public/shops/crown-and-fade/queue", { name: "Checkout Cam", phone: who, textConsent: true });
+  const board = await call<{ chairs: { staffId: string; name: string; state: string }[] }>("GET", `${base}/queue`, undefined, owner);
+  const free = board.chairs.find((c) => c.name.startsWith("Ayo"))!;
+  // The API refuses to skip someone who was never called.
+  await expect(call("POST", `${base}/queue/${joined.entries[0]!.id}/skip`, {}, owner)).rejects.toThrow(/409/);
+  await call("POST", `${base}/queue/${joined.entries[0]!.id}/call`, { staffId: free.staffId }, owner);
+  const started = await call<{ appointmentId: string }>("POST", `${base}/queue/${joined.entries[0]!.id}/start`, {}, owner);
+  await signIn(page, "owner+crown-and-fade@example.com");
+  await page.goto(`/m/${m}/queue`);
+  const chair = page.getByRole("region", { name: "Chairs" }).locator("div.rounded-card", { hasText: free.name });
+  await expect(chair.getByText(/Checkout Cam/)).toBeVisible();
+  await chair.getByRole("button", { name: "Done" }).click();
+  // The toast offers Check out; it opens the calendar on that visit with the checkout sheet open.
+  await page.getByRole("button", { name: "Check out" }).click();
+  await page.waitForURL(/\/calendar\?appt=/);
+  await expect(page.getByRole("heading", { name: /Check out Checkout Cam/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Take \$/ }).click();
+  await expect(page.getByText(/Paid, invoice #\d+/)).toBeVisible();
+  await page.screenshot({ path: shot("04-done-checkout-1440") });
+  expect(started.appointmentId).toBeTruthy();
+  await expect.poll(async () => (await call<{ state: string }>("GET", `/v1/public/queue/${joined.token}`)).state).toBe("done");
 });
 
 test("payouts show chair rent and commission, and a renter sees only their own chair", async ({ page }) => {

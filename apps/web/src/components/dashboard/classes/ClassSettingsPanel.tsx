@@ -71,6 +71,21 @@ export function ClassSettingsPanel({ open, onClose }: { open: boolean; onClose: 
             </div>
             <SwitchControl checked={s.awardOnCheckIn} onChange={(v) => set({ awardOnCheckIn: v })} ariaLabel="Award loyalty visit at check-in" />
           </div>
+          <div className="flex flex-col gap-3 border-t border-line pt-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-body text-fg">Reward every few classes</p>
+                <p className="text-meta text-fg-muted">A milestone students want, like a free guest pass on their 10th class. It shows on their card and redeems at the desk.</p>
+              </div>
+              <SwitchControl checked={!!s.milestoneClasses} onChange={(v) => set(v ? { milestoneClasses: s.milestoneClasses ?? 10, milestoneRewardName: s.milestoneRewardName ?? "Free guest pass" } : { milestoneClasses: null })} ariaLabel="Reward every few classes" />
+            </div>
+            {s.milestoneClasses ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <TextField label="Every this many classes" type="number" min={2} max={500} value={String(s.milestoneClasses)} onChange={(e) => set({ milestoneClasses: Math.max(2, num(e.target.value, 10)) })} />
+                <TextField label="Reward" value={s.milestoneRewardName ?? ""} onChange={(e) => set({ milestoneRewardName: e.target.value })} maxLength={80} />
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className="skeleton h-40 w-full rounded-card" />

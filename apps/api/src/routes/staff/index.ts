@@ -5,7 +5,8 @@ import { requireStaff } from "../../lib/auth.js";
 import { badRequest } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { requireUuid } from "../../services/customer.js";
-import { activity, award, kioskCheckIn, lookup, mergeMembers, redeem, sync, today, undo, verifyRedemptionCode } from "../../services/staff.js";
+import { isOwnClientsOnly } from "../../services/barber.js";
+import { activity, award, kioskCheckIn, lookup, mergeMembers, redeem, regulars, sync, today, undo, verifyRedemptionCode } from "../../services/staff.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
 
@@ -24,7 +25,14 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get(`${base}/lookup`, async (req: Req) => {
     const staff = await staffOf(req);
     const q = parse(staffApi.lookupQuery, req.query);
-    return lookup(ctx, staff.merchant.id, q.q);
+    return lookup(ctx, staff.merchant.id, q.q, (await isOwnClientsOnly(ctx, staff)) ? staff.user.id : undefined);
+  });
+
+  app.get(`${base}/regulars`, async (req: Req) => {
+    const staff = await staffOf(req);
+    // A chair renter who sees only their own clients gets no shop-wide list.
+    if (await isOwnClientsOnly(ctx, staff)) return { items: [] };
+    return regulars(ctx, staff.merchant.id, staff.merchant.timezone);
   });
 
   app.post(`${base}/award`, async (req: Req) => {

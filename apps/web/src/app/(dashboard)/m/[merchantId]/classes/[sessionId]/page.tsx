@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { errorMessage, isApiError } from "@/lib/api/errors";
 import { money } from "@/lib/dashboard/calendar";
 import { dayHeading, rosterState, timeLabel, todayOf } from "@/lib/dashboard/classes";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
@@ -32,12 +33,16 @@ function when(iso: string) {
 function Roster() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { api, base, role } = useMerchant();
-  const manager = role !== "staff";
+  const manager = role === "owner" || role === "manager";
+  // An Instructor login checks people in; the desk adds, cancels and books.
+  const desk = role !== "instructor";
   const toast = useToast();
   const act = useAction();
   const state = useApi(() => api.classes.roster(sessionId), [api, sessionId], { pollMs: 30_000 });
   const [adding, setAdding] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [dropping, setDropping] = useState<classesApi.RosterRowDto | null>(null);
+  const [guest, setGuest] = useState<classesApi.RosterRowDto | null>(null);
   const run = async (fn: () => Promise<classesApi.RosterResponse>, ok?: string) => {
     const r = await act.run(fn);
     if (r) {
@@ -66,7 +71,7 @@ function Roster() {
                 ) : (
                   <>
                     {manager ? <Button variant="secondary" onClick={() => setCancelling(true)}>Cancel class</Button> : null}
-                    <Button variant="secondary" iconStart={UserPlus} onClick={() => setAdding(true)}>Add member</Button>
+                    {desk ? <Button variant="secondary" iconStart={UserPlus} onClick={() => setAdding(true)}>Add member</Button> : null}
                     <Button href={`${base}/classes/door?session=${s.id}`}>Open check-in</Button>
                   </>
                 )
@@ -97,6 +102,7 @@ function Roster() {
                             <>
                               <Button size="sm" variant="secondary" onClick={() => run(() => api.classes.checkInRow(r.bookingId), "Checked in")}>Check in</Button>
                               {manager ? <Button size="sm" variant="ghost" onClick={() => run(() => api.classes.markBooking(r.bookingId, "no_show"), "Marked no-show")}>No-show</Button> : null}
+                              {desk ? <Button size="sm" variant="ghost" onClick={() => setDropping(r)}>Cancel booking</Button> : null}
                             </>
                           ) : r.status === "attended" ? (
                             <span className="text-meta text-fg-muted">{r.checkedInAt ? new Date(r.checkedInAt).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }) : ""}</span>
@@ -122,7 +128,17 @@ function Roster() {
                           <span className="block truncate text-body-strong">{r.name ?? r.maskedPhone ?? "Member"}</span>
                           <span className="block truncate text-meta text-fg-muted">{r.payLabel}</span>
                         </span>
-                        {r.waitlistPosition && r.waitlistPosition > 1 ? <Button size="sm" variant="secondary" onClick={() => run(() => api.classes.moveWaitlist(r.bookingId, 1), "Moved to the front")}>Move up</Button> : null}
+                        {desk && r.waitlistPosition && r.waitlistPosition > 1 ? <Button size="sm" variant="ghost" onClick={() => run(() => api.classes.moveWaitlist(r.bookingId, 1), "Moved to the front")}>Move up</Button> : null}
+                        {desk ? <Button size="sm" variant="secondary" onClick={async () => {
+                          act.setError(null);
+                          try {
+                            state.setData(await api.classes.bookIn(r.bookingId, { overCapacity: s.booked >= s.capacity }));
+                            toast({ message: `${r.name ?? "They"} booked in`, tone: "success" });
+                          } catch (e) {
+                            if (isApiError(e) && e.code === "no_pass") setGuest(r);
+                            else act.setError(errorMessage(e));
+                          }
+                        }}>Book in now</Button> : null}
                       </li>
                     ))}
                   </ul>
@@ -130,6 +146,29 @@ function Roster() {
                 <p className="text-meta text-fg-muted">When someone cancels before the cutoff, the first person on the list with a membership or a pass gets the spot and a text. No one is promoted inside the last 2 hours.</p>
               </section>
             </div>
+            <ConfirmDialog
+              open={!!dropping}
+              onClose={() => setDropping(null)}
+              danger
+              title={`Cancel ${dropping?.name ?? "this"} booking?`}
+              body={`Inside the free cancel window their pass credit goes back. After ${when(d.policy.freeCancelUntil)} the class is used up${d.policy.lateFeeCents ? ` and the ${money(d.policy.lateFeeCents)} late fee applies` : ""}. Use Excuse afterwards if it was not their fault.`}
+              confirmLabel="Cancel booking"
+              onConfirm={async () => {
+                if (!dropping) return;
+                await run(() => api.classes.cancelBooking(dropping.bookingId), "Booking cancelled");
+              }}
+            />
+            <ConfirmDialog
+              open={!!guest}
+              onClose={() => setGuest(null)}
+              title={`${guest?.name ?? "They"} cannot be booked from a pass`}
+              body="They have no membership or pass to use. Book them in as a guest with no charge, or sell a drop-in first from Memberships & passes."
+              confirmLabel="Book as a guest"
+              onConfirm={async () => {
+                if (!guest) return;
+                await run(() => api.classes.bookIn(guest.bookingId, { comp: true, overCapacity: s.booked >= s.capacity }), "Booked in as a guest");
+              }}
+            />
             <AddMember open={adding} onClose={() => setAdding(false)} full={s.booked >= s.capacity} onAdd={(b) => run(() => api.classes.addToSession(sessionId, b), "Added to the class")} />
             <ConfirmDialog
               open={cancelling}

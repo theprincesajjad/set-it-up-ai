@@ -23,7 +23,7 @@ import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, groupCode, rewardInSentence } from "@/lib/format";
-import { walletHeadline } from "@/lib/walletSummary";
+import { hideQuickUndos, walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
@@ -565,10 +565,11 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
   const { t, locale, date, time } = useLocaleOrEnglish();
   const rows = useMemo(
     () =>
-      wallet.items
-        .flatMap((m) => (details[m.id]?.history.items ?? []).map((tx) => ({ tx, m })))
-        .sort((x, y) => y.tx.createdAt.localeCompare(x.tx.createdAt))
-        .slice(0, 100),
+      hideQuickUndos(
+        wallet.items
+          .flatMap((m) => (details[m.id]?.history.items ?? []).map((tx) => ({ tx, m })))
+          .sort((x, y) => y.tx.createdAt.localeCompare(x.tx.createdAt)),
+      ).slice(0, 100),
     [wallet.items, details],
   );
   const txLabel = (type: string, description: string | null | undefined) => {

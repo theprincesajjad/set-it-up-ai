@@ -8,7 +8,7 @@ import { forbidden, notFound, supportSessionRequired, unauthorized } from "./err
 import { hasActiveSupportSession } from "./support-session.js";
 
 export type PlatformRole = "none" | "rep" | "admin";
-export type StaffRole = "owner" | "manager" | "staff";
+export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
 export interface AuthUser {
   id: string;
@@ -58,7 +58,8 @@ export function requirePlatformRole(req: FastifyRequest, role: "rep" | "admin"):
   throw forbidden();
 }
 
-const RANK: Record<StaffRole, number> = { staff: 0, manager: 1, owner: 2 };
+// An instructor ranks below staff: every counter, order and customer endpoint (minRole "staff") refuses them; only the class endpoints that ask for "instructor" let them in.
+const RANK: Record<StaffRole, number> = { instructor: -1, staff: 0, manager: 1, owner: 2 };
 
 export interface StaffContext {
   user: AuthUser;

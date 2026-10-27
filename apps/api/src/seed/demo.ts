@@ -316,8 +316,9 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
         const drawn = R.int(8 * 60, 19 * 60);
         const localDate = TORONTO_DATE.format(new Date(historyStart.getTime() + day * DAY));
         const span = shop.data.hours[dayKey(localDate)]?.[0];
-        const open = span ? toMinutes(span[0]) : 8 * 60;
-        const close = span ? toMinutes(span[1]) : 19 * 60;
+        if (!span) continue; // closed that day
+        const open = toMinutes(span[0]);
+        const close = toMinutes(span[1]);
         const minute = open + Math.floor(((drawn - 8 * 60) / (11 * 60)) * Math.max(15, close - open - 15));
         const at = zonedToUtc(localDate, minute, "America/Toronto");
         if (at > nowReal || at < shop.createdAt) continue;

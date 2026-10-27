@@ -8,7 +8,7 @@
  */
 import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, type PlanId } from "@ll/shared";
 
-export type StaffRole = "owner" | "manager" | "staff";
+export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
 /** Sidebar groups, drawn with a small gap between them; only the groups in NAV_GROUP_LABELS get a heading. */
 export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop" | "r-today" | "r-sell" | "r-menu" | "r-talk" | "r-loyalty" | "r-more" | "g-sell" | "g-talk" | "g-loyalty";
@@ -171,6 +171,8 @@ export interface ShopNavContext {
   plan?: PlanId;
   /** Current rollout stage per feature key; ads and street campaigns stay hidden until their stage is "ga". */
   stages?: Partial<Record<FeatureKey, string>>;
+  /** The shop is on an open street. Street campaigns are a street's thing: a shop with no street never sees the item. */
+  onOpenStreet?: boolean;
 }
 
 /** Is the whole Phase 3 section live (any of its keys at stage ga)? Unknown stages count as live (no gate). */
@@ -193,7 +195,11 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   if (key === "tickets" && shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   // Order-ahead and the menu/catalog are the food-and-retail counter; repair and appointment shops run on tickets, invoices and the calendar (service-businesses.md 4.1).
   if ((key === "orders" || key === "catalog") && shop.vertical && !hasRestaurantFeature(enabled) && [...APPOINTMENT_VERTICALS, ...REPAIR_VERTICALS, ...WASH_VERTICALS].includes(shop.vertical)) return false;
+  // Pet shops rebook by each dog's own cadence (Groom rebooking); the per-service Rebooking page would sit empty beside it. Groom rebooking is for shops that groom, so it follows the calendar.
+  if (key === "rebooking" && shop.vertical === "pet") return false;
+  if (key === "groom-rebooking" && !enabled.has("booking.appointments")) return false;
   if ((key === "ads" || key === "campaigns") && !stageGa(key, shop.stages)) return false;
+  if (key === "campaigns" && shop.onOpenStreet === false) return false;
   if (key === "discount-cards" && shop.vertical && !DISCOUNT_CARD_VERTICALS.includes(shop.vertical)) return false;
   if (PRO_ONLY_FOR_LOYALTY_FIRST.includes(key) && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical)) {
     return shop.plan === "pro" || hasRestaurantFeature(enabled) || (shop.vertical === "grocery" && hasGroceryFeature(enabled));
@@ -209,6 +215,8 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
   // Front-desk staff also get the class schedule and the door at a studio.
   const classes: NavEntry = { key: "classes", href: `${base}/classes`, label: "Class schedule", group: "commerce" };
   const door: NavEntry = { key: "class-door", href: `${base}/classes/door`, label: "Door check-in", group: "commerce" };
+  // Desk staff sell a drop-in or a pack here; owners and managers see the full Memberships & passes page at the same address.
+  const deskSale: NavEntry = { key: "class-offers", href: `${base}/classes/offers`, label: "Desk sale", group: "commerce" };
   const queue: NavEntry = { key: "queue", href: `${base}/queue`, label: "Walk-in line", group: "commerce" };
   const payouts: NavEntry = { key: "payouts", href: `${base}/payouts`, label: "Payouts", group: "commerce" };
   // Pet shops: pets and groom rebooking, the daycare day, food cards (pets.ts nav entries).
@@ -226,7 +234,9 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
     pet("service-reminders", "/service-reminders", "Service reminders", "commerce"),
     pet("tire-season", "/tire-season", "Tire season", "commerce"),
   ];
-  if (role === "staff") return [home, counter, ...petEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...autoEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(enabled.has("booking.walkin_queue") ? [{ ...queue, group: "main" as NavGroup }] : []), ...(enabled.has("staff.payouts") ? [{ ...payouts, group: "main" as NavGroup }] : []), ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
+  // An instructor teaches: their classes and the check-in for them, nothing else.
+  if (role === "instructor") return [classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup }));
+  if (role === "staff") return [home, counter, ...petEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...autoEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(enabled.has("booking.walkin_queue") ? [{ ...queue, group: "main" as NavGroup }] : []), ...(enabled.has("staff.payouts") ? [{ ...payouts, group: "main" as NavGroup }] : []), ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door, deskSale].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
   // Restaurants get one sidebar grouped by when it is used (restaurantNav below); everyone else keeps the flat list.
   if (hasRestaurantFeature(enabled)) return buildRestaurantNav(base, role, enabled, shop);
   // Grocers and butchers: sell ahead (butcher counter, flyer), talk to customers (WhatsApp, pantry reminders), loyalty (grocery-nav below).
@@ -300,7 +310,8 @@ function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureK
     { key: "program", href: `${base}/program`, label: "Program & rewards", group: "r-loyalty" },
     { key: "promos", href: `${base}/promos`, label: "Promos", group: "r-loyalty" },
     { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "r-loyalty" },
-    { key: "messages", href: `${base}/messages`, label: "Messages", group: "r-loyalty" },
+    // Loyalty texts and email; WhatsApp has its own entry above, so the two inboxes read as two things.
+    { key: "messages", href: `${base}/messages`, label: "Texts & email", group: "r-loyalty" },
     { key: "reports", href: `${base}/reports`, label: "Reports", group: "r-loyalty" },
   ];
   out.push(...loyalty.filter((i) => navVisible(i.key, enabled, shop)));
@@ -354,7 +365,8 @@ function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>
 
 /** Which nav keys a role may open directly (route guard for staff deep links). */
 export function canOpen(role: StaffRole, key: string): boolean {
-  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "wash" || key === "vehicles" || key === "service-reminders" || key === "tire-season" || key === "classes" || key === "class-door" || key === "grocery";
+  if (role === "instructor") return key === "home" || key === "classes" || key === "class-door";
+  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "wash" || key === "vehicles" || key === "service-reminders" || key === "tire-season" || key === "classes" || key === "class-door" || key === "class-offers" || key === "grocery";
   if (key === "billing") return role === "owner";
   return true;
 }

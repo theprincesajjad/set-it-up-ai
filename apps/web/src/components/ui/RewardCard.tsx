@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { rewardNameIn } from "@/lib/i18n/rewardName";
 import { unitCaption, unitsText } from "@/lib/units";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -41,7 +42,7 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
     <div className={cn(layout === "card" ? "rounded-card border border-line bg-bg p-4" : "py-3.5", className)}>
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-body-strong text-fg">{reward.name}</p>
+          <p className="text-body-strong text-fg">{rewardNameIn(locale, t, reward.name)}</p>
           <p className="text-meta tabular-nums text-fg-muted">
             {state === "available" ? <span className="font-semibold text-accent-text">{t("sh.rc.ready")} · </span> : null}
             {unitsText(locale, reward.pointsCost, terminology)}

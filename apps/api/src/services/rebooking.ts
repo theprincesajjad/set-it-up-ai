@@ -15,6 +15,7 @@ import { normalizeLocale, serviceApi, t, type Locale } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
+import { memberRhythms } from "./member-stats.js";
 import { isPharmacy } from "./pharmacy-guard.js";
 import { getMerchantFeatures } from "./features.js";
 import { localDate, reserveSmsCredits, smsAllowance } from "./messaging.js";
@@ -52,7 +53,79 @@ const addDaysLocal = (date: string, n: number) => {
 };
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
 
+/**
+ * Who is due: customers whose last completed service plus its rebook days has come (the price-list rules), and regulars the shop already
+ * knows from its visit history (counter stamps included) who have gone quiet against their own rhythm. The second group is what a shop
+ * that only stamps cards has, and it is the same list Home calls "slipping away".
+ */
 export async function rebookingCandidates(ctx: AppContext, merchant: Merchant): Promise<Candidate[]> {
+  if (isPharmacy(merchant)) return [];
+  const byService = await serviceCandidates(ctx, merchant);
+  const regulars = await regularCandidates(ctx, merchant, new Set(byService.map((c) => c.userId)));
+  return [...byService, ...regulars].sort((a, b) => a.dueOn.localeCompare(b.dueOn) || (a.customerName ?? "").localeCompare(b.customerName ?? ""));
+}
+
+/** A regular who comes in without booking a service has no service to rebook: their rows carry this id and say "your last visit". */
+export const REGULAR_SERVICE_ID = "00000000-0000-0000-0000-000000000000";
+
+async function regularCandidates(ctx: AppContext, merchant: Merchant, covered: Set<string>): Promise<Candidate[]> {
+  const now = ctx.now();
+  const today = localDate(now, merchant.timezone);
+  const rhythms = await memberRhythms(ctx.db, merchant.id, merchant.timezone, now);
+  const slipping = [...rhythms.entries()].filter(([, r]) => r.isSlipping && r.lastVisitAt).map(([memberId, r]) => ({ memberId, at: r.lastVisitAt! }));
+  if (!slipping.length) return [];
+  const rows = await ctx.db
+    .select({ memberId: merchantMembers.id, userId: merchantMembers.userId, consent: merchantMembers.marketingConsentAt, muted: merchantMembers.muted, name: users.name, phone: users.phone, locale: users.locale, deletedAt: users.deletedAt })
+    .from(merchantMembers)
+    .innerJoin(users, eq(users.id, merchantMembers.userId))
+    .where(and(eq(merchantMembers.merchantId, merchant.id), inArray(merchantMembers.id, slipping.map((x) => x.memberId))));
+  const userIds = rows.map((r) => r.userId).filter((u) => !covered.has(u));
+  if (!userIds.length) return [];
+  const [tokens, future, nudges] = await Promise.all([
+    ctx.db.select({ userId: pushTokens.userId }).from(pushTokens).where(inArray(pushTokens.userId, userIds)),
+    ctx.db.select({ userId: appointments.userId }).from(appointments).where(and(eq(appointments.merchantId, merchant.id), inArray(appointments.status, ["booked", "arrived", "in_service"]), gte(appointments.startsAt, now), inArray(appointments.userId, userIds))),
+    ctx.db.select().from(rebookingNudges).where(and(eq(rebookingNudges.merchantId, merchant.id), eq(rebookingNudges.serviceId, REGULAR_SERVICE_ID), inArray(rebookingNudges.userId, userIds))).orderBy(desc(rebookingNudges.createdAt)),
+  ]);
+  const hasPush = new Set(tokens.map((x) => x.userId));
+  const hasFuture = new Set(future.map((f) => f.userId));
+  const stopped = await optedOutSet(ctx.db, rows.map((r) => r.phone), "sms");
+  const rules = await ctx.db.select({ d: services.rebookAfterDays }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.active, true), isNotNull(services.rebookAfterDays)));
+  const gap = rules.length ? [...rules.map((r) => r.d!)].sort((a, b) => a - b)[Math.floor(rules.length / 2)]! : 42;
+  const out: Candidate[] = [];
+  for (const r of rows) {
+    if (r.deletedAt || covered.has(r.userId) || hasFuture.has(r.userId)) continue;
+    const at = slipping.find((x) => x.memberId === r.memberId)!.at;
+    const lastDay = localDate(at, merchant.timezone);
+    if (daysBetween(lastDay, today) > MAX_AGE_DAYS) continue;
+    const mine = nudges.filter((n) => n.userId === r.userId && n.createdAt > at);
+    if (mine.some((n) => n.action === "skipped")) continue;
+    const sent = mine.filter((n) => n.action === "sent");
+    if (sent.length >= UNANSWERED_LIMIT) continue;
+    if (sent.length === 1 && now.getTime() < sent[0]!.createdAt.getTime() + gap * DAY_MS) continue;
+    const snooze = mine.find((n) => n.action === "snoozed" && n.until && n.until > now);
+    const dueOn = addDaysLocal(lastDay, gap);
+    const channel: "sms" | "push" = hasPush.has(r.userId) ? "push" : "sms";
+    out.push({
+      userId: r.userId,
+      serviceId: REGULAR_SERVICE_ID,
+      serviceName: "Your last visit",
+      customerName: r.name,
+      customerPhone: r.phone,
+      locale: normalizeLocale(r.locale) ?? "en",
+      lastVisitAt: at,
+      rebookAfterDays: gap,
+      dueOn,
+      daysLate: Math.max(1, daysBetween(dueOn, today)),
+      state: snooze ? "snoozed" : "late",
+      channel,
+      canSend: !!r.consent && !r.muted && (channel === "push" || (!!r.phone && !isSuppressed(stopped, r.phone))),
+      memberId: r.memberId,
+    });
+  }
+  return out;
+}
+
+async function serviceCandidates(ctx: AppContext, merchant: Merchant): Promise<Candidate[]> {
   // A "time for your next flu shot" text would tie a person to a pharmacy service: pharmacies get no rebooking reminders.
   if (isPharmacy(merchant)) return [];
   const now = ctx.now();
@@ -201,6 +274,10 @@ async function candidateFor(ctx: AppContext, merchant: Merchant, userId: string,
 /** The text a customer gets, in their language. Names the shop, ends with the STOP line for SMS. */
 export function nudgeText(ctx: AppContext, merchant: Merchant, c: Pick<Candidate, "locale" | "customerName" | "serviceName" | "lastVisitAt" | "serviceId">, now: Date) {
   const weeks = Math.max(1, Math.round((now.getTime() - c.lastVisitAt.getTime()) / (7 * DAY_MS)));
+  if (c.serviceId === REGULAR_SERVICE_ID) {
+    const vars = { name: (c.customerName ?? "").trim().split(/\s+/)[0] || "", shop: merchant.name, weeks, url: `${ctx.config.publicWebUrl}/shops/${merchant.slug}${c.locale === "en" ? "" : `?lang=${c.locale}`}` };
+    return { title: t(c.locale, "sv.msg.rebookRegularTitle", vars), body: t(c.locale, "sv.msg.rebookRegular", vars).replace(/^\s*,\s*/, "") };
+  }
   const vars = { name: (c.customerName ?? "").trim().split(/\s+/)[0] || "", service: c.serviceName, shop: merchant.name, weeks, url: `${ctx.config.publicWebUrl}/shops/${merchant.slug}/book?service=${c.serviceId}${c.locale === "en" ? "" : `&lang=${c.locale}`}` };
   return { title: t(c.locale, "sv.msg.rebookTitle", vars), body: t(c.locale, "sv.msg.rebook", vars).replace(/^\s*,\s*/, "") };
 }

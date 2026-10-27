@@ -38,6 +38,7 @@ function Rules({ r, canConfirm, onConfirmed }: { r: pharmacyApi.PharmacyRulesRes
   const { api } = useMerchant();
   const [agree, setAgree] = useState(false);
   const [name, setName] = useState("");
+  const [ocp, setOcp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<pharmacyApi.PharmacyRulesResponse["confirmation"]>(r.confirmation);
@@ -46,7 +47,7 @@ function Rules({ r, canConfirm, onConfirmed }: { r: pharmacyApi.PharmacyRulesRes
     setBusy(true);
     setError(null);
     try {
-      const res = await api.pharmacy.confirm({ name: name.trim(), agree: true });
+      const res = await api.pharmacy.confirm({ name: name.trim(), ocpNumber: ocp.trim(), agree: true });
       setDone(res.confirmation);
       onConfirmed();
     } catch (e) {
@@ -58,21 +59,22 @@ function Rules({ r, canConfirm, onConfirmed }: { r: pharmacyApi.PharmacyRulesRes
 
   return (
     <>
-      <Panel title="Pharmacist-owner confirmation" description="Required once. Your rep checks it at set-up and an admin can see it.">
+      <Panel title="Pharmacist-owner confirmation" description="Required once, before the first point is given. An admin can see it.">
         <div className="mt-4" data-testid="pharmacy-confirmation">
           {done ? (
             <p className="flex items-center gap-2 text-[14px] text-fg" role="status">
               <span aria-hidden className="size-2 rounded-full bg-positive" />
-              Confirmed {new Date(done.confirmedAt).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })} by {done.confirmedByName}
+              Confirmed {new Date(done.confirmedAt).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })} by {done.confirmedByName}{done.ocpNumber ? `, OCP accreditation ${done.ocpNumber}` : ""}
             </p>
           ) : canConfirm ? (
             <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
               <Checkbox checked={agree} onChange={setAgree} label={CONFIRM_TEXT} />
               <div className="flex flex-col gap-3">
                 <TextField label="Your full name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+                <TextField label="OCP accreditation number" hint="The pharmacy's number from the Ontario College of Pharmacists. Digits only." inputMode="numeric" value={ocp} onChange={(e) => setOcp(e.target.value)} maxLength={14} />
                 {error ? <Banner tone="danger">{error}</Banner> : null}
                 <div>
-                  <Button onClick={confirm} loading={busy} disabled={!agree || name.trim().length < 3}>Confirm</Button>
+                  <Button onClick={confirm} loading={busy} disabled={!agree || name.trim().length < 3 || !/^\d{4,10}$/.test(ocp.replace(/[\s#-]/g, ""))}>Confirm</Button>
                 </div>
               </div>
             </div>

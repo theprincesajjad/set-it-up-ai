@@ -40,7 +40,7 @@ export function assertPharmacyText(m: Pick<Merchant, "vertical">, text: string |
 export const pharmacyVisitEarnError = () =>
   new HttpError(422, "pharmacy_visit_earn", "A pharmacy can only give points on the dollars spent in the front store. Points or stamps for a visit are off, because a visit may include a prescription.");
 export const frontStoreRequired = () =>
-  new HttpError(422, "front_store_confirmation_required", "Confirm the total has no prescriptions or pharmacy services. Pharmacies can only award points on front-store sales.");
+  new HttpError(422, "front_store_confirmation_required", "Confirm the total has no prescriptions, pharmacy services or behind-the-counter (Schedule II or III) items. Pharmacies can only award points on front-store sales.");
 export const nothingFrontStore = () => new HttpError(422, "pharmacy_no_front_store", "There is nothing from the front store in this sale, so there is nothing to record. Prescriptions and pharmacy services never earn.");
 
 /**

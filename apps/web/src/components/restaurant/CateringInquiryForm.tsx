@@ -20,8 +20,8 @@ type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: st
 type Errors = Partial<Record<"name" | "phone" | "email" | "date" | "guests", string>>;
 
 /** Public catering inquiry (restaurant-endpoints.md: POST /public/shops/:slug/catering/inquiries). Also used by banquet with service=banquet. */
-export function CateringInquiryForm({ shop }: { shop: Shop }) {
-  const { t, date } = useFmt();
+export function CateringInquiryForm({ shop, fromPerGuestCents = null }: { shop: Shop; /** The cheapest tray priced per guest it serves; null when the menu has none. */ fromPerGuestCents?: number | null }) {
+  const { t, date, money } = useFmt();
   const [eventType, setEventType] = useState<restaurantApi.CateringEventType>("wedding");
   const [service, setService] = useState<restaurantApi.CateringService>("delivery");
   const [eventDate, setEventDate] = useState("");
@@ -95,6 +95,7 @@ export function CateringInquiryForm({ shop }: { shop: Shop }) {
           </div>
           <p className="text-body text-fg">{done.summary}</p>
           <p className="text-body text-fg-muted">{t("rc.cq.sentBody", { name: done.name, shop: shop.name, phone: done.phone })}</p>
+          {shop.phone ? <p className="text-meta text-fg-muted">{t("tcb2.cq.followUp", { shop: shop.name, phone: shop.phone, n: done.receipt.number })}</p> : null}
         </section>
         <div className="flex flex-col gap-2">
           <Button size="lg" fullWidth href={`/shops/${encodeURIComponent(shop.slug)}`}>
@@ -114,6 +115,7 @@ export function CateringInquiryForm({ shop }: { shop: Shop }) {
       <div className="flex flex-col gap-2">
         <Heading>{t("catering.title")}</Heading>
         <p className="text-body text-fg-muted">{t("rc.cq.intro", { shop: shop.name })}</p>
+        {fromPerGuestCents ? <p className="text-meta-strong text-fg">{t("tcb2.cq.from", { price: money(fromPerGuestCents) })}</p> : null}
       </div>
 
       <div className="flex flex-col gap-2">

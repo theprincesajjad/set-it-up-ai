@@ -43,7 +43,9 @@ function PaymentMethods({ owner }: { owner: boolean }) {
 function MethodsForm({ d, owner, reload, api }: { d: paymentsManualApi.PaymentSettingsDto; owner: boolean; reload: () => void; api: ReturnType<typeof useMerchant>["api"] }) {
   const toast = useToast();
   const act = useAction();
-  const [s, setS] = useState<paymentsManualApi.PaymentSettingsDto>(d);
+  // Nothing chosen yet: e-transfer is how most kitchens here get paid, so it starts switched on and asks for the email right away.
+  const untouched = !d.etransferEnabled && !d.cashEnabled && !(d.stripeReady && (d.cardEnabled || d.padEnabled));
+  const [s, setS] = useState<paymentsManualApi.PaymentSettingsDto>(owner && untouched ? { ...d, etransferEnabled: true } : d);
   const dirty = JSON.stringify(s) !== JSON.stringify(d);
   const emailBad = s.etransferEnabled && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.etransferEmail ?? "");
   const save = async () => {

@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const { detail, role } = useMerchant();
   const params = useSearchParams();
   const want = params.get("tab");
-  const [tab, setTab] = useState<Tab>(want === "tax" ? "tax" : "profile");
+  const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" ? want : "profile");
   const items: { id: Tab; label: string }[] = [
     { id: "profile", label: "Shop profile" },
     { id: "hours", label: "Hours" },

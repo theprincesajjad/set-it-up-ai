@@ -128,7 +128,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
           <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="text-body-strong text-fg">{i.name}</p>
-              <p className="text-meta text-fg-muted">{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}</p>
+              <p className="text-meta text-fg-muted">{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}{appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}</p>
             </div>
             {rx ? null : <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>}
           </li>

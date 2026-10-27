@@ -7,10 +7,12 @@ import { dayDate } from "@/lib/restaurant/util";
 
 /** "this weekend": pots left for Saturday and Sunday, so a family sees a full day before they plan around it. */
 export function WeekendPots({ weekend, items }: { weekend: restaurantWebApi.PublicRestaurantResponse["weekend"]; items: restaurantWebApi.PublicRestaurantResponse["preorderItems"] }) {
-  const { t, date, pick } = useFmt();
+  const { t, date, pick, number } = useFmt();
   if (!weekend.length || !items.length) return null;
-  const lead = Math.max(...items.map((i) => i.leadTimeHours));
-  const names = items.slice(0, 2).map((i) => pick({ name: i.name }).name);
+  const leads = items.map((i) => i.leadTimeHours);
+  const lead = Math.max(...leads);
+  const leadMin = Math.min(...leads);
+  const names = items.slice(0, 2).map((i) => pick({ name: i.name, translations: i.translations }).name);
   const more = items.length - names.length;
   return (
     <section aria-labelledby="rs-weekend" className="flex flex-col gap-3">
@@ -33,7 +35,7 @@ export function WeekendPots({ weekend, items }: { weekend: restaurantWebApi.Publ
         </ul>
         <p className="border-t border-line py-3 text-meta text-fg-muted">
           {names.join(", ")}
-          {more > 0 ? ` ${t("rs.weekend.more", { n: more })}` : ""}. {t("rs.weekend.notice", { hours: lead })}
+          {more > 0 ? ` ${t("rs.weekend.more", { n: more })}` : ""}. {leadMin < lead ? t("rs.weekend.noticeRange", { min: number(leadMin), max: number(lead) }) : t("rs.weekend.notice", { hours: lead })}
         </p>
       </div>
     </section>

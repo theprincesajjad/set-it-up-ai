@@ -1,5 +1,5 @@
 "use client";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { tiffinApi } from "@ll/shared";
@@ -17,6 +17,7 @@ import { formatDateYear, formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { TierTeaser, addDaysISO, dayLabel, dayShort, todayISO } from "../common";
 import { daysText } from "./PlansTab";
+import { AddSubscriberSheet } from "./AddSubscriberSheet";
 
 type Gate = { featureKey: "restaurant.tiffin"; title: string; what: string };
 type StatusFilter = "all" | "awaiting" | tiffinApi.TiffinSubStatus;
@@ -57,6 +58,9 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
   const [more, setMore] = useState<{ key: string; items: tiffinApi.SubscriberDto[]; cursor: string | null } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [open, setOpen] = useState<tiffinApi.SubscriberDto | null>(null);
+  const [adding, setAdding] = useState(false);
+  const { role } = useMerchant();
+  const canAdd = role === "owner" || role === "manager";
   const extra = more?.key === key ? more : null;
   const rows = useMemo(() => [...(first.data?.items ?? []), ...(extra?.items ?? [])], [first.data, extra]);
   const cursor = extra ? extra.cursor : (first.data?.nextCursor ?? null);
@@ -88,9 +92,10 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
   const filtered = status !== "all" || planId || routeId || fulfilment || payment || dq;
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
         <TextField type="search" label="Search subscribers" hideLabel placeholder="Name, phone, address or postal code" value={q} onChange={(e) => setQ(e.target.value)} className="min-h-10" />
         <div className="hidden items-center text-meta text-fg-muted sm:flex"><Search aria-hidden className="me-1.5 size-3.5" />{rows.length}{cursor ? "+" : ""} shown</div>
+        {canAdd ? <Button size="sm" iconStart={Plus} onClick={() => setAdding(true)}>Add subscriber</Button> : null}
       </div>
       <Capsules<StatusFilter>
         label="Status"
@@ -129,11 +134,12 @@ export function SubscribersTab({ goPlans, gate }: { goPlans: () => void; gate: G
             filtered ? (
               <EmptyState title="Nobody matches those filters" description="Try another status or clear the search." action={<Button size="sm" variant="secondary" onClick={() => { setStatus("all"); setPlanId(""); setRouteId(""); setFulfilment(""); setPayment(""); setQ(""); }}>Clear filters</Button>} className="border-0 px-4" />
             ) : (
-              <EmptyState title="No subscribers yet" description="They show up here when someone signs up on your tiffin page. Share the link with your regulars first." action={<Button size="sm" onClick={goPlans}>Check your plans</Button>} className="border-0 px-4" />
+              <EmptyState title="No subscribers yet" description="They show up here when someone signs up on your tiffin page. Regulars who phone you can be added by hand." action={<span className="flex flex-wrap justify-center gap-2">{canAdd ? <Button size="sm" iconStart={Plus} onClick={() => setAdding(true)}>Add subscriber</Button> : null}<Button size="sm" variant="secondary" onClick={goPlans}>Check your plans</Button></span>} className="border-0 px-4" />
             )
           }
         />
       )}
+      {adding ? <AddSubscriberSheet onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void refresh(); }} /> : null}
       {open ? <SubscriberSheet sub={open} routes={routes.data?.items ?? []} onClose={() => setOpen(null)} onChanged={(s) => { setOpen(s); void refresh(); }} /> : null}
     </div>
   );
@@ -291,7 +297,7 @@ function SubscriberSheet({ sub, routes, onClose, onChanged }: { sub: tiffinApi.S
           <Section title="Billing">
             <DefList
               items={[
-                { label: `Price per ${sub.plan.cadence === "monthly" ? "month" : "week"}`, value: formatMoney(sub.priceCents) },
+                { label: `Price per ${(sub.billingCadence ?? sub.plan.cadence) === "trial" ? "trial day" : (sub.billingCadence ?? sub.plan.cadence) === "monthly" ? "month" : "week"}`, value: formatMoney(sub.priceCents) },
                 { label: "Pays by", value: PAY_LABEL[sub.paymentMethod] },
                 { label: "Current period", value: sub.currentPeriodStart && sub.currentPeriodEnd ? `${dayShort(sub.currentPeriodStart)} to ${dayShort(sub.currentPeriodEnd)}` : "Not started" },
                 { label: "Next bill", value: sub.nextBillingDate ? dayLabel(sub.nextBillingDate) : "None scheduled" },

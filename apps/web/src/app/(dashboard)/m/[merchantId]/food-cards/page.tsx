@@ -128,11 +128,12 @@ function Counter({ programs, onChanged }: { programs: petApi.FoodProgramDto[]; o
   const [member, setMember] = useState<PickedMember | null>(null);
   const [skuId, setSkuId] = useState("");
   const [grams, setGrams] = useState("");
-  const [remind, setRemind] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const cards = useApi(member ? () => api.food.cards(member.memberId) : null, [api, member?.memberId]);
   const skus = programs.filter((p) => p.active).flatMap((p) => p.skus.filter((s) => s.active).map((s) => ({ ...s, brand: p.brand })));
-  const chosen = skus.find((s) => s.id === (skuId || skus[0]?.id));
+  // The bag defaults to the one this customer buys most (their fullest live card), not the first product in the list.
+  const usual = [...(cards.data?.cards ?? [])].filter((c) => !c.expired).sort((a, b) => b.counted - a.counted)[0]?.skuId;
+  const chosen = skus.find((s) => s.id === (skuId || usual || skus[0]?.id));
   const card = cards.data?.cards.find((c) => c.skuId === chosen?.id) ?? null;
   const prog = programs.find((p) => p.skus.some((s) => s.id === chosen?.id));
   const total = card?.buyCount ?? prog?.buyCount ?? 12;
@@ -140,9 +141,9 @@ function Counter({ programs, onChanged }: { programs: petApi.FoodProgramDto[]; o
   async function add(qty: number) {
     if (!member || !chosen) return;
     const dg = grams.trim() ? Number(grams) : undefined;
-    const r = await act.run(() => api.food.punch({ memberId: member.memberId, skuId: chosen.id, qty, ...(dg ? { dailyGrams: dg } : {}), ...(remind ? { remind: true } : {}) }));
+    const r = await act.run(() => api.food.punch({ memberId: member.memberId, skuId: chosen.id, qty, ...(dg ? { dailyGrams: dg } : {}) }));
     if (r) {
-      setNote(r.needsMarketingConsent ? "They have not agreed to texts from your shop yet, so the reminder is off." : null);
+      setNote(r.needsCustomerYes ? "The daily amount is saved. The run-out text starts when they switch it on in Pet food cards on their card." : null);
       toast({ message: r.canRedeem ? "The free bag is ready" : `${r.toGo} to go`, tone: "success" });
       await cards.reload();
       onChanged();
@@ -204,10 +205,7 @@ function Counter({ programs, onChanged }: { programs: petApi.FoodProgramDto[]; o
               {!card?.canRedeem ? <p className="text-caption text-fg-muted">Locked until the card is full. The server refuses early, so a till slip-up cannot give away a bag.</p> : null}
               <div className="flex flex-col gap-3 border-t border-line pt-4">
                 <TextField label="Daily amount, grams (for the run-out text)" type="number" min={10} value={grams} onChange={(e) => setGrams(e.target.value)} placeholder={card?.dailyGrams ? String(card.dailyGrams) : "360"} hint={grams && Number(grams) > 0 ? `A ${poundsLabel(chosen.bagGrams)} bag lasts about ${Math.max(1, Math.floor(chosen.bagGrams / Number(grams)))} days.` : undefined} />
-                <label className="flex items-start gap-2 text-meta text-fg">
-                  <input type="checkbox" className="mt-0.5 size-4" checked={remind} onChange={(e) => setRemind(e.target.checked)} />
-                  <span>They asked for a text a few days before this bag runs out. One text per bag, no ads.</span>
-                </label>
+                <p className="text-meta text-fg-muted">The run-out text is their own choice: tell them to switch on &ldquo;Text me before it runs out&rdquo; in Pet food cards on their card. We never switch it on for them at the till.</p>
                 {card?.runOutOn ? <p className="text-meta text-fg-muted">Runs out about {shortDate(card.runOutOn)}{card.remind ? `. Text goes ${shortDate(card.remindOn)}.` : ". No reminder."}</p> : null}
                 {note ? <Banner tone="warning">{note}</Banner> : null}
               </div>

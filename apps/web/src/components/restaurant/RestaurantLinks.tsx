@@ -13,11 +13,12 @@ export async function restaurantOfferings(slug: string, features?: object | null
   const [menu, tiffin, banquet] = await Promise.all([api.menu(slug).catch(() => null), api.tiffin.plans(slug, { menuDays: 0 }).catch(() => null), api.banquet.halls(slug).catch(() => null)]);
   const hasMenu = !!menu && menu.categories.length + menu.uncategorized.length > 0;
   const items = menu ? [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized] : [];
-  const restaurantMenu = !!menu && (!!menu.languages || items.some((i) => (i.dietary && Object.keys(i.dietary).length > 0) || i.preorderOnly || i.serves));
+  // Trays and pre-order dishes (or a hall) are what a catering request is for: a tiffin or plain menu shop has no catering set up.
+  const catersFor = items.some((i) => i.preorderOnly || (i.serves ?? 0) > 1);
   const hasTiffin = !!tiffin && tiffin.plans.length > 0;
   const hasBanquet = !!banquet && banquet.items.length > 0;
   const flag = (features as { catering?: boolean } | null | undefined)?.catering;
-  return { menu: hasMenu, tiffin: hasTiffin, banquet: hasBanquet, catering: flag ?? (restaurantMenu || hasTiffin || hasBanquet) };
+  return { menu: hasMenu, tiffin: hasTiffin, banquet: hasBanquet, catering: flag !== false && (catersFor || hasBanquet) };
 }
 
 /** Rows on the shop page that link to Menu, Tiffin, Catering and Banquet. Renders nothing for shops without them. */

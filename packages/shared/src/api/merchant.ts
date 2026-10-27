@@ -20,7 +20,7 @@ export const hoursSchema = z.partialRecord(z.enum(DAY_KEYS), z.array(z.tuple([hh
 export type Hours = z.infer<typeof hoursSchema>;
 
 export const verticalSchema = z.enum(VERTICALS);
-export const staffRoleSchema = z.enum(["owner", "manager", "staff"]);
+export const staffRoleSchema = z.enum(["owner", "manager", "staff", "instructor"]);
 export type StaffRole = z.infer<typeof staffRoleSchema>;
 export const brandColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #1A7F5A");
 const urlSchema = z.url().max(2000);
@@ -38,6 +38,8 @@ export const createMerchantBody = z.object({
   postalCode: z.string().trim().max(10).optional(),
   phone: phoneSchema,
   email: z.email().optional(),
+  /** What the shop sells, when its type is "Other" (so we can see which trades are asking). Shown as the shop's about text until the owner edits it. */
+  description: z.string().trim().max(300).optional(),
   /** Neighbourhood by id or slug (one of them; both optional). */
   neighbourhoodId: uuidSchema.optional(),
   neighbourhoodSlug: z.string().max(80).optional(),
@@ -46,6 +48,22 @@ export const createMerchantBody = z.object({
   hours: hoursSchema.optional(),
 });
 export type CreateMerchantBody = z.infer<typeof createMerchantBody>;
+
+/** POST /v1/merchants/:id/street: the owner names their street or business area when no live street covers the shop. */
+export const streetRequestBody = z.object({ name: z.string().trim().min(3).max(120) });
+export type StreetRequestBody = z.infer<typeof streetRequestBody>;
+/** GET /v1/merchants/:id/street, and the answer to POST .../street and POST .../locate: where the shop is on the map and on which street. */
+export interface StreetStatusResponse {
+  /** The primary location has a map pin. */
+  onMap: boolean;
+  neighbourhood: { slug: string; name: string; status: "scouting" | "pilot" | "live" } | null;
+  /** The street is open to shoppers (pilot or live). */
+  open: boolean;
+  /** Shops on this street so far, and how many open it. */
+  shops: number;
+  opensAt: number;
+}
+export type StreetRequestResponse = StreetStatusResponse;
 
 export const updateProfileBody = z
   .object({
@@ -145,7 +163,11 @@ export interface MyMerchant {
 export const ONBOARDING_STEPS = ["program", "first_stamp", "qr_kit", "staff", "first_members"] as const;
 /** Optional steps shown under "Later". They never block going live and do not count toward progress. */
 export const ONBOARDING_LATER_STEPS = ["profile", "pos"] as const;
-export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number] | (typeof ONBOARDING_LATER_STEPS)[number];
+/** Only a pharmacy has this core step: the pharmacist-owner confirms the rules and gives the OCP accreditation number. */
+export const ONBOARDING_PHARMACY_STEP = "pharmacy_rules" as const;
+/** The trade's own first step (menu, services and hours, classes, price list): see tradeSetupFor in onboarding.ts. Not every shop has one. */
+export const ONBOARDING_TRADE_STEP = "trade_setup" as const;
+export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number] | (typeof ONBOARDING_LATER_STEPS)[number] | typeof ONBOARDING_PHARMACY_STEP | typeof ONBOARDING_TRADE_STEP;
 /** Steps a merchant can tick manually (e.g. solo owner skips "staff"). "rewards" is accepted for older clients and ignored. */
 export const completeStepBody = z.object({ step: z.enum(["profile", "program", "rewards", "staff", "qr_kit", "pos"]) });
 

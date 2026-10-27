@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { duePreview, money, tipChoices } from "@/lib/dashboard/calendar";
+import { formatDate, formatPoints } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type Appt = appointmentsApi.AppointmentDto;
@@ -42,8 +43,9 @@ export function CheckoutSheet({
   settings: appointmentsApi.AppointmentSettingsDto | null;
   onDone: () => void | Promise<void>;
 }) {
-  const { api } = useMerchant();
+  const { api, base, detail } = useMerchant();
   const act = useAction();
+  const [nextWeeks, setNextWeeks] = useState("");
   const [items, setItems] = useState<Item[]>(appt.items);
   const [mode, setMode] = useState<"counter" | "link">("counter");
   const [method, setMethod] = useState<(typeof METHODS)[number]["value"]>("card_terminal");
@@ -64,6 +66,7 @@ export function CheckoutSheet({
     setRewardId("");
     setResult(null);
     setTipStaff(appt.staffId ?? "");
+    setNextWeeks(appt.pet ? String(appt.pet.groomEveryWeeks) : "");
     act.setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, appt.id]);
@@ -91,6 +94,7 @@ export function CheckoutSheet({
         tipCents: mode === "counter" ? tip : 0,
         tipStaffId: tipStaff || null,
         rewardId: rewardId || null,
+        nextGroomWeeks: appt.pet && nextWeeks ? Number(nextWeeks) : null,
         customer: needsPhone ? { phone: `+1${phone.replace(/\D/g, "").slice(-10)}`, name: appt.customer.name } : undefined,
       }),
     );
@@ -127,13 +131,14 @@ export function CheckoutSheet({
             <CircleCheck aria-hidden className="mt-0.5 size-6 shrink-0 text-positive" strokeWidth={1.5} />
             <div>
               <p className="text-body-strong text-fg">{inv.status === "paid" ? `Paid, invoice #${inv.number}` : `Pay link sent, invoice #${inv.number}`}</p>
-              <p className="text-meta text-fg-muted">{inv.status === "paid" ? `${inv.pointsEarned} points earned.` : "They get the link by text and push."}</p>
+              <p className="text-meta text-fg-muted">{inv.status === "paid" ? `${formatPoints(inv.pointsEarned, detail.program?.terminology, false)} earned.` : "They get the link by text and push."}</p>
+              {result.pet ? <p className="mt-1 text-meta text-fg">{result.pet.name}&apos;s groom is logged. Next one is due {formatDate(result.pet.nextDueOn)} (every {result.pet.groomEveryWeeks} weeks).</p> : null}
             </div>
           </div>
           <dl className="divide-y divide-line border-y border-line text-meta">
             <Line label="Services" value={money(inv.subtotalCents + inv.discountCents)} />
             {inv.discountCents ? <Line label="Reward" value={`-${money(inv.discountCents)}`} tone="positive" /> : null}
-            {inv.taxCents > 0 ? <Line label={settings?.tax.name ?? "Tax"} value={money(inv.taxCents)} /> : null}
+            {inv.taxCents > 0 ? <Line label={settings?.tax.name ?? "Tax"} value={money(inv.taxCents)} /> : settings?.taxStatus === "unset" ? <Line label="Tax" value="Not added: tax status not set" /> : settings?.taxStatus === "small" ? <Line label="Tax" value="None (small supplier)" /> : null}
             {inv.depositAppliedCents ? <Line label="Deposit paid online" value={`-${money(inv.depositAppliedCents)}`} tone="positive" /> : null}
             <Line label="Balance" value={money(inv.amountDueCents)} strong />
             {inv.tipCents ? <Line label="Tip" value={money(inv.tipCents)} /> : null}
@@ -157,6 +162,14 @@ export function CheckoutSheet({
             <Select hideLabel label="Add a service" value={addId} placeholder="Add a service" onChange={(e) => addService(e.target.value)} options={services.filter((s) => s.active).map((s) => ({ value: s.id, label: `${s.name} · ${money(s.priceCents)}` }))} className="mt-2" />
           </section>
 
+          {settings?.taxStatus === "unset" ? (
+            <Banner tone="warning" title="No tax will be added">
+              Your GST/HST status is not set, so this bill has no tax line. <a className="underline underline-offset-2" href={`${base}/settings?tab=tax`}>Set it in Settings</a> if you charge HST.
+            </Banner>
+          ) : null}
+          {appt.pet ? (
+            <Select label={`Next groom for ${appt.pet.name}`} hint="Logs today's groom and sets when the reminder goes out." value={nextWeeks} onChange={(e) => setNextWeeks(e.target.value)} options={[...new Set([2, 4, 6, 8, 10, 12, appt.pet.groomEveryWeeks])].sort((a, b) => a - b).map((w) => ({ value: String(w), label: `In ${w} weeks` }))} />
+          ) : null}
           {appt.customer.id && rewards.data?.items.some((r) => r.active) ? (
             <Select label="Reward" hint="Takes the points off their balance and the value off the bill." value={rewardId} onChange={(e) => setRewardId(e.target.value)} options={[{ value: "", label: "No reward" }, ...rewards.data.items.filter((r) => r.active).map((r) => ({ value: r.id, label: `${r.name} (${r.pointsCost} pts)` }))]} />
           ) : null}
@@ -199,7 +212,7 @@ export function CheckoutSheet({
           <dl className="divide-y divide-line border-y border-line text-meta">
             <Line label="Services" value={money(due.subtotalCents)} />
             {due.depositCents ? <Line label="Deposit paid online" value={`-${money(due.depositCents)}`} tone="positive" /> : null}
-            <Line label="Balance before tax" value={money(due.dueCents)} strong />
+            <Line label={settings?.taxStatus === "registered" ? "Balance before tax" : "Balance"} value={money(due.dueCents)} strong />
             {mode === "counter" && tipsOn && tip > 0 ? <Line label="Tip" value={money(tip)} /> : null}
           </dl>
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}

@@ -30,6 +30,8 @@ export function rewardPhrase(name: string): string {
 }
 
 export function joinHeadline(program: Program | null, vertical: string): string {
+  // A pharmacy never pays for joining or for a visit: a visit may be a prescription visit.
+  if (vertical === "pharmacy") return "start earning on front-store purchases";
   const today = TODAY[vertical] ?? "visit";
   if (!program) return `join for today’s ${today}`;
   if (program.welcomeBonus > 0) {
@@ -83,6 +85,7 @@ export function unitText(t: T, program: Pick<Program, "earnType"> | null, n: num
 
 export function joinHeadlineT(t: T, locale: Locale, program: Program | null, vertical: string): string {
   if (locale === "en") return joinHeadline(program, vertical);
+  if (vertical === "pharmacy") return t("auth.join.headlineFrontStore");
   if (!program) return t("auth.join.headlineJoin");
   return program.welcomeBonus > 0 ? t("auth.join.headlineBonus", { bonus: unitText(t, program, program.welcomeBonus) }) : t("auth.join.headlineStart");
 }

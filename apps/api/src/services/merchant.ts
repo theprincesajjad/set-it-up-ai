@@ -33,6 +33,7 @@ import {
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { assertBeautyClaims } from "./beauty-guard.js";
 import { ensureLockedCategories } from "./pharmacy-guard.js";
 import { getMerchantFeatures, getRolloutStages } from "./features.js";
 import { writeAudit } from "./admin-audit.js";
@@ -247,6 +248,8 @@ export async function applyVerticalTemplate(tx: Tx, merchantId: string, vertical
     const [row] = await tx.insert(merchantCategories).values({ merchantId, ...c }).returning({ id: merchantCategories.id });
     categoryIds.push(row!.id);
   }
+  // Barbers tip about 10% (a short cut): their checkout presets start at 10, 15 and 20.
+  if (vertical === "barber") await tx.update(merchants).set({ tipPresets: [10, 15, 20] }).where(and(eq(merchants.id, merchantId), sql`${merchants.tipPresets} = '[15,20,25]'::jsonb`));
   // A pharmacy always has its dispensary categories, locked (and any look-alike name is locked too).
   if (vertical === "pharmacy") await ensureLockedCategories(tx, merchantId);
 
@@ -320,6 +323,7 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
         slug,
         name: b.name,
         vertical: b.vertical,
+        description: b.description || null,
         neighbourhoodId,
         phone,
         email: b.email ?? null,
@@ -366,6 +370,11 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
 // Profile
 // ---------------------------------------------------------------------------
 export async function updateProfile(ctx: AppContext, merchantId: string, actorUserId: string, body: merchantApi.UpdateProfileBody) {
+  // The public shop page counts as advertising: a beauty supply shop's description gets the same treatment-claim check as its texts and promos.
+  if (body.description) {
+    const [m] = await ctx.db.select({ vertical: merchants.vertical }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+    if (m) assertBeautyClaims(m, body.description, "The shop description");
+  }
   return ctx.db.transaction(async (tx) => {
     const { hours, neighbourhoodId, phone, ...rest } = body;
     const set: Partial<typeof merchants.$inferInsert> = { ...rest, updatedAt: ctx.now() };

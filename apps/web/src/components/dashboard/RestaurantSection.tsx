@@ -7,17 +7,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import type { FeatureKey } from "@ll/shared";
 import { cn } from "@/lib/cn";
 import { RESTAURANT_MORE, hasRestaurantFeature, enabledSet, restaurantModules } from "@/lib/dashboard/nav";
 import { TierTeaser } from "./restaurant/shared";
 import { TaxNotSetBanner } from "./TaxStatus";
 import { useMerchant } from "./MerchantContext";
 
+const PAGE_FEATURE: Record<string, FeatureKey> = {
+  tiffin: "restaurant.tiffin",
+  catering: "restaurant.catering",
+  banquet: "restaurant.banquet",
+  preorders: "restaurant.degh_preorders",
+  festivals: "restaurant.festival_campaigns",
+  whatsapp: "restaurant.whatsapp_marketing",
+  kitchen: "restaurant.kds",
+  "phone-orders": "restaurant.phone_ai",
+  reviews: "restaurant.reviews",
+};
+
 export function RestaurantSection({ children }: { children: ReactNode }) {
   const { base, features } = useMerchant();
   const pathname = usePathname() ?? "";
   const enabled = enabledSet(features.features);
-  if (!hasRestaurantFeature(enabled)) return <TierTeaser featureKey="restaurant.dietary_tags" title="Restaurant tools" description="Halal and dietary tags, tiffin subscriptions, catering, pot pre-orders and WhatsApp ordering, built for restaurants." />;
+  if (!hasRestaurantFeature(enabled)) {
+    // Name the plan the page the owner opened really needs: tiffin and catering are Growth, banquet is Pro, the rest Starter.
+    const page = Object.entries(PAGE_FEATURE).find(([slug]) => pathname.startsWith(`${base}/restaurant/${slug}`));
+    return page ? <TierTeaser featureKey={page[1]} /> : <TierTeaser featureKey="restaurant.dietary_tags" title="Restaurant tools" description="Halal and dietary tags, tiffin subscriptions, catering, pot pre-orders and WhatsApp ordering, built for restaurants." />;
+  }
   const { unlocked, locked } = restaurantModules(enabled);
   const tabs = [...unlocked, ...(locked.length ? [RESTAURANT_MORE] : [])];
   return (

@@ -32,6 +32,9 @@ describe("beauty claims", () => {
     expect(c.ok).toBe(false);
     expect(c.term?.toLowerCase()).toContain("regrows");
   });
+  it("catches the claims the first list missed: treats dandruff, anti-dandruff, hair growth, clinically proven", () => {
+    for (const t of ["Treats dandruff fast", "New anti-dandruff shampoo", "Promotes hair growth", "Hair growth serum $24", "Clinically proven to thicken hair", "Stops hair loss and cures dandruff"]) expect(checkBeautyClaims(t).ok, t).toBe(false);
+  });
   it("lets product and price words through", () => {
     for (const t of ["Argan oil shampoo, 355 ml, $14.99", "Treat yourself to 20% off", "Colour restock this weekend", "Dandruff shampoo back in stock"]) expect(checkBeautyClaims(t).ok, t).toBe(true);
   });

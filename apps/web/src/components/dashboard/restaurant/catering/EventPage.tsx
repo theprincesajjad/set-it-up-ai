@@ -2,7 +2,7 @@
 import { Copy, ExternalLink, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { restaurantApi } from "@ll/shared";
+import { restaurantApi } from "@ll/shared";
 import type { commerceApi } from "@ll/shared";
 import { DefList, EmptyState, Panel, Section, StatusDot } from "@/components/dashboard/kit";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
@@ -236,7 +236,7 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
             <div className="min-w-0 flex-1 basis-60">
               <Select label="Add from your menu" value={pick} placeholder={catalog.loading ? "Loading your menu" : items.length ? "Choose a dish or tray" : "No dishes on your menu yet"} onChange={(e) => addCatalog(e.target.value)} options={items.map((i) => ({ value: i.id, label: `${i.name} · ${formatMoney(i.priceCents)}${i.serves ? ` · serves ${i.serves}` : ""}` }))} disabled={!items.length} />
             </div>
-            <Button variant="secondary" size="sm" iconStart={Plus} className="mb-6" onClick={() => setLines((l) => [...l, { key: nk(), catalogItemId: null, name: "", pricing: "tray", perHead: "", qty: "1", unit: "" }])}>Custom line</Button>
+            <Button variant="secondary" size="sm" iconStart={Plus} className="mb-6" onClick={() => setLines((l) => [...l, { key: nk(), catalogItemId: null, name: "", pricing: "per_head", perHead: "", qty: "1", unit: "" }])}>Custom line</Button>
           </div>
         ) : null}
 
@@ -280,6 +280,13 @@ function MenuBuilder({ event, onChange }: { event: Ev; onChange: (e: Ev) => void
   );
 }
 
+/** What the quote told the customer about cancelling, applied to today: the default tiers give back all, half or none of the deposit. */
+function policyLine(eventDate: string): string {
+  const days = Math.floor((Date.parse(`${eventDate}T12:00:00Z`) - Date.now()) / 86_400_000);
+  const bps = restaurantApi.hallRefundBps(restaurantApi.DEFAULT_CATERING_REFUND_POLICY, new Date(Date.parse(`${eventDate}T12:00:00Z`)));
+  return `The quote promised: all of the deposit back 14 or more days before, half 7 or more, none after. This event is ${Math.max(0, days)} days away, so ${bps >= 10_000 ? "all of it" : bps > 0 ? "half of it" : "none of it"} goes back.`;
+}
+
 function strip(s: { lines: Line[]; extras: Extra[]; deposit: string; service: string }) {
   return { lines: s.lines.map((l) => ({ ...l, key: "" })), extras: s.extras.map((x) => ({ ...x, key: "" })), deposit: s.deposit, service: s.service };
 }
@@ -291,9 +298,9 @@ function lineFor(it: commerceApi.CatalogItemDto, headcount: number): Line {
     catalogItemId: it.id,
     name: it.name,
     // Pots and trays that say who they serve are sold by the tray; everything else by the head.
-    pricing: serves ? "tray" : "per_head",
-    perHead: centsToField(serves ? Math.round(it.priceCents / serves) : it.priceCents),
-    qty: String(serves ? Math.max(1, Math.ceil(headcount / serves)) : 1),
+    pricing: serves && serves > 1 ? "tray" : "per_head",
+    perHead: centsToField(serves && serves > 1 ? Math.round(it.priceCents / serves) : it.priceCents),
+    qty: String(serves && serves > 1 ? Math.max(1, Math.ceil(headcount / serves)) : 1),
     unit: centsToField(it.priceCents),
   };
 }
@@ -374,6 +381,15 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {event.dateClashes ? <Banner tone="warning" title="Another booking that day">{event.dateClashes === 1 ? "A confirmed event or hall booking" : `${event.dateClashes} confirmed events or hall bookings`} is on {dayLabel(event.eventDate)}. You can still go ahead.</Banner> : null}
       <PaymentsCard event={event} payee={payee.data ?? null} onRecord={setRecording} onVoid={role === "owner" ? setVoiding : undefined} />
+      {event.reminder?.kind ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-body-strong text-fg">{event.reminder.kind === "deposit" ? "Waiting on the deposit" : "Balance still to pay"}: {formatMoney(event.reminder.amountCents)}</p>
+            <p className="text-meta text-fg-muted">{event.reminder.lastRemindedAt ? `Last reminder ${formatDateTime(event.reminder.lastRemindedAt)}. ` : "No reminder sent yet. "}We also remind them on our own.</p>
+          </div>
+          <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void doing(() => api.catering.remind(event.id), "Reminder sent", ev)}>Remind</Button>
+        </div>
+      ) : null}
 
       {(st === "inquiry" || st === "tasting") ? (
         <Section title="Tasting" description={event.tastingAt ? `Booked for ${formatDateTime(event.tastingAt)}` : "Optional. Have them try the biryani before they commit."}>
@@ -506,6 +522,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
         }}
       >
         <TextField label="Reason" optionalLabel value={reason} onChange={(e) => setReason(e.target.value)} />
+        {refundable ? <p className="mt-3 text-meta text-fg-muted">{policyLine(event.eventDate)}</p> : null}
         {refundable ? <RefundChoice depositCents={event.depositCents} value={refund} onChange={setRefund} hint="If you took the deposit by e-transfer or cash, keep it here and return it yourself. The app can only refund card payments." /> : event.depositPaidAt && event.depositRefundCents === 0 ? <p className="mt-3 text-meta text-fg-muted">The deposit is not refunded automatically.</p> : null}
       </ConfirmDialog>
     </>

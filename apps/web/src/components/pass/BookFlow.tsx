@@ -2,7 +2,8 @@
 import { useHydratedValue } from "@/lib/useHydratedValue";
 import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { appointmentsApi } from "@ll/shared";
+import { serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
+import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { ReminderCard } from "@/components/pass/ReminderCard";
@@ -11,6 +12,7 @@ import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
@@ -28,7 +30,7 @@ const DAYS = 14;
  * card or deposit row (M2), pay the deposit or save a card, then a confirmation with a calendar file.
  * The bridal row is a quote, not a slot.
  */
-export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string } }) {
+export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string }; meName?: string | null }) {
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
@@ -50,6 +52,19 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
   const [finished, setFinished] = useState<appointmentsApi.MyAppointmentDto | null>(null);
   const [wantsSignIn, setWantsSignIn] = useState(false);
   const pending = useRef(false);
+  // Who is coming: the shop sees a name on the calendar, never "Walk-in". Asked once, when the account has no name yet.
+  const [firstName, setFirstName] = useState("");
+  const [nameTried, setNameTried] = useState(false);
+  const needsName = !meName?.trim();
+  // A pet shop books a dog: pick which one (its size picks the price).
+  const petShop = data.shop.vertical === "pet";
+  const [myPets, setMyPets] = useState<petApi.PetDto[]>([]);
+  const [petId, setPetId] = useState<string>(initial?.pet ?? "");
+  useEffect(() => {
+    if (!signedIn || !petShop) return;
+    void browserApi.me.myPets().then((r) => { setMyPets(r.items); setPetId((cur) => cur || (r.items.length === 1 ? r.items[0]!.id : "")); }).catch(() => undefined);
+  }, [signedIn, petShop]);
+  const pickedPet = myPets.find((p) => p.id === petId) ?? null;
 
   const staffName = staffId ? (data.staff.find((s) => s.id === staffId)?.name ?? "") : "";
   const sel = useMemo(() => summarize(data.services, ids, staffId), [data.services, ids, staffId]);
@@ -61,16 +76,16 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
   const fee = takesCards ? data.policy.noShowFeeCents : 0;
   const needsCard = takesCards && (deposit > 0 || fee > 0);
   const categories = useMemo(() => [...new Set(data.services.map((s) => s.categoryName).filter((c): c is string => !!c))], [data.services]);
-  const visible = useMemo(() => data.services.filter((s) => (category === "all" || s.categoryName === category) && staffDoes(s, staffId)), [data.services, category, staffId]);
+  const visible = useMemo(() => data.services.filter((s) => (category === "all" || s.categoryName === category) && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand)), [data.services, category, staffId, pickedPet?.sizeBand]);
   const days = useMemo(() => nextDays(todayIso(), DAYS), []);
 
   // Drop chosen services the newly picked stylist doesn't do.
   useEffect(() => {
     // Keep the selection valid when the stylist changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIds((cur) => cur.filter((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId))));
+    setIds((cur) => cur.filter((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand))));
     setSlot(null);
-  }, [staffId, data.services]);
+  }, [staffId, data.services, pickedPet?.sizeBand]);
 
   const loadTimes = useCallback(async () => {
     if (!ids.length) return;
@@ -124,6 +139,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
 
   async function submit() {
     if (!slot) return;
+    // Signed in with no name on the account: ask for it now. A signed-out visitor may type it ahead of signing in; if they do not, we ask again once we know who they are.
+    if (signedIn && needsName && !firstName.trim()) {
+      setNameTried(true);
+      return;
+    }
     if (!signedIn) {
       pending.current = true;
       setWantsSignIn(true);
@@ -132,7 +152,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);
@@ -206,6 +226,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
           {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
         </section>
+        {!pharmacy ? <NextVisitCard appt={finished} showManage={false} /> : null}
         <ReminderCard text={finished.reminderText} />
         <div className="flex flex-col gap-3">
           <Button size="lg" fullWidth onClick={download}>{t("bk.done.calendar")}</Button>
@@ -296,6 +317,9 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
             <button type="button" disabled={!slot || busy} onClick={submit} className="text-body-strong text-fg focus-visible:focus-ring disabled:text-fg-subtle">{t("bk.card.add")}</button>
           </div>
         ) : null}
+        {needsName && !pharmacy ? (
+          <TextField label={t("bk.name")} hint={t("bk.nameHint", { shop: shop.name })} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" error={nameTried && signedIn && !firstName.trim() ? t("bk.nameRequired") : undefined} />
+        ) : null}
         {pharmacy ? (
           <div className="rounded-card bg-bg-subtle p-4" data-testid="pharmacy-privacy">
             <p className="text-body-strong text-fg">{t("rx.book.privacyTitle")}</p>
@@ -336,6 +360,20 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
           );
         })}
       </div>
+      {petShop && signedIn ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-meta-strong text-fg">{t("bk.pet.title")}</p>
+          <div role="radiogroup" aria-label={t("bk.pet.title")} className="flex flex-wrap gap-2">
+            {myPets.map((p) => (
+              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-10 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                <bdi>{p.name}</bdi>
+              </button>
+            ))}
+            <a href={`/me/pets?next=${encodeURIComponent(`/shops/${shop.slug}/book`)}`} className="inline-flex h-10 items-center rounded-full border border-dashed border-line-strong px-4 text-body text-fg focus-visible:focus-ring">+ {t("bk.pet.add")}</a>
+          </div>
+          {pickedPet ? <p className="text-meta text-fg-muted">{t("bk.pet.sizeNote", { pet: pickedPet.name })}</p> : null}
+        </div>
+      ) : null}
       {categories.length > 1 ? (
         <div role="radiogroup" aria-label={t("bk.all")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {["all", ...categories].map((c) => (
@@ -363,7 +401,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial }: { shop:
             </li>
           );
         })}
-        {pharmacy ? null : <li>
+        {pharmacy || (data.shop.vertical && data.shop.vertical !== "salon") ? null : <li>
           <a href={shop.phone ? `tel:${shop.phone}` : `/shops/${encodeURIComponent(shop.slug)}`} className="flex min-h-[64px] items-center gap-3 py-3 focus-visible:focus-ring">
             <span aria-hidden className="size-7 shrink-0 rounded-full border border-line-strong" />
             <span className="min-w-0 flex-1">

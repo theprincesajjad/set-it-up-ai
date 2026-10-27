@@ -12,12 +12,15 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LOCALES, translator, type MessageKey, type restaurantApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { OrderBadges } from "@/components/dashboard/restaurant/orderBadges";
+import { Tag } from "@/components/dashboard/kit";
 import { stationLabel } from "@/components/dashboard/restaurant/menu";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/api/errors";
 import { localeFont } from "@/lib/i18n/fonts";
 import { useApi } from "@/lib/dashboard/useApi";
+import { clock12, clockIn, isolate as iso } from "@/lib/restaurant/kitchenText";
+
+export { clock12, clockIn };
 
 type Ticket = restaurantApi.KitchenTicketDto;
 type Item = restaurantApi.KitchenItemDto;
@@ -46,6 +49,9 @@ const stationIn = (tr: Tr, s: string) => {
   const word = tr(key);
   return word === key || word.startsWith("station.") ? stationLabel(s) : word;
 };
+/** Order kind and channel in the ticket language. */
+const tagsIn = (tr: Tr, kind: string | null | undefined, channel: string | null | undefined): string[] =>
+  [kind === "preorder" ? tr("kitchen.kind.preorder") : null, channel && ["web", "phone", "counter", "whatsapp"].includes(channel) ? tr(`kitchen.chan.${channel}` as MessageKey) : null].filter((x): x is string => !!x);
 const NEXT: Record<Item["status"], "cooking" | "ready" | null> = { queued: "cooking", cooking: "ready", ready: null };
 
 /** A ticket is late only once it was fired and has waited longer than LATE_AFTER_S. */
@@ -56,9 +62,6 @@ export function ageText(seconds: number): string {
   const m = Math.floor(s / 60);
   return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`;
 }
-
-/** "4:30 pm" in Toronto time. */
-export const clock12 = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(/[\u202f\u00a0]/g, " ").replace(/\./g, "").toLowerCase();
 
 /** The label font for one language: its Noto family first, Inter after, so a cook's script never falls back to a box. */
 const scriptStyle = (l: Lang) => localeFont(l).fontFamily;
@@ -148,16 +151,17 @@ export function KitchenBoard() {
   const soldOutCount = data?.soldOutCount ?? 0;
 
   return (
-    <div className="fixed inset-0 z-modal flex flex-col bg-bg-subtle text-fg" role="region" aria-label="Kitchen display">
+    <div className={cn("fixed inset-0 z-modal flex flex-col bg-bg-subtle text-fg", scriptClass(shownLang))} style={{ fontFamily: scriptStyle(shownLang) }} lang={LOCALES[shownLang].bcp47} dir={dir} role="region" aria-label="Kitchen display">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-bg px-4 py-3 md:px-6">
         <Link href={base} className="inline-flex h-[38px] items-center gap-2 rounded-full border border-line px-4 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
           <X aria-hidden className="size-4" />
           <span lang={LOCALES[shownLang].bcp47} style={{ fontFamily: scriptStyle(shownLang) }} className={scriptClass(shownLang)}>{tr("kitchen.exit")}</span>
         </Link>
         <div className="min-w-0">
-          <h1 className="display truncate text-headline leading-tight text-fg">kitchen</h1>
+          <h1 className={cn("truncate text-headline leading-tight text-fg", shownLang === "en" && "display")}>{shownLang === "en" ? "kitchen" : tr("kitchen.title")}</h1>
           <p className="truncate text-caption text-fg-muted">
-            {detail.merchant.name} · {tickets.length} open{lateCount ? ` · ${lateCount} late` : ""}
+            <bdi>{detail.merchant.name}</bdi> · {tr("kitchen.openN", { n: iso(shownLang, tickets.length) })}
+            {lateCount ? ` · ${tr("kitchen.lateN", { n: iso(shownLang, lateCount) })}` : ""}
           </p>
         </div>
 
@@ -185,7 +189,7 @@ export function KitchenBoard() {
             aria-haspopup="dialog"
             className="inline-flex h-[38px] items-center rounded-full border border-line bg-bg px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring"
           >
-            {tr("kitchen.soldOutN", { n: soldOutCount })}
+            {tr("kitchen.soldOutN", { n: iso(shownLang, soldOutCount) })}
           </button>
           <div role="group" aria-label="Ticket language" className="flex h-[46px] items-center gap-0.5 rounded-full border border-line bg-bg p-1">
             {MENU_LANGS.map((l) => (
@@ -218,27 +222,27 @@ export function KitchenBoard() {
         <div role="alert" className="flex items-center justify-between gap-3 border-b border-line bg-bg px-4 py-2 text-meta md:px-6">
           <span className="text-negative">{error ?? state.error}</span>
           <button type="button" onClick={() => { setError(null); void state.reload(); }} className="h-9 rounded-full px-3 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
-            Try again
+            {tr("kitchen.tryAgain")}
           </button>
         </div>
       ) : null}
 
       <main className="min-h-0 flex-1 overflow-y-auto md:overflow-hidden">
         {!data ? (
-          <p className="p-6 text-body text-fg-muted">{state.error ? "" : "Loading tickets..."}</p>
+          <p className="p-6 text-body text-fg-muted">{state.error ? "" : tr("kitchen.loading")}</p>
         ) : !tickets.length ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 p-6 text-center">
             <ChefHat aria-hidden className="size-10 text-fg-subtle" strokeWidth={1.5} />
             <p className="display text-title text-fg">{tr("kitchen.noTickets").replace(/\.$/, "").toLowerCase()}</p>
-            <p className="max-w-sm text-body text-fg-muted">New orders show up here the moment they are paid or placed. This screen checks every {POLL_MS / 1000} seconds.</p>
+            <p className="max-w-sm text-body text-fg-muted">{tr("kitchen.emptyBody", { n: iso(shownLang, POLL_MS / 1000) })}</p>
           </div>
         ) : (
           <div className="grid gap-4 p-4 md:h-full md:grid-cols-3 md:gap-0 md:p-0">
             {cols.map((c) => (
               <section key={c.id} aria-label={`${tr(c.key)} tickets`} className={cn("flex min-h-0 min-w-0 flex-col md:border-s md:border-line md:first:border-s-0", !c.tickets.length && "max-md:hidden")}>
-                <h2 className="flex items-baseline justify-between gap-2 px-1 py-0 text-meta-strong uppercase tracking-wide text-fg-muted md:px-5 md:pb-2.5 md:pt-4">
+                <h2 className={cn("flex items-baseline justify-between gap-2 px-1 py-0 text-meta-strong text-fg-muted md:px-5 md:pb-2.5 md:pt-4", shownLang === "en" && "uppercase tracking-wide")}>
                   <span>
-                    {tr(c.key)} <span className="tabular text-fg">{c.tickets.length}</span>
+                    {tr(c.key)} <span className="tabular text-fg">{iso(shownLang, c.tickets.length)}</span>
                   </span>
                 </h2>
                 <ul className="flex min-h-0 flex-col gap-3 pt-2 md:flex-1 md:overflow-y-auto md:px-4 md:pb-4">
@@ -256,11 +260,11 @@ export function KitchenBoard() {
 
       {recent.length ? (
         <footer className="flex flex-wrap items-center gap-2 border-t border-line bg-bg px-4 py-2 md:px-6">
-          <p className="me-1 text-meta text-fg-muted">Just bumped</p>
+          <p className="me-1 text-meta text-fg-muted">{tr("kitchen.justBumped")}</p>
           {recent.map((r) => (
             <button key={r.orderId} type="button" onClick={() => recall(r)} className="inline-flex h-11 items-center gap-2 rounded-full border border-line px-4 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
               <RotateCcw aria-hidden className="size-4" />
-              Recall #{r.number}
+              {tr("kitchen.recall", { n: iso(shownLang, r.number) })}
             </button>
           ))}
         </footer>
@@ -275,21 +279,28 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
   const late = isLate(t, age);
   const allReady = t.items.every((i) => i.status === "ready");
   const done = t.items.filter((i) => i.status === "ready").length;
-  const hm = clock12;
+  const hm = (v: string) => clockIn(lang, v);
   const fireTime = t.fireAt ? hm(t.fireAt) : null;
-  const sub = [t.customerName, t.pickupAt ? tr("kitchen.pickup", { time: hm(t.pickupAt) }) : null].filter(Boolean).join(" · ");
+  const sub = [t.customerName ? iso(lang, t.customerName) : null, t.pickupAt ? tr("kitchen.pickup", { time: iso(lang, hm(t.pickupAt)) }) : null].filter(Boolean).join(" · ");
+  const tags = tagsIn(tr, t.kind, t.channel);
   return (
     <article aria-label={`Ticket ${t.number}`} className={cn("overflow-hidden rounded-card bg-bg", t.allergyNote ? "border-2 border-negative" : t.pinned ? "border-2 border-fg" : "border border-line")}>
       <header className="flex items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <p className="display text-[30px] leading-none text-fg tabular">#{t.number}</p>
-            <OrderBadges kind={t.kind === "preorder" ? "preorder" : null} channel={t.channel} />
+            <p className="display text-[30px] leading-none text-fg tabular" dir="ltr">#{t.number}</p>
+            {tags.length ? (
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                {tags.map((x) => (
+                  <Tag key={x}>{x}</Tag>
+                ))}
+              </span>
+            ) : null}
           </div>
           {sub ? <p className="mt-1.5 text-meta text-fg-muted tabular">{sub}</p> : null}
         </div>
         {t.pinned && fireTime ? (
-          <p className="shrink-0 rounded-full bg-fg px-3 py-1 text-title font-semibold text-bg tabular">{tr("kitchen.fire", { time: fireTime.replace(/ ?[ap]m$/, "") })}</p>
+          <p className="shrink-0 rounded-full bg-fg px-3 py-1 text-title font-semibold text-bg tabular">{tr("kitchen.fire", { time: iso(lang, fireTime.replace(/ ?[ap]m$/, "")) })}</p>
         ) : (
           <p
             className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-accent-soft font-bold text-accent-text" : "bg-bg-subtle font-semibold text-fg")}
@@ -300,11 +311,11 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
         )}
       </header>
       {t.pinned && fireTime && t.pickupAt ? (
-        <p className="bg-fg px-4 py-1.5 text-meta-strong uppercase tracking-wide text-bg tabular">{tr("kitchen.fireBand", { time: fireTime, min: t.cookMinutes, pickup: hm(t.pickupAt) })}</p>
+        <p className={cn("bg-fg px-4 py-1.5 text-meta-strong text-bg tabular", lang === "en" && "uppercase tracking-wide")}>{tr("kitchen.fireBand", { time: iso(lang, fireTime), min: iso(lang, t.cookMinutes), pickup: iso(lang, hm(t.pickupAt)) })}</p>
       ) : null}
       {t.allergyNote ? (
-        <p role="alert" lang={LOCALES[lang].bcp47} dir={dir} className={cn("bg-negative px-4 py-1.5 text-meta-strong font-bold uppercase tracking-wide text-[#FFFFFF]", scriptClass(lang))} style={{ fontFamily: scriptStyle(lang) }}>
-          {tr("kitchen.allergy", { text: t.allergyNote })}
+        <p role="alert" lang={LOCALES[lang].bcp47} dir={dir} className={cn("bg-negative px-4 py-1.5 text-meta-strong font-bold text-[#FFFFFF]", lang === "en" && "uppercase tracking-wide", scriptClass(lang))} style={{ fontFamily: scriptStyle(lang) }}>
+          {tr("kitchen.allergy", { text: iso(lang, t.allergyNote) })}
         </p>
       ) : null}
       <ul className="border-t border-line">

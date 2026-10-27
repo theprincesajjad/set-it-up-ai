@@ -69,7 +69,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     });
     expect(deps.verifyOtp).toHaveBeenCalledWith({ phone: "+14165550123", code: "123456" });
 
-    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Alex" } });
+    fireEvent.change(screen.getByLabelText("First name (optional)"), { target: { value: "Alex" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
     });
@@ -88,11 +88,26 @@ describe("<JoinFlow> (counter QR join)", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
-    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Sam" } });
+    fireEvent.change(screen.getByLabelText("First name (optional)"), { target: { value: "Sam" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
     });
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01", consent: { text: CONSENT } });
+  });
+
+  it("joins with the first name left blank (it is optional) and never saves an empty name", async () => {
+    const deps = makeDeps();
+    render(<JoinFlow info={info} deps={deps} devAutofill />);
+    await enterPhone();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
+    });
+    expect(deps.updateName).not.toHaveBeenCalled();
+    expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01" });
+    await waitFor(() => expect(deps.card).toHaveBeenCalled());
   });
 
   it("validates the phone before calling the API", async () => {
@@ -123,7 +138,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     });
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01" });
     await waitFor(() => expect(screen.getByText("You're in, Riley.")).toBeTruthy());
-    expect(screen.queryByLabelText("First name")).toBeNull();
+    expect(screen.queryByLabelText("First name (optional)")).toBeNull();
   });
 
   it("rate limit shows a warning banner", async () => {
@@ -142,7 +157,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
-    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Jo" } });
+    fireEvent.change(screen.getByLabelText("First name (optional)"), { target: { value: "Jo" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Join Pinecone Coffee Co." }));
     });

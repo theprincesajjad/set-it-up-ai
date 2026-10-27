@@ -16,6 +16,9 @@ import {
   merchantMembers,
   merchantStaff,
   merchants,
+  petShop,
+  petVaccines,
+  pets,
   services,
   staffHours,
   staffServices,
@@ -24,7 +27,7 @@ import {
   type AppointmentItemRow,
   type DbOrTx,
 } from "@ll/db";
-import { appointmentsApi, normalizeLocale, salesTaxCopy, tipsEnabledFor } from "@ll/shared";
+import { appointmentsApi, SERVICE_STARTERS, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -187,6 +190,28 @@ export async function createService(db: DbOrTx, merchantId: string, body: z.outp
   return (await serviceDtos(db, [row!]))[0]!;
 }
 
+/** The usual services for the shop's kind of business, added in one go. Existing names are kept; returns what was added. */
+export async function addStarterServices(db: DbOrTx, merchant: Merchant): Promise<{ items: appointmentsApi.ServiceDto[] }> {
+  const starters = SERVICE_STARTERS[merchant.vertical as keyof typeof SERVICE_STARTERS] ?? [];
+  if (!starters.length) throw badRequest("There is no starter list for this kind of shop yet. Add your services one by one.");
+  const have = new Set((await db.select({ name: services.name }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment")))).map((r) => r.name.toLowerCase()));
+  const [{ n } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment")));
+  const rows = starters.filter((x) => !have.has(x.name.toLowerCase())).map((x, i) => ({
+    merchantId: merchant.id,
+    kind: "appointment" as const,
+    name: x.name,
+    durationMin: x.durationMin,
+    priceCents: x.priceCents,
+    priceFrom: x.priceFrom ?? false,
+    depositCents: x.depositCents ?? 0,
+    bufferMin: x.bufferMin ?? 0,
+    rebookAfterDays: x.rebookAfterDays ?? null,
+    sort: n + i,
+  }));
+  const inserted = rows.length ? await db.insert(services).values(rows).returning() : [];
+  return { items: await serviceDtos(db, inserted) };
+}
+
 export async function getService(db: DbOrTx, merchantId: string, serviceId: string): Promise<Service> {
   const [s] = await db.select().from(services).where(and(eq(services.id, serviceId), eq(services.merchantId, merchantId))).limit(1);
   if (!s) throw notFound("Service");
@@ -214,7 +239,7 @@ export async function deleteService(db: DbOrTx, merchantId: string, serviceId: s
 // ---------------------------------------------------------------------------
 // Staff: bookable people, hours, time off, which services they do
 // ---------------------------------------------------------------------------
-type StaffUser = { userId: string; name: string; role: "owner" | "manager" | "staff" };
+type StaffUser = { userId: string; name: string; role: "owner" | "manager" | "staff" | "instructor" };
 
 async function merchantStaffUsers(db: DbOrTx, merchantId: string): Promise<StaffUser[]> {
   const rows = await db
@@ -317,7 +342,7 @@ export async function putStaffServices(db: DbOrTx, merchantId: string, userId: s
 // Settings
 // ---------------------------------------------------------------------------
 export async function settingsDto(ctx: AppContext, m: Merchant): Promise<appointmentsApi.AppointmentSettingsDto> {
-  return { cancelWindowHours: m.cancelWindowHours, noShowFeeCents: m.noShowFeeCents, tipsEnabled: m.tipsEnabled, tipsOn: tipsEnabledFor(m.vertical, m.tipsEnabled), tipPresets: m.tipPresets, tax: salesTaxCopy({ province: await merchantProvince(ctx.db, m), taxRegistered: m.taxRegistered }) };
+  return { cancelWindowHours: m.cancelWindowHours, noShowFeeCents: m.noShowFeeCents, tipsEnabled: m.tipsEnabled, tipsOn: tipsEnabledFor(m.vertical, m.tipsEnabled), tipPresets: m.tipPresets, tax: salesTaxCopy({ province: await merchantProvince(ctx.db, m), taxRegistered: m.taxRegistered }), taxStatus: m.taxRegistered === true ? "registered" : m.taxRegistered === false ? "small" : "unset" };
 }
 
 export async function updateSettings(ctx: AppContext, merchant: Merchant, body: z.output<typeof appointmentsApi.appointmentSettingsBody>): Promise<appointmentsApi.AppointmentSettingsDto> {
@@ -531,12 +556,45 @@ export async function offReason(db: DbOrTx, merchant: Merchant, locationId: stri
 // ---------------------------------------------------------------------------
 // DTOs
 // ---------------------------------------------------------------------------
+/** Someone with no name on file: a walk-in at the desk, or an online booker shown by the end of their number (never "Walk-in" for a booking they made). */
+export function unnamedClient(source: string, phone: string | null | undefined): string {
+  if (source === "online" || source === "staff") return phone ? `Client ${phone.replace(/\D/g, "").slice(-4)}` : "Client";
+  return "Walk-in";
+}
+
 export function totalOf(items: AppointmentItemRow[]): number {
   return items.reduce((n, i) => n + i.priceCents, 0);
 }
 
+/** The dogs on these appointments, with the shop's handling note and the worst vaccine state, keyed by pet id. */
+async function petsOn(db: DbOrTx, rows: Appointment[]): Promise<Map<string, appointmentsApi.AppointmentPetDto>> {
+  const out = new Map<string, appointmentsApi.AppointmentPetDto>();
+  const ids = [...new Set(rows.map((r) => r.petId).filter((x): x is string => !!x))];
+  if (!ids.length) return out;
+  const merchantIds = [...new Set(rows.map((r) => r.merchantId))];
+  const ps = await db.select().from(pets).where(inArray(pets.id, ids));
+  const shop = await db.select().from(petShop).where(and(inArray(petShop.petId, ids), inArray(petShop.merchantId, merchantIds)));
+  const vax = await db.select().from(petVaccines).where(inArray(petVaccines.petId, ids));
+  const today = new Date().toISOString().slice(0, 10);
+  const rank = { none: 0, current: 1, expiring: 2, expired: 3 } as const;
+  for (const r of rows) {
+    if (!r.petId || out.has(r.petId + r.merchantId)) continue;
+    const p = ps.find((x) => x.id === r.petId);
+    if (!p) continue;
+    const sh = shop.find((x) => x.petId === p.id && x.merchantId === r.merchantId);
+    let worst: "none" | "current" | "expiring" | "expired" = "none";
+    for (const v of vax.filter((x) => x.petId === p.id)) {
+      const st = vaccineStatus(v.expiresOn, today).status as "current" | "expiring" | "expired";
+      if (rank[st] > rank[worst]) worst = st;
+    }
+    out.set(r.petId + r.merchantId, { id: p.id, name: p.name, species: p.species, breed: p.breed, sizeBand: p.sizeBand, coat: p.coat, handlingNote: sh?.handlingNote ?? null, vaccines: worst, groomEveryWeeks: sh?.groomEveryWeeks ?? defaultGroomWeeks(p.coat) });
+  }
+  return out;
+}
+
 export async function appointmentDtos(db: DbOrTx, rows: Appointment[]): Promise<appointmentsApi.AppointmentDto[]> {
   if (!rows.length) return [];
+  const petMap = await petsOn(db, rows);
   const userIds = [...new Set(rows.flatMap((r) => [r.userId, r.staffId]).filter((u): u is string => !!u))];
   const us = userIds.length ? await db.select({ id: users.id, name: users.name, phone: users.phone, locale: users.locale }).from(users).where(inArray(users.id, userIds)) : [];
   const byId = new Map(us.map((u) => [u.id, u]));
@@ -547,7 +605,8 @@ export async function appointmentDtos(db: DbOrTx, rows: Appointment[]): Promise<
       id: r.id,
       merchantId: r.merchantId,
       locationId: r.locationId,
-      customer: { id: r.userId, name: cust?.name?.trim() || r.customerName || "Walk-in", phone: cust?.phone ?? null, language: normalizeLocale(cust?.locale) ?? "en" },
+      customer: { id: r.userId, name: cust?.name?.trim() || r.customerName || unnamedClient(r.source, cust?.phone), phone: cust?.phone ?? null, language: normalizeLocale(cust?.locale) ?? "en" },
+      pet: r.petId ? (petMap.get(r.petId + r.merchantId) ?? null) : null,
       staffId: r.staffId,
       staffName: staff?.name?.trim() ?? null,
       requestedStaff: r.requestedStaff,
@@ -676,13 +735,27 @@ export async function createAppointment(ctx: AppContext, staff: StaffContext, bo
     const why = await offReason(ctx.db, merchant, loc.id, body.staffId, startsAt, endsAt);
     if (why) throw new HttpError(409, "outside_hours", why);
   }
-  const customer = await resolveCustomer(ctx, body.customer);
+  let customer = await resolveCustomer(ctx, body.customer);
+  // A pet picked at the desk (or the pet page's "Book groom"): its owner is the customer, and nobody else's dog can be put on the visit.
+  let petId: string | null = null;
+  if (body.petId) {
+    const [pet] = await ctx.db.select().from(pets).where(eq(pets.id, body.petId)).limit(1);
+    if (!pet || (customer.userId && pet.userId !== customer.userId)) throw badRequest("That pet belongs to someone else");
+    if (!customer.userId) {
+      const [mem] = await ctx.db.select({ id: merchantMembers.id }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, pet.userId))).limit(1);
+      if (!mem) throw notFound("Pet");
+      const [o] = await ctx.db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, pet.userId)).limit(1);
+      customer = { userId: pet.userId, customerName: o?.name ?? null };
+    }
+    petId = pet.id;
+  }
   const row = await guardOverlap(async () => {
     const [a] = await ctx.db
       .insert(appointments)
       .values({
         merchantId: merchant.id,
         locationId: loc.id,
+        petId,
         userId: customer.userId,
         customerName: customer.customerName,
         staffId: body.staffId ?? null,
@@ -744,6 +817,13 @@ export async function updateAppointment(ctx: AppContext, staff: StaffContext, id
   if (staffChanged) patch.requestedStaff = false;
   if (body.notes !== undefined) patch.notes = body.notes;
   if (body.clientNote !== undefined) patch.clientNote = body.clientNote;
+  if (body.petId !== undefined) {
+    if (body.petId) {
+      const [pet] = await ctx.db.select({ userId: pets.userId }).from(pets).where(eq(pets.id, body.petId)).limit(1);
+      if (!pet || (cur.userId && pet.userId !== cur.userId)) throw badRequest("That pet belongs to someone else");
+    }
+    patch.petId = body.petId;
+  }
   const row = await guardOverlap(async () => (await ctx.db.update(appointments).set(patch).where(eq(appointments.id, cur.id)).returning())[0]!);
   return appointmentDto(ctx.db, row);
 }

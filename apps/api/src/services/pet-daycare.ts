@@ -68,9 +68,13 @@ export async function dayBoard(ctx: AppContext, merchant: Merchant, day?: string
       blocks = b.blocks;
       payKind = b.payKind;
       packDaysLeft = b.pack ? b.pack.daysTotal - b.pack.daysUsed : null;
-    } else if (r.s.packId) {
-      const [p] = await ctx.db.select().from(daycarePacks).where(eq(daycarePacks.id, r.s.packId)).limit(1);
-      packDaysLeft = p ? p.daysTotal - p.daysUsed : null;
+    } else {
+      if (r.s.packId) {
+        const [p] = await ctx.db.select().from(daycarePacks).where(eq(daycarePacks.id, r.s.packId)).limit(1);
+        packDaysLeft = p ? p.daysTotal - p.daysUsed : null;
+      }
+      // A dog already in the room whose shots lapsed since check-in is flagged too (the check only used to run at the door).
+      if (r.s.status === "in") blocks = (await blocksFor(ctx, merchant, r.s, inRoom, settings)).blocks.filter((x) => x.code === "vaccine");
     }
     items.push({ id: r.s.id, petId: r.s.petId, petName: r.pet, ownerName: r.owner, status: r.s.status as petApi.DaycareStayDto["status"], payKind, packDaysLeft, checkInAt: r.s.checkInAt?.toISOString() ?? null, lateMinutes: r.s.lateMinutes, blocks });
   }

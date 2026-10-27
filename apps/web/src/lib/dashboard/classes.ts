@@ -72,6 +72,7 @@ export const offerPrice = (p: Pick<classesApi.ProductDto, "kind" | "priceCents">
 /** Dot colour for a membership status in the studio's member list. */
 export function memberTone(status: classesApi.MembershipStatus, issue: string | null): "positive" | "negative" | "neutral" | "accent" | "info" {
   if (status === "past_due") return "negative";
+  if (issue?.startsWith("Renewal notice overdue")) return "negative";
   if (status === "frozen") return "info";
   if (status === "active") return issue ? "accent" : "positive";
   return "neutral";

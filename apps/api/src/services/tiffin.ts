@@ -1853,7 +1853,10 @@ export async function recordPayment(ctx: AppContext, staff: StaffContext, charge
   });
   const { charge, full } = outcome;
   const row = await loadSubRow(ctx.db, charge.subscriptionId);
-  if (row && full) await advanceSubscription(ctx, charge, row.sub);
+  if (row && full) {
+    await advanceSubscription(ctx, charge, row.sub);
+    await awardTiffinPoints(ctx, charge, row.sub);
+  }
   if (row && body.sendReceipt && row.sub.status !== "cancelled") {
     const left = Math.max(0, charge.amountCents - charge.paidCents);
     await notify(ctx, row.sub.userId, row.sub.merchantId, "tiffin_update", full ? "Payment received" : "Part payment received", `${staff.merchant.name} received ${receiptLine(body.amountCents, body.method, body.receivedOn)} for ${row.plan.name}.${full ? " Thank you." : ` ${money(left)} is still due.`}`, {

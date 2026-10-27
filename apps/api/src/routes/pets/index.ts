@@ -6,7 +6,9 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { type FeatureKey, petApi, VACCINE_KINDS } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
-import { HttpError, badRequest } from "../../lib/errors.js";
+import { eq } from "drizzle-orm";
+import { merchants } from "@ll/db";
+import { HttpError, badRequest, notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { IMAGE_TYPES, MAX_UPLOAD_BYTES, UPLOAD_PATH, getStorage, sniffImage, uploadSigner } from "../../providers/storage.js";
 import { requirePermission } from "../../services/commerceShared.js";
@@ -111,6 +113,14 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: { token: string } }>("/public/visits/:token", async (req, reply) => {
     reply.header("cache-control", "no-store");
     return svc.publicVisit(ctx, req.params.token);
+  });
+
+  // The shop page's blurb: the food card deal and the daycare packs, so the real hook is visible before someone joins.
+  app.get<{ Params: { slug: string } }>("/public/shops/:slug/pets", async (req, reply) => {
+    reply.header("cache-control", "public, max-age=60");
+    const [m] = await ctx.db.select().from(merchants).where(eq(merchants.slug, req.params.slug)).limit(1);
+    if (!m || m.status === "closed") throw notFound("Shop");
+    return svc.publicPetInfo(ctx, m);
   });
 
   async function storeUpload(req: FastifyRequest, namespace: string): Promise<petApi.UploadResponse> {

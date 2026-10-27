@@ -70,7 +70,7 @@ export const PACE_LABEL: Record<Pace, string> = {
 // ---------------------------------------------------------------------------
 // Playbooks per shop type
 // ---------------------------------------------------------------------------
-export type PlaybookKey = "cafe" | "restaurant" | "desi" | "tiffin" | "retail" | "pharmacy" | "salon" | "repair" | "other";
+export type PlaybookKey = "cafe" | "restaurant" | "desi" | "tiffin" | "events" | "retail" | "pharmacy" | "salon" | "repair" | "other";
 
 export type UpsellPlanKind = "restaurant_starter" | "restaurant_growth" | "plus" | "pro";
 
@@ -143,6 +143,16 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     firstStampHint: "Stamp one of your own boxes. A delivered box is one stamp.",
     upsell: { plan: "restaurant_growth", headline: "run the whole tiffin route from here", body: "Restaurant Growth adds subscription billing, skips, delivery routes and WhatsApp updates." },
   },
+  events: {
+    key: "events",
+    label: "Caterer or banquet hall",
+    tillLine: "Booking an event? Join the card and your next one earns points.",
+    scriptLanguages: ["ur", "hi", "pa"],
+    tactic: "Ask at the tasting or the deposit, when the family is already planning the next event. Past clients are your first 10.",
+    tips: ["Ask at the tasting or the deposit.", "Send the join link to past clients on WhatsApp.", "Put the QR on the quote and the final invoice."],
+    firstStampHint: "Add points to a past event for yourself, or a test deposit.",
+    upsell: { plan: "restaurant_growth", headline: "quotes, deposits and event timelines in one place", body: "Restaurant Growth adds catering quotes, deposits, tasting appointments and event timelines. Banquet halls add hall booking on Restaurant Pro or the banquet add-on." },
+  },
   retail: {
     key: "retail",
     label: "Retail shop",
@@ -202,6 +212,8 @@ const PLAYBOOK_BY_VERTICAL: Partial<Record<Vertical, PlaybookKey>> = {
   bar: "restaurant",
   restaurant_south_asian: "desi",
   tiffin: "tiffin",
+  caterer: "events",
+  banquet_hall: "events",
   retail: "retail",
   grocery: "retail",
   bookstore: "retail",
@@ -218,6 +230,40 @@ const PLAYBOOK_BY_VERTICAL: Partial<Record<Vertical, PlaybookKey>> = {
   dry_cleaning: "repair",
   print_shop: "repair",
 };
+
+/**
+ * Shops that are visited a few times a year (a florist, a hardware store, a bookshop, a repair counter, an event hall) cannot put 25
+ * members through the door in 30 days, and a "Past day 30" card told them they had failed. They get a smaller target and a longer
+ * window. Daily-visit trades keep 25 in 30 days. The base target is the environment's ACTIVATION_THRESHOLD.
+ */
+export const SLOW_ACTIVATION_VERTICALS: readonly string[] = ["retail", "bookstore", "florist", "beauty_supply", "other", "repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop", "car_wash", "caterer", "banquet_hall"];
+export interface ActivationPlan {
+  target: number;
+  windowDays: number;
+  leadingMembers: number;
+  leadingByDay: number;
+  slow: boolean;
+}
+export function activationFor(vertical: string | null | undefined, baseTarget: number = ACTIVATION.target): ActivationPlan {
+  const slow = !!vertical && SLOW_ACTIVATION_VERTICALS.includes(vertical);
+  if (!slow) return { target: baseTarget, windowDays: ACTIVATION.windowDays, leadingMembers: Math.min(ACTIVATION.leadingMembers, baseTarget), leadingByDay: ACTIVATION.leadingByDay, slow };
+  const target = Math.min(baseTarget, 10);
+  return { target, windowDays: 60, leadingMembers: Math.max(1, Math.ceil(target / 2)), leadingByDay: 30, slow };
+}
+
+/**
+ * The first thing a shop of this trade sets up after signup, before or beside the loyalty card (founder decision 2026-10-27, trade tools self-serve):
+ * a menu for restaurants, tiffin kitchens, caterers and banquet halls; services, hours, HST and the booking link for salons, barbers, repair, pet
+ * groomers and auto care; the class schedule for studios; the price list for grocers. Cafés, retail and pharmacies (own rules step) have none.
+ */
+export type TradeSetupFamily = "menu" | "services" | "classes" | "catalog";
+const TRADE_SETUP: Partial<Record<string, TradeSetupFamily>> = {
+  restaurant: "menu", restaurant_south_asian: "menu", tiffin: "menu", caterer: "menu", banquet_hall: "menu", bar: "menu",
+  salon: "services", barber: "services", spa: "services", pet: "services", repair_electronics: "services", repair_auto: "services", car_wash: "services", alterations: "services", dry_cleaning: "services", print_shop: "services",
+  fitness: "classes",
+  grocery: "catalog",
+};
+export const tradeSetupFor = (vertical: string | null | undefined): TradeSetupFamily | null => (vertical && TRADE_SETUP[vertical]) || null;
 
 export function playbookFor(vertical: string | null | undefined): Playbook {
   return PLAYBOOKS[(vertical && PLAYBOOK_BY_VERTICAL[vertical as Vertical]) || "other"];
@@ -314,10 +360,10 @@ export function dueNudge(args: { hoursSinceSignup: number; members: number; firs
  * The setup reminder in the owner's language (`users.locale`; English when it is missing or not one of ours).
  * The shop name, the till line (what the owner says to customers) and the link stay as they are.
  */
-export function nudgeText(key: NudgeKey, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string }, locale: Locale = "en"): { subject: string; body: string } {
+export function nudgeText(key: NudgeKey, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string; windowDays?: number; leadingMembers?: number; leadingByDay?: number }, locale: Locale = "en"): { subject: string; body: string } {
   const n = args.members;
   const left = Math.max(0, args.target - n);
-  const v = { shop: args.shopName, n, left, days: args.daysLeft, target: args.target, till: args.tillLine, url: args.url, lead: ACTIVATION.leadingMembers, day: ACTIVATION.leadingByDay };
+  const v = { shop: args.shopName, n, left, days: args.daysLeft, target: args.target, till: args.tillLine, url: args.url, lead: args.leadingMembers ?? ACTIVATION.leadingMembers, day: args.leadingByDay ?? ACTIVATION.leadingByDay, window: args.windowDays ?? ACTIVATION.windowDays };
   switch (key) {
     case "nudge_d1":
       return { subject: t(locale, "ob.nudge.d1.subject", v), body: t(locale, "ob.nudge.d1.body", v) };

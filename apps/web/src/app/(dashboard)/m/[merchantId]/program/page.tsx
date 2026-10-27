@@ -279,13 +279,15 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
 
           <section className="rounded-card border border-line px-6 pb-2 pt-5" aria-labelledby="counter-h">
             <h2 id="counter-h" className="pb-3 text-[15px] font-semibold text-fg">At the counter</h2>
-            <SettingRow title="Stamp on scan" hint={stampsMode ? "A scan, or four digits that match one person, stamps straight away. Undo stays for 10 seconds." : "Not available with points per dollar: the amount has to be typed."}>
-              <SwitchControl ariaLabel="Stamp on scan" checked={draft.counterAutoStamp && stampsMode} disabled={!stampsMode} onChange={(v) => set("counterAutoStamp", v)} />
-            </SettingRow>
+            {stampsMode ? (
+              <SettingRow title="Stamp on scan" hint={stampsMode ? "A scan, or four digits that match one person, stamps straight away. Undo stays for 10 seconds." : "Not available with points per dollar: the amount has to be typed."}>
+                <SwitchControl ariaLabel="Stamp on scan" checked={draft.counterAutoStamp && stampsMode} disabled={!stampsMode} onChange={(v) => set("counterAutoStamp", v)} />
+              </SettingRow>
+            ) : null}
             <SettingRow title="Duplicate guard" hint={`No second ${term.replace(/s$/, "")} within ${draft.visitCooldownMinutes} minutes of the last one`}>
               <TextField label="Duplicate guard minutes" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28 text-end" />
             </SettingRow>
-            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint="Recommended. Surprise expiry is what sank Drop">
+            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint="Recommended. Points that expire without warning annoy customers.">
               <SwitchControl ariaLabel={`${term} never expire`} checked={draft.expiryMonths === null} onChange={(v) => set("expiryMonths", v ? null : 12)} />
             </SettingRow>
             {draft.expiryMonths !== null ? (
@@ -294,7 +296,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </div>
             ) : null}
             <SettingRow title={`Welcome ${term.replace(/s$/, "")}`} hint="Given when someone joins from the counter QR">
-              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36 text-end" />
+              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={draft.welcomeBonus === 1 ? unit.replace(/s$/, "") : unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36 text-end" />
             </SettingRow>
           </section>
 

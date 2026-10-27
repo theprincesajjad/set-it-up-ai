@@ -281,3 +281,10 @@ export interface MyFoodCardsResponse {
   items: FoodCardDto[];
 }
 export const myRemindBody = z.object({ remind: z.boolean(), dailyGrams: z.number().int().min(10).max(3000).optional() });
+
+/** The pet things a shop page can say before someone joins: the food card deal and the daycare packs. Public. */
+export interface PublicPetInfoResponse {
+  food: { brand: string; buyCount: number }[];
+  packs: { days: number; priceCents: number }[];
+  dropInCents: number | null;
+}

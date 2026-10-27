@@ -42,10 +42,20 @@ function Memberships() {
   const products = useApi(() => api.classes.products(), [api]);
   const summary = useApi(() => api.classes.summary(), [api]);
   const members = useApi(canMemberships && role !== "staff" ? () => api.classes.members({ q: q || undefined, status: tab === "issues" ? "past_due" : "all" }) : null, [api, q, tab, canMemberships, role]);
-  if (role === "staff") return <NoAccess />;
+  if (role === "instructor") return <NoAccess />;
   const s = summary.data;
   const reload = async () => void (await Promise.all([products.reload(), summary.reload(), members.reload()]));
-  const packs = (products.data?.items ?? []).filter((p) => p.kind === "pack" && p.active);
+  // Desk staff sell drop-ins and packs; prices, members and billing stay with owners and managers.
+  const packs = (products.data?.items ?? []).filter((p) => (p.kind === "pack" || p.kind === "drop_in") && p.active).sort((a, b) => Number(b.kind === "drop_in") - Number(a.kind === "drop_in"));
+  if (role === "staff") {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader flush title="Desk sale" description="Someone paying at the desk for a drop-in, a pack or an intro offer. It lands on their member card straight away." actions={packs.length ? <Button onClick={() => setSale(true)}>Record a desk sale</Button> : undefined} />
+        {products.data && !packs.length ? <EmptyState title="Nothing for sale yet" description="Ask an owner or manager to add a drop-in or a pack." /> : null}
+        <SalePanel open={sale} onClose={() => setSale(false)} packs={packs} onSaved={reload} />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -127,6 +137,9 @@ function Memberships() {
                           <Td>{x.nextBillingDate && !x.cancelEffectiveOn ? d(x.nextBillingDate) : ""}</Td>
                           <Td>{x.issue ?? ""}</Td>
                           <Td align="end">
+                            {x.status === "pending" ? (
+                              <Button size="sm" variant="ghost" onClick={() => { setRefund(false); setEnding(x); }}>Cancel sign-up</Button>
+                            ) : null}
                             {x.status === "active" || x.status === "past_due" || x.status === "frozen" ? (
                               <div className="flex justify-end gap-1">
                                 {x.status === "active" && !x.cancelEffectiveOn ? <Button size="sm" variant="ghost" onClick={async () => { if (await act.run(() => api.classes.freezeMembership(x.membershipId, { days: 14 }))) { toast({ message: "Frozen for 14 days", tone: "success" }); await reload(); } }}>Freeze</Button> : null}

@@ -1,6 +1,5 @@
 "use client";
 import type { reportsApi } from "@ll/shared";
-import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { Button } from "@/components/ui/Button";
 import { shortDay, slippingFooter, slippingMeta } from "@/lib/dashboard/home";
 import { ListSection } from "./ListSection";
@@ -33,7 +32,7 @@ export function SlippingAway({ data, base, canMessage, loading }: { data: report
             </>
           ) : (
             <span>
-              Texts to slipping regulars come with Plus · <NotifyLink keys={["marketing.sms", "marketing.email"]} className="text-[12px] no-underline" />
+              Texts to slipping regulars come with Café &amp; Retail · <a href={`${base}/billing`} className="text-fg underline underline-offset-4">Subscribe</a>
             </span>
           )
         ) : null

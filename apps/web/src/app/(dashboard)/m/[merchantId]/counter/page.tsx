@@ -16,6 +16,9 @@ export default function CounterPage() {
   // Grocers: "Not counted" (tobacco, lottery, alcohol, gift cards) and the bulk-item chips that feed restock texts.
   const groceryShop = detail.merchant.vertical === "grocery";
   const pantry = useApi(groceryShop && enabled("grocery.pantry_reminders") ? () => api.grocery.counterPantryItems() : null, [api, groceryShop]);
+  // A pharmacy cannot give points until its pharmacist-owner has confirmed the rules (the server refuses too).
+  const rules = useApi(pharmacy ? () => api.pharmacy.rules() : null, [api, pharmacy]);
+  const unconfirmed = pharmacy && !!rules.data && !rules.data.confirmation;
   const grocery = groceryShop ? { pantryItems: (pantry.data?.items ?? []).map((i) => ({ id: i.id, name: i.name })), askText: pantry.data?.askText ?? "" } : null;
   if (!program)
     return (
@@ -26,6 +29,13 @@ export default function CounterPage() {
   return (
     <div>
       <PageHeader title="Counter" description={role === "staff" ? `Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : undefined} />
+      {unconfirmed ? (
+        <div className="mb-4" data-testid="pharmacy-unconfirmed">
+          <Banner tone="warning" action={<Button size="sm" variant="ghost" href={`${base}/pharmacy`}>Open pharmacy rules</Button>}>
+            Points are off until the pharmacist-owner confirms the pharmacy rules and gives the OCP accreditation number.
+          </Banner>
+        </div>
+      ) : null}
       <CounterApp frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
       {pharmacy ? (
         <div className="mx-auto mt-10 max-w-3xl">

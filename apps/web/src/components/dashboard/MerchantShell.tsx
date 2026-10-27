@@ -95,7 +95,7 @@ function Switcher({ me }: { me: authApi.MeResponse }) {
 function SetupProgress() {
   const { api, base, role } = useMerchant();
   const pathname = usePathname();
-  const ob = useApi(role !== "staff" ? () => api.onboarding() : null, [api, role, pathname]);
+  const ob = useApi((role === "owner" || role === "manager") ? () => api.onboarding() : null, [api, role, pathname]);
   const steps = ob.data?.steps ?? [];
   const done = steps.filter((x) => x.done).length;
   if (!ob.data || steps.length === 0 || done >= steps.length) return null;
@@ -181,6 +181,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
     vertical: detail.merchant.vertical,
     plan: features.plan,
     stages: Object.fromEntries(features.features.map((f) => [f.key, f.stage])),
+    onOpenStreet: !!detail.merchant.neighbourhoodId,
   });
   // Restaurants: counts after Orders, Phone orders and WhatsApp (new orders in accent; the others are waiting on someone, so muted).
   const isRestaurant = entries.some((e) => e.badge);
@@ -193,7 +194,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
 
   const search = useMemo<CommandSearch | undefined>(
     () =>
-      role === "staff"
+      role === "staff" || role === "instructor"
         ? undefined
         : {
             label: "Customers",
@@ -204,7 +205,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
 
   // Settings lives in the account menu so the sidebar stays at the sections a café uses every week.
   const links = [
-    ...(role !== "staff" ? [{ href: `${base}/settings`, label: "Settings", icon: <Settings aria-hidden className="size-4" strokeWidth={1.75} /> }] : []),
+    ...(role === "owner" || role === "manager" ? [{ href: `${base}/settings`, label: "Settings", icon: <Settings aria-hidden className="size-4" strokeWidth={1.75} /> }] : []),
     ...(me.platformRole === "admin" ? [{ href: "/admin", label: "Admin" }] : me.platformRole === "rep" ? [{ href: "/rep", label: "Rep console" }] : []),
   ];
 
@@ -212,7 +213,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
     <Shell
       nav={nav}
       search={search}
-      searchPlaceholder={role === "staff" ? "Jump to" : "Search customers or pages"}
+      searchPlaceholder={role === "staff" || role === "instructor" ? "Jump to" : "Search customers or pages"}
       header={
         <div>
           <Switcher me={me} />

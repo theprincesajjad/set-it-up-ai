@@ -155,7 +155,7 @@ describe("reports/today", () => {
     expect(t.slipping.count).toBe(2);
     expect(t.slipping.canText).toBe(1);
     const sue = t.slipping.members.find((m: { name: string }) => m.name === "Sue Slipping");
-    expect(sue).toMatchObject({ canText: true, usually: "Weekdays 10 am" });
+    expect(sue).toMatchObject({ canText: true, usually: "Weekdays 10 am to 12 pm" });
     expect(t.slipping.members.find((m: { name: string }) => m.name === "Sol Slipping").canText).toBe(false);
 
     expect(t.staff).toHaveLength(1);
@@ -345,8 +345,8 @@ describe("customers: segments and rhythm fields", () => {
     const m = await seedPeople();
     const body = await list(m);
     const by = (n: string) => body.items.find((i: { name: string }) => i.name === n);
-    expect(by("Rae Regular")).toMatchObject({ visits30d: 4, isRegular: true, isSlipping: false, usually: "Weekdays 8 am" });
-    expect(by("Sue Slipping")).toMatchObject({ visits30d: 2, isRegular: false, isSlipping: true, usually: "Weekdays 10 am" });
+    expect(by("Rae Regular")).toMatchObject({ visits30d: 4, isRegular: true, isSlipping: false, usually: "Weekdays 8 to 10 am" });
+    expect(by("Sue Slipping")).toMatchObject({ visits30d: 2, isRegular: false, isSlipping: true, usually: "Weekdays 10 am to 12 pm" });
     expect(by("Cam Casual")).toMatchObject({ visits30d: 1, isRegular: false, isSlipping: false, usually: null });
   });
 
@@ -554,5 +554,58 @@ describe("messages: segments, cameIn7d and quiet hours", () => {
     expect(await runAutomations(env.ctx)).toBe(0);
     const [msg] = await env.db.select().from(messages).where(eq(messages.merchantId, m.merchant.id));
     expect(msg!.automation).toBe("reward_ready");
+  });
+});
+
+describe("fix wave: today so far, regulars on tap, no upsell for what the shop has", () => {
+  it("compares today with the typical day up to the same time, not the whole day", async () => {
+    const { merchant, ownerToken } = await cafe();
+    // The four Thursdays before: two visits at 8 am and two at 3 pm each.
+    for (const d of ["2026-10-15", "2026-10-08", "2026-10-01", "2026-09-24"]) {
+      await visit(merchant.id, `${d} 08:10`);
+      await visit(merchant.id, `${d} 08:40`);
+      await visit(merchant.id, `${d} 15:10`);
+      await visit(merchant.id, `${d} 15:40`);
+    }
+    await visit(merchant.id, "2026-10-22 08:30");
+    env.clock.now = at("2026-10-22 10:00");
+    const am = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/reports/today`, headers: auth(ownerToken) })).json();
+    expect(am.today.typicalVisitsFullDay).toBe(4);
+    expect(am.today.typicalVisitsSoFar).toBe(2); // the two morning visits, not the afternoon ones
+    env.clock.now = at("2026-10-22 15:30"); // half way through the 3 pm hour: one of its two visits counts
+    const pm = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}/reports/today`, headers: auth(ownerToken) })).json();
+    expect(pm.today.typicalVisitsSoFar).toBe(3);
+  });
+
+  it("lists regulars who have not been stamped today, most frequent first, for one-tap stamping", async () => {
+    const m = await cafe();
+    const here = nextPhone();
+    const away = nextPhone();
+    const often = nextPhone();
+    for (const d of ["2026-10-12 08:00", "2026-10-15 08:00", "2026-10-19 08:10", "2026-10-21 08:05"]) await visit(m.merchant.id, d, { phone: away, name: "Away Ann" });
+    for (const d of ["2026-10-08 08:00", "2026-10-12 08:00", "2026-10-14 08:00", "2026-10-16 08:00", "2026-10-19 08:10", "2026-10-21 08:05"]) await visit(m.merchant.id, d, { phone: often, name: "Often Olu" });
+    for (const d of ["2026-10-12 08:00", "2026-10-15 08:00", "2026-10-19 08:10", "2026-10-22 08:05"]) await visit(m.merchant.id, d, { phone: here, name: "Here Hana" });
+    await visit(m.merchant.id, "2026-10-20 12:00", { phone: nextPhone(), name: "Cam Casual" });
+    env.clock.now = at("2026-10-22 09:00");
+    const res = await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/counter/regulars`, headers: auth(m.ownerToken) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items.map((i: { name: string }) => i.name)).toEqual(["Often Olu", "Away Ann"]);
+    expect(res.json().items[0].maskedPhone).toMatch(/\*\*\*/);
+    // The same stamp-on-tap award the 4-digit search leads to: one request by member id.
+    const stamp = await env.app.inject({ method: "POST", url: `/v1/merchants/${m.merchant.id}/counter/award`, headers: auth(m.ownerToken), payload: { memberId: res.json().items[0].memberId, idempotencyKey: "tap-0001-olu" } });
+    expect(stamp.statusCode).toBe(200);
+    const after = await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/counter/regulars`, headers: auth(m.ownerToken) });
+    expect(after.json().items.map((i: { name: string }) => i.name)).toEqual(["Away Ann"]);
+  });
+
+  it("does not offer the paid tier to a shop that already has promos switched on", async () => {
+    const m = await cafe();
+    for (let i = 0; i < 3; i++) await visit(m.merchant.id, `2026-10-0${i + 1} 09:00`);
+    await env.db.update(merchants).set({ activatedAt: at("2026-10-05 09:00") }).where(eq(merchants.id, m.merchant.id));
+    env.clock.now = at("2026-10-22 09:00");
+    const ob = async () => (await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/onboarding`, headers: auth(m.ownerToken) })).json();
+    expect((await ob()).upsell.moment).toBe("offer");
+    await grantFeatures(env, m.merchant.id, ["promos.basic"]);
+    expect((await ob()).upsell.moment).toBe("none");
   });
 });

@@ -36,6 +36,10 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   const phone = newPhone();
   await customer.goto("/shops/shree-thali-and-tiffin/tiffin");
   await customer.getByRole("button", { name: "Choose this plan" }).first().click();
+  // Typed before signing in: the name and the address must still be there afterwards.
+  await customer.getByLabel("Your name").fill("Priya Shah");
+  await customer.getByLabel("Delivery address").fill("48 Maple Grove Dr");
+  await customer.getByLabel("Postal code").fill("L5R 1B1");
   await fillPhone(customer, phone);
   await customer.getByRole("button", { name: "Send code" }).click();
   await expect(customer.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
@@ -45,12 +49,11 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
     await first.fill("Priya");
     await customer.getByRole("button", { name: /Continue|Join|Done|Save/ }).first().click();
   }
-  // Signing in refreshes the page in place; pick the plan again if the form was closed.
-  await customer.waitForTimeout(1500);
-  const choose = customer.getByRole("button", { name: "Choose this plan" }).first();
-  if (await choose.isVisible().catch(() => false)) await choose.click();
-  await customer.getByLabel("Delivery address").fill("48 Maple Grove Dr");
-  await customer.getByLabel("Postal code").fill("L5R 1B1");
+  // Signing in refreshes the page in place; the plan, name and address typed before it are kept.
+  await expect(customer.getByRole("button", { name: /Subscribe · .* to send|Subscribe for/ }).or(customer.getByRole("radio", { name: /Interac e-transfer/ }))).toBeVisible();
+  await expect(customer.getByLabel("Delivery address")).toHaveValue("48 Maple Grove Dr");
+  await expect(customer.getByLabel("Postal code")).toHaveValue("L5R 1B1");
+  await expect(customer.getByLabel("Your name")).toHaveValue("Priya Shah");
   await customer.getByRole("radio", { name: /Interac e-transfer/ }).click();
   await expect(customer.getByText("After you subscribe")).toBeVisible();
   await customer.getByRole("button", { name: /Subscribe · .* to send/ }).click();
@@ -61,7 +64,6 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   await customer.goto("/me/tiffin");
   await expect(customer.getByText(`Message: ${ref}`).first()).toBeVisible();
   await expect(customer.getByRole("button", { name: "Copy reference" })).toBeVisible();
-  await customer.close();
 
   // --- the owner records it
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -86,10 +88,49 @@ test("tiffin: customer subscribes by e-transfer, the owner records it, meals sta
   await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=subscribers`);
   await page.getByLabel("Search subscribers").fill(phone.slice(3));
   await expect(page.getByRole("row").filter({ hasText: "Active" }).first()).toBeVisible();
+  // The subscriber is the name they typed at subscribe, not a bare phone number.
+  await expect(page.getByRole("row").filter({ hasText: "Priya Shah" }).first()).toBeVisible();
   await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=revenue`);
   await expect(page.getByText("Collected this month by how they paid")).toBeVisible();
   await expect(page.getByText(/Interac e-transfer \(recorded\)/)).toBeVisible();
   await expect(page.getByText("Still to come in")).toBeVisible();
+  await ctx.close();
+
+  // The subscription shows in the customer's wallet, next to the points it earned.
+  await customer.goto("/me");
+  await expect(customer.getByRole("navigation", { name: "My tiffin" })).toBeVisible();
+  await expect(customer.getByRole("navigation", { name: "My tiffin" }).getByText(/Shree/)).toBeVisible();
+  await customer.close();
+});
+
+test("tiffin: the owner adds a regular who phones in, and the phone Today view leads with Needs you", async ({ browser }) => {
+  const shree = await ownerOf("shree-thali-and-tiffin");
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  await signInOwner(page, "shree-thali-and-tiffin");
+  await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=subscribers`);
+  await page.getByRole("button", { name: "Add subscriber" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Add subscriber" });
+  const regular = `Mrs Kaur ${Math.floor(Math.random() * 9000 + 1000)}`;
+  await sheet.getByLabel("Name", { exact: true }).fill(regular);
+  await sheet.getByLabel("Phone").fill(newPhone());
+  await sheet.getByLabel("Delivery address").fill("9 Elm St");
+  await sheet.getByLabel("Postal code").fill("L5R 2C2");
+  await sheet.getByRole("button", { name: "Add subscriber" }).click();
+  await expect(page.getByText(/is added\. They were texted how to pay/)).toBeVisible();
+  await page.getByLabel("Search subscribers").fill(regular);
+  await expect(page.getByRole("row").filter({ hasText: regular }).first()).toBeVisible();
+
+  // On a phone the Today view puts "Needs you" and the driver run above the kitchen totals.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/m/${shree.id}/restaurant/tiffin?tab=today`);
+  const needs = page.getByRole("heading", { name: "Needs you" });
+  const totals = page.getByText("Servings to cook").first();
+  await expect(needs).toBeVisible();
+  await expect(totals).toBeVisible();
+  const [a, b] = [await needs.boundingBox(), await totals.boundingBox()];
+  expect(a!.y).toBeLessThan(b!.y);
+  await page.screenshot({ path: "e2e/screenshots/tcb-today-390.png" });
   await ctx.close();
 });
 
@@ -121,6 +162,10 @@ test("catering: the customer pays the deposit by e-transfer and the caterer reco
   const { token, id } = await sendQuoteFor(zeenat, number);
   const cust = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await cust.goto(`/e/${token}`);
+  // Real terms before signing, in catering words (no tiffin copy, no "ask the shop").
+  await expect(cust.getByText(/100% back until 14 days before/)).toBeVisible();
+  await expect(cust.getByText(/Meals start/)).toHaveCount(0);
+  await expect(cust.getByText(/guests × \$14\.50/)).toBeVisible();
   await cust.getByLabel("Type your full name to sign").fill("Sana Malik");
   await cust.getByRole("radio", { name: /Pay by Interac e-transfer/ }).click().catch(() => undefined);
   await cust.getByRole("button", { name: /Approve and send .* by e-transfer|Approve and pay/ }).click();
@@ -134,6 +179,10 @@ test("catering: the customer pays the deposit by e-transfer and the caterer reco
   await signInOwner(page, "zeenat-catering");
   await page.goto(`/m/${zeenat.id}/restaurant/catering/${id}`);
   await expect(page.getByRole("heading", { name: "Payments" })).toBeVisible();
+  // The deposit is waiting: one tap texts the customer.
+  await expect(page.getByText(/Waiting on the deposit/)).toBeVisible();
+  await page.getByRole("button", { name: "Remind", exact: true }).click();
+  await expect(page.getByText("Reminder sent")).toBeVisible();
   await page.getByRole("button", { name: "Record payment" }).first().click();
   const panel = page.getByRole("dialog", { name: "Record the deposit" });
   await panel.getByLabel("Interac reference").fill("CAe2e777");

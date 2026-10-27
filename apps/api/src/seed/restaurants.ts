@@ -64,6 +64,7 @@ import { createProviders } from "../providers/index.js";
 import { awardPurchase, findOrCreateCustomerByPhone, generateMemberCode, redeemReward } from "../services/ledger.js";
 import { createMerchantWithTemplate } from "../services/merchant.js";
 import { computeTax } from "../services/tax.js";
+import { clockToPickup } from "../services/phone.js";
 import { seedRestaurantDesk } from "./restaurantsDesk.js";
 import { MENU_CATEGORIES } from "./restaurantMenuCategories.js";
 
@@ -831,6 +832,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   // ---- Special orders: open KDS tickets, banquet deposit, split bill ----
   const N = (name: string) => itemByName(nawab, name);
   const lc = (n: number) => customers[n % customers.length]!;
+  // Open tickets run from 5 to 31 minutes old: a few are late (10 minutes), most are not, so the late colour still means something.
   const openIds: string[] = [];
   const ticket = (n: number, mins: number, status: "accepted" | "preparing" | "ready", channel: string, lines: Line[], extra: Partial<typeof orders.$inferInsert> = {}, unpaid = false) => {
     const at = minutesAgo(mins);
@@ -858,7 +860,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     openIds.push(p.id);
     return p;
   };
-  const splitOrder = ticket(1, 38, "preparing", "counter", [
+  const splitOrder = ticket(1, 19, "preparing", "counter", [
     { item: N("Hyderabadi Chicken Dum Biryani"), qty: 2, kitchenStatus: "cooking", notes: "One medium, one extra spicy" },
     { item: N("Hyderabadi Goat Dum Biryani"), qty: 1, kitchenStatus: "cooking" },
     { item: N("Seekh Kebab"), qty: 1, kitchenStatus: "cooking" },
@@ -866,13 +868,13 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     { item: N("Garlic Naan"), qty: 4, kitchenStatus: "queued" },
     { item: N("Double ka Meetha"), qty: 2, kitchenStatus: "queued" },
   ], { notes: "Table 6, family of 5, split three ways" }, true);
-  ticket(2, 14, "accepted", "app", [{ item: N("Vegetable Dum Biryani"), qty: 1, kitchenStatus: "queued" }, { item: N("Mirchi ka Salan"), qty: 1, kitchenStatus: "queued" }]);
+  ticket(2, 7, "accepted", "app", [{ item: N("Vegetable Dum Biryani"), qty: 1, kitchenStatus: "queued" }, { item: N("Mirchi ka Salan"), qty: 1, kitchenStatus: "queued" }]);
   const phoneOpen = ticket(3, 31, "ready", "phone", [{ item: N("Hyderabadi Goat Dum Biryani"), qty: 1 }, { item: N("Mirchi ka Salan"), qty: 1 }]);
-  const waOpen = ticket(4, 22, "preparing", "whatsapp", [{ item: N("Butter Chicken"), qty: 2, kitchenStatus: "cooking" }, { item: N("Garlic Naan"), qty: 3, kitchenStatus: "queued" }]);
-  whatsappOrders.push({ shopId: nawab.id, userId: lc(4).id, orderId: waOpen.id, at: minutesAgo(22) });
+  const waOpen = ticket(4, 12, "preparing", "whatsapp", [{ item: N("Butter Chicken"), qty: 2, kitchenStatus: "cooking" }, { item: N("Garlic Naan"), qty: 3, kitchenStatus: "queued" }]);
+  whatsappOrders.push({ shopId: nawab.id, userId: lc(4).id, orderId: waOpen.id, at: minutesAgo(12) });
   ticket(5, 9, "accepted", "counter", [{ item: N("Nihari"), qty: 1, kitchenStatus: "queued" }, { item: N("Garlic Naan"), qty: 2, kitchenStatus: "queued" }], {}, true);
   ticket(6, 5, "accepted", "app", [{ item: N("Tandoori Chicken (half)"), qty: 2, kitchenStatus: "queued" }, { item: N("Chicken Tikka"), qty: 1, kitchenStatus: "queued" }, { item: N("Irani Chai"), qty: 3, kitchenStatus: "queued" }]);
-  ticket(7, 27, "preparing", "counter", [{ item: N("Haleem"), qty: 3, kitchenStatus: "cooking" }, { item: N("Garlic Naan"), qty: 3, kitchenStatus: "ready" }], {}, true);
+  ticket(7, 8, "preparing", "counter", [{ item: N("Haleem"), qty: 3, kitchenStatus: "cooking" }, { item: N("Garlic Naan"), qty: 3, kitchenStatus: "ready" }], {}, true);
   orderCount += openIds.length;
 
   // Two confirmed phone-assistant orders from earlier this week (the calls below reference them).
@@ -1018,7 +1020,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     { merchantId: nawab.id, fromPhone: lc(12).phone, language: "hi", transcript: hi, draftOrder: { items: [{ catalogItemId: nawabItem("Vegetable Dum Biryani"), name: "Vegetable Dum Biryani", quantity: 1 }, { catalogItemId: nawabItem("Garlic Naan"), name: "Garlic Naan", quantity: 2 }] }, orderId: callOrder2.id, status: "confirmed", providerCallId: "call_demo_0002", createdAt: callOrder2.row.createdAt as Date },
     { merchantId: nawab.id, fromPhone: lc(3).phone, language: "en", transcript: en1, draftOrder: { items: [{ catalogItemId: nawabItem("Hyderabadi Goat Dum Biryani"), name: "Hyderabadi Goat Dum Biryani", quantity: 1 }, { catalogItemId: nawabItem("Mirchi ka Salan"), name: "Mirchi ka Salan", quantity: 1 }], notes: "Name: Mariam" }, orderId: phoneOpen.id, status: "confirmed", providerCallId: "call_demo_0003", createdAt: minutesAgo(40) },
     { merchantId: nawab.id, fromPhone: lc(17).phone, language: "en", transcript: en2, draftOrder: { items: [{ catalogItemId: nawabItem("Chicken Biryani Degh"), name: "Chicken Biryani Degh", quantity: 2 }], pickupAt: ahead(2, 21).toISOString(), notes: "Deposit link not yet paid" }, orderId: null, status: "drafted", providerCallId: "call_demo_0004", createdAt: minutesAgo(70) },
-    { merchantId: nawab.id, fromPhone: lc(18).phone, language: "pa", transcript: pa, draftOrder: { items: [{ catalogItemId: nawabItem("Hyderabadi Goat Dum Biryani"), name: "Hyderabadi Goat Dum Biryani", quantity: 1 }], pickupAt: ahead(0, 24).toISOString() }, orderId: null, status: "drafted", providerCallId: "call_demo_0005", createdAt: minutesAgo(20) },
+    { merchantId: nawab.id, fromPhone: lc(18).phone, language: "pa", transcript: pa, draftOrder: { items: [{ catalogItemId: nawabItem("Hyderabadi Goat Dum Biryani"), name: "Hyderabadi Goat Dum Biryani", quantity: 1 }], pickupAt: (clockToPickup({ hour: 8, minute: 0, meridiem: "pm", said: "8 baje" }, realStart, "America/Toronto") ?? clockToPickup({ hour: 8, minute: 0, meridiem: "pm", said: "8 baje" }, new Date(realStart.getTime() + DAY), "America/Toronto")!).toISOString() }, orderId: null, status: "drafted", providerCallId: "call_demo_0005", createdAt: minutesAgo(20) },
     { merchantId: nawab.id, fromPhone: "+16475558801", language: "ur", transcript: "کالر: ہیلو؟ ہیلو؟ آواز نہیں آ رہی۔\n[call dropped after 6 seconds]", draftOrder: null, orderId: null, status: "failed", providerCallId: "call_demo_0006", createdAt: ago(2, 23) },
     { merchantId: nawab.id, fromPhone: "+16475558802", language: "en", transcript: "Caller: Are you open on Sunday and do you have haleem?\nAssistant: Yes, we are open from 11 am to 11 pm and haleem is on the menu every day. Would you like to place an order?\nCaller: No thanks, just checking.", draftOrder: null, orderId: null, status: "received", providerCallId: "call_demo_0007", createdAt: ago(1, 20) },
   ]);
@@ -1344,7 +1346,7 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
     .insert(hallBookings)
     .values([
       { hallId: noor!.id, merchantId: nawab.id, userId: lc(9).id, eventType: "wedding", startsAt: ahead(28, 22), endsAt: ahead(29, 3), headcount: 220, packageName: "Gold", status: "confirmed", totalCents: hallTotal, depositCents: Math.round(hallTotal * 0.25), depositPaidAt: bnqAt, referenceCode: refFor(nawab.id, lc(9).name), schedule: confirmedSched, notes: "Walima reception. Stage and bridal suite requested.", createdAt: ago(8) },
-      { hallId: noor!.id, merchantId: nawab.id, userId: lc(19).id, eventType: "engagement", startsAt: ahead(44, 22), endsAt: ahead(45, 2), headcount: 120, packageName: "Silver", status: "hold", holdExpiresAt: ahead(5, 16), totalCents: noor!.baseCents + 4200 * 120 + computeTax(noor!.baseCents + 4200 * 120, "ON").taxCents, depositCents: 0, referenceCode: refFor(nawab.id, lc(19).name), schedule: sched(holdTotal, 44), notes: "Holding the date while the family confirms.", createdAt: ago(2) },
+      { hallId: noor!.id, merchantId: nawab.id, userId: lc(19).id, eventType: "engagement", startsAt: ahead(44, 22), endsAt: ahead(45, 2), headcount: 120, packageName: "Silver", status: "hold", holdExpiresAt: ahead(1, 16), totalCents: noor!.baseCents + 4200 * 120 + computeTax(noor!.baseCents + 4200 * 120, "ON").taxCents, depositCents: Math.round(holdTotal * 0.25), referenceCode: refFor(nawab.id, lc(19).name), schedule: sched(holdTotal, 44), notes: "Holding the date while the family confirms.", createdAt: ago(2) },
       { hallId: noor!.id, merchantId: nawab.id, userId: lc(21).id, eventType: "walima", startsAt: ago(12, 22), endsAt: ago(11, 2), headcount: 180, packageName: "Platinum", status: "completed", totalCents: 250000 + 7500 * 180 + computeTax(250000 + 7500 * 180, "ON").taxCents, depositCents: 400000, depositPaidAt: ago(40), createdAt: ago(45) },
       { hallId: noor!.id, merchantId: nawab.id, userId: lc(23).id, eventType: "birthday", startsAt: ahead(16, 22), endsAt: ahead(17, 1), headcount: 90, packageName: "Silver", status: "cancelled", totalCents: 0, depositCents: 0, notes: "Cancelled, date conflict.", createdAt: ago(10) },
     ])

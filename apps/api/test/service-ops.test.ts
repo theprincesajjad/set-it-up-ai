@@ -5,7 +5,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { appointments, bookingSlots, bookings, invoices, merchantMembers, merchants, pushTokens, quotes, rebookingNudges, serviceTickets, services, ticketEvents, users } from "@ll/db";
+import { appointments, bookingSlots, bookings, invoices, merchantMembers, merchants, pushTokens, quotes, rebookingNudges, serviceTickets, services, ticketEvents, users, visits } from "@ll/db";
 import { FREE_FOREVER, dueSteps, earnableAmounts, maxAuthorizedCents, tipChoices, tipsEnabledFor } from "@ll/shared";
 import { MemoryStorage } from "../src/providers/storage.js";
 import { runRollingDropoffSlots } from "../src/services/dropoff.js";
@@ -701,6 +701,33 @@ describe("rebooking (service.rebooking)", () => {
     await later(m, 60 * DAY);
     expect((await get(m)).items).toHaveLength(0);
     expect((await get(m)).stats).toMatchObject({ sentLast30: 0 });
+  });
+
+  it("lists regulars the shop only knows from counter visits, and sends them a plain 'since your last visit' text once", async () => {
+    const m = await paidMerchant(env, { plan: "plus" });
+    await grantFeatures(env, m.merchant.id, ["service.rebooking"]);
+    const cust = await createUser(env.db, { name: "Aisha Okafor", locale: "en-CA" });
+    const [mem] = await env.db.insert(merchantMembers).values({ merchantId: m.merchant.id, userId: cust.id, marketingConsentAt: new Date(), marketingConsentSource: "test" }).returning();
+    // Three stamps ten days apart, the last 35 days ago: a regular against their own rhythm, with no service to rebook.
+    for (const ago of [55, 45, 35]) await env.db.insert(visits).values({ merchantId: m.merchant.id, memberId: mem!.id, userId: cust.id, source: "staff_app", createdAt: new Date(env.clock.now.getTime() - ago * DAY) });
+    const r = await get(m);
+    expect(r.counts.due).toBe(1);
+    expect(r.items[0]).toMatchObject({ userId: cust.id, serviceName: "Your last visit", state: "late", canSend: true });
+    const sent = await call(env, m.ownerToken, "POST", `${base(m)}/rebooking/${cust.id}/${r.items[0].serviceId}/send`);
+    expect(sent.status).toBe(200);
+    expect(lastSms().body).toContain("since your last visit at Test Shop");
+    expect(lastSms().body).toContain("STOP");
+    // Once per cycle: they leave the list until the gap has passed again.
+    expect((await get(m)).items).toHaveLength(0);
+    // A customer who is already due for a service is listed once, under the service.
+    const [svc] = await env.db.insert(services).values({ merchantId: m.merchant.id, kind: "appointment", name: "Cut", durationMin: 30, priceCents: 3000, rebookAfterDays: 21 }).returning();
+    const c2 = await createUser(env.db, { name: "Dan Singh", locale: "en-CA" });
+    const [m2] = await env.db.insert(merchantMembers).values({ merchantId: m.merchant.id, userId: c2.id, marketingConsentAt: new Date(), marketingConsentSource: "test" }).returning();
+    for (const ago of [55, 45, 35]) await env.db.insert(visits).values({ merchantId: m.merchant.id, memberId: m2!.id, userId: c2.id, source: "staff_app", createdAt: new Date(env.clock.now.getTime() - ago * DAY) });
+    await env.db.insert(appointments).values({ merchantId: m.merchant.id, locationId: m.location.id, userId: c2.id, items: [{ serviceId: svc!.id, name: "Cut", durationMin: 30, priceCents: 3000 }], startsAt: new Date(env.clock.now.getTime() - 35 * DAY), endsAt: new Date(env.clock.now.getTime() - 35 * DAY + 30 * 60_000), status: "completed", completedAt: new Date(env.clock.now.getTime() - 35 * DAY) });
+    const both = (await get(m)).items.filter((i: { userId: string }) => i.userId === c2.id);
+    expect(both).toHaveLength(1);
+    expect(both[0].serviceName).toBe("Cut");
   });
 
   it("needs marketing consent, honours STOP, and is gated by the feature", async () => {

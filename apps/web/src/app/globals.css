@@ -130,3 +130,11 @@
 [lang^="ur"] :is(.text-body, .text-body-strong, .text-meta, .text-meta-strong, .text-caption, .text-callout) {
   line-height: 1.9;
 }
+
+/* Urdu, Hindi and Punjabi have no true italic: the browser slants the glyphs (a faux oblique) and Nastaliq becomes hard to read. */
+[lang^="ur"] :is(.italic, em, i),
+[lang^="hi"] :is(.italic, em, i),
+[lang^="pa"] :is(.italic, em, i),
+:is([lang^="ur"], [lang^="hi"], [lang^="pa"]).italic {
+  font-style: normal;
+}

@@ -27,6 +27,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     await requirePermission(ctx, staff, "bookings.manage");
     return staff;
   }
+  /** Class endpoints an Instructor login may also use (their own classes only; the service checks which). */
+  const teacherFor = (req: FastifyRequest) => staffFor(req, "instructor");
   const base = "/merchants/:merchantId/classes";
 
   // ---------------------------------------------------------------- settings and class types
@@ -39,8 +41,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   // ---------------------------------------------------------------- schedule
   app.get<{ Params: MerchantParams }>(`${base}/sessions`, async (req) => {
-    const staff = await staffFor(req);
-    return svc.listSessions(ctx, staff.merchant, parse(classesApi.listSessionsQuery, req.query));
+    const staff = await teacherFor(req);
+    return svc.listSessions(ctx, staff.merchant, parse(classesApi.listSessionsQuery, req.query), undefined, staff.role === "instructor" ? staff.user.id : undefined);
   });
   app.post<{ Params: MerchantParams }>(`${base}/sessions`, async (req, reply) => {
     const staff = await staffFor(req, "manager");
@@ -48,22 +50,28 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
   app.patch<{ Params: IdParams }>(`${base}/sessions/:id`, async (req) => svc.updateSession(ctx, (await staffFor(req, "manager")).merchant, req.params.id, parse(classesApi.updateSessionBody, req.body)));
   app.post<{ Params: IdParams }>(`${base}/sessions/:id/cancel`, async (req) => svc.cancelSession(ctx, (await staffFor(req, "manager")).merchant, req.params.id, parse(classesApi.cancelSessionBody, req.body ?? {}).reason));
-  app.get<{ Params: IdParams }>(`${base}/sessions/:id/roster`, async (req) => svc.roster(ctx, (await staffFor(req)).merchant, req.params.id));
+  app.get<{ Params: IdParams }>(`${base}/sessions/:id/roster`, async (req) => {
+    const staff = await teacherFor(req);
+    await svc.requireOwnSession(ctx, staff, req.params.id);
+    return svc.roster(ctx, staff.merchant, req.params.id);
+  });
   app.post<{ Params: IdParams }>(`${base}/sessions/:id/bookings`, async (req, reply) => reply.status(201).send(await svc.staffBook(ctx, await staffFor(req), req.params.id, parse(classesApi.staffBookBody, req.body))));
 
   // ---------------------------------------------------------------- bookings and the door
-  app.post<{ Params: IdParams }>(`${base}/bookings/:id/check-in`, async (req) => svc.checkInRow(ctx, await staffFor(req), req.params.id));
+  app.post<{ Params: IdParams }>(`${base}/bookings/:id/check-in`, async (req) => svc.checkInRow(ctx, await teacherFor(req), req.params.id));
   app.post<{ Params: IdParams }>(`${base}/bookings/:id/mark`, async (req) => svc.markBooking(ctx, (await staffFor(req)).merchant, req.params.id, parse(classesApi.markBookingBody, req.body).status));
+  app.post<{ Params: IdParams }>(`${base}/bookings/:id/cancel`, async (req) => svc.staffCancel(ctx, (await staffFor(req)).merchant, req.params.id, parse(classesApi.staffCancelBookingBody, req.body ?? {})));
+  app.post<{ Params: IdParams }>(`${base}/bookings/:id/book-in`, async (req) => svc.bookInNow(ctx, (await staffFor(req)).merchant, req.params.id, parse(classesApi.bookInBody, req.body ?? {})));
   app.post<{ Params: IdParams }>(`${base}/bookings/:id/move`, async (req) => svc.moveWaitlist(ctx, (await staffFor(req)).merchant, req.params.id, parse(classesApi.moveWaitlistBody, req.body).position));
   app.post<{ Params: MerchantParams }>(`${base}/check-in`, async (req) => {
-    const staff = await staffFor(req);
+    const staff = await teacherFor(req);
     const body = parse(classesApi.checkInBody, req.body);
     const header = req.headers["idempotency-key"];
     return svc.checkIn(ctx, staff, { ...body, idempotencyKey: body.idempotencyKey ?? (typeof header === "string" ? header : undefined) });
   });
   app.get<{ Params: MerchantParams }>(`${base}/door`, async (req) => {
-    const staff = await staffFor(req);
-    return svc.door(ctx, staff.merchant, (req.query as { sessionId?: string }).sessionId);
+    const staff = await teacherFor(req);
+    return svc.door(ctx, staff, (req.query as { sessionId?: string }).sessionId);
   });
 
   // ---------------------------------------------------------------- offers, members, sales
@@ -97,5 +105,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post<{ Params: { id: string } }>("/me/classes/memberships/:id/keep", async (req) => mem.keepMine(ctx, requireUser(req).id, req.params.id));
   app.post<{ Params: { id: string } }>("/me/classes/memberships/:id/decline-renewal", async (req) => mem.declineRenewalMine(ctx, requireUser(req).id, req.params.id, true));
   app.post<{ Params: { id: string } }>("/me/classes/memberships/:id/pay", async (req) => mem.payMine(ctx, requireUser(req).id, req.params.id));
+  app.post<{ Params: { id: string } }>("/me/classes/passes/:id/pay", async (req) => mem.payPassMine(ctx, requireUser(req).id, req.params.id));
+  app.post<{ Params: { id: string } }>("/me/classes/passes/:id/cancel", async (req) => mem.cancelPassMine(ctx, requireUser(req).id, req.params.id));
   app.post<{ Params: { id: string } }>("/me/classes/memberships/:id/card", async (req) => mem.cardSetupMine(ctx, requireUser(req).id, req.params.id));
 }

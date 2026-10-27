@@ -52,6 +52,9 @@ export const classSettingsBody = z.object({
   renewalNoticeDays: z.number().int().min(RENEWAL_NOTICE_MIN_DAYS).max(RENEWAL_NOTICE_MAX_DAYS).optional(),
   termsNote: z.string().trim().max(1500).nullish(),
   awardOnCheckIn: z.boolean().optional(),
+  /** Every N classes attended earns a reward (null turns it off). */
+  milestoneClasses: z.number().int().min(2).max(500).nullish(),
+  milestoneRewardName: z.string().trim().min(1).max(80).nullish(),
 });
 export type ClassSettingsBody = z.infer<typeof classSettingsBody>;
 export interface ClassSettingsDto {
@@ -63,6 +66,8 @@ export interface ClassSettingsDto {
   renewalNoticeDays: number;
   termsNote: string | null;
   awardOnCheckIn: boolean;
+  milestoneClasses: number | null;
+  milestoneRewardName: string | null;
 }
 
 const typeFields = {
@@ -95,6 +100,8 @@ export const createSessionBody = z.object({
   startsAt: isoDateTime,
   locationId: uuidSchema.optional(),
   instructorName: z.string().trim().max(120).nullish(),
+  /** A team member with the Instructor role (or anyone on the team): they see this class on their own login. */
+  instructorUserId: uuidSchema.nullish(),
   room: z.string().trim().max(60).nullish(),
   capacity: z.number().int().min(1).max(200).optional(),
   womenOnly: z.boolean().optional(),
@@ -105,6 +112,7 @@ export const createSessionBody = z.object({
 export const updateSessionBody = z.object({
   startsAt: isoDateTime.optional(),
   instructorName: z.string().trim().max(120).nullish(),
+  instructorUserId: uuidSchema.nullish(),
   room: z.string().trim().max(60).nullish(),
   capacity: z.number().int().min(1).max(200).optional(),
   womenOnly: z.boolean().optional(),
@@ -128,6 +136,8 @@ export interface ClassSessionDto {
   classTypeId: string | null;
   name: string;
   instructorName: string | null;
+  /** Studio screens only. */
+  instructorUserId?: string | null;
   room: string | null;
   startsAt: string;
   endsAt: string;
@@ -256,6 +266,8 @@ export interface BookClassResponse {
   payment: PaymentRefDto | null;
   /** What happened: booked with a credit, held for payment, or placed on the waitlist. */
   outcome: "booked" | "needs_payment" | "waitlisted";
+  /** Waitlisted with nothing to use: the waitlist skips people without a pass, so the person must buy one first. */
+  waitlistNeedsPass?: boolean;
 }
 export interface CancelBookingResponse {
   booking: MyBookingDto;
@@ -394,6 +406,8 @@ export const markBookingBody = z.object({
   status: z.enum(["no_show", "excused"]),
 });
 export const moveWaitlistBody = z.object({ position: z.number().int().min(1).max(200) });
+export const staffCancelBookingBody = z.object({ free: z.boolean().optional() });
+export const bookInBody = z.object({ comp: z.boolean().optional(), overCapacity: z.boolean().optional() });
 
 export type CheckInOutcome = "checked_in" | "already_checked_in" | "added_and_checked_in" | "not_booked" | "class_full" | "no_pass" | "past_due" | "no_class";
 export interface CheckInResponse {
@@ -423,7 +437,7 @@ export interface DoorResponse {
 
 export const listMembersQuery = z.object({
   q: z.string().trim().max(80).optional(),
-  status: z.enum(["all", "active", "frozen", "past_due", "cancelled", "renewal_due"]).default("all"),
+  status: z.enum(["all", "active", "frozen", "past_due", "cancelled", "renewal_due", "pending"]).default("all"),
 });
 export interface StudioMemberDto {
   membershipId: string;

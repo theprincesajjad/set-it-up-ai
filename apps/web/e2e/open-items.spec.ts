@@ -109,8 +109,9 @@ test("pharmacy: the booked screen shows the exact reminder text, with no service
   const card = page.getByTestId("pharmacy-reminder");
   await expect(card).toContainText("Reminder we will send");
   const text = (await card.locator("p").textContent())!;
-  expect(text).toMatch(/^Village Apothecary: your appointment is \w{3},? \d{1,2}:\d\d [ap]m\. Change it: .+\/shops\/village-apothecary\/book\/[0-9a-f-]{36}\. Reply STOP to opt out\.$/);
+  expect(text).toMatch(/^Reminder: your appointment is \w{3},? \d{1,2}:\d\d [ap]m\. Change it: .+\/shops\/village-apothecary\/book\/[0-9a-f-]{36}\. Reply STOP to opt out\.$/);
   expect(text.toLowerCase()).not.toMatch(/flu|shot|vaccin|medic|prescri|\$/);
+  expect(text.split("Change it:")[0]).not.toContain("Apothecary");
   await noSideScroll(page);
   await page.screenshot({ path: shot("pharmacy-booked-390") });
 });

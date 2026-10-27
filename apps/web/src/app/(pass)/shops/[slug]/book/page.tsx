@@ -64,7 +64,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   const me = await getMe();
   return (
     <PageFrame locale={locale}>
-      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff) }} />
+      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff), pet: one(sp.pet) }} meName={me?.user.name ?? null} />
     </PageFrame>
   );
 }

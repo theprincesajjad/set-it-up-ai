@@ -56,14 +56,17 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
               <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("mkt.rest.title")}</h1>
               <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-fg-muted">{t("mkt.rest.sub")}</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Button size="lg" href="#plans">
+                <Button size="lg" href="/signup?vertical=restaurant_south_asian">
+                  {t("mkt.rest.ctaStart")}
+                </Button>
+                <Button size="lg" variant="secondary" href="#plans" className="rounded-full!">
                   {t("mkt.rest.ctaSave")}
                 </Button>
                 <Button size="lg" variant="secondary" href="#book" className="rounded-full!">
                   {t("mkt.rest.ctaBook")}
                 </Button>
               </div>
-              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-fg-muted">0% commission on your own orders · menu set up for you · founding offer: 50% off the first year</p> : null}
+              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-fg-muted">0% commission on your own orders · add your menu yourself or we do the typing · founding offer: 50% off the first year</p> : null}
             </div>
             <div className="flex justify-center md:justify-end">
               <RestaurantPhone />

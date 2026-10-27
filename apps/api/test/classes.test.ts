@@ -87,10 +87,10 @@ const book = (c: Awaited<ReturnType<typeof member>>, sessionId: string, body: Re
 const mine = async (c: Awaited<ReturnType<typeof member>>) => (await call(env, c.token, "GET", "/v1/me/classes")).body;
 
 describe("classes: pricing and gating", () => {
-  it("sits in Café & Retail, hidden at launch, never free; online money carries the 1% class fee", () => {
+  it("sits in Café & Retail, live at launch (trade tools self-serve), never free; online money carries the 1% class fee", () => {
     for (const k of ["booking.classes", "memberships.recurring"] as const) {
       expect(FEATURES[k].minPlan).toBe("plus");
-      expect(FEATURES[k].defaultStage).toBe("hidden");
+      expect(FEATURES[k].defaultStage).toBe("ga");
       expect(FREE_FOREVER).not.toContain(k);
     }
     expect(computeFees({ kind: "class", amountCents: 12900, plan: "plus" }).platformFeeCents).toBe(129);
@@ -634,5 +634,196 @@ describe("classes: privacy", () => {
     expect(b!.status).toBe("cancelled");
   });
 });
+
+describe("classes: fix wave (stuck payments, desk actions, instructors, milestones)", () => {
+  it("an unpaid pack and an unpaid membership can be finished or cancelled, and the studio sees the pending sign-up", async () => {
+    const s = await studio({ capacity: 5 });
+    const c = await member("Pending Pat");
+    // Left the card step: the pack waits, the membership waits.
+    const bought = await call(env, c.token, "POST", "/v1/me/classes/purchases", { productId: s.pack.id });
+    expect(bought.status).toBe(201);
+    const ag = await call(env, c.token, "GET", `/v1/me/classes/products/${s.unlimited.id}/agreement`);
+    const joined = await call(env, c.token, "POST", "/v1/me/classes/memberships", { productId: s.unlimited.id, acceptAgreement: true, agreementHash: ag.body.hash });
+    expect(joined.status).toBe(201);
+    const now = await mine(c);
+    expect(now.passes[0]).toMatchObject({ status: "pending", creditsLeft: 10 });
+    expect(now.memberships[0].status).toBe("pending");
+    // The studio's Members list shows the pending sign-up with no next payment.
+    const list = await call(env, s.m.ownerToken, "GET", `${s.base}/members`);
+    expect(list.body.items).toHaveLength(1);
+    expect(list.body.items[0]).toMatchObject({ status: "pending", issue: "Card step not finished", nextBillingDate: null });
+    // Finish payment: the pack returns a payment to confirm, and paying it activates the pack.
+    const pay = await call(env, c.token, "POST", `/v1/me/classes/passes/${now.passes[0].id}/pay`);
+    expect(pay.status).toBe(200);
+    expect(pay.body.payment.amountCents).toBe(18000);
+    expect((await deliver(env, fake(env).succeedPaymentIntent(pay.body.payment.paymentIntentId))).statusCode).toBe(200);
+    expect((await mine(c)).passes[0].status).toBe("active");
+    // A membership can be paid from where it waits, or cancelled with nothing charged.
+    const mpay = await call(env, c.token, "POST", `/v1/me/classes/memberships/${now.memberships[0].id}/pay`);
+    expect(mpay.status).toBe(200);
+    const cancel = await call(env, c.token, "POST", `/v1/me/classes/memberships/${now.memberships[0].id}/cancel`, {});
+    expect(cancel.status).toBe(200);
+    expect(cancel.body.membership.status).toBe("cancelled");
+    // And the customer can join again afterwards (the "already have a membership" dead end is gone).
+    const again = await call(env, c.token, "POST", "/v1/me/classes/memberships", { productId: s.unlimited.id, acceptAgreement: true, agreementHash: ag.body.hash });
+    expect(again.status).toBe(201);
+  });
+
+  it("an unpaid pack is cancelled with nothing owed, and a late payment on it is given back", async () => {
+    const s = await studio();
+    const c = await member();
+    const bought = await call(env, c.token, "POST", "/v1/me/classes/purchases", { productId: s.pack.id });
+    const id = bought.body.pass.id;
+    const stranger = await member("Someone Else");
+    expect((await call(env, stranger.token, "POST", `/v1/me/classes/passes/${id}/cancel`)).status).toBe(404);
+    expect((await call(env, c.token, "POST", `/v1/me/classes/passes/${id}/cancel`)).status).toBe(200);
+    expect((await mine(c)).passes).toHaveLength(0);
+    // A payment that lands after the cancel is refunded, the pack stays cancelled.
+    await deliver(env, fake(env).succeedPaymentIntent(bought.body.payment.paymentIntentId));
+    const [pass] = await env.db.select().from(classPasses).where(eq(classPasses.id, id));
+    expect(pass!.status).toBe("refunded");
+    const [charge] = await env.db.select().from(classCharges).where(eq(classCharges.passId, id));
+    expect(charge!.status).toBe("refunded");
+    // An active pack cannot be dropped this way.
+    const paid = await buyPack(s, c, s.pack.id);
+    expect((await call(env, c.token, "POST", `/v1/me/classes/passes/${paid.id}/cancel`)).status).toBe(409);
+  });
+
+  it("desk staff sell a drop-in at the door, then the check-in books and uses it", async () => {
+    const s = await studio({ capacity: 5 });
+    const staff = await staffMember(env, s.m.merchant.id, "staff");
+    const walkIn = await member("Walk In");
+    await s.session(iso(20 * 60_000));
+    const code = (await env.db.query.users.findFirst({ where: (u, { eq: e }) => e(u.id, walkIn.user.id) }))!.memberCode;
+    const first = await call(env, staff.token, "POST", `${s.base}/check-in`, { memberCode: code });
+    expect(first.body.outcome).toBe("no_pass");
+    const sale = await call(env, staff.token, "POST", `${s.base}/sales`, { productId: s.dropIn.id, memberCode: code, method: "cash" });
+    expect(sale.status).toBe(201);
+    expect(sale.body).toMatchObject({ creditsLeft: 1, creditsTotal: 1, status: "active" });
+    const [ch] = await env.db.select().from(classCharges).where(eq(classCharges.passId, sale.body.id));
+    expect(ch).toMatchObject({ kind: "pack", status: "paid", platformFeeCents: 0, amountCents: 2500 });
+    const second = await call(env, staff.token, "POST", `${s.base}/check-in`, { memberCode: code });
+    expect(second.body.outcome).toBe("added_and_checked_in");
+    expect(second.body.pass).toMatchObject({ creditsLeft: 0 });
+  });
+
+  it("staff cancel a booking with the credit rule, and book a waitlisted person in now (as a guest when they hold nothing)", async () => {
+    const s = await studio({ capacity: 1 });
+    const staff = await staffMember(env, s.m.merchant.id, "staff");
+    const a = await member("Aisha");
+    const b = await member("Brook");
+    await buyPack(s, a, s.pack.id);
+    const cls = await s.session(iso(3 * DAY));
+    const booked = await book(a, cls.id);
+    expect(booked.body.outcome).toBe("booked");
+    // Brook has no pass: waitlisted, and told the waitlist will not book them.
+    const w = await book(b, cls.id);
+    expect(w.body.outcome).toBe("waitlisted");
+    expect(w.body.waitlistNeedsPass).toBe(true);
+    // Booking Brook in while the class is full says so; with nothing to use it says no_pass.
+    const row = (await call(env, staff.token, "GET", `${s.base}/sessions/${cls.id}/roster`)).body.rows.find((r: { status: string }) => r.status === "waitlisted");
+    const full = await call(env, staff.token, "POST", `${s.base}/bookings/${row.bookingId}/book-in`, {});
+    expect(full.status).toBe(409);
+    expect(full.body.error.code).toBe("class_full");
+    // Staff cancel Aisha ("can't come"): her credit returns (early cancel).
+    const cancel = await call(env, staff.token, "POST", `${s.base}/bookings/${booked.body.booking.id}/cancel`, {});
+    expect(cancel.status).toBe(200);
+    expect((await mine(a)).passes[0].creditsLeft).toBe(10);
+    // The waitlist skipped Brook (nothing to use), so the spot is open: no_pass, then as a guest.
+    const nopass = await call(env, staff.token, "POST", `${s.base}/bookings/${row.bookingId}/book-in`, {});
+    expect(nopass.status).toBe(409);
+    expect(nopass.body.error.code).toBe("no_pass");
+    const guest = await call(env, staff.token, "POST", `${s.base}/bookings/${row.bookingId}/book-in`, { comp: true });
+    expect(guest.status).toBe(200);
+    const after = guest.body.rows.find((r: { bookingId: string }) => r.bookingId === row.bookingId);
+    expect(after.status).toBe("booked");
+  });
+
+  it("booking joins the studio's loyalty program, and a late cancel by staff keeps the class used up", async () => {
+    const s = await studio({ capacity: 3 });
+    const staff = await staffMember(env, s.m.merchant.id, "staff");
+    const c = await member("First Timer");
+    await buyPack(s, c, s.pack.id);
+    expect((await call(env, c.token, "GET", "/v1/me/memberships")).body.items ?? []).toBeDefined();
+    const soon = await s.session(iso(4 * HOUR));
+    const b = await book(c, soon.id);
+    expect(b.status).toBe(201);
+    const wallet = await call(env, c.token, "GET", "/v1/me/memberships");
+    expect(JSON.stringify(wallet.body)).toContain(s.m.merchant.id);
+    const late = await call(env, staff.token, "POST", `${s.base}/bookings/${b.body.booking.id}/cancel`, {});
+    expect(late.status).toBe(200);
+    expect((await mine(c)).passes[0].creditsLeft).toBe(9); // inside the window: the class is used up
+    const free = await call(env, staff.token, "POST", `${s.base}/bookings/${b.body.booking.id}/mark`, { status: "excused" });
+    expect(free.status).toBe(200);
+    expect((await mine(c)).passes[0].creditsLeft).toBe(10);
+  });
+
+  it("an Instructor login sees and checks in only the classes it teaches, and nothing else", async () => {
+    const s = await studio({ capacity: 5 });
+    const teacher = await staffMember(env, s.m.merchant.id, "instructor");
+    const other = await staffMember(env, s.m.merchant.id, "instructor");
+    const mineCls = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions`, { classTypeId: s.type.id, startsAt: iso(30 * 60_000), instructorUserId: teacher.user.id });
+    expect(mineCls.status).toBe(201);
+    const theirs = await s.session(iso(2 * DAY));
+    const list = await call(env, teacher.token, "GET", `${s.base}/sessions?to=${iso(7 * DAY)}`);
+    expect(list.status).toBe(200);
+    expect(list.body.items.map((x: { id: string }) => x.id)).toEqual([mineCls.body.items[0].id]);
+    expect((await call(env, other.token, "GET", `${s.base}/sessions?to=${iso(7 * DAY)}`)).body.items).toHaveLength(0);
+    // Own roster yes, someone else's class no.
+    expect((await call(env, teacher.token, "GET", `${s.base}/sessions/${mineCls.body.items[0].id}/roster`)).status).toBe(200);
+    expect((await call(env, teacher.token, "GET", `${s.base}/sessions/${theirs.id}/roster`)).status).toBe(403);
+    expect((await call(env, other.token, "GET", `${s.base}/sessions/${mineCls.body.items[0].id}/roster`)).status).toBe(403);
+    // Door check-in finds only their class.
+    const c = await member("Student");
+    await buyPack(s, c, s.pack.id);
+    const code = (await env.db.query.users.findFirst({ where: (u, { eq: e }) => e(u.id, c.user.id) }))!.memberCode;
+    const ci = await call(env, teacher.token, "POST", `${s.base}/check-in`, { memberCode: code });
+    expect(ci.body.outcome).toBe("added_and_checked_in");
+    expect(ci.body.session.id).toBe(mineCls.body.items[0].id);
+    expect((await call(env, other.token, "POST", `${s.base}/check-in`, { memberCode: code })).body.outcome).toBe("no_class");
+    // Everything else is closed to them: counter, customers, offers, desk sales, cancelling, the member list.
+    expect((await call(env, teacher.token, "GET", `${s.base}/products`)).status).toBe(403);
+    expect((await call(env, teacher.token, "POST", `${s.base}/sales`, { productId: s.dropIn.id, phone: "+14165559888", method: "cash" })).status).toBe(403);
+    expect((await call(env, teacher.token, "GET", `/v1/merchants/${s.m.merchant.id}/customers`)).status).toBe(403);
+    expect((await call(env, teacher.token, "GET", `/v1/merchants/${s.m.merchant.id}/counter/today`)).status).toBe(403);
+    expect((await call(env, teacher.token, "POST", `${s.base}/sessions`, { classTypeId: s.type.id, startsAt: iso(DAY) })).status).toBe(403);
+    // The dashboard shell can still load (detail and features), so the instructor sees their classes.
+    expect((await call(env, teacher.token, "GET", `/v1/merchants/${s.m.merchant.id}`)).status).toBe(200);
+    expect((await call(env, teacher.token, "GET", `/v1/merchants/${s.m.merchant.id}/features`)).status).toBe(200);
+  });
+
+  it("a class milestone is a loyalty reward priced at classes x points per visit, and turning it off retires it", async () => {
+    const s = await studio();
+    const on = await call(env, s.m.ownerToken, "PUT", `${s.base}/settings`, { milestoneClasses: 10, milestoneRewardName: "Free guest pass" });
+    expect(on.status).toBe(200);
+    expect(on.body).toMatchObject({ milestoneClasses: 10, milestoneRewardName: "Free guest pass" });
+    const { rewards } = await import("@ll/db");
+    const rows = await env.db.select().from(rewards).where(and(eq(rewards.merchantId, s.m.merchant.id), eq(rewards.name, "Free guest pass")));
+    expect(rows.filter((r) => r.active).map((r) => r.pointsCost)).toEqual([100]);
+    // Change the count: the same reward is updated, not duplicated.
+    await call(env, s.m.ownerToken, "PUT", `${s.base}/settings`, { milestoneClasses: 25 });
+    const after = await env.db.select().from(rewards).where(and(eq(rewards.merchantId, s.m.merchant.id), eq(rewards.name, "Free guest pass")));
+    expect(after.filter((r) => r.active).map((r) => r.pointsCost)).toEqual([250]);
+    await call(env, s.m.ownerToken, "PUT", `${s.base}/settings`, { milestoneClasses: null });
+    const off = await env.db.select().from(rewards).where(and(eq(rewards.merchantId, s.m.merchant.id), eq(rewards.name, "Free guest pass")));
+    expect(off.filter((r) => r.active)).toHaveLength(0);
+    // A per-dollar program cannot carry it.
+    await env.db.update(loyaltyPrograms).set({ earnType: "per_dollar", pointsPerVisit: 0, pointsPerDollar: 1 }).where(eq(loyaltyPrograms.merchantId, s.m.merchant.id));
+    expect((await call(env, s.m.ownerToken, "PUT", `${s.base}/settings`, { milestoneClasses: 10 })).status).toBe(409);
+  });
+
+  it("flags a fixed term whose renewal notice is overdue and hides the next payment on ended memberships", async () => {
+    const s = await studio();
+    const c = await member();
+    const j = await join(s, c, s.term.id);
+    await env.db.update(classMemberships).set({ termEndsOn: "2026-11-20", renewalNoticeSentAt: null }).where(eq(classMemberships.id, j.membership.id));
+    const list = await call(env, s.m.ownerToken, "GET", `${s.base}/members`);
+    expect(list.body.items[0].issue).toMatch(/^Renewal notice overdue/);
+    await call(env, s.m.ownerToken, "POST", `${s.base}/memberships/${j.membership.id}/cancel`, { effective: "now" });
+    const ended = await call(env, s.m.ownerToken, "GET", `${s.base}/members`);
+    expect(ended.body.items[0]).toMatchObject({ status: "cancelled", nextBillingDate: null });
+  });
+});
+
 
 void classPasses;

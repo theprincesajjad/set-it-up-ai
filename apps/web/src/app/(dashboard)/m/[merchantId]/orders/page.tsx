@@ -25,6 +25,11 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 type Order = commerceApi.OrderDto;
 type Chip = OrderChip;
 
+const nextFor = (grocer: boolean): Record<string, { status: commerceApi.UpdateOrderStatusBody["status"]; label: string }[]> => ({
+  ...NEXT,
+  // A butcher cuts to order: "Start cutting", not "Start preparing".
+  ...(grocer ? { accepted: [{ status: "preparing" as const, label: "Start cutting" }, { status: "ready" as const, label: "Mark ready" }] } : {}),
+});
 const NEXT: Record<string, { status: commerceApi.UpdateOrderStatusBody["status"]; label: string }[]> = {
   pending: [{ status: "accepted", label: "Accept" }],
   accepted: [{ status: "preparing", label: "Start preparing" }, { status: "ready", label: "Mark ready" }],
@@ -49,7 +54,8 @@ export default function OrdersPage() {
 }
 
 function Orders() {
-  const { api, enabled, features } = useMerchant();
+  const { api, enabled, features, detail } = useMerchant();
+  const grocer = detail.merchant.vertical === "grocery";
   const restaurant = hasRestaurantFeature(enabledSet(features.features));
   const splitOn = enabled("restaurant.split_bills");
   const [split, setSplit] = useState<Order | null>(null);
@@ -99,7 +105,7 @@ function Orders() {
               options={[
                 { value: "all", label: "All", count: counts.all },
                 { value: "new", label: "New", count: counts.new },
-                { value: "cooking", label: "Cooking", count: counts.cooking },
+                { value: "cooking", label: grocer ? "Cutting" : "Cooking", count: counts.cooking },
                 { value: "ready", label: "Ready", count: counts.ready },
                 { value: "preorder", label: "Pre-orders", count: counts.preorder },
               ]}
@@ -127,7 +133,7 @@ function Orders() {
         <ul aria-label={view === "open" ? "Open orders" : "Finished orders"} className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((o) => (
             <li key={o.id} className="min-w-0">
-              <OrderCard o={o} view={view} restaurant={restaurant} canSplitIt={splitOn && view === "open" && canSplit(o)} selected={split?.id === o.id} onMove={move} onSplit={() => setSplit(o)} onCancel={() => setCancel(o)} />
+              <OrderCard o={o} view={view} restaurant={restaurant} grocer={grocer} canSplitIt={splitOn && view === "open" && canSplit(o)} selected={split?.id === o.id} onMove={move} onSplit={() => setSplit(o)} onCancel={() => setCancel(o)} />
             </li>
           ))}
         </ul>
@@ -151,7 +157,7 @@ function Orders() {
   );
 }
 
-function OrderCard({ o, view, restaurant, canSplitIt, selected, onMove, onSplit, onCancel }: { o: Order; view: "open" | "done"; restaurant: boolean; canSplitIt: boolean; selected: boolean; onMove: (o: Order, s: commerceApi.UpdateOrderStatusBody["status"]) => void; onSplit: () => void; onCancel: () => void }) {
+function OrderCard({ o, view, restaurant, grocer, canSplitIt, selected, onMove, onSplit, onCancel }: { o: Order; view: "open" | "done"; restaurant: boolean; grocer: boolean; canSplitIt: boolean; selected: boolean; onMove: (o: Order, s: commerceApi.UpdateOrderStatusBody["status"]) => void; onSplit: () => void; onCancel: () => void }) {
   const who = o.customer?.name && !/^\s*$/.test(o.customer.name) ? o.customer.name : o.customer?.phone ? formatPhone(o.customer.phone) : "Customer";
   const event = isEventOrder(o);
   const pickup = event ? `${o.kind === "banquet" ? "hall booking" : "catering"} · placed ${relativeTime(o.createdAt)}` : o.pickupAt ? `pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `placed ${relativeTime(o.createdAt)}`;
@@ -200,7 +206,7 @@ function OrderCard({ o, view, restaurant, canSplitIt, selected, onMove, onSplit,
         </div>
       ) : view === "open" ? (
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-          {(NEXT[o.status] ?? []).map((n, idx) => (
+          {(nextFor(grocer)[o.status] ?? []).map((n, idx) => (
             <Button key={n.status} size="sm" variant={idx === 0 || n.status === "ready" ? "primary" : "secondary"} onClick={() => onMove(o, n.status)}>
               {n.label}
             </Button>

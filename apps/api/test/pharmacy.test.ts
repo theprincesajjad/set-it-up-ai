@@ -33,8 +33,10 @@ const at = (local: string) => {
 };
 
 /** A Plus pharmacy with its locked categories, a front-store category and the marketing features. */
-async function pharmacy(opts: { welcomeBonus?: number } = {}) {
+async function pharmacy(opts: { welcomeBonus?: number; unconfirmed?: boolean } = {}) {
   const m = await paidMerchant(env, { plan: "plus", vertical: "pharmacy" });
+  // The pharmacist-owner has confirmed the rules (points stay off until then; see "the pharmacist-owner confirmation" below).
+  if (!opts.unconfirmed) await env.db.update(merchants).set({ pharmacyConfirmedAt: env.clock.now, pharmacyConfirmedByName: "Amira Rahman", pharmacyOcpNumber: "1234567" }).where(eq(merchants.id, m.merchant.id));
   await ensureLockedCategories(env.db, m.merchant.id);
   await grantFeatures(env, m.merchant.id, ["marketing.email", "marketing.automations", "promos.double_points", "promos.basic", "discount_cards", "loyalty.referrals"]);
   if (opts.welcomeBonus) await env.db.update((await import("@ll/db")).loyaltyPrograms).set({ welcomeBonus: opts.welcomeBonus }).where(eq((await import("@ll/db")).loyaltyPrograms.merchantId, m.merchant.id));
@@ -341,7 +343,7 @@ describe("pharmacist appointments keep only that a booking exists", () => {
     const sms = env.ctx.providers.outbox.sms;
     env.clock.now = new Date(at("2026-11-04 10:30"));
     expect(await sendReminders(env.ctx)).toBe(1);
-    for (const m of sms.filter((x) => x.to === who.user.phone)) expect(m.body.toLowerCase(), m.body).not.toContain("flu");
+    for (const m of sms.filter((x) => x.to === who.user.phone)) { expect(m.body.toLowerCase(), m.body).not.toContain("flu"); expect(m.body, m.body).not.toContain(c.merchant.name); }
     expect(sms.at(-1)!.body).toContain("appointment");
     // Public booking page: the shop is marked a pharmacy, no card is taken, no fee.
     const pub = await call(env, null, "GET", `/v1/public/shops/${c.merchant.slug}/booking`);
@@ -356,8 +358,9 @@ describe("pharmacist appointments keep only that a booking exists", () => {
     expect(r.status).toBe(201);
     const shown = r.body.appointment.reminderText as string;
     const link = `${env.ctx.config.publicWebUrl}/shops/${c.merchant.slug}/book/${r.body.appointment.id}`;
-    // Shop, weekday and time, a link to change it, the STOP line. No service, no address, no price.
-    expect(shown).toMatch(new RegExp(`^${c.merchant.name}: your appointment is Thu,? 10:00 am\\. Change it: `));
+    // Weekday and time, a link to change it, the STOP line. No service, no address, no price.
+    expect(shown).toMatch(/^Reminder: your appointment is Thu,? 10:00 am\. Change it: /);
+    expect(shown).not.toContain(c.merchant.name);
     expect(shown).toContain(link);
     expect(shown.endsWith("Reply STOP to opt out.")).toBe(true);
     expect(shown.toLowerCase()).not.toMatch(/flu|shot|vaccin|medic|prescri|rx|\$/);
@@ -476,7 +479,7 @@ describe("order-ready text", () => {
 
 describe("the rules page and the pharmacist-owner confirmation", () => {
   it("lists the rules and locked categories; only the owner confirms, once recorded with a name", async () => {
-    const p = await pharmacy();
+    const p = await pharmacy({ unconfirmed: true });
     const rules = await call(env, p.ownerToken, "GET", `${p.base}/pharmacy/rules`);
     expect(rules.body.pharmacy).toBe(true);
     expect(rules.body.rules.map((r: { id: string }) => r.id)).toEqual(PHARMACY_RULES.map((r) => r.id));
@@ -485,16 +488,19 @@ describe("the rules page and the pharmacist-owner confirmation", () => {
     expect(rules.body.confirmation).toBeNull();
     expect(rules.body.retention).toEqual({ appointmentDays: 30, messageDays: 30 });
     const manager = await staffMember(env, p.merchant.id, "manager");
-    expect((await call(env, manager.token, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", agree: true })).status).toBe(403);
-    expect((await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", agree: false })).status).toBe(400);
-    const ok = await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman, B.Sc.Phm", agree: true });
+    expect((await call(env, manager.token, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", ocpNumber: "1234567", agree: true })).status).toBe(403);
+    expect((await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", ocpNumber: "1234567", agree: false })).status).toBe(400);
+    // The OCP accreditation number is required (digits, 4 to 10).
+    expect((await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", agree: true })).status).toBe(400);
+    expect((await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", ocpNumber: "abc", agree: true })).status).toBe(400);
+    const ok = await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman, B.Sc.Phm", ocpNumber: "12 34-567", agree: true });
     expect(ok.status).toBe(200);
-    expect(ok.body.confirmation).toMatchObject({ confirmedByName: "Amira Rahman, B.Sc.Phm" });
+    expect(ok.body.confirmation).toMatchObject({ confirmedByName: "Amira Rahman, B.Sc.Phm", ocpNumber: "1234567" });
     const [m] = await env.db.select().from(merchants).where(eq(merchants.id, p.merchant.id));
     expect(m!.pharmacyConfirmedByUserId).toBe(p.owner.id);
     const shop = await paidMerchant(env, { plan: "plus", vertical: "retail" });
     expect((await call(env, shop.ownerToken, "GET", `/v1/merchants/${shop.merchant.id}/pharmacy/rules`)).body).toMatchObject({ pharmacy: false, rules: [] });
-    expect((await call(env, shop.ownerToken, "POST", `/v1/merchants/${shop.merchant.id}/pharmacy/confirm`, { name: "Someone", agree: true })).status).toBe(400);
+    expect((await call(env, shop.ownerToken, "POST", `/v1/merchants/${shop.merchant.id}/pharmacy/confirm`, { name: "Someone", ocpNumber: "1234567", agree: true })).status).toBe(400);
   });
 });
 
@@ -515,6 +521,7 @@ describe("network overlap never names a pharmacy", () => {
   it("another shop's overlap report leaves pharmacies out", async () => {
     const hood = await (await import("./helpers.js")).createNeighbourhood(env.db);
     const rx = await paidMerchant(env, { plan: "plus", vertical: "pharmacy" });
+    await env.db.update(merchants).set({ pharmacyConfirmedAt: env.clock.now, pharmacyConfirmedByName: "Amira Rahman", pharmacyOcpNumber: "1234567" }).where(eq(merchants.id, rx.merchant.id));
     const cafe = await paidMerchant(env, { plan: "plus", vertical: "cafe" });
     await env.db.update(merchants).set({ neighbourhoodId: hood.id }).where(eq(merchants.id, rx.merchant.id));
     await env.db.update(merchants).set({ neighbourhoodId: hood.id }).where(eq(merchants.id, cafe.merchant.id));
@@ -544,5 +551,141 @@ describe("the text checker", () => {
     expect(checkPharmacyText("Flu shot", { mode: "label", allowServiceWords: true }).ok).toBe(true);
     expect(checkPharmacyText("Diabetes review", { mode: "label", allowServiceWords: true }).ok).toBe(false);
     expect(checkPharmacyText("Rx points goodwill", { mode: "label" }).ok).toBe(false);
+  });
+});
+
+describe("fix wave: welcome bonus, network perks, confirmation, text check, categories", () => {
+  it("the pharmacy template has no welcome bonus, and a program change cannot add one", async () => {
+    const p = await pharmacy();
+    const prog = await call(env, p.ownerToken, "GET", `${p.base}/program`);
+    expect(prog.body.welcomeBonus).toBe(0);
+    const patched = await call(env, p.ownerToken, "PATCH", `${p.base}/program`, { welcomeBonus: 50 });
+    expect(patched.status).toBe(200);
+    expect(patched.body.welcomeBonus).toBe(0);
+  });
+
+  it("an old pharmacy program with a welcome bonus pays none: joining pays nothing, a front-store sale pays only its own points", async () => {
+    const p = await pharmacy({ welcomeBonus: 50 });
+    const r = await award(p, { amountCents: 1250, frontStoreOnly: true });
+    expect(r.status).toBe(200);
+    expect(r.body.pointsEarned).toBe(12);
+    expect(r.body.member.balance).toBe(12);
+    expect((await ledgerRows(p.merchant.id)).some((t) => t.type === "welcome_bonus")).toBe(false);
+    // A non-pharmacy keeps its welcome bonus.
+    const shop = await paidMerchant(env, { plan: "plus", vertical: "retail" });
+    await env.db.update((await import("@ll/db")).loyaltyPrograms).set({ welcomeBonus: 50 }).where(eq((await import("@ll/db")).loyaltyPrograms.merchantId, shop.merchant.id));
+    const s = await call(env, shop.ownerToken, "POST", `/v1/merchants/${shop.merchant.id}/counter/award`, { phone: nextPhone(), amountCents: 1000, idempotencyKey: randomUUID() });
+    expect(s.body.member.balance).toBe(60);
+  });
+
+  it("network perks and campaign bonuses never pay at a pharmacy, and a pharmacy visit does not count toward them", async () => {
+    const { networkPerks, ledgerTransactions: lt } = await import("@ll/db");
+    const hood = await (await import("./helpers.js")).createNeighbourhood(env.db);
+    await env.db.insert(networkPerks).values({ neighbourhoodId: hood.id, name: "Strip explorer", threshold: 2, bonusPoints: 50 });
+    const rx = await pharmacy();
+    const cafe = await paidMerchant(env, { plan: "plus", vertical: "cafe" });
+    const cafe2 = await paidMerchant(env, { plan: "plus", vertical: "cafe" });
+    for (const m of [rx, cafe, cafe2]) await env.db.update(merchants).set({ neighbourhoodId: hood.id }).where(eq(merchants.id, m.merchant.id));
+    const phone = nextPhone();
+    const a = await call(env, rx.ownerToken, "POST", `${rx.base}/counter/award`, { phone, amountCents: 1000, frontStoreOnly: true, idempotencyKey: randomUUID() });
+    expect(a.status).toBe(200);
+    expect(a.body.extraPoints).toBe(0);
+    // One café visit after the pharmacy visit is only the first non-pharmacy shop: no perk yet.
+    const c1 = await call(env, cafe.ownerToken, "POST", `/v1/merchants/${cafe.merchant.id}/counter/award`, { phone, amountCents: 500, idempotencyKey: randomUUID() });
+    expect(c1.body.extraPoints).toBe(0);
+    // The second non-pharmacy shop earns it.
+    const c2 = await call(env, cafe2.ownerToken, "POST", `/v1/merchants/${cafe2.merchant.id}/counter/award`, { phone, amountCents: 500, idempotencyKey: randomUUID() });
+    expect(c2.body.extraPoints).toBe(50);
+    const bonus = await env.db.select().from(lt).where(eq(lt.type, "network_bonus"));
+    expect(bonus.every((t) => t.merchantId !== rx.merchant.id)).toBe(true);
+  });
+
+  it("nothing is awarded or redeemed until the pharmacist-owner has confirmed, and the number is kept", async () => {
+    const p = await pharmacy({ unconfirmed: true });
+    const refused = await award(p, { amountCents: 1000, frontStoreOnly: true });
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.code).toBe("pharmacy_not_confirmed");
+    expect(await memberRows(p.merchant.id)).toHaveLength(0);
+    expect(await ledgerRows(p.merchant.id)).toHaveLength(0);
+    const ok = await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", ocpNumber: "7654321", agree: true });
+    expect(ok.body.confirmation).toMatchObject({ ocpNumber: "7654321" });
+    const [m] = await env.db.select().from(merchants).where(eq(merchants.id, p.merchant.id));
+    expect(m!.pharmacyOcpNumber).toBe("7654321");
+    expect((await award(p, { amountCents: 1000, frontStoreOnly: true })).status).toBe(200);
+  });
+
+  it("setup lists the pharmacist confirmation as a core step for a pharmacy only, and it completes on confirm", async () => {
+    const p = await pharmacy({ unconfirmed: true });
+    const before = await call(env, p.ownerToken, "GET", `${p.base}/onboarding`);
+    const keys = before.body.steps.map((s: { key: string }) => s.key);
+    expect(keys.slice(0, 2)).toEqual(["program", "pharmacy_rules"]);
+    expect(before.body.steps.find((s: { key: string }) => s.key === "pharmacy_rules").done).toBe(false);
+    expect(before.body.steps.find((s: { key: string }) => s.key === "first_stamp").label).toBe("Record your first front-store sale");
+    await call(env, p.ownerToken, "POST", `${p.base}/pharmacy/confirm`, { name: "Amira Rahman", ocpNumber: "7654321", agree: true });
+    const after = await call(env, p.ownerToken, "GET", `${p.base}/onboarding`);
+    expect(after.body.steps.find((s: { key: string }) => s.key === "pharmacy_rules").done).toBe(true);
+    const shop = await paidMerchant(env, { plan: "plus", vertical: "retail" });
+    const other = await call(env, shop.ownerToken, "GET", `/v1/merchants/${shop.merchant.id}/onboarding`);
+    expect(other.body.steps.map((s: { key: string }) => s.key)).not.toContain("pharmacy_rules");
+  });
+
+  it("the text check catches Hindi, Urdu and Punjabi drug-discount wording, health claims, referral offers and a flu jab", () => {
+    for (const t of [
+      "दवाई पर 10% छूट",
+      "दवा पर 10% छूट",
+      "ادویات پر 10 فیصد رعایت",
+      "دوائی پر رعایت",
+      "ਦਵਾਈ ’ਤੇ 10% ਛੋਟ",
+      "dawai par 10% discount",
+      "Cold and flu season: vitamin C boosts immunity, 20% off vitamins",
+      "Supports your immune system. 2x points.",
+      "This cures colds",
+      "Refer a friend and get $5",
+      "Bring a friend, both get points",
+      "Come get your flu jab, 10% off at the till",
+    ]) expect(checkPharmacyText(t).ok, t).toBe(false);
+    expect(checkPharmacyText("Cold and flu season: vitamin C boosts immunity").kind).toBe("claim");
+    expect(checkPharmacyText("Refer a friend and get $5").kind).toBe("referral");
+    // Front-store wording is still fine, and an appointment type may say "jab".
+    for (const t of ["Vitamins and tissues earn double points this week", "Sweet treats at the till", "Prefer to pay by card? Tap and go"]) expect(checkPharmacyText(t).ok, t).toBe(true);
+    expect(checkPharmacyText("Flu jab", { mode: "label", allowServiceWords: true }).ok).toBe(true);
+  });
+
+  it("a pharmacy cannot send the claim, referral or Hindi wording in a message", async () => {
+    const p = await pharmacy();
+    for (const body of ["Vitamin C boosts immunity. 20% off.", "Refer a friend and get $5.", "दवाई पर 10% छूट"]) {
+      const r = await call(env, p.ownerToken, "POST", `${p.base}/messages`, { channel: "email", subject: "Hello", body, segment: { kind: "all" } });
+      expect(r.status, body).toBe(422);
+      expect(r.body.error.code).toBe("pharmacy_text");
+    }
+  });
+
+  it("copay, insurance, ODB, test strips and Schedule II or III names lock as categories", async () => {
+    const p = await pharmacy();
+    for (const name of ["Insurance copay", "Diabetes test strips", "ODB items", "Schedule II drugs", "Schedule 3 products", "Behind the counter", "Pseudoephedrine", "Low-dose codeine"]) {
+      expect((await call(env, p.ownerToken, "POST", `${p.base}/categories`, { name, earnEligible: true })).status, name).toBe(422);
+      const made = await call(env, p.ownerToken, "POST", `${p.base}/categories`, { name });
+      expect(made.status, name).toBe(201);
+      expect(made.body, name).toMatchObject({ earnEligible: false, discountEligible: false });
+    }
+    // The shop can still have ordinary categories.
+    expect((await call(env, p.ownerToken, "POST", `${p.base}/categories`, { name: "Cough and cold" })).body.earnEligible).toBe(true);
+  });
+
+  it("the confirmation text and the reminder name neither the shop nor the service", async () => {
+    const who = await customer(env);
+    await env.db.update(users).set({ locale: "en" }).where(eq(users.id, who.user.id));
+    const p = await pharmacy();
+    const pharmacist = await staffMember(env, p.merchant.id, "staff");
+    expect((await call(env, p.ownerToken, "PUT", `${p.base}/staff/${pharmacist.user.id}/hours`, { days: [1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, startsLocal: "09:00", endsLocal: "17:00" })) })).status).toBe(200);
+    const flu = await call(env, p.ownerToken, "POST", `${p.base}/services`, { name: "Flu shot", durationMin: 15, priceCents: 0, categoryId: p.front.id });
+    expect(flu.status).toBe(201);
+    const r = await call(env, who.token, "POST", "/v1/me/appointments", { serviceIds: [flu.body.id], staffId: null, startsAt: at("2026-11-05 10:00") });
+    expect(r.status).toBe(201);
+    const sms = env.ctx.providers.outbox.sms.filter((x) => x.to === who.user.phone);
+    for (const m of sms) {
+      expect(m.body, m.body).not.toContain(p.merchant.name);
+      expect(m.body.toLowerCase()).not.toMatch(/flu|shot|pharm/);
+    }
   });
 });

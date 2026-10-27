@@ -1,18 +1,21 @@
 "use client";
 /**
- * Self-serve merchant signup in one screen: account (POST /v1/auth/register) and shop (POST /v1/merchants),
- * then straight to "give your first stamp" in the setup guide. Postal code, shop email and logo are not asked
- * here: none of them is needed to give the first stamp (docs/research/merchant-onboarding.md).
+ * Self-serve merchant signup in one screen: account (POST /v1/auth/register) and shop (POST /v1/merchants).
+ * Four things about the shop (name, kind, mobile, street address) plus the email and password for the account. Your name,
+ * the neighbourhood, postal code, logo and GST/HST are not asked here: the API pins the address on the map and puts the shop
+ * on its street, and the rest comes later (docs/audits/main-street-self-serve.md F8).
+ * Then to the trade's own first step (lib/signupRoute.ts): a restaurant sees its plans, a salon its services and hours, a studio its classes.
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
-import { VERTICALS, VERTICAL_TEMPLATES, type merchantApi, type networkApi } from "@ll/shared";
+import { VERTICALS, VERTICAL_TEMPLATES, type merchantApi } from "@ll/shared";
 import { browserClient, sessionApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { toE164 } from "@/lib/phone";
 import { howYouEarn } from "@/lib/program";
 import { routes } from "@/lib/routes";
+import { afterSignupPath } from "@/lib/signupRoute";
 import { cn } from "@/lib/cn";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -20,31 +23,36 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 
-/** The ten shop types most owners pick, in the words they use. Everything else is under "Something else". */
+/** The shop types most owners pick, in the words they use. Everything else is under "More types". */
 const CHIPS: { value: merchantApi.CreateMerchantBody["vertical"]; label: string }[] = [
   { value: "cafe", label: "Café" },
   { value: "bakery", label: "Bakery" },
   { value: "restaurant", label: "Restaurant" },
   { value: "restaurant_south_asian", label: "South Asian restaurant" },
   { value: "tiffin", label: "Tiffin kitchen" },
+  { value: "caterer", label: "Caterer" },
+  { value: "banquet_hall", label: "Banquet hall" },
   { value: "retail", label: "Retail" },
+  { value: "grocery", label: "Grocer or butcher" },
   { value: "pharmacy", label: "Pharmacy" },
   { value: "salon", label: "Salon" },
   { value: "barber", label: "Barber" },
+  { value: "fitness", label: "Gym or studio" },
+  { value: "pet", label: "Pet shop or groomer" },
+  { value: "repair_auto", label: "Auto care" },
   { value: "repair_electronics", label: "Repair" },
 ];
 
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
-  prefill?: { shop?: string; vertical?: string; phone?: string };
-  neighbourhoods: networkApi.NeighbourhoodDto[];
+  prefill?: { shop?: string; vertical?: string; phone?: string; plan?: string };
 }
 
-export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWizardProps) {
+export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
   const router = useRouter();
-  const [account, setAccount] = useState({ name: "", email: "", password: "" });
-  const [shop, setShop] = useState({ name: prefill?.shop ?? "", vertical: prefill?.vertical ?? "", address: "", neighbourhoodSlug: "" });
+  const [account, setAccount] = useState({ email: "", password: "" });
+  const [shop, setShop] = useState({ name: prefill?.shop ?? "", vertical: prefill?.vertical ?? "", address: "", sells: "" });
   const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<React.ReactNode>(null);
@@ -63,7 +71,6 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!registered) {
-      if (!account.name.trim()) errs.name = "Your name is required.";
       if (!/^\S+@\S+\.\S+$/.test(account.email)) errs.email = "Enter a valid email address.";
       if (account.password.length < 8) errs.password = "Use at least 8 characters.";
     }
@@ -79,7 +86,8 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
     try {
       if (!registered) {
         try {
-          await sessionApi.register({ name: account.name.trim(), email: account.email.trim(), password: account.password });
+          // Your name comes later (Settings); until then the part of the email before the @.
+          await sessionApi.register({ name: account.email.trim().split("@")[0]!.slice(0, 60) || "Owner", email: account.email.trim(), password: account.password });
           setRegistered(true);
         } catch (err) {
           if (isApiError(err) && err.status === 409)
@@ -102,10 +110,10 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
         address: shop.address.trim(),
         phone: e164!,
         city: "Toronto",
-        ...(shop.neighbourhoodSlug ? { neighbourhoodSlug: shop.neighbourhoodSlug } : {}),
+        ...(shop.vertical === "other" && shop.sells.trim() ? { description: shop.sells.trim() } : {}),
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);
-      router.push(`${routes.dashboard(r.merchant.id)}/setup?step=first_stamp`);
+      router.push(afterSignupPath(routes.dashboard(r.merchant.id), body.vertical, prefill?.plan));
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setRegistered(false);
@@ -120,7 +128,6 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
       <TextField label="Shop name" value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} error={errors.shopName} maxLength={120} autoComplete="organization" />
-      {!registered ? <TextField label="Your name" autoComplete="name" value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} error={errors.name} /> : null}
 
       <div role="radiogroup" aria-labelledby="signup-type" aria-invalid={errors.vertical ? true : undefined} className="flex flex-col gap-2">
         <span id="signup-type" className="text-meta-strong text-fg">
@@ -142,7 +149,7 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
         </div>
         {errors.vertical ? <p className="text-meta text-negative">{errors.vertical}</p> : null}
       </div>
-      <Select label="Something else?" placeholder="Pick another type" value={CHIPS.some((c) => c.value === shop.vertical) ? "" : shop.vertical} onChange={(e) => e.target.value && setShop({ ...shop, vertical: e.target.value })} options={otherOptions} />
+      <Select label="More types" placeholder="Pick another type" value={CHIPS.some((c) => c.value === shop.vertical) ? "" : shop.vertical} onChange={(e) => e.target.value && setShop({ ...shop, vertical: e.target.value })} options={otherOptions} />
       {template ? (
         <p className="rounded-card bg-bg-subtle px-4 py-3 text-meta text-fg">
           We start you on: {howYouEarn({ ...template, minSpendCents: 0 })} {template.rewards[0] ? `${template.earnType === "stamps" ? template.stampGoal : template.rewards[0].pointsCost} ${template.terminology} = ${template.rewards[0].name}.` : ""} Change it any time. Nothing to print or install yet.
@@ -150,10 +157,8 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
       ) : null}
 
       <PhoneField label="Your mobile number" hint="We text you the counter link and setup reminders." value={phone} onChangeDigits={setPhone} error={errors.phone} />
-      <TextField label="Street address" autoComplete="street-address" value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} error={errors.address} />
-      {neighbourhoods.length ? (
-        <Select label="Neighbourhood" placeholder="Not sure / not listed" value={shop.neighbourhoodSlug} onChange={(e) => setShop({ ...shop, neighbourhoodSlug: e.target.value })} options={neighbourhoods.map((n) => ({ value: n.slug, label: n.name }))} />
-      ) : null}
+      <TextField label="Street address" autoComplete="street-address" hint="We put your shop on the map and on its street from this." value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} error={errors.address} />
+      {shop.vertical === "other" ? <TextField label="What do you sell?" optionalLabel maxLength={300} value={shop.sells} onChange={(e) => setShop({ ...shop, sells: e.target.value })} /> : null}
       {!registered ? (
         <>
           <TextField label="Email" type="email" autoComplete="email" value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} error={errors.email} />
@@ -161,10 +166,10 @@ export function SignupWizard({ signedInName, neighbourhoods, prefill }: SignupWi
         </>
       ) : null}
       <Button type="submit" size="lg" fullWidth loading={busy}>
-        Create my shop and give my first stamp
+        Create my shop
       </Button>
       <p className="text-meta text-fg-muted">
-        Postal code, logo, GST/HST and staff come later. They never block your first stamp. By continuing you agree to the{" "}
+        Your name, postal code, logo, GST/HST and staff come later. By continuing you agree to the{" "}
         <Link className="underline" href="/legal/terms">
           Terms
         </Link>{" "}

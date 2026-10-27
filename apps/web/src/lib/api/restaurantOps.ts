@@ -67,6 +67,8 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       autoAssign: (onlyUnassigned = true) => c.post<{ assigned: number }>(`${t}/routes/auto-assign`, { onlyUnassigned }),
       subscribers: (q: Q = {}) => c.get<tiffinApi.SubscribersResponse>(`${t}/subscribers`, { query: q }),
       subscriber: (id: string) => c.get<tiffinApi.SubscriberDto>(`${t}/subscribers/${enc(id)}`),
+      /** A regular who phones in: the kitchen adds them (hand-paid). */
+      addSubscriber: (body: tiffinApi.AddSubscriberBody) => c.post<tiffinApi.SubscribeResponse>(`${t}/subscribers`, body),
       subscriberCharges: (id: string) => c.get<tiffinApi.SubscriberChargesResponse>(`${t}/subscribers/${enc(id)}/charges`),
       updateSubscriber: (id: string, body: { routeId?: string | null; stopOrder?: number | null; addressNotes?: string | null }) => c.patch<tiffinApi.SubscriberDto>(`${t}/subscribers/${enc(id)}`, body),
       pause: (id: string, body: tiffinApi.PauseBody) => c.post<SubscriberChange>(`${t}/subscribers/${enc(id)}/pause`, body),
@@ -110,6 +112,8 @@ export function restaurantOpsEndpoints(c: ApiClient, b: string) {
       recordBalance: (id: string, body: paymentsManualApi.RecordPaymentBody) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/balance/record-payment`, body),
       /** Owner only. Undo the latest (or the named) hand-recorded payment. */
       voidPayment: (id: string, reason: string, paymentId?: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/void-payment`, { reason, ...(paymentId ? { paymentId } : {}) }),
+      /** Text the customer about the deposit (quote signed) or the balance (event confirmed). */
+      remind: (id: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/remind`, {}),
       invoice: (id: string, send: boolean) => c.post<restaurantApi.CateringInvoiceDto>(`${cat}/${enc(id)}/invoice`, { send }),
       complete: (id: string) => c.post<restaurantApi.CateringEventDto>(`${cat}/${enc(id)}/complete`, {}),
       /** `refund` applies to a deposit paid in the app: "full", "none" (default) or { amountCents }. */

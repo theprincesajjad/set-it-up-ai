@@ -10,24 +10,33 @@ import { copy } from "@/copy/en-CA";
 import { howYouEarn } from "@/lib/program";
 import { ChipLink } from "./ChipLink";
 
-const SHOWN: { v: Vertical; label: string }[] = [
-  { v: "cafe", label: "cafés" },
-  { v: "bakery", label: "bakeries" },
-  { v: "salon", label: "salons" },
-  { v: "repair_electronics", label: "repair" },
-  { v: "pharmacy", label: "pharmacies" },
+const SHOWN: { id: string; v: Vertical; label: string }[] = [
+  { id: "cafe", v: "cafe", label: "cafés" },
+  { id: "bakery", v: "bakery", label: "bakeries" },
+  { id: "retail", v: "retail", label: "retail" },
+  { id: "florist", v: "florist", label: "florists" },
+  { id: "bookstore", v: "bookstore", label: "books" },
+  { id: "hardware", v: "retail", label: "hardware" },
+  { id: "salon", v: "salon", label: "salons" },
+  { id: "barber", v: "barber", label: "barbers" },
+  { id: "fitness", v: "fitness", label: "studios" },
+  { id: "pet", v: "pet", label: "pet shops" },
+  { id: "grocery", v: "grocery", label: "grocers" },
+  { id: "repair", v: "repair_electronics", label: "repair" },
+  { id: "pharmacy", v: "pharmacy", label: "pharmacies" },
 ];
 
 /** "Built for your kind of shop": the default template per vertical, previewed with the real card. */
 export function VerticalTemplates() {
-  const [v, setV] = useState<Vertical>("cafe");
+  const [id, setId] = useState("cafe");
+  const v = SHOWN.find((x) => x.id === id)?.v ?? "cafe";
   const t = VERTICAL_TEMPLATES[v];
   const reward = t.rewards[0];
   return (
     <div className="flex flex-col gap-6">
       <ChipGroup label="Type of shop" className="-mx-4 px-4">
         {SHOWN.map((s) => (
-          <Chip key={s.v} selected={v === s.v} onClick={() => setV(s.v)} icon={<CategoryIcon vertical={s.v} size={18} />}>
+          <Chip key={s.id} selected={id === s.id} onClick={() => setId(s.id)} icon={<CategoryIcon vertical={s.v} size={18} />}>
             {s.label}
           </Chip>
         ))}
@@ -36,7 +45,7 @@ export function VerticalTemplates() {
       </ChipGroup>
       <div className="grid items-center gap-10 rounded-sheet border border-line p-6 md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
         <div>
-          <p className="text-meta text-fg-muted">Default program · {t.label}</p>
+          <p className="text-meta text-fg-muted">Default program · {id === "hardware" ? "Hardware store" : t.label}</p>
           <p className="display mt-3 text-mkt-sm md:text-mkt-md">
             {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${rewardInSentence(reward?.name ?? "a reward")}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${rewardInSentence(reward?.name ?? "a reward")}`}
           </p>

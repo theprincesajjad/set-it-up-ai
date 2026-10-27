@@ -124,7 +124,7 @@ export async function memberCards(ctx: AppContext, merchant: Merchant, memberId:
   return { cards: await loadCards(ctx, merchant, and(eq(foodCards.merchantId, merchant.id), eq(foodCards.userId, m.userId))) };
 }
 
-export async function punch(ctx: AppContext, staff: StaffContext, body: z.output<typeof petApi.punchBody>): Promise<petApi.FoodCardDto & { needsMarketingConsent: boolean }> {
+export async function punch(ctx: AppContext, staff: StaffContext, body: z.output<typeof petApi.punchBody>): Promise<petApi.FoodCardDto & { needsCustomerYes: boolean }> {
   const merchant = staff.merchant;
   const [m] = await ctx.db.select().from(merchantMembers).where(and(eq(merchantMembers.id, body.memberId), eq(merchantMembers.merchantId, merchant.id))).limit(1);
   if (!m) throw notFound("Customer");
@@ -139,16 +139,12 @@ export async function punch(ctx: AppContext, staff: StaffContext, body: z.output
   const now = ctx.now();
   const [cur] = await ctx.db.select().from(foodCards).where(and(eq(foodCards.userId, m.userId), eq(foodCards.skuId, sku.id))).limit(1);
 
-  let needsMarketingConsent = false;
+  // A cashier cannot say yes for a customer: the run-out text is switched on by the customer on their own card (/me/food), where the exact
+  // words are shown. The counter can switch it off, and can still set the daily amount so the date is ready when they say yes.
+  let needsCustomerYes = false;
   const remindPatch: Partial<typeof foodCards.$inferInsert> = {};
   if (body.remind === false) remindPatch.remind = false;
-  else if (body.remind === true) {
-    if (!m.marketingConsentAt || m.muted) needsMarketingConsent = true;
-    else {
-      remindPatch.remind = true;
-      if (!cur?.remind) Object.assign(remindPatch, { remindConsentAt: now, remindConsentSource: "counter", remindConsentBy: staff.user.id });
-    }
-  }
+  else if (body.remind === true && !cur?.remind) needsCustomerYes = true;
   const extra: Partial<typeof foodCards.$inferInsert> = { ...remindPatch };
   if (body.dailyGrams !== undefined) extra.dailyGrams = body.dailyGrams ?? null;
   if (body.petId !== undefined) extra.petId = body.petId ?? null;
@@ -166,10 +162,9 @@ export async function punch(ctx: AppContext, staff: StaffContext, body: z.output
       .where(eq(foodCards.id, cur.id))
       .returning()) as [Card];
   }
-  if (remindPatch.remindConsentAt) await writeAudit(ctx.db, { actorUserId: staff.user.id, merchantId: merchant.id, action: "consent.runout", entity: "food_card", entityId: card!.id, data: { text: RUNOUT_ASK(`${program.brand} ${sku.name}`), source: "counter" } });
   await ctx.db.insert(foodEvents).values({ cardId: card!.id, merchantId: merchant.id, kind: "bag", qty: body.qty, staffId: staff.user.id, at: now });
   const [dto] = await loadCards(ctx, merchant, eq(foodCards.id, card!.id));
-  return { ...dto!, needsMarketingConsent };
+  return { ...dto!, needsCustomerYes };
 }
 
 export async function redeem(ctx: AppContext, staff: StaffContext, cardId: string): Promise<petApi.FoodCardDto> {
@@ -247,7 +242,7 @@ async function runOutCandidates(ctx: AppContext, merchant: Merchant): Promise<Ca
     .filter((r) => !r.deletedAt && r.card.dailyGrams)
     .map((r) => {
       const runOut = runOutOnFn(localDate(r.card.lastBagAt, merchant.timezone), r.sku.bagGrams, r.card.dailyGrams!);
-      return { card: r.card, program: r.program, sku: r.sku, name: r.name, phone: r.phone, locale: normalizeLocale(r.locale), runOut, remindOn: remindOnFn(runOut), canText: !!r.consent && !r.muted && !!r.phone && !isSuppressed(stopped, r.phone) };
+      return { card: r.card, program: r.program, sku: r.sku, name: r.name, phone: r.phone, locale: normalizeLocale(r.locale), runOut, remindOn: remindOnFn(runOut), canText: (!!r.consent || (!!r.card.remindConsentAt && r.card.remindConsentSource === "pass")) && !r.muted && !!r.phone && !isSuppressed(stopped, r.phone) };
     });
 }
 
@@ -364,12 +359,17 @@ export async function setMyRemind(ctx: AppContext, userId: string, cardId: strin
     .where(and(eq(foodCards.id, cardId), eq(foodCards.userId, userId)))
     .limit(1);
   if (!r) throw notFound("Card");
-  if (body.remind && (!r.consent || r.muted)) throw new HttpError(409, "no_consent", `Turn on texts from ${r.m.name} first, then switch this on.`);
+  // The customer's own switch is their yes to this one text. Only a shop they muted stops it: unmute first, then switch it on.
+  if (body.remind && r.muted) throw new HttpError(409, "muted", `You muted ${r.m.name}. Unmute it on your card, then switch this on.`);
   const daily = body.dailyGrams ?? r.card.dailyGrams;
   if (body.remind && !daily) throw badRequest("Add how many grams a day your pet eats.");
   const now = ctx.now();
   const patch = body.remind && !r.card.remind ? { remind: true, dailyGrams: daily, remindConsentAt: now, remindConsentSource: "pass", remindConsentBy: userId, updatedAt: now } : { remind: body.remind, dailyGrams: daily, updatedAt: now };
   await ctx.db.update(foodCards).set(patch).where(eq(foodCards.id, cardId));
+  if (body.remind && !r.card.remind) {
+    const [sku] = await ctx.db.select({ name: foodSkus.name, brand: foodPrograms.brand }).from(foodSkus).innerJoin(foodPrograms, eq(foodPrograms.id, foodSkus.programId)).where(eq(foodSkus.id, r.card.skuId)).limit(1);
+    await writeAudit(ctx.db, { actorUserId: userId, merchantId: r.m.id, action: "consent.runout", entity: "food_card", entityId: cardId, data: { text: RUNOUT_ASK(`${sku?.brand ?? ""} ${sku?.name ?? "bag"}`.trim()), source: "pass" } });
+  }
   const mine = await myFoodCards(ctx, userId);
   return mine.items.find((i) => i.id === cardId)!;
 }

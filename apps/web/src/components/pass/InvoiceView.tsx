@@ -1,4 +1,5 @@
 "use client";
+import { formatE164 } from "@/lib/phone";
 import { Printer } from "lucide-react";
 import { useState } from "react";
 import type { serviceApi } from "@ll/shared";
@@ -153,7 +154,7 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
         ) : data.canPay ? (
           <Button size="lg" fullWidth loading={busy} onClick={start}>{t("sv.i.pay", { amount: money(total) })}</Button>
         ) : (
-          <Banner tone="info">{t("sv.i.counter")}{shop.phone ? ` ${shop.phone}` : ""}</Banner>
+          <Banner tone="info">{t("sv.i.counter")}{shop.phone ? ` ${formatE164(shop.phone)}` : ""}</Banner>
         )
       ) : null}
       {inv.status === "paid" ? <Button variant="secondary" size="lg" fullWidth iconStart={Printer} onClick={() => window.print()}>{t("sv.i.print")}</Button> : null}

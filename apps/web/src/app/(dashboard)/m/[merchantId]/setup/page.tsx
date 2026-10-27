@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { QrCode } from "@/components/ui/QrCode";
-import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
+import { SubscribeButton } from "@/components/dashboard/SubscribeButton";
+import { TRADE_COPY, TradeSetup } from "@/components/dashboard/onboarding/TradeSetup";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -22,7 +23,7 @@ import { cn } from "@/lib/cn";
 import { formatPoints } from "@/lib/format";
 import { draftFromProgram, programSentence } from "@/lib/dashboard/program";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import type { merchantApi } from "@ll/shared";
+import { PLANS, tradeSetupFor, type merchantApi } from "@ll/shared";
 
 /** Setup guide (merchant-dashboard.md §1): profile → program → rewards → staff → QR kit → first 25 members. */
 export default function SetupPage() {
@@ -30,7 +31,7 @@ export default function SetupPage() {
   const state = useApi(() => api.onboarding(), [api], { pollMs: 8000 });
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Set up your shop" description="Five steps to live on the street. Each saves as you go." />
+      <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
     </div>
   );
@@ -72,7 +73,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
                     {s.done ? <Check className="size-3" strokeWidth={2.5} /> : n + 1}
                   </span>
                   <span className="sr-only">{s.done ? "Done: " : ""}</span>
-                  <span className={cn(n >= core.length && !s.done && "text-fg-muted")}>{STEP_COPY[s.key].label}</span>
+                  <span className={cn(n >= core.length && !s.done && "text-fg-muted")}>{s.key === "trade_setup" || s.key === "first_members" ? s.label : STEP_COPY[s.key].label}</span>
                 </button>
               </li>
             ))}
@@ -131,9 +132,20 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
   const { api, detail, setDetail, enabled } = useMerchant();
   const toast = useToast();
   const act = useAction();
-  const copy = ONBOARDING_STEPS_UI[step.key];
+  const rx = detail.merchant.vertical === "pharmacy";
+  // A pharmacy gives points on front-store dollars only, so its first step is a sale, not a stamp.
+  const family = tradeSetupFor(detail.merchant.vertical);
+  const a = checklist.activation;
+  const copy =
+    rx && step.key === "first_stamp"
+      ? { title: "Record your first front-store sale", body: "Nothing helps more than seeing points work. It takes about three minutes." }
+      : step.key === "trade_setup" && family
+        ? { title: TRADE_COPY[family].title, body: TRADE_COPY[family].body }
+        : step.key === "first_members"
+          ? { title: `Your first ${checklist.activationTarget} members`, body: `Activation goal: ${checklist.activationTarget} members who have visited within ${a.windowDays} days. ${a.leadingMembers} by day ${a.leadingByDay} is the pace that gets you there.` }
+          : ONBOARDING_STEPS_UI[step.key];
   const pb = checklist.playbook;
-  const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members" | "first_stamp">, advance = true) => {
+  const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members" | "first_stamp" | "pharmacy_rules" | "trade_setup">, advance = true) => {
     const r = await act.run(() => api.completeStep(key));
     if (r) {
       onChange(r);
@@ -187,10 +199,23 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         </>
       ) : null}
 
+      {step.key === "trade_setup" && family ? <TradeSetup family={family} done={step.done} /> : null}
+
+      {step.key === "pharmacy_rules" ? (
+        step.done ? (
+          <Banner tone="success" title="Rules confirmed.">{step.detail ? `Confirmed by ${step.detail}.` : ""} Points can now be given on front-store sales.</Banner>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button href={`${base}/pharmacy`}>Open pharmacy rules</Button>
+            <p className="text-meta text-fg-muted">The owner confirms it. You will need the OCP accreditation number.</p>
+          </div>
+        )
+      ) : null}
+
       {step.key === "first_stamp" ? (
         step.done ? (
           <>
-            <Banner tone="success" title="First stamp given.">
+            <Banner tone="success" title={rx ? "First sale recorded." : "First stamp given."}>
               {checklist.activation.firstStampMinutes !== null ? `${Math.max(1, Math.round(checklist.activation.firstStampMinutes))} ${Math.max(1, Math.round(checklist.activation.firstStampMinutes)) === 1 ? "minute" : "minutes"} after you signed up. ` : ""}
               Now you know exactly what your customers see. Next: print the QR stand.
             </Banner>
@@ -215,11 +240,11 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
                   <span className="me-2 font-semibold text-accent-text">2</span>Enter your name and number. 30 seconds.
                 </li>
                 <li>
-                  <span className="me-2 font-semibold text-accent-text">3</span>Open the counter, find yourself, tap Add stamp.
+                  <span className="me-2 font-semibold text-accent-text">3</span>{rx ? "Open the counter, find yourself, enter an amount, tick the front-store box and tap Award." : "Open the counter, scan your own card or type the last 4 digits of your phone."}
                 </li>
                 <li>
                   <Dot tone="accent" className="max-w-full items-start !whitespace-normal rounded-2xl bg-bg-subtle px-3 py-1.5">
-                    Waiting for your first stamp. This page updates by itself.
+                    {rx ? "Waiting for your first sale." : "Waiting for your first stamp."} This page updates by itself.
                   </Dot>
                 </li>
               </ol>
@@ -326,9 +351,12 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
             </Button>
           </div>
         ) : (
-          <p className="text-body text-fg">
-            POS sync is part of Café &amp; Retail and is not switched on yet. Stamps from the counter work the same way in the meantime. <NotifyLink keys={["integrations.pos_auto_award"]} />
-          </p>
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-body text-fg">
+              POS sync is part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month. Stamps from the counter work the same way in the meantime.
+            </p>
+            <SubscribeButton offer={{ kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents }} />
+          </div>
         )
       ) : null}
 

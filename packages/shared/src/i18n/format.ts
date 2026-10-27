@@ -72,6 +72,11 @@ function zonedParts(d: Date, timeZone: string) {
 
 const OWN_OPTS = new Set(["weekday", "day", "month", "year", "hour", "minute", "hour12", "hourCycle", "timeZone"]);
 
+/** The word Urdu puts before a 12-hour time: night, morning, noon to afternoon, evening. */
+function urduDayPart(hour: number): string {
+  return hour < 4 || hour >= 20 ? "رات" : hour < 12 ? "صبح" : hour < 16 ? "دوپہر" : "شام";
+}
+
 function formatOwn(locale: Exclude<Locale, "en">, d: Date, opts: Intl.DateTimeFormatOptions, timeZone: string): string {
   const n = DATE_NAMES[locale];
   const p = zonedParts(d, timeZone);
@@ -97,7 +102,9 @@ function formatOwn(locale: Exclude<Locale, "en">, d: Date, opts: Intl.DateTimeFo
     if (h24) time = `${two(p.hour)}${mm}`;
     else {
       const h12 = p.hour % 12 === 0 ? 12 : p.hour % 12;
-      time = `${opts.hour === "2-digit" ? two(h12) : h12}${mm} ${p.hour < 12 ? n.am : n.pm}`;
+      const clock = `${opts.hour === "2-digit" ? two(h12) : h12}${mm}`;
+      // Urdu names the part of the day before the hour ("رات 11:00", "شام 6:00"), as it is said; a bare "11 شام" reads as stiff or wrong.
+      time = locale === "ur" ? `${urduDayPart(p.hour)} ${clock}` : `${clock} ${p.hour < 12 ? n.am : n.pm}`;
     }
   }
   return [left, time].filter(Boolean).join(`${n.comma} `);

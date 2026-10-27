@@ -26,6 +26,8 @@ export const PHARMACY_RULES = [
   { id: "appointments_minimal", text: "Appointments keep no price, notes or reason for the visit" },
   { id: "no_network_perk", text: "Network perks never count a pharmacy visit that was not front store" },
   { id: "no_referrals", text: "No referral rewards (O. Reg. 264/16 s. 34 para 2: a benefit for referring a patient)" },
+  { id: "no_welcome_bonus", text: "No welcome bonus, and no network or festival bonus for visiting a pharmacy" },
+  { id: "no_claims", text: "No health claims (boosts, cures, immunity) or referral offers in rewards, offers or messages" },
   { id: "no_reviews", text: "No review requests after a pharmacy appointment" },
 ] as const;
 export type PharmacyRuleId = (typeof PHARMACY_RULES)[number]["id"];
@@ -47,7 +49,8 @@ export const PHARMACY_SERVICE_PRESETS = ["Flu shot", "Vaccine appointment", "Med
  * dispensary: the category names above lock, the cashier's front-store tick excludes them, and the question is on the counsel
  * list in docs/research/pharmacies-wellness.md.
  */
-export const PHARMACY_FRONT_STORE_TICK_EN = "This total has no prescriptions, pharmacy services or behind-the-counter (Schedule II or III) items";
+export const PHARMACY_FRONT_STORE_TICK_EN = "This total has no prescriptions or pharmacy services";
+export const PHARMACY_FRONT_STORE_CAPTION_EN = "No behind-the-counter (Schedule II or III) items either. Required every time. It is saved with the sale.";
 
 /** Ontario College of Pharmacists accreditation number, as typed by the owner: digits, 4 to 10 of them. */
 export const OCP_ACCREDITATION_RE = /^\d{4,10}$/;

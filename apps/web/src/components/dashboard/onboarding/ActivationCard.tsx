@@ -17,10 +17,10 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
   const mark = leadingMarkPct(a);
   const left = stepsLeft(c);
   return (
-    <section aria-label={t(L, "ob.card.title")} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card border border-line p-5 md:p-6">
+    <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card border border-line p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">{t(L, "ob.card.title")}</p>
+          <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">{t(L, "ob.card.title", { days: a.windowDays })}</p>
           <h2 className="display mt-1 text-title text-fg">{t(L, "ob.card.membersLine", { members: a.members, target: a.target })}</h2>
         </div>
         <Dot tone={paceTone(a.pace)} className="rounded-full bg-bg-subtle px-3 py-1.5">

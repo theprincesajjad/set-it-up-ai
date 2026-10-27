@@ -5,11 +5,12 @@
  */
 import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { FEATURES, RESTAURANT_PLANS, type FeatureKey } from "@ll/shared";
+import { FEATURES, RESTAURANT_PLANS, featureOffer, type FeatureKey } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "../kit";
 import { useMerchant } from "../MerchantContext";
+import { SubscribeButton } from "../SubscribeButton";
 
 /**
  * A restaurant feature the shop's tier does not include (the API answered 402, or the feature flag is off).
@@ -19,6 +20,7 @@ export function TierTeaser({ featureKey, title, description, inline, stacked }: 
   const { base, role } = useMerchant();
   const def = FEATURES[featureKey];
   const plan = RESTAURANT_PLANS[def.packTier ?? "starter"];
+  const offer = featureOffer(featureKey);
   const body = (
     <div className={cn("flex flex-col gap-3 border-y border-line py-5", !stacked && "sm:flex-row sm:items-center sm:justify-between", inline ? "" : "max-w-[640px]")}>
       <div className="min-w-0">
@@ -29,9 +31,12 @@ export function TierTeaser({ featureKey, title, description, inline, stacked }: 
         </p>
       </div>
       {role === "owner" ? (
-        <Button variant="secondary" size="sm" href={`${base}/billing`} className={cn("shrink-0 self-start", !stacked && "sm:self-auto")}>
-          See restaurant plans
-        </Button>
+        <span className={cn("flex shrink-0 flex-col items-start gap-1.5 self-start", !stacked && "sm:self-auto")}>
+          {offer.kind === "restaurant" ? <SubscribeButton offer={offer} label={`Subscribe to ${plan.name}`} /> : null}
+          <a href={`${base}/billing`} className="text-meta text-fg-muted underline decoration-line underline-offset-4 hover:text-fg">
+            See restaurant plans
+          </a>
+        </span>
       ) : (
         <p className="shrink-0 text-meta text-fg-muted">Ask the shop owner to upgrade.</p>
       )}

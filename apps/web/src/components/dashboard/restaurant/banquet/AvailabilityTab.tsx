@@ -126,17 +126,19 @@ function Strip({ bookings }: { bookings: restaurantApi.HallBookingDto[] }) {
   const now = useNow();
   const live = bookings.filter((b) => b.status === "hold" && b.holdExpiresAt && Date.parse(b.holdExpiresAt) > now);
   const soon = live.filter((b) => Date.parse(b.holdExpiresAt!) - now <= 48 * 3_600_000).sort((a, b) => a.holdExpiresAt!.localeCompare(b.holdExpiresAt!));
-  const owed = live.filter((b) => !b.depositPaidAt);
+  const owed = live.filter((b) => !b.depositPaidAt && b.depositCents > 0);
   const owedCents = owed.reduce((s, b) => s + b.depositCents, 0);
-  const month = todayISO().slice(0, 7);
+  const todayStr = todayISO();
+  const month = todayStr.slice(0, 7);
+  // Only nights still ahead this month: a Saturday that has gone by is neither taken nor open.
   const nights = new Set(
     bookings
-      .filter((b) => (b.status === "confirmed" || b.status === "hold") && torontoDay(b.startsAt).startsWith(month) && [5, 6].includes(new Date(`${torontoDay(b.startsAt)}T12:00:00Z`).getUTCDay()))
+      .filter((b) => (b.status === "confirmed" || b.status === "hold") && torontoDay(b.startsAt).startsWith(month) && torontoDay(b.startsAt) >= todayStr && [5, 6].includes(new Date(`${torontoDay(b.startsAt)}T12:00:00Z`).getUTCDay()))
       .map((b) => `${b.hallId}|${torontoDay(b.startsAt)}`),
   ).size;
   const [y, m] = month.split("-").map(Number) as [number, number];
   let weekend = 0;
-  for (let d = 1; d <= new Date(Date.UTC(y, m, 0)).getUTCDate(); d++) if ([5, 6].includes(new Date(Date.UTC(y, m - 1, d)).getUTCDay())) weekend++;
+  for (let d = Number(todayStr.slice(8)); d <= new Date(Date.UTC(y, m, 0)).getUTCDate(); d++) if ([5, 6].includes(new Date(Date.UTC(y, m - 1, d)).getUTCDay())) weekend++;
   const hallCount = new Set(bookings.map((b) => b.hallId)).size || 1;
   const first = soon[0];
   return (
@@ -146,7 +148,7 @@ function Strip({ bookings }: { bookings: restaurantApi.HallBookingDto[] }) {
       items={[
         { label: "Holds expiring in 48 h", value: formatNumber(soon.length), caption: first ? <span className="text-accent-text">{first.hallName ?? "Hall"}, {dayLabel(torontoDay(first.startsAt))}</span> : "None about to lapse" },
         { label: "Deposits to collect", value: formatMoney(owedCents), caption: owed.length ? <span className="text-location">{owed.length} {owed.length === 1 ? "hold" : "holds"} · e-transfer or card</span> : "Nothing waiting" },
-        { label: "Weekend nights taken this month", value: `${nights} of ${weekend * hallCount}`, caption: `${weekend * hallCount - nights} still open` },
+        { label: "Weekend nights taken, rest of month", value: `${nights} of ${weekend * hallCount}`, caption: `${Math.max(0, weekend * hallCount - nights)} still open` },
       ]}
     />
   );

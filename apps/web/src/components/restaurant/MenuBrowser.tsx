@@ -10,20 +10,21 @@ import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { allMeatHalal } from "@/lib/restaurant/halal";
 import { available, buildSections, isFiltering, matches, NO_FILTERS, type Filters } from "@/lib/restaurant/menu";
+import { isWeighedLine, portionLabel } from "@/lib/restaurant/weighed";
 import { cartCount, cartSubtotal, defaultOptionIds, priceDish, type Item } from "@/lib/restaurant/order";
 import { HalalBlock } from "./HalalBlock";
 import { OptionGroups } from "./OptionGroups";
 import { ChiliDots, Heading, Pill, ShopHead, Stepper, useFmt } from "./ui";
 import { useCart } from "./useCart";
 
-type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null };
+type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; vertical?: string };
 
 /**
  * The customer menu (frame 11): one halal banner for the whole shop, dietary chips and "Without nuts", category tabs with Degh last,
  * one price per dish, a "+" on every dish you can order, and a sticky cart bar. Halal claims are the shop's own, printed once.
  */
 export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl }: { shop: Shop; menu: commerceApi.PublicMenuResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; appStoreUrl: string; playStoreUrl: string }) {
-  const { t, money, number, pick } = useFmt();
+  const { t, money, moneyExact, number, pick } = useFmt();
   const { cart, ready, add, setQty } = useCart(shop.slug);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [sheet, setSheet] = useState<Item | null>(null);
@@ -32,13 +33,16 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
   const cert = menu.halalCertification ?? restaurant?.halalCertification ?? null;
   const all = useMemo(() => [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized], [menu]);
   const byId = useMemo(() => new Map(all.map((i) => [i.id, i] as const)), [all]);
-  const sections = useMemo(() => buildSections(menu, { more: t("rc.mn.other"), degh: t("rs.menu.degh") }), [menu, t]);
+  const grocer = shop.vertical === "grocery";
+  const sections = useMemo(() => buildSections(menu, { more: t("rc.mn.other"), degh: grocer ? t("gr.menu.section") : t("rs.menu.degh") }), [menu, t, grocer]);
   const avail = useMemo(() => available(all), [all]);
   const filtered = sections.map((s) => ({ ...s, items: s.items.filter((i) => matches(i, filters)) })).filter((s) => s.items.length > 0);
   const shown = filtered.reduce((n, s) => n + s.items.length, 0);
 
   const canPickup = restaurant ? restaurant.features.pickup && restaurant.acceptingOrders : true;
-  const canPreorder = !!restaurant?.features.preorder;
+  // A grocer's pre-order items (qurbani, cut-to-order meat) open the booking page whenever the shop takes pre-orders; the restaurant summary may be missing for them.
+  const canPreorder = restaurant ? restaurant.features.preorder : grocer;
+  const hasZeroRated = grocer && all.some((i) => i.taxable === false);
   const count = ready ? cartCount(cart) : 0;
   const subtotal = ready ? cartSubtotal(cart, byId) : 0;
   const toggle = (k: keyof Filters) => setFilters((f) => ({ ...f, [k]: !f[k] }));
@@ -161,12 +165,28 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
                               <p className="break-words text-body-strong text-fg">{p.name}</p>
                               {i.nameEn && i.nameEn !== p.name ? <p dir="ltr" className="break-words text-meta text-fg-muted rtl:text-end">{i.nameEn}</p> : null}
                             </div>
-                            <p className="shrink-0 text-body-strong tabular-nums text-fg">{money(i.priceCents)}</p>
+                            {isWeighedLine(i) ? (
+                              <p className="shrink-0 text-end text-body-strong tabular-nums text-fg">
+                                <bdi>{moneyExact(i.unitPriceCents!)}/{i.weightUnit}</bdi>
+                              </p>
+                            ) : (
+                              <p className="shrink-0 text-body-strong tabular-nums text-fg">{money(i.priceCents)}</p>
+                            )}
                           </div>
+                          {isWeighedLine(i) && i.nominalWeightG ? <p className="text-meta text-fg-muted">{t("gr.menu.about", { price: money(i.priceCents), weight: portionLabel(i.nominalWeightG, i.weightUnit!) })}</p> : null}
                           {p.description ? <p className="text-meta text-fg-muted">{p.description}</p> : null}
                           {badges.length || allergens.length || d.spice || i.preorderOnly ? (
                             <div className="flex flex-wrap items-center gap-1.5">
-                              {i.preorderOnly ? <Pill tone="accent">{t("menu.preorder")}</Pill> : null}
+                              {i.preorderOnly ? (
+                                canPreorder ? (
+                                  // The label is a link too: a pill that looks tappable should open the pre-order, not only the + beside it.
+                                  <Link href={`/shops/${encodeURIComponent(shop.slug)}/preorder/${i.id}`} aria-label={t("rs.menu.preorderItem", { name: p.name })} className="rounded-full focus-visible:focus-ring">
+                                    <Pill tone="accent">{t("menu.preorder")}</Pill>
+                                  </Link>
+                                ) : (
+                                  <Pill tone="accent">{t("menu.preorder")}</Pill>
+                                )
+                              ) : null}
                               {badges.map((b) => (
                                 <Pill key={b}>{b}</Pill>
                               ))}
@@ -176,7 +196,7 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
                           ) : null}
                           {i.preorderOnly || i.serves ? (
                             <p className="text-meta text-fg-muted">
-                              {[i.preorderOnly && i.leadTimeHours ? t("menu.preorderLead", { hours: i.leadTimeHours }) : null, i.serves ? t("menu.serves", { n: number(i.serves) }) : null].filter(Boolean).join(" · ")}
+                              {[i.preorderOnly && i.leadTimeHours ? i.leadTimeHours >= 48 && i.leadTimeHours % 24 === 0 ? t("tcb2.menu.leadDays", { days: i.leadTimeHours / 24 }) : t("menu.preorderLead", { hours: i.leadTimeHours }) : null, i.serves ? t("menu.serves", { n: number(i.serves) }) : null].filter(Boolean).join(" · ")}
                             </p>
                           ) : null}
                           {/* Only a dish certified by someone other than the shop's certifier names one (the API drops the rest). */}
@@ -187,11 +207,17 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
                           <img src={i.imageUrl} alt={t("rc.mn.photo", { name: p.name })} width={76} height={76} loading="lazy" decoding="async" className="size-[76px] shrink-0 rounded-card bg-bg-subtle object-cover" />
                         ) : null}
                         <div className="flex shrink-0 flex-col items-center justify-center">
-                          {i.preorderOnly ? (
+                          {i.preorderOnly || (grocer && canPreorder && isWeighedLine(i)) ? (
                             canPreorder ? (
-                              <Link href={`/shops/${encodeURIComponent(shop.slug)}/preorder/${i.id}`} aria-label={t("rs.menu.preorderItem", { name: p.name })} className={roundBtn}>
-                                <Plus aria-hidden className="size-5" strokeWidth={1.75} />
-                              </Link>
+                              grocer ? (
+                                <Link href={`/shops/${encodeURIComponent(shop.slug)}/preorder/${i.id}`} aria-label={t("rs.menu.preorderItem", { name: p.name })} className="inline-flex h-11 items-center justify-center rounded-full border border-line bg-bg px-4 text-meta-strong text-fg transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring">
+                                  {t("rs.pre.reserve")}
+                                </Link>
+                              ) : (
+                                <Link href={`/shops/${encodeURIComponent(shop.slug)}/preorder/${i.id}`} aria-label={t("rs.menu.preorderItem", { name: p.name })} className={roundBtn}>
+                                  <Plus aria-hidden className="size-5" strokeWidth={1.75} />
+                                </Link>
+                              )
                             ) : null
                           ) : !canPickup ? null : plain && !hasOptions(i) ? (
                             <div className="flex flex-col items-center gap-1">
@@ -223,9 +249,10 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
           )}
 
           <div className="flex flex-col gap-1.5 pb-2 text-meta text-fg-muted">
+            {all.some((i) => (i.dietary?.spice ?? 0) > 0) ? <p>{t("rs.menu.spiceLegend", { one: `● ${t("spice.medium")}`, two: `●● ${t("spice.hot")}`, three: `●●● ${t("spice.extraHot")}` })}</p> : null}
             <p>{t("rs.menu.allergyNote")}</p>
             {menu.dualPricing ? <p>{t("rs.menu.cashNote", { pct: number(Math.round(menu.dualPricing.cashDiscountBps / 100)) })}</p> : null}
-            {menu.tax ? <p>{t("rc.mn.taxNote", { tax: menu.tax.label })}</p> : null}
+            {menu.tax ? <p>{hasZeroRated ? t("gr.menu.taxNote") : t("rc.mn.taxNote", { tax: menu.tax.label })}</p> : null}
             <p>
               {t("rs.menu.appLine")}{" "}
               <a href={appStoreUrl} className="text-fg underline decoration-line-strong underline-offset-4">

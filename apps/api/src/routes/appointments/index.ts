@@ -47,6 +47,12 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return reply.status(201).send(await svc.createService(ctx.db, staff.merchant.id, body));
   });
 
+  /** One tap: the usual services for this kind of shop (SERVICE_STARTERS), skipping any the shop already has by name. */
+  app.post<{ Params: MerchantParams }>("/merchants/:merchantId/services/starters", async (req, reply) => {
+    const staff = await staffFor(req, "manager", "booking.appointments", null);
+    return reply.status(201).send(await svc.addStarterServices(ctx.db, staff.merchant));
+  });
+
   app.patch<{ Params: ServiceParams }>("/merchants/:merchantId/services/:serviceId", async (req) => {
     const { merchantId, serviceId } = req.params;
     const cur = await svc.getService(ctx.db, merchantId, serviceId).catch(() => null);
@@ -66,7 +72,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/appointments/staff", async (req) => {
     const staff = await staffFor(req);
     const q = req.query as { from?: string; to?: string };
-    return svc.listBookableStaff(ctx.db, staff.merchant, ctx.now(), { from: q.from ? new Date(q.from) : undefined, to: q.to ? new Date(q.to) : undefined });
+    const all = await svc.listBookableStaff(ctx.db, staff.merchant, ctx.now(), { from: q.from ? new Date(q.from) : undefined, to: q.to ? new Date(q.to) : undefined });
+    // A chair renter who sees only their own clients is not shown the other barbers' names in the calendar's staff filter.
+    return (await isOwnClientsOnly(ctx, staff)) ? { ...all, items: all.items.filter((i) => i.userId === staff.user.id) } : all;
   });
 
   app.put<{ Params: StaffParams }>("/merchants/:merchantId/staff/:userId/hours", async (req) => {

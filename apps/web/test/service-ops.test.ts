@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { commerceApi, serviceApi } from "@ll/shared";
 import { buildGrid, cellKey, todaysBookings } from "@/lib/dashboard/dropoff";
 import { dueLabel, ruleWeeks } from "@/lib/dashboard/rebooking";
-import { BOARD_COLUMNS, ageText, cardModel, sortColumn } from "@/lib/dashboard/tickets";
+import { BOARD_COLUMNS, agoText, ageText, cardModel, sortColumn } from "@/lib/dashboard/tickets";
 
 const NOW = new Date("2026-10-27T15:00:00Z"); // Tue 11:00 Toronto
 const t = (o: Partial<serviceApi.TicketDto>): serviceApi.TicketDto =>
@@ -30,6 +30,8 @@ describe("tickets board", () => {
     expect(m.statusLabel).toBe("Ready 6 days");
     expect(m.note?.text).toBe("Invoice $164.00 open");
     expect(ageText("2026-10-27T14:55:00Z", NOW)).toBe("5 min");
+    expect(agoText("2026-10-27T14:55:00Z", NOW)).toBe("5 min ago");
+    expect(agoText(NOW, NOW)).toBe("just now");
   });
 });
 

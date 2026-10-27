@@ -287,7 +287,9 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWhen(defaultSendTime(send.date));
   }, [send.date]);
+  // What goes out keeps {{first_name}} for each guest; the preview shows a tag instead of a made-up name.
   const text = festivalMessage(def, template, lang, detail.merchant.name, o.startDate, channel);
+  const previewText = festivalMessage(def, template, lang, detail.merchant.name, o.startDate, channel, { preview: true });
   const sms = useApi(available.sms ? () => api.messages.audience({ channel: "sms", segment: { kind: "all" } }) : null, [api, available.sms]);
   const email = useApi(available.email ? () => api.messages.audience({ channel: "email", segment: { kind: "all" } }) : null, [api, available.email]);
   const wa = useApi(available.whatsapp ? () => api.whatsapp.broadcast({ templateName: template.whatsappTemplateName, language: lang, segment: { kind: "all" }, dryRun: true }).catch(() => null) : null, [api, available.whatsapp, template.whatsappTemplateName, lang]);
@@ -362,7 +364,7 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
         ) : null}
         <div className="bg-bg-subtle px-5 py-5">
           <p lang={lang} dir={lang === "ur" ? "rtl" : "ltr"} className={cn("max-w-[460px] whitespace-pre-line rounded-[18px] bg-fg px-5 py-4 text-body text-bg", lang === "ur" ? "ms-auto leading-[1.9]" : "ms-auto")}>
-            {text}
+            {previewText}
           </p>
           {lang !== "en" ? <p className="mt-2 text-caption text-fg-muted">This {MSG_LANGS.find((l) => l.code === lang)?.label} draft is a short greeting. Have someone who reads it check the wording before you send.</p> : null}
         </div>

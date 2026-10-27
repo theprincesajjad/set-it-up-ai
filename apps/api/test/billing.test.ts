@@ -23,17 +23,17 @@ describe("billing", () => {
     expect((await call(env, null, "GET", `/v1/merchants/${merchant.id}/billing`)).status).toBe(401);
   });
 
-  it("paid plans aren't purchasable until rolled out; Free always is", async () => {
+  it("trade tools self-serve: Café & Retail and Service are purchasable on day one; Free always is", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
     const o = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/billing`);
     expect(o.body.plan).toBe("free");
-    expect(Object.fromEntries(o.body.plans.map((p: { id: string; available: boolean }) => [p.id, p.available]))).toEqual({ free: true, plus: false, pro: false });
+    expect(Object.fromEntries(o.body.plans.map((p: { id: string; available: boolean }) => [p.id, p.available]))).toEqual({ free: true, plus: true, pro: true });
     const r = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/billing/checkout`, { plan: "plus" });
-    expect(r.status).toBe(402);
-    expect(r.body.error).toMatchObject({ code: "feature_locked", details: { reason: "rollout" } });
-    await setStage(env, ["orders.order_ahead"], "ga");
+    expect(r.status).toBe(200);
+    expect(r.body.url).toContain(r.body.sessionId);
     const plans = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/billing/plans`);
     expect(plans.body.items.find((p: { id: string }) => p.id === "plus")).toMatchObject({ available: true, priceCents: 3900, annualPriceCents: 39000, currency: "CAD", platformFeeBps: 100 });
+    expect(plans.body.items.find((p: { id: string }) => p.id === "pro")).toMatchObject({ available: true, priceCents: 9900 });
   });
 
   it("checkout → webhook sets the plan; cancel at period end; downgrade keeps every bit of loyalty data", async () => {

@@ -2,7 +2,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { VACCINE_KINDS, type petApi } from "@ll/shared";
+import { VACCINE_KINDS, groomState, type petApi } from "@ll/shared";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, Empty, PageHeader, SidePanel, SkeletonRows, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { todayOf } from "@/lib/dashboard/calendar";
 import { shortDate, worstTag } from "@/lib/dashboard/pets";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
@@ -66,7 +67,7 @@ function Pets() {
                         </Td>
                         <Td className="text-fg-muted">{p.ownerName ?? "No name"}</Td>
                         <Td><Dot tone={tag.tone}>{tag.label}</Dot></Td>
-                        <Td className="text-fg-muted">{p.nextDueOn ? shortDate(p.nextDueOn) : "Not groomed here yet"}</Td>
+                        <Td className="text-fg-muted">{p.nextDueOn ? <span className="inline-flex items-center gap-2">{shortDate(p.nextDueOn)}{groomState(p.nextDueOn, todayOf()).state === "late" ? <Dot tone="negative">Late</Dot> : groomState(p.nextDueOn, todayOf()).state === "due" ? <Dot tone="accent">Due</Dot> : null}</span> : "Not groomed here yet"}</Td>
                       </Tr>
                     );
                   })}

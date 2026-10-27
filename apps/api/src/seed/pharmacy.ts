@@ -10,7 +10,7 @@
  * Nothing here names a medication or a condition. Idempotent: a shop that already has appointment types is left alone.
  */
 import { and, eq } from "drizzle-orm";
-import { appointments, featureOverrides, locations, merchantStaff, merchants, messages, services, staffHours, users, type AppointmentItemRow, type Db } from "@ll/db";
+import { appointments, featureOverrides, locations, loyaltyPrograms, merchantStaff, merchants, messages, services, staffHours, users, type AppointmentItemRow, type Db } from "@ll/db";
 import { PHARMACY_SERVICE_PRESETS } from "@ll/shared";
 import bcrypt from "bcryptjs";
 import type { AppContext } from "../context.js";
@@ -41,6 +41,8 @@ export async function seedPharmacyDemo(db: Db, _ctx: AppContext, opts: { ownerPa
   const log = opts.log ?? (() => {});
   const [row] = await db.select().from(merchants).where(eq(merchants.slug, SLUG)).limit(1);
   if (!row) return false;
+  // No welcome bonus at a pharmacy (a visit may be a prescription visit).
+  await db.update(loyaltyPrograms).set({ welcomeBonus: 0 }).where(eq(loyaltyPrograms.merchantId, row.id));
   const [have] = await db.select({ id: services.id }).from(services).where(eq(services.merchantId, row.id)).limit(1);
   if (have) return false;
   const [loc] = await db.select().from(locations).where(and(eq(locations.merchantId, row.id), eq(locations.active, true))).limit(1);
@@ -57,7 +59,7 @@ export async function seedPharmacyDemo(db: Db, _ctx: AppContext, opts: { ownerPa
   const [owner] = await db.select({ userId: merchantStaff.userId }).from(merchantStaff).where(and(eq(merchantStaff.merchantId, row.id), eq(merchantStaff.role, "owner"))).limit(1);
   await db
     .update(merchants)
-    .set({ pharmacyConfirmedAt: new Date(realNow.getTime() - 3 * 86_400_000), pharmacyConfirmedByName: "Amira Rahman, B.Sc.Phm", pharmacyConfirmedByUserId: owner?.userId ?? null, cancelWindowHours: 4, noShowFeeCents: 0 })
+    .set({ pharmacyConfirmedAt: new Date(realNow.getTime() - 3 * 86_400_000), pharmacyConfirmedByName: "Amira Rahman, B.Sc.Phm", pharmacyOcpNumber: "1234567", pharmacyConfirmedByUserId: owner?.userId ?? null, cancelWindowHours: 4, noShowFeeCents: 0 })
     .where(eq(merchants.id, row.id));
 
   // Appointment types (the same forced fields the API applies).
