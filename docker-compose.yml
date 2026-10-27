@@ -1,0 +1,113 @@
+# Local Loyalty: Postgres 16, a one-shot migration, the API and the web app. All configuration comes from .env
+# (copy .env.example to .env and fill in the required block). See docs/engineering/deploy.md.
+#
+#   docker compose up -d --build                    # postgres, migrate (runs once), api, web
+#   docker compose --profile seed run --rm seed     # optional: demo data (never on a real production database)
+#   docker compose logs -f api
+#
+# NEXT_PUBLIC_* values are compiled into the web image: after changing one, run `docker compose build web`.
+
+name: local-loyalty
+
+x-api-image: &api-image
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+    args:
+      NODE_IMAGE: ${NODE_IMAGE:-node:22-slim}
+  image: local-loyalty/api:${IMAGE_TAG:-latest}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ll}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ll}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Loopback only, for psql and backups from the host. Remove the line to keep Postgres reachable by the other services only.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies packages/db/migrations and exits. `docker compose up` runs it before the api starts; run it again on every release.
+  migrate:
+    <<: *api-image
+    restart: "no"
+    working_dir: /app/apps/api
+    command: ["tsx", "../../packages/db/src/migrate.ts"]
+    environment:
+      DATABASE_URL: &database-url postgres://${POSTGRES_USER:-ll}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ll}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *api-image
+    restart: unless-stopped
+    # Every variable in .env reaches the API (unset ones stay unset, so the code's defaults apply: keep optional lines commented out).
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: *database-url
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-slim}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_APP_STORE_URL: ${NEXT_PUBLIC_APP_STORE_URL:-}
+        NEXT_PUBLIC_PLAY_STORE_URL: ${NEXT_PUBLIC_PLAY_STORE_URL:-}
+        NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER:-}
+        NEXT_PUBLIC_MAP_STYLE_URL: ${NEXT_PUBLIC_MAP_STYLE_URL:-}
+        NEXT_PUBLIC_WALLET_BADGES: ${NEXT_PUBLIC_WALLET_BADGES:-}
+    image: local-loyalty/web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      # Server-side calls take the private network; the browser uses NEXT_PUBLIC_API_URL.
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:4000}
+      # Set OTP_AUTOFILL=1 only on a demo: it fills the sign-in code box from the API's devCode, which production APIs never send.
+      OTP_AUTOFILL: ${OTP_AUTOFILL:-}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Optional demo data: `docker compose --profile seed run --rm seed`. Skips itself if the demo already exists.
+  seed:
+    <<: *api-image
+    profiles: ["seed"]
+    restart: "no"
+    working_dir: /app/apps/api
+    command: ["tsx", "src/seed.ts"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: *database-url
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  uploads:

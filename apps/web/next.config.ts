@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: ["@ll/shared", "@ll/design-tokens"],
   poweredByHeader: false,
+  // The Docker image sets NEXT_OUTPUT=standalone: a self-contained server (.next/standalone) traced from the repo root, so
+  // the runtime image needs no node_modules install. Unset everywhere else (dev, e2e, `next start`).
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const, outputFileTracingRoot: path.resolve(process.cwd(), "../..") } : {}),
   turbopack: {
     rules: {
       // Workspace TS sources import "./x.js" (NodeNext style); Turbopack has no extensionAlias.
