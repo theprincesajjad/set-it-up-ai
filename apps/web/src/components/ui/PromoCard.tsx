@@ -69,8 +69,9 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href, term
   const L = useLocaleOrEnglish();
   const { t, locale } = L;
   const [why, setWhy] = useState(false);
-  const m = meta(promo, L);
   const when = promoWhenL(L, promo);
+  // "On selected days" is what the schedule line below now says exactly.
+  const m = when && !promo.endsAt && !(promo.startsAt && new Date(promo.startsAt).getTime() > Date.now()) ? null : meta(promo, L);
   const content = (
     <>
       {promo.imageUrl && variant === "feed" ? (
