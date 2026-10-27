@@ -1,5 +1,6 @@
 "use client";
 import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
 import { AppointmentSheet } from "@/components/dashboard/calendar/AppointmentSheet";
@@ -69,22 +70,26 @@ function Calendar() {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
-  // A link can open a given day (?date=2026-11-14), e.g. from a reminder or a bookmark.
+  // A link can open a given day (?date=2026-11-14), a visit and its checkout (?appt=<id>&checkout=1, from the walk-in line's Done button)
+  // or a new appointment for a dog (?newFor=<petId>, from the pet page). Read from the router's params: after a client-side
+  // navigation window.location has not caught up yet when this effect runs.
+  const search = useSearchParams();
+  const linked = useRef(false);
   useEffect(() => {
-    const d = new URLSearchParams(globalThis.location.search).get("date");
+    if (linked.current) return;
+    linked.current = true;
+    const d = search.get("date");
+    const day = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d);
-    // ?appt=<id>&checkout=1 opens a visit and its checkout (the walk-in line's Done button links here).
-    const q = new URLSearchParams(globalThis.location.search);
-    // ?newFor=<petId>: the pet page's "Book groom" opens a new appointment for that dog.
-    const nf = q.get("newFor");
-    if (nf) setSheet({ kind: "new", defaults: { date: d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayOf(), minutes: 10 * 60, staffId: null, petId: nf } });
-    const a = q.get("appt");
+    if (day) setDate(day);
+    const nf = search.get("newFor");
+    if (nf) setSheet({ kind: "new", defaults: { date: day ?? todayOf(), minutes: 10 * 60, staffId: null, petId: nf } });
+    const a = search.get("appt");
     if (a) {
       setSelectedId(a);
-      if (q.get("checkout") === "1") pendingCheckout.current = a;
+      if (search.get("checkout") === "1") pendingCheckout.current = a;
     }
-  }, []);
+  }, [search]);
 
   const staff = useMemo(() => staffState.data?.items ?? [], [staffState.data]);
   const today = todayOf(now);

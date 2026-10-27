@@ -4,6 +4,7 @@
  * Pure, unit tested.
  */
 import { verticalCategory } from "@ll/design-tokens";
+import { rewardNameIn } from "./i18n/rewardName";
 import type { Locale, MessageKey, Vars } from "@ll/shared";
 import { placeKind } from "./place";
 
@@ -93,7 +94,7 @@ export function joinHeadlineT(t: T, locale: Locale, program: Program | null, ver
 export function joinIntroT(t: T, locale: Locale, program: Program | null, reward: { name: string; pointsCost: number } | null | undefined, street: { name: string; shopCount: number } | null): string {
   if (locale === "en") return joinIntro(program, reward, street);
   const parts: string[] = [];
-  if (program && reward) parts.push(t("auth.join.introReward", { cost: unitText(t, program, reward.pointsCost), reward: reward.name }));
+  if (program && reward) parts.push(t("auth.join.introReward", { cost: unitText(t, program, reward.pointsCost), reward: rewardNameIn(locale, t, reward.name) }));
   if (street && street.shopCount > 1) parts.push(t("auth.join.introStreet", { n: street.shopCount, street: street.name }));
   parts.push(t("auth.join.introNoApp"));
   return parts.join(" ");
@@ -105,5 +106,5 @@ export function alsoEarningT(t: T, locale: Locale, others: { vertical: string }[
 }
 
 export function stampsToGoT(t: T, locale: Locale, n: number, reward: string): string {
-  return locale === "en" ? `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}` : t("auth.joined.toGo", { n, reward });
+  return locale === "en" ? `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}` : t("auth.joined.toGo", { n, reward: rewardNameIn(locale, t, reward) });
 }

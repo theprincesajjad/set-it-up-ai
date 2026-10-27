@@ -60,7 +60,7 @@ test.describe("customer, 390 wide", () => {
 
     await page.goto("/me/classes");
     await fillPhone(page, c.digits);
-    await page.getByRole("button", { name: "Text me a code" }).click();
+    await page.getByRole("button", { name: "Send code" }).click();
     await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
 

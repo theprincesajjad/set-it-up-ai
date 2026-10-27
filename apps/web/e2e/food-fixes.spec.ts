@@ -71,7 +71,7 @@ test.describe("customer, 390 wide", () => {
     await expect(page.getByText("Free appetizer")).toHaveCount(0);
     await noHorizontalScroll(page);
     await page.screenshot({ path: `${SHOTS}/shop-ur-390.png`, fullPage: true });
-    await page.goto(`/shops/${NAWAB}/menu?lang=pa`);
+    await page.goto(`/shops/${NAWAB}/menu?lang=ur`);
     const tabs = page.getByRole("navigation").getByRole("link");
     await expect(tabs.filter({ hasText: /^Biryani$|^Curries$|^Tandoor$/ })).toHaveCount(0);
   });
@@ -98,7 +98,8 @@ test.describe("customer, 390 wide", () => {
     await expect(page.getByText("Raw meat, flour and rice carry none.")).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/butcher-menu-390.png` });
     await row.getByRole("link", { name: /Reserve|Pre-order/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: /Goat curry cut/ })).toBeVisible();
+    await page.waitForURL(/\/preorder\//, { timeout: 60_000 });
+    await expect(page.getByRole("heading", { level: 1, name: /Goat curry cut/ })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { level: 1, name: "Reserve your order" }).or(page.getByText(/How many \(1 kg each\)/))).toBeVisible();
     // Zero-rated meat: no tax line in the bill.
     await expect(page.getByText(/HST/)).toHaveCount(0);

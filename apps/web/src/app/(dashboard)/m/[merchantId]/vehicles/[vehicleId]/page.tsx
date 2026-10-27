@@ -65,14 +65,13 @@ function Vehicle() {
             />
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="flex flex-col gap-6">
+              <div className="flex min-w-0 flex-col gap-6">
                 <Panel title="Service reminders" description="Due by km or months, whichever comes first. Dates are estimates from the odometer readings." padded={false}>
                   <TableWrap>
                     <Table label="Service reminders">
                       <thead>
                         <tr>
-                          <Th>Service</Th>
-                          <Th>Every</Th>
+                          <Th>Service and interval</Th>
                           <Th>Last done</Th>
                           <Th>Next due</Th>
                           <Th align="end">Done</Th>
@@ -83,8 +82,7 @@ function Vehicle() {
                           const tag = reminderTag(r.status);
                           return (
                             <Tr key={r.serviceKey}>
-                              <Td className="font-medium">{r.label}</Td>
-                              <Td className="text-fg-muted">{r.every}</Td>
+                              <Td className="whitespace-normal"><span className="font-medium">{r.label}</span><div className="text-meta text-fg-muted">{r.every}</div></Td>
                               <Td className="whitespace-normal text-fg-muted">{r.lastDoneOn ? `${shortDate(r.lastDoneOn)}${r.lastKm != null ? ` · ${kmLabel(r.lastKm)}` : ""}` : "Never logged"}</Td>
                               <Td className="whitespace-normal">
                                 <div>{dueText(r)}</div>

@@ -72,7 +72,7 @@ function TireSeason() {
         ]}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <Async state={plan} skeleton={<SkeletonRows rows={7} />}>
             {(r) => (
               <>
@@ -130,8 +130,8 @@ function TireSeason() {
             )}
           </Async>
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-headline text-fg">Tire hotel</h2>
             <div className="flex gap-2">
               {role !== "staff" ? <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run(async () => { const r = await api.auto.sendPickupTexts(); toast({ message: `${r.sent} pickup ${r.sent === 1 ? "text" : "texts"} sent`, tone: "success" }); return r; }, "Pickup texts done")}>Text pickup reminders</Button> : null}
