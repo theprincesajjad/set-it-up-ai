@@ -73,7 +73,7 @@ test("a deal made in the dashboard shows on the shop page with its price per 100
   await signIn(page, GROCER);
   await page.goto(`/m/${s.id}/grocery/flyer`);
   await expect(page.getByRole("heading", { name: "Weekly flyer" })).toBeVisible();
-  await expect(page.getByText(title)).toBeVisible();
+  await expect(page.getByRole("table").getByText(title)).toBeVisible();
   await page.screenshot({ path: shot("03-flyer-1440"), fullPage: true });
   await call("DELETE", `${s.base}/grocery/deals/${made.body.id}`, undefined, s.token);
 });
