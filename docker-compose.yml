@@ -52,7 +52,7 @@ services:
     <<: *api-image
     restart: unless-stopped
     # Every variable in .env reaches the API (unset ones stay unset, so the code's defaults apply: keep optional lines commented out).
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
       PORT: "4000"
@@ -100,7 +100,7 @@ services:
     restart: "no"
     working_dir: /app/apps/api
     command: ["tsx", "src/seed.ts"]
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
       DATABASE_URL: *database-url

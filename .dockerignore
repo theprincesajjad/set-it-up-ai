@@ -21,7 +21,9 @@ apps/web/test
 apps/web/e2e
 apps/web/playwright-report
 apps/web/test-results
-apps/mobile
+# Mobile is out of scope for the images; only its manifest is needed so the pnpm workspace resolves.
+apps/mobile/*
+!apps/mobile/package.json
 packages/*/test
 .sales-agent-eval
 changed-*.json
