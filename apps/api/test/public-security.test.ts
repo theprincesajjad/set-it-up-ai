@@ -120,9 +120,20 @@ describe("client address behind a proxy", () => {
 
   it("production defaults to one hop; development and test trust the header", async () => {
     const { loadConfig } = await import("../src/config.js");
-    expect(loadConfig({ NODE_ENV: "production", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x" } as never).trustProxy).toBe(1);
+    expect(loadConfig({ NODE_ENV: "production", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x", ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(1);
     expect(loadConfig({ NODE_ENV: "development" }).trustProxy).toBe(true);
-    expect(loadConfig({ NODE_ENV: "production", TRUST_PROXY_HOPS: "2", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x" } as never).trustProxy).toBe(2);
+    expect(loadConfig({ NODE_ENV: "production", TRUST_PROXY_HOPS: "2", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x", ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(2);
+  });
+});
+
+describe("production config", () => {
+  it("refuses to start without a real SMS provider (sign-in codes would only reach the log), unless it is a staging server", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const base = { NODE_ENV: "production", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x" };
+    expect(() => loadConfig(base as never)).toThrow(/TWILIO_ACCOUNT_SID/);
+    expect(() => loadConfig({ ...base, TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t" } as never)).toThrow(/TWILIO_FROM/);
+    expect(loadConfig({ ...base, TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t", TWILIO_FROM: "+14165550100" } as never).sms.provider).toBe("twilio");
+    expect(loadConfig({ ...base, ALLOW_CONSOLE_SMS: "1" } as never).sms.provider).toBe("console");
   });
 });
 

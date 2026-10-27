@@ -108,6 +108,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (storageProvider === "memory" && isProd) throw new Error("STORAGE_PROVIDER=memory loses every upload on restart; use r2 or disk in production");
   const r2Missing = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].filter((n) => !env[n]);
   if (storageProvider === "r2" && r2Missing.length) throw new Error(`STORAGE_PROVIDER=r2 needs ${r2Missing.join(", ")}`);
+  // Customers sign in with a texted code: without Twilio the code only reaches the server log and nobody can sign in.
+  // ALLOW_CONSOLE_SMS=1 is for a staging server that reads codes from its log.
+  const twilioReady = Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (env.TWILIO_MESSAGING_SERVICE_SID || env.TWILIO_FROM));
+  if (isProd && !twilioReady && env.ALLOW_CONSOLE_SMS !== "1")
+    throw new Error("Production needs TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM (sign-in codes are texted); set ALLOW_CONSOLE_SMS=1 only on a staging server");
   return {
     env: nodeEnv,
     port: Number(env.PORT ?? 4000),

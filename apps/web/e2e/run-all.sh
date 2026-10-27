@@ -10,6 +10,7 @@
 #
 # Overrides (all optional):
 #   API_PORT=4100  WEB_PORT=3100  NEXT_DIST_DIR=.next-e2e  E2E_DB_DIR=<dir for the throw-away database>
+#   E2E_DATABASE_URL=postgres://...  run against real Postgres instead (the database is dropped and recreated, then migrated)
 #   PW_ARGS="e2e/web-pass.spec.ts"   run only some specs (still against the fresh stack)
 #   PW_RETRIES=0                     Playwright retries (default 0: a flaky test fails the run; PW_ARGS="--retries=N" also works, it comes later)
 #   E2E_CLOCK_WEEKDAY=wed            weekday the shops' promos think it is (mon..sun, default wed; "real" = real time).
@@ -83,11 +84,21 @@ if [ -n "$PROMO_DAY" ] && [ -z "${TEST_PROMO_NOW:-}" ]; then TEST_PROMO_NOW="202
 [ -n "${TEST_PROMO_NOW:-}" ] && export TEST_PROMO_NOW
 echo "==> promo clock: ${TEST_PROMO_NOW:-real time}"
 
-rm -rf "$DB_DIR/pg"
-export DATABASE_URL="pglite://$DB_DIR/pg"
+if [ -n "${E2E_DATABASE_URL:-}" ]; then
+  # Recreate the named database from the server's maintenance database, then migrate it.
+  DB_NAME="${E2E_DATABASE_URL##*/}"; DB_NAME="${DB_NAME%%\?*}"
+  ADMIN_URL="${E2E_DATABASE_URL%/*}/postgres"
+  psql "$ADMIN_URL" -qc "drop database if exists \"$DB_NAME\" with (force)" -c "create database \"$DB_NAME\""
+  export DATABASE_URL="$E2E_DATABASE_URL"
+  echo "==> migrating $DB_NAME"
+  pnpm --filter @ll/db migrate > "$LOG_DIR/migrate.log" 2>&1
+else
+  rm -rf "$DB_DIR/pg"
+  export DATABASE_URL="pglite://$DB_DIR/pg"
+fi
 export PUBLIC_API_URL="$API_URL" PUBLIC_WEB_URL="$WEB_URL"
 
-echo "==> seeding a fresh database ($DB_DIR/pg)"
+echo "==> seeding a fresh database ($DATABASE_URL)"
 pnpm --filter @ll/api seed > "$LOG_DIR/seed.log" 2>&1
 
 echo "==> starting the API on $API_URL"
