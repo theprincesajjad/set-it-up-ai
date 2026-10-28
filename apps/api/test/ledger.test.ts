@@ -29,13 +29,37 @@ describe("ledger", () => {
     expect(all.reduce((s, e) => s + e.amount, 0)).toBe(0);
   });
 
-  it("does not remember an account created inside a transaction that rolled back", async () => {
+  // The ledger remembers account ids per process. An account the transaction created is visible to that transaction's own later reads,
+  // so a second posting there used to remember it; after a rollback the id pointed at no row and every later posting failed on the
+  // ledger_entries foreign key.
+  it("does not remember an account created in a transaction that rolled back", async () => {
     const { merchant } = await createMerchant(env);
     const phone = nextPhone();
-    // The first posting creates the shop's accounts and the member's inside this transaction, then the transaction is undone.
     await expect(
       env.db.transaction(async (tx) => {
-        await awardPurchase({ ...env.ctx, db: tx as never }, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+        const inTx = { ...env.ctx, db: tx as never };
+        await awardPurchase(inTx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 }); // creates the member and their account
+        await awardPurchase(inTx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 }); // reads that account back
+        throw new Error("undo");
+      }),
+    ).rejects.toThrow("undo");
+    expect(await env.db.select().from(ledgerEntries)).toHaveLength(0);
+    const again = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+    expect(again.earn.totalPoints).toBeGreaterThan(0);
+    expect(await ledgerBalance(env.db, again.member.id)).toBe(again.member.balance);
+  });
+
+  it("does not remember an account created inside a savepoint of a transaction that rolled back", async () => {
+    const { merchant } = await createMerchant(env);
+    const phone = nextPhone();
+    await expect(
+      env.db.transaction(async (outer) => {
+        // The account is created and read back inside the nested transaction, which commits its savepoint; the root then rolls back.
+        await outer.transaction(async (inner) => {
+          const inTx = { ...env.ctx, db: inner as never };
+          await awardPurchase(inTx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+          await awardPurchase(inTx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+        });
         throw new Error("undo");
       }),
     ).rejects.toThrow("undo");

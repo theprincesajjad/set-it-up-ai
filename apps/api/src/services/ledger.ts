@@ -27,6 +27,7 @@ import {
   type DbOrTx,
   type Tx,
 } from "@ll/db";
+import { afterCommit } from "@ll/db";
 import { calculateEarn, networkBonusInShopUnits, rewardDiscountCents, type ActiveBoost, type EarnResult, type PurchaseLine } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode } from "../lib/crypto.js";
@@ -55,21 +56,17 @@ const LIFETIME_TYPES = new Set<TxType>(["earn", "welcome_bonus", "birthday_bonus
  * remembered per process: a stamp used to spend two reads on them.
  */
 const accountIds = new Map<string, string>();
-/**
- * Accounts a transaction created itself. Its own later reads see them, but they are not committed: if the transaction rolls back
- * (a refused redemption, a retried stamp) the row is gone, and remembering the id would make every later posting in this process
- * fail on the ledger_entries foreign key. They are remembered by the next transaction that reads them as committed.
- */
-const createdInTx = new WeakMap<object, Set<string>>();
-function createdHere(tx: DbOrTx, key: string) {
-  let set = createdInTx.get(tx);
-  if (!set) createdInTx.set(tx, (set = new Set()));
-  set.add(key);
-}
 const ACCOUNT_CACHE_MAX = 20_000;
+/**
+ * Inside a transaction the row may have been created by that same transaction (its own reads see it), and a rollback removes it;
+ * a remembered id would then fail every later posting on the ledger_entries foreign key. So the id is remembered only after the
+ * root transaction commits (savepoints included), or at once when no transaction is open.
+ */
 function rememberAccount(key: string, id: string) {
-  if (accountIds.size >= ACCOUNT_CACHE_MAX) accountIds.delete(accountIds.keys().next().value as string);
-  accountIds.set(key, id);
+  afterCommit(() => {
+    if (accountIds.size >= ACCOUNT_CACHE_MAX) accountIds.delete(accountIds.keys().next().value as string);
+    accountIds.set(key, id);
+  });
   return id;
 }
 
@@ -83,12 +80,9 @@ async function merchantAccount(tx: DbOrTx, merchantId: string | null, kind: Acco
       ? and(isNull(ledgerAccounts.merchantId), eq(ledgerAccounts.kind, kind), isNull(ledgerAccounts.memberId))
       : and(eq(ledgerAccounts.merchantId, merchantId), eq(ledgerAccounts.kind, kind), isNull(ledgerAccounts.memberId));
   const [existing] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(where).limit(1);
-  if (existing) return cacheKey && !createdInTx.get(tx)?.has(cacheKey) ? rememberAccount(cacheKey, existing.id) : existing.id;
+  if (existing) return cacheKey ? rememberAccount(cacheKey, existing.id) : existing.id;
   const [created] = await tx.insert(ledgerAccounts).values({ merchantId, kind }).onConflictDoNothing().returning({ id: ledgerAccounts.id });
-  if (created) {
-    if (cacheKey) createdHere(tx, cacheKey);
-    return created.id;
-  }
+  if (created) return created.id;
   const [again] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(where).limit(1);
   return cacheKey ? rememberAccount(cacheKey, again!.id) : again!.id;
 }
@@ -98,16 +92,13 @@ async function memberAccount(tx: DbOrTx, member: Pick<Member, "id" | "merchantId
   const hit = accountIds.get(cacheKey);
   if (hit) return hit;
   const [existing] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(eq(ledgerAccounts.memberId, member.id)).limit(1);
-  if (existing) return createdInTx.get(tx)?.has(cacheKey) ? existing.id : rememberAccount(cacheKey, existing.id);
+  if (existing) return rememberAccount(cacheKey, existing.id);
   const [created] = await tx
     .insert(ledgerAccounts)
     .values({ merchantId: member.merchantId, kind: "member", memberId: member.id })
     .onConflictDoNothing()
     .returning({ id: ledgerAccounts.id });
-  if (created) {
-    createdHere(tx, cacheKey);
-    return created.id;
-  }
+  if (created) return created.id;
   const [again] = await tx.select({ id: ledgerAccounts.id }).from(ledgerAccounts).where(eq(ledgerAccounts.memberId, member.id)).limit(1);
   return rememberAccount(cacheKey, again!.id);
 }

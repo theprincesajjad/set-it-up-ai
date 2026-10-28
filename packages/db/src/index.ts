@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -15,7 +16,7 @@ export const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations", import.meta
 /** Postgres connection for production / local dev against a real server. */
 export function createDb(url: string, opts: { max?: number } = {}) {
   const client = postgres(url, { max: opts.max ?? 10, prepare: false });
-  const db = drizzlePg(client, { schema });
+  const db = trackCommits(drizzlePg(client, { schema }));
   acceptDateParams(client);
   return Object.assign(db, { $close: () => client.end() });
 }
@@ -32,6 +33,31 @@ function acceptDateParams(client: postgres.Sql) {
     const prev = serializers[oid];
     serializers[oid] = (x) => (x instanceof Date ? x.toISOString() : prev ? prev(x) : x);
   }
+}
+
+const commitScope = new AsyncLocalStorage<{ after: Array<() => void> }>();
+
+/**
+ * Run `fn` once the surrounding root transaction has committed (never if it rolls back; savepoints inside it count as part of it),
+ * or right away when no transaction is open. For in-process caches of rows a transaction may have created: such a row is visible
+ * to the transaction's own reads but gone after a rollback, so it must not be remembered before the commit.
+ */
+export function afterCommit(fn: () => void): void {
+  const scope = commitScope.getStore();
+  if (scope) scope.after.push(fn);
+  else fn();
+}
+
+/** Makes `db.transaction` open a commit scope for afterCommit; works the same for postgres-js and PGlite. */
+function trackCommits<T extends { transaction: (...args: never[]) => Promise<unknown> }>(db: T): T {
+  const original = db.transaction.bind(db) as (cb: (tx: unknown) => Promise<unknown>, config?: unknown) => Promise<unknown>;
+  (db as unknown as { transaction: typeof original }).transaction = async (cb, config) => {
+    const scope = { after: [] as Array<() => void> };
+    const result = await commitScope.run(scope, () => original(cb, config));
+    for (const fn of scope.after) fn();
+    return result;
+  };
+  return db;
 }
 
 export type Db = ReturnType<typeof createDb>;
@@ -107,7 +133,7 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
   // btree_gist backs the appointments overlap guard (an exclusion constraint on staff_id + time range).
   const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
   const client = await PGlite.create({ ...(dataDir ? { dataDir } : {}), extensions: { btree_gist } });
-  const db = drizzle(client, { schema });
+  const db = trackCommits(drizzle(client, { schema }));
   await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
   // The pglite and postgres-js drizzle instances share the same query API.
   return Object.assign(db, { $close: () => client.close() }) as unknown as Db;
