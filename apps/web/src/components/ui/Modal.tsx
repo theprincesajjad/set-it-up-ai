@@ -35,6 +35,11 @@ export function Modal({ open, onClose, title, description, children, actions, va
         <DialogPrimitive.Backdrop className="fixed inset-0 z-modal bg-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <DialogPrimitive.Popup
           data-slot="modal"
+          // While it plays its exit transition the popup is still mounted, but the page behind is live again: take the closing dialog out of
+          // the accessibility tree and out of reach, so its buttons are never announced or matched next to the page's own (e.g. two
+          // "Save changes" on Rewards for the 150ms after the confirm closes).
+          aria-hidden={open ? undefined : true}
+          inert={!open}
           className={cn(
             "fixed inset-x-0 bottom-0 z-modal mx-auto flex max-h-[90dvh] w-full flex-col overflow-y-auto bg-bg px-4 pt-5 text-fg shadow-float outline-none sm:px-6",
             "rounded-t-sheet pb-[max(24px,env(safe-area-inset-bottom))] max-md:motion-safe:animate-sheet-up",
