@@ -55,6 +55,7 @@ import {
   useTabBarBottom,
   useTabBarSpace,
   X,
+  glassStyle,
 } from "../../ui";
 
 type Shop = networkApi.ShopListItemDto;
@@ -118,7 +119,8 @@ function CategoryRail({ value, onChange, onMap }: { value: MapCategoryId; onChan
 
 /** A white filter capsule over the map (canvas: 36 pt, Bricolage 700 14, float shadow); black when on. */
 function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityLabel }: { label: string; selected: boolean; onPress: () => void; chevron?: boolean; dot?: boolean; float: boolean; accessibilityLabel?: string }) {
-  const { c } = useTheme();
+  const theme = useTheme();
+  const { c, isClear } = theme;
   const fg = selected ? c.bg : c.fg;
   return (
     <Pressable
@@ -129,10 +131,10 @@ function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityL
         haptic.select();
         onPress();
       }}
-      style={({ pressed }) => [styles.mapChip, { backgroundColor: selected ? c.brand : float ? c.bg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }, float ? floatShadow : null]}
+      style={({ pressed }) => [styles.mapChip, { backgroundColor: selected ? c.brand : float ? c.bg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }, float ? floatShadow : null, isClear && float && !selected ? glassStyle(theme, "strong") : null]}
     >
       {dot ? <View style={[styles.openDot, { backgroundColor: c.positive }]} /> : null}
-      <Text style={disp(14, 700, 18)} rawColor={fg}>
+      <Text style={isClear ? { fontSize: 13, lineHeight: 18, fontWeight: "600" } : disp(14, 700, 18)} rawColor={fg}>
         {label}
       </Text>
       {chevron ? <ChevronDownGlyph size={12} strokeWidth={2.4} color={fg} /> : null}
@@ -142,7 +144,10 @@ function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityL
 
 /** Explore is home (foundations § Customer app): full-bleed near-white map, floating chrome, object pins, shop sheet. */
 export default function Explore() {
-  const { c, isDark } = useTheme();
+  const theme = useTheme();
+  const { c, isDark, isClear } = theme;
+  // Clear: the map's floating controls are glass (spec 2.8: chrome only); Warm keeps its white circles.
+  const chromeBg = (fallback: string) => (isClear ? glassStyle(theme, "strong") : [{ backgroundColor: fallback }, floatShadow]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const tabSpace = useTabBarSpace();
@@ -278,7 +283,7 @@ export default function Explore() {
   );
 
   const searchField = (
-    <View style={[styles.searchField, { backgroundColor: c.bg }, floatShadow]}>
+    <View style={[styles.searchField, chromeBg(c.bg)]}>
       <Search size={18} color={c.fgMuted} strokeWidth={2} />
       <TextInput
         autoFocus
@@ -306,7 +311,7 @@ export default function Explore() {
     <View style={styles.topRow}>{searchField}</View>
   ) : (
     <View style={styles.topRow}>
-      <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => setSearching(true)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => setSearching(true)} style={({ pressed }) => [styles.round, chromeBg(c.bg), { opacity: pressed ? 0.85 : 1 }]}>
         <SearchGlyph size={20} color={c.fg} />
       </Pressable>
       <View style={{ flex: 1 }} />
@@ -316,9 +321,9 @@ export default function Explore() {
         </Pressable>
       ) : null}
       {/* Grouped capsule (Corner): the neighbourhood ▾ · the bell with an accent dot while something is unread. */}
-      <View style={[styles.group, { backgroundColor: c.bg }, floatShadow]}>
+      <View style={[styles.group, chromeBg(c.bg)]}>
         <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.hoodA11y", { name: placeName ?? tr("ms.map.notSet") })} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
-          <Text style={[disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
+          <Text style={[isClear ? { fontSize: 15, lineHeight: 20, fontWeight: "600" } : disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
             {shortHood(placeName) || tr("ms.map.yourStreet")}
           </Text>
           <ChevronDownGlyph size={14} color={c.fg} />
@@ -577,7 +582,7 @@ export default function Explore() {
       {sel ? (
         // Shop sheet up (canvas ShopSheet): the map chrome gives way to one round back button.
         <View style={[styles.top, { paddingTop: topY, paddingHorizontal: 16 }]} pointerEvents="box-none">
-          <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.backToMap")} onPress={() => setSelected(null)} style={({ pressed }) => [styles.round, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }, floatShadow]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.backToMap")} onPress={() => setSelected(null)} style={({ pressed }) => [styles.round, chromeBg(c.bg), { opacity: pressed ? 0.85 : 1 }]}>
             <ChevronLeftGlyph size={20} color={c.fg} />
           </Pressable>
         </View>

@@ -19,7 +19,20 @@ export interface BadgeProps {
  * peach = brand, sky = info; neutral is a sand capsule.
  */
 export function useToneColors(tone: BadgeTone) {
-  const { c, r } = useTheme();
+  const { c, r, x, isClear } = useTheme();
+  // Clear: Polaris badges (neutral grey, success green, info blue, warning amber, critical red); points have no colour.
+  if (isClear) {
+    const clear: Record<BadgeTone, { bg: string; fg: string; solid: string }> = {
+      neutral: { bg: r.muted, fg: r.foreground, solid: r.mutedForeground },
+      brand: { bg: r.muted, fg: r.foreground, solid: r.foreground },
+      accent: { bg: r.muted, fg: r.foreground, solid: r.foreground },
+      success: { bg: x.successSoft, fg: r.successText, solid: r.success },
+      warning: { bg: x.warningSoft, fg: r.warningText, solid: r.warning },
+      danger: { bg: x.destructiveSoft, fg: x.destructiveText, solid: r.destructive },
+      info: { bg: r.infoSoft, fg: r.infoText, solid: r.info },
+    };
+    return clear[tone];
+  }
   // Warm: pastel pills with their deep text (peach brand, butter points, mint success, rose danger, sky info).
   const map: Record<BadgeTone, { bg: string; fg: string; solid: string }> = {
     neutral: { bg: c.bgSubtle, fg: c.fgMuted, solid: c.fgMuted },
@@ -35,10 +48,11 @@ export function useToneColors(tone: BadgeTone) {
 
 export function Badge({ children, tone = "neutral", icon: Icon, trailingIcon: Trailing, dot }: BadgeProps) {
   const t = useToneColors(tone);
+  const { isClear } = useTheme();
   const dotted = !!dot;
   const bare = t.bg === "transparent";
   return (
-    <View style={[styles.badge, { backgroundColor: t.bg, paddingHorizontal: bare ? 0 : 8 }]}>
+    <View style={[styles.badge, { backgroundColor: t.bg, paddingHorizontal: bare ? 0 : 8 }, isClear ? { minHeight: 20, borderRadius: 8, gap: 4 } : null]}>
       {dotted ? <View style={[styles.dot, { backgroundColor: t.solid }]} /> : null}
       {Icon ? <Icon size={13} color={t.fg} strokeWidth={2} /> : null}
       <Text variant="metaStrong" rawColor={t.fg} style={{ fontSize: 12, lineHeight: 16 }}>

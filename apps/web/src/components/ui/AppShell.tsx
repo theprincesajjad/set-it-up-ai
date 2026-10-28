@@ -37,6 +37,8 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import { Awning } from "./Awning";
 import { EnvironmentStrip } from "./Layout";
+import { LiquidGlassLens } from "./LiquidGlassLens";
+import { useThemeStyle } from "./ThemeStyle";
 
 export interface NavItem {
   href: string;
@@ -114,8 +116,14 @@ function useWide() {
 // 32 px rows with a mouse (the spec), 44 px under a finger: on a phone sheet and on a touch tablet in rail mode.
 const ROW = "h-10 gap-3 rounded-xl px-3 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! hover:bg-sidebar-accent/60 data-active:bg-sidebar-accent data-active:shadow-card focus-visible:focus-ring data-active:font-semibold [&_svg]:size-5";
 
+// Clear (audit 2.4 Sidebar): 36 px rows with no gap, r18 lifted pill, 16 px glyph 12 from the text; the active row is glass tinted with the trade
+// colour and its glyph is the trade colour (the only trade on the chrome). 44 px under a finger.
+const ROW_CLEAR = "h-9 gap-3 rounded-[18px] px-3 text-body font-[450] max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center hover:bg-lg-seg-track active:bg-lg-seg-track data-active:glass-nav-on data-active:bg-trade-nav data-active:hover:bg-trade-nav data-active:font-[650] data-active:text-foreground focus-visible:focus-ring [&_svg]:size-4 [&_svg]:text-muted-foreground data-active:[&_svg]:text-trade";
+const SUB_CLEAR = "h-8 rounded-2xl ps-10 pe-3 text-body text-muted-foreground max-md:h-11 pointer-coarse:h-11 hover:bg-lg-seg-track data-active:bg-transparent data-active:font-[650] data-active:text-foreground focus-visible:focus-ring";
+
 function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
+  const { clear } = useThemeStyle();
   const close = () => isMobile && setOpenMobile(false);
   const out: ReactNode[] = [];
   nav.forEach((i, idx) => {
@@ -128,22 +136,22 @@ function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname
         <SidebarMenuButton
           tooltip={i.label}
           isActive={active}
-          className={ROW}
+          className={clear ? ROW_CLEAR : ROW}
           render={<Link href={i.href} onClick={close} aria-current={active ? "page" : undefined} />}
         >
-          <i.icon aria-hidden strokeWidth={1.9} className="text-trade" />
+          <i.icon aria-hidden strokeWidth={clear ? 1.6 : 1.9} className={clear ? undefined : "text-trade"} />
           <span>{i.label}</span>
         </SidebarMenuButton>
         {i.badge && i.badge.count > 0 ? (
-          <SidebarMenuBadge className={cn("text-meta-strong", i.badge.accent ? "text-points-text" : "text-muted-foreground")}>{i.badge.count}</SidebarMenuBadge>
+          <SidebarMenuBadge className={cn("text-meta-strong", clear && "end-2 top-2! h-5 rounded-r2 bg-lg-seg-track px-2 text-caption", i.badge.accent ? "text-points-text" : "text-muted-foreground", clear && "text-foreground")}>{i.badge.count}</SidebarMenuBadge>
         ) : null}
         {kids.length ? (
-          <SidebarMenuSub>
+          <SidebarMenuSub className={clear ? "mx-0 translate-x-0 gap-0 border-0 px-0 py-0 rtl:translate-x-0" : undefined}>
             {kids.map((k) => {
               const kActive = isNavActive(pathname, k, all);
               return (
                 <SidebarMenuSubItem key={k.href}>
-                  <SidebarMenuSubButton isActive={kActive} className="h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring data-active:font-semibold" render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
+                  <SidebarMenuSubButton isActive={kActive} className={clear ? SUB_CLEAR : "h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring data-active:font-semibold"} render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
                     <span>{k.label}</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -154,7 +162,7 @@ function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname
       </SidebarMenuItem>,
     );
   });
-  return <SidebarMenu>{out}</SidebarMenu>;
+  return <SidebarMenu className={clear ? "gap-0" : undefined}>{out}</SidebarMenu>;
 }
 
 /** Up and Down move between the sidebar's links (Home and End jump to the first and last); Tab still walks them all. */
@@ -171,11 +179,35 @@ function arrowKeys(e: React.KeyboardEvent<HTMLElement>) {
 
 function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }: { sections: NavSectionDef[]; header: ReactNode; footer?: ReactNode; pathname: string; label: string; sidebarLabel: string }) {
   const ref = useRef<HTMLElement>(null);
+  const { clear } = useThemeStyle();
+  const { isMobile } = useSidebar();
   const all = sections.flatMap((x) => x.items);
   // A long nav scrolls inside the sidebar; keep the current page's row in view instead of half cut off at the bottom.
   useEffect(() => {
     ref.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
   }, [pathname]);
+  if (clear)
+    return (
+      // The floating glass panel (audit 2.4): 244 wide inside the 12 px inset, r30, padding 10; brand row 32 + 8, group labels 36, rows 36.
+      <div role="complementary" aria-label={sidebarLabel} data-lens={isMobile ? undefined : ""} data-lens-r="30" data-lens-bezel="22" className={cn("flex size-full min-h-0 flex-col p-2.5", !isMobile && "glass-side rounded-r8")}>
+        <SidebarHeader className="gap-0 p-0 px-3 pb-2 group-data-[collapsible=icon]:px-0">{header}</SidebarHeader>
+        <SidebarContent className="gap-0 px-0 no-scrollbar">
+          <nav ref={ref} aria-label={label} className="flex flex-col" onKeyDown={arrowKeys}>
+            {sections
+              .filter((s) => s.items.length > 0)
+              .map((s) => (
+                <SidebarGroup key={s.key} className="p-0">
+                  {s.label ? (
+                    <SidebarGroupLabel className="h-9 items-end rounded-none px-3 pt-4 pb-1 text-caption font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">{s.label}</SidebarGroupLabel>
+                  ) : null}
+                  <Rows nav={s.items} all={all} pathname={pathname} />
+                </SidebarGroup>
+              ))}
+          </nav>
+        </SidebarContent>
+        {footer ? <SidebarFooter className="gap-3 p-3 group-data-[collapsible=icon]:hidden">{footer}</SidebarFooter> : null}
+      </div>
+    );
   return (
     <div role="complementary" aria-label={sidebarLabel} className="flex size-full min-h-0 flex-col">
       <SidebarHeader className="px-3 pt-3 group-data-[collapsible=icon]:px-2">{header}</SidebarHeader>
@@ -195,6 +227,38 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
       </SidebarContent>
       {footer ? <SidebarFooter className="gap-3 px-4 pb-4 group-data-[collapsible=icon]:hidden">{footer}</SidebarFooter> : null}
     </div>
+  );
+}
+
+/** Clear phone tab bar (audit 2.4): a 358 × 64 glass capsule, 16 from the sides and the bottom, inset 4 (5 inline), tabs r28, the active tab lifted. */
+function ClearTabBar({ items, hasMore, label, moreLabel, pathname }: { items: NavItem[]; hasMore: boolean; label: string; moreLabel: string; pathname: string }) {
+  const { setOpenMobile } = useSidebar();
+  const cell = "flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[28px] px-1 text-[10px] leading-3 font-semibold focus-visible:focus-ring";
+  return (
+    <nav
+      aria-label={label}
+      data-lens=""
+      data-lens-r="32"
+      data-lens-bezel="24"
+      style={{ gridTemplateColumns: `repeat(${items.length + (hasMore ? 1 : 0)}, minmax(0, 1fr))` }}
+      className="glass-sheet fixed inset-x-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-sticky grid h-16 rounded-r9 px-[5px] py-1 md:hidden print:hidden"
+    >
+      {items.map((i) => {
+        const active = isNavActive(pathname, i, items);
+        return (
+          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn(cell, active ? "glass-lift text-link dark:text-foreground dark:[&_svg]:text-info-text" : "text-muted-foreground")}>
+            <i.icon aria-hidden className="size-6" strokeWidth={1.6} />
+            <span className="max-w-full truncate">{i.label}</span>
+          </Link>
+        );
+      })}
+      {hasMore ? (
+        <button type="button" onClick={() => setOpenMobile(true)} className={cn(cell, "text-muted-foreground")}>
+          <MoreHorizontal aria-hidden className="size-6" strokeWidth={1.6} />
+          <span>{moreLabel}</span>
+        </button>
+      ) : null}
+    </nav>
   );
 }
 
@@ -225,6 +289,7 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
 export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, bare = false, trade, children }: AppShellProps) {
   const pathname = usePathname() ?? "";
   const { dir } = useLocaleOrEnglish();
+  const { clear } = useThemeStyle();
   const wide = useWide();
   const secs: NavSectionDef[] = sections ?? [{ key: "main", items: nav }];
   const all = secs.flatMap((s) => s.items);
@@ -254,6 +319,62 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
               {children}
             </main>
           </div>
+        </TooltipProvider>
+      </DirectionProvider>
+    );
+
+  if (clear)
+    return (
+      <DirectionProvider direction={dir}>
+        <TooltipProvider>
+          <SidebarProvider
+            open={wide}
+            onOpenChange={() => undefined}
+            data-trade={trade}
+            data-shell="clear"
+            // 244 + the 12 px inset on both sides: the content column starts at x 268 (audit 2.1).
+            style={{ "--sidebar-width": "268px", "--sidebar-width-icon": "56px" } as React.CSSProperties}
+            className="min-h-dvh bg-background text-foreground print:block print:min-h-0 print:[&_[data-slot=sidebar]]:hidden"
+          >
+            {env ? <div className="fixed inset-x-0 top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
+            <Sidebar
+              side={dir === "rtl" ? "right" : "left"}
+              variant="floating"
+              collapsible="icon"
+              dir={dir}
+              className="p-3 print:hidden"
+              innerClassName="rounded-r8 bg-transparent shadow-none ring-0"
+              mobileClassName="bg-background"
+            >
+              <SidebarBody sections={secs} header={header} footer={footer} pathname={pathname} label={labels?.main ?? "Main"} sidebarLabel={labels?.sidebar ?? "Sidebar"} />
+            </Sidebar>
+            <div className="flex min-w-0 flex-1 flex-col md:pe-3">
+              {/* Scroll-edge strip: content nearing the toolbar is already soft before the glass sees it. */}
+              <div aria-hidden className="scroll-edge-top inset-x-0 z-[99] md:start-64 print:hidden" />
+              {/* Desktop toolbar (audit 2.4): 52 tall, r26, 12 from the top and the end, inner inset 10, grid 1fr auto 1fr with the search centred. */}
+              <header data-lens="" data-lens-r="26" data-lens-bezel="20" className="glass-chrome sticky top-3 z-sticky mt-3 hidden h-13 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-r7 px-2.5 md:grid print:hidden">
+                {topBar}
+              </header>
+              {/* Phone (audit 2.4 Top capsule row): the shop capsule and 44 px glass circles at y 12, 16 from the edges. */}
+              <div className="fixed inset-x-4 top-[calc(12px+env(safe-area-inset-top))] z-sticky flex items-center gap-2 md:hidden print:hidden">
+                <div data-lens="" data-lens-r="22" data-lens-bezel="18" className="glass-chrome flex h-11 min-w-0 flex-1 items-center rounded-full ps-1.5 pe-4">
+                  <div className="min-w-0 flex-1 truncate">{mobileTitle}</div>
+                </div>
+                {mobileActions ? <div className="flex items-center gap-2">{mobileActions}</div> : null}
+              </div>
+              <main id="main" className={cn("mx-auto w-full max-w-[1160px] flex-1 px-4 pt-[72px] md:px-0 md:pt-6 print:max-w-none print:p-0", bar.length ? "pb-[120px] md:pb-20" : "pb-16 md:pb-20")}>
+                {notice}
+                {children}
+              </main>
+            </div>
+            {bar.length ? (
+              <>
+                <div aria-hidden className="scroll-edge-bottom inset-x-0 z-[99] md:hidden print:hidden" />
+                <ClearTabBar items={bar} hasMore={!fits} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} />
+              </>
+            ) : null}
+            <LiquidGlassLens />
+          </SidebarProvider>
         </TooltipProvider>
       </DirectionProvider>
     );

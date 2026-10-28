@@ -2,7 +2,7 @@
 import { ExternalLink } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { merchantApi } from "@ll/shared";
+import type { merchantApi, ThemeStyle } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
@@ -13,25 +13,31 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopLogo } from "@/components/ui/ShopTile";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
+import { useThemeStyle } from "@/components/ui/ThemeStyle";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { writeThemeCookie } from "@/lib/theme";
 import { rolesV3 } from "@ll/design-tokens";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
 import { useAction } from "@/lib/dashboard/useApi";
 
-type Tab = "profile" | "hours" | "tax" | "counter" | "privacy" | "danger";
+type Tab = "profile" | "hours" | "tax" | "counter" | "appearance" | "privacy" | "danger";
 
 export default function SettingsPage() {
   const { detail, role } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const params = useSearchParams();
   const want = params.get("tab");
-  const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" ? want : "profile");
+  const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" || want === "appearance" ? want : "profile");
   const items: { id: Tab; label: string }[] = [
     { id: "profile", label: "Shop profile" },
     { id: "hours", label: "Hours" },
     { id: "tax", label: "Tax" },
     { id: "counter", label: "Counter & receipts" },
+    ...(role === "owner" || role === "manager" ? [{ id: "appearance" as const, label: t("settings.appearance.tab") }] : []),
     { id: "privacy", label: "Privacy" },
     ...(role === "owner" ? [{ id: "danger" as const, label: "Pause or close" }] : []),
   ];
@@ -44,6 +50,7 @@ export default function SettingsPage() {
       <div role="tabpanel" hidden={tab !== "hours"}><HoursTab active={tab === "hours"} /></div>
       {tab === "tax" ? <div role="tabpanel"><TaxStatus owner={role === "owner"} /></div> : null}
       {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
+      {tab === "appearance" ? <div role="tabpanel"><Appearance /></div> : null}
     </div>
   );
 }
@@ -199,6 +206,54 @@ function CounterTab() {
         </Panel>
       ) : null}
     </div>
+  );
+}
+
+/** Clear (default) or Main Street Warm, and Clear's opt-in graphite dark. Saves at once and re-themes the page without a reload. */
+function Appearance() {
+  const { api, detail, setDetail, merchantId } = useMerchant();
+  const { t } = useLocaleOrEnglish();
+  const theme = useThemeStyle();
+  const toast = useToast();
+  const act = useAction();
+  const [style, setStyle] = useState<ThemeStyle>(detail.merchant.themeStyle ?? "clear");
+  const [dark, setDark] = useState(!!detail.merchant.themeDark);
+  async function save(next: { style: ThemeStyle; dark: boolean }) {
+    const before = { style, dark };
+    setStyle(next.style);
+    setDark(next.dark);
+    const r = await act.run(() => api.update({ themeStyle: next.style, themeDark: next.dark }));
+    if (!r) {
+      setStyle(before.style);
+      setDark(before.dark);
+      return;
+    }
+    setDetail(r);
+    const saved = { style: r.merchant.themeStyle, dark: r.merchant.themeDark };
+    writeThemeCookie(merchantId, saved);
+    theme.preview(saved);
+    toast({ message: t("settings.appearance.saved"), tone: "success" });
+  }
+  return (
+    <Panel title={t("settings.appearance.title")} description={t("settings.appearance.description")}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <span id="appearance-style" className="text-body-strong text-foreground">{t("settings.appearance.style")}</span>
+          <SegmentedControl<ThemeStyle>
+            label={t("settings.appearance.style")}
+            options={[{ value: "clear", label: t("settings.appearance.clear") }, { value: "warm", label: t("settings.appearance.warm") }]}
+            value={style}
+            onChange={(v) => void save({ style: v, dark: v === "clear" ? dark : false })}
+            className="self-start"
+          />
+          <p className="text-meta text-muted-foreground">{style === "clear" ? t("settings.appearance.clearHint") : t("settings.appearance.warmHint")}</p>
+        </div>
+        {style === "clear" ? (
+          <Switch label={t("settings.appearance.dark")} description={t("settings.appearance.darkHint")} checked={dark} disabled={act.busy} onChange={(v) => void save({ style: "clear", dark: v })} />
+        ) : null}
+        {act.error ? <Banner tone="warning">{act.error}</Banner> : null}
+      </div>
+    </Panel>
   );
 }
 

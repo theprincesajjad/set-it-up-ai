@@ -69,6 +69,7 @@ import { CounterNotice } from "./CounterNotice";
 import { DigitBoxes, ScanKeypad } from "./ScanKeypad";
 import { ScanPanel } from "./ScanPanel";
 import { StampRow } from "./StampRow";
+import s from "./CounterClear.module.css";
 
 type CounterApi = MerchantEndpoints["counter"];
 
@@ -723,25 +724,25 @@ export function CounterApp({
   const statusText = online ? t("counter.status.online") : t("counter.status.offline");
 
   return (
-    <div data-trade={vertical} className={cn("flex flex-col gap-4", exitHref && "min-h-dvh gap-0")}>
+    <div data-trade={vertical} className={cn(s.root, exitHref && s.bare, "flex flex-col gap-4", exitHref && "min-h-dvh gap-0")}>
       <div aria-live="polite" className="sr-only">
         {announce}
       </div>
 
       {/* Chrome-free (Figma 15:2): the shop, the page name, whether this device is online, who is stamping. No page header, no banners. */}
-      <div className={cn("bg-background", exitHref ? "flex flex-1 flex-col" : "overflow-hidden rounded-card border border-border")}>
+      <div className={cn(s.frame, "bg-background", exitHref ? "flex flex-1 flex-col" : "overflow-hidden rounded-card border border-border")}>
         <Awning size="sm" className="rounded-none rounded-b-lg" />
-        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-3 lg:px-6">
+        <header className={cn(s.top, "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-3 lg:px-6")}>
           <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-trade text-meta-strong font-bold uppercase text-trade-foreground">
+            <span aria-hidden className={cn(s.mark, "inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-trade text-meta-strong font-bold uppercase text-trade-foreground")}>
               {initialsOf(shopName)}
             </span>
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
-              <span className="truncate text-body-strong text-foreground">
+            <div className={cn(s.who, "flex min-w-0 flex-wrap items-baseline gap-x-2.5")}>
+              <span className={cn(s.shop, "truncate text-body-strong text-foreground")}>
                 <bdi>{shopName}</bdi>
               </span>
               <h1 className="font-sans text-body font-normal text-muted-foreground">{t("counter.title")}</h1>
-              <span className="flex items-center gap-1.5 text-meta text-muted-foreground">
+              <span className={cn(s.status, "flex items-center gap-1.5 text-meta text-muted-foreground")}>
                 <span aria-hidden className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")} />
                 {statusText}
                 {stampsToday != null ? ` · ${t("counter.today", { points: pointsText(stampsToday, program.terminology, ct) })}` : ""}
@@ -762,7 +763,7 @@ export function CounterApp({
                       /* ignore */
                     }
                   }}
-                  className="h-11 rounded-full border border-border bg-card px-4 text-meta text-foreground"
+                  className={cn(s.select, "h-11 rounded-full border border-border bg-card px-4 text-meta text-foreground")}
                 >
                   {locations.map((l) => (
                     <option key={l.id} value={l.id}>
@@ -776,7 +777,7 @@ export function CounterApp({
               <button
                 type="button"
                 onClick={() => setPinOpen(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring"
+                className={cn(s.chip, "inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring")}
               >
                 <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-tile-lilac text-caption font-semibold uppercase text-tile-lilac-foreground">
                   {(staff?.name ?? signedInName ?? "?").trim()[0]}
@@ -800,7 +801,7 @@ export function CounterApp({
         ) : null}
 
         {queue.length || !online || sentNote || error ? (
-          <div className="flex flex-col gap-2 border-b border-border px-4 py-3 lg:px-6">
+          <div className={cn(s.notices, "flex flex-col gap-2 border-b border-border px-4 py-3 lg:px-6")}>
             {queue.length || !online || sentNote ? (
               <div
                 role="status"
@@ -830,9 +831,9 @@ export function CounterApp({
           </div>
         ) : null}
 
-        <div className={cn("grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]", exitHref && "flex-1")}>
+        <div className={cn(s.panes, "grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]", exitHref && "flex-1")}>
           {/* Left: find the customer. On a phone it is only there while there is nobody on screen. */}
-          <div className={cn("min-w-0 flex-col gap-4 bg-sidebar p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
+          <div className={cn(s.lookup, "min-w-0 flex-col gap-4 bg-sidebar p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
             {pinOpen && pin ? (
               <PinPad
                 verify={pin.verify}
@@ -845,7 +846,7 @@ export function CounterApp({
             ) : null}
             {lookupShown ? (
               <>
-                <h2 className="font-display text-title font-bold text-foreground">{t("counter.findCustomer")}</h2>
+                <h2 className={cn(s.label, "font-display text-title font-bold text-foreground")}>{t("counter.findCustomer")}</h2>
                 <ScanPanel
                   ready={ready}
                   cameraRequest={cameraRequest}
@@ -855,15 +856,18 @@ export function CounterApp({
                 <p className="text-meta text-muted-foreground">{t("counter.scan.type4")}</p>
                 <DigitBoxes value={entry} />
                 <ScanKeypad onKey={onDigit} disabled={busy || !ready} onScanKey={() => setCameraRequest((n) => n + 1)} />
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setMode("verify");
-                    setError(null);
-                  }}
-                >
-                  {t("counter.redeemCode")}
-                </Button>
+                <div className={s.leftAction}>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setMode("verify");
+                      setError(null);
+                    }}
+                  >
+                    {t("counter.redeemCode")}
+                  </Button>
+                </div>
               </>
             ) : !pinOpen ? (
               <>
@@ -880,7 +884,7 @@ export function CounterApp({
           </div>
 
           {/* Right: the customer and the one decision. */}
-          <div className="flex min-w-0 flex-col gap-6 p-4 lg:p-6">
+          <div className={cn(s.main, "flex min-w-0 flex-col gap-6 p-4 lg:p-6")}>
             {idle && regulars.length && !perDollar ? (
               <section aria-labelledby="regulars-title" className="flex flex-col gap-2">
                 <h2 id="regulars-title" className="text-meta-strong text-muted-foreground">
@@ -912,7 +916,7 @@ export function CounterApp({
 
           {mode === "verify" ? (
             <section
-              className="rounded-card bg-card p-6 shadow-card"
+              className={cn(s.card, s.pad, "rounded-card bg-card warm:p-6 shadow-card")}
               aria-labelledby="verify-title"
             >
               <h2 id="verify-title" className="text-body-strong text-fg">
@@ -1061,7 +1065,7 @@ export function CounterApp({
               <p className="text-sm text-fg-muted">
                 {t("counter.nomatch.body")}
               </p>
-              <div className="flex flex-wrap gap-2.5">
+              <div className={cn(s.actions, "flex flex-wrap gap-2.5")}>
                 <Button size="md" variant="secondary" onClick={reset}>
                   {t("counter.tryAgain")}
                 </Button>
@@ -1078,7 +1082,7 @@ export function CounterApp({
 
           {mode === "scan" && phase.kind === "new" ? (
             <form
-              className="flex flex-col gap-3 rounded-card bg-card p-5 shadow-card"
+              className={cn(s.card, s.pad, "flex flex-col gap-3 rounded-card bg-card warm:p-5 shadow-card")}
               onSubmit={(e) => {
                 e.preventDefault();
                 const phone = phase.phone || newPhone.replace(/\D/g, "");
@@ -1139,7 +1143,7 @@ export function CounterApp({
               {perDollar ? (
                 <AmountPad cents={cents} setCents={setCents} />
               ) : null}
-              <div className="flex gap-2.5">
+              <div className={cn(s.actions, "flex gap-2.5")}>
                 <Button type="button" variant="secondary" onClick={reset}>
                   {t("counter.cancel")}
                 </Button>
@@ -1215,9 +1219,11 @@ export function CounterApp({
               <p className="text-body text-muted-foreground">
                 {t("counter.queued.body")}
               </p>
-              <Button size="counter" className="rounded-full" onClick={reset} autoFocus>
-                {t("counter.next")}
-              </Button>
+              <div className={s.actions}>
+                <Button size="counter" className="rounded-full" onClick={reset} autoFocus>
+                  {t("counter.next")}
+                </Button>
+              </div>
             </section>
           ) : null}
 
@@ -1241,7 +1247,7 @@ export function CounterApp({
                   ? t("counter.hasLeft", { name: firstName(phase.res.member.name), balance: pointsText(phase.res.member.balance, phase.res.member.terminology, ct) })
                   : t("counter.balanceLeft", { balance: pointsText(phase.res.member.balance, phase.res.member.terminology, ct) })}
               </p>
-              <div className="flex flex-col gap-2">
+              <div className={cn(s.actions, "flex flex-col gap-2")}>
                 <Button size="counter" className="rounded-full" onClick={reset} autoFocus>
                   {t("counter.next")}
                 </Button>
@@ -1266,21 +1272,21 @@ export function CounterApp({
 
         <aside
           aria-labelledby="recent-title"
-          className="min-w-0 rounded-card bg-card p-5 shadow-card"
+          className={cn(s.card, s.recent, "min-w-0 rounded-card bg-card warm:p-5 shadow-card")}
         >
-          <h2 id="recent-title" className="font-display text-title font-bold text-fg">
+          <h2 id="recent-title" className={cn(s.recentHead, "font-display text-title font-bold text-fg")}>
             {t("counter.recent.title")}
           </h2>
-          {undoNote ? <p className="text-caption text-muted-foreground">{undoNote}</p> : null}
+          {undoNote ? <p className={cn(s.recentNote, "text-caption text-muted-foreground")}>{undoNote}</p> : null}
           {recent.length ? (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className={cn(s.recentList, "mt-3 flex flex-col gap-2")}>
               {recent.map((a) => {
                 const kind = recentKind(a.type, stampIcon);
                 return (
                 // Fixed trailing columns so every number lines up whether or not the row can be undone (D7).
                 <li
                   key={a.transactionId}
-                  className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto_60px] items-center gap-3 rounded-tile bg-muted px-3 py-2"
+                  className={cn(s.recentRow, "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto_60px] items-center gap-3 rounded-tile bg-muted px-3 py-2")}
                 >
                   <IconTile icon={kind.icon} tone={a.reversed ? "peach" : kind.tone} size="md" />
                   <div className="min-w-0">
@@ -1298,6 +1304,7 @@ export function CounterApp({
                   </div>
                   <span
                     className={cn(
+                      s.recentPoints,
                       "text-end font-display text-title font-bold tabular-nums lining-nums",
                       a.reversed
                         ? "text-fg-subtle line-through"
@@ -1325,7 +1332,7 @@ export function CounterApp({
               })}
             </ul>
           ) : (
-            <p className="mt-2 text-meta text-fg-muted">
+            <p className={cn(s.recentEmpty, "mt-2 text-meta text-fg-muted")}>
               {t("counter.recent.empty")}
             </p>
           )}
@@ -1335,7 +1342,7 @@ export function CounterApp({
             {toast && secondsLeft > 0 ? (
               <div
                 role="status"
-                className="max-lg:order-first lg:sticky lg:bottom-4 z-raised mt-auto flex min-h-14 items-center justify-between gap-3 rounded-full bg-forest px-5 py-2.5 text-meta-strong text-forest-foreground shadow-float"
+                className={cn(s.toast, "max-lg:order-first lg:sticky lg:bottom-4 z-raised mt-auto flex min-h-14 items-center justify-between gap-3 rounded-full bg-forest px-5 py-2.5 text-meta-strong text-forest-foreground shadow-float")}
               >
                 <span className="flex items-center gap-2">
                   <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
@@ -1355,6 +1362,8 @@ export function CounterApp({
           </div>
         </div>
       </div>
+      {/* Clear, tablet and up: the glass dock bar the actions sit in (CounterClear.module.css). Decorative; hidden elsewhere. */}
+      <div aria-hidden className={s.dock} />
     </div>
   );
 }
@@ -1399,14 +1408,14 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
   const { t } = useCounterText();
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center rounded-tile bg-trade-soft font-display font-bold uppercase text-trade-deep", size === "lg" ? "size-16 text-title" : "size-11 text-meta-strong")}>
+      <span aria-hidden className={cn(s.avatar, "inline-flex shrink-0 items-center justify-center rounded-tile bg-trade-soft font-display font-bold uppercase text-trade-deep", size === "lg" ? "size-16 text-title" : "size-11 text-meta-strong")}>
         {initialsOf(name)}
       </span>
       <div className="min-w-40 flex-1">
-        <h2 id={titleId} className="truncate font-display text-h1 text-foreground">
+        <h2 id={titleId} className={cn(s.name, "truncate font-display text-h1 text-foreground")}>
           {name ?? t("counter.member")}
         </h2>
-        {detail ? <p className="text-meta tabular-nums text-muted-foreground">{detail}</p> : null}
+        {detail ? <p className={cn(s.detail, "text-meta tabular-nums text-muted-foreground")}>{detail}</p> : null}
       </div>
       {children}
     </div>
@@ -1417,8 +1426,13 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
 function StampsPanel({ title, have, goal, ready, popFrom, size = "lg", icon }: { title: string; have: number; goal: number; ready: boolean; popFrom?: number; size?: "sm" | "md" | "lg"; icon?: LucideIcon }) {
   const { t } = useCounterText();
   return (
-    <div className="rounded-card bg-card p-5 shadow-card">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
+    <div className={cn(s.card, s.stampCard, "rounded-card bg-card warm:p-5 shadow-card")}>
+      {/* Clear only: the 80px numeral ("7 / 10", always left to right); the "7 of 10" line below is what a screen reader reads. */}
+      <p aria-hidden dir="ltr" className={s.numeral}>
+        {Math.min(have, goal)}
+        <span>/ {goal}</span>
+      </p>
+      <div className={cn(s.stampHead, "mb-4 flex items-baseline justify-between gap-3")}>
         <p className="font-display text-title font-bold text-foreground">{title}</p>
         <p className={cn("shrink-0 text-body-strong tabular-nums", ready ? "text-trade-deep" : "text-muted-foreground")}>
           {t("counter.ofGoal", { n: Math.min(have, goal), goal })}
@@ -1452,13 +1466,13 @@ function Stamped({
   const ready = res.rewardsAvailable[0] ?? null;
   const left = Math.max(0, (res.member.nextReward?.pointsCost ?? goal) - n);
   return (
-    <section role="status" aria-labelledby="ok-title" className="flex flex-col gap-5">
+    <section role="status" aria-labelledby="ok-title" className={cn(s.state, "flex flex-col gap-5")}>
       <CustomerHeader
         name={res.duplicate ? t("counter.alreadyAdded") : res.member.name}
         titleId="ok-title"
         detail={res.memberCreated ? t("counter.firstStamp") : visitThisMonth(res.visitsThisMonth, ct)}
       />
-      <p className={cn("font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums lining-nums", stamps ? "text-trade-deep" : "text-points-text")}>
+      <p className={cn(s.bigNumber, "font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums lining-nums", stamps ? "text-trade-deep" : "text-points-text")}>
         {/* The fraction reads "8 / 10" left to right in every language. */}
         <bdi dir={stamps ? "ltr" : undefined}>
           {stamps ? (
@@ -1484,9 +1498,11 @@ function Stamped({
         <p className="text-meta text-muted-foreground">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
       ) : null}
       {/* Network perk and street-campaign progress ("1 of 3 shops visited") is for the customer's pass, not the barista's screen. */}
-      <Button size="counter" className="rounded-full" onClick={onNext} autoFocus>
-        {t("counter.next")}
-      </Button>
+      <div className={s.actions}>
+        <Button size="counter" className="rounded-full" onClick={onNext} autoFocus>
+          {t("counter.next")}
+        </Button>
+      </div>
       <p className="text-center text-caption text-muted-foreground">{t("counter.returnsIn", { n: Math.round(AUTO_RETURN_MS / 1000) })}</p>
     </section>
   );
@@ -1518,7 +1534,7 @@ function RewardReady({
   const rewardName = reward?.name ?? t("counter.defaultReward");
   const [pick, setPick] = useState(false);
   return (
-    <section aria-labelledby="reward-title" className="flex flex-col gap-5">
+    <section aria-labelledby="reward-title" className={cn(s.state, "flex flex-col gap-5")}>
       <CustomerHeader name={member.name} titleId="reward-title" detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${visitNth(member.visitCount + 1, ct)}`}>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-tile-butter px-3 py-1.5 text-meta-strong text-tile-butter-foreground">
           <span aria-hidden className="size-1.5 rounded-full bg-points" />
@@ -1534,7 +1550,7 @@ function RewardReady({
         {firstName(member.name) ? t("counter.has", { name: firstName(member.name), balance: pointsText(member.balance, member.terminology, ct) }) : t("counter.theyHave", { balance: pointsText(member.balance, member.terminology, ct) })}{" "}
         {carry > 0 ? t("counter.carry", { n: carry }) : t("counter.freshCard")}
       </p>
-      <div className="flex w-full flex-col gap-2">
+      <div className={cn(!(member.rewardsAffordable.length > 1 && pick) && s.actions, "flex w-full flex-col gap-2")}>
         {member.rewardsAffordable.length > 1 && pick ? (
           <ul className="divide-y divide-border rounded-card bg-card px-4 text-start shadow-card" aria-label={t("counter.rewardsReady")}>
             {member.rewardsAffordable.map((r) => (
@@ -1561,7 +1577,7 @@ function RewardReady({
         <Button size="lg" variant="secondary" disabled={busy} onClick={onStamp} className="min-h-14 rounded-full">
           {t("counter.stampInstead")}
         </Button>
-        <button type="button" onClick={onBack} className="mt-1 min-h-11 text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
+        <button type="button" data-text="" onClick={onBack} className="mt-1 min-h-11 text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
           {t("counter.notThem")}
         </button>
       </div>
@@ -1620,7 +1636,7 @@ function MemberPanel({
       ? t(/^free /i.test(member.nextReward.name) ? "counter.toRewardA" : "counter.toReward", { n: member.nextReward.pointsNeeded, reward: /^free /i.test(member.nextReward.name) ? rewardIn(member.nextReward.name, ct) : member.nextReward.name })
       : "";
   return (
-    <section className="flex flex-col gap-5" aria-labelledby="member-title">
+    <section className={cn(s.state, "flex flex-col gap-5")} aria-labelledby="member-title">
       <CustomerHeader
         name={member.name}
         titleId="member-title"
@@ -1646,7 +1662,7 @@ function MemberPanel({
           icon={icon}
         />
       ) : (
-        <div className="rounded-card bg-card p-5 text-center shadow-card">
+        <div className={cn(s.card, s.pad, "rounded-card bg-card warm:p-5 text-center shadow-card")}>
           <p className="font-display text-display tabular-nums text-foreground">
             {member.balance.toLocaleString("en-CA")}
             <span className="text-title text-muted-foreground"> {pointsText(member.balance, member.terminology, ct).replace(/^[\d,]+ /, "")}</span>
@@ -1677,7 +1693,7 @@ function MemberPanel({
         </div>
       ) : (
         <div>
-          <div role="radiogroup" aria-label={t("counter.howMany")} className="flex gap-2">
+          <div role="radiogroup" aria-label={t("counter.howMany")} className={cn(s.seg, "flex gap-2")}>
             {[1, 2, 3].map((n) => (
               <button
                 key={n}
@@ -1698,7 +1714,7 @@ function MemberPanel({
         </div>
       )}
 
-      <div className={cn("flex flex-col gap-2", !!extras && "sticky bottom-0 z-raised -mx-4 border-t border-border bg-background px-4 pb-3 pt-3 lg:-mx-6 lg:px-6")}>
+      <div className={cn(s.actions, "flex flex-col gap-2", !!extras && "sticky bottom-0 z-raised -mx-4 border-t border-border bg-background px-4 pb-3 pt-3 lg:-mx-6 lg:px-6")}>
         <Button size="counter" className="rounded-full" loading={busy} onClick={onAward}>
           {awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty, ct)}
         </Button>

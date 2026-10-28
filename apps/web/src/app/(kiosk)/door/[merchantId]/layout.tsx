@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { MerchantProvider } from "@/components/dashboard/MerchantContext";
+import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
@@ -29,8 +30,10 @@ export default async function DoorLayout({ children, params }: { children: React
   }
   // The language scope lives in the page, not here: a layout is not re-rendered when only ?lang= changes, so the language chips would do nothing.
   return (
-    <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={null}>
-      {children}
-    </MerchantProvider>
+    <ThemeStyle style={detail.merchant.themeStyle} dark={detail.merchant.themeDark} merchantId={detail.merchant.id}>
+      <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={null}>
+        {children}
+      </MerchantProvider>
+    </ThemeStyle>
   );
 }

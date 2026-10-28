@@ -56,6 +56,8 @@ import Navigation from "lucide-react-native/icons/navigation";
 import Globe from "lucide-react-native/icons/globe";
 import Share2 from "lucide-react-native/icons/share-2";
 import Wallet from "lucide-react-native/icons/wallet";
+import Calculator from "lucide-react-native/icons/calculator";
+import MessageCircle from "lucide-react-native/icons/message-circle";
 import Ticket from "lucide-react-native/icons/ticket";
 import Wrench from "lucide-react-native/icons/wrench";
 import FileText from "lucide-react-native/icons/file-text";
@@ -148,6 +150,8 @@ export {
   Globe,
   Share2,
   Wallet,
+  Calculator,
+  MessageCircle,
   Ticket,
   Wrench,
   FileText,

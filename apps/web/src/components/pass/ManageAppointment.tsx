@@ -164,7 +164,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
             {days.map((d) => {
               const n = timesOn(av, d).length;
               return (
-                <button key={d} type="button" aria-pressed={d === day} disabled={!av || n === 0} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", d === day ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg", av && n === 0 && "text-fg-subtle")}>
+                <button key={d} type="button" aria-pressed={d === day} disabled={!av || n === 0} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", d === day ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg", av && n === 0 && "text-fg-subtle")}>
                   <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                   <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
                 </button>
@@ -174,7 +174,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
           <div className="flex flex-wrap gap-2" aria-live="polite">
             {!av ? <p className="text-meta text-fg-muted">{t("bk.time.loading")}</p> : null}
             {timesOn(av, day).map((x) => (
-              <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 min-w-[88px] rounded-input border px-4 tabular-nums focus-visible:focus-ring", slot === x.startsAt ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg")}>{time(x.startsAt)}</button>
+              <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 min-w-[88px] rounded-input border px-4 tabular-nums focus-visible:focus-ring", slot === x.startsAt ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg")}>{time(x.startsAt)}</button>
             ))}
           </div>
           <Button size="lg" fullWidth loading={busy} disabled={!slot} onClick={move}>{t("bk.manage.reschedule")}</Button>

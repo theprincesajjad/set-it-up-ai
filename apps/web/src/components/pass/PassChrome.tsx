@@ -29,6 +29,8 @@ export function LanguageChip({ className }: { className?: string }) {
         aria-label={`${t("lang.label")}: ${info.short}`}
         className={cn(
           "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground transition-colors duration-150 ease-out hover:bg-hover focus-visible:focus-ring data-popup-open:bg-hover",
+          // Clear: a small glass button (it often sits on the pass's brand field or over the map).
+          "clear:border-0 clear:glass-lite",
           // 44 px hit area around the 36 px pill.
           "after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
           className,
@@ -77,16 +79,21 @@ export function PassTopBar({ title, backHref, backLabel, className, children }: 
 /**
  * A pass section card ("Nearby on your street", "Rewards", "Recent visits"): a white card with a soft shadow on the cream canvas, its Fraunces title with its title in a header row
  * and hairline-divided rows below. `children` are usually `<li>`s; rows bring their own vertical padding.
+ * Clear (v6 mock `?s=pass`): the title is a Wallet caps label (11/16) above a flat r20 card; the hairlines are overlaid (no layout height).
  */
 export function PassPanel({ title, action, children, className, as = "ul", id }: { title: ReactNode; action?: ReactNode; children: ReactNode; className?: string; as?: "ul" | "div"; id?: string }) {
   const As = as;
   return (
-    <section aria-label={typeof title === "string" ? title : undefined} id={id} className={cn("overflow-hidden rounded-card border border-line bg-card shadow-card", className)}>
-      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-3.5">
-        <h2 className="font-display text-[20px] font-bold leading-7 text-foreground">{title}</h2>
+    <section
+      aria-label={typeof title === "string" ? title : undefined}
+      id={id}
+      className={cn("overflow-hidden rounded-card border border-line bg-card shadow-card", "clear:overflow-visible clear:rounded-none clear:border-0 clear:bg-transparent clear:shadow-none", className)}
+    >
+      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-3.5 clear:min-h-0 clear:border-0 clear:pt-0 clear:pb-2">
+        <h2 className="font-display text-[20px] font-bold leading-7 text-foreground clear:text-[11px] clear:font-semibold clear:uppercase clear:leading-4 clear:tracking-[0.04em] clear:text-muted-foreground">{title}</h2>
         {action}
       </div>
-      <As className="flex flex-col divide-y divide-line px-4">{children}</As>
+      <As className="flex flex-col divide-y divide-line px-4 clear:card-clear clear:divide-y-0 clear:divide-overlay clear:overflow-hidden clear:rounded-r6">{children}</As>
     </section>
   );
 }

@@ -5,7 +5,7 @@
  * areas are welcome to import from here.
  */
 import type { authApi, customerApi, networkApi } from "@ll/shared";
-import { maskPhone } from "@ll/shared";
+import { maskPhone, themeStyleOf } from "@ll/shared";
 import type {
   discountCards,
   ledgerTransactions,
@@ -125,7 +125,7 @@ export function vipDto(l: VipLevel | null | undefined): customerApi.VipLevelDto 
   return l ? { id: l.id, name: l.name, multiplierPct: l.multiplierPct, perks: l.perks ?? null } : null;
 }
 
-export function merchantBrief(m: Pick<Merchant, "id" | "slug" | "name" | "vertical" | "logoUrl" | "brandColor" | "neighbourhoodId">): customerApi.MerchantBriefDto {
+export function merchantBrief(m: Pick<Merchant, "id" | "slug" | "name" | "vertical" | "logoUrl" | "brandColor" | "neighbourhoodId"> & Partial<Pick<Merchant, "themeStyle">>): customerApi.MerchantBriefDto {
   return {
     id: m.id,
     slug: m.slug,
@@ -134,6 +134,7 @@ export function merchantBrief(m: Pick<Merchant, "id" | "slug" | "name" | "vertic
     logoUrl: m.logoUrl ?? null,
     brandColor: m.brandColor ?? null,
     neighbourhoodId: m.neighbourhoodId ?? null,
+    ...(m.themeStyle ? { themeStyle: themeStyleOf(m.themeStyle) } : {}),
   };
 }
 

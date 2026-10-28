@@ -81,7 +81,7 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
           const c = row.original;
           return (
             <div className="flex min-w-0 items-center gap-3 py-1">
-              <Avatar name={c.name} size={40} />
+              <Avatar name={c.name} size={40} className="cust-av" />
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-body-strong text-fg">{c.name ?? <span className="font-normal text-fg-muted">No name</span>}</span>
@@ -184,7 +184,7 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
   }, [openId]);
 
   return (
-    <div ref={wrap} className={cn("overflow-hidden rounded-card border border-line bg-card transition-opacity", busy && "opacity-60")}>
+    <div ref={wrap} className={cn("cust-grid overflow-hidden rounded-card border border-line bg-card transition-opacity", busy && "opacity-60")}>
       <DataGrid
         table={table}
         recordCount={total ?? rows.length}

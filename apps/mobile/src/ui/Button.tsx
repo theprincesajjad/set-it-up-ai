@@ -35,6 +35,15 @@ export interface ButtonProps {
   haptics?: boolean;
 }
 
+/** Clear button scale (audit #13): pills 32 / 44 (phone touch) / 48; counter 56 r16; the kiosk keeps its 88. */
+const CLEAR_SIZES: Record<ButtonSize, { height: number; px: number; text: TextStyleName; icon: number; radius: number }> = {
+  sm: { height: 32, px: 16, text: "metaStrong", icon: 16, radius: radii.full },
+  md: { height: 44, px: 20, text: "bodyStrong", icon: 18, radius: radii.full },
+  lg: { height: 48, px: 20, text: "bodyStrong", icon: 18, radius: radii.full },
+  counter: { height: 56, px: 24, text: "headline", icon: 22, radius: 16 },
+  kiosk: { height: touchTargets.kiosk, px: 32, text: "title", icon: 26, radius: 20 },
+};
+
 const SIZES: Record<ButtonSize, { height: number; px: number; text: TextStyleName; icon: number; radius: number }> = {
   sm: { height: 36, px: 14, text: "metaStrong", icon: 16, radius: radii.full },
   md: { height: touchTargets.default, px: 18, text: "bodyStrong", icon: 18, radius: radii.full },
@@ -60,8 +69,8 @@ export function Button({
   testID,
   haptics,
 }: ButtonProps) {
-  const { c, r, isDark } = useTheme();
-  const s = SIZES[size];
+  const { c, r, isDark, isClear, glass } = useTheme();
+  const s = (isClear ? CLEAR_SIZES : SIZES)[size];
   const v = variant === "accent" ? "primary" : variant === "tonal" ? "secondary" : variant;
   const palette: Record<Exclude<ButtonVariant, "accent" | "tonal">, { bg: string; fg: string; border?: string; pressed: string }> = {
     primary: { bg: c.brand, fg: c.onBrand, pressed: c.brandPressed },
@@ -71,6 +80,11 @@ export function Button({
     danger: { bg: c.bgSubtle, fg: c.negative, pressed: c.bgMuted },
     inverse: { bg: c.bg, fg: c.fg, pressed: c.bgSubtle },
   };
+  // Clear: solid black primary (white in dark), glass secondary (the seg-track fill with an inner highlight), no glow.
+  if (isClear) {
+    palette.secondary = { bg: glass.segTrack, fg: c.fg, pressed: c.bgMuted };
+    palette.outline = { bg: r.card, fg: c.fg, border: c.borderStrong, pressed: c.bgSubtle };
+  }
   const p = palette[v];
   const off = disabled || loading;
   const fg = disabled ? c.fgSubtle : p.fg;
@@ -104,7 +118,8 @@ export function Button({
           borderColor: p.border,
           transform: pressed ? [{ scale: 0.98 }] : undefined,
         },
-        v === "primary" && !disabled && size !== "sm" ? glow(isDark) : null,
+        v === "primary" && !disabled && size !== "sm" ? (isClear ? ({ boxShadow: isDark ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 2px rgba(0,0,0,0.18)" } as ViewStyle) : glow(isDark)) : null,
+        isClear ? ({ borderCurve: "continuous" } as ViewStyle) : null,
         fullWidth || size === "counter" || size === "kiosk" ? styles.full : null,
         style,
       ]}

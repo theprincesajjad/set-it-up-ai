@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { PassTabBar } from "./PassTabBar";
+import { usePassStyle } from "./useThemeStyle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type campaignsApi, type customerApi, type MessageKey, type networkApi } from "@ll/shared";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -113,6 +114,9 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   }, [wallet.items, toast]);
 
   const hero = useMemo(() => heroMembership(wallet.items), [wallet.items]);
+  // Clear: on the card tab the header sits on the featured shop's colour (the pass's brand field).
+  const clear = usePassStyle() === "clear";
+  const onField = clear && tab === "card" && !!hero;
   const firstName = profile.name?.trim().split(/\s+/)[0] ?? "";
 
   useEffect(() => {
@@ -137,12 +141,22 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
   return (
-    <div data-trade={hero?.merchant.vertical} className="flex flex-col gap-4 pb-32">
-      <header className="flex min-h-11 items-center gap-2">
-        <h1 id="total" className="min-w-0 flex-1 font-display text-[clamp(28px,8.5vw,34px)] font-bold leading-[1.15] tracking-[-0.03em] text-foreground">
+    <div data-trade={hero?.merchant.vertical} className="isolate flex flex-col gap-4 pb-32">
+      <header className={cn("flex min-h-11 items-center gap-2", onField && "text-trade-pass-text")}>
+        <h1
+          id="total"
+          className={cn(
+            "min-w-0 flex-1 font-display",
+            clear
+              ? onField
+                ? "text-[17px] font-semibold leading-6 tracking-[-0.014em]"
+                : "text-[28px] font-bold leading-9 tracking-[-0.022em] text-foreground"
+              : "text-[clamp(28px,8.5vw,34px)] font-bold leading-[1.15] tracking-[-0.03em] text-foreground",
+          )}
+        >
           {tab === "card" && firstName ? (
             <>
-              {t("pass.hi")} <span className="text-trade-deep">{firstName}</span>
+              {t("pass.hi")} <span className={clear ? undefined : "text-trade-deep"}>{firstName}</span>
             </>
           ) : (
             t("sh.wallet.title")
@@ -150,7 +164,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
         </h1>
         {tab === "card" && firstName ? <h2 className="sr-only">{t("sh.wallet.title")}</h2> : null}
         <div className="flex shrink-0 items-center gap-1">
-        <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
+        <Link href="/map" aria-label={t("sh.wallet.search")} className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring", onField ? "text-current" : "text-foreground")}>
           <Search aria-hidden className="size-5" strokeWidth={1.75} />
         </Link>
         <button
@@ -158,7 +172,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
           aria-label={t("sh.tab.settings")}
           aria-current={tab === "settings" ? "page" : undefined}
           onClick={() => selectTab("settings")}
-          className={cn("flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring", tab === "settings" && "bg-hover")}
+          className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring", onField ? "text-current" : "text-foreground", tab === "settings" && "bg-hover")}
         >
           <Settings aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
@@ -213,7 +227,7 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
           {visits.length ? (
             <PassPanel title={t("pass.visits.title")}>
               {visits.map(({ tx }) => (
-                <li key={tx.id} className="flex min-h-14 items-center gap-3 py-2.5">
+                <li key={tx.id} className="flex min-h-14 items-center gap-3 py-2.5 clear:min-h-16 clear:py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body text-foreground">{txLabelFor(t, locale, tx.type, tx.description)}</p>
                     <p className="truncate text-meta text-muted-foreground">{date(tx.createdAt, { month: "short", day: "numeric" })}{tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}</p>
@@ -293,7 +307,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
             <span className={cn("mt-0.5 block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
               <span aria-hidden className="mt-2 block h-0.75 w-36 overflow-hidden rounded-full bg-muted">
-                <span className="block h-0.75 rounded-full bg-trade" style={{ width: `${pct}%` }} />
+                <span className="block h-0.75 rounded-full bg-trade clear:bg-foreground" style={{ width: `${pct}%` }} />
               </span>
             ) : null}
           </span>
@@ -368,10 +382,10 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
       {m.program?.earnType === "stamps" ? (
         <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
       ) : (
-        <div className="flex items-center gap-4 rounded-card bg-trade-soft p-4">
+        <div className="flex items-center gap-4 rounded-card bg-trade-soft p-4 clear:bg-card clear:hairline-inset">
           <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-title font-bold tabular-nums text-trade-deep">{unitsText(locale, m.balance, m.terminology, false)}</p>
+            <p className="font-display text-title font-bold tabular-nums text-trade-deep clear:text-foreground">{unitsText(locale, m.balance, m.terminology, false)}</p>
             <p className="text-meta text-fg-muted">{progressLine(m, t, locale)}</p>
           </div>
         </div>
@@ -537,10 +551,11 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
     <div className="flex flex-col gap-6">
       {ready.map((m) => (
         <section key={m.id} data-trade={m.merchant.vertical} aria-label={m.merchant.name} className="flex flex-col gap-3">
-          <div className="flex items-center gap-2.5 rounded-card bg-trade-soft p-3">
+          {/* Clear: no tinted band (the trade colour stays on the logo); the shop is a plain header over its rewards card. */}
+          <div className="flex items-center gap-2.5 rounded-card bg-trade-soft p-3 clear:bg-transparent clear:px-4 clear:py-0">
             <ShopLogo shop={m.merchant} size={32} />
-            <h2 className="min-w-0 flex-1 truncate font-display text-headline font-bold text-trade-deep"><bdi>{m.merchant.name}</bdi></h2>
-            <span className="text-meta-strong tabular-nums text-trade-deep">{unitsText(locale, m.balance, m.terminology)}</span>
+            <h2 className="min-w-0 flex-1 truncate font-display text-headline font-bold text-trade-deep clear:font-semibold clear:text-foreground"><bdi>{m.merchant.name}</bdi></h2>
+            <span className="text-meta-strong tabular-nums text-trade-deep clear:text-muted-foreground">{unitsText(locale, m.balance, m.terminology)}</span>
           </div>
           {details[m.id] ? <MemberRewards membership={m} detail={details[m.id]!} onChanged={onChanged} /> : <SkeletonCard />}
         </section>

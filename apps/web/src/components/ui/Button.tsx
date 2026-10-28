@@ -35,9 +35,10 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
  * Accent is reserved for points/rewards and is a soft fill, never a loud orange slab.
  */
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed",
-  secondary: "bg-card text-foreground border border-border hover:bg-muted active:bg-hover",
-  tonal: "bg-hover text-foreground hover:bg-sidebar active:bg-sidebar",
+  // Clear (audit #13, v3.2-clear.md 1): solid black primary (white in dark) with a 1px lift; secondary is the glass tint (track fill, luminous edge).
+  primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed clear:shadow-primary clear:hover:bg-primary-hover clear:active:bg-primary-hover",
+  secondary: "bg-card text-foreground border border-border hover:bg-muted active:bg-hover clear:border-0 clear:glass-tint clear:hover:bg-lg-seg-track clear:active:bg-lg-seg-track",
+  tonal: "bg-hover text-foreground hover:bg-sidebar active:bg-sidebar clear:bg-lg-seg-track clear:hover:bg-lg-seg-track clear:active:bg-lg-seg-track",
   ghost: "bg-transparent text-fg hover:bg-bg-subtle active:bg-bg-muted",
   danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 dark:text-bg",
   accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97]",
@@ -46,11 +47,12 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 /** 10 px radius for small buttons, a capsule for the big one, 16 for the counter key. */
+// Clear scale (audit #13): sm = slim 28 / 12, md = default 32 / 16 (44 on a phone), lg = large 48 / 20, counter = 56 / 24 r16. Labels 13 at 550.
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-4 text-meta-strong rounded-full gap-1.5 [--icon:16px]",
-  md: "h-11 px-5 text-body-strong rounded-full gap-2 [--icon:18px]",
-  lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px]",
-  counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px]",
+  sm: "h-9 px-4 text-meta-strong rounded-full gap-1.5 [--icon:16px] clear:h-7 clear:px-3 clear:text-body clear:font-[550] clear:after:-inset-y-2 clear:[--icon:14px]",
+  md: "h-11 px-5 text-body-strong rounded-full gap-2 [--icon:18px] clear:px-4 clear:text-body clear:font-[550] clear:gap-1.5 clear:md:h-8 clear:[--icon:16px]",
+  lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px] clear:h-12 clear:px-5 clear:text-[15px] clear:font-[550]",
+  counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px] clear:min-h-14 clear:rounded-r5 clear:text-[17px] clear:font-[650] clear:tracking-[-0.014em]",
   kiosk: "min-h-22 px-8 text-title rounded-xl gap-3 w-full [--icon:28px]",
 };
 

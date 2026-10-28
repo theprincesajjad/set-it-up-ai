@@ -15,6 +15,8 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useWalletPass } from "./useWalletPass";
 import { WalletButtons } from "./WalletButtons";
 
+/** Clear (v6 mock `?s=pass`): both 48 tall (the "large" button), 15px labels, 18px glyphs; the primary is solid black, the second glass. */
+const clear = "clear:min-h-12 clear:py-0 clear:px-5 clear:text-[15px] clear:font-medium";
 const base = "relative inline-flex min-h-[52px] min-w-0 py-2 select-none items-center justify-center gap-2 rounded-full px-4 text-body-strong transition-[background-color,transform,filter] duration-150 ease-out motion-safe:active:scale-[0.98] focus-visible:focus-ring";
 
 export function PassActions({ card, profile }: { card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
@@ -30,12 +32,12 @@ export function PassActions({ card, profile }: { card: customerApi.CardResponse 
   return (
     <>
       <div className={cn("grid gap-3", w.canAdd ? "grid-cols-2" : "grid-cols-1")}>
-        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className={cn(base, "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed")}>
+        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className={cn(base, "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed", clear, "clear:shadow-none clear:hover:bg-primary-hover clear:active:bg-primary-hover")}>
           <QrCode aria-hidden className="size-5 shrink-0" strokeWidth={1.9} />
           <span className="text-center leading-tight">{t("pass.showCode")}</span>
         </button>
         {w.canAdd ? (
-          <button type="button" onClick={addToWallet} disabled={!!w.busy} aria-busy={!!w.busy || undefined} className={cn(base, "bg-forest text-forest-foreground hover:brightness-110 disabled:opacity-60")}>
+          <button type="button" onClick={addToWallet} disabled={!!w.busy} aria-busy={!!w.busy || undefined} className={cn(base, "bg-forest text-forest-foreground hover:brightness-110 disabled:opacity-60", clear, "clear:glass-lite clear:text-foreground clear:hover:brightness-100")}>
             <Wallet aria-hidden className="size-5 shrink-0" strokeWidth={1.9} />
             <span className="text-center leading-tight">{t("pass.addWallet")}</span>
           </button>

@@ -40,9 +40,11 @@ describe("generated css", () => {
     expect(css).toContain('var(--font-noto-nastaliq, "Noto Nastaliq Urdu")');
     expect(css).toContain("--text-body: 0.9375rem;");
     expect(css).toContain("--text-display-number: 2.5rem;");
-    expect(css).toContain('var(--font-bricolage, "Bricolage Grotesque")');
     expect(css).toContain('var(--font-inter, "Inter")');
-    expect(css).toContain('--font-display: var(--font-fraunces, "Fraunces"), var(--font-noto-deva');
+    // The display and wordmark stacks live in tokens.css so Clear can swap them (Warm keeps Fraunces and Bricolage).
+    expect(css).toContain("--font-display: var(--ll-face-display);");
+    expect(buildTokensCss()).toContain('var(--font-bricolage, "Bricolage Grotesque")');
+    expect(buildTokensCss()).toContain('--ll-face-display: var(--font-fraunces, "Fraunces"), var(--font-noto-deva');
     expect(css).not.toMatch(/Figtree|pine|marigold/i);
     expect(css).not.toMatch(/undefined|NaN/);
   });
@@ -72,11 +74,13 @@ describe("generated css", () => {
     expect(css).toContain("--color-hover: var(--accent);");
     expect(css).toContain("--color-fg: var(--ll-color-fg);");
     expect(css).toContain("--radius-lg: var(--radius);");
-    expect(css).toContain("--radius-card: 22px;");
+    expect(css).toContain("--radius-card: var(--ll-radius-card);");
+    expect(buildTokensCss()).toContain("--ll-radius-card: 22px;");
     expect(css).toContain("--shadow-sheet: var(--ll-shadow-sheet);");
     expect(css).toContain("--shadow-card: var(--ll-shadow-card);");
     expect(css).toContain("--shadow-glow: var(--ll-shadow-glow);");
-    expect(css).toContain("--radius-tile: 20px;");
+    expect(css).toContain("--radius-tile: var(--ll-radius-tile);");
+    expect(buildTokensCss()).toContain("--ll-radius-tile: 20px;");
     for (const n of ["primary-text", "forest", "tile-peach", "tile-peach-foreground", "tile-lilac", "tile-sky", "tile-rose", "trade", "trade-foreground", "trade-alt", "trade-soft", "trade-deep"]) {
       expect(css, n).toContain(`--color-${n}: var(--`);
     }

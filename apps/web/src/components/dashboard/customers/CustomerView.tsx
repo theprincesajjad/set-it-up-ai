@@ -71,7 +71,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
             const r = await revealAct.run(() => api.revealPhone(c.memberId));
             if (r) setFullPhone(r.phone);
           }}
-          className="text-meta font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg disabled:opacity-60"
+          className="cust-reveal text-meta font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg disabled:opacity-60"
           aria-label={`Reveal phone for ${c.name ?? "this customer"}`}
         >
           Reveal
@@ -84,7 +84,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
     <div>
       <p className="text-meta text-fg-muted">Balance</p>
       <p className="mt-1 flex items-baseline gap-2">
-        <span className="font-display text-[40px] font-extrabold leading-[44px] tracking-[-0.01em] text-points-text tabular">{formatNumber(c.balance)}</span>
+        <span className="cust-balance font-display text-[40px] font-extrabold leading-[44px] tracking-[-0.01em] text-points-text tabular">{formatNumber(c.balance)}</span>
         <span className="text-body text-fg-muted">{formatPoints(c.balance, term, false).replace(/^[\d,]+\s*/, "")}</span>
       </p>
       {/* "Reward ready" already shows as the tag above; this line only says how far to go (D5). */}
@@ -103,7 +103,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
   const panelSummary = (
     <div className="flex flex-col gap-4">
       {goalN > 0 ? (
-        <div className="rounded-[14px] bg-bg-subtle px-4 py-3.5">
+        <div className="cust-progress rounded-[14px] bg-bg-subtle px-4 py-3.5">
           <p className="text-[15px] font-semibold text-fg tabular">
             {`${Math.min(c.balance, goalN)} of ${goalN} ${term} · `}
             {c.rewardAvailable ? "reward ready" : `${Math.max(0, goalN - c.balance)} to ${active[0] ? (/^free /i.test(active[0].name) ? `a ${active[0].name.toLowerCase()}` : active[0].name) : "the next reward"}`}
@@ -115,10 +115,10 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
       ) : (
         <div>
           <p className="text-meta text-fg-muted">Balance</p>
-          <p className="mt-1 font-display text-[32px] font-extrabold leading-9 text-points-text tabular">{formatPoints(c.balance, term)}</p>
+          <p className="cust-balance mt-1 font-display text-[32px] font-extrabold leading-9 text-points-text tabular">{formatPoints(c.balance, term)}</p>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="cust-acts flex flex-wrap gap-2">
         <Button
           size="sm"
           loading={acting}
@@ -332,23 +332,24 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
         </div>
       ) : null}
       {layout === "panel" ? (
-        <div className="flex flex-col gap-6">
+        // `cust-*` hooks: in Clear (kit/clear.css) each block is a card inside the glass sheet, 12 apart (audit #19); Warm ignores them.
+        <div className="cust-stack flex flex-col gap-6">
           {panelSummary}
-          {panelDetails}
-          {ledger}
-          {redemptions}
-          {notesBlock}
+          <div className="cust-card">{panelDetails}</div>
+          <div className="cust-card">{ledger}</div>
+          <div className="cust-card">{redemptions}</div>
+          <div className="cust-card">{notesBlock}</div>
         </div>
       ) : (
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="flex min-w-0 flex-col gap-8">
-            {summary}
-            {ledger}
+        <div className="cust-page grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="cust-col flex min-w-0 flex-col gap-8">
+            <div className="cust-card">{summary}</div>
+            <div className="cust-card">{ledger}</div>
           </div>
-          <div className="flex flex-col gap-8">
-            {details}
-            {redemptions}
-            {notesBlock}
+          <div className="cust-col flex flex-col gap-8">
+            <div className="cust-card">{details}</div>
+            <div className="cust-card">{redemptions}</div>
+            <div className="cust-card">{notesBlock}</div>
           </div>
         </div>
       )}

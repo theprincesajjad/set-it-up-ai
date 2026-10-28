@@ -11,7 +11,7 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 
-const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle");
+const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle");
 
 /**
  * /shops/<slug>/queue: join the shop's walk-in line from a phone (Figma M1). A guest gives a first name and a mobile number for the one

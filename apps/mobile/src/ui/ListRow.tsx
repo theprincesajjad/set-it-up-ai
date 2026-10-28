@@ -31,12 +31,12 @@ export interface ListRowProps {
 
 /** Row: >= 52 tall, a pastel IconTile (Lucide glyph, never emoji), hairline inset to the text. */
 export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing, chevron, onPress, divider = true, danger, minHeight, accessibilityLabel, selected, strong, tone }: ListRowProps) {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   const hasLeading = !!(leading || Icon);
   const content = (pressed: boolean) => (
-    <View style={[styles.row, { minHeight: minHeight ?? (subtitle ? 60 : 52) }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
+    <View style={[styles.row, { minHeight: minHeight ?? (isClear ? (subtitle ? 64 : 44) : subtitle ? 60 : 52) }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
       {leading ?? (Icon ? (
-        <IconTile icon={Icon} tone={danger ? "rose" : (tone ?? toneFor(title))} size={38} />
+        <IconTile icon={Icon} tone={danger ? "rose" : (tone ?? toneFor(title))} size={isClear ? 36 : 38} />
       ) : null)}
       <View style={styles.text}>
         <Text variant={strong ? "bodyStrong" : "body"} color={danger ? "negative" : "fg"}>
@@ -50,7 +50,7 @@ export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing,
       </View>
       {trailing}
       {chevron ? <ChevronRight size={18} color={c.fgSubtle} strokeWidth={2} /> : null}
-      {divider ? <View style={[styles.divider, { start: hasLeading ? (leading ? 56 : 50) : 0, backgroundColor: c.line }]} /> : null}
+      {divider ? <View style={[styles.divider, { start: hasLeading ? (leading ? 56 : isClear ? 48 : 50) : 0, backgroundColor: c.line }]} /> : null}
     </View>
   );
   if (!onPress) return content(false);

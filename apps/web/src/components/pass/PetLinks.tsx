@@ -9,7 +9,7 @@ export function PetLinks({ pets, cards, shop }: { pets: number; cards: number; /
     return (
       <section aria-label={t("pet.add.cta")} data-testid="add-your-dog" className="flex flex-col gap-2 rounded-card border border-border bg-card p-4">
         <p className="text-body text-fg">{t("pet.add.body", { shop })}</p>
-        <Link href="/me/pets" className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring">{t("pet.add.cta")}</Link>
+        <Link href="/me/pets" className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring clear:shadow-none">{t("pet.add.cta")}</Link>
       </section>
     );
   if (!pets && !cards) return null;

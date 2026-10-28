@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Fraunces, Inter, Noto_Naskh_Arabic, Noto_Nastaliq_Urdu, Noto_Sans_Devanagari, Noto_Sans_Gurmukhi } from "next/font/google";
+import { clear } from "@ll/design-tokens";
 import { BRAND } from "@ll/shared";
 import { ToastProvider } from "@/components/ui/Toast";
 import { env } from "@/lib/env";
+import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
+/** UI + body. The opsz axis gives Clear its display cut on titles (font-optical-sizing: auto); Warm reads the same file. */
 /** UI + body (docs/design/foundations.md "Type"). Variable names are what @ll/design-tokens/theme.css reads. */
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const inter = Inter({ subsets: ["latin"], axes: ["opsz"], variable: "--font-inter", display: "swap" });
 /** Page titles, card titles and big numbers (Main Street Warm). Variable weight, so 600 and 800 are one file; Latin only, hi/ur/pa headings fall to the Noto faces below. */
 const fraunces = Fraunces({ subsets: ["latin", "latin-ext"], axes: ["opsz"], variable: "--font-fraunces", display: "swap" });
 /** The wordmark only (font-wordmark). */
@@ -36,15 +39,17 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FBF6EE" },
-    { media: "(prefers-color-scheme: dark)", color: "#1A1410" },
-  ],
+  // Clear is the default and light only (docs/design/v3.2-clear-build.md): the Clear canvas.
+  themeColor: clear.canvas,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-CA" className={`${inter.variable} ${fraunces.variable} ${bricolage.variable} ${notoDeva.variable} ${notoGuru.variable} ${notoNastaliq.variable} ${notoNaskh.variable}`}>
+    // data-theme-style / data-theme: Clear light by default; the head script (and <ThemeStyle> in a shop's layout) corrects them before paint.
+    <html lang="en-CA" data-theme-style="clear" data-theme="light" suppressHydrationWarning className={`${inter.variable} ${fraunces.variable} ${bricolage.variable} ${notoDeva.variable} ${notoGuru.variable} ${notoNastaliq.variable} ${notoNaskh.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="bg-bg font-sans text-body text-fg antialiased">
         <a href="#main" className="sr-only z-toast rounded-full bg-fg px-4 py-2 text-meta-strong text-bg focus:not-sr-only focus:fixed focus:start-4 focus:top-4">
           Skip to content

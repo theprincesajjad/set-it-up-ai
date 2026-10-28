@@ -1,62 +1,126 @@
 /**
- * Light/dark themes from @ll/design-tokens. Customer app follows the OS;
- * counter mode and kiosk default to light (bright shops) with a manual toggle
- * (brand.md § 4), via a nested <ThemeScope scheme="light">.
+ * Themes from @ll/design-tokens, in two looks (docs/design/v3.2-clear.md):
+ * - **Clear** (default): light, graphite dark only when chosen; Liquid Glass on the chrome (`Theme.glass`).
+ * - **Main Street Warm**: the v3.1 palette; follows the OS unless a scheme is forced.
+ * The look comes from this device's choice, else the user's or the shop's setting, else Clear (`appearance.ts`).
+ * Counter mode and kiosk nest a <ThemeScope> (light by default, bright shops; brand.md section 4).
  */
-import { colors, nativeFonts, textStyles, tradeColors, verticalTrade, verticalVisual, type ColorRoles, type TextStyleName, type TradeColors, type VerticalColors } from "@ll/design-tokens";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { rolesFor, type RolesV3 } from "./roles";
-import { useColorScheme, type TextStyle } from "react-native";
+import { nativeFonts, textStyles, type TextStyleName } from "@ll/design-tokens";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AccessibilityInfo, Platform, useColorScheme, type TextStyle } from "react-native";
+import { getJson, setJson } from "../state/storage";
+import { parseStoredPref, resolveAppearance, type Appearance, type AppearancePref, type ThemeStyle } from "./appearance";
+import { buildTheme, type Theme } from "./build";
 
+export type { Theme } from "./build";
+export { buildTheme } from "./build";
 export type SchemeName = "light" | "dark";
 export type SchemePref = "system" | SchemeName;
-
-export interface Theme {
-  scheme: SchemeName;
-  isDark: boolean;
-  /** v2 role names (aliases of `r`, removed in the final sweep). */
-  c: ColorRoles;
-  /** v3 roles: the shadcn names the web uses (`background`, `mutedForeground`, `points`, `pointsText`, `paper` ...). */
-  r: RolesV3;
-  /** Vertical identity colours (placeholder tiles, map pins). */
-  vertical: (v: string | null | undefined) => VerticalColors & { icon: string; label: string };
-  /** The trade accent family for a vertical (accent, foreground, alt, soft, deep): the same values as the web `[data-trade]` variables. */
-  trade: (v: string | null | undefined) => TradeColors;
-}
+export type { ThemeStyle, AppearancePref } from "./appearance";
 
 const ThemeContext = createContext<Theme | null>(null);
 
-function buildTheme(scheme: SchemeName): Theme {
-  return {
-    scheme,
-    isDark: scheme === "dark",
-    c: colors[scheme],
-    r: rolesFor(scheme),
-    vertical: (v) => {
-      const vis = verticalVisual(v);
-      return { ...vis[scheme], icon: vis.iconComponent, label: vis.label };
-    },
-    trade: (v) => tradeColors(verticalTrade(v), scheme),
-  };
+/** iOS Reduce Transparency (and the web media query); false elsewhere. */
+export function useReduceTransparency(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined" || !window.matchMedia) return;
+      const mq = window.matchMedia("(prefers-reduced-transparency: reduce)");
+      setOn(mq.matches);
+      const fn = (e: { matches: boolean }) => setOn(e.matches);
+      mq.addEventListener?.("change", fn);
+      return () => mq.removeEventListener?.("change", fn);
+    }
+    let live = true;
+    AccessibilityInfo.isReduceTransparencyEnabled?.()
+      .then((v) => live && setOn(!!v))
+      .catch(() => undefined);
+    const sub = AccessibilityInfo.addEventListener("reduceTransparencyChanged", (v: boolean) => setOn(!!v));
+    return () => {
+      live = false;
+      sub?.remove();
+    };
+  }, []);
+  return on;
 }
 
-/** Root provider: follows the OS unless `pref` forces a scheme. */
-export function ThemeProvider({ pref = "system", children }: { pref?: SchemePref; children: ReactNode }) {
+const APPEARANCE_KEY = "ll.appearance.v1";
+
+export interface AppearanceValue {
+  /** The resolved look of the root provider. */
+  appearance: Appearance;
+  /** This device's choice (null fields follow the user / shop setting). */
+  device: AppearancePref;
+  setDevice: (patch: AppearancePref) => void;
+  /** The signed-in user's server setting (AppearanceSync feeds it). */
+  setUser: (pref: AppearancePref | null) => void;
+}
+
+const AppearanceContext = createContext<AppearanceValue | null>(null);
+
+/**
+ * Root provider: resolves the look from the device choice (persisted), the user's server setting and the OS.
+ * `pref` forces a scheme (tests, previews).
+ */
+export function ThemeProvider({ pref, children }: { pref?: SchemePref; children: ReactNode }) {
   const os = useColorScheme();
-  const scheme: SchemeName = pref === "system" ? (os === "dark" ? "dark" : "light") : pref;
-  const theme = useMemo(() => buildTheme(scheme), [scheme]);
+  const reduce = useReduceTransparency();
+  const [device, setDeviceState] = useState<AppearancePref>({});
+  const [loaded, setLoaded] = useState(false);
+  const [user, setUser] = useState<AppearancePref | null>(null);
+  useEffect(() => {
+    let live = true;
+    void getJson<unknown>(APPEARANCE_KEY).then((raw) => {
+      if (!live) return;
+      setDeviceState(parseStoredPref(raw));
+      setLoaded(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const setDevice = useCallback((patch: AppearancePref) => {
+    setDeviceState((d) => {
+      const next = { ...d, ...patch };
+      void setJson(APPEARANCE_KEY, next);
+      return next;
+    });
+  }, []);
+  const appearance = resolveAppearance({ device: pref ? { ...device, scheme: pref } : device, user, os: os === "dark" ? "dark" : "light" });
+  const theme = useMemo(() => buildTheme(appearance.scheme, appearance.style, reduce), [appearance.scheme, appearance.style, reduce]);
+  const value = useMemo<AppearanceValue>(() => ({ appearance, device, setDevice, setUser }), [appearance.scheme, appearance.style, device, setDevice]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Hold the first paint until the device choice is read, so a Warm device never flashes a frame of Clear.
+  if (!loaded) return null;
+  return (
+    <AppearanceContext.Provider value={value}>
+      <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+    </AppearanceContext.Provider>
+  );
+}
+
+/** The device choice and its setters (Settings, AppearanceSync). */
+export function useAppearance(): AppearanceValue {
+  const v = useContext(AppearanceContext);
+  return v ?? { appearance: { style: "clear", scheme: "light" }, device: {}, setDevice: () => undefined, setUser: () => undefined };
+}
+
+/**
+ * Nested override, e.g. counter mode (light by default). `style` defaults to the parent's look, so a scope only changes what it names.
+ */
+export function ThemeScope({ scheme, style, children }: { scheme: SchemeName; style?: ThemeStyle; children: ReactNode }) {
+  const parent = useContext(ThemeContext);
+  const s = style ?? parent?.style ?? "clear";
+  const reduce = parent?.reduceTransparency ?? false;
+  const theme = useMemo(() => buildTheme(scheme, s, reduce), [scheme, s, reduce]);
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
 
-/** Nested override, e.g. counter mode (light by default). */
-export function ThemeScope({ scheme, children }: { scheme: SchemeName; children: ReactNode }) {
-  const theme = useMemo(() => buildTheme(scheme), [scheme]);
-  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
-}
+const FALLBACK = buildTheme("light");
 
 export function useTheme(): Theme {
   const t = useContext(ThemeContext);
-  return t ?? buildTheme("light");
+  return t ?? FALLBACK;
 }
 
 /**

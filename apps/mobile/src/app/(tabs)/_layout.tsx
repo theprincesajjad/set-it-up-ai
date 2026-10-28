@@ -11,7 +11,7 @@ import { initials } from "../../lib/award";
 import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { CardQrIcon, glow, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
+import { CardQrIcon, Glass, glow, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
 
 type TabName = "map" | "discover" | "wallet" | "activity";
 const LABEL_KEYS = { map: "sh.nav.map", discover: "sh.nav.discover", wallet: "sh.nav.wallet", activity: "sh.nav.activity" } as const satisfies Record<TabName, MessageKey>;
@@ -22,7 +22,7 @@ const ORDER: TabName[] = ["map", "discover", "wallet", "activity"];
  * 60 pt, QR glyph, opens My card as a sheet over the current tab.
  */
 function CardButton() {
-  const { c, isDark } = useTheme();
+  const { c, isDark, isClear } = useTheme();
   const { t } = useLocale();
   return (
     <Pressable
@@ -33,7 +33,12 @@ function CardButton() {
         haptic.tap();
         router.push("/card");
       }}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.brand, transform: pressed ? [{ scale: 0.94 }] : undefined }, glow(isDark)]}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: c.brand, transform: pressed ? [{ scale: 0.94 }] : undefined },
+        // Clear: the solid black primary, the same height as the glass tab bar beside it, a soft drop shadow (no glow).
+        isClear ? ({ width: 64, height: 64, borderRadius: 32, boxShadow: isDark ? "0 8px 20px rgba(0,0,0,0.5)" : "0 8px 20px -4px rgba(20,24,40,0.35), inset 0 1px 0 rgba(255,255,255,0.18)" } as object) : glow(isDark),
+      ]}
     >
       <CardQrIcon size={24} color={c.onBrand} />
     </Pressable>
@@ -46,7 +51,7 @@ function CardButton() {
  * BlurView + the 86% chrome fill; it slides away when a screen hides it (Explore's shop sheet).
  */
 function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
-  const { c, r, isDark } = useTheme();
+  const { c, r, x, isDark, isClear } = useTheme();
   const { t } = useLocale();
   const { user } = useSession();
   const profile = useProfile();
@@ -91,6 +96,54 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
     );
   };
   if (!state.routes.some((r) => ORDER.includes(r.name as TabName))) return null;
+  if (isClear) {
+    // Clear (audit 2.4): a 64 strong-glass capsule, radius 32, inset 4 (5 inline); equal tabs 56 tall with a 24 icon, 2, and a 10/12
+    // label; the selected tab lifts into brighter glass (radius 28) in link blue. 16 from the sides, like every phone edge.
+    const clearItem = (name: TabName) => {
+      const index = state.routes.findIndex((rt) => rt.name === name);
+      const route = state.routes[index];
+      if (!route) return null;
+      const focused = state.index === index;
+      const color = focused ? (isDark ? "#6CB8FF" : x.link) : c.fgMuted;
+      const who = profile.data?.name ?? user?.name;
+      const icon =
+        name === "map" ? <TabMapIcon color={color} strokeWidth={1.7} /> : name === "discover" ? <TabDiscoverIcon color={color} filled={focused} /> : name === "wallet" ? <TabWalletIcon color={color} strokeWidth={1.7} /> : (
+          <View style={[styles.avatarClear, { backgroundColor: focused ? color : r.muted }]}>
+            <Text allowFontScaling={false} style={styles.avatarTextClear} rawColor={focused ? (isDark ? "#000000" : "#FFFFFF") : c.fg}>
+              {initials(who)}
+            </Text>
+          </View>
+        );
+      return (
+        <Pressable
+          key={route.key}
+          accessibilityRole="tab"
+          accessibilityLabel={t(LABEL_KEYS[name])}
+          accessibilityState={{ selected: focused }}
+          onPress={() => {
+            if (focused) return;
+            haptic.select();
+            navigateToTab(route.key);
+          }}
+          style={styles.tabClear}
+        >
+          {focused ? <Glass variant="lift" radius={28} noShadow={false} style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+          {icon}
+          <Text allowFontScaling={false} numberOfLines={1} style={styles.tabLabel} rawColor={focused ? (isDark ? c.fg : x.link) : c.fgMuted}>
+            {t(LABEL_KEYS[name])}
+          </Text>
+        </Pressable>
+      );
+    };
+    return (
+      <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom: Math.max(16, bottom - 10), gap: 8, transform: [{ translateY: y }] }]}>
+        <Glass variant="strong" radius={32} accessibilityRole="tablist" style={styles.capsuleClear}>
+          {ORDER.map(clearItem)}
+        </Glass>
+        <CardButton />
+      </Animated.View>
+    );
+  }
   return (
     <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom, transform: [{ translateY: y }] }]}>
       <View accessibilityRole="tablist" style={[styles.capsule, shadow(isDark ? shadowFloatDark : shadows.float.css), isDark && Platform.OS !== "web" ? { shadowOpacity: 0.4 } : null]}>
@@ -134,4 +187,9 @@ const styles = StyleSheet.create({
   avatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 11, lineHeight: 14, fontWeight: "600" },
   card: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
+  capsuleClear: { flex: 1, flexDirection: "row", alignItems: "stretch", height: 64, paddingVertical: 4, paddingHorizontal: 5 },
+  tabClear: { flex: 1, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", gap: 2 },
+  tabLabel: { fontSize: 10, lineHeight: 12, fontWeight: "600" },
+  avatarClear: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  avatarTextClear: { fontSize: 9, lineHeight: 12, fontWeight: "700" },
 });

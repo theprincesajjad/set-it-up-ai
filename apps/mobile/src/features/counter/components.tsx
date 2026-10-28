@@ -26,6 +26,7 @@ import {
   Clock3,
   Ellipsis,
   Gift,
+  Glass,
   IconButton,
   RotateCcw,
   Sheet,
@@ -38,9 +39,46 @@ import type { CounterCustomer } from "../../lib/award";
  * Counter header (canvas Counter.dc.html): the shop in Bricolage 800 17 over "counter · <location>", and the
  * staff capsule (28 pt initials, first name, ▾) that opens the counter menu (today, queue, settings, switch).
  */
-export function CounterHeader({ title, subtitle, staff, onMenu }: { title: string; subtitle?: string | null; staff: ActiveStaff | null; onStaff?: () => void; onMenu: () => void; canSwitch?: boolean }) {
-  const { c } = useTheme();
+export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { title: string; subtitle?: string | null; staff: ActiveStaff | null; onStaff?: () => void; onMenu: () => void; canSwitch?: boolean; /** Clear: the shop mark's trade colour. */ vertical?: string | null }) {
+  const { c, isClear, trade } = useTheme();
   const insets = useSafeAreaInsets();
+  if (isClear) {
+    // Clear counter top bar (audit #21, #38): flat glass (blur only, no rim: the counter's performance budget), 64 tall, the 36 shop
+    // mark, the name 16/24 and the staff button 40 with a 28 avatar.
+    const tc = trade(vertical);
+    return (
+      <Glass flat radius={0} style={[styles.clearHeader, { marginTop: -insets.top, paddingTop: insets.top, minHeight: 64 + insets.top }]}>
+        <View style={[styles.clearMark, { backgroundColor: tc.accent }]}>
+          <Text allowFontScaling={false} rawColor={tc.foreground} style={{ fontSize: 13, lineHeight: 16, fontWeight: "600" }}>
+            {initials(title).toUpperCase()}
+          </Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 16, lineHeight: 24, fontWeight: "600", letterSpacing: -0.22 }} numberOfLines={1} accessibilityRole="header">
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={ui(12, 400, 16)} rawColor={c.fgMuted} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+        {staff ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`More. Signed in as ${staff.name ?? "staff"}`} onPress={onMenu} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+            <Glass radius={20} style={styles.clearStaff}>
+              <View style={[styles.staffAv, { backgroundColor: c.bgSubtle }]}>
+                <Text style={ui(10, 600, 12)} rawColor={c.fgMuted}>{initials(staff.name).toUpperCase()}</Text>
+              </View>
+              <Text style={ui(13, 500, 20)}>{staff.name?.split(" ")[0] ?? "Staff"}</Text>
+              <ChevronDownGlyph size={12} strokeWidth={2.4} color={c.fg} />
+            </Glass>
+          </Pressable>
+        ) : (
+          <IconButton icon={Ellipsis} label="More" variant="secondary" size={44} onPress={onMenu} />
+        )}
+      </Glass>
+    );
+  }
   return (
     <View style={[styles.header, { borderBottomColor: c.line, paddingTop: Math.max(7, 54 - insets.top) }]}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -529,6 +567,9 @@ export function RewardPicker({
 const styles = StyleSheet.create({
   // Canvas: 54 pt top padding includes the status bar; the screen's safe area provides that part.
   header: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingTop: 7, paddingBottom: 14, borderBottomWidth: hairline },
+  clearHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, minHeight: 64, zIndex: 2 },
+  clearMark: { width: 36, height: 36, borderRadius: 10, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
+  clearStaff: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingLeft: 6, paddingRight: 12 },
   staffChip: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 4, paddingRight: 6, height: 36, borderRadius: 999 },
   staffAv: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   clear: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },

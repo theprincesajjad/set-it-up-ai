@@ -51,3 +51,4 @@ export * from "./QuickActionTile";
 export * from "./Sparkline";
 export * from "./TrendBars";
 export * from "./tones";
+export * from "./ClearKit";

@@ -13,11 +13,11 @@ import { useNeedsYouCount } from "@/lib/dashboard/needsYou";
 import { cn } from "@/lib/utils";
 
 /** 44 px square, round: the shared look of the icon buttons in the bar. */
-export const topIconButton = "relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:focus-ring aria-expanded:bg-muted";
+export const topIconButton = "relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:focus-ring aria-expanded:bg-muted clear:hover:bg-lg-seg-track clear:aria-expanded:bg-lg-seg-track clear:max-md:glass-chrome clear:md:size-8 clear:md:[&_svg]:size-[18px]";
 
 /** Where the shop is. One location: its street. Several: how many, linking to Locations. Not a filter: no page filters by it. */
 export function LocationChip({ label, href }: { label: string; href?: string }) {
-  const cls = "inline-flex h-11 max-w-55 items-center gap-1.5 rounded-lg px-2 text-body font-medium text-foreground";
+  const cls = "inline-flex h-11 max-w-55 items-center gap-1.5 rounded-lg px-2 text-body font-medium text-foreground clear:h-8 clear:rounded-full clear:px-1.5 clear:font-[550]";
   const inner = (
     <>
       <MapPin aria-hidden className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
@@ -25,7 +25,7 @@ export function LocationChip({ label, href }: { label: string; href?: string }) 
     </>
   );
   return href ? (
-    <Link href={href} className={cn(cls, "hover:bg-muted focus-visible:focus-ring")}>
+    <Link href={href} className={cn(cls, "hover:bg-muted focus-visible:focus-ring clear:hover:bg-lg-seg-track")}>
       {inner}
       <ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link>
@@ -51,11 +51,11 @@ export function SearchField({ onOpen, placeholder }: { onOpen: () => void; place
     <button
       type="button"
       onClick={onOpen}
-      className="flex h-11 min-w-0 max-w-95 flex-1 items-center gap-2 rounded-lg bg-muted px-3 text-start text-body text-muted-foreground transition-colors hover:bg-hover focus-visible:focus-ring"
+      className="flex h-11 min-w-0 max-w-95 flex-1 items-center gap-2 rounded-lg bg-muted px-3 text-start text-body text-muted-foreground transition-colors hover:bg-hover focus-visible:focus-ring clear:h-8 clear:w-[min(420px,36vw)] clear:max-w-[420px] clear:flex-none clear:rounded-r5 clear:bg-lg-seg-track clear:hover:bg-lg-seg-track"
     >
       <Search aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
       <span className="min-w-0 flex-1 truncate">{placeholder}</span>
-      <kbd dir="ltr" className="shrink-0 rounded-sm border border-border px-1.5 text-caption text-muted-foreground">
+      <kbd dir="ltr" className="shrink-0 rounded-sm border border-border px-1.5 text-caption text-muted-foreground clear:border-0 clear:px-0 clear:text-[11px] clear:leading-4 clear:font-[550]">
         {key}
       </kbd>
     </button>
@@ -78,7 +78,7 @@ export function LanguageMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-body font-medium text-foreground hover:bg-muted focus-visible:focus-ring aria-expanded:bg-muted"
+        className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-body font-medium text-foreground hover:bg-muted focus-visible:focus-ring aria-expanded:bg-muted clear:md:h-8 clear:glass-lite clear:border-0 clear:font-[550] clear:[&_svg]:size-3.5"
       >
         <Globe aria-hidden className="size-4" strokeWidth={1.75} />
         <span lang={current.bcp47}>{current.short}</span>

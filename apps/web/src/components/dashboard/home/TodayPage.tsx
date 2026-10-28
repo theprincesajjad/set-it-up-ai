@@ -7,8 +7,15 @@
  *
  * Main Street Warm: a greeting title, a sentence that compares today with a usual day, pastel stat tiles (the first in the shop's trade colour)
  * with sparklines, Needs you with icon tiles and action pills, visits by hour with Up next beside it, and pastel quick-action tiles.
+ *
+ * Clear (the default theme; docs/design/v3.2-clear-audit.md 2.1 and the v6 mock): the greeting with only the date under it, an 8-column
+ * grid (stat cards span 2 each, Needs you 5 and the chart column 3, both 332 tall), 16px between cards, 24 under the header. On phones the
+ * header's "Open counter" becomes a 56px CTA in a glass frame, and the stat cards are drawn first (CSS order; the DOM keeps Needs you
+ * first, which the shell tests read).
  */
-import { Calculator, Moon, Sun, Sunset } from "lucide-react";
+import {
+  BarChart3, CalendarDays, Calculator, CalendarX, ChevronRight, Clock, CreditCard, Gift, Moon, PackageCheck, ScanLine, ShoppingBag, Sun, Sunset, Ticket, User, Users, Wrench, type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { PLANS } from "@ll/shared";
@@ -29,8 +36,20 @@ import {
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 import { formatNumber } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
 import { StreetCard } from "./StreetCard";
+import { useThemeStyle } from "@/components/ui/ThemeStyle";
+
+/** Clear stat-card icons, in the order each trade lists its numbers (lib/dashboard/today.ts). */
+const STAT_ICONS: Record<string, LucideIcon[]> = {
+  loyalty: [Users, Ticket, Gift, User],
+  restaurant: [ShoppingBag, Clock, CreditCard, BarChart3],
+  appointments: [CalendarDays, Users, User, Gift],
+  studio: [CalendarDays, Users, Clock, ScanLine],
+  service: [Wrench, CalendarDays, CalendarX, PackageCheck],
+};
+
 
 /** What Café & Retail switches on for a trade, in the owner's words (the Today line that sells the plan). */
 const TRADE_TOOLS: Record<string, string> = {
@@ -48,6 +67,7 @@ export function TodayPage() {
   const { api, base, detail, role, enabled, features, me, viewingAs: viewingAsOther } = useMerchant();
   const loc = useLocaleOrEnglish();
   const { t } = loc;
+  const clear = useThemeStyle().clear;
   const nowMs = useNow();
   const now = useMemo(() => new Date(nowMs), [nowMs]);
   const manager = role !== "staff";
@@ -165,7 +185,7 @@ export function TodayPage() {
   const description = (
     <>
       {loc.date(now, { weekday: "long", month: "short", day: "numeric" }, SHOP_TZ)}
-      {compare ? <> · {compare}</> : place ? <> · <bdi>{place}</bdi></> : null}
+      {clear ? null : compare ? <> · {compare}</> : place ? <> · <bdi>{place}</bdi></> : null}
     </>
   );
   // "Good morning, Sana": the first name of whoever is signed in; a support session (admin or rep) says no name.
@@ -178,20 +198,40 @@ export function TodayPage() {
   const series = daily.data?.series ?? [];
   const sparkOf = (pick: (p: (typeof series)[number]) => number) => (series.length >= 3 ? series.map(pick) : undefined);
   const sparks = family === "loyalty" ? [sparkOf((p) => p.visits), sparkOf((p) => p.pointsIssued), sparkOf((p) => p.pointsRedeemed), sparkOf((p) => p.newMembers)] : [];
-  const numberItems = numbers.map((n, i) => ({ ...n, spark: sparks[i] }));
+  const numberItems = clear ? numbers : numbers.map((n, i) => ({ ...n, spark: sparks[i] }));
   const ob = onboarding.data;
   const showActivation = !!ob && !ob.activatedAt && ob.activation.day <= ob.activation.windowDays;
   const upsellKeys = (["promos.basic", "marketing.email", "integrations.pos_auto_award"] as const).filter((k) => !enabled(k));
 
+  const openCounter = (
+    <Link
+      href={`${base}/counter`}
+      data-primary-action
+      className={cn(
+        buttonClasses({ variant: "primary", size: "md" }),
+        clear && "max-sm:h-14 max-sm:w-full max-sm:justify-start max-sm:gap-3 max-sm:rounded-[22px] max-sm:px-6 max-sm:text-[17px] max-sm:font-[650] max-sm:tracking-[-0.01em] max-sm:shadow-lg",
+      )}
+    >
+      <Calculator aria-hidden className={cn("size-4.5 shrink-0", clear && "max-sm:size-5.5 sm:hidden")} strokeWidth={clear ? 1.8 : 1.75} />
+      <span className={cn(clear && "max-sm:flex-1 max-sm:text-start")}>{t("shell.today.openCounter")}</span>
+      {clear ? <ChevronRight aria-hidden className="size-5 shrink-0 rtl:-scale-x-100 sm:hidden" strokeWidth={2} /> : null}
+    </Link>
+  );
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className={cn("flex flex-col", clear ? "gap-4" : "gap-6")}>
       <PageHeader
         flush
+        className={clear ? "sm:mb-2" : undefined}
         title={
-          <span className="inline-flex flex-wrap items-center gap-x-2.5">
-            <span>{greeting}</span>
-            <GreetIcon aria-hidden className="size-7 text-trade" strokeWidth={1.9} />
-          </span>
+          clear ? (
+            greeting
+          ) : (
+            <span className="inline-flex flex-wrap items-center gap-x-2.5">
+              <span>{greeting}</span>
+              <GreetIcon aria-hidden className="size-7 text-trade" strokeWidth={1.9} />
+            </span>
+          )
         }
         description={description}
         actions={
@@ -202,10 +242,12 @@ export function TodayPage() {
                 {t(second.label)}
               </Link>
             ) : null}
-            <Link href={`${base}/counter`} data-primary-action className={buttonClasses({ variant: "primary", size: "md" })}>
-              <Calculator aria-hidden className="size-4.5 shrink-0" strokeWidth={1.75} />
-              <span>{t("shell.today.openCounter")}</span>
-            </Link>
+            {clear ? (
+              // The mock's `.cta.lg`: a 64px glass frame (inset 4, radius 26) around the 56px button (radius 22), phones only.
+              <span className="max-sm:glass max-sm:block max-sm:w-full max-sm:rounded-[26px] max-sm:p-1 sm:contents">{openCounter}</span>
+            ) : (
+              openCounter
+            )}
           </>
         }
       />
@@ -213,15 +255,27 @@ export function TodayPage() {
       {err && !needs.length && !today.data && !restaurant.data ? <ErrorLine message={err} onRetry={() => { void today.reload(); void restaurant.reload(); }} /> : null}
 
       {manager ? (
-        <div className="grid gap-6 lg:grid-cols-12">
-          <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-8 lg:row-start-2" />
-          <NumbersCard items={numberItems} loading={loading} className="lg:col-span-12 lg:row-start-1" />
-          <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:row-start-2">
-            {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} /> : null}
-            <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+        clear ? (
+          <div className="grid gap-4 lg:grid-cols-8">
+            <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-5 lg:row-start-2" />
+            <NumbersCard items={numberItems} icons={STAT_ICONS[family]} loading={loading} className="max-lg:order-first lg:col-span-8 lg:row-start-1" />
+            <div className="flex min-w-0 flex-col gap-4 lg:col-span-3 lg:row-start-2">
+              {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} currentHour={hour} /> : null}
+              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+            </div>
+            <QuickActionsCard actions={actions} base={base} className="lg:col-span-8 lg:row-start-3" />
           </div>
-          <QuickActionsCard actions={actions} base={base} className="lg:col-span-12 lg:row-start-3" />
-        </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-12">
+            <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-8 lg:row-start-2" />
+            <NumbersCard items={numberItems} loading={loading} className="lg:col-span-12 lg:row-start-1" />
+            <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:row-start-2">
+              {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} /> : null}
+              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+            </div>
+            <QuickActionsCard actions={actions} base={base} className="lg:col-span-12 lg:row-start-3" />
+          </div>
+        )
       ) : (
         <>
           <StatBlock

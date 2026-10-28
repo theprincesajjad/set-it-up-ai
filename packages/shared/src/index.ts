@@ -25,3 +25,4 @@ export * from "./queue.js";
 export * from "./pets.js";
 export * from "./service-starters.js";
 export * from "./auto.js";
+export * from "./theme.js";

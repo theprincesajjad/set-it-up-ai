@@ -200,7 +200,7 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
                       setDay(d.date);
                       setTime(d.times[0]?.iso ?? "");
                     }}
-                    className={cn("h-11 rounded-full px-4 text-body-strong transition-colors focus-visible:focus-ring", d.date === day ? "bg-trade text-trade-foreground" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
+                    className={cn("h-11 rounded-full px-4 text-body-strong transition-colors focus-visible:focus-ring", d.date === day ? "bg-trade text-trade-foreground clear:bg-primary clear:text-primary-foreground" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
                   >
                     {date(dayDate(d.date), { weekday: "short", month: "short", day: "numeric" }, "UTC")}
                   </button>

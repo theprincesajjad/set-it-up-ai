@@ -5,6 +5,8 @@ import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitsText } from "@/lib/units";
 import type { L } from "@/lib/i18n/formatL";
+import { shopInitials } from "@/lib/shopAvatar";
+import { usePassStyle } from "./useThemeStyle";
 
 /** The italic grey line under a place name: my balance, a live offer, or what kind of place it is. */
 export function pinSubtitle(L: L, shop: networkApi.ShopListItemDto): string {
@@ -27,6 +29,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
   const name = shop.merchant.name;
   const sub = pinSubtitle(L, shop);
   const size = compact && !selected ? 28 : 34;
+  const clear = usePassStyle() === "clear";
   return (
     <span className="relative flex items-center">
       <button
@@ -40,6 +43,14 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         className="group relative flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
       >
         <span className="relative flex w-[34px] shrink-0 justify-center after:absolute after:-inset-[5px] after:content-['']">
+        {clear ? (
+          // Clear (v6 mock `?s=map`): the shop's mark as a pin, a 34 drop in its trade colour with a 2px card rim and its initials.
+          <span data-trade={shop.merchant.vertical} className={cn("relative flex size-[34px] shrink-0 items-center justify-center transition-transform duration-150 ease-out group-focus-visible:focus-ring", selected ? "scale-[1.15]" : "group-hover:scale-105")}>
+            <span aria-hidden className={cn("absolute inset-0 -rotate-45 rounded-[50%_50%_50%_4px] border-2 border-card bg-trade shadow-float", selected && "ring-2 ring-foreground")} />
+            <span aria-hidden className="relative text-[10px] font-bold leading-3 text-trade-foreground">{shopInitials(name)}</span>
+            {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-card bg-foreground" /> : null}
+          </span>
+        ) : (
         <span
           className={cn(
             "relative flex shrink-0 items-center justify-center rounded-full bg-card shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
@@ -55,6 +66,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
           )}
           {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-card bg-points" /> : null}
         </span>
+        )}
         </span>
         {showLabel || selected ? (
           <span className="flex max-w-[150px] flex-col items-start text-start [text-shadow:0_0_2px_var(--ll-color-bg),0_0_3px_var(--ll-color-bg),0_0_5px_var(--ll-color-bg)]">

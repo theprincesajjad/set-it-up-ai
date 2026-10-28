@@ -26,9 +26,13 @@ const ROWS: KeypadKey[][] = [
 
 /** 3 x 4 keypad: grey keys, black tabular digits, 72 pt (kiosk 88), haptic tick, long-press delete = clear. */
 export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadProps) {
-  const { c } = useTheme();
+  const { c, r, x, isClear } = useTheme();
   const { t } = useLocale();
-  const h = Math.max(touchTargets.keypad, keyHeight ?? (size === "kiosk" ? touchTargets.kiosk : touchTargets.keypad));
+  // Clear counter keys are 56 tall, radius 12, white with a hairline ring (audit #22); the kiosk keeps its 88.
+  const floor = isClear && size === "counter" ? 56 : touchTargets.keypad;
+  const h = Math.max(floor, keyHeight ?? (size === "kiosk" ? touchTargets.kiosk : isClear ? 56 : touchTargets.keypad));
+  const clearKey = (fn: boolean, pressed: boolean) =>
+    fn ? { backgroundColor: pressed ? c.bgMuted : "transparent", borderRadius: 12 } : ({ backgroundColor: pressed ? c.bgSubtle : r.card, borderRadius: 12, borderCurve: "continuous", boxShadow: `inset 0 0 0 1px ${r.border}, ${x.shadowCard}` } as object);
   const press = (k: KeypadKey) => {
     if (disabled) return;
     haptic.select();
@@ -48,7 +52,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
                 accessibilityLabel={label}
                 onPress={() => press(k)}
                 onLongPress={k === "back" ? () => press("clear") : undefined}
-                style={({ pressed }) => [styles.key, { height: h, backgroundColor: pressed ? c.bgMuted : fn ? c.bg : c.bgSubtle, opacity: disabled ? 0.4 : 1 }]}
+                style={({ pressed }) => [styles.key, { height: h, backgroundColor: pressed ? c.bgMuted : fn ? c.bg : c.bgSubtle, opacity: disabled ? 0.4 : 1 }, isClear ? clearKey(fn, pressed) : null]}
               >
                 {k === "back" ? (
                   <Delete size={26} color={c.fg} strokeWidth={1.75} />
@@ -57,7 +61,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
                     {t("ui.clear")}
                   </Text>
                 ) : (
-                  <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={[{ fontWeight: "500", fontSize: 30, lineHeight: 36 }, size === "kiosk" ? { fontSize: 36, lineHeight: 42 } : null]}>
+                  <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={[{ fontWeight: "500", fontSize: 30, lineHeight: 36 }, isClear ? { fontWeight: "400", fontSize: 24, lineHeight: 32, letterSpacing: -0.24 } : null, size === "kiosk" ? { fontSize: 36, lineHeight: 42 } : null]}>
                     {k}
                   </Text>
                 )}

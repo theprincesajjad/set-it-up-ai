@@ -7,6 +7,7 @@
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppShell, type NavItem, type NavSectionDef } from "@/components/ui/AppShell";
+import { useThemeStyle } from "@/components/ui/ThemeStyle";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { CommandMenu, type CommandSearch } from "./CommandMenu";
 import { HelpLink, LanguageMenu, SearchField, SearchIconButton } from "./TopBar";
@@ -48,6 +49,7 @@ export interface ShellProps {
 
 export function Shell({ sections, header, footer, notice, mobileTitle, location, alerts, account, search, searchPlaceholder, bottomNav, bottomLabel, env, bare, trade, children }: ShellProps) {
   const { t } = useLocaleOrEnglish();
+  const { clear } = useThemeStyle();
   const [cmd, setCmd] = useState(false);
   const placeholder = searchPlaceholder ?? t("shell.search.placeholder");
 
@@ -97,7 +99,19 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
           </>
         }
         topBar={
-          <>
+          clear ? (
+            // Clear toolbar: grid 1fr auto 1fr, so the search is centred on the capsule; 32 px controls 8 apart (audit #10).
+            <>
+              <div className="flex min-w-0 items-center justify-self-start">{location}</div>
+              <SearchField onOpen={() => setCmd(true)} placeholder={placeholder} />
+              <div className="flex items-center gap-2 justify-self-end">
+                <LanguageMenu />
+                <HelpLink label={t("shell.help")} />
+                {alerts}
+                {account}
+              </div>
+            </>
+          ) : <>
             {location}
             <SearchField onOpen={() => setCmd(true)} placeholder={placeholder} />
             <div className="ms-auto flex items-center gap-1">

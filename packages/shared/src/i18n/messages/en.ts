@@ -2867,6 +2867,17 @@ export const en = {
   "shell.age.week": "{n} wk",
   "shell.alerts": "Needs you",
   "shell.help": "Help",
+  "settings.appearance.tab": "Appearance",
+  "settings.appearance.title": "How your shop looks",
+  "settings.appearance.description": "Your dashboard, counter and customer pages use this look.",
+  "settings.appearance.style": "Style",
+  "settings.appearance.clear": "Clear",
+  "settings.appearance.warm": "Warm",
+  "settings.appearance.clearHint": "Light and glassy. The default.",
+  "settings.appearance.warmHint": "Main Street Warm: cream and terracotta. Follows your device's dark mode.",
+  "settings.appearance.dark": "Dark mode",
+  "settings.appearance.darkHint": "Graphite on black for your dashboard and counter. Customers still see light.",
+  "settings.appearance.saved": "Look updated",
   "shell.more": "More",
   "shell.nav.label": "Main",
   "shell.switchShop": "Switch shop (current: {shop})",
@@ -3351,6 +3362,9 @@ export const en = {
   "pass.nearby.deal": "Offer",
   "pass.nearby.perk": "Street bonus",
   "pass.nearby.new": "New",
+  "pass.clear.stampCard": "Stamp card",
+  "pass.clear.pointsCard": "Points card",
+  "pass.clear.memberSince": "Member since",
 } as const;
 
 export type MessageKey = keyof typeof en;

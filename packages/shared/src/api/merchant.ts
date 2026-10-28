@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
 import { VERTICALS, type Vertical } from "../verticals.js";
+import { THEME_STYLES, type ThemeStyle } from "../theme.js";
 import { LOCALE_CODES } from "../i18n/locales.js";
 import { centsSchema, phoneSchema, uuidSchema } from "./common.js";
 import { translationsSchema } from "./restaurant.js";
@@ -82,6 +83,10 @@ export const updateProfileBody = z
     neighbourhoodId: uuidSchema.nullable(),
     /** Transactional SMS receipt after each award (muted members never get one). */
     smsReceiptsEnabled: z.boolean(),
+    /** The shop's look: Clear (default) or Main Street Warm. Customers see the shop's style too. */
+    themeStyle: z.enum(THEME_STYLES),
+    /** Graphite dark for the owner screens; Clear only (ignored under Warm, which follows the device). */
+    themeDark: z.boolean(),
   })
   .partial();
 export type UpdateProfileBody = z.infer<typeof updateProfileBody>;
@@ -130,6 +135,10 @@ export interface MerchantProfile {
   smsCreditsUsed: number;
   /** Text a transactional receipt after each award. */
   smsReceiptsEnabled: boolean;
+  /** Clear (default) or Main Street Warm. */
+  themeStyle: ThemeStyle;
+  /** Clear's opt-in graphite dark (owner screens). */
+  themeDark: boolean;
   hasApiKey: boolean;
   /** Primary location hours (same as locations[0].hours). */
   hours: Hours | null;

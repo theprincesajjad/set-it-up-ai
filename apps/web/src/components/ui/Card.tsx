@@ -33,8 +33,9 @@ export function Card({ tone = "raised", padding = "md", href, as = "div", classN
   const cls = cn(
     "rounded-card text-fg",
     tone === "subtle" ? "bg-bg-subtle" : "bg-card",
-    tone === "raised" && "border border-line shadow-card",
-    tone === "flat" && "border border-line",
+    // Clear: the hairline is an inset shadow (no layout box), the rev 5 elevation on raised cards (audit #5).
+    tone === "raised" && "border border-line shadow-card clear:border-0 clear:card-clear",
+    tone === "flat" && "border border-line clear:border-0 clear:hairline-inset",
     tone === "dashed" && "border border-dashed border-line-strong/60",
     pad[padding],
     href && "block transition-colors duration-150 ease-out hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring",
@@ -78,13 +79,14 @@ export function ListRow({ leading, title, subtitle, trailing, href, className, c
       {leading ? <div className="shrink-0">{leading}</div> : null}
       <div className="min-w-0 flex-1">
         <div className="truncate text-body-strong text-fg">{title}</div>
-        {subtitle ? <div className="truncate text-meta text-fg-muted">{subtitle}</div> : null}
+        {subtitle ? <div className="truncate text-meta text-fg-muted clear:text-body">{subtitle}</div> : null}
       </div>
       {trailing ? <div className="shrink-0 text-end">{trailing}</div> : null}
       {chevron || (href && chevron !== false) ? <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" /> : null}
     </>
   );
-  const cls = cn("flex min-h-14 items-center gap-3 py-2.5", href && "-mx-4 px-4 transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring", className);
+  // Clear: rows 64 (two lines) and 44 (one line), padding 12 (audit #17).
+  const cls = cn("flex min-h-14 items-center gap-3 py-2.5 clear:min-h-11 clear:py-3", href && "-mx-4 px-4 transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring clear:hover:bg-hover", className);
   return href ? (
     <Link href={href} className={cls}>
       {inner}
@@ -108,7 +110,7 @@ export function ListGroup({ title, action, footer, children, className, inset = 
           {action}
         </div>
       ) : null}
-      <As className={cn("flex flex-col divide-y divide-line overflow-hidden", inset && "rounded-card border border-line bg-card px-4")}>{children}</As>
+      <As className={cn("flex flex-col divide-y divide-line overflow-hidden clear:divide-y-0 clear:divide-overlay", inset && "rounded-card border border-line bg-card px-4 clear:border-0 clear:card-clear")}>{children}</As>
       {footer ? <div className="text-meta text-fg-muted">{footer}</div> : null}
     </section>
   );

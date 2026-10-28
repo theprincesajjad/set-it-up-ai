@@ -218,6 +218,13 @@
       "when": 1793131696987,
       "tag": "0030_cafe",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793217025207,
+      "tag": "0031_clear_theme",
+      "breakpoints": true
     }
   ]
 }

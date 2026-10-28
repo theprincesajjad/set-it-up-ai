@@ -8,11 +8,15 @@ import { managerBus } from "../../features/scanBus";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { useSession } from "../../state/session";
-import { Banner, Button, ConfirmDialog, Keypad, Screen, Section, Sheet, SwitchRow, Text, useToast } from "../../ui";
+import { appearanceFromPayload } from "../../theme/appearance";
+import { useTheme } from "../../theme";
+import { Banner, Button, ConfirmDialog, Keypad, Screen, Section, SegmentedControl, Sheet, SwitchRow, Text, useToast } from "../../ui";
 
 /** Counter settings: theme, kiosk, scanner camera, shared device, my PIN, exit. */
 export default function CounterSettings() {
-  const { config, setConfig, staff, queueState } = useCounter();
+  const { config, setConfig, staff, queueState, merchant } = useCounter();
+  const { style } = useTheme();
+  const shopStyle = appearanceFromPayload(merchant)?.style ?? "clear";
   const { setMode, signOut } = useSession();
   const toast = useToast();
   const { t: tr } = useLocale();
@@ -68,6 +72,19 @@ export default function CounterSettings() {
 
   return (
     <Screen back title="Counter settings">
+      <Section title={tr("settings.appearance.style")} spaced>
+        <SegmentedControl
+          accessibilityLabel={tr("settings.appearance.style")}
+          options={[
+            { value: "clear", label: tr("settings.appearance.clear") },
+            { value: "warm", label: tr("settings.appearance.warm") },
+          ]}
+          value={style}
+          // Picking the shop's own look clears the device override, so a later change in the shop's settings reaches this device.
+          onChange={(v) => setConfig({ themeStyle: v === shopStyle ? null : v })}
+        />
+        <Text variant="meta" color="fgMuted">{style === "clear" ? tr("settings.appearance.clearHint") : tr("settings.appearance.warmHint")}</Text>
+      </Section>
       <Section title="This device">
         <SwitchRow label="Dark theme" description="Light is easier to read in bright shops." value={config.theme === "dark"} onValueChange={(v) => setConfig({ theme: v ? "dark" : "light" })} divider />
         <SwitchRow label="Scanner faces customer" description="Use the front camera and mirror the preview." value={config.scannerFront} onValueChange={(v) => setConfig({ scannerFront: v })} divider />

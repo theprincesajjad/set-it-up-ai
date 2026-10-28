@@ -141,7 +141,7 @@ function Customers() {
         }
       />
 
-      <div className="mb-5">
+      <div className="cust-tools mb-5">
         <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
       </div>
 
@@ -197,7 +197,7 @@ function Customers() {
       )}
 
       {rows.length ? (
-        <div className="mt-3 flex items-center justify-between text-meta text-fg-muted">
+        <div className="cust-foot mt-3 flex items-center justify-between text-meta text-fg-muted">
           <span className="tabular">
             Showing {formatNumber(rows.length)}
             {total != null ? ` of ${formatNumber(total)}` : ""}
@@ -229,7 +229,7 @@ function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | nu
       subtitle={d ? `Member since ${formatDate(d.customer.joinedAt)}` : undefined}
       footer={
         memberId ? (
-          <Link href={`${base}/customers/${memberId}`} className="text-meta font-medium text-fg-muted hover:text-fg">
+          <Link href={`${base}/customers/${memberId}`} className="kit-quiet text-meta font-medium text-fg-muted hover:text-fg">
             Open full page
           </Link>
         ) : null

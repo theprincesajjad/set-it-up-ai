@@ -19,8 +19,9 @@ export interface IconButtonProps {
 }
 
 export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size = 44, showLabel, badgeDot, disabled }: IconButtonProps) {
-  const { c } = useTheme();
-  const bg = variant === "primary" ? c.brand : variant === "secondary" ? c.bgSubtle : variant === "float" ? c.bg : "transparent";
+  const { c, isClear, glass } = useTheme();
+  // Clear: secondary and float circles are glass (regular fill; the float one keeps its chrome shadow over the map).
+  const bg = variant === "primary" ? c.brand : variant === "secondary" ? (isClear ? glass.segTrack : c.bgSubtle) : variant === "float" ? (isClear ? glass.fillStrong : c.bg) : "transparent";
   const fg = disabled ? c.fgSubtle : variant === "primary" ? c.onBrand : c.fg;
   const hit = Math.max(0, (44 - size) / 2);
   return (
@@ -32,7 +33,7 @@ export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size
       hitSlop={hit}
       style={({ pressed }) => [styles.wrap, { opacity: pressed ? 0.7 : 1, transform: pressed ? [{ scale: 0.96 }] : undefined }]}
     >
-      <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }, variant === "float" ? shadows.float.native : null]}>
+      <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }, variant === "float" ? (isClear ? ({ boxShadow: `inset 0 0 0 1px ${glass.edge}, ${glass.shadow}` } as object) : shadows.float.native) : null]}>
         <Icon size={size >= 64 ? 26 : size <= 36 ? 18 : 20} color={fg} strokeWidth={1.75} />
         {badgeDot ? <View style={[styles.dot, { backgroundColor: c.accent, borderColor: bg === "transparent" ? c.bg : bg }]} /> : null}
       </View>

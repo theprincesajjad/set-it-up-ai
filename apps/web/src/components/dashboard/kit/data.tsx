@@ -4,7 +4,7 @@
  * Owner: workstream C. Moved verbatim from kit.tsx (workstream A split); no behaviour change.
  * Import from "@/components/dashboard/kit" (the barrel), not from this file.
  */
-import { type LucideIcon } from "lucide-react";
+import { Inbox, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTMLAttributes } from "react";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/primitives/item";
@@ -56,7 +56,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
     );
   }
   return (
-    <dl aria-label={label} className={cn("grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
+    <dl aria-label={label} className={cn("kit-stats grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
       {items.map((s, idx) => {
         // An odd last cell spans both phone columns so the hairline grid has no empty grey cell.
         const span = idx === items.length - 1 && items.length % 2 === 1 ? "col-span-2 lg:col-span-1" : "";
@@ -69,8 +69,8 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
           </>
         );
         return (
-          <div key={s.label} className={cn("relative bg-bg px-5 py-[18px] transition-colors", s.href && "hover:bg-bg-subtle", span)}>
-            <dt className="flex items-center gap-1.5 text-meta text-fg-muted">
+          <div key={s.label} className={cn("kit-stat relative bg-bg px-5 py-[18px] transition-colors", s.href && "hover:bg-bg-subtle", span)}>
+            <dt className="kit-stat-l flex items-center gap-1.5 text-meta text-fg-muted">
               {s.href ? (
                 <Link href={s.href} className="flex items-center gap-1.5 after:absolute after:inset-0 focus-visible:focus-ring">
                   {label}
@@ -79,10 +79,10 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
                 label
               )}
             </dt>
-            <dd className="mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
+            <dd className="kit-stat-v mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
               {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
             </dd>
-            <dd className="mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
+            <dd className="kit-stat-d mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
               {s.delta ? (
                 <>
                   <span className={s.delta.good === true ? "text-positive-text" : s.delta.good === false ? "text-negative" : "text-fg-muted"}>{s.delta.text}</span>
@@ -104,7 +104,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
 /** Hairline list: rows separated by 1px lines, top + bottom rule. */
 export function RowList({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <ul aria-label={label} className={cn("divide-y divide-line border-y border-line", className)}>
+    <ul aria-label={label} className={cn("kit-rows divide-y divide-line border-y border-line", className)}>
       {children}
     </ul>
   );
@@ -117,7 +117,7 @@ export function RowList({ children, className, label }: { children: ReactNode; c
 export function Row({ leading, title, meta, trailing, href, onClick, className }: { leading?: ReactNode; title: ReactNode; meta?: ReactNode; trailing?: ReactNode; href?: string; onClick?: () => void; className?: string }) {
   const clickable = !!(href || onClick);
   const cls = cn(
-    "min-h-12 flex-nowrap gap-3 rounded-none border-0 px-0 py-2 focus-visible:border-transparent focus-visible:ring-0",
+    "kit-row min-h-12 flex-nowrap gap-3 rounded-none border-0 px-0 py-2 focus-visible:border-transparent focus-visible:ring-0",
     clickable && "-mx-2 rounded-sm px-2 hover:bg-bg-subtle focus-visible:focus-ring",
     onClick && !href && "w-full text-start",
     className,
@@ -126,8 +126,8 @@ export function Row({ leading, title, meta, trailing, href, onClick, className }
     <>
       {leading ? <ItemMedia>{leading}</ItemMedia> : null}
       <ItemContent className="min-w-0 flex-1 gap-0">
-        <ItemTitle className="block w-auto max-w-full truncate text-body font-normal leading-normal text-fg">{title}</ItemTitle>
-        {meta ? <ItemDescription className="line-clamp-none block truncate text-meta text-fg-muted">{meta}</ItemDescription> : null}
+        <ItemTitle className="kit-row-t block w-auto max-w-full truncate text-body font-normal leading-normal text-fg">{title}</ItemTitle>
+        {meta ? <ItemDescription className="kit-row-m line-clamp-none block truncate text-meta text-fg-muted">{meta}</ItemDescription> : null}
       </ItemContent>
       {trailing != null ? <ItemActions className="shrink-0 text-end text-body tabular">{trailing}</ItemActions> : null}
     </>
@@ -152,9 +152,9 @@ export function Row({ leading, title, meta, trailing, href, onClick, className }
 /** Definition rows for detail panels: label left (muted), value right. */
 export function DefList({ items, className }: { items: { label: string; value: ReactNode }[]; className?: string }) {
   return (
-    <dl className={cn("divide-y divide-line border-y border-line", className)}>
+    <dl className={cn("kit-kv divide-y divide-line border-y border-line", className)}>
       {items.map((i) => (
-        <div key={i.label} className="flex min-h-10 items-center justify-between gap-4 py-2">
+        <div key={i.label} className="kit-kv-r flex min-h-10 items-center justify-between gap-4 py-2">
           <dt className="text-meta text-fg-muted">{i.label}</dt>
           <dd className="min-w-0 truncate text-end text-meta text-fg tabular">{i.value}</dd>
         </div>
@@ -169,7 +169,7 @@ export type DotTone = "positive" | "negative" | "neutral" | "accent" | "info";
 export function Dot({ tone = "neutral", children, className }: { tone?: DotTone; children: ReactNode; className?: string }) {
   const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points", info: "bg-location" }[tone];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-meta text-fg", className)}>
+    <span className={cn("kit-dot inline-flex items-center gap-1.5 whitespace-nowrap text-meta text-fg", className)}>
       <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", c)} />
       {children}
     </span>
@@ -199,7 +199,7 @@ export function StatusDot({ domain, status, label }: { domain: keyof typeof STAT
 /** Small neutral tag (hairline capsule). For "Reward ready" use tone="accent" (points only). v3: the shadcn Badge. */
 export function Tag({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent"; className?: string }) {
   return (
-    <BadgePrimitive variant="outline" className={cn("h-5 px-2 text-caption font-normal", tone === "accent" ? "border-transparent bg-points-soft text-points-text" : "border-line text-fg-muted", className)}>
+    <BadgePrimitive variant="outline" data-tone={tone} className={cn("kit-tag h-5 px-2 text-caption font-normal", tone === "accent" ? "border-transparent bg-points-soft text-points-text" : "border-line text-fg-muted", className)}>
       {children}
     </BadgePrimitive>
   );
@@ -210,19 +210,19 @@ export function Meter({ value, max, label, className, tone = "fg" }: { value: nu
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 100;
   return (
     <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} className={cn("h-1 w-full overflow-hidden rounded-full bg-bg-muted", className)}>
-      <div className={cn("h-full rounded-full", tone === "accent" ? "bg-points" : tone === "muted" ? "bg-fg-subtle" : "bg-trade")} style={{ width: `${pct}%` }} />
+      <div className={cn("kit-meter-fill h-full rounded-full", tone === "accent" ? "bg-points" : tone === "muted" ? "bg-fg-subtle" : "bg-trade")} style={{ width: `${pct}%` }} />
     </div>
   );
 }
 
 /** Table wrapper: hairline top/bottom, horizontal scroll on phones only (keeps the sticky header on desktop). */
 export function TableWrap({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("-mx-4 overflow-x-auto border-y border-line sm:mx-0 md:overflow-visible", className)}>{children}</div>;
+  return <div className={cn("kit-tw -mx-4 overflow-x-auto border-y border-line sm:mx-0 md:overflow-visible", className)}>{children}</div>;
 }
 
 export function Table({ children, label, className }: { children: ReactNode; label: string; className?: string }) {
   return (
-    <table aria-label={label} className={cn("w-full border-collapse text-meta", className)}>
+    <table aria-label={label} className={cn("kit-table w-full border-collapse text-meta", className)}>
       {children}
     </table>
   );
@@ -234,7 +234,7 @@ export function Table({ children, label, className }: { children: ReactNode; lab
  */
 export function Th({ className, align = "start", children, ...rest }: Omit<ThHTMLAttributes<HTMLTableCellElement>, "align"> & { align?: "start" | "end" }) {
   return (
-    <TableHead scope="col" className={cn("z-[1] h-9 md:sticky md:top-14 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
+    <TableHead scope="col" className={cn("kit-th z-[1] h-9 md:sticky md:top-14 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
       {children}
     </TableHead>
   );
@@ -242,7 +242,7 @@ export function Th({ className, align = "start", children, ...rest }: Omit<ThHTM
 
 export function Td({ className, align = "start", children, ...rest }: Omit<TdHTMLAttributes<HTMLTableCellElement>, "align"> & { align?: "start" | "end" }) {
   return (
-    <TableCell className={cn("h-11 whitespace-nowrap border-b border-line px-3 text-fg first:ps-4 last:pe-4", align === "end" ? "text-end tabular" : "text-start", className)} {...rest}>
+    <TableCell className={cn("kit-td h-11 whitespace-nowrap border-b border-line px-3 text-fg first:ps-4 last:pe-4", align === "end" ? "text-end tabular" : "text-start", className)} {...rest}>
       {children}
     </TableCell>
   );
@@ -278,7 +278,7 @@ export function Tr({ onOpen, selected, className, children, onKeyDown, ...rest }
           : onKeyDown
       }
       aria-selected={onOpen ? !!selected : undefined}
-      className={cn("border-b-0 [&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:focus-ring focus-visible:-outline-offset-2 focus-visible:focus-ring", !onOpen && "hover:bg-transparent", selected && "bg-bg-subtle", className)}
+      className={cn("kit-tr border-b-0 [&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:focus-ring focus-visible:-outline-offset-2 focus-visible:focus-ring", !onOpen && "hover:bg-transparent", selected && "bg-bg-subtle", className)}
       {...rest}
     >
       {children}
@@ -289,7 +289,7 @@ export function Tr({ onOpen, selected, className, children, onKeyDown, ...rest }
 /** Empty state: one sentence + one action. No illustration. */
 export function Empty({ children, action, className }: { children: ReactNode; action?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-col items-start gap-3 py-8 text-meta text-fg-muted sm:flex-row sm:items-center sm:justify-between", className)}>
+    <div className={cn("kit-empty-line flex flex-col items-start gap-3 py-8 text-meta text-fg-muted sm:flex-row sm:items-center sm:justify-between", className)}>
       <p>{children}</p>
       {action}
     </div>
@@ -310,7 +310,7 @@ export function SkeletonRows({ rows = 4, className }: { rows?: number; className
 /** Error line with retry. */
 export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex items-center justify-between gap-3 rounded-input border border-line px-4 py-3 text-meta">
+    <div role="alert" className="kit-err flex items-center justify-between gap-3 rounded-input border border-line px-4 py-3 text-meta">
       <Dot tone="negative">{message}</Dot>
       {onRetry ? <QuietButton onClick={onRetry}>Try again</QuietButton> : null}
     </div>
@@ -324,15 +324,19 @@ export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () 
 export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
   const vertical = useShopVertical();
   return (
-    <div data-state="empty" className={cn("flex flex-col gap-4 rounded-card bg-card p-5 shadow-card sm:flex-row sm:items-center sm:gap-5 sm:p-6", className)}>
-      <span aria-hidden className={cn("inline-flex size-16 shrink-0 items-center justify-center rounded-tile", tone === "danger" ? "bg-tile-rose" : "bg-trade-soft")}>
+    <div data-state="empty" className={cn("kit-empty flex flex-col gap-4 rounded-card bg-card p-5 shadow-card sm:flex-row sm:items-center sm:gap-5 sm:p-6", className)}>
+      <span aria-hidden className={cn("kit-empty-art inline-flex size-16 shrink-0 items-center justify-center rounded-tile", tone === "danger" ? "bg-tile-rose" : "bg-trade-soft")}>
         {tone === "danger" && Icon ? <Icon className="size-7 text-tile-rose-foreground" strokeWidth={1.7} /> : <CategoryIcon vertical={vertical} size={44} />}
       </span>
+      {/* Clear (Polaris empty state): a 40px grey icon chip instead of the illustration; clear.css shows one or the other. */}
+      <span aria-hidden data-tone={tone} className="kit-empty-ico hidden">
+        {Icon ? <Icon strokeWidth={1.75} /> : <Inbox strokeWidth={1.75} />}
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-headline font-bold text-fg">{title}</p>
-        {description ? <p className="mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
+        <p className="kit-empty-t font-display text-headline font-bold text-fg">{title}</p>
+        {description ? <p className="kit-empty-d mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
         {action || secondaryAction ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="kit-empty-a mt-4 flex flex-wrap items-center gap-2">
             {action}
             {secondaryAction}
           </div>
@@ -377,5 +381,5 @@ const PILL: Record<DotTone, string> = {
 
 /** Filled status capsule for dense tables ("Live", "Paused", "Needs approval"). Prefer `StatusDot` in prose lists. */
 export function StatusPill({ tone = "neutral", children, className }: { tone?: DotTone; children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-caption font-medium", PILL[tone], className)}>{children}</span>;
+  return <span data-tone={tone} className={cn("kit-pill inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-caption font-medium", PILL[tone], className)}>{children}</span>;
 }

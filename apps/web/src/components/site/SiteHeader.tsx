@@ -147,7 +147,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                 setChosen(l.code);
               }}
                       aria-current={l.code === locale ? "true" : undefined}
-                      className={cn("rounded-full border px-3 py-1.5 text-meta-strong", l.code === locale ? "border-trade bg-trade text-trade-foreground" : "border-line text-fg")}
+                      className={cn("rounded-full border px-3 py-1.5 text-meta-strong", l.code === locale ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line text-fg")}
                     >
                       {l.name}
                     </Link>

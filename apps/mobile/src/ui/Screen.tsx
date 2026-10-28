@@ -157,12 +157,12 @@ export function Screen({
  * `rule={false}` drops the hairline (when the children draw their own box).
  */
 export function Section({ title, action, children, style, rule = true, spaced }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle>; rule?: boolean; /** Prose / buttons under the rule: 12 above and between (rows bring their own padding). */ spaced?: boolean }) {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   return (
     <View style={[{ gap: rule ? 0 : 10 }, style]}>
       {title ? (
         <View style={[styles.sectionHeader, rule ? { borderBottomColor: c.line, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 8 } : null]}>
-          <Text accessibilityRole="header" style={{ flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 17, lineHeight: 22 }}>
+          <Text accessibilityRole="header" style={isClear ? { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "600", letterSpacing: -0.24 } : { flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 17, lineHeight: 22 }}>
             {capFirst(title)}
           </Text>
           {action}

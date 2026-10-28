@@ -12,13 +12,14 @@ export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" |
  * coloured badge (foundations.md "Colour"). Only "accent" (points, rewards) carries colour.
  */
 const tones: Record<BadgeTone, string> = {
-  neutral: "bg-bg-subtle text-fg-muted",
+  // Clear: Polaris badges, tinted per status (v3.2-clear.md 4).
+  neutral: "bg-bg-subtle text-fg-muted clear:bg-muted clear:text-foreground",
   brand: "bg-fg text-bg",
   accent: "bg-points-soft text-points-text",
-  success: "bg-bg-subtle text-fg",
-  warning: "bg-bg-subtle text-fg",
-  danger: "bg-bg-subtle text-fg",
-  info: "bg-bg-subtle text-fg",
+  success: "bg-bg-subtle text-fg clear:bg-success-soft clear:text-success-text",
+  warning: "bg-bg-subtle text-fg clear:bg-warning-soft clear:text-warning-text",
+  danger: "bg-bg-subtle text-fg clear:bg-destructive-soft clear:text-destructive-text",
+  info: "bg-bg-subtle text-fg clear:bg-info-soft clear:text-info-text",
 };
 
 const dots: Record<BadgeTone, string> = {
@@ -35,7 +36,7 @@ const dots: Record<BadgeTone, string> = {
 export function Badge({ tone = "neutral", icon: Icon, iconEnd: IconEnd, dot, children, className }: { tone?: BadgeTone; icon?: LucideIcon; iconEnd?: LucideIcon; dot?: boolean; children: ReactNode; className?: string }) {
   return (
     // The shadcn Badge (Base UI) is the element; the v2 capsule look wins over its defaults through `cn`.
-    <BadgePrimitive variant="secondary" className={cn("h-6 gap-1.5 px-2.5 text-caption font-semibold", tones[tone], className)}>
+    <BadgePrimitive variant="secondary" className={cn("h-6 gap-1.5 px-2.5 text-caption font-semibold clear:h-5 clear:rounded-r2 clear:px-2 clear:font-[550]", tones[tone], className)}>
       {dot ? <span aria-hidden className={cn("size-1.5 rounded-full", dots[tone])} /> : null}
       {Icon ? <Icon aria-hidden className="size-3.5" strokeWidth={2} /> : null}
       {children}

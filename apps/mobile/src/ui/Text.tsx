@@ -22,7 +22,7 @@ export interface TextProps extends RNTextProps {
  * categoryLabel) use Bricolage Grotesque.
  */
 export function Text({ variant = "body", color = "fg", rawColor, center, tabular, style, ...rest }: TextProps) {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   // react-native-web gives every Text dir="auto": a Latin-only line (a shop or customer name) would sit at the physical left of a
   // right-to-left row. Start-aligned text is right-aligned in Urdu; Urdu text with dir="auto" resolves to RTL on its own.
   const rtl = useIsRtl();
@@ -33,6 +33,9 @@ export function Text({ variant = "body", color = "fg", rawColor, center, tabular
   const display = isDisplayFamily(flat.fontFamily);
   // Fraunces has no Devanagari, Gurmukhi or Nastaliq: those headings fall back to the system script face at the same (bold) weight.
   const scriptFallback: TextStyle | null = display && locale !== "en" && SCRIPT_LOCALES.has(locale) ? { fontFamily: undefined, fontWeight: "700" } : null;
+  // Clear has no display serif: the same heading in the system face (SF Pro, the native twin of the spec's Inter) at 700, tracked
+  // tight the way SF tracks large sizes (-0.022em at 26 and up, -0.014em at 17).
+  const clearFace: TextStyle | null = display && isClear ? { fontFamily: undefined, fontWeight: "700", letterSpacing: -(flat.fontSize ?? 17) * ((flat.fontSize ?? 17) >= 24 ? 0.022 : 0.014) } : null;
   // Display strings read in sentence case ("Wallet", not "wallet"): the shared messages are lowercase, the face is not.
   const children = display && locale === "en" ? sentenceCase(rest.children) : rest.children;
   return (
@@ -46,6 +49,7 @@ export function Text({ variant = "body", color = "fg", rawColor, center, tabular
         center ? { textAlign: "center" } : null,
         tabular ? { fontVariant: ["tabular-nums"] } : null,
         style,
+        clearFace,
         scriptFallback,
         script,
       ]}

@@ -17,18 +17,25 @@
     @slot;
   }
   @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+    &:where(:root:not([data-theme="light"]):not([data-theme-style="clear"]), :root:not([data-theme="light"]):not([data-theme-style="clear"]) *) {
       @slot;
     }
   }
 }
 
+/* clear: and warm: variants. Clear is the attribute on <html> (data-theme-style="clear"); Warm is everything else. */
+@custom-variant clear (&:where([data-theme-style="clear"], [data-theme-style="clear"] *));
+@custom-variant warm (&:where(:root:not([data-theme-style="clear"]), :root:not([data-theme-style="clear"]) *));
+/* Reduced transparency (Clear glass falls back to opaque): rt:bg-card ... */
+@custom-variant rt (@media (prefers-reduced-transparency: reduce));
+
 @theme inline {
   /* Hindi, Urdu and Punjabi come after the Latin face: a glyph Inter or Bricolage lacks falls to the script's Noto face (declared with next/font in apps/web layout.tsx, which loads one only when a glyph needs it). Latin runs stay sans; no [lang] rule is needed, and a dialog that portals out of the page still gets them. */
   --font-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  /* Fraunces for page titles, card titles and big numbers. It has no Devanagari, Gurmukhi or Arabic glyphs, so hi/ur/pa headings fall to the Noto faces at the same weight. */
-  --font-display: var(--font-fraunces, "Fraunces"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-wordmark: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
+  /* Warm: Fraunces for page titles, card titles and big numbers (no Devanagari, Gurmukhi or Arabic glyphs, so hi/ur/pa headings fall to the Noto faces).
+   * Clear: Inter with display optical sizing (tokens.css swaps --ll-face-display and --ll-face-wordmark under data-theme-style="clear"). */
+  --font-display: var(--ll-face-display);
+  --font-wordmark: var(--ll-face-wordmark);
   --font-mono: var(--ll-font-mono);
 
   /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,
@@ -105,6 +112,30 @@
   --color-hover: var(--accent);
   --color-hover-foreground: var(--accent-foreground);
 
+  /* Clear roles (v3.2-clear.md 2.2, 2.5, 2.8). Defined in Warm too (opaque equivalents), so the classes resolve under either style. */
+  --color-link: var(--link);
+  --color-primary-hover: var(--primary-hover);
+  --color-border-strong: var(--border-strong);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive-text: var(--destructive-text);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-row-sel: var(--row-sel);
+  --color-tile: var(--tile);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-hi: var(--chart-hi);
+  --color-scrim: var(--scrim);
+  --color-toast-bg: var(--toast-bg);
+  --color-toast-fg: var(--toast-fg);
+  --color-trade-tint: var(--trade-tint);
+  --color-trade-nav: var(--trade-nav);
+  --color-lg-fill: var(--lg-fill);
+  --color-lg-fill-side: var(--lg-fill-side);
+  --color-lg-fill-strong: var(--lg-fill-strong);
+  --color-lg-lift: var(--lg-lift);
+  --color-lg-edge: var(--lg-edge);
+  --color-lg-seg-track: var(--lg-seg-track);
+
   /* v2 and v1 names (aliases). Only the names a call site in apps/web still uses are emitted (ALIASES_IN_USE); every other v2 and v1
    * Tailwind name was proven unused by grep in the v3 final sweep and removed. TS roles and the --ll-color-* variables are unchanged. */
   --color-bg: var(--ll-color-bg);
@@ -171,9 +202,19 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --radius-input: 12px;
-  --radius-card: 22px;
-  --radius-sheet: 28px;
-  --radius-tile: 20px;
+  --radius-card: var(--ll-radius-card);
+  --radius-sheet: var(--ll-radius-sheet);
+  --radius-tile: var(--ll-radius-tile);
+  /* Clear radius scale (audit 2.3): rounded-r1 4 · r2 8 · r3 10 · r4 12 · r5 16 · r6 20 · r7 26 · r8 30 · r9 32 */
+  --radius-r1: 4px;
+  --radius-r2: 8px;
+  --radius-r3: 10px;
+  --radius-r4: 12px;
+  --radius-r5: 16px;
+  --radius-r6: 20px;
+  --radius-r7: 26px;
+  --radius-r8: 30px;
+  --radius-r9: 32px;
 }
 
 @theme {
@@ -379,6 +420,238 @@
   -webkit-backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));
   backdrop-filter: blur(var(--ll-blur-chrome)) saturate(var(--ll-blur-saturate));
   box-shadow: var(--ll-shadow-float);
+}
+
+/* ===== Liquid Glass (Clear, v3.2-clear.md 2.8; copied from the v6 mock). Chrome ONLY: sidebar, toolbar, tab bar, sheets, segmented
+ * controls, glass buttons, the pass card. Never on cards, rows or charts. Under Warm the --lg-* roles are opaque, so these degrade to solid.
+ * Each adds the specular rim (::before, the only gradient in the system). Refraction is added by <LiquidGlassLens/> on [data-lens] (Chromium). */
+@utility glass {
+  position: relative;
+  background-color: var(--lg-fill);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 2px 3px 6px -2px var(--lg-inner), inset -2px -3px 8px -4px var(--lg-inner), inset 0 0 22px var(--lg-inner), var(--lg-shadow);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(140deg, var(--lg-rim-a) 0%, var(--lg-rim-b) 28%, transparent 52%, var(--lg-rim-b) 74%, var(--lg-rim-c) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
+@utility glass-chrome {
+  /* Toolbar, phone top capsules, glass circles: regular glass. */
+  position: relative;
+  background-color: var(--lg-fill);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 2px 3px 6px -2px var(--lg-inner), inset -2px -3px 8px -4px var(--lg-inner), inset 0 0 22px var(--lg-inner), var(--lg-shadow);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(140deg, var(--lg-rim-a) 0%, var(--lg-rim-b) 28%, transparent 52%, var(--lg-rim-b) 74%, var(--lg-rim-c) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
+@utility glass-sheet {
+  /* Text-heavy glass: sheets, the phone tab bar, the pass card, popovers. Strong fill, strong blur, the large shadow. */
+  position: relative;
+  background-color: var(--lg-fill-strong);
+  -webkit-backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 2px 3px 8px -2px var(--lg-inner), inset 0 0 28px var(--lg-inner), var(--lg-shadow-lg);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(140deg, var(--lg-rim-a) 0%, var(--lg-rim-b) 28%, transparent 52%, var(--lg-rim-b) 74%, var(--lg-rim-c) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
+@utility glass-side {
+  /* The floating sidebar: the strong recipe with the lighter side fill, so the page edge reads through. */
+  position: relative;
+  background-color: var(--lg-fill-side);
+  -webkit-backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 2px 3px 8px -2px var(--lg-inner), inset 0 0 28px var(--lg-inner), var(--lg-shadow-lg);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(140deg, var(--lg-rim-a) 0%, var(--lg-rim-b) 28%, transparent 52%, var(--lg-rim-b) 74%, var(--lg-rim-c) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
+@utility glass-lite {
+  /* Small glass buttons (Print QR kit, Filter, Sort, EN): regular glass, a lighter shadow and a 1px rim. */
+  position: relative;
+  background-color: var(--lg-fill);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 1px 2px 4px -1px var(--lg-inner), 0 4px 14px rgba(20, 24, 40, 0.1);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(140deg, var(--lg-rim-a) 0%, var(--lg-rim-b) 28%, transparent 52%, var(--lg-rim-b) 74%, var(--lg-rim-c) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+}
+@utility glass-flat {
+  /* The counter's two bars: blur without refraction or rim (data-flat in the mock), a hairline instead. */
+  background-color: var(--lg-fill);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+}
+@utility glass-lift {
+  /* The selected segment, nav item or tab: lifted brighter glass. */
+  background-color: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 1px 2px 3px -1px rgba(255, 255, 255, 0.9), 0 3px 10px rgba(20, 24, 40, 0.16), 0 1px 2px rgba(20, 24, 40, 0.1);
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 1px 2px 3px -1px rgba(255, 255, 255, 0.18), 0 3px 10px rgba(0, 0, 0, 0.45);
+  }
+}
+@utility glass-nav-on {
+  /* The active sidebar item (rev 5): lifted glass tinted 13% with the trade colour; pair with a text-trade glyph. */
+  background-color: var(--trade-nav);
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 1px 2px 3px -1px rgba(255, 255, 255, 0.9), 0 3px 10px rgba(20, 24, 40, 0.16), 0 1px 2px rgba(20, 24, 40, 0.1);
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 1px 2px 3px -1px rgba(255, 255, 255, 0.18), 0 3px 10px rgba(0, 0, 0, 0.45);
+  }
+}
+@utility glass-seg-on {
+  /* The selected segment inside a segmented track (a slightly smaller lift than glass-lift). */
+  background-color: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 1px 2px 3px -1px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(20, 24, 40, 0.14);
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+}
+@utility glass-tint {
+  /* The glass secondary-button look without a backdrop read (buttons inside cards and lists): the segmented-track fill, the luminous edge. */
+  background-color: var(--lg-seg-track);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+}
+@utility shadow-primary {
+  /* Clear primary button lift (mock .btn.pri). */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+@utility seg-track {
+  background-color: var(--lg-seg-track);
+}
+@utility card-clear {
+  /* Flat Polaris card (Clear): white, the hairline as an inset shadow so the box is the content box, the soft rev 5 elevation. */
+  background-color: var(--card);
+  border-radius: var(--ll-radius-card);
+  box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card);
+}
+@utility hairline-inset {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+@utility divide-overlay {
+  /* Row dividers drawn as overlaid lines (no layout height, audit #5): every child after the first gets a 1px top rule. */
+  & > * + * {
+    position: relative;
+  }
+  & > * + *::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    border-top: 1px solid var(--border);
+    pointer-events: none;
+  }
+}
+@utility divide-overlay-inset {
+  /* Phone (iOS inset grouping): the rule starts 16px in from the leading edge. */
+  & > * + * {
+    position: relative;
+  }
+  & > * + *::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: 16px 0;
+    border-top: 1px solid var(--border);
+    pointer-events: none;
+  }
+}
+@utility rule-top {
+  /* One overlaid top rule on this element (a row after a card header). */
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    border-top: 1px solid var(--border);
+    pointer-events: none;
+  }
+}
+@utility scroll-edge-top {
+  /* Apple's scroll-edge effect: a fixed, non-interactive strip under the top chrome that blurs content before the glass sees it. */
+  position: fixed;
+  top: 0;
+  height: 84px;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--edge-blur, 12px));
+  backdrop-filter: blur(var(--edge-blur, 12px));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 62%, transparent 100%);
+  @media (prefers-reduced-transparency: reduce) {
+    display: none;
+  }
+  &:where(:root.solid *) {
+    display: none;
+  }
+}
+@utility scroll-edge-bottom {
+  position: fixed;
+  bottom: 0;
+  height: 120px;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--edge-blur, 12px));
+  backdrop-filter: blur(var(--edge-blur, 12px));
+  -webkit-mask-image: linear-gradient(to top, #000 0, #000 58%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0, #000 58%, transparent 100%);
+  @media (prefers-reduced-transparency: reduce) {
+    display: none;
+  }
+  &:where(:root.solid *) {
+    display: none;
+  }
 }
 @utility hairline {
   border: var(--ll-border-hairline) solid var(--ll-color-line);

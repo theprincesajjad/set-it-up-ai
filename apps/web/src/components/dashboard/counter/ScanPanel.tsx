@@ -3,6 +3,7 @@ import { ScanLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import s from "./CounterClear.module.css";
 
 interface DetectorLike {
   detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
@@ -99,17 +100,18 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
       aria-label={t("counter.scan.panel")}
       data-scan-ready={ready ? "true" : "false"}
       aria-busy={!ready}
-      className={cn("relative flex items-center gap-4 overflow-hidden rounded-tile px-5 py-4", state === "on" ? "min-h-48 items-end bg-fg text-bg" : "min-h-24 bg-trade-soft text-trade-deep")}
+      data-camera={state === "on" ? "on" : "off"}
+      className={cn(s.scan, "relative flex items-center gap-4 overflow-hidden rounded-tile px-5 py-4", state === "on" ? "min-h-48 items-end bg-fg text-bg" : "min-h-24 bg-trade-soft text-trade-deep")}
     >
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
-      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-current">
+      <span aria-hidden className={cn(s.scanIcon, "relative flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-current")}>
         <ScanLine className="size-6" strokeWidth={1.75} />
       </span>
       <div className="relative min-w-0">
-        <p className="font-display text-h3 font-bold">{t("counter.scan.hold")}</p>
-        <p className="text-meta opacity-80">{hint}</p>
+        <p className={cn(s.scanTitle, "font-display text-h3 font-bold")}>{t("counter.scan.hold")}</p>
+        <p className={cn(s.scanHint, "text-meta opacity-80")}>{hint}</p>
         {state === "off" || state === "denied" ? (
-          <button type="button" onClick={() => void start()} className="min-h-11 text-meta-strong underline underline-offset-4 hover:opacity-80 focus-visible:focus-ring">
+          <button type="button" onClick={() => void start()} className={cn(s.scanLink, "min-h-11 text-meta-strong underline underline-offset-4 hover:opacity-80 focus-visible:focus-ring")}>
             {state === "denied" ? t("counter.scan.blocked") : t("counter.scan.useCamera")}
           </button>
         ) : null}

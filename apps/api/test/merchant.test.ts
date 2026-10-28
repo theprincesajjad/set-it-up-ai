@@ -94,6 +94,30 @@ describe("merchant signup + template", () => {
 });
 
 describe("profile, onboarding, features", () => {
+  it("stores the shop's theme: Clear light by default, Warm or Clear dark on request (manager+), validated", async () => {
+    const owner = await createUser(env.db);
+    const ownerToken = await tokenFor(env, owner);
+    const { merchant } = (await signup(ownerToken, { vertical: "cafe", name: "Pinecone Coffee" })).json();
+    expect(merchant.themeStyle).toBe("clear");
+    expect(merchant.themeDark).toBe(false);
+    const patch = (token: string, payload: Record<string, unknown>) => env.app.inject({ method: "PATCH", url: `/v1/merchants/${merchant.id}`, headers: auth(token), payload });
+
+    const staff = await addStaff(merchant.id, "staff");
+    expect((await patch(staff.token, { themeStyle: "warm" })).statusCode).toBe(403);
+    const manager = await addStaff(merchant.id, "manager");
+    let r = await patch(manager.token, { themeStyle: "warm" });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().merchant).toMatchObject({ themeStyle: "warm", themeDark: false });
+    r = await patch(ownerToken, { themeStyle: "clear", themeDark: true });
+    expect(r.json().merchant).toMatchObject({ themeStyle: "clear", themeDark: true });
+    const got = (await env.app.inject({ method: "GET", url: `/v1/merchants/${merchant.id}`, headers: auth(staff.token) })).json();
+    expect(got.merchant).toMatchObject({ themeStyle: "clear", themeDark: true });
+
+    for (const bad of [{ themeStyle: "purple" }, { themeStyle: null }, { themeDark: "yes" }]) expect((await patch(ownerToken, bad)).statusCode, JSON.stringify(bad)).toBe(400);
+    const [row] = await env.db.select({ s: merchants.themeStyle, d: merchants.themeDark }).from(merchants).where(eq(merchants.id, merchant.id));
+    expect(row).toEqual({ s: "clear", d: true });
+  });
+
   it("updates profile (manager+), drives the onboarding checklist", async () => {
     const owner = await createUser(env.db);
     const ownerToken = await tokenFor(env, owner);

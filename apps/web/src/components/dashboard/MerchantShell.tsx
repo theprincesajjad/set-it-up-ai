@@ -22,6 +22,7 @@ import { useMerchant } from "./MerchantContext";
 import { NoAccess } from "./PageStates";
 import { Shell, type ShellNavItem } from "./Shell";
 import { ShopMark } from "./ShopMark";
+import { useThemeStyle } from "@/components/ui/ThemeStyle";
 import { AlertsLink, LocationChip } from "./TopBar";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -41,24 +42,27 @@ const ICONS: Record<string, LucideIcon> = {
 function Switcher({ me }: { me: authApi.MeResponse }) {
   const { detail } = useMerchant();
   const { t, dir } = useLocaleOrEnglish();
+  const { clear } = useThemeStyle();
   const router = useRouter();
   const m = detail.merchant;
   const many = me.merchants.length > 1;
   const street = placeLabel(detail.locations[0]?.address);
   const inner = (
     <>
-      <ShopMark name={m.name} brandColor={m.brandColor} logoUrl={m.logoUrl} size={36} className="rounded-xl" />
+      {/* Clear (audit #11, #12): a 32 r10 mark, 12 to two 16 px lines, so the brand row is 32 tall and centred on the toolbar's axis. */}
+      <ShopMark name={m.name} brandColor={m.brandColor} logoUrl={m.logoUrl} size={clear ? 32 : 36} className={clear ? "rounded-r3" : "rounded-xl"} />
       <span className="min-w-0 flex-1 text-start group-data-[collapsible=icon]:hidden">
-        <bdi className="block truncate text-body-strong text-foreground">{m.name}</bdi>
-        {street ? <bdi className="block truncate text-caption font-normal text-muted-foreground">{street}</bdi> : null}
+        <bdi className={clear ? "block truncate text-body font-[650] leading-4 text-foreground" : "block truncate text-body-strong text-foreground"}>{m.name}</bdi>
+        {street ? <bdi className={clear ? "block truncate text-meta leading-4 text-muted-foreground" : "block truncate text-caption font-normal text-muted-foreground"}>{street}</bdi> : null}
       </span>
       {many ? <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" /> : null}
     </>
   );
-  if (!many) return <div className="flex min-h-11 items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center">{inner}</div>;
+  const row = clear ? "flex min-h-8 items-center gap-3 px-0 group-data-[collapsible=icon]:justify-center" : "flex min-h-11 items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center";
+  if (!many) return <div className={row}>{inner}</div>;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label={t("shell.switchShop", { shop: m.name })} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-1 hover:bg-sidebar-accent focus-visible:focus-ring group-data-[collapsible=icon]:justify-center">
+      <DropdownMenuTrigger aria-label={t("shell.switchShop", { shop: m.name })} className={clear ? "flex min-h-8 w-full items-center gap-3 rounded-r3 px-0 hover:bg-lg-seg-track focus-visible:focus-ring max-md:min-h-11 group-data-[collapsible=icon]:justify-center" : "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-1 hover:bg-sidebar-accent focus-visible:focus-ring group-data-[collapsible=icon]:justify-center"}>
         {inner}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" dir={dir} className="w-64">
@@ -78,6 +82,7 @@ function Switcher({ me }: { me: authApi.MeResponse }) {
 function SetupProgress() {
   const { api, base, role } = useMerchant();
   const { t } = useLocaleOrEnglish();
+  const { clear } = useThemeStyle();
   const pathname = usePathname();
   const ob = useApi((role === "owner" || role === "manager") ? () => api.onboarding() : null, [api, role, pathname]);
   const steps = ob.data?.steps ?? [];
@@ -91,8 +96,8 @@ function SetupProgress() {
           {done} / {steps.length}
         </span>
       </span>
-      <span aria-hidden className="mt-1.5 block h-0.75 overflow-hidden rounded-full bg-border">
-        <span className="block h-0.75 rounded-full bg-foreground" style={{ width: `${Math.round((done / steps.length) * 100)}%` }} />
+      <span aria-hidden className={clear ? "mt-2 block h-1 overflow-hidden rounded-[2px] bg-lg-seg-track" : "mt-1.5 block h-0.75 overflow-hidden rounded-full bg-border"}>
+        <span className={clear ? "block h-1 rounded-[2px] bg-foreground" : "block h-0.75 rounded-full bg-foreground"} style={{ width: `${Math.round((done / steps.length) * 100)}%` }} />
       </span>
     </Link>
   );

@@ -1,6 +1,6 @@
 /**
  * v3 counter and kiosk acceptance (docs/design/v3-strategy.md 8.2 E): scan or phone to confirmation in under 5 seconds on the seeded café
- * (3 runs), hit areas measured in the browser (counter keys at least 72 px, kiosk keys 88 px, 8 px gaps), the counter shows no page header
+ * (3 runs), hit areas measured in the browser (Warm counter keys at least 72 px, Clear keys 120 x 56, kiosk keys 88 px, 8 px gaps), the counter shows no page header
  * or marketing, a stamp pops only when motion is allowed, the member QR stays black on white in dark mode, and the door kiosk renders in
  * Urdu without clipping. Needs a running, seeded API and web. Screenshots go to $SHOTS_DIR (default e2e/screenshots/counter-v3).
  */
@@ -78,15 +78,22 @@ test.describe("counter (café)", () => {
     }
   });
 
-  test("hit areas: keypad keys are at least 72 px with 8 px gaps, and the page has no page header or marketing", async ({ page }) => {
+  test("hit areas: keypad keys are 72 px (Warm) or 120 x 56 (Clear) with 8 px gaps, and the page has no page header or marketing", async ({ page }) => {
     const { id } = await owner(OWNER);
     await signIn(page, OWNER, `/m/${id}/counter`);
     await counterReady(page);
     const boxes = await page.getByRole("group", { name: "Keypad" }).getByRole("button").evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
     expect(boxes).toHaveLength(12);
+    // Main Street Warm keys are 72 px; Clear keys are 120 x 56 (docs/design/v3.2-clear-audit.md #22), still above the 44 px minimum.
+    const clear = (await page.locator("html").getAttribute("data-theme-style")) === "clear";
     for (const b of boxes) {
-      expect(b.h).toBeGreaterThanOrEqual(72);
-      expect(b.w).toBeGreaterThanOrEqual(72);
+      if (clear) {
+        expect(b.h).toBe(56);
+        expect(b.w).toBe(120);
+      } else {
+        expect(b.h).toBeGreaterThanOrEqual(72);
+        expect(b.w).toBeGreaterThanOrEqual(72);
+      }
     }
     // Across and down: the gap between neighbours is 8 px.
     expect(Math.round(boxes[1]!.x - (boxes[0]!.x + boxes[0]!.w))).toBe(8);

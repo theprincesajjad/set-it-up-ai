@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { DISPLAY_HEAVY, useTheme } from "../theme";
 import { shadow } from "./shadow";
+import { clearCard, CLEAR_CARD_TITLE } from "./Warm";
 import { Text } from "./Text";
 
 export interface CardProps {
@@ -23,13 +24,14 @@ export interface CardProps {
 
 /** Main Street Warm card: white on the cream canvas, radius 22, a hairline under it and a soft lift. */
 export function Card({ children, title, action, onPress, accessibilityLabel, tone = "surface", padded = true, style }: CardProps) {
-  const { c, r, isDark } = useTheme();
+  const theme = useTheme();
+  const { c, r, isDark, isClear } = theme;
   const body = (
     <>
       {title || action ? (
         <View style={styles.header}>
           {title ? (
-            <Text style={{ flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 20, lineHeight: 26 }} accessibilityRole="header">
+            <Text style={isClear ? CLEAR_CARD_TITLE : { flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 20, lineHeight: 26 }} accessibilityRole="header">
               {title}
             </Text>
           ) : (
@@ -43,7 +45,8 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ton
   );
   const base: StyleProp<ViewStyle> = [
     styles.card,
-    tone === "sunken" ? { backgroundColor: c.bgSubtle } : [{ backgroundColor: r.card }, shadow(isDark ? shadowsDarkCss.card! : shadows.card.css, shadows.card.native)],
+    tone === "sunken" ? { backgroundColor: c.bgSubtle } : isClear ? clearCard(theme) : [{ backgroundColor: r.card }, shadow(isDark ? shadowsDarkCss.card! : shadows.card.css, shadows.card.native)],
+    isClear ? { borderRadius: 20 } : null,
     { padding: padded ? 16 : 0 },
     style,
   ];

@@ -46,5 +46,6 @@ export const qk = {
   counterCategories: (id: string) => ["counter", "categories", id] as const,
   counterToday: (id: string, loc?: string) => ["counter", "today", id, loc ?? ""] as const,
   counterActivity: (id: string, loc?: string) => ["counter", "activity", id, loc ?? ""] as const,
+  ownerToday: (id: string) => ["reports", "today", id] as const,
   team: (id: string) => ["counter", "team", id] as const,
 };

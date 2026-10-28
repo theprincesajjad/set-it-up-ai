@@ -233,6 +233,10 @@ export const merchants = pgTable(
     logoUrl: text("logo_url"),
     coverUrl: text("cover_url"),
     brandColor: text("brand_color"),
+    /** The shop's look (docs/design/v3.2-clear-build.md): "clear" (default) or "warm". Validated by @ll/shared THEME_STYLES. */
+    themeStyle: text("theme_style").notNull().default("clear"),
+    /** Clear's graphite dark for the owner screens, opt-in. Warm ignores it (it follows the device). */
+    themeDark: boolean("theme_dark").notNull().default(false),
     timezone: text("timezone").notNull().default("America/Toronto"),
     /** Rep who signed the merchant (attribution only; no pay is calculated from it). */
     repUserId: uuid("rep_user_id").references(() => users.id),

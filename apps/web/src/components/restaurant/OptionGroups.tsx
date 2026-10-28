@@ -57,7 +57,7 @@ function Group({ g, value, onPick, idPrefix }: { g: OptionGroup; value: string[]
               <li key={o.id} className={cn("border-line", i > 0 && "border-t")}>
                 <label htmlFor={id} className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
                   <input id={id} type={g.type === "single" ? "radio" : "checkbox"} name={name} checked={on} onChange={() => onPick(o)} className="peer sr-only" />
-                  <span aria-hidden className={cn("flex size-[22px] shrink-0 items-center justify-center border-[1.5px] transition-colors peer-focus-visible:focus-ring", g.type === "single" ? "rounded-full" : "rounded-[6px]", on ? "border-trade bg-trade text-trade-foreground" : "border-line-strong/70 bg-bg")}>
+                  <span aria-hidden className={cn("flex size-[22px] shrink-0 items-center justify-center border-[1.5px] transition-colors peer-focus-visible:focus-ring", g.type === "single" ? "rounded-full" : "rounded-[6px]", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line-strong/70 bg-bg")}>
                     {on ? g.type === "single" ? <span className="size-2 rounded-full bg-bg" /> : <Check className="size-3.5" strokeWidth={3} /> : null}
                   </span>
                   <span className="min-w-0 flex-1">

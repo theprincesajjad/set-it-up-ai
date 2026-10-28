@@ -114,7 +114,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
               role="radio"
               aria-checked={w.iso === win}
               onClick={() => setWin(w.iso)}
-              className={cn("h-11 rounded-full border px-4 text-body transition-colors focus-visible:focus-ring", w.iso === win ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+              className={cn("h-11 rounded-full border px-4 text-body transition-colors focus-visible:focus-ring", w.iso === win ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
             >
               {t("gr.restock.window", { day: day(w.date, { weekday: "short" }), from: clock(w.start), to: hourOnly(w.end) })}
             </button>

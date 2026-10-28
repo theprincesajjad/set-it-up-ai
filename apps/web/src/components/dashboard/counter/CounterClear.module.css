@@ -1,0 +1,587 @@
+/*
+ * The counter in Clear (docs/design/v3.2-clear-audit.md #21 to #23, section 2.4 "Counter"; v6 mock `?s=counter`).
+ * Every rule is scoped to [data-theme-style="clear"], so Main Street Warm keeps its Tailwind classes untouched. These rules are
+ * unlayered, so they win over Tailwind's utilities layer without !important. Colours are tokens only (packages/design-tokens).
+ *
+ * Glass is on the two bars only (the top bar and the dock), flat blur, no refraction, no rim (performance budget: scanning stays fast).
+ * Tablet and up: top bar 64 (padding 32), panels 440 + the rest with insets 24 / 32 and 16 gaps, keys 3 x 120 x 56 (gap 8, r12), stamps
+ * 44 gap 12, the +1/+2/+3 control 44, dock 96 (20 + 56 + 20, padding 32) with 56 r16 buttons 12 apart. Phones: the same pieces stacked,
+ * a 16 gutter, the actions inline (no dock).
+ */
+
+/* Decorative dock bar and its slots: off in Warm and on phones. */
+.dock {
+  display: none;
+}
+
+:global([data-theme-style="clear"]) .root {
+  background: var(--background);
+}
+:global([data-theme-style="clear"]) .frame {
+  background: var(--background);
+}
+:global([data-theme-style="clear"]) .root [data-awning] {
+  display: none;
+}
+
+/* ---------- top bar (glass) ---------- */
+:global([data-theme-style="clear"]) .top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 64px;
+  padding: 10px 16px;
+  column-gap: 12px;
+  border-bottom: 0;
+  background: var(--lg-fill);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: inset 0 -1px 0 var(--lg-edge), 0 0 24px color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+:global([data-theme-style="clear"]) .mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 650;
+}
+:global([data-theme-style="clear"]) .who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  row-gap: 0;
+}
+:global([data-theme-style="clear"]) .shop {
+  flex-basis: 100%;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+}
+:global([data-theme-style="clear"]) .who h1,
+:global([data-theme-style="clear"]) .status {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+/* Top bar controls: a lite glass capsule, 40 tall on the tablet (#38: 28 avatar, padding 6 12); 44 on phones. */
+:global([data-theme-style="clear"]) .chip {
+  height: 44px;
+  padding-inline: 8px 12px;
+  border: 0;
+  background: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge), 0 4px 14px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+:global([data-theme-style="clear"]) .chip > span[aria-hidden] {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+:global([data-theme-style="clear"]) .select {
+  height: 44px;
+  border: 0;
+  background: var(--lg-seg-track);
+}
+
+/* Notices strip under the bar: flat, same side inset as the bar. */
+:global([data-theme-style="clear"]) .notices {
+  border-bottom: 0;
+  padding-inline: 16px;
+}
+
+/* ---------- panes ---------- */
+:global([data-theme-style="clear"]) .lookup {
+  gap: 16px;
+  padding: 24px 16px;
+  background: var(--card);
+  border: 0;
+}
+:global([data-theme-style="clear"]) .main {
+  gap: 16px;
+  padding: 24px 16px;
+}
+/* "Find a customer": the mock's field label. */
+:global([data-theme-style="clear"]) .label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 450;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+
+/* ---------- customer, stamp card, +1/+2/+3 ---------- */
+/* A customer on screen (stamped, reward ready, confirm): the panel's 16 rhythm. */
+:global([data-theme-style="clear"]) .state {
+  gap: 16px;
+}
+:global([data-theme-style="clear"]) .avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 650;
+}
+:global([data-theme-style="clear"]) .name {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+}
+:global([data-theme-style="clear"]) .detail {
+  font-size: 14px;
+  line-height: 20px;
+}
+:global([data-theme-style="clear"]) .card {
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-card);
+}
+:global([data-theme-style="clear"]) .pad {
+  padding: 24px;
+}
+:global([data-theme-style="clear"]) .stampCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+/* The big numeral only exists in Clear (aria-hidden: the "7 of 10" text beside it is what is read). */
+.numeral {
+  display: none;
+}
+:global([data-theme-style="clear"]) .numeral {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 80px;
+  line-height: 80px;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+:global([data-theme-style="clear"]) .numeral > span {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 550;
+  letter-spacing: -0.014em;
+  color: var(--muted-foreground);
+}
+:global([data-theme-style="clear"]) .stampHead {
+  margin: 0;
+}
+:global([data-theme-style="clear"]) .stampHead > p:first-child {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 450;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+/* "7 of 10" stays for screen readers; the numeral above shows it. */
+:global([data-theme-style="clear"]) .stampHead > p:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Stamped: the same numeral scale as the card. */
+:global([data-theme-style="clear"]) .bigNumber {
+  font-family: var(--font-sans);
+  font-size: 80px;
+  line-height: 80px;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  color: var(--foreground);
+}
+:global([data-theme-style="clear"]) .bigNumber > bdi > span:last-child {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 550;
+  letter-spacing: -0.014em;
+}
+
+/* Stamps: 44 circles, gap 12, one row of up to 10 (10 x 44 + 9 x 12 = 548). Filled ink, next dashed, empty a hairline ring. */
+:global([data-theme-style="clear"]) .stamps {
+  /* Phones: at most 5 a row (5 x 44 + 4 x 12 = 268); tablet and up: one row of up to 10. */
+  grid-template-columns: repeat(var(--cols-sm, 5), 44px);
+  justify-content: start;
+  gap: 12px;
+  max-width: 100%;
+}
+:global([data-theme-style="clear"]) .stamp {
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+}
+:global([data-theme-style="clear"]) .stamp[data-on] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+:global([data-theme-style="clear"]) .stamp[data-next] {
+  border: 1.5px dashed var(--foreground);
+}
+:global([data-theme-style="clear"]) .stamp > svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* +1 / +2 / +3: the large segmented control (track 2 + 40 segments = 44), selected segment lifted. */
+:global([data-theme-style="clear"]) .seg {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0;
+  padding: 2px;
+  border-radius: 9999px;
+  background: var(--lg-seg-track);
+}
+:global([data-theme-style="clear"]) .seg > button {
+  height: 40px;
+  min-width: 64px;
+  padding-inline: 16px;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 550;
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+  /* "+1" keeps its sign in front on an Urdu page. */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+:global([data-theme-style="clear"]) .seg > button[aria-checked="true"] {
+  background: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge), 0 2px 6px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+/* ---------- keypad (ScanKeypad) and the phone field (DigitBoxes) ---------- */
+:global([data-theme-style="clear"]) .keys {
+  gap: 8px;
+}
+:global([data-theme-style="clear"]) .key {
+  box-sizing: border-box;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+}
+/* Scan and delete are the quiet keys (the mock's Clear and delete): no fill, muted. */
+:global([data-theme-style="clear"]) .key[data-quiet] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted-foreground);
+}
+:global([data-theme-style="clear"]) .key > svg {
+  width: 22px;
+  height: 22px;
+}
+:global([data-theme-style="clear"]) .field {
+  height: 56px;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 2px solid var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 30px;
+  line-height: 40px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+}
+:global([data-theme-style="clear"]) .field > span:not([aria-hidden]) {
+  width: 20px;
+  border-bottom-width: 2px;
+}
+
+/* ---------- scan panel: flat, an icon tile in the trade tint ---------- */
+:global([data-theme-style="clear"]) .scan {
+  min-height: 80px;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+}
+:global([data-theme-style="clear"]) .scan[data-camera="off"] {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+:global([data-theme-style="clear"]) .scan[data-camera="off"] .scanIcon {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--trade-tint);
+  color: var(--trade);
+}
+:global([data-theme-style="clear"]) .scan .scanTitle {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+}
+:global([data-theme-style="clear"]) .scan[data-camera="off"] .scanHint {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+:global([data-theme-style="clear"]) .scan[data-camera="off"] .scanLink {
+  color: var(--link);
+}
+
+/* ---------- Recent at the counter: one card, header 56, rows 64 with overlaid dividers ---------- */
+:global([data-theme-style="clear"]) .recent {
+  padding: 0;
+  overflow: hidden;
+}
+:global([data-theme-style="clear"]) .recentHead {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+}
+:global([data-theme-style="clear"]) .recentNote {
+  padding: 0 16px 12px;
+  margin-top: -8px;
+}
+:global([data-theme-style="clear"]) .recentList {
+  margin: 0;
+  gap: 0;
+}
+:global([data-theme-style="clear"]) .recentRow {
+  position: relative;
+  min-height: 64px;
+  padding: 10px 16px;
+  border-radius: 0;
+  background: transparent;
+}
+:global([data-theme-style="clear"]) .recentRow::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  border-top: 1px solid var(--border);
+}
+:global([data-theme-style="clear"]) .recentRow > :first-child {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+:global([data-theme-style="clear"]) .recentPoints {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+}
+:global([data-theme-style="clear"]) .recentEmpty {
+  margin: 0;
+  padding: 0 16px 16px;
+}
+
+/* ---------- notices ---------- */
+:global([data-theme-style="clear"]) .notice {
+  border-radius: 12px;
+  background: var(--info-soft);
+  color: var(--info-text);
+}
+:global([data-theme-style="clear"]) .notice[role="alert"] {
+  background: var(--destructive-soft);
+  color: var(--destructive-text);
+}
+
+/* ---------- the toast: the inverted glass pill ---------- */
+:global([data-theme-style="clear"]) .toast {
+  min-height: 44px;
+  padding: 0 8px 0 20px;
+  gap: 16px;
+  border-radius: 9999px;
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: var(--lg-shadow);
+}
+
+/* ---------- tablet and up: two panes, the dock ---------- */
+@media (min-width: 64rem) {
+  :global([data-theme-style="clear"]) .top {
+    height: 64px;
+    padding-block: 0;
+    padding-inline: 32px;
+    flex-wrap: nowrap;
+  }
+  :global([data-theme-style="clear"]) .chip,
+  :global([data-theme-style="clear"]) .select,
+  :global([data-theme-style="clear"]) .top a {
+    height: 40px;
+  }
+  :global([data-theme-style="clear"]) .chip {
+    padding-inline: 6px 12px;
+  }
+  :global([data-theme-style="clear"]) .notices {
+    padding-inline: 32px;
+  }
+  :global([data-theme-style="clear"]) .panes {
+    grid-template-columns: 440px minmax(0, 1fr);
+    padding-top: 24px;
+  }
+  /* Both panes clear the dock (96 + 24); the lookup pane runs down under the dock like the mock's white panel. */
+  :global([data-theme-style="clear"]) .bare .lookup,
+  :global([data-theme-style="clear"]) .bare .main {
+    padding-bottom: 120px;
+  }
+  :global([data-theme-style="clear"]) .lookup {
+    padding: 24px 32px;
+    border-inline-end-width: 0;
+    box-shadow: inset -1px 0 0 var(--border);
+  }
+  :global([data-theme-style="clear"]) [dir="rtl"] .lookup,
+  :global([dir="rtl"][data-theme-style="clear"]) .lookup {
+    box-shadow: inset 1px 0 0 var(--border);
+  }
+  /* The counter fills the screen and each pane scrolls on its own, so the keypad stays at the foot of the lookup pane (as in the mock)
+     above the dock whatever the right pane holds, and the right pane's content passes under the dock's glass. */
+  :global([data-theme-style="clear"]) .bare .frame {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :global([data-theme-style="clear"]) .bare .panes {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  :global([data-theme-style="clear"]) .bare .lookup,
+  :global([data-theme-style="clear"]) .bare .main {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  :global([data-theme-style="clear"]) .bare .lookup .keys {
+    margin-top: auto;
+  }
+  :global([data-theme-style="clear"]) .main {
+    padding: 24px 32px;
+  }
+  :global([data-theme-style="clear"]) .stamps {
+    grid-template-columns: repeat(var(--cols, 10), 44px);
+  }
+
+  /* Dock: a full-width glass bar, 96 tall, split 440 | rest like the panes. */
+  :global([data-theme-style="clear"]) .bare .dock {
+    display: block;
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    height: 96px;
+    z-index: 30;
+    pointer-events: none;
+    background: var(--lg-fill);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+    box-shadow: inset 0 1px 0 var(--lg-edge), 0 0 24px color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+  /* The state's actions ride in the dock's right cell; the lookup's action in its left cell. Same DOM, same order. */
+  :global([data-theme-style="clear"]) .bare .actions,
+  :global([data-theme-style="clear"]) .bare .leftAction {
+    position: fixed;
+    bottom: 20px;
+    z-index: 31;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  :global([data-theme-style="clear"]) .bare .actions {
+    inset-inline: calc(440px + 32px) 32px;
+    width: auto;
+  }
+  :global([data-theme-style="clear"]) .bare .leftAction {
+    inset-inline-start: 32px;
+    width: 376px;
+  }
+  :global([data-theme-style="clear"]) .bare .actions > div {
+    display: contents;
+  }
+  :global([data-theme-style="clear"]) .bare .actions :is(button, a),
+  :global([data-theme-style="clear"]) .bare .leftAction :is(button, a) {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    height: 56px;
+    min-height: 56px;
+    padding-inline: 24px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 650;
+  }
+  /* Secondary labels may take two lines rather than spill out of the dock ("Stamp instead, keep the reward"). */
+  :global([data-theme-style="clear"]) .bare .actions > :not(:first-child):is(button, a),
+  :global([data-theme-style="clear"]) .bare .actions > div > :is(button, a) {
+    padding-inline: 16px;
+    white-space: normal;
+    text-wrap: balance;
+    text-align: center;
+  }
+  /* The first action is the primary: twice the width, 17px. */
+  :global([data-theme-style="clear"]) .bare .actions > :first-child:is(button, a) {
+    flex-grow: 2;
+    font-size: 17px;
+    letter-spacing: -0.014em;
+  }
+  /* A text-only action ("Not them") keeps its own width. */
+  :global([data-theme-style="clear"]) .bare .actions > button[data-text] {
+    flex: none;
+    padding-inline: 12px;
+    margin: 0;
+  }
+  :global([data-theme-style="clear"]) .bare .leftAction :is(button, a) {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+  /* The toast floats 16 above the dock. */
+  :global([data-theme-style="clear"]) .bare .toast {
+    bottom: 112px;
+  }
+}

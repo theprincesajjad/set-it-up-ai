@@ -30,6 +30,9 @@ import { PetShopBlock } from "@/components/pass/PetShopBlock";
 import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { howYouEarn } from "@/lib/program";
 import { Awning } from "@/components/ui/Awning";
+import { ThemeStyle } from "@/components/ui/ThemeStyle";
+import { ClearShopHeader } from "@/components/pass/ClearShopHeader";
+import { ThemeFork } from "@/components/pass/ThemeFork";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -91,6 +94,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
   }
 
   const m = shop.merchant;
+  const heroSubtitle = [kindL(L, m.vertical), locale === "en" ? m.neighbourhood?.name.toLowerCase() : m.neighbourhood?.name].filter(Boolean).join(" · ");
   const loc = shop.locations[0] ?? null;
   const program = shop.program;
   const status = loc ? openStatusL(L, loc.hours, m.timezone) : null;
@@ -159,14 +163,15 @@ export default async function ShopPage({ params, searchParams }: Props) {
   ) : null;
 
   return (
+    // The shop's own look (Clear by default; Main Street Warm when the shop picked it in Settings), light only on customer pages.
+    <ThemeStyle style={m.themeStyle}>
     <LocaleScope locale={locale} trade={shop.merchant.vertical} className="flex flex-col gap-6 pt-2">
-      <Awning size="sm" className="-mt-2 rounded-b-md rounded-t-none" />
+      <Awning size="sm" className="-mt-2 rounded-b-md rounded-t-none clear:hidden" />
       <PassTopBar className="self-stretch" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <ShopTile
-        variant="hero"
-        shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }}
-        subtitle={[kindL(L, m.vertical), locale === "en" ? m.neighbourhood?.name.toLowerCase() : m.neighbourhood?.name].filter(Boolean).join(" · ")}
+      <ThemeFork
+        warm={<ShopTile variant="hero" shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />}
+        clear={<ClearShopHeader shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
@@ -346,7 +351,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       />
 
       {!membership && joinInfo ? (
-        <section id="join" aria-label={t("auth.join.joinShop", { shop: m.name })} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5">
+        <section id="join" aria-label={t("auth.join.joinShop", { shop: m.name })} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5 clear:rounded-r6 clear:card-clear">
           <JoinFlow info={joinInfo} merchantId={m.id} referralCode={ref} signedIn={!!me} signedInName={me?.user.name ?? null} showHeader={false} autoFocus={false} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
         </section>
       ) : null}
@@ -365,5 +370,6 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <StickyJoin label={t("auth.join.joinShop", { shop: LOCALES[locale].dir === "rtl" ? `\u2068${m.name}\u2069` : m.name })} />
       ) : null}
     </LocaleScope>
+    </ThemeStyle>
   );
 }

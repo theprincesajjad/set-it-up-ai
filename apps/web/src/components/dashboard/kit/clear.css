@@ -1,0 +1,746 @@
+/*
+ * Clear theme, owner list and detail pages (docs/design/v3.2-clear-audit.md section 2, the v6 mock `?s=customers`).
+ * Everything here is scoped under [data-theme-style="clear"], so Main Street Warm renders exactly as before.
+ * Hooks are the `kit-*` classes on the dashboard kit (page.tsx, data.tsx, forms.tsx) plus a few page hooks (`cust-*`).
+ * Colours are design-token variables only (packages/design-tokens, Clear block). Content stays flat (cards, tables, rows);
+ * glass is only on the sheet, the segmented controls and the secondary toolbar buttons (spec 1, point 8).
+ *
+ * The rules are unlayered on purpose: they must win over the kit's Tailwind utilities, which live in @layer utilities.
+ */
+
+/* ---------- page header: title 26/32 700, 4, description 13/20; 24 to the first card (audit #15) ---------- */
+[data-theme-style="clear"] .kit-ph {
+  gap: 16px;
+}
+[data-theme-style="clear"] .kit-ph-title {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-ph-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+[data-theme-style="clear"] .kit-ph-acts {
+  gap: 8px;
+}
+@media (max-width: 639px) {
+  [data-theme-style="clear"] .kit-ph-title {
+    font-size: 28px;
+    line-height: 36px;
+  }
+}
+[data-theme-style="clear"] .kit-ph-title:lang(ur) {
+  line-height: 40px;
+  letter-spacing: 0;
+}
+@media (max-width: 639px) {
+  [data-theme-style="clear"] .kit-ph-title:lang(ur) {
+    line-height: 44px;
+  }
+}
+[data-theme-style="clear"] .kit-ph-desc:lang(ur) {
+  line-height: 28px;
+}
+[data-theme-style="clear"] .kit-back {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--link);
+  font-weight: 550;
+}
+
+/* ---------- section heading (no box) ---------- */
+[data-theme-style="clear"] .kit-sec-h {
+  margin-bottom: 8px;
+  min-height: 32px;
+  align-items: center;
+}
+[data-theme-style="clear"] .kit-sec-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+}
+
+/* ---------- card: radius 20, hairline as an inset shadow, header 56 (12 16, title 14/20 650), body 16 (audit #4, #5, #16) ---------- */
+[data-theme-style="clear"] .kit-panel {
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+}
+[data-theme-style="clear"] .kit-panel-h {
+  min-height: 56px;
+  padding: 12px 16px;
+  align-items: center;
+  border-bottom: 0;
+}
+[data-theme-style="clear"] .kit-panel:not([data-pad]) > .kit-panel-h {
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+[data-theme-style="clear"] .kit-panel-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+}
+[data-theme-style="clear"] .kit-panel-title + p {
+  margin-top: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+[data-theme-style="clear"] .kit-panel[data-pad] > .kit-panel-b {
+  padding: 16px;
+}
+[data-theme-style="clear"] .kit-panel[data-pad] > .kit-panel-h + .kit-panel-b {
+  padding-top: 0;
+}
+[data-theme-style="clear"] .kit-panel-f {
+  border-top: 0;
+  box-shadow: inset 0 1px 0 var(--border);
+  background: transparent;
+  padding: 12px 16px;
+  gap: 8px;
+}
+
+/* ---------- quiet links: link blue (spec 2.2) ---------- */
+[data-theme-style="clear"] .kit-quiet {
+  color: var(--link);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .kit-quiet:hover {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- glass secondary button, 32 pill, 16 inline (audit #13; mock .btn.glass.lg.lite) ---------- */
+[data-theme-style="clear"] .kit-tbtn {
+  height: 32px;
+  padding-inline: 16px;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-tbtn svg {
+  color: var(--foreground);
+}
+
+/* ---------- metrics card: one card, cells split by hairlines (spec 4); label 550 muted, number 26/32 650, caption 12/16 ---------- */
+[data-theme-style="clear"] .kit-stats {
+  border: 0;
+  border-radius: 20px;
+  background: var(--border);
+  box-shadow: 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+}
+[data-theme-style="clear"] .kit-stat {
+  background: var(--card);
+  padding: 16px 20px;
+}
+[data-theme-style="clear"] .kit-stat:hover {
+  background: var(--card);
+}
+[data-theme-style="clear"] .kit-stat:has(a):hover {
+  background: var(--accent);
+}
+[data-theme-style="clear"] .kit-stat-l {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+  color: var(--muted-foreground);
+}
+[data-theme-style="clear"] .kit-stat-v {
+  margin-top: 4px;
+  font-family: var(--font-sans);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+}
+[data-theme-style="clear"] .kit-stat-d {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 550;
+}
+@media (max-width: 1023px) {
+  [data-theme-style="clear"] .kit-stat {
+    padding: 16px;
+  }
+  [data-theme-style="clear"] .kit-stat-v {
+    font-size: 24px;
+  }
+}
+
+/* ---------- rows: 12 16, one line 44, two lines 64, dividers as hairlines (audit #17) ---------- */
+[data-theme-style="clear"] .kit-row {
+  min-height: 44px;
+  padding-block: 12px;
+  gap: 12px;
+}
+[data-theme-style="clear"] .kit-row-t {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .kit-row-m {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+[data-theme-style="clear"] .kit-row-t:lang(ur),
+[data-theme-style="clear"] .kit-row-m:lang(ur) {
+  line-height: 28px;
+}
+[data-theme-style="clear"] .kit-rows {
+  border-color: var(--border);
+}
+[data-theme-style="clear"] .kit-panel .kit-rows {
+  border-block: 0;
+}
+
+/* ---------- key-value rows: 36 (8 0), 13/20 (audit #36) ---------- */
+[data-theme-style="clear"] .kit-kv-r {
+  min-height: 36px;
+  padding-block: 8px;
+}
+[data-theme-style="clear"] .kit-kv-r > dt,
+[data-theme-style="clear"] .kit-kv-r > dd {
+  font-size: 13px;
+  line-height: 20px;
+}
+[data-theme-style="clear"] .kit-kv-r > dt:lang(ur),
+[data-theme-style="clear"] .kit-kv-r > dd:lang(ur) {
+  line-height: 28px;
+}
+[data-theme-style="clear"] .kit-panel .kit-kv {
+  border-block: 0;
+}
+
+/* ---------- badges: 20 tall, r8, 12/16 550 (audit #31); "Reward ready" is info blue in Clear ---------- */
+[data-theme-style="clear"] .kit-tag,
+[data-theme-style="clear"] .kit-pill {
+  height: 20px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 550;
+  background: var(--muted);
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-tag[data-tone="accent"],
+[data-theme-style="clear"] .kit-pill[data-tone="info"] {
+  background: var(--info-soft);
+  color: var(--info-text);
+}
+[data-theme-style="clear"] .kit-pill[data-tone="positive"] {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+[data-theme-style="clear"] .kit-pill[data-tone="negative"] {
+  background: var(--destructive-soft);
+  color: var(--destructive-text);
+}
+[data-theme-style="clear"] .kit-pill[data-tone="accent"] {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+[data-theme-style="clear"] .kit-pill:lang(ur),
+[data-theme-style="clear"] .kit-tag:lang(ur) {
+  height: auto;
+  min-height: 20px;
+  line-height: 24px;
+}
+
+/* Meter: ink fill (the trade colour is for the nav, the icon tiles and the chart's current bar only). */
+[data-theme-style="clear"] .kit-meter-fill {
+  background: var(--foreground);
+}
+
+/* ---------- tables (Polaris index table): header 12/16 550 muted on a hover tint, cells 13/20, rows 52 ---------- */
+[data-theme-style="clear"] .kit-tw {
+  border-color: var(--border);
+}
+/* A table on its own becomes a card; inside a card it stays a plain block. */
+[data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) {
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  [data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) {
+    overflow: visible;
+  }
+  [data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) .kit-tr:last-child > td:first-child {
+    border-end-start-radius: 20px;
+  }
+  [data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) .kit-tr:last-child > td:last-child {
+    border-end-end-radius: 20px;
+  }
+  [data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) thead th:first-child {
+    border-start-start-radius: 20px;
+  }
+  [data-theme-style="clear"] .kit-tw:not(.kit-panel .kit-tw) thead th:last-child {
+    border-start-end-radius: 20px;
+  }
+}
+[data-theme-style="clear"] .kit-panel .kit-tw {
+  border-block: 0;
+}
+[data-theme-style="clear"] .kit-th {
+  height: 32px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 550;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 3.5%, var(--card));
+  border-color: var(--border);
+}
+[data-theme-style="clear"] .kit-td {
+  height: 52px;
+  padding-inline: 12px;
+  font-size: 13px;
+  line-height: 20px;
+  border-color: var(--border);
+}
+[data-theme-style="clear"] .kit-th:first-child,
+[data-theme-style="clear"] .kit-td:first-child {
+  padding-inline-start: 16px;
+}
+[data-theme-style="clear"] .kit-th:last-child,
+[data-theme-style="clear"] .kit-td:last-child {
+  padding-inline-end: 16px;
+}
+[data-theme-style="clear"] .kit-tr[tabindex]:hover,
+[data-theme-style="clear"] .kit-tr[tabindex]:focus-visible {
+  background: var(--accent);
+}
+[data-theme-style="clear"] .kit-tr[aria-selected="true"] {
+  background: var(--row-sel);
+}
+
+/* ---------- empty states (Polaris): inside a card, 40px grey icon chip, 16/24 650 title, one sentence, actions ---------- */
+[data-theme-style="clear"] .kit-empty {
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+  padding: 24px;
+  gap: 16px;
+  align-items: flex-start;
+}
+[data-theme-style="clear"] .kit-empty-art {
+  display: none;
+}
+[data-theme-style="clear"] .kit-empty-ico {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--tile);
+  color: var(--muted-foreground);
+}
+[data-theme-style="clear"] .kit-empty-ico[data-tone="danger"] {
+  background: var(--destructive-soft);
+  color: var(--destructive-text);
+}
+[data-theme-style="clear"] .kit-empty-ico svg {
+  width: 20px;
+  height: 20px;
+}
+[data-theme-style="clear"] .kit-empty-t {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+}
+[data-theme-style="clear"] .kit-empty-d {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
+}
+[data-theme-style="clear"] .kit-empty-a {
+  margin-top: 16px;
+  gap: 8px;
+}
+[data-theme-style="clear"] .kit-empty-line {
+  font-size: 13px;
+  line-height: 20px;
+  padding-block: 24px;
+}
+[data-theme-style="clear"] .kit-panel .kit-empty {
+  box-shadow: none;
+  padding: 16px 0;
+}
+[data-theme-style="clear"] .kit-err {
+  border-radius: 12px;
+  border-color: var(--border);
+  background: var(--card);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* ---------- segmented control (filters and views): glass track, inset 2, md 32 (28 segments), lifted selection (audit #14) ---------- */
+[data-theme-style="clear"] .kit-caps,
+[data-theme-style="clear"] .kit-seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  padding: 2px;
+  min-height: 0;
+  max-width: 100%;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--lg-seg-track);
+  overflow-x: auto;
+  scrollbar-width: none;
+  vertical-align: top;
+}
+[data-theme-style="clear"] .kit-caps::-webkit-scrollbar,
+[data-theme-style="clear"] .kit-seg::-webkit-scrollbar {
+  display: none;
+}
+[data-theme-style="clear"] .kit-cap,
+[data-theme-style="clear"] .kit-seg-o {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  min-height: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-cap:hover,
+[data-theme-style="clear"] .kit-seg-o:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-cap[aria-checked="true"],
+[data-theme-style="clear"] .kit-seg-o[aria-checked="true"] {
+  background: var(--lg-lift);
+  color: var(--foreground);
+  font-weight: 550;
+  box-shadow: inset 0 0 0 1px var(--lg-edge), inset 1px 2px 3px -1px var(--lg-inner), 0 2px 6px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+[data-theme-style="clear"] .kit-cap-n,
+[data-theme-style="clear"] .kit-cap[aria-checked="true"] .kit-cap-n {
+  font-weight: 450;
+  color: var(--muted-foreground);
+}
+[data-theme-style="clear"] .kit-cap:lang(ur),
+[data-theme-style="clear"] .kit-seg-o:lang(ur) {
+  line-height: 24px;
+}
+
+/* ---------- underline tabs: 44 tall, ink underline ---------- */
+[data-theme-style="clear"] .kit-tabs {
+  border-color: var(--border);
+  gap: 24px;
+}
+[data-theme-style="clear"] .kit-tab {
+  height: 44px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .kit-tab[aria-selected="true"] {
+  border-color: var(--foreground);
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+/* ---------- sheet (customer detail): strong glass, 12 from the viewport, r32, header 16, body 0 16 16 (audit #19) ---------- */
+[data-theme-style="clear"] .kit-scrim {
+  background: var(--scrim);
+}
+@media (min-width: 640px) {
+  [data-theme-style="clear"] .kit-sheet {
+    inset-block: 12px;
+    inset-inline-end: 12px;
+    width: calc(100% - 24px);
+    border: 0;
+    border-radius: 32px;
+    overflow: hidden;
+  }
+}
+/* Material: the foundation's glass-sheet utility (clear:glass-sheet on the element). */
+[data-theme-style="clear"] .kit-sheet {
+  /* glass-sheet sets position: relative for its rim; the sheet stays fixed. */
+  position: fixed;
+  border: 0;
+}
+[data-theme-style="clear"] .kit-sheet-h {
+  border-bottom: 0;
+  padding: 16px;
+  align-items: center;
+}
+[data-theme-style="clear"] .kit-sheet-t {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+}
+[data-theme-style="clear"] .kit-sheet-h .kit-sheet-t + div {
+  margin-top: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+[data-theme-style="clear"] .kit-sheet-x {
+  margin: 0;
+  width: 32px;
+  height: 32px;
+  color: var(--foreground);
+}
+[data-theme-style="clear"] .kit-sheet-b {
+  padding: 0 16px 16px;
+}
+[data-theme-style="clear"] .kit-sheet-f {
+  border-top: 0;
+  box-shadow: inset 0 1px 0 var(--lg-edge);
+  padding: 12px 16px;
+}
+/* Cards inside the sheet: solid-ish lift, r16 (= 32 − 16), 12 apart. */
+[data-theme-style="clear"] .kit-sheet .kit-panel,
+[data-theme-style="clear"] .kit-sheet .cust-card {
+  border-radius: 16px;
+  background: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+}
+[data-theme-style="clear"][data-theme="dark"] .kit-sheet .kit-panel,
+[data-theme-style="clear"][data-theme="dark"] .kit-sheet .cust-card,
+[data-theme-style="clear"] [data-theme="dark"] .kit-sheet .cust-card {
+  background: color-mix(in srgb, var(--background) 30%, transparent);
+}
+
+/* ---------- save bar: flat card bar with a hairline ---------- */
+[data-theme-style="clear"] .kit-savebar {
+  border-top: 0;
+  background: var(--lg-fill-strong);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow: inset 0 1px 0 var(--border);
+}
+
+/* ---------- Customers (mock ?s=customers): the filter control sits in a 56px tools row at the top of the table card ---------- */
+[data-theme-style="clear"] .cust-tools:has(+ .cust-grid) {
+  margin-bottom: 0;
+  padding: 12px 16px;
+  border-radius: 20px 20px 0 0;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+  position: relative;
+  z-index: 1;
+}
+[data-theme-style="clear"] .cust-tools:has(+ .cust-grid) + .cust-grid {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  border-top: 0;
+}
+[data-theme-style="clear"] .cust-tools:not(:has(+ .cust-grid)) {
+  margin-bottom: 16px;
+}
+[data-theme-style="clear"] .cust-grid {
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  /* Outer ring, not inset: the sticky header cells paint over an inset line. Same box, no layout change. */
+  box-shadow: 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+}
+[data-theme-style="clear"] .cust-grid thead th {
+  height: 32px;
+  padding-block: 0;
+  padding-inline: 8px;
+  border-bottom-width: 0;
+  box-shadow: inset 0 -1px 0 var(--border);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 550;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 3.5%, var(--card));
+  border-color: var(--border);
+}
+[data-theme-style="clear"] .cust-grid thead th button {
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .cust-grid thead th:first-child,
+[data-theme-style="clear"] .cust-grid tbody td:first-child {
+  padding-inline-start: 16px;
+}
+[data-theme-style="clear"] .cust-grid thead th:last-child,
+[data-theme-style="clear"] .cust-grid tbody td:last-child {
+  padding-inline-end: 16px;
+}
+/* Rows 52 (Polaris index table): dividers drawn as overlaid lines, so the row box stays 52 (audit #5, #17). */
+[data-theme-style="clear"] .cust-grid tbody tr {
+  font-size: 13px;
+}
+[data-theme-style="clear"] .cust-grid tbody td {
+  height: 52px;
+  padding-block: 0;
+  padding-inline: 8px;
+  border-bottom-width: 0;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+[data-theme-style="clear"] .cust-grid tbody tr:last-child td {
+  box-shadow: none;
+}
+[data-theme-style="clear"] .cust-grid tbody td > div {
+  padding-block: 0;
+}
+[data-theme-style="clear"] .cust-grid tbody td {
+  font-size: 13px;
+  line-height: 20px;
+  border-color: var(--border);
+}
+[data-theme-style="clear"] .cust-grid tbody tr:hover {
+  background: var(--accent);
+}
+[data-theme-style="clear"] .cust-grid tbody tr[aria-selected="true"] {
+  background: var(--row-sel);
+}
+[data-theme-style="clear"] .cust-foot {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 20px;
+}
+[data-theme-style="clear"] .cust-av,
+[data-theme-style="clear"] .cust-av > * {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 650;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+/* ---------- one customer (sheet and full page): each block is a card; in the sheet r16 lift cards 12 apart, on the page r20 cards 16 apart ---------- */
+[data-theme-style="clear"] .cust-stack {
+  gap: 12px;
+}
+[data-theme-style="clear"] .cust-page {
+  gap: 16px;
+}
+[data-theme-style="clear"] .cust-col {
+  gap: 16px;
+}
+[data-theme-style="clear"] .cust-card {
+  padding: 16px 16px 8px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border), var(--lg-shadow-card, var(--ll-shadow-card));
+}
+[data-theme-style="clear"] .cust-card:has(> div > .kit-kv:only-child),
+[data-theme-style="clear"] .cust-card:has(> .kit-kv) {
+  padding-block: 8px;
+}
+[data-theme-style="clear"] .cust-card .kit-kv,
+[data-theme-style="clear"] .cust-card .kit-sec ul {
+  border-block: 0;
+}
+[data-theme-style="clear"] .cust-card .kit-sec-h {
+  min-height: 20px;
+  margin-bottom: 4px;
+}
+[data-theme-style="clear"] .cust-card .kit-sec > p {
+  border-block: 0;
+}
+[data-theme-style="clear"] .cust-card:last-child {
+  padding-bottom: 16px;
+}
+[data-theme-style="clear"] .cust-progress {
+  border-radius: 16px;
+  background: var(--lg-lift);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+  padding: 12px 16px;
+}
+[data-theme-style="clear"] .kit-sheet .cust-card {
+  border-radius: 16px;
+}
+[data-theme-style="clear"] .cust-progress p {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .cust-progress [role="progressbar"] > div,
+[data-theme-style="clear"] .kit-sheet [role="progressbar"] > div {
+  background: var(--foreground);
+}
+[data-theme-style="clear"] .cust-acts {
+  gap: 8px;
+}
+[data-theme-style="clear"] .cust-acts > button,
+[data-theme-style="clear"] .cust-acts > a {
+  height: 32px;
+  padding-inline: 16px;
+  font-size: 13px;
+  font-weight: 550;
+}
+[data-theme-style="clear"] .cust-reveal {
+  color: var(--link);
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+}
+[data-theme-style="clear"] .cust-balance {
+  font-family: var(--font-sans);
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  color: var(--foreground);
+}
+
+/* ---------- hand-built page cards (`rounded-card bg-card`): the Clear hairline as an inset shadow; radius 20 comes from the token ---------- */
+[data-theme-style="clear"] main .rounded-card.bg-card:not(.kit-panel, .kit-empty, .cust-card) {
+  box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card);
+}
+[data-theme-style="clear"] main .rounded-card.bg-card.border:not(.kit-panel) {
+  border-color: transparent;
+}
+[data-theme-style="clear"] main .rounded-card.bg-card.p-5:not(.kit-panel),
+[data-theme-style="clear"] main .rounded-card.bg-card.p-6:not(.kit-panel) {
+  padding: 16px;
+}
+@media (min-width: 768px) {
+  [data-theme-style="clear"] main .rounded-card.bg-card.md\:p-6 {
+    padding: 16px;
+  }
+}
+
+/* Heatmap: an ink ramp in Clear (the trade colour is for the current bar only). */
+[data-theme-style="clear"] .kit-heat {
+  --heat-ink: var(--foreground);
+}
+/* Balance column: regular weight, like the mock's "7 / 10". */
+[data-theme-style="clear"] .cust-grid tbody td bdi.tabular {
+  font-weight: 450;
+}

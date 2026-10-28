@@ -27,8 +27,8 @@ export function AccountMenu({ name, email, links = [] }: { name: string | null; 
   const item = "min-h-11 gap-2.5 text-body md:min-h-9";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
-        <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary text-meta-strong text-primary-foreground">{initials(name ?? email)}</span>
+      <DropdownMenuTrigger className="inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring clear:md:size-8">
+        <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary text-meta-strong text-primary-foreground clear:size-8 clear:text-[11px] clear:font-[650]">{initials(name ?? email)}</span>
         <span className="sr-only">{t("shell.account.menu", { name: label })}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" dir={dir} className="w-64">

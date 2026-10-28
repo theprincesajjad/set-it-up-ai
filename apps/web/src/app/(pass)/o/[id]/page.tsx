@@ -50,7 +50,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
   }
   return (
     <LocaleScope locale={locale} trade={order.merchantVertical} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
-      <Awning size="sm" className="-mt-2 mb-2 rounded-b-md rounded-t-none" />
+      <Awning size="sm" className="-mt-2 mb-2 rounded-b-md rounded-t-none clear:hidden" />
       <PassTopBar className="mb-2" />
       <OrderStatus initial={order} />
     </LocaleScope>

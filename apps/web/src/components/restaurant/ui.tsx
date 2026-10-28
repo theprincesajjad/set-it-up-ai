@@ -100,7 +100,7 @@ export function ChiliDots({ level }: { level: number }) {
 
 export function Pill({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent" | "ink"; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-points-soft text-points-text" : tone === "ink" ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg-muted", className)}>
+    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-points-soft text-points-text" : tone === "ink" ? "bg-trade text-trade-foreground clear:bg-primary clear:text-primary-foreground" : "bg-bg-subtle text-fg-muted", className)}>
       {children}
     </span>
   );
@@ -136,7 +136,7 @@ export function ChoiceRow<T extends string>({ label, value, onChange, options }:
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={cn("h-11 rounded-full px-5 text-body-strong transition-colors focus-visible:focus-ring", o.value === value ? "bg-trade text-trade-foreground" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
+          className={cn("h-11 rounded-full px-5 text-body-strong transition-colors focus-visible:focus-ring", o.value === value ? "bg-trade text-trade-foreground clear:bg-primary clear:text-primary-foreground" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
         >
           {o.label}
         </button>

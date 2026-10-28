@@ -4,6 +4,7 @@
  * Spec:   docs/design/foundations.md (wins over everything else)
  * Web:    @import "@ll/design-tokens/theme.css" (Tailwind v4) after "tailwindcss".
  * Mobile: import { colors, textStyles, spacing, radii, shadows, nativeFonts } from "@ll/design-tokens".
+ * Clear:  import { clearRoles, clearExtra, clearGlass, clearGlassSolid, clearTradeColors, clearLayout, THEME_STYLES } (src/clear.ts).
  * Map:    cornerMapStyle(baseStyle, mode) / googleMapStyle[mode]; JSON in map/.
  * Icons:  assets/categories/<category>.svg | .png | @2x.png | @3x.png
  * Docs:   docs/design/system.md
@@ -14,6 +15,7 @@ export * from "./typography.js";
 export * from "./scales.js";
 export * from "./verticals.js";
 export * from "./warm.js";
+export * from "./clear.js";
 export * from "./charts.js";
 export * from "./contrast.js";
 export * from "./map.js";

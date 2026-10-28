@@ -6,6 +6,7 @@
  * cards, VIP, next-reward progress) reused by the staff and network contracts.
  */
 import { z } from "zod";
+import type { ThemeStyle } from "../theme.js";
 import { birthdaySchema } from "../birthday.js";
 import { uuidSchema } from "./common.js";
 
@@ -94,6 +95,8 @@ export interface MerchantBriefDto {
   logoUrl: string | null;
   brandColor: string | null;
   neighbourhoodId: string | null;
+  /** The shop's look; customer pages for this shop wear it (Clear when absent). */
+  themeStyle?: ThemeStyle;
 }
 
 // ---------------------------------------------------------------------------

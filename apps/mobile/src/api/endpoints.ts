@@ -14,6 +14,7 @@ import type {
   integrationsApi,
   merchantApi,
   networkApi,
+  reportsApi,
   restaurantApi,
   serviceApi,
   staffApi,
@@ -215,6 +216,11 @@ export function createEndpoints(c: ApiClient) {
       categories: (merchantId: string) => c.get<{ items: merchantApi.Category[] }>(`${m(merchantId)}/categories`, { auth: "staff" }),
       rewards: (merchantId: string) => c.get<{ items: merchantApi.Reward[] }>(`${m(merchantId)}/rewards`, { auth: "staff" }),
       promos: (merchantId: string) => c.get<{ items: merchantApi.Promo[] }>(`${m(merchantId)}/promos`, { auth: "staff", query: { status: "live" } }),
+    },
+
+    /** Owner Today (managers and owners; staff get 403 and the counter's own numbers instead). */
+    reports: {
+      today: (merchantId: string) => c.get<reportsApi.TodayReportDto>(`${m(merchantId)}/reports/today`, { auth: "staff" }),
     },
 
     counter: {

@@ -94,7 +94,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
     <div className="pb-32">
-      <Awning size="sm" className="rounded-b-md rounded-t-none" />
+      <Awning size="sm" className="rounded-b-md rounded-t-none clear:hidden" />
       <header className="mt-3 flex items-center gap-2">
         <span className="min-w-0 flex-1 font-wordmark text-[19px] font-extrabold leading-none text-foreground">{BRAND.name.toLowerCase()}</span>
         <LanguageChip />
@@ -104,7 +104,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
       </header>
       <section aria-label={h ? h.eyebrow : t("sh.disc.title")} className="mt-4 flex flex-col gap-3">
         <p className="text-meta-strong text-primary-text">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
-        <h1 className="font-display text-[clamp(30px,9vw,38px)] font-bold leading-[1.1] tracking-[-0.03em] text-foreground">{h ? h.headline : t("sh.disc.heroDefault")}</h1>
+        <h1 className="font-display text-[clamp(30px,9vw,38px)] font-bold leading-[1.1] tracking-[-0.03em] text-foreground clear:text-[28px] clear:leading-9 clear:tracking-[-0.022em]">{h ? h.headline : t("sh.disc.heroDefault")}</h1>
         {h?.progress ? (
           <div className="flex items-center gap-3 rounded-card bg-tile-butter p-4 text-tile-butter-foreground">
             <div role="progressbar" aria-label={h.eyebrow} aria-valuemin={0} aria-valuemax={h.progress.max} aria-valuenow={h.progress.value} className="h-2 flex-1 overflow-hidden rounded-full bg-current/20"><div className="h-full rounded-full bg-current" style={{ width: `${(h.progress.value / h.progress.max) * 100}%` }} /></div>
@@ -114,11 +114,11 @@ export default async function DiscoverPage({ searchParams }: Props) {
       </section>
 
       <nav aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4">
-        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow" : "border border-line bg-card text-fg")}>
+        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
           {t("sh.disc.forYou")}
                   </Link>
         {chips.map((c) => (
-          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow" : "border border-line bg-card text-fg")}>
+          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
             {t(CHIP_KEY[c.id])}
           </Link>
         ))}
@@ -126,10 +126,10 @@ export default async function DiscoverPage({ searchParams }: Props) {
 
       <section className="mt-6" aria-labelledby="near">
         <div className="flex items-baseline justify-between">
-          <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground">{t("sh.disc.near")}</h2>
+          <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground clear:text-[17px] clear:font-semibold clear:leading-6">{t("sh.disc.near")}</h2>
           <span className="text-meta text-muted-foreground">{t("sh.disc.shopsN", { n: shops.length })}</span>
         </div>
-        <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring">
+        <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring clear:border-0 clear:card-clear clear:bg-ll-map-land">
           <svg aria-hidden width="100%" height="132" viewBox="0 0 358 132" preserveAspectRatio="none" className="absolute inset-0">
             <g strokeWidth="9" fill="none" strokeLinecap="round" className="stroke-card"><path d="M120 -10 L 170 140" /><path d="M-10 44 L 370 28" /><path d="M-10 100 L 370 86" /></g>
           </svg>
@@ -139,16 +139,16 @@ export default async function DiscoverPage({ searchParams }: Props) {
               <CategoryIcon vertical={s.merchant.vertical} size={20} />
             </span>
           ))}
-          <span className="absolute bottom-3 start-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-meta-strong text-primary-foreground shadow-glow"><MapPin aria-hidden className="size-4" />{t("sh.disc.openMap")}</span>
+          <span className="absolute bottom-3 start-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-meta-strong text-primary-foreground shadow-glow clear:shadow-none"><MapPin aria-hidden className="size-4" />{t("sh.disc.openMap")}</span>
         </Link>
       </section>
 
       {rows.map((r, i) => (
         <section key={r.id} className={cn(i === 0 ? "mt-6" : "mt-7")} aria-labelledby={`row-${r.id}`}>
-          <h2 id={`row-${r.id}`} className="font-display text-[22px] font-bold leading-7 text-foreground">{name ? t("sh.disc.rowOn", { kind: t(ROW_KEY[r.id]), street: name }) : t("sh.disc.rowNear", { kind: t(ROW_KEY[r.id]) })}</h2>
+          <h2 id={`row-${r.id}`} className="font-display text-[22px] font-bold leading-7 text-foreground clear:text-[17px] clear:font-semibold clear:leading-6">{name ? t("sh.disc.rowOn", { kind: t(ROW_KEY[r.id]), street: name }) : t("sh.disc.rowNear", { kind: t(ROW_KEY[r.id]) })}</h2>
           <ul className="no-scrollbar -mx-4 mt-3 flex gap-3 overflow-x-auto px-4">
             {r.shops.slice(0, 12).map((s) => (
-              <li key={s.merchant.id} className="w-[168px] shrink-0 overflow-hidden rounded-card border border-line bg-card shadow-card">
+              <li key={s.merchant.id} className="w-[168px] shrink-0 overflow-hidden rounded-card border border-line bg-card shadow-card clear:border-0 clear:card-clear">
                 <Link href={`/shops/${s.merchant.slug}`} className="block pb-3 focus-visible:focus-ring">
                   <span data-trade={s.merchant.vertical} className="relative flex h-[140px] items-center justify-center bg-trade-soft">
                     <CategoryIcon vertical={s.merchant.vertical} size={76} />

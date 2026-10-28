@@ -218,15 +218,18 @@ export function ShopLine({ s }: { s: networkApi.ShopListItemDto }) {
   );
 }
 
-/** Neighbourhood capsule + filter capsules ("my shops", "open now", "offers"), lowercase. */
-export function FilterRow({ state, floating }: { state: FinderState; floating?: boolean }) {
+/**
+ * Neighbourhood capsule + filter capsules ("my shops", "open now", "offers"), lowercase. `inline`: no scroller of its own, for a row that
+ * already scrolls (the Clear map sheet puts the filters and the categories in one row).
+ */
+export function FilterRow({ state, floating, inline }: { state: FinderState; floating?: boolean; inline?: boolean }) {
   const { neighbourhoods, hood, setHood, coords, availableToggles, toggles, flip } = state;
   const { t } = useLocaleOrEnglish();
   const current = neighbourhoods.find((n) => n.slug === hood);
   return (
-    <div role="group" aria-label={t("rc.mn.filters")} className={cn("no-scrollbar flex gap-2 overflow-x-auto", floating ? "-mx-4 px-4 py-1" : "-mx-4 px-4")}>
+    <div role="group" aria-label={t("rc.mn.filters")} className={cn(inline ? "flex shrink-0 gap-2" : "no-scrollbar flex gap-2 overflow-x-auto", inline ? null : floating ? "-mx-4 px-4 py-1" : "-mx-4 px-4")}>
       {neighbourhoods.length > 1 && !coords ? (
-        <label className={cn("relative inline-flex h-9 shrink-0 items-center gap-1 rounded-full ps-3.5 pe-3 text-meta-strong text-fg", floating ? "bg-bg shadow-float" : "border border-line bg-bg")}>
+        <label className={cn("relative inline-flex h-9 shrink-0 items-center gap-1 rounded-full ps-3.5 pe-3 text-meta-strong text-fg", floating ? "bg-bg shadow-float clear:glass-chrome" : "border border-line bg-bg clear:border-0 clear:bg-lg-lift clear:hairline-inset")}>
           <span className="sr-only">{t("wp.map.hood")}</span>
           <span aria-hidden>{(current?.name ?? t("wp.map.everywhere")).toLowerCase()}</span>
           <ChevronDown aria-hidden className="size-3.5 text-fg-muted" strokeWidth={2} />

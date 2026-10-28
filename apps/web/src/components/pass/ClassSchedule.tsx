@@ -199,7 +199,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
           const n = byDay.get(d)?.length ?? 0;
           const on = d === day;
           return (
-            <button key={d} type="button" aria-pressed={on} onClick={() => setDay(d)} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && n === 0 && "text-fg-muted")}>
+            <button key={d} type="button" aria-pressed={on} onClick={() => setDay(d)} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && n === 0 && "text-fg-muted")}>
               <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
               <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
             </button>

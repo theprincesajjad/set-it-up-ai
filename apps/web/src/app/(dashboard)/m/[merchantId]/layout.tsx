@@ -6,6 +6,7 @@ import { MerchantShell } from "@/components/dashboard/MerchantShell";
 import { NoAccess } from "@/components/dashboard/PageStates";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Layout";
+import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
@@ -37,11 +38,13 @@ export default async function MerchantLayout({ children, params }: { children: R
   const locale = await getLocale();
   const viewingAs = membership ? null : me.platformRole === "admin" ? "admin" : "rep";
   return (
-    <LocaleScope locale={locale}>
-      <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={viewingAs}>
-        <MerchantShell me={me}>{children}</MerchantShell>
-      </MerchantProvider>
-    </LocaleScope>
+    <ThemeStyle style={detail.merchant.themeStyle} dark={detail.merchant.themeDark} merchantId={detail.merchant.id}>
+      <LocaleScope locale={locale}>
+        <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={viewingAs}>
+          <MerchantShell me={me}>{children}</MerchantShell>
+        </MerchantProvider>
+      </LocaleScope>
+    </ThemeStyle>
   );
 }
 

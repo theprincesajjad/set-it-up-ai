@@ -31,6 +31,10 @@ const colors = [
     "tile-mint-foreground", "tile-butter", "tile-butter-foreground", "tile-lilac", "tile-lilac-foreground",
     "tile-sky", "tile-sky-foreground", "tile-rose", "tile-rose-foreground", "trade", "trade-foreground",
     "trade-alt", "trade-soft", "trade-deep", "trade-pass-from", "trade-pass-to", "trade-pass-text",
+    // Clear (docs/design/v3.2-clear-build.md)
+    "link", "primary-hover", "success-soft", "warning-soft", "destructive-text", "destructive-soft", "row-sel", "tile",
+    "chart-muted", "chart-hi", "scrim", "toast-bg", "toast-fg", "trade-tint", "trade-nav", "lg-fill", "lg-fill-side",
+    "lg-fill-strong", "lg-lift", "lg-edge", "lg-seg-track",
 ] as const;
 
 const textSizes = [
@@ -45,7 +49,7 @@ export const cn = createCn({
       // Palette colours (`bg-ll-gray-950`) and the deprecated vertical tints are matched by prefix.
       color: [...colors, (v: string) => v.startsWith("ll-") || v.startsWith("vertical-")],
       text: [...textSizes],
-      radius: ["input", "card", "sheet", "tile"],
+      radius: ["input", "card", "sheet", "tile", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9"],
       shadow: ["float", "sheet", "card", "glow"],
     },
   },

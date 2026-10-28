@@ -631,6 +631,7 @@ export default function Counter() {
         canSwitch={config.sharedDevice}
         onStaff={() => router.push("/counter/pin")}
         onMenu={() => setMenuOpen(true)}
+        vertical={ctx.merchant?.merchant.vertical ?? null}
       />
       <View style={styles.banners}>
         <OfflineBanner mode="counter" online={online} pending={queuedForCount} sentJustNow={ctx.sentJustNow} stale={queueState.stale} retrying={queueState.flushing} onPress={() => setQueueOpen(true)} />

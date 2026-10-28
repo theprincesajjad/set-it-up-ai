@@ -1,0 +1,56 @@
+/*
+ * The Wallet-style pass in Clear (docs/design/v3.2-clear-audit.md #24 and 2.4 "Pass card"; v6 mock `?s=pass`).
+ * Colours are tokens only (packages/design-tokens): the brand field is the shop's trade accent, the card is strong Liquid Glass.
+ */
+
+/* The shop's own colour behind the top of the page: full-bleed, it ends 8px under the stamp grid (the card's field row sits on the canvas),
+ * so the glass reads the brand colour through its upper half. Behind the content (the wallet root is `isolate`). */
+.field {
+  position: absolute;
+  z-index: -1;
+  top: -100vh;
+  bottom: var(--pass-field-bottom, 92px);
+  left: calc(50% - 50vw);
+  width: 100vw;
+  background: var(--trade);
+  pointer-events: none;
+}
+/* 92 = the card padding 20 + the field row (16 + 16 label + 32 value) + 16 under the stamps - 8. Urdu: the labels are 24 tall, not 16. */
+:global([lang^="ur"]) .field {
+  --pass-field-bottom: 100px;
+}
+
+/* Stamps: 54 x 54 on integer positions (5 x 54 + 4 x 12 = 318 = 358 - 2 x 20). Wider columns centre the same grid. */
+.stamps {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--size));
+  gap: 12px;
+  justify-content: center;
+}
+.stamp {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--foreground) 24%, transparent);
+  color: var(--trade);
+}
+.stampOn {
+  background: var(--qr-bg);
+  border-color: var(--qr-bg);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--trade) 40%, transparent);
+}
+.stampNext {
+  border-color: var(--foreground);
+}
+.stampNext::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--foreground);
+}
+:global([data-theme="dark"]) .stampOn {
+  color: var(--trade-foreground);
+}

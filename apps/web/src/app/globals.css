@@ -67,12 +67,40 @@
   }
 }
 
+/* ===== Clear (docs/design/v3.2-clear-build.md). Tokens, glass utilities and the type scale come from @ll/design-tokens; these are the base rules. */
+@layer base {
+  :root[data-theme-style="clear"] {
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" auto;
+  }
+  :root[data-theme-style="clear"] body {
+    letter-spacing: -0.006em;
+    font-optical-sizing: auto;
+  }
+  /* Titles: Inter's display cut (opsz), tighter tracking per the SF table, weight 700 for the page title. */
+  :root[data-theme-style="clear"] :is(h1, h2) {
+    letter-spacing: -0.022em;
+  }
+  :root[data-theme-style="clear"] :is(h3, .text-headline) {
+    letter-spacing: -0.011em;
+  }
+  :root[data-theme-style="clear"] :is([lang^="hi"], [lang^="ur"], [lang^="pa"]) :is(h1, h2, h3),
+  :root[data-theme-style="clear"]:is([lang^="hi"], [lang^="ur"], [lang^="pa"]) :is(h1, h2, h3, body) {
+    letter-spacing: 0;
+  }
+}
+
 /* Fraunces display face (page titles, big numbers); −0.01em (marketing sizes carry their own, max −0.02em). */
 @utility display {
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.01em;
   font-optical-sizing: auto;
+  /* Clear: Inter display cut, 700, SF tracking. */
+  &:where([data-theme-style="clear"] *) {
+    font-weight: 700;
+    letter-spacing: -0.022em;
+  }
 }
 
 /* Horizontal scroller without a visible scrollbar (chips, rails). */

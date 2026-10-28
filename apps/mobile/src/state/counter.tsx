@@ -25,6 +25,8 @@ export interface CounterConfig {
   sharedDevice: boolean;
   kiosk: boolean;
   theme: "light" | "dark";
+  /** The look on this device: null follows the shop's setting (Clear unless the shop chose Warm). */
+  themeStyle?: "clear" | "warm" | null;
   sound: boolean;
   /** Tablet front camera faces the customer: mirror the preview. */
   scannerFront: boolean;
@@ -38,6 +40,7 @@ const DEFAULT_CONFIG: CounterConfig = {
   sharedDevice: false,
   kiosk: false,
   theme: "light",
+  themeStyle: null,
   sound: false,
   scannerFront: false,
 };

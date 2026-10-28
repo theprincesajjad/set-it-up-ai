@@ -11,7 +11,7 @@ const hourLabel = (h: number) => (h > 12 ? String(h - 12) : String(h));
 export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?: string }) {
   const outside = visitsOutsideWindow(data.matrix);
   return (
-    <section aria-label="When people come in" className="min-w-0 rounded-card bg-card p-4 shadow-card md:p-6">
+    <section aria-label="When people come in" className="kit-heat min-w-0 rounded-card bg-card p-4 shadow-card md:p-6">
       <h2 className="text-headline text-fg">When people come in</h2>
       <div aria-hidden className="mt-4 overflow-x-auto">
         <div className="grid gap-1" style={{ gridTemplateColumns: "30px repeat(12, minmax(0, 1fr))" }}>
@@ -24,7 +24,7 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
               <span className="flex items-center text-[11px] text-fg-muted">{day}</span>
               {HEAT_HOURS.map((h) => {
                 const n = data.matrix[d]?.[h] ?? 0;
-                return <span key={h} title={`${day} ${h > 12 ? h - 12 : h}${h >= 12 ? " pm" : " am"}: ${n}`} className="h-[26px] rounded-[4px]" style={{ backgroundColor: `color-mix(in srgb, var(--trade) ${heatInk(n, data.max)}%, var(--accent))` }} />;
+                return <span key={h} title={`${day} ${h > 12 ? h - 12 : h}${h >= 12 ? " pm" : " am"}: ${n}`} className="h-[26px] rounded-[4px]" style={{ backgroundColor: `color-mix(in srgb, var(--heat-ink, var(--trade)) ${heatInk(n, data.max)}%, var(--accent))` }} />;
               })}
             </div>
           ))}

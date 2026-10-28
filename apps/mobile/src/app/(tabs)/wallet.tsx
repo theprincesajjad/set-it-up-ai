@@ -23,7 +23,7 @@ import { disp, ui, useTheme } from "../../theme";
 import { placeKindLabel } from "@ll/shared";
 import { verticalVisual } from "@ll/design-tokens";
 import { shortName } from "../../lib/award";
-import { ActionPill, Awning, Trophy, Banner, BellOff, Button, CardTitle, categorySource, IconTile, PassCard, verticalIcon, WarmCard, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
+import { Glass, QrCodeIcon, ActionPill, Awning, Trophy, Banner, BellOff, Button, CardTitle, categorySource, IconTile, PassCard, verticalIcon, WarmCard, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
 import { readableOn, shopInitials } from "../../ui/ShopTile";
 import type { TileName } from "@ll/design-tokens";
 
@@ -64,7 +64,7 @@ const seenAds = new Set<string>();
  * when the API returns them (passport, order-ahead, promos are paid features).
  */
 export default function Wallet() {
-  const { c, r, trade } = useTheme();
+  const { c, r, trade, isClear } = useTheme();
   const { user } = useSession();
   const profile = useProfile();
   const insets = useSafeAreaInsets();
@@ -232,6 +232,9 @@ export default function Wallet() {
     };
   })();
 
+  /** Clear: the shop colour behind the pass and the text on it. */
+  const clearPass = isClear && passM && passPass ? trade(passM.merchant.vertical) : null;
+
   /** A white warm card with a Fraunces title and a count (the sections under the pass). */
   const block = (title: string, children: React.ReactNode, count?: number) => (
     <WarmCard style={{ marginTop: 16 }}>
@@ -256,7 +259,30 @@ export default function Wallet() {
         refreshControl={<RefreshControl refreshing={wallet.isRefetching} onRefresh={() => void Promise.all([wallet.refetch(), feed.refetch(), campaigns.refetch(), phase2.refetch(), passDetail.refetch()])} />}
       >
         <Awning height={10} />
-        <View style={{ paddingHorizontal: 20 }}>
+        {/* Clear (mock `?s=pass`): the pass sits on the shop's own colour, Wallet style; the field runs behind the title and the top of
+            the glass card so the glass has real colour to read. */}
+        {clearPass ? <View pointerEvents="none" style={{ position: "absolute", top: -400, left: 0, right: 0, height: 400 + insets.top + 292, backgroundColor: clearPass.accent }} /> : null}
+        <View style={{ paddingHorizontal: isClear ? 16 : 20 }}>
+        {clearPass ? (
+          <View style={[styles.titleRow, { alignItems: "flex-start", marginTop: 48 }]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text rawColor={clearPass.foreground} style={{ fontSize: 11, lineHeight: 16, fontWeight: "600", letterSpacing: 0.44, textTransform: "uppercase", opacity: 0.85 }}>
+                {tr("cl.ui.yourPass")}
+              </Text>
+              <Text rawColor={clearPass.foreground} accessibilityRole="header" numberOfLines={2} style={{ fontSize: 30, lineHeight: 36, fontWeight: "700", letterSpacing: -0.66, marginTop: 4 }}>
+                {passM!.merchant.name}
+              </Text>
+              <Text rawColor={clearPass.foreground} numberOfLines={1} style={{ fontSize: 13, lineHeight: 20, opacity: 0.9 }}>
+                {placeKindLabel(locale, passM!.merchant.vertical)}
+              </Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })}>
+              <Glass radius={22} style={styles.glassCircle}>
+                <SearchGlyph size={20} color={c.fg} strokeWidth={2} />
+              </Glass>
+            </Pressable>
+          </View>
+        ) : (
         <View style={styles.titleRow}>
           <Text style={[disp(28, 800, 36, -0.02), { flex: 1 }]} accessibilityRole="header" numberOfLines={2}>
             {profile.data?.name || user?.name ? (
@@ -278,6 +304,7 @@ export default function Wallet() {
             <SearchGlyph size={18} color={c.fg} strokeWidth={2} />
           </Pressable>
         </View>
+        )}
         <OfflineBanner mode="customer" online={online} />
         {wallet.isError && memberships.length > 0 ? <View style={{ marginTop: 16 }}><Banner variant="neutral" actionLabel={tr("sh.act.tryAgain")} onAction={() => void wallet.refetch()}>{tr("sh.wallet.staleBanner")}</Banner></View> : null}
         {wallet.dataUpdatedAt && !online ? (
@@ -300,8 +327,8 @@ export default function Wallet() {
               accessibilityLabel={passPass.label}
               onPress={() => router.push(`/shop/${passM.merchant.slug}`)}
             />
-            <View style={styles.passActions}>
-              <Button size="lg" onPress={() => router.push("/card")} style={{ flex: 1 }}>
+            <View style={[styles.passActions, isClear ? { marginTop: 2 } : null]}>
+              <Button size="lg" iconStart={isClear ? QrCodeIcon : undefined} onPress={() => router.push("/card")} style={{ flex: 1 }}>
                 {tr("sh.nav.myCard")}
               </Button>
               <WalletPassButton flex />
@@ -438,6 +465,7 @@ const styles = StyleSheet.create({
   count: { minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
   passActions: { flexDirection: "row", gap: 12, alignItems: "stretch" },
   circle: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  glassCircle: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   hero: { flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 14 },
   heroBar: { height: 3, borderRadius: 999, marginTop: 12, overflow: "hidden" },
   sec: { paddingBottom: 8, borderBottomWidth: hairline, marginTop: 28 },

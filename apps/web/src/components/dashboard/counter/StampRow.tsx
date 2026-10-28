@@ -1,7 +1,9 @@
 "use client";
 import { Check, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import type { CSSProperties } from "react";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import s from "./CounterClear.module.css";
 
 const SIZE = { sm: "size-8", md: "size-11", lg: "size-14" } as const;
 const COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6" };
@@ -18,7 +20,9 @@ export function StampRow({ goal, filled, size = "md", popFrom, icon: Icon = Chec
     <div
       role="img"
       aria-label={t("ui.stampsOf", { n: Math.min(filled, goal), goal })}
-      className={cn("grid justify-items-center gap-x-2 gap-y-3.5", cols, className)}
+      // Clear lays the stamps out in one row of up to 10 (`--cols`, CounterClear.module.css).
+      style={{ "--cols": Math.min(goal, 10), "--cols-sm": Math.min(goal, 5) } as CSSProperties}
+      className={cn(s.stamps, "grid justify-items-center gap-x-2 gap-y-3.5", cols, className)}
     >
       {Array.from({ length: goal }, (_, i) => {
         const on = i < filled;
@@ -26,7 +30,10 @@ export function StampRow({ goal, filled, size = "md", popFrom, icon: Icon = Chec
           <span
             key={i}
             aria-hidden
+            data-on={on ? "" : undefined}
+            data-next={i === filled ? "" : undefined}
             className={cn(
+              s.stamp,
               SIZE[size],
               "inline-flex items-center justify-center rounded-full",
               on ? "bg-trade text-trade-foreground" : "border-2 border-dashed border-border",

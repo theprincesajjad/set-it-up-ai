@@ -104,10 +104,10 @@ export function SplitView({ token, initial }: { token: string; initial: restaura
                       role="radio"
                       aria-checked={on}
                       onClick={() => setChoice(c)}
-                      className={cn("flex min-h-14 flex-col items-center justify-center rounded-card border px-1 text-center transition-colors focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle")}
+                      className={cn("flex min-h-14 flex-col items-center justify-center rounded-card border px-1 text-center transition-colors focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle")}
                     >
                       <span className="text-body-strong tabular-nums">{c === "custom" ? t("split.tipCustom") : c === 0 ? t("split.tipNone") : `${num(c)}%`}</span>
-                      {typeof c === "number" && c > 0 ? <span className={cn("text-caption tabular-nums", on ? "text-trade-foreground/90" : "text-fg-muted")}>{money(Math.round((share * c) / 100))}</span> : null}
+                      {typeof c === "number" && c > 0 ? <span className={cn("text-caption tabular-nums", on ? "text-trade-foreground/90 clear:text-primary-foreground/90" : "text-fg-muted")}>{money(Math.round((share * c) / 100))}</span> : null}
                     </button>
                   );
                 })}

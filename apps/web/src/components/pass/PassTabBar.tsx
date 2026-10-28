@@ -17,6 +17,10 @@ const itemCls = (on: boolean) =>
   cn(
     "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-caption transition-colors duration-150 ease-out focus-visible:focus-ring",
     on ? "bg-card font-bold text-foreground shadow-card" : "font-medium text-muted-foreground hover:text-foreground",
+    // Clear (audit 2.4 "Tab bar"): 87 x 56 tabs, r28 (concentric in the r32 bar, inset 4), 24 icon, 2 gap, 10/12 label; the
+    // selected tab is lifted glass with its label and glyph in link blue (graphite dark: a white label).
+    "clear:min-h-0 clear:gap-0.5 clear:rounded-[28px] clear:px-0 clear:text-[10px] clear:font-semibold clear:leading-3",
+    on && "clear:glass-lift clear:text-link dark:clear:text-foreground",
   );
 
 /**
@@ -40,16 +44,31 @@ export function PassTabBar({ active, onSelect }: { active?: PassTab | null; onSe
         }
       }}
     >
-      <Icon aria-hidden className={cn("size-6", active === key && "text-trade-deep")} strokeWidth={active === key ? 2 : 1.75} />
+      <Icon aria-hidden className={cn("size-6", active === key && "text-trade-deep clear:text-current dark:clear:text-info")} strokeWidth={active === key ? 2 : 1.75} />
       <span aria-hidden={aria ? true : undefined}>{label}</span>
     </Link>
   );
   return (
-    <nav aria-label={t("sh.nav.main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[480px] items-stretch gap-1 rounded-t-[26px] border border-b-0 border-line bg-sidebar px-2.5 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] shadow-card">
+    <>
+    {/* Clear: Apple's scroll-edge effect above the bar, so text scrolling under the glass is already soft (no painted gradient). */}
+    <div aria-hidden className="hidden clear:block scroll-edge-bottom inset-x-0 z-30" />
+    <nav
+      data-lens
+      data-lens-r="32"
+      data-lens-bezel="24"
+      aria-label={t("sh.nav.main")}
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[480px] items-stretch gap-1 rounded-t-[26px] border border-b-0 border-line bg-sidebar px-2.5 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] shadow-card",
+        // Clear: a floating Liquid Glass capsule, 358 x 64 at 390 (16 from the sides and the bottom), r32, inset 4 (5 inline). `fixed!` because the
+        // glass utility sets position: relative for its rim.
+        "clear:inset-x-4 clear:bottom-[max(16px,env(safe-area-inset-bottom))] clear:h-16 clear:w-auto clear:max-w-[448px] clear:gap-0 clear:rounded-r9 clear:border-0 clear:px-[5px] clear:py-1 clear:glass-sheet clear:fixed!",
+      )}
+    >
       {link("card", t("sh.card.tabCard"), Wallet, t("sh.nav.myCard"))}
       {link("rewards", t("sh.tab.rewards"), Gift)}
       {link("shops", t("sh.tab.shops"), Map)}
       {link("activity", t("sh.tab.activity"), Activity)}
     </nav>
+    </>
   );
 }
