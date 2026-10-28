@@ -17,7 +17,7 @@ export function ProgressBar({ value, max, label, valueText, tone = "brand", clas
           {showValue ? <span className="tabular-nums text-fg-muted">{text}</span> : null}
         </div>
       ) : null}
-      <ProgressRoot.Root value={Math.max(0, Math.min(max, value))} min={0} max={Math.max(1, max)} aria-label={label} getAriaValueText={() => text}>
+      <ProgressRoot.Root value={Math.max(0, Math.min(max, value))} min={0} max={Math.max(1, max)} aria-label={label ?? text} getAriaValueText={() => text}>
         <ProgressTrack className="h-1.5 bg-bg-muted">
           <ProgressIndicator className={cn("rounded-full duration-300 ease-out", tone === "accent" ? "bg-points" : "bg-fg")} />
         </ProgressTrack>

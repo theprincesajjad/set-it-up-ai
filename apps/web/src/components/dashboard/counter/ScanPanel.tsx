@@ -96,7 +96,7 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
 
   return (
     <section
-      aria-label={t("counter.scanCard")}
+      aria-label={t("counter.scan.panel")}
       data-scan-ready={ready ? "true" : "false"}
       aria-busy={!ready}
       className={cn("relative flex items-center gap-4 overflow-hidden rounded-xl bg-primary px-5 py-4 text-primary-foreground", state === "on" ? "min-h-48 items-end" : "min-h-24")}

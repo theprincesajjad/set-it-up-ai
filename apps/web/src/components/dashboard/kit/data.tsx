@@ -251,7 +251,7 @@ export function Tr({ onOpen, selected, className, children, onKeyDown, ...rest }
           : onKeyDown
       }
       aria-selected={onOpen ? !!selected : undefined}
-      className={cn("border-b-0 [&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:outline-none focus-visible:focus-ring", !onOpen && "hover:bg-transparent", selected && "bg-bg-subtle", className)}
+      className={cn("border-b-0 [&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:focus-ring focus-visible:-outline-offset-2 focus-visible:focus-ring", !onOpen && "hover:bg-transparent", selected && "bg-bg-subtle", className)}
       {...rest}
     >
       {children}

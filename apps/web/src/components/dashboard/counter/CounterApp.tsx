@@ -761,17 +761,17 @@ export function CounterApp({
               <button
                 type="button"
                 onClick={() => setPinOpen(true)}
-                aria-label={staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : t("counter.signInPin")}
                 className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring"
               >
                 <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-hover text-caption font-semibold uppercase">
                   {(staff?.name ?? signedInName ?? "?").trim()[0]}
                 </span>
                 {firstName(staff?.name ?? signedInName ?? "") || t("counter.staff")}
+                <span className="sr-only">. {staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : t("counter.signInPin")}</span>
               </button>
             ) : null}
             {exitHref ? (
-              <Button href={exitHref} variant="secondary" size="md" iconStart={LogOut} data-testid="counter-exit">
+              <Button href={exitHref} variant="secondary" size="md" iconStart={LogOut}>
                 {t("counter.exit")}
               </Button>
             ) : null}

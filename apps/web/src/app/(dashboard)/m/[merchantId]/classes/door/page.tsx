@@ -75,7 +75,7 @@ function Door() {
         actions={
           <>
             {s ? <Button variant="secondary" href={`${base}/classes/${s.id}`}>{t("counter.cd.classList")}</Button> : null}
-            <Button variant="secondary" href={`${base}/classes`} iconStart={LogOut} data-testid="door-exit">{t("counter.cd.exit")}</Button>
+            <Button variant="secondary" href={`${base}/classes`} iconStart={LogOut}>{t("counter.cd.exit")}</Button>
           </>
         }
       />

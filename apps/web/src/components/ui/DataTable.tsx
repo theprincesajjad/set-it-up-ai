@@ -136,7 +136,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                       aria-selected={onRowClick ? open : undefined}
                       onClick={onRowClick ? () => onRowClick(r) : undefined}
                       onKeyDown={onRowClick ? (e) => onRowKey(e, r) : undefined}
-                      className={cn("h-11 border-t border-line transition-colors hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:outline-none focus-visible:focus-ring", onRowClick && "cursor-pointer", open && "bg-bg-muted")}
+                      className={cn("h-11 border-t border-line transition-colors hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:focus-ring focus-visible:-outline-offset-2 focus-visible:focus-ring", onRowClick && "cursor-pointer", open && "bg-bg-muted")}
                     >
                       {columns.map((c) => (
                         <TableCell key={c.key} className={cn("px-4 text-fg", c.align === "end" && "text-end tabular-nums", c.className)}>

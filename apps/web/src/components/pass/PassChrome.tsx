@@ -35,7 +35,7 @@ export function LanguageChip({ className }: { className?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={t("lang.label")}
+        aria-label={`${t("lang.label")}: ${info.short}`}
         className={cn(
           "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground transition-colors duration-150 ease-out hover:bg-hover focus-visible:focus-ring data-popup-open:bg-hover",
           // 44 px hit area around the 36 px pill.

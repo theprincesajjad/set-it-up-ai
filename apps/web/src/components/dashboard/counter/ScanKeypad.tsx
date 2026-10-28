@@ -16,7 +16,6 @@ export function DigitBoxes({ value, className }: { value: string; className?: st
       {[0, 1, 2, 3].map((i) => (
         <span
           key={i}
-          aria-label={value[i] ? t("counter.digits.digit", { i: i + 1, v: value[i] }) : t("counter.digits.empty", { i: i + 1 })}
           className={cn("inline-flex w-7 justify-center border-b-4", i === value.length ? "border-foreground" : "border-transparent")}
         >
           {value[i] ?? " "}

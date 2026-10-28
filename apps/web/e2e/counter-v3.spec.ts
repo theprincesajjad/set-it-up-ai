@@ -105,11 +105,11 @@ test.describe("counter (café)", () => {
     await signIn(page, OWNER, `/m/${id}/counter`);
     await counterReady(page);
     await expect(page.locator('[data-shell="bare"]')).toBeVisible();
-    await expect(page.getByRole("complementary")).toHaveCount(0);
+    await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /sign in with a pin/i }).or(page.getByRole("button", { name: /stamping as/i }))).toBeVisible();
     // The exit goes back to Today, which has the shell again.
-    await page.getByTestId("counter-exit").click();
+    await page.getByRole("link", { name: "Exit counter" }).click();
     await expect(page).toHaveURL(new RegExp(`/m/${id}$`));
     await expect(page.getByRole("navigation", { name: "Main" }).first()).toBeVisible();
   });
@@ -127,11 +127,11 @@ test.describe("counter (café)", () => {
     await expect(page.getByText("Redeem a code")).toHaveCount(0);
     // The Noto Nastaliq face is in the stack of the page text and a glyph of it was drawn.
     const family = await page.locator("main h1").evaluate((e) => getComputedStyle(e).fontFamily);
-    expect(family).toContain("nastaliq");
+    expect(family).toMatch(/nastaliq/i);
     await page.evaluate(() => document.fonts.ready);
     expect(await page.evaluate(() => [...document.fonts].some((f) => /Nastaliq/i.test(f.family) && f.status === "loaded"))).toBe(true);
     // Rows hug their content: no heading or label is cut off by its own box.
-    const clipped = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("main h1, main h2, main p, main button, main label, main span")].filter((e) => e.offsetParent && e.scrollHeight > e.clientHeight + 1 && getComputedStyle(e).overflowY !== "visible").map((e) => e.textContent?.trim().slice(0, 30)));
+    const clipped = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("main h1, main h2, main p, main button, main label, main span")].filter((e) => e.offsetParent && !e.classList.contains("sr-only") && e.scrollHeight > e.clientHeight + 1 && getComputedStyle(e).overflowY !== "visible").map((e) => e.textContent?.trim().slice(0, 30)));
     expect(clipped).toEqual([]);
     await page.screenshot({ path: shot("03-counter-ur-1180") });
   });

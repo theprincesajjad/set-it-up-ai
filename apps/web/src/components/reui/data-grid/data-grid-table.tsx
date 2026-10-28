@@ -2145,7 +2145,7 @@ function DataGridTableBodyRow<TData extends object>({
         }
       }}
       className={cn(
-        "hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:outline-none data-[state=selected]:bg-muted/50 aria-selected:bg-muted/50",
+        "hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:focus-ring focus-visible:-outline-offset-2 data-[state=selected]:bg-muted/50 aria-selected:bg-muted/50",
         /* With the pin affordance on, pinned cells hide scrolled content
            behind an OPAQUE background, which also hides the row's translucent
            hover and selected tints; they get the same tints premixed over the

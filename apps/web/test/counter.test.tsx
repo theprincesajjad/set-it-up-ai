@@ -339,7 +339,7 @@ describe("<CounterApp> scan first", () => {
     const verify = vi.fn(async () => ({ accessToken: "tok-sam", accessTokenExpiresAt: "", staff: { userId: "u-sam", name: "Sam Barista", role: "staff" as const } }));
     const apiAs = vi.fn(() => asSam);
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} pin={{ verify, apiAs }} signedInName="Sofia Patel" />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in with a PIN" }));
+    await userEvent.click(screen.getByRole("button", { name: /sign in with a PIN/i }));
     await type4("2468");
     await waitFor(() => expect(verify).toHaveBeenCalledWith({ pin: "2468" }));
     await waitFor(() => expect(apiAs).toHaveBeenCalledWith("tok-sam"));

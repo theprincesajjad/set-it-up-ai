@@ -76,7 +76,7 @@ describe("pass chrome", () => {
       </LocaleProvider>,
     );
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/map");
-    await user.click(screen.getByRole("button", { name: "Language" }));
+    await user.click(screen.getByRole("button", { name: /^Language/ }));
     const items = await screen.findAllByRole("menuitemradio");
     expect(items.map((i) => i.textContent)).toEqual(["English", "हिन्दी", "اردو", "ਪੰਜਾਬੀ"]);
     expect(items[0]!.getAttribute("aria-checked")).toBe("true");

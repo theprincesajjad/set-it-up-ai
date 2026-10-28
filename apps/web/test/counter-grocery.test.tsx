@@ -64,7 +64,7 @@ describe("<CounterApp> for a grocer", () => {
     const verify = vi.fn(async () => ({ accessToken: "tok-harjit", accessTokenExpiresAt: "", staff: { userId: "u-h", name: "Harjit Singh", role: "staff" as const } }));
     const apiAs = vi.fn(() => asHarjit);
     render(<CounterApp api={a} program={program} shopName="Annapurna" locations={[]} pin={{ verify, apiAs }} signedInName="Owner" grocery={{ pantryItems: [{ id: "p1", name: "Atta 20 lb" }], askText: "Want a text?" }} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in with a PIN" }));
+    await userEvent.click(screen.getByRole("button", { name: /sign in with a PIN/i }));
     for (const d of "1234") await userEvent.click(screen.getByRole("button", { name: d }));
     await screen.findByRole("button", { name: /Stamping as Harjit Singh/ });
     for (const d of "0123") await userEvent.click(screen.getByRole("button", { name: d }));

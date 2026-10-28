@@ -15,7 +15,7 @@ test.describe("review page", () => {
   test("an unknown link says so plainly, in the chosen language", async ({ page }) => {
     await page.goto("/r/not-a-real-token");
     await expect(page.getByRole("heading", { name: "This link doesn't work anymore" })).toBeVisible();
-    await page.getByRole("button", { name: "Language" }).click();
+    await page.getByRole("button", { name: /^Language/ }).click();
     await page.getByRole("menuitemradio", { name: "हिन्दी" }).click();
     await expect(page.getByRole("heading", { name: "यह लिंक अब काम नहीं करता" })).toBeVisible();
     await expect(page.locator("[lang='hi-IN']")).toBeVisible();

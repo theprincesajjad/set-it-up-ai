@@ -105,6 +105,8 @@ export function LocaleProvider({ locale, children }: { locale: Locale; children:
       const sp = new URLSearchParams(params.toString());
       sp.set("lang", next);
       router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+      // A layout does not re-render when only the query changes, and the dashboard and console layouts read the language there: ask for a fresh render now that the cookie is set.
+      router.refresh();
     },
     [router, pathname, params],
   );

@@ -95,8 +95,9 @@ describe("hit areas (strategy 8.2 E: 72 px counter keys, 88 px kiosk keys, 8 px 
     render(<DigitBoxes value="01" />);
     const group = screen.getByRole("group", { name: "Last 4 digits of their phone" });
     expect(group.getAttribute("dir")).toBe("ltr");
-    expect(screen.getByLabelText("Digit 2: 1")).toBeTruthy();
-    expect(screen.getByLabelText("Digit 3: empty").className).toContain("border-foreground");
+    const slots = [...group.querySelectorAll("span.border-b-4")];
+    expect(slots.map((e) => e.textContent?.trim())).toEqual(["0", "1", "", ""]);
+    expect(slots[2]!.className).toContain("border-foreground");
   });
 });
 
