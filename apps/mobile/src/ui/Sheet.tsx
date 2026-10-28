@@ -4,6 +4,7 @@ import { Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, Scr
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
+import { Glass } from "./Glass";
 import { Button, type ButtonVariant } from "./Button";
 import { IconButton } from "./IconButton";
 import { X } from "./icons";
@@ -25,7 +26,7 @@ export interface SheetProps {
  * 16 pt gutters like every page, scrim tap / Android back closes.
  */
 export function Sheet({ visible, onClose, title, children, footer, scroll = true }: SheetProps) {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -55,8 +56,18 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
           <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} onPress={onClose} />
         </Animated.View>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <Animated.View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: c.bg, paddingBottom: insets.bottom + 16, transform: [{ translateY }] }, shadows.float.native]}>
-            <View style={[styles.grabber, { backgroundColor: c.bgMuted }]} />
+          <Animated.View
+            accessibilityViewIsModal
+            style={[
+              styles.sheet,
+              { backgroundColor: c.bg, paddingBottom: insets.bottom + 16, transform: [{ translateY }] },
+              shadows.float.native,
+              // Clear: a strong-glass pane over the dimmed page, 8 from the edges, radius 32 (sheets are glass chrome, spec 2.8).
+              isClear ? { backgroundColor: "transparent", marginHorizontal: 8, marginBottom: 8, borderRadius: 32, borderCurve: "continuous", paddingBottom: Math.max(16, insets.bottom) } : null,
+            ]}
+          >
+            {isClear ? <Glass variant="strong" radius={32} style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none" /> : null}
+            <View style={[styles.grabber, { backgroundColor: c.bgMuted }, isClear ? { width: 36, height: 5, backgroundColor: c.lineStrong, opacity: 0.5 } : null]} />
             {title ? (
               <View style={styles.titleRow}>
                 <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>

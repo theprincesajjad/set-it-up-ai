@@ -15,7 +15,7 @@ export function SwitchControl({ checked, onChange, ariaLabel, disabled, id }: { 
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-150 ease-out after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-[''] focus-visible:focus-ring disabled:opacity-50",
-        checked ? "bg-primary" : "bg-bg-muted",
+        checked ? "bg-primary" : "bg-bg-muted clear:bg-muted clear:ring-1 clear:ring-inset clear:ring-input",
       )}
     >
       <span className={cn("inline-block size-5 rounded-full bg-bg shadow-sm transition-transform duration-200 ease-out", checked ? "translate-x-4.5 rtl:-translate-x-4.5" : "translate-x-0.5 rtl:-translate-x-0.5")} />
@@ -45,7 +45,7 @@ export function Switch({ checked, onChange, label, description, disabled, ariaLa
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-150 ease-out after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-[''] focus-visible:focus-ring disabled:opacity-50",
-          checked ? "bg-primary" : "bg-bg-muted",
+          checked ? "bg-primary" : "bg-bg-muted clear:bg-muted clear:ring-1 clear:ring-inset clear:ring-input",
         )}
       >
         <span className={cn("inline-block size-5 rounded-full bg-bg shadow-sm transition-transform duration-200 ease-out", checked ? "translate-x-4.5 rtl:-translate-x-4.5" : "translate-x-0.5 rtl:-translate-x-0.5")} />

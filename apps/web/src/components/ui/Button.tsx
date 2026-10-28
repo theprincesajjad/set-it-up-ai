@@ -8,7 +8,7 @@ import { Spinner } from "./Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "tonal" | "ghost" | "danger" | "accent" | "inverse";
 /** `counter` is the 72 px sale button on the counter tablet, `kiosk` the 88 px button on the customer-facing door tablet (strategy 8.2 E). */
-export type ButtonSize = "sm" | "md" | "lg" | "counter" | "kiosk";
+export type ButtonSize = "sm" | "md" | "lg" | "counter" | "kiosk" | "quick";
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   variant?: ButtonVariant;
@@ -54,6 +54,8 @@ const sizes: Record<ButtonSize, string> = {
   lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px] clear:h-12 clear:px-5 clear:text-[15px] clear:font-[550]",
   counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px] clear:min-h-14 clear:rounded-r5 clear:text-[17px] clear:font-[650] clear:tracking-[-0.014em]",
   kiosk: "min-h-22 px-8 text-title rounded-xl gap-3 w-full [--icon:28px]",
+  /** Clear quick action (audit #32): 40 / 16, r12, icon 12 from the label. Under Warm it is the md button. */
+  quick: "h-11 px-5 text-body-strong rounded-full gap-2 [--icon:18px] clear:h-10 clear:px-4 clear:rounded-r4 clear:gap-3 clear:text-body clear:font-[550] clear:[--icon:16px]",
 };
 
 /** Primitive defaults with no v2 equivalent: a 1px transparent border, the 3px focus ring, the 1px press nudge, 50% disabled opacity. */
@@ -132,7 +134,7 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function IconButton({ icon: Icon, label, variant = "ghost", size = 48, className, type = "button", ...rest }: IconButtonProps) {
-  const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-card border border-border text-foreground hover:bg-muted", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover" }[variant];
+  const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-card border border-border text-foreground hover:bg-muted clear:border-0 clear:glass-tint", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover clear:shadow-primary clear:hover:bg-primary-hover" }[variant];
   const s = { 40: "size-10", 48: "size-11", 64: "size-16" }[size];
   return (
     <button type={type} aria-label={label} title={label} className={cn("inline-flex items-center justify-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring", v, s, className)} {...rest}>

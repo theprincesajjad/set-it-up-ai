@@ -105,7 +105,7 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
         {header}
       </View>
       <View style={{ flex: 1 }}>{children}</View>
-      {corner ? <View style={styles.corner}>{corner}</View> : null}
+      {corner ? <View style={[styles.corner, isClear ? { top: 6, end: 12 } : null]}>{corner}</View> : null}
       {footer ? (
         // Pinned to the visible bottom edge: the sheet is translated down by (maxH - visible), so lift it by that much.
         <Animated.View style={[styles.footer, { transform: [{ translateY: Animated.multiply(y, -1) }] }]} pointerEvents="box-none">

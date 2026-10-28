@@ -24,7 +24,7 @@ export function FieldShell({ id, label, hint, error, optionalLabel, required, co
   const { t } = useLocaleOrEnglish();
   return (
     <div className={cn("flex flex-col", gapClass ?? "gap-1.5")}>
-      <label htmlFor={id} className={cn("text-meta-strong text-fg", hideLabel && "sr-only")}>
+      <label htmlFor={id} className={cn("text-meta-strong text-fg clear:text-body clear:font-[550]", hideLabel && "sr-only")}>
         {label}
         {optionalLabel && !required ? <span className="font-normal text-fg-muted"> {t("auth.m.name.optional")}</span> : null}
       </label>
@@ -55,7 +55,9 @@ export function describedBy(id: string, error?: string | null, hint?: ReactNode)
 export const inputBase =
   "w-full min-h-11 rounded-md border bg-bg px-3.5 text-body text-fg placeholder:text-fg-muted outline-none transition-[border-color,box-shadow] duration-150 ease-out " +
   "border-line hover:border-line-strong/50 focus:border-fg focus:ring-1 focus:ring-fg disabled:bg-bg-subtle disabled:text-fg-muted " +
-  "aria-[invalid=true]:border-negative aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-negative";
+  "aria-[invalid=true]:border-negative aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-negative " +
+  // Clear (Polaris field, audit 2.4 control scale): 32 on desktop, 44 under a finger, r8, a 3:1 outline, white fill, the 2px blue focus ring.
+  "clear:min-h-11 clear:md:min-h-8 clear:rounded-r2 clear:border-input clear:bg-card clear:px-3 clear:hover:border-input clear:focus:border-input clear:focus:ring-0 clear:focus:outline-2 clear:focus:outline-offset-1 clear:focus:outline-ring clear:aria-[invalid=true]:bg-destructive-soft";
 
 type BaseProps = {
   label: string;
@@ -94,7 +96,7 @@ export function TextField(props: TextFieldProps) {
   return (
     <FieldShell id={id} label={label} hint={hint} error={error} optionalLabel={optionalLabel} required={rest.required} count={count} hideLabel={hideLabel}>
       {rest.type === "textarea" ? (
-        <textarea {...(fieldProps as TextareaHTMLAttributes<HTMLTextAreaElement>)} ref={fieldRef as React.Ref<HTMLTextAreaElement>} id={id} {...aria} className={cn(inputBase, "min-h-28 py-3", rest.className)} />
+        <textarea {...(fieldProps as TextareaHTMLAttributes<HTMLTextAreaElement>)} ref={fieldRef as React.Ref<HTMLTextAreaElement>} id={id} {...aria} className={cn(inputBase, "min-h-28 py-3 clear:md:min-h-28 clear:py-1.5", rest.className)} />
       ) : (
         <div className="relative flex items-center">
           {prefix ? <span className="pointer-events-none absolute start-3 text-body text-fg-muted">{prefix}</span> : null}

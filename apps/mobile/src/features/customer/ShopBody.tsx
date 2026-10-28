@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
 
 /** The pinned terracotta capsule under the shop: members open My card to redeem at the counter. */
 export function ShopCardCta({ model }: { model: ShopModel }) {
-  const { c, isDark } = useTheme();
+  const { c, isDark, isClear } = useTheme();
   const { t } = useLocale();
   if (!model.shop.data || !model.membership) return null;
   return (
@@ -505,7 +505,7 @@ export function ShopCardCta({ model }: { model: ShopModel }) {
       accessibilityRole="button"
       accessibilityLabel={t("ms.shop.showCardRedeem")}
       onPress={() => router.push("/card")}
-      style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.brand, opacity: pressed ? 0.88 : 1 }, glow(isDark)]}
+      style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.brand, opacity: pressed ? 0.88 : 1 }, isClear ? ({ boxShadow: isDark ? "0 8px 20px -4px rgba(0,0,0,0.6)" : "0 8px 20px -4px rgba(20,24,40,0.35)" } as object) : glow(isDark)]}
     >
       <CardQrIcon size={20} color={c.onBrand} />
       <Text style={ui(16, 600, 20)} rawColor={c.onBrand}>
