@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useId, type ReactNode } from "react";
 import { LOCALE_LIST } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 /** The scalloped top edge of a pass card: orange blocks along the top, clipped by the card's rounded corners. One per page. */

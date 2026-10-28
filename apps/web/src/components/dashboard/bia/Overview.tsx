@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { campaignsApi, type networkApi } from "@ll/shared";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { PageHeader, Panel, SegmentedControl, StatBlock, type StatItem } from "@/components/dashboard";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
@@ -66,7 +66,7 @@ export function Overview({ hood }: { hood: networkApi.NeighbourhoodDto }) {
           </div>
         }
       />
-      <Async state={overview}>
+      <ListAsync state={overview} errorTitle="We could not load the overview.">
         {(o) => (
           <>
             <StatBlock label="Street key numbers" items={overviewStats(o, `vs prior ${period.days} days`)} />
@@ -85,7 +85,7 @@ export function Overview({ hood }: { hood: networkApi.NeighbourhoodDto }) {
             </div>
           </>
         )}
-      </Async>
+      </ListAsync>
     </div>
   );
 }

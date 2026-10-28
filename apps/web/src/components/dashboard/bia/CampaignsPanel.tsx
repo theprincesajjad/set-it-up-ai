@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { campaignsApi, type campaignsApi as C } from "@ll/shared";
 import { EmptyState, Panel, StatusDot } from "@/components/dashboard";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -44,7 +44,7 @@ export function CampaignsPanel({ hoodId }: { hoodId: string }) {
   const list = useApi(() => browserApi.campaigns.list({ neighbourhoodId: hoodId, limit: 4 }), [hoodId]);
   return (
     <Panel title="Campaigns" action={<Link href="/bia/campaigns" className="text-meta-strong text-fg-muted hover:text-fg">All campaigns</Link>}>
-      <Async state={list}>
+      <ListAsync state={list} errorTitle="We could not load the campaigns.">
         {(d) =>
           d.items.length ? (
             <ul className="divide-y divide-line">{d.items.map((c) => <Row key={c.id} c={c} />)}</ul>
@@ -52,7 +52,7 @@ export function CampaignsPanel({ hoodId }: { hoodId: string }) {
             <EmptyState title="No campaigns yet" description="A passport week is the easiest way to show the board what an event did." action={<Button variant="secondary" size="sm" href="/bia/campaigns?new=1">New campaign</Button>} />
           )
         }
-      </Async>
+      </ListAsync>
     </Panel>
   );
 }

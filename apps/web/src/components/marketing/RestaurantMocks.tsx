@@ -12,7 +12,7 @@ const ITEMS = [
 export function RestaurantPhone() {
   const p = copy.restaurants.phone;
   return (
-    <figure className="flex flex-col items-center gap-3">
+    <figure lang="en-CA" dir="ltr" className="flex flex-col items-center gap-3">
       <PhoneFrame height={480}>
         <div className="absolute inset-0 flex flex-col gap-3 px-5 pt-14">
           <div>

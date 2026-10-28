@@ -7,7 +7,7 @@ import { ClassSettingsPanel } from "@/components/dashboard/classes/ClassSettings
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { EmptyState, PageHeader, Segmented, StatBlock, Tag, ToolbarButton } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { addDays, capacityText, dayHeading, fillPct, groupByDay, sessionState, timeLabel, todayOf, weekNumbers, weekRange } from "@/lib/dashboard/classes";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
@@ -76,7 +76,7 @@ function Schedule() {
           { label: "Late cancels", value: summary.data?.lateCancelsThisWeek ?? 0, caption: "This calendar week" },
         ]}
       />
-      <Async state={sessions}>
+      <ListAsync state={sessions} label="Loading classes" errorTitle="We could not load your classes.">
         {() =>
           days.length === 0 ? (
             <EmptyState title="No classes this week" description="Add a class and repeat it weekly. Members can book it as soon as it is on the schedule." action={manager ? <Button onClick={() => setAdding(true)}>Add class</Button> : undefined} />
@@ -115,7 +115,7 @@ function Schedule() {
             </div>
           )
         }
-      </Async>
+      </ListAsync>
       <AddClassPanel open={adding} onClose={() => setAdding(false)} types={types.data?.items ?? []} onSaved={async () => { await Promise.all([sessions.reload(), types.reload(), summary.reload()]); }} defaultDate={anchor} />
       <ClassSettingsPanel open={settings} onClose={() => setSettings(false)} />
     </div>

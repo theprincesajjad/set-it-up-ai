@@ -11,7 +11,8 @@ import { WalkInSheet } from "@/components/dashboard/calendar/WalkInSheet";
 import { useAppointments } from "@/components/dashboard/calendar/useAppointments";
 import { useIsDesktop } from "@/components/dashboard/calendar/useIsDesktop";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { EmptyState, ErrorLine, PageHeader, Segmented, SidePanel, ToolbarButton } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, Segmented, SidePanel, ToolbarButton } from "@/components/dashboard/kit";
+import { ListError } from "@/components/dashboard/ListStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PageSkeleton } from "@/components/dashboard/PageStates";
 import { Button } from "@/components/ui/Button";
@@ -184,7 +185,7 @@ function Calendar() {
     await staffState.reload();
   };
 
-  if (staffState.error && !staffState.data) return <ErrorLine message={staffState.error} onRetry={staffState.reload} />;
+  if (staffState.error && !staffState.data) return <ListError title="We could not load your calendar." detail={staffState.error} onRetry={staffState.reload} />;
   if (!staffState.data || !servicesState.data) return <PageSkeleton />;
   const setup = staffState.data.setup;
   const services = servicesState.data.items;
@@ -242,7 +243,7 @@ function Calendar() {
         </div>
       ) : null}
 
-      {appts.error && !appts.items.length ? <ErrorLine message={appts.error} onRetry={appts.reload} /> : null}
+      {appts.error && !appts.items.length ? <ListError title="We could not load this day." detail={appts.error} onRetry={appts.reload} /> : null}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <CalendarDay
           columns={columns}

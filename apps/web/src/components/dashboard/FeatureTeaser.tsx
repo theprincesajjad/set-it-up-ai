@@ -83,11 +83,11 @@ export function useNotify(keys: FeatureKey[]) {
 export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?: string }) {
   const { notified, busy, notify } = useNotify(keys);
   return notified ? (
-    <span className={cn("inline-flex items-center gap-1 text-meta text-fg-muted", className)}>
+    <span className={cn("inline-flex items-center gap-1 text-meta text-muted-foreground", className)}>
       <Check aria-hidden className="size-3.5" /> We&apos;ll let you know
     </span>
   ) : (
-    <button type="button" disabled={busy} onClick={() => void notify()} className={cn("rounded-sm text-meta font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg focus-visible:focus-ring", className)}>
+    <button type="button" disabled={busy} onClick={() => void notify()} className={cn("rounded-sm text-meta font-medium text-foreground underline decoration-line underline-offset-4 hover:decoration-fg focus-visible:focus-ring", className)}>
       Notify me
     </button>
   );
@@ -126,12 +126,12 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
   return (
     // Same top and order as every page header (title, one line, then the state) — polish-audit D15.
     <div className="max-w-[560px]">
-      <h1 className="text-title font-semibold text-fg">{title ?? f.name}</h1>
-      <p className="mt-1 text-body text-fg-muted">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
-      <p className="mt-3 text-meta text-fg-muted">{status}</p>
+      <h1 className="text-title font-semibold text-foreground">{title ?? f.name}</h1>
+      <p className="mt-1 text-body text-muted-foreground">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
+      <p className="mt-3 text-meta text-muted-foreground">{status}</p>
       <div className="mt-5 flex flex-wrap items-center gap-4">
         {!wrongTrade && state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
-        {!wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? (role === "owner" ? <SubscribeButton offer={offer} /> : <span className="text-meta text-fg-muted">Ask the shop owner to subscribe.</span>) : null}
+        {!wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? (role === "owner" ? <SubscribeButton offer={offer} /> : <span className="text-meta text-muted-foreground">Ask the shop owner to subscribe.</span>) : null}
         {state === "beta" && role === "owner" ? (
           <Button
             variant="secondary"
@@ -150,11 +150,11 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
           </Button>
         ) : null}
         {role === "owner" ? (
-          <a href={`${base}/billing`} className="text-meta text-fg-muted hover:text-fg">
+          <a href={`${base}/billing`} className="text-meta text-muted-foreground hover:text-foreground">
             See plans
           </a>
         ) : null}
-        <a href={base} className="text-meta text-fg-muted hover:text-fg">
+        <a href={base} className="text-meta text-muted-foreground hover:text-foreground">
           Back to home
         </a>
       </div>

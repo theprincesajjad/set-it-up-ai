@@ -46,7 +46,7 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
           </div>
         </div>
         <div className="flex items-center gap-5">
-          <PointsRing balance={m.balance} goal={next?.pointsCost ?? 0} terminology={m.terminology} rewardName={next ? rewardNameIn(locale, t, next.name) : null} size={120} showCaption={false} className="shrink-0" />
+          <PointsRing balance={m.balance} goal={next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0)} terminology={m.terminology} rewardName={next ? rewardNameIn(locale, t, next.name) : null} size={120} showCaption={false} className="shrink-0" />
           <div className="min-w-0 flex-1">
             {next ? (
               <>

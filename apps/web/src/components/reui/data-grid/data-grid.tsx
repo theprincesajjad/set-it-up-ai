@@ -1,3 +1,5 @@
+/* ReUI (github.com/keenthemes/reui, MIT) at commit 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a, registry item `data-grid`. Copied, not edited, except the places marked LOCAL PATCH and the import paths (cn -> @/lib/utils, ui -> primitives). Vendored: not linted (inline eslint directives removed). */
+/* eslint-disable */
 "use client"
 
 // Opts the grid out of React Compiler. Its parts read state through builder
@@ -197,7 +199,6 @@ export const dataGridFeatures = tableFeatures({
     text: sortFn_text,
     textCaseSensitive: sortFn_textCaseSensitive,
   },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columnMeta: metaHelper<DataGridColumnMeta<any>>(),
 })
 
@@ -828,6 +829,10 @@ export interface DataGridProps<
   children?: ReactNode
   onRowClick?: (row: TData) => void
   /**
+   * LOCAL PATCH (set-it-up): accessible name of the table, so `getByRole("table", { name })` and screen readers find it.
+   */
+  label?: string
+  /**
    * Receives every spreadsheet write batch (paste, cut, clear, fill, edit).
    * Served through the props getter like `onRowClick`, so an inline identity
    * never republishes the context. Absent: copy still works, writes no-op.
@@ -965,7 +970,6 @@ export interface DataGridProps<
 }
 
 const DataGridContext = createContext<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   DataGridContextProps<any> | undefined
 >(undefined)
 
@@ -976,7 +980,6 @@ const DataGridContext = createContext<
  * unifies with a concrete row type the way it did on v8.
  */
 function useDataGrid<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TData extends object = any,
 >(): DataGridContextProps<TData> {
   const context = useContext(DataGridContext) as
@@ -1131,7 +1134,6 @@ function DataGridProvider<TData extends object>({
     previousPageKeyRef.current = pageKey
     if (!cellSelectionOn || table.atoms.cellSelection == null) return
     tableRef.current.resetCellSelection(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey, cellSelectionOn])
 
   // One autoSize coordinator per table instance so split header/body viewports

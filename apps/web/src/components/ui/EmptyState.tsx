@@ -1,6 +1,7 @@
 import { CloudOff, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/cn";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/primitives/empty";
+import { cn } from "@/lib/utils";
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
@@ -13,16 +14,29 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-/** v2: one sentence + one action. A small plain glyph at most, never an icon in a coloured circle. */
+/**
+ * v2: one sentence + one action. A small plain glyph at most, never an icon in a coloured circle. v3: the shadcn Empty (header, media,
+ * description, content) is the structure; the title stays a real heading (h3) and the look stays plain, no dashed box.
+ */
 export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", className }: EmptyStateProps) {
   return (
-    <div className={cn("mx-auto flex max-w-[360px] flex-col items-center px-4 py-12 text-center", className)}>
-      {Icon ? <Icon aria-hidden className={cn("mb-4 size-7", tone === "danger" ? "text-negative" : "text-fg-subtle")} strokeWidth={1.5} /> : null}
-      <h3 className="text-headline text-fg">{title}</h3>
-      {description ? <p className="mt-1.5 text-body text-fg-muted">{description}</p> : null}
-      {action ? <div className="mt-5">{action}</div> : null}
-      {secondaryAction ? <div className="mt-2">{secondaryAction}</div> : null}
-    </div>
+    <Empty className={cn("mx-auto max-w-90 gap-0 rounded-none p-0 px-4 py-12", className)}>
+      <EmptyHeader className="max-w-none gap-0">
+        {Icon ? (
+          <EmptyMedia className="mb-4">
+            <Icon aria-hidden className={cn("size-7", tone === "danger" ? "text-negative" : "text-fg-subtle")} strokeWidth={1.5} />
+          </EmptyMedia>
+        ) : null}
+        <h3 className="text-headline text-fg">{title}</h3>
+        {description ? <EmptyDescription className="mt-1.5 text-body text-fg-muted">{description}</EmptyDescription> : null}
+      </EmptyHeader>
+      {action || secondaryAction ? (
+        <EmptyContent className="mt-5 max-w-none gap-2">
+          {action}
+          {secondaryAction}
+        </EmptyContent>
+      ) : null}
+    </Empty>
   );
 }
 

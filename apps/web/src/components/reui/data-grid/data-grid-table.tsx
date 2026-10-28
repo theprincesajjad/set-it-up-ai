@@ -1,3 +1,5 @@
+/* ReUI (github.com/keenthemes/reui, MIT) at commit 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a, registry item `data-grid`. Copied, not edited, except the places marked LOCAL PATCH and the import paths (cn -> @/lib/utils, ui -> primitives). Vendored: not linted (inline eslint directives removed). */
+/* eslint-disable */
 "use client"
 
 // Opted out of React Compiler with the rest of the grid (see data-grid.tsx).
@@ -1047,23 +1049,18 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
           : header.column.getSize()
     }
     return colSizes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     props.tableLayout?.columnsResizable,
     columnSizing,
     // Visibility/order/pinning change the flat header set, so a column shown
     // after mount must get its size variable even though sizing is untouched.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnVisibility,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnOrder,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnPinning,
     // A def swap can change a column's `size` without touching sizing
     // STATE; without this dep the CSS variables keep the old widths. For a
     // consumer defining columns inline the memo degrades to per-render
     // recompute, which is the safe direction.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.options.columns,
   ])
 
@@ -1076,6 +1073,7 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
   return (
     <table
       data-slot="data-grid-table"
+      aria-label={props.label}
       role={cellSelectionOn ? "grid" : undefined}
       aria-multiselectable={
         cellSelectionOn && props.tableLayout?.cellSelectionMode !== "single"
@@ -2111,8 +2109,43 @@ function DataGridTableBodyRow<TData extends object>({
         // Through the getter, as in DataGridTableAddRow.
         context.props.onRowClick?.(row.original)
       }}
+      // LOCAL PATCH (set-it-up): a clickable row is a keyboard target. Enter or Space opens it, arrows move between
+      // rows, Home and End jump to the ends. Rows are focusable but out of the tab order (-1); the wrapper
+      // (CustomersGrid) keeps ONE row at tabindex 0 (the open one, else the first) and marks aria-selected, because
+      // rows are memoised and do not re-render on selection changes.
+      tabIndex={props.onRowClick ? -1 : undefined}
+      onKeyDown={(event) => {
+        if (!props.onRowClick || event.target !== event.currentTarget) return
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          context.props.onRowClick?.(row.original)
+          return
+        }
+        const rowEl = event.currentTarget
+        const body = rowEl.parentElement
+        if (!body) return
+        const rows = Array.from(
+          body.querySelectorAll<HTMLTableRowElement>("tr[data-row-id]")
+        )
+        const at = rows.indexOf(rowEl)
+        const next =
+          event.key === "ArrowDown"
+            ? rows[at + 1]
+            : event.key === "ArrowUp"
+              ? rows[at - 1]
+              : event.key === "Home"
+                ? rows[0]
+                : event.key === "End"
+                  ? rows[rows.length - 1]
+                  : undefined
+        if (next) {
+          event.preventDefault()
+          next.focus()
+          next.scrollIntoView({ block: "nearest" })
+        }
+      }}
       className={cn(
-        "hover:bg-muted/40 data-[state=selected]:bg-muted/50",
+        "hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:outline-none data-[state=selected]:bg-muted/50 aria-selected:bg-muted/50",
         /* With the pin affordance on, pinned cells hide scrolled content
            behind an OPAQUE background, which also hides the row's translucent
            hover and selected tints; they get the same tints premixed over the

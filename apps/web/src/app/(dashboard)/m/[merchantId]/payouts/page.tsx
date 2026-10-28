@@ -4,8 +4,7 @@ import { useState } from "react";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { PageHeader, StatBlock, Table, TableWrap, Td, Th, Tr, Segmented } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Async } from "@/components/dashboard/PageStates";
-import { SkeletonRows } from "@/components/dashboard/kit";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { money } from "@/lib/dashboard/calendar";
 import { modelLabel, weekRange } from "@/lib/dashboard/queue";
@@ -55,7 +54,7 @@ function Payouts() {
           ...(mine ? [] : [{ label: "Shop income", value: money((d?.totals.shopKeepsCents ?? 0) + (d?.totals.rentCents ?? 0)), caption: "what the shop keeps plus rent" }]),
         ]}
       />
-      <Async state={state} skeleton={<SkeletonRows rows={4} />}>
+      <ListAsync state={state} label="Loading payouts" errorTitle="We could not load your payouts." rows={4}>
         {(r) => (
           <TableWrap>
             <Table label="Payouts by barber">
@@ -94,7 +93,7 @@ function Payouts() {
             </Table>
           </TableWrap>
         )}
-      </Async>
+      </ListAsync>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-card bg-bg-subtle px-5 py-4">
           <p className="text-meta-strong text-fg">What a renter sees when they sign in</p>

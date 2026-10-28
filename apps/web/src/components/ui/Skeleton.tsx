@@ -1,8 +1,11 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
-/** Shimmer block (respects reduced motion via the `skeleton` utility). */
+/**
+ * Shimmer block (respects reduced motion via the `skeleton` utility). v3: this is the shadcn Skeleton slot; the primitive's `animate-pulse`
+ * ignores prefers-reduced-motion and cannot be merged with the shimmer utility (both set `animation`), so the element stays a plain div.
+ */
 export function Skeleton({ className, circle }: { className?: string; circle?: boolean }) {
-  return <div aria-hidden className={cn("skeleton", circle ? "rounded-full" : "rounded-[6px]", className)} />;
+  return <div aria-hidden className={cn("skeleton", circle ? "rounded-full" : "rounded-sm", className)} />;
 }
 
 /** A busy region with one visually hidden "Loading..." label. */

@@ -9,6 +9,8 @@ import { Container } from "@/components/ui/Layout";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
+import { LocaleScope } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: { default: "Dashboard", template: "%s · Dashboard" }, robots: { index: false, follow: false } };
 
@@ -32,11 +34,14 @@ export default async function MerchantLayout({ children, params }: { children: R
     if (isApiError(e) && (e.status === 403 || e.status === 401)) return <Denied />;
     throw e;
   }
+  const locale = await getLocale();
   const viewingAs = membership ? null : me.platformRole === "admin" ? "admin" : "rep";
   return (
-    <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={viewingAs}>
-      <MerchantShell me={me}>{children}</MerchantShell>
-    </MerchantProvider>
+    <LocaleScope locale={locale}>
+      <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={viewingAs}>
+        <MerchantShell me={me}>{children}</MerchantShell>
+      </MerchantProvider>
+    </LocaleScope>
   );
 }
 

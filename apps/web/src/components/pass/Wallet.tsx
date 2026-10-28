@@ -267,8 +267,8 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
             <span className="block truncate text-body-strong text-foreground"><bdi>{m.merchant.name}</bdi></span>
             <span className={cn("mt-0.5 block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
-              <span aria-hidden className="mt-2 block h-[3px] w-36 overflow-hidden rounded-full bg-muted">
-                <span className="block h-[3px] rounded-full bg-primary" style={{ width: `${pct}%` }} />
+              <span aria-hidden className="mt-2 block h-0.75 w-36 overflow-hidden rounded-full bg-muted">
+                <span className="block h-0.75 rounded-full bg-primary" style={{ width: `${pct}%` }} />
               </span>
             ) : null}
           </span>

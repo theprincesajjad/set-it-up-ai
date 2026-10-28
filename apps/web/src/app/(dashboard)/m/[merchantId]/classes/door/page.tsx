@@ -22,7 +22,8 @@ export default function DoorPage() {
   );
 }
 
-const CARD = { positive: "border-positive/30 bg-positive/10", neutral: "border-line bg-bg-subtle", negative: "border-line bg-bg" } as const;
+/** The result is told by the dot and the sentence; the start edge says it at a glance (a thick edge, not a tinted card). */
+const CARD = { positive: "border-s-4 border-s-success", neutral: "border-s-4 border-s-border", negative: "border-s-4 border-s-destructive" } as const;
 
 function Door() {
   const { api, base } = useMerchant();
@@ -72,7 +73,7 @@ function Door() {
       />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
-          <form onSubmit={submit} className="flex min-w-0 items-center gap-3 rounded-card border border-fg px-4 py-3">
+          <form onSubmit={submit} className="flex min-w-0 items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 focus-within:border-foreground">
             <ScanLine aria-hidden className="size-5 shrink-0 text-fg-muted" />
             <input
               ref={input}
@@ -81,15 +82,15 @@ function Door() {
               aria-label="Member card, QR code or phone number"
               placeholder="Scan QR or enter phone / member code"
               autoComplete="off"
-              className="min-h-10 min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-subtle"
+              className="min-h-12 min-w-0 flex-1 bg-transparent text-headline text-foreground outline-none placeholder:text-muted-foreground"
             />
-            <Button type="submit" loading={act.busy}>Look up</Button>
+            <Button type="submit" size="lg" loading={act.busy} className="rounded-xl">Look up</Button>
           </form>
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           {last ? (
-            <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border p-5", CARD[doorTone(last.outcome)])}>
+            <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border border-border bg-card p-5", CARD[doorTone(last.outcome)])}>
               <Dot tone={doorTone(last.outcome) === "positive" ? "positive" : doorTone(last.outcome) === "negative" ? "negative" : "neutral"}>{last.message}</Dot>
-              {last.member ? <h2 className="display text-[28px] leading-tight text-fg">{last.member.name ?? last.member.maskedPhone ?? "Member"}</h2> : null}
+              {last.member ? <h2 className="font-display text-h1 text-foreground">{last.member.name ?? last.member.maskedPhone ?? "Member"}</h2> : null}
               <dl className="grid grid-cols-1 gap-3 text-meta sm:grid-cols-3">
                 {last.pass ? <div><dt className="text-fg-muted">Pass</dt><dd className="text-body text-fg">{last.pass.label}{last.pass.creditsLeft != null ? `, ${last.pass.creditsLeft} left` : last.pass.renewsOn ? `, renews ${new Date(`${last.pass.renewsOn}T12:00:00Z`).toLocaleDateString("en-CA", { timeZone: "UTC", month: "short", day: "numeric" })}` : ""}</dd></div> : null}
                 {last.pointsEarned > 0 ? <div><dt className="text-fg-muted">Reward</dt><dd className="text-body text-fg">+{last.pointsEarned} points{last.balance != null ? `, ${last.balance} in all` : ""}</dd></div> : null}
@@ -97,7 +98,7 @@ function Door() {
                 {last.amountDueCents ? <div><dt className="text-fg-muted">Owed</dt><dd className="text-body text-fg">{money(last.amountDueCents)}</dd></div> : null}
               </dl>
               {last.outcome === "no_pass" && last.member?.memberCode && sellable.length ? (
-                <div><Button onClick={() => setSelling(true)}>Sell drop-in</Button></div>
+                <div><Button size="lg" className="rounded-xl" onClick={() => setSelling(true)}>Sell drop-in</Button></div>
               ) : null}
             </section>
           ) : null}

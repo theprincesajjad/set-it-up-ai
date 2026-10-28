@@ -3,6 +3,7 @@
 import { CornerDownLeft, Search, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 
 export interface CommandResult {
@@ -22,6 +23,7 @@ export interface CommandSearch {
 
 export function CommandMenu({ open, onClose, pages, search, placeholder }: { open: boolean; onClose: () => void; pages: { label: string; href: string; icon: LucideIcon }[]; search?: CommandSearch; placeholder: string }) {
   const router = useRouter();
+  const { t, dir } = useLocaleOrEnglish();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<CommandResult[]>([]);
   const [cursor, setCursor] = useState(0);
@@ -61,8 +63,8 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
   }, [q, pages]);
 
   const items: { key: string; label: string; meta?: string; href: string; group: string; icon?: LucideIcon }[] = [
-    ...results.map((r) => ({ key: `r-${r.id}`, label: r.label, meta: r.meta, href: r.href, group: search?.label ?? "Results" })),
-    ...matchedPages.map((p) => ({ key: `p-${p.href}`, label: p.label, href: p.href, group: "Pages", icon: p.icon })),
+    ...results.map((r) => ({ key: `r-${r.id}`, label: r.label, meta: r.meta, href: r.href, group: search?.label ?? t("shell.search.results") })),
+    ...matchedPages.map((p) => ({ key: `p-${p.href}`, label: p.label, href: p.href, group: t("shell.search.pages"), icon: p.icon })),
   ];
 
   if (!open) return null;
@@ -72,11 +74,11 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
   };
 
   return (
-    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh] print:hidden">
-      <button type="button" aria-label="Close search" tabIndex={-1} className="absolute inset-0 cursor-default bg-overlay" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label="Search" className="relative w-full max-w-[560px] overflow-hidden rounded-card border border-line bg-bg shadow-float motion-safe:animate-fade-in">
-        <div className="flex h-12 items-center gap-2.5 border-b border-line px-4">
-          <Search aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} />
+    <div dir={dir} className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh] print:hidden">
+      <button type="button" aria-label={t("shell.search.close")} tabIndex={-1} className="absolute inset-0 cursor-default bg-overlay" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-label={t("shell.search.label")} className="relative w-full max-w-140 overflow-hidden rounded-card border border-border bg-popover shadow-float motion-safe:animate-fade-in">
+        <div className="flex h-12 items-center gap-2.5 border-b border-border px-4">
+          <Search aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
           <input
             ref={input}
             autoFocus
@@ -100,25 +102,25 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
             }}
             placeholder={placeholder}
             aria-label={placeholder}
-            className="h-full flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-subtle"
+            className="h-full flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="rounded-[5px] border border-line px-1.5 text-[11px] text-fg-muted">esc</kbd>
+          <kbd className="rounded-sm border border-border px-1.5 text-caption text-muted-foreground">esc</kbd>
         </div>
-        <ul role="listbox" aria-label="Results" className="max-h-[50vh] overflow-y-auto p-1.5">
-          {items.length === 0 ? <li className="px-3 py-6 text-meta text-fg-muted">No matches.</li> : null}
+        <ul role="listbox" aria-label={t("shell.search.results")} className="max-h-[50vh] overflow-y-auto p-1.5">
+          {items.length === 0 ? <li className="px-3 py-6 text-meta text-muted-foreground">{t("shell.search.none")}</li> : null}
           {items.map((it, i) => (
             <li key={it.key} role="option" aria-selected={i === cursor}>
-              {i === 0 || items[i - 1]!.group !== it.group ? <div className="px-2.5 pb-1 pt-2 text-caption font-medium text-fg-muted">{it.group}</div> : null}
+              {i === 0 || items[i - 1]!.group !== it.group ? <div className="px-2.5 pb-1 pt-2 text-caption font-medium text-muted-foreground">{it.group}</div> : null}
               <button
                 type="button"
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => go(it.href)}
-                className={cn("flex h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-start text-meta", i === cursor ? "bg-bg-subtle text-fg" : "text-fg")}
+                className={cn("flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-start text-meta max-md:h-11", i === cursor ? "bg-muted text-foreground" : "text-foreground")}
               >
-                {it.icon ? <it.icon aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} /> : null}
+                {it.icon ? <it.icon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} /> : null}
                 <span className="min-w-0 flex-1 truncate">{it.label}</span>
-                {it.meta ? <span className="truncate text-fg-muted">{it.meta}</span> : null}
-                {i === cursor ? <CornerDownLeft aria-hidden className="size-3.5 text-fg-muted" /> : null}
+                {it.meta ? <span className="truncate text-muted-foreground">{it.meta}</span> : null}
+                {i === cursor ? <CornerDownLeft aria-hidden className="size-3.5 text-muted-foreground" /> : null}
               </button>
             </li>
           ))}

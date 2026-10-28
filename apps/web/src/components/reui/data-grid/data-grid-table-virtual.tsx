@@ -1,3 +1,5 @@
+/* ReUI (github.com/keenthemes/reui, MIT) at commit 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a, registry item `data-grid`. Copied, not edited, except the places marked LOCAL PATCH and the import paths (cn -> @/lib/utils, ui -> primitives). Vendored: not linted (inline eslint directives removed). */
+/* eslint-disable */
 "use client"
 
 // Opted out of React Compiler with the rest of the grid (see data-grid.tsx).
@@ -813,16 +815,12 @@ function DataGridTableVirtual<TData extends object>({
   // virtualizer's cached sizes by hand.
   useEffect(() => {
     if (columnVirtualizationActive) columnVirtualizer.measure()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     columnVirtualizationActive,
     columnVirtualizer,
     columnSizing,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnVisibility,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnOrder,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     table.state.columnPinning,
   ])
 
@@ -1057,7 +1055,6 @@ function DataGridTableVirtual<TData extends object>({
   // wrapper (any table state change recreates it), the layout props, and
   // the column window. A scroll frame changes none of them, so the whole
   // sortable-header subtree is reused instead of rebuilt per frame.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const headerNode = useMemo(
     () =>
       renderHeader && (
@@ -1144,7 +1141,6 @@ function DataGridTableVirtual<TData extends object>({
           })}
         </DataGridTableHead>
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       renderHeader,
       table,

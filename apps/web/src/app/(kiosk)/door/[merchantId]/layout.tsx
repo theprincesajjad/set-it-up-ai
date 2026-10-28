@@ -31,7 +31,7 @@ export default async function DoorLayout({ children, params }: { children: React
   const locale = await getLocale();
   return (
     <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={null}>
-      <LocaleScope locale={locale} className="min-h-screen bg-bg">
+      <LocaleScope locale={locale} className="min-h-screen bg-paper">
         <main id="main" className="mx-auto w-full max-w-[1100px] px-4 py-6">{children}</main>
       </LocaleScope>
     </MerchantProvider>

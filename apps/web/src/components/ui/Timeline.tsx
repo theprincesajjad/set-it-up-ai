@@ -33,7 +33,7 @@ export function Timeline({ steps, label, quiet = false }: { steps: TimelineStep[
                 s.state === "done" && (quiet ? "bg-bg-muted text-fg-muted" : "bg-fg text-bg"),
                 s.state === "current" && (quiet ? "bg-fg text-bg" : "border-[1.5px] border-fg bg-bg"),
                 s.state === "upcoming" && "border border-line bg-bg",
-                s.state === "stopped" && "bg-negative text-[#FFFFFF]",
+                s.state === "stopped" && "bg-negative text-bg",
                 s.state === "waiting" && "border-[1.5px] border-fg bg-bg text-fg",
               )}
             >

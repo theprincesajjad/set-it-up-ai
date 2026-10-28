@@ -7,6 +7,7 @@ import { AddToLine } from "@/components/dashboard/queue/AddToLine";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, PageHeader, StatBlock } from "@/components/dashboard/kit";
+import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -84,7 +85,7 @@ function Board() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      {state.error && !b ? <Banner tone="danger">{state.error}</Banner> : null}
+      {state.error && !b ? <ListError title="We could not load the line." detail={state.error} onRetry={state.reload} /> : null}
       <StatBlock
         label="The line now"
         loading={!b}
@@ -102,7 +103,7 @@ function Board() {
             <p className="text-meta text-fg-muted">Barber&apos;s pick, not first come only</p>
           </div>
           {!b ? (
-            <p className="px-5 py-6 text-meta text-fg-muted">Loading the line.</p>
+            <ListLoading label="Loading the line" rows={3} avatar={false} className="rounded-none border-0" />
           ) : b.waiting.length === 0 && b.called.length === 0 ? (
             <p className="px-5 py-6 text-meta text-fg-muted">{open ? "Nobody is waiting. New people show up here the moment they join." : "The line is closed. Open it when you are ready for walk-ins."}</p>
           ) : (

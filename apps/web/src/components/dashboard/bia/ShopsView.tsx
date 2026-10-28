@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { networkApi } from "@ll/shared";
 import { Capsules, PageHeader, Panel, SegmentedControl } from "@/components/dashboard";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { browserApi } from "@/lib/api/browser";
 import { ROLLING, comparisonLine, periodQuery } from "@/lib/dashboard/biaPeriods";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -19,7 +19,7 @@ export function ShopsView({ hood }: { hood: networkApi.NeighbourhoodDto }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Shops" description={`Visits and new members per shop. ${comparisonLine(period).replace(/ compared with.*$/, "")}.`} actions={<SegmentedControl label="Period" value={periodId} onChange={setPeriodId} options={ROLLING.map((p) => ({ value: p.id, label: p.label }))} />} />
-      <Async state={overview}>
+      <ListAsync state={overview} errorTitle="We could not load the shops.">
         {(o) => {
           const rows = o.shopsTable.filter((s) => (filter === "all" ? true : filter === "activated" ? s.activated : !s.activated));
           const notActivated = o.shopsTable.filter((s) => !s.activated).length;
@@ -43,7 +43,7 @@ export function ShopsView({ hood }: { hood: networkApi.NeighbourhoodDto }) {
             </Panel>
           );
         }}
-      </Async>
+      </ListAsync>
     </div>
   );
 }

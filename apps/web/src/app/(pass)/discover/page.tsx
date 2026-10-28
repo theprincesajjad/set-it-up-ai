@@ -3,6 +3,7 @@ import { BRAND, formatDate, placeKindLabel, translator, type Locale, type Messag
 import type { campaignsApi, customerApi, networkApi } from "@ll/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LanguageChip } from "@/components/pass/PassChrome";
 import { PassTabBar } from "@/components/pass/PassTabBar";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
@@ -86,7 +87,6 @@ export default async function DiscoverPage({ searchParams }: Props) {
     .map((r) => ({ ...r, shops: shops.filter((s) => verticalCategory(s.merchant.vertical) === r.id).sort((a, b) => Number(ready.has(b.merchant.id)) * 2 + Number(b.isMember) - (Number(ready.has(a.merchant.id)) * 2 + Number(a.isMember))) }))
     .filter((r) => r.shops.length > 0);
   const chips = CHIP_ORDER.map((id) => ROWS.find((r) => r.id === id)!).filter((r) => shops.some((s) => verticalCategory(s.merchant.vertical) === r.id));
-  const initials = (profile?.name ?? "").trim().split(/\s+/).filter(Boolean).map((w) => w[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join("").toLowerCase() || "me";
   const nearPins = shops.slice(0, 2);
 
   return (
@@ -104,9 +104,12 @@ export default async function DiscoverPage({ searchParams }: Props) {
         </div>
         <div className="absolute inset-x-5 top-[58px] flex justify-between">
           <span className="display text-[15px] leading-[18px] text-white">{BRAND.name.toLowerCase()}</span>
-          <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-9 items-center justify-center rounded-full bg-white/[.12] text-white">
-            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-          </Link>
+          <div className="flex items-center gap-2">
+            <LanguageChip className="border-transparent bg-white/[.12] text-white hover:bg-white/20 data-popup-open:bg-white/20" />
+            <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-9 items-center justify-center rounded-full bg-white/[.12] text-white">
+              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+            </Link>
+          </div>
         </div>
         <div className="absolute bottom-14 left-5 max-w-[240px]">
           <p className="text-[12px] font-semibold leading-4 text-[#FF7A45]">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
@@ -170,7 +173,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
           </ul>
         </section>
       ))}
-      <PassTabBar initials={initials} active="discover" />
+      <PassTabBar active={null} />
     </div>
     </LocaleScope>
   );

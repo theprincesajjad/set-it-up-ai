@@ -5,10 +5,11 @@ import { useState } from "react";
 import { HBarList } from "@/components/dashboard/Charts";
 import { Heatmap } from "@/components/dashboard/reports/Heatmap";
 import { Banner } from "@/components/ui/Banner";
-import { Empty, ErrorLine, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
+import { Empty, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { NoAccess } from "@/components/dashboard/PageStates";
+import { ListError } from "@/components/dashboard/ListStates";
 import type { reportsApi } from "@ll/shared";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { downloadCsv } from "@/lib/dashboard/download";
@@ -97,7 +98,7 @@ export default function ReportsPage() {
           Prescriptions, pharmacy services and appointments are never counted, so nothing here can reveal who uses the dispensary.
         </Banner>
       ) : null}
-      {overview.error && !overview.data ? <ErrorLine message={overview.error} onRetry={overview.reload} /> : null}
+      {overview.error && !overview.data ? <ListError title="We could not load your reports." detail={overview.error} onRetry={overview.reload} /> : null}
 
       {tab === "overview" ? (
         <>

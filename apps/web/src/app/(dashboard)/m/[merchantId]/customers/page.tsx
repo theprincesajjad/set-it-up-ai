@@ -1,28 +1,21 @@
 "use client";
-import { ArrowDown, ArrowUp, Download, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
-import { Capsules, Empty, ErrorLine, PageHeader, SidePanel, SkeletonRows, Table, TableWrap, Td, Th, ToolbarButton, Tr } from "@/components/dashboard/kit";
+import { Capsules, EmptyState, PageHeader, SidePanel, SkeletonRows, ToolbarButton } from "@/components/dashboard/kit";
+import { CustomersGrid } from "@/components/dashboard/customers/CustomersGrid";
+import { ListError, ListLoading } from "@/components/dashboard/ListStates";
+import { Button } from "@/components/ui/Button";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { BFF_BASE } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate, formatNumber } from "@/lib/format";
-import { filterFromSegment, filterQuery, stampProgress, type CustomerFilter } from "@/lib/dashboard/customers";
+import { filterFromSegment, filterQuery, type CustomerFilter } from "@/lib/dashboard/customers";
 import { useApi } from "@/lib/dashboard/useApi";
-import { relativeTime } from "@/lib/dashboard/time";
-import { cn } from "@/lib/cn";
-
-/** "today", "yesterday", "22 days ago": the Last visit column. */
-function lastVisitText(iso: string, now = Date.now()): string {
-  const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
-  return days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
-}
-
-type SortKey = "name" | "balance" | "visits" | "last";
 
 export default function CustomersPage() {
   return (
@@ -49,7 +42,6 @@ function Customers() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [nonce, setNonce] = useState(0);
   const term = detail.program?.terminology ?? "points";
   const goal = detail.program?.earnType === "stamps" ? detail.program.stampGoal : 0;
@@ -100,13 +92,6 @@ function Customers() {
     };
   }, [api, query, nonce]);
 
-  const sorted = useMemo(() => {
-    if (!sort) return rows;
-    const v = (c: merchantApi.CustomerSummary): string | number =>
-      sort.key === "name" ? (c.name ?? "").toLowerCase() : sort.key === "balance" ? c.balance : sort.key === "visits" ? c.visits30d : (c.lastVisitAt ?? "");
-    return [...rows].sort((a, b) => (v(a) < v(b) ? -sort.dir : v(a) > v(b) ? sort.dir : 0));
-  }, [rows, sort]);
-
   const setOpen = useCallback(
     (id: string | null) => {
       const p = new URLSearchParams(params.toString());
@@ -118,17 +103,19 @@ function Customers() {
   );
 
   const exportHref = `${BFF_BASE}${api.base}/customers/export.csv?${new URLSearchParams(Object.entries(query).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]) as [string, string][]).toString()}`;
-  const sortTh = (key: SortKey, label: string, align: "start" | "end" = "start", cls?: string) => {
-    const on = sort?.key === key;
-    return (
-      <Th align={align} className={cls} aria-sort={on ? (sort!.dir === 1 ? "ascending" : "descending") : "none"}>
-        <button type="button" onClick={() => setSort((s) => (s?.key === key ? (s.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }))} className={`inline-flex items-center gap-1 hover:text-fg ${on ? "text-fg" : ""}`}>
-          {label}
-          {on ? sort!.dir === 1 ? <ArrowUp aria-hidden className="size-3" /> : <ArrowDown aria-hidden className="size-3" /> : null}
-        </button>
-      </Th>
-    );
-  };
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.customers({ ...query, cursor });
+      setRows((x) => [...x, ...r.items]);
+      setCursor(r.nextCursor);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [api, query, cursor, loadingMore]);
 
   const filtered = filter !== "all" || !!debounced;
   return (
@@ -158,53 +145,55 @@ function Customers() {
         <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
       </div>
 
-      {error ? <ErrorLine message={error} onRetry={() => setNonce((n) => n + 1)} /> : null}
-
-      {loading && !rows.length ? (
-        <SkeletonRows rows={8} />
+      {error && !rows.length ? (
+        <ListError title="We could not load your customers." onRetry={() => setNonce((n) => n + 1)} detail={error} />
+      ) : loading && !rows.length ? (
+        <ListLoading label="Loading customers" rows={8} />
       ) : !rows.length ? (
         filtered ? (
-          <Empty className="border-y border-line" action={<button type="button" className="text-meta font-medium text-fg hover:underline" onClick={() => { setQ(""); setFilter("all"); }}>Clear filters</button>}>
-            No customers match.
-          </Empty>
+          <EmptyState
+            title="No customers match."
+            description="Try a different filter or search."
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setQ("");
+                  setFilter("all");
+                }}
+              >
+                Clear filters
+              </Button>
+            }
+          />
         ) : (
-          <Empty className="border-y border-line" action={<Link href={`${base}/locations`} className="text-meta font-medium text-fg hover:underline">Print your QR stand</Link>}>
-            No customers yet. They join when they scan your QR stand or give their number at the counter.
-          </Empty>
+          <EmptyState
+            title="No customers yet."
+            description="They join when they scan your QR stand or give their number at the counter."
+            action={
+              <Button href={`${base}/locations`} size="sm">
+                Print your QR stand
+              </Button>
+            }
+          />
         )
       ) : (
-        <TableWrap className={loading ? "opacity-60 transition-opacity" : undefined}>
-          <Table label="Customers">
-            <thead>
-              <tr>
-                {sortTh("name", "Name")}
-                {sortTh("balance", term.charAt(0).toUpperCase() + term.slice(1))}
-                {sortTh("visits", "Visits (30 d)", "start", "hidden sm:table-cell")}
-                {sortTh("last", "Last visit", "start", "hidden md:table-cell")}
-                <Th className="hidden lg:table-cell">Usually</Th>
-                <Th className="hidden md:table-cell">Texts</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((c) => (
-                <Tr key={c.memberId} onOpen={() => setOpen(c.memberId)} selected={open === c.memberId} aria-label={c.name ?? "No name"}>
-                  <Td className="max-w-[260px]">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium">{c.name ?? <span className="text-fg-muted">No name</span>}</span>
-                      {c.rewardAvailable ? <span role="img" aria-label="Reward ready" title="Reward ready" className="size-1.5 shrink-0 rounded-full bg-accent" /> : null}
-                    </span>
-                    <span className="block truncate text-caption font-normal text-fg-muted md:hidden">{c.lastVisitAt ? `Last visit ${relativeTime(c.lastVisitAt)}` : "No visits yet"}</span>
-                  </Td>
-                  <Td className={cn("tabular", c.rewardAvailable && "text-accent-text")}>{goal ? stampProgress(c.balance, goal) : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</Td>
-                  <Td className="hidden tabular sm:table-cell">{formatNumber(c.visits30d)}</Td>
-                  <Td className={cn("hidden md:table-cell", c.isSlipping ? "text-negative" : undefined)}>{c.lastVisitAt ? lastVisitText(c.lastVisitAt) : <span className="text-fg-muted">No visits yet</span>}</Td>
-                  <Td className="hidden text-fg-muted lg:table-cell">{c.usually ?? "–"}</Td>
-                  <Td className={cn("hidden md:table-cell", c.marketingConsent && c.phone ? "text-positive-text" : "text-fg-muted")}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "No consent"}</Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+        <>
+          {error ? <ListError className="mb-3" title="We could not load more customers." onRetry={() => setNonce((n) => n + 1)} detail={error} /> : null}
+          <CustomersGrid
+            rows={rows}
+            term={term}
+            goal={goal}
+            openId={open}
+            onOpen={setOpen}
+            total={total}
+            hasMore={!!cursor}
+            fetchingMore={loadingMore}
+            onFetchMore={loadMore}
+            busy={loading}
+          />
+        </>
       )}
 
       {rows.length ? (
@@ -214,25 +203,9 @@ function Customers() {
             {total != null ? ` of ${formatNumber(total)}` : ""}
           </span>
           {cursor ? (
-            <button
-              type="button"
-              disabled={loadingMore}
-              className="inline-flex h-8 items-center rounded-full border border-line px-3 font-medium text-fg transition-colors hover:bg-bg-subtle disabled:opacity-50 focus-visible:focus-ring"
-              onClick={async () => {
-                setLoadingMore(true);
-                try {
-                  const r = await api.customers({ ...query, cursor });
-                  setRows((x) => [...x, ...r.items]);
-                  setCursor(r.nextCursor);
-                } catch (e) {
-                  setError(errorMessage(e));
-                } finally {
-                  setLoadingMore(false);
-                }
-              }}
-            >
-              {loadingMore ? "Loading…" : "Load more"}
-            </button>
+            <Button variant="secondary" size="sm" loading={loadingMore} onClick={loadMore}>
+              Load more
+            </Button>
           ) : null}
         </div>
       ) : null}

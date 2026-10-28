@@ -31,15 +31,15 @@ export function LockedFeature({ icon: Icon, title, description, state = "hidden"
   const [notified, setNotified] = useState(!!notifiedProp);
   const [busy, setBusy] = useState(false);
   return (
-    <div className="rounded-card border border-line bg-bg p-4 md:p-5">
+    <div className="rounded-card border border-border bg-background p-4 md:p-5">
       <div className="flex items-start gap-3">
-        <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" strokeWidth={1.75} />
+        <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-headline text-fg">{title}</h3>
+            <h3 className="text-headline text-foreground">{title}</h3>
             {state === "hidden" ? <ComingSoonBadge /> : state === "beta" ? <Badge tone="info" dot>In beta</Badge> : <Badge tone="neutral">{planLabel ?? `Available on ${PLANS.plus.name}`}</Badge>}
           </div>
-          <p className="mt-1 text-meta text-fg-muted">{description}</p>
+          <p className="mt-1 text-meta text-muted-foreground">{description}</p>
           {network ? (
             <ProgressBar className="mt-3" value={network.current} max={network.target} label="Network progress" valueText={`${network.current} of ${network.target} shops on the network`} />
           ) : null}

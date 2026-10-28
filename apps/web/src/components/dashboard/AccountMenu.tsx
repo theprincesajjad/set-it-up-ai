@@ -1,8 +1,11 @@
 "use client";
-import { CircleHelp, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { sessionApi } from "@/lib/api/browser";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 function initials(s: string | null) {
   return (
@@ -15,36 +18,36 @@ function initials(s: string | null) {
   );
 }
 
-/** Sidebar footer: help + extra links + signed-in user with sign out. */
+/** The signed-in person in the top bar: initials in a circle that opens Settings, the other consoles they can reach, and sign out. */
 export function AccountMenu({ name, email, links = [] }: { name: string | null; email: string | null; links?: { href: string; label: string; icon?: ReactNode }[] }) {
   const router = useRouter();
+  const { t, dir } = useLocaleOrEnglish();
   const [busy, setBusy] = useState(false);
-  const row = "flex h-8 items-center gap-2.5 rounded-[8px] px-2 text-[14px] text-fg hover:bg-bg-muted/60 focus-visible:focus-ring";
+  const label = name ?? email ?? t("shell.account.signedIn");
+  const item = "min-h-11 gap-2.5 text-body md:min-h-9";
   return (
-    <div className="flex flex-col gap-px">
-      <a href="mailto:help@localloyalty.example" className={row}>
-        <CircleHelp aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} /> Help
-      </a>
-      {links.map((l) => (
-        <a key={l.href} href={l.href} className={row}>
-          <span aria-hidden className="inline-flex size-4 items-center justify-center text-fg-muted">
-            {l.icon ?? "↗"}
-          </span>
-          {l.label}
-        </a>
-      ))}
-      <div className="mt-2 flex items-center gap-2.5 px-2">
-        <span aria-hidden className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-bg-muted text-caption font-semibold text-fg">
-          {initials(name ?? email)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-meta font-medium text-fg">{name ?? "Signed in"}</p>
-          {email ? <p className="truncate text-caption font-normal text-fg-muted">{email}</p> : null}
-        </div>
-        <button
-          type="button"
-          aria-label="Sign out"
-          title="Sign out"
+    <DropdownMenu>
+      <DropdownMenuTrigger className="inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
+        <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary text-meta-strong text-primary-foreground">{initials(name ?? email)}</span>
+        <span className="sr-only">{t("shell.account.menu", { name: label })}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" dir={dir} className="w-64">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-2">
+            <span className="truncate text-body font-medium text-foreground">{label}</span>
+            {name && email ? <span className="truncate text-meta text-muted-foreground">{email}</span> : null}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        {links.length ? <DropdownMenuSeparator /> : null}
+        {links.map((l) => (
+          <DropdownMenuItem key={l.href} className={item} render={<Link href={l.href} />}>
+            {l.icon ? <span aria-hidden className="inline-flex size-4 items-center justify-center text-muted-foreground">{l.icon}</span> : null}
+            {l.label}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className={item}
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -52,11 +55,11 @@ export function AccountMenu({ name, email, links = [] }: { name: string | null; 
             router.push("/login");
             router.refresh();
           }}
-          className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-muted hover:text-fg focus-visible:focus-ring"
         >
-          <LogOut aria-hidden className="size-4" strokeWidth={1.75} />
-        </button>
-      </div>
-    </div>
+          <LogOut aria-hidden className="text-muted-foreground" strokeWidth={1.75} />
+          {t("shell.account.signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

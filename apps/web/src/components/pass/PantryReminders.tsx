@@ -31,9 +31,9 @@ export function PantryReminders({ items: initial }: { items: groceryApi.MyPantry
     }
   }
   return (
-    <section aria-labelledby="pantry-h" className="mt-6 flex flex-col gap-3 px-1">
+    <section aria-labelledby="pantry-h" className="flex flex-col gap-3">
       <h2 id="pantry-h" className="display text-title text-fg">{t("gr.pantry.title")}</h2>
-      <ul className="divide-y divide-line rounded-card border border-line px-4">
+      <ul className="divide-y divide-border rounded-card border border-border bg-card px-4">
         {items.map((i) => (
           <li key={i.entryId} className="flex items-center justify-between gap-4 py-3.5">
             <div className="min-w-0">

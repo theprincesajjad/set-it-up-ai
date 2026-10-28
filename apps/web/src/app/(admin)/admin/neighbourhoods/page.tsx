@@ -4,7 +4,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { DensityBar } from "@/components/dashboard/NetworkGauges";
@@ -36,7 +36,7 @@ export default function NeighbourhoodsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Areas & perks" description="The launch calendar (opens, street day, who walks it), BIA details and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
-      <Async state={hoods}>
+      <ListAsync state={hoods} errorTitle="We could not load the neighbourhoods.">
         {(d) => (
           <ul className="grid gap-px overflow-hidden rounded-card border border-line md:grid-cols-2 xl:grid-cols-3 [&>li]:bg-bg md:[&>li]:shadow-[0_0_0_1px_var(--ll-color-line)]">
             {d.items.map((h) => (
@@ -66,7 +66,7 @@ export default function NeighbourhoodsPage() {
             ))}
           </ul>
         )}
-      </Async>
+      </ListAsync>
       <Section title="Network perks" action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setP({ name: "", neighbourhoodId: "", threshold: "3", windowDays: "30", bonusPoints: "50", description: "" })}>Add perk</Button>}>
         <div>
           <ul className="divide-y divide-line border-y border-line">

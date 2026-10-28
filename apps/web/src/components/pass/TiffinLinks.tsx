@@ -12,7 +12,7 @@ export function TiffinLinks({ items }: { items: tiffinApi.MySubscriptionDto[] })
   const status = (s: tiffinApi.MySubscriptionDto) =>
     s.status === "paused" ? t("tiffin.paused") : s.status === "pending" ? t("rc.tm.pending") : s.status === "past_due" ? t("rc.tm.pastDue") : s.nextDelivery ? t("tcb2.me.nextMeal", { date: date(dayDate(s.nextDelivery.date), { weekday: "short", month: "short", day: "numeric" }, "UTC") }) : t("tiffin.active");
   return (
-    <nav aria-label={t("tcb2.me.tiffin")} className="mt-6 flex flex-col divide-y divide-line rounded-card border border-line px-4">
+    <nav aria-label={t("tcb2.me.tiffin")} className="flex flex-col divide-y divide-border rounded-card border border-border bg-card px-4">
       <p className="pt-3.5 text-meta-strong text-fg-muted">{t("tcb2.me.tiffin")}</p>
       {live.map((s) => (
         <Link key={s.id} href="/me/tiffin" className="flex items-center justify-between gap-3 py-3.5 text-fg">

@@ -18,7 +18,7 @@ export function SwitchControl({ checked, onChange, ariaLabel, disabled, id }: { 
         checked ? "bg-fg" : "bg-bg-muted",
       )}
     >
-      <span className={cn("inline-block size-5 rounded-full bg-bg shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ease-out", checked ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-[2px] rtl:-translate-x-[2px]")} />
+      <span className={cn("inline-block size-5 rounded-full bg-bg shadow-sm transition-transform duration-200 ease-out", checked ? "translate-x-4.5 rtl:-translate-x-4.5" : "translate-x-0.5 rtl:-translate-x-0.5")} />
     </button>
   );
 }
@@ -47,7 +47,7 @@ export function Switch({ checked, onChange, label, description, disabled, ariaLa
           checked ? "bg-fg" : "bg-bg-muted",
         )}
       >
-        <span className={cn("inline-block size-5 rounded-full bg-bg shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ease-out", checked ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-[2px] rtl:-translate-x-[2px]")} />
+        <span className={cn("inline-block size-5 rounded-full bg-bg shadow-sm transition-transform duration-200 ease-out", checked ? "translate-x-4.5 rtl:-translate-x-4.5" : "translate-x-0.5 rtl:-translate-x-0.5")} />
       </button>
     </div>
   );

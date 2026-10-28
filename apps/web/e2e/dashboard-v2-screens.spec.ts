@@ -73,7 +73,7 @@ for (const width of [1440, 390]) {
         // Stamped on the 1440 run; at 390 the cooldown message shows instead.
         await expect(p.getByRole("heading", { name: "Emma Wong" }).or(p.getByText(/already got stamps for this visit/))).toBeVisible();
       });
-      if (mobile) await shoot(page, "16-menu", m, width, async (p) => p.getByRole("button", { name: "Open menu" }).click(), false);
+      if (mobile) await shoot(page, "16-menu", m, width, async (p) => p.getByRole("button", { name: "More" }).click(), false);
       else await shoot(page, "16-search", m, width, async (p) => {
         await p.keyboard.press("ControlOrMeta+k");
         await p.keyboard.type("emma");

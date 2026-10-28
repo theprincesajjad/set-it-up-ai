@@ -57,12 +57,22 @@ export default async function MePage({ searchParams }: Props) {
   const locale = await getLocaleForProfile(sp, profile.locale);
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
-      {nextVisit ? <div className="mb-4"><NextVisitCard appt={nextVisit} /></div> : null}
-      <Wallet profile={profile} wallet={wallet} card={card} campaigns={campaigns} endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))} />
-      <TiffinLinks items={tiffin} />
-      <PantryReminders items={pantry} />
-      <PetLinks pets={petCount} cards={foodCount} shop={petShop} />
-      <VehicleLinks vehicles={vehicleCount} />
+      <Wallet
+        profile={profile}
+        wallet={wallet}
+        card={card}
+        campaigns={campaigns}
+        endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))}
+        nextVisit={nextVisit ? <NextVisitCard appt={nextVisit} /> : null}
+        extras={
+          <>
+            <TiffinLinks items={tiffin} />
+            <PantryReminders items={pantry} />
+            <PetLinks pets={petCount} cards={foodCount} shop={petShop} />
+            <VehicleLinks vehicles={vehicleCount} />
+          </>
+        }
+      />
     </LocaleScope>
   );
 }

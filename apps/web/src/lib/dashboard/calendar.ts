@@ -6,7 +6,13 @@
 import type { appointmentsApi } from "@ll/shared";
 
 export const TZ = "America/Toronto";
-export const PX_PER_HOUR = 60;
+/**
+ * 100 px an hour: a 15-minute block is 25 px, so the shortest booking (24 px after the 1 px gap) is a target a finger can hit and a
+ * 12 px title line fits. At the old 60 it was 14 px (audit S17). Must stay a multiple of 4 so quarter hours land on whole pixels.
+ */
+export const PX_PER_HOUR = 100;
+/** The shortest a block is drawn (WCAG 2.2 target size, 24 px). */
+export const MIN_BLOCK_PX = 24;
 export const STEP_MIN = 15;
 export const DEFAULT_WINDOW: [number, number] = [9 * 60, 18 * 60];
 const MIN = 60_000;
@@ -263,7 +269,7 @@ export function geometry(a: Pick<Appt, "startsAt" | "endsAt">, date: string, win
   const endMin = e.date === date ? (e.minutes === 0 ? 24 * 60 : e.minutes) : 24 * 60;
   const top = minutesToPx(Math.max(startMin, window[0]) - window[0], pxPerHour);
   const bottom = minutesToPx(Math.min(endMin, window[1]) - window[0], pxPerHour);
-  return { top, height: Math.max(minutesToPx(STEP_MIN, pxPerHour) - 1, bottom - top - 1) };
+  return { top, height: Math.max(MIN_BLOCK_PX, minutesToPx(STEP_MIN, pxPerHour) - 1, bottom - top - 1) };
 }
 
 export type BlockState = "booked" | "arrived" | "in_service" | "completed" | "no_show" | "cancelled";

@@ -2,7 +2,8 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EmptyState, ErrorLine, PageHeader, Segmented, SkeletonRows, StatusDot } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, Segmented, StatusDot } from "@/components/dashboard/kit";
+import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { TicketCard } from "@/components/dashboard/service/TicketCard";
@@ -71,9 +72,9 @@ function Board() {
       {open ? <TicketFilters value={filter} onChange={setFilter} counts={counts} /> : null}
       <TextField type="search" label="Search tickets" hideLabel placeholder="Ticket #, customer, phone, device" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
-        <ErrorLine message={list.error} onRetry={list.reload} />
+        <ListError title="We could not load your tickets." detail={list.error} onRetry={list.reload} />
       ) : list.loading && !list.data ? (
-        <SkeletonRows rows={6} />
+        <ListLoading label="Loading tickets" rows={6} avatar={false} />
       ) : items.length && view !== "board" ? (
         <ul className="divide-y divide-line border-y border-line">
           {(view === "list" ? sortColumn(items) : items).map((t) => (

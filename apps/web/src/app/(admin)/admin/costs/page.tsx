@@ -2,7 +2,7 @@
 import { PageHeader, Panel, StatBlock } from "@/components/dashboard/kit";
 import Link from "next/link";
 import type { adminApi } from "@ll/shared";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { browserApi } from "@/lib/api/browser";
 import { formatMoney, formatNumber } from "@/lib/format";
@@ -25,7 +25,7 @@ export default function CostsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Costs" description="Texts, WhatsApp and hosting per shop this month, against plan revenue and the last 30 days of fees." />
-      <Async state={c}>
+      <ListAsync state={c} errorTitle="We could not load the costs.">
         {(d) => (
           <>
             <StatBlock
@@ -43,7 +43,7 @@ export default function CostsPage() {
             <p className="text-meta text-fg-muted">Unit costs are assumptions from the finance model (docs/finance/unit-economics.md): texts {d.assumptions.smsSegmentCents}¢, WhatsApp {d.assumptions.whatsappMessageCents}¢, hosting {formatMoney(d.assumptions.infraPerShopCents)} per shop. Card processing is paid by the shop and is not counted here.</p>
           </>
         )}
-      </Async>
+      </ListAsync>
     </div>
   );
 }

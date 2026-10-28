@@ -268,7 +268,7 @@ function KitchenNow({ o }: { o: Home["orders"] | null }) {
 }
 
 /** "Busy mode: add 15 min" / "Busy mode: off". Adds minutes to every quoted wait for two hours. */
-function BusyMode({ state, onChanged }: { state: restaurantApi.BusyState | null; onChanged: () => void }) {
+export function BusyMode({ state, onChanged }: { state: restaurantApi.BusyState | null; onChanged: () => void }) {
   const { api } = useMerchant();
   const act = useAction();
   const [open, setOpen] = useState(false);

@@ -10,12 +10,12 @@ import { keypadKeyClass } from "@/components/ui/Keypad";
 export function DigitBoxes({ value, className }: { value: string; className?: string }) {
   return (
     <div role="group" aria-label="Last 4 digits of their phone" dir="ltr" className={cn("flex h-16 items-center justify-center gap-1 rounded-xl border border-border bg-background px-5 font-display text-display tabular-nums text-foreground", className)}>
-      <span aria-hidden className="text-subtle-foreground">(•••) •••-</span>
+      <span aria-hidden className="font-sans font-normal text-muted-foreground">(•••) •••-</span>
       {[0, 1, 2, 3].map((i) => (
         <span
           key={i}
           aria-label={value[i] ? `Digit ${i + 1}: ${value[i]}` : `Digit ${i + 1}: empty`}
-          className={cn("inline-flex w-[0.7em] justify-center border-b-[3px]", i === value.length ? "border-foreground" : "border-transparent")}
+          className={cn("inline-flex w-7 justify-center border-b-4", i === value.length ? "border-foreground" : "border-transparent")}
         >
           {value[i] ?? " "}
         </span>

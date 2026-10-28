@@ -29,7 +29,7 @@ export function StampRow({ goal, filled, size = "md", popFrom, className }: { go
               on && popFrom != null && i >= popFrom && "motion-safe:animate-stamp-pop",
             )}
           >
-            {on ? <Check className="size-[50%]" strokeWidth={3} /> : null}
+            {on ? <Check className="size-1/2" strokeWidth={3} /> : null}
           </span>
         );
       })}

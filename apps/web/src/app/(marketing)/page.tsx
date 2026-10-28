@@ -60,7 +60,7 @@ export default function Home() {
               {/* Docked inside the phone above the rail, where the app shows it (polish-audit K4). */}
               <ToastMock className="absolute start-1/2 bottom-[104px] z-[6] -translate-x-1/2 whitespace-nowrap">Added 1 stamp. Sam now has 8.</ToastMock>
             </PhoneFrame>
-            <PhoneFrame height={520} className="-ms-14 mt-14 hidden sm:block">
+            <PhoneFrame height={520} className="-ms-3 mt-14 hidden sm:block">
               <WalletScreen />
             </PhoneFrame>
           </div>

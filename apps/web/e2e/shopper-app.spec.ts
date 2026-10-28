@@ -45,14 +45,15 @@ test("/for-shoppers: English, then Hindi, Urdu (right to left) and Punjabi, with
 test("a shopper's language follows them: Settings saves it on the profile and the wallet speaks it", async ({ page }) => {
   await joinAsShopper(page);
   await page.goto("/me");
+  await page.getByRole("link", { name: "Shops" }).click();
   // The street: a live neighbourhood campaign shows under "on your street", linking to its page.
   await expect(page.getByRole("heading", { name: "on your street" })).toBeVisible();
   await page.screenshot({ path: shot("shopper-03-wallet-street"), fullPage: true });
 
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Messages in" })).toBeVisible();
   await page.getByRole("radio", { name: "हिन्दी" }).click();
-  await expect(page.getByRole("tab", { name: "सेटिंग्स" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "सेटिंग्स" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "संदेश की भाषा" })).toBeVisible();
   // Saved on the profile (not just this browser): the API now holds "hi".
   await expect.poll(async () => (await (await page.request.get("/api/ll/v1/me")).json()).locale).toBe("hi");
@@ -63,13 +64,13 @@ test("a shopper's language follows them: Settings saves it on the profile and th
   // A new visit without ?lang= or a cookie still opens in the profile language.
   await page.context().clearCookies({ name: "ll_lang" });
   await page.goto("/me");
-  await expect(page.getByRole("tab", { name: "दुकानें" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "दुकानें" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "वॉलेट" })).toBeVisible();
 
   // Back to English from the same row.
-  await page.getByRole("tab", { name: "सेटिंग्स" }).click();
+  await page.getByRole("button", { name: "सेटिंग्स" }).click();
   await page.getByRole("radio", { name: "English" }).click();
-  await expect(page.getByRole("tab", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
   await expect.poll(async () => (await (await page.request.get("/api/ll/v1/me")).json()).locale).toBe("en");
 });
 
@@ -78,7 +79,7 @@ test("Activity is the inbox, with the day's alert budget said out loud; the bell
   await page.goto("/discover");
   await expect(page.getByRole("link", { name: "Notifications" })).toHaveAttribute("href", "/me#activity");
   await page.goto("/me#activity");
-  await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("link", { name: "Activity" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Notifications", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/3 routine alerts a day at most/)).toBeVisible();
   await page.screenshot({ path: shot("shopper-05-activity"), fullPage: true });

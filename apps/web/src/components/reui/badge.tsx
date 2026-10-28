@@ -1,3 +1,5 @@
+/* ReUI (github.com/keenthemes/reui, MIT) at commit 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a, registry item `badge`. Copied, not edited, except the places marked LOCAL PATCH and the import paths (cn -> @/lib/utils, ui -> primitives). Vendored: not linted (inline eslint directives removed). */
+/* eslint-disable */
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"

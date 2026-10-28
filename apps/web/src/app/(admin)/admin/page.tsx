@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { BarChart } from "@/components/dashboard/Charts";
 import { NetworkGauges } from "@/components/dashboard/NetworkGauges";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
@@ -25,7 +25,7 @@ export default function AdminToday() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Today" description={longDate()} actions={<Button size="sm" variant="secondary" href="/admin/neighbourhoods">Plan areas</Button>} />
-      <Async state={o}>
+      <ListAsync state={o} errorTitle="We could not load the network overview.">
         {(d) => {
           const behind = d.pace.delta < 0;
           const risk = all ?? d.atRisk.items.slice(0, AT_RISK_PREVIEW);
@@ -122,8 +122,8 @@ export default function AdminToday() {
             </>
           );
         }}
-      </Async>
-      <Async state={net}>
+      </ListAsync>
+      <ListAsync state={net} errorTitle="We could not load the network overview.">
         {(n) => (
           <>
             <NetworkGauges activeMerchants={n.merchants.byStatus.active} multiShopPct={n.multiShopPct} />
@@ -132,7 +132,7 @@ export default function AdminToday() {
             </Panel>
           </>
         )}
-      </Async>
+      </ListAsync>
     </div>
   );
 }

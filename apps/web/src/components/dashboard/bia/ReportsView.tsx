@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { networkApi } from "@ll/shared";
 import { EmptyState, PageHeader, Panel, StatusDot } from "@/components/dashboard";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -94,7 +94,7 @@ export function ReportsView({ hood }: { hood: networkApi.NeighbourhoodDto }) {
       </Panel>
 
       <Panel title="Campaign reports" description="Each campaign has its own report, with the shops, lift and 30-day return.">
-        <Async state={campaigns}>
+        <ListAsync state={campaigns} errorTitle="We could not load the reports.">
           {(d) => {
             const ran = d.items.filter((c) => c.status === "live" || c.status === "ended");
             return ran.length ? (
@@ -117,7 +117,7 @@ export function ReportsView({ hood }: { hood: networkApi.NeighbourhoodDto }) {
               <EmptyState title="No campaign has run yet" description="Once a campaign goes live, its report appears here and in your board report." />
             );
           }}
-        </Async>
+        </ListAsync>
       </Panel>
     </div>
   );

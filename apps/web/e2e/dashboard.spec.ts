@@ -69,9 +69,10 @@ async function pilot(merchantId: string, keys: string[], on: boolean) {
 test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await signIn(page, OWNER);
   await expect(page).toHaveURL(/\/m\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { level: 1, name: /Good (morning|afternoon|evening)/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /by hour/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Slipping away" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  // The four standard cards, from the same data the old Home used.
+  for (const card of ["Needs you", "Up next", "Quick actions"]) await expect(page.getByRole("heading", { level: 2, name: card })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Today's numbers" }).or(page.getByLabel("Today's numbers"))).toBeVisible();
   await expect(page.getByText(/New members/).first()).toBeVisible();
   // Free plan: paid tools are not in the sidebar; Home carries the one quiet upsell line.
   const nav = page.getByRole("navigation", { name: "Main" }).first();
@@ -367,8 +368,8 @@ test.describe("phone width", () => {
     await signIn(page, OWNER, `/m/${id}`);
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: shot("32-mobile-home"), fullPage: true });
-    await page.getByRole("button", { name: "Open menu" }).click();
-    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Counter" })).toBeVisible();
+    await page.getByRole("button", { name: "More" }).click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Counter" })).toBeVisible();
     await page.goto(`/m/${id}/counter`);
     await expect(page.getByRole("region", { name: "Scan a card" })).toBeVisible();
     await page.screenshot({ path: shot("33-mobile-counter"), fullPage: true });

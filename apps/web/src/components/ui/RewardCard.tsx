@@ -39,23 +39,35 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
   const { t, locale, date } = useLocaleOrEnglish();
   const toGo = Math.max(0, reward.pointsCost - balance);
   return (
-    <div className={cn(layout === "card" ? "rounded-card border border-line bg-bg p-4" : "py-3.5", className)}>
+    <div className={cn(layout === "card" ? "rounded-card border border-border bg-card p-4" : "py-3.5", className)}>
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-body-strong text-fg">{rewardNameIn(locale, t, reward.name)}</p>
           <p className="text-meta tabular-nums text-fg-muted">
-            {state === "available" ? <span className="font-semibold text-accent-text">{t("sh.rc.ready")} · </span> : null}
+            {state === "available" ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-points-text">
+                  <span aria-hidden className="size-2 rounded-full bg-points" />
+                  {t("sh.rc.ready")}
+                </span>
+                {" · "}
+              </>
+            ) : null}
             {unitsText(locale, reward.pointsCost, terminology)}
           </p>
         </div>
         {state === "available" && onRedeem ? (
-          <Button size="sm" onClick={onRedeem}>
+          <Button size="sm" variant={layout === "row" ? "secondary" : "primary"} onClick={onRedeem}>
             {t("sh.rc.redeem")}
           </Button>
         ) : null}
         {state === "locked" ? <span className="shrink-0 text-meta tabular-nums text-fg-muted">{t("sh.wallet.toGo", { amount: unitsText(locale, toGo, terminology) })}</span> : null}
         {state === "redeemed" ? <Badge tone="neutral">{redeemedAt ? t("sh.rc.redeemedOn", { date: locale === "en" ? formatDate(redeemedAt) : date(redeemedAt, { month: "short", day: "numeric" }) }) : t("sh.wallet.redeemed")}</Badge> : null}
       </div>
+      {state === "available" && onRedeem ? (
+        // Frame 15:184: a reward that can be redeemed shows its bar full, in points orange.
+        <ProgressBar className="mt-3" tone="accent" value={reward.pointsCost} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: reward.pointsCost, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
+      ) : null}
       {state === "locked" ? (
         <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
       ) : null}

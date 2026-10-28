@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
-import { Capsules, EmptyState, ErrorLine, PageHeader, Segmented, SkeletonRows, StatusDot } from "@/components/dashboard/kit";
+import { Capsules, EmptyState, PageHeader, Segmented, StatusDot } from "@/components/dashboard/kit";
+import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -126,9 +127,9 @@ function Orders() {
       </div>
 
       {orders.error && !orders.data ? (
-        <ErrorLine message={orders.error} onRetry={orders.reload} />
+        <ListError title="We could not load your orders." detail={orders.error} onRetry={orders.reload} />
       ) : orders.loading && !orders.data ? (
-        <SkeletonRows rows={4} />
+        <ListLoading label="Loading orders" rows={4} avatar={false} />
       ) : shown.length ? (
         <ul aria-label={view === "open" ? "Open orders" : "Finished orders"} className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((o) => (

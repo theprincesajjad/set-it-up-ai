@@ -66,6 +66,7 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
   }, [start, stop]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (cameraRequest > 0) void start();
   }, [cameraRequest, start]);
 

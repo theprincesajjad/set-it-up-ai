@@ -5,6 +5,8 @@ import { NoAccess } from "@/components/dashboard/PageStates";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Layout";
 import { requireMe } from "@/lib/auth/session";
+import { LocaleScope } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: { default: "Rep console", template: "%s · Rep console" }, robots: { index: false, follow: false } };
 
@@ -18,8 +20,10 @@ export default async function RepLayout({ children }: { children: ReactNode }) {
       </Container>
     );
   return (
-    <ConsoleShell kind="rep" me={me}>
-      {children}
-    </ConsoleShell>
+    <LocaleScope locale={await getLocale()}>
+      <ConsoleShell kind="rep" me={me}>
+        {children}
+      </ConsoleShell>
+    </LocaleScope>
   );
 }

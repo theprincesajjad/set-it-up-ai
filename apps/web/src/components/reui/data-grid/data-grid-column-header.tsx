@@ -1,3 +1,5 @@
+/* ReUI (github.com/keenthemes/reui, MIT) at commit 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a, registry item `data-grid`. Copied, not edited, except the places marked LOCAL PATCH and the import paths (cn -> @/lib/utils, ui -> primitives). Vendored: not linted (inline eslint directives removed). */
+/* eslint-disable */
 "use client"
 
 // Opted out of React Compiler with the rest of the grid (see data-grid.tsx).
@@ -363,7 +365,6 @@ function DataGridColumnHeaderInner<TData extends object, TValue>({
     }
 
     return items
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filter,
     canSort,

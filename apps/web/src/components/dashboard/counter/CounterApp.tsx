@@ -719,7 +719,7 @@ export function CounterApp({
               <span className="flex items-center gap-1.5 text-meta text-muted-foreground">
                 <span aria-hidden className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")} />
                 {statusText}
-                {stampsToday != null ? ` · ${stampsToday} ${program.terminology} today` : ""}
+                {stampsToday != null ? ` · ${formatPoints(stampsToday, program.terminology)} today` : ""}
               </span>
             </div>
           </div>
@@ -835,9 +835,16 @@ export function CounterApp({
                 </Button>
               </>
             ) : !pinOpen ? (
-              <p className="text-meta text-muted-foreground">
-                <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
-              </p>
+              <>
+                {/* Tablet only: the lookup stays put while a customer is on the right, dimmed and out of reach (Figma 15:2). */}
+                <div inert aria-hidden className="hidden flex-col gap-4 opacity-50 lg:flex">
+                  <DigitBoxes value={entry} />
+                  <ScanKeypad onKey={() => undefined} disabled />
+                </div>
+                <p className="hidden text-meta text-muted-foreground lg:block">
+                  <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
+                </p>
+              </>
             ) : null}
           </div>
 
@@ -938,11 +945,11 @@ export function CounterApp({
               <div>
                 <h2
                   id="pick-title"
-                  className="font-display text-[22px] font-bold leading-7 tracking-[-0.01em] text-fg"
+                  className="font-display text-title font-bold leading-7 text-fg"
                 >
                   {matchesHeading(phase.items.length, phase.digits)}
                 </h2>
-                <p className="mt-1 text-[14px] text-fg-muted">
+                <p className="mt-1 text-sm text-fg-muted">
                   {program.counterAutoStamp && !perDollar
                     ? "Tap one. Stamp is added immediately."
                     : "Tap one to open their card."}
@@ -956,22 +963,22 @@ export function CounterApp({
                 {phase.items.map((m) => (
                   <li
                     key={m.memberId}
-                    className="flex items-center gap-3 rounded-[16px] border border-line px-4 py-3.5"
+                    className="flex items-center gap-3 rounded-card border border-line px-4 py-3.5"
                   >
                     <span
                       aria-hidden
-                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-muted text-[14px] font-semibold uppercase text-fg"
+                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-muted text-sm font-semibold uppercase text-fg"
                     >
                       {initialsOf(m.name)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[17px] font-semibold text-fg">
+                      <span className="block truncate text-headline font-semibold text-fg">
                         {m.name ?? "Member"}
                       </span>
-                      <span className="block text-[14px] tabular-nums text-fg-muted">
+                      <span className="block text-sm tabular-nums text-fg-muted">
                         {maskedForRow(m.maskedPhone)}
                       </span>
-                      <span className="block text-[13px] text-fg-muted">
+                      <span className="block text-meta text-fg-muted">
                         {program.earnType === "stamps"
                           ? `${Math.min(m.balance, goal)} of ${goal}`
                           : formatPoints(m.balance, m.terminology)}{" "}
@@ -982,7 +989,7 @@ export function CounterApp({
                       size="sm"
                       disabled={busy}
                       aria-label={`${program.counterAutoStamp && !perDollar ? "Stamp" : "Open"} ${m.name ?? "member"}`}
-                      className="h-10 rounded-full px-5 text-[14px]"
+                      className="h-10 rounded-full px-5 text-sm"
                       onClick={() => {
                         if (isRewardReady(m, program))
                           setPhase({ kind: "reward", member: m });
@@ -1002,7 +1009,7 @@ export function CounterApp({
               <button
                 type="button"
                 onClick={() => setPhase({ kind: "new", phone: "" })}
-                className="text-center text-[14px] font-medium text-fg hover:underline focus-visible:focus-ring"
+                className="text-center text-sm font-medium text-fg hover:underline focus-visible:focus-ring"
               >
                 Not here? Add as a new member with their number
               </button>
@@ -1017,11 +1024,11 @@ export function CounterApp({
             >
               <h2
                 id="nomatch-title"
-                className="font-display text-[22px] font-bold leading-7 text-fg"
+                className="font-display text-title font-bold leading-7 text-fg"
               >
                 No one ends in {phase.digits}
               </h2>
-              <p className="text-[14px] text-fg-muted">
+              <p className="text-sm text-fg-muted">
                 Check the digits, or add them as a new member with their number.
               </p>
               <div className="flex flex-wrap gap-2.5">
@@ -1393,7 +1400,7 @@ function Stamped({
         titleId="ok-title"
         detail={res.memberCreated ? "New member · first stamp" : visitThisMonth(res.visitsThisMonth)}
       />
-      <p className="font-display text-[7.5rem] font-extrabold leading-none tracking-tighter tabular-nums text-points-text">
+      <p className="font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums text-points-text">
         {stamps ? (
           <CountUp value={Math.min(n, goal)} from={Math.min(from, goal)} className="tabular-nums" />
         ) : (
@@ -1744,7 +1751,7 @@ function PinPad({
           <span
             key={i}
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-[12px] border text-[24px]",
+              "flex h-12 w-12 items-center justify-center rounded-lg border text-2xl",
               i === pin.length ? "border-fg" : "border-line",
             )}
           >

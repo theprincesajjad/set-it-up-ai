@@ -7,7 +7,7 @@ export function VehicleLinks({ vehicles }: { vehicles: number }) {
   const { t } = useFmt();
   if (!vehicles) return null;
   return (
-    <nav aria-label={t("auto.my.title")} className="mt-4 flex flex-col divide-y divide-line rounded-card border border-line px-4">
+    <nav aria-label={t("auto.my.title")} className="flex flex-col divide-y divide-border rounded-card border border-border bg-card px-4">
       <Link href="/me/vehicles" className="flex items-center justify-between py-3.5 text-body-strong text-fg">{t("auto.my.title")}<span aria-hidden className="text-fg-muted">{vehicles}</span></Link>
     </nav>
   );

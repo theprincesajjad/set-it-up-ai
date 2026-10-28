@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FEATURES, VERTICALS, type FeatureKey } from "@ll/shared";
 import legacyJson from "./fixtures/nav-legacy.json";
+import { NAV_LABEL_KEYS } from "@/lib/dashboard/navLabels";
 import { NAV_SECTIONS, buildMerchantNav, navSections, type StaffRole } from "@/lib/dashboard/nav";
 
 /**
@@ -95,5 +96,11 @@ describe("one shell for every trade", () => {
     expect(keys.slice(0, 2)).toEqual(["home", "counter"]);
     expect(keys).not.toContain("settings");
     expect(keys).not.toContain("billing");
+  });
+  it("has a translation key for every label the sidebar can show", () => {
+    const labels = new Set<string>();
+    for (const v of [...VERTICALS, undefined] as (string | undefined)[])
+      for (const role of ROLES) for (const profile of Object.keys(PROFILES)) for (const e of nav(v, role, profile)) labels.add(e.label);
+    expect([...labels].filter((l) => !(l in NAV_LABEL_KEYS))).toEqual([]);
   });
 });

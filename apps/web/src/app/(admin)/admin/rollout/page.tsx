@@ -4,7 +4,7 @@ import { Lock } from "lucide-react";
 import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { NetworkGauges } from "@/components/dashboard/NetworkGauges";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { OverridesSheet } from "@/components/dashboard/admin/OverridesSheet";
 import { StageDialog } from "@/components/dashboard/admin/StageDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -26,7 +26,7 @@ export default function RolloutPage() {
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Rollout control" description="Decide when paid features switch on. Free-forever features are locked to Live." />
       <NetworkGauges activeMerchants={active} multiShopPct={dash.data?.multiShopPct ?? null} />
-      <Async state={features}>
+      <ListAsync state={features} errorTitle="We could not load the rollout.">
         {(d) => (
           <>
             {groupFeatures(d.items).map((g) => (
@@ -100,7 +100,7 @@ export default function RolloutPage() {
             ))}
           </>
         )}
-      </Async>
+      </ListAsync>
       <Section title="Plans">
         <div className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-3">
           {(plans.data?.items ?? []).map((p) => (

@@ -40,14 +40,13 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
 
   // The same session opens the web wallet.
   await page.goto("/me");
-  await expect(page.getByRole("button", { name: "Show my card" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Show my card" })).toBeVisible();
   await expect(page.getByText("Pinecone Coffee Co.").first()).toBeVisible();
   await page.screenshot({ path: shot("05-wallet"), fullPage: true });
-  await page.getByRole("button", { name: "Show my card" }).click();
-  await expect(page.getByRole("dialog", { name: "My card" })).toBeVisible();
+  // The card is the first thing on the pass: the QR is on the page, no sheet to open.
+  await expect(page.getByRole("img", { name: /Member QR code/ })).toBeVisible();
   await page.screenshot({ path: shot("06-wallet-card-sheet") });
-  await page.keyboard.press("Escape");
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("switch", { name: "Get offers from Pinecone Coffee Co." })).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: shot("07-wallet-settings"), fullPage: true });
 

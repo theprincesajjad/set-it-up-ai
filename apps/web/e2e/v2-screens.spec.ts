@@ -93,20 +93,18 @@ for (const s of SIZES) {
 
     // Give the new member a few stamps so the wallet has something real to show.
     await page.goto("/me");
-    await expect(page.getByRole("button", { name: "Show my card" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Show my card" })).toBeVisible();
+    await expect(page.getByRole("img", { name: /Member QR code/ })).toBeVisible();
     await shot(page, "wallet", s.w);
-    await page.getByRole("button", { name: "Show my card" }).click();
-    await page.waitForTimeout(400);
-    await shot(page, "wallet-card", s.w, false);
-    await page.keyboard.press("Escape");
+    await page.getByRole("link", { name: "Shops" }).click();
     await page.getByRole("button", { name: /Pinecone Coffee Co\./ }).first().click();
     await page.waitForTimeout(900);
     await shot(page, "wallet-shop-sheet", s.w, false);
     await page.keyboard.press("Escape");
-    await page.getByRole("tab", { name: "Rewards" }).click();
+    await page.getByRole("link", { name: "Rewards" }).click();
     await page.waitForTimeout(600);
     await shot(page, "wallet-rewards", s.w);
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Settings" }).click();
     await shot(page, "wallet-settings", s.w);
     await page.goto("/discover");
     await expect(page.getByRole("heading", { name: "near you" })).toBeVisible();

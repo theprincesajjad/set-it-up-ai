@@ -4,6 +4,8 @@
  * unless two series). Every chart can flip to a table.
  */
 import { useId, useState, type ReactNode } from "react";
+import { Bar, BarChart as RBarChart, CartesianGrid, Line, LineChart as RLineChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/primitives/chart";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
 
@@ -85,77 +87,54 @@ interface PlotProps {
   height: number;
   kind: "bar" | "line";
   title: string;
+  valueLabel: string;
+  compareLabel?: string;
 }
 
-function Plot({ data, format, height, kind, title }: PlotProps) {
+/**
+ * The plot, on shadcn Chart (Recharts 3). Series colours come from `--chart-*` only: the value is `chart-1` (black in light, white in
+ * dark), a comparison is `chart-3` (a quiet grey, dashed on a line). `chart-2` (orange) is for the ONE series a page wants noticed and is
+ * not used here: no caller highlights a series. Grid and axis text use the chart primitive's `border` and `muted-foreground`.
+ */
+function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: PlotProps) {
   const id = useId();
-  const [hover, setHover] = useState<number | null>(null);
   const raw = Math.max(1, ...data.map((d) => Math.max(d.value, d.compare ?? 0)));
   const max = niceMax(raw);
-  const W = 600;
-  const H = height;
-  const n = Math.max(1, data.length);
-  const bw = W / n;
-  const y = (v: number) => H - (v / max) * (H - 4);
-  const x = (i: number) => (kind === "bar" ? i * bw + bw / 2 : n === 1 ? W / 2 : (i / (n - 1)) * W);
-  const line = data.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join(" ");
-  const cmp = data.some((d) => d.compare != null) ? data.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.compare ?? 0).toFixed(1)}`).join(" ") : null;
-  const h = hover != null ? data[hover] : null;
   const total = data.reduce((s, d) => s + d.value, 0);
+  const hasCompare = data.some((d) => d.compare != null);
+  const config = {
+    value: { label: valueLabel, color: "var(--chart-1)" },
+    compare: { label: compareLabel ?? "Compared", color: "var(--chart-3)" },
+  } satisfies ChartConfig;
+  const common = { data, margin: { top: 4, right: 4, bottom: 0, left: 0 } };
+  const axes = (
+    <>
+      <CartesianGrid vertical={false} strokeDasharray="2 3" />
+      <XAxis dataKey="label" tickFormatter={shortDate} tickLine={false} axisLine={false} tickMargin={6} interval="preserveStartEnd" minTickGap={40} />
+      <YAxis width={32} domain={[0, max]} ticks={[0, max / 2, max]} tickFormatter={(v: number) => format(v)} tickLine={false} axisLine={false} />
+      <ChartTooltip cursor={kind === "bar" ? { fill: "var(--muted)" } : { stroke: "var(--border)" }} content={<ChartTooltipContent labelFormatter={(l) => shortDate(String(l))} formatter={(v, name) => <span className="flex w-full justify-between gap-3 tabular-nums"><span className="text-muted-foreground">{config[name as "value" | "compare"]?.label ?? name}</span><span className="font-semibold text-foreground">{format(Number(v))}</span></span>} hideIndicator />} />
+    </>
+  );
   return (
-    <figure aria-labelledby={`${id}-cap`} className="relative" onPointerLeave={() => setHover(null)}>
+    <figure aria-labelledby={`${id}-cap`} className="relative">
       <figcaption id={`${id}-cap`} className="sr-only">
         {title}: {data.length} days, total {format(total)}, highest {format(raw)}.
       </figcaption>
-      <div className="flex gap-3">
-        <div aria-hidden className="flex w-6 shrink-0 flex-col justify-between text-end text-caption font-normal text-fg-muted tabular" style={{ height: H }}>
-          <span className="-mt-1.5">{format(max)}</span>
-          <span>{format(max / 2)}</span>
-          <span className="-mb-1.5">0</span>
-        </div>
-        <div className="relative min-w-0 flex-1">
-          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block w-full overflow-visible" style={{ height: H }} aria-hidden onMouseLeave={() => setHover(null)}>
-            {[0, 0.5, 1].map((g) => (
-              <line key={g} x1={0} x2={W} y1={g * H} y2={g * H} className="stroke-line" strokeWidth={1} vectorEffect="non-scaling-stroke" strokeDasharray={g === 1 ? undefined : "2 3"} />
-            ))}
-            {kind === "bar"
-              ? data.map((d, i) => {
-                  const bh = H - y(d.value);
-                  return (
-                    <g key={d.label}>
-                      {d.compare != null ? <rect x={i * bw + bw * 0.15} y={y(d.compare)} width={bw * 0.7} height={H - y(d.compare)} className="fill-bg-muted" /> : null}
-                      <rect x={i * bw + bw * 0.22} y={H - Math.max(bh, d.value > 0 ? 1.5 : 0)} width={bw * 0.56} height={Math.max(bh, d.value > 0 ? 1.5 : 0)} rx={1.5} className={hover === i ? "fill-fg" : "fill-fg opacity-90"} />
-                      <rect x={i * bw} y={0} width={bw} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
-                    </g>
-                  );
-                })
-              : (
-                <>
-                  {cmp ? <path d={cmp} fill="none" className="stroke-fg-subtle" strokeWidth={1.25} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" /> : null}
-                  <path d={line} fill="none" className="stroke-fg" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-                  {hover != null ? <line x1={x(hover)} x2={x(hover)} y1={0} y2={H} className="stroke-line-strong" strokeWidth={1} vectorEffect="non-scaling-stroke" /> : null}
-                  {data.map((d, i) => (
-                    <rect key={d.label} x={x(i) - W / n / 2} y={0} width={W / n} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
-                  ))}
-                </>
-              )}
-          </svg>
-          {kind === "line" && hover != null && h ? (
-            <span aria-hidden className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-fg" style={{ left: `${(x(hover) / W) * 100}%`, top: y(h.value) }} />
-          ) : null}
-          {h ? (
-            <div aria-hidden className="pointer-events-none absolute top-0 z-[1] -translate-x-1/2 whitespace-nowrap rounded-[8px] border border-line bg-bg px-2 py-1 text-caption shadow-float" style={{ left: `${Math.min(92, Math.max(8, (x(hover!) / W) * 100))}%` }}>
-              <span className="text-fg-muted">{shortDate(h.label)}</span> <span className="font-semibold text-fg tabular">{format(h.value)}</span>
-              {h.compare != null ? <span className="text-fg-muted tabular"> · {format(h.compare)}</span> : null}
-            </div>
-          ) : null}
-          <div aria-hidden className="mt-1.5 flex justify-between text-caption font-normal text-fg-muted">
-            <span>{data[0] ? shortDate(data[0].label) : ""}</span>
-            {data.length > 6 ? <span>{shortDate(data[Math.floor(data.length / 2)]!.label)}</span> : null}
-            <span>{data.length > 1 ? shortDate(data[data.length - 1]!.label) : ""}</span>
-          </div>
-        </div>
-      </div>
+      <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
+        {kind === "bar" ? (
+          <RBarChart {...common} accessibilityLayer={false}>
+            {axes}
+            {hasCompare ? <Bar dataKey="compare" fill="var(--color-compare)" fillOpacity={0.35} radius={[2, 2, 0, 0]} isAnimationActive={false} /> : null}
+            <Bar dataKey="value" fill="var(--color-value)" radius={[2, 2, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+          </RBarChart>
+        ) : (
+          <RLineChart {...common} accessibilityLayer={false}>
+            {axes}
+            {hasCompare ? <Line dataKey="compare" type="monotone" stroke="var(--color-compare)" strokeWidth={1.25} strokeDasharray="3 3" dot={false} isAnimationActive={false} /> : null}
+            <Line dataKey="value" type="monotone" stroke="var(--color-value)" strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
+          </RLineChart>
+        )}
+      </ChartContainer>
     </figure>
   );
 }
@@ -175,7 +154,7 @@ export function BarChart({ title, subtitle, data, valueLabel = "Value", compareL
   const empty = data.every((d) => d.value === 0 && !d.compare);
   return (
     <ChartFrame title={title} subtitle={subtitle} action={action} className={className} hideTitle={hideTitle} table={<TableView rows={data} valueLabel={valueLabel} compareLabel={compareLabel} format={format} />}>
-      {empty ? <EmptyChart height={height} /> : <Plot data={data} format={format} height={height} kind="bar" title={title} />}
+      {empty ? <EmptyChart height={height} /> : <Plot data={data} format={format} height={height} kind="bar" title={title} valueLabel={valueLabel} compareLabel={compareLabel} />}
     </ChartFrame>
   );
 }
@@ -185,12 +164,12 @@ export function LineChart({ title, subtitle, data, valueLabel = "Value", compare
   const empty = data.every((d) => d.value === 0 && !d.compare);
   return (
     <ChartFrame title={title} subtitle={subtitle} action={action} className={className} hideTitle={hideTitle} table={<TableView rows={data} valueLabel={valueLabel} compareLabel={compareLabel} format={format} />}>
-      {empty ? <EmptyChart height={height} /> : <Plot data={data} format={format} height={height} kind="line" title={title} />}
+      {empty ? <EmptyChart height={height} /> : <Plot data={data} format={format} height={height} kind="line" title={title} valueLabel={valueLabel} compareLabel={compareLabel} />}
     </ChartFrame>
   );
 }
 
-/** Horizontal bars with direct labels (join sources, overlap by shop, per-merchant visits). Thin black bars on a light track. */
+/** Horizontal bars with direct labels (join sources, overlap by shop, per-merchant visits). Thin chart-1 bars on a light track. */
 export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: { label: ReactNode; value: number; key: string; hint?: string }[]; format?: (n: number) => string; max?: number; tone?: string }) {
   const max = maxProp ?? Math.max(1, ...rows.map((r) => r.value));
   return (
@@ -205,7 +184,7 @@ export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: 
             </span>
           </div>
           <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-bg-muted" aria-hidden>
-            <div className="h-full rounded-full bg-fg" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
+            <div className="h-full rounded-full bg-chart-1" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
           </div>
         </li>
       ))}
@@ -213,7 +192,7 @@ export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: 
   );
 }
 
-/** Visits by weekday: seven small black bars with the count above. */
+/** Visits by weekday: seven small bars (chart-1) with the count above. */
 export function WeekdayBars({ counts, format = formatNumber }: { counts: number[]; format?: (n: number) => string }) {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const max = Math.max(1, ...counts);
@@ -225,7 +204,7 @@ export function WeekdayBars({ counts, format = formatNumber }: { counts: number[
           <div key={d} role="listitem" className="flex flex-col items-center gap-1.5">
             <span className="text-caption font-normal text-fg tabular">{format(v)}</span>
             <div className="flex h-16 w-full items-end justify-center border-b border-line">
-              <div className="w-3/5 max-w-6 rounded-t-[2px] bg-fg" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
+              <div className="w-3/5 max-w-6 rounded-t-xs bg-chart-1" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
             </div>
             <span className="text-caption font-normal text-fg-muted">{d}</span>
           </div>

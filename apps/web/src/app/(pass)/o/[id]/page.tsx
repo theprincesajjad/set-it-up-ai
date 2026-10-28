@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { OrderStatus } from "@/components/pass/OrderStatus";
 import { ReservedView } from "@/components/restaurant/ReservedView";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
+import { PassTopBar } from "@/components/pass/PassChrome";
 import { PageFrame, URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
@@ -48,6 +49,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
   }
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+      <PassTopBar className="mb-2" />
       <OrderStatus initial={order} />
     </LocaleScope>
   );

@@ -35,7 +35,7 @@ function ToastList() {
         className="rounded-card border-0 bg-fg text-bg shadow-float [--gap:0.5rem] focus-visible:ring-0 focus-visible:focus-ring"
       >
         <ToastContent className="gap-3 px-4 py-3">
-          {Icon ? <Icon aria-hidden className="size-[18px] shrink-0" strokeWidth={1.75} /> : null}
+          {Icon ? <Icon aria-hidden className="size-4.5 shrink-0" strokeWidth={1.75} /> : null}
           <ToastTitle className="min-w-0 flex-1 text-meta font-medium text-bg" />
           {data?.action ? (
             <ToastAction
@@ -78,7 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <ToastBaseProvider toastManager={manager} limit={1}>
         {children}
         <ToastPortal>
-          <ToastViewport className="z-toast inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] mx-auto max-w-[420px] sm:inset-x-4 sm:end-auto sm:mx-auto lg:start-6 lg:mx-0">
+          <ToastViewport className="z-toast inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] mx-auto max-w-105 sm:inset-x-4 sm:end-auto sm:mx-auto lg:start-6 lg:mx-0">
             <ToastList />
           </ToastViewport>
         </ToastPortal>

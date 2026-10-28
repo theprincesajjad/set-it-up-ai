@@ -1,7 +1,8 @@
 "use client";
 import { Info, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/cn";
+import { Badge as BadgePrimitive } from "@/components/primitives/badge";
+import { cn } from "@/lib/utils";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
@@ -33,12 +34,13 @@ const dots: Record<BadgeTone, string> = {
 /** Non-interactive status label: always text, never colour alone. */
 export function Badge({ tone = "neutral", icon: Icon, iconEnd: IconEnd, dot, children, className }: { tone?: BadgeTone; icon?: LucideIcon; iconEnd?: LucideIcon; dot?: boolean; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tones[tone], className)}>
+    // The shadcn Badge (Base UI) is the element; the v2 capsule look wins over its defaults through `cn`.
+    <BadgePrimitive variant="secondary" className={cn("h-6 gap-1.5 px-2.5 text-caption font-semibold", tones[tone], className)}>
       {dot ? <span aria-hidden className={cn("size-1.5 rounded-full", dots[tone])} /> : null}
       {Icon ? <Icon aria-hidden className="size-3.5" strokeWidth={2} /> : null}
       {children}
       {IconEnd ? <IconEnd aria-hidden className="size-3" strokeWidth={2} /> : null}
-    </span>
+    </BadgePrimitive>
   );
 }
 

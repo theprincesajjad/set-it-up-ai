@@ -12,10 +12,32 @@ import { TextField } from "@/components/ui/TextField";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import { LanguageSwitcher } from "@/lib/i18n/LanguageSwitcher";
+import { LOCALE_LIST } from "@ll/shared";
 import { useLocale } from "@/lib/i18n/client";
 
-const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong", on ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle");
+/** A choice chip for the kiosk (Figma 15:130): a 56 px pill, black when picked. */
+const chip = (on: boolean) => cn("min-h-14 rounded-full border px-6 text-body-strong focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-hover");
+
+/** English, हिन्दी, اردو, ਪੰਜਾਬੀ: each in its own script with its own `lang`, black when it is the page's language. Replaces the segmented switcher on the kiosk only. */
+function LanguageChips() {
+  const { locale, setLocale, t } = useLocale();
+  return (
+    <div role="group" aria-label={t("lang.label")} className="flex flex-wrap justify-center gap-2">
+      {LOCALE_LIST.map((l) => (
+        <button
+          key={l.code}
+          type="button"
+          lang={l.code}
+          aria-pressed={locale === l.code}
+          onClick={() => setLocale(l.code)}
+          className={cn("min-h-11 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", locale === l.code ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-hover")}
+        >
+          {l.name}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /**
  * The tablet at the door, on a page of its own (/door/<shop>): a wait panel and the join form a customer sees on their phone.
@@ -81,22 +103,25 @@ function Door() {
   if (!pinSet) return <SetPin onDone={() => setPinSet(true)} />;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-display text-[20px] font-semibold text-fg"><bdi>{detail.merchant.name}</bdi></p>
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          <Button variant="ghost" size="sm" iconStart={Lock} onClick={() => setLeaving(true)}>Staff</Button>
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-hover text-body-strong uppercase text-foreground">
+            {detail.merchant.name.trim()[0]}
+          </span>
+          <p className="min-w-0 truncate font-display text-title font-semibold text-foreground"><bdi>{detail.merchant.name}</bdi></p>
         </div>
+        <Button variant="ghost" size="sm" iconStart={Lock} onClick={() => setLeaving(true)}>Staff</Button>
       </div>
-      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 overflow-hidden rounded-card border border-line md:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="flex flex-col justify-center gap-3 bg-fg px-8 py-10 text-bg">
-          <p className="text-meta text-bg/70">{open ? t("door.line") : t("q.closed")}</p>
-          <p className="font-display text-[40px] font-semibold leading-none tracking-[-0.02em]">{!open ? t("door.closedShort") : estimate === null ? t("door.noChair") : estimate <= 0 ? t("q.noWait") : t("q.estimate", { min: estimate })}</p>
-          <p className="text-body text-bg/80">{b ? t("door.waiting", { n: b.stats.waiting }) : ""}</p>
+      <LanguageChips />
+      <div className="grid min-h-[calc(100vh-14rem)] grid-cols-1 overflow-hidden rounded-card border border-border bg-background md:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="flex flex-col justify-center gap-3 bg-muted px-8 py-10 text-foreground">
+          <p className="text-meta text-muted-foreground">{open ? t("door.line") : t("q.closed")}</p>
+          <p className="font-display text-display">{!open ? t("door.closedShort") : estimate === null ? t("door.noChair") : estimate <= 0 ? t("q.noWait") : t("q.estimate", { min: estimate })}</p>
+          <p className="text-body text-muted-foreground">{b ? t("door.waiting", { n: b.stats.waiting }) : ""}</p>
           {b?.called.length ? (
-            <div className="mt-2 flex flex-col gap-1 rounded-card bg-bg/10 px-4 py-3" aria-live="polite">
-              <p className="text-meta text-bg/70">{t("door.yourTurn")}</p>
+            <div className="mt-2 flex flex-col gap-1 rounded-xl bg-background px-4 py-3" aria-live="polite">
+              <p className="text-meta text-muted-foreground">{t("door.yourTurn")}</p>
               {b.called.map((c) => (
                 <p key={c.id} className="text-title font-semibold"><bdi>{c.name}</bdi> {c.calledStaffId ? `→ ${b.chairs.find((x) => x.staffId === c.calledStaffId)?.name.split(" ")[0] ?? ""}` : ""}</p>
               ))}
@@ -104,7 +129,7 @@ function Door() {
           ) : null}
         </div>
         <form onSubmit={submit} className="flex flex-col gap-5 px-8 py-8">
-          <h1 className="font-display text-[28px] font-semibold tracking-[-0.01em] text-fg">{t("door.heading")}</h1>
+          <h1 className="font-display text-h1 text-foreground">{t("door.heading")}</h1>
           {joined ? (
             <Banner tone="success">
               {joined.text ? t("door.joinedText", { name: joined.name, n: joined.position ?? 1 }) : t("door.joinedNoText", { name: joined.name, n: joined.position ?? 1 })}
@@ -113,9 +138,9 @@ function Door() {
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           {!open ? <Banner tone="info">{t("door.closedAsk")}</Banner> : null}
           <TextField label={t("q.firstName")} value={name} onChange={(e) => setName(e.target.value)} error={tried && !name.trim() ? t("q.nameRequired") : undefined} autoComplete="off" />
-          <PhoneField key={fieldKey} label={t("q.phone")} onChangeE164={setPhone} />
+          <PhoneField key={fieldKey} label={t("q.phone")} onChangeE164={setPhone} size="lg" />
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-meta text-fg-muted">{t("q.service")}</legend>
+            <legend className="text-meta text-muted-foreground">{t("q.service")}</legend>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(serviceId === "")} onClick={() => setServiceId("")}>{t("door.cut")}</button>
               {(b?.services ?? []).filter((s) => s.name !== "Cut").map((s) => (
@@ -124,7 +149,7 @@ function Door() {
             </div>
           </fieldset>
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-meta text-fg-muted">{t("q.barber")}</legend>
+            <legend className="text-meta text-muted-foreground">{t("q.barber")}</legend>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(staffId === "")} onClick={() => setStaffId("")}>{t("q.anyone")}</button>
               {(b?.chairs ?? []).filter((c) => c.takesWalkIns).map((c) => (
@@ -132,12 +157,12 @@ function Door() {
               ))}
             </div>
           </fieldset>
-          <label className="flex items-center gap-3 text-body text-fg">
-            <input type="checkbox" className="size-5" checked={textOk} disabled={!phone} onChange={(e) => setConsent(e.target.checked)} />
+          <label className="flex min-h-11 items-center gap-3 text-body text-foreground">
+            <input type="checkbox" className="size-6 shrink-0" checked={textOk} disabled={!phone} onChange={(e) => setConsent(e.target.checked)} />
             {t("q.consent")}
           </label>
-          {!phone ? <p className="-mt-3 text-meta text-fg-muted">{t("door.noPhoneNote")}</p> : null}
-          <Button type="submit" size="lg" loading={act.busy} disabled={!open}>{t("q.join")}</Button>
+          <Button type="submit" size="lg" loading={act.busy} disabled={!open} className="min-h-22 rounded-xl text-title">{t("q.join")}</Button>
+          {!phone ? <p className="text-center text-meta text-muted-foreground">{t("door.noPhoneNote")}</p> : null}
         </form>
       </div>
       <PinDialog
@@ -156,8 +181,8 @@ function SetPin({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
-    <div className="mx-auto flex max-w-[420px] flex-col gap-4 py-16">
-      <h1 className="font-display text-[28px] font-semibold text-fg">Set a PIN for this tablet</h1>
+    <div className="mx-auto flex max-w-md flex-col gap-4 py-16">
+      <h1 className="font-display text-h1 text-foreground">Set a PIN for this tablet</h1>
       <p className="text-body text-fg-muted">Customers use the tablet at the door. A 4 to 6 digit staff PIN is what lets you leave this page, so they never reach your client list.</p>
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <TextField label="PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />

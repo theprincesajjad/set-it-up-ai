@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { networkApi } from "@ll/shared";
+import { PassTopBar } from "@/components/pass/PassChrome";
 import { ShopFinder } from "@/components/pass/ShopFinder";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
@@ -36,6 +37,7 @@ export default async function MapPage({ searchParams }: Props) {
   }
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+      <PassTopBar className="mb-2" />
       <ShopFinder initial={shops} neighbourhoods={hoods} neighbourhood={neighbourhood} />
     </LocaleScope>
   );

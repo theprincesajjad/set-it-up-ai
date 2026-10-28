@@ -75,6 +75,8 @@ test("calendar: drag across stylists, busy time snaps back, resize, keyboard", a
   await expect(page.getByRole("group", { name: /^Aisha/ })).toBeVisible();
   await page.screenshot({ path: shot("calendar-1440") });
 
+  // The grid draws 100 px an hour (PX_PER_HOUR in lib/dashboard/calendar.ts).
+  const H = 100;
   // Drag A one hour down into Aisha's column.
   const cols = page.locator("[data-column]");
   const box = (await blockA.boundingBox())!;
@@ -83,7 +85,7 @@ test("calendar: drag across stylists, busy time snaps back, resize, keyboard", a
   await page.mouse.move(mid.x, mid.y);
   await page.mouse.down();
   await page.mouse.move(mid.x + 40, mid.y + 20, { steps: 4 });
-  await page.mouse.move(aishaCol.x + aishaCol.width / 2, mid.y + 60, { steps: 8 });
+  await page.mouse.move(aishaCol.x + aishaCol.width / 2, mid.y + H, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => (await get(c, a.id)).staffId).toBe(aisha.userId);
   expect((await get(c, a.id)).startsAt).toBe(toronto(day, "12:00"));
@@ -94,8 +96,8 @@ test("calendar: drag across stylists, busy time snaps back, resize, keyboard", a
   const col2 = (await cols.nth(1).boundingBox())!;
   await page.mouse.move(bb.x + bb.width / 2, bb.y + 14);
   await page.mouse.down();
-  await page.mouse.move(col2.x + col2.width / 2, bb.y - 60, { steps: 8 });
-  await page.mouse.move(col2.x + col2.width / 2, bb.y - 120, { steps: 8 }); // 12:00, where A now sits
+  await page.mouse.move(col2.x + col2.width / 2, bb.y - H, { steps: 8 });
+  await page.mouse.move(col2.x + col2.width / 2, bb.y - 2 * H, { steps: 8 }); // 12:00, where A now sits
   await page.mouse.up();
   await expect(page.getByText("That time was just taken. Pick another.")).toBeVisible();
   await expect.poll(async () => (await get(c, b.id)).staffId).toBe(simran.userId);
@@ -106,8 +108,8 @@ test("calendar: drag across stylists, busy time snaps back, resize, keyboard", a
   const hb = (await handle.boundingBox())!;
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await page.mouse.down();
-  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 + 15, { steps: 4 });
-  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 + 30, { steps: 4 });
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 + H / 4, { steps: 4 });
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 + H / 2, { steps: 4 });
   await page.mouse.up();
   await expect.poll(async () => (await get(c, b.id)).endsAt).toBe(toronto(day, "15:15"));
 

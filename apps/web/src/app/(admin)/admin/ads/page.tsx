@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 import type { adsApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { Async } from "@/components/dashboard/PageStates";
+import { ListAsync } from "@/components/dashboard/ListStates";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -34,7 +34,7 @@ export default function AdsReviewPage() {
       <PageHeader title="Ads review" description="Every sponsored item is checked before it serves." />
       <Tabs label="Status" value={status} onChange={(v) => setStatus(v as adsApi.AdStatus)} items={[{ id: "pending_review", label: "Waiting" }, { id: "active", label: "Live" }, { id: "rejected", label: "Rejected" }, { id: "ended", label: "Ended" }]} />
       {act.error ? <p className="text-negative">{act.error}</p> : null}
-      <Async state={list}>
+      <ListAsync state={list} errorTitle="We could not load the ads.">
         {(d) =>
           d.items.length ? (
             <ul className="flex flex-col gap-4">
@@ -80,7 +80,7 @@ export default function AdsReviewPage() {
             <EmptyState title="Nothing here" description={status === "pending_review" ? "No ads waiting for review." : "No ads in this state."} />
           )
         }
-      </Async>
+      </ListAsync>
       <ConfirmDialog open={!!reject} onClose={() => setReject(null)} title={`Reject ${reject?.merchant.name}'s ad?`} body="The merchant sees your reason. Card payments are refunded automatically." confirmLabel="Reject" danger onConfirm={async () => {
         await browserApi.admin.rejectAd(reject!.id, detail.trim() ? `${reason}: ${detail.trim()}` : reason);
         setDetail("");

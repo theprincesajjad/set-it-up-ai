@@ -16,7 +16,7 @@ export function NextVisitCard({ appt, showManage = true }: { appt: appointmentsA
   const policy = fee > 0 ? t("bk.policy.fee", { hours: appt.policy.cancelWindowHours, fee: money(fee) }) : t("bk.policy.nofee", { hours: appt.policy.cancelWindowHours });
   const map = appt.merchant.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${appt.merchant.name} ${appt.merchant.address}`)}` : null;
   return (
-    <section aria-label={t("bk.next.title")} data-testid="next-visit" className="flex flex-col gap-3 rounded-sheet border border-line p-5">
+    <section aria-label={t("bk.next.title")} data-testid="next-visit" className="flex flex-col gap-3 rounded-card border border-border bg-card p-5">
       <div className="flex items-start gap-3">
         <CalendarClock aria-hidden className="mt-0.5 size-5 shrink-0 text-fg" strokeWidth={1.5} />
         <div className="min-w-0">

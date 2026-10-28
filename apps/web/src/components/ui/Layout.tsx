@@ -12,9 +12,9 @@ export function PageHeader({ title, description, actions, eyebrow, className }: 
   return (
     <header className={cn("mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between", className)}>
       <div className="min-w-0">
-        {eyebrow ? <p className="mb-1 text-meta text-fg-muted">{eyebrow}</p> : null}
-        <h1 className="text-title text-fg">{title}</h1>
-        {description ? <p className="mt-1 text-body text-fg-muted">{description}</p> : null}
+        {eyebrow ? <p className="mb-1 text-meta text-muted-foreground">{eyebrow}</p> : null}
+        <h1 className="text-title text-foreground">{title}</h1>
+        {description ? <p className="mt-1 text-body text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
     </header>
@@ -26,7 +26,7 @@ export function Section({ title, action, children, className, id }: { title?: Re
     <section id={id} className={cn("flex flex-col gap-3", className)} aria-labelledby={id && title ? `${id}-title` : undefined}>
       {title ? (
         <div className="flex items-center justify-between gap-3">
-          <h2 id={id ? `${id}-title` : undefined} className="text-headline text-fg">
+          <h2 id={id ? `${id}-title` : undefined} className="text-headline text-foreground">
             {title}
           </h2>
           {action}
@@ -39,17 +39,17 @@ export function Section({ title, action, children, className, id }: { title?: Re
 
 /** Thin environment strip for staff consoles (system.md §7): black for rep, red for admin. */
 export function EnvironmentStrip({ env }: { env: "rep" | "admin" }) {
-  return <div aria-hidden className={cn("h-[3px] w-full", env === "admin" ? "bg-negative" : "bg-fg")} />;
+  return <div aria-hidden className={cn("h-[3px] w-full", env === "admin" ? "bg-destructive" : "bg-fg")} />;
 }
 
 /** iOS-style large title for phone-first pages (28 Bricolage), with an optional line under it. */
 export function LargeTitle({ children, subtitle, className, id }: { children: ReactNode; subtitle?: ReactNode; className?: string; id?: string }) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <h1 id={id} className="display text-large-title text-fg">
+      <h1 id={id} className="display text-large-title text-foreground">
         {children}
       </h1>
-      {subtitle ? <p className="text-body text-fg-muted">{subtitle}</p> : null}
+      {subtitle ? <p className="text-body text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
 }

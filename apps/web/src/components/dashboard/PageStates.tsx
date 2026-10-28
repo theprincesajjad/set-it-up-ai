@@ -23,8 +23,8 @@ export function LoadError({ error, onRetry }: { error: string; onRetry?: () => v
 export function NoAccess({ title = "This area is for owners and managers", body = "Ask the shop owner if you need access.", action }: { title?: string; body?: string; action?: ReactNode }) {
   return (
     <div className="max-w-[520px] py-10">
-      <h1 className="text-title text-fg">{title}</h1>
-      <p className="mt-1 text-meta text-fg-muted">{body}</p>
+      <h1 className="text-title text-foreground">{title}</h1>
+      <p className="mt-1 text-meta text-muted-foreground">{body}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

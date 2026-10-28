@@ -7,7 +7,10 @@
 import { type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTMLAttributes } from "react";
-import { cn } from "@/lib/cn";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/primitives/item";
+import { Badge as BadgePrimitive } from "@/components/primitives/badge";
+import { TableCell, TableHead, TableRow } from "@/components/primitives/table";
+import { cn } from "@/lib/utils";
 import { QuietButton } from "./page";
 
 export interface StatItem {
@@ -76,31 +79,40 @@ export function RowList({ children, className, label }: { children: ReactNode; c
   );
 }
 
-/** A 48px list row: leading, title + meta, trailing (right-aligned tabular). */
+/**
+ * A 48px list row: leading, title + meta, trailing (right-aligned tabular). v3: built on the shadcn Item (media, content, title,
+ * description, actions); the element is a link, a button or a plain div through Item's `render`, as before.
+ */
 export function Row({ leading, title, meta, trailing, href, onClick, className }: { leading?: ReactNode; title: ReactNode; meta?: ReactNode; trailing?: ReactNode; href?: string; onClick?: () => void; className?: string }) {
+  const clickable = !!(href || onClick);
+  const cls = cn(
+    "min-h-12 flex-nowrap gap-3 rounded-none border-0 px-0 py-2 focus-visible:border-transparent focus-visible:ring-0",
+    clickable && "-mx-2 rounded-sm px-2 hover:bg-bg-subtle focus-visible:focus-ring",
+    onClick && !href && "w-full text-start",
+    className,
+  );
   const inner = (
     <>
-      {leading ? <span className="shrink-0">{leading}</span> : null}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-body text-fg">{title}</span>
-        {meta ? <span className="block truncate text-meta text-fg-muted">{meta}</span> : null}
-      </span>
-      {trailing != null ? <span className="shrink-0 text-end text-body tabular">{trailing}</span> : null}
+      {leading ? <ItemMedia>{leading}</ItemMedia> : null}
+      <ItemContent className="min-w-0 flex-1 gap-0">
+        <ItemTitle className="block w-auto max-w-full truncate text-body font-normal leading-normal text-fg">{title}</ItemTitle>
+        {meta ? <ItemDescription className="line-clamp-none block truncate text-meta text-fg-muted">{meta}</ItemDescription> : null}
+      </ItemContent>
+      {trailing != null ? <ItemActions className="shrink-0 text-end text-body tabular">{trailing}</ItemActions> : null}
     </>
   );
-  const cls = cn("flex min-h-12 items-center gap-3 py-2", (href || onClick) && "-mx-2 rounded-sm px-2 hover:bg-bg-subtle focus-visible:focus-ring", className);
   return (
     <li>
       {href ? (
-        <Link href={href} className={cls}>
+        <Item render={<Link href={href} />} className={cls}>
           {inner}
-        </Link>
+        </Item>
       ) : onClick ? (
-        <button type="button" onClick={onClick} className={cn(cls, "w-full text-start")}>
+        <Item render={<button type="button" onClick={onClick} />} className={cls}>
           {inner}
-        </button>
+        </Item>
       ) : (
-        <div className={cls}>{inner}</div>
+        <Item className={cls}>{inner}</Item>
       )}
     </li>
   );
@@ -153,12 +165,12 @@ export function StatusDot({ domain, status, label }: { domain: keyof typeof STAT
   return <Dot tone={tone}>{label ?? l ?? status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</Dot>;
 }
 
-/** Small neutral tag (hairline capsule). For "Reward ready" use tone="accent" (points only). */
+/** Small neutral tag (hairline capsule). For "Reward ready" use tone="accent" (points only). v3: the shadcn Badge. */
 export function Tag({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent"; className?: string }) {
   return (
-    <span className={cn("inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-caption", tone === "accent" ? "bg-accent-soft text-accent-text" : "border border-line text-fg-muted", className)}>
+    <BadgePrimitive variant="outline" className={cn("h-5 px-2 text-caption font-normal", tone === "accent" ? "border-transparent bg-accent-soft text-accent-text" : "border-line text-fg-muted", className)}>
       {children}
-    </span>
+    </BadgePrimitive>
   );
 }
 
@@ -185,36 +197,61 @@ export function Table({ children, label, className }: { children: ReactNode; lab
   );
 }
 
-/** Sticky header cell on bg-subtle (sticks under the 56px top bar). */
+/**
+ * Sticky header cell on bg-subtle (sticks under the 56px top bar). v3: the shadcn TableHead. `Table` below stays a plain <table> on
+ * purpose: the primitive Table wraps itself in an overflow-x-auto div, and that scroll container would stop `sticky` from sticking to the page.
+ */
 export function Th({ className, align = "start", children, ...rest }: Omit<ThHTMLAttributes<HTMLTableCellElement>, "align"> & { align?: "start" | "end" }) {
   return (
-    <th scope="col" className={cn("z-[1] h-9 md:sticky md:top-14 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
+    <TableHead scope="col" className={cn("z-[1] h-9 md:sticky md:top-14 whitespace-nowrap border-b border-line bg-bg-subtle px-3 text-caption font-medium text-fg-muted first:ps-4 last:pe-4", align === "end" ? "text-end" : "text-start", className)} {...rest}>
       {children}
-    </th>
+    </TableHead>
   );
 }
 
 export function Td({ className, align = "start", children, ...rest }: Omit<TdHTMLAttributes<HTMLTableCellElement>, "align"> & { align?: "start" | "end" }) {
   return (
-    <td className={cn("h-11 whitespace-nowrap border-b border-line px-3 text-fg first:ps-4 last:pe-4", align === "end" ? "text-end tabular" : "text-start", className)} {...rest}>
+    <TableCell className={cn("h-11 whitespace-nowrap border-b border-line px-3 text-fg first:ps-4 last:pe-4", align === "end" ? "text-end tabular" : "text-start", className)} {...rest}>
       {children}
-    </td>
+    </TableCell>
   );
 }
 
-/** Clickable row: hover subtle fill; Enter opens. */
-export function Tr({ onOpen, selected, className, children, ...rest }: HTMLAttributes<HTMLTableRowElement> & { onOpen?: () => void; selected?: boolean }) {
+/**
+ * Clickable row: hover subtle fill. Enter or Space opens it; Up and Down move to the previous and next row, Home and End to the first and
+ * last (each row is a tab stop, as before). The sheet it opens restores focus to the row when it closes.
+ */
+export function Tr({ onOpen, selected, className, children, onKeyDown, ...rest }: HTMLAttributes<HTMLTableRowElement> & { onOpen?: () => void; selected?: boolean }) {
   return (
-    <tr
+    <TableRow
       tabIndex={onOpen ? 0 : undefined}
       onClick={onOpen}
-      onKeyDown={onOpen ? (e) => (e.key === "Enter" ? onOpen() : undefined) : undefined}
+      onKeyDown={
+        onOpen
+          ? (e) => {
+              onKeyDown?.(e);
+              if (e.defaultPrevented || e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen();
+                return;
+              }
+              const rows = Array.from(e.currentTarget.parentElement?.querySelectorAll<HTMLTableRowElement>(":scope > tr[tabindex]") ?? []);
+              const at = rows.indexOf(e.currentTarget);
+              const next = e.key === "ArrowDown" ? rows[at + 1] : e.key === "ArrowUp" ? rows[at - 1] : e.key === "Home" ? rows[0] : e.key === "End" ? rows[rows.length - 1] : undefined;
+              if (next) {
+                e.preventDefault();
+                next.focus();
+              }
+            }
+          : onKeyDown
+      }
       aria-selected={onOpen ? !!selected : undefined}
-      className={cn("[&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:outline-none", selected && "bg-bg-subtle", className)}
+      className={cn("border-b-0 [&:last-child>td]:border-b-0", onOpen && "cursor-pointer hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:outline-none focus-visible:focus-ring", !onOpen && "hover:bg-transparent", selected && "bg-bg-subtle", className)}
       {...rest}
     >
       {children}
-    </tr>
+    </TableRow>
   );
 }
 
@@ -250,20 +287,18 @@ export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () 
 }
 
 /**
- * Dashboard empty state (same props as ui/EmptyState): left-aligned, title + one sentence + one
- * action, on a hairline row. No icon, no centred hero (foundations.md anti-slop checklist).
+ * Dashboard empty state (same props as ui/EmptyState), Figma 12:349: a hairline card, one bold sentence, one muted line and one
+ * action under them. Left-aligned; no icon, no illustration of people, no centred hero (foundations.md anti-slop checklist).
  */
 export function EmptyState({ title, description, action, secondaryAction, className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-3 border-y border-line py-6 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="min-w-0">
-        <p className="text-meta-strong text-fg">{title}</p>
-        {description ? <p className="mt-0.5 text-meta text-fg-muted">{description}</p> : null}
-      </div>
+    <div data-state="empty" className={cn("rounded-card border border-line bg-bg p-5", className)}>
+      <p className="text-body-strong text-fg">{title}</p>
+      {description ? <p className="mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
       {action || secondaryAction ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {secondaryAction}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {action}
+          {secondaryAction}
         </div>
       ) : null}
     </div>

@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { Capsules, Dot, EmptyState, ErrorLine, PageHeader, SidePanel, SkeletonRows, StatBlock, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
+import { Capsules, Dot, EmptyState, PageHeader, SidePanel, StatBlock, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
+import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { InvoiceDetail } from "@/components/dashboard/service/InvoiceDetail";
 import { TextField } from "@/components/ui/TextField";
@@ -57,9 +58,9 @@ function Invoices() {
       />
       <TextField type="search" label="Search invoices" hideLabel placeholder="Customer, phone, invoice or ticket number" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
-        <ErrorLine message={list.error} onRetry={list.reload} />
+        <ListError title="We could not load your invoices." detail={list.error} onRetry={list.reload} />
       ) : list.loading && !list.data ? (
-        <SkeletonRows rows={6} />
+        <ListLoading label="Loading invoices" rows={6} avatar={false} />
       ) : rows.length ? (
         <TableWrap>
           <Table label="Invoices">
