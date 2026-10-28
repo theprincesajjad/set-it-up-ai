@@ -3,16 +3,17 @@
  * Web pass (`/me`): my card, my shops, rewards with redeem → code, activity and
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
-import { CountUp } from "@/components/ui/CountUp";
 import { placeKindLabel } from "@ll/shared";
 import { InboxList, NotificationSettings } from "./NotificationSettings";
 import { InviteSheet } from "./InviteSheet";
-import { WalletButtons } from "./WalletButtons";
-import { Activity, ChevronRight, Download, Gift, LogOut, Store, Trash2, UserPlus } from "lucide-react";
+import { MemberCardBlock } from "./MemberCardBlock";
+import { PassPanel, PassTopBar } from "./PassChrome";
+import { heroMembership, ShopPassHero } from "./ShopPassHero";
+import { Activity, ChevronRight, Download, Gift, LogOut, Search, Settings, Store, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { OPEN_CARD_EVENT, PassTabBar } from "./PassTabBar";
+import { PassTabBar } from "./PassTabBar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type campaignsApi, type customerApi, type MessageKey } from "@ll/shared";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -22,7 +23,7 @@ import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
-import { formatDate, groupCode, rewardInSentence } from "@/lib/format";
+import { formatDate, rewardInSentence } from "@/lib/format";
 import { hideQuickUndos, walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
@@ -38,14 +39,13 @@ import { RedeemCode } from "@/components/ui/RedeemCode";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
-import { platform } from "./JoinFlow";
 import { StampCard } from "@/components/ui/StampCard";
 import { Switch } from "@/components/ui/Switch";
-import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 
-type Tab = "shops" | "rewards" | "activity" | "settings";
+type Tab = "card" | "shops" | "rewards" | "activity" | "settings";
+const TABS: readonly Tab[] = ["card", "shops", "rewards", "activity", "settings"];
 
 export interface WalletProps {
   profile: customerApi.ProfileDto;
@@ -55,16 +55,18 @@ export interface WalletProps {
   campaigns?: campaignsApi.MyCampaign[];
   /** End dates written on the server in the shopper's language, by campaign id (client Intl data differs and would not hydrate). */
   endsLabels?: Record<string, string>;
+  /** Server-rendered blocks the page adds around the wallet: the next booking above the card, shortcuts (tiffin, pantry, pets, cars) below it. */
+  nextVisit?: React.ReactNode;
+  extras?: React.ReactNode;
 }
 
 type Details = Record<string, customerApi.MembershipDetailResponse>;
 
 const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
-export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {} }: WalletProps) {
+export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras }: WalletProps) {
   const { t, locale } = useLocaleOrEnglish();
-  const [tab, setTab] = useState<Tab>("shops");
-  const [cardOpen, setCardOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("card");
   const [wallet, setWallet] = useState(initialWallet);
   const [details, setDetails] = useState<Details>({});
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -75,28 +77,22 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
     const h = window.location.hash.replace("#", "") as Tab;
     // Sync from the URL hash once on mount (deep links like /me#settings); the server can't see the hash.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (["shops", "rewards", "activity", "settings"].includes(h)) setTab(h);
-    else if ((h as string) === "card") setCardOpen(true);
+    if (TABS.includes(h)) setTab(h);
   }, []);
 
   useEffect(() => {
-    const open = () => setCardOpen(true);
     const onHash = () => {
-      const h = window.location.hash.replace("#", "");
-      if (h === "card") setCardOpen(true);
-      else if (["shops", "rewards", "activity", "settings"].includes(h)) setTab(h as Tab);
+      const h = window.location.hash.replace("#", "") as Tab;
+      if (TABS.includes(h)) setTab(h);
     };
-    window.addEventListener(OPEN_CARD_EVENT, open);
     window.addEventListener("hashchange", onHash);
-    return () => {
-      window.removeEventListener(OPEN_CARD_EVENT, open);
-      window.removeEventListener("hashchange", onHash);
-    };
+    return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const selectTab = (t: string) => {
-    setTab(t as Tab);
-    history.replaceState(null, "", `#${t}`);
+  const selectTab = (next: Tab) => {
+    setTab(next);
+    history.replaceState(null, "", `#${next}`);
+    window.scrollTo({ top: 0 });
   };
 
   const loadDetails = useCallback(async (ids?: string[]) => {
@@ -112,11 +108,15 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
     }
   }, [wallet.items, toast]);
 
+  const hero = useMemo(() => heroMembership(wallet.items), [wallet.items]);
+
   useEffect(() => {
-    // Lazy-load per-shop details the first time a tab needs them.
+    // Lazy-load per-shop details the first time a tab needs them: every shop for Rewards and Activity, the featured shop for the card.
+    const wanted = tab === "rewards" || tab === "activity" ? wallet.items : tab === "card" && hero ? [hero] : [];
+    const missing = wanted.filter((m) => !details[m.id]).map((m) => m.id);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if ((tab === "rewards" || tab === "activity") && wallet.items.some((m) => !details[m.id])) void loadDetails(wallet.items.filter((m) => !details[m.id]).map((m) => m.id));
-  }, [tab, wallet.items, details, loadDetails]);
+    if (missing.length) void loadDetails(missing);
+  }, [tab, wallet.items, hero, details, loadDetails]);
 
   const refreshWallet = useCallback(async () => {
     try {
@@ -126,137 +126,104 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
     }
   }, []);
 
-  // Never sum points and stamps across shops: rewards ready, else the closest reward.
+  // Never sum points and stamps across shops: the card features one shop; the footer only counts rewards ready.
   const headline = useMemo(() => walletHeadline(wallet.items), [wallet.items]);
-  // The hero line in the shopper's language (English keeps the existing wording).
-  const heroLabel = locale === "en" ? headline.label : headline.kind === "ready" ? t("sh.wallet.heroReady", { n: headline.value }) : headline.kind === "closest" ? t("sh.wallet.toGo", { amount: unitsText(locale, headline.value, closestTerminology(wallet.items), false) }) : t("sh.wallet.heroReady", { n: 0 });
-  const heroContext = locale === "en" ? headline.context : t("sh.wallet.heroAcross", { n: wallet.items.length });
 
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
-  const initials = (profile.name ?? "").trim().split(/\s+/).filter(Boolean).map((w) => w[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join("").toLowerCase() || "me";
   return (
-    <div className="flex flex-col gap-6 pb-24">
-      {/* Wallet (canvas Wallet.dc.html): lowercase large title, one honest number + "rewards ready · across N shops". */}
-      <section aria-labelledby="total" className="-mx-4 -mt-4 px-5 pt-[60px]">
-        <div className="flex items-center justify-between gap-3">
-          <h1 id="total" className="display text-[34px] leading-[40px] font-extrabold tracking-[-0.01em] text-fg">
+    <div className="flex flex-col gap-4 pb-28">
+      <PassTopBar
+        title={
+          <h1 id="total" className="text-headline font-semibold text-foreground">
             {t("sh.wallet.title")}
           </h1>
-          <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-10 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring">
-            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          </Link>
-        </div>
-        <div className="mt-3.5 flex items-baseline gap-2.5">
-          <span className="display text-[44px] leading-[44px] font-extrabold tabular-nums text-fg">
-            <CountUp value={headline.value} />
-          </span>
-          <span className="text-[15px] font-medium leading-5 text-fg">
-            {heroLabel} <span className="font-normal text-fg-muted">· {heroContext}</span>
-          </span>
-        </div>
-      </section>
-      <CardSheet open={cardOpen} onClose={() => setCardOpen(false)} card={card} profile={profile} />
-      <Tabs
-        label={t("sh.nav.wallet")}
-        value={tab}
-        onChange={selectTab}
-        items={[
-          { id: "shops", label: t("sh.tab.shops") },
-          { id: "rewards", label: t("sh.tab.rewards") },
-          { id: "activity", label: t("sh.tab.activity") },
-          { id: "settings", label: t("sh.tab.settings") },
-        ]}
-      />
+        }
+      >
+        <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
+          <Search aria-hidden className="size-5" strokeWidth={1.75} />
+        </Link>
+        <button
+          type="button"
+          aria-label={t("sh.tab.settings")}
+          aria-current={tab === "settings" ? "page" : undefined}
+          onClick={() => selectTab("settings")}
+          className={cn("flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring", tab === "settings" && "bg-hover")}
+        >
+          <Settings aria-hidden className="size-5" strokeWidth={1.75} />
+        </button>
+      </PassTopBar>
 
+      {tab === "card" ? (
+        <CardTab
+          hero={hero}
+          wallet={wallet}
+          details={details}
+          loading={loadingDetails}
+          card={card}
+          profile={profile}
+          nextVisit={nextVisit}
+          extras={extras}
+          footer={headline.kind === "ready" && wallet.items.length > 1 ? `${headline.value} ${locale === "en" ? headline.label : t("sh.wallet.heroReady", { n: headline.value })} · ${locale === "en" ? headline.context : t("sh.wallet.heroAcross", { n: wallet.items.length })}` : null}
+          onChanged={async () => { await refreshWallet(); if (hero) await loadDetails([hero.id]); }}
+        />
+      ) : null}
       {tab === "shops" ? (
         <ShopsTab wallet={wallet} details={details} openShop={openShop} setOpenShop={setOpenShop} loadDetails={loadDetails} onChanged={refreshWallet} profile={profile} campaigns={campaigns} endsLabels={endsLabels} />
       ) : null}
       {tab === "rewards" ? <RewardsTab wallet={wallet} details={details} loading={loadingDetails} onShowShops={() => selectTab("shops")} onChanged={async () => { await refreshWallet(); await loadDetails(); }} /> : null}
       {tab === "activity" ? <ActivityTab wallet={wallet} details={details} loading={loadingDetails} /> : null}
       {tab === "settings" ? <SettingsTab wallet={wallet} profile={profile} onMembership={updateMembership} /> : null}
-      <PassTabBar initials={initials} active={tab === "activity" ? "activity" : "wallet"} />
+      <PassTabBar active={tab === "settings" ? null : tab} onSelect={selectTab} />
     </div>
   );
 }
 
-/** Unit word of the shop closest to its next reward (the hero line when nothing is ready yet). */
-function closestTerminology(items: customerApi.MembershipDto[]): string {
-  const closest = items.filter((m) => m.nextReward && m.nextReward.pointsNeeded > 0).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct)[0];
-  return closest?.terminology ?? "points";
-}
-
-/** My card (foundations.md "My card"): white sheet, big QR, member code in mono, one black wallet button for this phone. */
-function CardSheet({ open, onClose, card, profile }: { open: boolean; onClose: () => void; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
-  const [walletError, setWalletError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"apple" | "google" | null>(null);
-  const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
-  const [os, setOs] = useState<"ios" | "android" | "other">("other");
-  const { t } = useLocaleOrEnglish();
-  useEffect(() => {
-    // The UA is only known on the client.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOs(platform());
-  }, []);
-  useEffect(() => {
-    if (!open) return;
-    browserApi.me
-      .wallet()
-      .then((s) => setAvailable({ apple: s.apple.available, google: s.google.available }))
-      .catch(() => undefined);
-  }, [open]);
-  const unavailable = t("sh.card.walletOff");
-  async function google() {
-    setBusy("google");
-    try {
-      const r = await browserApi.me.googleWallet();
-      window.location.href = r.saveUrl;
-    } catch {
-      setWalletError(unavailable);
-    } finally {
-      setBusy(null);
-    }
-  }
-  async function apple() {
-    setBusy("apple");
-    try {
-      const s = await browserApi.me.wallet();
-      if (s.apple.available && s.apple.downloadUrl) window.location.href = s.apple.downloadUrl;
-      else setWalletError(unavailable);
-    } catch {
-      setWalletError(unavailable);
-    } finally {
-      setBusy(null);
-    }
-  }
+/** The pass itself (frame 15:184): the featured shop with its ring, my QR and wallet buttons, that shop's rewards and recent visits. */
+function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, footer, onChanged }: { hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
+  const { t, locale, date } = useLocaleOrEnglish();
+  const d = hero ? details[hero.id] : undefined;
+  const visits = useMemo(() => (hero && d ? hideQuickUndos(d.history.items.map((tx) => ({ tx, m: hero }))).slice(0, 3) : []), [hero, d]);
   return (
-    <Modal open={open} onClose={onClose} title={t("sh.card.title")} variant="sheet" titleClassName="display pt-1.5 text-[17px] leading-[21px] text-fg">
-      {/* canvas Card.dc.html: headline, bordered 200 px QR tile, mono member code, one black wallet button. */}
-      <div className="flex flex-col items-center pb-3">
-        <p className="display mt-8 text-center text-[28px] leading-8 text-fg">{t("sh.card.show")}</p>
-        <p className="mt-2 text-center text-[15px] leading-5 text-fg-muted">{t("sh.card.sub")}</p>
-        <div className="mt-8 rounded-[20px] border border-line bg-qr-bg p-[18px] dark:border-transparent">
-          {card?.qrSvg ? (
-            <div role="img" aria-label={t("sh.card.cardLabel", { code: card.memberCode })} className="size-[200px] [&>svg]:block [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: card.qrSvg }} />
-          ) : (
-            <div className="skeleton size-[200px] rounded-[8px]" aria-busy="true" />
-          )}
-        </div>
-        <p className="mt-[22px] font-mono text-[24px] font-semibold leading-[30px] tracking-[0.14em] text-fg tabular-nums">{groupCode(card?.memberCode ?? profile.memberCode)}</p>
-        <p className="mt-1 text-[13px] leading-[17px] text-fg-muted">{t("sh.card.staffCode", { name: shortName(profile.name, t("sh.card.defaultName")) })}</p>
-        {walletError ? <Banner tone="neutral" className="mt-6 w-full">{walletError}</Banner> : null}
-        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="mt-8 w-full" />
-      </div>
-    </Modal>
+    <>
+      {nextVisit}
+      {hero ? <ShopPassHero m={hero} line={progressLine(hero, t, locale)} footer={footer} /> : null}
+      <MemberCardBlock card={card} profile={profile} />
+      {!hero ? (
+        <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
+      ) : !d ? (
+        loading || wallet.items.length ? <SkeletonCard /> : null
+      ) : (
+        <>
+          <MemberRewards membership={hero} detail={d} onChanged={onChanged} />
+          {visits.length ? (
+            <PassPanel title={t("pass.visits.title")}>
+              {visits.map(({ tx }) => (
+                <li key={tx.id} className="flex min-h-14 items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-body text-foreground">{txLabelFor(t, locale, tx.type, tx.description)}</p>
+                    <p className="truncate text-meta text-muted-foreground">{date(tx.createdAt, { month: "short", day: "numeric" })}{tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}</p>
+                  </div>
+                  <span className={cn("shrink-0 text-body-strong tabular-nums", tx.points >= 0 ? "text-points-text" : "text-muted-foreground")}>
+                    {tx.points >= 0 ? "+" : "−"}
+                    {unitsText(locale, Math.abs(tx.points), hero.terminology)}
+                  </span>
+                </li>
+              ))}
+            </PassPanel>
+          ) : null}
+        </>
+      )}
+      {extras}
+    </>
   );
 }
 
-/** "Nikos Gagnon" → "Nikos G." */
-function shortName(name: string | null | undefined, fallback = "Member"): string {
-  const p = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (p.length === 0) return fallback;
-  return p.length === 1 ? p[0]! : `${p[0]} ${p[p.length - 1]![0]!.toUpperCase()}.`;
-}
+const txLabelFor = (t: Tr, locale: string, type: string, description: string | null | undefined) => {
+  const translated = (TX_KEYS as readonly string[]).includes(type) ? t(`sh.tx.${type}` as MessageKey) : type;
+  // English keeps the shop's own description ("Purchase $12.50"); other languages show the translated kind.
+  return locale === "en" ? description || translated : translated;
+};
 
 type Tr = (key: MessageKey, vars?: Record<string, string | number | null | undefined>) => string;
 
@@ -280,12 +247,12 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
   const live = campaigns.find((c) => c.status === "live") ?? null;
   // canvas Wallet rows: 44 px avatar, name 16/500, one line (accent when ready), a thin bar while earning,
   // the balance right-aligned (accent when a reward is ready, black otherwise).
-  const row = (m: customerApi.MembershipDto, last: boolean) => {
+  const row = (m: customerApi.MembershipDto) => {
     const ready = m.rewardsAvailableCount > 0;
     const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : null;
     const unit = unitCaption(locale, m.balance, m.terminology);
     return (
-      <li key={m.id}>
+      <li key={m.id} className="-mx-4">
         <button
           type="button"
           aria-haspopup="dialog"
@@ -293,37 +260,36 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
             setOpenShop(m.id);
             if (!details[m.id]) void loadDetails([m.id]);
           }}
-          className={cn("flex w-full items-center gap-3.5 py-3.5 text-start transition-colors hover:bg-bg-subtle focus-visible:focus-ring", !last && "border-b border-line")}
+          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring"
         >
-          <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} className="text-[15px]" />
+          <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[16px] font-medium leading-[21px] text-fg"><bdi>{m.merchant.name}</bdi></span>
-            <span className={cn("mt-0.5 block truncate text-[13px] leading-[17px]", ready ? "text-accent-text" : "text-fg-muted")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
+            <span className="block truncate text-body-strong text-foreground"><bdi>{m.merchant.name}</bdi></span>
+            <span className={cn("mt-0.5 block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
-              <span aria-hidden className="mt-2 block h-[3px] w-[150px] overflow-hidden rounded-full bg-bg-muted">
-                <span className="block h-[3px] rounded-full bg-fg" style={{ width: `${pct}%` }} />
+              <span aria-hidden className="mt-2 block h-[3px] w-36 overflow-hidden rounded-full bg-muted">
+                <span className="block h-[3px] rounded-full bg-primary" style={{ width: `${pct}%` }} />
               </span>
             ) : null}
           </span>
           <span className="ms-auto shrink-0 text-end">
-            <b className={cn("display block text-[20px] leading-6 tabular-nums", ready ? "text-accent" : "text-fg")}>{m.balance.toLocaleString("en-CA")}</b>
-            <span className="text-[12px] text-fg-muted">{unit}</span>
+            <b className={cn("display block text-title tabular-nums", ready ? "text-points-text" : "text-foreground")}>{m.balance.toLocaleString("en-CA")}</b>
+            <span className="text-caption text-muted-foreground">{unit}</span>
           </span>
         </button>
       </li>
     );
   };
-  const section = (title: string, items: customerApi.MembershipDto[]) => (
-    <section>
-      <h2 className="display border-b border-line pb-2 text-[13px] font-bold tracking-normal text-fg-muted">{title}</h2>
-      <ul>{items.map((m, i) => row(m, i === items.length - 1))}</ul>
-    </section>
-  );
+  const section = (title: string, items: customerApi.MembershipDto[]) => <PassPanel title={title}>{items.map((m) => row(m))}</PassPanel>;
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-4">
       {ready.length ? section(t("sh.wallet.readyNow"), ready) : null}
       {rest.length ? section(ready.length ? t("sh.wallet.earning") : t("sh.wallet.yourShops"), rest) : null}
       {live ? <StreetBlock campaign={live} t={t} ends={endsLabels[live.id] ?? ""} /> : null}
+      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 self-start text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
+        {t("sh.wallet.empty")}
+        <ChevronRight aria-hidden className="size-4 rtl:rotate-180" />
+      </Link>
       <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? t("wp.t.shop")} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKindLabel(locale, current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
@@ -344,24 +310,25 @@ function StreetBlock({ campaign, t, ends }: { campaign: campaignsApi.MyCampaign;
     ? t("sh.wallet.passportLine", { visited: Math.min(visited, goal), goal, date: ends })
     : `${campaign.bonusPoints > 0 ? t("sh.camp.stepBonus", { n: campaign.bonusPoints }) : campaign.multiplierPct ? t("sh.camp.stepMult", { n: campaign.multiplierPct / 100 }) : ""} ${t("sh.disc.endsOn", { date: ends })}`.trim();
   return (
-    <section aria-labelledby="street">
-      <h2 id="street" className="display border-b border-line pb-2 text-[13px] font-bold tracking-normal text-fg-muted">{t("sh.wallet.street")}</h2>
-      <Link href={`/c/${campaign.id}`} className="flex items-center gap-3.5 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
-        <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold tabular-nums text-accent-text">
-          {passport ? `${Math.min(visited, goal)}/${goal}` : "+"}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[16px] font-medium leading-[21px] text-fg">{campaign.name}</span>
-          <span className="mt-0.5 line-clamp-2 block text-[13px] leading-[17px] text-fg-muted">{line}</span>
-          <span aria-hidden className={cn("mt-2 flex gap-1.5", !dots && "hidden")}>
-            {Array.from({ length: dots }, (_, i) => (
-              <span key={i} className={cn("size-2.5 rounded-full", i < visited ? "bg-accent" : "bg-bg-muted")} />
-            ))}
+    <PassPanel title={t("sh.wallet.street")} id="street">
+      <li className="-mx-4">
+        <Link href={`/c/${campaign.id}`} className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-hover focus-visible:focus-ring">
+          <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-points-soft text-caption font-bold tabular-nums text-points-text">
+            {passport ? `${Math.min(visited, goal)}/${goal}` : "+"}
           </span>
-        </span>
-        <ChevronRight aria-hidden className="size-4 text-fg-subtle" />
-      </Link>
-    </section>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-body-strong text-foreground">{campaign.name}</span>
+            <span className="mt-0.5 line-clamp-2 block text-meta text-muted-foreground">{line}</span>
+            <span aria-hidden className={cn("mt-2 flex gap-1.5", !dots && "hidden")}>
+              {Array.from({ length: dots }, (_, i) => (
+                <span key={i} className={cn("size-2.5 rounded-full", i < visited ? "bg-points" : "bg-muted")} />
+              ))}
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground rtl:rotate-180" />
+        </Link>
+      </li>
+    </PassPanel>
   );
 }
 
@@ -460,12 +427,12 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   return (
     <div className="flex flex-col gap-3">
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <ListGroup title={t("sh.wallet.rewards")}>
+      <PassPanel title={t("sh.wallet.rewards")}>
         {open.map((r) => (
           <li key={r.id} className="flex items-center justify-between gap-3 py-3.5">
             <div className="min-w-0">
-              <p className="text-body-strong text-fg">{r.rewardName}</p>
-              <p className="text-meta font-semibold text-accent-text">{t("sh.wallet.codeReady")}</p>
+              <p className="text-body-strong text-foreground">{r.rewardName}</p>
+              <p className="text-meta font-semibold text-points-text">{t("sh.wallet.codeReady")}</p>
             </div>
             <Button size="sm" onClick={() => setActive({ redemption: r, used: false })}>
               {t("sh.wallet.showCode")}
@@ -486,7 +453,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
             </RewardCard>
           </li>
         ))}
-      </ListGroup>
+      </PassPanel>
       <Modal
         open={!!active}
         onClose={async () => {
@@ -572,19 +539,14 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
       ).slice(0, 100),
     [wallet.items, details],
   );
-  const txLabel = (type: string, description: string | null | undefined) => {
-    const key = `sh.tx.${type}` as MessageKey;
-    const translated = (TX_KEYS as readonly string[]).includes(type) ? t(key) : type;
-    // English keeps the shop's own description ("Purchase $12.50"); other languages show the translated kind.
-    return locale === "en" ? description || translated : translated;
-  };
+  const txLabel = (type: string, description: string | null | undefined) => txLabelFor(t, locale, type, description);
   let history: React.ReactNode;
   if (loading && !rows.length) history = <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   else if (!rows.length) {
     history = <EmptyState icon={Activity} title={t("sh.activity.emptyTitle")} description={t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   } else
     history = (
-      <ListGroup title={t("sh.activity.history")}>
+      <PassPanel title={t("sh.activity.history")}>
         {rows.map(({ tx, m }) => (
           <li key={tx.id} className="flex min-h-16 items-center gap-3 py-2.5">
             <ShopLogo shop={m.merchant} size={40} />
@@ -601,10 +563,10 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
             </span>
           </li>
         ))}
-      </ListGroup>
+      </PassPanel>
     );
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-4">
       <InboxList />
       {history}
     </div>

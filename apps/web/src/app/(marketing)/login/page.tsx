@@ -24,9 +24,9 @@ export default async function LoginPage({ searchParams }: Props) {
       <PageFrame locale={locale} className="flex flex-col gap-6">
         <h1 className="display mt-2 text-mkt-sm text-balance md:text-mkt-md">{t("auth.login.title", { brand: BRAND.name.toLowerCase() })}</h1>
         <LoginTabs next={next} initial={initial} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
-        <p className="mt-4 text-meta text-fg-muted">
+        <p className="mt-4 text-meta text-muted-foreground">
           {t("auth.login.newShop")}{" "}
-          <Link href="/signup" className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">
+          <Link href="/signup" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
             {t("auth.login.getStarted")}
           </Link>
         </p>

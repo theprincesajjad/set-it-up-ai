@@ -2850,6 +2850,10 @@ export const en = {
   "pet.shop.askCard": "Ask for your food card at the counter.",
   "pet.shop.packs": "Daycare packs: {packs}. A single day is {dropIn}.",
   "pet.shop.days": "days",
+  "forms.save.region": "Unsaved changes",
+  "forms.save.unsaved": "You have unsaved changes",
+  "forms.save.discard": "Discard",
+  "forms.panel.close": "Close",
 } as const;
 
 export type MessageKey = keyof typeof en;

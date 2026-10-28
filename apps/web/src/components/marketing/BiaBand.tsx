@@ -10,9 +10,9 @@ export function BiaBand() {
     <MSection tone="subtle" id="bias">
       <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
         <div>
-          <p className="text-meta-strong text-fg-muted">{b.eyebrow}</p>
+          <p className="text-meta-strong text-muted-foreground">{b.eyebrow}</p>
           <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{b.title}</h2>
-          <p className="mt-5 text-[17px] leading-[1.55] text-fg-muted">{b.sub}</p>
+          <p className="mt-5 text-[17px] leading-[1.55] text-muted-foreground">{b.sub}</p>
           <Button size="lg" variant="secondary" href="/for-bias" className="mt-8 rounded-full!">
             {b.cta}
           </Button>

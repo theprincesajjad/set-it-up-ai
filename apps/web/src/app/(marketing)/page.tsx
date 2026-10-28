@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { categoryLabels, type MapCategoryId } from "@ll/design-tokens";
 import { BRAND } from "@ll/shared";
 import { AudienceRouter } from "@/components/marketing/AudienceRouter";
 import { BiaBand } from "@/components/marketing/BiaBand";
@@ -12,6 +13,7 @@ import { MHeading, MSection } from "@/components/marketing/Section";
 import { TradeStories } from "@/components/marketing/TradeStories";
 import { VerticalTemplates } from "@/components/marketing/VerticalTemplates";
 import { Button } from "@/components/ui/Button";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -25,6 +27,8 @@ export const metadata: Metadata = {
 
 const L = copy.landing;
 
+const NETWORK_OBJECTS: MapCategoryId[] = ["coffee", "bakery", "eat", "shops", "beauty", "repair"];
+
 /**
  * Landing, in the order of docs/research/landing-and-network.md §4.2: hero, who-are-you router, live proof, how it works,
  * network, kind of shop, restaurant band, named comparison, BIA band, FAQ, book a visit. One form, one conversion goal.
@@ -37,9 +41,9 @@ export default function Home() {
       <section className="overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-14 md:grid-cols-[1.05fr_1fr] md:gap-14 md:px-8 md:pt-24 md:pb-20">
           <div>
-            <p className="text-meta-strong text-fg-muted">{L.heroEyebrow}</p>
+            <p className="text-meta-strong text-muted-foreground">{L.heroEyebrow}</p>
             <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{L.heroTitle}</h1>
-            <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-fg-muted">{L.heroSub}</p>
+            <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{L.heroSub}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/signup">
                 Get started free
@@ -48,7 +52,7 @@ export default function Home() {
                 Prefer a hand? Book a visit
               </Button>
             </div>
-            <p className="mt-5 text-meta text-fg-muted">{L.heroTrust}</p>
+            <p className="mt-5 text-meta text-muted-foreground">{L.heroTrust}</p>
           </div>
           <div className="relative mx-auto flex w-full max-w-[540px] justify-center pb-4">
             <PhoneFrame tone="map" height={520} className="relative z-[1]">
@@ -74,13 +78,13 @@ export default function Home() {
         <div className="grid items-center gap-14 md:grid-cols-[1fr_1fr]">
           <div>
             <MHeading eyebrow={L.how.eyebrow} title={L.how.title} className="mb-10!" />
-            <ol className="flex flex-col divide-y divide-line border-y border-line">
+            <ol className="flex flex-col divide-y divide-border border-y border-border">
               {L.how.steps.map((s, i) => (
                 <li key={s.t} className="grid grid-cols-[40px_1fr] gap-2 py-6">
-                  <span className="display text-title tabular-nums text-fg-muted">{i + 1}</span>
+                  <span className="display text-title tabular-nums text-muted-foreground">{i + 1}</span>
                   <div>
-                    <h3 className="text-headline text-fg">{s.t}</h3>
-                    <p className="mt-1.5 text-body text-fg-muted">{s.b}</p>
+                    <h3 className="text-headline text-foreground">{s.t}</h3>
+                    <p className="mt-1.5 text-body text-muted-foreground">{s.b}</p>
                   </div>
                 </li>
               ))}
@@ -97,14 +101,18 @@ export default function Home() {
       {/* 5. The network: one image, three lines. */}
       <MSection tone="subtle">
         <div className="grid items-center gap-14 md:grid-cols-2">
-          <div className="order-2 flex justify-center md:order-1">
-            <PhoneFrame tone="map" height={480}>
-              <MapScreen />
-            </PhoneFrame>
-          </div>
+          {/* The category objects are the only illustration: every kind of shop, one card. */}
+          <ul aria-label="Kinds of shop on the card" className="order-2 grid grid-cols-3 gap-3 md:order-1">
+            {NETWORK_OBJECTS.map((c) => (
+              <li key={c} className="flex flex-col items-center gap-2 rounded-card border border-border bg-background px-2 py-5">
+                <CategoryIcon category={c} size={56} />
+                <span className="display text-meta lowercase text-foreground">{categoryLabels[c]}</span>
+              </li>
+            ))}
+          </ul>
           <div className="order-1 md:order-2">
             <MHeading eyebrow={L.network.eyebrow} title={L.network.title} sub={L.network.sub} className="mb-8!" />
-            <ul className="flex flex-col divide-y divide-line border-y border-line text-body text-fg">
+            <ul className="flex flex-col divide-y divide-border border-y border-border text-body text-foreground">
               {L.network.points.map((t) => (
                 <li key={t} className="py-4">
                   {t}
@@ -153,7 +161,7 @@ export default function Home() {
               </Button>
             ) : null}
           </div>
-          <div className="rounded-sheet border border-line bg-bg p-6 md:p-8">
+          <div className="rounded-sheet border border-border bg-background p-6 md:p-8">
             <ContactForm kind="visit" />
           </div>
         </div>

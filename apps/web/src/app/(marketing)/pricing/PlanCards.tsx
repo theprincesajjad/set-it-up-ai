@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
 import { moneyShort } from "@/lib/marketing/text";
@@ -43,8 +44,8 @@ export const price = (id: PlanId) => (id === "free" ? "$0" : moneyShort(PLANS[id
 function FeatureLine({ k }: { k: FeatureKey }) {
   return (
     <li className="flex gap-2.5 py-1.5 text-meta">
-      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-fg" strokeWidth={2} />
-      <span className="text-fg">{FEATURES[k].name}</span>
+      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground" strokeWidth={2} />
+      <span className="text-foreground">{FEATURES[k].name}</span>
     </li>
   );
 }
@@ -52,37 +53,37 @@ function FeatureLine({ k }: { k: FeatureKey }) {
 function PlainLine({ children }: { children: string }) {
   return (
     <li className="flex gap-2.5 py-1.5 text-meta">
-      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-fg" strokeWidth={2} />
-      <span className="text-fg">{children}</span>
+      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground" strokeWidth={2} />
+      <span className="text-foreground">{children}</span>
     </li>
   );
 }
 
 export function FreeCard() {
   return (
-    <div className="flex flex-col rounded-sheet border-[1.5px] border-fg bg-bg p-6 md:p-8">
+    <Card padding="none" className="flex flex-col rounded-sheet border-[1.5px] border-foreground p-6 md:p-8">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-fg">{PLANS.free.name}</h2>
+        <h2 className="text-headline text-foreground">{PLANS.free.name}</h2>
         <Badge tone="accent">{P.freeBadge}</Badge>
       </div>
       <p className="mt-5 flex items-baseline gap-2">
         <span className="display text-mkt-lg tabular-nums">$0</span>
-        <span className="text-body text-fg-muted">forever</span>
+        <span className="text-body text-muted-foreground">forever</span>
       </p>
-      <p className="mt-3 text-body text-fg">{P.freeLead}</p>
-      <p className="mt-2 text-meta text-fg-muted">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
+      <p className="mt-3 text-body text-foreground">{P.freeLead}</p>
+      <p className="mt-2 text-meta text-muted-foreground">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
       <Button href="/signup" fullWidth size="lg" className="mt-6">
         Get started free
       </Button>
       <div className="mt-8">
-        <h3 className="text-meta-strong text-fg-muted">Included</h3>
+        <h3 className="text-meta-strong text-muted-foreground">Included</h3>
         <ul className="mt-1">
           {P.freeLines.map((l) => (
             <PlainLine key={l}>{l}</PlainLine>
           ))}
         </ul>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -93,45 +94,45 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
   const keys = HIGHLIGHTS[id].filter((k) => all.includes(k));
   const more = all.length - keys.length;
   return (
-    <div className="flex flex-col rounded-sheet border border-line bg-bg p-6 md:p-8">
+    <Card padding="none" className="flex flex-col rounded-sheet p-6 md:p-8">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-fg">{plan.name}</h2>
+        <h2 className="text-headline text-foreground">{plan.name}</h2>
       </div>
       <p className="mt-5 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums text-fg">{price(id)}</span>
-        <span className="text-body text-fg-muted">/month</span>
+        <span className="display text-mkt-lg tabular-nums text-foreground">{price(id)}</span>
+        <span className="text-body text-muted-foreground">/month</span>
       </p>
-      <p className="text-meta text-fg-muted">
+      <p className="text-meta text-muted-foreground">
         or {moneyShort(plan.annualPriceCents)} a year · {plan.smsPerMonth.toLocaleString("en-CA")} texts a month
       </p>
-      <p className="mt-3 text-body text-fg">{id === "plus" ? P.plusLine : P.proLine}</p>
+      <p className="mt-3 text-body text-foreground">{id === "plus" ? P.plusLine : P.proLine}</p>
       <Button href={`/signup?plan=${id}`} fullWidth size="lg" className="mt-6">
         {`Start ${plan.name}`}
       </Button>
       <div className="mt-8">
-        <h3 className="text-meta-strong text-fg-muted">{id === "plus" ? "Everything in Free, plus" : "Everything in Café & Retail, plus"}</h3>
+        <h3 className="text-meta-strong text-muted-foreground">{id === "plus" ? "Everything in Free, plus" : "Everything in Café & Retail, plus"}</h3>
         <ul className="mt-1">
           {keys.map((k) => (
             <FeatureLine key={k} k={k} />
           ))}
         </ul>
         {more > 0 ? (
-          <p className="mt-2 text-meta text-fg-muted">
+          <p className="mt-2 text-meta text-muted-foreground">
             and {more} more.{" "}
-            <Link href="/pricing?compare=1#compare" className="text-fg underline decoration-line-strong/60 underline-offset-2 hover:decoration-fg">
+            <Link href="/pricing?compare=1#compare" className="text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
               Compare every feature
             </Link>
           </p>
         ) : null}
       </div>
-    </div>
+    </Card>
   );
 }
 
 function Cell({ on, soon }: { on: boolean; soon?: boolean }) {
   return (
     <td className="px-3 py-3 text-center">
-      {on ? <Check aria-label={soon ? "Included, pilot shops now" : "Included"} className={cn("mx-auto size-4", soon ? "text-fg-subtle" : "text-fg")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-line-strong/50" strokeWidth={1.75} />}
+      {on ? <Check aria-label={soon ? "Included, pilot shops now" : "Included"} className={cn("mx-auto size-4", soon ? "text-muted-foreground" : "text-foreground")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-input/50" strokeWidth={1.75} />}
     </td>
   );
 }
@@ -143,14 +144,14 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
       <table className="w-full min-w-[560px] text-meta">
         <caption className="sr-only">Compare plans</caption>
         <thead>
-          <tr className="border-b border-line">
+          <tr className="border-b border-border">
             <th scope="col" className="py-4 text-start">
               <span className="sr-only">Feature</span>
             </th>
             {plans.map((p) => (
               <th key={p} scope="col" className="w-[18%] px-3 py-4 text-center">
-                <span className="block text-body-strong text-fg">{PLANS[p].name}</span>
-                <span className="block font-normal text-fg-muted">
+                <span className="block text-body-strong text-foreground">{PLANS[p].name}</span>
+                <span className="block font-normal text-muted-foreground">
                   {p === "free" ? "$0" : `${price(p)}/mo`}
                   {p !== "free" && !available[p] ? " · pilot shops" : ""}
                 </span>
@@ -164,18 +165,18 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
           return (
             <tbody key={g.title}>
               <tr>
-                <th colSpan={4} scope="colgroup" className="pt-8 pb-2 text-start text-meta-strong text-fg">
+                <th colSpan={4} scope="colgroup" className="pt-8 pb-2 text-start text-meta-strong text-foreground">
                   {g.title}
                 </th>
               </tr>
               {keys.map((k) => {
                 const f = FEATURES[k];
                 return (
-                  <tr key={k} className="border-t border-line">
+                  <tr key={k} className="border-t border-border">
                     <th scope="row" className="py-3 pe-4 text-start font-normal">
-                      <span className="text-fg">{f.name}</span>
-                      <span className="block text-fg-muted">{f.description}</span>
-                      {f.networkGated ? <span className="mt-0.5 block text-fg-subtle">Opens when the network reaches {f.unlockAtMerchants} shops.</span> : null}
+                      <span className="text-foreground">{f.name}</span>
+                      <span className="block text-muted-foreground">{f.description}</span>
+                      {f.networkGated ? <span className="mt-0.5 block text-muted-foreground">Opens when the network reaches {f.unlockAtMerchants} shops.</span> : null}
                     </th>
                     {plans.map((p) => (
                       <Cell key={p} on={PLAN_RANK[p] >= PLAN_RANK[f.minPlan]} soon={p !== "free" && !available[p] && f.minPlan !== "free"} />
@@ -187,12 +188,12 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
           );
         })}
         <tbody>
-          <tr className="border-t border-line">
-            <th scope="row" className="py-3 pe-4 text-start font-normal text-fg">
+          <tr className="border-t border-border">
+            <th scope="row" className="py-3 pe-4 text-start font-normal text-foreground">
               Transaction fee
             </th>
-            <td className="px-3 py-3 text-center text-fg">None</td>
-            <td colSpan={2} className="px-3 py-3 text-center text-fg-muted">
+            <td className="px-3 py-3 text-center text-foreground">None</td>
+            <td colSpan={2} className="px-3 py-3 text-center text-muted-foreground">
               On in-app payments only
             </td>
           </tr>

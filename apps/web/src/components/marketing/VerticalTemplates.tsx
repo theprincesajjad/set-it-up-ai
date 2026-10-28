@@ -43,18 +43,18 @@ export function VerticalTemplates() {
         {/* Restaurants have their own kit and plans: this chip leaves the page instead of previewing a shop template. */}
         <ChipLink href="/for-restaurants">restaurants</ChipLink>
       </ChipGroup>
-      <div className="grid items-center gap-10 rounded-sheet border border-line p-6 md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
+      <div className="grid items-center gap-10 rounded-sheet border border-border p-6 md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
         <div>
-          <p className="text-meta text-fg-muted">Default program · {id === "hardware" ? "Hardware store" : t.label}</p>
+          <p className="text-meta text-muted-foreground">Default program · {id === "hardware" ? "Hardware store" : t.label}</p>
           <p className="display mt-3 text-mkt-sm md:text-mkt-md">
             {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${rewardInSentence(reward?.name ?? "a reward")}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${rewardInSentence(reward?.name ?? "a reward")}`}
           </p>
-          <p className="mt-4 text-body text-fg-muted">
+          <p className="mt-4 text-body text-muted-foreground">
             Welcome bonus: {formatPoints(t.welcomeBonus, t.terminology, false)}. Change anything later in your dashboard. {copy.landing.verticals.restaurantsNote}
           </p>
-          {v === "pharmacy" ? <p className="mt-4 border-s-2 border-line ps-3 text-meta text-fg-muted">Front-store points only. {copy.misc.pharmacyRule}</p> : null}
+          {v === "pharmacy" ? <p className="mt-4 border-s-2 border-border ps-3 text-meta text-muted-foreground">Front-store points only. {copy.misc.pharmacyRule}</p> : null}
           {t.categories.some((c) => !c.earnEligible) && v !== "pharmacy" ? (
-            <p className="mt-4 text-meta text-fg-muted">
+            <p className="mt-4 text-meta text-muted-foreground">
               Never earns: {t.categories.filter((c) => !c.earnEligible).map((c) => c.name).join(", ")}.
             </p>
           ) : null}

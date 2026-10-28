@@ -35,7 +35,7 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
     <div className={cn("flex flex-col items-center gap-2", className)}>
       <div role="img" aria-label={a11y} className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-bg-muted" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-hover" />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -45,16 +45,16 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - (ready ? 1 : pct))}
-            className={cn("transition-[stroke-dashoffset] duration-[600ms] ease-out", ready ? "stroke-accent" : "stroke-fg")}
+            className={cn("transition-[stroke-dashoffset] duration-[600ms] ease-out motion-reduce:transition-none", ready ? "stroke-points" : "stroke-foreground")}
           />
         </svg>
         <div aria-hidden className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("display tabular-nums", ready ? "text-accent-text" : "text-fg", text)}>{formatNumber(balance)}</span>
+          <span className={cn("display tabular-nums", ready ? "text-points-text" : "text-foreground", text)}>{formatNumber(balance)}</span>
           {size > 64 ? <span className="text-meta text-fg-muted">{unit}</span> : null}
         </div>
       </div>
       {showCaption && rewardName && goal > 0 ? (
-        <p className="text-center text-meta text-fg-muted">{ready ? <span className="font-semibold text-accent-text">{t("ui.stampReady", { reward: rewardName })}</span> : t("sh.hero.toReward", { unit: unitsText(locale, toGo, terminology), reward: rewardName })}</p>
+        <p className="text-center text-meta text-fg-muted">{ready ? <span className="font-semibold text-points-text">{t("ui.stampReady", { reward: rewardName })}</span> : t("sh.hero.toReward", { unit: unitsText(locale, toGo, terminology), reward: rewardName })}</p>
       ) : null}
     </div>
   );

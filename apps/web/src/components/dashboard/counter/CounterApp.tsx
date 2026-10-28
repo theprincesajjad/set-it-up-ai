@@ -1,5 +1,6 @@
 "use client";
 import {
+  Check,
   Clock3,
   Gift,
   KeyRound,
@@ -11,7 +12,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
-import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Keypad } from "@/components/ui/Keypad";
@@ -25,6 +25,7 @@ import {
   applyKey,
   AUTO_RETURN_MS,
   awardLabel,
+  awardSuccess,
   cameInText,
   centsFromKeypad,
   COUNTER_QUEUE_KEY,
@@ -48,7 +49,6 @@ import {
   type QueuedAward,
 } from "@/lib/dashboard/counter";
 import { CountUp } from "@/components/ui/CountUp";
-import { Spinner } from "@/components/ui/Spinner";
 import { GroceryExtras, notCountedCents, type GroceryCounter } from "./GroceryExtras";
 import {
   formatMoney,
@@ -60,6 +60,7 @@ import {
 } from "@/lib/format";
 import { formatNanp, maskPhone } from "@/lib/phone";
 import { typeLabel } from "@/lib/dashboard/labels";
+import { CounterNotice } from "./CounterNotice";
 import { DigitBoxes, ScanKeypad } from "./ScanKeypad";
 import { ScanPanel } from "./ScanPanel";
 import { StampRow } from "./StampRow";
@@ -116,6 +117,8 @@ export interface CounterAppProps {
    * (docs/research/pharmacies-wellness.md). The tick is sent as frontStoreOnly and the server refuses without it.
    */
   frontStoreRule?: boolean;
+  /** Staff only: how long they can undo their own awards (a line under "Recent at the counter"). */
+  undoNote?: string;
   /** Grocers: the "Not counted" amount and the bulk-item chips on the amount screen (docs/research/grocers.md). Omit for every other shop. */
   grocery?: GroceryCounter | null;
 }
@@ -138,8 +141,11 @@ export function CounterApp({
   clock = Date.now,
   frontStoreRule = false,
   grocery = null,
+  undoNote,
 }: CounterAppProps) {
   const [mode, setMode] = useState<"scan" | "verify">("scan");
+  /** Bumped by the keypad's scan key: the scan panel opens the camera. */
+  const [cameraRequest, setCameraRequest] = useState(0);
   // The counter is server-rendered, so it is on screen before React can hear a tap or a scanner's keystrokes (the key
   // listener below attaches in an effect). Anything entered in that gap was silently lost. `ready` flips in the same
   // commit as those effects: the keypad stays disabled until then and the scan panel says so (data-scan-ready).
@@ -688,6 +694,9 @@ export function CounterApp({
   const secondsLeft = toast
     ? Math.max(0, Math.ceil((undoSeconds * 1000 - (now - toast.at)) / 1000))
     : 0;
+  const idle = mode === "scan" && phase.kind === "idle";
+  const lookupShown = idle && !pinOpen;
+  const statusText = online ? "Online" : "Offline";
 
   return (
     <div className="flex flex-col gap-4">
@@ -695,155 +704,173 @@ export function CounterApp({
         {announce}
       </div>
 
-      {toast && secondsLeft > 0 ? (
-        <div
-          role="status"
-          className="flex min-h-11 items-center justify-between gap-3 rounded-[14px] bg-fg px-4 py-2.5 text-[13px] text-bg"
-        >
-          <span className="font-medium">
-            {toast.res.member.name
-              ? `${firstName(toast.res.member.name)} · `
-              : ""}
-            {addedWord} · {formatTime(new Date(toast.at))}
-          </span>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void undo(toast.res.transactionId!)}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-full px-2 font-semibold tabular-nums hover:underline focus-visible:focus-ring disabled:opacity-60"
-          >
-            <RotateCcw aria-hidden className="size-3.5" /> Undo {secondsLeft}s
-          </button>
-        </div>
-      ) : null}
-
-      {queue.length || !online || sentNote ? (
-        <div
-          role="status"
-          className={cn(
-            "flex min-h-11 items-center gap-3 rounded-card px-4 py-2 text-meta",
-            queue.length || !online ? "bg-fg text-bg" : "bg-bg-subtle text-fg",
-          )}
-        >
-          {queue.length || !online ? (
-            <WifiOff aria-hidden className="size-4 shrink-0" strokeWidth={2} />
-          ) : null}
-          <span className="flex-1 font-medium tabular-nums">
-            {sentNote && !queue.length
-              ? sentNote
-              : !online && !queue.length
-                ? "Offline · awards save on this device"
-                : `${online ? "Sending" : "Offline"} · ${queue.length} waiting to send`}
-          </span>
-          {queue.length ? (
-            <button
-              type="button"
-              onClick={() => void flush()}
-              disabled={sending}
-              className="min-h-8 rounded-full px-3 font-semibold underline-offset-2 hover:underline focus-visible:focus-ring disabled:opacity-60"
-            >
-              {sending ? "Sending..." : "Retry now"}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {error ? (
-        <Banner
-          tone="danger"
-          action={
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={() => setError(null)}
-              className="inline-flex size-9 items-center justify-center rounded-full"
-            >
-              <X aria-hidden className="size-4" />
-            </button>
-          }
-        >
-          {error}
-        </Banner>
-      ) : null}
-
-      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:justify-center">
-        <div className="mx-auto flex w-full min-w-0 max-w-[420px] flex-col gap-4">
-          <div className="flex items-center justify-between gap-3 text-[13px] text-fg-muted">
-            <span className="truncate">
-              <span className="font-semibold text-fg">{shopName}</span> ·
-              counter
+      {/* Chrome-free (Figma 15:2): the shop, the page name, whether this device is online, who is stamping. No page header, no banners. */}
+      <div className="overflow-hidden rounded-card border border-border bg-background">
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-hover text-meta-strong uppercase text-foreground">
+              {initialsOf(shopName)}
             </span>
-            <div className="flex items-center gap-2">
-              {locations.length > 1 ? (
-                <label className="flex items-center gap-2">
-                  <span className="sr-only">Location</span>
-                  <select
-                    value={locationId}
-                    onChange={(e) => {
-                      setLocationId(e.target.value);
-                      try {
-                        localStorage.setItem(
-                          "ll.counter.location",
-                          e.target.value,
-                        );
-                      } catch {
-                        /* ignore */
-                      }
-                    }}
-                    className="h-8 rounded-input border border-line bg-bg px-2 text-meta text-fg"
-                  >
-                    {locations.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {pin ? (
-                <button
-                  type="button"
-                  onClick={() => setPinOpen(true)}
-                  aria-label={
-                    staff
-                      ? `Stamping as ${staff.name ?? "staff"}. Switch`
-                      : "Sign in with a PIN"
-                  }
-                  className="inline-flex h-9 items-center gap-2 rounded-full bg-bg-subtle px-3 text-[13px] font-medium text-fg hover:bg-bg-muted focus-visible:focus-ring"
-                >
-                  <span
-                    aria-hidden
-                    className="inline-flex size-5 items-center justify-center rounded-full bg-bg-muted text-[10px] font-semibold uppercase"
-                  >
-                    {(staff?.name ?? signedInName ?? "?").trim()[0]}
-                  </span>
-                  {firstName(staff?.name ?? signedInName ?? "") || "Staff"}
-                </button>
-              ) : null}
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
+              <span className="truncate text-body-strong text-foreground">
+                <bdi>{shopName}</bdi>
+              </span>
+              <h1 className="text-body text-muted-foreground">Counter</h1>
+              <span className="flex items-center gap-1.5 text-meta text-muted-foreground">
+                <span aria-hidden className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")} />
+                {statusText}
+                {stampsToday != null ? ` · ${stampsToday} ${program.terminology} today` : ""}
+              </span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {locations.length > 1 ? (
+              <label className="flex items-center gap-2">
+                <span className="sr-only">Location</span>
+                <select
+                  value={locationId}
+                  onChange={(e) => {
+                    setLocationId(e.target.value);
+                    try {
+                      localStorage.setItem("ll.counter.location", e.target.value);
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                  className="h-11 rounded-input border border-input bg-background px-3 text-meta text-foreground"
+                >
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {pin ? (
+              <button
+                type="button"
+                onClick={() => setPinOpen(true)}
+                aria-label={staff ? `Stamping as ${staff.name ?? "staff"}. Switch` : "Sign in with a PIN"}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring"
+              >
+                <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-hover text-caption font-semibold uppercase">
+                  {(staff?.name ?? signedInName ?? "?").trim()[0]}
+                </span>
+                {firstName(staff?.name ?? signedInName ?? "") || "Staff"}
+              </button>
+            ) : null}
+          </div>
+        </header>
 
-          {frontStoreRule ? (
-            <div className="rounded-card bg-bg-subtle px-4 py-3" data-testid="front-store-confirm">
-              <Checkbox
-                checked={frontStore}
-                onChange={tickFrontStore}
-                label={PHARMACY_FRONT_STORE_TICK_EN}
-                caption={PHARMACY_FRONT_STORE_CAPTION_EN}
+        {frontStoreRule ? (
+          <div className="border-b border-border bg-muted px-4 py-3 lg:px-6" data-testid="front-store-confirm">
+            <Checkbox checked={frontStore} onChange={tickFrontStore} label={PHARMACY_FRONT_STORE_TICK_EN} caption={PHARMACY_FRONT_STORE_CAPTION_EN} />
+          </div>
+        ) : null}
+
+        {queue.length || !online || sentNote || error ? (
+          <div className="flex flex-col gap-2 border-b border-border px-4 py-3 lg:px-6">
+            {queue.length || !online || sentNote ? (
+              <div
+                role="status"
+                className={cn("flex min-h-11 items-center gap-3 rounded-xl px-4 py-2 text-meta", queue.length || !online ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}
+              >
+                {queue.length || !online ? <WifiOff aria-hidden className="size-4 shrink-0" strokeWidth={2} /> : null}
+                <span className="flex-1 font-medium tabular-nums">
+                  {sentNote && !queue.length
+                    ? sentNote
+                    : !online && !queue.length
+                      ? "Offline · awards save on this device"
+                      : `${online ? "Sending" : "Offline"} · ${queue.length} waiting to send`}
+                </span>
+                {queue.length ? (
+                  <button
+                    type="button"
+                    onClick={() => void flush()}
+                    disabled={sending}
+                    className="min-h-11 rounded-full px-3 font-semibold underline-offset-2 hover:underline focus-visible:focus-ring disabled:opacity-60"
+                  >
+                    {sending ? "Sending..." : "Retry now"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {error ? <CounterNotice tone="danger" onDismiss={() => setError(null)}>{error}</CounterNotice> : null}
+          </div>
+        ) : null}
+
+        <div className="grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+          {/* Left: find the customer. On a phone it is only there while there is nobody on screen. */}
+          <div className={cn("min-w-0 flex-col gap-4 bg-muted p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
+            {pinOpen && pin ? (
+              <PinPad
+                verify={pin.verify}
+                onDone={(s) => {
+                  setStaff(s);
+                  setPinOpen(false);
+                }}
+                onCancel={() => setPinOpen(false)}
               />
-            </div>
-          ) : null}
+            ) : null}
+            {lookupShown ? (
+              <>
+                <ScanPanel
+                  ready={ready}
+                  cameraRequest={cameraRequest}
+                  onScan={onScan}
+                  hint={program.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. Stamps on scan." : "Wallet pass, app, or printed QR."}
+                />
+                <p className="text-meta text-muted-foreground">Or type the last 4 digits of their phone</p>
+                <DigitBoxes value={entry} />
+                <ScanKeypad onKey={onDigit} disabled={busy || !ready} onScanKey={() => setCameraRequest((n) => n + 1)} />
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setMode("verify");
+                    setError(null);
+                  }}
+                >
+                  Redeem a code
+                </Button>
+              </>
+            ) : !pinOpen ? (
+              <p className="text-meta text-muted-foreground">
+                <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
+              </p>
+            ) : null}
+          </div>
 
-          {pinOpen && pin ? (
-            <PinPad
-              verify={pin.verify}
-              onDone={(s) => {
-                setStaff(s);
-                setPinOpen(false);
-              }}
-              onCancel={() => setPinOpen(false)}
-            />
-          ) : null}
+          {/* Right: the customer and the one decision. */}
+          <div className="flex min-w-0 flex-col gap-6 p-4 lg:p-6">
+            {idle && regulars.length && !perDollar ? (
+              <section aria-labelledby="regulars-title" className="flex flex-col gap-2">
+                <h2 id="regulars-title" className="text-meta-strong text-muted-foreground">
+                  Regulars not in yet today · tap to {program.counterAutoStamp ? "stamp" : "open"}
+                </h2>
+                <ul className="flex flex-wrap gap-2" aria-label="Regulars">
+                  {regulars.map((m) => (
+                    <li key={m.memberId}>
+                      <button
+                        type="button"
+                        disabled={busy || !ready}
+                        aria-label={`${program.counterAutoStamp ? "Stamp" : "Open"} ${m.name ?? "member"}`}
+                        className="min-h-11 rounded-full border border-border px-4 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring disabled:opacity-50"
+                        onClick={() => {
+                          if (isRewardReady(m, program)) setPhase({ kind: "reward", member: m });
+                          else if (program.counterAutoStamp) {
+                            phaseRef.current = { kind: "member", member: m };
+                            void award({ memberId: m.memberId }, {}, m.balance);
+                          } else setPhase({ kind: "member", member: m });
+                        }}
+                      >
+                        {firstName(m.name) || "Member"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
           {mode === "verify" ? (
             <section
@@ -902,77 +929,6 @@ export function CounterApp({
             </section>
           ) : null}
 
-          {mode === "scan" && phase.kind === "idle" && !pinOpen ? (
-            <>
-              <ScanPanel
-                ready={ready}
-                onScan={onScan}
-                hint={
-                  program.counterAutoStamp && !perDollar
-                    ? "Wallet pass, app, or printed QR. Stamps on scan."
-                    : "Wallet pass, app, or printed QR."
-                }
-              />
-              <p className="text-center text-[14px] text-fg-muted">
-                or type the last 4 digits of their phone
-              </p>
-              <DigitBoxes value={entry} />
-              <ScanKeypad onKey={onDigit} disabled={busy || !ready} />
-              {regulars.length && !perDollar ? (
-                <section aria-labelledby="regulars-title" className="flex flex-col gap-2">
-                  <h2 id="regulars-title" className="text-[13px] font-medium text-fg-muted">
-                    Regulars not in yet today · tap to {program.counterAutoStamp ? "stamp" : "open"}
-                  </h2>
-                  <ul className="flex flex-wrap gap-2" aria-label="Regulars">
-                    {regulars.map((m) => (
-                      <li key={m.memberId}>
-                        <button
-                          type="button"
-                          disabled={busy || !ready}
-                          aria-label={`${program.counterAutoStamp ? "Stamp" : "Open"} ${m.name ?? "member"}`}
-                          className="min-h-11 rounded-full border border-line px-4 text-[14px] font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-50"
-                          onClick={() => {
-                            if (isRewardReady(m, program)) setPhase({ kind: "reward", member: m });
-                            else if (program.counterAutoStamp) {
-                              phaseRef.current = { kind: "member", member: m };
-                              void award({ memberId: m.memberId }, {}, m.balance);
-                            } else setPhase({ kind: "member", member: m });
-                          }}
-                        >
-                          {firstName(m.name) || "Member"}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-              <div className="flex items-center justify-between text-[13px] text-fg-muted">
-                <span className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-2 rounded-full",
-                      online ? "bg-positive" : "bg-negative",
-                    )}
-                  />
-                  {online ? "Online" : "Offline"}
-                  {stampsToday != null
-                    ? ` · ${stampsToday} ${program.terminology} today`
-                    : ""}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("verify");
-                    setError(null);
-                  }}
-                  className="font-medium text-fg hover:underline focus-visible:focus-ring"
-                >
-                  Redeem a code
-                </button>
-              </div>
-            </>
-          ) : null}
 
           {mode === "scan" && phase.kind === "pick" ? (
             <section
@@ -1053,6 +1009,7 @@ export function CounterApp({
             </section>
           ) : null}
 
+
           {mode === "scan" && phase.kind === "nomatch" ? (
             <section
               aria-labelledby="nomatch-title"
@@ -1080,6 +1037,7 @@ export function CounterApp({
               </div>
             </section>
           ) : null}
+
 
           {mode === "scan" && phase.kind === "new" ? (
             <form
@@ -1158,6 +1116,7 @@ export function CounterApp({
             </form>
           ) : null}
 
+
           {mode === "scan" && phase.kind === "reward" ? (
             <RewardReady
               member={phase.member}
@@ -1202,48 +1161,46 @@ export function CounterApp({
           {phase.kind === "queued" ? (
             <section
               role="status"
-              className="rounded-card border border-line bg-bg p-6"
+              className="flex flex-col gap-3"
               aria-labelledby="queued-title"
             >
               <Clock3
                 aria-hidden
-                className="mb-4 size-10 text-fg-muted"
+                className="size-10 text-muted-foreground"
                 strokeWidth={1.5}
               />
               <p
                 id="queued-title"
-                className="text-large-title font-display text-fg"
+                className="font-display text-h1 text-foreground"
               >
                 {phase.label} for {phase.who}
               </p>
-              <p className="mt-2 text-body text-fg-muted">
+              <p className="text-body text-muted-foreground">
                 Saved on this device. It sends when you&apos;re back online,
                 with nothing counted twice.
               </p>
-              <div className="mt-5">
-                <Button size="lg" onClick={reset} autoFocus>
-                  Next customer
-                </Button>
-              </div>
+              <Button size="counter" onClick={reset} autoFocus>
+                Next customer
+              </Button>
             </section>
           ) : null}
 
           {phase.kind === "redeemed" ? (
             <section
               role="status"
-              className="rounded-card border border-line bg-bg p-6"
+              className="flex flex-col gap-3"
             >
               <SuccessMark />
-              <p className="text-large-title font-display text-fg">
+              <p className="font-display text-h1 text-foreground">
                 {phase.res.redemption.reward.name} redeemed.
               </p>
-              <p className="mt-2 text-title font-normal text-fg">
+              <p className="text-title font-normal text-foreground">
                 Hand it over.
                 {phase.res.redemption.discountCents
                   ? ` Discount ${formatMoney(phase.res.redemption.discountCents)}.`
                   : ""}
               </p>
-              <p className="mt-1 text-body text-fg-muted">
+              <p className="text-body text-muted-foreground">
                 {phase.res.member.name
                   ? `${firstName(phase.res.member.name)} has `
                   : "Balance "}
@@ -1253,14 +1210,15 @@ export function CounterApp({
                 )}{" "}
                 left.
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button size="lg" onClick={reset} autoFocus>
+              <div className="flex flex-col gap-2">
+                <Button size="counter" onClick={reset} autoFocus>
                   Next customer
                 </Button>
                 {phase.res.redemption.transactionId ? (
                   <Button
                     variant="secondary"
                     size="lg"
+                    className="min-h-14 rounded-xl"
                     iconStart={RotateCcw}
                     disabled={busy}
                     onClick={() =>
@@ -1271,25 +1229,25 @@ export function CounterApp({
                   </Button>
                 ) : null}
               </div>
-              <p className="mt-3 text-[12px] text-fg-muted">Returns to scan in 10 seconds</p>
+              <p className="text-center text-caption text-muted-foreground">Returns to scan in 10 seconds</p>
             </section>
           ) : null}
-        </div>
 
         <aside
           aria-labelledby="recent-title"
-          className="min-w-0 lg:max-w-[360px]"
+          className="min-w-0"
         >
           <h2 id="recent-title" className="text-body-strong text-fg">
             Recent at the counter
           </h2>
+          {undoNote ? <p className="text-caption text-muted-foreground">{undoNote}</p> : null}
           {recent.length ? (
             <ul className="mt-2 divide-y divide-line border-y border-line">
               {recent.map((a) => (
                 // Fixed trailing columns so every number lines up whether or not the row can be undone (D7).
                 <li
                   key={a.transactionId}
-                  className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_52px] items-center gap-2 py-2"
+                  className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_60px] items-center gap-2 py-2"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-meta text-fg">
@@ -1322,7 +1280,7 @@ export function CounterApp({
                         type="button"
                         onClick={() => void undo(a.transactionId)}
                         disabled={busy}
-                        className="min-h-8 rounded-sm px-1 text-meta text-fg-muted hover:text-fg hover:underline focus-visible:focus-ring"
+                        className="min-h-11 rounded-sm px-2 text-meta text-muted-foreground hover:text-foreground hover:underline focus-visible:focus-ring"
                       >
                         Undo
                       </button>
@@ -1337,6 +1295,30 @@ export function CounterApp({
             </p>
           )}
         </aside>
+
+
+            {toast && secondsLeft > 0 ? (
+              <div
+                role="status"
+                className="sticky bottom-4 z-raised mt-auto flex min-h-14 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-2.5 text-meta-strong text-primary-foreground shadow-float"
+              >
+                <span className="flex items-center gap-2">
+                  <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
+                  {awardSuccess(program, toast.res.pointsEarned)}.{" "}
+                  {toast.res.member.name ? `${firstName(toast.res.member.name)} now has ${toast.res.balance}.` : `Balance ${toast.res.balance}.`}
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void undo(toast.res.transactionId!)}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold tabular-nums hover:underline focus-visible:focus-ring disabled:opacity-60"
+                >
+                  <RotateCcw aria-hidden className="size-3.5" /> Undo {secondsLeft}s
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1353,7 +1335,40 @@ function initialsOf(name: string | null): string {
   );
 }
 
-/** Stamped: one big number, the stamp row, what is left, then back to scan on its own. */
+/** Who is at the counter: initials, name, phone and visit (Figma 15:2). `children` sits at the end edge (a status pill, a clear button). */
+function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name: string | null; detail?: React.ReactNode; titleId?: string; size?: "md" | "lg"; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-4">
+      <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-hover font-semibold uppercase text-foreground", size === "lg" ? "size-14 text-title" : "size-11 text-meta-strong")}>
+        {initialsOf(name)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 id={titleId} className="truncate font-display text-h1 text-foreground">
+          {name ?? "Member"}
+        </h2>
+        {detail ? <p className="text-meta tabular-nums text-muted-foreground">{detail}</p> : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** The stamp card on the right pane: what the next reward is, how far they are, and the stamps. */
+function StampsPanel({ title, have, goal, ready, popFrom, size = "lg" }: { title: string; have: number; goal: number; ready: boolean; popFrom?: number; size?: "sm" | "md" | "lg" }) {
+  return (
+    <div className="rounded-card border border-border bg-card p-5">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <p className="text-body-strong text-foreground">{title}</p>
+        <p className={cn("shrink-0 text-body-strong tabular-nums", ready ? "text-points-text" : "text-muted-foreground")}>
+          {Math.min(have, goal)} of {goal}
+        </p>
+      </div>
+      <StampRow goal={goal} filled={have} size={size} popFrom={popFrom} />
+    </div>
+  );
+}
+
+/** Stamped: the stamps with the new one popping in, one big number, what is left, then back to scan on its own. */
 function Stamped({
   res,
   program,
@@ -1372,48 +1387,24 @@ function Stamped({
   const ready = res.rewardsAvailable[0] ?? null;
   const left = Math.max(0, (res.member.nextReward?.pointsCost ?? goal) - n);
   return (
-    <section
-      role="status"
-      aria-labelledby="ok-title"
-      className="flex flex-col items-center gap-3 pt-2 text-center"
-    >
-      <span
-        aria-hidden
-        className="inline-flex size-16 items-center justify-center rounded-full bg-bg-muted text-[22px] font-semibold uppercase text-fg"
-      >
-        {initialsOf(res.member.name)}
-      </span>
-      <div>
-        <h2
-          id="ok-title"
-          className="font-display text-[24px] font-bold leading-8 text-fg"
-        >
-          {res.duplicate ? "Already added" : (res.member.name ?? "Member")}
-        </h2>
-        <p className="mt-1 text-[13px] text-fg-muted">
-          {res.memberCreated
-            ? "New member · first stamp"
-            : visitThisMonth(res.visitsThisMonth)}
-        </p>
-      </div>
-      <p className="mt-2 font-display font-extrabold leading-none tracking-[-0.03em] tabular-nums text-accent text-[120px]">
+    <section role="status" aria-labelledby="ok-title" className="flex flex-col gap-5">
+      <CustomerHeader
+        name={res.duplicate ? "Already added" : res.member.name}
+        titleId="ok-title"
+        detail={res.memberCreated ? "New member · first stamp" : visitThisMonth(res.visitsThisMonth)}
+      />
+      <p className="font-display text-[7.5rem] font-extrabold leading-none tracking-tighter tabular-nums text-points-text">
         {stamps ? (
-          <CountUp
-            value={Math.min(n, goal)}
-            from={Math.min(from, goal)}
-            className="tabular-nums"
-          />
+          <CountUp value={Math.min(n, goal)} from={Math.min(from, goal)} className="tabular-nums" />
         ) : (
           <CountUp value={n} from={from} className="tabular-nums" />
         )}
-        <span className="ms-2 text-[36px] font-bold tracking-normal text-fg-subtle">
-          {stamps
-            ? `/ ${goal}`
-            : formatPoints(n, program.terminology).replace(/^[\d,]+ /, "")}
+        <span className="ms-2 text-title font-bold tracking-normal text-muted-foreground">
+          {stamps ? `/ ${goal}` : formatPoints(n, program.terminology).replace(/^[\d,]+ /, "")}
         </span>
       </p>
-      {stamps ? <StampRow goal={goal} filled={n} size={28} /> : null}
-      <p className="text-[15px] font-medium text-fg">
+      {stamps ? <StampRow goal={goal} filled={n} size="md" popFrom={res.duplicate ? undefined : Math.min(from, goal)} /> : null}
+      <p className="text-body-strong text-foreground">
         {ready
           ? `${rewardInSentence(ready.name)} ready next time`
           : res.member.nextReward
@@ -1422,20 +1413,18 @@ function Stamped({
       </p>
       {/* The big number already says "1 stamp"; only the extras (boosts, VIP) are worth a line. */}
       {res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).length ? (
-        <p className="text-meta text-fg-muted">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
+        <p className="text-meta text-muted-foreground">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
       ) : null}
       {/* Network perk and street-campaign progress ("1 of 3 shops visited") is for the customer's pass, not the barista's screen. */}
-      <Button size="lg" fullWidth onClick={onNext} autoFocus className="mt-4">
+      <Button size="counter" onClick={onNext} autoFocus>
         Next customer
       </Button>
-      <p className="text-[12px] text-fg-muted">
-        Returns to scan in {Math.round(AUTO_RETURN_MS / 1000)} seconds
-      </p>
+      <p className="text-center text-caption text-muted-foreground">Returns to scan in {Math.round(AUTO_RETURN_MS / 1000)} seconds</p>
     </section>
   );
 }
 
-/** Goal reached: orange Redeem, or stamp on purpose and keep the reward. */
+/** Goal reached (Figma 15:2): one black Redeem, and "stamp instead" when they want to keep the reward. */
 function RewardReady({
   member,
   program,
@@ -1451,104 +1440,55 @@ function RewardReady({
   onStamp: () => void;
   onBack: () => void;
 }) {
-  const goal =
-    program.stampGoal || member.rewardsAffordable[0]?.pointsCost || 10;
+  const goal = program.stampGoal || member.rewardsAffordable[0]?.pointsCost || 10;
   const reward = member.rewardsAffordable[0] ?? null;
-  const carry = reward
-    ? member.balance - reward.pointsCost
-    : Math.max(0, member.balance - goal);
+  const carry = reward ? member.balance - reward.pointsCost : Math.max(0, member.balance - goal);
   const rewardName = reward?.name ?? "Free drink";
   const [pick, setPick] = useState(false);
   return (
-    <section
-      aria-labelledby="reward-title"
-      className="flex flex-col items-center gap-3 pt-2 text-center"
-    >
-      <span
-        aria-hidden
-        className="inline-flex size-16 items-center justify-center rounded-full bg-bg-muted text-[22px] font-semibold uppercase text-fg"
-      >
-        {initialsOf(member.name)}
-      </span>
-      <h2 className="font-display text-[22px] font-bold leading-7 text-fg">
-        {member.name ?? "Member"}
-      </h2>
-      <span className="rounded-full bg-accent-soft px-3 py-1 text-[13px] font-semibold text-accent-text">
-        Reward ready
-      </span>
-      <p
-        id="reward-title"
-        className="font-display text-[56px] font-extrabold leading-[56px] tracking-[-0.03em] text-fg"
-      >
-        {rewardName}
-      </p>
+    <section aria-labelledby="reward-title" className="flex flex-col gap-5">
+      <CustomerHeader name={member.name} titleId="reward-title" detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${ordinal(member.visitCount + 1)} visit`}>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-points-soft px-3 py-1.5 text-meta-strong text-points-text">
+          <span aria-hidden className="size-1.5 rounded-full bg-points" />
+          Reward ready
+        </span>
+      </CustomerHeader>
       {program.earnType === "stamps" ? (
-        <StampRow goal={goal} filled={goal} size={28} className="mt-3" />
-      ) : null}
-      <p className="text-[13px] text-fg-muted">
-        {firstName(member.name) || "They"}{" "}
-        {firstName(member.name) ? "has" : "have"}{" "}
-        {formatPoints(member.balance, member.terminology)}.{" "}
-        {carry > 0
-          ? `${carry} carries over after redeeming.`
-          : "A fresh card starts after redeeming."}
+        <StampsPanel title={`${rewardName} after ${goal} stamps`} have={goal} goal={goal} ready />
+      ) : (
+        <p className="font-display text-display text-foreground">{rewardName}</p>
+      )}
+      <p className="text-meta text-muted-foreground">
+        {firstName(member.name) || "They"} {firstName(member.name) ? "has" : "have"} {formatPoints(member.balance, member.terminology)}.{" "}
+        {carry > 0 ? `${carry} carries over after redeeming.` : "A fresh card starts after redeeming."}
       </p>
-      <div className="mt-6 flex w-full flex-col gap-2.5">
+      <div className="flex w-full flex-col gap-2">
         {member.rewardsAffordable.length > 1 && pick ? (
-          <ul
-            className="divide-y divide-line border-y border-line text-start"
-            aria-label="Rewards ready"
-          >
+          <ul className="divide-y divide-border border-y border-border text-start" aria-label="Rewards ready">
             {member.rewardsAffordable.map((r) => (
               <li key={r.id} className="flex min-h-14 items-center gap-3 py-2">
-                <Gift
-                  aria-hidden
-                  className="size-4 text-fg-muted"
-                  strokeWidth={1.75}
-                />
-                <span className="min-w-0 flex-1 text-body-strong text-fg">
-                  {r.name}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => onRedeem(r.id)}
-                >
+                <Gift aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
+                <span className="min-w-0 flex-1 text-body-strong text-foreground">{r.name}</span>
+                <Button size="md" variant="secondary" disabled={busy} onClick={() => onRedeem(r.id)}>
                   {copy.action.redeem}
                 </Button>
               </li>
             ))}
           </ul>
         ) : (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              member.rewardsAffordable.length > 1
-                ? setPick(true)
-                : reward
-                  ? onRedeem(reward.id)
-                  : undefined
-            }
-            className="inline-flex h-[52px] items-center justify-center rounded-full bg-accent px-6 text-[16px] font-semibold text-on-accent hover:brightness-95 focus-visible:focus-ring disabled:opacity-70"
+          <Button
+            size="counter"
+            iconStart={Gift}
+            loading={busy}
+            onClick={() => (member.rewardsAffordable.length > 1 ? setPick(true) : reward ? onRedeem(reward.id) : undefined)}
           >
-            {busy ? <Spinner /> : `Redeem ${rewardInSentence(rewardName)}`}
-          </button>
+            {`Redeem ${rewardInSentence(rewardName)}`}
+          </Button>
         )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onStamp}
-          className="inline-flex h-[52px] items-center justify-center rounded-full border border-line px-6 text-[15px] font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-70"
-        >
+        <Button size="lg" variant="secondary" disabled={busy} onClick={onStamp} className="min-h-14 rounded-xl">
           Stamp instead, keep the reward
-        </button>
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-1 text-[13px] font-medium text-fg-muted hover:text-fg"
-        >
+        </Button>
+        <button type="button" onClick={onBack} className="mt-1 min-h-11 text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
           Not them? Back to scan
         </button>
       </div>
@@ -1557,8 +1497,8 @@ function RewardReady({
 }
 
 /**
- * Stamp on scan is off, or the program takes an amount: one confirm tap (canvas Counter.dc.html): header, one 64 px
- * "7 / 10", the stamp row, the amount pad or the +1 chips, a 72 px black award button, then redeem and "Enter code".
+ * Stamp on scan is off, or the program takes an amount: one confirm tap (Figma 15:2): the customer, their stamps, the amount pad or the +1 chips,
+ * one 72 px black award button, then redeem and "Enter code".
  */
 function MemberPanel({
   member,
@@ -1597,80 +1537,50 @@ function MemberPanel({
   const perDollar = program.earnType === "per_dollar";
   const stamps = program.earnType === "stamps";
   const goal = program.stampGoal || member.nextReward?.pointsCost || 10;
+  const next = member.rewardsAffordable[0]
+    ? `${rewardInSentence(member.rewardsAffordable[0].name)} ready`
+    : member.nextReward
+      ? `${member.nextReward.pointsNeeded} to ${/^free /i.test(member.nextReward.name) ? `a ${rewardInSentence(member.nextReward.name)}` : member.nextReward.name}`
+      : "";
   return (
-    <section
-      className="rounded-card border border-line bg-bg p-5 sm:p-6"
-      aria-labelledby="member-title"
-    >
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-bg-muted text-[15px] font-semibold uppercase text-fg"
-        >
-          {initialsOf(member.name)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2
-            id="member-title"
-            className="truncate text-[18px] font-semibold leading-[23px] text-fg"
-          >
-            {member.name ?? "Member"}
-          </h2>
-          <p className="text-[13px] leading-[17px] tabular-nums text-fg-muted">
-            {maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} ·{" "}
-            {ordinal(member.visitCount + 1)} visit
-            {member.vip ? ` · ${member.vip.name}` : ""}
-          </p>
-        </div>
+    <section className="flex flex-col gap-5" aria-labelledby="member-title">
+      <CustomerHeader
+        name={member.name}
+        titleId="member-title"
+        detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${ordinal(member.visitCount + 1)} visit${member.vip ? ` · ${member.vip.name}` : ""}`}
+      >
         <button
           type="button"
           aria-label="Clear customer"
           onClick={onClear}
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg hover:bg-bg-muted focus-visible:focus-ring"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-foreground hover:bg-hover focus-visible:focus-ring"
         >
           <X aria-hidden className="size-4" strokeWidth={2.2} />
         </button>
-      </div>
+      </CustomerHeader>
 
-      <div className="mt-7 text-center">
-        <p className="display text-[64px] leading-[64px] tracking-[-0.02em] tabular-nums text-fg">
-          {stamps
-            ? Math.min(member.balance, goal)
-            : member.balance.toLocaleString("en-CA")}
-          <span className="text-[32px] text-fg-subtle">
-            {stamps
-              ? ` / ${goal}`
-              : ` ${formatPoints(member.balance, member.terminology).replace(/^[\d,]+ /, "")}`}
-          </span>
-        </p>
-        <p
-          className={cn(
-            "mt-2 text-[14px] leading-[18px]",
-            member.rewardsAffordable.length
-              ? "text-accent-text"
-              : "text-fg-muted",
-          )}
-        >
-          {member.terminology}
-          {member.rewardsAffordable[0]
-            ? ` · ${rewardInSentence(member.rewardsAffordable[0].name)} ready`
-            : member.nextReward
-              ? ` · ${member.nextReward.pointsNeeded} to ${/^free /i.test(member.nextReward.name) ? `a ${rewardInSentence(member.nextReward.name)}` : member.nextReward.name}`
-              : ""}
-        </p>
-        {stamps ? (
-          <StampRow
-            goal={goal}
-            filled={Math.min(member.balance, goal)}
-            size={24}
-            className="mt-4"
-          />
-        ) : null}
-      </div>
+      {stamps ? (
+        <StampsPanel
+          title={`${member.terminology}${next ? ` · ${next}` : ""}`}
+          have={member.balance}
+          goal={goal}
+          ready={member.rewardsAffordable.length > 0}
+          size="md"
+        />
+      ) : (
+        <div className="rounded-card border border-border bg-card p-5 text-center">
+          <p className="font-display text-display tabular-nums text-foreground">
+            {member.balance.toLocaleString("en-CA")}
+            <span className="text-title text-muted-foreground"> {formatPoints(member.balance, member.terminology).replace(/^[\d,]+ /, "")}</span>
+          </p>
+          <p className={cn("mt-1 text-meta", member.rewardsAffordable.length ? "text-points-text" : "text-muted-foreground")}>
+            {member.terminology}
+            {next ? ` · ${next}` : ""}
+          </p>
+        </div>
+      )}
       {member.openRedemptionCount > 0 ? (
-        <Banner
-          tone="info"
-          className="mt-5"
+        <CounterNotice
           icon={Ticket}
           action={
             <Button size="sm" variant="ghost" onClick={onVerify}>
@@ -1679,21 +1589,17 @@ function MemberPanel({
           }
         >
           This customer has a reward code waiting in the app.
-        </Banner>
+        </CounterNotice>
       ) : null}
 
       {perDollar ? (
-        <div className="mt-6">
+        <div>
           <AmountPad cents={cents} setCents={setCents} />
           {extras}
         </div>
       ) : (
-        <div className="mt-9">
-          <div
-            role="radiogroup"
-            aria-label="How many"
-            className="flex justify-center gap-2"
-          >
+        <div>
+          <div role="radiogroup" aria-label="How many" className="flex gap-2">
             {[1, 2, 3].map((n) => (
               <button
                 key={n}
@@ -1702,87 +1608,52 @@ function MemberPanel({
                 aria-checked={qty === n}
                 onClick={() => setQty(n)}
                 className={cn(
-                  "display h-11 rounded-full px-[18px] text-[16px] font-bold tabular-nums focus-visible:focus-ring",
-                  qty === n
-                    ? "bg-fg text-bg"
-                    : "bg-bg-subtle text-fg hover:bg-bg-muted",
+                  "h-11 min-w-16 rounded-full px-5 font-display text-headline font-bold tabular-nums focus-visible:focus-ring",
+                  qty === n ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-hover",
                 )}
               >
                 +{n}
               </button>
             ))}
           </div>
-          <p className="mt-2.5 text-center text-[12px] text-fg-subtle">
-            {stamps
-              ? "One per drink in this order"
-              : "One per item in this order"}
-          </p>
+          <p className="mt-2 text-caption text-muted-foreground">{stamps ? "One per drink in this order" : "One per item in this order"}</p>
         </div>
       )}
 
-      <div className={cn("mt-8 flex flex-col gap-2.5", !!extras && "sticky bottom-0 z-raised -mx-5 border-t border-line bg-bg px-5 pb-3 pt-3 sm:-mx-6 sm:px-6")}>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onAward}
-          className="display inline-flex h-[72px] items-center justify-center rounded-[20px] bg-fg text-[22px] font-extrabold text-bg hover:bg-fg/90 focus-visible:focus-ring disabled:opacity-70"
-        >
-          {busy ? (
-            <Spinner />
-          ) : (
-            awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty)
-          )}
-        </button>
-        <div className="flex gap-2.5">
-          <button
-            type="button"
+      <div className={cn("flex flex-col gap-2", !!extras && "sticky bottom-0 z-raised -mx-4 border-t border-border bg-background px-4 pb-3 pt-3 lg:-mx-6 lg:px-6")}>
+        <Button size="counter" loading={busy} onClick={onAward}>
+          {awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty)}
+        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="min-h-14 flex-1 rounded-xl"
             disabled={!member.rewardsAffordable.length || busy}
-            onClick={() =>
-              member.rewardsAffordable.length === 1
-                ? onRedeem(member.rewardsAffordable[0]!.id)
-                : setShowRewards(true)
-            }
-            className="h-[52px] flex-1 rounded-[16px] bg-bg-subtle text-[15px] font-semibold text-fg hover:bg-bg-muted focus-visible:focus-ring disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-bg-subtle"
+            onClick={() => (member.rewardsAffordable.length === 1 ? onRedeem(member.rewardsAffordable[0]!.id) : setShowRewards(true))}
           >
             {member.rewardsAffordable.length
               ? member.rewardsAffordable.length === 1
                 ? `Redeem ${rewardInSentence(member.rewardsAffordable[0]!.name)}`
                 : "Redeem"
               : `Redeem · needs ${member.nextReward?.pointsCost ?? goal}`}
-          </button>
-          <button
-            type="button"
-            onClick={onVerify}
-            className="h-[52px] flex-1 rounded-[16px] bg-bg-subtle text-[15px] font-semibold text-fg hover:bg-bg-muted focus-visible:focus-ring"
-          >
+          </Button>
+          <Button variant="secondary" size="lg" className="min-h-14 flex-1 rounded-xl" onClick={onVerify}>
             Redeem a code
-          </button>
+          </Button>
         </div>
       </div>
 
       {showRewards && member.rewardsAffordable.length > 1 ? (
-        <div className="mt-5">
-          <h3 className="text-meta-strong text-fg">Ready to redeem</h3>
-          <ul className="mt-2 divide-y divide-line border-y border-line">
+        <div>
+          <h3 className="text-meta-strong text-foreground">Ready to redeem</h3>
+          <ul className="mt-2 divide-y divide-border border-y border-border">
             {member.rewardsAffordable.map((r) => (
               <li key={r.id} className="flex min-h-14 items-center gap-3 py-2">
-                <Gift
-                  aria-hidden
-                  className="size-4 text-fg-muted"
-                  strokeWidth={1.75}
-                />
-                <span className="min-w-0 flex-1 text-body-strong text-fg">
-                  {r.name}
-                </span>
-                <span className="text-meta tabular-nums text-fg-muted">
-                  {formatPoints(r.pointsCost, member.terminology)}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => onRedeem(r.id)}
-                >
+                <Gift aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
+                <span className="min-w-0 flex-1 text-body-strong text-foreground">{r.name}</span>
+                <span className="text-meta tabular-nums text-muted-foreground">{formatPoints(r.pointsCost, member.terminology)}</span>
+                <Button size="md" variant="secondary" disabled={busy} onClick={() => onRedeem(r.id)}>
                   {copy.action.redeem}
                 </Button>
               </li>
@@ -1790,17 +1661,9 @@ function MemberPanel({
           </ul>
         </div>
       ) : null}
-      {member.discountCards.length ? (
-        <p className="mt-3 text-meta text-fg-muted">
-          Discount cards: {member.discountCards.map((d) => d.name).join(", ")}
-        </p>
-      ) : null}
-      <p className="mt-4 text-center text-caption text-fg-muted">
-        {member.expiryDisclosure} ·{" "}
-        <kbd className="rounded-[5px] border border-line px-1.5 text-caption">
-          Esc
-        </kbd>{" "}
-        for the next customer
+      {member.discountCards.length ? <p className="text-meta text-muted-foreground">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p> : null}
+      <p className="text-center text-caption text-muted-foreground">
+        {member.expiryDisclosure} · <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
       </p>
     </section>
   );
@@ -1849,7 +1712,7 @@ function PinPad({
     <section
       role="dialog"
       aria-label="Who is stamping?"
-      className="flex flex-col gap-3 rounded-card border border-line p-4"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4"
     >
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-body-strong text-fg">
@@ -1864,7 +1727,7 @@ function PinPad({
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="inline-flex size-8 items-center justify-center rounded-full hover:bg-bg-subtle"
+          className="inline-flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring"
         >
           <X aria-hidden className="size-4" />
         </button>

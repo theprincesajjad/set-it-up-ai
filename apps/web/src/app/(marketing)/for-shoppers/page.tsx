@@ -68,9 +68,9 @@ export default async function ShoppersPage({ searchParams }: Props) {
       <section className="overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:grid-cols-[1.05fr_1fr] md:px-8 md:pt-24 md:pb-28">
           <div>
-            <p className="text-meta-strong text-fg-muted">{t("sh.fs.meta.title")}</p>
+            <p className="text-meta-strong text-muted-foreground">{t("sh.fs.meta.title")}</p>
             <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("sh.fs.h1")}</h1>
-            <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.55] text-fg-muted">{t("sh.fs.lead")}</p>
+            <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.55] text-muted-foreground">{t("sh.fs.lead")}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/map">
                 {t("sh.fs.ctaFind")}
@@ -79,13 +79,13 @@ export default async function ShoppersPage({ searchParams }: Props) {
                 {t("sh.fs.ctaCard")}
               </Button>
             </div>
-            <p className="mt-5 text-meta text-fg-muted">
+            <p className="mt-5 text-meta text-muted-foreground">
               {t("sh.fs.scanOr")}{" "}
-              <a href={env.appStoreUrl} className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">
+              <a href={env.appStoreUrl} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
                 App Store
               </a>{" "}
               ·{" "}
-              <a href={env.playStoreUrl} className="font-semibold text-fg underline decoration-line-strong/60 underline-offset-2">
+              <a href={env.playStoreUrl} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
                 Google Play
               </a>
             </p>
@@ -98,12 +98,12 @@ export default async function ShoppersPage({ searchParams }: Props) {
 
       <MSection tone="subtle">
         <MHeading eyebrow={t("sh.fs.how")} title={t("sh.fs.stepsTitle")} />
-        <ol className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
+        <ol className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
           {STEPS.map(([title, body], i) => (
-            <li key={title} className="bg-bg p-6 md:p-8">
-              <span className="display text-mkt-sm tabular-nums text-fg-muted">{i + 1}</span>
-              <h3 className="mt-6 text-headline text-fg">{t(title)}</h3>
-              <p className="mt-2 text-body text-fg-muted">{t(body)}</p>
+            <li key={title} className="bg-background p-6 md:p-8">
+              <span className="display text-mkt-sm tabular-nums text-muted-foreground">{i + 1}</span>
+              <h3 className="mt-6 text-headline text-foreground">{t(title)}</h3>
+              <p className="mt-2 text-body text-muted-foreground">{t(body)}</p>
             </li>
           ))}
         </ol>
@@ -116,9 +116,9 @@ export default async function ShoppersPage({ searchParams }: Props) {
             <ul className="flex flex-wrap gap-2">
               {hoods.map((h) => (
                 <li key={h.slug}>
-                  <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full border border-line px-4 text-meta-strong text-fg transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+                  <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full border border-border px-4 text-meta-strong text-foreground transition-colors hover:bg-muted focus-visible:focus-ring">
                     <span className="display lowercase">{h.name}</span>
-                    <span className="font-normal tabular-nums text-fg-muted">{t("sh.fs.shopsN", { n: h.shopCount })}</span>
+                    <span className="font-normal tabular-nums text-muted-foreground">{t("sh.fs.shopsN", { n: h.shopCount })}</span>
                   </Link>
                 </li>
               ))}
@@ -126,9 +126,9 @@ export default async function ShoppersPage({ searchParams }: Props) {
           ) : null}
           {/* Only while a street campaign is live: the reason to carry one card down the whole street. */}
           {campaign ? (
-            <Link href={`/c/${campaign.id}`} className="mt-6 flex flex-col gap-1 rounded-card bg-accent-soft p-5 transition-opacity hover:opacity-90 focus-visible:focus-ring">
-              <span className="text-body-strong text-accent-text">{t("sh.fs.passportOn", { name: campaign.name })}</span>
-              <span className="text-body text-fg">
+            <Link href={`/c/${campaign.id}`} className="mt-6 flex flex-col gap-1 rounded-card bg-points-soft p-5 transition-opacity hover:opacity-90 focus-visible:focus-ring">
+              <span className="text-body-strong text-points-text">{t("sh.fs.passportOn", { name: campaign.name })}</span>
+              <span className="text-body text-foreground">
                 {campaign.kind === "passport"
                   ? t("sh.fs.passportLine", { goal: campaign.goalVisits, date: endsOn })
                   : campaign.bonusPoints > 0
@@ -144,11 +144,11 @@ export default async function ShoppersPage({ searchParams }: Props) {
 
       <MSection tone="subtle">
         <MHeading eyebrow={t("sh.fs.dataEyebrow")} title={t("sh.fs.dataTitle")} />
-        <div className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
           {DATA.map(([title, body]) => (
-            <div key={title} className="bg-bg p-6 md:p-8">
-              <h3 className="text-headline text-fg">{t(title)}</h3>
-              <p className="mt-2 text-body text-fg-muted">{t(body)}</p>
+            <div key={title} className="bg-background p-6 md:p-8">
+              <h3 className="text-headline text-foreground">{t(title)}</h3>
+              <p className="mt-2 text-body text-muted-foreground">{t(body)}</p>
             </div>
           ))}
         </div>

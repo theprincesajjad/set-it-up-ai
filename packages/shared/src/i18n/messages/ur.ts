@@ -2846,4 +2846,8 @@ export const ur: Messages = {
   "pet.shop.askCard": "کاؤنٹر پر اپنا فوڈ کارڈ مانگیں۔",
   "pet.shop.packs": "ڈے کیئر پیک: {packs}۔ ایک دن {dropIn}۔",
   "pet.shop.days": "دن",
+  "forms.save.region": "غیر محفوظ تبدیلیاں",
+  "forms.save.unsaved": "آپ کی تبدیلیاں محفوظ نہیں ہوئیں",
+  "forms.save.discard": "رد کریں",
+  "forms.panel.close": "بند کریں",
 };

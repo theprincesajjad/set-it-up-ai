@@ -7,7 +7,8 @@ import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
-import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { PassTopBar } from "@/components/pass/PassChrome";
+import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { JoinFlow } from "./JoinFlow";
 import { pickVaried, streetName } from "@/lib/joinCopy";
@@ -68,7 +69,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
       <JoinFlow
-        topSlot={<LanguageSwitcher />}
+        topSlot={<PassTopBar />}
         street={street}
         alsoHere={alsoHere}
         info={info}

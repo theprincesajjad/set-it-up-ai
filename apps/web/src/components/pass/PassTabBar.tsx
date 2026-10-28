@@ -1,42 +1,23 @@
 "use client";
 /**
- * Web pass tab bar (canvas Main / Discover / Wallet artboards): a frosted capsule with map · discover ·
- * wallet · avatar (activity), and the separate round black 60 px "my card" button to its right
- * (Corner's "+" button). Fixed 26 px above the bottom edge, inside the 480 px pass column.
+ * Pass tab bar (v3 frame 15:184): four labelled tabs on a flat bar with a hairline top edge, fixed to the bottom of the pass column.
+ * Card opens "my card" (the QR sheet), Rewards, Shops and Activity open those parts of the wallet. Icons are Lucide at 1.75
+ * stroke; the active tab is black with a heavier label, the rest are muted (never colour alone: the label weight changes too).
  */
+import { Activity, Gift, Map as MapIcon, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export const OPEN_CARD_EVENT = "ll:open-card";
 
-function MapGlyph({ on }: { on: boolean }) {
-  return (
-    <svg aria-hidden width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 2 : 1.8} strokeLinejoin="round">
-      <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
-      <path d="M9 4v14M15 6v14" />
-    </svg>
-  );
-}
-function DiscoverGlyph({ on }: { on: boolean }) {
-  return (
-    <svg aria-hidden width="24" height="24" viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round">
-      <path d="M12 3l2.6 5.6L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.4-.7z" />
-    </svg>
-  );
-}
-function WalletGlyph({ on }: { on: boolean }) {
-  return (
-    <svg aria-hidden width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 2 : 1.8} strokeLinejoin="round">
-      <rect x="3" y="6" width="18" height="14" rx="3" />
-      <path d="M3 10h18M16 15h2" />
-    </svg>
-  );
-}
+export type PassTab = "card" | "rewards" | "shops" | "activity";
+
 export function CardGlyph({ size = 24 }: { size?: number }) {
   return (
-    <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -45,34 +26,39 @@ export function CardGlyph({ size = 24 }: { size?: number }) {
   );
 }
 
-export function PassTabBar({ initials, active }: { initials: string; active?: "map" | "discover" | "wallet" | "activity" }) {
+const itemCls = (on: boolean) =>
+  cn(
+    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-caption transition-colors duration-150 ease-out focus-visible:focus-ring",
+    on ? "font-semibold text-foreground" : "font-medium text-muted-foreground hover:text-foreground",
+  );
+
+/**
+ * `active` is the tab the page is showing (none while the card sheet or Settings is). On the wallet page pass `onSelect` so the
+ * Rewards, Shops and Activity tabs switch in place; elsewhere they are plain links into the wallet.
+ */
+export function PassTabBar({ active, onSelect }: { active?: Exclude<PassTab, "card"> | null; onSelect?: (tab: Exclude<PassTab, "card">) => void }) {
   const path = usePathname();
   const router = useRouter();
   const { t } = useLocaleOrEnglish();
-  const current = active ?? (path.startsWith("/discover") ? "discover" : path.startsWith("/map") ? "map" : "wallet");
-  const item = (key: typeof current, href: string, label: string, glyph: React.ReactNode) => (
+  const link = (key: Exclude<PassTab, "card">, label: string, Icon: LucideIcon, href: string) => (
     <Link
+      key={key}
       href={href}
-      aria-label={label}
-      aria-current={current === key ? "page" : undefined}
-      className={cn("flex h-11 w-12 items-center justify-center rounded-full focus-visible:focus-ring", current === key ? "text-fg" : "text-fg-subtle hover:text-fg-muted")}
+      aria-current={active === key ? "page" : undefined}
+      className={itemCls(active === key)}
+      onClick={(e) => {
+        if (onSelect && path === "/me") {
+          e.preventDefault();
+          onSelect(key);
+        }
+      }}
     >
-      {glyph}
+      <Icon aria-hidden className="size-6" strokeWidth={active === key ? 2 : 1.75} />
+      <span>{label}</span>
     </Link>
   );
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[26px] z-40 mx-auto flex w-full max-w-[480px] items-center gap-2.5 px-4">
-      <nav
-        aria-label={t("sh.nav.main")}
-        className="pointer-events-auto flex h-[60px] flex-1 items-center justify-around rounded-full bg-[rgba(255,255,255,.86)] px-2 shadow-float backdrop-blur-[20px] dark:bg-[rgba(22,22,24,.86)]"
-      >
-        {item("map", "/map", t("sh.nav.map"), <MapGlyph on={current === "map"} />)}
-        {item("discover", "/discover", t("sh.nav.discover"), <DiscoverGlyph on={current === "discover"} />)}
-        {item("wallet", "/me", t("sh.nav.wallet"), <WalletGlyph on={current === "wallet"} />)}
-        <Link href="/me#activity" aria-label={t("sh.nav.activity")} className="flex h-11 w-12 items-center justify-center rounded-full focus-visible:focus-ring">
-          <span className="flex size-7 items-center justify-center rounded-full bg-bg-muted text-[11px] font-semibold text-fg">{initials}</span>
-        </Link>
-      </nav>
+    <nav aria-label={t("sh.nav.main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[480px] items-stretch gap-1 border-t border-border bg-card px-2 pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))]">
       <button
         type="button"
         aria-label={t("sh.nav.myCard")}
@@ -80,10 +66,14 @@ export function PassTabBar({ initials, active }: { initials: string; active?: "m
           if (path === "/me") window.dispatchEvent(new Event(OPEN_CARD_EVENT));
           else router.push("/me#card");
         }}
-        className="pointer-events-auto flex size-[60px] shrink-0 items-center justify-center rounded-full bg-fg text-bg shadow-[0_4px_16px_rgba(0,0,0,.24)] focus-visible:focus-ring"
+        className={itemCls(false)}
       >
-        <CardGlyph />
+        <Wallet aria-hidden className="size-6" strokeWidth={1.75} />
+        <span aria-hidden>{t("sh.card.tabCard")}</span>
       </button>
-    </div>
+      {link("rewards", t("sh.tab.rewards"), Gift, "/me#rewards")}
+      {link("shops", t("sh.tab.shops"), MapIcon, "/me#shops")}
+      {link("activity", t("sh.tab.activity"), Activity, "/me#activity")}
+    </nav>
   );
 }

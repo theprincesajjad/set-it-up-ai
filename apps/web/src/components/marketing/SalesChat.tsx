@@ -120,29 +120,29 @@ export function SalesChat() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label={T.launcher}
-          className="fixed bottom-4 end-4 z-50 inline-flex h-12 items-center gap-2 rounded-full bg-fg px-5 text-meta-strong text-bg shadow-lg hover:bg-brand-hover focus-visible:focus-ring"
+          className="fixed bottom-4 end-4 z-50 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-meta-strong text-primary-foreground shadow-lg hover:bg-primary/90 focus-visible:focus-ring"
         >
           <MessageCircle aria-hidden className="size-4" />
           {T.launcher}
         </button>
       ) : null}
       {open ? (
-        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-line bg-bg shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
-          <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
+          <header className="flex items-center gap-3 border-b border-border px-4 py-3">
             <div className="min-w-0 flex-1">
-              <h2 className="text-body font-semibold text-fg">{T.title}</h2>
-              <p className="truncate text-caption text-fg-muted">{status === "human" ? T.human : T.subtitle}</p>
+              <h2 className="text-body font-semibold text-foreground">{T.title}</h2>
+              <p className="truncate text-caption text-muted-foreground">{status === "human" ? T.human : T.subtitle}</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label={T.close} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
+            <button type="button" onClick={() => setOpen(false)} aria-label={T.close} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-muted focus-visible:focus-ring">
               <X aria-hidden className="size-4" />
             </button>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-bg-subtle px-3 py-3" aria-live="polite">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-muted px-3 py-3" aria-live="polite">
             <ol className="flex flex-col gap-2">
               {shown.map((l) => (
                 <li key={l.id} className={cn("flex flex-col", l.role === "user" ? "items-end" : "items-start")}>
-                  {l.role === "human" ? <span className="mb-0.5 px-1 text-caption text-fg-muted">{T.human}</span> : null}
-                  <p dir="auto" className={cn("max-w-[85%] whitespace-pre-wrap rounded-[16px] px-3.5 py-2.5 text-meta", l.role === "user" ? "bg-fg text-bg" : "border border-line bg-bg text-fg")}>
+                  {l.role === "human" ? <span className="mb-0.5 px-1 text-caption text-muted-foreground">{T.human}</span> : null}
+                  <p dir="auto" className={cn("max-w-[85%] whitespace-pre-wrap rounded-[16px] px-3.5 py-2.5 text-meta", l.role === "user" ? "bg-primary text-primary-foreground" : "border border-border bg-background text-foreground")}>
                     {l.text}
                   </p>
                 </li>
@@ -151,18 +151,18 @@ export function SalesChat() {
             {fresh ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {T.chips.map((c) => (
-                  <button key={c} type="button" onClick={() => void send(c)} className="min-h-11 rounded-full border border-line bg-bg px-3.5 text-meta-strong text-fg hover:bg-bg-muted focus-visible:focus-ring">
+                  <button key={c} type="button" onClick={() => void send(c)} className="min-h-11 rounded-full border border-border bg-background px-3.5 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">
                     {c}
                   </button>
                 ))}
               </div>
             ) : null}
-            {busy ? <p className="mt-2 px-1 text-caption text-fg-muted" role="status">{T.typing}…</p> : null}
-            {error ? <p role="alert" className="mt-2 px-1 text-meta text-negative">{T.error}</p> : null}
+            {busy ? <p className="mt-2 px-1 text-caption text-muted-foreground" role="status">{T.typing}…</p> : null}
+            {error ? <p role="alert" className="mt-2 px-1 text-meta text-destructive">{T.error}</p> : null}
             <div ref={end} />
           </div>
           <form
-            className="flex flex-col gap-2 border-t border-line p-3"
+            className="flex flex-col gap-2 border-t border-border p-3"
             onSubmit={(e) => {
               e.preventDefault();
               void send(text);
@@ -170,13 +170,13 @@ export function SalesChat() {
           >
             <div className="flex items-center gap-2">
               <label htmlFor="sales-chat-input" className="sr-only">{T.placeholder}</label>
-              <input id="sales-chat-input" ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={T.placeholder} dir="auto" className="h-11 min-w-0 flex-1 rounded-full border border-line bg-bg px-4 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
-              <button type="submit" disabled={busy || !text.trim()} aria-label={T.send} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-fg text-bg hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-40">
+              <input id="sales-chat-input" ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={T.placeholder} dir="auto" className="h-11 min-w-0 flex-1 rounded-full border border-border bg-background px-4 text-body text-foreground placeholder:text-muted-foreground focus-visible:focus-ring" />
+              <button type="submit" disabled={busy || !text.trim()} aria-label={T.send} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:focus-ring disabled:opacity-40">
                 <Send aria-hidden className="size-4 rtl:-scale-x-100" />
               </button>
             </div>
-            <p className="px-1 text-caption text-fg-muted">
-              {wa ? <><a href={wa} target="_blank" rel="noopener noreferrer" className="font-medium text-fg underline underline-offset-2">{T.whatsapp}</a>{" · "}</> : null}
+            <p className="px-1 text-caption text-muted-foreground">
+              {wa ? <><a href={wa} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline underline-offset-2">{T.whatsapp}</a>{" · "}</> : null}
               {T.retention}{" "}
               <Link href={lang === "fr" ? "/legal/privacy?lang=fr" : "/legal/privacy"} className="underline underline-offset-2">{T.privacy}</Link>
             </p>

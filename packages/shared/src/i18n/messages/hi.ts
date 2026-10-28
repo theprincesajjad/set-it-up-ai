@@ -2846,4 +2846,8 @@ export const hi: Messages = {
   "pet.shop.askCard": "काउंटर पर अपना फ़ूड कार्ड माँगें।",
   "pet.shop.packs": "डेकेयर पैक: {packs}। एक दिन {dropIn}।",
   "pet.shop.days": "दिन",
+  "forms.save.region": "बिना सहेजे बदलाव",
+  "forms.save.unsaved": "आपके बदलाव सहेजे नहीं गए हैं",
+  "forms.save.discard": "छोड़ें",
+  "forms.panel.close": "बंद करें",
 };

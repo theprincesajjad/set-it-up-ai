@@ -49,11 +49,11 @@ export default async function NeighbourhoodPage({ params }: Props) {
   return (
     <>
       <section className="mx-auto max-w-[1200px] px-4 pt-10 pb-12 md:px-8 md:pt-16 md:pb-16">
-        <Link href="/neighbourhoods" className="text-meta-strong text-fg-muted hover:text-fg">
+        <Link href="/neighbourhoods" className="text-meta-strong text-muted-foreground hover:text-foreground">
           ← All neighbourhoods
         </Link>
         <h1 className="display mt-8 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Welcome to {n.name}</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">
           {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"} on one card{n.biaName ? `, with the ${n.biaName}` : ""}. {copy.misc.joinTagline}
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
@@ -68,29 +68,29 @@ export default async function NeighbourhoodPage({ params }: Props) {
 
       {detail.liveCampaigns.length || detail.perks.length || detail.livePromoCount ? (
         <section className="mx-auto max-w-[1200px] px-4 pb-12 md:px-8">
-          <div className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line md:grid-cols-3">
+          <div className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
             {detail.liveCampaigns.map((c: networkApi.CampaignBriefDto) => (
-              <Link key={c.id} href={`/c/${c.id}`} className="flex flex-col gap-2 bg-bg p-6 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
-                <span className="flex items-center gap-2 text-meta text-fg-muted">
-                  <span aria-hidden className="size-1.5 rounded-full bg-accent" /> On now
+              <Link key={c.id} href={`/c/${c.id}`} className="flex flex-col gap-2 bg-background p-6 transition-colors hover:bg-muted focus-visible:focus-ring">
+                <span className="flex items-center gap-2 text-meta text-muted-foreground">
+                  <span aria-hidden className="size-1.5 rounded-full bg-points" /> On now
                 </span>
-                <span className="text-headline text-fg">{c.name}</span>
-                <span className="text-meta text-fg-muted">
+                <span className="text-headline text-foreground">{c.name}</span>
+                <span className="text-meta text-muted-foreground">
                   Until {formatDate(c.endsAt, true)} · visit {c.goalVisits} shops
                 </span>
               </Link>
             ))}
             {detail.perks.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 bg-bg p-6">
-                <span className="text-meta text-fg-muted">Neighbourhood perk</span>
-                <span className="text-headline text-fg">{p.name}</span>
-                {p.description ? <span className="text-meta text-fg-muted">{p.description}</span> : null}
+              <div key={p.id} className="flex flex-col gap-2 bg-background p-6">
+                <span className="text-meta text-muted-foreground">Neighbourhood perk</span>
+                <span className="text-headline text-foreground">{p.name}</span>
+                {p.description ? <span className="text-meta text-muted-foreground">{p.description}</span> : null}
               </div>
             ))}
             {detail.livePromoCount ? (
-              <div className="flex flex-col gap-2 bg-bg p-6">
-                <span className="text-meta text-fg-muted">Offers</span>
-                <span className="text-headline text-fg">{detail.livePromoCount} live offers</span>
+              <div className="flex flex-col gap-2 bg-background p-6">
+                <span className="text-meta text-muted-foreground">Offers</span>
+                <span className="text-headline text-foreground">{detail.livePromoCount} live offers</span>
               </div>
             ) : null}
           </div>
@@ -110,7 +110,7 @@ export default async function NeighbourhoodPage({ params }: Props) {
                   subtitle={
                     <span className="inline-flex items-center gap-2">
                       <span className="truncate">{s.location?.address ?? n.name}</span>
-                      {s.hasPromo ? <span className="shrink-0 font-semibold text-accent-text">Offer</span> : null}
+                      {s.hasPromo ? <span className="shrink-0 font-semibold text-points-text">Offer</span> : null}
                     </span>
                   }
                 />
@@ -118,7 +118,7 @@ export default async function NeighbourhoodPage({ params }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="text-body text-fg-muted">Shops are joining now. Check back soon.</p>
+          <p className="text-body text-muted-foreground">Shops are joining now. Check back soon.</p>
         )}
       </MSection>
     </>

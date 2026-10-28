@@ -1,9 +1,8 @@
 "use client";
 import { CounterApp } from "@/components/dashboard/counter/CounterApp";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
-import { Banner } from "@/components/ui/Banner";
+import { CounterNotice } from "@/components/dashboard/counter/CounterNotice";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/dashboard/kit";
 import { PickupReady } from "@/components/dashboard/pharmacy/PickupReady";
 import { staffApi } from "@ll/shared";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -22,21 +21,23 @@ export default function CounterPage() {
   const grocery = groceryShop ? { pantryItems: (pantry.data?.items ?? []).map((i) => ({ id: i.id, name: i.name })), askText: pantry.data?.askText ?? "" } : null;
   if (!program)
     return (
-      <Banner tone="warning" action={<Button size="sm" variant="ghost" href={`${base}/program`}>Set up program</Button>}>
+      <div>
+        <h1 className="sr-only">Counter</h1>
+        <CounterNotice action={<Button size="sm" variant="ghost" href={`${base}/program`}>Set up program</Button>}>
         Set up your program before awarding points.
-      </Banner>
+        </CounterNotice>
+      </div>
     );
   return (
     <div>
-      <PageHeader title="Counter" description={role === "staff" ? `Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : undefined} />
       {unconfirmed ? (
         <div className="mb-4" data-testid="pharmacy-unconfirmed">
-          <Banner tone="warning" action={<Button size="sm" variant="ghost" href={`${base}/pharmacy`}>Open pharmacy rules</Button>}>
+          <CounterNotice action={<Button size="sm" variant="ghost" href={`${base}/pharmacy`}>Open pharmacy rules</Button>}>
             Points are off until the pharmacist-owner confirms the pharmacy rules and gives the OCP accreditation number.
-          </Banner>
+          </CounterNotice>
         </div>
       ) : null}
-      <CounterApp frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
+      <CounterApp undoNote={role === "staff" ? `Undo your own awards within ${staffApi.UNDO_WINDOW_MINUTES} minutes` : undefined} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
       {pharmacy ? (
         <div className="mx-auto mt-10 max-w-3xl">
           <PickupReady />

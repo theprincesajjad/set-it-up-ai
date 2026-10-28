@@ -23,13 +23,13 @@ export function FestivalList({ today }: { today: string }) {
   const rows = upcomingFestivals(today);
   if (!rows.length) return null;
   return (
-    <ul className="flex flex-col divide-y divide-line border-y border-line">
+    <ul className="flex flex-col divide-y divide-border border-y border-border">
       {rows.map((o) => {
         const send = o.sends[0]?.label;
         return (
           <li key={`${o.festivalId}-${o.year}`} className="py-4">
-            <p className="text-body-strong text-fg">{festivalLine(o)}</p>
-            <p className="mt-0.5 text-meta text-fg-muted">
+            <p className="text-body-strong text-foreground">{festivalLine(o)}</p>
+            <p className="mt-0.5 text-meta text-muted-foreground">
               {send ?? o.greeting.en}
               {o.tradition === "islamic" ? " (estimate)" : ""}
             </p>

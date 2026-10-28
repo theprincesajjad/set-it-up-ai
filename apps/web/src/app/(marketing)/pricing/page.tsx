@@ -49,9 +49,9 @@ export default async function PricingPage({ searchParams }: Props) {
   return (
     <>
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-10 md:px-8 md:pt-24 md:pb-14">
-        <p className="text-meta-strong text-fg-muted">{P.eyebrow}</p>
+        <p className="text-meta-strong text-muted-foreground">{P.eyebrow}</p>
         <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">{P.sub}</p>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
         <nav aria-label="Pricing for" className="mt-8 flex flex-wrap gap-2">
           {P.chips.map((c) => (
             <ChipLink key={c.id} href={c.href} current={audience === c.id}>
@@ -68,7 +68,7 @@ export default async function PricingPage({ searchParams }: Props) {
           <PaidCard id="plus" />
           <PaidCard id="pro" />
         </div>
-        <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-fg-muted md:px-8">
+        <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-muted-foreground md:px-8">
           {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` The network has ${activeShops} active shops today.` : ""} Your loyalty program never moves to a paid plan.
         </p>
       </section>
@@ -81,21 +81,21 @@ export default async function PricingPage({ searchParams }: Props) {
         <div className="grid gap-10 md:grid-cols-[1fr_1.6fr]">
           <div>
             <h2 className="display text-mkt-md md:text-mkt-lg">{P.biaTitle}</h2>
-            <p className="mt-4 text-body text-fg-muted">{P.biaSub}</p>
+            <p className="mt-4 text-body text-muted-foreground">{P.biaSub}</p>
             <Button href="/for-bias" variant="secondary" className="mt-6 rounded-full!">
               {P.biaCta}
             </Button>
           </div>
-          <ul className="flex flex-col divide-y divide-line border-y border-line">
+          <ul className="flex flex-col divide-y divide-border border-y border-border">
             {(Object.keys(bia) as (keyof typeof bia)[]).map((k) => (
               <li key={k} className="flex items-baseline justify-between gap-6 py-4">
                 <div>
-                  <p className="text-body-strong text-fg">{bia[k].name.replace(": ", " · ")}</p>
-                  <p className="mt-0.5 text-meta text-fg-muted">
+                  <p className="text-body-strong text-foreground">{bia[k].name.replace(": ", " · ")}</p>
+                  <p className="mt-0.5 text-meta text-muted-foreground">
                     {bia[k].days} days · visit {bia[k].goalVisits} shops
                   </p>
                 </div>
-                <p className="shrink-0 text-body-strong tabular-nums text-fg">{moneyShort(bia[k].priceCents)}</p>
+                <p className="shrink-0 text-body-strong tabular-nums text-foreground">{moneyShort(bia[k].priceCents)}</p>
               </li>
             ))}
           </ul>
@@ -103,12 +103,12 @@ export default async function PricingPage({ searchParams }: Props) {
       </MSection>
 
       <section id="compare" className="mx-auto max-w-[1200px] scroll-mt-20 px-4 pb-16 md:px-8 md:pb-24">
-        <details open={compareOpen} className="group rounded-card border border-line bg-bg" data-testid="compare">
-          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-fg focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
+        <details open={compareOpen} className="group rounded-card border border-border bg-background" data-testid="compare">
+          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
             {P.compareSummary}
-            <Plus aria-hidden className="size-5 shrink-0 text-fg-muted transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
+            <Plus aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
           </summary>
-          <div className="border-t border-line px-5 pb-4 md:px-7">
+          <div className="border-t border-border px-5 pb-4 md:px-7">
             <CompareTable available={available} />
           </div>
         </details>
@@ -117,7 +117,7 @@ export default async function PricingPage({ searchParams }: Props) {
       <MSection tone="subtle">
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <div>
-            <p className="text-meta-strong text-fg-muted">{P.faqEyebrow}</p>
+            <p className="text-meta-strong text-muted-foreground">{P.faqEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md md:text-mkt-lg">{P.faqTitle}</h2>
           </div>
           <Faq

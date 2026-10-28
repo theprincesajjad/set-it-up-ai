@@ -17,8 +17,8 @@ export function SavingsCalculator({ planName, planPriceCents }: { planName: stri
   return (
     <div>
       <div className="grid gap-4 md:grid-cols-2 md:items-start">
-        <div className="rounded-sheet bg-bg-subtle p-6 md:p-8">
-          <label htmlFor={id} className="text-meta-strong text-fg-muted">
+        <div className="rounded-sheet bg-muted p-6 md:p-8">
+          <label htmlFor={id} className="text-meta-strong text-muted-foreground">
             {m.sliderLabel}
           </label>
           <output htmlFor={id} aria-live="polite" className="display mt-3 block text-mkt-md tabular-nums md:text-mkt-lg">
@@ -35,33 +35,33 @@ export function SavingsCalculator({ planName, planPriceCents }: { planName: stri
             aria-valuetext={`${dollars(cents)} a month`}
             className="mt-5 block h-6 w-full cursor-pointer accent-[var(--ll-color-fg)]"
           />
-          <p className="mt-2 text-meta text-fg-muted">{m.sliderHint}</p>
+          <p className="mt-2 text-meta text-muted-foreground">{m.sliderHint}</p>
         </div>
-        <dl className="overflow-hidden rounded-sheet border border-line bg-bg">
-          <div className="border-b border-line px-5 py-4 md:px-6">
-            <dt className="text-meta text-fg-muted">{m.pickup}</dt>
+        <dl className="overflow-hidden rounded-sheet border border-border bg-background">
+          <div className="border-b border-border px-5 py-4 md:px-6">
+            <dt className="text-meta text-muted-foreground">{m.pickup}</dt>
             <dd data-testid="calc-pickup" className="display mt-1 text-mkt-sm tabular-nums">
               {dollarRange(c.pickupLowCents, c.pickupHighCents)}
             </dd>
           </div>
-          <div className="border-b border-line px-5 py-4 md:px-6">
-            <dt className="text-meta text-fg-muted">{m.delivery}</dt>
+          <div className="border-b border-border px-5 py-4 md:px-6">
+            <dt className="text-meta text-muted-foreground">{m.delivery}</dt>
             <dd data-testid="calc-delivery" className="display mt-1 text-mkt-sm tabular-nums">
               up to {dollars(c.deliveryMaxCents)}
             </dd>
           </div>
-          <div className="bg-accent-soft px-5 py-4 md:px-6">
-            <dt className="text-meta text-fg-muted">{m.flat}</dt>
-            <dd data-testid="calc-flat" className="display mt-1 text-mkt-sm tabular-nums text-accent-text">
+          <div className="bg-points-soft px-5 py-4 md:px-6">
+            <dt className="text-meta text-muted-foreground">{m.flat}</dt>
+            <dd data-testid="calc-flat" className="display mt-1 text-mkt-sm tabular-nums text-points-text">
               {dollars(planPriceCents)}
               <span className="sr-only"> a month for {planName}</span>
             </dd>
           </div>
         </dl>
       </div>
-      <p className="mt-6 max-w-4xl text-caption text-fg-muted">
+      <p className="mt-6 max-w-4xl text-caption text-muted-foreground">
         {m.sources}{" "}
-        <a href={DOORDASH_CANADA.sourceUrl} className="underline decoration-line-strong/60 underline-offset-2 hover:decoration-fg">
+        <a href={DOORDASH_CANADA.sourceUrl} className="underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
           merchants.doordash.com/en-ca
         </a>
         , read {formatAsOf(DOORDASH_CANADA.asOf)}.

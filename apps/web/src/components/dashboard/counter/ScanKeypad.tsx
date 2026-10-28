@@ -1,41 +1,50 @@
 "use client";
+import { Delete, ScanLine } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { keypadKeyClass } from "@/components/ui/Keypad";
 
-/** Four boxes for the last 4 digits; the next empty one is outlined black. */
+/**
+ * The last 4 digits of their phone as one display field (Figma 15:2): the dimmed mask stands for the digits the counter never asks for,
+ * the typed digits are heavy, and the next empty slot is underlined. Always left to right, also on an Urdu page.
+ */
 export function DigitBoxes({ value, className }: { value: string; className?: string }) {
   return (
-    <div role="group" aria-label="Last 4 digits of their phone" className={cn("flex justify-center gap-2.5", className)}>
+    <div role="group" aria-label="Last 4 digits of their phone" dir="ltr" className={cn("flex h-16 items-center justify-center gap-1 rounded-xl border border-border bg-background px-5 font-display text-display tabular-nums text-foreground", className)}>
+      <span aria-hidden className="text-subtle-foreground">(•••) •••-</span>
       {[0, 1, 2, 3].map((i) => (
         <span
           key={i}
           aria-label={value[i] ? `Digit ${i + 1}: ${value[i]}` : `Digit ${i + 1}: empty`}
-          className={cn("flex h-14 w-[62px] items-center justify-center rounded-[14px] border text-[28px] font-medium tabular-nums text-fg", i === value.length ? "border-fg" : "border-line")}
+          className={cn("inline-flex w-[0.7em] justify-center border-b-[3px]", i === value.length ? "border-foreground" : "border-transparent")}
         >
-          {value[i] ?? ""}
+          {value[i] ?? " "}
         </span>
       ))}
     </div>
   );
 }
 
-/** 1 to 9, then a gap, 0 and Del (the layout on the frames). */
-export function ScanKeypad({ onKey, disabled }: { onKey: (k: string) => void; disabled?: boolean }) {
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+/**
+ * 1 to 9, then scan, 0 and a delete key: 72 px keys on an 8 px gap (Figma 15:2). The scan key opens the camera (CounterApp passes `onScanKey`;
+ * the PIN pad passes none and the cell stays empty). Digits always run left to right.
+ */
+export function ScanKeypad({ onKey, disabled, onScanKey }: { onKey: (k: string) => void; disabled?: boolean; onScanKey?: () => void }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "scan", "0", "back"];
   return (
-    <div role="group" aria-label="Keypad" className="grid grid-cols-3 gap-2">
-      {keys.map((k, i) =>
-        k === "" ? (
-          <span key={`gap-${i}`} aria-hidden />
+    <div role="group" aria-label="Keypad" dir="ltr" className="grid grid-cols-3 gap-2">
+      {keys.map((k) =>
+        k === "scan" && !onScanKey ? (
+          <span key={k} aria-hidden />
         ) : (
           <button
             key={k}
             type="button"
             disabled={disabled}
-            onClick={() => onKey(k)}
-            aria-label={k === "back" ? "Delete" : k}
-            className={cn("flex h-[60px] items-center justify-center rounded-[14px] bg-bg-subtle tabular-nums text-fg transition-colors hover:bg-bg-muted active:bg-bg-muted focus-visible:focus-ring disabled:opacity-60", k === "back" ? "text-[15px] text-fg-muted" : "text-[26px]")}
+            onClick={() => (k === "scan" ? onScanKey?.() : onKey(k))}
+            aria-label={k === "back" ? "Delete" : k === "scan" ? "Scan with the camera" : k}
+            className={keypadKeyClass("counter")}
           >
-            {k === "back" ? "Del" : k}
+            {k === "back" ? <Delete aria-hidden className="size-6" strokeWidth={1.75} /> : k === "scan" ? <ScanLine aria-hidden className="size-6" strokeWidth={1.75} /> : k}
           </button>
         ),
       )}

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
-import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { PassTopBar } from "@/components/pass/PassChrome";
+import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export default async function PayIntentPage({ params, searchParams }: Props) {
     : ("gone" as const);
   return (
     <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
-      <LanguageSwitcher className="self-start" />
+      <PassTopBar className="self-stretch" />
       {data === "gone" ? (
         <EmptyState icon={Link2Off} title={t("payIntent.gone")} description={t("payIntent.goneBody")} />
       ) : data === "error" ? (

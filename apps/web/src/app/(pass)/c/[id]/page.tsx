@@ -12,7 +12,8 @@ import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, formatTime } from "@/lib/format";
-import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { PassTopBar } from "@/components/pass/PassChrome";
+import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getLocaleForProfile } from "@/lib/i18n/server";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 
@@ -68,7 +69,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
     <div className="flex flex-col gap-6 pt-2">
-      <LanguageSwitcher className="self-start" />
+      <PassTopBar className="self-stretch" />
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-meta text-fg-muted">
           <span className="lowercase">{c.neighbourhood.name}</span>

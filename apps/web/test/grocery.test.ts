@@ -70,12 +70,12 @@ describe("grocer sidebar", () => {
   const GROC: FeatureKey[] = ["grocery.counter_preorders", "grocery.flyer", "grocery.pantry_reminders", "grocery.whatsapp_orders", "orders.order_ahead", "marketing.sms", "promos.basic", "discount_cards"];
   const nav = (enabled: FeatureKey[], vertical = "grocery", role: "owner" | "staff" = "owner") =>
     buildMerchantNav("/m/x", role, new Set(enabled), { vertical, plan: "pro" }).map((n) => n.key);
-  it("groups a grocer's sidebar: sell ahead, talk to customers, loyalty", () => {
+  it("puts a grocer's modules in run: sell ahead, then talk to customers", () => {
     const entries = buildMerchantNav("/m/x", "owner", new Set(GROC), { vertical: "grocery", plan: "pro" });
     const by = (g: string) => entries.filter((e) => e.group === g).map((e) => e.key);
-    expect(by("g-sell")).toEqual(["grocery-butcher", "grocery-flyer", "orders"]);
-    expect(by("g-talk")).toEqual(["grocery-whatsapp", "grocery-pantry", "messages"]);
-    expect(by("g-loyalty")).toEqual(expect.arrayContaining(["customers", "program", "promos", "reports"]));
+    expect(by("run")).toEqual(["grocery-butcher", "grocery-flyer", "orders", "grocery-whatsapp", "grocery-pantry"]);
+    expect(by("customers")).toEqual(expect.arrayContaining(["customers", "program", "promos", "messages"]));
+    expect(by("grow")).toEqual(expect.arrayContaining(["reports"]));
   });
   it("shows only the modules the shop has and no repair, appointment or discount-card sections", () => {
     const k = nav(["grocery.flyer", "orders.order_ahead"]);

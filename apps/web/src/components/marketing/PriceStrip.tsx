@@ -6,21 +6,21 @@ export function PriceStrip() {
   const c = copy.landing.compare;
   return (
     <div className="mt-10" data-testid="price-strip">
-      <h3 className="text-headline text-fg">{c.pricesTitle}</h3>
-      <ul className="mt-4 grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-3">
+      <h3 className="text-headline text-foreground">{c.pricesTitle}</h3>
+      <ul className="mt-4 grid gap-px overflow-hidden rounded-card border border-border bg-border md:grid-cols-3">
         {c.prices.map((p) => (
-          <li key={p.name} className="bg-bg p-5">
-            <p className="text-meta-strong text-fg-muted">{p.name}</p>
+          <li key={p.name} className="bg-background p-5">
+            <p className="text-meta-strong text-muted-foreground">{p.name}</p>
             <p className="mt-1 flex items-baseline gap-1.5">
-              <span className="display text-mkt-sm tabular-nums text-fg">{p.price}</span>
-              <span className="text-meta text-fg-muted">{p.per}</span>
+              <span className="display text-mkt-sm tabular-nums text-foreground">{p.price}</span>
+              <span className="text-meta text-muted-foreground">{p.per}</span>
             </p>
-            <p className="mt-2 text-meta text-fg-muted">{p.line}</p>
+            <p className="mt-2 text-meta text-muted-foreground">{p.line}</p>
           </li>
         ))}
       </ul>
       <p className="mt-3 text-meta">
-        <Link href="/pricing" className="text-fg underline decoration-line-strong/60 underline-offset-2 hover:decoration-fg">
+        <Link href="/pricing" className="text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
           See every price
         </Link>
       </p>

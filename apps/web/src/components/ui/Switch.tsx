@@ -14,16 +14,16 @@ export function SwitchControl({ checked, onChange, ariaLabel, disabled, id }: { 
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring disabled:opacity-50",
+        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-150 ease-out after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-[''] focus-visible:focus-ring disabled:opacity-50",
         checked ? "bg-fg" : "bg-bg-muted",
       )}
     >
-      <span className={cn("inline-block size-[27px] rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.15),0_0_0_0.5px_rgba(0,0,0,0.04)] transition-transform duration-200 ease-out", checked ? "bg-bg translate-x-[22px] rtl:-translate-x-[22px]" : "bg-[#FFFFFF] translate-x-[2px] rtl:-translate-x-[2px]")} />
+      <span className={cn("inline-block size-5 rounded-full bg-bg shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ease-out", checked ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-[2px] rtl:-translate-x-[2px]")} />
     </button>
   );
 }
 
-/** For settings that apply immediately. iOS proportions (51 × 31), black when on. Label on the left describes the on-state. */
+/** For settings that apply immediately. 40 × 24 with a 44 px hit area, black when on. Label on the left describes the on-state. */
 export function Switch({ checked, onChange, label, description, disabled, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean; /** When the visible label is short ("Mute this shop"), the full spoken name. */ ariaLabel?: string }) {
   const id = useId();
   return (
@@ -43,11 +43,11 @@ export function Switch({ checked, onChange, label, description, disabled, ariaLa
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring disabled:opacity-50",
+          "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-150 ease-out after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-[''] focus-visible:focus-ring disabled:opacity-50",
           checked ? "bg-fg" : "bg-bg-muted",
         )}
       >
-        <span className={cn("inline-block size-[27px] rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.15),0_0_0_0.5px_rgba(0,0,0,0.04)] transition-transform duration-200 ease-out", checked ? "bg-bg translate-x-[22px] rtl:-translate-x-[22px]" : "bg-[#FFFFFF] translate-x-[2px] rtl:-translate-x-[2px]")} />
+        <span className={cn("inline-block size-5 rounded-full bg-bg shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ease-out", checked ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-[2px] rtl:-translate-x-[2px]")} />
       </button>
     </div>
   );

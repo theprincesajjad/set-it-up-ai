@@ -50,12 +50,12 @@ export function ReportTiles({ report: r, goal, tiles = "board", compact }: Pick<
     cells.push({ value: formatNumber(r.bonusPointsIssued), label: "bonus points", caption: "Network-funded" });
   }
   return (
-    <dl aria-label="Key numbers" className={cn("grid gap-px overflow-hidden rounded-card border border-line bg-line", compact ? "grid-cols-4" : cn("grid-cols-2", cells.length > 4 ? "lg:grid-cols-3" : "lg:grid-cols-4"))}>
+    <dl aria-label="Key numbers" className={cn("grid gap-px overflow-hidden rounded-card border border-border bg-border", compact ? "grid-cols-4" : cn("grid-cols-2", cells.length > 4 ? "lg:grid-cols-3" : "lg:grid-cols-4"))}>
       {cells.map((c) => (
-        <div key={c.label} className={cn("flex flex-col bg-bg", compact ? "gap-0.5 px-3 py-2" : "gap-1 px-4 py-4 md:px-5")}>
-          <dd className={cn("display tabular-nums text-fg", c.value.startsWith("Available") ? (compact ? "text-[14px] leading-5" : "text-[18px] leading-7") : compact ? "text-[20px] leading-6" : "text-[30px] leading-9")}>{c.value}</dd>
-          <dt className="text-meta-strong text-fg">{c.label}</dt>
-          <dd className="text-caption text-fg-muted">{c.caption}</dd>
+        <div key={c.label} className={cn("flex flex-col bg-background", compact ? "gap-0.5 px-3 py-2" : "gap-1 px-4 py-4 md:px-5")}>
+          <dd className={cn("display tabular-nums text-foreground", c.value.startsWith("Available") ? (compact ? "text-[14px] leading-5" : "text-[18px] leading-7") : compact ? "text-[20px] leading-6" : "text-[30px] leading-9")}>{c.value}</dd>
+          <dt className="text-meta-strong text-foreground">{c.label}</dt>
+          <dd className="text-caption text-muted-foreground">{c.caption}</dd>
         </div>
       ))}
     </dl>
@@ -71,16 +71,16 @@ export function ReportShopBars({ report: r, maxShops, headingLevel = 3 }: Pick<R
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <Heading className="text-body-strong text-fg">Visits by shop</Heading>
-        {shown.length < shops.length ? <p className="text-caption text-fg-muted">Top {shown.length} of {shops.length} shops</p> : null}
+        <Heading className="text-body-strong text-foreground">Visits by shop</Heading>
+        {shown.length < shops.length ? <p className="text-caption text-muted-foreground">Top {shown.length} of {shops.length} shops</p> : null}
       </div>
       <ul aria-hidden className="mt-3 flex flex-col gap-3">
         {shown.map((s) => (
           <li key={s.merchantId} className="grid grid-cols-[88px_1fr] items-center gap-3 text-meta md:grid-cols-[132px_1fr]">
-            <span className="truncate text-fg-muted">{s.name.toLowerCase()}</span>
+            <span className="truncate text-muted-foreground">{s.name.toLowerCase()}</span>
             <span className="flex flex-col gap-1">
-              <span className="block h-1.5 rounded-full bg-fg" style={{ width: `${Math.max(1.5, (s.visits / max) * 100)}%` }} />
-              <span className="block h-1 rounded-full bg-bg-muted" style={{ width: `${Math.max(1, (s.baselineVisits / max) * 100)}%` }} />
+              <span className="block h-1.5 rounded-full bg-primary" style={{ width: `${Math.max(1.5, (s.visits / max) * 100)}%` }} />
+              <span className="block h-1 rounded-full bg-hover" style={{ width: `${Math.max(1, (s.baselineVisits / max) * 100)}%` }} />
             </span>
           </li>
         ))}
@@ -115,7 +115,7 @@ export function ReportSummary({ report, maxShops, goal, tiles, className, footno
     <div className={cn("flex flex-col gap-6", className)}>
       <ReportTiles report={report} goal={goal} tiles={tiles} />
       <ReportShopBars report={report} maxShops={maxShops} headingLevel={headingLevel} />
-      {footnote ? <p className="text-caption text-fg-muted">{footnote}</p> : null}
+      {footnote ? <p className="text-caption text-muted-foreground">{footnote}</p> : null}
     </div>
   );
 }

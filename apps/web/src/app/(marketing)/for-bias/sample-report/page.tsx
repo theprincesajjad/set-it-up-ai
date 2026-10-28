@@ -15,9 +15,9 @@ export default function SampleReportPage() {
   return (
     <MSection className="md:py-16!">
       <div className="mx-auto max-w-3xl">
-        <p className="text-meta-strong text-fg-muted print:hidden">For BIAs</p>
+        <p className="text-meta-strong text-muted-foreground print:hidden">For BIAs</p>
         <h1 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{copy.bia.sample.pageTitle.toLowerCase()}.</h1>
-        <p className="mt-4 text-body text-fg-muted">{copy.bia.sample.pageNote}</p>
+        <p className="mt-4 text-body text-muted-foreground">{copy.bia.sample.pageNote}</p>
         <SampleReportCard variant="page" className="mt-8" />
         <Button variant="ghost" href="/for-bias#talk" className="mt-6 print:hidden">
           Plan a campaign for your street

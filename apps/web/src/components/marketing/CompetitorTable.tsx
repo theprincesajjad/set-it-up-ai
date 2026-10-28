@@ -21,30 +21,30 @@ export function CompetitorTable() {
       {/* Phones: one block per row, nothing wraps mid-price. Wider: the table. */}
       <div className="flex flex-col gap-3 sm:hidden">
         {c.rows.map((label, i) => (
-          <dl key={label} className="rounded-card border border-line bg-bg px-5 py-4">
-            <dt className="text-meta text-fg-muted">{label}</dt>
-            <dd className="display mt-1 text-title text-fg">
+          <dl key={label} className="rounded-card border border-border bg-background px-5 py-4">
+            <dt className="text-meta text-muted-foreground">{label}</dt>
+            <dd className="display mt-1 text-title text-foreground">
               {BRAND.name}: {c.us[i]}
             </dd>
             {COMPETITORS.map((x) => (
-              <dd key={x.id} className="mt-1 text-meta text-fg-muted">
+              <dd key={x.id} className="mt-1 text-meta text-muted-foreground">
                 {x.name}: {get(x, i)}
               </dd>
             ))}
           </dl>
         ))}
       </div>
-      <div className="hidden overflow-hidden rounded-sheet border border-line bg-bg sm:block">
+      <div className="hidden overflow-hidden rounded-sheet border border-border bg-background sm:block">
         <table className="w-full text-body">
           <caption className="sr-only">
             {BRAND.name} compared with {COMPETITORS.map((x) => x.name).join(" and ")}, as of {formatAsOf(oldest)}
           </caption>
-          <thead className="bg-bg-subtle text-meta-strong text-fg-muted">
+          <thead className="bg-muted text-meta-strong text-muted-foreground">
             <tr>
               <th scope="col" className="px-5 py-4 text-start md:px-6">
                 <span className="sr-only">Item</span>
               </th>
-              <th scope="col" className="px-5 py-4 text-start text-fg md:px-6">
+              <th scope="col" className="px-5 py-4 text-start text-foreground md:px-6">
                 {BRAND.name}
               </th>
               {COMPETITORS.map((x) => (
@@ -56,13 +56,13 @@ export function CompetitorTable() {
           </thead>
           <tbody>
             {c.rows.map((label, i) => (
-              <tr key={label} className="border-t border-line">
-                <th scope="row" className="px-5 py-4 text-start font-normal text-fg-muted md:px-6">
+              <tr key={label} className="border-t border-border">
+                <th scope="row" className="px-5 py-4 text-start font-normal text-muted-foreground md:px-6">
                   {label}
                 </th>
-                <td className="px-5 py-4 text-body-strong text-fg md:px-6">{c.us[i]}</td>
+                <td className="px-5 py-4 text-body-strong text-foreground md:px-6">{c.us[i]}</td>
                 {COMPETITORS.map((x) => (
-                  <td key={x.id} className="px-5 py-4 text-fg-muted md:px-6">
+                  <td key={x.id} className="px-5 py-4 text-muted-foreground md:px-6">
                     {get(x, i)}
                   </td>
                 ))}
@@ -71,12 +71,12 @@ export function CompetitorTable() {
           </tbody>
         </table>
       </div>
-      <p className="mt-6 max-w-4xl text-caption text-fg-muted">
+      <p className="mt-6 max-w-4xl text-caption text-muted-foreground">
         As of {formatAsOf(oldest)}. {c.foot} {notes.join(" ")} Sources:{" "}
         {COMPETITORS.map((x, i) => (
           <span key={x.id}>
             {i ? ", " : ""}
-            <a href={x.sourceUrl} className="underline decoration-line-strong/60 underline-offset-2 hover:decoration-fg">
+            <a href={x.sourceUrl} className="underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
               {x.host}
             </a>{" "}
             ({formatAsOf(x.asOf)})

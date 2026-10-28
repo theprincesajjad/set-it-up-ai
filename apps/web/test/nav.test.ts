@@ -17,7 +17,7 @@ describe("nav gating by vertical", () => {
     expect(k).not.toContain("discount-cards");
     expect(k).not.toContain("ads");
     expect(k).not.toContain("campaigns");
-    expect(k).not.toContain("settings");
+    expect(k).toContain("settings");
   });
   it("a pharmacy shows Discount cards", () => {
     expect(nav(PAID, "pharmacy")).toContain("discount-cards");

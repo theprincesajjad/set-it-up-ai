@@ -33,7 +33,7 @@ export async function LiveProof() {
   return (
     <section
       aria-label="The network today"
-      className="bg-bg-subtle py-10 md:py-14"
+      className="bg-muted py-10 md:py-14"
       data-shops={network.activeMerchants}
       data-streets={network.liveStreets}
       data-multi-pct={network.multiShopMemberPct}
@@ -43,11 +43,11 @@ export async function LiveProof() {
           {stats.map((s) => (
             <div key={s.label}>
               <dd className="display text-mkt-md tabular-nums md:text-mkt-lg">{s.value}</dd>
-              <dt className="mt-1 text-body text-fg-muted">{s.label}</dt>
+              <dt className="mt-1 text-body text-muted-foreground">{s.label}</dt>
             </div>
           ))}
         </dl>
-        <p className="mt-8 text-caption text-fg-muted">{copy.landing.proof.note}</p>
+        <p className="mt-8 text-caption text-muted-foreground">{copy.landing.proof.note}</p>
       </div>
     </section>
   );

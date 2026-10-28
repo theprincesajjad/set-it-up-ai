@@ -32,14 +32,14 @@ export function RedeemCode({ code, rewardName, expiresAt, onExpired, onCancel, s
   return (
     <div className="flex w-full flex-col items-center gap-3 text-center">
       <p className="text-meta text-fg-muted">{rewardName}</p>
-      <div className="w-full rounded-card bg-bg-subtle px-6 py-6">
+      <div className="w-full rounded-card bg-muted px-6 py-6">
         <span aria-label={t("wp.rc.code", { code: code.split("").join(" ") })} className="font-mono text-[40px] font-semibold leading-none tracking-[0.12em] tabular-nums text-fg">
           {spaced}
         </span>
       </div>
       <p className="text-meta text-fg-muted">{t("wp.rc.showStaff")}</p>
       {left !== null ? (
-        <p className={cn("text-meta-strong tabular-nums", left <= 60 ? "text-negative" : "text-fg")}>
+        <p className={cn("text-meta-strong tabular-nums", left <= 60 ? "text-destructive" : "text-fg")}>
           {left > 0 ? t("wp.rc.expiresIn", { time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }) : t("wp.rc.expired")}
         </p>
       ) : null}

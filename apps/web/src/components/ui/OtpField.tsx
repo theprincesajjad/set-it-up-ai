@@ -97,7 +97,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
               <div
                 key={i}
                 className={cn(
-                  "flex h-14 w-11 items-center justify-center rounded-input border bg-bg text-keypad tabular-nums text-fg transition-colors sm:w-12",
+                  "flex h-14 w-11 items-center justify-center rounded-md border bg-bg text-keypad tabular-nums text-fg transition-colors sm:w-12",
                   error ? "border-negative ring-1 ring-negative" : isActive ? "border-fg ring-1 ring-fg" : ch ? "border-line-strong/60" : "border-line",
                 )}
               >

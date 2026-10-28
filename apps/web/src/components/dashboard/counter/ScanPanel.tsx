@@ -1,5 +1,7 @@
 "use client";
+import { ScanLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/cn";
 
 interface DetectorLike {
   detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
@@ -11,7 +13,7 @@ type DetectorCtor = new (opts?: { formats?: string[] }) => DetectorLike;
  * camera permission is already granted (or the owner taps "Use the camera"); a USB or Bluetooth scanner works with no
  * camera at all because CounterApp listens for scanner keystrokes ending in Enter.
  */
-export function ScanPanel({ onScan, hint, ready }: { onScan: (payload: string) => void; hint: string; ready: boolean }) {
+export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: (payload: string) => void; hint: string; ready: boolean; /** Bumped by the keypad's scan key: opens the camera. */ cameraRequest?: number }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const [state, setState] = useState<"off" | "starting" | "on" | "denied" | "unsupported">("off");
@@ -64,6 +66,10 @@ export function ScanPanel({ onScan, hint, ready }: { onScan: (payload: string) =
   }, [start, stop]);
 
   useEffect(() => {
+    if (cameraRequest > 0) void start();
+  }, [cameraRequest, start]);
+
+  useEffect(() => {
     if (state !== "on") return;
     const Detector = (window as unknown as { BarcodeDetector: DetectorCtor }).BarcodeDetector;
     const det = new Detector({ formats: ["qr_code"] });
@@ -86,14 +92,21 @@ export function ScanPanel({ onScan, hint, ready }: { onScan: (payload: string) =
   }, [state, onScan]);
 
   return (
-    <section aria-label="Scan a card" data-scan-ready={ready ? "true" : "false"} aria-busy={!ready} className="relative flex min-h-[250px] flex-col items-center justify-end overflow-hidden rounded-[20px] bg-fg px-6 pb-6 pt-8 text-center text-bg [@media(max-height:900px)]:min-h-[168px] [@media(max-height:900px)]:pb-4 [@media(max-height:900px)]:pt-5">
+    <section
+      aria-label="Scan a card"
+      data-scan-ready={ready ? "true" : "false"}
+      aria-busy={!ready}
+      className={cn("relative flex items-center gap-4 overflow-hidden rounded-xl bg-primary px-5 py-4 text-primary-foreground", state === "on" ? "min-h-48 items-end" : "min-h-24")}
+    >
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
-      <span aria-hidden className="absolute left-1/2 top-6 size-[150px] -translate-x-1/2 rounded-[28px] border-[3px] border-bg/90 [@media(max-height:900px)]:top-4 [@media(max-height:900px)]:size-[72px] [@media(max-height:900px)]:rounded-[18px]" />
-      <div className="relative mt-[170px] [@media(max-height:900px)]:mt-[84px]">
-        <p className="font-display text-[26px] font-bold leading-8 tracking-[-0.01em]">Hold the card up</p>
-        <p className="mt-2 text-[14px] leading-5 text-bg/60">{hint}</p>
+      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-primary-foreground/80">
+        <ScanLine className="size-6" strokeWidth={1.75} />
+      </span>
+      <div className="relative min-w-0">
+        <p className="font-display text-h3 font-bold">Hold the card up</p>
+        <p className="text-meta text-primary-foreground/70">{hint}</p>
         {state === "off" || state === "denied" ? (
-          <button type="button" onClick={() => void start()} className="mt-3 text-[13px] font-medium text-bg/80 underline underline-offset-4 hover:text-bg focus-visible:focus-ring">
+          <button type="button" onClick={() => void start()} className="min-h-11 text-meta-strong text-primary-foreground/80 underline underline-offset-4 hover:text-primary-foreground focus-visible:focus-ring">
             {state === "denied" ? "Camera is blocked. Try again" : "Use the camera"}
           </button>
         ) : null}

@@ -5,7 +5,8 @@ import { SplitView } from "@/components/pass/SplitView";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
-import { LanguageSwitcher, LocaleScope } from "@/lib/i18n";
+import { PassTopBar } from "@/components/pass/PassChrome";
+import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,7 @@ export default async function SplitPayPage({ params, searchParams }: Props) {
   return (
     <LocaleScope locale={locale}>
       <div className="flex flex-col gap-4 pb-8">
-        <div className="flex justify-end">
-          <LanguageSwitcher />
-        </div>
+        <PassTopBar />
         {data === "gone" ? (
           <EmptyState icon={Link2Off} title={t("split.gone")} description={t("split.goneBody")} />
         ) : data === "error" ? (

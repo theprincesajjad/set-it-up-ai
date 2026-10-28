@@ -16,28 +16,28 @@ export function RestaurantBand() {
     <MSection tone="ink" id="restaurants">
       <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
         <div>
-          <p className="text-meta-strong text-bg/60">{b.eyebrow}</p>
+          <p className="text-meta-strong text-primary-foreground/60">{b.eyebrow}</p>
           <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{b.title}</h2>
-          <p className="mt-5 text-[17px] leading-[1.55] text-bg/65">{b.sub}</p>
+          <p className="mt-5 text-[17px] leading-[1.55] text-primary-foreground/65">{b.sub}</p>
           <Button size="lg" variant="inverse" href="/for-restaurants" className="mt-8">
             {b.cta}
           </Button>
         </div>
-        <div className="rounded-sheet bg-bg p-6 text-fg md:p-8">
-          <p className="text-meta-strong text-fg-muted">{b.cardTitle}</p>
-          <div className="mt-5 border-b border-line pb-5">
-            <p className="text-meta text-fg-muted">{b.appLabel}</p>
-            <p className="display mt-1 text-mkt-sm tabular-nums text-fg-muted">{dollarRange(c.pickupLowCents, c.deliveryMaxCents)}</p>
+        <div className="rounded-sheet bg-background p-6 text-foreground md:p-8">
+          <p className="text-meta-strong text-muted-foreground">{b.cardTitle}</p>
+          <div className="mt-5 border-b border-border pb-5">
+            <p className="text-meta text-muted-foreground">{b.appLabel}</p>
+            <p className="display mt-1 text-mkt-sm tabular-nums text-muted-foreground">{dollarRange(c.pickupLowCents, c.deliveryMaxCents)}</p>
           </div>
-          <div className="mt-5 border-b border-line pb-5">
-            <p className="text-meta text-fg-muted">{b.flatLabel}</p>
+          <div className="mt-5 border-b border-border pb-5">
+            <p className="text-meta text-muted-foreground">{b.flatLabel}</p>
             <p className="display mt-1 text-mkt-sm tabular-nums">
               {moneyShort(RESTAURANT_PLANS.starter.priceCents)} {b.perMonth}
             </p>
           </div>
-          <p className="mt-4 text-caption text-fg-muted">
+          <p className="mt-4 text-caption text-muted-foreground">
             {DOORDASH_RATE_LINE}{" "}
-            <a href={DOORDASH_CANADA.sourceUrl} className="underline decoration-line-strong/60 underline-offset-2">
+            <a href={DOORDASH_CANADA.sourceUrl} className="underline decoration-input/60 underline-offset-2">
               merchants.doordash.com/en-ca
             </a>
             . {b.own}

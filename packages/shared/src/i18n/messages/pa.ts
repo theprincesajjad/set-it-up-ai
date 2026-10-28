@@ -2846,4 +2846,8 @@ export const pa: Messages = {
   "pet.shop.askCard": "ਕਾਊਂਟਰ 'ਤੇ ਆਪਣਾ ਫੂਡ ਕਾਰਡ ਮੰਗੋ।",
   "pet.shop.packs": "ਡੇਕੇਅਰ ਪੈਕ: {packs}। ਇੱਕ ਦਿਨ {dropIn}।",
   "pet.shop.days": "ਦਿਨ",
+  "forms.save.region": "ਬਿਨਾਂ ਸੰਭਾਲੀਆਂ ਤਬਦੀਲੀਆਂ",
+  "forms.save.unsaved": "ਤੁਹਾਡੀਆਂ ਤਬਦੀਲੀਆਂ ਸੰਭਾਲੀਆਂ ਨਹੀਂ ਗਈਆਂ",
+  "forms.save.discard": "ਛੱਡੋ",
+  "forms.panel.close": "ਬੰਦ ਕਰੋ",
 };

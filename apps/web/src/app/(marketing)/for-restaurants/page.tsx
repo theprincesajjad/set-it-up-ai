@@ -52,9 +52,9 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
         <section className="overflow-hidden">
           <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-14 md:grid-cols-[1.1fr_1fr] md:gap-14 md:px-8 md:pt-24 md:pb-20">
             <div>
-              <p className="text-meta-strong text-fg-muted">{t("mkt.rest.eyebrow")}</p>
+              <p className="text-meta-strong text-muted-foreground">{t("mkt.rest.eyebrow")}</p>
               <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("mkt.rest.title")}</h1>
-              <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-fg-muted">{t("mkt.rest.sub")}</p>
+              <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{t("mkt.rest.sub")}</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button size="lg" href="/signup?vertical=restaurant_south_asian">
                   {t("mkt.rest.ctaStart")}
@@ -66,7 +66,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
                   {t("mkt.rest.ctaBook")}
                 </Button>
               </div>
-              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-fg-muted">0% commission on your own orders · add your menu yourself or we do the typing · founding offer: 50% off the first year</p> : null}
+              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-muted-foreground">0% commission on your own orders · add your menu yourself or we do the typing · founding offer: 50% off the first year</p> : null}
             </div>
             <div className="flex justify-center md:justify-end">
               <RestaurantPhone />
@@ -101,12 +101,12 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       <MSection tone="ink" id="plans">
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-16">
           <div>
-            <p className="text-meta-strong text-bg/60">{R.plansEyebrow}</p>
+            <p className="text-meta-strong text-primary-foreground/60">{R.plansEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{R.plansTitle}</h2>
-            <p className="mt-5 text-[17px] leading-[1.55] text-bg/65">
+            <p className="mt-5 text-[17px] leading-[1.55] text-primary-foreground/65">
               {prices.map((p) => `${p.name} ${p.price}`).join(" · ")} a month. Annual plans pay 10 months. On $5,000 of orders moved off the apps you keep {dollarRange(c.pickupLowCents, c.deliveryMaxCents)} a month before our fee. Delivery needs your own drivers.
             </p>
-            <p className="mt-3 text-caption text-bg/70">
+            <p className="mt-3 text-caption text-primary-foreground/70">
               Delivery-app rates from DoorDash Canada, read {formatAsOf(DOORDASH_CANADA.asOf)}:{" "}
               <a href={DOORDASH_CANADA.sourceUrl} className="underline underline-offset-2">
                 merchants.doordash.com/en-ca
@@ -116,7 +116,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
           </div>
           <div className="flex flex-col gap-3">
             {prices.map((p) => (
-              <div key={p.tier} className="flex items-center justify-between rounded-card bg-bg px-5 py-4 text-fg">
+              <div key={p.tier} className="flex items-center justify-between rounded-card bg-background px-5 py-4 text-foreground">
                 <span className="text-body-strong">{p.name}</span>
                 <span className="display text-title tabular-nums">{p.price} /mo</span>
               </div>
@@ -133,9 +133,9 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
         <MHeading eyebrow={R.weekEyebrow} title={R.weekTitle} />
         <ol className="grid items-stretch gap-4 md:grid-cols-3">
           {R.week.map((w) => (
-            <li key={w.t} className="rounded-sheet border border-line bg-bg p-6">
+            <li key={w.t} className="rounded-sheet border border-border bg-background p-6">
               <h3 className="display text-title">{w.t}</h3>
-              <p className="mt-2 text-body text-fg-muted">{w.b}</p>
+              <p className="mt-2 text-body text-muted-foreground">{w.b}</p>
             </li>
           ))}
         </ol>
@@ -161,7 +161,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
                 </Button>
               ) : null}
             </div>
-            <div className="rounded-sheet bg-bg-subtle p-6 md:p-8">
+            <div className="rounded-sheet bg-muted p-6 md:p-8">
               <ContactForm kind="restaurant" />
             </div>
           </div>

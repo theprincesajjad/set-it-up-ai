@@ -90,7 +90,7 @@ test("festivals: add my own date, plan it, and send myself a test", async ({ pag
   await expect(page.getByRole("heading", { name: new RegExp(`^${name}`) })).toBeVisible();
   await page.getByLabel("Send as").selectOption("email");
   await page.getByRole("button", { name: "Send me a test" }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Test sent to/ })).toBeVisible();
+  await expect(page.getByText(/Test sent to/)).toBeVisible();
   await page.getByRole("button", { name: "Remove this date" }).click();
   await expect(strip.getByText(name)).toHaveCount(0);
 });

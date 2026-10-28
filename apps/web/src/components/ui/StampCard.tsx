@@ -20,8 +20,8 @@ export interface StampCardProps {
 }
 
 /**
- * Stamp row/grid (v2): earned stamps are solid accent dots with a check, unearned ones are hairline
- * rings with their number, the last slot is the gift. The accent here IS the points.
+ * Stamp row/grid (v3, Figma 15:2 and 15:184): earned stamps are solid points-orange dots with a check, unearned ones are hairline
+ * rings with their number, the last slot is the gift. The orange here IS the points; a stamp that just landed pops in (motion-safe only).
  */
 export function StampCard({ stamps, goal, rewardName, newlyEarned = [], header, className, terminology = "stamps", frame = "card" }: StampCardProps) {
   const { t, locale } = useLocaleOrEnglish();
@@ -35,11 +35,11 @@ export function StampCard({ stamps, goal, rewardName, newlyEarned = [], header, 
   const reward = `${rewardLabel.charAt(0).toLowerCase()}${rewardLabel.slice(1)}`;
 
   return (
-    <div className={cn(frame === "card" && "rounded-card border border-line bg-bg p-4", className)}>
+    <div className={cn(frame === "card" && "rounded-card border border-border bg-card p-4", className)}>
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="min-w-0 flex-1">
           {header ?? (
-            <p className="text-body-strong text-fg">{ready ? <span className="text-accent-text">{t("ui.stampReady", { reward: rewardLabel })}</span> : t("ui.stampMore", { n: toGo, reward })}</p>
+            <p className="text-body-strong text-fg">{ready ? <span className="text-points-text">{t("ui.stampReady", { reward: rewardLabel })}</span> : t("ui.stampMore", { n: toGo, reward })}</p>
           )}
         </div>
         <span className="shrink-0 text-meta tabular-nums text-fg-muted">
@@ -55,7 +55,7 @@ export function StampCard({ stamps, goal, rewardName, newlyEarned = [], header, 
               <div
                 className={cn(
                   "flex aspect-square w-full max-w-12 items-center justify-center rounded-full",
-                  filled ? "bg-accent text-on-accent" : last ? "border border-dashed border-line-strong/60 text-fg-muted" : "border border-line text-meta tabular-nums text-fg-subtle",
+                  filled ? "bg-points text-points-foreground" : last ? "border border-dashed border-input text-muted-foreground" : "border border-border text-meta tabular-nums text-muted-foreground",
                   filled && newlyEarned.includes(i) && "motion-safe:animate-stamp-pop",
                 )}
               >

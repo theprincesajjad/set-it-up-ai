@@ -5,6 +5,7 @@
  */
 import { colors, nativeFonts, textStyles, verticalVisual, type ColorRoles, type TextStyleName, type VerticalColors } from "@ll/design-tokens";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { rolesFor, type RolesV3 } from "./roles";
 import { useColorScheme, type TextStyle } from "react-native";
 
 export type SchemeName = "light" | "dark";
@@ -13,7 +14,10 @@ export type SchemePref = "system" | SchemeName;
 export interface Theme {
   scheme: SchemeName;
   isDark: boolean;
+  /** v2 role names (aliases of `r`, removed in the final sweep). */
   c: ColorRoles;
+  /** v3 roles: the shadcn names the web uses (`background`, `mutedForeground`, `points`, `pointsText`, `paper` ...). */
+  r: RolesV3;
   /** Vertical identity colours (placeholder tiles, map pins). */
   vertical: (v: string | null | undefined) => VerticalColors & { icon: string; label: string };
 }
@@ -25,6 +29,7 @@ function buildTheme(scheme: SchemeName): Theme {
     scheme,
     isDark: scheme === "dark",
     c: colors[scheme],
+    r: rolesFor(scheme),
     vertical: (v) => {
       const vis = verticalVisual(v);
       return { ...vis[scheme], icon: vis.iconComponent, label: vis.label };

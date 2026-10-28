@@ -26,9 +26,9 @@ export default async function NeighbourhoodsPage() {
   return (
     <>
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
-        <p className="text-meta-strong text-fg-muted">Where we are</p>
+        <p className="text-meta-strong text-muted-foreground">Where we are</p>
         <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">one neighbourhood at a time.</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-fg-muted">We launch street by street, with the shops and the BIA. Here&apos;s where your card works today.</p>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">We launch street by street, with the shops and the BIA. Here&apos;s where your card works today.</p>
       </section>
       <section className="mx-auto max-w-[1200px] px-4 pb-16 md:px-8 md:pb-24">
         {items === null ? (
@@ -36,19 +36,19 @@ export default async function NeighbourhoodsPage() {
         ) : items.length === 0 ? (
           <EmptyState icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
         ) : (
-          <ul className="grid gap-px overflow-hidden rounded-sheet border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (
-              <li key={n.id} className="bg-bg">
-                <Link href={`/neighbourhoods/${n.slug}`} className="flex h-full min-h-56 flex-col gap-2 p-6 transition-colors hover:bg-bg-subtle focus-visible:focus-ring md:p-8">
-                  <div className="flex items-center justify-between gap-2 text-meta text-fg-muted">
+              <li key={n.id} className="bg-background">
+                <Link href={`/neighbourhoods/${n.slug}`} className="flex h-full min-h-56 flex-col gap-2 p-6 transition-colors hover:bg-muted focus-visible:focus-ring md:p-8">
+                  <div className="flex items-center justify-between gap-2 text-meta text-muted-foreground">
                     <span>
                       {n.city}, {n.province}
                     </span>
                     <StatusDot tone={n.status === "live" ? "positive" : "neutral"}>{n.status === "live" ? "Live" : "Pilot"}</StatusDot>
                   </div>
-                  <h2 className="display mt-auto text-mkt-sm lowercase text-fg">{n.name}</h2>
-                  <p className="text-meta text-fg-muted">
-                    <span className="font-semibold tabular-nums text-fg">
+                  <h2 className="display mt-auto text-mkt-sm lowercase text-foreground">{n.name}</h2>
+                  <p className="text-meta text-muted-foreground">
+                    <span className="font-semibold tabular-nums text-foreground">
                       {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"}
                     </span>
                     {n.biaName ? ` · ${n.biaName}` : ""}
@@ -58,10 +58,10 @@ export default async function NeighbourhoodsPage() {
             ))}
           </ul>
         )}
-        <div className="mt-12 grid gap-6 border-t border-line pt-10 md:grid-cols-[1fr_auto] md:items-end">
+        <div className="mt-12 grid gap-6 border-t border-border pt-10 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <h2 className="display text-mkt-sm">{copy.empty.noNeighbourhood.title.toLowerCase()}.</h2>
-            <p className="mt-2 text-body text-fg-muted">{copy.empty.noNeighbourhood.body}</p>
+            <p className="mt-2 text-body text-muted-foreground">{copy.empty.noNeighbourhood.body}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="lg" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>

@@ -10,20 +10,39 @@ import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, typ
 
 export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
-/** Sidebar groups, drawn with a small gap between them; only the groups in NAV_GROUP_LABELS get a heading. */
-export type NavGroup = "main" | "loyalty" | "commerce" | "restaurant" | "network" | "shop" | "r-today" | "r-sell" | "r-menu" | "r-talk" | "r-loyalty" | "r-more" | "g-sell" | "g-talk" | "g-loyalty";
+/**
+ * The five sidebar sections, in this order, for every trade (v3 shell, strategy 4.1). Only the entries of `run`
+ * differ between trades: `today` (Home, Counter), `run` (the trade's own modules), `customers` (Customers, Rewards,
+ * Promos, Messages), `grow` (Reports, Ads, Street campaigns) and `shop` (Locations & QR kit, Settings and what sits under it).
+ */
+export const NAV_SECTIONS = ["today", "run", "customers", "grow", "shop"] as const;
+export type NavSection = (typeof NAV_SECTIONS)[number];
+/** Kept so older imports compile: a nav entry's group is now its section. */
+export type NavGroup = NavSection;
 
-/** Small heading over a sidebar group (canvas "Complete your setup" row style: 12px, muted). */
-export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = { restaurant: "Restaurant", "r-today": "today", "r-sell": "sell ahead", "r-menu": "menu", "r-talk": "talk to guests", "r-loyalty": "loyalty", "g-sell": "sell ahead", "g-talk": "talk to customers", "g-loyalty": "loyalty" };
+/** Lowercase heading over a sidebar section (English; the shell translates through `shell.section.*`). */
+export const NAV_GROUP_LABELS: Record<NavSection, string> = { today: "today", run: "run", customers: "customers", grow: "grow", shop: "shop" };
 
 export interface NavEntry {
   key: string;
   href: string;
   label: string;
-  group: NavGroup;
+  group: NavSection;
   exact?: boolean;
   /** Restaurants: a count shown after the label (new orders, calls to check, chats waiting). */
   badge?: "orders" | "phone" | "whatsapp";
+  /** Key of the entry this one sits under (Staff, POS & integrations and Billing sit under Settings). */
+  parent?: string;
+}
+
+/** Entries in section order (stable inside a section), as the sidebar draws them. */
+export function inSectionOrder<T extends { group: NavSection }>(entries: T[]): T[] {
+  return NAV_SECTIONS.flatMap((s) => entries.filter((e) => e.group === s));
+}
+
+/** The five sections for the sidebar. Always all five keys in order; `run` (or any section) can be empty. */
+export function navSections(entries: NavEntry[]): { key: NavSection; entries: NavEntry[] }[] {
+  return NAV_SECTIONS.map((key) => ({ key, entries: entries.filter((e) => e.group === key) }));
 }
 
 /**
@@ -207,36 +226,67 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   return true;
 }
 
+/** Settings, and the pages that sit under it until Settings carries them as tabs (workstream D): Staff, POS & integrations, Billing & plans. */
+const UNDER_SETTINGS = ["staff", "integrations", "billing"];
+
+/**
+ * The sidebar for one shop, in section order: `today`, `run`, `customers`, `grow`, `shop`. Every trade returns the same five
+ * sections; only the entries of `run` (and which of the others are unlocked) differ. Owners and managers also get Settings,
+ * with Staff, POS & integrations and Billing under it.
+ */
 export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
-  const home: NavEntry = { key: "home", href: base, label: role === "staff" ? "Today" : "Home", group: "main", exact: true };
-  const counter: NavEntry = { key: "counter", href: `${base}/counter`, label: "Counter", group: "main" };
+  const entries = buildNavEntries(base, role, enabled, shop);
+  if (role === "owner" || role === "manager") {
+    const at = entries.findIndex((e) => e.key === "staff");
+    const settings: NavEntry = { key: "settings", href: `${base}/settings`, label: "Settings", group: "shop" };
+    entries.splice(at < 0 ? entries.length : at, 0, settings);
+  }
+  return inSectionOrder(entries.map((e) => (UNDER_SETTINGS.includes(e.key) && (role === "owner" || role === "manager") ? { ...e, parent: "settings" } : e)));
+}
+
+function buildNavEntries(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
+  const home: NavEntry = { key: "home", href: base, label: role === "staff" ? "Today" : "Home", group: "today", exact: true };
+  const counter: NavEntry = { key: "counter", href: `${base}/counter`, label: "Counter", group: "today" };
   // Front-desk staff run the day from the calendar (appointment shops), so it is the one extra section they get.
-  const calendar: NavEntry = { key: "calendar", href: `${base}/calendar`, label: "Calendar", group: "commerce" };
+  const calendar: NavEntry = { key: "calendar", href: `${base}/calendar`, label: "Calendar", group: "run" };
   // Front-desk staff also get the class schedule and the door at a studio.
-  const classes: NavEntry = { key: "classes", href: `${base}/classes`, label: "Class schedule", group: "commerce" };
-  const door: NavEntry = { key: "class-door", href: `${base}/classes/door`, label: "Door check-in", group: "commerce" };
+  const classes: NavEntry = { key: "classes", href: `${base}/classes`, label: "Class schedule", group: "run" };
+  const door: NavEntry = { key: "class-door", href: `${base}/classes/door`, label: "Door check-in", group: "run" };
   // Desk staff sell a drop-in or a pack here; owners and managers see the full Memberships & passes page at the same address.
-  const deskSale: NavEntry = { key: "class-offers", href: `${base}/classes/offers`, label: "Desk sale", group: "commerce" };
-  const queue: NavEntry = { key: "queue", href: `${base}/queue`, label: "Walk-in line", group: "commerce" };
-  const payouts: NavEntry = { key: "payouts", href: `${base}/payouts`, label: "Payouts", group: "commerce" };
+  const deskSale: NavEntry = { key: "class-offers", href: `${base}/classes/offers`, label: "Desk sale", group: "run" };
+  const queue: NavEntry = { key: "queue", href: `${base}/queue`, label: "Walk-in line", group: "run" };
+  const payouts: NavEntry = { key: "payouts", href: `${base}/payouts`, label: "Payouts", group: "run" };
   // Pet shops: pets and groom rebooking, the daycare day, food cards (pets.ts nav entries).
-  const pet = (key: string, href: string, label: string, group: NavGroup): NavEntry => ({ key, href: `${base}${href}`, label, group });
+  const pet = (key: string, href: string, label: string, group: NavSection): NavEntry => ({ key, href: `${base}${href}`, label, group });
   const petEntries: NavEntry[] = [
-    pet("pets", "/pets", "Pets", "commerce"),
-    pet("groom-rebooking", "/groom-rebooking", "Groom rebooking", "commerce"),
-    pet("daycare", "/daycare", "Daycare today", "commerce"),
-    pet("food-cards", "/food-cards", "Food cards", "commerce"),
+    pet("pets", "/pets", "Pets", "run"),
+    pet("groom-rebooking", "/groom-rebooking", "Groom rebooking", "run"),
+    pet("daycare", "/daycare", "Daycare today", "run"),
+    pet("food-cards", "/food-cards", "Food cards", "run"),
   ];
   // Car washes, garages and tire shops: vehicles, service reminders, tire season and the wash desk (auto.ts nav entries).
   const autoEntries: NavEntry[] = [
-    pet("wash", "/wash", "Wash desk", "commerce"),
-    pet("vehicles", "/vehicles", "Vehicles", "commerce"),
-    pet("service-reminders", "/service-reminders", "Service reminders", "commerce"),
-    pet("tire-season", "/tire-season", "Tire season", "commerce"),
+    pet("wash", "/wash", "Wash desk", "run"),
+    pet("vehicles", "/vehicles", "Vehicles", "run"),
+    pet("service-reminders", "/service-reminders", "Service reminders", "run"),
+    pet("tire-season", "/tire-season", "Tire season", "run"),
   ];
   // An instructor teaches: their classes and the check-in for them, nothing else.
-  if (role === "instructor") return [classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup }));
-  if (role === "staff") return [home, counter, ...petEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...autoEntries.filter((e) => navUnlocked(e.key, enabled)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(enabled.has("booking.walkin_queue") ? [{ ...queue, group: "main" as NavGroup }] : []), ...(enabled.has("staff.payouts") ? [{ ...payouts, group: "main" as NavGroup }] : []), ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [{ ...calendar, group: "main" as NavGroup }] : []), ...[classes, door, deskSale].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "main" as NavGroup })), ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [{ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "main" as NavGroup }] : [])];
+  if (role === "instructor") return [classes, door].filter((e) => navVisible(e.key, enabled, shop)).map((e) => ({ ...e, group: "run" as NavSection }));
+  if (role === "staff") {
+    const run = (e: NavEntry): NavEntry => ({ ...e, group: "run" });
+    return [
+      home,
+      counter,
+      ...petEntries.filter((e) => navUnlocked(e.key, enabled)).map(run),
+      ...autoEntries.filter((e) => navUnlocked(e.key, enabled)).map(run),
+      ...(enabled.has("booking.walkin_queue") ? [run(queue)] : []),
+      ...(enabled.has("staff.payouts") ? [run(payouts)] : []),
+      ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [run(calendar)] : []),
+      ...[classes, door, deskSale].filter((e) => navVisible(e.key, enabled, shop)).map(run),
+      ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [run({ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "run" })] : []),
+    ];
+  }
   // Restaurants get one sidebar grouped by when it is used (restaurantNav below); everyone else keeps the flat list.
   if (hasRestaurantFeature(enabled)) return buildRestaurantNav(base, role, enabled, shop);
   // Grocers and butchers: sell ahead (butcher counter, flyer), talk to customers (WhatsApp, pantry reminders), loyalty (grocery-nav below).
@@ -245,42 +295,35 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
   const items: NavEntry[] = [
     home,
     counter,
-    { key: "customers", href: `${base}/customers`, label: "Customers", group: "loyalty" },
-    { key: "program", href: `${base}/program`, label: "Rewards", group: "loyalty" },
-    { key: "promos", href: `${base}/promos`, label: "Promos", group: "loyalty" },
-    { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "loyalty" },
-    { key: "messages", href: `${base}/messages`, label: "Messages", group: "loyalty" },
-    { key: "reports", href: `${base}/reports`, label: "Reports", group: "loyalty" },
-    { key: "orders", href: `${base}/orders`, label: "Orders", group: "commerce" },
-    { key: "tickets", href: `${base}/tickets`, label: "Tickets", group: "commerce" },
-    { key: "invoices", href: `${base}/invoices`, label: "Invoices", group: "commerce" },
+    { key: "customers", href: `${base}/customers`, label: "Customers", group: "customers" },
+    { key: "program", href: `${base}/program`, label: "Rewards", group: "customers" },
+    { key: "promos", href: `${base}/promos`, label: "Promos", group: "customers" },
+    { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "customers" },
+    { key: "messages", href: `${base}/messages`, label: "Messages", group: "customers" },
+    { key: "reports", href: `${base}/reports`, label: "Reports", group: "grow" },
+    { key: "orders", href: `${base}/orders`, label: "Orders", group: "run" },
+    { key: "tickets", href: `${base}/tickets`, label: "Tickets", group: "run" },
+    { key: "invoices", href: `${base}/invoices`, label: "Invoices", group: "run" },
     queue,
     calendar,
     ...petEntries,
     ...autoEntries,
     payouts,
     classes,
-    { key: "class-offers", href: `${base}/classes/offers`, label: "Memberships & passes", group: "commerce" },
+    { key: "class-offers", href: `${base}/classes/offers`, label: "Memberships & passes", group: "run" },
     door,
-    { key: "services", href: `${base}/services`, label: enabled.has("service.tickets") && !enabled.has("booking.appointments") ? "Price list" : "Services & prices", group: "commerce" },
-    { key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "commerce" },
-    { key: "rebooking", href: `${base}/rebooking`, label: "Rebooking", group: "commerce" },
-    { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "commerce" },
-    { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
-    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
-    { key: "pharmacy", href: `${base}/pharmacy`, label: "Pharmacy rules", group: "shop" },
+    { key: "services", href: `${base}/services`, label: enabled.has("service.tickets") && !enabled.has("booking.appointments") ? "Price list" : "Services & prices", group: "run" },
+    { key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "run" },
+    { key: "rebooking", href: `${base}/rebooking`, label: "Rebooking", group: "run" },
+    { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "run" },
+    { key: "ads", href: `${base}/ads`, label: "Ads", group: "grow" },
+    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "grow" },
+    { key: "pharmacy", href: `${base}/pharmacy`, label: "Pharmacy rules", group: "run" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
     { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
     { key: "billing", href: `${base}/billing`, label: "Billing & plans", group: "shop" },
   ];
-  if (hasRestaurantFeature(enabled)) {
-    const at = items.findIndex((i) => i.key === "ads");
-    const { unlocked, locked } = restaurantModules(enabled);
-    const entries = unlocked.map((r): NavEntry => ({ key: `restaurant-${r.slug}`, href: `${base}/restaurant/${r.slug}`, label: r.label, group: "restaurant" }));
-    if (locked.length) entries.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "restaurant" });
-    items.splice(at < 0 ? items.length : at, 0, ...entries);
-  }
   return items.filter((i) => navVisible(i.key, enabled, shop) && (i.key !== "billing" || role === "owner"));
 }
 
@@ -292,34 +335,34 @@ export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<Fea
 function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
   const { unlocked, locked } = restaurantModules(enabled);
   const has = (slug: string) => unlocked.some((r) => r.slug === slug);
-  const r = (slug: string, label: string, group: NavGroup, badge?: NavEntry["badge"], href?: string): NavEntry => ({ key: `restaurant-${slug}`, href: href ?? `${base}/restaurant/${slug}`, label, group, ...(badge ? { badge } : {}) });
-  const out: NavEntry[] = [{ key: "home", href: base, label: "Home", group: "r-today", exact: true }];
-  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "r-today", badge: "orders" });
-  if (has("kitchen")) out.push(r("kitchen", "Kitchen display", "r-today"));
-  if (has("phone-orders")) out.push(r("phone-orders", "Phone orders", "r-today", "phone"));
-  if (has("preorders")) out.push(r("preorders", "Pre-orders", "r-sell"));
-  if (has("catering")) out.push(r("catering", "Catering & banquet", "r-sell"));
-  else if (has("banquet")) out.push(r("banquet", "Catering & banquet", "r-sell"));
-  if (has("tiffin")) out.push(r("tiffin", "Tiffin", "r-sell"));
-  if (has("menu")) out.push(r("menu", "Menu & dietary", "r-menu"));
-  if (has("whatsapp")) out.push(r("whatsapp", "WhatsApp", "r-talk", "whatsapp"));
-  if (has("reviews")) out.push(r("reviews", "Reviews", "r-talk"));
-  if (has("festivals")) out.push(r("festivals", "Festivals", "r-talk"));
+  const r = (slug: string, label: string, group: NavSection, badge?: NavEntry["badge"], href?: string): NavEntry => ({ key: `restaurant-${slug}`, href: href ?? `${base}/restaurant/${slug}`, label, group, ...(badge ? { badge } : {}) });
+  const out: NavEntry[] = [{ key: "home", href: base, label: "Home", group: "today", exact: true }];
+  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "run", badge: "orders" });
+  if (has("kitchen")) out.push(r("kitchen", "Kitchen display", "run"));
+  if (has("phone-orders")) out.push(r("phone-orders", "Phone orders", "run", "phone"));
+  if (has("preorders")) out.push(r("preorders", "Pre-orders", "run"));
+  if (has("catering")) out.push(r("catering", "Catering & banquet", "run"));
+  else if (has("banquet")) out.push(r("banquet", "Catering & banquet", "run"));
+  if (has("tiffin")) out.push(r("tiffin", "Tiffin", "run"));
+  if (has("menu")) out.push(r("menu", "Menu & dietary", "run"));
+  if (has("whatsapp")) out.push(r("whatsapp", "WhatsApp", "run", "whatsapp"));
+  if (has("reviews")) out.push(r("reviews", "Reviews", "run"));
+  if (has("festivals")) out.push(r("festivals", "Festivals", "run"));
   const loyalty: NavEntry[] = [
-    { key: "customers", href: `${base}/customers`, label: "Customers", group: "r-loyalty" },
-    { key: "program", href: `${base}/program`, label: "Program & rewards", group: "r-loyalty" },
-    { key: "promos", href: `${base}/promos`, label: "Promos", group: "r-loyalty" },
-    { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "r-loyalty" },
+    { key: "customers", href: `${base}/customers`, label: "Customers", group: "customers" },
+    { key: "program", href: `${base}/program`, label: "Program & rewards", group: "customers" },
+    { key: "promos", href: `${base}/promos`, label: "Promos", group: "customers" },
+    { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "customers" },
     // Loyalty texts and email; WhatsApp has its own entry above, so the two inboxes read as two things.
-    { key: "messages", href: `${base}/messages`, label: "Texts & email", group: "r-loyalty" },
-    { key: "reports", href: `${base}/reports`, label: "Reports", group: "r-loyalty" },
+    { key: "messages", href: `${base}/messages`, label: "Texts & email", group: "customers" },
+    { key: "reports", href: `${base}/reports`, label: "Reports", group: "grow" },
   ];
   out.push(...loyalty.filter((i) => navVisible(i.key, enabled, shop)));
-  if (locked.length) out.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "r-more" });
+  if (locked.length) out.push({ key: "restaurant-more", href: `${base}/restaurant/${RESTAURANT_MORE.slug}`, label: RESTAURANT_MORE.label, group: "run" });
   const tools: NavEntry[] = [
-    { key: "counter", href: `${base}/counter`, label: "Counter", group: "shop" },
-    { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
-    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
+    { key: "counter", href: `${base}/counter`, label: "Counter", group: "today" },
+    { key: "ads", href: `${base}/ads`, label: "Ads", group: "grow" },
+    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "grow" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
     { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },
@@ -335,25 +378,25 @@ function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureK
  * loyalty program. The repair, appointment and class sections stay out of the way.
  */
 function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
-  const g = (slug: string, label: string, group: NavGroup): NavEntry => ({ key: `grocery-${slug}`, href: `${base}/grocery/${slug}`, label, group });
+  const g = (slug: string, label: string, group: NavSection): NavEntry => ({ key: `grocery-${slug}`, href: `${base}/grocery/${slug}`, label, group });
   const out: NavEntry[] = [
-    { key: "home", href: base, label: "Home", group: "main", exact: true },
-    { key: "counter", href: `${base}/counter`, label: "Counter", group: "main" },
+    { key: "home", href: base, label: "Home", group: "today", exact: true },
+    { key: "counter", href: `${base}/counter`, label: "Counter", group: "today" },
   ];
-  if (enabled.has("grocery.counter_preorders")) out.push(g("butcher", "Butcher counter", "g-sell"));
-  if (enabled.has("grocery.flyer")) out.push(g("flyer", "Weekly flyer", "g-sell"));
-  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "g-sell" });
-  if (navVisible("catalog", enabled, shop) && !enabled.has("grocery.counter_preorders")) out.push({ key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "g-sell" });
-  if (enabled.has("grocery.whatsapp_orders")) out.push(g("whatsapp", "WhatsApp", "g-talk"));
-  if (enabled.has("grocery.pantry_reminders")) out.push(g("pantry", "Pantry reminders", "g-talk"));
+  if (enabled.has("grocery.counter_preorders")) out.push(g("butcher", "Butcher counter", "run"));
+  if (enabled.has("grocery.flyer")) out.push(g("flyer", "Weekly flyer", "run"));
+  if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "run" });
+  if (navVisible("catalog", enabled, shop) && !enabled.has("grocery.counter_preorders")) out.push({ key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "run" });
+  if (enabled.has("grocery.whatsapp_orders")) out.push(g("whatsapp", "WhatsApp", "run"));
+  if (enabled.has("grocery.pantry_reminders")) out.push(g("pantry", "Pantry reminders", "run"));
   const rest: NavEntry[] = [
-    { key: "messages", href: `${base}/messages`, label: "Messages", group: "g-talk" },
-    { key: "customers", href: `${base}/customers`, label: "Customers", group: "g-loyalty" },
-    { key: "program", href: `${base}/program`, label: "Rewards", group: "g-loyalty" },
-    { key: "promos", href: `${base}/promos`, label: "Promos", group: "g-loyalty" },
-    { key: "reports", href: `${base}/reports`, label: "Reports", group: "g-loyalty" },
-    { key: "ads", href: `${base}/ads`, label: "Ads", group: "network" },
-    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "network" },
+    { key: "messages", href: `${base}/messages`, label: "Messages", group: "customers" },
+    { key: "customers", href: `${base}/customers`, label: "Customers", group: "customers" },
+    { key: "program", href: `${base}/program`, label: "Rewards", group: "customers" },
+    { key: "promos", href: `${base}/promos`, label: "Promos", group: "customers" },
+    { key: "reports", href: `${base}/reports`, label: "Reports", group: "grow" },
+    { key: "ads", href: `${base}/ads`, label: "Ads", group: "grow" },
+    { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "grow" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
     { key: "integrations", href: `${base}/integrations`, label: "POS & integrations", group: "shop" },

@@ -38,24 +38,24 @@ export function SampleReportCard({ variant = "hero", className }: { variant?: "h
   const sample = R.sample;
   if (variant === "band") {
     return (
-      <figure className={cn("rounded-sheet border border-line bg-bg p-6 md:p-8", className)}>
+      <figure className={cn("rounded-sheet border border-border bg-background p-6 md:p-8", className)}>
         {sample ? <SampleTag /> : null}
-        <figcaption className="mt-3 text-meta text-fg-muted">{R.title === "Passport week" ? "Passport weekend" : R.title}</figcaption>
+        <figcaption className="mt-3 text-meta text-muted-foreground">{R.title === "Passport week" ? "Passport weekend" : R.title}</figcaption>
         <p className="display mt-1 text-mkt-md tabular-nums md:text-mkt-lg">+{R.visitLiftPct}% visits</p>
-        <p className="mt-2 text-meta text-fg-muted">
+        <p className="mt-2 text-meta text-muted-foreground">
           vs the same days before, at {R.perMerchant.length} shops. {formatNumber(R.returnedWithin30d ?? 0)} event visitors came back within 30 days.
         </p>
       </figure>
     );
   }
   return (
-    <figure className={cn("flex flex-col gap-5 rounded-sheet border border-line bg-bg p-6 md:p-8", className)}>
+    <figure className={cn("flex flex-col gap-5 rounded-sheet border border-border bg-background p-6 md:p-8", className)}>
       <figcaption>
         {sample ? <SampleTag /> : null}
-        <p className="mt-3 text-[22px] font-semibold leading-7 tracking-[-0.01em] text-fg">
+        <p className="mt-3 text-[22px] font-semibold leading-7 tracking-[-0.01em] text-foreground">
           {R.title} · {rangeLabel(R.window.startsAt, R.window.endsAt)}
         </p>
-        <p className="mt-2 text-meta text-fg-muted">
+        <p className="mt-2 text-meta text-muted-foreground">
           {R.perMerchant.length} participating shops · compared with the {days} days before
         </p>
       </figcaption>
