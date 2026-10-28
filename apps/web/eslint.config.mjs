@@ -1,3 +1,4 @@
+import { plugin as shadcn } from "@shadcn/lint";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -20,6 +21,20 @@ export default defineConfig([
           message: "Use semantic token utilities (bg-surface, text-fg, bg-brand...) in components/ui, not raw palette or Tailwind default colours.",
         },
       ],
+    },
+  },
+  // v3 guardrails (docs/design/v3-strategy.md 8.2 A step 4). Warnings until the final sweep, which switches them to errors.
+  // The generated shadcn primitives are exempt: they are copy-and-own output (components.json aliases.ui) and use arbitrary values.
+  // themeImports makes the tokens in @ll/design-tokens/theme.css (bg-background, text-points-text, rounded-card ...) count as ours.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/primitives/**"],
+    plugins: { shadcn },
+    settings: { shadcn: { themeImports: ["^@ll/design-tokens/"], note: "Tokens: docs/design/v3-strategy.md s5" } },
+    rules: {
+      "shadcn/no-raw-colors": "warn",
+      "shadcn/no-arbitrary-values": "warn",
+      "shadcn/no-inline-styles": "warn",
     },
   },
   globalIgnores([".next/**", ".next-*/**", "out/**", "build/**", "next-env.d.ts", "e2e/screenshots/**", "playwright-report/**", "test-results/**"]),

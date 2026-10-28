@@ -105,50 +105,224 @@ export interface ColorRoles {
   /** Points ring / bar track (bgMuted). */ ringTrack: string;
 }
 
-const v2Light = {
-  bg: p.gray[0],
-  bgSubtle: p.gray[50],
-  bgMuted: p.gray[100],
-  fg: p.gray[950],
-  fgMuted: p.gray[600],
-  fgSubtle: p.gray[400],
-  line: p.gray[150],
-  lineStrong: p.gray[450],
-  accent: p.orange[500],
-  accentText: p.orange[700],
-  accentSoft: p.orange[50],
-  onAccent: p.gray[0],
-  positive: p.green[600],
-  positiveText: p.green[800],
-  negative: p.red[600],
-  location: p.blue[500],
-  chrome: "rgba(255, 255, 255, 0.8)",
-  overlay: "rgba(11, 11, 12, 0.4)",
+/**
+ * v3 roles (docs/design/v3-strategy.md section 5): shadcn variable names for every role, warm stone neutrals,
+ * our orange renamed `points`, new `info`, `warning` and `paper`. The CSS custom properties are these keys in
+ * kebab-case (`--background`, `--muted-foreground`, `--points-text` ...). The v2 role names above are aliases
+ * of these (see `v2Alias`) until the final sweep.
+ *
+ * NOTE `accent` here is shadcn's "hover surface", NOT the orange (that is `points`). The v2 `ColorRoles.accent`
+ * (orange) is the alias of `points`.
+ */
+export interface RolesV3 {
+  background: string;
+  foreground: string;
+  card: string;
+  cardForeground: string;
+  popover: string;
+  popoverForeground: string;
+  primary: string;
+  primaryForeground: string;
+  secondary: string;
+  secondaryForeground: string;
+  muted: string;
+  mutedForeground: string;
+  /** Hover / active surface. Not the brand orange. */
+  accent: string;
+  accentForeground: string;
+  destructive: string;
+  border: string;
+  /** Form-control outline (3:1). */
+  input: string;
+  ring: string;
+  /** Disabled only (3.6:1 on background). Placeholders use `mutedForeground`. */
+  subtleForeground: string;
+  sidebar: string;
+  sidebarForeground: string;
+  sidebarPrimary: string;
+  sidebarPrimaryForeground: string;
+  sidebarAccent: string;
+  sidebarAccentForeground: string;
+  sidebarBorder: string;
+  sidebarRing: string;
+  /** Points, stamps, the shop-must-act dot. Fills, dots, numbers >= 17px. */
+  points: string;
+  /** Small orange text. */
+  pointsText: string;
+  pointsSoft: string;
+  pointsForeground: string;
+  success: string;
+  successText: string;
+  info: string;
+  infoText: string;
+  infoSoft: string;
+  warning: string;
+  warningText: string;
+  /** Pass and marketing canvas. */
+  paper: string;
+  /** Always black on white. */
+  qrFg: string;
+  qrBg: string;
+}
+
+const v3Light: RolesV3 = {
+  background: p.stone[0],
+  foreground: p.gray[950],
+  card: p.stone[0],
+  cardForeground: p.gray[950],
+  popover: p.stone[0],
+  popoverForeground: p.gray[950],
+  primary: p.gray[950],
+  primaryForeground: p.stone[0],
+  secondary: p.stone[50],
+  secondaryForeground: p.gray[950],
+  muted: p.stone[50],
+  mutedForeground: p.stone[600],
+  accent: p.stone[100],
+  accentForeground: p.gray[950],
+  destructive: p.red[600],
+  border: p.stone[150],
+  input: p.stone[400],
+  ring: p.gray[950],
+  subtleForeground: p.stone[400],
+  sidebar: p.stone[50],
+  sidebarForeground: p.gray[950],
+  sidebarPrimary: p.gray[950],
+  sidebarPrimaryForeground: p.stone[0],
+  sidebarAccent: p.stone[100],
+  sidebarAccentForeground: p.gray[950],
+  sidebarBorder: p.stone[150],
+  sidebarRing: p.gray[950],
+  points: p.orange[500],
+  pointsText: p.orange[700],
+  pointsSoft: p.orange[50],
+  pointsForeground: p.stone[0],
+  success: p.green[600],
+  successText: p.green[700],
+  info: p.blue[500],
+  infoText: p.blue[700],
+  infoSoft: p.blue[50],
+  warning: p.amber[600],
+  warningText: p.amber[700],
+  paper: p.stone[25],
   qrFg: "#000000",
   qrBg: "#FFFFFF",
+};
+
+const v3Dark: RolesV3 = {
+  background: p.stone[950],
+  foreground: p.stone[50],
+  card: p.stone[900],
+  cardForeground: p.stone[50],
+  popover: p.stone[900],
+  popoverForeground: p.stone[50],
+  primary: p.stone[50],
+  primaryForeground: p.stone[950],
+  secondary: p.stone[850],
+  secondaryForeground: p.stone[50],
+  muted: p.stone[850],
+  mutedForeground: p.stone[650],
+  accent: p.stone[800],
+  accentForeground: p.stone[50],
+  destructive: p.red[400],
+  border: p.stone[750],
+  input: p.stone[550],
+  ring: p.stone[50],
+  subtleForeground: p.stone[550],
+  sidebar: p.stone[900],
+  sidebarForeground: p.stone[50],
+  sidebarPrimary: p.stone[50],
+  sidebarPrimaryForeground: p.stone[950],
+  sidebarAccent: p.stone[800],
+  sidebarAccentForeground: p.stone[50],
+  sidebarBorder: p.stone[750],
+  sidebarRing: p.stone[50],
+  points: p.orange[400],
+  pointsText: p.orange[400],
+  pointsSoft: p.orange[950],
+  pointsForeground: p.stone[950],
+  success: p.green[500],
+  successText: p.green[400],
+  info: p.blue[400],
+  infoText: p.blue[300],
+  infoSoft: p.blue[950],
+  warning: p.amber[400],
+  warningText: p.amber[400],
+  paper: p.stone[950],
+  qrFg: "#000000",
+  qrBg: "#FFFFFF",
+};
+
+export const rolesV3 = { light: v3Light, dark: v3Dark } as const;
+export type RoleV3 = keyof RolesV3;
+
+/** v3 chart series (shadcn `--chart-1` to `--chart-5`). */
+export const chartSeriesV3 = {
+  light: [p.gray[950], p.orange[500], p.stone[600], p.blue[500], p.green[600]],
+  dark: [p.stone[50], p.orange[400], p.stone[650], p.blue[400], p.green[500]],
+} as const;
+
+/**
+ * v2 role name -> the v3 role it is an alias of. The CSS emits `--ll-color-<v2>: var(--<v3>)` for these, and
+ * the TS values below are read from the v3 table, so web and native cannot drift. Removed in the final sweep.
+ */
+export const v2Alias = {
+  bg: "background",
+  bgSubtle: "muted",
+  bgMuted: "accent",
+  fg: "foreground",
+  fgMuted: "mutedForeground",
+  fgSubtle: "subtleForeground",
+  line: "border",
+  lineStrong: "input",
+  accent: "points",
+  accentText: "pointsText",
+  accentSoft: "pointsSoft",
+  onAccent: "pointsForeground",
+  positive: "success",
+  negative: "destructive",
+  location: "info",
+  focusRing: "ring",
+  qrFg: "qrFg",
+  qrBg: "qrBg",
+} as const satisfies Partial<Record<string, RoleV3>>;
+
+const fromV3 = (r: RolesV3) => ({
+  bg: r.background,
+  bgSubtle: r.muted,
+  bgMuted: r.accent,
+  fg: r.foreground,
+  fgMuted: r.mutedForeground,
+  fgSubtle: r.subtleForeground,
+  line: r.border,
+  lineStrong: r.input,
+  accent: r.points,
+  accentText: r.pointsText,
+  accentSoft: r.pointsSoft,
+  onAccent: r.pointsForeground,
+  positive: r.success,
+  negative: r.destructive,
+  location: r.info,
+  qrFg: r.qrFg,
+  qrBg: r.qrBg,
+});
+
+/**
+ * v2 `positiveText` is NOT an alias of `successText`: the strategy's #15803D is 4.2:1 on the v3 hover surface (`accent`, #EEEBE6),
+ * and v2 promised 4.5:1 on bgMuted. It keeps its v2 value (green 800) until the sweep; `successText` is for background and muted only.
+ */
+const v2Light = {
+  ...fromV3(v3Light),
+  positiveText: p.green[800],
+  chrome: "rgba(255, 255, 255, 0.8)",
+  overlay: "rgba(11, 11, 12, 0.4)",
 } as const;
 
 const v2Dark = {
-  bg: p.gray[950],
-  bgSubtle: p.gray[900],
-  bgMuted: p.gray[850],
-  fg: p.gray[50],
-  fgMuted: p.gray[650],
-  fgSubtle: p.gray[550],
-  line: p.gray[800],
-  lineStrong: p.gray[500],
-  accent: p.orange[400],
-  accentText: p.orange[400],
-  accentSoft: p.orange[950],
-  onAccent: p.gray[950],
-  positive: p.green[500],
+  ...fromV3(v3Dark),
   positiveText: p.green[500],
-  negative: p.red[400],
-  location: p.blue[400],
-  chrome: "rgba(22, 22, 24, 0.8)",
+  chrome: "rgba(22, 20, 18, 0.8)",
   overlay: "rgba(0, 0, 0, 0.6)",
-  qrFg: "#000000",
-  qrBg: "#FFFFFF",
 } as const;
 
 type V2 = { [K in keyof typeof v2Light]: string };
@@ -280,4 +454,45 @@ export const contrastPairs: ContrastPair[] = [
   { fg: "onAccentSubtle", bg: "accentSubtle", min: TEXT, note: "Legacy reward-ready chip" },
   { fg: "onNeutralSubtle", bg: "neutralSubtle", min: TEXT, note: "Legacy neutral chip" },
   { fg: "onDisabled", bg: "disabledBg", min: UI, note: "Disabled control label (exempt; held to 3:1)" },
+];
+
+/** A v3 foreground/background pair (section 5.1 of v3-strategy.md). `themes` limits a pair to one theme. */
+export interface ContrastPairV3 {
+  fg: RoleV3;
+  bg: RoleV3;
+  min: number;
+  note: string;
+  themes?: ThemeName[];
+}
+
+const textOnV3 = (bgs: RoleV3[], fgs: RoleV3[], note: string, themes?: ThemeName[]): ContrastPairV3[] =>
+  bgs.flatMap((bg) => fgs.map((fg) => ({ fg, bg, min: TEXT, note, ...(themes ? { themes } : {}) })));
+
+/**
+ * Every v3 pair the components may use. Add a pair here before using it in a component; the test asserts
+ * each one in light and dark. Numbers in the notes are the ratios computed in v3-strategy.md section 5.1.
+ */
+export const contrastPairsV3: ContrastPairV3[] = [
+  ...textOnV3(["background", "card", "popover", "muted", "accent"], ["foreground"], "Primary text on every surface (19.7 / 17.7 on background)"),
+  ...textOnV3(["background", "muted", "accent"], ["mutedForeground"], "Secondary text and placeholders (5.6 / 5.1 / 4.7 light, 7.8 / 6.9 dark)"),
+  { fg: "primaryForeground", bg: "primary", min: TEXT, note: "The one black primary button label" },
+  { fg: "sidebarForeground", bg: "sidebar", min: TEXT, note: "Sidebar row text" },
+  { fg: "sidebarForeground", bg: "sidebarAccent", min: TEXT, note: "Active sidebar row text" },
+  ...textOnV3(["background", "pointsSoft"], ["pointsText"], "Small orange text (5.2 / 4.7 light, 7.5 / 6.6 dark)"),
+  ...textOnV3(["background", "muted"], ["successText"], "Positive text (5.0 / 4.6 light, 11.1 dark)"),
+  ...textOnV3(["background", "infoSoft"], ["infoText"], "Info text (6.7 / 6.1 light, 9.2 / 8.0 dark)"),
+  ...textOnV3(["background"], ["warningText"], "Warning text (5.0 light, 11.6 dark)"),
+  { fg: "destructive", bg: "background", min: TEXT, note: "Inline error text (4.8 light, 7.0 dark)" },
+  { fg: "background", bg: "destructive", min: TEXT, note: "White on destructive fill (4.8)", themes: ["light"] },
+  { fg: "qrFg", bg: "qrBg", min: 15, note: "QR modules: always black on white" },
+  // Non-text UI (3:1)
+  { fg: "input", bg: "background", min: UI, note: "Form-control outline (3.6 light, 4.4 dark)" },
+  { fg: "input", bg: "muted", min: UI, note: "Form-control outline on a grouped surface" },
+  { fg: "ring", bg: "background", min: UI, note: "Focus ring" },
+  { fg: "points", bg: "background", min: UI, note: "Dot or number >= 17px (3.1 light)" },
+  { fg: "pointsForeground", bg: "points", min: UI, note: "Check on a filled stamp (large or icon only)" },
+  { fg: "success", bg: "background", min: UI, note: "Dot (3.3 light)" },
+  { fg: "info", bg: "background", min: UI, note: "Dot (4.0 light)" },
+  { fg: "warning", bg: "background", min: UI, note: "Dot (3.2 light)" },
+  { fg: "subtleForeground", bg: "background", min: 3, note: "Disabled only: 3.6 light, fails 4.5 by design" },
 ];

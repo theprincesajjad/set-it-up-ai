@@ -1,7 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
+import { Card as CardPrimitive } from "@/components/primitives/card";
 import { cn } from "@/lib/cn";
+import { cn as merge } from "@/lib/utils";
 
 export interface CardProps extends HTMLAttributes<HTMLElement> {
   /**
@@ -17,6 +19,14 @@ export interface CardProps extends HTMLAttributes<HTMLElement> {
 }
 
 const pad = { none: "", sm: "p-3", md: "p-4", lg: "p-5 md:p-6" };
+
+/**
+ * v3 (docs/design/v3-strategy.md section 6, row 6): a `div` card renders the shadcn `Card` from components/primitives. The primitive
+ * is a flex column with a ring, a clipped overflow, a 14px text size and vertical padding; v2 cards are blocks with a hairline
+ * border, visible overflow and inherited text, so these cancel the differences. Cards with `href` or a non-div `as` render their
+ * own element (the primitive is a div only), with the same classes.
+ */
+const PRIMITIVE_RESET = "block gap-0 overflow-visible py-0 ring-0 text-[length:inherit]";
 
 export function Card({ tone = "raised", padding = "md", href, as = "div", className, children, ...rest }: CardProps) {
   const As = as as "div";
@@ -34,6 +44,12 @@ export function Card({ tone = "raised", padding = "md", href, as = "div", classN
       <Link href={href} className={cls}>
         {children}
       </Link>
+    );
+  if (as === "div")
+    return (
+      <CardPrimitive className={merge(PRIMITIVE_RESET, cls)} {...rest}>
+        {children}
+      </CardPrimitive>
     );
   return (
     <As className={cls} {...rest}>

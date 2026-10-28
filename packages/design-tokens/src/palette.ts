@@ -28,6 +28,26 @@ export const palette = {
     900: "#161618", // bg-subtle (dark)
     950: "#0B0B0C", // fg (light) / bg (dark): ink
   },
+  /**
+   * v3 warm stone neutrals (docs/design/v3-strategy.md section 5). The v2 role names
+   * resolve to these. `gray` above stays for the map style and anything that needs the cool ramp.
+   */
+  stone: {
+    0: "#FFFFFF", // background, card, popover (light)
+    25: "#FBF9F6", // paper (light)
+    50: "#F6F4F1", // muted, secondary, sidebar (light) / foreground (dark)
+    100: "#EEEBE6", // accent (hover surface), sidebar-accent (light)
+    150: "#E7E3DD", // border (light)
+    400: "#8A8680", // input, subtle-foreground (light)
+    600: "#6B6762", // muted-foreground (light)
+    550: "#7C7770", // input, subtle-foreground (dark)
+    650: "#A8A39C", // muted-foreground (dark)
+    750: "#2C2926", // border (dark)
+    800: "#262320", // accent, sidebar-accent (dark)
+    850: "#1C1A18", // muted, secondary (dark)
+    900: "#161412", // card, popover, sidebar (dark)
+    950: "#0E0D0C", // background, paper (dark)
+  },
   orange: {
     50: "#FFF1EA", // accent-soft (light)
     400: "#FF7A45", // accent (dark), accent-text (dark)
@@ -37,9 +57,11 @@ export const palette = {
     950: "#2A1710", // accent-soft (dark)
   },
   green: {
+    400: "#4ADE80", // success-text (dark)
     500: "#22C55E", // positive (dark), positive-text (dark)
     600: "#16A34A", // positive (light): dots and icons (3:1)
-    800: "#166534", // positive-text (light): small text, 4.5:1 or better on every background
+    700: "#15803D", // success-text (light)
+    800: "#166534", // v2 positive-text (light): small text, 4.5:1 or better on every background
   },
   red: {
     400: "#F87171", // negative (dark)
@@ -47,8 +69,17 @@ export const palette = {
     700: "#B91C1C", // destructive hover (light)
   },
   blue: {
-    400: "#4C8DF8", // location (dark)
-    500: "#2F7BF6", // location (light)
+    50: "#EFF4FF", // info-soft (light)
+    300: "#8DB2FF", // info-text (dark)
+    400: "#4C8DF8", // location, info (dark)
+    500: "#2F7BF6", // location, info (light)
+    700: "#1D4ED8", // info-text (light)
+    950: "#111C33", // info-soft (dark)
+  },
+  amber: {
+    400: "#FBBF24", // warning, warning-text (dark)
+    600: "#D97706", // warning (light)
+    700: "#B45309", // warning-text (light)
   },
   map: {
     land: "#F2F2F0",

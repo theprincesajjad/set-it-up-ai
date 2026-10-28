@@ -28,8 +28,55 @@
   --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--ll-font-mono);
 
-  /* Semantic colours (v2): bg-bg, bg-bg-subtle, text-fg, text-fg-muted, border-line, text-accent-text, bg-accent-soft ...
-   * v1 names (canvas, surface, brand, ...) still resolve, to v2 values. Deprecated. */
+  /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,
+   *   bg-points, text-points-text, bg-points-soft, bg-success, bg-info, bg-warning, bg-paper ... (the shadcn names).
+   * v2 names (bg-bg, text-fg, border-line, text-accent-text, bg-accent-soft ...) and v1 names (canvas, surface, brand ...)
+   * still resolve, as aliases. Deprecated; removed in the final sweep.
+   * COMPAT: "accent" is still the v2 orange (bg-accent, text-accent) until the final sweep renames those call sites to
+   * "points". shadcn's hover surface is exposed as bg-hover / text-hover-foreground; `pnpm --filter @ll/web shadcn:fix`
+   * rewrites accent -> hover in components/primitives after every `shadcn add`. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-points: var(--points);
+  --color-points-text: var(--points-text);
+  --color-points-soft: var(--points-soft);
+  --color-points-foreground: var(--points-foreground);
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-info: var(--info);
+  --color-info-text: var(--info-text);
+  --color-info-soft: var(--info-soft);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-paper: var(--paper);
+  --color-hover: var(--accent);
+  --color-hover-foreground: var(--accent-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* v2 and v1 names (aliases) */
   --color-bg: var(--ll-color-bg);
   --color-bg-subtle: var(--ll-color-bg-subtle);
   --color-bg-muted: var(--ll-color-bg-muted);
@@ -43,13 +90,13 @@
   --color-accent-soft: var(--ll-color-accent-soft);
   --color-on-accent: var(--ll-color-on-accent);
   --color-positive: var(--ll-color-positive);
-  --color-positive-text: var(--ll-color-positive-text);
   --color-negative: var(--ll-color-negative);
   --color-location: var(--ll-color-location);
-  --color-chrome: var(--ll-color-chrome);
-  --color-overlay: var(--ll-color-overlay);
   --color-qr-fg: var(--ll-color-qr-fg);
   --color-qr-bg: var(--ll-color-qr-bg);
+  --color-positive-text: var(--ll-color-positive-text);
+  --color-chrome: var(--ll-color-chrome);
+  --color-overlay: var(--ll-color-overlay);
   --color-canvas: var(--ll-color-canvas);
   --color-canvas-subtle: var(--ll-color-canvas-subtle);
   --color-surface: var(--ll-color-surface);
@@ -59,7 +106,6 @@
   --color-fg-inverse: var(--ll-color-fg-inverse);
   --color-fg-link: var(--ll-color-fg-link);
   --color-fg-disabled: var(--ll-color-fg-disabled);
-  --color-border: var(--ll-color-border);
   --color-border-strong: var(--ll-color-border-strong);
   --color-focus-ring: var(--ll-color-focus-ring);
   --color-brand: var(--ll-color-brand);
@@ -74,11 +120,9 @@
   --color-on-accent-subtle: var(--ll-color-on-accent-subtle);
   --color-neutral-subtle: var(--ll-color-neutral-subtle);
   --color-on-neutral-subtle: var(--ll-color-on-neutral-subtle);
-  --color-success: var(--ll-color-success);
   --color-on-success: var(--ll-color-on-success);
   --color-success-subtle: var(--ll-color-success-subtle);
   --color-on-success-subtle: var(--ll-color-on-success-subtle);
-  --color-warning: var(--ll-color-warning);
   --color-on-warning: var(--ll-color-on-warning);
   --color-warning-subtle: var(--ll-color-warning-subtle);
   --color-on-warning-subtle: var(--ll-color-on-warning-subtle);
@@ -87,7 +131,6 @@
   --color-on-danger: var(--ll-color-on-danger);
   --color-danger-subtle: var(--ll-color-danger-subtle);
   --color-on-danger-subtle: var(--ll-color-on-danger-subtle);
-  --color-info: var(--ll-color-info);
   --color-on-info: var(--ll-color-on-info);
   --color-info-subtle: var(--ll-color-info-subtle);
   --color-on-info-subtle: var(--ll-color-on-info-subtle);
@@ -115,6 +158,14 @@
   --color-vertical-tiffin-on-accent: var(--ll-vertical-tiffin-on-accent);
   --color-vertical-tiffin-tint: var(--ll-vertical-tiffin-tint);
   --color-vertical-tiffin-ink: var(--ll-vertical-tiffin-ink);
+  --color-vertical-caterer-accent: var(--ll-vertical-caterer-accent);
+  --color-vertical-caterer-on-accent: var(--ll-vertical-caterer-on-accent);
+  --color-vertical-caterer-tint: var(--ll-vertical-caterer-tint);
+  --color-vertical-caterer-ink: var(--ll-vertical-caterer-ink);
+  --color-vertical-banquet-hall-accent: var(--ll-vertical-banquet-hall-accent);
+  --color-vertical-banquet-hall-on-accent: var(--ll-vertical-banquet-hall-on-accent);
+  --color-vertical-banquet-hall-tint: var(--ll-vertical-banquet-hall-tint);
+  --color-vertical-banquet-hall-ink: var(--ll-vertical-banquet-hall-ink);
   --color-vertical-bakery-accent: var(--ll-vertical-bakery-accent);
   --color-vertical-bakery-on-accent: var(--ll-vertical-bakery-on-accent);
   --color-vertical-bakery-tint: var(--ll-vertical-bakery-tint);
@@ -197,9 +248,11 @@
   --color-vertical-other-ink: var(--ll-vertical-other-ink);
 
   /* Charts */
-  --color-chart-1: var(--ll-chart-1);
-  --color-chart-2: var(--ll-chart-2);
-  --color-chart-3: var(--ll-chart-3);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --color-chart-seq-1: var(--ll-chart-seq-1);
   --color-chart-seq-2: var(--ll-chart-seq-2);
   --color-chart-seq-3: var(--ll-chart-seq-3);
@@ -225,6 +278,19 @@
   --shadow-md: var(--ll-shadow-md);
   --shadow-lg: var(--ll-shadow-lg);
   --shadow-xl: var(--ll-shadow-xl);
+  --shadow-sheet: var(--ll-shadow-sheet);
+
+  /* Radii (v3): rounded-sm 6, md 8, lg 10 (= rounded-input), xl 14, 2xl 18 (shadcn calc from --radius); rounded-card 16, rounded-sheet 24 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-input: 10px;
+  --radius-card: 16px;
+  --radius-sheet: 24px;
 }
 
 @theme {
@@ -243,20 +309,43 @@
   --color-ll-gray-850: #202023;
   --color-ll-gray-900: #161618;
   --color-ll-gray-950: #0B0B0C;
+  --color-ll-stone-0: #FFFFFF;
+  --color-ll-stone-25: #FBF9F6;
+  --color-ll-stone-50: #F6F4F1;
+  --color-ll-stone-100: #EEEBE6;
+  --color-ll-stone-150: #E7E3DD;
+  --color-ll-stone-400: #8A8680;
+  --color-ll-stone-550: #7C7770;
+  --color-ll-stone-600: #6B6762;
+  --color-ll-stone-650: #A8A39C;
+  --color-ll-stone-750: #2C2926;
+  --color-ll-stone-800: #262320;
+  --color-ll-stone-850: #1C1A18;
+  --color-ll-stone-900: #161412;
+  --color-ll-stone-950: #0E0D0C;
   --color-ll-orange-50: #FFF1EA;
   --color-ll-orange-400: #FF7A45;
   --color-ll-orange-500: #FF5A1F;
   --color-ll-orange-600: #E84E14;
   --color-ll-orange-700: #C2410C;
   --color-ll-orange-950: #2A1710;
+  --color-ll-green-400: #4ADE80;
   --color-ll-green-500: #22C55E;
   --color-ll-green-600: #16A34A;
+  --color-ll-green-700: #15803D;
   --color-ll-green-800: #166534;
   --color-ll-red-400: #F87171;
   --color-ll-red-600: #DC2626;
   --color-ll-red-700: #B91C1C;
+  --color-ll-blue-50: #EFF4FF;
+  --color-ll-blue-300: #8DB2FF;
   --color-ll-blue-400: #4C8DF8;
   --color-ll-blue-500: #2F7BF6;
+  --color-ll-blue-700: #1D4ED8;
+  --color-ll-blue-950: #111C33;
+  --color-ll-amber-400: #FBBF24;
+  --color-ll-amber-600: #D97706;
+  --color-ll-amber-700: #B45309;
   --color-ll-map-land: #F2F2F0;
   --color-ll-map-water: #E9F0F5;
   --color-ll-map-park: #EEF3EA;
@@ -358,16 +447,6 @@
   --text-code--line-height: 2.875rem;
   --text-code--font-weight: 700;
   --text-code--letter-spacing: 0.08em;
-
-  /* Radii (v2): rounded-input (10) rounded-card (16) rounded-sheet (24) rounded-full. xs/sm/md = 10, lg = 16, xl = 24 (deprecated). */
-  --radius-input: 10px;
-  --radius-card: 16px;
-  --radius-sheet: 24px;
-  --radius-xs: 10px;
-  --radius-sm: 10px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
 
   /* Motion: ease-out (taps, 150ms), ease-sheet (sheets, 240ms) */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

@@ -38,6 +38,10 @@ export const layout = {
   maxContent: 1200,
   /** Dashboard sidebar width (lg+). */
   sidebar: 248,
+  /** Collapsed sidebar rail (md). */
+  rail: 72,
+  /** Dashboard top bar height. */
+  topBar: 56,
   /** Dashboard sidebar item row height. */
   sidebarRow: 32,
   /** Table row height. */
@@ -72,6 +76,9 @@ export const radii = {
 } as const;
 export type RadiusKey = keyof typeof radii;
 
+/** v3 base radius (shadcn `--radius`, 10 px). sm 6, md 8, lg 10, xl 14 derive from it in CSS (`calc`). `card` 16 and `sheet` 24 stay fixed. */
+export const radiusBase = 10;
+
 export interface NativeShadow {
   shadowColor: string;
   shadowOffset: { width: number; height: number };
@@ -103,6 +110,10 @@ export const shadows = {
   /** @deprecated use float */ xl: FLOAT,
 } as const satisfies Record<string, { css: string; native: NativeShadow }>;
 export type ShadowKey = keyof typeof shadows;
+
+/** v3 bottom-sheet shadow (`shadow-sheet`): the shadow points up. */
+export const shadowSheet = "0 -8px 32px rgba(0, 0, 0, 0.14)";
+export const shadowSheetDark = "0 -8px 32px rgba(0, 0, 0, 0.5)";
 
 /** Dark-mode float: shadows barely read on near-black, so it leans on a deeper, neutral shadow. */
 export const shadowFloatDark = "0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5)";

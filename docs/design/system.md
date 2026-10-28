@@ -1,7 +1,8 @@
 # Design system
 
-Owner: Design. Status: **v2** (Corner-derived). **Spec: [foundations.md](./foundations.md)** —
-it wins over everything below. Tokens: `packages/design-tokens` (`@ll/design-tokens`).
+Owner: Design. Status: **v2 identity on the v3 foundation** (Corner-derived; v3 colour roles and shadcn primitives landed in
+workstream A, see § 0.6). **Spec: [foundations.md](./foundations.md)** — it wins over everything below. Migration plan:
+[v3-strategy.md](./v3-strategy.md); spikes: [v3-spikes.md](./v3-spikes.md). Tokens: `packages/design-tokens` (`@ll/design-tokens`).
 Brand: [brand.md](./brand.md). Copy: [ux-copy.md](./ux-copy.md). Screens: [screens/](./screens/).
 
 Web (Next.js + Tailwind v4) and mobile (Expo / React Native) build **the same component
@@ -21,7 +22,9 @@ names with the same props**. Web components live in `apps/web/src/components/ui/
 ```css
 /* apps/web/src/app/globals.css */
 @import "tailwindcss";
-@import "@ll/design-tokens/theme.css"; /* includes tokens.css, dark variant, utilities */
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@ll/design-tokens/theme.css"; /* includes tokens.css (the v3 variables), dark variant, utilities */
 ```
 
 ```tsx
@@ -32,15 +35,19 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], weight: ["700", "800
 <html lang="en-CA" className={`${inter.variable} ${bricolage.variable}`}> <body className="bg-bg text-fg font-sans text-body">
 ```
 
-- Colour utilities (v2): `bg-bg`, `bg-bg-subtle`, `bg-bg-muted`, `text-fg`, `text-fg-muted`,
-  `text-fg-subtle`, `border-line`, `border-line-strong`, `bg-accent`, `text-accent-text`,
-  `bg-accent-soft`, `text-on-accent`, `bg-positive`, `text-negative`, `bg-location`, `bg-chrome`.
-  Primary button: `bg-fg text-bg`.
+- Colour utilities (v3, new code uses these): `bg-background`, `text-foreground`, `bg-card`, `bg-muted`, `text-muted-foreground`,
+  `border-border`, `border-input`, `bg-primary text-primary-foreground`, `bg-hover` (hover surface), `text-destructive`,
+  `bg-points`, `text-points-text`, `bg-points-soft`, `text-points-foreground`, `bg-success`, `text-success-text`, `bg-info`,
+  `text-info-text`, `bg-info-soft`, `bg-warning`, `bg-paper`, `bg-sidebar`, `bg-sidebar-accent`, `bg-chrome`.
+  Primary button: `bg-primary text-primary-foreground`.
+- Colour utilities (v2 aliases, still compile; the final sweep renames them): `bg-bg`, `bg-bg-subtle`, `bg-bg-muted`, `text-fg`,
+  `text-fg-muted`, `text-fg-subtle`, `border-line`, `border-line-strong`, `bg-accent` (**the orange**, = `bg-points`),
+  `text-accent-text`, `bg-accent-soft`, `text-on-accent`, `bg-positive`, `text-negative`, `bg-location`. v1 names (`brand`, `surface`, `*-subtle`) too.
 - Type: `text-caption` 11 · `text-meta` 13 · `text-body` 15 · `text-headline` 17 · `text-title` 22 ·
   `text-large-title` 28 · `text-display-number` 40; plus `text-place-name`, `text-place-subtitle italic`,
   `text-map-label` / `text-category-label` (with `font-display lowercase`). Numbers are tabular globally.
-- Radii: `rounded-input` 10 · `rounded-card` 16 · `rounded-sheet` 24 · `rounded-full`.
-- Shadow: `shadow-float` only (map chrome, sheets, popovers, toasts). Cards: `hairline` / `border-line`.
+- Radii: `rounded-lg` = `rounded-input` 10 (`sm` 6, `md` 8, `xl` 14 derive from `--radius`) · `rounded-card` 16 · `rounded-sheet` 24 · `rounded-full`.
+- Shadow: `shadow-float` (map chrome, popovers, toasts) and `shadow-sheet` (bottom sheets). Cards: `hairline` / `border-border`.
 - Frosted chrome: `chrome` utility (bg 80% + `backdrop-blur-chrome` 20 px + float shadow). Map chrome only.
 - Motion: `ease-out` + `duration-150` for taps; `ease-sheet` + `duration-240` (or `animate-sheet-up`) for sheets.
 - Extras: `touch-target` (44), `touch-target-counter` (72), `touch-target-kiosk` (88), `focus-ring`,
@@ -74,16 +81,17 @@ const c = colors[scheme];                          // counter / kiosk default "l
 
 | Token group | Values (light / dark) |
 | --- | --- |
-| Backgrounds | `bg` #FFFFFF / #0B0B0C · `bgSubtle` #F5F5F4 / #161618 · `bgMuted` #EDEDEC / #202023 |
-| Text | `fg` #0B0B0C / #F5F5F4 · `fgMuted` #6B6B70 / #A1A1A8 · `fgSubtle` #9A9AA0 / #6E6E76 |
-| Lines | `line` #E8E8E6 / #2A2A2E · `lineStrong` #8A8A90 / #7A7A82 (form-control outlines, 3:1) |
+| Backgrounds (v3 `background`, `muted`, `accent`) | `bg` #FFFFFF / #0E0D0C · `bgSubtle` #F6F4F1 / #1C1A18 · `bgMuted` #EEEBE6 / #262320 (the hover surface) |
+| Text | `fg` #0B0B0C / #F6F4F1 · `fgMuted` #6B6762 / #A8A39C · `fgSubtle` #8A8680 / #7C7770 (disabled only) |
+| Lines | `line` #E7E3DD / #2C2926 · `lineStrong` #8A8680 / #7C7770 (form-control outlines, 3:1) |
 | Accent | `accent` #FF5A1F / #FF7A45 (fills, stamps, large numbers) · `accentText` #C2410C / #FF7A45 (small text) · `accentSoft` #FFF1EA / #2A1710 · `onAccent` #FFFFFF / #0B0B0C |
 | Status | `positive` #16A34A / #22C55E · `negative` #DC2626 / #F87171 · `location` #2F7BF6 / #4C8DF8 |
-| Chrome | `chrome` rgba(255,255,255,.8) / rgba(22,22,24,.8) + 20 px blur |
+| New in v3 | `info` #2F7BF6 / #4C8DF8 (+ text, soft) · `warning` #D97706 / #FBBF24 (+ text) · `paper` #FBF9F6 / #0E0D0C · `chart-1` to `chart-5` · `sidebar*` |
+| Chrome | `chrome` rgba(255,255,255,.8) / rgba(22,20,18,.8) + 20 px blur |
 | Type | Bricolage Grotesque 700/800 (display, lowercase labels) · Inter 400/500/600 web · system font native · 11/13/15/17/22/28/40 · LH 1.3 UI, 1.15 display · −0.01em display |
 | Spacing | 4 px grid; gutter 16 mobile, 24–32 web |
-| Radii | 10 input/small button · 16 card · 24 sheet · full capsules/chips/chrome/avatars |
-| Shadow | `float`: `0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.08)` (only floating things) |
+| Radii | `--radius` 10 input/small button (sm 6, md 8, xl 14 derive) · 16 card · 24 sheet · full capsules/chips/chrome/avatars |
+| Shadow | `float`: `0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.08)` (only floating things) · `sheet`: `0 -8px 32px rgba(0,0,0,.14)` |
 | Icons | Lucide 20/24, stroke 1.75 · category objects 28 (pin) / 40 (rail) |
 | Touch | ≥ 44 · counter keys 72 · kiosk 88 · gap 8 |
 | Motion | 150 ms ease-out (taps) · 240 ms spring (sheets) · nothing bounces twice |
@@ -107,7 +115,7 @@ Every pair in `contrastPairs` is tested (text ≥ 4.5:1, UI ≥ 3:1). **Add a pa
 | ShopTile / MapPin | round white bubble (`shadow-float`) with photo or category object; bold name + italic `fgMuted` subtitle. No teardrops, no coloured pins. Clusters: black circle. |
 | Stamps / points | filled stamp = `accent`, empty = 1.5 px `lineStrong`. Balances right-aligned in `accentText` (or `accent` ≥ 17 px). |
 | Stats / charts | plain numbers in one bordered block split by hairlines; `fg` line/bars, `accent` only for the highlighted series; light grid. |
-| Dashboard nav | `bgSubtle` sidebar, 32 px rows, active = `bgMuted`. |
+| Dashboard nav | `sidebar` (= `bgSubtle`), 32 px rows, active = `sidebar-accent` (= `bgMuted`). |
 | Empty state | one sentence + one action, no illustration of people. |
 
 ### 0.5 Global rules
@@ -121,6 +129,25 @@ Every pair in `contrastPairs` is tested (text ≥ 4.5:1, UI ≥ 3:1). **Add a pa
 7. **Numbers:** tabular; `1,250`; `$4.50`; `120 pts` (or the program's terminology).
 8. **Dark mode** everywhere except printed artifacts and QR codes (always black on white).
 9. Run the [anti-slop checklist](./foundations.md#anti-slop-checklist-review-every-screen-against-this) on every screen.
+
+### 0.6 The v3 component layer (workstream A)
+
+- **Primitives:** shadcn/ui on **Base UI** (style `base-nova`, `rtl: true`, CLI 4.23.0) in `apps/web/src/components/primitives/*` (lower-case file
+  names, so they never collide with `ui/Button.tsx`). `components.json` sets `aliases.ui` to `@/components/primitives` and `aliases.utils` to
+  `@/lib/utils`. Add more with `pnpm dlx shadcn@4.23.0 add <name> -o` and then **`pnpm --filter @ll/web shadcn:fix`**, which points `cn`
+  at our configured instance and renames shadcn's hover surface `accent` to `hover` (see foundations.md, "Collision").
+  Do not hand-edit primitives beyond that; wrap them.
+- **`cn`:** two helpers on purpose. `@/lib/cn` only joins (the ~300 existing call sites keep rendering exactly as before). `@/lib/utils` is the shadcn
+  `cn` package configured with our token names (it resolves conflicts: `cn("bg-fg bg-points")` is `bg-points`, and `text-meta text-fg` keeps both).
+  Primitives and wrappers that override primitive classes use `@/lib/utils`. `shadcn migrate cn` found nothing to migrate (no `clsx` or `tailwind-merge`).
+- **Wrappers:** `ui/Button.tsx` and `ui/Card.tsx` (div cards) render the primitives with identical props and the v2 look (the wrapper passes
+  the v2 classes over the primitive's and cancels primitive defaults that have no v2 equivalent). `ui/Link.tsx` (`TextLink`) stays custom: there is no
+  link primitive. Import paths do not move; `ui/index.ts` is frozen.
+- **Dashboard kit:** `components/dashboard/kit.tsx` is a barrel over `kit/page.tsx` (B), `kit/data.tsx` (C) and `kit/forms.tsx` (D).
+  `pnpm --filter @ll/web check:kit` proves the split changed no export and no code line.
+- **Lint:** `@shadcn/lint` 0.2.3 runs inside `pnpm --filter @ll/web lint` as **warnings**: `no-raw-colors`, `no-arbitrary-values`,
+  `no-inline-styles` (primitives exempt). The final sweep makes them errors.
+- **Toast:** the decision is shadcn Toast (Base UI), not Sonner; numbers in [v3-spikes.md](./v3-spikes.md). `ui/Toast.tsx` keeps its API until workstream D.
 
 ---
 

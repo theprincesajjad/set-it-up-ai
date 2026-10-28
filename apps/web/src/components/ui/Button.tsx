@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Button as ButtonPrimitive } from "@/components/primitives/button";
 import { cn } from "@/lib/cn";
+import { cn as merge } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "tonal" | "ghost" | "danger" | "accent" | "inverse";
@@ -20,6 +22,13 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 }
 
 /**
+ * v3 (docs/design/v3-strategy.md section 6, row 5): a thin wrapper over the shadcn `Button` (Base UI) in components/primitives.
+ * Props and rendered output are unchanged from v2. The primitive supplies the element, focus and disabled handling; the classes
+ * below (v2 variants and sizes, now on the v3 tokens) win over the primitive's own look through `merge`, and `PRIMITIVE_RESET`
+ * cancels the primitive defaults that have no v2 equivalent. The link branch (`href`) still renders a real <a> / next Link, not a
+ * button with role="button", so link semantics are unchanged.
+ * Later: map variants onto shadcn's (default, outline, ghost, destructive), add the `counter` and `kiosk` sizes, drop `accent`.
+ *
  * v2 (foundations.md): primary is black (inverts in dark mode) and there is one per screen.
  * Secondary is a white hairline button, tonal a quiet grey fill, ghost text-only.
  * Accent is reserved for points/rewards and is a soft fill, never a loud orange slab.
@@ -29,8 +38,8 @@ const variants: Record<ButtonVariant, string> = {
   secondary: "bg-bg text-fg border border-line hover:bg-bg-subtle active:bg-bg-muted",
   tonal: "bg-bg-subtle text-fg hover:bg-bg-muted active:bg-bg-muted",
   ghost: "bg-transparent text-fg hover:bg-bg-subtle active:bg-bg-muted",
-  danger: "bg-negative text-[#FFFFFF] hover:brightness-95 dark:text-bg",
-  accent: "bg-accent-soft text-accent-text hover:brightness-[0.97]",
+  danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 dark:text-bg",
+  accent: "bg-accent-soft text-accent-text hover:bg-accent-soft hover:brightness-[0.97]",
   /** On a black band (marketing CTA): white fill, black text. */
   inverse: "bg-bg text-fg hover:bg-bg-subtle",
 };
@@ -42,6 +51,9 @@ const sizes: Record<ButtonSize, string> = {
   lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px]",
   counter: "min-h-[72px] px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px]",
 };
+
+/** Primitive defaults with no v2 equivalent: a 1px transparent border, the 3px focus ring, the 1px press nudge, 50% disabled opacity. */
+const PRIMITIVE_RESET = "border-0 bg-clip-border focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100";
 
 export function buttonClasses({ variant = "primary", size = "md", fullWidth, disabled }: Pick<ButtonProps, "variant" | "size" | "fullWidth" | "disabled"> = {}) {
   return cn(
@@ -93,9 +105,9 @@ export function Button({
   }
 
   return (
-    <button
+    <ButtonPrimitive
       type={type}
-      className={cls}
+      className={merge(PRIMITIVE_RESET, disabled && "hover:bg-bg-muted", cls)}
       aria-disabled={disabled || undefined}
       aria-busy={loading || undefined}
       disabled={disabled}
@@ -103,7 +115,7 @@ export function Button({
       {...rest}
     >
       {content}
-    </button>
+    </ButtonPrimitive>
   );
 }
 

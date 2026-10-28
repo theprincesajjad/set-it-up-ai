@@ -1,7 +1,17 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import "@ll/design-tokens/theme.css";
 
-/* App-level additions on top of the v2 tokens (docs/design/foundations.md). */
+/*
+ * v3 tokens (docs/design/v3-strategy.md section 5) are generated into @ll/design-tokens/theme.css and tokens.css from
+ * packages/design-tokens/src/colors.ts: --background, --foreground, --card, --muted, --accent (hover surface),
+ * --border, --input, --ring, --sidebar-*, --points*, --success*, --info*, --warning*, --paper, --chart-1..5, --radius.
+ * Light is the default; dark follows the OS unless <html data-theme="light|dark"> forces it. Do not hand-copy them here.
+ * The v2 names (--ll-color-*, bg-bg, text-fg, border-line ...) are aliases until the final sweep.
+ *
+ * App-level additions on top of the tokens (docs/design/foundations.md).
+ */
 @theme {
   /* Marketing headline sizes (Bricolage, display only). */
   --text-mkt-xl: 4.5rem;

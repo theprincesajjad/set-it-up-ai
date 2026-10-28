@@ -3,7 +3,7 @@
  * output to disk; tests call these directly to check the committed css/ is fresh.
  */
 import { chartColors } from "./charts.js";
-import { colors, type ColorRoles } from "./colors.js";
+import { chartSeriesV3, colors, rolesV3, v2Alias, type ColorRoles, type RolesV3 } from "./colors.js";
 import { palette } from "./palette.js";
 import {
   blur,
@@ -16,7 +16,10 @@ import {
   iconStroke,
   layout,
   radii,
+  radiusBase,
   shadowFloatDark,
+  shadowSheet,
+  shadowSheetDark,
   shadows,
   spacing,
   touchTargets,
@@ -35,12 +38,23 @@ const HEADER = `/*
  */
 `;
 
+/** `--background`, `--muted-foreground`, `--points-text` ... (the v3 roles, shadcn names). */
+function roleVarsV3(r: RolesV3, indent = "  "): string[] {
+  return Object.entries(r).map(([k, v]) => `${indent}--${kebab(k)}: ${v};`);
+}
+
+/** `--ll-color-*`: aliases of the v3 roles where one exists (v2 names), values otherwise (chrome, overlay, v1 names). */
 function colorVars(c: ColorRoles, indent = "  "): string[] {
-  return Object.entries(c).map(([k, v]) => `${indent}--ll-color-${kebab(k)}: ${v};`);
+  const alias = v2Alias as Record<string, string>;
+  return Object.entries(c).map(([k, v]) => `${indent}--ll-color-${kebab(k)}: ${alias[k] ? `var(--${kebab(alias[k]!)})` : v};`);
 }
 
 function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
-  const out = [...colorVars(colors[theme], indent)];
+  const out = [
+    ...roleVarsV3(rolesV3[theme], indent),
+    ...chartSeriesV3[theme].map((c, i) => `${indent}--chart-${i + 1}: ${c};`),
+    ...colorVars(colors[theme], indent),
+  ];
   // Deprecated: verticals are neutral in v2 (same values for every vertical). Kept so old class names resolve.
   for (const v of Object.values(verticalVisuals)) {
     const c = v[theme];
@@ -51,7 +65,7 @@ function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
     out.push(`${indent}--ll-vertical-${n}-ink: ${c.ink};`);
   }
   const ch = chartColors[theme];
-  ch.categorical.forEach((c, i) => out.push(`${indent}--ll-chart-${i + 1}: ${c};`));
+  ch.categorical.forEach((_, i) => out.push(`${indent}--ll-chart-${i + 1}: var(--chart-${i + 1});`));
   ch.sequential.forEach((c, i) => out.push(`${indent}--ll-chart-seq-${i + 1}: ${c};`));
   for (const k of ["line", "highlight", "you", "network", "grid", "axis"] as const) out.push(`${indent}--ll-chart-${k}: ${ch[k]};`);
   for (const [k, v] of Object.entries(ch.status)) out.push(`${indent}--ll-chart-status-${k}: ${v};`);
@@ -59,6 +73,7 @@ function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
     const css = theme === "dark" && v.css !== "none" ? shadowFloatDark : v.css;
     out.push(`${indent}--ll-shadow-${k}: ${css};`);
   }
+  out.push(`${indent}--ll-shadow-sheet: ${theme === "dark" ? shadowSheetDark : shadowSheet};`);
   return out;
 }
 
@@ -68,6 +83,9 @@ function staticVars(indent = "  "): string[] {
   for (const [k, v] of Object.entries(spacing)) out.push(`${indent}--ll-space-${String(k).replace(".", "_")}: ${rem(v)};`);
   for (const [k, v] of Object.entries(layout)) out.push(`${indent}--ll-layout-${kebab(k)}: ${px(v)};`);
   for (const [k, v] of Object.entries(radii)) out.push(`${indent}--ll-radius-${k}: ${k === "full" ? "9999px" : px(v)};`);
+  out.push(`${indent}--radius: ${rem(radiusBase)};`);
+  out.push(`${indent}--sidebar-width: ${rem(layout.sidebar)};`);
+  out.push(`${indent}--sidebar-width-icon: ${rem(layout.rail)};`);
   for (const [k, v] of Object.entries(durations)) out.push(`${indent}--ll-duration-${k}: ${v}ms;`);
   for (const [k, v] of Object.entries(easings)) out.push(`${indent}--ll-ease-${k}: ${v};`);
   for (const [k, v] of Object.entries(zIndex)) out.push(`${indent}--ll-z-${k}: ${v};`);
@@ -150,10 +168,25 @@ export function buildThemeCss(): string {
     `  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;`,
     `  --font-mono: var(--ll-font-mono);`,
     ``,
-    `  /* Semantic colours (v2): bg-bg, bg-bg-subtle, text-fg, text-fg-muted, border-line, text-accent-text, bg-accent-soft ...`,
-    `   * v1 names (canvas, surface, brand, ...) still resolve, to v2 values. Deprecated. */`,
+    `  /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,`,
+    `   *   bg-points, text-points-text, bg-points-soft, bg-success, bg-info, bg-warning, bg-paper ... (the shadcn names).`,
+    `   * v2 names (bg-bg, text-fg, border-line, text-accent-text, bg-accent-soft ...) and v1 names (canvas, surface, brand ...)`,
+    `   * still resolve, as aliases. Deprecated; removed in the final sweep.`,
+    `   * COMPAT: "accent" is still the v2 orange (bg-accent, text-accent) until the final sweep renames those call sites to`,
+    `   * "points". shadcn's hover surface is exposed as bg-hover / text-hover-foreground; \`pnpm --filter @ll/web shadcn:fix\``,
+    `   * rewrites accent -> hover in components/primitives after every \`shadcn add\`. */`,
   ];
-  for (const k of Object.keys(colors.light)) out.push(`  --color-${kebab(k)}: var(--ll-color-${kebab(k)});`);
+  // v3 roles. "accent" is held back (see COMPAT); v3 names win over v1 names that collide (success, warning, info, border).
+  const V3_HELD = new Set(["accent", "accentForeground", "qrFg", "qrBg"]);
+  const v3Names = new Set<string>(["hover"]);
+  for (const k of Object.keys(rolesV3.light)) {
+    if (V3_HELD.has(k)) continue;
+    v3Names.add(kebab(k));
+    out.push(`  --color-${kebab(k)}: var(--${kebab(k)});`);
+  }
+  out.push(`  --color-hover: var(--accent);`, `  --color-hover-foreground: var(--accent-foreground);`, `  --color-accent-foreground: var(--accent-foreground);`);
+  out.push(``, `  /* v2 and v1 names (aliases) */`);
+  for (const k of Object.keys(colors.light)) if (!v3Names.has(kebab(k))) out.push(`  --color-${kebab(k)}: var(--ll-color-${kebab(k)});`);
   out.push(``, `  /* Deprecated: vertical colours are neutral in v2 (bg-subtle tile, fg glyph). */`);
   for (const v of Object.values(verticalVisuals)) {
     const n = kebab(v.vertical);
@@ -162,13 +195,18 @@ export function buildThemeCss(): string {
     }
   }
   out.push(``, `  /* Charts */`);
-  chartColors.light.categorical.forEach((_, i) => out.push(`  --color-chart-${i + 1}: var(--ll-chart-${i + 1});`));
+  chartSeriesV3.light.forEach((_, i) => out.push(`  --color-chart-${i + 1}: var(--chart-${i + 1});`));
   chartColors.light.sequential.forEach((_, i) => out.push(`  --color-chart-seq-${i + 1}: var(--ll-chart-seq-${i + 1});`));
   for (const k of ["line", "highlight", "you", "network", "grid", "axis", "status-low", "status-building", "status-healthy"]) {
     out.push(`  --color-chart-${k}: var(--ll-chart-${k});`);
   }
   out.push(``, `  /* Elevation: shadow-float is the only v2 shadow (switches in dark mode). sm = none; md/lg/xl = float (deprecated). */`);
   for (const k of Object.keys(shadows)) out.push(`  --shadow-${k}: var(--ll-shadow-${k});`);
+  out.push(`  --shadow-sheet: var(--ll-shadow-sheet);`);
+  out.push(``, `  /* Radii (v3): rounded-sm 6, md 8, lg 10 (= rounded-input), xl 14, 2xl 18 (shadcn calc from --radius); rounded-card 16, rounded-sheet 24 */`);
+  out.push(`  --radius-sm: calc(var(--radius) - 4px);`, `  --radius-md: calc(var(--radius) - 2px);`, `  --radius-lg: var(--radius);`);
+  out.push(`  --radius-xl: calc(var(--radius) + 4px);`, `  --radius-2xl: calc(var(--radius) + 8px);`, `  --radius-3xl: calc(var(--radius) + 12px);`, `  --radius-4xl: calc(var(--radius) + 16px);`);
+  out.push(`  --radius-input: ${px(radii.input)};`, `  --radius-card: ${px(radii.card)};`, `  --radius-sheet: ${px(radii.sheet)};`);
   out.push(`}`, ``);
 
   out.push(`@theme {`);
@@ -185,8 +223,6 @@ export function buildThemeCss(): string {
     out.push(`  --text-${n}--font-weight: ${s.fontWeight};`);
     if (s.letterSpacing !== 0) out.push(`  --text-${n}--letter-spacing: ${s.letterSpacing}em;`);
   }
-  out.push(``, `  /* Radii (v2): rounded-input (10) rounded-card (16) rounded-sheet (24) rounded-full. xs/sm/md = 10, lg = 16, xl = 24 (deprecated). */`);
-  for (const [k, v] of Object.entries(radii)) if (k !== "none" && k !== "full") out.push(`  --radius-${k}: ${px(v)};`);
   out.push(``, `  /* Motion: ease-out (taps, ${durations.tap}ms), ease-sheet (sheets, ${durations.sheet}ms) */`);
   for (const [k, v] of Object.entries(easings)) out.push(`  --ease-${k}: ${v};`);
   out.push(``, `  /* Frosted map chrome: backdrop-blur-chrome */`);

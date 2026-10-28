@@ -104,15 +104,17 @@ Spec: [foundations.md § Colour](./foundations.md#colour). Tokens: `packages/des
 
 | Colour | Light / dark | Means | Use for | Never for |
 | --- | --- | --- | --- | --- |
-| **Ink** `fg` | `#0B0B0C` / `#F5F5F4` | Clarity | Text, icons, **primary buttons (black)**, the one black element per screen, chart lines | — |
-| **White** `bg` | `#FFFFFF` / `#0B0B0C` | Calm | Screens and sheets | Tinted cards |
-| **Greys** `bg-subtle` `bg-muted` `line` | see foundations | Structure | Grouped backgrounds, pressed rows, hairlines | Decoration |
-| **Accent** `accent` | `#FF5A1F` / `#FF7A45` | Points | Stamps, points, "reward ready", activity dots, large balances | Anything that isn't points. Small text (use `accent-text` `#C2410C`) |
-| **Positive** | `#16A34A` / `#22C55E` | Open, up | "Open now" dot, positive deltas | Buttons, cards |
-| **Negative** | `#DC2626` / `#F87171` | Closed, error | Errors, destructive actions, "closed" | Promos, "sale" |
-| **Location** | `#2F7BF6` / `#4C8DF8` | You are here | The user's own location dot only | Links, info |
+| **Ink** `foreground` (v2 `fg`) | `#0B0B0C` / `#F6F4F1` | Clarity | Text, icons, **primary buttons (black)**, the one black element per screen, chart lines | — |
+| **White** `background` (v2 `bg`) | `#FFFFFF` / `#0E0D0C` | Calm | Screens and sheets | Tinted cards |
+| **Warm stone** `muted`, `accent` (hover), `border` (v2 `bg-subtle` `bg-muted` `line`) | `#F6F4F1` `#EEEBE6` `#E7E3DD` / `#1C1A18` `#262320` `#2C2926` | Structure, a corner shop rather than an office | Grouped backgrounds, hover and pressed rows, hairlines | Decoration |
+| **Paper** `paper` | `#FBF9F6` / `#0E0D0C` | The shop window | Customer pass and marketing canvas | Dashboard screens |
+| **Points** `points` (v2 `accent`) | `#FF5A1F` / `#FF7A45` | Points | Stamps, points, "reward ready", activity dots, the dashboard dot that says the shop must act now, large balances | Anything that isn't points. Small text (use `points-text` `#C2410C`) |
+| **Success** `success` (v2 `positive`) | `#16A34A` / `#22C55E` | Open, up, paid | "Open now" dot, positive deltas | Buttons, cards |
+| **Destructive** `destructive` (v2 `negative`) | `#DC2626` / `#F87171` | Closed, error | Errors, destructive actions, "closed" | Promos, "sale" |
+| **Info** `info` (v2 `location`) | `#2F7BF6` / `#4C8DF8` | Waiting on someone else; you are here | A customer must act (quote sent, invoice open); the user's own location dot | Links, decoration |
+| **Warning** `warning` | `#D97706` / `#FBBF24` | Due soon | The dot on a Needs-you row that is due soon | Buttons, banners, fills |
 
-**Rules:** no more than one accent-coloured thing per viewport; status is a dot + word, never a
+**Rules:** no more than one points-coloured thing per viewport; status is a dot + word, never a
 filled card; no gradients; dark mode is a straight inversion of the same roles.
 
 **Shops** keep their own `brandColor`, shown only inside their avatar (initials or logo). Verticals
