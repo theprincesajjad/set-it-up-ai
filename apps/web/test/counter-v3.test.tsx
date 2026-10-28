@@ -63,7 +63,7 @@ describe("counter chrome (v3, Figma 15:2)", () => {
     render(<CounterApp api={api} program={confirmStamps} shopName="Shop" locations={[]} />);
     for (const d of "0123") await userEvent.click(screen.getByRole("button", { name: d }));
     const award = await screen.findByRole("button", { name: "Add 1 stamp" });
-    expect(award.className).toContain("min-h-[72px]");
+    expect(award.className).toContain("min-h-18");
     expect(award.className).toContain("bg-fg");
   });
 });

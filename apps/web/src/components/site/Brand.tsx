@@ -13,7 +13,7 @@ export function LogoMark({ size = 28, className, inverse }: { size?: number; cla
       <circle cx="22" cy="22" r="7.5" className={inverse ? "fill-fg" : "fill-bg"} />
       <circle cx="42" cy="22" r="7.5" className={inverse ? "fill-fg" : "fill-bg"} />
       <circle cx="22" cy="42" r="7.5" className={inverse ? "fill-fg" : "fill-bg"} />
-      <circle cx="42" cy="42" r="7.5" fill="#FF5A1F" />
+      <circle cx="42" cy="42" r="7.5" className="fill-ll-orange-500" />
     </svg>
   );
 }

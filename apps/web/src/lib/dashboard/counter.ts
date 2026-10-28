@@ -1,5 +1,48 @@
 /** Web counter (staff-counter.md, staff.md): keypad money entry, lookup hints, award labels, scan-first rules. */
-import type { staffApi } from "@ll/shared";
+import { t as translate, type Locale, type MessageKey, type staffApi, type Vars } from "@ll/shared";
+import { formatNumber, formatPoints } from "@/lib/format";
+
+/**
+ * Counter text in the staff member's language: a translator (`useLocale().t` in a component) plus the locale, for the few rules that
+ * only English has (ordinals, a lower-cased reward name). Every helper below takes one as its last argument and defaults to English,
+ * so a caller that has no locale (a test, the wallet-pass preview) keeps the English sentence.
+ */
+export interface CounterText {
+  locale: Locale;
+  t: (key: MessageKey, vars?: Vars) => string;
+}
+export const EN_TEXT: CounterText = { locale: "en", t: (key, vars) => translate("en", key, vars) };
+
+/** "pts" for points, the plural stamp word for stamps, and the shop's own word (Stars, Visits) as typed. */
+export function pointsText(n: number, terminology: string | null | undefined, ct: CounterText = EN_TEXT): string {
+  const tl = (terminology || "points").toLowerCase();
+  if (tl === "points") return `${formatNumber(n)} ${ct.t("counter.unit.short")}`;
+  if (tl === "stamps") return ct.t("auth.unit.stamps", { n: formatNumber(n) });
+  return formatPoints(n, terminology);
+}
+
+/** The unit word inside a sentence: "points" and "stamps" translate, the shop's own word stays as typed. */
+function unitWord(terminology: string | null | undefined, ct: CounterText): string {
+  const tl = (terminology || "points").toLowerCase();
+  return tl === "points" ? ct.t("counter.word.points") : tl === "stamps" ? ct.t("counter.word.stamps") : tl;
+}
+
+/** A reward name inside a sentence. English lower-cases a leading "Free" ("a free drink"); other scripts have no such rule. */
+export function rewardIn(name: string, ct: CounterText = EN_TEXT): string {
+  if (ct.locale !== "en") return name;
+  const m = /^([A-Z][a-z]+)(\b.*)$/.exec(name);
+  return m ? `${m[1]!.toLowerCase()}${m[2]}` : name;
+}
+
+/** "5th" in English, a plain number in the other languages (their sentences carry the ordinal word). */
+const nth = (n: number, ct: CounterText): string => (ct.locale === "en" ? ordinal(n) : String(n));
+
+/** The recent-activity label for a transaction type: translated when the counter knows it, otherwise a readable form of the code. */
+export function counterTypeLabel(type: string, ct: CounterText = EN_TEXT): string {
+  const key = `counter.type.${type}` as MessageKey;
+  const label = ct.t(key);
+  return label === key ? type.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : label;
+}
 
 export type KeypadKey = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "back" | "clear";
 
@@ -48,47 +91,47 @@ export function estimateEarn(p: ProgramForCounter, amountCents: number): number 
 }
 
 /** `quantity` (stamp / visit programs): +1/+2/+3 chips award quantity × pointsPerVisit in one tap. */
-export function awardLabel(p: ProgramForCounter, amountCents: number, quantity = 1): string {
+export function awardLabel(p: ProgramForCounter, amountCents: number, quantity = 1, ct: CounterText = EN_TEXT): string {
   const n = p.pointsPerVisit * Math.max(1, quantity);
-  if (p.earnType === "stamps") return n > 1 ? `Add ${n} stamps` : "Add 1 stamp";
-  if (p.earnType === "per_visit") return quantity > 1 ? `Add ${quantity} visits (+${n} pts)` : `Add visit (+${n} pts)`;
-  return `Award ${estimateEarn(p, amountCents)} pts`;
+  if (p.earnType === "stamps") return ct.t("counter.add.stamps", { n });
+  if (p.earnType === "per_visit") return quantity > 1 ? ct.t("counter.add.visits", { q: quantity, n }) : ct.t("counter.add.visit", { n });
+  return ct.t("counter.add.points", { n: estimateEarn(p, amountCents) });
 }
 
-export function awardSuccess(p: ProgramForCounter, pointsEarned: number): string {
-  if (p.earnType === "stamps") return `Added ${pointsEarned} stamp${pointsEarned === 1 ? "" : "s"}`;
-  return `Awarded ${pointsEarned} ${p.terminology === "points" ? "pts" : p.terminology}`;
+export function awardSuccess(p: ProgramForCounter, pointsEarned: number, ct: CounterText = EN_TEXT): string {
+  if (p.earnType === "stamps") return ct.t("counter.added.stamps", { n: pointsEarned });
+  return ct.t("counter.added.points", { n: pointsEarned, unit: p.terminology === "points" ? ct.t("counter.unit.short") : p.terminology });
 }
 
 /**
  * Counter errors in plain words (polish-audit D11): what happened and what to do, one sentence.
  * `code` is the API error code; `message` the API's own text (used only when it is already human).
  */
-export function counterErrorMessage(e: { code?: string; status?: number; message?: string; isNetwork?: boolean }, ctx: { terminology?: string | null; firstName?: string | null } = {}): string {
-  const word = (ctx.terminology || "points").toLowerCase();
-  const who = ctx.firstName || "They";
-  if (e.isNetwork || e.status === 0) return "No connection. The award is saved here and sends when you're back online.";
+export function counterErrorMessage(e: { code?: string; status?: number; message?: string; isNetwork?: boolean }, ctx: { terminology?: string | null; firstName?: string | null } = {}, ct: CounterText = EN_TEXT): string {
+  const word = unitWord(ctx.terminology, ct);
+  const who = ctx.firstName || ct.t("counter.who");
+  if (e.isNetwork || e.status === 0) return ct.t("counter.err.offlineSaved");
   switch (e.code) {
     case "cooldown":
-      return `${who} already got ${word} for this visit. Wait a few minutes, or adjust it from the customer's page.`;
+      return ct.t("counter.err.cooldown", { who, word });
     case "insufficient_points":
-      return `Not enough ${word} for that reward yet.`;
+      return ct.t("counter.err.insufficient", { word });
     case "expired":
     case "code_expired":
-      return "This code expired. Their points went back. Ask them to tap Redeem again.";
+      return ct.t("counter.err.expired");
     case "already_used":
-      return "This code was already used. Ask the customer to check their app.";
+      return ct.t("counter.err.used");
     case "void":
-      return "This code was cancelled. Ask the customer to tap Redeem again.";
+      return ct.t("counter.err.void");
     case "not_found":
-      return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
+      return ct.t("counter.err.notFound");
     case "program_paused":
-      return "Your program is paused. Resume it in Rewards to award again.";
+      return ct.t("counter.err.paused");
     default:
-      if (e.status === 404) return "No reward code like that at this shop. Check the letters, or ask them to tap Redeem again.";
+      if (e.status === 404) return ct.t("counter.err.notFound");
       if (e.status === 409 && e.message) return e.message;
-      if (e.status && e.status >= 500) return "Something went wrong on our end. Try again in a moment.";
-      return e.message || "That didn't work. Try again.";
+      if (e.status && e.status >= 500) return ct.t("counter.err.server");
+      return e.message || ct.t("counter.err.generic");
   }
 }
 
@@ -113,8 +156,8 @@ export function readQueue(raw: string | null): QueuedAward[] {
 }
 
 /** "Undo · 8s" for the countdown on the success panel. */
-export function undoLabel(secondsLeft: number): string {
-  return `Undo · ${Math.max(0, secondsLeft)}s`;
+export function undoLabel(secondsLeft: number, ct: CounterText = EN_TEXT): string {
+  return ct.t("counter.undoSecs", { n: Math.max(0, secondsLeft) });
 }
 
 // ---------------------------------------------------------------------------
@@ -183,29 +226,34 @@ export function ordinal(n: number): string {
 }
 
 /** "5th visit this month". */
-export const visitThisMonth = (n: number) => `${ordinal(Math.max(1, n))} visit this month`;
+export const visitThisMonth = (n: number, ct: CounterText = EN_TEXT) => ct.t("counter.visitMonth", { nth: nth(Math.max(1, n), ct) });
+
+/** "5th visit" for the customer header. */
+export const visitNth = (n: number, ct: CounterText = EN_TEXT) => ct.t("counter.visitNth", { nth: nth(n, ct) });
 
 /** "2 more for a free drink" / "Free drink ready". */
-export function stampsLeft(left: number, rewardName: string): string {
-  const what = /^free /i.test(rewardName) ? `a ${rewardName.toLowerCase()}` : rewardName;
-  return left <= 0 ? `${rewardName} ready` : `${left} more for ${what}`;
+export function stampsLeft(left: number, rewardName: string, ct: CounterText = EN_TEXT): string {
+  if (left <= 0) return ct.t("counter.readyShort", { reward: rewardName });
+  const what = ct.locale === "en" && /^free /i.test(rewardName) ? `a ${rewardName.toLowerCase()}` : rewardName;
+  return ct.t("counter.moreFor", { n: left, reward: what });
 }
 
 /** "in yesterday", "in 2 weeks ago", "in today": the second line of a match row. */
-export function cameInText(iso: string | null | undefined, now: Date): string {
-  if (!iso) return "new member";
+export function cameInText(iso: string | null | undefined, now: Date, ct: CounterText = EN_TEXT): string {
+  if (!iso) return ct.t("counter.came.new");
   const days = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
-  if (days === 0) return "in today";
-  if (days === 1) return "in yesterday";
-  if (days < 14) return `in ${days} days ago`;
-  if (days < 60) return `in ${Math.round(days / 7)} weeks ago`;
-  return `in ${Math.round(days / 30)} months ago`;
+  if (days === 0) return ct.t("counter.came.today");
+  if (days === 1) return ct.t("counter.came.yesterday");
+  if (days < 14) return ct.t("counter.came.days", { n: days });
+  if (days < 60) return ct.t("counter.came.weeks", { n: Math.round(days / 7) });
+  return ct.t("counter.came.months", { n: Math.round(days / 30) });
 }
 
-/** "Two members end in 1034". */
-export function matchesHeading(n: number, digits: string): string {
+/** "Two members end in 1034" (English spells the count out, the other languages write the number). */
+export function matchesHeading(n: number, digits: string, ct: CounterText = EN_TEXT): string {
+  if (n === 1) return ct.t("counter.pick.one", { digits });
   const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-  return `${words[n] ?? n} member${n === 1 ? "" : "s"} end${n === 1 ? "s" : ""} in ${digits}`;
+  return ct.t("counter.pick.many", { count: ct.locale === "en" ? (words[n] ?? n) : n, digits });
 }
 
 /** "(647) ···-1034" from the API's "(647) ***-1034". */

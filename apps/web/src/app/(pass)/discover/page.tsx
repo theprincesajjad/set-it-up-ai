@@ -92,9 +92,9 @@ export default async function DiscoverPage({ searchParams }: Props) {
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
     <div className="-mx-4 -mt-4 pb-32">
-      <section aria-label={h ? h.eyebrow : t("sh.disc.title")} className="relative h-[340px] overflow-hidden bg-[#0B0B0C]">
+      <section aria-label={h ? h.eyebrow : t("sh.disc.title")} className="relative h-[340px] overflow-hidden bg-ll-stone-950">
         <svg aria-hidden width="100%" height="340" viewBox="0 0 390 340" preserveAspectRatio="xMidYMid slice" className="absolute inset-0">
-          <g stroke="#1D1D20" strokeWidth="10" fill="none" strokeLinecap="round"><path d="M150 -20 L 230 360" /><path d="M-20 90 L 410 60" /><path d="M-20 190 L 410 166" /><path d="M-20 290 L 410 266" /></g>
+          <g className="stroke-ll-stone-850" strokeWidth="10" fill="none" strokeLinecap="round"><path d="M150 -20 L 230 360" /><path d="M-20 90 L 410 60" /><path d="M-20 190 L 410 166" /><path d="M-20 290 L 410 266" /></g>
         </svg>
         {/* The three objects are from the canvas. In hi, ur and pa the headline runs wider and crosses them, so they step back. */}
         <div aria-hidden className={locale === "en" ? "" : "opacity-35"}>
@@ -112,7 +112,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
           </div>
         </div>
         <div className="absolute bottom-14 left-5 max-w-[240px]">
-          <p className="text-[12px] font-semibold leading-4 text-[#FF7A45]">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
+          <p className="text-[12px] font-semibold leading-4 text-ll-orange-400">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
           <h1 className="display mt-2 text-[32px] leading-[34px] text-white">{h ? h.headline : t("sh.disc.heroDefault")}</h1>
         </div>
         {h?.progress ? (
@@ -140,9 +140,9 @@ export default async function DiscoverPage({ searchParams }: Props) {
           <h2 id="near" className="display text-[20px] leading-6 text-fg">{t("sh.disc.near")}</h2>
           <span className="text-[13px] text-fg-muted">{t("sh.disc.shopsN", { n: shops.length })}</span>
         </div>
-        <Link href="/map" className="relative mt-3 block h-[120px] overflow-hidden rounded-[16px] bg-[#F1F1EF] dark:bg-bg-subtle">
+        <Link href="/map" className="relative mt-3 block h-[120px] overflow-hidden rounded-[16px] bg-ll-stone-50 dark:bg-bg-subtle">
           <svg aria-hidden width="100%" height="120" viewBox="0 0 358 120" preserveAspectRatio="none" className="absolute inset-0">
-            <g stroke="#fff" strokeWidth="9" fill="none" strokeLinecap="round" className="dark:stroke-[#232327]"><path d="M120 -10 L 170 130" /><path d="M-10 40 L 370 26" /><path d="M-10 92 L 370 80" /></g>
+            <g strokeWidth="9" fill="none" strokeLinecap="round" className="stroke-ll-stone-0 dark:stroke-ll-stone-800"><path d="M120 -10 L 170 130" /><path d="M-10 40 L 370 26" /><path d="M-10 92 L 370 80" /></g>
           </svg>
           <span aria-hidden className="absolute left-[calc(42%-7px)] top-[59px] size-[15px] rounded-full border-2 border-white bg-location" />
           {nearPins.map((s, i) => (

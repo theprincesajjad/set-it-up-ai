@@ -18,39 +18,39 @@ const DISPLAY = "'Bricolage Grotesque', var(--font-bricolage), Inter, ui-sans-se
 const TEXT = "Inter, var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
 /**
- * The v2 A6 counter stand from public/brand/qr-stand-a6.svg (105 x 148 mm): white paper, black type,
- * one accent dot. Filled with the shop name, street and join URL, with a real QR (QrCode, black on
+ * The A6 counter stand from public/brand/qr-stand-a6.svg (105 x 148 mm): white paper, black type,
+ * one points dot (the tokens are pinned to light, so it prints the same in dark mode). Filled with the shop name, street and join URL, with a real QR (QrCode, black on
  * white, ECC M) in the 50 mm slot.
  */
 export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: string; street: string; joinUrl: string; scale?: number }) {
   const short = joinUrl.replace(/^https?:\/\//, "");
   const longName = shopName.length > 28;
   return (
-    <div className="qr-stand relative bg-[#FFFFFF] text-[#0B0B0C]" style={{ width: `${105 * scale}mm`, height: `${148 * scale}mm` }}>
+    <div data-theme="light" className="qr-stand relative bg-background text-foreground" style={{ width: `${105 * scale}mm`, height: `${148 * scale}mm` }}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 105 148" width="100%" height="100%" role="img" aria-label={`QR stand for ${shopName}: Scan to join`} className="absolute inset-0">
-        <rect width="105" height="148" fill="#FFFFFF" />
+        <rect width="105" height="148" className="fill-background" />
         <g transform="translate(8 9) scale(0.125)">
-          <rect width="64" height="64" rx="16" fill="#0B0B0C" />
-          <circle cx="22" cy="22" r="7.5" fill="#FFFFFF" />
-          <circle cx="42" cy="22" r="7.5" fill="#FFFFFF" />
-          <circle cx="22" cy="42" r="7.5" fill="#FFFFFF" />
-          <circle cx="42" cy="42" r="7.5" fill="#FF5A1F" />
+          <rect width="64" height="64" rx="16" className="fill-foreground" />
+          <circle cx="22" cy="22" r="7.5" className="fill-background" />
+          <circle cx="42" cy="22" r="7.5" className="fill-background" />
+          <circle cx="22" cy="42" r="7.5" className="fill-background" />
+          <circle cx="42" cy="42" r="7.5" className="fill-points" />
         </g>
         <g textAnchor="middle">
-          <text x="52.5" y="33" fontFamily={DISPLAY} fontSize={shopNameSize(shopName)} fontWeight="800" letterSpacing="-0.08" fill="#0B0B0C">
+          <text x="52.5" y="33" fontFamily={DISPLAY} fontSize={shopNameSize(shopName)} fontWeight="800" letterSpacing="-0.08" className="fill-foreground">
             {shopName.length > 30 ? `${shopName.slice(0, 29)}…` : shopName}
           </text>
-          <text x="52.5" y="46.5" fontFamily={DISPLAY} fontSize="12" fontWeight="800" letterSpacing="-0.12" fill="#0B0B0C">
+          <text x="52.5" y="46.5" fontFamily={DISPLAY} fontSize="12" fontWeight="800" letterSpacing="-0.12" className="fill-foreground">
             scan to join
           </text>
-          <g fontFamily={TEXT} fontSize="4.2" fontWeight="500" fill="#6B6B70">
+          <g fontFamily={TEXT} fontSize="4.2" fontWeight="500" className="fill-muted-foreground">
             <text x="52.5" y="54">
               {longName ? (
-                <tspan fontWeight="600" fill="#0B0B0C">earn points here</tspan>
+                <tspan fontWeight="600" className="fill-foreground">earn points here</tspan>
               ) : (
                 <>
                   earn points at{" "}
-                  <tspan fontWeight="600" fill="#0B0B0C">
+                  <tspan fontWeight="600" className="fill-foreground">
                     {shopName}
                   </tspan>
                 </>
@@ -58,27 +58,27 @@ export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: st
             </text>
             <text x="52.5" y="59.5">
               and every shop on{" "}
-              <tspan fontWeight="600" fill="#0B0B0C">
+              <tspan fontWeight="600" className="fill-foreground">
                 {street.slice(0, 22)}
               </tspan>
             </text>
           </g>
         </g>
-        <rect x="23.5" y="66" width="58" height="58" rx="4" fill="#FFFFFF" stroke="#E8E8E6" strokeWidth="0.35" />
+        <rect x="23.5" y="66" width="58" height="58" rx="4" className="fill-background stroke-border" strokeWidth="0.35" />
         <g fontFamily={TEXT} textAnchor="middle">
-          <text x="52.5" y="130.5" fontSize="3.6" fontWeight="600" fill="#0B0B0C">
+          <text x="52.5" y="130.5" fontSize="3.6" fontWeight="600" className="fill-foreground">
             No app needed · Free · Takes 30 seconds
           </text>
-          <text x="52.5" y="135.5" fontSize="3.3" fontWeight="500" fill="#6B6B70">
+          <text x="52.5" y="135.5" fontSize="3.3" fontWeight="500" className="fill-muted-foreground">
             No phone camera? Just tell us your number.
           </text>
         </g>
-        <rect y="139" width="105" height="9" fill="#0B0B0C" />
-        <circle cx="10" cy="143.5" r="1.4" fill="#FF5A1F" />
-        <text x="13.2" y="144.7" fontFamily={DISPLAY} fontSize="3.4" fontWeight="800" fill="#FFFFFF">
+        <rect y="139" width="105" height="9" className="fill-foreground" />
+        <circle cx="10" cy="143.5" r="1.4" className="fill-points" />
+        <text x="13.2" y="144.7" fontFamily={DISPLAY} fontSize="3.4" fontWeight="800" className="fill-background">
           {BRAND.name.toLowerCase()}
         </text>
-        <text x="97" y="144.7" fontFamily={TEXT} fontSize="3.2" fontWeight="500" fill="#FFFFFF" textAnchor="end">
+        <text x="97" y="144.7" fontFamily={TEXT} fontSize="3.2" fontWeight="500" className="fill-background" textAnchor="end">
           {short}
         </text>
       </svg>
@@ -90,10 +90,10 @@ export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: st
 }
 
 function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: string; local?: merchantApi.OnboardingPlaybookDto["tillLineLocal"] }) {
-  const row = { fontSize: "3.8mm", lineHeight: 1.4, borderTop: "0.3mm solid #E8E8E6", paddingTop: "3mm" } as const;
+  const row = { fontSize: "3.8mm", lineHeight: 1.4, borderTop: "0.3mm solid var(--color-border)", paddingTop: "3mm" } as const;
   return (
-    <div className="qr-stand flex flex-col gap-[3mm] bg-[#FFFFFF] p-[8mm] text-[#0B0B0C]" style={{ width: "105mm", height: "148mm", fontFamily: TEXT }}>
-      <p style={{ fontSize: "3.2mm", color: "#6B6B70" }}>Staff script · {kit.merchant.name}</p>
+    <div data-theme="light" className="qr-stand flex flex-col gap-[3mm] bg-background p-[8mm] text-foreground" style={{ width: "105mm", height: "148mm", fontFamily: TEXT }}>
+      <p style={{ fontSize: "3.2mm", color: "var(--color-muted-foreground)" }}>Staff script · {kit.merchant.name}</p>
       <p style={{ fontFamily: DISPLAY, fontSize: "7mm", fontWeight: 800, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "2mm" }}>ask every customer</p>
       <p style={row}>&quot;Are you on {BRAND.name}? {kit.program?.headline ?? "You earn rewards here"}, here and at every shop on {street}.&quot;</p>
       <p style={row}>
@@ -112,7 +112,7 @@ function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: st
           <p lang="pa">{local.pa}</p>
         </div>
       ) : null}
-      <p style={{ ...row, fontSize: "3.2mm", color: "#6B6B70", marginTop: "auto" }}>{kit.staffScript}</p>
+      <p style={{ ...row, fontSize: "3.2mm", color: "var(--color-muted-foreground)", marginTop: "auto" }}>{kit.staffScript}</p>
     </div>
   );
 }

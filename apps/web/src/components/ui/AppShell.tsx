@@ -77,6 +77,8 @@ export interface AppShellProps {
   env?: "rep" | "admin";
   /** Shown above the page (the "Viewing as" row). */
   notice?: ReactNode;
+  /** Chrome-free: no sidebar, top bar or bottom bar, just the page edge to edge (the counter, Figma 15:2). The page supplies its own way back. */
+  bare?: boolean;
   children: ReactNode;
 }
 
@@ -214,7 +216,7 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
   );
 }
 
-export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, children }: AppShellProps) {
+export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, bare = false, children }: AppShellProps) {
   const pathname = usePathname() ?? "";
   const { dir } = useLocaleOrEnglish();
   const wide = useWide();
@@ -223,6 +225,21 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
   const bottomItems = bottomNav ?? all.filter((n) => n.bottom).slice(0, 4);
   const fits = !bottomNav && all.length <= 5;
   const bar = fits ? all : (bottomItems.length ? bottomItems : all.filter((i) => !i.child)).slice(0, 4);
+
+  if (bare)
+    return (
+      <DirectionProvider direction={dir}>
+        <TooltipProvider>
+          <div data-shell="bare" className="min-h-dvh bg-background text-foreground">
+            {env ? <div className="fixed inset-x-0 top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
+            {notice ? <div className="px-4 pt-4">{notice}</div> : null}
+            <main id="main" className="min-h-dvh w-full">
+              {children}
+            </main>
+          </div>
+        </TooltipProvider>
+      </DirectionProvider>
+    );
 
   return (
     <DirectionProvider direction={dir}>

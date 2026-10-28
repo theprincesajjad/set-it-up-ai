@@ -140,6 +140,14 @@ export function buildTokensCss(): string {
   ].join("\n");
 }
 
+/** The script faces apps/web declares through next/font (packages/shared locales.ts `fonts`), each with its family name as the fallback. */
+const SCRIPT_FONTS = [
+  `var(--font-noto-deva, "Noto Sans Devanagari")`,
+  `var(--font-noto-guru, "Noto Sans Gurmukhi")`,
+  `var(--font-noto-nastaliq, "Noto Nastaliq Urdu")`,
+  `var(--font-noto-naskh, "Noto Naskh Arabic")`,
+].join(", ");
+
 export function buildThemeCss(): string {
   const out: string[] = [
     HEADER,
@@ -164,8 +172,9 @@ export function buildThemeCss(): string {
     `}`,
     ``,
     `@theme inline {`,
-    `  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;`,
-    `  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;`,
+    `  /* Hindi, Urdu and Punjabi come after the Latin face: a glyph Inter or Bricolage lacks falls to the script's Noto face (declared with next/font in apps/web layout.tsx, which loads one only when a glyph needs it). Latin runs stay sans; no [lang] rule is needed, and a dialog that portals out of the page still gets them. */`,
+    `  --font-sans: var(--font-inter, "Inter"), ${SCRIPT_FONTS}, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;`,
+    `  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ${SCRIPT_FONTS}, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;`,
     `  --font-mono: var(--ll-font-mono);`,
     ``,
     `  /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,`,
@@ -177,7 +186,7 @@ export function buildThemeCss(): string {
     `   * rewrites accent -> hover in components/primitives after every \`shadcn add\`. */`,
   ];
   // v3 roles. "accent" is held back (see COMPAT); v3 names win over v1 names that collide (success, warning, info, border).
-  const V3_HELD = new Set(["accent", "accentForeground", "qrFg", "qrBg"]);
+  const V3_HELD = new Set(["accent", "accentForeground"]);
   const v3Names = new Set<string>(["hover"]);
   for (const k of Object.keys(rolesV3.light)) {
     if (V3_HELD.has(k)) continue;

@@ -1,8 +1,13 @@
 import type { Appearance } from "@stripe/stripe-js";
+import { rolesV3 } from "@ll/design-tokens";
 
-/** Page colours the Payment Element sits on (design tokens: bg, fg, fg-muted, line) in each scheme. */
-const LIGHT = { colorBackground: "#FFFFFF", colorPrimary: "#0B0B0C", colorText: "#0B0B0C", colorTextSecondary: "#6B6B70", colorDanger: "#B42318" } as const;
-const DARK = { colorBackground: "#161618", colorPrimary: "#F5F5F4", colorText: "#F5F5F4", colorTextSecondary: "#A1A1A8", colorDanger: "#F97066" } as const;
+/**
+ * Page colours the Payment Element sits on, read from the v3 role values in @ll/design-tokens (background, foreground,
+ * muted-foreground, destructive) so Stripe's iframe cannot drift from the page. Stripe takes literal colours, not CSS variables.
+ */
+const pick = (r: typeof rolesV3.light) => ({ colorBackground: r.background, colorPrimary: r.primary, colorText: r.foreground, colorTextSecondary: r.mutedForeground, colorDanger: r.destructive }) as const;
+const LIGHT = pick(rolesV3.light);
+const DARK = pick(rolesV3.dark);
 
 /** True when the page renders dark: an explicit data-theme wins, otherwise the OS setting (same rule as the tokens). */
 export function prefersDark(): boolean {

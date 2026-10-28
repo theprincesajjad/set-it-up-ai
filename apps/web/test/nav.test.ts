@@ -38,3 +38,17 @@ describe("nav gating by vertical", () => {
     expect(k).toContain("campaigns");
   });
 });
+
+describe("chrome-free routes", () => {
+  it("draws the counter and the class door desk without the shell", async () => {
+    const { isBareRoute } = await import("../src/lib/dashboard/nav");
+    const base = "/m/abc";
+    expect(isBareRoute(`${base}/counter`, base)).toBe(true);
+    expect(isBareRoute(`${base}/classes/door`, base)).toBe(true);
+    expect(isBareRoute(`${base}/classes`, base)).toBe(false);
+    expect(isBareRoute(`${base}/classes/offers`, base)).toBe(false);
+    expect(isBareRoute(`${base}`, base)).toBe(false);
+    expect(isBareRoute(`${base}/counters`, base)).toBe(false);
+    expect(isBareRoute(`/m/other/counter`, base)).toBe(false);
+  });
+});

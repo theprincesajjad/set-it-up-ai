@@ -39,10 +39,12 @@ export interface ShellProps {
   bottomNav?: ShellNavItem[];
   bottomLabel?: string;
   env?: "rep" | "admin";
+  /** Chrome-free route (the counter): the page alone, edge to edge. See `isBareRoute` in lib/dashboard/nav.ts. */
+  bare?: boolean;
   children: ReactNode;
 }
 
-export function Shell({ sections, header, footer, notice, mobileTitle, location, alerts, account, search, searchPlaceholder, bottomNav, bottomLabel, env, children }: ShellProps) {
+export function Shell({ sections, header, footer, notice, mobileTitle, location, alerts, account, search, searchPlaceholder, bottomNav, bottomLabel, env, bare, children }: ShellProps) {
   const { t } = useLocaleOrEnglish();
   const [cmd, setCmd] = useState(false);
   const placeholder = searchPlaceholder ?? t("shell.search.placeholder");
@@ -79,6 +81,7 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
           </>
         }
         notice={notice}
+        bare={bare}
         env={env}
         bottomNav={bottomNav}
         bottomLabel={bottomLabel}
@@ -105,7 +108,7 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
       >
         {children}
       </AppShell>
-      <CommandMenu open={cmd} onClose={() => setCmd(false)} pages={pages} search={search} placeholder={placeholder} />
+      {bare ? null : <CommandMenu open={cmd} onClose={() => setCmd(false)} pages={pages} search={search} placeholder={placeholder} />}
     </>
   );
 }

@@ -7,7 +7,8 @@ import { cn as merge } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "tonal" | "ghost" | "danger" | "accent" | "inverse";
-export type ButtonSize = "sm" | "md" | "lg" | "counter";
+/** `counter` is the 72 px sale button on the counter tablet, `kiosk` the 88 px button on the customer-facing door tablet (strategy 8.2 E). */
+export type ButtonSize = "sm" | "md" | "lg" | "counter" | "kiosk";
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   variant?: ButtonVariant;
@@ -27,7 +28,7 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
  * below (v2 variants and sizes, now on the v3 tokens) win over the primitive's own look through `merge`, and `PRIMITIVE_RESET`
  * cancels the primitive defaults that have no v2 equivalent. The link branch (`href`) still renders a real <a> / next Link, not a
  * button with role="button", so link semantics are unchanged.
- * Later: map variants onto shadcn's (default, outline, ghost, destructive), add the `counter` and `kiosk` sizes, drop `accent`.
+ * Later: map variants onto shadcn's (default, outline, ghost, destructive), drop `accent`.
  *
  * v2 (foundations.md): primary is black (inverts in dark mode) and there is one per screen.
  * Secondary is a white hairline button, tonal a quiet grey fill, ghost text-only.
@@ -49,7 +50,8 @@ const sizes: Record<ButtonSize, string> = {
   sm: "h-9 px-3.5 text-meta-strong rounded-input gap-1.5 [--icon:16px]",
   md: "h-11 px-4 text-body-strong rounded-input gap-2 [--icon:18px]",
   lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px]",
-  counter: "min-h-[72px] px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px]",
+  counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px]",
+  kiosk: "min-h-22 px-8 text-title rounded-xl gap-3 w-full [--icon:28px]",
 };
 
 /** Primitive defaults with no v2 equivalent: a 1px transparent border, the 3px focus ring, the 1px press nudge, 50% disabled opacity. */

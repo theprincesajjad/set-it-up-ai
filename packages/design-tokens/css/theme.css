@@ -24,8 +24,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Hindi, Urdu and Punjabi come after the Latin face: a glyph Inter or Bricolage lacks falls to the script's Noto face (declared with next/font in apps/web layout.tsx, which loads one only when a glyph needs it). Latin runs stay sans; no [lang] rule is needed, and a dialog that portals out of the page still gets them. */
+  --font-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--ll-font-mono);
 
   /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,
@@ -72,6 +73,8 @@
   --color-warning: var(--warning);
   --color-warning-text: var(--warning-text);
   --color-paper: var(--paper);
+  --color-qr-fg: var(--qr-fg);
+  --color-qr-bg: var(--qr-bg);
   --color-hover: var(--accent);
   --color-hover-foreground: var(--accent-foreground);
   --color-accent-foreground: var(--accent-foreground);
@@ -92,8 +95,6 @@
   --color-positive: var(--ll-color-positive);
   --color-negative: var(--ll-color-negative);
   --color-location: var(--ll-color-location);
-  --color-qr-fg: var(--ll-color-qr-fg);
-  --color-qr-bg: var(--ll-color-qr-bg);
   --color-positive-text: var(--ll-color-positive-text);
   --color-chrome: var(--ll-color-chrome);
   --color-overlay: var(--ll-color-overlay);

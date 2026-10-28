@@ -1,5 +1,7 @@
+"use client";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 const SIZE = { sm: "size-8", md: "size-10", lg: "size-12" } as const;
 const COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6" };
@@ -9,11 +11,12 @@ const COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "g
  * stamp that just landed: those pop in (`motion-safe`, so reduced motion shows them already placed). A full card, the reward, ends on a check too.
  */
 export function StampRow({ goal, filled, size = "md", popFrom, className }: { goal: number; filled: number; size?: "sm" | "md" | "lg"; popFrom?: number; className?: string }) {
+  const { t } = useLocaleOrEnglish();
   const cols = COLS[Math.min(6, goal <= 6 ? goal : Math.ceil(goal / 2))] ?? "grid-cols-5";
   return (
     <div
       role="img"
-      aria-label={`${Math.min(filled, goal)} of ${goal} stamps`}
+      aria-label={t("ui.stampsOf", { n: Math.min(filled, goal), goal })}
       className={cn("grid justify-items-center gap-x-2 gap-y-3", cols, className)}
     >
       {Array.from({ length: goal }, (_, i) => {

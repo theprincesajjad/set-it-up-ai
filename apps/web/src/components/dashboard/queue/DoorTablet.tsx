@@ -45,8 +45,9 @@ function LanguageChips() {
  * so a walk-in handed the tablet can never reach the client list.
  */
 export function DoorTablet() {
+  const { t } = useLocale();
   return (
-    <FeatureGate keys={["booking.walkin_queue"]} title="Door tablet">
+    <FeatureGate keys={["booking.walkin_queue"]} title={t("counter.door.title")}>
       <Door />
     </FeatureGate>
   );
@@ -111,7 +112,7 @@ function Door() {
           </span>
           <p className="min-w-0 truncate font-display text-title font-semibold text-foreground"><bdi>{detail.merchant.name}</bdi></p>
         </div>
-        <Button variant="ghost" size="sm" iconStart={Lock} onClick={() => setLeaving(true)}>Staff</Button>
+        <Button variant="ghost" size="sm" iconStart={Lock} onClick={() => setLeaving(true)}>{t("counter.staff")}</Button>
       </div>
       <LanguageChips />
       <div className="grid min-h-[calc(100vh-14rem)] grid-cols-1 overflow-hidden rounded-card border border-border bg-background md:grid-cols-[360px_minmax(0,1fr)]">
@@ -161,7 +162,7 @@ function Door() {
             <input type="checkbox" className="size-6 shrink-0" checked={textOk} disabled={!phone} onChange={(e) => setConsent(e.target.checked)} />
             {t("q.consent")}
           </label>
-          <Button type="submit" size="lg" loading={act.busy} disabled={!open} className="min-h-22 rounded-xl text-title">{t("q.join")}</Button>
+          <Button type="submit" size="kiosk" loading={act.busy} disabled={!open}>{t("q.join")}</Button>
           {!phone ? <p className="text-center text-meta text-muted-foreground">{t("door.noPhoneNote")}</p> : null}
         </form>
       </div>
@@ -177,15 +178,16 @@ function Door() {
 /** A tablet signed in as someone with no PIN: set one now, so the tablet can be locked. */
 function SetPin({ onDone }: { onDone: () => void }) {
   const { api, me } = useMerchant();
+  const { t } = useLocale();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 py-16">
-      <h1 className="font-display text-h1 text-foreground">Set a PIN for this tablet</h1>
-      <p className="text-body text-fg-muted">Customers use the tablet at the door. A 4 to 6 digit staff PIN is what lets you leave this page, so they never reach your client list.</p>
+      <h1 className="font-display text-h1 text-foreground">{t("counter.door.setPin")}</h1>
+      <p className="text-body text-fg-muted">{t("counter.door.setPinBody")}</p>
       {error ? <Banner tone="danger">{error}</Banner> : null}
-      <TextField label="PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+      <TextField label={t("counter.pin.label")} type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
       <Button
         size="lg"
         loading={busy}
@@ -203,7 +205,7 @@ function SetPin({ onDone }: { onDone: () => void }) {
           }
         }}
       >
-        Save PIN and open the tablet
+        {t("counter.door.savePin")}
       </Button>
     </div>
   );
@@ -211,6 +213,7 @@ function SetPin({ onDone }: { onDone: () => void }) {
 
 function PinDialog({ open, onClose, onVerified }: { open: boolean; onClose: () => void; onVerified: () => void }) {
   const { api } = useMerchant();
+  const { t } = useLocale();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -236,18 +239,18 @@ function PinDialog({ open, onClose, onVerified }: { open: boolean; onClose: () =
         setError(null);
         onClose();
       }}
-      title="Staff only"
-      description="Enter your staff PIN to leave the tablet."
+      title={t("counter.door.staffOnly")}
+      description={t("counter.door.leaveBody")}
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>Back</Button>
-          <Button loading={busy} disabled={!/^\d{4,6}$/.test(pin)} onClick={go}>Leave the tablet</Button>
+          <Button variant="secondary" onClick={onClose}>{t("counter.door.back")}</Button>
+          <Button loading={busy} disabled={!/^\d{4,6}$/.test(pin)} onClick={go}>{t("counter.door.leave")}</Button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); if (/^\d{4,6}$/.test(pin)) void go(); }}>
         {error ? <Banner tone="danger" className="mb-3">{error}</Banner> : null}
-        <TextField label="Staff PIN" type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} autoFocus />
+        <TextField label={t("counter.door.staffPin")} type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} autoFocus />
       </form>
     </Modal>
   );

@@ -116,7 +116,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
               const on = state.cat === c;
               return (
                 <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[54px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
-                  <span className={cn("flex size-10 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-[#0B0B0C]" : "group-hover:scale-105")}>
+                  <span className={cn("flex size-10 items-center justify-center rounded-full bg-ll-stone-0 shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-foreground" : "group-hover:scale-105")}>
                     <CategoryIcon category={c} size={24} />
                   </span>
                   <span className={cn("display text-[12px] leading-[14px] lowercase", on ? "text-fg" : "text-fg-muted")}>{t(CATEGORY_KEYS[c])}</span>

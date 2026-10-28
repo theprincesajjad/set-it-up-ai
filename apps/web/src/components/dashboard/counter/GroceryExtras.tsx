@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Keypad } from "@/components/ui/Keypad";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { applyKey, centsFromKeypad, keypadDisplay, type KeypadKey } from "@/lib/dashboard/counter";
 
 export interface GroceryCounter {
@@ -33,6 +34,7 @@ const digitsOf = (v: string): string => {
 };
 
 export function GroceryExtras({ grocery, cents, notCounted, setNotCounted, bulk, setBulk, remind, setRemind }: { grocery: GroceryCounter; cents: string; notCounted: string; setNotCounted: (v: string) => void; bulk: string[]; setBulk: (v: string[]) => void; remind: boolean; setRemind: (v: boolean) => void }) {
+  const { t } = useLocaleOrEnglish();
   const total = centsFromKeypad(cents);
   const excluded = notCountedCents(notCounted);
   const over = excluded > total;
@@ -55,25 +57,25 @@ export function GroceryExtras({ grocery, cents, notCounted, setNotCounted, bulk,
           onClick={() => setNcOpen(!ncShown)}
           className="flex min-h-11 items-center justify-between gap-3 rounded-input text-start focus-visible:focus-ring"
         >
-          <span className="text-meta-strong text-fg">Not counted</span>
+          <span className="text-meta-strong text-fg">{t("counter.g.notCounted")}</span>
           <span className={cn("text-meta tabular-nums", over ? "font-medium text-negative" : "text-fg-muted")}>
-            {over ? "More than the total." : excluded > 0 ? (total > 0 ? `${dollars(excluded)} · ${dollars(total - excluded)} counts` : dollars(excluded)) : "Tobacco, lottery, alcohol, gift cards, bills"}
+            {over ? t("counter.g.over") : excluded > 0 ? (total > 0 ? t("counter.g.counts", { excluded: dollars(excluded), counts: dollars(total - excluded) }) : dollars(excluded)) : t("counter.g.hint")}
           </span>
         </button>
         {ncShown ? (
           <div id="not-counted-pad" className="flex flex-col gap-2">
-            <output aria-live="polite" aria-label="Not counted" className={cn("block border-b px-1 py-2 text-end font-display text-display-number tabular-nums", over ? "border-negative text-negative" : "border-line text-fg")}>
+            <output aria-live="polite" aria-label={t("counter.g.notCounted")} className={cn("block border-b px-1 py-2 text-end font-display text-display-number tabular-nums", over ? "border-negative text-negative" : "border-line text-fg")}>
               {keypadDisplay(digitsOf(notCounted))}
             </output>
-            <Keypad size="compact" onKey={press} label="Not counted keypad" />
+            <Keypad size="compact" onKey={press} label={t("counter.g.keypad")} />
           </div>
         ) : null}
       </div>
       {grocery.pantryItems.length ? (
         <div className="flex flex-col gap-2">
           <button type="button" aria-expanded={bulkShown} aria-controls="bulk-chips" onClick={() => setBulkOpen(!bulkShown)} className="flex min-h-11 items-center justify-between gap-3 text-start focus-visible:focus-ring" id="bulk-label">
-            <span className="text-meta-strong text-fg">Bought a bulk item?</span>
-            <span className="text-meta text-fg-muted">{bulk.length ? `${bulk.length} picked` : "Tap to log one"}</span>
+            <span className="text-meta-strong text-fg">{t("counter.g.bulk")}</span>
+            <span className="text-meta text-fg-muted">{bulk.length ? t("counter.g.picked", { n: bulk.length }) : t("counter.g.tapLog")}</span>
           </button>
           {bulkShown ? (
             <div id="bulk-chips" role="group" aria-labelledby="bulk-label" className="flex flex-wrap gap-2">
@@ -93,7 +95,7 @@ export function GroceryExtras({ grocery, cents, notCounted, setNotCounted, bulk,
               })}
             </div>
           ) : null}
-          {bulk.length ? <Checkbox checked={remind} onChange={setRemind} label="Customer said yes to a restock text" caption={`Ask: "${grocery.askText}" Only tick it if they say yes.`} /> : null}
+          {bulk.length ? <Checkbox checked={remind} onChange={setRemind} label={t("counter.g.remind")} caption={t("counter.g.ask", { ask: grocery.askText })} /> : null}
         </div>
       ) : null}
     </div>

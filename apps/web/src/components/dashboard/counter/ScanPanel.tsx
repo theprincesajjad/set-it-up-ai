@@ -2,6 +2,7 @@
 import { ScanLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 interface DetectorLike {
   detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
@@ -14,6 +15,7 @@ type DetectorCtor = new (opts?: { formats?: string[] }) => DetectorLike;
  * camera at all because CounterApp listens for scanner keystrokes ending in Enter.
  */
 export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: (payload: string) => void; hint: string; ready: boolean; /** Bumped by the keypad's scan key: opens the camera. */ cameraRequest?: number }) {
+  const { t } = useLocaleOrEnglish();
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const [state, setState] = useState<"off" | "starting" | "on" | "denied" | "unsupported">("off");
@@ -94,7 +96,7 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
 
   return (
     <section
-      aria-label="Scan a card"
+      aria-label={t("counter.scanCard")}
       data-scan-ready={ready ? "true" : "false"}
       aria-busy={!ready}
       className={cn("relative flex items-center gap-4 overflow-hidden rounded-xl bg-primary px-5 py-4 text-primary-foreground", state === "on" ? "min-h-48 items-end" : "min-h-24")}
@@ -104,11 +106,11 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
         <ScanLine className="size-6" strokeWidth={1.75} />
       </span>
       <div className="relative min-w-0">
-        <p className="font-display text-h3 font-bold">Hold the card up</p>
+        <p className="font-display text-h3 font-bold">{t("counter.scan.hold")}</p>
         <p className="text-meta text-primary-foreground/70">{hint}</p>
         {state === "off" || state === "denied" ? (
           <button type="button" onClick={() => void start()} className="min-h-11 text-meta-strong text-primary-foreground/80 underline underline-offset-4 hover:text-primary-foreground focus-visible:focus-ring">
-            {state === "denied" ? "Camera is blocked. Try again" : "Use the camera"}
+            {state === "denied" ? t("counter.scan.blocked") : t("counter.scan.useCamera")}
           </button>
         ) : null}
       </div>

@@ -9,7 +9,7 @@ afterEach(() => {
 describe("Stripe Payment Element appearance", () => {
   it("uses dark text on the light page and light text on the dark page", () => {
     expect(stripeAppearance(false)).toMatchObject({ theme: "stripe", variables: { colorText: "#0B0B0C", colorBackground: "#FFFFFF" } });
-    expect(stripeAppearance(true)).toMatchObject({ theme: "night", variables: { colorText: "#F5F5F4", colorTextSecondary: "#A1A1A8" } });
+    expect(stripeAppearance(true)).toMatchObject({ theme: "night", variables: { colorText: "#F6F4F1", colorBackground: "#0E0D0C", colorTextSecondary: "#A8A39C" } });
   });
 
   it("follows the OS scheme unless the page forces a theme", () => {

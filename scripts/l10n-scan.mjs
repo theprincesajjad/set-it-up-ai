@@ -83,6 +83,13 @@ export const SCAN_TARGETS = [
   "apps/web/src/components/ui/Link.tsx",
   "apps/web/src/components/ui/Modal.tsx",
   "apps/web/src/components/ui/EmptyState.tsx",
+  // Staff counter, door tablet and kiosk (v3 sweep): staff work in Hindi, Urdu and Punjabi too
+  "apps/web/src/components/dashboard/counter",
+  "apps/web/src/components/dashboard/queue/DoorTablet.tsx",
+  "apps/web/src/app/(kiosk)",
+  "apps/web/src/app/(dashboard)/m/[merchantId]/counter",
+  "apps/web/src/app/(dashboard)/m/[merchantId]/classes/door",
+  "apps/web/src/components/dashboard/classes/SalePanel.tsx",
 ];
 
 /** Staff-only screens that live inside a customer directory (the counter has its own staff-language setting). */

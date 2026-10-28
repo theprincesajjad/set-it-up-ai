@@ -42,8 +42,8 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         <span className="relative flex w-[34px] shrink-0 justify-center after:absolute after:-inset-[5px] after:content-['']">
         <span
           className={cn(
-            "relative flex shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
-            selected ? "scale-[1.15] ring-2 ring-[#0B0B0C]" : "group-hover:scale-105",
+            "relative flex shrink-0 items-center justify-center rounded-full bg-ll-stone-0 shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
+            selected ? "scale-[1.15] ring-2 ring-foreground" : "group-hover:scale-105",
           )}
           style={{ width: size, height: size }}
         >
@@ -53,7 +53,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
           ) : (
             <CategoryIcon vertical={shop.merchant.vertical} size={Math.round(size * 0.65)} />
           )}
-          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-[#FFFFFF] bg-accent" /> : null}
+          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-ll-stone-0 bg-points" /> : null}
         </span>
         </span>
         {showLabel || selected ? (
@@ -71,7 +71,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
             onExpand();
           }}
           aria-label={t("wp.map.moreHere", { n: moreCount })}
-          className="absolute -start-1.5 -top-1.5 z-[1] inline-flex h-4 min-w-4 cursor-pointer items-center justify-center rounded-full bg-[#0B0B0C] px-1 text-[10px] font-semibold tabular-nums text-[#FFFFFF] after:absolute after:-inset-3 after:content-[''] focus-visible:focus-ring"
+          className="absolute -start-1.5 -top-1.5 z-[1] inline-flex h-4 min-w-4 cursor-pointer items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold tabular-nums text-primary-foreground after:absolute after:-inset-3 after:content-[''] focus-visible:focus-ring"
         >
           +{moreCount}
         </button>
@@ -93,7 +93,7 @@ export function MapCluster({ count, onExpand }: { count: number; onExpand: () =>
       aria-label={t("ms.map.shopsHere", { n: count })}
       className="group relative flex w-[34px] cursor-pointer items-center justify-center after:absolute after:-inset-[5px] after:content-[''] focus-visible:outline-none"
     >
-      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border-[1.5px] border-[#FFFFFF] bg-[#0B0B0C] px-1.5 text-[12px] font-semibold tabular-nums text-[#FFFFFF] shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">
+      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border-[1.5px] border-background bg-primary px-1.5 text-[12px] font-semibold tabular-nums text-primary-foreground shadow-float transition-transform duration-150 ease-out group-hover:scale-105 group-focus-visible:focus-ring">
         {count}
       </span>
     </button>

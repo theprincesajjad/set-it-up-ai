@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { rolesV3 } from "@ll/design-tokens";
 import { BRAND } from "@ll/shared";
 import { publicServerApi } from "@/lib/api/server";
 import { ogFonts } from "@/lib/og";
@@ -12,9 +13,10 @@ export const alt = "Earn rewards at this shop"; // l10n-ok: social-card image is
 export default async function ShopOg({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   let name = "a local shop";
-  const tint = "#FFFFFF";
-  const ink = "#0B0B0C";
-  let brand = "#0B0B0C";
+  // ImageResponse takes literal colours: the light v3 roles, read from the tokens.
+  const tint = rolesV3.light.background;
+  const ink = rolesV3.light.foreground;
+  let brand: string = rolesV3.light.foreground;
   let logo: string | null = null;
   let where = "";
   try {

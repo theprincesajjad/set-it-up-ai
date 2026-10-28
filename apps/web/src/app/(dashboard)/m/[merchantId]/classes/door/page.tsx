@@ -1,5 +1,5 @@
 "use client";
-import { ScanLine } from "lucide-react";
+import { LogOut, ScanLine } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { classesApi } from "@ll/shared";
@@ -13,10 +13,12 @@ import { money } from "@/lib/dashboard/calendar";
 import { classifyRef, doorTone, timeLabel } from "@/lib/dashboard/classes";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/client";
 
 export default function DoorPage() {
+  const { t } = useLocale();
   return (
-    <FeatureGate keys={["booking.classes"]} title="Door check-in">
+    <FeatureGate keys={["booking.classes"]} title={t("counter.cd.title")}>
       <Door />
     </FeatureGate>
   );
@@ -27,6 +29,7 @@ const CARD = { positive: "border-s-4 border-s-success", neutral: "border-s-4 bor
 
 function Door() {
   const { api, base } = useMerchant();
+  const { t, date, number } = useLocale();
   const params = useSearchParams();
   const sessionId = params.get("session") ?? undefined;
   const act = useAction();
@@ -44,7 +47,7 @@ function Door() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const ref = classifyRef(value);
-    if (!ref) return act.setError("Scan a member card or type a 10-digit phone number.");
+    if (!ref) return act.setError(t("counter.cd.refErr"));
     const r = await act.run(() => api.classes.checkIn({ ...ref, sessionId, idempotencyKey: crypto.randomUUID() }));
     if (r) {
       setLastRef(ref);
@@ -64,12 +67,17 @@ function Door() {
   }
   const s = door.data?.session;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex min-h-dvh max-w-300 flex-col gap-6 px-4 py-6 md:px-8">
       <PageHeader
         flush
-        title="Door check-in"
-        description={s ? `Scan the member card or type a phone number. ${timeLabel(s.startsAt)} ${s.name} is open.` : "Scan the member card or type a phone number. No class is open right now."}
-        actions={s ? <Button variant="secondary" href={`${base}/classes/${s.id}`}>Class list</Button> : undefined}
+        title={t("counter.cd.title")}
+        description={s ? t("counter.cd.descOpen", { time: timeLabel(s.startsAt), name: s.name }) : t("counter.cd.descNone")}
+        actions={
+          <>
+            {s ? <Button variant="secondary" href={`${base}/classes/${s.id}`}>{t("counter.cd.classList")}</Button> : null}
+            <Button variant="secondary" href={`${base}/classes`} iconStart={LogOut} data-testid="door-exit">{t("counter.cd.exit")}</Button>
+          </>
+        }
       />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
@@ -79,53 +87,53 @@ function Door() {
               ref={input}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              aria-label="Member card, QR code or phone number"
-              placeholder="Scan QR or enter phone / member code"
+              aria-label={t("counter.cd.inputLabel")}
+              placeholder={t("counter.cd.placeholder")}
               autoComplete="off"
               className="min-h-12 min-w-0 flex-1 bg-transparent text-headline text-foreground outline-none placeholder:text-muted-foreground"
             />
-            <Button type="submit" size="lg" loading={act.busy} className="rounded-xl">Look up</Button>
+            <Button type="submit" size="lg" loading={act.busy} className="rounded-xl">{t("counter.cd.lookUp")}</Button>
           </form>
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           {last ? (
             <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border border-border bg-card p-5", CARD[doorTone(last.outcome)])}>
               <Dot tone={doorTone(last.outcome) === "positive" ? "positive" : doorTone(last.outcome) === "negative" ? "negative" : "neutral"}>{last.message}</Dot>
-              {last.member ? <h2 className="font-display text-h1 text-foreground">{last.member.name ?? last.member.maskedPhone ?? "Member"}</h2> : null}
+              {last.member ? <h2 className="font-display text-h1 text-foreground">{last.member.name ?? last.member.maskedPhone ?? t("counter.member")}</h2> : null}
               <dl className="grid grid-cols-1 gap-3 text-meta sm:grid-cols-3">
-                {last.pass ? <div><dt className="text-fg-muted">Pass</dt><dd className="text-body text-fg">{last.pass.label}{last.pass.creditsLeft != null ? `, ${last.pass.creditsLeft} left` : last.pass.renewsOn ? `, renews ${new Date(`${last.pass.renewsOn}T12:00:00Z`).toLocaleDateString("en-CA", { timeZone: "UTC", month: "short", day: "numeric" })}` : ""}</dd></div> : null}
-                {last.pointsEarned > 0 ? <div><dt className="text-fg-muted">Reward</dt><dd className="text-body text-fg">+{last.pointsEarned} points{last.balance != null ? `, ${last.balance} in all` : ""}</dd></div> : null}
-                {last.visitsThisMonth != null ? <div><dt className="text-fg-muted">This month</dt><dd className="text-body text-fg">{last.visitsThisMonth} visit{last.visitsThisMonth === 1 ? "" : "s"}</dd></div> : null}
-                {last.amountDueCents ? <div><dt className="text-fg-muted">Owed</dt><dd className="text-body text-fg">{money(last.amountDueCents)}</dd></div> : null}
+                {last.pass ? <div><dt className="text-fg-muted">{t("counter.cd.pass")}</dt><dd className="text-body text-fg">{last.pass.label}{last.pass.creditsLeft != null ? t("counter.cd.credits", { n: last.pass.creditsLeft }) : last.pass.renewsOn ? t("counter.cd.renews", { date: date(`${last.pass.renewsOn}T12:00:00Z`, { month: "short", day: "numeric" }, "UTC") }) : ""}</dd></div> : null}
+                {last.pointsEarned > 0 ? <div><dt className="text-fg-muted">{t("counter.cd.reward")}</dt><dd className="text-body text-fg">{t("counter.cd.rewardPoints", { n: last.pointsEarned })}{last.balance != null ? t("counter.cd.rewardAll", { n: last.balance }) : ""}</dd></div> : null}
+                {last.visitsThisMonth != null ? <div><dt className="text-fg-muted">{t("counter.cd.thisMonth")}</dt><dd className="text-body text-fg">{t("counter.cd.visits", { n: last.visitsThisMonth })}</dd></div> : null}
+                {last.amountDueCents ? <div><dt className="text-fg-muted">{t("counter.cd.owed")}</dt><dd className="text-body text-fg">{money(last.amountDueCents)}</dd></div> : null}
               </dl>
               {last.outcome === "no_pass" && last.member?.memberCode && sellable.length ? (
-                <div><Button size="lg" className="rounded-xl" onClick={() => setSelling(true)}>Sell drop-in</Button></div>
+                <div><Button size="lg" className="rounded-xl" onClick={() => setSelling(true)}>{t("counter.cd.sell")}</Button></div>
               ) : null}
             </section>
           ) : null}
           <details className="rounded-card border border-line px-5 py-3">
-            <summary className="cursor-pointer text-body-strong text-fg">What each result means</summary>
+            <summary className="cursor-pointer text-body-strong text-fg">{t("counter.cd.means")}</summary>
             <ul className="mt-2 flex flex-col gap-1.5 text-meta text-fg-muted">
-              <li>Not booked, class has room: they are added using their pass or membership.</li>
-              <li>Not booked, class is full: offer the waitlist or a different class.</li>
-              <li>No pass: tap Sell drop-in, take payment at the desk and they are checked in.</li>
-              <li>Membership past due: tell them the amount; they pay from the app.</li>
+              <li>{t("counter.cd.m1")}</li>
+              <li>{t("counter.cd.m2")}</li>
+              <li>{t("counter.cd.m3")}</li>
+              <li>{t("counter.cd.m4")}</li>
             </ul>
           </details>
         </div>
-        <section aria-label="Arrived" className="flex flex-col gap-2">
-          <h2 className="text-body-strong text-fg">Arrived, {s?.booked !== undefined ? `${door.data?.arrivals.length ?? 0} of ${s.booked}` : door.data?.arrivals.length ?? 0}</h2>
+        <section aria-label={t("counter.cd.arrived")} className="flex flex-col gap-2">
+          <h2 className="text-body-strong text-fg">{s?.booked !== undefined ? t("counter.cd.arrivedOf", { n: number(door.data?.arrivals.length ?? 0), total: number(s.booked) }) : t("counter.cd.arrivedN", { n: number(door.data?.arrivals.length ?? 0) })}</h2>
           {door.data && door.data.arrivals.length ? (
             <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
               {door.data.arrivals.map((a) => (
                 <li key={a.bookingId} className="flex items-center gap-3 px-4 py-3">
                   <span className="w-16 text-meta text-fg-muted tabular">{timeLabel(a.at)}</span>
-                  <span className="min-w-0 flex-1"><span className="block truncate text-body-strong">{a.name ?? "Member"}</span><span className="block truncate text-meta text-fg-muted">{a.payLabel}</span></span>
-                  <Dot tone="positive">In</Dot>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-body-strong">{a.name ?? t("counter.member")}</span><span className="block truncate text-meta text-fg-muted">{a.payLabel}</span></span>
+                  <Dot tone="positive">{t("counter.cd.in")}</Dot>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="rounded-card border border-line px-4 py-4 text-meta text-fg-muted">Nobody has checked in yet.</p>
+            <p className="rounded-card border border-line px-4 py-4 text-meta text-fg-muted">{t("counter.cd.nobody")}</p>
           )}
         </section>
       </div>
@@ -133,7 +141,7 @@ function Door() {
         open={selling}
         onClose={() => setSelling(false)}
         packs={sellable}
-        who={last?.member?.memberCode ? { memberCode: last.member.memberCode, label: last.member.name ?? last.member.maskedPhone ?? "this member" } : null}
+        who={last?.member?.memberCode ? { memberCode: last.member.memberCode, label: last.member.name ?? last.member.maskedPhone ?? t("counter.cd.thisMember") } : null}
         onSaved={afterSale}
       />
     </div>

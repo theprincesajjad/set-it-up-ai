@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { Switch } from "@/components/ui/Switch";
+import { rolesV3 } from "@ll/design-tokens";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
@@ -49,6 +50,8 @@ export default function SettingsPage() {
 
 type ProfileDraft = { name: string; description: string; logoUrl: string; coverUrl: string; brandColor: string; email: string; website: string; instagram: string };
 const HEX = /^#[0-9a-fA-F]{6}$/;
+/** A shop with no brand colour yet shows the ink (light foreground) as its tile colour. */
+const DEFAULT_BRAND: string = rolesV3.light.foreground;
 const looksLikeUrl = (v: string) => !v.trim() || /^https?:\/\/[^\s.]+\.[^\s]+$/i.test(v.trim());
 
 function profileErrors(f: ProfileDraft, phone: string | null, phoneDigits: string): Partial<Record<keyof ProfileDraft | "phone", string>> {
@@ -65,7 +68,7 @@ function Profile({ active }: { active: boolean }) {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const m = detail.merchant;
-  const initial = useMemo<ProfileDraft>(() => ({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "#0B0B0C", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" }), [m]);
+  const initial = useMemo<ProfileDraft>(() => ({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? DEFAULT_BRAND, email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" }), [m]);
   const initialDigits = m.phone?.replace(/^\+1/, "") ?? "";
   const [f, setF] = useState<ProfileDraft>(initial);
   const [phone, setPhone] = useState<string | null>(m.phone);
@@ -92,7 +95,7 @@ function Profile({ active }: { active: boolean }) {
       <Panel>
         <form id="profile-form" className="flex flex-col gap-5" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
           <div className="flex items-start gap-4">
-            <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : "#0B0B0C" }} size={72} />
+            <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND }} size={72} />
             <div className="min-w-0 flex-1">
               <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
             </div>
@@ -104,7 +107,7 @@ function Profile({ active }: { active: boolean }) {
             <div className="min-w-0 flex-1">
               <TextField label="Brand colour" value={f.brandColor} error={shown.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Shown only inside your shop avatar." />
             </div>
-            <input type="color" aria-label="Pick brand colour" value={HEX.test(f.brandColor) ? f.brandColor : "#0B0B0C"} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mt-[26px] h-12 w-14 shrink-0 cursor-pointer rounded-input border border-line bg-bg p-1" />
+            <input type="color" aria-label="Pick brand colour" value={HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mt-[26px] h-12 w-14 shrink-0 cursor-pointer rounded-input border border-line bg-bg p-1" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField type="email" label="Email" optionalLabel value={f.email} error={shown.email} onChange={(e) => set("email", e.target.value)} />

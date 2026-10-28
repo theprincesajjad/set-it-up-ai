@@ -9,7 +9,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { Button } from "@/components/ui/Button";
-import { buildMerchantNav, canOpen, navSections } from "@/lib/dashboard/nav";
+import { buildMerchantNav, canOpen, isBareRoute, navSections } from "@/lib/dashboard/nav";
 import { navLabel } from "@/lib/dashboard/navLabels";
 import { placeLabel } from "@/lib/dashboard/today";
 import { browserApi } from "@/lib/api/browser";
@@ -214,6 +214,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
       alerts={role === "owner" || role === "manager" ? <AlertsLink href={`${base}#needs-you`} label={t("shell.alerts")} /> : null}
       account={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
       footer={<SetupProgress />}
+      bare={allowed && isBareRoute(pathname, base)}
       mobileTitle={<Switcher me={me} />}
       notice={
         viewingAs ? <SupportBanner viewingAs={viewingAs} /> : null

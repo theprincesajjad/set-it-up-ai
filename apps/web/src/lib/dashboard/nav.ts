@@ -413,3 +413,17 @@ export function canOpen(role: StaffRole, key: string): boolean {
   if (key === "billing") return role === "owner";
   return true;
 }
+
+/**
+ * Routes that draw full-bleed, with no sidebar, top bar or bottom bar (Figma 15:2 and 15:130): the staff counter and the class door desk.
+ * They are used at the till, on a tablet, by one hand; the page keeps its own way back (the PIN chip and "Exit counter").
+ * `rest` is the path under `/m/{id}`, for example "/counter" or "/classes/door".
+ */
+export const BARE_ROUTES: readonly string[] = ["/counter", "/classes/door"];
+
+/** True when the pathname (under the shop's `base`) is one of the chrome-free routes, or inside one. */
+export function isBareRoute(pathname: string, base: string): boolean {
+  if (!pathname.startsWith(`${base}/`)) return false;
+  const rest = pathname.slice(base.length);
+  return BARE_ROUTES.some((r) => rest === r || rest.startsWith(`${r}/`));
+}

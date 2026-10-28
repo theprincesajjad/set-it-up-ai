@@ -4,19 +4,20 @@ import {
   Clock3,
   Gift,
   KeyRound,
+  LogOut,
   RotateCcw,
   Ticket,
   UserPlus,
   WifiOff,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Keypad } from "@/components/ui/Keypad";
 import { inputBase } from "@/components/ui/TextField";
-import { copy } from "@/copy/en-CA";
+import { copy } from "@/copy/en-CA"; // l10n-ok: the consent line is the legal text recorded with the member, English by design
 import { newIdempotencyKey } from "@/lib/api/client";
 import type { MerchantEndpoints } from "@/lib/api/endpoints";
 import { errorMessage, isApiError } from "@/lib/api/errors";
@@ -30,6 +31,7 @@ import {
   centsFromKeypad,
   COUNTER_QUEUE_KEY,
   counterErrorMessage,
+  counterTypeLabel,
   EMPTY_SCANNER,
   feedScanner,
   isRewardReady,
@@ -37,29 +39,25 @@ import {
   lookupOutcome,
   matchesHeading,
   maskedForRow,
-  ordinal,
+  pointsText,
   pushDigit,
   readQueue,
+  rewardIn,
   scanPayload,
   stampsLeft,
   UNDO_WINDOW_MS,
+  visitNth,
   visitThisMonth,
+  type CounterText,
   type KeypadKey,
   type ProgramForCounter,
   type QueuedAward,
 } from "@/lib/dashboard/counter";
 import { CountUp } from "@/components/ui/CountUp";
 import { GroceryExtras, notCountedCents, type GroceryCounter } from "./GroceryExtras";
-import {
-  formatMoney,
-  formatPoints,
-  formatSigned,
-  formatTime,
-  firstName,
-  rewardInSentence,
-} from "@/lib/format";
+import { formatMoney, formatSigned, firstName } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { formatNanp, maskPhone } from "@/lib/phone";
-import { typeLabel } from "@/lib/dashboard/labels";
 import { CounterNotice } from "./CounterNotice";
 import { DigitBoxes, ScanKeypad } from "./ScanKeypad";
 import { ScanPanel } from "./ScanPanel";
@@ -67,7 +65,11 @@ import { StampRow } from "./StampRow";
 
 type CounterApi = MerchantEndpoints["counter"];
 
-const FRONT_STORE_PROMPT = "Confirm the total has no prescriptions, pharmacy services or behind-the-counter (Schedule II or III) items.";
+/** The translator and locale every helper below reads; memoised so a render does not rebuild the callbacks that depend on it. */
+function useCounterText(): CounterText {
+  const { t, locale } = useLocaleOrEnglish();
+  return useMemo(() => ({ t, locale }), [t, locale]);
+}
 
 type Phase =
   /** Scan first: viewfinder, 4 digits, keypad. */
@@ -119,6 +121,8 @@ export interface CounterAppProps {
   frontStoreRule?: boolean;
   /** Staff only: how long they can undo their own awards (a line under "Recent at the counter"). */
   undoNote?: string;
+  /** Where "Exit counter" goes. The counter page has no dashboard menu (the shell hides it), so this is the way back. Omit to hide the link. */
+  exitHref?: string;
   /** Grocers: the "Not counted" amount and the bulk-item chips on the amount screen (docs/research/grocers.md). Omit for every other shop. */
   grocery?: GroceryCounter | null;
 }
@@ -142,7 +146,11 @@ export function CounterApp({
   frontStoreRule = false,
   grocery = null,
   undoNote,
+  exitHref,
 }: CounterAppProps) {
+  const ct = useCounterText();
+  const { t } = ct;
+  const { time } = useLocaleOrEnglish();
   const [mode, setMode] = useState<"scan" | "verify">("scan");
   /** Bumped by the keypad's scan key: the scan panel opens the camera. */
   const [cameraRequest, setCameraRequest] = useState(0);
@@ -200,7 +208,7 @@ export function CounterApp({
   const scanner = useRef(EMPTY_SCANNER);
   const perDollar = program.earnType === "per_dollar";
   // Say the shop's own unit: a points shop never "adds a stamp".
-  const addedWord = !perDollar && program.terminology === "stamps" ? "Stamp added" : "Points added";
+  const addedKey = !perDollar && program.terminology === "stamps" ? "counter.stampAddedFor" : "counter.pointsAddedFor";
   const goal = program.stampGoal || 10;
   const [queue, setQueue] = useState<QueuedAward[]>([]);
   const [online, setOnline] = useState(true);
@@ -256,16 +264,16 @@ export function CounterApp({
         // A final error (duplicate, cooldown...) is dropped from the queue but said out loud.
         saveQueue(queueRef.current.filter((x) => x.key !== item.key));
         setError(
-          `${item.label}: ${counterErrorMessage(isApiError(e) ? e : {}, { terminology: program.terminology })}`,
+          `${item.label}: ${counterErrorMessage(isApiError(e) ? e : {}, { terminology: program.terminology }, ct)}`,
         );
       }
     }
     setSending(false);
     if (sent) {
-      setSentNote(`Back online · ${sent} sent`);
+      setSentNote(t("counter.queue.sent", { n: sent }));
       setTimeout(() => setSentNote(null), 4000);
     }
-  }, [api, saveQueue, program.terminology]);
+  }, [api, saveQueue, program.terminology, ct, t]);
   useEffect(() => {
     const up = () => {
       setOnline(true);
@@ -368,11 +376,11 @@ export function CounterApp({
       from?: number,
     ) => {
       if (perDollar && centsFromKeypad(cents) <= 0) {
-        setError("Enter the purchase amount first.");
+        setError(t("counter.err.amount"));
         return;
       }
       if (frontStoreRule && !frontStoreRef.current) {
-        setError(FRONT_STORE_PROMPT);
+        setError(t("counter.err.frontStore"));
         return;
       }
       awardKey.current ??= newIdempotencyKey("counter");
@@ -389,14 +397,14 @@ export function CounterApp({
       };
       if (grocery && notCountedCents(notCounted) > centsFromKeypad(cents)) {
         setBusy(false);
-        setError("The part that doesn't count is more than the total.");
+        setError(t("counter.err.notCounted"));
         return;
       }
       const p = phaseRef.current;
       const before =
         from ??
         (p.kind === "member" || p.kind === "reward" ? p.member.balance : 0);
-      const label = awardLabel(program, Math.max(0, centsFromKeypad(cents) - (grocery ? notCountedCents(notCounted) : 0)), qty);
+      const label = awardLabel(program, Math.max(0, centsFromKeypad(cents) - (grocery ? notCountedCents(notCounted) : 0)), qty, ct);
       try {
         const res = await api.award(body, awardKey.current);
         awardKey.current = null;
@@ -420,7 +428,11 @@ export function CounterApp({
         setNow(at);
         if (res.transactionId && !res.duplicate) setToast({ res, at });
         setAnnounce(
-          `${res.duplicate ? "Already added" : `${addedWord} for ${firstName(res.member.name) || "the customer"}`}. ${formatPoints(res.balance, program.terminology)}. Undo is on screen for ${undoSeconds} seconds.`,
+          t("counter.announce.award", {
+            what: res.duplicate ? t("counter.alreadyAdded") : t(addedKey, { name: firstName(res.member.name) || t("counter.theCustomer") }),
+            balance: pointsText(res.balance, program.terminology, ct),
+            n: undoSeconds,
+          }),
         );
         void loadRecent();
       } catch (e) {
@@ -428,24 +440,22 @@ export function CounterApp({
           // Saved, not lost: same key, sent later. The staff member moves on now.
           const who =
             p.kind === "member" || p.kind === "reward"
-              ? (p.member.name ?? "Member")
+              ? (p.member.name ?? t("counter.member"))
               : ref.phone
                 ? formatNanp(ref.phone.replace(/^\+1/, ""))
-                : "Customer";
+                : t("counter.customer");
           saveQueue([
             ...queueRef.current,
             {
               key: awardKey.current!,
               body,
-              label: `${label} for ${who}`,
+              label: t("counter.queuedFor", { label, who }),
               at: Date.now(),
             },
           ]);
           awardKey.current = null;
           setPhase({ kind: "queued", label, who });
-          setAnnounce(
-            `${label}. Saved on this device. It sends when you're back online.`,
-          );
+          setAnnounce(t("counter.announce.queued", { label }));
         } else {
           awardKey.current = null;
           setPhase({ kind: "idle" });
@@ -457,7 +467,7 @@ export function CounterApp({
                 p.kind === "member" || p.kind === "reward"
                   ? firstName(p.member.name)
                   : null,
-            }),
+            }, ct),
           );
         }
       } finally {
@@ -466,7 +476,9 @@ export function CounterApp({
     },
     [
       api,
-      addedWord,
+      addedKey,
+      ct,
+      t,
       cents,
       qty,
       locationId,
@@ -500,7 +512,7 @@ export function CounterApp({
           if (digits) setPhase({ kind: "nomatch", digits });
           else {
             setEntry("");
-            setError("No member found. Check the code or number.");
+            setError(t("counter.err.noMember"));
           }
         } else if (outcome === "pick")
           setPhase({ kind: "pick", items: r.items, digits });
@@ -519,7 +531,7 @@ export function CounterApp({
         setBusy(false);
       }
     },
-    [api, program, award, setEntry],
+    [api, program, award, setEntry, t],
   );
 
   const onDigit = useCallback(
@@ -549,7 +561,7 @@ export function CounterApp({
   const redeem = useCallback(
     async (member: staffApi.MemberSummaryDto, rewardId: string) => {
       if (frontStoreRule && !frontStoreRef.current) {
-        setError(FRONT_STORE_PROMPT);
+        setError(t("counter.err.frontStore"));
         return;
       }
       redeemKey.current ??= newIdempotencyKey("redeem");
@@ -569,22 +581,22 @@ export function CounterApp({
         );
         redeemKey.current = null;
         setPhase({ kind: "redeemed", res });
-        setAnnounce(`${res.redemption.reward.name} redeemed. Hand it over.`);
+        setAnnounce(t("counter.redeemed.announce", { reward: res.redemption.reward.name }));
         void loadRecent();
       } catch (e) {
         if (!(isApiError(e) && e.isNetwork)) redeemKey.current = null;
         setError(
           isApiError(e) && e.isNetwork
-            ? "No connection. Redeem needs the internet; awards still save here."
+            ? t("counter.err.redeemOffline")
             : counterErrorMessage(isApiError(e) ? e : {}, {
                 terminology: member.terminology,
-              }),
+              }, ct),
         );
       } finally {
         setBusy(false);
       }
     },
-    [api, locationId, perDollar, cents, loadRecent, frontStoreRule],
+    [api, locationId, perDollar, cents, loadRecent, frontStoreRule, ct, t],
   );
 
   const undo = useCallback(
@@ -593,29 +605,27 @@ export function CounterApp({
       setError(null);
       try {
         const r = await api.undo(transactionId);
-        setAnnounce(
-          `Undone. ${firstName(r.member.name) || "The customer"} is back to ${formatPoints(r.member.balance, program.terminology)}.`,
-        );
+        setAnnounce(t("counter.undoneAnnounce", { name: firstName(r.member.name) || t("counter.theCustomer"), balance: pointsText(r.member.balance, program.terminology, ct) }));
         setToast(null);
         reset();
         void loadRecent();
       } catch (e) {
         setError(
           isApiError(e) && e.status === 403
-            ? "Too late to undo here. Adjust it from the customer's page."
+            ? t("counter.err.tooLate")
             : errorMessage(e),
         );
       } finally {
         setBusy(false);
       }
     },
-    [api, program.terminology, loadRecent, reset],
+    [api, program.terminology, loadRecent, reset, ct, t],
   );
 
   const verify = useCallback(async () => {
     if (code.trim().length < 4)
-      return setError("Enter the code on the customer's screen.");
-    if (frontStoreRule && !frontStoreRef.current) return setError(FRONT_STORE_PROMPT);
+      return setError(t("counter.err.enterCode"));
+    if (frontStoreRule && !frontStoreRef.current) return setError(t("counter.err.frontStore"));
     setBusy(true);
     setError(null);
     try {
@@ -623,18 +633,18 @@ export function CounterApp({
       setPhase({ kind: "redeemed", res });
       setMode("scan");
       setCode("");
-      setAnnounce(`${res.redemption.reward.name} redeemed. Hand it over.`);
+      setAnnounce(t("counter.redeemed.announce", { reward: res.redemption.reward.name }));
       void loadRecent();
     } catch (e) {
       setError(
         isApiError(e) && e.isNetwork
-          ? "No connection. Checking a code needs the internet."
-          : counterErrorMessage(isApiError(e) ? e : {}),
+          ? t("counter.err.verifyOffline")
+          : counterErrorMessage(isApiError(e) ? e : {}, {}, ct),
       );
     } finally {
       setBusy(false);
     }
-  }, [api, code, loadRecent, frontStoreRule]);
+  }, [api, code, loadRecent, frontStoreRule, ct, t]);
 
   // Hardware keyboard: a scanner types the payload fast and presses Enter; slow digits feed the 4-digit entry;
   // while a member is on screen (per-dollar) digits feed the amount; Esc is "next customer".
@@ -696,16 +706,16 @@ export function CounterApp({
     : 0;
   const idle = mode === "scan" && phase.kind === "idle";
   const lookupShown = idle && !pinOpen;
-  const statusText = online ? "Online" : "Offline";
+  const statusText = online ? t("counter.status.online") : t("counter.status.offline");
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn("flex flex-col gap-4", exitHref && "min-h-dvh gap-0")}>
       <div aria-live="polite" className="sr-only">
         {announce}
       </div>
 
       {/* Chrome-free (Figma 15:2): the shop, the page name, whether this device is online, who is stamping. No page header, no banners. */}
-      <div className="overflow-hidden rounded-card border border-border bg-background">
+      <div className={cn("bg-background", exitHref ? "flex flex-1 flex-col" : "overflow-hidden rounded-card border border-border")}>
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-hover text-meta-strong uppercase text-foreground">
@@ -715,18 +725,18 @@ export function CounterApp({
               <span className="truncate text-body-strong text-foreground">
                 <bdi>{shopName}</bdi>
               </span>
-              <h1 className="text-body text-muted-foreground">Counter</h1>
+              <h1 className="text-body text-muted-foreground">{t("counter.title")}</h1>
               <span className="flex items-center gap-1.5 text-meta text-muted-foreground">
                 <span aria-hidden className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")} />
                 {statusText}
-                {stampsToday != null ? ` · ${formatPoints(stampsToday, program.terminology)} today` : ""}
+                {stampsToday != null ? ` · ${t("counter.today", { points: pointsText(stampsToday, program.terminology, ct) })}` : ""}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {locations.length > 1 ? (
               <label className="flex items-center gap-2">
-                <span className="sr-only">Location</span>
+                <span className="sr-only">{t("counter.location")}</span>
                 <select
                   value={locationId}
                   onChange={(e) => {
@@ -751,14 +761,19 @@ export function CounterApp({
               <button
                 type="button"
                 onClick={() => setPinOpen(true)}
-                aria-label={staff ? `Stamping as ${staff.name ?? "staff"}. Switch` : "Sign in with a PIN"}
+                aria-label={staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : t("counter.signInPin")}
                 className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring"
               >
                 <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-hover text-caption font-semibold uppercase">
                   {(staff?.name ?? signedInName ?? "?").trim()[0]}
                 </span>
-                {firstName(staff?.name ?? signedInName ?? "") || "Staff"}
+                {firstName(staff?.name ?? signedInName ?? "") || t("counter.staff")}
               </button>
+            ) : null}
+            {exitHref ? (
+              <Button href={exitHref} variant="secondary" size="md" iconStart={LogOut} data-testid="counter-exit">
+                {t("counter.exit")}
+              </Button>
             ) : null}
           </div>
         </header>
@@ -781,8 +796,8 @@ export function CounterApp({
                   {sentNote && !queue.length
                     ? sentNote
                     : !online && !queue.length
-                      ? "Offline · awards save on this device"
-                      : `${online ? "Sending" : "Offline"} · ${queue.length} waiting to send`}
+                      ? t("counter.queue.offline")
+                      : t(online ? "counter.queue.sendingN" : "counter.queue.offlineN", { n: queue.length })}
                 </span>
                 {queue.length ? (
                   <button
@@ -791,7 +806,7 @@ export function CounterApp({
                     disabled={sending}
                     className="min-h-11 rounded-full px-3 font-semibold underline-offset-2 hover:underline focus-visible:focus-ring disabled:opacity-60"
                   >
-                    {sending ? "Sending..." : "Retry now"}
+                    {sending ? t("counter.queue.sending") : t("counter.queue.retry")}
                   </button>
                 ) : null}
               </div>
@@ -800,7 +815,7 @@ export function CounterApp({
           </div>
         ) : null}
 
-        <div className="grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className={cn("grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]", exitHref && "flex-1")}>
           {/* Left: find the customer. On a phone it is only there while there is nobody on screen. */}
           <div className={cn("min-w-0 flex-col gap-4 bg-muted p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
             {pinOpen && pin ? (
@@ -819,9 +834,9 @@ export function CounterApp({
                   ready={ready}
                   cameraRequest={cameraRequest}
                   onScan={onScan}
-                  hint={program.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. Stamps on scan." : "Wallet pass, app, or printed QR."}
+                  hint={program.counterAutoStamp && !perDollar ? t("counter.scan.hintAuto") : t("counter.scan.hint")}
                 />
-                <p className="text-meta text-muted-foreground">Or type the last 4 digits of their phone</p>
+                <p className="text-meta text-muted-foreground">{t("counter.scan.type4")}</p>
                 <DigitBoxes value={entry} />
                 <ScanKeypad onKey={onDigit} disabled={busy || !ready} onScanKey={() => setCameraRequest((n) => n + 1)} />
                 <Button
@@ -831,7 +846,7 @@ export function CounterApp({
                     setError(null);
                   }}
                 >
-                  Redeem a code
+                  {t("counter.redeemCode")}
                 </Button>
               </>
             ) : !pinOpen ? (
@@ -842,7 +857,7 @@ export function CounterApp({
                   <ScanKeypad onKey={() => undefined} disabled />
                 </div>
                 <p className="hidden text-meta text-muted-foreground lg:block">
-                  <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
+                  <EscHint />
                 </p>
               </>
             ) : null}
@@ -853,15 +868,15 @@ export function CounterApp({
             {idle && regulars.length && !perDollar ? (
               <section aria-labelledby="regulars-title" className="flex flex-col gap-2">
                 <h2 id="regulars-title" className="text-meta-strong text-muted-foreground">
-                  Regulars not in yet today · tap to {program.counterAutoStamp ? "stamp" : "open"}
+                  {t(program.counterAutoStamp ? "counter.regulars.stamp" : "counter.regulars.open")}
                 </h2>
-                <ul className="flex flex-wrap gap-2" aria-label="Regulars">
+                <ul className="flex flex-wrap gap-2" aria-label={t("counter.regulars.label")}>
                   {regulars.map((m) => (
                     <li key={m.memberId}>
                       <button
                         type="button"
                         disabled={busy || !ready}
-                        aria-label={`${program.counterAutoStamp ? "Stamp" : "Open"} ${m.name ?? "member"}`}
+                        aria-label={t(program.counterAutoStamp ? "counter.stampName" : "counter.openName", { name: m.name ?? t("counter.member") })}
                         className="min-h-11 rounded-full border border-border px-4 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring disabled:opacity-50"
                         onClick={() => {
                           if (isRewardReady(m, program)) setPhase({ kind: "reward", member: m });
@@ -871,7 +886,7 @@ export function CounterApp({
                           } else setPhase({ kind: "member", member: m });
                         }}
                       >
-                        {firstName(m.name) || "Member"}
+                        {firstName(m.name) || t("counter.member")}
                       </button>
                     </li>
                   ))}
@@ -885,11 +900,10 @@ export function CounterApp({
               aria-labelledby="verify-title"
             >
               <h2 id="verify-title" className="text-body-strong text-fg">
-                Redeem a code
+                {t("counter.redeemCode")}
               </h2>
               <p className="mt-1 text-meta text-fg-muted">
-                For rewards the customer redeemed in the app. The code is on
-                their screen.
+                {t("counter.verify.body")}
               </p>
               <form
                 className="mt-4 flex flex-col gap-3 sm:flex-row"
@@ -899,7 +913,7 @@ export function CounterApp({
                 }}
               >
                 <label className="sr-only" htmlFor="redeem-code">
-                  Reward code
+                  {t("counter.verify.label")}
                 </label>
                 <input
                   id="redeem-code"
@@ -920,7 +934,7 @@ export function CounterApp({
                   loading={busy}
                   className="min-h-16"
                 >
-                  {copy.action.redeem}
+                  {t("counter.redeem")}
                 </Button>
               </form>
               <button
@@ -931,7 +945,7 @@ export function CounterApp({
                 }}
                 className="mt-4 text-meta font-medium text-fg-muted hover:text-fg"
               >
-                Back to scan
+                {t("counter.backToScan")}
               </button>
             </section>
           ) : null}
@@ -947,18 +961,18 @@ export function CounterApp({
                   id="pick-title"
                   className="font-display text-title font-bold leading-7 text-fg"
                 >
-                  {matchesHeading(phase.items.length, phase.digits)}
+                  {matchesHeading(phase.items.length, phase.digits, ct)}
                 </h2>
                 <p className="mt-1 text-sm text-fg-muted">
                   {program.counterAutoStamp && !perDollar
-                    ? "Tap one. Stamp is added immediately."
-                    : "Tap one to open their card."}
+                    ? t("counter.pick.tapStamp")
+                    : t("counter.pick.tapOpen")}
                 </p>
               </div>
               <DigitBoxes value={phase.digits} />
               <ul
                 className="flex flex-col gap-2.5"
-                aria-label="Matching members"
+                aria-label={t("counter.pick.matching")}
               >
                 {phase.items.map((m) => (
                   <li
@@ -973,22 +987,22 @@ export function CounterApp({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-headline font-semibold text-fg">
-                        {m.name ?? "Member"}
+                        {m.name ?? t("counter.member")}
                       </span>
                       <span className="block text-sm tabular-nums text-fg-muted">
                         {maskedForRow(m.maskedPhone)}
                       </span>
                       <span className="block text-meta text-fg-muted">
                         {program.earnType === "stamps"
-                          ? `${Math.min(m.balance, goal)} of ${goal}`
-                          : formatPoints(m.balance, m.terminology)}{" "}
-                        · {cameInText(m.lastVisitAt, new Date(now))}
+                          ? t("counter.ofGoal", { n: Math.min(m.balance, goal), goal })
+                          : pointsText(m.balance, m.terminology, ct)}{" "}
+                        · {cameInText(m.lastVisitAt, new Date(now), ct)}
                       </span>
                     </span>
                     <Button
                       size="sm"
                       disabled={busy}
-                      aria-label={`${program.counterAutoStamp && !perDollar ? "Stamp" : "Open"} ${m.name ?? "member"}`}
+                      aria-label={t(program.counterAutoStamp && !perDollar ? "counter.stampName" : "counter.openName", { name: m.name ?? t("counter.member") })}
                       className="h-10 rounded-full px-5 text-sm"
                       onClick={() => {
                         if (isRewardReady(m, program))
@@ -1000,8 +1014,8 @@ export function CounterApp({
                       }}
                     >
                       {program.counterAutoStamp && !perDollar
-                        ? "Stamp"
-                        : "Open"}
+                        ? t("counter.pick.stampBtn")
+                        : t("counter.pick.openBtn")}
                     </Button>
                   </li>
                 ))}
@@ -1011,7 +1025,7 @@ export function CounterApp({
                 onClick={() => setPhase({ kind: "new", phone: "" })}
                 className="text-center text-sm font-medium text-fg hover:underline focus-visible:focus-ring"
               >
-                Not here? Add as a new member with their number
+                {t("counter.pick.notHere")}
               </button>
             </section>
           ) : null}
@@ -1026,20 +1040,20 @@ export function CounterApp({
                 id="nomatch-title"
                 className="font-display text-title font-bold leading-7 text-fg"
               >
-                No one ends in {phase.digits}
+                {t("counter.nomatch.title", { digits: phase.digits })}
               </h2>
               <p className="text-sm text-fg-muted">
-                Check the digits, or add them as a new member with their number.
+                {t("counter.nomatch.body")}
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <Button size="md" variant="secondary" onClick={reset}>
-                  Try again
+                  {t("counter.tryAgain")}
                 </Button>
                 <Button
                   size="md"
                   onClick={() => setPhase({ kind: "new", phone: "" })}
                 >
-                  Add as a new member
+                  {t("counter.addNew")}
                 </Button>
               </div>
             </section>
@@ -1053,7 +1067,7 @@ export function CounterApp({
                 e.preventDefault();
                 const phone = phase.phone || newPhone.replace(/\D/g, "");
                 if (!phase.phone && phone.replace(/^1/, "").length !== 10)
-                  return setError("Type their 10-digit phone number.");
+                  return setError(t("counter.new.phoneErr"));
                 void award(
                   {
                     phone:
@@ -1075,14 +1089,11 @@ export function CounterApp({
                   className="size-4 text-fg-muted"
                   strokeWidth={1.75}
                 />{" "}
-                New member
-                {phase.phone
-                  ? `: ${formatNanp(phase.phone.replace(/^\+1/, ""))}`
-                  : ""}
+                {phase.phone ? t("counter.new.titlePhone", { phone: formatNanp(phase.phone.replace(/^\+1/, "")) }) : t("counter.new.title")}
               </p>
               {!phase.phone ? (
                 <label className="flex flex-col gap-1.5 text-meta-strong text-fg">
-                  Mobile number
+                  {t("counter.new.phone")}
                   <input
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
@@ -1095,7 +1106,7 @@ export function CounterApp({
                 </label>
               ) : null}
               <label className="flex flex-col gap-1.5 text-meta-strong text-fg">
-                First name (optional)
+                {t("counter.new.name")}
                 <input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -1107,17 +1118,17 @@ export function CounterApp({
                 checked={consent}
                 onChange={setConsent}
                 label={copy.consent.merchant(shopName)}
-                caption="Read this to the customer. Only tick it if they say yes."
+                caption={t("counter.new.consent")}
               />
               {perDollar ? (
                 <AmountPad cents={cents} setCents={setCents} />
               ) : null}
               <div className="flex gap-2.5">
                 <Button type="button" variant="secondary" onClick={reset}>
-                  Cancel
+                  {t("counter.cancel")}
                 </Button>
                 <Button type="submit" size="counter" loading={busy}>
-                  Add and award
+                  {t("counter.new.submit")}
                 </Button>
               </div>
             </form>
@@ -1180,14 +1191,13 @@ export function CounterApp({
                 id="queued-title"
                 className="font-display text-h1 text-foreground"
               >
-                {phase.label} for {phase.who}
+                {t("counter.queuedFor", { label: phase.label, who: phase.who })}
               </p>
               <p className="text-body text-muted-foreground">
-                Saved on this device. It sends when you&apos;re back online,
-                with nothing counted twice.
+                {t("counter.queued.body")}
               </p>
               <Button size="counter" onClick={reset} autoFocus>
-                Next customer
+                {t("counter.next")}
               </Button>
             </section>
           ) : null}
@@ -1199,27 +1209,22 @@ export function CounterApp({
             >
               <SuccessMark />
               <p className="font-display text-h1 text-foreground">
-                {phase.res.redemption.reward.name} redeemed.
+                {t("counter.redeemed.title", { reward: phase.res.redemption.reward.name })}
               </p>
               <p className="text-title font-normal text-foreground">
-                Hand it over.
+                {t("counter.handOver")}
                 {phase.res.redemption.discountCents
-                  ? ` Discount ${formatMoney(phase.res.redemption.discountCents)}.`
+                  ? ` ${t("counter.discount", { amount: formatMoney(phase.res.redemption.discountCents) })}`
                   : ""}
               </p>
               <p className="text-body text-muted-foreground">
                 {phase.res.member.name
-                  ? `${firstName(phase.res.member.name)} has `
-                  : "Balance "}
-                {formatPoints(
-                  phase.res.member.balance,
-                  phase.res.member.terminology,
-                )}{" "}
-                left.
+                  ? t("counter.hasLeft", { name: firstName(phase.res.member.name), balance: pointsText(phase.res.member.balance, phase.res.member.terminology, ct) })
+                  : t("counter.balanceLeft", { balance: pointsText(phase.res.member.balance, phase.res.member.terminology, ct) })}
               </p>
               <div className="flex flex-col gap-2">
                 <Button size="counter" onClick={reset} autoFocus>
-                  Next customer
+                  {t("counter.next")}
                 </Button>
                 {phase.res.redemption.transactionId ? (
                   <Button
@@ -1232,11 +1237,11 @@ export function CounterApp({
                       void undo(phase.res.redemption.transactionId!)
                     }
                   >
-                    Undo redeem
+                    {t("counter.undoRedeem")}
                   </Button>
                 ) : null}
               </div>
-              <p className="text-center text-caption text-muted-foreground">Returns to scan in 10 seconds</p>
+              <p className="text-center text-caption text-muted-foreground">{t("counter.returnsIn", { n: 10 })}</p>
             </section>
           ) : null}
 
@@ -1245,7 +1250,7 @@ export function CounterApp({
           className="min-w-0"
         >
           <h2 id="recent-title" className="text-body-strong text-fg">
-            Recent at the counter
+            {t("counter.recent.title")}
           </h2>
           {undoNote ? <p className="text-caption text-muted-foreground">{undoNote}</p> : null}
           {recent.length ? (
@@ -1259,13 +1264,13 @@ export function CounterApp({
                   <div className="min-w-0">
                     <p dir="auto" className="truncate text-meta text-fg">
                       {a.name ??
-                        (a.maskedPhone ? maskPhone(a.maskedPhone) : "Member")}
+                        (a.maskedPhone ? maskPhone(a.maskedPhone) : t("counter.member"))}
                       {a.reversed ? (
-                        <span className="text-fg-muted"> · undone</span>
+                        <span className="text-fg-muted"> · {t("counter.undoneTag")}</span>
                       ) : null}
                     </p>
                     <p dir="auto" className="truncate text-caption text-muted-foreground">
-                      {formatTime(a.createdAt)} · {typeLabel(a.type)}
+                      {time(a.createdAt)} · {counterTypeLabel(a.type, ct)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
                   </div>
@@ -1289,7 +1294,7 @@ export function CounterApp({
                         disabled={busy}
                         className="min-h-11 rounded-sm px-2 text-meta text-muted-foreground hover:text-foreground hover:underline focus-visible:focus-ring"
                       >
-                        Undo
+                        {t("counter.undo")}
                       </button>
                     ) : null}
                   </span>
@@ -1298,7 +1303,7 @@ export function CounterApp({
             </ul>
           ) : (
             <p className="mt-2 text-meta text-fg-muted">
-              Awards and redemptions show up here.
+              {t("counter.recent.empty")}
             </p>
           )}
         </aside>
@@ -1311,8 +1316,8 @@ export function CounterApp({
               >
                 <span className="flex items-center gap-2">
                   <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
-                  {awardSuccess(program, toast.res.pointsEarned)}.{" "}
-                  {toast.res.member.name ? `${firstName(toast.res.member.name)} now has ${toast.res.balance}.` : `Balance ${toast.res.balance}.`}
+                  {awardSuccess(program, toast.res.pointsEarned, ct)}.{" "}
+                  {toast.res.member.name ? t("counter.toast.now", { name: firstName(toast.res.member.name), balance: toast.res.balance }) : t("counter.toast.balance", { balance: toast.res.balance })}
                 </span>
                 <button
                   type="button"
@@ -1320,7 +1325,7 @@ export function CounterApp({
                   onClick={() => void undo(toast.res.transactionId!)}
                   className="inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 font-semibold tabular-nums hover:underline focus-visible:focus-ring disabled:opacity-60"
                 >
-                  <RotateCcw aria-hidden className="size-3.5" /> Undo {secondsLeft}s
+                  <RotateCcw aria-hidden className="size-3.5" /> {t("counter.undoSecs", { n: secondsLeft })}
                 </button>
               </div>
             ) : null}
@@ -1328,6 +1333,21 @@ export function CounterApp({
         </div>
       </div>
     </div>
+  );
+}
+
+const KEY_ESC = "Esc"; // l10n-ok: a key cap label
+
+/** "Esc for the next customer" with Esc as a key cap, in whichever order the language puts the words. */
+function EscHint() {
+  const { t } = useCounterText();
+  const [before = "", after = ""] = t("counter.escNext", { key: "\u0001" }).split("\u0001");
+  return (
+    <>
+      {before}
+      <kbd dir="ltr" className="rounded-sm border border-border px-1.5 text-caption">{KEY_ESC}</kbd>
+      {after}
+    </>
   );
 }
 
@@ -1344,6 +1364,7 @@ function initialsOf(name: string | null): string {
 
 /** Who is at the counter: initials, name, phone and visit (Figma 15:2). `children` sits at the end edge (a status pill, a clear button). */
 function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name: string | null; detail?: React.ReactNode; titleId?: string; size?: "md" | "lg"; children?: React.ReactNode }) {
+  const { t } = useCounterText();
   return (
     <div className="flex items-center gap-4">
       <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-hover font-semibold uppercase text-foreground", size === "lg" ? "size-14 text-title" : "size-11 text-meta-strong")}>
@@ -1351,7 +1372,7 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
       </span>
       <div className="min-w-0 flex-1">
         <h2 id={titleId} className="truncate font-display text-h1 text-foreground">
-          {name ?? "Member"}
+          {name ?? t("counter.member")}
         </h2>
         {detail ? <p className="text-meta tabular-nums text-muted-foreground">{detail}</p> : null}
       </div>
@@ -1362,12 +1383,13 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
 
 /** The stamp card on the right pane: what the next reward is, how far they are, and the stamps. */
 function StampsPanel({ title, have, goal, ready, popFrom, size = "lg" }: { title: string; have: number; goal: number; ready: boolean; popFrom?: number; size?: "sm" | "md" | "lg" }) {
+  const { t } = useCounterText();
   return (
     <div className="rounded-card border border-border bg-card p-5">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <p className="text-body-strong text-foreground">{title}</p>
         <p className={cn("shrink-0 text-body-strong tabular-nums", ready ? "text-points-text" : "text-muted-foreground")}>
-          {Math.min(have, goal)} of {goal}
+          {t("counter.ofGoal", { n: Math.min(have, goal), goal })}
         </p>
       </div>
       <StampRow goal={goal} filled={have} size={size} popFrom={popFrom} />
@@ -1389,6 +1411,8 @@ function Stamped({
   onNext: () => void;
   from: number;
 }) {
+  const ct = useCounterText();
+  const { t } = ct;
   const stamps = program.earnType === "stamps";
   const n = res.balance;
   const ready = res.rewardsAvailable[0] ?? null;
@@ -1396,9 +1420,9 @@ function Stamped({
   return (
     <section role="status" aria-labelledby="ok-title" className="flex flex-col gap-5">
       <CustomerHeader
-        name={res.duplicate ? "Already added" : res.member.name}
+        name={res.duplicate ? t("counter.alreadyAdded") : res.member.name}
         titleId="ok-title"
-        detail={res.memberCreated ? "New member · first stamp" : visitThisMonth(res.visitsThisMonth)}
+        detail={res.memberCreated ? t("counter.firstStamp") : visitThisMonth(res.visitsThisMonth, ct)}
       />
       <p className="font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums text-points-text">
         {stamps ? (
@@ -1407,16 +1431,16 @@ function Stamped({
           <CountUp value={n} from={from} className="tabular-nums" />
         )}
         <span className="ms-2 text-title font-bold tracking-normal text-muted-foreground">
-          {stamps ? `/ ${goal}` : formatPoints(n, program.terminology).replace(/^[\d,]+ /, "")}
+          {stamps ? `/ ${goal}` : pointsText(n, program.terminology, ct).replace(/^[\d,]+ /, "")}
         </span>
       </p>
       {stamps ? <StampRow goal={goal} filled={n} size="md" popFrom={res.duplicate ? undefined : Math.min(from, goal)} /> : null}
       <p className="text-body-strong text-foreground">
         {ready
-          ? `${rewardInSentence(ready.name)} ready next time`
+          ? t("counter.readyNext", { reward: rewardIn(ready.name, ct) })
           : res.member.nextReward
-            ? stampsLeft(left, res.member.nextReward.name)
-            : formatPoints(n, program.terminology)}
+            ? stampsLeft(left, res.member.nextReward.name, ct)
+            : pointsText(n, program.terminology, ct)}
       </p>
       {/* The big number already says "1 stamp"; only the extras (boosts, VIP) are worth a line. */}
       {res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).length ? (
@@ -1424,9 +1448,9 @@ function Stamped({
       ) : null}
       {/* Network perk and street-campaign progress ("1 of 3 shops visited") is for the customer's pass, not the barista's screen. */}
       <Button size="counter" onClick={onNext} autoFocus>
-        Next customer
+        {t("counter.next")}
       </Button>
-      <p className="text-center text-caption text-muted-foreground">Returns to scan in {Math.round(AUTO_RETURN_MS / 1000)} seconds</p>
+      <p className="text-center text-caption text-muted-foreground">{t("counter.returnsIn", { n: Math.round(AUTO_RETURN_MS / 1000) })}</p>
     </section>
   );
 }
@@ -1447,37 +1471,39 @@ function RewardReady({
   onStamp: () => void;
   onBack: () => void;
 }) {
+  const ct = useCounterText();
+  const { t } = ct;
   const goal = program.stampGoal || member.rewardsAffordable[0]?.pointsCost || 10;
   const reward = member.rewardsAffordable[0] ?? null;
   const carry = reward ? member.balance - reward.pointsCost : Math.max(0, member.balance - goal);
-  const rewardName = reward?.name ?? "Free drink";
+  const rewardName = reward?.name ?? t("counter.defaultReward");
   const [pick, setPick] = useState(false);
   return (
     <section aria-labelledby="reward-title" className="flex flex-col gap-5">
-      <CustomerHeader name={member.name} titleId="reward-title" detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${ordinal(member.visitCount + 1)} visit`}>
+      <CustomerHeader name={member.name} titleId="reward-title" detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${visitNth(member.visitCount + 1, ct)}`}>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-points-soft px-3 py-1.5 text-meta-strong text-points-text">
           <span aria-hidden className="size-1.5 rounded-full bg-points" />
-          Reward ready
+          {t("counter.rewardReady")}
         </span>
       </CustomerHeader>
       {program.earnType === "stamps" ? (
-        <StampsPanel title={`${rewardName} after ${goal} stamps`} have={goal} goal={goal} ready />
+        <StampsPanel title={t("counter.afterStamps", { reward: rewardName, goal })} have={goal} goal={goal} ready />
       ) : (
         <p className="font-display text-display text-foreground">{rewardName}</p>
       )}
       <p className="text-meta text-muted-foreground">
-        {firstName(member.name) || "They"} {firstName(member.name) ? "has" : "have"} {formatPoints(member.balance, member.terminology)}.{" "}
-        {carry > 0 ? `${carry} carries over after redeeming.` : "A fresh card starts after redeeming."}
+        {firstName(member.name) ? t("counter.has", { name: firstName(member.name), balance: pointsText(member.balance, member.terminology, ct) }) : t("counter.theyHave", { balance: pointsText(member.balance, member.terminology, ct) })}{" "}
+        {carry > 0 ? t("counter.carry", { n: carry }) : t("counter.freshCard")}
       </p>
       <div className="flex w-full flex-col gap-2">
         {member.rewardsAffordable.length > 1 && pick ? (
-          <ul className="divide-y divide-border border-y border-border text-start" aria-label="Rewards ready">
+          <ul className="divide-y divide-border border-y border-border text-start" aria-label={t("counter.rewardsReady")}>
             {member.rewardsAffordable.map((r) => (
               <li key={r.id} className="flex min-h-14 items-center gap-3 py-2">
                 <Gift aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
                 <span className="min-w-0 flex-1 text-body-strong text-foreground">{r.name}</span>
                 <Button size="md" variant="secondary" disabled={busy} onClick={() => onRedeem(r.id)}>
-                  {copy.action.redeem}
+                  {t("counter.redeem")}
                 </Button>
               </li>
             ))}
@@ -1489,14 +1515,14 @@ function RewardReady({
             loading={busy}
             onClick={() => (member.rewardsAffordable.length > 1 ? setPick(true) : reward ? onRedeem(reward.id) : undefined)}
           >
-            {`Redeem ${rewardInSentence(rewardName)}`}
+            {t("counter.redeemReward", { reward: rewardIn(rewardName, ct) })}
           </Button>
         )}
         <Button size="lg" variant="secondary" disabled={busy} onClick={onStamp} className="min-h-14 rounded-xl">
-          Stamp instead, keep the reward
+          {t("counter.stampInstead")}
         </Button>
         <button type="button" onClick={onBack} className="mt-1 min-h-11 text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
-          Not them? Back to scan
+          {t("counter.notThem")}
         </button>
       </div>
     </section>
@@ -1541,24 +1567,26 @@ function MemberPanel({
   onVerify: () => void;
   onClear: () => void;
 }) {
+  const ct = useCounterText();
+  const { t } = ct;
   const perDollar = program.earnType === "per_dollar";
   const stamps = program.earnType === "stamps";
   const goal = program.stampGoal || member.nextReward?.pointsCost || 10;
   const next = member.rewardsAffordable[0]
-    ? `${rewardInSentence(member.rewardsAffordable[0].name)} ready`
+    ? t("counter.readyShort", { reward: rewardIn(member.rewardsAffordable[0].name, ct) })
     : member.nextReward
-      ? `${member.nextReward.pointsNeeded} to ${/^free /i.test(member.nextReward.name) ? `a ${rewardInSentence(member.nextReward.name)}` : member.nextReward.name}`
+      ? t(/^free /i.test(member.nextReward.name) ? "counter.toRewardA" : "counter.toReward", { n: member.nextReward.pointsNeeded, reward: /^free /i.test(member.nextReward.name) ? rewardIn(member.nextReward.name, ct) : member.nextReward.name })
       : "";
   return (
     <section className="flex flex-col gap-5" aria-labelledby="member-title">
       <CustomerHeader
         name={member.name}
         titleId="member-title"
-        detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${ordinal(member.visitCount + 1)} visit${member.vip ? ` · ${member.vip.name}` : ""}`}
+        detail={`${maskPhone(member.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")} · ${visitNth(member.visitCount + 1, ct)}${member.vip ? ` · ${member.vip.name}` : ""}`}
       >
         <button
           type="button"
-          aria-label="Clear customer"
+          aria-label={t("counter.clear")}
           onClick={onClear}
           className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-foreground hover:bg-hover focus-visible:focus-ring"
         >
@@ -1578,7 +1606,7 @@ function MemberPanel({
         <div className="rounded-card border border-border bg-card p-5 text-center">
           <p className="font-display text-display tabular-nums text-foreground">
             {member.balance.toLocaleString("en-CA")}
-            <span className="text-title text-muted-foreground"> {formatPoints(member.balance, member.terminology).replace(/^[\d,]+ /, "")}</span>
+            <span className="text-title text-muted-foreground"> {pointsText(member.balance, member.terminology, ct).replace(/^[\d,]+ /, "")}</span>
           </p>
           <p className={cn("mt-1 text-meta", member.rewardsAffordable.length ? "text-points-text" : "text-muted-foreground")}>
             {member.terminology}
@@ -1591,11 +1619,11 @@ function MemberPanel({
           icon={Ticket}
           action={
             <Button size="sm" variant="ghost" onClick={onVerify}>
-              Enter code
+              {t("counter.enterCode")}
             </Button>
           }
         >
-          This customer has a reward code waiting in the app.
+          {t("counter.codeWaiting")}
         </CounterNotice>
       ) : null}
 
@@ -1606,7 +1634,7 @@ function MemberPanel({
         </div>
       ) : (
         <div>
-          <div role="radiogroup" aria-label="How many" className="flex gap-2">
+          <div role="radiogroup" aria-label={t("counter.howMany")} className="flex gap-2">
             {[1, 2, 3].map((n) => (
               <button
                 key={n}
@@ -1623,13 +1651,13 @@ function MemberPanel({
               </button>
             ))}
           </div>
-          <p className="mt-2 text-caption text-muted-foreground">{stamps ? "One per drink in this order" : "One per item in this order"}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{stamps ? t("counter.onePerDrink") : t("counter.onePerItem")}</p>
         </div>
       )}
 
       <div className={cn("flex flex-col gap-2", !!extras && "sticky bottom-0 z-raised -mx-4 border-t border-border bg-background px-4 pb-3 pt-3 lg:-mx-6 lg:px-6")}>
         <Button size="counter" loading={busy} onClick={onAward}>
-          {awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty)}
+          {awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty, ct)}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -1641,36 +1669,36 @@ function MemberPanel({
           >
             {member.rewardsAffordable.length
               ? member.rewardsAffordable.length === 1
-                ? `Redeem ${rewardInSentence(member.rewardsAffordable[0]!.name)}`
-                : "Redeem"
-              : `Redeem · needs ${member.nextReward?.pointsCost ?? goal}`}
+                ? t("counter.redeemReward", { reward: rewardIn(member.rewardsAffordable[0]!.name, ct) })
+                : t("counter.redeem")
+              : t("counter.redeemNeeds", { n: member.nextReward?.pointsCost ?? goal })}
           </Button>
           <Button variant="secondary" size="lg" className="min-h-14 flex-1 rounded-xl" onClick={onVerify}>
-            Redeem a code
+            {t("counter.redeemCode")}
           </Button>
         </div>
       </div>
 
       {showRewards && member.rewardsAffordable.length > 1 ? (
         <div>
-          <h3 className="text-meta-strong text-foreground">Ready to redeem</h3>
+          <h3 className="text-meta-strong text-foreground">{t("counter.readyToRedeem")}</h3>
           <ul className="mt-2 divide-y divide-border border-y border-border">
             {member.rewardsAffordable.map((r) => (
               <li key={r.id} className="flex min-h-14 items-center gap-3 py-2">
                 <Gift aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
                 <span className="min-w-0 flex-1 text-body-strong text-foreground">{r.name}</span>
-                <span className="text-meta tabular-nums text-muted-foreground">{formatPoints(r.pointsCost, member.terminology)}</span>
+                <span className="text-meta tabular-nums text-muted-foreground">{pointsText(r.pointsCost, member.terminology, ct)}</span>
                 <Button size="md" variant="secondary" disabled={busy} onClick={() => onRedeem(r.id)}>
-                  {copy.action.redeem}
+                  {t("counter.redeem")}
                 </Button>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
-      {member.discountCards.length ? <p className="text-meta text-muted-foreground">Discount cards: {member.discountCards.map((d) => d.name).join(", ")}</p> : null}
+      {member.discountCards.length ? <p className="text-meta text-muted-foreground">{t("counter.discountCards", { names: member.discountCards.map((d) => d.name).join(", ") })}</p> : null}
       <p className="text-center text-caption text-muted-foreground">
-        {member.expiryDisclosure} · <kbd className="rounded-sm border border-border px-1.5 text-caption">Esc</kbd> for the next customer
+        {member.expiryDisclosure} · <EscHint />
       </p>
     </section>
   );
@@ -1688,6 +1716,7 @@ function PinPad({
   onDone: (s: CounterStaff) => void;
   onCancel: () => void;
 }) {
+  const { t } = useCounterText();
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1706,19 +1735,19 @@ function PinPad({
         setPin("");
         setErr(
           isApiError(e) && e.status === 401
-            ? "That PIN is not right."
+            ? t("counter.err.pin")
             : errorMessage(e),
         );
       } finally {
         setBusy(false);
       }
     },
-    [verify, onDone],
+    [verify, onDone, t],
   );
   return (
     <section
       role="dialog"
-      aria-label="Who is stamping?"
+      aria-label={t("counter.pin.title")}
       className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4"
     >
       <div className="flex items-center justify-between">
@@ -1728,23 +1757,24 @@ function PinPad({
             className="size-4 text-fg-muted"
             strokeWidth={1.75}
           />{" "}
-          Who is stamping?
+          {t("counter.pin.title")}
         </h2>
         <button
           type="button"
           onClick={onCancel}
-          aria-label="Close"
+          aria-label={t("counter.close")}
           className="inline-flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring"
         >
           <X aria-hidden className="size-4" />
         </button>
       </div>
       <p className="text-meta text-fg-muted">
-        Type your 4-digit PIN. Stamps you give show under your name.
+        {t("counter.pin.body")}
       </p>
       <div
         role="group"
-        aria-label="PIN"
+        aria-label={t("counter.pin.label")}
+        dir="ltr"
         className="flex justify-center gap-2.5"
       >
         {[0, 1, 2, 3].map((i) => (
@@ -1811,12 +1841,13 @@ function AmountPad({
   cents: string;
   setCents: (fn: (c: string) => string) => void;
 }) {
+  const { t } = useCounterText();
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-meta-strong text-fg">Purchase amount</p>
+      <p className="text-meta-strong text-fg">{t("counter.amount")}</p>
       <output
         aria-live="polite"
-        aria-label="Purchase amount"
+        aria-label={t("counter.amount")}
         className="block border-b border-line px-1 py-3 text-end font-display text-display-number tabular-nums text-fg"
       >
         {keypadDisplay(cents)}
@@ -1824,7 +1855,7 @@ function AmountPad({
       <Keypad
         size="compact"
         onKey={(k) => setCents((c) => applyKey(c, k))}
-        label="Amount keypad"
+        label={t("counter.amountKeypad")}
       />
     </div>
   );

@@ -6,7 +6,8 @@ import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
 
-export const metadata: Metadata = { title: "Door tablet", robots: { index: false, follow: false } };
+/** The title is set by the page (it reads ?lang=). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
