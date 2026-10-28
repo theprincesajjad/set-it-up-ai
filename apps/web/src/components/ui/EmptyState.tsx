@@ -11,6 +11,8 @@ export interface EmptyStateProps {
   action?: ReactNode;
   secondaryAction?: ReactNode;
   tone?: "brand" | "danger";
+  /** Level of the title heading, so the page's outline has no gaps (h1, then h2). Default 3 (inside a section that has an h2). */
+  headingLevel?: 2 | 3 | 4;
   className?: string;
 }
 
@@ -18,7 +20,8 @@ export interface EmptyStateProps {
  * v2: one sentence + one action. A small plain glyph at most, never an icon in a coloured circle. v3: the shadcn Empty (header, media,
  * description, content) is the structure; the title stays a real heading (h3) and the look stays plain, no dashed box.
  */
-export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", className }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", headingLevel = 3, className }: EmptyStateProps) {
+  const Heading = `h${headingLevel}` as const;
   return (
     <Empty className={cn("mx-auto max-w-90 gap-0 rounded-none p-0 px-4 py-12", className)}>
       <EmptyHeader className="max-w-none gap-0">
@@ -27,7 +30,7 @@ export function EmptyState({ icon: Icon, title, description, action, secondaryAc
             <Icon aria-hidden className={cn("size-7", tone === "danger" ? "text-negative" : "text-fg-subtle")} strokeWidth={1.5} />
           </EmptyMedia>
         ) : null}
-        <h3 className="text-headline text-fg">{title}</h3>
+        <Heading className="text-headline text-fg">{title}</Heading>
         {description ? <EmptyDescription className="mt-1.5 text-body text-fg-muted">{description}</EmptyDescription> : null}
       </EmptyHeader>
       {action || secondaryAction ? (
@@ -43,6 +46,6 @@ export function EmptyState({ icon: Icon, title, description, action, secondaryAc
 /** Same layout as EmptyState with a retry. */
 // Server-safe (icons are passed in by server pages), so no locale hook here: customer pages always pass a translated title and
 // description; these English defaults are the shop-side (dashboard) wording.
-export function ErrorState({ title = "Something went wrong on our end", /* l10n-ok */ description = "Try again in a moment.", /* l10n-ok */ action, icon = CloudOff, className }: Partial<EmptyStateProps>) {
-  return <EmptyState icon={icon} tone="danger" title={title} description={description} action={action} className={className} />;
+export function ErrorState({ title = "Something went wrong on our end", /* l10n-ok */ description = "Try again in a moment.", /* l10n-ok */ action, icon = CloudOff, headingLevel, className }: Partial<EmptyStateProps>) {
+  return <EmptyState icon={icon} tone="danger" title={title} description={description} action={action} headingLevel={headingLevel} className={className} />;
 }

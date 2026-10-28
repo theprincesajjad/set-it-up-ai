@@ -34,7 +34,7 @@ export default async function NeighbourhoodsPage() {
         {items === null ? (
           <ErrorState title="Can't load neighbourhoods right now" description={copy.err.network} action={<Button variant="secondary" href="/neighbourhoods">Try again</Button>} />
         ) : items.length === 0 ? (
-          <EmptyState icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
+          <EmptyState headingLevel={2} icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
         ) : (
           <ul className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (

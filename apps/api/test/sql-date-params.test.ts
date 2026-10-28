@@ -21,7 +21,6 @@ describe("Date parameters in raw sql templates", () => {
 
   it("compares a column to a Date, coalesce included, and casts a Date", async () => {
     const d = new Date("2030-01-02T03:04:05.000Z");
-    await db.insert(users).values({ email: "date-param@example.com", name: "Date Param" });
     const a = await db.select({ n: sql<number>`count(*)::int` }).from(users).where(sql`coalesce(${users.deletedAt}, ${users.createdAt}) < ${d}`);
     expect(a[0]!.n).toBeGreaterThanOrEqual(0);
     const b = await db.execute(sql`select ${d}::timestamptz as t`);

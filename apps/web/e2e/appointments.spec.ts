@@ -99,7 +99,7 @@ test("calendar: drag across stylists, busy time snaps back, resize, keyboard", a
   await page.mouse.move(col2.x + col2.width / 2, bb.y - H, { steps: 8 });
   await page.mouse.move(col2.x + col2.width / 2, bb.y - 2 * H, { steps: 8 }); // 12:00, where A now sits
   await page.mouse.up();
-  await expect(page.getByText("That time was just taken. Pick another.")).toBeVisible();
+  await expect(page.getByText("That time was just taken. Pick another.").first()).toBeVisible();
   await expect.poll(async () => (await get(c, b.id)).staffId).toBe(simran.userId);
   expect((await get(c, b.id)).startsAt).toBe(toronto(day, "14:00"));
 

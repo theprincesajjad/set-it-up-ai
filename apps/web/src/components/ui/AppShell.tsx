@@ -231,7 +231,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
           open={wide}
           onOpenChange={() => undefined}
           style={{ "--sidebar-width": "248px", "--sidebar-width-icon": "72px" } as React.CSSProperties}
-          className="min-h-dvh bg-background text-foreground"
+          className="min-h-dvh bg-background text-foreground print:block print:min-h-0 print:[&_[data-slot=sidebar]]:hidden"
         >
           {env ? <div className="fixed inset-x-0 top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
           <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon" dir={dir} className="print:hidden">

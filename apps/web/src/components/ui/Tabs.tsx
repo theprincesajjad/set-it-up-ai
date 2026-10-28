@@ -10,8 +10,9 @@ export interface TabItem {
 }
 
 /** Underline page tabs with roving focus + arrow keys (system.md §3 Tabs). v2: hairline base, 2px black indicator. */
-export function Tabs({ items, value, onChange, label, className }: { items: TabItem[]; value: string; onChange: (id: string) => void; label: string; className?: string }) {
-  const base = useId();
+export function Tabs({ items, value, onChange, label, className, idBase }: { items: TabItem[]; value: string; onChange: (id: string) => void; label: string; className?: string; /** When set, tabs are `${idBase}-tab-${id}` and point at a panel with id `${idBase}-panel-${id}` (render it yourself). Without it there is no aria-controls, so no dangling id. */ idBase?: string }) {
+  const auto = useId();
+  const base = idBase ?? auto;
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKey = (e: KeyboardEvent, i: number) => {
     let next = i;
@@ -38,7 +39,7 @@ export function Tabs({ items, value, onChange, label, className }: { items: TabI
             role="tab"
             type="button"
             aria-selected={active}
-            aria-controls={`${base}-panel-${t.id}`}
+            aria-controls={idBase ? `${idBase}-panel-${t.id}` : undefined}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => onKey(e, i)}

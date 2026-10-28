@@ -11,6 +11,7 @@ export function LoginTabs({ next, initial, devAutofill }: { next?: string | null
   return (
     <div className="flex flex-col gap-6">
       <Tabs
+        idBase="login"
         label={t("auth.login.tabs")}
         value={tab}
         onChange={(v) => setTab(v as "customer" | "shop")}
@@ -19,6 +20,7 @@ export function LoginTabs({ next, initial, devAutofill }: { next?: string | null
           { id: "customer", label: t("auth.login.tabCustomer") },
         ]}
       />
+      <div role="tabpanel" id={`login-panel-${tab}`} aria-labelledby={`login-tab-${tab}`}>
       {tab === "customer" ? (
         <PhoneSignIn heading="h2" next={next ?? "/me"} devAutofill={devAutofill} />
       ) : (
@@ -27,6 +29,7 @@ export function LoginTabs({ next, initial, devAutofill }: { next?: string | null
           <EmailSignIn next={next} devAutofill={devAutofill} />
         </div>
       )}
+      </div>
     </div>
   );
 }

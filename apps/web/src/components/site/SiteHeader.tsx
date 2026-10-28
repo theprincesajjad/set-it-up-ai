@@ -3,14 +3,24 @@ import { ChevronDown, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
-import { LOCALES, LOCALE_LIST, normalizeLocale, t as translate, type Locale, type MessageKey } from "@ll/shared";
+import { LOCALES, LOCALE_LIST, normalizeLocale, type Locale } from "@ll/shared";
 import { buttonClasses } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
-import { rememberLocale } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { Wordmark } from "./Brand";
 
-const NAV_KEYS: Record<string, MessageKey> = { "/": "mkt.nav.shops", "/for-restaurants": "mkt.nav.restaurants", "/for-bias": "mkt.nav.bias", "/pricing": "mkt.nav.pricing" };
+/**
+ * The header strings in every language, translated on the server by the layout (see `headerLabels`). The client never imports the
+ * message catalogs: they are over 1 MB and only these seven strings per language are shown here.
+ */
+export interface HeaderLabels {
+  nav: Record<string, string>;
+  login: string;
+  getStarted: string;
+  language: string;
+}
+export type HeaderLabelsByLocale = Record<Locale, HeaderLabels>;
+
 const RESTAURANTS = "/for-restaurants";
 
 /** ?lang= first, then the saved language cookie. Read after mount so the page stays static; English until then. */
@@ -25,6 +35,15 @@ function readLocale(): Locale {
   }
 }
 
+/** Remember the language for next visits (same cookie as lib/i18n/client `rememberLocale`; not imported from there because that module pulls in the message catalogs). */
+function rememberLocale(locale: Locale) {
+  try {
+    document.cookie = `ll_lang=${locale}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // cookies blocked: ?lang= still carries the language
+  }
+}
+
 const subscribeNever = () => () => undefined;
 
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
@@ -34,7 +53,7 @@ const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname =
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
  */
-export function SiteHeader() {
+export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   const pathname = usePathname() ?? "/";
   // Pages that have translated content (the restaurant page and the shopper page) get the language menu.
   const shoppers = pathname.startsWith("/for-shoppers");
@@ -46,15 +65,15 @@ export function SiteHeader() {
   const [chosen, setChosen] = useState<Locale | null>(null);
   const locale: Locale = translated ? (chosen ?? stored) : "en";
   const info = LOCALES[locale];
-  const nav = copy.nav.items.map((n) => ({ ...n, label: translated && locale !== "en" ? translate(locale, NAV_KEYS[n.href]!) : n.label }));
+  const nav = copy.nav.items.map((n) => ({ ...n, label: translated && locale !== "en" ? (labels[locale].nav[n.href] ?? n.label) : n.label }));
   const other = translated && locale !== "en";
-  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : { href: "/login", label: other ? translate(locale, "mkt.nav.login") : copy.nav.login };
-  const cta = bia ? { href: "/for-bias#talk", label: copy.nav.planCampaign } : { href: "/signup", label: other ? translate(locale, "mkt.nav.getStarted") : copy.nav.getStarted };
+  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : { href: "/login", label: other ? labels[locale].login : copy.nav.login };
+  const cta = bia ? { href: "/for-bias#talk", label: copy.nav.planCampaign } : { href: "/signup", label: other ? labels[locale].getStarted : copy.nav.getStarted };
 
   const switcher = translated ? (
     <details className="group relative">
       <summary className="flex h-9 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-meta-strong text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring [&::-webkit-details-marker]:hidden" >
-        <span className="sr-only">{translate(locale, "mkt.nav.language")}: </span>
+        <span className="sr-only">{labels[locale].language}: </span>
         <span lang={info.bcp47}>{info.name}</span>
         <ChevronDown aria-hidden className="size-3.5 transition-transform group-open:rotate-180" strokeWidth={2} />
       </summary>
@@ -117,7 +136,7 @@ export function SiteHeader() {
                 </Link>
               ))}
               {translated ? (
-                <div className="flex flex-wrap gap-1 px-1 py-2" role="group" aria-label={translate(locale, "mkt.nav.language")}>
+                <div className="flex flex-wrap gap-1 px-1 py-2" role="group" aria-label={labels[locale].language}>
                   {LOCALE_LIST.map((l) => (
                     <Link
                       key={l.code}

@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import { migrate as migratePg } from "drizzle-orm/postgres-js/migrator";
@@ -45,18 +48,44 @@ export async function migrateDb(url: string) {
   }
 }
 
+/** A key for the current set of migrations: a changed or added migration gets a new template database. */
+function migrationsKey(): string {
+  const hash = createHash("sha1");
+  for (const name of readdirSync(MIGRATIONS_DIR).filter((n) => n.endsWith(".sql")).sort()) hash.update(name).update(readFileSync(join(MIGRATIONS_DIR, name)));
+  hash.update(readFileSync(join(MIGRATIONS_DIR, "meta", "_journal.json")));
+  return hash.digest("hex").slice(0, 12);
+}
+
 /**
  * A freshly migrated throw-away database on a real PostgreSQL server (same driver and pool as production), dropped by `$close`.
  * `adminUrl` points at any database on the server the caller may CREATE DATABASE on. Used by the API test suite when
  * TEST_PG_URL is set, to check what PGlite cannot (driver parameter handling, pooled connections).
+ *
+ * Migrating 30-odd files for every test file is slow and, with several workers at once, slow enough to time out the setup hook.
+ * So the migrations run once into a template database (named after a hash of the migrations, kept between runs) and each throw-away
+ * database is a copy of it, which takes a fraction of a second. Postgres refuses to copy a template two sessions are using, and two
+ * workers must not build it twice, so both steps run under one advisory lock.
  */
 export async function createDisposablePgDb(adminUrl: string): Promise<Db> {
   const name = `ll_t_${Math.random().toString(16).slice(2, 14)}`;
+  const template = `ll_tpl_${migrationsKey()}`;
+  const withDb = (db: string) => adminUrl.replace(/\/[^/?]*(\?.*)?$/, `/${db}$1`);
   const admin = postgres(adminUrl, { max: 1, onnotice: () => {} });
-  await admin.unsafe(`create database ${name}`);
-  const url = adminUrl.replace(/\/[^/?]*(\?.*)?$/, `/${name}$1`);
-  await migrateDb(url);
-  const db = createDb(url, { max: 5 });
+  const LOCK = 727_001;
+  await admin`select pg_advisory_lock(${LOCK})`;
+  try {
+    const [have] = await admin`select 1 as one from pg_database where datname = ${template}`;
+    if (!have) {
+      const building = `${template}_b${Math.random().toString(16).slice(2, 8)}`;
+      await admin.unsafe(`create database ${building}`);
+      await migrateDb(withDb(building));
+      await admin.unsafe(`alter database ${building} rename to ${template}`);
+    }
+    await admin.unsafe(`create database ${name} template ${template}`);
+  } finally {
+    await admin`select pg_advisory_unlock(${LOCK})`;
+  }
+  const db = createDb(withDb(name), { max: 5 });
   const close = db.$close;
   db.$close = async () => {
     await close();
