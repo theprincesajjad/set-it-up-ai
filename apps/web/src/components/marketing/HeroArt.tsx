@@ -78,3 +78,14 @@ export function HeroArt({ caption }: { caption: string }) {
     </div>
   );
 }
+
+/** A 3 x 2 block of category illustrations on pastel tiles: the stage for the pricing and sign-in pages. Decorative. */
+export function ArtTiles({ className }: { className?: string }) {
+  return (
+    <div aria-hidden inert data-theme="light" className={cn("mkt-stage grid grid-cols-3 gap-3 rounded-[32px] p-4 sm:gap-4 sm:p-6", className)}>
+      {TILES.map((t, i) => (
+        <Tile key={t.art} {...t} i={i} />
+      ))}
+    </div>
+  );
+}

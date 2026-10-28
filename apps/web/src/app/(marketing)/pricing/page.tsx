@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import { FEES, campaignsApi, isPlanAvailable, type PlanId } from "@ll/shared";
+import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
 import { Faq } from "@/components/marketing/Faq";
 import { ScrollTo } from "@/components/marketing/ScrollTo";
@@ -48,18 +49,21 @@ export default async function PricingPage({ searchParams }: Props) {
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
-      <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-10 md:px-8 md:pt-24 md:pb-14">
-        <p className="text-meta-strong text-muted-foreground">{P.eyebrow}</p>
-        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
-        <nav aria-label="Pricing for" className="mt-8 flex flex-wrap gap-2">
-          {P.chips.map((c) => (
-            <ChipLink key={c.id} href={c.href} current={audience === c.id}>
-              {c.label}
-            </ChipLink>
-          ))}
-        </nav>
-        {audience !== "shop" ? <ScrollTo id={audience === "restaurant" ? "restaurants" : "bias"} /> : null}
+      <section className="mx-auto grid max-w-[1200px] items-center gap-10 px-4 pt-10 pb-10 md:grid-cols-[1.4fr_1fr] md:gap-14 md:px-8 md:pt-16 md:pb-14">
+        <div>
+          <p className="text-meta-strong text-primary-text">{P.eyebrow}</p>
+          <h1 className="display mkt-rise mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
+          <p style={{ ["--i" as string]: 1 }} className="mkt-rise mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
+          <nav aria-label="Pricing for" className="mt-8 flex flex-wrap gap-2">
+            {P.chips.map((c) => (
+              <ChipLink key={c.id} href={c.href} current={audience === c.id}>
+                {c.label}
+              </ChipLink>
+            ))}
+          </nav>
+          {audience !== "shop" ? <ScrollTo id={audience === "restaurant" ? "restaurants" : "bias"} /> : null}
+        </div>
+        <ArtTiles className="hidden md:grid" />
       </section>
 
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">

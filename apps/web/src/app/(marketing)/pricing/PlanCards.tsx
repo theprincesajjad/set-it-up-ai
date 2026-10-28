@@ -1,7 +1,6 @@
 import { Check, Minus } from "lucide-react";
 import Link from "next/link";
 import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PLANS, PLAN_RANK, type FeatureKey, type PlanId } from "@ll/shared";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { copy } from "@/copy/en-CA";
@@ -44,7 +43,7 @@ export const price = (id: PlanId) => (id === "free" ? "$0" : moneyShort(PLANS[id
 function FeatureLine({ k }: { k: FeatureKey }) {
   return (
     <li className="flex gap-2.5 py-1.5 text-meta">
-      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground" strokeWidth={2} />
+      <span aria-hidden className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-tile-mint text-tile-mint-foreground"><Check className="size-3" strokeWidth={3} /></span>
       <span className="text-foreground">{FEATURES[k].name}</span>
     </li>
   );
@@ -53,7 +52,7 @@ function FeatureLine({ k }: { k: FeatureKey }) {
 function PlainLine({ children }: { children: string }) {
   return (
     <li className="flex gap-2.5 py-1.5 text-meta">
-      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground" strokeWidth={2} />
+      <span aria-hidden className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-tile-mint text-tile-mint-foreground"><Check className="size-3" strokeWidth={3} /></span>
       <span className="text-foreground">{children}</span>
     </li>
   );
@@ -61,13 +60,16 @@ function PlainLine({ children }: { children: string }) {
 
 export function FreeCard() {
   return (
-    <Card padding="none" className="flex flex-col rounded-sheet border-[1.5px] border-foreground p-6 md:p-8">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-foreground">{PLANS.free.name}</h2>
-        <Badge tone="accent">{P.freeBadge}</Badge>
+    <Card padding="none" className="mkt-lift flex flex-col overflow-hidden rounded-sheet border-0 p-0 shadow-card ring-2 ring-forest">
+      <div className="bg-tile-mint px-6 py-4 text-tile-mint-foreground md:px-8">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="display text-title">{PLANS.free.name}</h2>
+          <span className="inline-flex items-center rounded-full bg-forest px-3 py-1 text-meta-strong text-forest-foreground">{P.freeBadge}</span>
+        </div>
       </div>
+      <div className="flex flex-1 flex-col p-6 pt-5 md:p-8 md:pt-6">
       <p className="mt-5 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums">$0</span>
+        <span className="display text-mkt-lg tabular-nums text-forest">$0</span>
         <span className="text-body text-muted-foreground">forever</span>
       </p>
       <p className="mt-3 text-body text-foreground">{P.freeLead}</p>
@@ -83,6 +85,7 @@ export function FreeCard() {
           ))}
         </ul>
       </div>
+      </div>
     </Card>
   );
 }
@@ -94,12 +97,13 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
   const keys = HIGHLIGHTS[id].filter((k) => all.includes(k));
   const more = all.length - keys.length;
   return (
-    <Card padding="none" className="flex flex-col rounded-sheet p-6 md:p-8">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-foreground">{plan.name}</h2>
+    <Card padding="none" className="mkt-lift flex flex-col overflow-hidden rounded-sheet border-0 p-0 shadow-card">
+      <div className={cn("px-6 py-4 md:px-8", id === "plus" ? "bg-tile-peach text-tile-peach-foreground" : "bg-tile-lilac text-tile-lilac-foreground")}>
+        <h2 className="display text-title">{plan.name}</h2>
       </div>
+      <div className="flex flex-1 flex-col p-6 pt-5 md:p-8 md:pt-6">
       <p className="mt-5 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums text-foreground">{price(id)}</span>
+        <span className="display text-mkt-lg tabular-nums text-primary-text">{price(id)}</span>
         <span className="text-body text-muted-foreground">/month</span>
       </p>
       <p className="text-meta text-muted-foreground">
@@ -124,6 +128,7 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
             </Link>
           </p>
         ) : null}
+      </div>
       </div>
     </Card>
   );
