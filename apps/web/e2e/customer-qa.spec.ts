@@ -60,7 +60,8 @@ test("the salon pay page names the stylist the tip goes to", async ({ page }) =>
   const range = `from=${encodeURIComponent(new Date(now.getTime() - 3 * 3600_000).toISOString())}&to=${encodeURIComponent(new Date(now.getTime() + 2 * 3600_000).toISOString())}`;
   const busy = (await call<{ items: { id: string; staffId: string; status: string; startsAt: string; endsAt: string }[] }>("GET", `${base}/appointments?${range}`, undefined, bloom.token)).items;
   for (const x of busy.filter((i) => i.staffId === stylist.userId && ["booked", "arrived", "in_service"].includes(i.status) && new Date(i.endsAt) > now && new Date(i.startsAt) < new Date(now.getTime() + 60 * 60_000)))
-    await call("POST", `${base}/appointments/${x.id}/status`, { status: "cancelled" }, bloom.token);
+    // A visit already in the chair can only be finished, not cancelled.
+    await call("POST", `${base}/appointments/${x.id}/status`, { status: x.status === "in_service" ? "completed" : "cancelled" }, bloom.token);
   const appt = await call<{ id: string }>("POST", `${base}/appointments`, { source: "walk_in", staffId: stylist.userId, serviceIds: [cut.id], customer: { phone: phone(), name: "Tipper Test" } }, bloom.token);
   const co = await call<{ invoice: { payUrl: string } }>("POST", `${base}/appointments/${appt.id}/checkout`, { mode: "link", tipCents: 0 }, bloom.token);
   await page.goto(new URL(co.invoice.payUrl).pathname);

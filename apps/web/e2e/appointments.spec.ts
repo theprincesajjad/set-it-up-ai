@@ -157,7 +157,7 @@ test("walk-in starts now with the client arrived", async ({ page }) => {
   const now = new Date();
   const list = await call<{ items: Appt[] }>("GET", `${c.base}/appointments?from=${encodeURIComponent(new Date(now.getTime() - 3 * 3600_000).toISOString())}&to=${encodeURIComponent(new Date(now.getTime() + 2 * 3600_000).toISOString())}`, undefined, c.token);
   for (const x of list.items.filter((i) => i.staffId === priya.userId && ["booked", "arrived", "in_service"].includes(i.status) && new Date(i.endsAt) > now && new Date(i.startsAt) < new Date(now.getTime() + 30 * 60_000)))
-    await call("POST", `${c.base}/appointments/${x.id}/status`, { status: "cancelled" }, c.token);
+    await call("POST", `${c.base}/appointments/${x.id}/status`, { status: x.status === "in_service" ? "completed" : "cancelled" }, c.token); // a visit in the chair can only be finished
   await signIn(page);
   await page.goto(`/m/${c.m}/calendar`);
   await expect(page.locator("[data-calendar]")).toBeVisible();
