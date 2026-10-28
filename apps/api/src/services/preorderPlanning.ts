@@ -273,7 +273,7 @@ export async function availability(ctx: AppContext, merchant: Merchant, q: z.inf
   const today = dateKeyIn(now, merchant.timezone);
   const from = q.from && q.from > today ? q.from : today;
   const to = q.to && q.to < addDaysKey(from, 60) ? q.to : addDaysKey(from, 29);
-  if (to < from) throw badRequest("'to' is before 'from'");
+  if (to < from) throw badRequest("The end date is before the start date.");
   const days: restaurantApi.PreorderAvailabilityDay[] = [];
   // Qurbani is picked up on the shop's Eid plan days, not on a rolling window from today.
   const plan = isQurbaniName(item.name) ? eidPlanDays(merchant, today) : null;

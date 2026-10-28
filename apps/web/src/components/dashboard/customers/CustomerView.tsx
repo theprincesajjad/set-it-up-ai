@@ -72,7 +72,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
             if (r) setFullPhone(r.phone);
           }}
           className="text-meta font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg disabled:opacity-60"
-          aria-label={`Reveal phone for ${c.name ?? "member"}`}
+          aria-label={`Reveal phone for ${c.name ?? "this customer"}`}
         >
           Reveal
         </button>
@@ -176,7 +176,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
           { label: "Joined", value: `${formatDate(c.joinedAt)}${c.joinedVia ? `, ${(JOINED_VIA[c.joinedVia] ?? c.joinedVia.replace(/_/g, " ")).toLowerCase()}` : ""}` },
           { label: "Visits, 30 days", value: formatNumber(c.visits30d) },
           { label: "Usually comes in", value: usuallyAround(c.usually) ?? "Not enough visits yet" },
-          ...(marketing ? [{ label: "Texts", value: consent ?? "No consent on file" }] : []),
+          ...(marketing ? [{ label: "Texts", value: consent ?? "Hasn't opted in to offers" }] : []),
           { label: "Email", value: c.email ?? "None" },
         ]}
       />
@@ -212,7 +212,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
   const ledger = (
     <Section title={layout === "panel" ? "Recent" : "Activity"} description={layout === "panel" ? undefined : "Every change to this balance, newest first."}>
       {d.transactions.length ? (
-        <ul aria-label="Ledger history" className="divide-y divide-line border-y border-line">
+        <ul aria-label="Balance history" className="divide-y divide-line border-y border-line">
           {d.transactions.slice(0, layout === "panel" ? 5 : undefined).map((t) => (
             <li key={t.id} className="flex min-h-12 items-center gap-3 py-2">
               <div className="min-w-0 flex-1">

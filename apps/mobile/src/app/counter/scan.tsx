@@ -59,7 +59,7 @@ export default function Scan() {
           ))}
         </View>
         <Text variant="bodyLg" rawColor="#FFFFFF" center>
-          Scan the member card or reward code
+          Scan the customer card or reward code
         </Text>
         <View style={styles.bottom}>
           <IconButton icon={Flashlight} label={torch ? "Torch off" : "Torch on"} variant="secondary" size={64} onPress={() => setTorch((v) => !v)} />

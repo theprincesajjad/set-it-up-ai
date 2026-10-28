@@ -109,7 +109,7 @@ export async function requireStaff(
   }
   const membership = found.role ? { role: found.role } : null;
   if (!membership) throw forbidden();
-  if (RANK[membership.role] < RANK[minRole]) throw forbidden(`Requires ${minRole} access`);
+  if (RANK[membership.role] < RANK[minRole]) throw forbidden(minRole === "owner" ? "Only the shop owner can do this." : `Only ${minRole}s and owners can do this. Ask the shop owner.`);
   return { user, merchant, role: membership.role, impersonated: false };
 }
 

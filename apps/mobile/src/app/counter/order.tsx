@@ -42,7 +42,7 @@ export default function RingUp() {
       key.current = newKey();
       router.back();
     } catch (e) {
-      setError(isApiError(e) ? e.message : "Can't reach the server. Try again.");
+      setError(isApiError(e) ? e.message : "Can't connect right now. Check your connection and try again.");
     } finally {
       setBusy(false);
     }

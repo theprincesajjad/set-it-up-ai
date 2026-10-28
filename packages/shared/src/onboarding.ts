@@ -60,10 +60,10 @@ export function paceFor(args: { day: number; members: number; activated: boolean
 }
 
 export const PACE_LABEL: Record<Pace, string> = {
-  activated: "Active shop",
-  ahead: "Ahead of pace",
-  on_track: "On pace",
-  behind: "Behind pace",
+  activated: "Goal reached",
+  ahead: "Ahead of schedule",
+  on_track: "On track",
+  behind: "Behind schedule",
   late: "Past day 30",
 };
 

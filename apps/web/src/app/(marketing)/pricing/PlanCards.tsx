@@ -137,7 +137,7 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
 function Cell({ on, soon }: { on: boolean; soon?: boolean }) {
   return (
     <td className="px-3 py-3 text-center">
-      {on ? <Check aria-label={soon ? "Included, pilot shops now" : "Included"} className={cn("mx-auto size-4", soon ? "text-muted-foreground" : "text-foreground")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-input/50" strokeWidth={1.75} />}
+      {on ? <Check aria-label={soon ? "Included, early access" : "Included"} className={cn("mx-auto size-4", soon ? "text-muted-foreground" : "text-foreground")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-input/50" strokeWidth={1.75} />}
     </td>
   );
 }
@@ -158,7 +158,7 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
                 <span className="block text-body-strong text-foreground">{PLANS[p].name}</span>
                 <span className="block font-normal text-muted-foreground">
                   {p === "free" ? "$0" : `${price(p)}/mo`}
-                  {p !== "free" && !available[p] ? " · pilot shops" : ""}
+                  {p !== "free" && !available[p] ? " · early access" : ""}
                 </span>
               </th>
             ))}
@@ -181,7 +181,7 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
                     <th scope="row" className="py-3 pe-4 text-start font-normal">
                       <span className="text-foreground">{f.name}</span>
                       <span className="block text-muted-foreground">{f.description}</span>
-                      {f.networkGated ? <span className="mt-0.5 block text-muted-foreground">Opens when the network reaches {f.unlockAtMerchants} shops.</span> : null}
+                      {f.networkGated ? <span className="mt-0.5 block text-muted-foreground">Opens once {f.unlockAtMerchants} shops have joined.</span> : null}
                     </th>
                     {plans.map((p) => (
                       <Cell key={p} on={PLAN_RANK[p] >= PLAN_RANK[f.minPlan]} soon={p !== "free" && !available[p] && f.minPlan !== "free"} />

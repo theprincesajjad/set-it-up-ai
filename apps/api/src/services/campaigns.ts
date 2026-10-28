@@ -640,7 +640,7 @@ export async function drawWinner(ctx: AppContext, id: string, opts: { redraw: bo
     if (!c) throw notFound("Campaign");
     if (c.status === "cancelled" || c.status === "draft") throw conflict("This campaign didn't run");
     if (ctx.now() < c.endsAt) throw conflict("The draw happens after the campaign ends");
-    if (c.winnerUserId && !opts.redraw) throw conflict("A winner was already drawn; pass redraw: true to draw again");
+    if (c.winnerUserId && !opts.redraw) throw conflict("A winner was already drawn. Choose to draw again if you want a new one.");
     const conds = [eq(campaignProgress.campaignId, c.id), isNotNull(campaignProgress.completedAt), sql`${users.deletedAt} is null`];
     if (c.winnerUserId) conds.push(ne(campaignProgress.userId, c.winnerUserId));
     const eligible = await tx

@@ -265,7 +265,7 @@ export async function putPetShop(ctx: AppContext, staff: StaffContext, petId: st
   const now = ctx.now();
   const patch: Partial<typeof petShop.$inferInsert> = { updatedAt: now };
   if (body.groomEveryWeeks !== undefined) {
-    if (body.groomEveryWeeks !== null && (body.groomEveryWeeks < 1 || body.groomEveryWeeks > GROOM_WEEKS_MAX)) throw badRequest("Cadence is 1 to 26 weeks.");
+    if (body.groomEveryWeeks !== null && (body.groomEveryWeeks < 1 || body.groomEveryWeeks > GROOM_WEEKS_MAX)) throw badRequest("Choose between 1 and 26 weeks.");
     patch.groomEveryWeeks = body.groomEveryWeeks;
   }
   if (body.handlingNote !== undefined) patch.handlingNote = body.handlingNote?.trim() || null;
@@ -327,7 +327,7 @@ export async function logGroomFromCheckout(ctx: AppContext, staff: StaffContext,
   if (!dupe) await logVisit(ctx, merchant, pet, { kind: "groom", createdBy: staff.user.id });
   const now = ctx.now();
   if (nextWeeks) {
-    if (nextWeeks < 1 || nextWeeks > GROOM_WEEKS_MAX) throw badRequest("Cadence is 1 to 26 weeks.");
+    if (nextWeeks < 1 || nextWeeks > GROOM_WEEKS_MAX) throw badRequest("Choose between 1 and 26 weeks.");
     await ctx.db
       .insert(petShop)
       .values({ merchantId: merchant.id, petId: pet.id, groomEveryWeeks: nextWeeks, updatedAt: now })

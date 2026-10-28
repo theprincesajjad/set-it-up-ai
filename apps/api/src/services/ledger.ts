@@ -573,7 +573,7 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
     if (!merchant) throw notFound("Merchant");
     if (merchant.status === "closed" || merchant.status === "paused") throw conflict("This shop's loyalty program is paused");
     const [program] = await tx.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1);
-    if (!program || !program.active) throw conflict("Loyalty program is not set up yet");
+    if (!program || !program.active) throw conflict("Set up your loyalty program first, then try again.");
     if (args.locationId) {
       const [loc] = await tx.select({ id: locations.id }).from(locations).where(and(eq(locations.id, args.locationId), eq(locations.merchantId, merchant.id))).limit(1);
       if (!loc) throw badRequest("Unknown location");

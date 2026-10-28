@@ -264,7 +264,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
             <TextField type="textarea" label={grocer ? "Notes for the butcher" : "Notes for the kitchen"} optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} className={cn("min-h-16")} />
           </div>
         </div>
-        {isPre && !enabled("restaurant.degh_preorders") && !enabled("grocery.counter_preorders") ? <Banner tone="warning">Pre-orders need the Growth tier.</Banner> : null}
+        {isPre && !enabled("restaurant.degh_preorders") && !enabled("grocery.counter_preorders") ? <Banner tone="warning">Pre-orders come with Restaurant Growth.</Banner> : null}
       </div>
     </Sheet>
   );

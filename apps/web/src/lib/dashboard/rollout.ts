@@ -7,7 +7,7 @@
 import type { adminApi } from "@ll/shared";
 
 export type Stage = "hidden" | "beta" | "ga";
-export const STAGE_LABEL: Record<Stage, string> = { hidden: "Hidden", beta: "Beta", ga: "GA" };
+export const STAGE_LABEL: Record<Stage, string> = { hidden: "Hidden", beta: "Early access", ga: "Live" };
 
 export function stageLocked(f: Pick<adminApi.AdminFeature, "freeForever">): boolean {
   return f.freeForever;
@@ -26,12 +26,12 @@ export function canConfirmStage(f: Pick<adminApi.AdminFeature, "key" | "freeFore
   return !requiresTypedKey(to) || typed.trim() === f.key;
 }
 
-const PLAN_NAME: Record<string, string> = { free: "every plan", plus: "Plus", pro: "Pro" };
+const PLAN_NAME: Record<string, string> = { free: "every plan", plus: "Café & Retail", pro: "Service" };
 
 export function stageEffect(f: Pick<adminApi.AdminFeature, "name" | "minPlan" | "phase">, to: Stage): string {
-  const who = f.minPlan === "free" ? "every merchant" : `merchants on ${PLAN_NAME[f.minPlan]}`;
-  if (to === "hidden") return `${f.name} disappears for everyone except merchants with an override. Their data is kept.`;
-  if (to === "beta") return `${f.name} turns on for ${who} who opted into betas. Their customers will see it too. Everyone else keeps seeing "Coming soon".`;
+  const who = f.minPlan === "free" ? "every shop" : `shops on ${PLAN_NAME[f.minPlan]}`;
+  if (to === "hidden") return `${f.name} disappears for everyone except shops that were given access by hand. Their data is kept.`;
+  if (to === "beta") return `${f.name} turns on for ${who} who turned on early access. Their customers will see it too. Everyone else keeps seeing "Coming soon".`;
   return `${f.name} turns on for ${who}. ${f.minPlan === "free" ? "" : `The ${PLAN_NAME[f.minPlan]} plan becomes purchasable. `}This is a public launch.`;
 }
 
@@ -50,9 +50,9 @@ export function canForceOff(f: Pick<adminApi.AdminFeature, "freeForever">): bool
 
 export function groupFeatures(items: adminApi.AdminFeature[]): { id: string; title: string; items: adminApi.AdminFeature[] }[] {
   const groups = [
-    { id: "plus", title: "Phase 2 · Plus", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "plus" },
-    { id: "pro", title: "Phase 2 · Pro", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "pro" },
-    { id: "network", title: "Phase 3 · Network", test: (f: adminApi.AdminFeature) => f.phase === 3 },
+    { id: "plus", title: "Phase 2 · Café & Retail", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "plus" },
+    { id: "pro", title: "Phase 2 · Service", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "pro" },
+    { id: "network", title: "Phase 3 · Needs many shops", test: (f: adminApi.AdminFeature) => f.phase === 3 },
     { id: "free", title: "Free forever · Phase 1", test: (f: adminApi.AdminFeature) => f.freeForever || (f.phase === 1 && f.minPlan === "free") },
   ];
   const used = new Set<string>();

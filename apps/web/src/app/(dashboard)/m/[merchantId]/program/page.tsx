@@ -214,9 +214,9 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           <section className="rounded-card bg-card shadow-card p-6" aria-label="Set up your card">
             <Step n={1} title={stampCard ? "What earns a stamp" : "What earns points"}>
               <div id="earn" className="flex flex-col gap-4">
-                <Segmented label="Earn type" value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} options={modeOptions} className="self-start flex-wrap" />
+                <Segmented label="How customers earn" value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} options={modeOptions} className="self-start flex-wrap" />
                 {mode === "purchase" ? (
-                  <TextField label="Minimum purchase" inputMode="decimal" prefix="$" hint="Stops $1 stamps. Set it to your cheapest drink." value={draft.minSpendCents ? (draft.minSpendCents / 100).toFixed(2) : ""} onChange={(e) => set("minSpendCents", Math.round((Number.parseFloat(e.target.value) || 0) * 100))} error={shown.minSpendCents} />
+                  <TextField label="Minimum purchase" inputMode="decimal" prefix="$" hint="Stops tiny purchases from earning a stamp. Set it to your cheapest drink." value={draft.minSpendCents ? (draft.minSpendCents / 100).toFixed(2) : ""} onChange={(e) => set("minSpendCents", Math.round((Number.parseFloat(e.target.value) || 0) * 100))} error={shown.minSpendCents} />
                 ) : null}
                 {mode === "dollar" ? (
                   <TextField label="Points per $1" inputMode="numeric" suffix="pts" value={String(draft.pointsPerDollar)} onChange={(e) => set("pointsPerDollar", intOr(e.target.value))} error={shown.pointsPerDollar} />
@@ -267,7 +267,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </div>
               <TextField
                 label={`What ${rewardNoun.toLowerCase().startsWith("free ") ? `a ${rewardNoun.toLowerCase()}` : rewardNoun.toLowerCase()} costs you (optional)`}
-                hint="Only used in Reports to estimate what rewards owed will cost. Customers never see it."
+                hint="Only used in Reports to estimate what you owe in rewards. Customers never see it."
                 inputMode="decimal"
                 prefix="$"
                 value={draft.rewardCostCents != null ? (draft.rewardCostCents / 100).toFixed(2) : ""}
@@ -280,14 +280,14 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           <section className="rounded-card bg-card shadow-card px-6 pb-2 pt-5" aria-labelledby="counter-h">
             <h2 id="counter-h" className="pb-3 text-[15px] font-semibold text-fg">At the counter</h2>
             {stampsMode ? (
-              <SettingRow title="Stamp on scan" hint={stampsMode ? "A scan, or four digits that match one person, stamps straight away. Undo stays for 10 seconds." : "Not available with points per dollar: the amount has to be typed."}>
-                <SwitchControl ariaLabel="Stamp on scan" checked={draft.counterAutoStamp && stampsMode} disabled={!stampsMode} onChange={(v) => set("counterAutoStamp", v)} />
+              <SettingRow title={`Add a ${term.replace(/s$/, "")} on scan`} hint={stampsMode ? `A scan, or four digits that match one customer, adds a ${term.replace(/s$/, "")} straight away. Undo stays for 10 seconds.` : "Not available with points per dollar: the amount has to be typed."}>
+                <SwitchControl ariaLabel={`Add a ${term.replace(/s$/, "")} on scan`} checked={draft.counterAutoStamp && stampsMode} disabled={!stampsMode} onChange={(v) => set("counterAutoStamp", v)} />
               </SettingRow>
             ) : null}
-            <SettingRow title="Duplicate guard" hint={`No second ${term.replace(/s$/, "")} within ${draft.visitCooldownMinutes} minutes of the last one`}>
-              <TextField label="Duplicate guard minutes" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28 text-end" />
+            <SettingRow title="Block repeat scans" hint={`No second ${term.replace(/s$/, "")} within ${draft.visitCooldownMinutes} minutes of the last one. Stops a double scan from counting twice.`}>
+              <TextField label="Minutes between awards" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28 text-end" />
             </SettingRow>
-            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint="Recommended. Points that expire without warning annoy customers.">
+            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint={`Recommended. Customers don't like losing ${term} without warning.`}>
               <SwitchControl ariaLabel={`${term} never expire`} checked={draft.expiryMonths === null} onChange={(v) => set("expiryMonths", v ? null : 12)} />
             </SettingRow>
             {draft.expiryMonths !== null ? (
@@ -295,7 +295,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                 <TextField label="Months without a visit before they expire" inputMode="numeric" min={MIN_EXPIRY_MONTHS} suffix="months" value={String(draft.expiryMonths)} onChange={(e) => set("expiryMonths", intOr(e.target.value, MIN_EXPIRY_MONTHS))} error={shown.expiryMonths ?? (draft.expiryMonths < MIN_EXPIRY_MONTHS ? `At least ${MIN_EXPIRY_MONTHS} months.` : null)} hint={`At least ${MIN_EXPIRY_MONTHS} months. Customers see this next to their balance: "${model.expiry}"`} className="sm:max-w-60" />
               </div>
             ) : null}
-            <SettingRow title={`Welcome ${term.replace(/s$/, "")}`} hint="Given when someone joins from the counter QR">
+            <SettingRow title={`Welcome ${term.replace(/s$/, "")}`} hint="Given when a customer joins from your counter QR code">
               <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={draft.welcomeBonus === 1 ? unit.replace(/s$/, "") : unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36 text-end" />
             </SettingRow>
           </section>
@@ -306,7 +306,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                 {birthday || referrals ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     {birthday ? <TextField label="Birthday reward" inputMode="numeric" suffix={unit} value={String(draft.birthdayBonus)} onChange={(e) => set("birthdayBonus", intOr(e.target.value))} /> : null}
-                    {referrals ? <TextField label="Referral (each)" hint="Both friends get this." inputMode="numeric" suffix={unit} value={String(draft.referralBonus)} onChange={(e) => set("referralBonus", intOr(e.target.value))} /> : null}
+                    {referrals ? <TextField label="Referral reward" hint="Both friends get this amount." inputMode="numeric" suffix={unit} value={String(draft.referralBonus)} onChange={(e) => set("referralBonus", intOr(e.target.value))} /> : null}
                   </div>
                 ) : null}
                 {vipOn ? (
@@ -319,7 +319,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           ) : (
             <section id="bonuses" className="rounded-card bg-bg-subtle px-6 py-5" aria-labelledby="more-h">
               <h2 id="more-h" className="text-[15px] font-semibold text-fg">More ways to earn</h2>
-              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend, and VIP levels come with Café &amp; Retail. They stay off this screen until you can use them.</p>
+              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Café &amp; Retail. They show up here once you subscribe.</p>
               <p className="mt-2 text-[14px] text-fg">
                 <NotifyLink keys={["loyalty.birthday_bonus", "loyalty.referrals", "loyalty.vip_levels"]} className="text-[14px] no-underline" /> when they are ready
               </p>

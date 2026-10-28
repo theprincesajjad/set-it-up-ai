@@ -107,7 +107,7 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
       {
         id: "visits",
         accessorFn: (c) => c.visits30d,
-        header: ({ column }) => <SortHeader column={column} title="Visits (30 d)" />,
+        header: ({ column }) => <SortHeader column={column} title="Visits, last 30 days" />,
         size: 130,
         cell: ({ row }) => <span className="tabular">{formatNumber(row.original.visits30d)}</span>,
       },
@@ -124,18 +124,18 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
       {
         id: "usually",
         enableSorting: false,
-        header: () => <span className="text-caption font-medium text-fg-muted">Usually</span>,
+        header: () => <span className="text-caption font-medium text-fg-muted">Usual visit time</span>,
         size: 170,
         cell: ({ row }) => <span className="truncate text-fg-muted">{row.original.usually ?? "–"}</span>,
       },
       {
         id: "texts",
         enableSorting: false,
-        header: () => <span className="text-caption font-medium text-fg-muted">Texts</span>,
+        header: () => <span className="text-caption font-medium text-fg-muted">Text offers</span>,
         size: 120,
         cell: ({ row }) => {
           const c = row.original;
-          return <span className={c.marketingConsent && c.phone ? "text-positive-text" : "text-fg-muted"}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "No consent"}</span>;
+          return <span className={c.marketingConsent && c.phone ? "text-positive-text" : "text-fg-muted"}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "Hasn't opted in"}</span>;
         },
       },
     ],

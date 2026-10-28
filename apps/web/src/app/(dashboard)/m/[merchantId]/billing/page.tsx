@@ -19,7 +19,7 @@ const RESTAURANT_VERTICALS = ["restaurant", "restaurant_south_asian", "tiffin", 
 const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
   [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
-  [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your trade's tools switch on at once. Only network-wide extras (sponsored promos and listings, map pins, BIA campaigns) open when the network reaches ${NETWORK_GATE_SHOPS} shops.`],
+  [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your shop's tools switch on at once. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once ${NETWORK_GATE_SHOPS} shops have joined.`],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
 ];
 
@@ -29,7 +29,7 @@ export default function BillingPage() {
   if (role !== "owner") return <NoAccess title="Billing is for the owner" body="Ask the shop owner to change plans." />;
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Subscribe to the tools for your trade any time and cancel any time." />
+      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Subscribe to the tools for your kind of shop any time, and cancel any time." />
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(b) => <Billing b={b} reload={state.reload} />}</Async>
     </div>
   );

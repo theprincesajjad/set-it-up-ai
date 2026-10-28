@@ -167,8 +167,8 @@ function CounterTab() {
     <div className="flex flex-col gap-4">
       <Panel title="Receipts">
         <Switch
-          label="Text customers a receipt after each award"
-          description="Transactional: 'You earned 12 points at your shop. Balance 48.' Muted customers never get one."
+          label="Text customers a receipt each time they earn"
+          description="A short text with what they earned and their new balance. Customers who muted your shop never get one."
           checked={receipts}
           onChange={async (v) => {
             setReceipts(v);
@@ -176,7 +176,7 @@ function CounterTab() {
             if (r) {
               setDetail(r);
               setReceipts(r.merchant.smsReceiptsEnabled);
-              toast({ message: r.merchant.smsReceiptsEnabled ? "SMS receipts on" : "SMS receipts off", tone: "success" });
+              toast({ message: r.merchant.smsReceiptsEnabled ? "Text receipts are on" : "Text receipts are off", tone: "success" });
             } else {
               setReceipts(!v);
             }
@@ -187,13 +187,13 @@ function CounterTab() {
       {role === "owner" ? (
         <Panel title="Early access">
           <Switch
-            label="Try new tools in beta"
-            description="Beta features turn on for you and your customers before everyone else. You can leave any time."
+            label="Try new tools early"
+            description="New tools turn on for you and your customers before everyone else. You can switch this off any time."
             checked={features.betaOptIn}
             onChange={async (v) => {
               await act.run(() => api.setBeta(v));
               await refresh();
-              toast(v ? "You're in the beta" : "Beta turned off");
+              toast(v ? "Early access is on" : "Early access is off");
             }}
           />
         </Panel>

@@ -9,9 +9,9 @@ export function paceTone(p: merchantApi.OnboardingPace): "positive" | "accent" |
   return p === "activated" || p === "ahead" || p === "on_track" ? "positive" : p === "behind" ? "accent" : "neutral";
 }
 
-/** "14 of 25 members have visited" / "1 member has visited". */
+/** "14 of 25 customers have visited" / "1 of 25 customers has visited". */
 export function membersLine(members: number, target: number): string {
-  return `${members} of ${target} member${target === 1 ? "" : "s"} ${members === 1 ? "has" : "have"} visited`;
+  return `${members} of ${target} customer${target === 1 ? "" : "s"} ${members === 1 ? "has" : "have"} visited`;
 }
 
 /** Setup steps still open before the shop is live (core steps only, first stamp is shown elsewhere on Home). */

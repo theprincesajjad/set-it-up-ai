@@ -56,7 +56,7 @@ export const copy = {
   empty: {
     wallet: { title: "Your shops will live here", body: "Show your card at any shop on the map to start earning.", action: "Show my card" },
     noNeighbourhood: { title: "We're not on your street yet", body: "We launch one neighbourhood at a time. Want us in yours?", action: "Suggest my street" },
-    rewardsReady: { title: "No rewards yet", body: "Keep visiting your shops. We'll tell you the moment one's ready.", action: "See how close you are" },
+    rewardsReady: { title: "No rewards ready yet", body: "Keep collecting at your shops. We'll tell you the moment a reward is ready.", action: "See your shops" },
     activity: (terminology: string) => ({ title: "Nothing here yet", body: `Your ${terminology} and rewards will show up here after your first visit.`, action: "Find shops nearby" }),
     mapSearch: (q: string) => ({ title: `No shops match "${q}"`, body: "Try another word, or zoom out.", action: "Clear search" }),
   },
@@ -64,7 +64,7 @@ export const copy = {
     badge: "Coming soon",
     notified: "We'll let you know",
     pricingNote:
-      "Paid tools switch on once enough shops are on the network, so every feature launches with customers already using the app.",
+      "Paid tools switch on once enough shops have joined, so every feature launches with customers already using the app.",
     pricingPromise: "Our promise: your loyalty program and its reports are free forever. They will never move to a paid plan.",
     planAvailable: (plan: string, price: string) => `Available on ${plan} · ${price}/mo`,
   },
@@ -200,7 +200,7 @@ export const copy = {
       title: "what you won’t pay.",
       rows: ["Monthly fee", "Locations", "Fee on sales through the program"],
       us: ["$0", "Unlimited", "0%"],
-      foot: "From each vendor’s public pricing page. The loyalty program is free for everyone and never moves to a paid plan. Tools for your trade are optional: Café & Retail is $39 a month and Service is $99 a month, and you can subscribe from your dashboard whenever you want.",
+      foot: "From each vendor’s public pricing page. The loyalty program is free for everyone and never moves to a paid plan. Tools for your kind of shop are optional: Café & Retail is $39 a month and Service is $99 a month, and you can subscribe from your dashboard whenever you want.",
       pricesTitle: "Need more than loyalty? One flat price.",
       prices: [
         { name: "Café & Retail", price: "$39", per: "a month", line: "Calendar and booking, classes, the walk-in line, ordering, promos, texts and POS sync." },
@@ -246,11 +246,11 @@ export const copy = {
     freeLines: ["Points, visits or stamps", "Rewards and a welcome bonus", "Customer list and basic reports", "Map listing and wallet pass", "Unlimited staff and locations"],
     plusLine: "Calendar and booking, classes, the walk-in line, ordering, promos, texts and POS auto-award.",
     proLine: "For repair, auto, alterations and print shops: tickets, quotes, deposits and invoices.",
-    openNote: "Café & Retail and Service are open to every shop today: subscribe from your dashboard, cancel any time. Only network-wide extras (sponsored promos and listings, map pins, BIA campaigns, nearby push) wait until the network reaches {target} shops.",
+    openNote: "Café & Retail and Service are open to every shop today: subscribe from your dashboard, cancel any time. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns, nearby push) open once {target} shops have joined.",
     trades: {
-      eyebrow: "Your trade, included",
+      eyebrow: "Your kind of shop, included",
       title: "the tools for your kind of shop are in the plan.",
-      sub: "No add-ons and no per-chair, per-room or per-pet charge. Subscribe to Café & Retail and your trade's tools switch on.",
+      sub: "No add-ons and no per-chair, per-room or per-pet charge. Subscribe to Café & Retail and the tools for your kind of shop switch on.",
       rows: [
         { who: "Salons, barbers and threading bars", what: "Staff calendar, online booking with a deposit, reminders and no-show protection, tips, the walk-in line and barber payouts.", price: "$39/mo, 0% on desk checkout" },
         { who: "Yoga, pilates, boxing and dance studios", what: "Class schedule and waitlist, drop-ins, packs, intro offers, memberships and door check-in.", price: "$39/mo + 1% of online class sales (0% on desk sales)" },
@@ -292,7 +292,7 @@ export const copy = {
       { q: "Do you take a cut of my sales?", a: "Not on the loyalty program, and not on your own online orders on a paid plan. Deposits, invoices and tiffin billing carry {cut}. Card fees are Stripe's standard rate." },
       { q: "Will my loyalty program ever cost money?", a: "No. Points, stamps, rewards, your customer list and reports stay free." },
       { q: "Are the prices before HST?", a: "Prices shown are before HST. We are confirming how HST appears on invoices with our accountant before billing starts." },
-      { q: "Can I buy Café & Retail or Service today?", a: "Yes. Subscribe from your dashboard and your trade's tools switch on right away: calendar and booking, classes and memberships, the walk-in line, pets, grocer and auto tools. Only network-wide extras (sponsored promos and listings, map pins, BIA campaigns) wait until the network reaches {target} shops." },
+      { q: "Can I buy Café & Retail or Service today?", a: "Yes. Subscribe from your dashboard and your shop's tools switch on right away: calendar and booking, classes and memberships, the walk-in line, pets, grocer and auto tools. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once {target} shops have joined." },
       { q: "What does a studio pay on class sales?", a: "$39 a month, plus 1% of classes, packs and memberships paid online. Payments you take at the desk by hand carry no fee. Card processing is Stripe's standard rate." },
       { q: "Can I cancel?", a: "Any time. You go back to Free and keep your loyalty data. Annual plans pay 10 months, not 12." },
       { q: "Is the restaurant plan a different plan?", a: "It sits beside Free, Café & Retail and Service. Any restaurant plan includes everything in Café & Retail, so you never pay for both." },

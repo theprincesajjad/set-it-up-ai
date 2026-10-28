@@ -73,7 +73,7 @@ export default async function PricingPage({ searchParams }: Props) {
           <PaidCard id="pro" />
         </div>
         <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-muted-foreground md:px-8">
-          {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` The network has ${activeShops} active shops today.` : ""} Your loyalty program never moves to a paid plan.
+          {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` ${activeShops} shops have joined so far.` : ""} Your loyalty program never moves to a paid plan.
         </p>
       </section>
 

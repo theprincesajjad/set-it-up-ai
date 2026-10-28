@@ -241,10 +241,10 @@ export function TodayPage() {
           {m.vertical === "grocery" && hasGroceryFeature(set) ? <GroceryHome /> : null}
           {ob && showActivation ? <ActivationCard c={ob} base={base} /> : null}
           <StreetCard />
-          {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `You are an active shop: ${ob.activeMembers} members visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
+          {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `Your regulars are on the card: ${ob.activeMembers} customers have visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
           {upsellKeys.length === 3 ? (
             <p className="border-t border-border pt-4 text-meta text-muted-foreground">
-              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}promos, texts, POS sync and the tools for your trade ·{" "}
+              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}promos, texts, POS sync and the tools for your kind of shop ·{" "}
               <a href={`${base}/billing`} className="text-foreground underline underline-offset-4">Subscribe</a>
             </p>
           ) : null}

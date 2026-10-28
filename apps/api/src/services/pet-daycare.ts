@@ -110,7 +110,7 @@ export async function checkIn(ctx: AppContext, staff: StaffContext, id: string, 
   const merchant = staff.merchant;
   const stay = await stayFor(ctx, merchant, id);
   if (stay.status === "in") throw conflict("Already checked in.");
-  if (stay.status !== "expected") throw conflict("This stay is not expected today.");
+  if (stay.status !== "expected") throw conflict("This dog isn't expected today.");
   const settings = await getPetSettings(ctx, merchant.id);
   const [{ n } = { n: 0 }] = await ctx.db.select({ n: sql<number>`count(*)::int` }).from(daycareStays).where(and(eq(daycareStays.merchantId, merchant.id), eq(daycareStays.day, stay.day), eq(daycareStays.status, "in")));
   const b = await blocksFor(ctx, merchant, stay, n, settings);

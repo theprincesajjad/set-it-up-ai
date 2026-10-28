@@ -190,7 +190,7 @@ export async function createInvoice(ctx: AppContext, staff: StaffContext, ticket
   }
   await requireApprovedEstimate(ctx.db, ticket, "invoice");
   const quote = body.fromQuote ? approved : null;
-  if (body.fromQuote && !quote) throw conflict("This ticket has no approved quote. Send fromQuote=false with the line items.");
+  if (body.fromQuote && !quote) throw conflict("This ticket has no approved quote. Add the invoice lines yourself instead.");
   const base: z.infer<typeof serviceApi.lineItemSchema>[] = (quote?.lineItems ?? []).map((l: LineItem) => ({ description: l.description, quantity: l.quantity, unitPriceCents: l.unitPriceCents, kind: l.kind ?? "other", categoryId: l.categoryId ?? null, condition: l.condition ?? null }));
   const all = [...base, ...body.extraLineItems];
   if (!all.length) throw badRequest("An invoice needs at least one line item");

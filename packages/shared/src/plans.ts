@@ -49,7 +49,7 @@ export const PLANS: Record<PlanId, Plan> = {
     priceCents: 0,
     annualPriceCents: 0,
     blurb: `Your loyalty program, the network listing, wallet pass and reports. Free forever: no subscription and no fee on loyalty. Online orders on Free carry ${Number((ORDER_BPS_FREE / 100).toFixed(2))}%.`,
-    bestFor: ["Every merchant"],
+    bestFor: ["Every shop"],
     smsPerMonth: 0,
   },
   plus: {
@@ -57,7 +57,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Café & Retail",
     priceCents: 3900,
     annualPriceCents: 39000,
-    blurb: "Promos, VIP levels, email & SMS marketing, POS auto-award, CSV, webhooks, order-ahead, appointment booking, and class schedules with packs and memberships.",
+    blurb: "Promos, VIP levels, email and text marketing, POS auto-award, customer exports, order-ahead, appointment booking, and class schedules with packs and memberships.",
     bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers", "Yoga & fitness studios"],
     smsPerMonth: 500,
   },

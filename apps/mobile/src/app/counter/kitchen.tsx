@@ -106,7 +106,7 @@ export default function Kitchen() {
       </ScrollView>
       {q.error && !q.data ? (
         <Banner variant="danger" actionLabel="Try again" onAction={() => void q.refetch()}>
-          {isApiError(q.error) && q.error.status === 402 ? "Kitchen display comes with the Pro plan." : isApiError(q.error) ? q.error.message : "Can't load tickets."}
+          {isApiError(q.error) && q.error.status === 402 ? "The kitchen display comes with Restaurant Pro." : isApiError(q.error) ? q.error.message : "Can't load tickets."}
         </Banner>
       ) : !q.data ? (
         <Skeleton height={220} radius={16} />

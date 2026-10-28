@@ -81,7 +81,7 @@ export function requireUuid(id: string, what: string): string {
 // ---------------------------------------------------------------------------
 async function loadActiveUser(db: DbOrTx, userId: string) {
   const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!u || u.deletedAt) throw new HttpError(401, "unauthorized", "Sign in required");
+  if (!u || u.deletedAt) throw new HttpError(401, "unauthorized", "Please sign in to continue.");
   return u;
 }
 
@@ -275,7 +275,7 @@ function encodeCursor(d: Date, id: string) {
 function decodeCursor(c: string | undefined): { at: Date; id: string } | null {
   if (!c) return null;
   const [at, id] = Buffer.from(c, "base64url").toString("utf8").split("|");
-  if (!at || !id || Number.isNaN(Date.parse(at)) || !UUID_RE.test(id)) throw badRequest("Invalid cursor");
+  if (!at || !id || Number.isNaN(Date.parse(at)) || !UUID_RE.test(id)) throw badRequest("That list is out of date. Reload the page.");
   return { at: new Date(at), id };
 }
 

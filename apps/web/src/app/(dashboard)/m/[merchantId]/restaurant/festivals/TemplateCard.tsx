@@ -62,10 +62,10 @@ export function TemplateCard({ festival, year, startDate, template }: { festival
           value={channel}
           onChange={(e) => setChannel(e.target.value as Channel)}
           options={[
-            { value: "email", label: available.email ? "Email" : "Email (needs Plus)" },
-            { value: "sms", label: available.sms ? "Text message" : "Text message (needs Plus)" },
-            { value: "push", label: available.push ? "App push" : "App push (needs Plus)" },
-            { value: "whatsapp", label: available.whatsapp ? "WhatsApp broadcast" : "WhatsApp broadcast (needs Growth)" },
+            { value: "email", label: available.email ? "Email" : "Email (Café & Retail)" },
+            { value: "sms", label: available.sms ? "Text message" : "Text message (Café & Retail)" },
+            { value: "push", label: available.push ? "App notification" : "App notification (Café & Retail)" },
+            { value: "whatsapp", label: available.whatsapp ? "WhatsApp broadcast" : "WhatsApp broadcast (Restaurant Growth)" },
           ]}
           hint={channel === "whatsapp" ? "Opens the broadcast composer with this template filled in." : "Saved as a draft. You check it and send it."}
         />

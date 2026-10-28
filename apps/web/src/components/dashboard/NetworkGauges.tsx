@@ -38,13 +38,13 @@ export function NetworkGauges({ activeMerchants, multiShopPct }: { activeMerchan
   const ads = FEATURES["ads.sponsored_listing"].unlockAtMerchants;
   const camp = FEATURES["campaigns.neighbourhood"].unlockAtMerchants;
   const items = [
-    { label: "Pro unlock", value: activeMerchants, target: pro, unit: "merchants" },
-    { label: "Plus unlock", value: activeMerchants, target: plus, unit: "merchants" },
-    { label: "Street campaigns", value: activeMerchants, target: camp, unit: "merchants" },
-    { label: "Ads & sponsored", value: activeMerchants, target: ads, unit: "merchants" },
+    { label: "Service tools", value: activeMerchants, target: pro, unit: "shops" },
+    { label: "Café & Retail tools", value: activeMerchants, target: plus, unit: "shops" },
+    { label: "Street campaigns", value: activeMerchants, target: camp, unit: "shops" },
+    { label: "Ads & sponsored", value: activeMerchants, target: ads, unit: "shops" },
   ];
   return (
-    <section aria-label="Network density" className="grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
+    <section aria-label="Shops joined, by feature" className="grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
       {items.map((g) => (
         <DensityBar key={g.label} {...g} className="bg-bg px-5 py-4" />
       ))}

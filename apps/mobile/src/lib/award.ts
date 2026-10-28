@@ -359,7 +359,7 @@ export function awardErrorMessage(error: { code?: string; message?: string }, ct
     case "conflict":
       return error.message?.toLowerCase().includes("pause") ? "Your program is paused. Ask the owner to resume it." : (error.message ?? "This can't be done right now.");
     case "forbidden":
-      return "This member can't earn here. Ask a manager.";
+      return "This customer can't earn here. Ask a manager.";
     case "duplicate":
       return `Couldn't add for ...${ctx.last4 ?? ""}: it was already added.`;
     default:
@@ -473,7 +473,7 @@ export function counterReducer(state: CounterState, action: CounterAction): Coun
         return { step: "customer", customer: { kind: "member", member: res.items[0]! }, amountCents: 0, noEarn: false, error: null, submitting: false };
       }
       if (res.matchedBy === "last4") {
-        if (res.items.length === 0) return { step: "entry", digits: action.digits, error: "No members end in those 4 digits." };
+        if (res.items.length === 0) return { step: "entry", digits: action.digits, error: "No customers end in those 4 digits. Check the digits and try again." };
         return { step: "pick", digits: action.digits, matches: res.items.slice(0, 5) };
       }
       if (res.normalizedPhone) {
@@ -552,21 +552,21 @@ export function stampsLeft(left: number, rewardName: string): string {
   return left <= 0 ? `${rewardName} ready` : `${left} more for ${what}`;
 }
 
-/** "Two members end in 1034". */
+/** "Two customers end in 1034". */
 export function matchesHeading(n: number, digits: string): string {
   const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-  return `${words[n] ?? n} member${n === 1 ? "" : "s"} end${n === 1 ? "s" : ""} in ${digits}`;
+  return `${words[n] ?? n} customer${n === 1 ? "" : "s"} end${n === 1 ? "s" : ""} in ${digits}`;
 }
 
-/** "in yesterday", "in 2 weeks ago": the second line of a match row. */
+/** "Visited yesterday", "Visited 2 weeks ago": the second line of a match row. */
 export function cameInText(iso: string | null | undefined, now: Date): string {
-  if (!iso) return "new member";
+  if (!iso) return "New customer";
   const days = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
-  if (days === 0) return "in today";
-  if (days === 1) return "in yesterday";
-  if (days < 14) return `in ${days} days ago`;
-  if (days < 60) return `in ${Math.round(days / 7)} weeks ago`;
-  return `in ${Math.round(days / 30)} months ago`;
+  if (days === 0) return "Visited today";
+  if (days === 1) return "Visited yesterday";
+  if (days < 14) return `Visited ${days} days ago`;
+  if (days < 60) return `Visited ${Math.round(days / 7)} weeks ago`;
+  return `Visited ${Math.round(days / 30)} months ago`;
 }
 
 /** "(647) ···-1034" from the API's "(647) ***-1034". */

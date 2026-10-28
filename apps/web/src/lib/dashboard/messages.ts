@@ -15,8 +15,8 @@ export const AUDIENCES: { key: AudienceKey; label: string; segment: messagingApi
   { key: "regulars", label: "Regulars", segment: { kind: "regulars" } },
   { key: "reward_ready", label: "Reward ready", segment: { kind: "reward_ready" } },
   { key: "all", label: "Everyone who agreed", segment: { kind: "all" } },
-  { key: "lapsed", label: `Not seen in ${LAPSED_DEFAULT_DAYS / 7} weeks`, segment: { kind: "lapsed", days: LAPSED_DEFAULT_DAYS }, more: true },
-  { key: "new", label: "New this fortnight", segment: { kind: "new", days: 14 }, more: true },
+  { key: "lapsed", label: `Haven't visited in ${LAPSED_DEFAULT_DAYS / 7} weeks`, segment: { kind: "lapsed", days: LAPSED_DEFAULT_DAYS }, more: true },
+  { key: "new", label: "New in the last 2 weeks", segment: { kind: "new", days: 14 }, more: true },
 ];
 
 /** `?segment=` on /messages (Home links with segment=slipping) to the audience it selects. */
@@ -41,7 +41,7 @@ export function defaultBody(a: AudienceKey, noun = "treat"): string {
     case "reward_ready":
       return `Hi {first_name}, your ${noun} is ready. Show your card at the counter.`;
     case "new":
-      return `Hi {first_name}, thanks for joining. Come back this week and we will add a stamp for you.`;
+      return `Hi {first_name}, thanks for joining. Come back this week and show your card to start earning toward your next ${noun}.`;
     default:
       return `Hi {first_name}, something new is on the counter. Come in this week and try it.`;
   }

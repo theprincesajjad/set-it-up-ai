@@ -29,7 +29,7 @@ export function YourDataPanel() {
           Downloads of your members, orders, bookings, reviews and messages come with a paid plan. If you close your shop or move back to Free, you keep a free export of all of it for {RETENTION.leaverExportDays} days.
         </p>
         <p className="mt-3 text-meta text-fg">Need a copy now? Email help@localloyalty.example and we&apos;ll send it within 30 days.</p>
-        <p className="mt-3 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
+        <p className="mt-3 text-meta text-fg-muted">We keep balance and purchase history for 7 years for tax and dispute reasons. Phone numbers stay hidden in lists.</p>
       </Panel>
     );
 
@@ -60,7 +60,7 @@ export function YourDataPanel() {
       <p className="mt-3 text-meta text-fg-muted">
         You are responsible for using these files lawfully. Message only members who agreed (marketing_consent_at in Members) and have not replied STOP, and check may_follow_up in Reviews before you reach out. Customers who deleted their account have no personal details in these files.
       </p>
-      <p className="mt-2 text-meta text-fg-muted">We keep ledger history for 7 years for tax and dispute reasons. Phone numbers stay masked in lists.</p>
+      <p className="mt-2 text-meta text-fg-muted">We keep balance and purchase history for 7 years for tax and dispute reasons. Phone numbers stay hidden in lists.</p>
     </Panel>
   );
 }

@@ -265,7 +265,7 @@ async function getHood(ctx: AppContext, id: string) {
 export async function createNeighbourhood(ctx: AppContext, actorUserId: string, body: z.infer<typeof adminApi.createNeighbourhoodBody>) {
   const values = { ...body, biaContactPhone: body.biaContactPhone ? requirePhone(body.biaContactPhone) : (body.biaContactPhone ?? null) };
   const [h] = await ctx.db.insert(neighbourhoods).values(values).onConflictDoNothing().returning();
-  if (!h) throw conflict(`A neighbourhood with slug "${body.slug}" already exists`);
+  if (!h) throw conflict(`A neighbourhood with the web address "${body.slug}" already exists.`);
   await writeAudit(ctx.db, { actorUserId, action: "neighbourhood.created", entity: "neighbourhood", entityId: h.id, data: { slug: h.slug } });
   return getHood(ctx, h.id);
 }
@@ -279,7 +279,7 @@ export async function updateNeighbourhood(ctx: AppContext, actorUserId: string, 
   }
   if (body.slug) {
     const [clash] = await ctx.db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, body.slug)).limit(1);
-    if (clash && clash.id !== id) throw conflict(`A neighbourhood with slug "${body.slug}" already exists`);
+    if (clash && clash.id !== id) throw conflict(`A neighbourhood with the web address "${body.slug}" already exists.`);
   }
   const r = await ctx.db.update(neighbourhoods).set(set).where(eq(neighbourhoods.id, id)).returning({ id: neighbourhoods.id });
   if (!r.length) throw notFound("Neighbourhood");

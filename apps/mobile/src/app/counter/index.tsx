@@ -413,7 +413,7 @@ export default function Counter() {
   const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
   const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
 
-  const autoHint = program?.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. Stamps on scan." : "Wallet pass, app, or printed QR.";
+  const autoHint = program?.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. A scan adds it for you." : "Wallet pass, app, or printed QR.";
   const onScanKey = (k: string) => {
     touch();
     if (k === "clear") dispatch({ type: "key", key: "clear" });

@@ -126,7 +126,7 @@ export async function requirePermission(ctx: AppContext, staff: StaffContext, pe
     const features = await getMerchantFeatures(ctx.db, staff.merchant);
     if (features["staff.permissions"].enabled) allowed = row.permissions;
   }
-  if (!allowed.includes(perm)) throw forbidden(`Missing permission: ${perm}`);
+  if (!allowed.includes(perm)) throw forbidden("You don't have permission to do this. Ask the shop owner.");
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +175,7 @@ export function decodeCursor(cursor: string | undefined): { createdAt: Date; id:
   if (!cursor) return null;
   const [iso, id] = Buffer.from(cursor, "base64url").toString("utf8").split("|");
   const d = new Date(iso ?? "");
-  if (!id || Number.isNaN(d.getTime())) throw badRequest("Invalid cursor");
+  if (!id || Number.isNaN(d.getTime())) throw badRequest("That list is out of date. Reload the page.");
   return { createdAt: d, id };
 }
 

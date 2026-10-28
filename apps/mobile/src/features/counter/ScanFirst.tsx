@@ -162,7 +162,7 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
         ))}
       </View>
       <Pressable accessibilityRole="button" onPress={onNew} style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>
-        <Text style={ui(14, 500, 19)}>Not here? Add as a new member with their number</Text>
+        <Text style={ui(14, 500, 19)}>Not here? Add them as a new customer with their number</Text>
       </Pressable>
     </View>
   );
@@ -174,9 +174,9 @@ export function NoMatch({ digits, onTryAgain, onNew }: { digits: string; onTryAg
   return (
     <View style={{ gap: 14 }}>
       <Text style={disp(22, 800, 28)} accessibilityRole="header">{`No one ends in ${digits}`}</Text>
-      <Text style={ui(14, 400, 20)} rawColor={c.fgMuted}>Check the digits, or add them as a new member with their number.</Text>
+      <Text style={ui(14, 400, 20)} rawColor={c.fgMuted}>Check the digits, or add them as a new customer with their number.</Text>
       <Button size="lg" variant="secondary" onPress={onTryAgain}>Try again</Button>
-      <Button size="lg" onPress={onNew}>Add as a new member</Button>
+      <Button size="lg" onPress={onNew}>Add as a new customer</Button>
     </View>
   );
 }

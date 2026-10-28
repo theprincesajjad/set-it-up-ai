@@ -107,7 +107,7 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
     }
     req.log.error(err);
     if (ctx.config.env !== "production") console.error(err);
-    return reply.status(500).send({ error: { code: "internal", message: "Something went wrong" } });
+    return reply.status(500).send({ error: { code: "internal", message: "Something went wrong on our end. Try again in a moment." } });
   });
 
   app.get("/health", async () => ({ ok: true, time: ctx.now().toISOString() }));

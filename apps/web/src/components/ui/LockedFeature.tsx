@@ -41,7 +41,7 @@ export function LockedFeature({ icon: Icon, title, description, state = "hidden"
           </div>
           <p className="mt-1 text-meta text-muted-foreground">{description}</p>
           {network ? (
-            <ProgressBar className="mt-3" value={network.current} max={network.target} label="Network progress" valueText={`${network.current} of ${network.target} shops on the network`} />
+            <ProgressBar className="mt-3" value={network.current} max={network.target} label="Shops joined" valueText={`${network.current} of ${network.target} shops have joined`} />
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {state === "hidden" && onNotify ? (

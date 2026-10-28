@@ -209,7 +209,7 @@ function Charges({ sub, canVoid, onVoided }: { sub: tiffinApi.SubscriberDto; can
         onClose={() => setVoiding(null)}
         danger
         title="Void this payment?"
-        body="The charge reopens as awaiting payment and the receipt stays in the ledger as voided. Use this for a mistake, such as recording the wrong person."
+        body="The charge reopens as awaiting payment and the receipt stays in the payment history as voided. Use this for a mistake, such as recording the wrong person."
         confirmLabel="Void payment"
         onConfirm={async () => {
           if (!voiding) return;

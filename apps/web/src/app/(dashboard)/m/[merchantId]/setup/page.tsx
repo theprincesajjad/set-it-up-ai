@@ -142,7 +142,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
       : step.key === "trade_setup" && family
         ? { title: TRADE_COPY[family].title, body: TRADE_COPY[family].body }
         : step.key === "first_members"
-          ? { title: `Your first ${checklist.activationTarget} members`, body: `Activation goal: ${checklist.activationTarget} members who have visited within ${a.windowDays} days. ${a.leadingMembers} by day ${a.leadingByDay} is the pace that gets you there.` }
+          ? { title: `Your first ${checklist.activationTarget} customers`, body: `Goal: ${checklist.activationTarget} customers who have visited within ${a.windowDays} days. Having ${a.leadingMembers} by day ${a.leadingByDay} keeps you on track.` }
           : ONBOARDING_STEPS_UI[step.key];
   const pb = checklist.playbook;
   const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members" | "first_stamp" | "pharmacy_rules" | "trade_setup">, advance = true) => {
@@ -353,7 +353,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         ) : (
           <div className="flex flex-col items-start gap-3">
             <p className="text-body text-fg">
-              POS sync is part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month. Stamps from the counter work the same way in the meantime.
+              Connecting your POS is part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month. Until then, add stamps from the counter.
             </p>
             <SubscribeButton offer={{ kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents }} />
           </div>
@@ -362,7 +362,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "first_members" ? (
         <>
-          <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Active members" valueText={`${checklist.activeMembers} of ${checklist.activationTarget} active members`} />
+          <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Customers who have visited" valueText={`${checklist.activeMembers} of ${checklist.activationTarget} customers have visited`} />
           <p className="text-meta text-fg-muted">
             {checklist.activation.paceLabel} · {checklist.activation.members >= checklist.activation.leadingMembers ? "past" : "aiming for"} {checklist.activation.leadingMembers} by day {checklist.activation.leadingByDay}
           </p>

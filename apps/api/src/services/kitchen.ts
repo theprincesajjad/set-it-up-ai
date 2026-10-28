@@ -390,7 +390,7 @@ export async function listPreorders(ctx: AppContext, staff: StaffContext, q: z.i
   const today = ordersSvc.localDateKey(ctx.now(), tz);
   const from = q.from ?? today;
   const to = q.to ?? addDays(from, 14);
-  if (to < from) throw badRequest("'to' is before 'from'");
+  if (to < from) throw badRequest("The end date is before the start date.");
   if (to > addDays(from, 92)) throw badRequest("Ask for at most 92 days at a time");
   const rows = await ctx.db
     .select({ o: orders, name: users.name, phone: users.phone })

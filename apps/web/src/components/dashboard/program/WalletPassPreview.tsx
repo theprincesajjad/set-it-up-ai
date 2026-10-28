@@ -56,7 +56,7 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
       <button type="button" tabIndex={-1} aria-disabled className="inline-flex h-[46px] cursor-default items-center justify-center rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground">
         Add to Apple Wallet
       </button>
-      <p className="text-[12px] text-fg-muted">Same pass for Google Wallet. {stamps ? "Stamps" : "Your balance"} update on the lock screen.</p>
+      <p className="text-[12px] text-fg-muted">Same pass for Google Wallet. {stamps ? "Stamps" : "Your balance"} {stamps ? "update" : "updates"} on the lock screen.</p>
     </div>
   );
 }

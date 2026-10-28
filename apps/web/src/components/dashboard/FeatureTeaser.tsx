@@ -16,7 +16,7 @@ export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
   "service.tickets": "Track every repair from drop-off to pickup, with photos and status updates.",
   "service.quote_approval": "Send a quote; your customer approves it on their phone. No more phone tag.",
   "service.invoices": "Send the final bill and get paid in the app. Customers earn points automatically.",
-  "promos.basic": "Post offers like double stamps on a slow afternoon.",
+  "promos.basic": "Post offers like double rewards on a slow afternoon.",
   "discount_cards": "Show-to-save cards for students, seniors or your street.",
   "marketing.email": "Email your opted-in regulars, CASL compliant.",
   "marketing.sms": `Text your opted-in regulars. 500 texts a month included with ${PLANS.plus.name}.`,
@@ -116,7 +116,7 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
       ? "Built for another kind of shop"
       : state === "hidden"
         ? offer.kind === "network"
-          ? `Opens when the network reaches ${offer.unlockAtMerchants} shops${shops != null ? ` (${shops} today)` : ""}`
+          ? `Opens once ${offer.unlockAtMerchants} shops have joined${shops != null ? ` (${shops} so far)` : ""}`
           : "Coming soon"
         : state === "beta"
           ? "In beta"

@@ -107,10 +107,10 @@ export default function ReportsPage() {
             loading={!c}
             items={[
               { label: "Visits", value: c ? formatNumber(c.visits) : "–", delta: d(c?.visits, p?.visits) },
-              { label: "New members", value: c ? formatNumber(c.newMembers) : "–", delta: d(c?.newMembers, p?.newMembers) },
+              { label: "New customers", value: c ? formatNumber(c.newMembers) : "–", delta: d(c?.newMembers, p?.newMembers) },
               back && back.pct != null
                 ? { label: "Came back within 14 days", value: `${back.pct}%`, caption: back.caption }
-                : { label: "Came back", value: c ? pct(c.repeatRate) : "–", caption: "Active members with 2+ visits" },
+                : { label: "Came back", value: c ? pct(c.repeatRate) : "–", caption: "Customers with 2 or more visits" },
               {
                 label: `${noun[0]!.toUpperCase()}${noun.slice(1)}s given`,
                 value: c ? formatNumber(c.redemptions) : "–",
@@ -120,11 +120,11 @@ export default function ReportsPage() {
           />
           {posOn ? (
             <StatBlock tiles
-              label="Spend by members"
+              label="Spend by customers"
               cols={2}
               items={[
-                { label: "Spend by members", value: c ? formatMoney(c.revenueFromMembersCents) : "–", caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit, from your POS` : undefined },
-                { label: "Redemption rate", value: c ? pct(c.redemptionRate) : "–", caption: "Members who redeemed" },
+                { label: "Spend by customers", value: c ? formatMoney(c.revenueFromMembersCents) : "–", caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit, from your POS` : undefined },
+                { label: "Redemption rate", value: c ? pct(c.redemptionRate) : "–", caption: "Customers who redeemed a reward" },
               ]}
             />
           ) : null}
@@ -133,7 +133,7 @@ export default function ReportsPage() {
             <div className="flex flex-col gap-4">
               {cost ? (
                 <section aria-label="Rewards owed" className="rounded-card bg-card shadow-card p-6">
-                  <p className="text-[13px] text-fg-muted">Rewards owed right now</p>
+                  <p className="text-[13px] text-fg-muted">Rewards customers can claim right now</p>
                   <p className="mt-1 font-display text-[32px] font-bold leading-10 tracking-[-0.01em] text-fg">{owedHeadline(cost, noun)}</p>
                   <p className="mt-2 text-[13px] leading-5 text-fg-muted">{owedDetail(cost, term, noun)}</p>
                   <Link href={`${base}/program`} className="mt-2 inline-block text-[13px] font-medium text-fg underline underline-offset-4">Edit cost in Rewards</Link>
@@ -153,12 +153,12 @@ export default function ReportsPage() {
                 </section>
               ) : null}
               {advanced && overlap.data && overlap.data.shops.length ? (
-                <section aria-label="Your members also visit" className="rounded-card bg-card shadow-card p-6">
-                  <p className="text-[13px] text-fg-muted">Your members also visit (opt-in network)</p>
+                <section aria-label="Other shops your customers visit" className="rounded-card bg-card shadow-card p-6">
+                  <p className="text-[13px] text-fg-muted">Other shops your customers visit</p>
                   <p className="mt-2 text-[14px] font-medium leading-6 text-fg">
                     {overlap.data.shops.slice(0, 3).map((x) => `${x.name} ${overlap.data!.myMembers ? Math.round((x.sharedMembers / overlap.data!.myMembers) * 100) : 0}%`).join(" · ")}
                   </p>
-                  <p className="mt-3 text-[12px] text-fg-muted">Shops see totals only, never each other&apos;s customers.</p>
+                  <p className="mt-3 text-[12px] text-fg-muted">Shops only see totals, never each other&apos;s customers.</p>
                 </section>
               ) : null}
             </div>
@@ -173,16 +173,16 @@ export default function ReportsPage() {
               <StatBlock bare cols={3} items={joiners.windows.map((w) => ({ label: `Within ${w.days} days`, value: `${w.cameBack} of ${joiners.joined}`, caption: joiners.joined ? pct(w.cameBack / joiners.joined) : undefined }))} />
             </Panel>
           ) : null}
-          <Panel title={"Retention by join month"} description="Share of each month's new members who visited again.">
+          <Panel title={"Retention by join month"} description="How many of each month's new customers came back.">
             {retention.data ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-meta">
-                  <caption className="sr-only">Retention cohorts</caption>
+                  <caption className="sr-only">Customers who came back, by the month they joined</caption>
                   <thead className="text-caption text-fg-muted">
                     <tr>
                       <th scope="col" className="py-2 text-start">Joined</th>
-                      <th scope="col" className="py-2 text-end">Members</th>
-                      {Array.from({ length: retention.data.months }, (_, i) => <th key={i} scope="col" className="py-2 text-end">M{i}</th>)}
+                      <th scope="col" className="py-2 text-end">Customers</th>
+                      {Array.from({ length: retention.data.months }, (_, i) => <th key={i} scope="col" className="py-2 text-end">{i === 0 ? "Join month" : `Month ${i}`}</th>)}
                     </tr>
                   </thead>
                   <tbody>

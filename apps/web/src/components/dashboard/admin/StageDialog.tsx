@@ -8,7 +8,7 @@ import { TextField } from "@/components/ui/TextField";
 import { errorMessage } from "@/lib/api/errors";
 import { STAGE_LABEL, canConfirmStage, requiresTypedKey, stageEffect, type Stage } from "@/lib/dashboard/rollout";
 
-/** Confirm a rollout stage change: plain-words effect, optional note, typed key for GA (admin.md §1). */
+/** Confirm a rollout stage change: plain-words effect, optional note, typed key for Live (admin.md §1). */
 export function StageDialog({ feature, to, onClose, onConfirm }: { feature: adminApi.AdminFeature | null; to: Stage | null; onClose: () => void; onConfirm: (stage: Stage, note: string) => Promise<void> }) {
   const [typed, setTyped] = useState("");
   const [note, setNote] = useState("");
@@ -60,10 +60,10 @@ export function StageDialog({ feature, to, onClose, onConfirm }: { feature: admi
         <div className="flex flex-col gap-4">
           {feature.unlockAtMerchants > 0 && !feature.readyToUnlock && to !== "hidden" ? (
             <Banner tone="warning">
-              The network has {feature.activeMerchants} active merchants; the target for this feature is {feature.unlockAtMerchants}.
+              {feature.activeMerchants} shops are active; this feature is meant to open at {feature.unlockAtMerchants}.
             </Banner>
           ) : null}
-          <TextField label="Note" optionalLabel hint="Saved in the audit log." value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+          <TextField label="Note" optionalLabel hint="Saved in the audit log, so the team can see why." value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
           {requiresTypedKey(to) ? <TextField label={`Type ${feature.key} to confirm`} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} className="font-mono" /> : null}
           {error ? <Banner tone="danger">{error}</Banner> : null}
         </div>

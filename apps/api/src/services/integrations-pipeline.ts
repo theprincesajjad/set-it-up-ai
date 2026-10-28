@@ -67,7 +67,7 @@ export async function handleProviderWebhook(
   req: { rawBody: string; body: unknown; headers: Record<string, string | string[] | undefined>; url: string },
 ): Promise<WebhookResult> {
   const connector = getConnector(provider);
-  if (!connector?.verifyWebhook || !connector.parseWebhook) return { status: 404, body: { error: { code: "not_found", message: "Unknown webhook provider" } } };
+  if (!connector?.verifyWebhook || !connector.parseWebhook) return { status: 404, body: { error: { code: "not_found", message: "We don't recognise that app." } } };
   if (!connector.verifyWebhook(ctx.config, req.rawBody, req.headers, req.url)) {
     return { status: 401, body: { error: { code: "invalid_signature", message: "Webhook signature verification failed" } } };
   }

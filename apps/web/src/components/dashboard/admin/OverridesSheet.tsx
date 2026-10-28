@@ -38,7 +38,7 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
 
   if (!feature) return null;
   return (
-    <Modal open onClose={onClose} variant="sheet" size="md" title={`Overrides: ${feature.name}`} description="Force this feature on for pilot shops (or off), whatever the stage or plan.">
+    <Modal open onClose={onClose} variant="sheet" size="md" title={`Shop exceptions: ${feature.name}`} description="Turn this feature on (or off) for specific shops, whatever the feature's stage or their plan.">
       <div className="flex flex-col gap-4">
         {items.length ? (
           <ul className="divide-y divide-line rounded-input border border-line">
@@ -46,10 +46,10 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
               <li key={o.merchantId} className="flex items-center gap-2 px-3 py-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-body-strong text-fg">{o.merchantName}</p>
-                  <p className="text-caption text-fg-muted">{o.reason ?? "No reason"} · {formatDate(o.createdAt)}</p>
+                  <p className="text-caption text-fg-muted">{o.reason ?? "No reason given"} · {formatDate(o.createdAt)}</p>
                 </div>
-                <Badge tone={o.enabled ? "success" : "neutral"}>{o.enabled ? "Forced on" : "Forced off"}</Badge>
-                <IconButton icon={Trash2} label={`Remove override for ${o.merchantName}`} size={40} onClick={async () => {
+                <Badge tone={o.enabled ? "success" : "neutral"}>{o.enabled ? "On for this shop" : "Off for this shop"}</Badge>
+                <IconButton icon={Trash2} label={`Remove exception for ${o.merchantName}`} size={40} onClick={async () => {
                   await browserApi.admin.removeOverride(feature.key, o.merchantId);
                   setItems(items.filter((x) => x.merchantId !== o.merchantId));
                   onChanged();
@@ -58,12 +58,12 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
             ))}
           </ul>
         ) : (
-          <p className="text-meta text-fg-muted">No overrides yet.</p>
+          <p className="text-meta text-fg-muted">No shops added yet.</p>
         )}
         <div className="flex flex-col gap-3 rounded-input bg-bg-subtle p-3">
-          <TextField type="search" label="Find a merchant" value={q} onChange={(e) => { setQ(e.target.value); setPick(null); }} placeholder="Shop name" />
+          <TextField type="search" label="Find a shop" value={q} onChange={(e) => { setQ(e.target.value); setPick(null); }} placeholder="Shop name" />
           {!pick && results.length && q.trim().length >= 2 ? (
-            <ul className="flex flex-col gap-1" aria-label="Merchant results">
+            <ul className="flex flex-col gap-1" aria-label="Shop results">
               {results.map((m) => (
                 <li key={m.id}>
                   <button type="button" onClick={() => { setPick(m); setQ(m.name); }} className={cn("flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-start text-body hover:bg-bg")}>
@@ -73,8 +73,8 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
               ))}
             </ul>
           ) : null}
-          <Segmented label="Override" value={enabled} onChange={setEnabled} options={[{ value: "on", label: "Force on" }, ...(canForceOff(feature) ? [{ value: "off" as const, label: "Force off" }] : [])]} />
-          <TextField label="Reason" optionalLabel value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Pilot shop, Roncesvalles" />
+          <Segmented label="Access" value={enabled} onChange={setEnabled} options={[{ value: "on", label: "Turn on" }, ...(canForceOff(feature) ? [{ value: "off" as const, label: "Turn off" }] : [])]} />
+          <TextField label="Reason" optionalLabel value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Early access for the Roncesvalles shops" />
           {error ? <Banner tone="danger">{error}</Banner> : null}
           <Button disabled={!pick} loading={busy} className="self-start" onClick={async () => {
             if (!pick) return;
@@ -93,7 +93,7 @@ export function OverridesSheet({ feature, onClose, onChanged }: { feature: admin
               setBusy(false);
             }
           }}>
-            Save override
+            Save exception
           </Button>
         </div>
       </div>

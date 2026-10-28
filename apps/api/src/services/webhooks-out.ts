@@ -79,7 +79,7 @@ export function validateWebhookUrl(ctx: AppContext, raw: string): string {
 
 function validateEvents(events: string[]): OutboundEvent[] {
   const bad = events.filter((e) => e !== "*" && !(OUTBOUND_EVENTS as readonly string[]).includes(e));
-  if (bad.length) throw badRequest(`Unknown events: ${bad.join(", ")}`, { allowed: OUTBOUND_EVENTS });
+  if (bad.length) throw badRequest(`We don't recognise these events: ${bad.join(", ")}.`, { allowed: OUTBOUND_EVENTS });
   if (!events.length) throw badRequest("Choose at least one event");
   return events as OutboundEvent[];
 }

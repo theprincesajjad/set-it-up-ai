@@ -138,7 +138,7 @@ function decodeCursor(cursor: string | undefined): { createdAt: Date; id: string
   if (!cursor) return null;
   const [iso, id] = Buffer.from(cursor, "base64url").toString("utf8").split("|");
   const d = new Date(iso ?? "");
-  if (!id || Number.isNaN(d.getTime())) throw badRequest("Invalid cursor");
+  if (!id || Number.isNaN(d.getTime())) throw badRequest("That list is out of date. Reload the page.");
   return { createdAt: d, id };
 }
 

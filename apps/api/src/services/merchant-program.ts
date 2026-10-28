@@ -492,7 +492,7 @@ export async function transitionPromo(ctx: AppContext, merchantId: string, actor
 
 export async function deletePromo(ctx: AppContext, merchantId: string, actorUserId: string, id: string) {
   const cur = await getPromo(ctx.db, merchantId, id);
-  if (cur.status !== "draft") throw conflict("Only drafts can be deleted; archive it instead");
+  if (cur.status !== "draft") throw conflict("Only drafts can be deleted. Archive this promo instead.");
   await ctx.db.delete(promos).where(eq(promos.id, id));
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "promo.deleted", entity: "promo", entityId: id });
 }

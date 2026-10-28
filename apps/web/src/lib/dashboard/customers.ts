@@ -23,7 +23,7 @@ export function consentState(c: Pick<merchantApi.CustomerSummary, "marketingCons
   return c.marketingConsent ? "opted_in" : "no_consent";
 }
 
-export const CONSENT_LABEL: Record<ConsentState, string> = { opted_in: "Opted in", no_consent: "No consent", muted: "Muted" };
+export const CONSENT_LABEL: Record<ConsentState, string> = { opted_in: "Opted in", no_consent: "Hasn't opted in", muted: "Muted" };
 
 export type CustomerFilter = "all" | "regulars" | "slipping" | "reward" | "new" | "birthday" | "can_text" | "vip" | "at_risk" | "opted_in" | "muted";
 

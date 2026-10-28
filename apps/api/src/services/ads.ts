@@ -116,7 +116,7 @@ export async function createAdCampaign(ctx: AppContext, merchant: Merchant, body
     const [promo] = await db.select().from(promos).where(and(eq(promos.id, body.promoId), eq(promos.merchantId, merchant.id))).limit(1);
     if (!promo) throw notFound("Promo");
     if (promo.status === "archived" || promo.status === "ended" || (promo.endsAt && promo.endsAt <= now)) throw conflict("That promo has ended");
-    if (promo.audience !== "network") throw conflict("Only network-wide promos can be boosted");
+    if (promo.audience !== "network") throw conflict("Only promos shown to everyone nearby can be boosted.");
     headline ??= promo.title;
     adBody ??= promo.body;
     imageUrl ??= promo.imageUrl;
@@ -200,7 +200,7 @@ export async function setMerchantAdState(ctx: AppContext, merchantId: string, ad
       patch = { status: "paused" };
     } else if (action === "resume") {
       if (ad.status !== "paused") throw conflict("Only paused campaigns can be resumed");
-      if (ad.endsAt <= ctx.now()) throw conflict("This campaign's flight has ended");
+      if (ad.endsAt <= ctx.now()) throw conflict("This campaign's dates have passed.");
       patch = { status: "active" };
     } else {
       if (ad.status === "ended" || ad.status === "rejected") throw conflict("This campaign is already closed");
@@ -238,7 +238,7 @@ export async function reviewAd(ctx: AppContext, adId: string, decision: { approv
     if (!ad) throw notFound("Ad campaign");
     if (ad.status !== "pending_review") throw conflict("This campaign isn't waiting for review");
     const now = ctx.now();
-    if (decision.approve && ad.endsAt <= now) throw conflict("This campaign's flight has already ended");
+    if (decision.approve && ad.endsAt <= now) throw conflict("This campaign's dates have already passed.");
     if (decision.approve && ad.placement === "map_pin") await assertMapPinInventory(tx, ad);
     const [row] = await tx
       .update(adCampaigns)

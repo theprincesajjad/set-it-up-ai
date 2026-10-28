@@ -402,7 +402,7 @@ export async function setTicketStatus(ctx: AppContext, staff: StaffContext, tick
   let openInvoice: typeof invoices.$inferSelect | undefined;
   [openInvoice] = await ctx.db.select().from(invoices).where(and(eq(invoices.ticketId, ticket.id), eq(invoices.merchantId, merchant.id), eq(invoices.status, "open"))).limit(1);
   if (body.status === "picked_up" && openInvoice && openInvoice.amountDueCents > 0 && !body.allowUnpaid) {
-    throw conflict(`Invoice #${openInvoice.number} still has ${(openInvoice.amountDueCents / 100).toFixed(2)} due. Mark it paid or pass allowUnpaid.`);
+    throw conflict(`Invoice #${openInvoice.number} still has ${(openInvoice.amountDueCents / 100).toFixed(2)} due. Mark it paid first, or confirm that you want to go on without payment.`);
   }
   const customerFacing = body.status in STATUS_TEXTS || body.status === "picked_up" || body.status === "cancelled";
   const updated = await setTicketStatusRaw(ctx.db, ctx.now(), ticket, body.status, { note: body.note ?? null, visibleToCustomer: customerFacing, actorUserId: staff.user.id });

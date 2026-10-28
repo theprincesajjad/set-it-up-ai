@@ -39,8 +39,8 @@ export default function RolloutPage() {
                         <Th className="w-[110px]">Plan</Th>
                         <Th className="w-[180px]">Stage</Th>
                         <Th className="w-[200px]">Unlock target</Th>
-                        <Th align="end" className="w-[100px]">Asked for it</Th>
-                        <Th className="w-[100px]">Overrides</Th>
+                        <Th align="end" className="w-[100px]">Notify requests</Th>
+                        <Th className="w-[100px]">Shop exceptions</Th>
                         <Th className="w-[160px]">Last changed</Th>
                       </tr>
                     </thead>
@@ -59,7 +59,7 @@ export default function RolloutPage() {
                                 <StatusDot domain="rollout" status="ga" />
                               </span>
                             ) : (
-                              <Segmented label={`Stage for ${f.name}`} value={f.stage} onChange={(to) => to !== f.stage && setChange({ f, to })} options={[{ value: "hidden", label: "Hidden" }, { value: "beta", label: "Beta" }, { value: "ga", label: "GA" }]} />
+                              <Segmented label={`Stage for ${f.name}`} value={f.stage} onChange={(to) => to !== f.stage && setChange({ f, to })} options={[{ value: "hidden", label: "Hidden" }, { value: "beta", label: "Early access" }, { value: "ga", label: "Live" }]} />
                             )}
                           </Td>
                           <Td data-label="Unlock target" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)] max-md:col-span-2">
@@ -77,8 +77,8 @@ export default function RolloutPage() {
                               <span className="text-fg-muted">–</span>
                             )}
                           </Td>
-                          <Td align="end" data-label="Asked for it" className="max-md:text-start max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? <span className="text-fg-muted">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
-                          <Td data-label="Overrides" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">
+                          <Td align="end" data-label="Notify requests" className="max-md:text-start max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? <span className="text-fg-muted">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
+                          <Td data-label="Shop exceptions" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">
                             {f.freeForever ? (
                               <span className="text-fg-muted">–</span>
                             ) : (

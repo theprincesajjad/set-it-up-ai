@@ -3,10 +3,10 @@ import { addDays, fromLocalInput, startOfTorontoDay, toLocalInput } from "./time
 
 export type PromoKind = merchantApi.Promo["kind"];
 export const KIND_INFO: Record<PromoKind, { label: string; hint: string }> = {
-  offer: { label: "Offer", hint: "A deal or freebie, e.g. free cookie with any coffee." },
-  multiplier: { label: "Double points", hint: "Points multiply during the promo." },
-  bonus_points: { label: "Bonus points", hint: "A flat bonus on each qualifying purchase." },
-  discount: { label: "Discount", hint: "A percentage off for members." },
+  offer: { label: "Offer", hint: "A deal or a freebie, like a free cookie with any coffee." },
+  multiplier: { label: "Double points", hint: "Customers earn extra while the promo runs." },
+  bonus_points: { label: "Bonus points", hint: "A fixed bonus on each qualifying purchase." },
+  discount: { label: "Discount", hint: "A percentage off for your customers." },
   event: { label: "Event", hint: "Tastings, workshops, sidewalk sales." },
 };
 
@@ -108,18 +108,31 @@ export interface PromoTemplate {
 
 /** Four templates; each pre-fills the editor (rule, hours, weekdays). Bring a friend needs `loyalty.referrals`. */
 export const PROMO_TEMPLATES: PromoTemplate[] = [
-  { key: "slow_afternoons", title: "Slow afternoons", blurb: "Double stamps weekdays 2 to 4 pm", job: "Fills the dead zone", draft: { kind: "multiplier", title: "Double stamps on slow afternoons", body: "Double stamps weekdays 2 to 4 pm.", multiplier: "2", daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", endsLocal: "" } },
-  { key: "bring_friend", title: "Bring a friend", blurb: "Both of you get a stamp on their first visit", job: "Brings new members", needs: "loyalty.referrals", draft: { kind: "offer", title: "Bring a friend", body: "Bring a friend. Both of you get a stamp on their first visit.", endsLocal: "" } },
-  { key: "add_pastry", title: "Add a pastry", blurb: "Bonus stamp with any pastry and drink", job: "Raises the ticket", draft: { kind: "bonus_points", title: "Add a pastry", body: "Bonus stamp with any pastry and drink.", bonusPoints: "1", endsLocal: "" } },
+  { key: "slow_afternoons", title: "Slow afternoons", blurb: "Double stamps weekdays 2 to 4 pm", job: "Fills quiet hours", draft: { kind: "multiplier", title: "Double stamps on slow afternoons", body: "Double stamps weekdays 2 to 4 pm.", multiplier: "2", daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", endsLocal: "" } },
+  { key: "bring_friend", title: "Bring a friend", blurb: "Both of you get a stamp on their first visit", job: "Brings new customers", needs: "loyalty.referrals", draft: { kind: "offer", title: "Bring a friend", body: "Bring a friend. Both of you get a stamp on their first visit.", endsLocal: "" } },
+  { key: "add_pastry", title: "Add a pastry", blurb: "Bonus stamp with any pastry and drink", job: "Raises the average sale", draft: { kind: "bonus_points", title: "Add a pastry", body: "Bonus stamp with any pastry and drink.", bonusPoints: "1", endsLocal: "" } },
   { key: "quiet_mondays", title: "Quiet Mondays", blurb: "Free upsize every Monday", job: "Fixes your slowest day", draft: { kind: "offer", title: "Quiet Mondays", body: "Free upsize every Monday.", daysOfWeek: [1], endsLocal: "" } },
 ];
 
-export function templateDraft(key: string | null | undefined, now = new Date()): PromoDraft {
-  const t = PROMO_TEMPLATES.find((x) => x.key === key);
+export function templateDraft(key: string | null | undefined, now = new Date(), terminology = "stamps"): PromoDraft {
+  const found = PROMO_TEMPLATES.find((x) => x.key === key);
+  const t = found ? inUnit(found, terminology) : undefined;
   return { ...emptyPromo(now), ...(t?.draft ?? {}) };
 }
 
-export const templatesFor = (referrals: boolean) => PROMO_TEMPLATES.filter((t) => !t.needs || referrals);
+/** Template wording in the shop's own unit: stamps are the default wording, points shops get the points version. */
+const POINTS_WORDING: Record<PromoTemplateKey, { blurb?: string; title?: string; body?: string; bonusPoints?: string } | undefined> = {
+  slow_afternoons: { blurb: "Double points weekdays 2 to 4 pm", title: "Double points on slow afternoons", body: "Double points weekdays 2 to 4 pm." },
+  bring_friend: { blurb: "Both of you get bonus points on their first visit", body: "Bring a friend. Both of you get bonus points on their first visit." },
+  add_pastry: { blurb: "Bonus points with any pastry and drink", body: "Bonus points with any pastry and drink.", bonusPoints: "10" },
+  quiet_mondays: undefined,
+};
+export function inUnit(t: PromoTemplate, terminology: string): PromoTemplate {
+  const w = terminology === "stamps" ? undefined : POINTS_WORDING[t.key];
+  if (!w) return t;
+  return { ...t, blurb: w.blurb ?? t.blurb, draft: { ...t.draft, ...(w.title ? { title: w.title } : {}), ...(w.body ? { body: w.body } : {}), ...(w.bonusPoints ? { bonusPoints: w.bonusPoints } : {}) } };
+}
+export const templatesFor = (referrals: boolean, terminology = "stamps") => PROMO_TEMPLATES.filter((t) => !t.needs || referrals).map((t) => inUnit(t, terminology));
 
 const DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 const hr = (t: string) => {

@@ -30,7 +30,8 @@ export default function PromosPageGated() {
 }
 
 function PromosPage() {
-  const { api, base, enabled } = useMerchant();
+  const { api, base, enabled, detail } = useMerchant();
+  const term = detail.program?.terminology ?? "points";
   const router = useRouter();
   const [tab, setTab] = useState<merchantApi.PromoStatus>("live");
   const all = useApi(() => api.promos(), [api]);
@@ -39,7 +40,7 @@ function PromosPage() {
   const byId = new Map<string, reportsApi.PromoResult>((results.data?.items ?? []).map((r) => [r.promoId, r]));
   const items = (all.data?.items ?? []).filter((p) => p.status === tab);
   const count = (s: merchantApi.PromoStatus) => (all.data?.items ?? []).filter((p) => p.status === s).length;
-  const templates = templatesFor(enabled("loyalty.referrals"));
+  const templates = templatesFor(enabled("loyalty.referrals"), term);
   const showResults = enabled("promos.basic");
   return (
     <div className="flex flex-col gap-6">
@@ -129,7 +130,7 @@ function PromosPage() {
           </Table>
         </TableWrap>
       ) : (all.data?.items.length ?? 0) === 0 ? (
-        <EmptyState title="No promos yet" description="A simple offer gets people through the door. Try double stamps on a slow afternoon." action={<Button variant="secondary" size="sm" href={`${base}/promos/new?template=slow_afternoons`}>Use the slow afternoons template</Button>} />
+        <EmptyState title="No promos yet" description={`A simple offer gets people through the door. Try double ${term} on a slow afternoon.`} action={<Button variant="secondary" size="sm" href={`${base}/promos/new?template=slow_afternoons`}>Use the slow afternoons template</Button>} />
       ) : (
         <Empty className="border-y border-line">Nothing {TABS.find((t) => t.id === tab)?.label.toLowerCase()} right now.</Empty>
       )}

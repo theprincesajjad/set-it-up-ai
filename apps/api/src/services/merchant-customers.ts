@@ -33,7 +33,7 @@ export const encodeCursor = (offset: number) => Buffer.from(String(offset)).toSt
 export function decodeCursor(cursor?: string): number {
   if (!cursor) return 0;
   const n = Number(Buffer.from(cursor, "base64url").toString());
-  if (!Number.isInteger(n) || n < 0) throw badRequest("Invalid cursor");
+  if (!Number.isInteger(n) || n < 0) throw badRequest("That list is out of date. Reload the page.");
   return n;
 }
 

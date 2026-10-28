@@ -122,7 +122,7 @@ function Customers() {
     <div>
       <PageHeader
         title="Customers"
-        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} members · ${formatNumber(counts.data.canText)} can be texted · phone numbers are masked and reveals are logged` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : "members"} · phone numbers are masked and reveals are logged` : "Everyone in your program"}
+        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} customers · ${formatNumber(counts.data.canText)} can be texted · Phone numbers are hidden here, and each time you reveal one it's logged` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : "customers"} · Phone numbers are hidden here, and each time you reveal one it's logged` : "Everyone in your program"}
         actions={
           role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>

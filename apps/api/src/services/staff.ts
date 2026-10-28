@@ -756,7 +756,7 @@ export async function kioskCheckIn(ctx: AppContext, staff: StaffContext, body: s
     .limit(1);
   if (!loc) throw badRequest("Unknown location");
   const program = await loadProgram(ctx.db, staff.merchant.id);
-  if (!program?.active) throw conflict("Loyalty program is not set up yet");
+  if (!program?.active) throw conflict("Set up your loyalty program first, then try again.");
   if (staff.merchant.status === "paused" || staff.merchant.status === "closed") throw conflict("This shop's loyalty program is paused");
   const consent = body.consent ? { text: body.consent.text, source: "kiosk" } : null;
   const visitProgram = program.earnType !== "per_dollar" && program.minSpendCents === 0;

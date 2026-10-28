@@ -205,7 +205,7 @@ export interface ApplyTemplateResult {
  */
 export async function applyVerticalTemplate(tx: Tx, merchantId: string, vertical: Vertical): Promise<ApplyTemplateResult> {
   const t = VERTICAL_TEMPLATES[vertical];
-  if (!t) throw badRequest(`Unknown vertical: ${vertical}`);
+  if (!t) throw badRequest("We don't recognise that type of shop.");
   const [merchant] = await tx.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   if (!merchant) throw notFound("Merchant");
   const programValues = {

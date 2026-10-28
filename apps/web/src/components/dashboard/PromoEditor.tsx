@@ -94,7 +94,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
 
         <Panel>
           <div className="flex flex-col gap-4">
-            <TextField label="Title" value={d.title} onChange={(e) => set("title", e.target.value)} maxLength={60} showCount error={errors.title} placeholder="Double stamps on slow afternoons" disabled={locked && !live} />
+            <TextField label="Title" value={d.title} onChange={(e) => set("title", e.target.value)} maxLength={60} showCount error={errors.title} placeholder={`Double ${detail.program?.terminology ?? "points"} on slow afternoons`} disabled={locked && !live} />
             <TextField type="textarea" label="Description" optionalLabel value={d.body} onChange={(e) => set("body", e.target.value)} maxLength={280} showCount error={errors.body} disabled={locked && !live} />
             <TextField type="url" label="Image URL" optionalLabel hint="16:9 works best." value={d.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} disabled={locked && !live} />
             {d.kind === "multiplier" ? <TextField label="Multiplier" inputMode="decimal" suffix="x" value={d.multiplier} onChange={(e) => set("multiplier", e.target.value)} error={errors.multiplier} disabled={locked} /> : null}
@@ -145,10 +145,10 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Panel>
 
         <Panel>
-          <h2 className="text-body-strong text-fg">Tell your regulars</h2>
+          <h2 className="text-body-strong text-fg">Tell your regulars about it</h2>
           <p className="mt-1 text-meta text-fg-muted">Send this promo by email to customers who said yes to offers.</p>
           <Button variant="tonal" className="mt-3" iconStart={Megaphone} href={`${base}/messages/new?subject=${encodeURIComponent(d.title)}&body=${encodeURIComponent(d.body || d.title)}`}>
-            Also email opted-in members
+            Also email customers who opted in
           </Button>
           {!enabled("marketing.sms") ? <div className="mt-4"><FeatureTeaser featureKey="marketing.sms" title="SMS campaigns" /></div> : null}
           <div className="mt-4">
