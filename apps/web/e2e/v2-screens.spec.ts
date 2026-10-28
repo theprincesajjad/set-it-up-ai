@@ -96,12 +96,12 @@ for (const s of SIZES) {
     await expect(page.getByRole("link", { name: "Show my card" })).toBeVisible();
     await expect(page.getByRole("img", { name: /Member QR code/ })).toBeVisible();
     await shot(page, "wallet", s.w);
-    await page.getByRole("link", { name: "Shops" }).click();
+    await page.getByRole("link", { name: "Shops", exact: true }).click();
     await page.getByRole("button", { name: /Pinecone Coffee Co\./ }).first().click();
     await page.waitForTimeout(900);
     await shot(page, "wallet-shop-sheet", s.w, false);
     await page.keyboard.press("Escape");
-    await page.getByRole("link", { name: "Rewards" }).click();
+    await page.getByRole("link", { name: "Rewards", exact: true }).click();
     await page.waitForTimeout(600);
     await shot(page, "wallet-rewards", s.w);
     await page.getByRole("button", { name: "Settings" }).click();

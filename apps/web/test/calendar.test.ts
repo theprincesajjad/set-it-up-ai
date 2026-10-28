@@ -109,25 +109,25 @@ describe("dates and zones", () => {
   });
 });
 
-describe("drag, resize and click maths (15 minutes, 60 px per hour)", () => {
+describe("drag, resize and click maths (15 minutes, 100 px per hour)", () => {
   const a = appt({ start: "10:00", end: "11:15" });
   it("snaps to 15 minutes", () => {
     expect(snap(7)).toBe(0);
     expect(snap(8)).toBe(15);
     expect(snap(52)).toBe(45);
-    expect(PX_PER_HOUR).toBe(60);
+    expect(PX_PER_HOUR).toBe(100);
   });
   it("moves a block by whole steps", () => {
-    const m = movedTimes(a, 30); // 30 px = 30 minutes
+    const m = movedTimes(a, 50); // 50 px = 30 minutes
     expect(parts(m.startsAt).minutes).toBe(10 * 60 + 30);
     expect(parts(m.endsAt).minutes).toBe(11 * 60 + 45);
-    const up = movedTimes(a, -61);
+    const up = movedTimes(a, -101);
     expect(parts(up.startsAt).minutes).toBe(9 * 60);
     expect(new Date(movedTimes(a, 4).startsAt).getTime()).toBe(new Date(a.startsAt).getTime()); // under half a step: stays
   });
   it("resizes from the bottom edge, never below one step", () => {
-    expect(parts(resizedEnd(a, 30)).minutes).toBe(11 * 60 + 45);
-    expect(parts(resizedEnd(a, -30)).minutes).toBe(10 * 60 + 45);
+    expect(parts(resizedEnd(a, 50)).minutes).toBe(11 * 60 + 45);
+    expect(parts(resizedEnd(a, -50)).minutes).toBe(10 * 60 + 45);
     expect(parts(resizedEnd(a, -500)).minutes).toBe(10 * 60 + 15);
   });
   it("picks the column under the pointer, clamped", () => {
@@ -139,7 +139,7 @@ describe("drag, resize and click maths (15 minutes, 60 px per hour)", () => {
   });
   it("turns a click into a snapped start", () => {
     expect(minutesAtY(0, 9 * 60)).toBe(9 * 60);
-    expect(minutesAtY(74, 9 * 60)).toBe(9 * 60 + 60);
+    expect(minutesAtY(123, 9 * 60)).toBe(9 * 60 + 60);
     expect(minutesAtY(-5, 9 * 60)).toBe(9 * 60);
   });
 });
@@ -169,10 +169,10 @@ describe("working window and shading", () => {
 describe("blocks", () => {
   const w: [number, number] = [9 * 60, 18 * 60];
   it("places a block by its start and length", () => {
-    expect(geometry(appt({ start: "09:00", end: "10:15" }), "2026-11-04", w)).toEqual({ top: 0, height: 74 });
-    expect(geometry(appt({ start: "13:00", end: "14:00" }), "2026-11-04", w)).toEqual({ top: 240, height: 59 });
+    expect(geometry(appt({ start: "09:00", end: "10:15" }), "2026-11-04", w)).toEqual({ top: 0, height: 124 });
+    expect(geometry(appt({ start: "13:00", end: "14:00" }), "2026-11-04", w)).toEqual({ top: 400, height: 99 });
     // Never shorter than a quarter hour.
-    expect(geometry(appt({ start: "10:00", end: "10:05" }), "2026-11-04", w).height).toBe(14);
+    expect(geometry(appt({ start: "10:00", end: "10:05" }), "2026-11-04", w).height).toBe(24); // never shorter than 24 px (WCAG target size)
   });
   it("labels the state on the block's second line", () => {
     const now = new Date("2026-11-04T15:00:00Z");
@@ -242,7 +242,7 @@ describe("open walk-in gaps", () => {
     const g = walkInGaps(staff("s1", "Simran Kaur"), "s1", "2026-11-04", win, day, early);
     // 10:15-10:45 (30 min), 12:00-13:30 (90 min); 15:00-17:00 is two hours, an empty afternoon rather than a gap.
     expect(g.map((x) => [x.start, x.end])).toEqual([[10 * 60 + 15, 10 * 60 + 45], [12 * 60, 13 * 60 + 30]]);
-    expect(g[0]).toMatchObject({ top: 75, height: 29 });
+    expect(g[0]).toMatchObject({ top: 125, height: 49 });
     expect(gapRange(g[1]!)).toBe("12:00 to 1:30");
   });
   it("ignores cancelled and other people's appointments, counts time off, and shows nothing for past days or off-shift staff", () => {

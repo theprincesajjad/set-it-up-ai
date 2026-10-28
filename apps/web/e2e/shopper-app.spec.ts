@@ -45,7 +45,7 @@ test("/for-shoppers: English, then Hindi, Urdu (right to left) and Punjabi, with
 test("a shopper's language follows them: Settings saves it on the profile and the wallet speaks it", async ({ page }) => {
   await joinAsShopper(page);
   await page.goto("/me");
-  await page.getByRole("link", { name: "Shops" }).click();
+  await page.getByRole("link", { name: "Shops", exact: true }).click();
   // The street: a live neighbourhood campaign shows under "on your street", linking to its page.
   await expect(page.getByRole("heading", { name: "on your street" })).toBeVisible();
   await page.screenshot({ path: shot("shopper-03-wallet-street"), fullPage: true });
@@ -64,7 +64,7 @@ test("a shopper's language follows them: Settings saves it on the profile and th
   // A new visit without ?lang= or a cookie still opens in the profile language.
   await page.context().clearCookies({ name: "ll_lang" });
   await page.goto("/me");
-  await expect(page.getByRole("link", { name: "दुकानें" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "दुकानें", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "वॉलेट" })).toBeVisible();
 
   // Back to English from the same row.

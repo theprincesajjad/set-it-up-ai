@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { outboundWebhookDeliveries, outboundWebhooks } from "@ll/db";
 import { rotateApiKey } from "../src/services/merchant.js";
 import { setHttp } from "../src/services/integrations-http.js";
-import { BACKOFF_SECONDS, MAX_ATTEMPTS, deliverDueWebhooks, emitMerchantEvent, verifyWebhookSignature } from "../src/services/webhooks-out.js";
+import { BACKOFF_SECONDS, MAX_ATTEMPTS, deliverDueWebhooks, emitMerchantEvent, flushMerchantEvents, verifyWebhookSignature } from "../src/services/webhooks-out.js";
 import { createMerchant as createBaseMerchant, createTestEnv, nextPhone, type TestEnv, grantFeatures } from "./helpers.js";
 import { fakeFetch } from "./integrations-support.js";
 
@@ -148,6 +148,7 @@ describe("outbound webhooks", () => {
     expect(catalog.json().items.find((i: { provider: string }) => i.provider === "zapier").status).toBe("connected");
     await env.app.inject({ method: "POST", url: "/v1/api/award", headers: h, payload: { phone: nextPhone(), amountCents: 1500, externalId: "s1" } });
     const fake = fakeFetch([["POST", "https://hooks.zapier.com/", () => ({ status: 200 })]]);
+    await flushMerchantEvents(); // the route queues the event without waiting for it
     const r = await deliverDueWebhooks(env.ctx, fake);
     expect(r.delivered).toBe(1);
     expect(JSON.parse(fake.calls[0]!.body!).data).toMatchObject({ points: 15, balance: 15, source: "api" });

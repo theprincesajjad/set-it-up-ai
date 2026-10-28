@@ -7,6 +7,7 @@ import type { AppContext } from "../src/context.js";
 import { signAccessToken } from "../src/lib/auth.js";
 import { createProviders } from "../src/providers/index.js";
 import { generateMemberCode } from "../src/services/ledger.js";
+import { flushMerchantEvents } from "../src/services/webhooks-out.js";
 
 export interface TestEnv {
   ctx: AppContext;
@@ -24,7 +25,7 @@ export async function createTestEnv(opts: { now?: Date; activationThreshold?: nu
   const clock = { now: opts.now ?? new Date("2026-11-03T15:00:00Z") };
   const ctx: AppContext = { db, config, providers: createProviders(config), now: () => clock.now };
   const app = await buildApp(ctx);
-  return { ctx, app, db, clock, close: async () => { await app.close(); await db.$close(); } };
+  return { ctx, app, db, clock, close: async () => { await app.close(); await flushMerchantEvents(); await db.$close(); } };
 }
 
 let phoneSeq = 1000;

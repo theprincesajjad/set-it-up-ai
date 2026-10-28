@@ -182,13 +182,23 @@ async function enqueue(ctx: AppContext, merchantId: string, event: string, data:
  * tests, delivery is attempted right away; failures retry from the job.
  */
 export function emitMerchantEvent(ctx: AppContext, merchantId: string, event: OutboundEvent | (string & {}), data: Record<string, unknown>): Promise<void> {
-  return enqueue(ctx, merchantId, event, data)
+  const p: Promise<void> = enqueue(ctx, merchantId, event, data)
     .then((n) => {
       if (n > 0 && ctx.config.env !== "test") setImmediate(() => void deliverDueWebhooks(ctx).catch((err) => console.error("[webhooks-out]", err)));
     })
     .catch((err) => {
       console.error(`[webhooks-out] failed to queue ${event} for ${merchantId}`, err);
-    });
+    })
+    .finally(() => emitsInFlight.delete(p));
+  emitsInFlight.add(p);
+  return p;
+}
+
+const emitsInFlight = new Set<Promise<void>>();
+
+/** Resolves when every event queued by a fire-and-forget emitMerchantEvent has been written. Tests call it before delivering. */
+export async function flushMerchantEvents(): Promise<void> {
+  while (emitsInFlight.size) await Promise.all([...emitsInFlight]);
 }
 
 /** Queue + deliver a `ping` to one webhook now (dashboard "Send test"). */

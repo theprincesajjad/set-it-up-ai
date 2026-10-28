@@ -1257,7 +1257,7 @@ export function CounterApp({
                   className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_60px] items-center gap-2 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-meta text-fg">
+                    <p dir="auto" className="truncate text-meta text-fg">
                       {a.name ??
                         (a.maskedPhone ? maskPhone(a.maskedPhone) : "Member")}
                       {a.reversed ? (
@@ -1318,7 +1318,7 @@ export function CounterApp({
                   type="button"
                   disabled={busy}
                   onClick={() => void undo(toast.res.transactionId!)}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold tabular-nums hover:underline focus-visible:focus-ring disabled:opacity-60"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 font-semibold tabular-nums hover:underline focus-visible:focus-ring disabled:opacity-60"
                 >
                   <RotateCcw aria-hidden className="size-3.5" /> Undo {secondsLeft}s
                 </button>
