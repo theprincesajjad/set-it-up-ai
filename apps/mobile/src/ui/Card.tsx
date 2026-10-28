@@ -5,6 +5,7 @@ import { DISPLAY_HEAVY, useTheme } from "../theme";
 import { shadow } from "./shadow";
 import { clearCard, CLEAR_CARD_TITLE } from "./Warm";
 import { Text } from "./Text";
+import { capFirst } from "../lib/sentenceCase";
 
 export interface CardProps {
   children: ReactNode;
@@ -32,7 +33,7 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ton
         <View style={styles.header}>
           {title ? (
             <Text style={isClear ? CLEAR_CARD_TITLE : { flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 20, lineHeight: 26 }} accessibilityRole="header">
-              {title}
+              {isClear ? capFirst(title) : title}
             </Text>
           ) : (
             <View style={{ flex: 1 }} />

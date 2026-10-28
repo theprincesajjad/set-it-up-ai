@@ -50,15 +50,17 @@ export function Glass({ children, variant = "regular", radius, style, flat, noSh
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       onLayout={onLayout}
-      style={[{ borderRadius: radius, borderCurve: "continuous" }, drop ? ({ boxShadow: drop } as ViewStyle) : null, style]}
+      // zIndex 0 makes the glass its own stacking context, so the material layers (zIndex -1) sit under every child on the web too
+      // (an absolutely positioned layer otherwise paints over in-flow children such as an SVG icon).
+      style={[{ borderRadius: radius, borderCurve: "continuous", zIndex: 0 }, drop ? ({ boxShadow: drop } as ViewStyle) : null, style]}
     >
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, borderCurve: "continuous", overflow: "hidden" }]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, borderCurve: "continuous", overflow: "hidden", zIndex: -1 }]}>
         {Platform.OS === "ios" && !solid ? <BlurView intensity={variant === "strong" ? 80 : g.intensity} tint={g.tint} style={StyleSheet.absoluteFill} /> : null}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: Platform.OS === "android" && !solid ? opaqueFor(fill, isDark) : fill }, web]} />
         <View style={[StyleSheet.absoluteFill, { borderRadius: radius, boxShadow: inset } as ViewStyle]} />
       </View>
       {ring && size ? (
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width={size.w} height={size.h} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Svg pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} width={size.w} height={size.h} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Defs>
             {/* 140deg: rim-a at the top-left, rim-b at 28% and 74%, clear at 52%, rim-c at the bottom-right. */}
             <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">

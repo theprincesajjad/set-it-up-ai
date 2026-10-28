@@ -55,7 +55,7 @@ export function SearchField({ onOpen, placeholder }: { onOpen: () => void; place
     >
       <Search aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
       <span className="min-w-0 flex-1 truncate">{placeholder}</span>
-      <kbd dir="ltr" className="shrink-0 rounded-sm border border-border px-1.5 text-caption text-muted-foreground clear:border-0 clear:px-0 clear:text-[11px] clear:leading-4 clear:font-[550]">
+      <kbd dir="ltr" className="shrink-0 rounded-sm border border-border px-1.5 text-caption text-muted-foreground clear:border-0 clear:px-0 clear:font-sans clear:text-[11px] clear:leading-4 clear:font-[550]">
         {key}
       </kbd>
     </button>

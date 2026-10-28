@@ -127,7 +127,7 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
         <dl className="rule-top grid grid-cols-[auto_1fr_auto] gap-4 pt-4">
           <div>
             <dt className="text-[11px] font-semibold uppercase leading-4 tracking-[0.04em] text-muted-foreground">{unit}</dt>
-            <dd className="text-[24px] font-semibold leading-8 tracking-[-0.02em] tabular-nums">
+            <dd dir="ltr" className="text-start text-[24px] font-semibold leading-8 tracking-[-0.02em] tabular-nums [unicode-bidi:isolate] rtl:text-end">
               {/* Stamps read "8 / 10"; a points balance is the number alone (the bar above shows the way to the reward). */}
               {formatNumber(stamps ? shown : m.balance)}
               {stamps && goal > 0 ? ` / ${formatNumber(goal)}` : null}

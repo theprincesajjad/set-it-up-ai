@@ -6,6 +6,7 @@ import { haptic } from "./haptics";
 import type { LucideIcon } from "./icons";
 import { shadow } from "./shadow";
 import { Text } from "./Text";
+import { capFirst } from "../lib/sentenceCase";
 
 /**
  * Main Street Warm building blocks (docs/design/v3.1-warm.md): the awning stripe, coloured IconTiles, pastel tiles, action pills.
@@ -118,7 +119,7 @@ export function CardTitle({ title, trailing }: { title: string; trailing?: React
   return (
     <View style={styles.cardTitle}>
       <Text accessibilityRole="header" style={isClear ? CLEAR_CARD_TITLE : { flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 20, lineHeight: 26 }}>
-        {title}
+        {isClear ? capFirst(title) : title}
       </Text>
       {trailing}
     </View>

@@ -127,7 +127,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
           }}
           style={styles.tabClear}
         >
-          {focused ? <Glass variant="lift" radius={28} noShadow={false} style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+          {focused ? <Glass variant="lift" radius={28} style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none" /> : null}
           {icon}
           <Text allowFontScaling={false} numberOfLines={1} style={styles.tabLabel} rawColor={focused ? (isDark ? c.fg : x.link) : c.fgMuted}>
             {t(LABEL_KEYS[name])}
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 11, lineHeight: 14, fontWeight: "600" },
   card: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   capsuleClear: { flex: 1, flexDirection: "row", alignItems: "stretch", height: 64, paddingVertical: 4, paddingHorizontal: 5 },
-  tabClear: { flex: 1, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", gap: 2 },
+  tabClear: { flex: 1, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", gap: 2, zIndex: 0 },
   tabLabel: { fontSize: 10, lineHeight: 12, fontWeight: "600" },
   avatarClear: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   avatarTextClear: { fontSize: 9, lineHeight: 12, fontWeight: "700" },

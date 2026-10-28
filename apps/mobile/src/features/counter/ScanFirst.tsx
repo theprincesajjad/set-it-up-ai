@@ -77,7 +77,12 @@ export function DigitBoxes({ digits, boxWidth = 62 }: { digits: string; boxWidth
 
 /** 1 to 9, a gap, 0 and Del (the layout on the frames). */
 export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) => void; disabled?: boolean }) {
-  const { c } = useTheme();
+  const { c, r, x, isClear } = useTheme();
+  // Clear keys (audit #22): 56 tall, radius 12, white with a hairline ring and the card elevation; Delete is a bare text key.
+  const clearKey = (back: boolean, pressed: boolean) =>
+    back
+      ? { height: 56, borderRadius: 12, backgroundColor: pressed ? c.bgMuted : "transparent" }
+      : ({ height: 56, borderRadius: 12, borderCurve: "continuous", backgroundColor: pressed ? c.bgSubtle : r.card, boxShadow: `inset 0 0 0 1px ${r.border}, ${x.shadowCard}` } as object);
   return (
     <View style={styles.pad}>
       {KEYS.map((k, i) =>
@@ -94,9 +99,9 @@ export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) =>
               onKey(k);
             }}
             onLongPress={k === "back" ? () => onKey("clear") : undefined}
-            style={({ pressed }) => [styles.padKey, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, opacity: disabled ? 0.5 : 1 }]}
+            style={({ pressed }) => [styles.padKey, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, opacity: disabled ? 0.5 : 1 }, isClear ? clearKey(k === "back", pressed) : null]}
           >
-            <Text style={k === "back" ? [ui(15, 500, 20)] : [ui(26, 400, 32), { fontVariant: ["tabular-nums"] }]} rawColor={k === "back" ? c.fgMuted : c.fg}>
+            <Text style={k === "back" ? [ui(15, 500, 20)] : [ui(26, 400, 32), { fontVariant: ["tabular-nums"] }, isClear ? { fontSize: 24, lineHeight: 32, letterSpacing: -0.24 } : null]} rawColor={k === "back" ? c.fgMuted : c.fg}>
               {k === "back" ? "Del" : k}
             </Text>
           </Pressable>

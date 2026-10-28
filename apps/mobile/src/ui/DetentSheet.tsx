@@ -90,7 +90,7 @@ export function DetentSheet({ detents, index, onIndexChange, containerHeight, he
         isClear ? styles.clearSheet : null,
       ]}
     >
-      {isClear ? <Glass variant="strong" radius={32} style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+      {isClear ? <Glass variant="strong" radius={32} style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none" /> : null}
       <View {...pan.panHandlers}>
         <Pressable
           accessibilityRole="adjustable"

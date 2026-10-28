@@ -198,7 +198,7 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
               .map((s) => (
                 <SidebarGroup key={s.key} className="p-0">
                   {s.label ? (
-                    <SidebarGroupLabel className="h-9 items-end rounded-none px-3 pt-4 pb-1 text-caption font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">{s.label}</SidebarGroupLabel>
+                    <SidebarGroupLabel className="h-9 items-end rounded-none px-3 pt-4 pb-1 text-caption font-semibold text-muted-foreground capitalize group-data-[collapsible=icon]:hidden">{s.label}</SidebarGroupLabel>
                   ) : null}
                   <Rows nav={s.items} all={all} pathname={pathname} />
                 </SidebarGroup>
