@@ -1,11 +1,21 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Ref } from "react";
 
 type TextLike = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 function assign<T>(ref: Ref<T> | undefined, el: T | null) {
   if (typeof ref === "function") ref(el);
   else if (ref) (ref as { current: T | null }).current = el;
+}
+
+const noSubscribe = () => () => {};
+/**
+ * True only while this component is hydrating server-rendered HTML; false when it mounts later on the client (a dialog that
+ * opens, a list that loads). Only then can the DOM hold input React never saw; on a later mount a mismatch just means the
+ * options or value are not there yet (a <select> whose options load after it), and adopting it would wipe real state.
+ */
+function useIsHydrating(): boolean {
+  return useSyncExternalStore(noSubscribe, () => false, () => true);
 }
 
 /**
@@ -19,8 +29,9 @@ function assign<T>(ref: Ref<T> | undefined, el: T | null) {
  */
 export function useHydratedValue<T extends TextLike>(current: string, adopt: (domValue: string, el: T) => void, forwarded?: Ref<T>) {
   const elRef = useRef<T | null>(null);
+  const hydrating = useIsHydrating();
   // The first render's values are the ones the server-rendered HTML was hydrated against.
-  const [first] = useState(() => ({ current, adopt }));
+  const [first] = useState(() => ({ current, adopt, hydrating }));
   const ref = useCallback(
     (el: T | null) => {
       elRef.current = el;
@@ -30,7 +41,7 @@ export function useHydratedValue<T extends TextLike>(current: string, adopt: (do
   );
   useEffect(() => {
     const el = elRef.current;
-    if (el && el.value !== first.current) first.adopt(el.value, el);
+    if (first.hydrating && el && el.value !== first.current) first.adopt(el.value, el);
   }, [first]);
   return ref;
 }
@@ -38,14 +49,15 @@ export function useHydratedValue<T extends TextLike>(current: string, adopt: (do
 /** Same for a controlled checkbox ticked before hydration (the consent box). */
 export function useHydratedChecked(current: boolean, adopt: (checked: boolean) => void) {
   const elRef = useRef<HTMLInputElement | null>(null);
+  const hydrating = useIsHydrating();
   // The first render's values are the ones the server-rendered HTML was hydrated against.
-  const [first] = useState(() => ({ current, adopt }));
+  const [first] = useState(() => ({ current, adopt, hydrating }));
   const ref = useCallback((el: HTMLInputElement | null) => {
     elRef.current = el;
   }, []);
   useEffect(() => {
     const el = elRef.current;
-    if (el && el.checked !== first.current) first.adopt(el.checked);
+    if (first.hydrating && el && el.checked !== first.current) first.adopt(el.checked);
   }, [first]);
   return ref;
 }

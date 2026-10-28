@@ -18,7 +18,8 @@ test.describe("review page", () => {
     await page.getByRole("button", { name: /^Language/ }).click();
     await page.getByRole("menuitemradio", { name: "हिन्दी" }).click();
     await expect(page.getByRole("heading", { name: "यह लिंक अब काम नहीं करता" })).toBeVisible();
-    await expect(page.locator("[lang='hi-IN']")).toBeVisible();
+    // The whole page follows the language, so portals (menus, dialogs) do too.
+    await expect(page.locator("html")).toHaveAttribute("lang", "hi-IN");
   });
 
   test("a pay link without its token is refused", async ({ page }) => {
