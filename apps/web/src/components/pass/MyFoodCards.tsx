@@ -12,6 +12,7 @@ import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
+import { ConsentNeeded, isNoConsent } from "./ConsentNeeded";
 import { cn } from "@/lib/cn";
 
 export function MyFoodCards() {
@@ -20,6 +21,8 @@ export function MyFoodCards() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [grams, setGrams] = useState<Record<string, string>>({});
+  /** Cards whose switch the server refused for want of the shop's text consent. */
+  const [needsConsent, setNeedsConsent] = useState<Record<string, boolean>>({});
   useEffect(() => {
     void browserApi.me.myFoodCards().then((r) => setItems(r.items)).catch((e) => setError(errorMessage(e)));
   }, []);
@@ -27,12 +30,14 @@ export function MyFoodCards() {
   async function toggle(c: petApi.FoodCardDto, remind: boolean) {
     setBusy(c.id);
     setError(null);
+    setNeedsConsent((n) => ({ ...n, [c.id]: false }));
     try {
       const g = grams[c.id] ? Number(grams[c.id]) : undefined;
       const r = await browserApi.me.setFoodReminder(c.id, { remind, ...(g ? { dailyGrams: g } : {}) });
       setItems((xs) => (xs ?? []).map((x) => (x.id === c.id ? { ...r, shop: x.shop } : x)));
     } catch (e) {
-      setError(errorMessage(e));
+      if (isNoConsent(e)) setNeedsConsent((n) => ({ ...n, [c.id]: true }));
+      else setError(errorMessage(e));
     } finally {
       setBusy(null);
     }
@@ -66,8 +71,15 @@ export function MyFoodCards() {
                   </div>
                   <SwitchControl checked={c.remind} disabled={busy === c.id || (!c.dailyGrams && !grams[c.id])} ariaLabel={`${t("pet.food.remind")}: ${c.brand} ${c.skuName}`} onChange={(v) => void toggle(c, v)} />
                 </div>
+                {needsConsent[c.id] ? <ConsentNeeded shop={c.shop?.name ?? ""} /> : null}
+                {/* The switch stays off until we know how much they feed: say so, and link to the field that fixes it. */}
+                {!c.dailyGrams && !grams[c.id] ? (
+                  <p id={`grams-need-${c.id}`} className="text-meta text-fg-muted">
+                    <a href={`#grams-${c.id}`} className="underline underline-offset-4 focus-visible:focus-ring">{t("pet.food.needGrams")}</a>
+                  </p>
+                ) : null}
                 <p className="text-caption text-fg-muted">{t("pet.food.consent", { shop: c.shop?.name ?? "" })}</p>
-                {!c.dailyGrams ? <TextField label={t("pet.food.daily")} type="number" min={10} value={grams[c.id] ?? ""} onChange={(e) => setGrams((g) => ({ ...g, [c.id]: e.target.value }))} /> : null}
+                {!c.dailyGrams ? <TextField id={`grams-${c.id}`} label={t("pet.food.daily")} type="number" min={10} value={grams[c.id] ?? ""} onChange={(e) => setGrams((g) => ({ ...g, [c.id]: e.target.value }))} /> : null}
               </div>
             </li>
           );

@@ -13,6 +13,8 @@ export function DropoffHours({ hours, settings, locationsHref, busy, error, onSa
   const [mins, setMins] = useState(String(settings.slotMinutes));
   const [cap, setCap] = useState(String(settings.capacity));
   const [ahead, setAhead] = useState(String(settings.daysAhead));
+  /** Errors show after the first Save, not while the owner is still typing. */
+  const [tried, setTried] = useState(false);
   const bad = (v: string, lo: number, hi: number) => !v || Number(v) < lo || Number(v) > hi;
   const invalid = bad(mins, 10, 120) || bad(cap, 1, 20) || bad(ahead, 1, 30);
   const dirty = Number(mins) !== settings.slotMinutes || Number(cap) !== settings.capacity || Number(ahead) !== settings.daysAhead;
@@ -27,9 +29,9 @@ export function DropoffHours({ hours, settings, locationsHref, busy, error, onSa
         ))}
       </dl>
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <TextField label="Slot length" suffix="min" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ""))} error={bad(mins, 10, 120) ? "10 to 120" : null} />
-        <TextField label="Per slot" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value.replace(/\D/g, ""))} error={bad(cap, 1, 20) ? "1 to 20" : null} />
-        <TextField label="Days ahead" inputMode="numeric" value={ahead} onChange={(e) => setAhead(e.target.value.replace(/\D/g, ""))} error={bad(ahead, 1, 30) ? "1 to 30" : null} />
+        <TextField label="Slot length" suffix="min" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ""))} error={tried && bad(mins, 10, 120) ? "10 to 120" : null} />
+        <TextField label="Per slot" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value.replace(/\D/g, ""))} error={tried && bad(cap, 1, 20) ? "1 to 20" : null} />
+        <TextField label="Days ahead" inputMode="numeric" value={ahead} onChange={(e) => setAhead(e.target.value.replace(/\D/g, ""))} error={tried && bad(ahead, 1, 30) ? "1 to 30" : null} />
       </div>
       <p className="mt-3 text-meta text-fg-muted">Hours come from Locations. Change them there and new days follow. A new slot length or per-slot number applies to days with no bookings yet. Booked slots are never removed.</p>
       {settings.blockedDates.length ? (
@@ -47,7 +49,7 @@ export function DropoffHours({ hours, settings, locationsHref, busy, error, onSa
       ) : null}
       {error ? <div className="mt-3"><Banner tone="danger">{error}</Banner></div> : null}
       {dirty ? (
-        <Button className="mt-4" size="sm" loading={busy} disabled={invalid} onClick={() => onSave({ slotMinutes: Number(mins), capacity: Number(cap), daysAhead: Number(ahead) })}>
+        <Button className="mt-4" size="sm" loading={busy} onClick={() => { setTried(true); if (!invalid) onSave({ slotMinutes: Number(mins), capacity: Number(cap), daysAhead: Number(ahead) }); }}>
           Save
         </Button>
       ) : null}

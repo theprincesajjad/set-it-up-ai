@@ -53,7 +53,7 @@ export function describedBy(id: string, error?: string | null, hint?: ReactNode)
 }
 
 export const inputBase =
-  "w-full min-h-11 rounded-md border bg-bg px-3.5 text-body text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] duration-150 ease-out " +
+  "w-full min-h-11 rounded-md border bg-bg px-3.5 text-body text-fg placeholder:text-fg-muted outline-none transition-[border-color,box-shadow] duration-150 ease-out " +
   "border-line hover:border-line-strong/50 focus:border-fg focus:ring-1 focus:ring-fg disabled:bg-bg-subtle disabled:text-fg-muted " +
   "aria-[invalid=true]:border-negative aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-negative";
 

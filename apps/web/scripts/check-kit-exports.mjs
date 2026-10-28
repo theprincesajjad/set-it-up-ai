@@ -4,6 +4,9 @@
  *
  *   node scripts/check-kit-exports.mjs            compare the barrel to scripts/kit-exports.snapshot.json (CI: pnpm check:kit)
  *   node scripts/check-kit-exports.mjs --write F  (re)write the snapshot from the single-file kit F (the pre-split kit.tsx)
+ *   node scripts/check-kit-exports.mjs --write    refresh the snapshot from the split as it stands now (barrel + kit/*.tsx). Refuses when the
+ *                                                 exported names differ from the current snapshot: the names are the contract, the body
+ *                                                 lines are expected to change as the kit is migrated.
  *
  * Two checks:
  *  1. Exported names: every export of `src/components/dashboard/kit` (value or type, through `export *`) must equal the snapshot.
@@ -84,7 +87,21 @@ function digest(lines) {
 const wIdx = process.argv.indexOf("--write");
 if (wIdx !== -1) {
   const orig = process.argv[wIdx + 1];
-  if (!orig || !existsSync(orig)) throw new Error("--write needs the path of the single-file kit.tsx");
+  if (!orig || orig.startsWith("--")) {
+    const old = JSON.parse(readFileSync(snapshotPath, "utf8"));
+    const now = exportedNames(join(kitDir, "kit.tsx"));
+    const missing = old.exports.filter((n) => !now.includes(n));
+    const extra = now.filter((n) => !old.exports.includes(n));
+    if (missing.length || extra.length) {
+      console.error(`export names changed, not refreshing. missing: [${missing.join(", ")}] extra: [${extra.join(", ")}]`);
+      process.exit(1);
+    }
+    const body = bodyDigest();
+    writeFileSync(snapshotPath, JSON.stringify({ source: "dashboard/kit.tsx barrel + kit/*.tsx, refreshed in the v3 final sweep (export names verified unchanged)", exports: now, body }, null, 2) + "\n");
+    console.log(`snapshot refreshed: ${now.length} exports unchanged, ${body.count} body lines`);
+    process.exit(0);
+  }
+  if (!existsSync(orig)) throw new Error("--write needs the path of the single-file kit.tsx, or no path to refresh from the split");
   // The exports are read from a program whose entry is the original file placed next to the real kit dir.
   const tmp = join(kitDir, "__kit_orig.tsx");
   writeFileSync(tmp, readFileSync(orig, "utf8"));

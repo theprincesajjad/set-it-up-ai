@@ -227,7 +227,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
 
           <div className="relative mt-1">
             <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-            <input type="search" aria-label="Find a dish" placeholder={isPre ? (grocer ? "Find a cut or an animal" : "Find a degh or tray") : "Find a dish"} value={q} onChange={(e) => setQ(e.target.value)} className="h-10 w-full rounded-input border border-line bg-bg ps-9 pe-3 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
+            <input type="search" aria-label="Find a dish" placeholder={isPre ? (grocer ? "Find a cut or an animal" : "Find a degh or tray") : "Find a dish"} value={q} onChange={(e) => setQ(e.target.value)} className="h-10 w-full rounded-input border border-line bg-bg ps-9 pe-3 text-body text-fg placeholder:text-fg-muted focus-visible:focus-ring" />
           </div>
           {catalog.error && !catalog.data ? <ErrorLine message={catalog.error} onRetry={() => void catalog.reload()} /> : null}
           <ul aria-label="Menu" className="max-h-56 divide-y divide-line overflow-y-auto rounded-input border border-line">

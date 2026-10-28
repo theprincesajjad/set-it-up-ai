@@ -227,7 +227,7 @@ function StreetDay() {
             {open.filter((s) => s.id !== current?.id).slice(0, 10).map((s) => (
               <li key={s.id}>
                 <button type="button" onClick={() => { setCurrentId(s.id); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-start hover:bg-bg-subtle">
-                  <span className="w-6 shrink-0 text-meta text-fg-subtle tabular">{s.order}</span>
+                  <span className="w-6 shrink-0 text-meta text-fg-muted tabular">{s.order}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-body font-medium text-fg">{s.businessName}</span>
                     <span className="block truncate text-meta text-fg-muted">{s.address ?? "No address"}{s.nextActionAt ? ` · back ${new Date(s.nextActionAt).toLocaleDateString("en-CA", { weekday: "short" })}` : ""}</span>
@@ -294,7 +294,7 @@ function StreetDay() {
           <Select label="How" value={setupChannel} onChange={(e) => setSetupChannel(e.target.value as repApi.SetupChannel)} options={[{ value: "phone", label: "Phone call" }, { value: "whatsapp", label: "WhatsApp video" }, { value: "video", label: "Video call" }]} />
         </div>
       </ConfirmDialog>
-      <p className="text-center text-caption text-fg-subtle"><Link href="/rep/signup" className="underline">Sign up a shop that is not on the list</Link></p>
+      <p className="text-center text-caption text-fg-muted"><Link href="/rep/signup" className="underline">Sign up a shop that is not on the list</Link></p>
     </div>
   );
 }

@@ -74,13 +74,13 @@ export default function RolloutPage() {
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-fg-subtle">–</span>
+                              <span className="text-fg-muted">–</span>
                             )}
                           </Td>
-                          <Td align="end" data-label="Asked for it" className="max-md:text-start max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? <span className="text-fg-subtle">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
+                          <Td align="end" data-label="Asked for it" className="max-md:text-start max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? <span className="text-fg-muted">–</span> : formatNumber(f.interestCount ?? 0)}</Td>
                           <Td data-label="Overrides" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">
                             {f.freeForever ? (
-                              <span className="text-fg-subtle">–</span>
+                              <span className="text-fg-muted">–</span>
                             ) : (
                               <button type="button" onClick={() => setOverrides(f)} className="rounded-sm text-meta text-fg hover:underline">
                                 {f.overrides.enabled + f.overrides.disabled ? `${f.overrides.enabled} on${f.overrides.disabled ? ` · ${f.overrides.disabled} off` : ""}` : "Add"}

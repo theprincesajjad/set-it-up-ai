@@ -173,7 +173,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
                       </ul>
                     ) : null}
                     {m.guard ? <p className="text-caption text-negative">Guardrail: {guardLabel(m.guard)}</p> : null}
-                    <span className="flex items-center gap-2 px-1 text-caption text-fg-subtle">
+                    <span className="flex items-center gap-2 px-1 text-caption text-fg-muted">
                       {m.role === "assistant" ? "Assistant" : m.role === "human" ? (m.humanName ?? "Team") : "Visitor"} · {timeOf(m.at)}
                       {m.role === "assistant" ? (
                         <span className="inline-flex gap-1">
@@ -194,7 +194,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
             {canReply ? (mine ? "Replying as a person." : "Replying takes over this chat: the assistant stops.") : "More than 24 hours since their last WhatsApp message: only an approved template can be sent, so replying is off. Wait for them to write, or call."}
           </label>
           <div className="flex items-center gap-2">
-            <input id="agent-reply" value={text} disabled={!canReply} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Write a reply…" dir="auto" className="h-11 min-w-0 flex-1 rounded-full border border-line bg-bg px-4 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring disabled:bg-bg-subtle" />
+            <input id="agent-reply" value={text} disabled={!canReply} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Write a reply…" dir="auto" className="h-11 min-w-0 flex-1 rounded-full border border-line bg-bg px-4 text-body text-fg placeholder:text-fg-muted focus-visible:focus-ring disabled:bg-bg-subtle" />
             <Button type="submit" disabled={!canReply || !text.trim()} loading={act.busy}>Send</Button>
           </div>
           {act.error ? <p role="alert" className="text-meta text-negative">{act.error}</p> : null}

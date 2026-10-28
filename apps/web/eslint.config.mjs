@@ -23,7 +23,7 @@ export default defineConfig([
       ],
     },
   },
-  // v3 guardrails (docs/design/v3-strategy.md 8.2 A step 4). Warnings until the final sweep, which switches them to errors.
+  // v3 guardrails (docs/design/v3-strategy.md 8.2 A step 4). The final sweep made no-raw-colors an error (the tree is clean); the other two stay warnings.
   // The generated shadcn primitives are exempt: they are copy-and-own output (components.json aliases.ui) and use arbitrary values.
   // themeImports makes the tokens in @ll/design-tokens/theme.css (bg-background, text-points-text, rounded-card ...) count as ours.
   {
@@ -32,7 +32,7 @@ export default defineConfig([
     plugins: { shadcn },
     settings: { shadcn: { themeImports: ["^@ll/design-tokens/"], note: "Tokens: docs/design/v3-strategy.md s5" } },
     rules: {
-      "shadcn/no-raw-colors": "warn",
+      "shadcn/no-raw-colors": "error",
       "shadcn/no-arbitrary-values": "warn",
       "shadcn/no-inline-styles": "warn",
     },

@@ -100,6 +100,42 @@ test.describe("counter (café)", () => {
     await page.screenshot({ path: shot("01-counter-1180"), fullPage: true });
   });
 
+  test("chrome-free: no sidebar or top bar, a way back, the PIN chip", async ({ page }) => {
+    const { id } = await owner(OWNER);
+    await signIn(page, OWNER, `/m/${id}/counter`);
+    await counterReady(page);
+    await expect(page.locator('[data-shell="bare"]')).toBeVisible();
+    await expect(page.getByRole("complementary")).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /sign in with a pin/i }).or(page.getByRole("button", { name: /stamping as/i }))).toBeVisible();
+    // The exit goes back to Today, which has the shell again.
+    await page.getByTestId("counter-exit").click();
+    await expect(page).toHaveURL(new RegExp(`/m/${id}$`));
+    await expect(page.getByRole("navigation", { name: "Main" }).first()).toBeVisible();
+  });
+
+  test("Urdu: the counter reads right to left in Nastaliq, with Urdu copy and no clipped rows", async ({ page }) => {
+    const { id } = await owner(OWNER);
+    await signIn(page, OWNER, `/m/${id}/counter?lang=ur`);
+    await expect(page.locator('section[data-scan-ready="true"]')).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "کاؤنٹر" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.locator("html")).toHaveAttribute("lang", /^ur/);
+    // The three counter strings that used to be English are Urdu now.
+    await expect(page.getByText("یا ان کے فون کے آخری 4 ہندسے لکھیں")).toBeVisible();
+    await expect(page.getByRole("button", { name: "کوڈ ریڈیم کریں" })).toBeVisible();
+    await expect(page.getByText("Redeem a code")).toHaveCount(0);
+    // The Noto Nastaliq face is in the stack of the page text and a glyph of it was drawn.
+    const family = await page.locator("main h1").evaluate((e) => getComputedStyle(e).fontFamily);
+    expect(family).toContain("nastaliq");
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => [...document.fonts].some((f) => /Nastaliq/i.test(f.family) && f.status === "loaded"))).toBe(true);
+    // Rows hug their content: no heading or label is cut off by its own box.
+    const clipped = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("main h1, main h2, main p, main button, main label, main span")].filter((e) => e.offsetParent && e.scrollHeight > e.clientHeight + 1 && getComputedStyle(e).overflowY !== "visible").map((e) => e.textContent?.trim().slice(0, 30)));
+    expect(clipped).toEqual([]);
+    await page.screenshot({ path: shot("03-counter-ur-1180") });
+  });
+
   test("a new stamp pops only when motion is allowed", async ({ page }) => {
     const { token, id } = await owner(OWNER);
     const m = await member(token, id, "Motion Test");

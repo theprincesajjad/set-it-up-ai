@@ -261,7 +261,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
               <>
                 {/* Read only: the footer is added by the server and cannot be edited or removed (CASL). */}
                 <p data-testid="sms-footer" className="mt-2 text-[13px] leading-5 text-fg-muted">Added for you: {footer}</p>
-                <p className="mt-1.5 text-[12px] text-fg-subtle">{smsCountLine(smsLen)}</p>
+                <p className="mt-1.5 text-[12px] text-fg-muted">{smsCountLine(smsLen)}</p>
               </>
             ) : (
               <p className="mt-2 text-[13px] leading-5 text-fg-muted">
@@ -326,7 +326,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
           <p className="whitespace-pre-wrap">{previewText}</p>
           {channel === "sms" ? <p className="mt-1 whitespace-pre-wrap">{`${m.name}${address ? `, ${address}` : ""} · Reply STOP to unsubscribe`}</p> : null}
         </div>
-        <p className="text-[12px] text-fg-subtle">Shown with a real member&apos;s first name</p>
+        <p className="text-[12px] text-fg-muted">Shown with a real member&apos;s first name</p>
       </aside>
 
       <ConfirmDialog

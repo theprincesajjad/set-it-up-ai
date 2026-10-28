@@ -221,7 +221,7 @@ function GuestPreview({ shop, hasLink }: { shop: string; hasLink: boolean }) {
         ))}
       </div>
       <p className="mt-3 text-meta text-fg-muted">Anything you want us to know? (private)</p>
-      <div className="mt-1 h-10 rounded-input border border-line bg-bg px-3 text-meta leading-10 text-fg-subtle">Optional note</div>
+      <div className="mt-1 h-10 rounded-input border border-line bg-bg px-3 text-meta leading-10 text-fg-muted">Optional note</div>
       <div className="mt-3 flex flex-col gap-2">
         <span className={buttonClasses({ variant: "primary", size: "md", fullWidth: true })}>Send to the restaurant</span>
         {hasLink ? <span className={buttonClasses({ variant: "secondary", size: "md", fullWidth: true })}>Also leave a public Google review</span> : <span className="text-center text-caption text-fg-muted">Add your Google link to show the second button.</span>}
@@ -320,12 +320,16 @@ function GoogleLink({ current, onSaved }: { current: string | null; onSaved: () 
     return null;
   })();
   const dirty = value.trim() !== (current ?? "");
+  /** The link is checked when they press Save, not while they paste it. */
+  const [tried, setTried] = useState(false);
   const save = async () => {
+    setTried(true);
     if (error) return;
     const r = await act.run(() => api.reviews.saveSettings(value.trim() || null));
     if (r) {
       toast({ message: r.googleReviewUrl ? "Google review link saved" : "Google review link removed", tone: "success" });
       setUrl(null);
+      setTried(false);
       onSaved();
     }
   };
@@ -341,13 +345,13 @@ function GoogleLink({ current, onSaved }: { current: string | null; onSaved: () 
               Remove link
             </Button>
           ) : null}
-          <Button size="sm" variant="secondary" disabled={!dirty || !!error} loading={act.busy} onClick={() => void save()}>
+          <Button size="sm" variant="secondary" disabled={!dirty} loading={act.busy} onClick={() => void save()}>
             Save link
           </Button>
         </>
       }
     >
-      <TextField id="google-review-url" label="Link" type="url" inputMode="url" placeholder="https://g.page/r/your-shop/review" value={value} onChange={(e) => setUrl(e.target.value)} error={dirty ? error : null} />
+      <TextField id="google-review-url" label="Link" type="url" inputMode="url" placeholder="https://g.page/r/your-shop/review" value={value} onChange={(e) => setUrl(e.target.value)} error={tried && dirty ? error : null} />
       {act.error ? <p role="alert" className="mt-2 text-meta text-negative">{act.error}</p> : null}
     </Panel>
   );

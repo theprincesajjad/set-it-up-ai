@@ -6,7 +6,6 @@
 import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { FEATURES, RESTAURANT_PLANS, featureOffer, type FeatureKey } from "@ll/shared";
-import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "../kit";
 import { useMerchant } from "../MerchantContext";

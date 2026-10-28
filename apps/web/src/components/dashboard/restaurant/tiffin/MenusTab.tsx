@@ -162,7 +162,7 @@ function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: 
           <div key={row.id ?? SHOP} role="row" className="grid border-b border-line last:border-b-0 md:grid-cols-[9rem_repeat(7,minmax(0,1fr))]">
             <div role="rowheader" className="px-3 pt-3 md:py-3">
               <p className="text-body-strong text-fg">{row.name}</p>
-              <p className="text-caption text-fg-subtle">dishes + notes</p>
+              <p className="text-caption text-fg-muted">dishes + notes</p>
             </div>
             {dates.map((d) => {
               const closed = row.days ? !row.days.includes(dowOf(d)) : false;
@@ -179,7 +179,7 @@ function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: 
                       rows={4}
                       value={textOf(k)}
                       onChange={(e) => setCell(k, e.target.value)}
-                      className="w-full min-w-0 resize-y rounded-input border border-transparent bg-transparent px-1.5 py-1 text-meta leading-5 text-fg outline-none placeholder:text-fg-subtle hover:border-line focus:border-fg focus:bg-bg focus:ring-1 focus:ring-fg"
+                      className="w-full min-w-0 resize-y rounded-input border border-transparent bg-transparent px-1.5 py-1 text-meta leading-5 text-fg outline-none placeholder:text-fg-muted hover:border-line focus:border-fg focus:bg-bg focus:ring-1 focus:ring-fg"
                       placeholder="Dal tadka"
                     />
                   )}

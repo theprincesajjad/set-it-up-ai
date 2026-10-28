@@ -136,7 +136,7 @@ function Thread({ session, onBack, onChanged, onTemplates }: { session: whatsapp
             {(d?.items ?? []).map((m) => (
               <li key={m.id} className={cn("flex flex-col", m.direction === "out" ? "items-end" : "items-start")}>
                 <Bubble m={m} />
-                <span className="mt-1 px-1 text-caption text-fg-subtle">
+                <span className="mt-1 px-1 text-caption text-fg-muted">
                   {m.sender === "assistant" ? "Assistant · " : m.sender === "staff" ? "You · " : m.sender === "system" ? "Automatic · " : ""}
                   {timeOf(m.createdAt)}
                 </span>
@@ -161,7 +161,7 @@ function Thread({ session, onBack, onChanged, onTemplates }: { session: whatsapp
             onChange={(e) => setText(e.target.value)}
             maxLength={1500}
             placeholder={session.state === "opted_out" ? "They asked us to stop messaging them." : open ? `Reply in ${languageLabel(session.language)} or English. Free for ${left} more ${left === 1 ? "hour" : "hours"}.` : "The 24-hour window is closed. Send an approved template instead."}
-            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-bg px-4 text-body text-fg placeholder:text-fg-subtle focus-visible:focus-ring disabled:bg-bg-subtle"
+            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-bg px-4 text-body text-fg placeholder:text-fg-muted focus-visible:focus-ring disabled:bg-bg-subtle"
           />
           <button type="button" onClick={onTemplates} className="inline-flex h-10 shrink-0 items-center rounded-full border border-line px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring">Templates</button>
           <Button type="submit" size="md" disabled={!open || !text.trim()} loading={act.busy}>Send</Button>

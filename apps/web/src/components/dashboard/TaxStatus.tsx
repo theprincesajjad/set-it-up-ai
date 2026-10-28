@@ -39,13 +39,18 @@ function TaxForm({ d, owner, compact, reload, api }: { d: paymentsManualApi.TaxS
   const [reg, setReg] = useState<"yes" | "no" | "">(d.taxRegistered === null ? "" : d.taxRegistered ? "yes" : "no");
   const [num, setNum] = useState(d.taxNumber ?? "");
   const [small, setSmall] = useState(d.taxSmallSupplierNote);
+  /** The number is checked when they press Save, not while they type it. */
+  const [tried, setTried] = useState(false);
   const numBad = reg === "yes" && !!num.trim() && !isValidGstHstNumber(num);
   const dirty = reg === "" ? false : (reg === "yes") !== d.taxRegistered || num.trim().toUpperCase().replace(/\s/g, "") !== (d.taxNumber ?? "") || small !== d.taxSmallSupplierNote;
   const save = (
-    <Button loading={act.busy} disabled={!dirty || numBad || reg === ""} onClick={async () => {
+    <Button loading={act.busy} disabled={!dirty || reg === ""} onClick={async () => {
+      setTried(true);
+      if (numBad) return;
       const r = await act.run(() => api.settings.saveTax({ taxRegistered: reg === "yes", taxNumber: reg === "yes" ? num.trim() || null : null, taxSmallSupplierNote: small }));
       if (r) {
         toast({ message: "Tax status saved", tone: "success" });
+        setTried(false);
         reload();
       }
     }}>
@@ -63,7 +68,7 @@ function TaxForm({ d, owner, compact, reload, api }: { d: paymentsManualApi.TaxS
           </button>
         ))}
       </div>
-      {reg === "yes" ? <TextField label="GST/HST number" placeholder="123456789 RT0001" value={num} readOnly={!owner} onChange={(e) => setNum(e.target.value)} error={numBad ? "A GST/HST number is 9 digits followed by RT0001" : null} hint="We check the format only, not with the CRA. It prints on quotes and invoices." /> : null}
+      {reg === "yes" ? <TextField label="GST/HST number" placeholder="123456789 RT0001" value={num} readOnly={!owner} onChange={(e) => setNum(e.target.value)} error={tried && numBad ? "A GST/HST number is 9 digits followed by RT0001" : null} hint="We check the format only, not with the CRA. It prints on quotes and invoices." /> : null}
       {reg === "no" ? <p className="text-meta text-fg-muted">Quotes and invoices say &quot;No HST charged (small supplier)&quot; and add no tax. If your sales go over $30,000 in four quarters in a row, you must register.</p> : null}
       <p className="text-meta text-fg-muted">
         More at the CRA: <a className="underline underline-offset-4" href="https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/rc4022.html" target="_blank" rel="noreferrer">General information for GST/HST registrants (RC4022)</a>. Ask your accountant about meals, they are generally taxable.

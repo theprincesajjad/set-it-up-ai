@@ -13,7 +13,7 @@ const TERMINAL = new Set(["picked_up", "cancelled", "refunded"]);
 
 /** Live order status: polls every 10 s until picked up / cancelled. */
 export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
-  const { t, locale, money, time } = useLocaleOrEnglish();
+  const { t, locale, money } = useLocaleOrEnglish();
   const [order, setOrder] = useState(initial);
   useEffect(() => {
     if (TERMINAL.has(order.status)) return;

@@ -1741,9 +1741,7 @@ export const en = {
   "sh.activity.budget": "{n} routine alerts a day at most. The rest wait here.",
   "sh.set.language": "Language",
   "sh.set.languageSaved": "Language saved. Your alerts and wallet pass will follow it.",
-  "sh.card.getWallet": "Add to your phone's wallet",
   "sh.card.cardLabel": "Member QR code {code}",
-  "sh.card.defaultName": "Member",
 
   // Shopper app (shop team): wallet, card, notifications, privacy, for-shoppers, server notifications
   "sh.rc.ready": "Ready",
@@ -3089,7 +3087,7 @@ export const en = {
   "shell.today.qa.textCustomers": "Text customers",
   "shell.today.qa.orders": "Open orders",
   "shell.today.qa.reports": "See reports",
-  // Counter, kiosk and door tablet (v3 sweep)
+  // v3 final sweep: counter, kiosk, door tablet, reminder switches
   "counter.title": "Counter",
   "counter.status.online": "Online",
   "counter.status.offline": "Offline",
@@ -3323,6 +3321,8 @@ export const en = {
   "counter.sale.etransfer": "Interac e-transfer",
   "counter.sale.reader": "Your own card reader",
   "counter.cd.exit": "Exit door check-in",
+  "pet.food.noConsentLink": "Open my text settings",
+  "pet.food.needGrams": "Add how many grams you feed a day, below, to switch this on.",
 } as const;
 
 export type MessageKey = keyof typeof en;

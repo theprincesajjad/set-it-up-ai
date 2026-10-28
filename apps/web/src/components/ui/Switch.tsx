@@ -1,5 +1,5 @@
 "use client";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /** Just the toggle, for rows that carry their own title and hint (Rewards "At the counter"). */
@@ -24,7 +24,7 @@ export function SwitchControl({ checked, onChange, ariaLabel, disabled, id }: { 
 }
 
 /** For settings that apply immediately. 40 × 24 with a 44 px hit area, black when on. Label on the left describes the on-state. */
-export function Switch({ checked, onChange, label, description, disabled, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean; /** When the visible label is short ("Mute this shop"), the full spoken name. */ ariaLabel?: string }) {
+export function Switch({ checked, onChange, label, description, disabled, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; /** Text, or text with a link: a disabled switch says what it needs and links to where that is done. */ description?: ReactNode; disabled?: boolean; /** When the visible label is short ("Mute this shop"), the full spoken name. */ ariaLabel?: string }) {
   const id = useId();
   return (
     <div className="flex min-h-12 items-center justify-between gap-4 py-1">
@@ -32,7 +32,7 @@ export function Switch({ checked, onChange, label, description, disabled, ariaLa
         <label htmlFor={id} className="text-body text-fg">
           {label}
         </label>
-        {description ? <span className="text-meta text-fg-muted">{description}</span> : null}
+        {description ? <span id={`${id}-desc`} className="text-meta text-fg-muted">{description}</span> : null}
       </div>
       <button
         id={id}
@@ -40,6 +40,7 @@ export function Switch({ checked, onChange, label, description, disabled, ariaLa
         role="switch"
         aria-checked={checked}
         aria-label={ariaLabel}
+        aria-describedby={description ? `${id}-desc` : undefined}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(

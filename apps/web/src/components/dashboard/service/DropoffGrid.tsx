@@ -36,7 +36,7 @@ export function DropoffGrid({ slots, tz, now, loading, title = "Next 7 days" }: 
                   <th scope="row" className="pe-2 text-end text-caption font-normal text-fg-muted">{hourLabel(h)}</th>
                   {g.days.map((d) => {
                     const c = g.cells[cellKey(d.date, h)];
-                    if (!c) return <td key={d.date} className="h-9 rounded-input bg-bg-subtle text-caption text-fg-subtle">Closed</td>;
+                    if (!c) return <td key={d.date} className="h-9 rounded-input bg-bg-subtle text-caption text-fg-muted">Closed</td>;
                     const pct = c.capacity ? Math.min(100, Math.round((c.booked / c.capacity) * 100)) : 0;
                     return (
                       <td key={d.date} className={cn("relative h-9 rounded-input px-1", c.state === "full" ? "bg-bg-muted text-fg-muted" : "bg-bg-subtle text-fg")}>

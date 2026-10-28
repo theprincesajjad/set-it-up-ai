@@ -9,6 +9,7 @@ import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
+import { ConsentNeeded, isNoConsent } from "@/components/pass/ConsentNeeded";
 import { cn } from "@/lib/cn";
 import { restockEveryWeeks, type RestockWindow } from "@/lib/grocery";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
@@ -36,6 +37,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
   const [entry, setEntry] = useState<groceryApi.MyPantryResponse["items"][number] | null>(null);
   const [remindBusy, setRemindBusy] = useState(false);
   const [remindError, setRemindError] = useState<string | null>(null);
+  const [remindNoConsent, setRemindNoConsent] = useState(false);
   const location = menu.locations[0];
   const chosen = windows.find((w) => w.iso === win) ?? null;
   const first = windows[0] ?? null;
@@ -64,10 +66,12 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
     if (!entry) return;
     setRemindBusy(true);
     setRemindError(null);
+    setRemindNoConsent(false);
     try {
       setEntry(await browserApi.me.setPantry(entry.entryId, on));
     } catch (e) {
-      setRemindError(errorMessage(e));
+      if (isNoConsent(e)) setRemindNoConsent(true);
+      else setRemindError(errorMessage(e));
     } finally {
       setRemindBusy(false);
     }
@@ -150,6 +154,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
             <p className="text-meta text-fg-muted">{t("gr.restock.offDone")}</p>
           )}
           {remindError ? <p role="alert" className="text-meta font-medium text-negative">{remindError}</p> : null}
+          {remindNoConsent ? <ConsentNeeded shop={shop.name} /> : null}
         </section>
       ) : null}
     </div>

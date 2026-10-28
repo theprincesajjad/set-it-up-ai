@@ -126,7 +126,7 @@ with `estimateSize 40`, `overscan 12`, `height 600`. Pagination state set to one
 | --- | --- | --- |
 | `@tanstack/react-table` | 9.3.1 | v9, new `useTable({ features, ... })` API; typing needed `any` on column defs in this page |
 | `@tanstack/react-virtual` | 3.14.23 | |
-| `@dnd-kit/core`, `modifiers`, `sortable`, `utilities` | 6.3.1, 9.0.0, 10.0.0, 3.2.2 | column and row drag; pulled even if unused |
+| `@dnd-kit/core`, `modifiers`, `sortable`, `utilities` | 6.3.1, 9.0.0, 10.0.0, 3.2.2 | **scratch project only.** The registry install pulled them for column and row drag. Not adopted: see constraint 4 below |
 | shadcn primitives added | `badge` (ReUI), `checkbox`, `dropdown-menu`, `input`, `popover`, `select`, `separator`, `skeleton`, `spinner` | `dropdown-menu` was **not** in the base set; A added it to `components/primitives` |
 
 **Numbers (production build, Chromium, 1280x900).**
@@ -141,7 +141,7 @@ with `estimateSize 40`, `overscan 12`, `height 600`. Pagination state set to one
 | ... p95 frame time / worst frame | 16.8 ms / 33.4 ms | 66.6 to 83.3 ms / 83 to 100 ms | n/a |
 | ... frames over 20 ms | 1 to 6 of 175 to 180 | 56 to 61 of 78 to 96 | 0 |
 | Sort by Points (click to two frames later) | 120 to 138 ms | 507 to 535 ms | 166 ms |
-| JS added to a page, gzip (grid + base-ui menus + dnd-kit + TanStack) | +113.8 KB (247.1 vs 133.3 KB) | | |
+| JS added to a page, gzip (grid + base-ui menus + dnd-kit + TanStack), scratch page | +113.8 KB (247.1 vs 133.3 KB) | | |
 
 A stress test that scrolled the full 400,000 px in 3 s (133,000 px/s, not a human gesture) gave 51 fps at 1x and 14.6 fps at 4x; ignore it except as a worst case.
 The paged run also logged a hydration warning that comes from the scratch page reading `location.search` during render, not from ReUI.
@@ -164,9 +164,10 @@ The paged run also logged a hydration warning that comes from the scratch page r
 1. Keep **server pagination** for real data (the API pages customers); virtualise a page of up to a few thousand rows, or use the grid's `onFetchMore` for infinite loading. A client-side 10,000-row sort is a spike result, not a product requirement.
 2. TanStack Table v9 typing is strict about the feature bundle (`TFeatures` is invariant). Write one `useCustomersTable()` hook with `dataGridFeatures` and typed columns, and copy it for imports.
 3. The grid files declare `"use no memo"` on purpose (they opt out of the React Compiler); do not remove it.
-4. Add `dropdown-menu`-using pieces knowing `dnd-kit` (4 packages) is a dependency of the free grid even when drag is off.
+4. `dropdown-menu` is needed by the grid's column menu (it is in `components/primitives`). **dnd-kit is not used.** The registry install pulled it for column and row drag, but C copied only the grid files that do not import it (data-grid, table, table-virtual, column header, pagination, scroll area, i18n, column filter, column visibility) into `src/components/reui`, so `@dnd-kit/*` is not in `package.json` and nothing imports it. Column and row reordering is not offered. The +113.8 KB figure above includes dnd-kit, so the adopted grid costs less; it was not re-measured.
 5. RTL: not tested in this spike. The strategy already lists Calendar, Pagination and Sidebar as manual RTL work; add the grid's pinned columns and resize handles to C's RTL check.
 6. Pro blocks (virtualization examples, 44 data-grid blocks) need a paid license; use only the free components.
+7. **Pinned source.** The copied files come from ReUI commit `067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a` (MIT). It is recorded in `apps/web/components.json` as the `@reui` registry's `commit` param (the CLI rejects unknown keys, a registry param is accepted). Re-pin it when the copy is refreshed.
 
 ---
 

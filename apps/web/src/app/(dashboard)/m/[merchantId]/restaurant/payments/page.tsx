@@ -4,6 +4,7 @@
  * e-transfer, cash) with the e-transfer email and words customers see, grace days and start-on-trust; GST/HST status;
  * food safety dates (optional, never blocks selling).
  */
+import Link from "next/link";
 import { useState } from "react";
 import type { paymentsManualApi } from "@ll/shared";
 import { PageHeader } from "@/components/dashboard";
@@ -41,17 +42,30 @@ function PaymentMethods({ owner }: { owner: boolean }) {
 }
 
 function MethodsForm({ d, owner, reload, api }: { d: paymentsManualApi.PaymentSettingsDto; owner: boolean; reload: () => void; api: ReturnType<typeof useMerchant>["api"] }) {
+  const { base } = useMerchant();
+  /** A card or bank-debit switch that is off for want of Stripe says so and links to where Stripe is connected. */
+  const needsStripe = (what: string) => (
+    <>
+      {what} Needs a Stripe account.{" "}
+      <Link href={`${base}/billing`} className="font-medium text-fg underline underline-offset-4 focus-visible:focus-ring">Connect Stripe in Billing</Link>
+    </>
+  );
   const toast = useToast();
   const act = useAction();
   // Nothing chosen yet: e-transfer is how most kitchens here get paid, so it starts switched on and asks for the email right away.
   const untouched = !d.etransferEnabled && !d.cashEnabled && !(d.stripeReady && (d.cardEnabled || d.padEnabled));
   const [s, setS] = useState<paymentsManualApi.PaymentSettingsDto>(owner && untouched ? { ...d, etransferEnabled: true } : d);
   const dirty = JSON.stringify(s) !== JSON.stringify(d);
+  /** Errors show after the first Save, not while the owner is still typing. */
+  const [tried, setTried] = useState(false);
   const emailBad = s.etransferEnabled && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.etransferEmail ?? "");
   const save = async () => {
+    setTried(true);
+    if (emailBad) return;
     const r = await act.run(() => api.settings.savePayment({ etransferEnabled: s.etransferEnabled, etransferEmail: s.etransferEmail, instructions: s.instructions, cashEnabled: s.cashEnabled, graceDays: s.graceDays, startOnTrust: s.startOnTrust, cardEnabled: s.cardEnabled, padEnabled: s.padEnabled }));
     if (r) {
       toast({ message: "Payment settings saved", tone: "success" });
+      setTried(false);
       reload();
     }
   };
@@ -59,19 +73,19 @@ function MethodsForm({ d, owner, reload, api }: { d: paymentsManualApi.PaymentSe
     <Panel
       title="Ways customers can pay"
       description="Card and bank debit go through Stripe. E-transfer and cash are recorded by you when the money arrives."
-      footer={owner ? <Button loading={act.busy} disabled={!dirty || emailBad} onClick={() => void save()}>Save</Button> : undefined}
+      footer={owner ? <Button loading={act.busy} disabled={!dirty} onClick={() => void save()}>Save</Button> : undefined}
     >
       {(
         <>
           {(
             <div className="flex flex-col gap-1">
               {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-              <Switch label="Card" description={s.stripeReady ? "Visa, Mastercard and Amex through your Stripe account." : "Needs a Stripe account. Connect one in Billing to turn this on."} checked={s.stripeReady && s.cardEnabled} disabled={!owner || !s.stripeReady} onChange={(v) => setS({ ...s, cardEnabled: v })} />
-              <Switch label="Bank debit (PAD)" description={s.stripeReady ? "Pre-authorized debit from a Canadian bank account." : "Needs a Stripe account."} checked={s.stripeReady && s.padEnabled} disabled={!owner || !s.stripeReady} onChange={(v) => setS({ ...s, padEnabled: v })} />
+              <Switch label="Card" description={s.stripeReady ? "Visa, Mastercard and Amex through your Stripe account." : needsStripe("Visa, Mastercard and Amex.")} checked={s.stripeReady && s.cardEnabled} disabled={!owner || !s.stripeReady} onChange={(v) => setS({ ...s, cardEnabled: v })} />
+              <Switch label="Bank debit (PAD)" description={s.stripeReady ? "Pre-authorized debit from a Canadian bank account." : needsStripe("Pre-authorized debit from a Canadian bank account.")} checked={s.stripeReady && s.padEnabled} disabled={!owner || !s.stripeReady} onChange={(v) => setS({ ...s, padEnabled: v })} />
               <Switch label="Interac e-transfer" description="Customers send money to your email and put a reference code in the message." checked={s.etransferEnabled} disabled={!owner} onChange={(v) => setS({ ...s, etransferEnabled: v })} />
               {s.etransferEnabled ? (
                 <div className="ms-0 flex flex-col gap-3 border-s-2 border-line ps-4 sm:ms-2">
-                  <TextField label="E-transfer email" type="email" value={s.etransferEmail ?? ""} readOnly={!owner} onChange={(e) => setS({ ...s, etransferEmail: e.target.value })} error={emailBad ? "Enter the email address your bank uses for e-transfers" : null} hint="Turn on auto-deposit with your bank so you don't need to answer a security question." />
+                  <TextField label="E-transfer email" type="email" value={s.etransferEmail ?? ""} readOnly={!owner} onChange={(e) => setS({ ...s, etransferEmail: e.target.value })} error={tried && emailBad ? "Enter the email address your bank uses for e-transfers" : null} hint="Turn on auto-deposit with your bank so you don't need to answer a security question." />
                   <TextField label="Words customers see" type="textarea" optionalLabel readOnly={!owner} maxLength={500} showCount value={s.instructions ?? ""} onChange={(e) => setS({ ...s, instructions: e.target.value })} placeholder="Auto-deposit is on. Please put your reference code in the message." />
                 </div>
               ) : null}
@@ -119,11 +133,11 @@ function FoodForm({ x, owner, reload, api }: { x: paymentsManualApi.FoodSafetyDt
             ) : null}
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             <div className="grid gap-3 sm:grid-cols-2">
-              <TextField type="date" label="Food handler certificate expires" optionalLabel value={f.expiry} min={todayISO().slice(0, 4) + "-01-01"} readOnly={!owner} onChange={(e) => setF({ ...f, expiry: e.target.value })} />
+              <TextField id="food-expiry" type="date" label="Food handler certificate expires" optionalLabel value={f.expiry} min={todayISO().slice(0, 4) + "-01-01"} readOnly={!owner} onChange={(e) => setF({ ...f, expiry: e.target.value })} />
               <TextField label="Public health unit" optionalLabel placeholder="Peel, Toronto, or another" value={f.unit} readOnly={!owner} onChange={(e) => setF({ ...f, unit: e.target.value })} />
               <TextField type="date" label="Health unit notified on" optionalLabel value={f.notified} max={todayISO()} readOnly={!owner} onChange={(e) => setF({ ...f, notified: e.target.value })} />
             </div>
-            <Switch label="Show a “Certified food handler” badge on my pages" description="Off by default. Only available when you have entered an expiry date. This is your own statement, not ours." checked={f.badge && !!f.expiry} disabled={!owner || !f.expiry} onChange={(v) => setF({ ...f, badge: v })} />
+            <Switch label="Show a “Certified food handler” badge on my pages" description={f.expiry ? "Off by default. This is your own statement, not ours." : <>Off by default. <a href="#food-expiry" className="font-medium text-fg underline underline-offset-4 focus-visible:focus-ring">Enter the certificate expiry date above</a> to turn it on. This is your own statement, not ours.</>} checked={f.badge && !!f.expiry} disabled={!owner || !f.expiry} onChange={(v) => setF({ ...f, badge: v })} />
           </div>
           )}
         </>

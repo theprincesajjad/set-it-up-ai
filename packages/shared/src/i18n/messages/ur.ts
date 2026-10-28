@@ -1737,9 +1737,7 @@ export const ur: Messages = {
   "sh.activity.budget": "دن میں زیادہ سے زیادہ {n} عام الرٹس۔ باقی یہیں رہتے ہیں۔",
   "sh.set.language": "زبان",
   "sh.set.languageSaved": "زبان محفوظ ہو گئی۔ آپ کے الرٹس اور والٹ پاس اسی زبان میں آئیں گے۔",
-  "sh.card.getWallet": "اپنے فون کے والٹ میں شامل کریں",
   "sh.card.cardLabel": "ممبر QR کوڈ {code}",
-  "sh.card.defaultName": "ممبر",
 
   // Shopper app (shop team): wallet, card, notifications, privacy, for-shoppers, server notifications
   "sh.rc.ready": "تیار",
@@ -3085,7 +3083,7 @@ export const ur: Messages = {
   "shell.today.qa.textCustomers": "گاہکوں کو ٹیکسٹ کریں",
   "shell.today.qa.orders": "آرڈرز کھولیں",
   "shell.today.qa.reports": "رپورٹس دیکھیں",
-  // Counter, kiosk and door tablet (v3 sweep)
+  // v3 final sweep: counter, kiosk, door tablet, reminder switches
   "counter.title": "کاؤنٹر",
   "counter.status.online": "آن لائن",
   "counter.status.offline": "آف لائن",
@@ -3319,4 +3317,6 @@ export const ur: Messages = {
   "counter.sale.etransfer": "انٹراک ای ٹرانسفر",
   "counter.sale.reader": "آپ کا اپنا کارڈ ریڈر",
   "counter.cd.exit": "دروازے کے چیک اِن سے باہر نکلیں",
+  "pet.food.noConsentLink": "میری ٹیکسٹ سیٹنگز کھولیں",
+  "pet.food.needGrams": "اسے چالو کرنے کے لیے نیچے لکھیں کہ آپ روزانہ کتنے گرام کھلاتے ہیں۔",
 };

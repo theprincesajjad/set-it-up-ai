@@ -11,21 +11,25 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { PANTRY_LEAD_DAYS } from "@ll/shared";
 import { useFmt } from "@/components/restaurant/ui";
+import { ConsentNeeded, isNoConsent } from "./ConsentNeeded";
 
 export function PantryReminders({ items: initial }: { items: groceryApi.MyPantryResponse["items"] }) {
   const { t } = useFmt();
   const [items, setItems] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const [noConsent, setNoConsent] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   if (!items.length) return null;
   async function toggle(entryId: string, remind: boolean) {
     setBusy(entryId);
     setError(null);
+    setNoConsent(null);
     try {
       const r = await browserApi.me.setPantry(entryId, remind);
       setItems((xs) => xs.map((x) => (x.entryId === entryId ? r : x)));
     } catch (e) {
-      setError(errorMessage(e));
+      if (isNoConsent(e)) setNoConsent(items.find((x) => x.entryId === entryId)?.shop.name ?? "");
+      else setError(errorMessage(e));
     } finally {
       setBusy(null);
     }
@@ -45,6 +49,7 @@ export function PantryReminders({ items: initial }: { items: groceryApi.MyPantry
         ))}
       </ul>
       {error ? <p role="alert" className="text-meta font-medium text-negative">{error}</p> : null}
+      {noConsent !== null ? <ConsentNeeded shop={noConsent} /> : null}
       <p className="text-caption text-fg-muted">{t("gr.pantry.stopNote")}</p>
     </section>
   );

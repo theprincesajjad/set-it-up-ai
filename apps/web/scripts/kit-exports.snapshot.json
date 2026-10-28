@@ -1,5 +1,5 @@
 {
-  "source": "single-file dashboard/kit.tsx before the A split",
+  "source": "dashboard/kit.tsx barrel + kit/*.tsx, refreshed in the v3 final sweep (export names verified unchanged)",
   "exports": [
     "BackLink:value",
     "Capsules:value",
@@ -40,7 +40,7 @@
     "Tr:value"
   ],
   "body": {
-    "count": 558,
-    "sha256": "7de6d2575df79beb59f69078ac524f1575044f96dae5b5030a4e34eaae84d2fe"
+    "count": 580,
+    "sha256": "80d45292133055a8e11da830bf39db13e436ed951211c933af15e2a2412cb4f2"
   }
 }

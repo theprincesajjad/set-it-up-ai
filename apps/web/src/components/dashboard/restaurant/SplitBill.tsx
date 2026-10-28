@@ -238,7 +238,7 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
             <Stepper label={mode === "even" ? "Ways" : "Guests"} value={count} min={2} max={mode === "even" ? 30 : 12} onChange={mode === "even" ? setWays : setGuests} />
             <div className="grid gap-2 sm:grid-cols-3" aria-label="Guest names">
               {Array.from({ length: Math.min(count, 12) }, (_, g) => (
-                <input key={g} aria-label={`Name of guest ${g + 1}`} placeholder={`Guest ${g + 1}`} value={names[g] ?? ""} maxLength={60} onChange={(e) => setNames((n) => Object.assign([...n], { [g]: e.target.value }))} className="h-9 rounded-input border border-line bg-bg px-3 text-meta text-fg placeholder:text-fg-subtle focus-visible:focus-ring" />
+                <input key={g} aria-label={`Name of guest ${g + 1}`} placeholder={`Guest ${g + 1}`} value={names[g] ?? ""} maxLength={60} onChange={(e) => setNames((n) => Object.assign([...n], { [g]: e.target.value }))} className="h-9 rounded-input border border-line bg-bg px-3 text-meta text-fg placeholder:text-fg-muted focus-visible:focus-ring" />
               ))}
             </div>
 

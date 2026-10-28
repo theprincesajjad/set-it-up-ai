@@ -1737,9 +1737,7 @@ export const pa: Messages = {
   "sh.activity.budget": "ਦਿਨ ਵਿੱਚ ਵੱਧ ਤੋਂ ਵੱਧ {n} ਆਮ ਅਲਰਟ। ਬਾਕੀ ਇੱਥੇ ਹੀ ਰਹਿੰਦੇ ਹਨ।",
   "sh.set.language": "ਭਾਸ਼ਾ",
   "sh.set.languageSaved": "ਭਾਸ਼ਾ ਸੇਵ ਹੋ ਗਈ। ਤੁਹਾਡੇ ਅਲਰਟ ਅਤੇ ਵਾਲਿਟ ਪਾਸ ਇਸੇ ਭਾਸ਼ਾ ਵਿੱਚ ਆਉਣਗੇ।",
-  "sh.card.getWallet": "ਆਪਣੇ ਫ਼ੋਨ ਦੇ ਵਾਲਿਟ ਵਿੱਚ ਜੋੜੋ",
   "sh.card.cardLabel": "ਮੈਂਬਰ QR ਕੋਡ {code}",
-  "sh.card.defaultName": "ਮੈਂਬਰ",
 
   // Shopper app (shop team): wallet, card, notifications, privacy, for-shoppers, server notifications
   "sh.rc.ready": "ਤਿਆਰ",
@@ -3085,7 +3083,7 @@ export const pa: Messages = {
   "shell.today.qa.textCustomers": "ਗਾਹਕਾਂ ਨੂੰ ਟੈਕਸਟ ਕਰੋ",
   "shell.today.qa.orders": "ਆਰਡਰ ਖੋਲ੍ਹੋ",
   "shell.today.qa.reports": "ਰਿਪੋਰਟਾਂ ਵੇਖੋ",
-  // Counter, kiosk and door tablet (v3 sweep)
+  // v3 final sweep: counter, kiosk, door tablet, reminder switches
   "counter.title": "ਕਾਊਂਟਰ",
   "counter.status.online": "ਆਨਲਾਈਨ",
   "counter.status.offline": "ਆਫ਼ਲਾਈਨ",
@@ -3319,4 +3317,6 @@ export const pa: Messages = {
   "counter.sale.etransfer": "ਇੰਟਰੈਕ ਈ-ਟ੍ਰਾਂਸਫ਼ਰ",
   "counter.sale.reader": "ਤੁਹਾਡਾ ਆਪਣਾ ਕਾਰਡ ਰੀਡਰ",
   "counter.cd.exit": "ਦਰਵਾਜ਼ੇ ਦੇ ਚੈੱਕ-ਇਨ ਤੋਂ ਬਾਹਰ ਨਿਕਲੋ",
+  "pet.food.noConsentLink": "ਮੇਰੀਆਂ ਟੈਕਸਟ ਸੈਟਿੰਗਾਂ ਖੋਲ੍ਹੋ",
+  "pet.food.needGrams": "ਇਸਨੂੰ ਚਾਲੂ ਕਰਨ ਲਈ ਹੇਠਾਂ ਲਿਖੋ ਕਿ ਤੁਸੀਂ ਰੋਜ਼ ਕਿੰਨੇ ਗ੍ਰਾਮ ਖੁਆਉਂਦੇ ਹੋ।",
 };

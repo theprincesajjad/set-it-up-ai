@@ -52,7 +52,7 @@ export function Checkbox({ checked, onChange, label, caption, disabled, name, id
           {label}
         </label>
         {caption ? (
-          <p id={`${id}-caption`} className={size === "sm" ? "text-[12px] leading-[16px] text-fg-subtle" : "text-meta text-fg-muted"}>
+          <p id={`${id}-caption`} className={size === "sm" ? "text-[12px] leading-[16px] text-fg-muted" : "text-meta text-fg-muted"}>
             {caption}
           </p>
         ) : null}

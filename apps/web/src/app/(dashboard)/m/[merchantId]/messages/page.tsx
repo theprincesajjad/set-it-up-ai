@@ -135,9 +135,10 @@ const AUTO_COPY: Record<string, { title: (noun: string) => string; hint: (days: 
 };
 
 function AutomationRow({ a, sms, vertical, onChange }: { a: messagingApi.Automation; sms: boolean; vertical: string; onChange: () => void }) {
-  const { api, enabled } = useMerchant();
+  const { api, base, enabled } = useMerchant();
   const toast = useToast();
   const copy = AUTO_COPY[a.kind]!;
+  const locked = !enabled("marketing.automations");
   const toggle = async (on: boolean) => {
     // First time on: Free drink ready is a wallet pass update; the others are texts when SMS is on, else email.
     const channel: messagingApi.Channel = a.kind === "reward_ready" ? "push" : a.configured ? a.channel : sms ? "sms" : "email";
@@ -153,8 +154,14 @@ function AutomationRow({ a, sms, vertical, onChange }: { a: messagingApi.Automat
       <div className="min-w-0">
         <p className="text-[15px] text-fg">{copy.title(rewardNoun(vertical))}</p>
         <p className="text-[12px] text-fg-muted">{copy.hint(a.days)}</p>
+        {locked ? (
+          <p className="text-[12px] text-fg-muted">
+            Automations are not on your plan.{" "}
+            <Link href={`${base}/billing`} className="font-medium text-fg underline underline-offset-4 focus-visible:focus-ring">See plans in Billing</Link>
+          </p>
+        ) : null}
       </div>
-      <SwitchControl ariaLabel={`${copy.title(rewardNoun(vertical))} automation`} checked={a.enabled} disabled={!enabled("marketing.automations")} onChange={(v) => void toggle(v)} />
+      <SwitchControl ariaLabel={`${copy.title(rewardNoun(vertical))} automation`} checked={a.enabled} disabled={locked} onChange={(v) => void toggle(v)} />
     </li>
   );
 }

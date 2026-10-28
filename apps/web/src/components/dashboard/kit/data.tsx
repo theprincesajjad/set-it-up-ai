@@ -33,11 +33,24 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
       {items.map((s, idx) => {
         // An odd last cell spans both phone columns so the hairline grid has no empty grey cell.
         const span = idx === items.length - 1 && items.length % 2 === 1 ? "col-span-2 lg:col-span-1" : "";
-        const body = (
+        // Every cell is a <div> holding its dt and dds (the only wrapper a <dl> allows). A linked cell puts the link inside the dt and
+        // stretches it over the whole cell, so the cell stays one big target without an <a> sitting between the <dl> and its <dt>.
+        const label = (
           <>
+            {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points", info: "bg-location" }[s.dot])} /> : null}
+            {s.label}
+          </>
+        );
+        return (
+          <div key={s.label} className={cn("relative bg-bg px-5 py-[18px] transition-colors", s.href && "hover:bg-bg-subtle", span)}>
             <dt className="flex items-center gap-1.5 text-meta text-fg-muted">
-              {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points", info: "bg-location" }[s.dot])} /> : null}
-              {s.label}
+              {s.href ? (
+                <Link href={s.href} className="flex items-center gap-1.5 after:absolute after:inset-0 focus-visible:focus-ring">
+                  {label}
+                </Link>
+              ) : (
+                label
+              )}
             </dt>
             <dd className="mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
               {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
@@ -51,18 +64,9 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
               ) : s.caption ? (
                 <span className="text-fg-muted">{s.caption}</span>
               ) : (
-                <span className="text-fg-subtle">&nbsp;</span>
+                <span aria-hidden>&nbsp;</span>
               )}
             </dd>
-          </>
-        );
-        return s.href ? (
-          <Link key={s.label} href={s.href} className={cn("block bg-bg px-5 py-[18px] transition-colors hover:bg-bg-subtle focus-visible:focus-ring", span)}>
-            {body}
-          </Link>
-        ) : (
-          <div key={s.label} className={cn("bg-bg px-5 py-[18px]", span)}>
-            {body}
           </div>
         );
       })}

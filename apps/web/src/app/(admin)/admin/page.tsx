@@ -89,8 +89,8 @@ export default function AdminToday() {
                               <td className="px-3 py-3 text-end tabular">{f.leads}</td>
                               <td className="px-3 py-3 text-end tabular">{f.signed}</td>
                               <td className="px-3 py-3 text-end tabular">{f.activated}</td>
-                              <td className="px-3 py-3 text-end tabular">{pct(f.signedPct)} <span className="text-fg-subtle">of {f.targetShops}</span></td>
-                              <td className="px-4 py-3 text-end tabular">{f.checkInsDue ? <span className="text-fg">{f.checkInsDue} due</span> : <span className="text-fg-subtle">0</span>}</td>
+                              <td className="px-3 py-3 text-end tabular">{pct(f.signedPct)} <span className="text-fg-muted">of {f.targetShops}</span></td>
+                              <td className="px-4 py-3 text-end tabular">{f.checkInsDue ? <span className="text-fg">{f.checkInsDue} due</span> : <span className="text-fg-muted">0</span>}</td>
                             </tr>
                           ))}
                         </tbody>
