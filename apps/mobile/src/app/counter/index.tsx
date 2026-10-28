@@ -3,7 +3,7 @@ import type { staffApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Redirect, router } from "expo-router";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError, type ApiError } from "../../api/client";
@@ -43,13 +43,13 @@ import { useCounter, type RecentAward } from "../../state/counter";
 import { qk } from "../../state/query";
 import { useLocale } from "../../lib/i18n";
 import { typo, useTheme } from "../../theme";
-import { Banner, Button, Camera, Chip, EmptyState, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
+import { Banner, Button, Camera, Chip, EmptyState, Glass, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
 
 type Panel = { kind: "redeemSuccess"; view: SuccessView; transactionId: string | null; startedAt: number } | null;
 
 /** Counter mode main screen: keypad / scan → customer → award in ≤ 2 taps → success + 10 s undo. */
 export default function Counter() {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   const { width } = useWindowDimensions();
   const toast = useToast();
   const { t: tr } = useLocale();
@@ -409,6 +409,10 @@ export default function Counter() {
   if (config.kiosk) return <Redirect href="/counter/kiosk" />;
 
   const wide = width >= 768;
+  // Clear on a tablet: the primary actions move into the 96 glass dock at the bottom (audit 2.4 Counter, the v6 mock's `.cdock`):
+  // the left column's Find customer, the right column's award button and its secondaries. Phones keep them inline (thumb zone).
+  const dock = isClear && wide;
+  let dockRight: ReactNode = null;
   const idleStep = state.step === "entry" || state.step === "lookingUp";
   const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
   const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
@@ -437,6 +441,11 @@ export default function Counter() {
     </View>
   );
 
+  const findButton = (
+    <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
+      {tr("counter.findCustomer")}
+    </Button>
+  );
   // Display + Scan / Code on top; keypad and the primary button in the thumb zone at the bottom (staff-counter.md § Principles 2).
   const entryPane = (
     <View style={{ gap: 12, flexGrow: 1, justifyContent: "space-between" }}>
@@ -469,11 +478,7 @@ export default function Counter() {
       </View>
       <View style={{ gap: 12 }}>
         {showKeypad ? <Keypad onKey={onKey} /> : null}
-        {state.step === "entry" || state.step === "lookingUp" ? (
-          <Button size="counter" loading={state.step === "lookingUp"} disabled={digits.length < 4} onPress={() => dispatch({ type: "lookup" })}>
-            {tr("counter.findCustomer")}
-          </Button>
-        ) : null}
+        {!dock && (state.step === "entry" || state.step === "lookingUp") ? findButton : null}
       </View>
     </View>
   );
@@ -594,28 +599,49 @@ export default function Counter() {
             </View>
           ) : null}
           {state.error ? <View style={{ marginTop: 12 }}><Banner variant="danger">{state.error}</Banner></View> : null}
-          <View style={styles.bottom}>
-            <AwardButton label={mainLabel} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId) || (vertical === "pharmacy" && !!categoryId)} onPress={() => award(q)} />
-            <View style={styles.row}>
-              {member ? (
-                <CounterSecondary
-                  label={canRedeem ? "Redeem" : needs ? `Redeem · needs ${needs}` : "Redeem"}
-                  accessibilityLabel={canRedeem ? "Redeem" : `Redeem, needs ${needs ?? ""}`}
-                  disabled={!canRedeem}
-                  onPress={() => setRedeemOpen(true)}
-                />
-              ) : (
-                <CounterSecondary label="Cancel" onPress={reset} />
-              )}
-              <CounterSecondary label="Enter code" onPress={() => setCodeOpen(true)} />
-            </View>
-          </View>
+          {(() => {
+            const awardBtn = <AwardButton label={mainLabel} loading={state.submitting} disabled={programPaused || (perDollar && state.amountCents === 0 && !categoryId) || (vertical === "pharmacy" && !!categoryId)} onPress={() => award(q)} style={dock ? { flex: 2 } : null} />;
+            const secondaries = (
+              <>
+                {member ? (
+                  <CounterSecondary
+                    label={canRedeem ? "Redeem" : needs ? `Redeem · needs ${needs}` : "Redeem"}
+                    accessibilityLabel={canRedeem ? "Redeem" : `Redeem, needs ${needs ?? ""}`}
+                    disabled={!canRedeem}
+                    onPress={() => setRedeemOpen(true)}
+                  />
+                ) : (
+                  <CounterSecondary label="Cancel" onPress={reset} />
+                )}
+                <CounterSecondary label="Enter code" onPress={() => setCodeOpen(true)} />
+              </>
+            );
+            if (dock) {
+              dockRight = (
+                <View style={[styles.row, { gap: 12 }]}>
+                  {awardBtn}
+                  {secondaries}
+                </View>
+              );
+              return null;
+            }
+            return (
+              <View style={styles.bottom}>
+                {awardBtn}
+                <View style={styles.row}>{secondaries}</View>
+              </View>
+            );
+          })()}
         </View>
       );
     }
     return wide ? <EmptyState icon={Search} title={t("empty.counter")} /> : null;
   })();
 
+  // The dock appears only when it holds an action (phone entry's Find customer, or a customer's award row); the idle scan pane keeps
+  // the full height for the viewfinder and its keypad.
+  const dockLeft = dock && idleStep && phoneMode;
+  const dockShown = dock && (dockLeft || dockRight != null);
   const leftPane = idleStep ? (phoneMode ? entryPane : scanPane) : state.step === "customer" && perDollar ? entryPane : null;
 
   return (
@@ -643,7 +669,7 @@ export default function Counter() {
       </View>
 
       {wide ? (
-        <View style={[styles.wide]}>
+        <View style={[styles.wide, dockShown ? { paddingBottom: 96 + 24 } : null]}>
           <View style={{ flex: 4 }}>{leftPane}</View>
           <View style={{ flex: 6, gap: 16 }}>
             <View style={{ flex: 1 }}>{customerPane}</View>
@@ -657,6 +683,14 @@ export default function Counter() {
           {state.step === "entry" && !phoneMode ? null : state.step === "entry" ? <RecentStrip recent={recent.slice(0, 1)} onUndo={undoRecent} /> : null}
         </ScrollView>
       )}
+
+      {dockShown ? (
+        // The 96 dock: flat glass (blur only, no rim: the counter's performance budget), 20 + 56 + 20, columns 4 : 6 like the panes above.
+        <Glass flat radius={0} style={styles.dock}>
+          <View style={[styles.dockCol, { flex: 4 }]}>{dockLeft ? findButton : null}</View>
+          <View style={[styles.dockCol, { flex: 6 }]}>{dockRight}</View>
+        </Glass>
+      ) : null}
 
       <QueueSheet visible={queueOpen} onClose={() => setQueueOpen(false)} state={queueState} online={online} onRetry={() => void flush(true)} onDismiss={(id) => void queue.remove(id)} />
       <RewardPicker
@@ -720,6 +754,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   bottom: { marginTop: "auto", paddingTop: 24, gap: 10 },
   wide: { flex: 1, flexDirection: "row", gap: 24, padding: 24 },
+  dock: { position: "absolute", left: 0, right: 0, bottom: 0, height: 96, flexDirection: "row", gap: 24, paddingHorizontal: 24 },
+  dockCol: { justifyContent: "center" },
   banners: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
   nameField: { minHeight: 64, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, justifyContent: "center", flexDirection: "row", alignItems: "center" },
   codeField: { minHeight: 72, borderRadius: 12, borderWidth: 2, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" },

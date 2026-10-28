@@ -2,7 +2,7 @@
 import { radii, touchTargets } from "@ll/design-tokens";
 import type { staffApi } from "@ll/shared";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { hairline } from "../../ui/shadow";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatMoney, formatNumber, formatPts, initials, lockedRewardCopy, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
@@ -260,20 +260,21 @@ export function QuantityChips({ values, value, onChange, unit }: { values: numbe
 }
 
 /** The 72 pt black award button (canvas: radius 20, Bricolage 800 22). */
-export function AwardButton({ label, onPress, loading, disabled }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean }) {
-  const { c } = useTheme();
+export function AwardButton({ label, onPress, loading, disabled, style }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle> }) {
+  const { c, isClear } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, busy: !!loading }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.award, { backgroundColor: disabled ? c.bgMuted : c.brand, opacity: pressed ? 0.9 : 1 }]}>
-      {loading ? <ActivityIndicator color={c.onBrand} /> : <Text style={disp(22, 800, 26)} rawColor={disabled ? c.fgSubtle : c.onBrand}>{label}</Text>}
+    // Clear (audit 2.4 Counter): the 56 r16 counter button with a 17/24 label, the same as the dock's.
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, busy: !!loading }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.award, isClear ? styles.awardClear : null, { backgroundColor: disabled ? c.bgMuted : c.brand, opacity: pressed ? 0.9 : 1 }, style]}>
+      {loading ? <ActivityIndicator color={c.onBrand} /> : <Text style={isClear ? ui(17, 600, 24) : disp(22, 800, 26)} rawColor={disabled ? c.fgSubtle : c.onBrand}>{label}</Text>}
     </Pressable>
   );
 }
 
 /** Grey 52 pt secondary counter button ("Redeem · needs 10" disabled, "Enter code"). */
 export function CounterSecondary({ label, onPress, disabled, accessibilityLabel }: { label: string; onPress: () => void; disabled?: boolean; accessibilityLabel?: string }) {
-  const { c } = useTheme();
+  const { c, isClear } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondary, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondary, isClear ? styles.secondaryClear : null, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle }]}>
       <Text style={ui(15, 600, 19)} rawColor={disabled ? c.fgSubtle : c.fg} numberOfLines={1}>
         {label}
       </Text>
@@ -579,7 +580,9 @@ const styles = StyleSheet.create({
   qtyRow: { flexDirection: "row", justifyContent: "center", gap: 8 },
   qty: { height: 44, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   award: { height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  awardClear: { height: 56, borderRadius: 16 },
   secondary: { flex: 1, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  secondaryClear: { height: 56 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   newIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   ready: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 16, minHeight: touchTargets.counter },

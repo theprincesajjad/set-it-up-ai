@@ -11,7 +11,7 @@ import { formatTime, signed } from "../../lib/format";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
-import { Avatar, Badge, Button, Calculator, ChevronLeft, ChevronRight, CLEAR_CARD_TITLE, clearCard, EmptyState, ErrorState, Gift, Glass, History, ListRow, MessageCircle, Screen, Section, Skeleton, StatTile, Text, Ticket, User, Users, useToast } from "../../ui";
+import { Avatar, Badge, Button, Calculator, ChevronLeft, ChevronRight, CLEAR_CARD_TITLE, clearCard, EmptyState, ErrorState, Gift, Glass, History, ListRow, ScrollEdge, MessageCircle, Screen, Section, Skeleton, StatTile, Text, Ticket, User, Users, useToast } from "../../ui";
 import ArrowUpRight from "lucide-react-native/icons/arrow-up-right";
 import { useLocale } from "../../lib/i18n";
 import { greetingKey, hourBars, needsItems, statCards } from "../../lib/ownerToday";
@@ -360,6 +360,7 @@ function ClearToday() {
         <Text variant="meta" color="fgMuted" style={{ paddingHorizontal: 16 }}>Later corrections go through Adjust in the dashboard.</Text>
       </ScrollView>
 
+      <ScrollEdge edge="top" offset={insets.top} />
       {/* Glass capsule row over the scrolling page (y 12, 16 gutter): back, and the shop (32 mark + name + street). */}
       <View style={[clearStyles.capsules, { top: insets.top + 12 }]} pointerEvents="box-none">
         <Pressable accessibilityRole="button" accessibilityLabel={tr("rc.back")} onPress={goCounter} hitSlop={4}>

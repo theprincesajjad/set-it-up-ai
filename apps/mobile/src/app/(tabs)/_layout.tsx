@@ -11,7 +11,7 @@ import { initials } from "../../lib/award";
 import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { CardQrIcon, Glass, glow, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
+import { CardQrIcon, Glass, glow, haptic, ScrollEdge, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
 
 type TabName = "map" | "discover" | "wallet" | "activity";
 const LABEL_KEYS = { map: "sh.nav.map", discover: "sh.nav.discover", wallet: "sh.nav.wallet", activity: "sh.nav.activity" } as const satisfies Record<TabName, MessageKey>;
@@ -135,13 +135,37 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
         </Pressable>
       );
     };
+    // My card is the capsule's first cell, as in the v6 mock ("Card" first): one 358 capsule 16 from both edges instead of a 286 capsule
+    // beside a separate 64 button. It is an action (it opens the card sheet over the current tab), so it is a button, not a tab.
+    const cardCell = (
+      <Pressable
+        key="card"
+        accessibilityRole="button"
+        accessibilityLabel={t("sh.nav.myCard")}
+        accessibilityHint={t("sh.card.cardLabel", { code: "" }).trim()}
+        onPress={() => {
+          haptic.tap();
+          router.push("/card");
+        }}
+        style={({ pressed }) => [styles.tabClear, pressed ? { opacity: 0.7 } : null]}
+      >
+        <CardQrIcon size={24} color={c.fgMuted} strokeWidth={1.7} />
+        <Text allowFontScaling={false} numberOfLines={1} style={styles.tabLabel} rawColor={c.fgMuted}>
+          {t("sh.card.tabCard")}
+        </Text>
+      </Pressable>
+    );
     return (
-      <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom: Math.max(16, bottom - 10), gap: 8, transform: [{ translateY: y }] }]}>
-        <Glass variant="strong" radius={32} accessibilityRole="tablist" style={styles.capsuleClear}>
-          {ORDER.map(clearItem)}
-        </Glass>
-        <CardButton />
-      </Animated.View>
+      <>
+        {/* Scroll-edge strip: content nearing the capsule is already blurred (web; the native chrome is a real material). */}
+        {hidden ? null : <ScrollEdge edge="bottom" />}
+        <Animated.View pointerEvents={hidden ? "none" : "box-none"} style={[styles.host, { bottom: Math.max(16, bottom - 10), transform: [{ translateY: y }] }]}>
+          <Glass variant="strong" radius={32} accessibilityRole="tablist" style={styles.capsuleClear}>
+            {cardCell}
+            {ORDER.map(clearItem)}
+          </Glass>
+        </Animated.View>
+      </>
     );
   }
   return (

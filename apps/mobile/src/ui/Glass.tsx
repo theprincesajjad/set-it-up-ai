@@ -100,3 +100,28 @@ export function glassStyle(t: { glass: { fill: string; fillStrong: string; edge:
     ...(Platform.OS === "web" && !g.solid ? ({ backdropFilter: `blur(${g.blur}px) saturate(${g.saturate})` } as object) : null),
   } as ViewStyle;
 }
+
+/**
+ * Apple's scroll-edge effect (the v6 mock's `.sedge`, docs/design/v3.2-clear-build.md 3): a fixed, non-interactive strip under top or bottom
+ * glass chrome that blurs the content scrolling toward it, so text is soft colour by the time the glass sees it instead of readable through
+ * the capsule. 84 tall under the top capsules, 120 above the tab bar; the blur fades out with a mask. Web only: iOS chrome is a real
+ * expo-blur material and Android chrome is near-opaque. Off under Reduce Transparency (opaque chrome needs no edge).
+ */
+export function ScrollEdge({ edge, offset = 0 }: { edge: "top" | "bottom"; /** Extra height for a safe-area inset. */ offset?: number }) {
+  const { glass: g } = useTheme();
+  if (Platform.OS !== "web" || g.solid) return null;
+  const top = edge === "top";
+  const mask = top ? "linear-gradient(to bottom, #000 0, #000 62%, transparent 100%)" : "linear-gradient(to top, #000 0, #000 58%, transparent 100%)";
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        { position: "absolute", left: 0, right: 0, height: (top ? 84 : 120) + offset },
+        top ? { top: 0 } : { bottom: 0 },
+        { backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", maskImage: mask, WebkitMaskImage: mask } as object,
+      ]}
+    />
+  );
+}
