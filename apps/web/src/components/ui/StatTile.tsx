@@ -20,14 +20,16 @@ export interface StatTileProps {
   frame?: "card" | "plain";
   /** A pastel tile: peach, mint, butter, lilac, sky, rose, or `trade` (the shop's accent family). The number is big Fraunces in the tone's deep colour. */
   tone?: Tone;
+  /** Draw the toned tile as a definition-list cell (dt label, dd number, dd delta) for use inside a `<dl>`; a link stretches over the cell from inside the dt. */
+  definition?: boolean;
 }
 
 /**
  * KPI. Plain (no `tone`): label above, plain number, a small delta below, a hairline card. Toned (Main Street Warm): a pastel rounded tile with
  * the label, a big Fraunces number, a delta line (arrow + words) and an optional sparkline from `spark`.
  */
-export function StatTile({ label, value, delta, spark, href, loading, caption, frame = "card", tone }: StatTileProps) {
-  if (tone) return <ToneTile {...{ label, value, delta, spark, href, loading, caption, tone }} />;
+export function StatTile({ label, value, delta, spark, href, loading, caption, frame = "card", tone, definition }: StatTileProps) {
+  if (tone) return <ToneTile {...{ label, value, delta, spark, href, loading, caption, tone, definition }} />;
   const body = (
     <>
       <p className="text-meta text-fg-muted">{label}</p>
@@ -49,10 +51,44 @@ export function StatTile({ label, value, delta, spark, href, loading, caption, f
   );
 }
 
-function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: Required<Pick<StatTileProps, "tone">> & Omit<StatTileProps, "tone" | "frame">) {
+function ToneTile({ label, value, delta, spark, href, loading, caption, tone, definition }: Required<Pick<StatTileProps, "tone">> & Omit<StatTileProps, "tone" | "frame">) {
   const text = delta ? (delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`) : null;
   const Arrow = delta && delta.pct < 0 ? ArrowDown : ArrowUp;
   const showArrow = !!delta && delta.pct !== 0 && delta.good !== null && delta.good !== undefined;
+  const foot = (
+    <>
+      {!loading && text ? (
+        <>
+          {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
+          <span>{text}</span>
+        </>
+      ) : !loading && caption ? (
+        <span>{caption}</span>
+      ) : (
+        <span aria-hidden>&nbsp;</span>
+      )}
+    </>
+  );
+  if (definition) {
+    return (
+      <div className={cn("relative block min-w-0 overflow-hidden rounded-tile p-4 md:p-5", TONE_SURFACE[tone], href && TONE_HOVER)}>
+        <dt className="text-meta-strong opacity-90">
+          {href ? (
+            <Link href={href} className="after:absolute after:inset-0 focus-visible:focus-ring">
+              {label}
+            </Link>
+          ) : (
+            label
+          )}
+        </dt>
+        <div className="mt-2 flex items-end justify-between gap-2">
+          {loading ? <Skeleton className="h-10 w-20" /> : <dd className="font-display text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value ?? "–"}</dd>}
+          {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-14 shrink-0 opacity-90 sm:w-20 md:w-24" /> : null}
+        </div>
+        <dd className="mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums">{foot}</dd>
+      </div>
+    );
+  }
   const body = (
     <>
       <p className="text-meta-strong opacity-90">{label}</p>

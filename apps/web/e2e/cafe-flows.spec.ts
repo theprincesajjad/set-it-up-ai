@@ -113,6 +113,11 @@ async function signIn(page: Page, next: string) {
   await expect(page.locator('section[aria-label="Scan a card"][data-scan-ready="true"]')).toBeVisible();
 }
 
+/** The counter listens for a scanner only once it has hydrated; typing before that loses keystrokes. */
+async function scanReady(page: import("@playwright/test").Page) {
+  await expect(page.locator('section[aria-label="Scan a card"][data-scan-ready="true"]')).toBeVisible();
+}
+
 test("cold scan stamps in under 3 seconds and undo reverses it", async ({
   page,
 }) => {
@@ -121,6 +126,7 @@ test("cold scan stamps in under 3 seconds and undo reverses it", async ({
   const before = await balance(token, id, m);
   await signIn(page, `/m/${id}/counter`);
   // A hardware scanner types the payload fast and ends with Enter.
+  await scanReady(page);
   await page.keyboard.type(`LL:${m.code}`, { delay: 5 });
   const started = Date.now();
   await page.keyboard.press("Enter");
@@ -196,6 +202,7 @@ test("a second scan inside the cooldown says so and adds nothing", async ({
   const { token, id } = await setup();
   const m = await member(token, id, "Twice Tester");
   await signIn(page, `/m/${id}/counter`);
+  await scanReady(page);
   await page.keyboard.type(`LL:${m.code}`, { delay: 5 });
   await page.keyboard.press("Enter");
   await expect(
@@ -203,6 +210,7 @@ test("a second scan inside the cooldown says so and adds nothing", async ({
   ).toBeVisible();
   const after = await balance(token, id, m);
   await page.getByRole("button", { name: "Next customer" }).click();
+  await scanReady(page);
   await page.keyboard.type(`LL:${m.code}`, { delay: 5 });
   await page.keyboard.press("Enter");
   await expect(

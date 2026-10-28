@@ -38,7 +38,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
   const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   if (tiles) {
     return (
-      <div role="group" aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
+      <dl aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
         {items.map((s, idx) => (
           <ToneStatTile
             key={s.label}
@@ -50,9 +50,10 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
             spark={s.spark}
             href={s.href}
             loading={loading}
+            definition
           />
         ))}
-      </div>
+      </dl>
     );
   }
   return (
