@@ -186,3 +186,17 @@
 :is([lang^="ur"], [lang^="hi"], [lang^="pa"]).italic {
   font-style: normal;
 }
+
+/* Clear, Urdu (audit 2.5): Nastaliq leading on the 4px grid: body 28, small 24, card title 28, page title 40, so rows and labels stay integer. */
+:root[data-theme-style="clear"] [lang^="ur"] :is(.text-body, .text-body-strong, p, li, label) {
+  line-height: 28px;
+}
+:root[data-theme-style="clear"] [lang^="ur"] :is(.text-meta, .text-meta-strong, .text-caption, [data-sidebar="group-label"]) {
+  line-height: 24px;
+}
+:root[data-theme-style="clear"] [lang^="ur"] :is(h2, h3, .text-headline) {
+  line-height: 28px;
+}
+:root[data-theme-style="clear"] [lang^="ur"] :is(h1, .text-large-title) {
+  line-height: 40px;
+}

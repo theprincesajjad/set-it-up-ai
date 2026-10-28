@@ -10,6 +10,8 @@ import type { MessageKey, reportsApi, staffApi, Vars } from "@ll/shared";
 export interface Fmt {
   t: (key: MessageKey, vars?: Vars) => string;
   number: (n: number) => string;
+  /** Wraps a signed run ("+16", "−20%") so its sign stays put inside a right-to-left sentence. */
+  isolate?: (s: string) => string;
 }
 
 export type ChipTone = "up" | "neutral" | "info";
@@ -41,12 +43,13 @@ export function deltaVs(cur: number, typical: number | null | undefined, weekday
   if (typical == null || (typical <= 0 && cur <= 0)) return null;
   const good = cur > typical ? true : cur < typical ? false : null;
   if (cur === typical) return { text: f.t("shell.today.sameAs", { weekday }), good: null };
+  const iso = f.isolate ?? ((x: string) => x);
   if (typical < 8) {
     const diff = cur - typical;
-    return { text: f.t("shell.today.diffVs", { diff: `${diff > 0 ? "+" : "−"}${f.number(Math.abs(diff))}`, weekday }), good };
+    return { text: f.t("shell.today.diffVs", { diff: iso(`${diff > 0 ? "+" : "−"}${f.number(Math.abs(diff))}`), weekday }), good };
   }
   const pct = Math.round(((cur - typical) / typical) * 100);
-  return { text: f.t("shell.today.pctVs", { pct: `${pct > 0 ? "+" : "−"}${f.number(Math.abs(pct))}%`, weekday }), good };
+  return { text: f.t("shell.today.pctVs", { pct: iso(`${pct > 0 ? "+" : "−"}${f.number(Math.abs(pct))}%`), weekday }), good };
 }
 
 const termKey = (terminology: string | null | undefined): MessageKey =>

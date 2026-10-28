@@ -164,7 +164,7 @@ function ClearToday() {
   };
 
   const now = new Date();
-  const f = { t: tr, number };
+  const f = { t: tr, number, isolate: isRtl ? (v: string) => `\u2066${v}\u2069` : undefined };
   const firstName = (staff?.name ?? user?.name ?? "").split(" ")[0] ?? "";
   const greeting = tr(greetingKey(now.getHours(), !!firstName), { name: firstName });
   const dateLine = date(now, { weekday: "long", month: "short", day: "numeric" });

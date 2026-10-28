@@ -33,6 +33,8 @@ describe("owner Today on the phone", () => {
     expect(deltaVs(0, 0, "Wed", f)).toBeNull();
     expect(deltaVs(3, null, "Wed", f)).toBeNull();
     expect(deltaVs(12, 10, "Wed", f)?.text).toBe("+20% vs last Wed");
+    // Right-to-left: the signed run is isolated so "+16" keeps its sign in front.
+    expect(deltaVs(21, 5, "Wed", { ...f, isolate: (s) => `\u2066${s}\u2069` })?.text).toBe("\u2066+16\u2069 vs last Wed");
   });
   it("owners get the four mock cards with real captions", () => {
     const cards = statCards({ report: report(), counter, terminology: "stamps", weekday: "Wed" }, f);

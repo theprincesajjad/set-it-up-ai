@@ -8,7 +8,7 @@ import { scriptStyle } from "./scriptStyle";
 const SCRIPT_LOCALES = new Set(["hi", "ur", "pa"]);
 
 /** Clear's face: SF Pro on iOS (the native twin of the spec's Inter), Roboto on Android, Inter then the system face on the web preview. */
-const CLEAR_FACE = Platform.select({ ios: "System", android: "sans-serif", default: 'Inter, -apple-system, "SF Pro Text", system-ui, sans-serif' });
+const CLEAR_FACE = Platform.select({ ios: "System", android: "sans-serif", default: 'Inter, -apple-system, "SF Pro Text", system-ui, sans-serif' }); // l10n-ok: a font stack, not shown
 
 export interface TextProps extends RNTextProps {
   variant?: TextStyleName;
