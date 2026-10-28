@@ -144,10 +144,11 @@ test.describe("pricing", () => {
     await expect(plus).toBeVisible();
     await expect(pro).toBeVisible();
     const color = (l: typeof plus) => l.evaluate((e) => getComputedStyle(e).color);
-    // Main Street Warm: the Free price is forest, the paid prices terracotta. Both paid prices share one colour, and none is a subdued grey.
+    // Both paid prices share one colour that differs from Free, and none is a subdued grey. The marketing site draws in Clear (the default
+    // theme), where the paid prices (`text-primary-text`) are link blue #0066CC (Main Street Warm: forest Free, terracotta paid, rgb(178, 58, 35)).
     expect(await color(pro)).toBe(await color(plus));
     expect(await color(plus)).not.toBe(await color(free));
-    expect(await color(plus)).toBe("rgb(178, 58, 35)");
+    expect(await color(plus)).toBe("rgb(0, 102, 204)");
     // Trade tools self-serve: both paid plans can be bought today, so no pilot badge and a working Start button on each.
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
     expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
