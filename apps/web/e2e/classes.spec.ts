@@ -181,7 +181,7 @@ test.describe("the member's side", () => {
     // Cancel inside the window: everything goes back.
     await page.getByRole("button", { name: "Cancel membership" }).click();
     await expect(page.getByText(/everything you paid goes back to your card/)).toBeVisible();
-    await page.getByRole("button", { name: "Yes, cancel" }).click();
+    await page.getByRole("button", { name: "Cancel membership" }).click();
     await expect(page.getByText(/Cancelled\. \$[\d.]+ goes back to your card/)).toBeVisible({ timeout: 20_000 });
   });
 });

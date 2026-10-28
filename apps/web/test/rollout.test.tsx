@@ -30,8 +30,8 @@ describe("rollout control rules", () => {
   });
 
   it("explains the effect in plain words", () => {
-    expect(stageEffect(feat({}), "beta")).toMatch(/merchants on Plus who opted into betas/);
-    expect(stageEffect(feat({}), "ga")).toMatch(/Plus plan becomes purchasable/);
+    expect(stageEffect(feat({}), "beta")).toMatch(/shops on Café & Retail who turned on early access/);
+    expect(stageEffect(feat({}), "ga")).toMatch(/Café & Retail plan becomes purchasable/);
   });
 
   it("colours gauges by share of target (low < 40%, building, ready >= 100%)", () => {
@@ -51,9 +51,9 @@ describe("<StageDialog>", () => {
   it("only enables GA after the feature key is typed, and passes the note", async () => {
     const onConfirm = vi.fn(async () => undefined);
     render(<StageDialog feature={feat({})} to="ga" onClose={() => undefined} onConfirm={onConfirm} />);
-    expect(screen.getByRole("heading", { name: "Turn Order-ahead to GA?" })).toBeTruthy();
-    expect(screen.getByText(/network has 12 active merchants/)).toBeTruthy();
-    const btn = screen.getByRole("button", { name: "Set to GA" }) as HTMLButtonElement;
+    expect(screen.getByRole("heading", { name: "Switch Order-ahead to Live?" })).toBeTruthy();
+    expect(screen.getByText(/12 shops are active/)).toBeTruthy();
+    const btn = screen.getByRole("button", { name: "Set to Live" }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
     await userEvent.type(screen.getByLabelText("Note (optional)"), "Pilot done");
     await userEvent.type(screen.getByLabelText("Type orders.order_ahead to confirm"), "orders.order_ahead");
@@ -64,7 +64,7 @@ describe("<StageDialog>", () => {
 
   it("beta needs no typed key", () => {
     render(<StageDialog feature={feat({})} to="beta" onClose={() => undefined} onConfirm={vi.fn()} />);
-    expect((screen.getByRole("button", { name: "Set to Beta" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Set to Early access" }) as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByLabelText(/to confirm/)).toBeNull();
   });
 });

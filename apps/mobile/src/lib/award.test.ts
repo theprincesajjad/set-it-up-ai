@@ -343,7 +343,7 @@ describe("scan first: what a lookup does", () => {
 
 describe("scan-first copy", () => {
   it("matches the frames", () => {
-    expect(matchesHeading(2, "1034")).toBe("Two members end in 1034");
+    expect(matchesHeading(2, "1034")).toBe("Two customers end in 1034");
     expect(visitThisMonth(5)).toBe("5th visit this month");
     expect(ordinal(11)).toBe("11th");
     expect(ordinal(22)).toBe("22nd");
@@ -351,8 +351,8 @@ describe("scan-first copy", () => {
     expect(stampsLeft(0, "Free drink")).toBe("Free drink ready");
     expect(maskedRow("(647) ***-1034")).toBe("(647) ···-1034");
     const now = new Date("2026-10-23T15:00:00Z");
-    expect(cameInText("2026-10-22T15:00:00Z", now)).toBe("in yesterday");
-    expect(cameInText("2026-10-09T15:00:00Z", now)).toBe("in 2 weeks ago");
+    expect(cameInText("2026-10-22T15:00:00Z", now)).toBe("Visited yesterday");
+    expect(cameInText("2026-10-09T15:00:00Z", now)).toBe("Visited 2 weeks ago");
     expect(carryOverLine("Fatima Tremblay", 11, 10, "stamps")).toBe("Fatima has 11 stamps. 1 carries over after redeeming.");
     expect(carryOverLine(null, 10, 10, "stamps")).toBe("They have 10 stamps. A fresh card starts after redeeming.");
   });

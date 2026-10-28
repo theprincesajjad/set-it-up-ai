@@ -24,7 +24,7 @@ describe("restaurant nav", () => {
     expect(keys(RESTAURANT_NAV.map((r) => r.feature))).not.toContain("restaurant-more");
     expect(restaurantModules(new Set(RESTAURANT_NAV.map((r) => r.feature))).locked).toEqual([]);
   });
-  it("does not reuse the commerce 'Menu & catalog' label", () => {
+  it("does not reuse the commerce 'Menu and prices' label", () => {
     const labels = buildMerchantNav("/m/x", "owner", new Set<FeatureKey>(["restaurant.dietary_tags", "orders.order_ahead"])).map((n) => n.label);
     expect(labels).toContain("Menu & dietary");
     expect(labels).not.toContain("Dietary & languages");

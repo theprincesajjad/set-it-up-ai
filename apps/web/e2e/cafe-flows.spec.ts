@@ -153,7 +153,7 @@ test("one match by last four digits stamps exactly once", async ({ page }) => {
       .getByRole("group", { name: "Keypad" })
       .getByRole("button", { name: d, exact: true })
       .click();
-  const pick = page.getByRole("list", { name: "Matching members" });
+  const pick = page.getByRole("list", { name: "Matching customers" });
   if (await pick.isVisible().catch(() => false)) {
     // Another seeded member shares the digits: choose ours by name; still exactly one award.
     await pick.getByRole("button", { name: "Stamp Single Match" }).click();
@@ -180,7 +180,7 @@ test("two matches show a list and nothing is stamped until one is tapped", async
       .getByRole("group", { name: "Keypad" })
       .getByRole("button", { name: d, exact: true })
       .click();
-  const list = page.getByRole("list", { name: "Matching members" });
+  const list = page.getByRole("list", { name: "Matching customers" });
   await expect(list).toBeVisible();
   await expect(
     list.getByRole("button", { name: "Stamp Twin One" }),

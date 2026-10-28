@@ -11,6 +11,43 @@ Placeholders are `{camelCase}`. `{brand}` = `BRAND.name`, `{terminology}` = the 
 
 ---
 
+## 0. Glossary: one word for each thing
+
+Use the word in the first column every time, on every screen, in every language file. If you want a
+different word, change this table first. Trade words (client, student, guest, diner) are fine inside
+that trade's own tools; they never replace the shared word in Today, the counter, Customers, Rewards or
+Reports.
+
+| Say | Never say | Notes |
+| --- | --- | --- |
+| customer | member, guest, neighbour, user | The person in a shop's program. "Membership" stays for a paid studio membership, and "Member code" and "Member number" stay on the customer's own card. |
+| shop | merchant, business, store, vendor | "Merchant" is allowed only in the legal documents' titles. The admin console says shop too. |
+| stamps, points (the shop's own unit) | "points" for a stamp shop, "stamps" for a points shop | Ask the program (`terminology`). Where the screen cannot know the unit, say "rewards". |
+| reward | perk, prize, freebie | What a customer earns toward ("Free drink"). A draw prize is a "prize". |
+| offer (what a customer sees), promo (what an owner makes) | deal, special | A shop's "Promos" page makes the "Offers" tab on its shop page. |
+| neighbourhood bonus | network bonus, perk, street perk | The bonus for visiting several shops on one street. |
+| street event, passport | campaign (customer side) | "Campaign" is fine for BIAs and owners ("Street campaigns"). Customers see an "event". |
+| visit | check-in, transaction | One trip to the shop. A purchase is a "purchase". |
+| opted in, can text | consent, subscribed | In tables and hints. The legal consent text itself is never reworded here. |
+| balance history | ledger | Also "payment history" for what a customer paid. |
+| text | SMS | "Text" in every sentence a person reads. "SMS" stays in plan lists and developer pages. |
+| Café & Retail, Service, Restaurant Starter, Restaurant Growth, Restaurant Pro | Plus, Pro, Growth tier, tier | Name the plan, never its internal id. |
+| early access, live | beta, GA | |
+| your kind of shop | your trade, vertical | "Trade" is a design-system word (trade colour), not a word for people. |
+| once N shops have joined | network-gated, network-wide | Why a feature is not open yet, in plain words. |
+| groom schedule, service schedule | cadence, cycle | |
+| QR stand (the thing on the counter), QR kit (what you print) | QR standee | |
+
+Capitals: sentence case for everything a person reads or taps: buttons, field labels, hints, table
+headers, empty states, toasts and errors. The brand voice keeps lowercase for display titles only (page
+titles, marketing headlines, the wallet and map labels, category chips; see [brand.md](./brand.md#2-voice-and-tone)).
+A sentence is never lowercase, even under a lowercase title ("Nothing matches these filters.").
+
+Never: OK, Submit, Click here, Yes or No as a button (say the verb), "Upgrade", "Invalid", "Error", "Oops",
+and developer words (cursor, slug, payload, token, endpoint, override, flight, cohort, ledger, "the server").
+
+---
+
 ## 1. Buttons and actions
 
 | Key | Copy | Notes |
@@ -83,7 +120,7 @@ Pattern: what happened + what to do. No blame, no "Oops", no exclamation marks.
 | `err.redeem.offline` | Redeem needs internet. Awards still work. |
 | `err.award.duplicate` | Couldn't add for ...{last4}: it was already added. |
 | `err.award.programPaused` | Your program is paused. Ask the owner to resume it. |
-| `err.award.memberBlocked` | This member can't earn here. Ask a manager. |
+| `err.award.memberBlocked` | This customer can't earn here. Ask a manager. |
 | `err.award.noEarnCategory` | {category} doesn't earn {terminology}. |
 | `err.pin.wrong` | Wrong PIN. Try again. |
 | `err.pin.locked` | Too many tries. Wait 2 minutes or ask a manager. |
@@ -119,7 +156,7 @@ Pattern: what happened + what to do. No blame, no "Oops", no exclamation marks.
 | `ok.dataRequested` | Requested. We'll send your file within 24 hours. |
 | `ok.saved` | Saved |
 | `ok.promoPublished` | Your promo is live. |
-| `ok.activation` | You hit 25 members. Nice work. |
+| `ok.activation` | You hit 25 customers. Nice work. |
 | `ok.quoteApproved` | Approved. We've let {shop} know. |
 | `ok.paid` | Paid. You earned {pts} at {shop}. |
 
@@ -129,7 +166,7 @@ Pattern: what happened + what to do. No blame, no "Oops", no exclamation marks.
 | --- | --- | --- | --- |
 | `empty.wallet` | Your shops will live here | Show your card at any shop on the map to start earning. | Show my card |
 | `empty.noNeighbourhood` | We're not on your street yet | We launch one neighbourhood at a time. Want us in yours? | Suggest my street |
-| `empty.rewardsReady` | No rewards yet | Keep visiting your shops. We'll tell you the moment one's ready. | See how close you are |
+| `empty.rewardsReady` | No rewards ready yet | Keep collecting at your shops. We'll tell you the moment a reward is ready. | See your shops |
 | `empty.activity` | Nothing here yet | Your {terminology} and rewards will show up here after your first visit. | Find shops nearby |
 | `empty.orders` | No orders or repairs yet | When you order ahead or drop something off, you can follow it here. | (none) |
 | `empty.mapSearch` | No shops match "{query}" | Try another word, or zoom out. | Clear search |
@@ -141,7 +178,7 @@ Pattern: what happened + what to do. No blame, no "Oops", no exclamation marks.
 | `empty.dash.messages` | Say hello to your regulars | {n} customers said yes to hearing from you. | Write an email |
 | `empty.dash.messagesNoConsent` | No one can get messages yet | Customers opt in when they join. Ask them at the counter. | Print your QR stand |
 | `empty.dash.reports` | Not enough data yet | Check back after a week of visits. | (none) |
-| `empty.dash.staff` | It's just you so far | Add staff so they can award points with their own login. Unlimited, always free. | Invite staff |
+| `empty.dash.staff` | It's just you so far | Add staff so they can add stamps or points with their own login. Unlimited, always free. | Invite staff |
 | `empty.rep.merchants` | No merchants yet | Your first setup takes about 20 minutes. | Set up a merchant |
 
 ## 5. Coming soon (locked features)
@@ -156,7 +193,7 @@ Rules: honest reason, real number, no price as headline, no "Upgrade". One sente
 | `soon.tickets` | **Service tickets.** Track every repair from drop-off to pickup, with photos and status updates. |
 | `soon.quotes` | **Quote approvals.** Send a quote; your customer approves it on their phone. No more phone tag. |
 | `soon.invoices` | **Invoices.** Send the final bill and get paid in the app. Customers earn points automatically. |
-| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. 500 texts a month included with Plus. |
+| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. 500 texts a month included with Café & Retail. |
 | `soon.automations` | **Automations.** "We miss you" and "Your reward is ready" messages that send themselves. |
 | `soon.boost` | **Boost a promo.** Show your offer to people near your street. Always labelled Sponsored. |
 | `soon.beta` | In beta. Try it early and tell us what you think. |
@@ -232,7 +269,7 @@ Rules: GSM-7 characters only (straight apostrophes `'`, no emoji, no curly quote
 any of these switch the message to UCS-2 and cut the limit to 70). Lengths below were measured
 with worst-case values: shop name 24 chars, first name 12, street 16, URL 24 (`local.example/j/K7Q4XZ`).
 Truncate `{shop}` to 24 chars with no ellipsis. Promotional messages always start with the shop
-name and end with "Reply STOP to opt out." Promos only to members with marketing consent and not
+name and end with "Reply STOP to opt out." Promos only to customers with marketing consent and not
 muted. Quiet hours: no promotional SMS 9 pm-9 am Toronto time.
 
 | Key | Type | Template | Max len |
@@ -271,7 +308,7 @@ title so it's recognisable. Deep link in the payload.
 | `push.networkBonus` | Transactional | Neighbourhood bonus | You visited 3 shops on {street}. +{n} pts at {shop}. | `ll://rewards` |
 | `push.campaignProgress` | Transactional | {campaign}: {visited} of {goal} | {remaining} more shops to be entered in the draw. | `ll://campaign/{id}` |
 | `push.promo` | Promotional (consent) | {shop} | {offerTitle}. Ends {endDay}. | `ll://promo/{id}` |
-| `push.nearby` (Phase 2) | Promotional (consent + Plus) | {shop} · {distance} away | {offerTitle} | `ll://promo/{id}` |
+| `push.nearby` (Phase 2) | Promotional (consent + Café & Retail) | {shop} · {distance} away | {offerTitle} | `ll://promo/{id}` |
 | `push.orderReady` | Transactional | Your order is ready | {shop}: show code {orderCode} at the counter. | `ll://order/{id}` |
 | `push.quoteReady` | Transactional | Quote from {shop} | {item}: {total}. Tap to review and approve. | `ll://quote/{token}` |
 | `push.ticketUpdate` | Transactional | {shop} | {item}: {statusLabel}. | `ll://ticket/{id}` |
@@ -293,8 +330,8 @@ ready "Ready for pickup", picked_up "Picked up", cancelled "Cancelled", refunded
 | `email.dataExport` | Your {brand} data is ready |
 | `email.accountDeleted` | Your {brand} account is deleted |
 | `email.merchantWelcome` | You're live on {street}. Here's your first week. |
-| `email.merchantWeekly` | {shop} this week: {visits} visits, {newMembers} new members |
-| `email.activationNudge` | You're {n} members from your 30-day goal |
+| `email.merchantWeekly` | {shop} this week: {visits} visits, {newMembers} new customers |
+| `email.activationNudge` | You're {n} customers from your 30-day goal |
 | `email.integrationError` | Action needed: {provider} disconnected |
 | `email.promoFooter` | (see section 7, required footer) |
 

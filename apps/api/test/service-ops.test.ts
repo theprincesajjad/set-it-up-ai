@@ -286,7 +286,7 @@ describe("approve by phone", () => {
     const q = await call(env, m.ownerToken, "POST", `${base(m)}/tickets/${t.ticket.id}/quotes`, { lineItems: [{ description: "Repair", quantity: 1, unitPriceCents: 10000 }], send: true });
     const denied = await call(env, intakeOnly.token, "POST", `${base(m)}/quotes/${q.body.id}/authorize-by-phone`, { name: "Riley Tester" });
     expect(denied.status).toBe(403);
-    expect(denied.body.error.message).toContain("quotes.send");
+    expect(denied.body.error.message).toContain("permission");
     // A revised quote replaces the first one; the first can no longer be approved by phone.
     const q2 = await call(env, m.ownerToken, "POST", `${base(m)}/tickets/${t.ticket.id}/quotes`, { lineItems: [{ description: "Repair", quantity: 1, unitPriceCents: 12000 }], send: true });
     expect((await call(env, m.ownerToken, "POST", `${base(m)}/quotes/${q.body.id}/authorize-by-phone`, { name: "Riley Tester" })).status).toBe(409);

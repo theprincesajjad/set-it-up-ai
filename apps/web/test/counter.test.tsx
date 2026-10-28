@@ -123,15 +123,15 @@ describe("counter helpers", () => {
     expect(isRewardReady(member({ balance: 9 }), stamps)).toBe(false);
   });
   it("words the frames' text", () => {
-    expect(matchesHeading(2, "1034")).toBe("Two members end in 1034");
+    expect(matchesHeading(2, "1034")).toBe("Two customers end in 1034");
     expect(visitThisMonth(5)).toBe("5th visit this month");
     expect(visitThisMonth(1)).toBe("1st visit this month");
     expect(stampsLeft(2, "Free drink")).toBe("2 more for a free drink");
     expect(stampsLeft(0, "Free drink")).toBe("Free drink ready");
     const now = new Date("2026-10-23T15:00:00Z");
-    expect(cameInText("2026-10-22T15:00:00Z", now)).toBe("in yesterday");
-    expect(cameInText("2026-10-09T15:00:00Z", now)).toBe("in 2 weeks ago");
-    expect(cameInText(null, now)).toBe("new member");
+    expect(cameInText("2026-10-22T15:00:00Z", now)).toBe("Visited yesterday");
+    expect(cameInText("2026-10-09T15:00:00Z", now)).toBe("Visited 2 weeks ago");
+    expect(cameInText(null, now)).toBe("New customer");
   });
 });
 
@@ -222,9 +222,9 @@ describe("<CounterApp> scan first", () => {
     api.lookup.mockResolvedValueOnce({ matchedBy: "last4", items: [emma, daniel], normalizedPhone: null });
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} />);
     await type4("1034");
-    expect(await screen.findByRole("heading", { name: "Two members end in 1034" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Two customers end in 1034" })).toBeTruthy();
     expect(screen.getByText("(647) ···-1034")).toBeTruthy();
-    expect(screen.getByText(/7 of 10 · in yesterday/)).toBeTruthy();
+    expect(screen.getByText(/7 of 10 · Visited yesterday/)).toBeTruthy();
     expect(api.award).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Stamp Daniel Singh" }));
     await waitFor(() => expect(api.award).toHaveBeenCalledTimes(1));
@@ -291,7 +291,7 @@ describe("<CounterApp> scan first", () => {
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} queueKey="test.queue" />);
     await type4();
     expect((await screen.findAllByText(/Saved on this device/)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/1 waiting to send/)).toBeTruthy();
+    expect(screen.getByText(/Sending · 1 left/)).toBeTruthy();
     expect(JSON.parse(localStorage.getItem("test.queue")!)).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Retry now" }));
     await waitFor(() => expect(api.award).toHaveBeenCalledTimes(2));
@@ -309,13 +309,13 @@ describe("<CounterApp> scan first", () => {
     expect(screen.getByText("Hold the card up")).toBeTruthy();
   });
 
-  it("with no member for the digits, offers Add as a new member with an unticked consent box", async () => {
+  it("with no member for the digits, offers Add as a new customer with an unticked consent box", async () => {
     const api = mockApi();
     api.lookup.mockResolvedValueOnce({ matchedBy: "last4", items: [], normalizedPhone: null });
     render(<CounterApp api={api} program={stamps} shopName="Pinecone Coffee" locations={[]} />);
     await type4("9999");
     expect(await screen.findByText("No one ends in 9999")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Add as a new member" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add as a new customer" }));
     await userEvent.type(screen.getByLabelText("Mobile number"), "6475550199");
     const consent = screen.getByLabelText(/Send me offers from Pinecone Coffee/) as HTMLInputElement;
     expect(consent.checked).toBe(false);

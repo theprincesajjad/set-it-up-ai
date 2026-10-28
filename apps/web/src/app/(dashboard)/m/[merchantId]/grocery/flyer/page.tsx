@@ -68,7 +68,7 @@ function Flyer() {
         </span>
       ),
     },
-    { key: "per", header: "Per unit", mobile: "hidden", cell: (x) => <span className="whitespace-nowrap text-fg-muted tabular">{dealPerUnitLine(x) ?? "–"}</span> },
+    { key: "per", header: "Price per 100 g", mobile: "hidden", cell: (x) => <span className="whitespace-nowrap text-fg-muted tabular">{dealPerUnitLine(x) ?? "–"}</span> },
     { key: "dates", header: "Dates", mobile: "subtitle", cell: (x) => <span className="whitespace-nowrap text-fg-muted">{dealDates(x.startsOn, x.endsOn)}</span> },
     {
       key: "for",

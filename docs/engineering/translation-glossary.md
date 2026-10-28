@@ -76,6 +76,10 @@ One term per concept. Use the left column's meaning, not a new synonym.
 | save (to storage) | सहेजें | محفوظ کریں | ਸੇਵ ਕਰੋ |
 | manage | सँभालें | سنبھالیں | ਸੰਭਾਲੋ |
 | visit | विज़िट | وزٹ | ਵਿਜ਼ਿਟ |
+| customer (owner screens, counter, owner texts) | ग्राहक | گاہک | ਗਾਹਕ |
+| street event (what a customer sees for a passport or points weekend) | आयोजन | تقریب | ਸਮਾਗਮ |
+| neighbourhood bonus | मोहल्ले का बोनस | محلے کا بونس | ਮੁਹੱਲੇ ਦਾ ਬੋਨਸ |
+| offer (customer side) | ऑफ़र | آفر | ਆਫ਼ਰ |
 | thanks | शुक्रिया | شکریہ | ਧੰਨਵਾਦ |
 | date | तारीख़ | تاریخ | ਤਾਰੀਖ਼ |
 | e-transfer (Interac) | ई-ट्रांसफ़र | ای ٹرانسفر | ਈ-ਟ੍ਰਾਂਸਫ਼ਰ |
@@ -235,6 +239,197 @@ What to look at first:
 - **Kinds of place** (`sh.kind.*`) feed map pins, the shop page and Discover; check that the Urdu and Hindi words are the ones a shopper would say, not the dictionary term.
 - **Order and ticket statuses** (`ui.order.*`, `ui.ticket.*`) and the order tracker steps are short labels: tense and gender must agree with the thing they describe.
 - Latin tokens left as they are on purpose: QR, PIN, STOP, WhatsApp, Apple Wallet, Google Wallet, brand and shop names. Amounts and counts stay with the formatters.
+
+### Copy pass: English changed, Hindi, Urdu and Punjabi rewritten by the writer (94 keys)
+
+The UX copy pass (docs/audits/copy.md) rewrote the English of these keys. Hindi, Urdu and Punjabi were rewritten to match, following the glossary and style rules above, and **have not been read by a native speaker**. 89 keys got new hi, ur and pa values (267 strings in all); 5 keys changed in English only because the existing translation already said the right thing (for example `shop.promos`, which was already "offers" in all three languages).
+
+What to look at first:
+
+- **Customer instead of member** on the owner screens and the owner texts (`ob.nudge.*`, `shell.today.*`, `counter.*`): ग्राहक, گاہک, ਗਾਹਕ. Check that the plural and the verb agree where a count sits in the sentence (`ob.card.membersLine`, `shell.today.rewardsWaiting`, `ob.nudge.d3.body`).
+- **Street event** (`wp.t.campaign`, `ms.camp.*`): आयोजन, تقریب, ਸਮਾਗਮ, the same word as the restaurant event.
+- **Neighbourhood bonus** (`pass.nearby.perk`, `counter.type.network_bonus`): मोहल्ले का बोनस, محلے کا بونس, ਮੁਹੱਲੇ ਦਾ ਬੋਨਸ, the word the customer already sees in `sh.tx.network_bonus`.
+- **Buttons that now say the action** instead of Yes (`rc.tm.cancelYes`, `bk.manage.confirmCancel`, `cl.ui.m.cancelGo`, `rs.res.cancelYes`).
+- The SMS-length keys (`ob.nudge.*`) still need to stay near one segment in each language.
+
+**auto.* vehicles** (1)
+
+| Key | English now |
+| --- | --- |
+| `auto.my.status.ok` | Up to date |
+
+**bk.* booking** (1)
+
+| Key | English now |
+| --- | --- |
+| `bk.manage.confirmCancel` | Cancel appointment |
+
+**cl.* classes** (2)
+
+| Key | English now |
+| --- | --- |
+| `cl.ui.ok` | Done |
+| `cl.ui.m.cancelGo` | Cancel membership |
+
+**counter.* staff counter** (26)
+
+| Key | English now |
+| --- | --- |
+| `counter.came.new` | New customer |
+| `counter.came.today` | Visited today |
+| `counter.came.yesterday` | Visited yesterday |
+| `counter.came.days` | Visited {n} days ago |
+| `counter.came.weeks` | Visited {n} weeks ago |
+| `counter.came.months` | Visited {n} months ago |
+| `counter.new.title` | New customer |
+| `counter.err.notCounted` | The amount that doesn't earn can't be more than the total. |
+| `counter.pharm.off` | Points are off until the pharmacist-owner confirms the pharmacy rules and enters the Ontario College of Pharmacists accreditation number. |
+| `counter.queue.sendingN` | Sending · {n} left |
+| `counter.type.earn` | Earned |
+| `counter.type.redeem` | Redeemed |
+| `counter.type.adjust` | Adjusted |
+| `counter.type.network_bonus` | Neighbourhood bonus |
+| `counter.type.reversal` | Reversed |
+| `counter.type.expire` | Expired |
+| `counter.type.import` | Imported |
+| `counter.pick.matching` | Matching customers |
+| `counter.pick.one` | One customer ends in {digits} |
+| `counter.pick.many` | {count} customers end in {digits} |
+| `counter.pick.notHere` | Not here? Add them as a new customer with their number |
+| `counter.nomatch.body` | Check the digits, or add them as a new customer with their number. |
+| `counter.addNew` | Add as a new customer |
+| `counter.err.noMember` | No customer found. Check the code or number. |
+| `counter.new.titlePhone` | New customer: {phone} |
+| `counter.firstStamp` | New customer · first stamp |
+
+**ms.* mobile screens** (6)
+
+| Key | English now |
+| --- | --- |
+| `ms.camp.gone` | This event isn't running any more. |
+| `ms.camp.ended` | This event has ended. You visited {n, plural, one {# shop} other {# shops}}. |
+| `ms.hist.txn` | Reference {id} |
+| `ms.hist.reversed` | This purchase was reversed. |
+| `ms.shop.offNetwork` | This shop isn't taking part right now. |
+| `ms.map.noMatch` | Nothing matches these filters. |
+
+**ob.* shop onboarding** (26)
+
+| Key | English now |
+| --- | --- |
+| `ob.step.first_members` | First {target} customers |
+| `ob.step.members` | {have} of {target} customers have visited |
+| `ob.ms.members` | {n} customers |
+| `ob.card.membersLine` | {members} of {target} customers {members, plural, one {has visited} other {have visited}} |
+| `ob.card.pace` | {lead} customers by day {day} keeps you on track for {target} |
+| `ob.card.targetLine` | Goal: {target} customers who have visited |
+| `ob.pace.activated` | Goal reached |
+| `ob.pace.ahead` | Ahead of schedule |
+| `ob.pace.on_track` | On track |
+| `ob.pace.behind` | Behind schedule |
+| `ob.card.reached` | (done) |
+| `ob.move.active.title` | Your regulars are on the card |
+| `ob.move.active.body` | Connect your POS and stamps are added automatically at the till. |
+| `ob.move.best.title` | Try this next |
+| `ob.move.first.cta` | Add your first stamp |
+| `ob.card.doIt` | Start |
+| `ob.card.sources` | Where customers came from |
+| `ob.nudge.d3.body` | {shop}: {n, plural, one {# customer} other {# customers}} so far. Try saying this at the till today: "{till}" {url} |
+| `ob.nudge.d7.subject` | A week in: {n} customers |
+| `ob.nudge.d7.body` | {shop} has {n} customers after a week. Shops that reach {lead} by day {day} almost always reach {target}. {left} to go. {url} |
+| `ob.nudge.d14.subject` | Two weeks in: {n} customers |
+| `ob.nudge.d14.body` | {shop} has {n} customers at day 14, a little behind. We will call you this week to help you get the next few. {url} |
+| `ob.nudge.d25.body` | {shop} needs {left} more customers to reach its first goal. {days} days left in your first {window} days. {url} |
+| `ob.card.activeMembers` | Customers who have visited |
+| `ob.move.best.tail` | {counter} of your {members} customers joined at the counter, {qr} from the QR stand. |
+| `ob.move.staff.body` | Every person at the till can stamp from their own phone, and customers join faster when staff ask. |
+
+**orderPay.*** (1)
+
+| Key | English now |
+| --- | --- |
+| `orderPay.status.pending` | Order sent |
+
+**pass.*** (2)
+
+| Key | English now |
+| --- | --- |
+| `pass.nearby.deal` | Offer |
+| `pass.nearby.perk` | Street bonus |
+
+**rc.* restaurant customer** (1)
+
+| Key | English now |
+| --- | --- |
+| `rc.tm.cancelYes` | Cancel subscription |
+
+**rest.* restaurant app** (1)
+
+| Key | English now |
+| --- | --- |
+| `rest.sub.past_due` | Payment failed |
+
+**rs.* restaurant web** (5)
+
+| Key | English now |
+| --- | --- |
+| `rs.menu.dishes` | {n, plural, one {# item} other {# items}} |
+| `rs.order.emptyBody` | Add something from the menu and it will show up here. |
+| `rs.order.addMore` | Add more items |
+| `rs.order.dropped` | An item in your order is no longer on the menu, so we took it out. |
+| `rs.res.cancelYes` | Cancel reservation |
+
+**sh.* shopper app** (4)
+
+| Key | English now |
+| --- | --- |
+| `sh.rewards.emptyTitle` | No rewards ready yet |
+| `sh.rewards.emptyBody` | Keep collecting at your shops. We'll tell you the moment a reward is ready. |
+| `sh.rewards.seeShops` | See your shops |
+| `sh.set.inboxEmpty` | No updates yet. They show up here when you earn, a reward is ready or an order changes. |
+
+**shell.* owner shell and Today** (10)
+
+| Key | English now |
+| --- | --- |
+| `shell.tone.muted` | Good to know |
+| `shell.today.commission` | Delivery-app fees you avoided |
+| `shell.today.estimate` | Our estimate |
+| `shell.today.noTypical` | Not enough days to compare yet |
+| `shell.today.slippingSub` | Haven't been in as often as usual |
+| `shell.today.newMembers` | New customers |
+| `shell.console.areas` | Neighbourhoods and bonuses |
+| `shell.console.activation` | New shops' progress |
+| `shell.nav.catalog` | Menu and prices |
+| `shell.today.rewardsWaiting` | {n, plural, one {# customer has a reward waiting} other {# customers have a reward waiting}} |
+
+**shop.*** (1)
+
+| Key | English now |
+| --- | --- |
+| `shop.promos` | Offers |
+
+**tcb.* tiffin and catering payments** (1)
+
+| Key | English now |
+| --- | --- |
+| `tcb.pay.pad` | Bank debit |
+
+**ui.* shared widgets** (2)
+
+| Key | English now |
+| --- | --- |
+| `ui.perkDone` | Bonus earned |
+| `ui.awardsStuck` | {n, plural, one {# award hasn't} other {# awards haven't}} sent in 24 hours. Check your connection. |
+
+**wp.* web pass pages** (4)
+
+| Key | English now |
+| --- | --- |
+| `wp.wallet.off` | Wallet passes aren't available right now. The card on this page works at the counter. |
+| `wp.t.campaign` | Neighbourhood event |
+| `wp.err.campaign` | Can't load this event right now |
+| `wp.map.nothing` | Nothing matches these filters. |
 
 ### Pet care (`pet.*`, 81 keys, added by the pet team, not reviewed by a native speaker)
 

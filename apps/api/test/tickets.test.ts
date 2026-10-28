@@ -19,7 +19,7 @@ describe("ticket staff permissions (Pro: staff.permissions)", () => {
     const quote = { lineItems: [{ description: "Brake pads", quantity: 1, unitPriceCents: 12000, kind: "part" }] };
     const denied = await call(env, intakeOnly.token, "POST", `${base}/tickets/${t.body.ticket.id}/quotes`, quote);
     expect(denied.status).toBe(403);
-    expect(denied.body.error.message).toContain("quotes.send");
+    expect(denied.body.error.message).toContain("permission");
 
     await setStage(env, ["staff.permissions"], "hidden");
     expect((await call(env, intakeOnly.token, "POST", `${base}/tickets/${t.body.ticket.id}/quotes`, quote)).status).toBe(201);

@@ -45,7 +45,7 @@ test("rewards: the dispensary categories are locked, with the reason", async ({ 
   await expect(page.getByTestId("pharmacy-also-blocked")).toContainText("Points for a visit or a stamp");
   // No visit or stamp mode, and no referral field, for a pharmacy.
   await expect(page.getByRole("radio", { name: /One per visit/ })).toHaveCount(0);
-  await expect(page.getByLabel("Referral (each)")).toHaveCount(0);
+  await expect(page.getByLabel("Referral reward")).toHaveCount(0);
   await page.getByRole("button", { name: "Why?" }).first().click();
   await expect(page.getByText("inducement under Ontario's pharmacy conflict-of-interest rules")).toBeVisible();
   await page.getByTestId("pharmacy-also-blocked").scrollIntoViewIfNeeded();

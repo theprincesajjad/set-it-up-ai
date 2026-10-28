@@ -164,14 +164,14 @@ describe("activation card in the owner's language", () => {
     const c = await checklist(hi.id);
     expect(c.activation.paceLabel).toContain("दिन");
     expect(c.steps.map((s: { label: string }) => s.label)).toContain("अपना पहला स्टैम्प दें");
-    expect(c.activation.nextMove.cta).toBe("ख़ुद को स्टैम्प दें");
+    expect(c.activation.nextMove.cta).toBe("पहला स्टैम्प लगाएँ");
     expect(c.activation.milestones[0].label).toBe("साइन अप किया");
     const en = await signup("cafe", "Sunrise Bakery");
     const e = await checklist(en.id);
-    expect(e.activation.nextMove.cta).toBe("Stamp yourself");
+    expect(e.activation.nextMove.cta).toBe("Add your first stamp");
     expect(e.activation.milestones[1]).toMatchObject({ label: "First stamp", detail: "Not yet" });
     const pa = await signup("cafe", "Pind Cafe", "pa-IN");
-    expect((await checklist(pa.id)).activation.milestones[3].label).toBe("25 ਮੈਂਬਰ");
+    expect((await checklist(pa.id)).activation.milestones[3].label).toBe("25 ਗਾਹਕ");
   });
 });
 
@@ -188,7 +188,7 @@ describe("setup nudges", () => {
     expect((await runOnboardingNudges(env.ctx)).sent).toBe(0);
     env.clock.now = new Date(env.clock.now.getTime() + 2 * DAY);
     expect((await runOnboardingNudges(env.ctx)).sent).toBe(1);
-    expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain("0 members so far");
+    expect(env.ctx.providers.outbox.sms.at(-1)!.body).toContain("0 customers so far");
   });
 
   it("writes the reminder in the owner's language (users.locale) and keeps the STOP keyword", async () => {

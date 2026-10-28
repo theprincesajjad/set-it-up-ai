@@ -37,7 +37,7 @@ function Pets() {
   const state = useApi(() => api.pets.list({ q: q.trim() || undefined }), [api, q]);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Pets" description="Your customers' pets: breed, coat, shots and groom cadence. Vaccine proof is a date and a photo of the certificate, nothing else." actions={<Button size="sm" iconStart={Plus} onClick={() => setAdd(true)}>Add a pet</Button>} />
+      <PageHeader flush title="Pets" description="Your customers' pets: breed, coat, shots and groom schedule. Vaccine proof is a date and a photo of the certificate, nothing else." actions={<Button size="sm" iconStart={Plus} onClick={() => setAdd(true)}>Add a pet</Button>} />
       <div className="max-w-sm">
         <TextField label="Search pets" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pet, owner or breed" autoComplete="off" />
       </div>

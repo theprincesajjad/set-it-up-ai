@@ -74,7 +74,7 @@ test("public shop page with rewards, promos and about tabs", async ({ page }) =>
   await expect(page.getByRole("tab", { name: /Rewards/ })).toBeVisible();
   await expect(page.getByText("How you earn here")).toBeVisible();
   await page.screenshot({ path: shot("08-shop-page"), fullPage: true });
-  await page.getByRole("tab", { name: /Promos/ }).click();
+  await page.getByRole("tab", { name: /Offers/ }).click();
   await page.getByRole("tab", { name: /About/ }).click();
   await expect(page.getByRole("table", { name: "Opening hours" })).toBeVisible();
   // One black action at a time: the sticky Join bar shows unless the join form itself is on screen.

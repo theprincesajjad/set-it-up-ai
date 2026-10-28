@@ -93,7 +93,7 @@ describe("restaurant", () => {
   });
   it("shows four real numbers with the order split", () => {
     const n = restaurantNumbers(home, f);
-    expect(n.map((x) => x.label)).toEqual(["Open orders", "Average wait", "Sales today", "Commission avoided"]);
+    expect(n.map((x) => x.label)).toEqual(["Open orders", "Average wait", "Sales today", "Delivery-app fees you avoided"]);
     expect(n[0]!.caption).toBe("4 new, 2 cooking, 1 ready");
     expect(n[2]!.delta).toEqual({ good: true, text: "+4% vs last Wednesday" });
   });

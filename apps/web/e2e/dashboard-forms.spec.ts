@@ -212,7 +212,7 @@ test.describe("catalog", () => {
     const { id } = await owner("hearth-and-crumb");
     await signIn(page, "hearth-and-crumb");
     await page.goto(`/m/${id}/catalog`);
-    await expect(page.getByRole("heading", { name: "Menu & catalog", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Menu and prices", level: 1 })).toBeVisible();
     await page.getByRole("button", { name: "Add item" }).first().click();
     const dialog = page.getByRole("dialog", { name: "Add item" });
     await dialog.getByRole("button", { name: "Save item" }).click();

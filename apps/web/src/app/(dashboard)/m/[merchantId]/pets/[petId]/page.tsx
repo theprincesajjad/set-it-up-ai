@@ -91,9 +91,9 @@ function Pet() {
               <p className="text-headline text-fg">{shop.nextDueOn ? shortDate(shop.nextDueOn) : "After a groom"}</p>
             </div>
             <Select
-              label="Cadence"
+              label="Groom every"
               value={String(shop.groomEveryWeeks ?? "")}
-              onChange={(e) => void save({ groomEveryWeeks: e.target.value ? Number(e.target.value) : null }, "Cadence saved")}
+              onChange={(e) => void save({ groomEveryWeeks: e.target.value ? Number(e.target.value) : null }, "Groom schedule saved")}
               options={[{ value: "", label: `Default (${shop.defaultWeeks} weeks)` }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: weeksLabel(i + 1) })), { value: "16", label: "16 weeks" }, { value: "26", label: "26 weeks" }]}
             />
           </div>

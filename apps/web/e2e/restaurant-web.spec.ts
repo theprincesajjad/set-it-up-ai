@@ -158,7 +158,7 @@ test("a degh pre-order: size, spice, add-ons, a day, a window, a deposit, then t
 
   // Free cancellation before the cutoff puts the deposit back.
   await page.getByRole("button", { name: "Cancel this reservation" }).click();
-  await page.getByRole("button", { name: "Yes, cancel" }).click();
+  await page.getByRole("button", { name: "Cancel reservation" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Cancelled" })).toBeVisible();
   await expect(page.getByText("Your deposit has been refunded.")).toBeVisible();
 });

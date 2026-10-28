@@ -37,9 +37,9 @@ describe("ActivationCard", () => {
     userLocale = "en";
     render(<ActivationCard c={checklist()} base="/m/1" />);
     expect(screen.getByRole("region", { name: "Your first 30 days" })).toBeTruthy();
-    expect(screen.getByText("14 of 25 members have visited")).toBeTruthy();
-    expect(screen.getByText("Where members came from")).toBeTruthy();
-    expect(screen.getByText("12 by day 7 is the pace that gets you to 25")).toBeTruthy();
+    expect(screen.getByText("14 of 25 customers have visited")).toBeTruthy();
+    expect(screen.getByText("Where customers came from")).toBeTruthy();
+    expect(screen.getByText("12 customers by day 7 keeps you on track for 25")).toBeTruthy();
     expect(screen.getByText("Setup left")).toBeTruthy();
   });
 
@@ -47,8 +47,8 @@ describe("ActivationCard", () => {
     userLocale = "hi-IN";
     render(<ActivationCard c={checklist()} base="/m/1" />);
     expect(screen.getByRole("region", { name: "आपके पहले 30 दिन" })).toBeTruthy();
-    expect(screen.getByText("सदस्य कहाँ से आए")).toBeTruthy();
-    expect(screen.queryByText("Where members came from")).toBeNull();
+    expect(screen.getByText("ग्राहक कहाँ से आए")).toBeTruthy();
+    expect(screen.queryByText("Where customers came from")).toBeNull();
   });
 
   it("is right to left for Urdu", () => {

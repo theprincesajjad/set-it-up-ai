@@ -95,8 +95,8 @@ function PromosPage() {
                 <Th>When</Th>
                 {showResults ? (
                   <>
-                    <Th>Visits in window</Th>
-                    <Th>Typical</Th>
+                    <Th>Visits during promo</Th>
+                    <Th>Usual visits</Th>
                     <Th>Extra visits</Th>
                     <Th>Free items given</Th>
                   </>

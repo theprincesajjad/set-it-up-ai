@@ -7,8 +7,8 @@ describe("onboarding helpers", () => {
     expect(leadingMarkPct({ leadingMembers: 12, target: 0 })).toBe(0);
   });
   it("words the member count", () => {
-    expect(membersLine(14, 25)).toBe("14 of 25 members have visited");
-    expect(membersLine(1, 25)).toBe("1 of 25 members has visited");
+    expect(membersLine(14, 25)).toBe("14 of 25 customers have visited");
+    expect(membersLine(1, 25)).toBe("1 of 25 customers has visited");
   });
   it("colours pace: behind is the only accent", () => {
     expect(paceTone("ahead")).toBe("positive");

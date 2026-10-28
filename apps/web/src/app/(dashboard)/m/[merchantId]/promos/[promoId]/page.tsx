@@ -54,7 +54,7 @@ function PromoPage() {
                   <StatTile label="Views" value={formatNumber(p.viewCount)} />
                   <StatTile label="Redemptions" value={formatNumber(p.claimCount)} />
                   <StatTile label="Visits during promo" value={r ? formatNumber(r.attributedVisits) : null} loading={results.loading} />
-                  <StatTile label="Lift vs before" value={r?.liftPct != null ? `${r.liftPct > 0 ? "+" : ""}${Math.round(r.liftPct)}%` : "–"} caption={r?.liftPct == null ? "Needs 14 days of history" : "Avg daily visits vs the 14 days before"} loading={results.loading} />
+                  <StatTile label="Change in visits" value={r?.liftPct != null ? `${r.liftPct > 0 ? "+" : ""}${Math.round(r.liftPct)}%` : "–"} caption={r?.liftPct == null ? "Needs 14 days of history first" : "Average daily visits compared with the 14 days before"} loading={results.loading} />
                 </StatGrid>
               ) : null}
               <PromoEditor key={p.id + p.status} initial={draftFromPromo(p)} promo={p} />

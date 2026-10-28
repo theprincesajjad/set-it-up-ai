@@ -33,7 +33,7 @@ export default function SettingsPage() {
     { id: "tax", label: "Tax" },
     { id: "counter", label: "Counter & receipts" },
     { id: "privacy", label: "Privacy" },
-    ...(role === "owner" ? [{ id: "danger" as const, label: "Danger zone" }] : []),
+    ...(role === "owner" ? [{ id: "danger" as const, label: "Pause or close" }] : []),
   ];
   return (
     <div className="flex max-w-[860px] flex-col gap-6 pb-20">

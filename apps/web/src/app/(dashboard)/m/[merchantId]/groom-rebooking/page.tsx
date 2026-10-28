@@ -36,7 +36,7 @@ function Rebooking() {
       <PageHeader
         flush
         title="Due to come back"
-        description="Each pet is on its own cadence. One text per cycle, only to owners who said yes, never overnight."
+        description="Each pet has its own groom schedule. One text each time a groom is due, only to owners who said yes, never overnight."
         actions={<Button size="sm" disabled={!sendable} loading={act.busy} onClick={() => void send({}, (r) => `${r.sent} ${r.sent === 1 ? "text" : "texts"} sent`)}>{`Text all due (${sendable})`}</Button>}
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
@@ -46,7 +46,7 @@ function Rebooking() {
         items={[
           { label: "Due this week", value: d ? d.counts.due - d.counts.late : 0, caption: "within 7 days" },
           { label: "Late", value: d?.counts.late ?? 0, caption: "past their date", dot: d && d.counts.late ? "accent" : undefined },
-          { label: "Pets on a cadence", value: d?.counts.onCadence ?? 0, caption: "groomed here at least once" },
+          { label: "Pets with a groom schedule", value: d?.counts.onCadence ?? 0, caption: "groomed here at least once" },
         ]}
       />
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>
@@ -60,7 +60,7 @@ function Rebooking() {
                   <tr>
                     <Th>Pet and owner</Th>
                     <Th>Breed and coat</Th>
-                    <Th>Cadence</Th>
+                    <Th>Groom every</Th>
                     <Th>Last groom</Th>
                     <Th>Due</Th>
                     <Th align="end">Reminder</Th>
@@ -125,7 +125,7 @@ function AutoToggle() {
           await settings.reload();
         }}
       />
-      <span>Text owners automatically when a groom is due (10:00, once per cycle, only owners who said yes)</span>
+      <span>Text owners automatically when a groom is due (10:00, once for each groom due, only owners who said yes)</span>
     </label>
   );
 }

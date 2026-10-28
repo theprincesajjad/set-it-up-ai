@@ -138,7 +138,7 @@ test.describe("founder's console (desktop)", () => {
   test("areas: the launch calendar shows the street day and who walks it", async ({ page }) => {
     await signIn(page, ADMIN);
     await page.goto("/admin/neighbourhoods");
-    await expect(page.getByRole("heading", { level: 1, name: "Areas & perks" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Neighbourhoods and bonuses" })).toBeVisible();
     await expect(page.getByText(/Street day .* Riley Onboarding Rep/).first()).toBeVisible();
     await page.getByRole("button", { name: "Edit The Danforth" }).click();
     await expect(page.getByLabel("Who walks it")).toBeVisible();
@@ -203,7 +203,7 @@ test.describe("founder's console (desktop)", () => {
     await page.goto("/admin");
     const split = page.getByTestId("mrr-split");
     await expect(split).toBeVisible();
-    for (const label of ["Plus and Pro", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
+    for (const label of ["Café & Retail and Service", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
     await shot(page, "admin-today-mrr-split");
     const o = await api<{ money: { mrrCents: number; mrrSplit: Record<string, number> } }>("/v1/admin/overview", await token(ADMIN));
     expect(Object.values(o.money.mrrSplit).reduce((a, b) => a + b, 0)).toBe(o.money.mrrCents);

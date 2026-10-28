@@ -26,7 +26,7 @@ export function StageDialog({ feature, to, onClose, onConfirm }: { feature: admi
     <Modal
       open={open}
       onClose={close}
-      title={open ? `Turn ${feature.name} to ${STAGE_LABEL[to]}?` : "Change stage"}
+      title={open ? `Switch ${feature.name} to ${STAGE_LABEL[to]}?` : "Change stage"}
       description={open ? stageEffect(feature, to) : undefined}
       actions={
         <>

@@ -90,11 +90,11 @@ describe("nudges", () => {
   it("English is word for word what owners got before the texts were translated", () => {
     const a = { shopName: "Sunrise Bakery", members: 6, daysLeft: 5, target: 25, tillLine: "Want a stamp on that today?", url: "https://example.ca/m/1/setup" };
     expect(nudgeText("nudge_d1", a)).toEqual({ subject: "Give your first stamp at Sunrise Bakery", body: "Sunrise Bakery is set up but nobody has been stamped yet. It takes three minutes: scan your own QR, then add a stamp. https://example.ca/m/1/setup" });
-    expect(nudgeText("nudge_d3", a)).toEqual({ subject: "6 on the card so far", body: 'Sunrise Bakery: 6 members so far. Try saying this at the till today: "Want a stamp on that today?" https://example.ca/m/1/setup' });
-    expect(nudgeText("nudge_d3", { ...a, members: 1 }).body).toContain("1 member so far");
-    expect(nudgeText("nudge_d7", a)).toEqual({ subject: "A week in: 6 members", body: "Sunrise Bakery has 6 members after a week. Shops that reach 12 by day 14 almost always reach 25. 19 to go. https://example.ca/m/1/setup" });
-    expect(nudgeText("nudge_d14", a)).toEqual({ subject: "Two weeks in: 6 members", body: "Sunrise Bakery has 6 members at day 14, a little behind. We will call you this week to help you get the next few. https://example.ca/m/1/setup" });
-    expect(nudgeText("nudge_d25", a)).toEqual({ subject: "5 days left to reach 25", body: "Sunrise Bakery is 19 members from active. 5 days left in your first 30. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d3", a)).toEqual({ subject: "6 on the card so far", body: 'Sunrise Bakery: 6 customers so far. Try saying this at the till today: "Want a stamp on that today?" https://example.ca/m/1/setup' });
+    expect(nudgeText("nudge_d3", { ...a, members: 1 }).body).toContain("1 customer so far");
+    expect(nudgeText("nudge_d7", a)).toEqual({ subject: "A week in: 6 customers", body: "Sunrise Bakery has 6 customers after a week. Shops that reach 12 by day 14 almost always reach 25. 19 to go. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d14", a)).toEqual({ subject: "Two weeks in: 6 customers", body: "Sunrise Bakery has 6 customers at day 14, a little behind. We will call you this week to help you get the next few. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d25", a)).toEqual({ subject: "5 days left to reach 25", body: "Sunrise Bakery needs 19 more customers to reach its first goal. 5 days left in your first 30 days. https://example.ca/m/1/setup" });
   });
   it("is written in the owner's language, with the shop, the numbers and the link intact", () => {
     const a = { shopName: "Sarson Dhaba", members: 6, daysLeft: 5, target: 25, tillLine: "Want a stamp on that today?", url: "https://example.ca/m/1/setup" };

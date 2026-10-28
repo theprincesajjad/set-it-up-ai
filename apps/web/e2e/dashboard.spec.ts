@@ -73,7 +73,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   // The four standard cards, from the same data the old Home used.
   for (const card of ["Needs you", "Up next", "Quick actions"]) await expect(page.getByRole("heading", { level: 2, name: card })).toBeVisible();
   await expect(page.getByRole("group", { name: "Today's numbers" }).or(page.getByLabel("Today's numbers"))).toBeVisible();
-  await expect(page.getByText(/New members/).first()).toBeVisible();
+  await expect(page.getByText(/New customers/).first()).toBeVisible();
   // Free plan: paid tools are not in the sidebar; Home carries the one quiet upsell line.
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
@@ -99,8 +99,8 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await page.getByRole("button", { name: "I printed it" }).click();
   await expect(page.getByRole("heading", { name: "Staff and counter app" })).toBeVisible();
   await page.goto(`${base}/setup?step=first_members`);
-  await expect(page.getByRole("heading", { name: "Your first 25 members" })).toBeVisible();
-  await expect(page.getByRole("progressbar", { name: "Active members" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your first 25 customers" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Customers who have visited" })).toBeVisible();
   await page.screenshot({ path: shot("03-setup-first-members"), fullPage: true });
 });
 
@@ -112,7 +112,7 @@ test("owner: web counter award, undo and repeat customer", async ({ page }) => {
   for (const d of phone.slice(-4)) await page.getByRole("group", { name: "Keypad" }).getByRole("button", { name: d, exact: true }).click();
   await expect(page.getByRole("heading", { name: /^No one ends in/ })).toBeVisible();
   await page.screenshot({ path: shot("04-counter-new-customer"), fullPage: true });
-  await page.getByRole("button", { name: "Add as a new member" }).click();
+  await page.getByRole("button", { name: "Add as a new customer" }).click();
   await page.getByPlaceholder("(416) 555-0123").fill(phone);
   await page.getByLabel("First name (optional)").fill("Robin");
   await page.getByRole("button", { name: "Add and award" }).click();
@@ -279,21 +279,21 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
   await expect(row).toBeVisible();
   await expect(page.locator('tr[data-feature="loyalty.points"]').getByText("Free forever")).toBeVisible();
   await page.screenshot({ path: shot("22-admin-rollout"), fullPage: true });
-  await row.getByRole("radio", { name: "Beta" }).click();
-  const dialog = page.getByRole("dialog", { name: "Turn Order-ahead to Beta?" });
-  await expect(dialog.getByText(/opted into betas/)).toBeVisible();
+  await row.getByRole("radio", { name: "Early access" }).click();
+  const dialog = page.getByRole("dialog", { name: "Switch Order-ahead to Early access?" });
+  await expect(dialog.getByText(/turned on early access/)).toBeVisible();
   await dialog.getByLabel("Note (optional)").fill("e2e beta");
   await page.screenshot({ path: shot("23-admin-stage-confirm") });
-  await dialog.getByRole("button", { name: "Set to Beta" }).click();
-  await expect(row.getByRole("radio", { name: "Beta" })).toHaveAttribute("aria-checked", "true");
+  await dialog.getByRole("button", { name: "Set to Early access" }).click();
+  await expect(row.getByRole("radio", { name: "Early access" })).toHaveAttribute("aria-checked", "true");
 
   await row.getByRole("button", { name: /Add|on/ }).click();
-  const sheet = page.getByRole("dialog", { name: "Overrides: Order-ahead" });
-  await sheet.getByLabel("Find a merchant").fill("Pinecone");
+  const sheet = page.getByRole("dialog", { name: "Shop exceptions: Order-ahead" });
+  await sheet.getByLabel("Find a shop").fill("Pinecone");
   await sheet.getByRole("button", { name: /Pinecone Coffee Co\./ }).click();
   await sheet.getByLabel("Reason (optional)").fill("Pilot shop");
-  await sheet.getByRole("button", { name: "Save override" }).click();
-  await expect(sheet.getByRole("listitem").filter({ hasText: "Pinecone Coffee Co." }).getByText("Forced on")).toBeVisible();
+  await sheet.getByRole("button", { name: "Save exception" }).click();
+  await expect(sheet.getByRole("listitem").filter({ hasText: "Pinecone Coffee Co." }).getByText("On for this shop")).toBeVisible();
   await page.screenshot({ path: shot("24-admin-override") });
   await sheet.getByRole("button", { name: "Close" }).click();
 

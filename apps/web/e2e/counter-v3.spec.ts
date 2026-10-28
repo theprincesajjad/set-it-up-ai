@@ -58,7 +58,7 @@ test.describe("counter (café)", () => {
         await counterReady(page);
         const started = Date.now();
         for (const d of m.phone.slice(-4)) await page.getByRole("group", { name: "Keypad" }).getByRole("button", { name: d, exact: true }).click();
-        const pick = page.getByRole("list", { name: "Matching members" });
+        const pick = page.getByRole("list", { name: "Matching customers" });
         if (await pick.isVisible().catch(() => false)) await pick.getByRole("button", { name: `Stamp ${name}` }).click();
         await expect(page.getByRole("heading", { name })).toBeVisible({ timeout: 5000 });
         expect(Date.now() - started).toBeLessThan(5000);

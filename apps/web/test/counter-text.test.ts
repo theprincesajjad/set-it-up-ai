@@ -42,7 +42,7 @@ describe("counter text in four languages", () => {
   it("keeps the English sentences the tests and the till staff know", () => {
     const en = text("en");
     expect(awardLabel(program({}), 0, 3, en)).toBe("Add 3 stamps");
-    expect(matchesHeading(2, "1034", en)).toBe("Two members end in 1034");
+    expect(matchesHeading(2, "1034", en)).toBe("Two customers end in 1034");
     expect(visitThisMonth(5, en)).toBe("5th visit this month");
     expect(counterErrorMessage({ code: "cooldown" }, { terminology: "points", firstName: "Emma" }, en)).toBe("Emma already got points for this visit. Wait a few minutes, or adjust it from the customer's page.");
   });

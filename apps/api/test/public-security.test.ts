@@ -100,7 +100,7 @@ describe("error leakage", () => {
     expect(r.json().error).toEqual({ code: "payment_error", message: "We couldn't start the payment. Please try again.", details: { retryable: true } });
     const p = await app.inject({ method: "GET", url: "/plain" });
     expect(p.statusCode).toBe(500);
-    expect(p.json().error).toEqual({ code: "internal", message: "Something went wrong" });
+    expect(p.json().error).toEqual({ code: "internal", message: "Something went wrong on our end. Try again in a moment." });
     await app.close();
   });
 

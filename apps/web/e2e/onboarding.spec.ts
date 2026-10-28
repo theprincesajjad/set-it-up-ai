@@ -81,12 +81,12 @@ test("signup is one screen and lands on the first stamp; the stamp shows up by i
 
   await page.goto(`/m/${id}`);
   await expect(page.getByRole("region", { name: "Your first 30 days" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "1 of 25 members has visited" })).toBeVisible();
-  await expect(page.getByRole("progressbar", { name: "Active members" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "1 of 25 customers has visited" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Customers who have visited" })).toBeVisible();
   await expect(page.getByText("12 by day 14 is the pace that gets you to 25")).toBeVisible();
   await expect(page.getByRole("list", { name: "Milestones" })).toContainText("First stamp");
-  await expect(page.getByText("Where members came from")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Do it" }).first()).toBeVisible();
+  await expect(page.getByText("Where customers came from")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start" }).first()).toBeVisible();
   await expect(page.getByText(/Your regulars are on the card/)).toHaveCount(0);
   await page.screenshot({ path: shot("03-home-activation"), fullPage: true });
 });
@@ -94,7 +94,7 @@ test("signup is one screen and lands on the first stamp; the stamp shows up by i
 test("a South Asian restaurant sees its playbook, and the paid-tier offer only once it is active; Not now hides it", async ({ page }) => {
   const shop = await newShop("restaurant_south_asian", `Sarson Dhaba ${rand()}`);
   await signIn(page, shop, `/m/${shop.id}/setup?step=first_members`);
-  await expect(page.getByRole("heading", { name: "Your first 25 members" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your first 25 customers" })).toBeVisible();
   await expect(page.getByText(/Families on Friday and weekend evenings/)).toBeVisible();
   await page.goto(`/m/${shop.id}`);
   await expect(page.getByRole("region", { name: "Your first 30 days" })).toBeVisible();

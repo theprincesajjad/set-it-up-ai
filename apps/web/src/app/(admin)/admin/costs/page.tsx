@@ -40,7 +40,7 @@ export default function CostsPage() {
             <Panel padded={false} title="By shop" description="Most expensive first. Hosting is a flat estimate per shop.">
               <DataTable caption="Cost per shop" columns={cols} rows={d.shops} rowKey={(r) => r.merchantId} empty="No shops yet." />
             </Panel>
-            <p className="text-meta text-fg-muted">Unit costs are assumptions from the finance model (docs/finance/unit-economics.md): texts {d.assumptions.smsSegmentCents}¢, WhatsApp {d.assumptions.whatsappMessageCents}¢, hosting {formatMoney(d.assumptions.infraPerShopCents)} per shop. Card processing is paid by the shop and is not counted here.</p>
+            <p className="text-meta text-fg-muted">Costs per text, message and shop are our own estimates from the finance model: texts {d.assumptions.smsSegmentCents}¢, WhatsApp {d.assumptions.whatsappMessageCents}¢, hosting {formatMoney(d.assumptions.infraPerShopCents)} per shop. Card processing is paid by the shop and is not counted here.</p>
           </>
         )}
       </ListAsync>
