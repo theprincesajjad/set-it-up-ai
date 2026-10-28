@@ -30,7 +30,7 @@ const colors = [
     "primary-text", "forest", "forest-foreground", "tile-peach", "tile-peach-foreground", "tile-mint",
     "tile-mint-foreground", "tile-butter", "tile-butter-foreground", "tile-lilac", "tile-lilac-foreground",
     "tile-sky", "tile-sky-foreground", "tile-rose", "tile-rose-foreground", "trade", "trade-foreground",
-    "trade-alt", "trade-soft", "trade-deep",
+    "trade-alt", "trade-soft", "trade-deep", "trade-pass-from", "trade-pass-to", "trade-pass-text",
 ] as const;
 
 const textSizes = [

@@ -15,7 +15,7 @@ export type KeypadSize = "counter" | "kiosk" | "compact";
 export function keypadKeyClass(size: KeypadSize = "counter") {
   const h = size === "kiosk" ? "h-22" : size === "compact" ? "h-14 lg:h-18" : "h-18";
   return cn(
-    "flex items-center justify-center rounded-[18px] bg-card font-sans text-h1 font-semibold tabular-nums text-foreground shadow-card",
+    "flex items-center justify-center rounded-2xl bg-card font-sans text-h1 font-semibold tabular-nums text-foreground shadow-card",
     "transition-colors duration-150 ease-out hover:bg-hover active:bg-hover focus-visible:focus-ring disabled:opacity-60",
     h,
   );

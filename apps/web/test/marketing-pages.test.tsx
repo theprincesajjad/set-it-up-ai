@@ -11,7 +11,7 @@ describe("pricing cards", () => {
   it("shows the real price in the normal text colour with a working Start button, no pilot badge", () => {
     const html = renderToStaticMarkup(<PaidCard id="plus" />);
     expect(html).toContain(">$39<");
-    expect(html).toMatch(/text-foreground[^-][^>]*>\$39</);
+    expect(html).toMatch(/text-primary-text[^>]*>\$39</); // the price wears terracotta text, never a subdued grey
     expect(html).not.toContain("text-fg-subtle");
     expect(html).not.toContain("Pilot shops now");
     expect(html).not.toContain("early access");

@@ -794,7 +794,7 @@ export function CounterApp({
         </header>
 
         {frontStoreRule ? (
-          <div className="border-b border-border bg-muted px-4 py-3 lg:px-6" data-testid="front-store-confirm">
+          <div className="border-b border-border bg-tile-butter px-4 py-3 lg:px-6" data-testid="front-store-confirm">
             <Checkbox checked={frontStore} onChange={tickFrontStore} label={PHARMACY_FRONT_STORE_TICK_EN} caption={PHARMACY_FRONT_STORE_CAPTION_EN} />
           </div>
         ) : null}
@@ -997,7 +997,7 @@ export function CounterApp({
                   >
                     <span
                       aria-hidden
-                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-trade-soft text-sm font-semibold uppercase text-trade-deep"
+                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-trade-soft text-sm font-semibold uppercase text-trade-deep"
                     >
                       {initialsOf(m.name)}
                     </span>
@@ -1335,7 +1335,7 @@ export function CounterApp({
             {toast && secondsLeft > 0 ? (
               <div
                 role="status"
-                className="sticky bottom-4 z-raised mt-auto flex min-h-14 items-center justify-between gap-3 rounded-full bg-forest px-5 py-2.5 text-meta-strong text-forest-foreground shadow-float"
+                className="max-lg:order-first lg:sticky lg:bottom-4 z-raised mt-auto flex min-h-14 items-center justify-between gap-3 rounded-full bg-forest px-5 py-2.5 text-meta-strong text-forest-foreground shadow-float"
               >
                 <span className="flex items-center gap-2">
                   <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
@@ -1399,7 +1399,7 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
   const { t } = useCounterText();
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center rounded-[20px] bg-trade-soft font-display font-bold uppercase text-trade-deep", size === "lg" ? "size-16 text-title" : "size-11 text-meta-strong")}>
+      <span aria-hidden className={cn("inline-flex shrink-0 items-center justify-center rounded-tile bg-trade-soft font-display font-bold uppercase text-trade-deep", size === "lg" ? "size-16 text-title" : "size-11 text-meta-strong")}>
         {initialsOf(name)}
       </span>
       <div className="min-w-40 flex-1">
@@ -1459,14 +1459,17 @@ function Stamped({
         detail={res.memberCreated ? t("counter.firstStamp") : visitThisMonth(res.visitsThisMonth, ct)}
       />
       <p className={cn("font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums lining-nums", stamps ? "text-trade-deep" : "text-points-text")}>
-        {stamps ? (
-          <CountUp value={Math.min(n, goal)} from={Math.min(from, goal)} className="tabular-nums" />
-        ) : (
-          <CountUp value={n} from={from} className="tabular-nums" />
-        )}
-        <span className="ms-2 text-title font-bold tracking-normal text-muted-foreground">
-          {stamps ? `/ ${goal}` : pointsText(n, program.terminology, ct).replace(/^[\d,]+ /, "")}
-        </span>
+        {/* The fraction reads "8 / 10" left to right in every language. */}
+        <bdi dir={stamps ? "ltr" : undefined}>
+          {stamps ? (
+            <CountUp value={Math.min(n, goal)} from={Math.min(from, goal)} className="tabular-nums" />
+          ) : (
+            <CountUp value={n} from={from} className="tabular-nums" />
+          )}
+          <span className="ms-2 text-title font-bold tracking-normal text-muted-foreground">
+            {stamps ? `/ ${goal}` : pointsText(n, program.terminology, ct).replace(/^[\d,]+ /, "")}
+          </span>
+        </bdi>
       </p>
       {stamps ? <StampRow goal={goal} filled={n} size="md" popFrom={res.duplicate ? undefined : Math.min(from, goal)} icon={icon} /> : null}
       <p className="text-body-strong text-foreground">

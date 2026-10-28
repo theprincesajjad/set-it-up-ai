@@ -102,7 +102,7 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
       className={cn("relative flex items-center gap-4 overflow-hidden rounded-tile px-5 py-4", state === "on" ? "min-h-48 items-end bg-fg text-bg" : "min-h-24 bg-trade-soft text-trade-deep")}
     >
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
-      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-[14px] border-2 border-current">
+      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-current">
         <ScanLine className="size-6" strokeWidth={1.75} />
       </span>
       <div className="relative min-w-0">

@@ -98,7 +98,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
           <div className="flex flex-wrap gap-2">
             <button type="button" className={chip(staffId === "")} onClick={() => setStaffId("")}>{t("q.anyone")}{waitLabel(data.estimateMin) ? ` · ${waitLabel(data.estimateMin)}` : ""}</button>
             {data.barbers.map((b) => (
-              <button key={b.id} type="button" className={chip(staffId === b.id)} onClick={() => setStaffId(b.id)} aria-label={b.estimateMin === null ? undefined : t("q.barberWait", { name: b.name, min: b.estimateMin })}>
+              <button key={b.id} type="button" className={chip(staffId === b.id)} onClick={() => setStaffId(b.id)}>
                 {b.name.split(" ")[0]}{waitLabel(b.estimateMin) ? ` · ${waitLabel(b.estimateMin)}` : ""}
               </button>
             ))}

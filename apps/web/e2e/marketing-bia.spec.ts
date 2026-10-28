@@ -144,8 +144,10 @@ test.describe("pricing", () => {
     await expect(plus).toBeVisible();
     await expect(pro).toBeVisible();
     const color = (l: typeof plus) => l.evaluate((e) => getComputedStyle(e).color);
-    expect(await color(plus)).toBe(await color(free));
-    expect(await color(pro)).toBe(await color(free));
+    // Main Street Warm: the Free price is forest, the paid prices terracotta. Both paid prices share one colour, and none is a subdued grey.
+    expect(await color(pro)).toBe(await color(plus));
+    expect(await color(plus)).not.toBe(await color(free));
+    expect(await color(plus)).toBe("rgb(178, 58, 35)");
     // Trade tools self-serve: both paid plans can be bought today, so no pilot badge and a working Start button on each.
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
     expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
@@ -353,7 +355,8 @@ test.describe("BIA console", () => {
     await signIn(page, ONE_STREET);
     await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
     await expect(page.getByText(/of 74 members/)).toBeVisible();
-    const visits = Number((await page.getByRole("term").filter({ hasText: /^Visits$/ }).locator("xpath=following-sibling::dd[1]").innerText()).replace(/\D/g, ""));
+    // Main Street Warm: the key numbers are pastel tiles (label paragraph, then the big number), not a description list.
+    const visits = Number((await page.getByRole("group", { name: "Street key numbers" }).locator("p").filter({ hasText: /^Visits$/ }).locator("xpath=following-sibling::div[1]/p[1]").innerText()).replace(/\D/g, ""));
     // The stat is the sum of the shops table (View all shows every row).
     await page.goto("/bia/shops");
     await expect(page.getByRole("heading", { name: /shops on / })).toBeVisible();

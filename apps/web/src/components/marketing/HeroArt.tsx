@@ -39,13 +39,13 @@ export function HeroArt({ caption }: { caption: string }) {
   return (
     <div className="mx-auto w-full max-w-[640px]">
       <div aria-hidden inert data-theme="light" className="mkt-stage relative select-none rounded-[36px] p-4 text-foreground sm:p-6 md:rounded-[44px] md:p-8">
-        <div className="grid grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-12 gap-3 sm:gap-4">
           {TILES.slice(0, 3).map((t, i) => (
-            <Tile key={t.art} {...t} i={i} className="col-span-2" />
+            <Tile key={t.art} {...t} i={i} className="col-span-4" />
           ))}
 
           {/* The pass: trade gradient, awning edge, eight of ten stamps. */}
-          <div style={PASS_VARS} className="[--i:3] mkt-pop relative col-span-6 overflow-hidden sm:col-span-4 rounded-card bg-[linear-gradient(100deg,var(--trade)_0%,var(--trade)_62%,var(--trade-alt)_135%)] p-4 text-trade-foreground shadow-card sm:p-5">
+          <div style={PASS_VARS} className="[--i:3] mkt-pop relative col-span-12 overflow-hidden sm:col-span-7 rounded-card bg-[linear-gradient(100deg,var(--trade)_0%,var(--trade)_62%,var(--trade-alt)_135%)] p-4 text-trade-foreground shadow-card sm:p-5">
             <div className="absolute inset-x-0 top-0 h-2.5 bg-[repeating-linear-gradient(90deg,var(--primary)_0_24px,var(--card)_24px_48px)]" />
             <div className="mt-2 flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-lg bg-card text-[11px] font-bold text-trade-deep">PC</span>
@@ -64,13 +64,13 @@ export function HeroArt({ caption }: { caption: string }) {
             <p className="mt-1 text-[12px] sm:text-[13px]">2 more for a free latte</p>
           </div>
 
-          <div className="[--i:4] mkt-pop col-span-3 flex sm:col-span-2">
+          <div className="[--i:4] mkt-pop col-span-6 flex sm:col-span-5">
             <div className="w-full self-start [&_svg]:!w-10 sm:[&_svg]:!w-12">
               <StatTile tone="butter" label="Guests today" value="126" delta={{ pct: 14, good: true, text: "14% vs usual" }} spark={[3, 5, 4, 7, 6, 9, 8, 11]} />
             </div>
           </div>
 
-          <div className="[--i:8] mkt-pop col-span-3 flex items-center gap-2 self-start rounded-card bg-card px-3 py-3 shadow-float sm:absolute sm:end-[5%] sm:top-[56%] sm:w-[50%] sm:gap-3 sm:px-4">
+          <div className="[--i:8] mkt-pop col-span-6 flex items-center gap-2 self-start rounded-card bg-card px-3 py-3 shadow-float sm:absolute sm:end-[5%] sm:top-[56%] sm:w-[50%] sm:gap-3 sm:px-4">
             <IconTile icon={Gift} tone="lilac" className="max-sm:hidden" />
             <div className="min-w-0">
               <p className="text-[13px] leading-4 font-semibold text-foreground sm:truncate sm:text-[14px]">Maya redeemed a free latte</p>
@@ -78,7 +78,7 @@ export function HeroArt({ caption }: { caption: string }) {
             </div>
           </div>
           {TILES.slice(3).map((t, i) => (
-            <Tile key={t.art} {...t} i={5 + i} className="col-span-2" />
+            <Tile key={t.art} {...t} i={5 + i} className="col-span-4" />
           ))}
         </div>
 
