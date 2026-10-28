@@ -14,3 +14,6 @@ coverage/
 __pycache__/
 apps/api/data/
 .sales-agent-eval/
+
+# Design-team screenshots belong in the scratchpad, not the repo
+/shots/
