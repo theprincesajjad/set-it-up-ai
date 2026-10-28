@@ -48,7 +48,7 @@ export function GroceryBlock({ shopName, slug, flyer, counter, member }: { shopN
                   </p>
                 </div>
                 <div className="shrink-0 text-end">
-                  <p className="text-body-strong tabular-nums text-accent-text">
+                  <p className="text-body-strong tabular-nums text-points-text">
                     {moneyExact(d.priceCents)}
                     {d.priceUnit === "each" ? "" : `/${d.priceUnit}`}
                   </p>

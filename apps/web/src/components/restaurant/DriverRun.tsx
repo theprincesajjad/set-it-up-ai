@@ -172,7 +172,7 @@ export function DriverRun({ token }: { token: string }) {
           {next.addressNotes ? <p className="rounded-card bg-bg-subtle px-3 py-2.5 text-body text-fg">{t("tcb.dr.door", { notes: next.addressNotes })}</p> : null}
           {next.dietaryNotes ? (
             <p className="flex flex-wrap items-center gap-2 text-meta text-fg-muted">
-              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-caption font-medium text-accent-text">{t("tcb.dr.diet")}</span>
+              <span className="rounded-full bg-points/10 px-2 py-0.5 text-caption font-medium text-points-text">{t("tcb.dr.diet")}</span>
               {next.dietaryNotes}
             </p>
           ) : null}

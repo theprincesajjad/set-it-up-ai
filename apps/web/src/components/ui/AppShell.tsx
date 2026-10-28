@@ -106,7 +106,7 @@ function useWide() {
 }
 
 // 32 px rows with a mouse (the spec), 44 px under a finger: on a phone sheet and on a touch tablet in rail mode.
-const ROW = "h-8 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! focus-visible:focus-ring focus-visible:ring-0 data-active:font-semibold";
+const ROW = "h-8 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! focus-visible:focus-ring data-active:font-semibold";
 
 function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
@@ -137,7 +137,7 @@ function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname
               const kActive = isNavActive(pathname, k, all);
               return (
                 <SidebarMenuSubItem key={k.href}>
-                  <SidebarMenuSubButton isActive={kActive} className="h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring focus-visible:ring-0 data-active:font-semibold" render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
+                  <SidebarMenuSubButton isActive={kActive} className="h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring data-active:font-semibold" render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
                     <span>{k.label}</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>

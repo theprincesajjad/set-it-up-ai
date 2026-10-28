@@ -38,7 +38,7 @@ export default function OnboardingFunnelPage() {
                   <li key={s.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-body text-fg sm:grid-cols-[150px_minmax(0,1fr)_110px]">
                     <span>{s.label}</span>
                     <span className="order-last col-span-2 h-5 rounded-md bg-bg-subtle sm:order-none sm:col-span-1">
-                      <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-accent" : "bg-fg"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
+                      <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-points" : "bg-fg"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
                     </span>
                     <span className="tabular text-meta text-fg-muted sm:text-left text-right">
                       {formatNumber(s.count)} · {s.pct}%

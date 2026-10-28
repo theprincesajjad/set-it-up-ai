@@ -14,7 +14,7 @@ export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" |
 const tones: Record<BadgeTone, string> = {
   neutral: "bg-bg-subtle text-fg-muted",
   brand: "bg-fg text-bg",
-  accent: "bg-accent-soft text-accent-text",
+  accent: "bg-points-soft text-points-text",
   success: "bg-bg-subtle text-fg",
   warning: "bg-bg-subtle text-fg",
   danger: "bg-bg-subtle text-fg",
@@ -24,7 +24,7 @@ const tones: Record<BadgeTone, string> = {
 const dots: Record<BadgeTone, string> = {
   neutral: "bg-fg-subtle",
   brand: "bg-bg",
-  accent: "bg-accent",
+  accent: "bg-points",
   success: "bg-positive",
   warning: "bg-fg",
   danger: "bg-negative",
@@ -94,7 +94,7 @@ export function StatusBadge({ domain, status, label }: { domain: StatusDomain; s
 
 /** "● Open now" — the status pattern for inline text: a 6px dot and a word, no capsule. */
 export function StatusDot({ tone = "neutral", children, className }: { tone?: "positive" | "negative" | "neutral" | "accent"; children: ReactNode; className?: string }) {
-  const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent" }[tone];
+  const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points" }[tone];
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
       <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", c)} />

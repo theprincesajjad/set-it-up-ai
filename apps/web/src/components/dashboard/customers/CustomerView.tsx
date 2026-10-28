@@ -84,7 +84,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
     <div>
       <p className="text-meta text-fg-muted">Balance</p>
       <p className="mt-1 flex items-baseline gap-2">
-        <span className="font-display text-[40px] font-extrabold leading-[44px] tracking-[-0.01em] text-accent-text tabular">{formatNumber(c.balance)}</span>
+        <span className="font-display text-[40px] font-extrabold leading-[44px] tracking-[-0.01em] text-points-text tabular">{formatNumber(c.balance)}</span>
         <span className="text-body text-fg-muted">{formatPoints(c.balance, term, false).replace(/^[\d,]+\s*/, "")}</span>
       </p>
       {/* "Reward ready" already shows as the tag above; this line only says how far to go (D5). */}
@@ -109,13 +109,13 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
             {c.rewardAvailable ? "reward ready" : `${Math.max(0, goalN - c.balance)} to ${active[0] ? (/^free /i.test(active[0].name) ? `a ${active[0].name.toLowerCase()}` : active[0].name) : "the next reward"}`}
           </p>
           <div role="progressbar" aria-label="Progress to the next reward" aria-valuemin={0} aria-valuemax={goalN} aria-valuenow={Math.min(c.balance, goalN)} className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-bg-muted">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, Math.round((c.balance / goalN) * 100))}%` }} />
+            <div className="h-full rounded-full bg-points" style={{ width: `${Math.min(100, Math.round((c.balance / goalN) * 100))}%` }} />
           </div>
         </div>
       ) : (
         <div>
           <p className="text-meta text-fg-muted">Balance</p>
-          <p className="mt-1 font-display text-[32px] font-extrabold leading-9 text-accent-text tabular">{formatPoints(c.balance, term)}</p>
+          <p className="mt-1 font-display text-[32px] font-extrabold leading-9 text-points-text tabular">{formatPoints(c.balance, term)}</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">

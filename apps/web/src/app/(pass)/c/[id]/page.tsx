@@ -87,7 +87,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
         <div className="flex flex-col gap-3 rounded-card border border-line p-4">
           <div className="flex items-baseline justify-between">
             <span className="text-meta text-fg-muted">{t("sh.camp.progress")}</span>
-            <span className="display text-title tabular-nums text-accent-text">
+            <span className="display text-title tabular-nums text-points-text">
               {mine.progress.visited} / {mine.progress.goal}
             </span>
           </div>

@@ -40,7 +40,7 @@ const variants: Record<ButtonVariant, string> = {
   tonal: "bg-bg-subtle text-fg hover:bg-bg-muted active:bg-bg-muted",
   ghost: "bg-transparent text-fg hover:bg-bg-subtle active:bg-bg-muted",
   danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 dark:text-bg",
-  accent: "bg-accent-soft text-accent-text hover:bg-accent-soft hover:brightness-[0.97]",
+  accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97]",
   /** On a black band (marketing CTA): white fill, black text. */
   inverse: "bg-bg text-fg hover:bg-bg-subtle",
 };

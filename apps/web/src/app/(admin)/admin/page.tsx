@@ -105,7 +105,7 @@ export default function AdminToday() {
                     <ul className="divide-y divide-line">
                       {risk.map((r) => (
                         <li key={r.merchantId} className="flex items-center gap-3 px-4 py-3">
-                          <span aria-hidden className={`size-2 shrink-0 rounded-full ${r.reason === "payment_failed" ? "bg-negative" : r.reason === "sms_cap" ? "bg-fg-subtle" : "bg-accent"}`} />
+                          <span aria-hidden className={`size-2 shrink-0 rounded-full ${r.reason === "payment_failed" ? "bg-negative" : r.reason === "sms_cap" ? "bg-fg-subtle" : "bg-points"}`} />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-body font-medium text-fg">{r.name}</p>
                             <p className="text-meta text-fg-muted"><span className="text-fg">{REASON[r.reason]}.</span> {r.detail}</p>

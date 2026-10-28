@@ -35,14 +35,14 @@ export function LineStatus({ initial, shop }: { initial: barberApi.QueueStatusRe
     <div className="flex flex-col gap-5">
       <ShopHead shop={{ name: s.shop.name, logoUrl: shop.logoUrl, brandColor: shop.brandColor }} href={`/shops/${s.shop.slug}`} />
       <div className="flex flex-col gap-2 pt-2" aria-live="polite">
-        <Heading plain className={cn(s.state === "called" && "text-accent-text")}>{head}</Heading>
+        <Heading plain className={cn(s.state === "called" && "text-points-text")}>{head}</Heading>
         {sub ? <p className="text-body text-fg-muted">{sub}</p> : null}
       </div>
       {s.state === "waiting" ? (
         <>
           <div className="flex gap-1.5" aria-hidden>
             {Array.from({ length: total }).map((_, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-pill", i < done ? "bg-accent" : "bg-bg-muted")} />
+              <span key={i} className={cn("h-1.5 flex-1 rounded-pill", i < done ? "bg-points" : "bg-bg-muted")} />
             ))}
           </div>
           <ul className="flex flex-col divide-y divide-line border-y border-line text-body">

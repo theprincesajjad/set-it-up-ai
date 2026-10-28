@@ -75,8 +75,8 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
       <ShopHead shop={shop} kicker={t("q.title")} href={`/shops/${shop.slug}`} />
       <Heading plain>{t("q.title")}</Heading>
-      <div className="flex flex-col gap-1 rounded-card bg-accent-soft px-4 py-3.5">
-        <p className="text-title font-semibold text-accent-text">{closed ? t("q.closed") : (estimate ?? "")}</p>
+      <div className="flex flex-col gap-1 rounded-card bg-points-soft px-4 py-3.5">
+        <p className="text-title font-semibold text-points-text">{closed ? t("q.closed") : (estimate ?? "")}</p>
         {!closed ? <p className="text-meta text-fg-muted">{[t("q.waitingNow", { n: data.waiting }), barber ? t("q.withBarber", { name: barber.name.split(" ")[0] ?? "" }) : null, partyDone ? t("q.partyDone", { n: partyCuts, min: partyDone }) : null].filter(Boolean).join(" · ")}</p> : null}
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}

@@ -237,7 +237,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           <PointsRing balance={membership.balance} goal={membership.nextReward?.pointsCost ?? 0} terminology={membership.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
             <p className="text-meta text-fg-muted">{t("wp.shop.youHave")}</p>
-            <p className="display text-title tabular-nums text-accent-text">{unitsText(locale, membership.balance, membership.terminology, false)}</p>
+            <p className="display text-title tabular-nums text-points-text">{unitsText(locale, membership.balance, membership.terminology, false)}</p>
             <p className="text-meta text-fg-muted">{membership.nextReward ? t("ui.stampMore", { n: membership.nextReward.pointsNeeded, reward: rewardInSentenceL(L, membership.nextReward.name) }) : expiryLineL(L, membership)}</p>
           </div>
           <Button variant="secondary" size="sm" href="/me">

@@ -91,7 +91,7 @@ export function ClassPasses() {
             </dl>
             {m.status === "past_due" ? <Banner tone="danger" action={<Button size="sm" onClick={async () => { setBusy(true); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.payNow", { amount: money(m.amountDueCents ?? m.totalCents) })}</Button>}>{t("cl.ui.m.pastDue")}</Banner> : null}
             {m.status === "frozen" && m.frozenUntil ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.frozenUntil", { date: day(m.frozenUntil) })}</p> : null}
-            {m.inCoolingOff && m.coolingOffEndsOn ? <p className="rounded-input bg-accent-soft px-3 py-2 text-meta text-accent-text">{t("cl.ui.m.cooling", { date: day(m.coolingOffEndsOn) })}</p> : null}
+            {m.inCoolingOff && m.coolingOffEndsOn ? <p className="rounded-input bg-points-soft px-3 py-2 text-meta text-points-text">{t("cl.ui.m.cooling", { date: day(m.coolingOffEndsOn) })}</p> : null}
             {m.cancelEffectiveOn ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.ending", { date: day(new Date(new Date(`${m.cancelEffectiveOn}T12:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10)) })}</p> : null}
             {m.renewalNoticeSentAt && m.termEndsOn && !m.declineRenewal && live ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.renewalNotice", { date: day(m.termEndsOn) })}</p> : null}
             {m.status === "pending" ? (
@@ -121,7 +121,7 @@ export function ClassPasses() {
             {p.status === "pending" ? (
               <span className="rounded-full bg-bg-subtle px-2.5 py-0.5 text-caption text-fg">{t("cl.ui.passes.waiting")}</span>
             ) : (
-              <p className="text-body-strong tabular text-accent-text">{t("cl.ui.passes.left", { left: p.creditsLeft, total: p.creditsTotal })}</p>
+              <p className="text-body-strong tabular text-points-text">{t("cl.ui.passes.left", { left: p.creditsLeft, total: p.creditsTotal })}</p>
             )}
           </div>
           <p className="text-meta text-fg-muted"><bdi>{p.merchant.name}</bdi>{p.status === "pending" ? "" : <>. {t("cl.ui.passes.useBy", { date: date(p.expiresAt, { month: "short", day: "numeric" }) })}</>}</p>
@@ -139,7 +139,7 @@ export function ClassPasses() {
           <ul className="divide-y divide-line rounded-card border border-line">
             {data.bookings.map((b) => (
               <li key={b.id} className="flex flex-col gap-0.5 px-4 py-3">
-                <span className="text-meta-strong text-accent-text">{when(b.session.startsAt, b.merchant.timezone)}</span>
+                <span className="text-meta-strong text-points-text">{when(b.session.startsAt, b.merchant.timezone)}</span>
                 <span className="text-body-strong text-fg">{b.session.name}</span>
                 <span className="text-meta text-fg-muted">{b.status === "waitlisted" ? t("cl.ui.onWaitlist", { n: b.waitlistPosition ?? 1 }) : t("cl.ui.freeUntil", { when: when(b.freeCancelUntil, b.merchant.timezone).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</span>
               </li>

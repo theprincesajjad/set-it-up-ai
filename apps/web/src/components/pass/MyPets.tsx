@@ -93,8 +93,8 @@ function PetCard({ pet, next, day, onChanged, onError }: { pet: petApi.PetDto; n
                 </div>
                 <div className="flex items-center gap-3">
                   {v ? (
-                    <span className={cn("inline-flex items-center gap-1.5 text-meta", v.status === "expired" ? "text-negative" : v.status === "expiring" ? "text-accent-text" : "text-fg")}>
-                      <span aria-hidden className={cn("size-1.5 rounded-full", v.status === "expired" ? "bg-negative" : v.status === "expiring" ? "bg-accent" : "bg-positive")} />
+                    <span className={cn("inline-flex items-center gap-1.5 text-meta", v.status === "expired" ? "text-negative" : v.status === "expiring" ? "text-points-text" : "text-fg")}>
+                      <span aria-hidden className={cn("size-1.5 rounded-full", v.status === "expired" ? "bg-negative" : v.status === "expiring" ? "bg-points" : "bg-positive")} />
                       {v.status === "expired" ? t("pet.vax.expired") : v.status === "expiring" ? t("pet.vax.expiring", { n: v.daysLeft }) : t("pet.vax.current")}
                     </span>
                   ) : null}

@@ -123,7 +123,7 @@ function Roster() {
                   <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
                     {waiting.map((r) => (
                       <li key={r.bookingId} className="flex items-center gap-3 px-4 py-3">
-                        <span className="w-5 text-body-strong tabular text-accent-text">{r.waitlistPosition}</span>
+                        <span className="w-5 text-body-strong tabular text-points-text">{r.waitlistPosition}</span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-body-strong">{r.name ?? r.maskedPhone ?? "Member"}</span>
                           <span className="block truncate text-meta text-fg-muted">{r.payLabel}</span>

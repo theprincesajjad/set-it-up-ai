@@ -51,7 +51,7 @@ function Pantry() {
   const dueCols: Column<groceryApi.PantryDueDto>[] = [
     { key: "who", header: "Customer", mobile: "title", cell: (x) => <span className="font-medium">{x.name ?? "Customer"}</span> },
     { key: "item", header: "Item", mobile: "subtitle", cell: (x) => <span>{x.itemName} <span className="text-fg-muted">· {intervalWords(x.intervalDays)}</span></span> },
-    { key: "due", header: "Runs out", mobile: "trailing", cell: (x) => <span className="font-semibold tabular text-accent-text">{dealDates(x.dueOn, x.dueOn)}</span> },
+    { key: "due", header: "Runs out", mobile: "trailing", cell: (x) => <span className="font-semibold tabular text-points-text">{dealDates(x.dueOn, x.dueOn)}</span> },
     { key: "text", header: "Text goes", mobile: "hidden", cell: (x) => (x.readyToText ? <Tag tone="accent">Ready</Tag> : <span className="text-fg-muted">{dealDates(x.remindOn, x.remindOn)}</span>) },
     { key: "act", header: "", align: "end", mobile: "hidden", cell: (x) => (canEdit && x.readyToText ? <Button size="sm" variant="secondary" disabled={act.busy} onClick={() => void send([x.entryId])}>Text now</Button> : null) },
   ];

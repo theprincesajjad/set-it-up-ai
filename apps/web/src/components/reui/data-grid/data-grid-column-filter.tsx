@@ -137,7 +137,7 @@ function DataGridColumnFilter<TData extends object, TValue>({
                     }}
                     className={cn(
                       "rounded-md relative flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm outline-hidden select-none",
-                      "hover:bg-hover hover:text-hover-foreground focus:bg-hover focus:text-hover-foreground"
+                      "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                     )}
                   >
                     <div
@@ -178,7 +178,7 @@ function DataGridColumnFilter<TData extends object, TValue>({
                       column?.setFilterValue(undefined)
                     }
                   }}
-                  className="hover:bg-hover hover:text-hover-foreground focus:bg-hover focus:text-hover-foreground rounded-md relative flex cursor-pointer items-center justify-center px-2 py-1.5 text-sm outline-hidden select-none"
+                  className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-md relative flex cursor-pointer items-center justify-center px-2 py-1.5 text-sm outline-hidden select-none"
                 >
                   {i18n.labels.filterClear}
                 </div>

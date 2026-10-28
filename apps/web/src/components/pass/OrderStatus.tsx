@@ -57,7 +57,7 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
           <span className="tabular-nums">{locale === "en" ? formatMoney(order.totalCents) : money(order.totalCents)}</span>
         </div>
         <p className="pb-3 text-meta text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? t("wp.os.paid") : t("wp.os.pending")) : t("checkout.payAtPickup")}</p>
-        {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-accent-text">{t("wp.os.earned", { amount: unitsText(locale, order.pointsEarned, "points") })}</p> : null}
+        {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-points-text">{t("wp.os.earned", { amount: unitsText(locale, order.pointsEarned, "points") })}</p> : null}
       </section>
     </div>
   );

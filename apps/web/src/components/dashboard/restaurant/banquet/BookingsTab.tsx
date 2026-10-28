@@ -182,7 +182,7 @@ function BookingSheet({ b, onClose, reload }: { b: Booking; onClose: () => void;
                       <div className="min-w-0">
                         <p className="text-body-strong text-fg">{r.label} ({bpsToPct(Math.round((r.amountCents / Math.max(1, b.totalCents)) * 10_000))})</p>
                         <p className="mt-0.5 flex items-center gap-1.5 text-meta text-fg-muted">
-                          <span aria-hidden className={`size-1.5 rounded-full ${r.paidAt ? "bg-positive" : i === 0 && hold ? "bg-accent" : "bg-fg-subtle"}`} />
+                          <span aria-hidden className={`size-1.5 rounded-full ${r.paidAt ? "bg-positive" : i === 0 && hold ? "bg-points" : "bg-fg-subtle"}`} />
                           {r.paidAt ? `Paid ${dayLabel(r.paidAt.slice(0, 10))}` : i === 0 && hold ? "Due before the hold ends" : `Due ${dayLabel(r.dueOn)}`}
                         </p>
                       </div>

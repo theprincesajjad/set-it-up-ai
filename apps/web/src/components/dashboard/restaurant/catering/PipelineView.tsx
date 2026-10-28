@@ -21,7 +21,7 @@ function title(e: restaurantApi.CateringEventDto) {
   return `${EVENT_TYPE_LABEL[e.eventType]}${e.customer?.name ? `, ${e.customer.name}` : ""}`;
 }
 const DAY = 86_400_000;
-const TONE = { accent: "bg-accent text-accent-fg", info: "bg-location", neutral: "bg-fg-subtle" } as const;
+const TONE = { accent: "bg-points text-points-foreground", info: "bg-location", neutral: "bg-fg-subtle" } as const;
 function meta(e: restaurantApi.CateringEventDto) {
   return `#${e.number} · ${dayLabel(e.eventDate)} · ${formatNumber(e.headcount)} guests · ${SERVICE_LABEL[e.service]}`;
 }
@@ -83,7 +83,7 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                                   {(() => {
                                     const n = nextAction(e, now, dayShort);
                                     return n ? (
-                                      <p className={`mt-1 flex items-start gap-1.5 text-meta ${n.tone === "accent" ? "text-accent-text" : n.tone === "info" ? "text-location" : "text-fg-muted"}`}>
+                                      <p className={`mt-1 flex items-start gap-1.5 text-meta ${n.tone === "accent" ? "text-points-text" : n.tone === "info" ? "text-location" : "text-fg-muted"}`}>
                                         <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${TONE[n.tone].split(" ")[0]}`} />
                                         <span>{n.text}</span>
                                       </p>

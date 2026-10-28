@@ -104,7 +104,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
             const href = hrefFor(n);
             const body = (
               <>
-                <span aria-hidden className={cn("mt-2 size-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-accent")} />
+                <span aria-hidden className={cn("mt-2 size-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-points")} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-baseline gap-2">
                     <span className={cn("flex-1 text-body", n.read ? "text-fg" : "font-semibold text-fg")}>{n.title}</span>

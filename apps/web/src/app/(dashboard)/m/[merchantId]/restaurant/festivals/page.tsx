@@ -130,7 +130,7 @@ function Planner({ data, onReload, onYear }: { data: FestivalsUpcoming; onReload
                     <span className="text-caption text-fg-muted">{o.daysUntil <= 0 ? "under way" : o.daysUntil === 1 ? "tomorrow" : `in ${o.daysUntil} days`}</span>
                     <span className="text-[17px] font-semibold leading-6 text-fg tabular">{o.approximate ? "about " : ""}{short(o.startDate)}</span>
                     <span className="text-meta text-fg">{o.name}</span>
-                    <span className={cn("mt-1 inline-flex h-5 items-center rounded-full px-2 text-caption", tag === "Fixed" ? "bg-bg-muted text-fg-muted" : "bg-accent-soft text-accent-text")}>{tag}</span>
+                    <span className={cn("mt-1 inline-flex h-5 items-center rounded-full px-2 text-caption", tag === "Fixed" ? "bg-bg-muted text-fg-muted" : "bg-points-soft text-points-text")}>{tag}</span>
                   </button>
                 </li>
               );

@@ -146,7 +146,7 @@ function Strip({ bookings }: { bookings: restaurantApi.HallBookingDto[] }) {
       label="Banquet numbers"
       cols={3}
       items={[
-        { label: "Holds expiring in 48 h", value: formatNumber(soon.length), caption: first ? <span className="text-accent-text">{first.hallName ?? "Hall"}, {dayLabel(torontoDay(first.startsAt))}</span> : "None about to lapse" },
+        { label: "Holds expiring in 48 h", value: formatNumber(soon.length), caption: first ? <span className="text-points-text">{first.hallName ?? "Hall"}, {dayLabel(torontoDay(first.startsAt))}</span> : "None about to lapse" },
         { label: "Deposits to collect", value: formatMoney(owedCents), caption: owed.length ? <span className="text-location">{owed.length} {owed.length === 1 ? "hold" : "holds"} · e-transfer or card</span> : "Nothing waiting" },
         { label: "Weekend nights taken, rest of month", value: `${nights} of ${weekend * hallCount}`, caption: `${Math.max(0, weekend * hallCount - nights)} still open` },
       ]}
@@ -202,8 +202,8 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
                   </div>
                   <p className="text-meta text-fg-muted">{x.label?.replace(/ · /g, " · ")}{b?.packageName ? ` · ${b.packageName}` : ""}</p>
                   {x.status === "hold" && left !== null ? (
-                    <div className="rounded-card bg-accent/10 px-3 py-2 text-meta">
-                      <p className="font-medium text-accent-text">Hold expires in {left} h</p>
+                    <div className="rounded-card bg-points/10 px-3 py-2 text-meta">
+                      <p className="font-medium text-points-text">Hold expires in {left} h</p>
                       <p className="text-fg-muted">{formatTime(x.holdExpiresAt!)} on {dayLabel(torontoDay(x.holdExpiresAt!))}. The date then opens to other inquiries.</p>
                     </div>
                   ) : null}

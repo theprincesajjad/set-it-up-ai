@@ -143,7 +143,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
             <SwitchControl checked={entry.remind} disabled={remindBusy} ariaLabel={t("gr.restock.remind", { weeks: number(restockEveryWeeks(entry.intervalDays)) })} onChange={(v) => void setRemind(v)} />
           </div>
           {entry.remind ? (
-            <button type="button" onClick={() => void setRemind(false)} disabled={remindBusy} className="self-start text-body text-accent-text focus-visible:focus-ring disabled:opacity-50">
+            <button type="button" onClick={() => void setRemind(false)} disabled={remindBusy} className="self-start text-body text-points-text focus-visible:focus-ring disabled:opacity-50">
               {t("gr.restock.turnOff")}
             </button>
           ) : (

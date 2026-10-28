@@ -109,8 +109,8 @@ function Board() {
           ) : (
             <ul className="divide-y divide-line">
               {b.called.map((e) => (
-                <li key={e.id} className="flex flex-wrap items-center gap-3 bg-accent-soft px-5 py-3.5">
-                  <span aria-hidden className="w-6 text-[20px] font-semibold text-accent-text">&rsaquo;</span>
+                <li key={e.id} className="flex flex-wrap items-center gap-3 bg-points-soft px-5 py-3.5">
+                  <span aria-hidden className="w-6 text-[20px] font-semibold text-points-text">&rsaquo;</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-meta-strong text-fg">{e.name}</p>
                     <p className="text-meta text-fg-muted">{entryMeta(e)}</p>
@@ -121,8 +121,8 @@ function Board() {
                 </li>
               ))}
               {b.waiting.map((e) => (
-                <li key={e.id} className={cn("flex flex-wrap items-center gap-3 px-5 py-3.5", e.position === 1 && "bg-accent-soft")}>
-                  <span className={cn("w-6 text-[20px] font-semibold tabular", e.position === 1 ? "text-accent-text" : "text-fg-muted")}>{e.position}</span>
+                <li key={e.id} className={cn("flex flex-wrap items-center gap-3 px-5 py-3.5", e.position === 1 && "bg-points-soft")}>
+                  <span className={cn("w-6 text-[20px] font-semibold tabular", e.position === 1 ? "text-points-text" : "text-fg-muted")}>{e.position}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-meta-strong text-fg">{e.name}{e.skips ? <span className="font-normal text-fg-muted"> · skipped once</span> : null}</p>
                     <p className="text-meta text-fg-muted">{entryMeta(e)}</p>

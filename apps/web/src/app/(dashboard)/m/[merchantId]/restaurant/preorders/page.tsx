@@ -116,7 +116,7 @@ function Preorders() {
               >
                 <span className={cn("block text-caption", sel ? "text-bg/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
                 <span className="block text-headline tabular">{Number(d.slice(8))}</span>
-                <span className={cn("block text-caption tabular", sel ? "text-bg/80" : hot ? "font-medium text-accent-text" : "text-fg-muted")}>
+                <span className={cn("block text-caption tabular", sel ? "text-bg/80" : hot ? "font-medium text-points-text" : "text-fg-muted")}>
                   {pots}
                   {dayCap != null ? ` of ${dayCap}` : ""}
                   <span className="hidden sm:inline"> {pots === 1 && dayCap == null ? "pot" : "pots"}</span>
@@ -134,7 +134,7 @@ function Preorders() {
         loading={state.loading && !state.data}
         items={[
           { label: `Pots booked, ${dayLabel(day).replace(",", "")}`, value: cap != null ? `${cur?.pots ?? 0} of ${cap}` : cur?.pots ?? 0, caption: note ? note : cap == null ? "No daily cap" : undefined },
-          { label: "Pots left", value: cap != null ? Math.max(0, cap - (cur?.pots ?? 0)) : "Open", caption: cap != null && (cur?.pots ?? 0) >= cap ? "Full" : cap != null && cap - (cur?.pots ?? 0) <= 2 ? <span className="text-accent-text">Almost gone</span> : undefined },
+          { label: "Pots left", value: cap != null ? Math.max(0, cap - (cur?.pots ?? 0)) : "Open", caption: cap != null && (cur?.pots ?? 0) >= cap ? "Full" : cap != null && cap - (cur?.pots ?? 0) <= 2 ? <span className="text-points-text">Almost gone</span> : undefined },
           { label: "Orders", value: orders.length, caption: channelMix(orders) || undefined },
           { label: "Balances due at pickup", value: formatMoney(balance), caption: deposits ? `Deposits held: ${formatMoney(deposits)}${totals ? ` (${Math.round((deposits / totals) * 100)}%)` : ""}` : undefined },
         ]}

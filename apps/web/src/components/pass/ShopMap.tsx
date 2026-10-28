@@ -163,7 +163,7 @@ function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () 
       {s.isMember && s.myBalance != null ? (
         <div className="mt-4 flex items-baseline justify-between border-t border-line pt-3">
           <span className="text-meta text-fg-muted">{t("wp.map.balance")}</span>
-          <span className="display text-title tabular-nums text-accent-text">{unitsText(locale, s.myBalance, s.terminology, false)}</span>
+          <span className="display text-title tabular-nums text-points-text">{unitsText(locale, s.myBalance, s.terminology, false)}</span>
         </div>
       ) : s.hasPromo ? (
         <p className="mt-4 border-t border-line pt-3 text-meta text-fg">{t("wp.map.offerOn")}</p>

@@ -108,7 +108,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
         {view === "shop" ? (
           <div className="flex flex-col gap-3">
             <ShopTile variant="list" shop={shop} subtitle="Open · closes 6 pm" />
-            {model.welcome ? <p className="self-start rounded-full bg-accent-soft px-3 py-1 text-meta-strong text-accent-text">{model.welcome}</p> : null}
+            {model.welcome ? <p className="self-start rounded-full bg-points-soft px-3 py-1 text-meta-strong text-points-text">{model.welcome}</p> : null}
             <div className="border-y border-line py-3">
               <p className="text-headline text-fg">How you earn here</p>
               <p className="mt-1 text-meta text-fg">{model.sentence}</p>
@@ -124,7 +124,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
             </span>
             <div>
               <p className="text-title text-fg">{model.kind === "stamps" ? `Added ${model.lastEarn} stamp${model.lastEarn === 1 ? "" : "s"}` : `Awarded ${formatPoints(model.lastEarn, model.terminology)}`}</p>
-              <p className="mt-3 font-display text-display-number text-accent-text tabular">{formatNumber(balance)}</p>
+              <p className="mt-3 font-display text-display-number text-points-text tabular">{formatNumber(balance)}</p>
               <p className="text-meta text-fg-muted">
                 Sam has {formatPoints(balance, model.terminology)}
                 {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for a ${model.rewardName.toLowerCase()}` : model.rewardName ? (model.balance >= model.goal ? ` · ${model.rewardName} ready` : ` · ${model.goal - model.balance} to ${model.rewardName}`) : ""}

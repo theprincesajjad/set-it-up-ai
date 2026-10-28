@@ -145,7 +145,7 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
           <span className="text-headline tabular-nums text-fg" dir="ltr">{money(total)}</span>
         </div>
       ) : null}
-      {inv.status === "open" && data.pointsPreview > 0 ? <p className="text-meta text-accent-text">{t("sv.i.points", { n: number(data.pointsPreview) })}</p> : null}
+      {inv.status === "open" && data.pointsPreview > 0 ? <p className="text-meta text-points-text">{t("sv.i.points", { n: number(data.pointsPreview) })}</p> : null}
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
       {inv.status === "open" ? (

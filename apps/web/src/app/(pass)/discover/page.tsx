@@ -117,7 +117,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
         </div>
         {h?.progress ? (
           <div className="absolute inset-x-5 bottom-6 flex items-center gap-2.5">
-            <div className="h-1 flex-1 rounded-full bg-white/[.18]"><div className="h-1 rounded-full bg-accent" style={{ width: `${(h.progress.value / h.progress.max) * 100}%` }} /></div>
+            <div className="h-1 flex-1 rounded-full bg-white/[.18]"><div className="h-1 rounded-full bg-points" style={{ width: `${(h.progress.value / h.progress.max) * 100}%` }} /></div>
             <span className="text-[12px] font-semibold tabular-nums text-white">{h.progress.value} / {h.progress.max}</span>
           </div>
         ) : null}
@@ -163,7 +163,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
                 <Link href={`/shops/${s.merchant.slug}`} className="block">
                   <span className="relative flex h-[184px] items-center justify-center rounded-[16px] bg-bg-subtle">
                     <CategoryIcon vertical={s.merchant.vertical} size={76} />
-                    {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-accent-soft px-[9px] text-[12px] font-semibold text-accent-text">{t("sh.wallet.rewardReady")}</span> : null}
+                    {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-points-soft px-[9px] text-[12px] font-semibold text-points-text">{t("sh.wallet.rewardReady")}</span> : null}
                   </span>
                   <span className="display mt-2.5 line-clamp-2 text-[15px] leading-[1.15] font-bold tracking-normal text-fg">{s.merchant.name.toLowerCase()}</span>
                   <span className="mt-0.5 block truncate text-[12px] text-fg-muted">{[placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>

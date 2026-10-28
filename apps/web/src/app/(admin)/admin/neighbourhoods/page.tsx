@@ -54,7 +54,7 @@ export default function NeighbourhoodsPage() {
                   {h.opensOn || h.streetDayOn ? (
                     <p className="text-meta text-fg-muted">
                       {h.opensOn ? `Opens ${formatDate(`${h.opensOn}T12:00:00`, true)}` : null}{h.opensOn && h.streetDayOn ? " · " : null}
-                      {h.streetDayOn ? <>Street day {formatDate(`${h.streetDayOn}T12:00:00`, true)} · {h.streetDayRepName ?? <span className="text-accent-text">no one assigned</span>}</> : null}
+                      {h.streetDayOn ? <>Street day {formatDate(`${h.streetDayOn}T12:00:00`, true)} · {h.streetDayRepName ?? <span className="text-points-text">no one assigned</span>}</> : null}
                     </p>
                   ) : null}
                   <div className="mt-auto flex gap-2">

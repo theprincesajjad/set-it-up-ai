@@ -63,7 +63,7 @@ function Flyer() {
       mobile: "trailing",
       cell: (x) => (
         <span className="block">
-          <span className="font-semibold tabular text-accent-text">{dealPriceLabel(x)}</span>
+          <span className="font-semibold tabular text-points-text">{dealPriceLabel(x)}</span>
           {x.wasPriceCents ? <span className="block whitespace-nowrap text-caption text-fg-muted">was {formatMoney(x.wasPriceCents)}</span> : null}
         </span>
       ),
@@ -187,7 +187,7 @@ function ShopPreview({ deals, whatsappText }: { deals: groceryApi.DealDto[]; wha
             <li key={x.id} className="flex items-start justify-between gap-3 py-3">
               <span className="text-body text-fg">{x.title}</span>
               <span className="text-end">
-                <span className="block font-semibold tabular text-accent-text">{dealPriceLabel(x)}</span>
+                <span className="block font-semibold tabular text-points-text">{dealPriceLabel(x)}</span>
                 <span className="block text-caption text-fg-muted">{x.wasPriceCents ? `was ${formatMoney(x.wasPriceCents)}` : x.memberOnly ? "members" : x.limitPerCustomer ? `limit ${x.limitPerCustomer}` : ""}</span>
               </span>
             </li>

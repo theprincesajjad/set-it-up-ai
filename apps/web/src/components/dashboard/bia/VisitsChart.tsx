@@ -63,7 +63,7 @@ export function VisitsChart({ weekly, hoodId }: { weekly: campaignsApi.Neighbour
           <div role="img" aria-label={`Visits per week, ${weekly.length} weeks, from ${first ? weekLabel(first.weekStart) : ""} to ${last ? weekLabel(last.weekStart) : ""}. Weeks with a campaign are marked in orange.`} className="flex h-40 items-end gap-1.5 md:gap-2" data-testid="visits-chart">
             {weekly.map((w) => (
               <div key={w.weekStart} className="flex h-full flex-1 items-end" title={`${weekLabel(w.weekStart)}: ${formatNumber(w.visits)} visits`}>
-                <span data-campaign-week={w.campaignIds.length ? "true" : "false"} className={cn("block w-full rounded-[3px]", w.campaignIds.length ? "bg-accent" : "bg-fg")} style={{ height: `${Math.max(2, (w.visits / max) * 100)}%` }} />
+                <span data-campaign-week={w.campaignIds.length ? "true" : "false"} className={cn("block w-full rounded-[3px]", w.campaignIds.length ? "bg-points" : "bg-fg")} style={{ height: `${Math.max(2, (w.visits / max) * 100)}%` }} />
               </div>
             ))}
           </div>
@@ -75,7 +75,7 @@ export function VisitsChart({ weekly, hoodId }: { weekly: campaignsApi.Neighbour
             <figcaption className="mt-3 flex flex-col gap-1 text-meta text-fg-muted">
               {named.map((c) => (
                 <span key={c.id} className="flex items-center gap-2">
-                  <span aria-hidden className="size-2 shrink-0 rounded-full bg-accent" />
+                  <span aria-hidden className="size-2 shrink-0 rounded-full bg-points" />
                   {c.name || KIND[c.kind]}, {formatDate(c.startsAt)} to {formatDate(c.endsAt)}
                 </span>
               ))}

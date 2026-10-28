@@ -81,7 +81,7 @@ export default function RepToday() {
                 <ul className="divide-y divide-line">
                   {t.websiteLeads.map((l) => (
                     <li key={l.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-accent" />
+                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-points" />
                       <div className="min-w-0 flex-1">
                         <Link href={`/rep/leads/${l.id}`} className="block truncate text-body font-medium text-fg hover:underline">{l.businessName}</Link>
                         <p className="truncate text-meta text-fg-muted">{[l.vertical?.replace(/_/g, " "), l.language ? { en: "English", hi: "Hindi", ur: "Urdu", pa: "Punjabi" }[l.language] : null, `asked ${formatTime(l.createdAt)}`].filter(Boolean).join(" · ")}</p>

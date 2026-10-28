@@ -21,7 +21,7 @@ export default function ClassSchedulePage() {
   );
 }
 
-const DOT = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent" } as const;
+const DOT = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points" } as const;
 
 function Schedule() {
   const { api, base, role } = useMerchant();
@@ -99,11 +99,11 @@ function Schedule() {
                             </span>
                             <span className="hidden sm:block">{s.womenOnly ? <Tag>Women only</Tag> : null}</span>
                             <span className="flex items-center gap-2 text-meta">
-                              <span aria-hidden className="h-1.5 w-[72px] overflow-hidden rounded-full bg-bg-muted"><span className={cn("block h-full rounded-full", cap.full ? "bg-fg" : "bg-accent")} style={{ width: `${Math.max(fillPct(s.booked, s.capacity), 6)}%` }} /></span>
+                              <span aria-hidden className="h-1.5 w-[72px] overflow-hidden rounded-full bg-bg-muted"><span className={cn("block h-full rounded-full", cap.full ? "bg-fg" : "bg-points")} style={{ width: `${Math.max(fillPct(s.booked, s.capacity), 6)}%` }} /></span>
                               <span className="tabular text-fg">{cap.count}</span>
                               <span className="sr-only">booked</span>
                             </span>
-                            <span className="hidden text-meta text-accent-text sm:block">{cap.waitlist ?? (cap.full ? <span className="text-fg-muted">Full</span> : "")}</span>
+                            <span className="hidden text-meta text-points-text sm:block">{cap.waitlist ?? (cap.full ? <span className="text-fg-muted">Full</span> : "")}</span>
                             <span className="hidden items-center gap-1.5 text-meta text-fg sm:flex"><span aria-hidden className={cn("size-2 rounded-full", DOT[st.tone])} />{st.text}</span>
                           </Link>
                         </li>

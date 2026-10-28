@@ -346,7 +346,7 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
         <div className="flex items-center gap-4 rounded-card border border-line p-4">
           <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
-            <p className="display text-title tabular-nums text-accent-text">{unitsText(locale, m.balance, m.terminology, false)}</p>
+            <p className="display text-title tabular-nums text-points-text">{unitsText(locale, m.balance, m.terminology, false)}</p>
             <p className="text-meta text-fg-muted">{progressLine(m, t, locale)}</p>
           </div>
         </div>

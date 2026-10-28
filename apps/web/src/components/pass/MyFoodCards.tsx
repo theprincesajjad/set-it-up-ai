@@ -54,7 +54,7 @@ export function MyFoodCards() {
               </div>
               <div className="flex flex-wrap gap-2" role="img" aria-label={t("pet.food.progress", { n: filled, total })}>
                 {Array.from({ length: total }, (_, i) => (
-                  <span key={i} className={cn("flex size-9 items-center justify-center rounded-full border text-meta-strong tabular-nums", i < filled ? "border-accent bg-accent text-on-accent" : "border-line text-fg-subtle")}>{i + 1}</span>
+                  <span key={i} className={cn("flex size-9 items-center justify-center rounded-full border text-meta-strong tabular-nums", i < filled ? "border-points bg-points text-points-foreground" : "border-line text-fg-subtle")}>{i + 1}</span>
                 ))}
               </div>
               <p className="text-body text-fg" aria-live="polite">{c.expired ? t("pet.food.expired") : c.canRedeem ? t("pet.food.free") : t("pet.food.toGo", { n: c.toGo })}</p>

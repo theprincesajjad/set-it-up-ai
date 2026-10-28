@@ -148,6 +148,17 @@ const SCRIPT_FONTS = [
   `var(--font-noto-naskh, "Noto Naskh Arabic")`,
 ].join(", ");
 
+/**
+ * v2 and v1 colour names that apps/web still uses as Tailwind classes (bg-bg, text-fg-muted, border-line, bg-brand-hover ...).
+ * The final sweep grepped every other alias (v1 canvas/surface/on-* names, accent-text/soft, the per-vertical colours) and found no
+ * use, so they are no longer emitted. Add a name here only when a call site needs it; the v3 names (bg-background, text-foreground,
+ * border-border, bg-points ...) are always available.
+ */
+const ALIASES_IN_USE = new Set([
+  "bg", "bg-subtle", "bg-muted", "fg", "fg-muted", "fg-subtle", "line", "line-strong", "positive", "positive-text", "negative", "location", "overlay",
+  "brand", "brand-hover", "brand-pressed", "danger-subtle", "on-danger-subtle", "ring-track",
+]);
+
 export function buildThemeCss(): string {
   const out: string[] = [
     HEADER,
@@ -181,28 +192,22 @@ export function buildThemeCss(): string {
     `   *   bg-points, text-points-text, bg-points-soft, bg-success, bg-info, bg-warning, bg-paper ... (the shadcn names).`,
     `   * v2 names (bg-bg, text-fg, border-line, text-accent-text, bg-accent-soft ...) and v1 names (canvas, surface, brand ...)`,
     `   * still resolve, as aliases. Deprecated; removed in the final sweep.`,
-    `   * COMPAT: "accent" is still the v2 orange (bg-accent, text-accent) until the final sweep renames those call sites to`,
-    `   * "points". shadcn's hover surface is exposed as bg-hover / text-hover-foreground; \`pnpm --filter @ll/web shadcn:fix\``,
-    `   * rewrites accent -> hover in components/primitives after every \`shadcn add\`. */`,
+    `   * "accent" is shadcn's hover surface (bg-accent, text-accent-foreground), as in every shadcn component. The v2 orange is "points"`,
+    `   * (bg-points, text-points-text, bg-points-soft, text-points-foreground). bg-hover / text-hover-foreground are the same surface under`,
+    `   * the name the v3 call sites use. */`,
   ];
-  // v3 roles. "accent" is held back (see COMPAT); v3 names win over v1 names that collide (success, warning, info, border).
-  const V3_HELD = new Set(["accent", "accentForeground"]);
+  // v3 roles. v3 names win over the v1 names that collide (success, warning, info, border, accent).
+  const V3_HELD = new Set<string>();
   const v3Names = new Set<string>(["hover"]);
   for (const k of Object.keys(rolesV3.light)) {
     if (V3_HELD.has(k)) continue;
     v3Names.add(kebab(k));
     out.push(`  --color-${kebab(k)}: var(--${kebab(k)});`);
   }
-  out.push(`  --color-hover: var(--accent);`, `  --color-hover-foreground: var(--accent-foreground);`, `  --color-accent-foreground: var(--accent-foreground);`);
-  out.push(``, `  /* v2 and v1 names (aliases) */`);
-  for (const k of Object.keys(colors.light)) if (!v3Names.has(kebab(k))) out.push(`  --color-${kebab(k)}: var(--ll-color-${kebab(k)});`);
-  out.push(``, `  /* Deprecated: vertical colours are neutral in v2 (bg-subtle tile, fg glyph). */`);
-  for (const v of Object.values(verticalVisuals)) {
-    const n = kebab(v.vertical);
-    for (const part of ["accent", "on-accent", "tint", "ink"]) {
-      out.push(`  --color-vertical-${n}-${part}: var(--ll-vertical-${n}-${part});`);
-    }
-  }
+  out.push(`  --color-hover: var(--accent);`, `  --color-hover-foreground: var(--accent-foreground);`);
+  out.push(``, `  /* v2 and v1 names (aliases). Only the names a call site in apps/web still uses are emitted (ALIASES_IN_USE); every other v2 and v1`);
+  out.push(`   * Tailwind name was proven unused by grep in the v3 final sweep and removed. TS roles and the --ll-color-* variables are unchanged. */`);
+  for (const k of Object.keys(colors.light)) if (!v3Names.has(kebab(k)) && ALIASES_IN_USE.has(kebab(k))) out.push(`  --color-${kebab(k)}: var(--ll-color-${kebab(k)});`);
   out.push(``, `  /* Charts */`);
   chartSeriesV3.light.forEach((_, i) => out.push(`  --color-chart-${i + 1}: var(--chart-${i + 1});`));
   chartColors.light.sequential.forEach((_, i) => out.push(`  --color-chart-seq-${i + 1}: var(--ll-chart-seq-${i + 1});`));

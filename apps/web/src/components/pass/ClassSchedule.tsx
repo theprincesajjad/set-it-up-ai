@@ -215,7 +215,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
           return (
             <article key={s.id} className="flex flex-col gap-2 rounded-card border border-line p-4">
               <div className="flex items-center gap-2">
-                <span className="text-meta-strong tabular text-accent-text">{time(s.startsAt, data.shop.timezone)}</span>
+                <span className="text-meta-strong tabular text-points-text">{time(s.startsAt, data.shop.timezone)}</span>
                 {s.womenOnly ? <span className="rounded-full bg-bg-subtle px-2 py-0.5 text-caption text-fg-muted">{t("cl.ui.womenOnly")}</span> : null}
               </div>
               <h3 className="text-headline text-fg">{s.name}</h3>

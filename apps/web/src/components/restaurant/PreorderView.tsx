@@ -274,7 +274,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
                 className={cn("flex h-16 w-[82px] shrink-0 flex-col items-center justify-center rounded-card border text-center transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : off ? "border-line bg-bg text-fg-subtle" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
               >
                 <span className="text-body-strong">{dayLabel(d.date, { weekday: "short", day: "numeric" })}</span>
-                <span className={cn("text-caption", on ? "text-bg/80" : d.full ? "text-fg-subtle" : accentLeft(d.potsLeft) ? "text-accent-text" : "text-fg-muted")}>{sub}</span>
+                <span className={cn("text-caption", on ? "text-bg/80" : d.full ? "text-fg-subtle" : accentLeft(d.potsLeft) ? "text-points-text" : "text-fg-muted")}>{sub}</span>
               </button>
             );
           })}

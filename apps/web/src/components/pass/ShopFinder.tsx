@@ -213,7 +213,7 @@ export function ShopLine({ s }: { s: networkApi.ShopListItemDto }) {
     <span className="inline-flex min-w-0 items-center gap-x-2">
       <span className="truncate">{bits.join(" · ")}</span>
       {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"} className="shrink-0">{s.openNow ? t("ui.hours.open") : t("ui.hours.closed")}</StatusDot> : null}
-      {s.isMember && s.myBalance != null ? <span className="shrink-0 font-semibold text-accent-text">{unitsText(locale, s.myBalance, s.terminology)}</span> : null}
+      {s.isMember && s.myBalance != null ? <span className="shrink-0 font-semibold text-points-text">{unitsText(locale, s.myBalance, s.terminology)}</span> : null}
     </span>
   );
 }

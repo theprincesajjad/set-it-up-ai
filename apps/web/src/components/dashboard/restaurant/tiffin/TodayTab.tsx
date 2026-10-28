@@ -175,7 +175,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
                 <li key={n.key} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-body-strong text-fg">
-                      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${n.tone === "accent" ? "bg-accent" : n.tone === "info" ? "bg-location" : "bg-negative"}`} />
+                      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${n.tone === "accent" ? "bg-points" : n.tone === "info" ? "bg-location" : "bg-negative"}`} />
                       {n.title}
                     </p>
                     <p className="mt-0.5 ps-3.5 text-meta text-fg-muted">{n.meta}</p>

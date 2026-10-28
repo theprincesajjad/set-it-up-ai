@@ -96,7 +96,7 @@ function OrderSplit({ o }: { o: Home["orders"] }) {
   if (!o.open) return <>Nothing open right now</>;
   return (
     <>
-      <span className="text-accent-text">{o.new} new</span>, {o.preparing} cooking, {o.ready} ready
+      <span className="text-points-text">{o.new} new</span>, {o.preparing} cooking, {o.ready} ready
     </>
   );
 }
@@ -215,7 +215,7 @@ function Channels({ rows, loading }: { rows: Home["channels"] | null; loading: b
   );
 }
 
-const TONE_DOT = { accent: "bg-accent", negative: "bg-negative", info: "bg-location" } as const;
+const TONE_DOT = { accent: "bg-points", negative: "bg-negative", info: "bg-location" } as const;
 
 function NeedsYou({ rows, loading }: { rows: Home["needsYou"] | null; loading: boolean }) {
   const { base } = useMerchant();

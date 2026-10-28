@@ -202,7 +202,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
       </div>
       <aside aria-label="Details" className="hidden min-h-0 overflow-y-auto border-s border-line p-5 xl:block">
         <dl className="flex flex-col gap-4 text-meta">
-          {c.status === "handoff" ? <Detail label="Hand-off">{c.handoffReason ?? "A person was requested."}{wait ? <span className="mt-0.5 block text-accent-text">Waiting {wait}</span> : null}</Detail> : null}
+          {c.status === "handoff" ? <Detail label="Hand-off">{c.handoffReason ?? "A person was requested."}{wait ? <span className="mt-0.5 block text-points-text">Waiting {wait}</span> : null}</Detail> : null}
           <Detail label="Contact">{c.channel === "whatsapp" ? (c.contact ?? "") : "Website visitor"}{c.verified ? " · phone verified" : " · not verified"}</Detail>
           <Detail label="Lead">{c.leadId ? `Created (id ${c.leadId.slice(0, 8)}), in the rep console` : "None yet"}</Detail>
           {c.callRequest ? <Detail label="Founder call requested">{c.callRequest.note}{c.callRequest.at ? ` · ${formatDateTime(c.callRequest.at)}` : ""}<span className="mt-0.5 block text-fg-muted">A request, not a booking.</span></Detail> : null}

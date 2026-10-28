@@ -19,7 +19,7 @@ export function Heading({ children, level = 1, className, plain }: { children: R
 /** Big number in the display face (amounts due). */
 export function BigNumber({ children, tone = "fg", className }: { children: ReactNode; tone?: "fg" | "accent" | "muted"; className?: string }) {
   return (
-    <div dir="ltr" className={cn("display text-[44px] leading-none tabular-nums rtl:text-end", tone === "accent" ? "text-accent-text" : tone === "muted" ? "text-fg-muted" : "text-fg", className)}>
+    <div dir="ltr" className={cn("display text-[44px] leading-none tabular-nums rtl:text-end", tone === "accent" ? "text-points-text" : tone === "muted" ? "text-fg-muted" : "text-fg", className)}>
       {children}
     </div>
   );
@@ -100,7 +100,7 @@ export function ChiliDots({ level }: { level: number }) {
 
 export function Pill({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent" | "ink"; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-accent-soft text-accent-text" : tone === "ink" ? "bg-fg text-bg" : "bg-bg-subtle text-fg-muted", className)}>
+    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-points-soft text-points-text" : tone === "ink" ? "bg-fg text-bg" : "bg-bg-subtle text-fg-muted", className)}>
       {children}
     </span>
   );

@@ -176,7 +176,7 @@ function PriceList({ canEdit }: { canEdit: boolean }) {
   const items = (catalog.data?.items ?? []).filter((i) => i.available && (i.weightUnit || i.preorderOnly));
   const cols: Column<commerceApi.CatalogItemDto>[] = [
     { key: "name", header: "Item", mobile: "title", cell: (i) => <span className="font-medium">{i.name}</span> },
-    { key: "price", header: "Price", mobile: "trailing", cell: (i) => <span className="font-semibold tabular text-accent-text">{i.weightUnit && i.unitPriceCents ? perUnitLabel(i.unitPriceCents, i.weightUnit) : formatMoney(i.priceCents)}</span> },
+    { key: "price", header: "Price", mobile: "trailing", cell: (i) => <span className="font-semibold tabular text-points-text">{i.weightUnit && i.unitPriceCents ? perUnitLabel(i.unitPriceCents, i.weightUnit) : formatMoney(i.priceCents)}</span> },
     { key: "est", header: "Estimate", mobile: "subtitle", cell: (i) => <span className="tabular text-fg-muted">{i.weightUnit && i.nominalWeightG ? `${formatMoney(i.priceCents)} per ${i.nominalWeightG >= 1000 ? `${i.nominalWeightG / 1000} kg` : `${i.nominalWeightG} g`}` : "Fixed price"}</span> },
     { key: "dep", header: "Deposit", mobile: "subtitle", cell: (i) => <span className="text-fg-muted">{i.depositBps ? `${(i.depositBps ?? 0) / 100}%` : "None"}</span> },
     { key: "tax", header: "HST", mobile: "hidden", cell: (i) => <span className="text-fg-muted">{i.taxable === false ? "No (zero-rated)" : "Yes"}</span> },

@@ -260,7 +260,7 @@ function DataGridPagination(props: DataGridPaginationProps): JSX.Element {
                         "px-1.5 text-sm",
                         "text-muted-foreground",
                         {
-                          "bg-hover text-hover-foreground":
+                          "bg-accent text-accent-foreground":
                             pageIndex === item.index,
                         }
                       )}

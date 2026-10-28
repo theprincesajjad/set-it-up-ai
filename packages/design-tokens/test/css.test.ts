@@ -35,7 +35,8 @@ describe("generated css", () => {
     expect(css).toContain("@theme inline {");
     expect(css).toContain("--color-bg: var(--ll-color-bg);");
     expect(css).toContain("--color-background: var(--background);");
-    expect(css).toContain("--color-accent-text: var(--ll-color-accent-text);");
+    expect(css).toContain("--color-points-text: var(--points-text);");
+    expect(css).toContain('var(--font-noto-nastaliq, "Noto Nastaliq Urdu")');
     expect(css).toContain("--text-body: 0.9375rem;");
     expect(css).toContain("--text-display-number: 2.5rem;");
     expect(css).toContain('var(--font-bricolage, "Bricolage Grotesque")');
@@ -56,12 +57,16 @@ describe("generated css", () => {
     }
     expect(css).toContain("--radius: 0.625rem;");
   });
-  it("theme.css maps the shadcn names, keeps v2 aliases, and holds accent as the orange until the sweep", () => {
+  it("theme.css maps the shadcn names, points is the orange, accent is the hover surface, and only the v2 aliases still in use remain", () => {
     const css = buildThemeCss();
     for (const n of ["background", "foreground", "card", "popover", "primary", "secondary", "muted", "muted-foreground", "destructive", "border", "input", "ring", "sidebar", "sidebar-accent", "points", "points-text", "points-soft", "success", "info", "warning", "paper", "chart-1", "chart-5", "hover"]) {
       expect(css, n).toContain(`--color-${n}: var(--`);
     }
-    expect(css).toContain("--color-accent: var(--ll-color-accent);");
+    expect(css).toContain("--color-accent: var(--accent);");
+    expect(css).toContain("--color-accent-foreground: var(--accent-foreground);");
+    expect(css).toContain("--color-qr-fg: var(--qr-fg);");
+    // The v2 orange names and the unused v1 block are gone from the Tailwind theme (grep proved no call site uses them).
+    for (const gone of ["--color-accent-text", "--color-accent-soft", "--color-on-accent", "--color-canvas", "--color-surface", "--color-on-brand", "--color-vertical-cafe-accent"]) expect(css, gone).not.toContain(`${gone}:`);
     expect(css).toContain("--color-hover: var(--accent);");
     expect(css).toContain("--color-fg: var(--ll-color-fg);");
     expect(css).toContain("--radius-lg: var(--radius);");

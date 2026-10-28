@@ -111,12 +111,12 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
           <div className={cn("min-w-0 flex-1 text-body-strong text-fg", variant === "compact" && "[&_.truncate]:line-clamp-2 [&_.truncate]:whitespace-normal")}>{name}</div>
           {variant === "wallet" && balance ? (
             <span className="shrink-0 whitespace-nowrap">
-              <span className={cn("text-headline tabular-nums", balance.value === 0 ? "text-fg-muted" : "text-accent-text")}>{formatNumber(balance.value)}</span>
+              <span className={cn("text-headline tabular-nums", balance.value === 0 ? "text-fg-muted" : "text-points-text")}>{formatNumber(balance.value)}</span>
               <span className="text-meta text-fg-muted"> {unitCaption(locale, balance.value, balance.terminology)}</span>
             </span>
           ) : null}
         </div>
-        {second ? <div className={cn("line-clamp-2 text-meta", rewardReady ? "text-accent-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKindLabel(locale, shop.vertical)}</div> : null}
+        {second ? <div className={cn("line-clamp-2 text-meta", rewardReady ? "text-points-text" : "text-fg-muted")}>{second}</div> : variant === "compact" ? <div className="truncate text-meta italic text-fg-muted">{placeKindLabel(locale, shop.vertical)}</div> : null}
       </div>
       {href && variant !== "compact" ? <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" /> : null}
     </>

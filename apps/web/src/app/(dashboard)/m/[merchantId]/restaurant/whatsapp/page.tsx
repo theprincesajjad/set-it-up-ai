@@ -46,7 +46,7 @@ function Whatsapp() {
             {/* One state at a time: an unconnected number shows the Connect banner, not a message count. */}
             {u && s?.connected ? (
               <a href={`${base}/billing`} title={`${formatNumber(u.used)} used · ${formatNumber(u.planAllowance)} in your plan · ${formatNumber(u.extra)} from packs. Tap to buy a pack of 1,000.`} className="inline-flex h-[38px] items-center rounded-full border border-line px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring">
-                <span className={low ? "text-accent-text" : undefined}>{formatNumber(u.remaining)}</span>&nbsp;of {formatNumber(u.allowance)} messages left
+                <span className={low ? "text-points-text" : undefined}>{formatNumber(u.remaining)}</span>&nbsp;of {formatNumber(u.allowance)} messages left
               </a>
             ) : null}
             <Button size="md" onClick={() => setTab("broadcast")}>

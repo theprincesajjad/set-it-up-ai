@@ -80,7 +80,7 @@ export function AppointmentBlock({
       <p className={cn("truncate font-semibold", tiny ? "min-w-0 text-[11px] leading-[12px]" : "text-[12px] leading-4", appt.status === "no_show" && "text-negative", appt.status === "completed" && "font-medium")}>
         {appt.pet ? appt.pet.name : appt.customer.name}
         {appt.pet && !tiny ? <span className="font-normal text-fg-muted"> · {appt.customer.name.split(" ")[0]}</span> : null}
-        {appt.pet?.handlingNote ? <span aria-label="Has a handling note" title={appt.pet.handlingNote} className="ms-1 font-semibold text-accent-text">!</span> : null}
+        {appt.pet?.handlingNote ? <span aria-label="Has a handling note" title={appt.pet.handlingNote} className="ms-1 font-semibold text-points-text">!</span> : null}
         {appt.pet?.vaccines === "expired" ? <span aria-label="Vaccine expired" title="A vaccine has expired" className="ms-1 font-semibold text-negative">&#9679;</span> : null}
         {compact ? <span className="font-normal text-fg-muted"> · {serviceSummary(appt)}</span> : null}
       </p>

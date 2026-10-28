@@ -234,13 +234,13 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
               ) : null}
               <ol className="flex flex-col gap-2.5 text-body text-fg">
                 <li>
-                  <span className="me-2 font-semibold text-accent-text">1</span>Scan with your phone camera. No app.
+                  <span className="me-2 font-semibold text-points-text">1</span>Scan with your phone camera. No app.
                 </li>
                 <li>
-                  <span className="me-2 font-semibold text-accent-text">2</span>Enter your name and number. 30 seconds.
+                  <span className="me-2 font-semibold text-points-text">2</span>Enter your name and number. 30 seconds.
                 </li>
                 <li>
-                  <span className="me-2 font-semibold text-accent-text">3</span>{rx ? "Open the counter, find yourself, enter an amount, tick the front-store box and tap Award." : "Open the counter, scan your own card or type the last 4 digits of your phone."}
+                  <span className="me-2 font-semibold text-points-text">3</span>{rx ? "Open the counter, find yourself, enter an amount, tick the front-store box and tap Award." : "Open the counter, scan your own card or type the last 4 digits of your phone."}
                 </li>
                 <li>
                   <Dot tone="accent" className="max-w-full items-start !whitespace-normal rounded-2xl bg-bg-subtle px-3 py-1.5">

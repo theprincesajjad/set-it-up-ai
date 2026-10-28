@@ -59,8 +59,8 @@ export function MyVehicles() {
   );
 }
 
-const TONE = { overdue: "text-negative", due_soon: "text-accent-text", ok: "text-fg", unknown: "text-fg-muted" } as const;
-const DOT = { overdue: "bg-negative", due_soon: "bg-accent", ok: "bg-positive", unknown: "bg-fg-subtle" } as const;
+const TONE = { overdue: "text-negative", due_soon: "text-points-text", ok: "text-fg", unknown: "text-fg-muted" } as const;
+const DOT = { overdue: "bg-negative", due_soon: "bg-points", ok: "bg-positive", unknown: "bg-fg-subtle" } as const;
 
 function VehicleCard({ v, day, onChanged, onError }: { v: autoApi.MyVehicleDto; day: (ymd: string) => string; onChanged: () => Promise<unknown>; onError: (m: string | null) => void }) {
   const { t, number } = useFmt();

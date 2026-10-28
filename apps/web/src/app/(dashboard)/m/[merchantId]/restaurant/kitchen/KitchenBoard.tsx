@@ -303,7 +303,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
           <p className="shrink-0 rounded-full bg-fg px-3 py-1 text-title font-semibold text-bg tabular">{tr("kitchen.fire", { time: iso(lang, fireTime.replace(/ ?[ap]m$/, "")) })}</p>
         ) : (
           <p
-            className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-accent-soft font-bold text-accent-text" : "bg-bg-subtle font-semibold text-fg")}
+            className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-points-soft font-bold text-points-text" : "bg-bg-subtle font-semibold text-fg")}
             aria-label={`${Math.floor(age / 60)} minutes${late ? ", late" : ""}`}
           >
             {ageText(age)}

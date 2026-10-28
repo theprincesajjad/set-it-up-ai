@@ -36,7 +36,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
         const body = (
           <>
             <dt className="flex items-center gap-1.5 text-meta text-fg-muted">
-              {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent", info: "bg-location" }[s.dot])} /> : null}
+              {s.dot ? <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points", info: "bg-location" }[s.dot])} /> : null}
               {s.label}
             </dt>
             <dd className="mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
@@ -136,7 +136,7 @@ export type DotTone = "positive" | "negative" | "neutral" | "accent" | "info";
 
 /** Status = a small dot + word, never a filled card. */
 export function Dot({ tone = "neutral", children, className }: { tone?: DotTone; children: ReactNode; className?: string }) {
-  const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-accent", info: "bg-location" }[tone];
+  const c = { positive: "bg-positive", negative: "bg-negative", neutral: "bg-fg-subtle", accent: "bg-points", info: "bg-location" }[tone];
   return (
     <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-meta text-fg", className)}>
       <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", c)} />
@@ -168,7 +168,7 @@ export function StatusDot({ domain, status, label }: { domain: keyof typeof STAT
 /** Small neutral tag (hairline capsule). For "Reward ready" use tone="accent" (points only). v3: the shadcn Badge. */
 export function Tag({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent"; className?: string }) {
   return (
-    <BadgePrimitive variant="outline" className={cn("h-5 px-2 text-caption font-normal", tone === "accent" ? "border-transparent bg-accent-soft text-accent-text" : "border-line text-fg-muted", className)}>
+    <BadgePrimitive variant="outline" className={cn("h-5 px-2 text-caption font-normal", tone === "accent" ? "border-transparent bg-points-soft text-points-text" : "border-line text-fg-muted", className)}>
       {children}
     </BadgePrimitive>
   );
@@ -179,7 +179,7 @@ export function Meter({ value, max, label, className, tone = "fg" }: { value: nu
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 100;
   return (
     <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} className={cn("h-1 w-full overflow-hidden rounded-full bg-bg-muted", className)}>
-      <div className={cn("h-full rounded-full", tone === "accent" ? "bg-accent" : tone === "muted" ? "bg-fg-subtle" : "bg-fg")} style={{ width: `${pct}%` }} />
+      <div className={cn("h-full rounded-full", tone === "accent" ? "bg-points" : tone === "muted" ? "bg-fg-subtle" : "bg-fg")} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -335,7 +335,7 @@ const PILL: Record<DotTone, string> = {
   positive: "bg-positive/10 text-positive-text",
   negative: "bg-negative/10 text-negative",
   neutral: "bg-bg-muted text-fg-muted",
-  accent: "bg-accent-soft text-accent-text",
+  accent: "bg-points-soft text-points-text",
   info: "bg-bg-subtle text-fg border border-line",
 };
 

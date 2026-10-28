@@ -459,7 +459,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           <div className="flex items-center gap-4 rounded-card border border-line p-4">
             <PointsRing balance={m.balance} goal={goal} terminology={m.terminology} size={64} showCaption={false} />
             <div className="min-w-0">
-              <p className="display text-title tabular-nums text-accent-text">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
+              <p className="display text-title tabular-nums text-points-text">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
               {m.nextReward ? <p className="text-meta text-fg-muted">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
             </div>
           </div>

@@ -2,11 +2,13 @@
 /**
  * Run after every `shadcn add` / `reui add` (pnpm --filter @ll/web shadcn:fix). Idempotent.
  *
- *  1. `import { cn } from "cn"` -> `from "@/lib/utils"`: the CLI imports the stock `cn` package, which does not know our token
- *     names (`text-meta text-fg` would drop `text-meta`). `@/lib/utils` is the same package configured with them.
- *  2. `bg-accent`, `text-accent-foreground` (shadcn's hover surface) -> `bg-hover`, `text-hover-foreground`. In this repo the
- *     Tailwind name `accent` is still the v2 orange until the final sweep (see packages/design-tokens/src/css.ts, COMPAT).
- *     `sidebar-accent` is untouched. The sweep flips this: delete step 2 and rename `hover` back to `accent`.
+ *  `import { cn } from "cn"` -> `from "@/lib/utils"`: the CLI imports the stock `cn` package, which does not know our token names
+ *  (`text-meta text-fg` would drop `text-meta`). `@/lib/utils` is the same package configured with them.
+ *
+ * There is no longer an `accent` -> `hover` step. Since the v3 sweep `--color-accent` IS shadcn's hover surface (design-tokens css.ts), so
+ * `bg-accent` and `text-accent-foreground` from the registry mean what they mean everywhere else; the old orange is `bg-points`.
+ * `hover` stays as an alias (`bg-hover`) for the call sites that already use it. It only warns when a registry file still carries the
+ * v2 orange names, so a stale copy does not slip in.
  */
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -26,9 +28,8 @@ walk(root);
 let changed = 0;
 for (const f of files) {
   const before = readFileSync(f, "utf8");
-  const after = before
-    .replace(/from "cn"/g, 'from "@/lib/utils"')
-    .replace(/(?<![\w-])(bg|text|border|ring|fill|stroke|outline)-accent(-foreground)?(?![\w-])/g, (_m, p, fg) => `${p}-hover${fg ?? ""}`);
+  const after = before.replace(/from "cn"/g, 'from "@/lib/utils"');
+  if (/(?<![\w-])(bg|text|border|ring)-(accent-text|accent-soft|on-accent)(?![\w-])/.test(after)) console.warn(`shadcn-fix: ${f} uses a v2 orange name (accent-text, accent-soft, on-accent); use points-text, points-soft, points-foreground`);
   if (after !== before) {
     writeFileSync(f, after);
     changed++;

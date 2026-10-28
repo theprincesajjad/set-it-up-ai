@@ -31,12 +31,12 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
       <div>
         <div role="progressbar" aria-label={t(L, "ob.card.activeMembers")} aria-valuemin={0} aria-valuemax={a.target} aria-valuenow={a.members} className="relative h-2 w-full rounded-full bg-bg-muted">
           <div className="h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
-          <span aria-hidden className="absolute -top-1 h-4 w-px bg-accent" style={{ insetInlineStart: `${mark}%` }} />
+          <span aria-hidden className="absolute -top-1 h-4 w-px bg-points" style={{ insetInlineStart: `${mark}%` }} />
         </div>
         <div className="relative mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-caption text-fg-muted">
           <span>0</span>
           {/* On a phone the three labels cannot share a line, so the pace sentence drops under the bar. */}
-          <span className="order-last basis-full text-accent-text md:order-none md:basis-auto">
+          <span className="order-last basis-full text-points-text md:order-none md:basis-auto">
             {t(L, "ob.card.pace", { lead: a.leadingMembers, day: a.leadingByDay, target: a.target })}
           </span>
           <span>{t(L, "ob.card.targetLine", { target: a.target })}</span>

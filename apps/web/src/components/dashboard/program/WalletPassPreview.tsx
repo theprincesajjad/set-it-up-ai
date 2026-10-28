@@ -30,7 +30,7 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
             <ShopLogo shop={shop} size={32} />
             <span className="truncate text-[14px] font-semibold text-fg">{shop.name}</span>
           </span>
-          <span className="shrink-0 text-[13px] font-semibold tabular-nums text-accent-text">{stamps ? `${filled} / ${goal}` : `${model.balance} ${model.terminology === "points" ? "pts" : model.terminology}`}</span>
+          <span className="shrink-0 text-[13px] font-semibold tabular-nums text-points-text">{stamps ? `${filled} / ${goal}` : `${model.balance} ${model.terminology === "points" ? "pts" : model.terminology}`}</span>
         </div>
         {stamps ? (
           <div role="img" aria-label={`${filled} of ${goal} stamps. ${stampsLeft(goal - filled, model.rewardName)}`} className="mt-5 grid grid-cols-5 justify-items-center gap-x-2.5 gap-y-3">
@@ -40,7 +40,7 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
                 <span
                   key={i}
                   aria-hidden
-                  className={cn("inline-flex size-11 items-center justify-center rounded-full text-[13px] font-medium", on ? "bg-accent text-on-accent" : "text-fg-muted shadow-[inset_0_0_0_1.5px_var(--ll-color-line)]", i === last && !on && "text-[10px] font-semibold uppercase tracking-wide")}
+                  className={cn("inline-flex size-11 items-center justify-center rounded-full text-[13px] font-medium", on ? "bg-points text-points-foreground" : "text-fg-muted shadow-[inset_0_0_0_1.5px_var(--ll-color-line)]", i === last && !on && "text-[10px] font-semibold uppercase tracking-wide")}
                 >
                   {on ? <Check className="size-5" strokeWidth={3} /> : i === last ? "Free" : i + 1}
                 </span>

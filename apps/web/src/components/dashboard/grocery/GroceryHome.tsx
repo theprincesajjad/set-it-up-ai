@@ -59,7 +59,7 @@ export function GroceryHome() {
             {d.pantry.dueSoon.length ? (
               <RowList label="Due for a restock text">
                 {d.pantry.dueSoon.map((x) => (
-                  <Row key={x.entryId} title={x.name ?? "Customer"} meta={`${x.itemName} · ${intervalWords(x.intervalDays)}`} trailing={<span className="text-meta font-semibold text-accent-text">{dealDates(x.dueOn, x.dueOn)}</span>} />
+                  <Row key={x.entryId} title={x.name ?? "Customer"} meta={`${x.itemName} · ${intervalWords(x.intervalDays)}`} trailing={<span className="text-meta font-semibold text-points-text">{dealDates(x.dueOn, x.dueOn)}</span>} />
                 ))}
               </RowList>
             ) : (
