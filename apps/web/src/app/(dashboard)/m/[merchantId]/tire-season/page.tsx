@@ -61,7 +61,7 @@ function TireSeason() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock
+      <StatBlock tiles
         label="Tire season"
         loading={!p || !sets.data}
         items={[

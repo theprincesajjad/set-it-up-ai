@@ -22,7 +22,7 @@ export function AudienceHeader() {
   ];
   return (
     <section aria-label="Who can get messages">
-      <StatBlock label="Who can get messages" loading={email.loading && !email.data} items={items} />
+      <StatBlock tiles label="Who can get messages" loading={email.loading && !email.data} items={items} />
     </section>
   );
 }

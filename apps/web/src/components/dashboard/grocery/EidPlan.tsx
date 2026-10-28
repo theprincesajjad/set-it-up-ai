@@ -56,7 +56,7 @@ export function EidPlan({ canEdit }: { canEdit: boolean }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <StatBlock
+      <StatBlock tiles
         label="Eid al-Adha"
         cols={3}
         items={[

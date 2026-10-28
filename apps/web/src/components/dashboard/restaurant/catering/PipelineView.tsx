@@ -160,7 +160,7 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
   const info = (t: string) => <span className="text-location">{t}</span>;
   return (
     <>
-      <StatBlock
+      <StatBlock tiles
         label="Catering money"
         cols={4}
         items={[

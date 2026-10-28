@@ -59,7 +59,7 @@ function Day() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock
+      <StatBlock tiles
         label="The room now"
         loading={!d}
         items={[

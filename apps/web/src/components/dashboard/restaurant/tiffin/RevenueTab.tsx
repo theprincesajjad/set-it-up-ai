@@ -22,7 +22,7 @@ export function RevenueTab({ gate, openAwaiting }: { gate: Gate; openAwaiting?: 
       <Loader state={state} gate={gate} rows={5}>
         {(r) => (
           <>
-            <StatBlock
+            <StatBlock tiles
               label="Subscribers"
               cols={4}
               items={[
@@ -32,7 +32,7 @@ export function RevenueTab({ gate, openAwaiting }: { gate: Gate; openAwaiting?: 
                 { label: "Past due", value: formatNumber(r.pastDueSubscribers), caption: r.pastDueSubscribers ? "Payment failed, meals on hold" : "Everyone is paid up", delta: r.pastDueSubscribers ? { text: "Needs a look", good: false } : null },
               ]}
             />
-            <StatBlock
+            <StatBlock tiles
               label="This month"
               cols={4}
               items={[

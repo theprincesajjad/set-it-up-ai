@@ -73,7 +73,7 @@ function Pantry() {
       />
       {state.error && !d ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock
+      <StatBlock tiles
         label="Pantry reminders"
         loading={state.loading && !d}
         cols={3}

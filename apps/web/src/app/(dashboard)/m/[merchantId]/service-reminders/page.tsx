@@ -52,7 +52,7 @@ function Reminders() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock
+      <StatBlock tiles
         label="Service reminders"
         loading={!d}
         items={[

@@ -90,7 +90,7 @@ function Rebooking() {
       <Async state={data}>
         {(d) => (
           <>
-            <StatBlock
+            <StatBlock tiles
               label="Rebooking at a glance"
               cols={5}
               items={[

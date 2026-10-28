@@ -67,7 +67,7 @@ function Schedule() {
           <Segmented label="Show" value={women} onChange={setWomen} options={[{ value: "all", label: "All classes" }, { value: "women", label: "Women-only classes" }]} />
         </div>
       </div>
-      <StatBlock
+      <StatBlock tiles
         label="This week"
         items={[
           { label: "Booked this week", value: nums.booked, caption: `of ${nums.capacity} spots` },

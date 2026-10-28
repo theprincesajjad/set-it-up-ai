@@ -40,7 +40,7 @@ function Rebooking() {
         actions={<Button size="sm" disabled={!sendable} loading={act.busy} onClick={() => void send({}, (r) => `${r.sent} ${r.sent === 1 ? "text" : "texts"} sent`)}>{`Text all due (${sendable})`}</Button>}
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock
+      <StatBlock tiles
         label="Groom rebooking"
         loading={!d}
         items={[

@@ -42,7 +42,7 @@ function Payouts() {
           </div>
         }
       />
-      <StatBlock
+      <StatBlock tiles
         label="Payout totals"
         cols={mine ? 4 : 5}
         loading={!d}

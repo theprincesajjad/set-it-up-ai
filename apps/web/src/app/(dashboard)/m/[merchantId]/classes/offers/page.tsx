@@ -69,7 +69,7 @@ function Memberships() {
           </>
         }
       />
-      <StatBlock
+      <StatBlock tiles
         label="Memberships"
         items={[
           { label: "Active members", value: s?.activeMembers ?? 0, caption: `${s?.frozenMembers ?? 0} frozen` },

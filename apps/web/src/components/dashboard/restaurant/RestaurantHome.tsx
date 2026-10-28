@@ -55,7 +55,7 @@ export function RestaurantHome() {
       {home.error && !d ? <div className="mt-6"><ErrorLine message={home.error} onRetry={() => void home.reload()} /></div> : null}
 
       <div className="mt-6">
-        <StatBlock
+        <StatBlock tiles
           label="Today at a glance"
           loading={home.loading && !d}
           items={[

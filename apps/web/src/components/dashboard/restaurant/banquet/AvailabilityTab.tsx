@@ -142,7 +142,7 @@ function Strip({ bookings }: { bookings: restaurantApi.HallBookingDto[] }) {
   const hallCount = new Set(bookings.map((b) => b.hallId)).size || 1;
   const first = soon[0];
   return (
-    <StatBlock
+    <StatBlock tiles
       label="Banquet numbers"
       cols={3}
       items={[

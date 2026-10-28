@@ -83,7 +83,7 @@ function Reviews() {
         }
       />
       {stats.error && !s ? <ErrorLine message={stats.error} onRetry={() => void stats.reload()} /> : null}
-      <StatBlock
+      <StatBlock tiles
         label="Review numbers"
         loading={stats.loading && !s}
         items={[

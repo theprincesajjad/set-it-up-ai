@@ -102,7 +102,7 @@ export default function ReportsPage() {
 
       {tab === "overview" ? (
         <>
-          <StatBlock
+          <StatBlock tiles
             label={`Key numbers, ${dayRange.toLowerCase()}`}
             loading={!c}
             items={[
@@ -119,7 +119,7 @@ export default function ReportsPage() {
             ]}
           />
           {posOn ? (
-            <StatBlock
+            <StatBlock tiles
               label="Spend by members"
               cols={2}
               items={[
@@ -229,7 +229,7 @@ export default function ReportsPage() {
       {tab === "network" && advanced ? (
         overlap.data ? (
           <>
-            <StatBlock
+            <StatBlock tiles
               items={[
                 { label: "Also shop on your street", value: pct(overlap.data.sharedPct), caption: `${formatNumber(overlap.data.sharedMembers)} of ${formatNumber(overlap.data.myMembers)} members, last ${overlap.data.windowDays} days` },
                 { label: "Other shops they visit", value: overlap.data.avgOtherShops.toFixed(1), caption: "On average" },
@@ -251,7 +251,7 @@ export default function ReportsPage() {
 function LiabilityCard({ l, term }: { l: reportsApi.PointsLiability; term: string }) {
   return (
     <Section title={`Unredeemed ${term}`} description="What your members are holding right now, not just in this date range.">
-      <StatBlock
+      <StatBlock tiles
         items={[
           { label: "Outstanding", value: <>{formatNumber(l.outstandingPoints)}<span className="ms-1.5 text-body font-normal text-fg-muted">{l.outstandingPoints === 1 ? term.replace(/s$/, "") : term}</span></>, caption: `${formatNumber(l.membersWithBalance)} ${l.membersWithBalance === 1 ? "member" : "members"} with a balance` },
           {

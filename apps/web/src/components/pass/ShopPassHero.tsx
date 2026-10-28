@@ -50,7 +50,7 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
   const unit = unitCaption(locale, m.balance, m.terminology);
   // A long total ("1,190 / 1,190") steps down so it never runs under the illustration.
   const digits = `${formatNumber(shown)}${goal > 0 ? ` / ${formatNumber(goal)}` : ""}`.length;
-  const numeral = digits > 12 ? "text-[32px]" : digits > 9 ? "text-[40px]" : digits > 7 ? "text-[46px]" : "text-[54px]";
+  const numeral = digits > 12 ? "text-[28px]" : digits > 9 ? "text-[40px]" : digits > 7 ? "text-[46px]" : "text-[54px]";
   const pct = goal > 0 ? Math.round((shown / goal) * 100) : 0;
   return (
     <section

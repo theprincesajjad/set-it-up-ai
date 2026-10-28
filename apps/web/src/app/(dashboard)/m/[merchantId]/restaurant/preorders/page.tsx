@@ -129,7 +129,7 @@ function Preorders() {
 
       {state.error && !state.data ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
 
-      <StatBlock
+      <StatBlock tiles
         label={`Pots on ${dayLabel(day)}`}
         loading={state.loading && !state.data}
         items={[

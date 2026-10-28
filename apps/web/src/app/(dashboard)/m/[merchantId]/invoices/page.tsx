@@ -44,7 +44,7 @@ function Invoices() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Invoices" description={calendarShop ? "Every checkout from the calendar makes an invoice here. Customers pay by link, or you take payment at the counter." : "Every invoice comes from an approved quote. Customers pay by link, or you take payment at the counter."} actions={<Capsules label="Show" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "open", label: "Open" }, { value: "overdue", label: "Overdue", count: s?.overdueCount || null, tone: "negative" }, { value: "paid", label: "Paid" }]} />} />
-      <StatBlock
+      <StatBlock tiles
         label="Invoices at a glance"
         cols={5}
         loading={summary.loading && !s}

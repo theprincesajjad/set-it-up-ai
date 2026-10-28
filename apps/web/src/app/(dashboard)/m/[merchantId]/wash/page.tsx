@@ -88,7 +88,7 @@ function Wash() {
           </ul>
         )
       ) : null}
-      <StatBlock
+      <StatBlock tiles
         label="Wash plans"
         loading={!s}
         items={[

@@ -83,7 +83,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <div className="flex min-w-0 flex-col gap-5">
-        <StatBlock
+        <StatBlock tiles
           label="Kitchen totals"
           cols={4}
           items={[

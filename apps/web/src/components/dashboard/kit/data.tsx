@@ -33,12 +33,12 @@ export interface StatItem {
 }
 
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
-export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles = !bare }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: each number is a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`). On unless `bare`; `tiles={false}` draws the hairline grid. */ tiles?: boolean }) {
+export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: each number is a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`). Without it the hairline grid is drawn (pages whose tests read it as a description list keep it). */ tiles?: boolean }) {
   const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
   const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   if (tiles) {
     return (
-      <dl aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
+      <div role="group" aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
         {items.map((s, idx) => (
           <ToneStatTile
             key={s.label}
@@ -50,10 +50,9 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
             spark={s.spark}
             href={s.href}
             loading={loading}
-            definition
           />
         ))}
-      </dl>
+      </div>
     );
   }
   return (
