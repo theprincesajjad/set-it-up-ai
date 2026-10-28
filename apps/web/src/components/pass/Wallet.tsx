@@ -31,7 +31,7 @@ import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { ListGroup } from "@/components/ui/Card";
+import { IconTile } from "@/components/ui/IconTile";
 import { DiscountCard } from "@/components/ui/DiscountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -234,6 +234,16 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
   );
 }
 
+/** A titled white card with an optional note under it (the warm replacement for the old grey-titled list group). */
+function Group({ title, footer, children, as = "ul" }: { title: React.ReactNode; footer?: React.ReactNode; children: React.ReactNode; as?: "ul" | "div" }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <PassPanel title={title} as={as}>{children}</PassPanel>
+      {footer ? <div className="px-1 text-meta text-muted-foreground">{footer}</div> : null}
+    </div>
+  );
+}
+
 const txLabelFor = (t: Tr, locale: string, type: string, description: string | null | undefined) => {
   const translated = (TX_KEYS as readonly string[]).includes(type) ? t(`sh.tx.${type}` as MessageKey) : type;
   // English keeps the shop's own description ("Purchase $12.50"); other languages show the translated kind.
@@ -267,7 +277,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
     const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : null;
     const unit = unitCaption(locale, m.balance, m.terminology);
     return (
-      <li key={m.id} className="-mx-4">
+      <li key={m.id} data-trade={m.merchant.vertical} className="-mx-4">
         <button
           type="button"
           aria-haspopup="dialog"
@@ -283,7 +293,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
             <span className={cn("mt-0.5 block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
               <span aria-hidden className="mt-2 block h-0.75 w-36 overflow-hidden rounded-full bg-muted">
-                <span className="block h-0.75 rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                <span className="block h-0.75 rounded-full bg-trade" style={{ width: `${pct}%` }} />
               </span>
             ) : null}
           </span>
@@ -305,7 +315,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
         {t("sh.wallet.empty")}
         <ChevronRight aria-hidden className="size-4 rtl:rotate-180" />
       </Link>
-      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? t("wp.t.shop")} variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKindLabel(locale, current.merchant.vertical)}</span> : undefined}>
+      <Modal open={!!current} onClose={() => setOpenShop(null)} title={current?.merchant.name ?? t("wp.t.shop")} titleClassName="font-display text-title font-bold text-foreground" variant="sheet" icon={current ? <ShopLogo shop={current.merchant} size={40} /> : undefined} description={current ? <span className="italic">{placeKindLabel(locale, current.merchant.vertical)}</span> : undefined}>
         {current ? <ShopSheetBody m={current} d={details[current.id]} profile={profile} onChanged={async () => { await onChanged(); await loadDetails([current.id]); }} /> : null}
       </Modal>
     </div>
@@ -354,14 +364,14 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
   // Referrals are a paid shop feature: the API reports the bonus as 0 when the shop doesn't have them.
   const canInvite = (m.program?.referralBonus ?? 0) > 0 && (m as { features?: { referrals?: boolean } }).features?.referrals !== false;
   return (
-    <div className="flex flex-col gap-5">
+    <div data-trade={m.merchant.vertical} className="flex flex-col gap-5">
       {m.program?.earnType === "stamps" ? (
         <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
       ) : (
-        <div className="flex items-center gap-4 rounded-card border border-line p-4">
+        <div className="flex items-center gap-4 rounded-card bg-trade-soft p-4">
           <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
-            <p className="display text-title tabular-nums text-points-text">{unitsText(locale, m.balance, m.terminology, false)}</p>
+            <p className="font-display text-title font-bold tabular-nums text-trade-deep">{unitsText(locale, m.balance, m.terminology, false)}</p>
             <p className="text-meta text-fg-muted">{progressLine(m, t, locale)}</p>
           </div>
         </div>
@@ -505,7 +515,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
     return (
       <div className="flex flex-col gap-3">
         <p className="text-body text-fg-muted">{t("sh.rewards.emptyBody")}</p>
-        <ListGroup title={t("sh.wallet.closest")}>
+        <Group title={t("sh.wallet.closest")}>
           {close.map((m) => (
             <li key={m.id} className="flex flex-col gap-2.5 py-3.5">
               <div className="flex items-center gap-3">
@@ -519,18 +529,18 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
               <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={t("wp.w.wayTo", { pct: m.nextReward!.progressPct, reward: m.nextReward!.name })} />
             </li>
           ))}
-        </ListGroup>
+        </Group>
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-6">
       {ready.map((m) => (
-        <section key={m.id} aria-label={m.merchant.name} className="flex flex-col gap-3">
-          <div className="flex items-center gap-2.5 px-1">
-            <ShopLogo shop={m.merchant} size={24} />
-            <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg"><bdi>{m.merchant.name}</bdi></h2>
-            <span className="text-meta tabular-nums text-fg-muted">{unitsText(locale, m.balance, m.terminology)}</span>
+        <section key={m.id} data-trade={m.merchant.vertical} aria-label={m.merchant.name} className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5 rounded-card bg-trade-soft p-3">
+            <ShopLogo shop={m.merchant} size={32} />
+            <h2 className="min-w-0 flex-1 truncate font-display text-headline font-bold text-trade-deep"><bdi>{m.merchant.name}</bdi></h2>
+            <span className="text-meta-strong tabular-nums text-trade-deep">{unitsText(locale, m.balance, m.terminology)}</span>
           </div>
           {details[m.id] ? <MemberRewards membership={m} detail={details[m.id]!} onChanged={onChanged} /> : <SkeletonCard />}
         </section>
@@ -572,7 +582,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
                 {tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}
               </p>
             </div>
-            <span className={tx.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-fg" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
+            <span className={tx.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-points-text" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
               {tx.points >= 0 ? "+" : "−"}
               {unitsText(locale, Math.abs(tx.points), m.terminology)}
             </span>
@@ -665,7 +675,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   return (
     <div id="settings" className="flex flex-col gap-7">
       <NotificationSettings />
-      <ListGroup title={t("sh.priv.shopsTitle")} footer={t("sh.priv.shopsFoot")}>
+      <Group title={t("sh.priv.shopsTitle")} footer={t("sh.priv.shopsFoot")}>
         {wallet.items.map((m) => (
           <li key={m.id} className="flex flex-col py-3">
             <p className="flex items-center gap-2.5 py-1 text-body-strong text-fg">
@@ -677,9 +687,9 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
             <Switch label={t("sh.priv.mute")} ariaLabel={t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
           </li>
         ))}
-      </ListGroup>
+      </Group>
 
-      <ListGroup title={t("sh.priv.details")} as="div" footer={<span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
+      <Group title={t("sh.priv.details")} as="div" footer={<span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
         <div className="flex flex-col gap-4 py-4">
           <TextField label={t("sh.priv.name")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           <TextField label={t("sh.priv.email")} type="email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
@@ -687,22 +697,22 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
             {t("sh.priv.save")}
           </Button>
         </div>
-      </ListGroup>
+      </Group>
 
-      <ListGroup title={t("sh.priv.data")} as="div" footer={t("sh.priv.dataFoot")}>
+      <Group title={t("sh.priv.data")} as="div" footer={t("sh.priv.dataFoot")}>
         <button type="button" onClick={exportData} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
-          <Download aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
+          <IconTile icon={Download} tone="sky" size="sm" />
           <span className="flex-1">{t("sh.priv.download")}</span>
         </button>
         <button type="button" onClick={signOut} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
-          <LogOut aria-hidden className="size-[18px] text-fg-muted" strokeWidth={1.75} />
+          <IconTile icon={LogOut} tone="butter" size="sm" />
           <span className="flex-1">{t("sh.priv.signOut")}</span>
         </button>
         <button type="button" onClick={() => setDeleteOpen(true)} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-negative hover:bg-bg-subtle focus-visible:focus-ring">
-          <Trash2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
+          <IconTile icon={Trash2} tone="rose" size="sm" />
           <span className="flex-1">{t("sh.priv.delete")}</span>
         </button>
-      </ListGroup>
+      </Group>
 
       <Modal
         open={deleteOpen}

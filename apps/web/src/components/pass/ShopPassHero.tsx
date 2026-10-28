@@ -34,7 +34,7 @@ function PassLogo({ shop }: { shop: customerApi.MerchantBriefDto }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img src={shop.logoUrl} alt="" width={52} height={52} onError={() => setFailed(true)} className="size-[52px] shrink-0 rounded-2xl bg-card object-cover" />
   ) : (
-    <span aria-hidden className="inline-flex size-[52px] shrink-0 select-none items-center justify-center rounded-2xl bg-trade-foreground text-body-strong font-extrabold tracking-wide text-trade dark:bg-foreground dark:text-background">
+    <span aria-hidden className="inline-flex size-[52px] shrink-0 select-none items-center justify-center rounded-2xl bg-trade-pass-text text-body-strong font-extrabold tracking-wide text-trade-pass-from">
       {shopInitials(shop.name)}
     </span>
   );
@@ -53,8 +53,7 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
     <section
       aria-label={m.merchant.name}
       data-trade={m.merchant.vertical}
-      className="overflow-hidden rounded-sheet bg-[linear-gradient(100deg,var(--trade)_55%,var(--trade-alt)_100%)] text-trade-foreground shadow-card dark:bg-[linear-gradient(100deg,color-mix(in_oklab,var(--trade)_58%,var(--background))_55%,color-mix(in_oklab,var(--trade-alt)_52%,var(--background))_100%)] dark:text-foreground"
-    >
+      className="overflow-hidden rounded-sheet bg-[linear-gradient(100deg,var(--trade-pass-from)_60%,var(--trade-pass-to)_100%)] text-trade-pass-text shadow-card">
       <AwningStripe />
       <div className="flex flex-col gap-5 p-5 pt-4">
         <div className="flex items-center gap-3">

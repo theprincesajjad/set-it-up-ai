@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LanguageChip } from "@/components/pass/PassChrome";
 import { PassTabBar } from "@/components/pass/PassTabBar";
+import { Bell, MapPin } from "lucide-react";
+import { Awning } from "@/components/ui/Awning";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
@@ -91,82 +93,69 @@ export default async function DiscoverPage({ searchParams }: Props) {
 
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
-    <div className="-mx-4 -mt-4 pb-32">
-      <section aria-label={h ? h.eyebrow : t("sh.disc.title")} className="relative h-[340px] overflow-hidden bg-ll-stone-950">
-        <svg aria-hidden width="100%" height="340" viewBox="0 0 390 340" preserveAspectRatio="xMidYMid slice" className="absolute inset-0">
-          <g className="stroke-ll-stone-850" strokeWidth="10" fill="none" strokeLinecap="round"><path d="M150 -20 L 230 360" /><path d="M-20 90 L 410 60" /><path d="M-20 190 L 410 166" /><path d="M-20 290 L 410 266" /></g>
-        </svg>
-        {/* The three objects are from the canvas. In hi, ur and pa the headline runs wider and crosses them, so they step back. */}
-        <div aria-hidden className={locale === "en" ? "" : "opacity-35"}>
-          <CategoryIcon category="coffee" size={88} className="absolute left-[calc(100%-184px)] top-[58px] -rotate-[8deg]" />
-          <CategoryIcon category="bakery" size={76} className="absolute left-[calc(100%-104px)] top-[132px] rotate-[10deg]" />
-          <CategoryIcon category="beauty" size={58} className="absolute left-[calc(100%-162px)] top-[176px] -rotate-[14deg]" />
-        </div>
-        <div className="absolute inset-x-5 top-[58px] flex justify-between">
-          <span className="display text-[15px] leading-[18px] text-white">{BRAND.name.toLowerCase()}</span>
-          <div className="flex items-center gap-2">
-            <LanguageChip className="border-transparent bg-white/[.12] text-white hover:bg-white/20 data-popup-open:bg-white/20" />
-            <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-9 items-center justify-center rounded-full bg-white/[.12] text-white">
-              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-            </Link>
-          </div>
-        </div>
-        <div className="absolute bottom-14 left-5 max-w-[240px]">
-          <p className="text-[12px] font-semibold leading-4 text-ll-orange-400">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
-          <h1 className="display mt-2 text-[32px] leading-[34px] text-white">{h ? h.headline : t("sh.disc.heroDefault")}</h1>
-        </div>
+    <div className="pb-32">
+      <Awning size="sm" className="rounded-b-md rounded-t-none" />
+      <header className="mt-3 flex items-center gap-2">
+        <span className="min-w-0 flex-1 font-wordmark text-[19px] font-extrabold leading-none text-foreground">{BRAND.name.toLowerCase()}</span>
+        <LanguageChip />
+        <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
+          <Bell aria-hidden className="size-5" strokeWidth={1.75} />
+        </Link>
+      </header>
+      <section aria-label={h ? h.eyebrow : t("sh.disc.title")} className="mt-4 flex flex-col gap-3">
+        <p className="text-meta-strong text-primary-text">{h ? h.eyebrow : name ? t("sh.disc.streetLine", { street: name, n: shops.length }) : t("sh.disc.near")}</p>
+        <h1 className="font-display text-[clamp(30px,9vw,38px)] font-bold leading-[1.1] tracking-[-0.03em] text-foreground">{h ? h.headline : t("sh.disc.heroDefault")}</h1>
         {h?.progress ? (
-          <div className="absolute inset-x-5 bottom-6 flex items-center gap-2.5">
-            <div className="h-1 flex-1 rounded-full bg-white/[.18]"><div className="h-1 rounded-full bg-points" style={{ width: `${(h.progress.value / h.progress.max) * 100}%` }} /></div>
-            <span className="text-[12px] font-semibold tabular-nums text-white">{h.progress.value} / {h.progress.max}</span>
+          <div className="flex items-center gap-3 rounded-card bg-tile-butter p-4 text-tile-butter-foreground">
+            <div role="progressbar" aria-label={h.eyebrow} aria-valuemin={0} aria-valuemax={h.progress.max} aria-valuenow={h.progress.value} className="h-2 flex-1 overflow-hidden rounded-full bg-current/20"><div className="h-full rounded-full bg-current" style={{ width: `${(h.progress.value / h.progress.max) * 100}%` }} /></div>
+            <span className="text-meta-strong tabular-nums">{h.progress.value} / {h.progress.max}</span>
           </div>
         ) : null}
       </section>
 
-      <nav aria-label={t("wp.cat.label")} className="no-scrollbar mt-4 flex gap-2 overflow-x-auto px-4">
-        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold tracking-normal", !only ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg")}>
+      <nav aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4">
+        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow" : "border border-line bg-card text-fg")}>
           {t("sh.disc.forYou")}
-          <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
-        </Link>
+                  </Link>
         {chips.map((c) => (
-          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-[14px] font-bold tracking-normal", only === c.id ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg")}>
+          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow" : "border border-line bg-card text-fg")}>
             {t(CHIP_KEY[c.id])}
           </Link>
         ))}
       </nav>
 
-      <section className="mt-6 px-4" aria-labelledby="near">
+      <section className="mt-6" aria-labelledby="near">
         <div className="flex items-baseline justify-between">
-          <h2 id="near" className="display text-[20px] leading-6 text-fg">{t("sh.disc.near")}</h2>
-          <span className="text-[13px] text-fg-muted">{t("sh.disc.shopsN", { n: shops.length })}</span>
+          <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground">{t("sh.disc.near")}</h2>
+          <span className="text-meta text-muted-foreground">{t("sh.disc.shopsN", { n: shops.length })}</span>
         </div>
-        <Link href="/map" className="relative mt-3 block h-[120px] overflow-hidden rounded-[16px] bg-ll-stone-50 dark:bg-bg-subtle">
-          <svg aria-hidden width="100%" height="120" viewBox="0 0 358 120" preserveAspectRatio="none" className="absolute inset-0">
-            <g strokeWidth="9" fill="none" strokeLinecap="round" className="stroke-ll-stone-0 dark:stroke-ll-stone-800"><path d="M120 -10 L 170 130" /><path d="M-10 40 L 370 26" /><path d="M-10 92 L 370 80" /></g>
+        <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring">
+          <svg aria-hidden width="100%" height="132" viewBox="0 0 358 132" preserveAspectRatio="none" className="absolute inset-0">
+            <g strokeWidth="9" fill="none" strokeLinecap="round" className="stroke-card"><path d="M120 -10 L 170 140" /><path d="M-10 44 L 370 28" /><path d="M-10 100 L 370 86" /></g>
           </svg>
-          <span aria-hidden className="absolute left-[calc(42%-7px)] top-[59px] size-[15px] rounded-full border-2 border-white bg-location" />
+          <span aria-hidden className="absolute left-[calc(42%-7px)] top-[64px] size-[15px] rounded-full border-2 border-card bg-location" />
           {nearPins.map((s, i) => (
-            <span key={s.merchant.id} aria-hidden className={cn("absolute flex size-[30px] items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,.12)]", i === 0 ? "left-[27%] top-4" : "left-[51%] top-[54px]")}>
+            <span key={s.merchant.id} aria-hidden className={cn("absolute flex size-8 items-center justify-center rounded-full bg-card shadow-card", i === 0 ? "left-[27%] top-4" : "left-[51%] top-[58px]")}>
               <CategoryIcon vertical={s.merchant.vertical} size={20} />
             </span>
           ))}
-          <span className="absolute bottom-3 left-3 inline-flex h-8 items-center rounded-full bg-bg px-3.5 text-[13px] font-semibold text-fg shadow-float">{t("sh.disc.openMap")}</span>
+          <span className="absolute bottom-3 start-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-meta-strong text-primary-foreground shadow-glow"><MapPin aria-hidden className="size-4" />{t("sh.disc.openMap")}</span>
         </Link>
       </section>
 
       {rows.map((r, i) => (
-        <section key={r.id} className={cn("ps-4", i === 0 ? "mt-2.5" : "mt-7")} aria-labelledby={`row-${r.id}`}>
-          <h2 id={`row-${r.id}`} className="display text-[20px] leading-6 text-fg">{name ? t("sh.disc.rowOn", { kind: t(ROW_KEY[r.id]), street: name }) : t("sh.disc.rowNear", { kind: t(ROW_KEY[r.id]) })}</h2>
-          <ul className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pe-4">
+        <section key={r.id} className={cn(i === 0 ? "mt-6" : "mt-7")} aria-labelledby={`row-${r.id}`}>
+          <h2 id={`row-${r.id}`} className="font-display text-[22px] font-bold leading-7 text-foreground">{name ? t("sh.disc.rowOn", { kind: t(ROW_KEY[r.id]), street: name }) : t("sh.disc.rowNear", { kind: t(ROW_KEY[r.id]) })}</h2>
+          <ul className="no-scrollbar -mx-4 mt-3 flex gap-3 overflow-x-auto px-4">
             {r.shops.slice(0, 12).map((s) => (
-              <li key={s.merchant.id} className="w-[168px] shrink-0">
-                <Link href={`/shops/${s.merchant.slug}`} className="block">
-                  <span className="relative flex h-[184px] items-center justify-center rounded-[16px] bg-bg-subtle">
+              <li key={s.merchant.id} className="w-[168px] shrink-0 overflow-hidden rounded-card border border-line bg-card shadow-card">
+                <Link href={`/shops/${s.merchant.slug}`} className="block pb-3 focus-visible:focus-ring">
+                  <span data-trade={s.merchant.vertical} className="relative flex h-[140px] items-center justify-center bg-trade-soft">
                     <CategoryIcon vertical={s.merchant.vertical} size={76} />
-                    {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-points-soft px-[9px] text-[12px] font-semibold text-points-text">{t("sh.wallet.rewardReady")}</span> : null}
+                    {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-tile-butter px-2.5 text-caption font-bold text-tile-butter-foreground">{t("sh.wallet.rewardReady")}</span> : null}
                   </span>
-                  <span className="display mt-2.5 line-clamp-2 text-[15px] leading-[1.15] font-bold tracking-normal text-fg">{s.merchant.name.toLowerCase()}</span>
-                  <span className="mt-0.5 block truncate text-[12px] text-fg-muted">{[placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>
+                  <span className="mt-2.5 line-clamp-2 px-3 text-body-strong text-foreground">{s.merchant.name}</span>
+                  <span className="mt-0.5 block truncate px-3 text-meta text-muted-foreground">{[placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? `${Math.round(s.distanceMetres / 10) * 10} m` : null, s.openNow ? t("sh.disc.open") : null].filter(Boolean).join(" · ")}</span>
                 </Link>
               </li>
             ))}

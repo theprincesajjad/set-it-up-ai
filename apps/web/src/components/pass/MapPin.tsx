@@ -42,7 +42,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
         <span className="relative flex w-[34px] shrink-0 justify-center after:absolute after:-inset-[5px] after:content-['']">
         <span
           className={cn(
-            "relative flex shrink-0 items-center justify-center rounded-full bg-ll-stone-0 shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
+            "relative flex shrink-0 items-center justify-center rounded-full bg-card shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring",
             selected ? "scale-[1.15] ring-2 ring-foreground" : "group-hover:scale-105",
           )}
           style={{ width: size, height: size }}
@@ -53,7 +53,7 @@ export function MapPin({ shop, selected, onSelect, showLabel = true, compact = f
           ) : (
             <CategoryIcon vertical={shop.merchant.vertical} size={Math.round(size * 0.65)} />
           )}
-          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-ll-stone-0 bg-points" /> : null}
+          {shop.isMember ? <span aria-hidden className="absolute -end-0.5 -top-0.5 size-2.5 rounded-full border-[1.5px] border-card bg-points" /> : null}
         </span>
         </span>
         {showLabel || selected ? (

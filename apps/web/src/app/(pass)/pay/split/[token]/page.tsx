@@ -26,7 +26,7 @@ export default async function SplitPayPage({ params, searchParams }: Props) {
     .public.split(token)
     .catch((e: unknown) => (isApiError(e) && [402, 404].includes(e.status) ? ("gone" as const) : ("error" as const)));
   return (
-    <LocaleScope locale={locale}>
+    <LocaleScope locale={locale} trade="other">
       <div className="flex flex-col gap-4 pb-8">
         <PassTopBar />
         {data === "gone" ? (

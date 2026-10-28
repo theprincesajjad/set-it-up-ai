@@ -294,6 +294,9 @@
   --trade-alt: #B8691F;
   --trade-soft: #FCE4D8;
   --trade-deep: #9B2F1A;
+  --trade-pass-from: #C8452C;
+  --trade-pass-to: #B8691F;
+  --trade-pass-text: #FFFFFF;
   --chart-1: #C8452C;
   --chart-2: #E5530A;
   --chart-3: #725F4E;
@@ -566,6 +569,9 @@
     --trade-alt: #E29750;
     --trade-soft: #492E25;
     --trade-deep: #EDB6AB;
+    --trade-pass-from: #683A30;
+    --trade-pass-to: #6A482A;
+    --trade-pass-text: #F7EEE3;
     --chart-1: #E0583F;
     --chart-2: #FF7A45;
     --chart-3: #BBAA98;
@@ -838,6 +844,9 @@
   --trade-alt: #E29750;
   --trade-soft: #492E25;
   --trade-deep: #EDB6AB;
+  --trade-pass-from: #683A30;
+  --trade-pass-to: #6A482A;
+  --trade-pass-text: #F7EEE3;
   --chart-1: #E0583F;
   --chart-2: #FF7A45;
   --chart-3: #BBAA98;
@@ -1052,6 +1061,9 @@
   --trade-alt: #B3702A;
   --trade-soft: #F3E3D3;
   --trade-deep: #5E3A22;
+  --trade-pass-from: #8A5A3C;
+  --trade-pass-to: #B3702A;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="bakery"] {
   --trade: #9A5B07;
@@ -1059,6 +1071,9 @@
   --trade-alt: #B07209;
   --trade-soft: #FBEBC5;
   --trade-deep: #6B4004;
+  --trade-pass-from: #9A5B07;
+  --trade-pass-to: #B07209;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="salon"],
 [data-trade="spa"],
@@ -1068,6 +1083,9 @@
   --trade-alt: #D9547F;
   --trade-soft: #F9DEE5;
   --trade-deep: #8A2348;
+  --trade-pass-from: #B83A64;
+  --trade-pass-to: #D9547F;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="barber"] {
   --trade: #8C2231;
@@ -1075,6 +1093,9 @@
   --trade-alt: #1F3A5F;
   --trade-soft: #F3DDDF;
   --trade-deep: #6B1722;
+  --trade-pass-from: #8C2231;
+  --trade-pass-to: #1F3A5F;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="restaurant"],
 [data-trade="restaurant_south_asian"],
@@ -1087,6 +1108,9 @@
   --trade-alt: #C27C06;
   --trade-soft: #FDE9C9;
   --trade-deep: #7A2410;
+  --trade-pass-from: #B5321B;
+  --trade-pass-to: #C27C06;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="grocery"] {
   --trade: #2F7D3A;
@@ -1094,6 +1118,9 @@
   --trade-alt: #6E9B1E;
   --trade-soft: #E1F0DC;
   --trade-deep: #1E5226;
+  --trade-pass-from: #2F7D3A;
+  --trade-pass-to: #6E9B1E;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="pharmacy"] {
   --trade: #0E7387;
@@ -1101,6 +1128,9 @@
   --trade-alt: #3B9BAA;
   --trade-soft: #D9EEF2;
   --trade-deep: #0A5160;
+  --trade-pass-from: #0E7387;
+  --trade-pass-to: #3B9BAA;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="fitness"] {
   --trade: #0D7A63;
@@ -1108,6 +1138,9 @@
   --trade-alt: #5E9C0F;
   --trade-soft: #DDF3E8;
   --trade-deep: #0B4F43;
+  --trade-pass-from: #0D7A63;
+  --trade-pass-to: #5E9C0F;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="pet"] {
   --trade: #2873B0;
@@ -1115,6 +1148,9 @@
   --trade-alt: #2A84C6;
   --trade-soft: #DCEBF7;
   --trade-deep: #174E7A;
+  --trade-pass-from: #2873B0;
+  --trade-pass-to: #2A84C6;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="repair_auto"],
 [data-trade="car_wash"],
@@ -1124,6 +1160,9 @@
   --trade-alt: #475569;
   --trade-soft: #E0E7FB;
   --trade-deep: #1E3A8A;
+  --trade-pass-from: #2F55D4;
+  --trade-pass-to: #475569;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="repair_electronics"],
 [data-trade="alterations"],
@@ -1133,6 +1172,9 @@
   --trade-alt: #C2570C;
   --trade-soft: #E3EAF0;
   --trade-deep: #2D3F4F;
+  --trade-pass-from: #4A6378;
+  --trade-pass-to: #C2570C;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="florist"] {
   --trade: #A8168F;
@@ -1140,6 +1182,9 @@
   --trade-alt: #D246B3;
   --trade-soft: #F9DDF3;
   --trade-deep: #74106A;
+  --trade-pass-from: #A8168F;
+  --trade-pass-to: #D246B3;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="bookstore"] {
   --trade: #7A2E6E;
@@ -1147,6 +1192,9 @@
   --trade-alt: #A85C9C;
   --trade-soft: #EBDDF0;
   --trade-deep: #52204F;
+  --trade-pass-from: #7A2E6E;
+  --trade-pass-to: #A85C9C;
+  --trade-pass-text: #FFFFFF;
 }
 [data-trade="retail"],
 [data-trade="other"] {
@@ -1155,6 +1203,9 @@
   --trade-alt: #B8691F;
   --trade-soft: #FCE4D8;
   --trade-deep: #9B2F1A;
+  --trade-pass-from: #C8452C;
+  --trade-pass-to: #B8691F;
+  --trade-pass-text: #FFFFFF;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1165,6 +1216,9 @@
     --trade-alt: #D89A5A;
     --trade-soft: #473427;
     --trade-deep: #EBC5AD;
+    --trade-pass-from: #644634;
+    --trade-pass-to: #664A2E;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="bakery"],
   :root:not([data-theme="light"])[data-trade="bakery"] {
@@ -1173,6 +1227,9 @@
     --trade-alt: #F5B13D;
     --trade-soft: #4E3920;
     --trade-deep: #FBD39D;
+    --trade-pass-from: #725026;
+    --trade-pass-to: #725322;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="salon"],
   :root:not([data-theme="light"])[data-trade="salon"],
@@ -1185,6 +1242,9 @@
     --trade-alt: #DA5882;
     --trade-soft: #472B2E;
     --trade-deep: #EBADC2;
+    --trade-pass-from: #643642;
+    --trade-pass-to: #672F3E;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="barber"],
   :root:not([data-theme="light"])[data-trade="barber"] {
@@ -1193,6 +1253,9 @@
     --trade-alt: #6190D1;
     --trade-soft: #482A29;
     --trade-deep: #EBADB6;
+    --trade-pass-from: #663438;
+    --trade-pass-to: #36465D;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="restaurant"],
   :root:not([data-theme="light"])[data-trade="restaurant"],
@@ -1211,6 +1274,9 @@
     --trade-alt: #F9B139;
     --trade-soft: #4B2C23;
     --trade-deep: #F2B2A6;
+    --trade-pass-from: #6C372C;
+    --trade-pass-to: #735320;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="grocery"],
   :root:not([data-theme="light"])[data-trade="grocery"] {
@@ -1219,6 +1285,9 @@
     --trade-alt: #ACDE54;
     --trade-soft: #32412A;
     --trade-deep: #ADEBB6;
+    --trade-pass-from: #3A603A;
+    --trade-pass-to: #54652B;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="pharmacy"],
   :root:not([data-theme="light"])[data-trade="pharmacy"] {
@@ -1227,6 +1296,9 @@
     --trade-alt: #61C2D1;
     --trade-soft: #2D4141;
     --trade-deep: #A3E8F5;
+    --trade-pass-from: #2F6068;
+    --trade-pass-to: #365A5D;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="fitness"],
   :root:not([data-theme="light"])[data-trade="fitness"] {
@@ -1235,6 +1307,9 @@
     --trade-alt: #A3ED45;
     --trade-soft: #2D463A;
     --trade-deep: #A3F5E4;
+    --trade-pass-from: #306A5B;
+    --trade-pass-to: #516B25;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="pet"],
   :root:not([data-theme="light"])[data-trade="pet"] {
@@ -1243,6 +1318,9 @@
     --trade-alt: #57A3DB;
     --trade-soft: #30373D;
     --trade-deep: #ACCFEC;
+    --trade-pass-from: #364E61;
+    --trade-pass-to: #324D61;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="repair_auto"],
   :root:not([data-theme="light"])[data-trade="repair_auto"],
@@ -1255,6 +1333,9 @@
     --trade-alt: #618FD1;
     --trade-soft: #302F3E;
     --trade-deep: #AABAEE;
+    --trade-pass-from: #353E62;
+    --trade-pass-to: #36455D;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="repair_electronics"],
   :root:not([data-theme="light"])[data-trade="repair_electronics"],
@@ -1267,6 +1348,9 @@
     --trade-alt: #F3893F;
     --trade-soft: #32373C;
     --trade-deep: #ADCFEB;
+    --trade-pass-from: #3A4D5E;
+    --trade-pass-to: #714323;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="florist"],
   :root:not([data-theme="light"])[data-trade="florist"] {
@@ -1275,6 +1359,9 @@
     --trade-alt: #D75BBC;
     --trade-soft: #4B273B;
     --trade-deep: #F3A5E6;
+    --trade-pass-from: #6D2E5C;
+    --trade-pass-to: #663055;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="bookstore"],
   :root:not([data-theme="light"])[data-trade="bookstore"] {
@@ -1283,6 +1370,9 @@
     --trade-alt: #D161BF;
     --trade-soft: #472B39;
     --trade-deep: #EBADE1;
+    --trade-pass-from: #643658;
+    --trade-pass-to: #633356;
+    --trade-pass-text: #F7EEE3;
   }
   :root:not([data-theme="light"]) [data-trade="retail"],
   :root:not([data-theme="light"])[data-trade="retail"],
@@ -1293,6 +1383,9 @@
     --trade-alt: #E29750;
     --trade-soft: #492E25;
     --trade-deep: #EDB6AB;
+    --trade-pass-from: #683A30;
+    --trade-pass-to: #6A482A;
+    --trade-pass-text: #F7EEE3;
   }
 }
 
@@ -1303,6 +1396,9 @@
   --trade-alt: #D89A5A;
   --trade-soft: #473427;
   --trade-deep: #EBC5AD;
+  --trade-pass-from: #644634;
+  --trade-pass-to: #664A2E;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="bakery"],
 [data-theme="dark"][data-trade="bakery"] {
@@ -1311,6 +1407,9 @@
   --trade-alt: #F5B13D;
   --trade-soft: #4E3920;
   --trade-deep: #FBD39D;
+  --trade-pass-from: #725026;
+  --trade-pass-to: #725322;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="salon"],
 [data-theme="dark"][data-trade="salon"],
@@ -1323,6 +1422,9 @@
   --trade-alt: #DA5882;
   --trade-soft: #472B2E;
   --trade-deep: #EBADC2;
+  --trade-pass-from: #643642;
+  --trade-pass-to: #672F3E;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="barber"],
 [data-theme="dark"][data-trade="barber"] {
@@ -1331,6 +1433,9 @@
   --trade-alt: #6190D1;
   --trade-soft: #482A29;
   --trade-deep: #EBADB6;
+  --trade-pass-from: #663438;
+  --trade-pass-to: #36465D;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="restaurant"],
 [data-theme="dark"][data-trade="restaurant"],
@@ -1349,6 +1454,9 @@
   --trade-alt: #F9B139;
   --trade-soft: #4B2C23;
   --trade-deep: #F2B2A6;
+  --trade-pass-from: #6C372C;
+  --trade-pass-to: #735320;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="grocery"],
 [data-theme="dark"][data-trade="grocery"] {
@@ -1357,6 +1465,9 @@
   --trade-alt: #ACDE54;
   --trade-soft: #32412A;
   --trade-deep: #ADEBB6;
+  --trade-pass-from: #3A603A;
+  --trade-pass-to: #54652B;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="pharmacy"],
 [data-theme="dark"][data-trade="pharmacy"] {
@@ -1365,6 +1476,9 @@
   --trade-alt: #61C2D1;
   --trade-soft: #2D4141;
   --trade-deep: #A3E8F5;
+  --trade-pass-from: #2F6068;
+  --trade-pass-to: #365A5D;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="fitness"],
 [data-theme="dark"][data-trade="fitness"] {
@@ -1373,6 +1487,9 @@
   --trade-alt: #A3ED45;
   --trade-soft: #2D463A;
   --trade-deep: #A3F5E4;
+  --trade-pass-from: #306A5B;
+  --trade-pass-to: #516B25;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="pet"],
 [data-theme="dark"][data-trade="pet"] {
@@ -1381,6 +1498,9 @@
   --trade-alt: #57A3DB;
   --trade-soft: #30373D;
   --trade-deep: #ACCFEC;
+  --trade-pass-from: #364E61;
+  --trade-pass-to: #324D61;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="repair_auto"],
 [data-theme="dark"][data-trade="repair_auto"],
@@ -1393,6 +1513,9 @@
   --trade-alt: #618FD1;
   --trade-soft: #302F3E;
   --trade-deep: #AABAEE;
+  --trade-pass-from: #353E62;
+  --trade-pass-to: #36455D;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="repair_electronics"],
 [data-theme="dark"][data-trade="repair_electronics"],
@@ -1405,6 +1528,9 @@
   --trade-alt: #F3893F;
   --trade-soft: #32373C;
   --trade-deep: #ADCFEB;
+  --trade-pass-from: #3A4D5E;
+  --trade-pass-to: #714323;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="florist"],
 [data-theme="dark"][data-trade="florist"] {
@@ -1413,6 +1539,9 @@
   --trade-alt: #D75BBC;
   --trade-soft: #4B273B;
   --trade-deep: #F3A5E6;
+  --trade-pass-from: #6D2E5C;
+  --trade-pass-to: #663055;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="bookstore"],
 [data-theme="dark"][data-trade="bookstore"] {
@@ -1421,6 +1550,9 @@
   --trade-alt: #D161BF;
   --trade-soft: #472B39;
   --trade-deep: #EBADE1;
+  --trade-pass-from: #643658;
+  --trade-pass-to: #633356;
+  --trade-pass-text: #F7EEE3;
 }
 [data-theme="dark"] [data-trade="retail"],
 [data-theme="dark"][data-trade="retail"],
@@ -1431,4 +1563,7 @@
   --trade-alt: #E29750;
   --trade-soft: #492E25;
   --trade-deep: #EDB6AB;
+  --trade-pass-from: #683A30;
+  --trade-pass-to: #6A482A;
+  --trade-pass-text: #F7EEE3;
 }

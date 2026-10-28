@@ -99,6 +99,9 @@
   --color-trade-alt: var(--trade-alt);
   --color-trade-soft: var(--trade-soft);
   --color-trade-deep: var(--trade-deep);
+  --color-trade-pass-from: var(--trade-pass-from);
+  --color-trade-pass-to: var(--trade-pass-to);
+  --color-trade-pass-text: var(--trade-pass-text);
   --color-hover: var(--accent);
   --color-hover-foreground: var(--accent-foreground);
 

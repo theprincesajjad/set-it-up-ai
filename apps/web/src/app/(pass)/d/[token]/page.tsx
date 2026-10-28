@@ -16,7 +16,7 @@ export default async function DriverPage({ params, searchParams }: Props) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
   return (
-    <PageFrame locale={locale} className="flex flex-col gap-4 pt-2 pb-28">
+    <PageFrame locale={locale} trade="tiffin" className="flex flex-col gap-4 pt-2 pb-28">
       <DriverRun token={token} />
     </PageFrame>
   );

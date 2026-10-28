@@ -31,7 +31,7 @@ export default async function PaySetupPage({ params, searchParams }: Props) {
         .catch((e: unknown) => (isApiError(e) && [400, 403, 404].includes(e.status) ? ("gone" as const) : ("error" as const)))
     : ("gone" as const);
   return (
-    <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
+    <LocaleScope locale={locale} trade="other" className="flex flex-col gap-6 pt-2">
       <PassTopBar className="self-stretch" />
       {data === "gone" ? (
         <EmptyState icon={Link2Off} title={t("payIntent.gone")} description={t("payIntent.goneBody")} />

@@ -110,16 +110,16 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
       {/* Category rail of objects, on a soft white fade so map labels never read through the captions. */}
       {state.categories.length > 2 ? (
         <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-[2]", sel && "max-md:hidden")}>
-          <div aria-hidden className="absolute inset-x-0 bottom-0 h-[112px] bg-linear-to-t from-[#FFFFFF] from-35% via-[#FFFFFF]/80 to-[#FFFFFF]/0 dark:from-ll-map-land-dark dark:via-ll-map-land-dark/85 dark:to-transparent" />
+          <div aria-hidden className="absolute inset-x-0 bottom-0 h-[112px] bg-linear-to-t from-bg from-35% via-bg/80 to-transparent dark:from-ll-map-land-dark dark:via-ll-map-land-dark/85 dark:to-transparent" />
           <div data-map-obstacle role="group" aria-label={t("wp.cat.label")} className="no-scrollbar pointer-events-auto relative mx-auto flex w-fit max-w-full gap-0.5 overflow-x-auto px-3 pt-2 pb-[max(22px,env(safe-area-inset-bottom))] md:pb-6">
             {state.categories.map((c) => {
               const on = state.cat === c;
               return (
                 <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[54px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
-                  <span className={cn("flex size-10 items-center justify-center rounded-full bg-ll-stone-0 shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "ring-2 ring-foreground" : "group-hover:scale-105")}>
+                  <span className={cn("flex size-10 items-center justify-center rounded-full bg-card shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "bg-primary ring-2 ring-primary" : "group-hover:scale-105")}>
                     <CategoryIcon category={c} size={24} />
                   </span>
-                  <span className={cn("display text-[12px] leading-[14px] lowercase", on ? "text-fg" : "text-fg-muted")}>{t(CATEGORY_KEYS[c])}</span>
+                  <span className={cn("text-caption font-semibold", on ? "text-primary-text" : "text-fg-muted")}>{t(CATEGORY_KEYS[c])}</span>
                 </button>
               );
             })}
@@ -141,16 +141,17 @@ function ShopSheet({ s, onClose }: { s: networkApi.ShopListItemDto; onClose: () 
   return (
     <section
       data-map-obstacle
+      data-trade={s.merchant.vertical}
       aria-live="polite"
       aria-label={s.merchant.name}
-      className="absolute inset-x-0 bottom-0 z-[3] rounded-t-sheet bg-bg px-4 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] shadow-float motion-safe:animate-sheet-up md:inset-x-auto md:start-6 md:bottom-6 md:w-[380px] md:rounded-sheet md:p-5 md:motion-safe:animate-fade-in"
+      className="absolute inset-x-0 bottom-0 z-[3] rounded-t-sheet border border-line bg-card px-4 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] shadow-float motion-safe:animate-sheet-up md:inset-x-auto md:start-6 md:bottom-6 md:w-[380px] md:rounded-sheet md:p-5 md:motion-safe:animate-fade-in"
     >
       <div aria-hidden className="mx-auto mb-3 h-[5px] w-9 rounded-full bg-bg-muted md:hidden" />
       <div className="flex items-start gap-3">
         <ShopLogo shop={s.merchant} size={56} />
         <div className="min-w-0 flex-1 pt-0.5">
-          <h2 className="text-headline text-fg"><bdi>{s.merchant.name}</bdi></h2>
-          <p className="truncate text-meta italic text-fg-muted">{[kind, where].filter(Boolean).join(" · ")}</p>
+          <h2 className="font-display text-title font-bold text-trade-deep"><bdi>{s.merchant.name}</bdi></h2>
+          <p className="truncate text-meta text-fg-muted">{[kind, where].filter(Boolean).join(" · ")}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-fg">
             {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"}>{s.openNow ? t("ms.map.openNow").replace(/^./, (ch) => ch.toUpperCase()) : t("ui.hours.closed")}</StatusDot> : null}
             {s.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: s.memberCount })}</span> : null}

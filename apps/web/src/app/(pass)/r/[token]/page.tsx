@@ -1,3 +1,4 @@
+import { loadShopBrief } from "@/lib/restaurant/server";
 import { Link2Off } from "lucide-react";
 import type { Metadata } from "next";
 import { ReviewView } from "@/components/pass/ReviewView";
@@ -25,8 +26,9 @@ export default async function ReviewPage({ params, searchParams }: Props) {
   const data = await publicServerApi()
     .public.review(token)
     .catch((e: unknown) => (isApiError(e) && (e.status === 404 || e.status === 400) ? ("gone" as const) : ("error" as const)));
+  const shop = typeof data === "object" ? await loadShopBrief(data.merchant.slug).catch(() => null) : null;
   return (
-    <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
+    <LocaleScope locale={locale} trade={shop?.vertical ?? "other"} className="flex flex-col gap-6 pt-2">
       <PassTopBar className="self-stretch" />
       {data === "gone" ? (
         <EmptyState icon={Link2Off} title={t("review.goneTitle")} description={t("review.goneBody")} />

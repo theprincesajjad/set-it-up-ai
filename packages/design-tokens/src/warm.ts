@@ -174,14 +174,22 @@ export interface TradeColors {
   alt: string;
   soft: string;
   deep: string;
+  /** The customer pass card: gradient start (the left, where the text sits), the blend 30% of the way across (where text ends), the end, and the text on it. Dark is the accent mixed over the espresso canvas, never neon. */
+  passFrom: string;
+  passMid: string;
+  passTo: string;
+  passText: string;
 }
 
 /** Dark: the accent is lifted toward white until dark text reads on it; soft is the accent at 18% over the dark card; deep is a light tint. */
 export function tradeColors(family: TradeFamily, theme: "light" | "dark"): TradeColors {
   const t = tradeFamilies[family];
-  if (theme === "light") return { accent: t.accent, foreground: "#FFFFFF", alt: t.alt, soft: t.soft, deep: t.deep };
+  if (theme === "light") return { accent: t.accent, foreground: "#FFFFFF", alt: t.alt, soft: t.soft, deep: t.deep, passFrom: t.accent, passMid: mix(t.accent, t.alt, 0.25), passTo: t.alt, passText: "#FFFFFF" };
   const accent = lift(t.accent, 62);
-  return { accent, foreground: warm.espresso, alt: lift(t.alt, 60), soft: mix(warm.roast, accent, 0.2), deep: lift(t.accent, 80, 60) };
+  const alt = lift(t.alt, 60);
+  const passFrom = mix(warm.espresso, accent, 0.4);
+  const passTo = mix(warm.espresso, alt, 0.4);
+  return { accent, foreground: warm.espresso, alt, soft: mix(warm.roast, accent, 0.2), deep: lift(t.accent, 80, 60), passFrom, passMid: mix(passFrom, passTo, 0.25), passTo, passText: warm.cocoa };
 }
 
 export const verticalTrade = (v: string | null | undefined): TradeFamily => (v && (tradeFamilyOf as Record<string, TradeFamily>)[v]) || "terracotta";

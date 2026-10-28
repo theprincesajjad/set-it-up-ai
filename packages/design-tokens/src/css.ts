@@ -126,6 +126,9 @@ function tradeVars(f: TradeFamily, theme: "light" | "dark", indent: string): str
     `${indent}--trade-alt: ${c.alt};`,
     `${indent}--trade-soft: ${c.soft};`,
     `${indent}--trade-deep: ${c.deep};`,
+    `${indent}--trade-pass-from: ${c.passFrom};`,
+    `${indent}--trade-pass-to: ${c.passTo};`,
+    `${indent}--trade-pass-text: ${c.passText};`,
   ];
 }
 

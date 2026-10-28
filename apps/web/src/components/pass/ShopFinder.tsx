@@ -149,7 +149,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
   return (
     <div className="flex flex-col gap-5 pb-4">
       <div className="flex items-end justify-between gap-3 pt-2">
-        <h1 className="display text-large-title text-fg">{t("wp.t.mapTitle")}</h1>
+        <h1 className="font-display text-large-title font-bold tracking-[-0.02em] text-foreground">{t("wp.t.mapTitle")}</h1>
         <SegmentedControl label={t("wp.map.viewLabel")} value={view} onChange={setView} options={[{ value: "map", label: t("sh.nav.map") }, { value: "list", label: t("wp.map.list") }]} />
       </div>
       <div className="flex flex-col gap-3">

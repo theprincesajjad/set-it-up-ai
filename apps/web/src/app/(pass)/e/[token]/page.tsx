@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { publicRestaurantApi } from "@/lib/restaurant/server";
+import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
@@ -37,8 +37,9 @@ export default async function CateringQuotePage({ params, searchParams }: Props)
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/e/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
       </PageFrame>
     );
+  const shop = await loadShopBrief(data.merchant.slug).catch(() => null);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop?.vertical}>
       <CateringApproval token={token} initial={data} />
     </PageFrame>
   );

@@ -184,6 +184,9 @@ export interface RolesV3 {
   tradeAlt: string;
   tradeSoft: string;
   tradeDeep: string;
+  tradePassFrom: string;
+  tradePassTo: string;
+  tradePassText: string;
 }
 
 const v3Light: RolesV3 = {
@@ -237,6 +240,9 @@ const v3Light: RolesV3 = {
   tradeAlt: tradeColors("terracotta", "light").alt,
   tradeSoft: tradeColors("terracotta", "light").soft,
   tradeDeep: tradeColors("terracotta", "light").deep,
+  tradePassFrom: tradeColors("terracotta", "light").passFrom,
+  tradePassTo: tradeColors("terracotta", "light").passTo,
+  tradePassText: tradeColors("terracotta", "light").passText,
 };
 
 const v3Dark: RolesV3 = {
@@ -290,6 +296,9 @@ const v3Dark: RolesV3 = {
   tradeAlt: tradeColors("terracotta", "dark").alt,
   tradeSoft: tradeColors("terracotta", "dark").soft,
   tradeDeep: tradeColors("terracotta", "dark").deep,
+  tradePassFrom: tradeColors("terracotta", "dark").passFrom,
+  tradePassTo: tradeColors("terracotta", "dark").passTo,
+  tradePassText: tradeColors("terracotta", "dark").passText,
 };
 
 export const rolesV3 = { light: v3Light, dark: v3Dark } as const;
@@ -578,4 +587,7 @@ export const contrastPairsTrade: TradePair[] = [
   T("alt", "card", UI, "Second colour as decoration"),
   T("alt", "background", UI, "Second colour as decoration"),
   T("foreground", "alt", UI, "Large label on the gradient's second colour"),
+  T("passText", "passFrom", TEXT, "Pass card text on the gradient's left"),
+  T("passText", "passMid", TEXT, "Pass card text where it ends (25% blend toward the second colour, at 70% across)"),
+  T("passFrom", "passText", TEXT, "Stamp glyph (the gradient start) on the white (light) or cocoa (dark) stamp"),
 ];

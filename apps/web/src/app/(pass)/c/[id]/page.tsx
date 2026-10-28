@@ -67,7 +67,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     c.prize ? t("sh.camp.stepPrize", { prize: c.prize.replace(/\.$/, "") }) : null,
   ].filter((x): x is string => !!x);
   return (
-    <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+    <LocaleScope locale={locale} trade="other" className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
     <div className="flex flex-col gap-6 pt-2">
       <PassTopBar className="self-stretch" />
       <header className="flex flex-col gap-2">
