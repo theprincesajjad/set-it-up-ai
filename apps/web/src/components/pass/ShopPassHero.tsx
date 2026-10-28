@@ -48,6 +48,9 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
   const goal = next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0);
   const shown = goal > 0 ? Math.min(m.balance, goal) : m.balance;
   const unit = unitCaption(locale, m.balance, m.terminology);
+  // A long total ("1,190 / 1,190") steps down so it never runs under the illustration.
+  const digits = `${formatNumber(shown)}${goal > 0 ? ` / ${formatNumber(goal)}` : ""}`.length;
+  const numeral = digits > 12 ? "text-[32px]" : digits > 9 ? "text-[40px]" : digits > 7 ? "text-[46px]" : "text-[54px]";
   const pct = goal > 0 ? Math.round((shown / goal) * 100) : 0;
   return (
     <section
@@ -82,9 +85,9 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
             <div className="h-full rounded-full bg-current" style={{ width: `${pct}%` }} />
           </div>
         ) : null}
-        <div className="flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-display text-[54px] font-bold leading-none tracking-tight tabular-nums">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className={`font-display ${numeral} font-bold leading-none tracking-tight tabular-nums`}>
               {formatNumber(shown)}
               {goal > 0 ? <span className="mx-1.5 font-normal opacity-90">/</span> : null}
               {goal > 0 ? formatNumber(goal) : null}
@@ -92,7 +95,7 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
             <p className="mt-2 text-body text-current/95">{line ?? unit}</p>
             {next && !line ? <p className="mt-1 text-meta text-current/90">{rewardNameIn(locale, t, next.name)}</p> : null}
           </div>
-          <CategoryIcon vertical={m.merchant.vertical} size={76} className="mb-1 drop-shadow-md" />
+          <CategoryIcon vertical={m.merchant.vertical} size={64} className="mb-1 shrink-0 drop-shadow-md max-[340px]:hidden" />
         </div>
       </div>
       {footer ? <div className="border-t border-current/25 px-5 py-3 text-meta text-current/95">{footer}</div> : null}

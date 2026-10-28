@@ -1,6 +1,5 @@
 import { Coffee, Gift } from "lucide-react";
-import { tradeColors } from "@ll/design-tokens";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { IconTile } from "@/components/ui/IconTile";
 import { StatTile } from "@/components/ui/StatTile";
 import { cn } from "@/lib/cn";
@@ -10,9 +9,6 @@ import { cn } from "@/lib/cn";
  * coffee-shop pass in its trade colours, one stat tile and a "redeemed" note. Decorative and inert; every shop and number in it is
  * a sample, and the caption under the stage says so.
  */
-/** The sample pass is a picture of the app in light mode: its trade colours are the light ones whatever the page theme is. */
-const PASS = tradeColors("cafe", "light");
-const PASS_VARS = { "--trade": PASS.accent, "--trade-foreground": PASS.foreground, "--trade-alt": PASS.alt, "--trade-deep": PASS.deep } as CSSProperties;
 
 const TILES: { art: string; tone: string }[] = [
   { art: "coffee", tone: "bg-tile-peach" },
@@ -45,7 +41,7 @@ export function HeroArt({ caption }: { caption: string }) {
           ))}
 
           {/* The pass: trade gradient, awning edge, eight of ten stamps. */}
-          <div style={PASS_VARS} className="[--i:3] mkt-pop relative col-span-12 overflow-hidden sm:col-span-7 rounded-card bg-[linear-gradient(100deg,var(--trade)_0%,var(--trade)_62%,var(--trade-alt)_135%)] p-4 text-trade-foreground shadow-card sm:p-5">
+          <div data-trade="cafe" className="[--i:3] mkt-pop relative col-span-12 overflow-hidden sm:col-span-7 rounded-card bg-[linear-gradient(100deg,var(--trade)_0%,var(--trade)_62%,var(--trade-alt)_135%)] p-4 text-trade-foreground shadow-card sm:p-5">
             <div className="absolute inset-x-0 top-0 h-2.5 bg-[repeating-linear-gradient(90deg,var(--primary)_0_24px,var(--card)_24px_48px)]" />
             <div className="mt-2 flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-lg bg-card text-[11px] font-bold text-trade-deep">PC</span>
