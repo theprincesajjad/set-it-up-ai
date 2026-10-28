@@ -2,7 +2,7 @@
  * The founder's review console (admin only): the conversation list and hand-off queue, the transcript with the tools the
  * assistant ran, taking over and replying as a person, thumbs on answers, and the quality numbers.
  */
-import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { salesAgentConversations, salesAgentMessages, users } from "@ll/db";
 import { AGENT_TEXTS, isAgentLang, type AgentLang, type Page, type salesAgentApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
@@ -167,11 +167,11 @@ export async function rate(ctx: AppContext, adminId: string, messageId: string, 
 
 export async function quality(ctx: AppContext, days = 30): Promise<salesAgentApi.QualityResponse> {
   const since = new Date(ctx.now().getTime() - days * 86_400_000);
-  const convs = await ctx.db.select().from(salesAgentConversations).where(sql`${salesAgentConversations.createdAt} >= ${since}`);
+  const convs = await ctx.db.select().from(salesAgentConversations).where(gte(salesAgentConversations.createdAt, since));
   const msgs = await ctx.db
     .select({ id: salesAgentMessages.id, conversationId: salesAgentMessages.conversationId, role: salesAgentMessages.role, body: salesAgentMessages.body, toolCalls: salesAgentMessages.toolCalls, feedback: salesAgentMessages.feedback, guard: salesAgentMessages.guard, createdAt: salesAgentMessages.createdAt })
     .from(salesAgentMessages)
-    .where(sql`${salesAgentMessages.createdAt} >= ${since}`);
+    .where(gte(salesAgentMessages.createdAt, since));
   const count = <T,>(items: T[], key: (t: T) => string | null) => {
     const m = new Map<string, number>();
     for (const i of items) {

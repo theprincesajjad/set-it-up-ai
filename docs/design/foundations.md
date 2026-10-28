@@ -5,6 +5,10 @@ Everything — customer app, web pass, merchant dashboard, rep, admin — is
 rebuilt on these foundations. `docs/design/references.md` stays as layout
 reference; where it conflicts with this file, this file wins.
 
+> **v3 proposal (not yet adopted):** [v3-strategy.md](./v3-strategy.md) keeps this identity, moves the component
+> layer to shadcn/ui, renames the orange role to `points`, and defines one shell for every trade. Until a v3
+> workstream lands, this file stays the spec.
+
 ## What Corner actually does (studied on Mobbin)
 
 Sources: Corner map ([1](https://mobbin.com/flows/5a10c893-ab8a-43c8-8b92-00768417390a),

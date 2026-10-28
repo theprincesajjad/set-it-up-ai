@@ -10,7 +10,7 @@
  *
  * Money is integer cents, weights are grams, times are stored UTC and shown in the shop's zone. Points only move through the ledger.
  */
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
 import {
   catalogItems,
   groceryDeals,
@@ -680,7 +680,7 @@ export async function groceryHome(ctx: AppContext, merchant: Merchant): Promise<
       .select({ o: orders, name: users.name })
       .from(orders)
       .innerJoin(users, eq(users.id, orders.userId))
-      .where(and(eq(orders.merchantId, merchant.id), gte(orders.pickupAt, from), sql`${orders.pickupAt} < ${to}`, inArray(orders.status, ["pending", "accepted", "preparing", "ready"])))
+      .where(and(eq(orders.merchantId, merchant.id), gte(orders.pickupAt, from), lt(orders.pickupAt, to), inArray(orders.status, ["pending", "accepted", "preparing", "ready"])))
       .orderBy(asc(orders.pickupAt))
       .limit(12);
     const ids = rows.map((r) => r.o.id);

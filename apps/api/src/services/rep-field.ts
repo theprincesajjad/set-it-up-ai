@@ -3,7 +3,7 @@
  * a bad connection (idempotent by clientId), the Today summary and the live proof a rep shows at the door.
  * Docs: docs/engineering/api/rep.md.
  */
-import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { leadActivities, leads, merchantMembers, merchants, neighbourhoods, users, visits, type DbOrTx } from "@ll/db";
 import { orderStreetDay, repApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
@@ -143,7 +143,7 @@ export async function repToday(ctx: AppContext, user: AuthUser): Promise<repApi.
   const [me] = await ctx.db.select({ name: users.name }).from(users).where(eq(users.id, user.id)).limit(1);
   const [mine, due, web, setups, sd] = await Promise.all([
     listRepMerchants(ctx, user),
-    ctx.db.select().from(leads).where(and(visibleTo(user), sql`${leads.nextActionAt} <= ${now}`, inArray(leads.stage, OPEN_STAGES))).orderBy(asc(leads.nextActionAt)).limit(20),
+    ctx.db.select().from(leads).where(and(visibleTo(user), lte(leads.nextActionAt, now), inArray(leads.stage, OPEN_STAGES))).orderBy(asc(leads.nextActionAt)).limit(20),
     ctx.db.select().from(leads).where(and(visibleTo(user), eq(leads.source, "website"), eq(leads.stage, "new"), sql`${leads.assignedRepId} is null`)).orderBy(desc(leads.createdAt)).limit(10),
     ctx.db.select().from(leads).where(and(visibleTo(user), isNotNull(leads.setupAt), gte(leads.setupAt, new Date(now.getTime() - 12 * 3600000)), inArray(leads.stage, OPEN_STAGES))).orderBy(asc(leads.setupAt)).limit(20),
     streetDay(ctx, user, {}),
