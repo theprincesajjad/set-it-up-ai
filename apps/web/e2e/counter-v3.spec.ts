@@ -155,8 +155,10 @@ test("the door kiosk shows the four language chips and renders in Urdu without c
   await expect(chips).toHaveCount(4);
   await expect(chips.first()).toHaveAttribute("aria-pressed", "true");
   await page.screenshot({ path: shot("04-door-820-en") });
+  await page.waitForLoadState("networkidle");
   await page.getByRole("group", { name: /language/i }).getByRole("button", { name: "اردو" }).click();
-  await expect(page.locator("[dir=rtl]").first()).toBeVisible();
+  await expect(page.getByRole("group", { name: /language|زبان/i }).getByRole("button", { name: "اردو" })).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
+  await expect(page.locator("[dir=rtl]").first()).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: shot("05-door-820-ur"), fullPage: true });
   // No horizontal scroll, and no button or chip whose text is wider than its box.
   const { sw, iw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));

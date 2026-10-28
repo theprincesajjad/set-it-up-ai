@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { MerchantProvider } from "@/components/dashboard/MerchantContext";
-import { LocaleScope } from "@/lib/i18n/LocaleScope";
-import { getLocale } from "@/lib/i18n/server";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
@@ -28,12 +26,10 @@ export default async function DoorLayout({ children, params }: { children: React
     if (isApiError(e) && [401, 403, 404].includes(e.status)) notFound();
     throw e;
   }
-  const locale = await getLocale();
+  // The language scope lives in the page, not here: a layout is not re-rendered when only ?lang= changes, so the language chips would do nothing.
   return (
     <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={null}>
-      <LocaleScope locale={locale} className="min-h-screen bg-paper">
-        <main id="main" className="mx-auto w-full max-w-[1100px] px-4 py-6">{children}</main>
-      </LocaleScope>
+      {children}
     </MerchantProvider>
   );
 }

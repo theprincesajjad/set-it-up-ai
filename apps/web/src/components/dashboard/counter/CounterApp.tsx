@@ -1264,7 +1264,7 @@ export function CounterApp({
                         <span className="text-fg-muted"> · undone</span>
                       ) : null}
                     </p>
-                    <p className="truncate text-caption text-fg-muted">
+                    <p dir="auto" className="truncate text-caption text-muted-foreground">
                       {formatTime(a.createdAt)} · {typeLabel(a.type)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
