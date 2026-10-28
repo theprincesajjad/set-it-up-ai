@@ -90,7 +90,7 @@ test("a garage sees a ride-hail car overdue by km, marks the service done and th
   await page.screenshot({ path: shot("01-vehicle-1440") });
   await variants(page, "01-vehicle");
   await oil.getByRole("button", { name: "Mark Oil and filter done today" }).click();
-  await expect(reminders.getByRole("row", { name: /Oil and filter/ }).getByText("OK", { exact: true })).toBeVisible();
+  await expect(reminders.getByRole("row", { name: /Oil and filter/ }).getByText("Up to date", { exact: true })).toBeVisible();
   // The plate is staff-only: it is on this page, and the API never puts it in a reminder text.
   await expect(page.getByText(/plate CGTP 927/)).toBeVisible();
 });

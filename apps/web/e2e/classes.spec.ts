@@ -146,14 +146,14 @@ test.describe("the member's side", () => {
     await expect(page.getByText(/We hold your spot for 10 minutes/)).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /^Pay \$\d+(\.\d\d)? and book$/ }).last().click();
     await expect(page.getByText("You are booked. See you there.")).toBeVisible({ timeout: 30_000 });
-    await page.getByRole("button", { name: "OK", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByText("Booked", { exact: true }).first()).toBeVisible();
 
     // The intro offer, once.
     await page.getByRole("listitem").filter({ hasText: "Intro: 3 classes" }).getByRole("button", { name: "Buy" }).click();
     await page.getByRole("button", { name: /^Pay \$\d+(\.\d\d)?$/ }).click();
     await expect(page.getByText("Your pass is ready. Book a class.")).toBeVisible({ timeout: 30_000 });
-    await page.getByRole("button", { name: "OK", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
 
     // Join the unlimited membership: the agreement first, the card after the box is ticked.
     await page.getByRole("button", { name: "Join" }).first().click();
@@ -168,7 +168,7 @@ test.describe("the member's side", () => {
     await expect(page.getByText("Test payment (development)")).toBeVisible({ timeout: 20_000 });
     await pay.last().click();
     await expect(page.getByText(/Your membership is active/)).toBeVisible({ timeout: 30_000 });
-    await page.getByRole("button", { name: "OK", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
 
     await page.goto("/me/classes");
     await expect(page.getByRole("heading", { level: 1, name: "passes" })).toBeVisible();

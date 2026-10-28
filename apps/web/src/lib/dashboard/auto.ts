@@ -18,7 +18,7 @@ export const kmLabel = (km: number | null | undefined): string => (km == null ? 
 export function reminderTag(status: autoApi.ReminderStatusDto): { label: string; tone: DotTone } {
   if (status === "overdue") return { label: "Overdue", tone: "negative" };
   if (status === "due_soon") return { label: "Due soon", tone: "accent" };
-  if (status === "ok") return { label: "OK", tone: "positive" };
+  if (status === "ok") return { label: "Up to date", tone: "positive" };
   return { label: "Not logged yet", tone: "neutral" };
 }
 
@@ -34,7 +34,7 @@ export function dueText(r: Pick<autoApi.ReminderDto, "dueOn" | "basis" | "daysTo
 export function treadTag(s: autoApi.TireSetDto["treadStatus"]): { label: string; tone: DotTone } {
   if (s === "wear_bar") return { label: "At the wear bar", tone: "negative" };
   if (s === "replace_soon") return { label: "Replace soon", tone: "accent" };
-  if (s === "ok") return { label: "OK", tone: "positive" };
+  if (s === "ok") return { label: "Good", tone: "positive" };
   return { label: "Not measured", tone: "neutral" };
 }
 export const seasonLabel = (s: string): string => (s === "winter" ? "Winter" : s === "summer" ? "Summer" : "All-weather");

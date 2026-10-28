@@ -10,7 +10,7 @@ Why: the founder said "wording for a lot of stuff just doesn't make sense". This
 
 ## Numbers
 
-- 293 strings rewritten in English (rows below): 94 message-catalog keys and 199 strings in components, helpers, the API and the mobile app. Several rows cover more than one place, so the number of changed source lines is higher.
+- 295 strings rewritten in English (rows below): 94 message-catalog keys and 201 strings in components, helpers, the API and the mobile app. Several rows cover more than one place, so the number of changed source lines is higher.
 - 267 Hindi, Urdu and Punjabi strings rewritten to match (89 keys, three languages each). Not native-reviewed; they are listed in translation-glossary.md under "Copy pass".
 - No consent text was changed. Three notices that restate a rule were reworded and are listed for counsel at the end of this file.
 
@@ -30,7 +30,7 @@ Why: the founder said "wording for a lot of stuff just doesn't make sense". This
 
 Where = the screen or surface. Current text and new text are the visible words (placeholders in braces, `…` for a value filled in by code).
 
-### Owner dashboard (134)
+### Owner dashboard (136)
 
 | Where | Current text | Problem | New text |
 | --- | --- | --- | --- |
@@ -168,6 +168,8 @@ Where = the screen or surface. Current text and new text are the visible words (
 | Owner Promo page: stat | Lift vs before | 'Lift' is marketing jargon | Change in visits |
 | Owner Promo page: stat caption | Needs 14 days of history / Avg daily visits vs the 14 days before | 'Avg' and 'vs' are abbreviations | Needs 14 days of history first / Average daily visits compared with the 14 days before |
 | Owner Settings: tab | Danger zone | 'Danger zone' is dramatic and does not say what is in it | Pause or close |
+| Owner Service reminders and Vehicle page: status chip | OK | 'OK' says nothing about what is fine; the customer sees 'Up to date' | Up to date |
+| Owner Tire season: tread chip | OK | 'OK' says nothing about what is fine | Good |
 
 ### Counter (staff) (26)
 
@@ -317,7 +319,7 @@ Where = the screen or surface. Current text and new text are the visible words (
 | Admin: network density gauge | Plus unlock | 'Plus unlock' names a plan that is now called Café & Retail | Café & Retail tools |
 | Admin: network density gauges | unit: "merchants" | 'Merchants' vs 'shops' | unit: "shops" |
 | Admin: network density gauges (screen reader label) | Network density | 'Network density' is internal language | Shops joined, by feature |
-| Admin Rollout: stage names | Hidden / Beta | 'GA' is jargon, and the page subtitle already says 'Live' | Hidden / Early access / Live |
+| Admin Rollout: stage names | Hidden / Beta / GA | 'GA' is jargon, and the page subtitle already says 'Live' | Hidden / Early access / Live |
 | Admin Rollout: plan names | every plan / Plus / Pro | 'Plus' and 'Pro' are not the plans' names | every plan / Café & Retail / Service |
 | Admin Rollout: stage change explanation | every merchant / merchants on … | 'Merchant' is internal; the product says 'shop' | every shop / shops on … |
 | Admin Rollout: stage change explanation | disappears for everyone except merchants with an override. Their data is kept. | 'Override' is internal language | disappears for everyone except shops that were given access by hand. Their data is kept. |
@@ -327,7 +329,7 @@ Where = the screen or surface. Current text and new text are the visible words (
 | Admin Rollout: group title | Phase 3 · Network | 'Network' is internal language | Phase 3 · Needs many shops |
 | Admin Rollout: stage change dialog | The network has {feature.activeMerchants} active merchants; the target for this feature is {feature.unlockAtMerchants}. | 'The network has N active merchants; the target for this feature is' is system language | {feature.activeMerchants} shops are active; this feature is meant to open at {feature.unlockAtMerchants}. |
 | Admin Rollout: stage change dialog | Saved in the audit log. | 'Audit log' alone does not say who reads it | Saved in the audit log, so the team can see why. |
-| Admin Rollout: stage switch | Beta | 'Beta' and 'GA' are jargon; the subtitle says 'Live' | Early access / Live |
+| Admin Rollout: stage switch | Beta / GA | 'Beta' and 'GA' are jargon; the subtitle says 'Live' | Early access / Live |
 | Admin Rollout: table header | Asked for it | 'Asked for it' does not say who asked | Notify requests |
 | Admin Rollout: table header | Overrides | 'Overrides' is internal language | Shop exceptions |
 | Admin Rollout: exceptions sheet | Overrides: … / Force this feature on for pilot shops (or off), whatever the stage or plan. | 'Overrides' and 'pilot shops' are internal language | Shop exceptions: … / Turn this feature on (or off) for specific shops, whatever the feature's stage or their plan. |

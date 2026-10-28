@@ -20,14 +20,14 @@ Reports.
 
 | Say | Never say | Notes |
 | --- | --- | --- |
-| customer | member, guest, neighbour, user | The person in a shop's program. "Membership" stays for a paid studio membership, and "Member code" and "Member number" stay on the customer's own card. |
+| customer | member, guest, user | The person in a shop's program. "Membership" stays for a paid studio membership, and "Member code" and "Member number" stay on the customer's own card. |
 | shop | merchant, business, store, vendor | "Merchant" is allowed only in the legal documents' titles. The admin console says shop too. |
 | stamps, points (the shop's own unit) | "points" for a stamp shop, "stamps" for a points shop | Ask the program (`terminology`). Where the screen cannot know the unit, say "rewards". |
 | reward | perk, prize, freebie | What a customer earns toward ("Free drink"). A draw prize is a "prize". |
 | offer (what a customer sees), promo (what an owner makes) | deal, special | A shop's "Promos" page makes the "Offers" tab on its shop page. |
 | neighbourhood bonus | network bonus, perk, street perk | The bonus for visiting several shops on one street. |
 | street event, passport | campaign (customer side) | "Campaign" is fine for BIAs and owners ("Street campaigns"). Customers see an "event". |
-| visit | check-in, transaction | One trip to the shop. A purchase is a "purchase". |
+| visit | transaction | One trip to the shop. A purchase is a "purchase". Studios keep "door check-in" for their class door. |
 | opted in, can text | consent, subscribed | In tables and hints. The legal consent text itself is never reworded here. |
 | balance history | ledger | Also "payment history" for what a customer paid. |
 | text | SMS | "Text" in every sentence a person reads. "SMS" stays in plan lists and developer pages. |

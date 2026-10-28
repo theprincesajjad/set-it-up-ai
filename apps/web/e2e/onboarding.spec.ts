@@ -83,7 +83,7 @@ test("signup is one screen and lands on the first stamp; the stamp shows up by i
   await expect(page.getByRole("region", { name: "Your first 30 days" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "1 of 25 customers has visited" })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Customers who have visited" })).toBeVisible();
-  await expect(page.getByText("12 by day 14 is the pace that gets you to 25")).toBeVisible();
+  await expect(page.getByText("12 customers by day 14 keeps you on track for 25")).toBeVisible();
   await expect(page.getByRole("list", { name: "Milestones" })).toContainText("First stamp");
   await expect(page.getByText("Where customers came from")).toBeVisible();
   await expect(page.getByRole("link", { name: "Start" }).first()).toBeVisible();

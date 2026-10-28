@@ -46,7 +46,7 @@ describe("Today", () => {
   it("renders the four cards in the phone order and has exactly one primary in the header", async () => {
     role = "owner";
     render(<TodayPage />);
-    await waitFor(() => expect(screen.getByText("2 members have a reward waiting")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("2 customers have a reward waiting")).toBeTruthy());
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(headings.slice(0, 4)).toEqual(["Needs you", "Visits by hour", "Up next", "Quick actions"]);
     // DOM order: Needs you, numbers, Up next, Quick actions
