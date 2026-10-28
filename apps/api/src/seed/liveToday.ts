@@ -22,7 +22,7 @@ import {
   type Db,
 } from "@ll/db";
 import type { AppContext } from "../context.js";
-import { zonedToUtc } from "../services/bookings.js";
+import { dayKey, toMinutes, zonedToUtc } from "../services/bookings.js";
 import { awardPurchase, redeemReward } from "../services/ledger.js";
 import { memberRhythms } from "../services/member-stats.js";
 import { FIRST_NAMES, LAST_NAMES } from "./data.js";
@@ -46,6 +46,13 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   return { next, int: (min: number, max: number) => min + Math.floor(next() * (max - min + 1)), pick: <T>(arr: readonly T[]) => arr[Math.floor(next() * arr.length)]!, chance: (p: number) => next() < p };
+}
+
+/** Visits (checkouts, check-ins) by close of day: quick-service trades are busy, appointment and service trades are not. */
+const BUSY = new Set(["cafe", "bakery", "restaurant", "restaurant_south_asian", "tiffin", "bar", "grocery", "pharmacy"]);
+const QUIET = new Set(["salon", "barber", "spa", "fitness", "repair_electronics", "repair_auto", "alterations", "caterer", "banquet_hall", "other"]);
+function fullDayFor(vertical: string, R: { int: (a: number, b: number) => number }): number {
+  return BUSY.has(vertical) ? R.int(30, 44) : QUIET.has(vertical) ? R.int(10, 16) : R.int(18, 26);
 }
 
 export interface LiveTodayOptions {
@@ -73,21 +80,15 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
   const dayStart = zonedToUtc(localDate, 0, TZ);
   const result: LiveTodayResult = { shops: 0, visits: 0, redemptions: 0, newMembers: 0, slipping: 0 };
 
-  // The window visits land in: from the morning rush (7:30) or three hours before now when it is earlier, up to two minutes ago.
-  const morning = new Date(dayStart.getTime() + 7.5 * 60 * MIN);
-  const windowStart = new Date(Math.max(dayStart.getTime(), Math.min(morning.getTime(), realNow.getTime() - 3 * 60 * MIN)));
-  const windowEnd = new Date(realNow.getTime() - 2 * MIN);
-  if (windowEnd.getTime() - windowStart.getTime() < 10 * MIN) return result; // the first minutes after midnight: nothing to spread yet
-
-  /** A random time in the window, weighted by hour. */
-  const pickTime = (): Date => {
-    const span = windowEnd.getTime() - windowStart.getTime();
+  /** A random time between two instants, weighted by (shop-local) hour. */
+  const pickTimeIn = (start: Date, end: Date): Date => {
+    const span = end.getTime() - start.getTime();
     for (let tries = 0; tries < 30; tries++) {
-      const at = new Date(windowStart.getTime() + Math.floor(R.next() * span));
+      const at = new Date(start.getTime() + Math.floor(R.next() * span));
       const hour = Number(LOCAL_HOUR.format(at)) % 24;
       if (R.next() * 9 < (HOUR_WEIGHT[hour] ?? 1)) return at;
     }
-    return new Date(windowStart.getTime() + Math.floor(R.next() * span));
+    return new Date(start.getTime() + Math.floor(R.next() * span));
   };
 
   const backdate = async (memberId: string, userId: string, at: Date) => {
@@ -106,11 +107,20 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
     if (shop.status === "closed" || shop.status === "paused") continue;
     const [program] = await db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, shop.id)).limit(1);
     if (!program || !program.active) continue;
-    const [loc] = await db.select({ id: locations.id }).from(locations).where(eq(locations.merchantId, shop.id)).orderBy(asc(locations.createdAt)).limit(1);
+    const [loc] = await db.select({ id: locations.id, hours: locations.hours }).from(locations).where(eq(locations.merchantId, shop.id)).orderBy(asc(locations.createdAt)).limit(1);
     const catRows = shop.vertical === "pharmacy" ? await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, shop.id)) : [];
     const front = catRows.find((c) => c.name === "Front store")?.id;
     const pharmacyBlocked = shop.vertical === "pharmacy" && (!shop.pharmacyConfirmedAt || !front);
     if (pharmacyBlocked) continue;
+
+    // Visits land inside today's opening hours, up to two minutes ago. A shop that is closed or has not opened yet has no visits today.
+    const spans = (loc?.hours ?? { [dayKey(localDate)]: [["08:00", "20:00"]] })[dayKey(localDate)] ?? [];
+    const span = spans[0];
+    const winStart = span ? new Date(zonedToUtc(localDate, toMinutes(span[0]), TZ).getTime() + 5 * MIN) : null;
+    const winEndHard = span ? new Date(zonedToUtc(localDate, Math.max(toMinutes(span[0]), toMinutes(span[1]) - 15), TZ)) : null;
+    const winEnd = winEndHard ? new Date(Math.min(winEndHard.getTime(), realNow.getTime() - 2 * MIN)) : null;
+    const hasWindow = !!winStart && !!winEnd && winEnd.getTime() - winStart.getTime() >= 15 * MIN;
+    const pickTime = (): Date => pickTimeIn(winStart!, winEnd!);
 
     const rewardRows = await db.select({ id: rewards.id, cost: rewards.pointsCost }).from(rewards).where(and(eq(rewards.merchantId, shop.id), eq(rewards.active, true))).orderBy(asc(rewards.pointsCost));
     const goal = rewardRows[0]?.cost ?? null;
@@ -120,11 +130,11 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
       .from(visits)
       .where(and(eq(visits.merchantId, shop.id), gte(visits.createdAt, dayStart)));
     const haveToday = Number(today?.n ?? 0);
-    // A shop sees 14 to 34 visits by evening; scale to how much of the day has passed, with a floor so the card is never thin.
-    const fullDay = R.int(14, 26) + (idx % 4) * 2;
-    const elapsed = Math.min(1, Math.max(0.35, (realNow.getTime() - windowStart.getTime()) / (11 * 60 * MIN)));
-    const target = Math.max(6, Math.round(fullDay * elapsed * scale));
-    const need = Math.max(0, target - haveToday);
+    // A café sees 30 to 44 visits by evening, a salon 10 to 16; scale to how much of the day has passed, with a floor so the card is never thin.
+    const fullDay = fullDayFor(shop.vertical, R) + (idx % 4) * 2;
+    const elapsed = hasWindow ? Math.min(1, Math.max(0.35, (winEnd!.getTime() - winStart!.getTime()) / (11 * 60 * MIN))) : 0;
+    const target = Math.max(hasWindow ? 6 : 0, Math.round(fullDay * elapsed * scale));
+    const need = hasWindow ? Math.max(0, target - haveToday) : 0;
 
     const members = await db
       .select({ id: merchantMembers.id, phone: users.phone })
@@ -188,7 +198,7 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
     }
 
     // 2. Rewards waiting (at least four) and rewards redeemed today (at least two), the way a shop with real regulars looks.
-    if (goal) {
+    if (goal && hasWindow) {
       const waiting = async () => {
         const rows = await db.select({ id: merchantMembers.id, phone: users.phone }).from(merchantMembers).innerJoin(users, eq(users.id, merchantMembers.userId)).where(and(eq(merchantMembers.merchantId, shop.id), gte(merchantMembers.balance, goal), isNull(users.deletedAt)));
         return rows;
@@ -212,7 +222,7 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
       }
       for (const m of have.slice(0, needRedeem)) {
         const cheapest = rewardRows[0]!;
-        await redeem(new Date(Math.max(windowStart.getTime(), windowEnd.getTime() - R.int(5, 90) * MIN)), m.id, cheapest.id);
+        await redeem(new Date(Math.max(winStart!.getTime(), winEnd!.getTime() - R.int(5, 90) * MIN)), m.id, cheapest.id);
       }
     }
 
@@ -226,7 +236,7 @@ export async function seedLiveToday(db: Db, ctx: AppContext, clock: { now: Date 
       const last = R.int(24, 34);
       for (let v = 3; v >= 0; v--) {
         const days = last + v * 7;
-        const at = new Date(zonedToUtc(LOCAL_DATE.format(new Date(realNow.getTime() - days * DAY)), 9 * 60 + R.int(0, 240), TZ));
+        const at = new Date(zonedToUtc(LOCAL_DATE.format(new Date(realNow.getTime() - days * DAY)), (span ? toMinutes(span[0]) : 9 * 60) + R.int(10, 120), TZ));
         const r = await award(at, { phone, name });
         if (r && v === 3) result.newMembers--; // history, not a member who joined today
       }

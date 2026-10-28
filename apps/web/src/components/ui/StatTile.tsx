@@ -57,26 +57,24 @@ function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: 
     <>
       <p className="text-meta-strong opacity-90">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(34px,5.4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value ?? "–"}</p>}
-          <p className="mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums">
-            {!loading && text ? (
-              <>
-                {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
-                <span>{text}</span>
-              </>
-            ) : !loading && caption ? (
-              <span>{caption}</span>
-            ) : (
-              <span aria-hidden>&nbsp;</span>
-            )}
-          </p>
-        </div>
-        {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-[38%] max-w-24 shrink-0 opacity-90" /> : null}
+        {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value ?? "–"}</p>}
+        {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-14 shrink-0 opacity-90 sm:w-20 md:w-24" /> : null}
       </div>
+      <p className="mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums">
+        {!loading && text ? (
+          <>
+            {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
+            <span>{text}</span>
+          </>
+        ) : !loading && caption ? (
+          <span>{caption}</span>
+        ) : (
+          <span aria-hidden>&nbsp;</span>
+        )}
+      </p>
     </>
   );
-  const cls = cn("relative block min-w-0 rounded-tile p-4 md:p-5", TONE_SURFACE[tone]);
+  const cls = cn("relative block min-w-0 overflow-hidden rounded-tile p-4 md:p-5", TONE_SURFACE[tone]);
   return href ? (
     <Link href={href} className={cn(cls, TONE_HOVER, "focus-visible:focus-ring")}>
       {body}

@@ -64,7 +64,7 @@ test.describe("desktop", () => {
     await page.goto(`/m/${id}`);
     await page.getByRole("button", { name: /Language/ }).click();
     await page.getByRole("menuitemradio", { name: "اردو" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "آج" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^(صبح|دوپہر|شام) بخیر/ })).toBeVisible();
     await expect(page.locator("[dir=rtl]").first()).toBeVisible();
     const box = await page.locator('[data-slot="sidebar-container"]').boundingBox();
     expect(box!.x).toBeGreaterThan(700); // the sidebar sits on the right
