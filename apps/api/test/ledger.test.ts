@@ -29,6 +29,20 @@ describe("ledger", () => {
     expect(all.reduce((s, e) => s + e.amount, 0)).toBe(0);
   });
 
+  it("does not remember an account created inside a transaction that rolled back", async () => {
+    const { merchant } = await createMerchant(env);
+    const phone = nextPhone();
+    // The first posting creates the shop's accounts and the member's inside this transaction, then the transaction is undone.
+    await expect(
+      env.db.transaction(async (tx) => {
+        await awardPurchase({ ...env.ctx, db: tx as never }, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+        throw new Error("undo");
+      }),
+    ).rejects.toThrow("undo");
+    const again = await awardPurchase(env.ctx, { merchantId: merchant.id, phone, source: "staff_app", amountCents: 1000 });
+    expect(again.earn.totalPoints).toBeGreaterThan(0);
+  });
+
   it("is idempotent on retries", async () => {
     const { merchant } = await createMerchant(env);
     const args = { merchantId: merchant.id, phone: nextPhone(), source: "square" as const, amountCents: 1000, idempotencyKey: "sq:pay_1" };
