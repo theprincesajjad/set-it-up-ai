@@ -73,7 +73,7 @@ test("a restock link for an item that is gone is a 404, not the generic order pa
 test("qurbani pre-order days are the Eid plan's days with their own animal counts", async ({ page }) => {
   const slug = "al-noor-halal-meats";
   const o = await owner(slug);
-  const plan = await call<{ start: string; moved: boolean; days: { date: string; cap: number | null; booked: number }[]; items: { id: string; name: string }[] }>("GET", `${o.base}/grocery/butcher/eid`, undefined, o.token);
+  const plan = await call<{ start: string; bookingsOpen: string; moved: boolean; days: { date: string; cap: number | null; booked: number }[]; items: { id: string; name: string }[] }>("GET", `${o.base}/grocery/butcher/eid`, undefined, o.token);
   expect(plan.status).toBe(200);
   const qurbani = plan.body.items.find((i) => /qurbani/i.test(i.name))!;
   expect(qurbani).toBeTruthy();
@@ -86,10 +86,20 @@ test("qurbani pre-order days are the Eid plan's days with their own animal count
   await expect(page.getByText(/Eid al-Adha, .*\(date confirmed after moon sighting\)\./)).toBeVisible();
   const chips = page.getByRole("radiogroup", { name: "When" }).getByRole("radio");
   await expect(chips).toHaveCount(plan.body.days.length);
-  // Each chip carries the day's animals left (the plan's cap less what is booked).
-  for (const [i, d] of plan.body.days.entries()) {
-    if (d.cap == null) continue;
-    await expect(chips.nth(i)).toContainText(`${Math.max(0, d.cap - d.booked)} left`);
+  // Qurbani booking opens eight weeks before Eid. Before that the days are shown but cannot be picked, and the page says when it opens;
+  // from then on each chip carries the day's animals left (the plan's cap less what is booked). Which one applies depends on today's date.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  if (plan.body.bookingsOpen > today) {
+    await expect(page.getByText(/Qurbani booking opens .*\. Come back then to pick a day\./)).toBeVisible();
+    for (let i = 0; i < plan.body.days.length; i++) {
+      await expect(chips.nth(i)).toBeDisabled();
+      await expect(chips.nth(i)).not.toContainText("left");
+    }
+  } else {
+    for (const [i, d] of plan.body.days.entries()) {
+      if (d.cap == null) continue;
+      await expect(chips.nth(i)).toContainText(`${Math.max(0, d.cap - d.booked)} left`);
+    }
   }
   await noSideScroll(page);
   await page.screenshot({ path: shot("qurbani-390") });

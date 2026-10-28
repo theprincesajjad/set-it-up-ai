@@ -69,7 +69,7 @@ test("ticket: phone approval needs a name, shows on the quote, the cap line is t
   await expect(customer.getByRole("heading", { name: /your repair quote/i })).toBeVisible();
   await expect(customer.getByText(/will not be more than/)).toBeVisible();
   await page.reload();
-  await expect(page.getByText(/Opened .* ago, not approved/)).toBeVisible();
+  await expect(page.getByText(/Opened (just now|.* ago), not approved/)).toBeVisible();
 
   // Approve by phone: the name is required.
   await page.getByRole("button", { name: "Approved by phone" }).click();

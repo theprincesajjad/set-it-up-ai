@@ -98,7 +98,8 @@ test("restaurant pages: menu filters, tiffin plans, banquet calendar, shop links
   await page.goto("/shops/nawab-biryani-house/menu");
   await expect(page.getByRole("heading", { level: 1, name: "Menu" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add Hyderabadi Chicken Dum Biryani" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Pre-order Chicken Biryani Degh" })).toBeVisible();
+  // The "Pre-order" label and the + beside it are both links to the same pre-order page.
+  await expect(page.getByRole("link", { name: "Pre-order Chicken Biryani Degh" }).first()).toBeVisible();
   const all = await page.locator("li", { hasText: "$" }).count();
   await page.getByRole("button", { name: "Veg", exact: true }).click();
   expect(await page.locator("li", { hasText: "$" }).count()).toBeLessThan(all);

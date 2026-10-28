@@ -57,6 +57,7 @@ test("catering: inquiry, menu, quote and approval link", async ({ page }) => {
   // Menu: one biryani tray line and one per-guest line.
   await page.getByRole("button", { name: "Custom line" }).click();
   await page.getByLabel("Dish").fill("Chicken biryani");
+  await page.getByLabel("Priced").selectOption("tray"); // a custom line is per guest until priced by the tray
   await page.getByLabel("Trays").fill("6");
   await page.getByLabel("Per tray").fill("120");
   await expect(page.getByText("$720.00").first()).toBeVisible();

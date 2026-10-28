@@ -55,7 +55,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   // Who is coming: the shop sees a name on the calendar, never "Walk-in". Asked once, when the account has no name yet.
   const [firstName, setFirstName] = useState("");
   const [nameTried, setNameTried] = useState(false);
-  const needsName = !meName?.trim();
+  // A pharmacy never asks for a name or a note (the privacy card says so): the booking goes through without one.
+  const needsName = !meName?.trim() && !data.shop.pharmacy;
   // A pet shop books a dog: pick which one (its size picks the price).
   const petShop = data.shop.vertical === "pet";
   const [myPets, setMyPets] = useState<petApi.PetDto[]>([]);
