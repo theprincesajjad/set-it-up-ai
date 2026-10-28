@@ -427,8 +427,8 @@ export function quickActions(family: TodayFamily, f: Pick<Fmt, "t">, can: { prom
 /** The secondary button beside the one black primary ("Open counter"). */
 export function headerSecondary(family: TodayFamily, can: { kitchen: boolean; calendar: boolean; classes: boolean }): { label: MessageKey; href: string } {
   if (family === "restaurant" && can.kitchen) return { label: "shell.today.hdr.kitchen", href: "/restaurant/kitchen" };
-  if (family === "appointments" && can.calendar) return { label: "shell.today.hdr.booking" };
-  if (family === "studio" && can.classes) return { label: "shell.today.hdr.roster" };
-  if (family === "service") return { label: "shell.today.hdr.tickets" };
+  if (family === "appointments" && can.calendar) return { label: "shell.today.hdr.booking", href: "/calendar" };
+  if (family === "studio" && can.classes) return { label: "shell.today.hdr.roster", href: "/classes" };
+  if (family === "service") return { label: "shell.today.hdr.tickets", href: "/tickets" };
   return { label: "shell.today.hdr.qrKit", href: "/locations/kit" };
 }

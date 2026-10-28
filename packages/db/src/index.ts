@@ -13,7 +13,22 @@ export const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations", import.meta
 export function createDb(url: string, opts: { max?: number } = {}) {
   const client = postgres(url, { max: opts.max ?? 10, prepare: false });
   const db = drizzlePg(client, { schema });
+  acceptDateParams(client);
   return Object.assign(db, { $close: () => client.end() });
+}
+
+/**
+ * drizzle-orm's postgres-js driver replaces the date/time serializers with a pass-through, because column mappers already turn a
+ * Date into a string. A Date written straight into a raw sql`` template (sql`${col} < ${date}`) never goes through a column mapper,
+ * so postgres-js then fails with ERR_INVALID_ARG_TYPE (PGlite accepts it, which hides the bug). Serialize Dates to ISO strings
+ * here, after drizzle has installed its serializers, so a Date is a valid parameter on every database.
+ */
+function acceptDateParams(client: postgres.Sql) {
+  const serializers = client.options.serializers as Record<number, (x: unknown) => unknown>;
+  for (const oid of [1082, 1114, 1184]) {
+    const prev = serializers[oid];
+    serializers[oid] = (x) => (x instanceof Date ? x.toISOString() : prev ? prev(x) : x);
+  }
 }
 
 export type Db = ReturnType<typeof createDb>;
