@@ -15,7 +15,7 @@ export function Chip({ selected, onClick, children, icon, className, floating }:
       className={cn(
         "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-meta-strong transition-colors duration-150 ease-out focus-visible:focus-ring",
         "after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
-        selected ? "bg-fg text-bg" : floating ? "bg-bg text-fg" : "border border-line bg-bg text-fg hover:bg-bg-subtle",
+        selected ? "bg-primary text-primary-foreground" : floating ? "bg-card text-fg" : "border border-line bg-card text-fg hover:bg-bg-subtle",
         floating && "shadow-float",
         className,
       )}

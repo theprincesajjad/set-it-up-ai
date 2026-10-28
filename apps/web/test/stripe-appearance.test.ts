@@ -8,8 +8,8 @@ afterEach(() => {
 
 describe("Stripe Payment Element appearance", () => {
   it("uses dark text on the light page and light text on the dark page", () => {
-    expect(stripeAppearance(false)).toMatchObject({ theme: "stripe", variables: { colorText: "#0B0B0C", colorBackground: "#FFFFFF" } });
-    expect(stripeAppearance(true)).toMatchObject({ theme: "night", variables: { colorText: "#F6F4F1", colorBackground: "#0E0D0C", colorTextSecondary: "#A8A39C" } });
+    expect(stripeAppearance(false)).toMatchObject({ theme: "stripe", variables: { colorText: "#2A1E14", colorBackground: "#FBF6EE" } });
+    expect(stripeAppearance(true)).toMatchObject({ theme: "night", variables: { colorText: "#F7EEE3", colorBackground: "#1A1410", colorTextSecondary: "#BBAA98" } });
   });
 
   it("follows the OS scheme unless the page forces a theme", () => {

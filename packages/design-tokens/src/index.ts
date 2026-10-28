@@ -13,6 +13,7 @@ export * from "./colors.js";
 export * from "./typography.js";
 export * from "./scales.js";
 export * from "./verticals.js";
+export * from "./warm.js";
 export * from "./charts.js";
 export * from "./contrast.js";
 export * from "./map.js";

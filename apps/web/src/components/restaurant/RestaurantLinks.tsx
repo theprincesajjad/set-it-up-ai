@@ -37,7 +37,7 @@ export async function RestaurantLinks({ slug, locale, features, skipMenu = false
   return (
     <section aria-label={t("rc.links.title")} className="flex flex-col gap-2">
       <h2 className="text-meta-strong text-fg-muted">{t("rc.links.title")}</h2>
-      <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-card border border-line bg-bg px-4">
+      <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-card border border-line bg-card px-4">
         {rows.map((r) => (
           <li key={r.href}>
             <Link href={r.href} className="-mx-4 flex min-h-14 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring">

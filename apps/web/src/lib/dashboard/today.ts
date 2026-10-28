@@ -111,6 +111,28 @@ export function deltaVs(cur: number, typical: number | null | undefined, weekday
   return { text: f.t("shell.today.pctVs", { pct: iso(`${pct > 0 ? "+" : "−"}${f.number(Math.abs(pct))}%`), weekday }), good };
 }
 
+/** Hour of the day (0 to 23) in the shop's clock. */
+export function shopHour(now: Date): number {
+  return Number(new Intl.DateTimeFormat("en-CA", { hour: "numeric", hourCycle: "h23", timeZone: SHOP_TZ }).format(now)) % 24;
+}
+
+/** "Good morning, Sana": the message key and whether it takes a name. */
+export function greetingKey(hour: number, named: boolean): MessageKey {
+  const part = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
+  return `shell.today.good${part}${named ? "" : "Plain"}` as MessageKey;
+}
+
+/** "38 visits so far, busier than a usual Wednesday": today so far against the same weekdays up to this hour. Null when there is no report yet. */
+export function compareSentence(d: reportsApi.TodayReportDto["today"] | undefined, weekday: string, f: Pick<Fmt, "t">): string | null {
+  if (!d) return null;
+  const typical = d.typicalVisitsSoFar;
+  if (!(typical > 0) || d.visits === 0) return f.t("shell.today.cmpPlain", { n: d.visits });
+  const diff = d.visits - typical;
+  const band = Math.max(1, Math.round(typical * 0.1));
+  const key = Math.abs(diff) <= band ? "shell.today.cmpSame" : diff > 0 ? "shell.today.cmpBusier" : "shell.today.cmpQuieter";
+  return f.t(key, { n: d.visits, weekday });
+}
+
 /** "Rewards" noun for the numbers (stamps, points, stars). */
 const termKey = (terminology: string | null | undefined): MessageKey =>
   terminology === "stars" ? "shell.today.starsGiven" : terminology === "points" ? "shell.today.pointsGiven" : "shell.today.stampsGiven";
@@ -137,7 +159,7 @@ export function loyaltyNumbers(i: LoyaltyInput, f: Fmt, now: Date): StatItem[] {
   return [
     { label: f.t("shell.today.visits"), value: d ? f.number(d.visits) : "–", delta: visits, caption: d && !visits ? f.t("shell.today.noTypical") : undefined },
     { label: f.t(termKey(i.terminology)), value: d ? f.number(d.stampsGiven) : "–" },
-    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–" },
+    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–", caption: i.today && i.today.rewardsWaiting.count > 0 ? f.t("shell.today.waitingN", { n: f.number(i.today.rewardsWaiting.count) }) : undefined },
     { label: f.t("shell.today.newMembers"), value: d ? f.number(d.newMembers) : "–", caption: d && d.newMembers === 0 ? f.t("shell.today.nobodyJoined") : undefined },
   ];
 }

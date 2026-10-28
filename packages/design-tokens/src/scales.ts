@@ -64,14 +64,16 @@ export const layout = {
  */
 export const radii = {
   none: 0,
-  input: 10,
-  card: 16,
-  sheet: 24,
-  /** @deprecated use input */ xs: 10,
-  /** @deprecated use input */ sm: 10,
-  /** @deprecated use input (or full for capsule buttons) */ md: 10,
-  /** @deprecated use card */ lg: 16,
-  /** @deprecated use sheet */ xl: 24,
+  input: 12,
+  /** Pastel tiles, icon tiles' parents, quick actions (18 to 20 in the brief). */
+  tile: 20,
+  card: 22,
+  sheet: 28,
+  /** @deprecated use input */ xs: 12,
+  /** @deprecated use input */ sm: 12,
+  /** @deprecated use input (or full for capsule buttons) */ md: 12,
+  /** @deprecated use card */ lg: 22,
+  /** @deprecated use sheet */ xl: 28,
   full: 9999,
 } as const;
 export type RadiusKey = keyof typeof radii;
@@ -95,6 +97,20 @@ const FLOAT = {
   native: { shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
 };
 
+const CARD = {
+  css: "0 1px 0 #EADCC8, 0 8px 24px rgba(42, 30, 20, 0.04)",
+  native: { shadowColor: "#2A1E14", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2 },
+};
+const GLOW = {
+  css: "0 8px 20px -6px rgba(200, 69, 44, 0.45)",
+  native: { shadowColor: "#C8452C", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6 },
+};
+/** Dark-mode versions of the warm shadows (a deeper lift, a hotter glow). */
+export const shadowsDarkCss: Record<string, string> = {
+  card: "0 1px 0 #3B2F25, 0 8px 24px rgba(0, 0, 0, 0.35)",
+  glow: "0 8px 22px -6px rgba(224, 88, 63, 0.5)",
+};
+
 /**
  * Elevation (v2): ONE shadow, `float`, only for things that float over the
  * map or content (chrome capsules, the tab bar, sheets, toasts, popovers).
@@ -104,6 +120,10 @@ const FLOAT = {
 export const shadows = {
   none: NO_SHADOW,
   float: FLOAT,
+  /** Main Street Warm card: a hairline under the card and a soft lift. */
+  card: CARD,
+  /** The glow under the terracotta primary button. */
+  glow: GLOW,
   /** @deprecated cards get a hairline, not a shadow */ sm: NO_SHADOW,
   /** @deprecated use float */ md: FLOAT,
   /** @deprecated use float */ lg: FLOAT,

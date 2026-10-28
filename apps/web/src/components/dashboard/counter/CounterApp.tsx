@@ -896,7 +896,7 @@ export function CounterApp({
 
           {mode === "verify" ? (
             <section
-              className="rounded-card border border-line bg-bg p-6"
+              className="rounded-card border border-line bg-card p-6"
               aria-labelledby="verify-title"
             >
               <h2 id="verify-title" className="text-body-strong text-fg">

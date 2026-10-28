@@ -23,7 +23,7 @@ export function Wordmark({ inverse, className, size = 28, href = "/" }: { invers
   const inner = (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark size={size} inverse={inverse} />
-      <span className={cn("display text-[19px] leading-none", inverse ? "text-bg" : "text-fg")}>{BRAND.name.toLowerCase()}</span>
+      <span className={cn("font-wordmark text-[19px] font-extrabold leading-none tracking-[-0.01em]", inverse ? "text-bg" : "text-fg")}>{BRAND.name.toLowerCase()}</span>
     </span>
   );
   if (!href) return inner;

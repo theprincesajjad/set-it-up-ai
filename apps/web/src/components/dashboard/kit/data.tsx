@@ -10,6 +10,8 @@ import { type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTML
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/primitives/item";
 import { Badge as BadgePrimitive } from "@/components/primitives/badge";
 import { TableCell, TableHead, TableRow } from "@/components/primitives/table";
+import { StatTile as ToneStatTile } from "@/components/ui/StatTile";
+import { TONES, type Tone } from "@/components/ui/tones";
 import { cn } from "@/lib/utils";
 import { QuietButton } from "./page";
 
@@ -22,12 +24,35 @@ export interface StatItem {
   href?: string;
   /** Small dot before the label: "the shop must act" (accent), "waiting on a customer" (info), a problem (negative). */
   dot?: DotTone;
+  /** Pastel tile tone when the block is drawn with `tiles` (default: trade, mint, butter, lilac, sky, rose in order). */
+  tone?: Tone;
+  /** Sparkline values for a pastel tile. */
+  spark?: number[];
 }
 
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
-export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5 }) {
+export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: draw each number as a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`) instead of the hairline grid. */ tiles?: boolean }) {
   const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
   const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
+  if (tiles) {
+    return (
+      <div role="group" aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
+        {items.map((s, idx) => (
+          <ToneStatTile
+            key={s.label}
+            tone={s.tone ?? TONES[idx % TONES.length]!}
+            label={s.label}
+            value={s.value}
+            delta={s.delta ? { pct: s.delta.good === true ? 1 : s.delta.good === false ? -1 : 0, good: s.delta.good, text: s.delta.context ? `${s.delta.text} ${s.delta.context}` : s.delta.text } : null}
+            caption={s.caption}
+            spark={s.spark}
+            href={s.href}
+            loading={loading}
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <dl aria-label={label} className={cn("grid gap-px overflow-hidden bg-line", !bare && "rounded-card border border-line", cols, className)}>
       {items.map((s, idx) => {
@@ -296,7 +321,7 @@ export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () 
  */
 export function EmptyState({ title, description, action, secondaryAction, className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
   return (
-    <div data-state="empty" className={cn("rounded-card border border-line bg-bg p-5", className)}>
+    <div data-state="empty" className={cn("rounded-card border border-line bg-card p-5", className)}>
       <p className="text-body-strong text-fg">{title}</p>
       {description ? <p className="mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
       {action || secondaryAction ? (

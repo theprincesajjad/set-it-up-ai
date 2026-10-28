@@ -19,7 +19,7 @@ export function DiscountCard({ card, shop, memberName, live = true }: { card: { 
   }, [live]);
   const value = card.percentOff > 0 ? t("ui.promoOff", { n: card.percentOff }) : card.amountOffCents > 0 ? t("ui.amountOff", { amount: locale === "en" ? formatMoney(card.amountOffCents) : money(card.amountOffCents) }) : card.name;
   return (
-    <div className="flex aspect-[1.586] w-full max-w-sm flex-col justify-between rounded-card border border-line bg-bg p-5 text-fg">
+    <div className="flex aspect-[1.586] w-full max-w-sm flex-col justify-between rounded-card border border-line bg-card p-5 text-fg">
       <div className="flex items-center gap-2">
         <ShopLogo shop={shop} size={24} />
         <span className="truncate text-meta-strong">{shop.name}</span>

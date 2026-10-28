@@ -1,29 +1,20 @@
 "use client";
 /**
  * Customer pass chrome (v3 frame 15:184): the awning stripe on a pass card, the language chip, and the top bar every
- * pass page opens with. Brand colour is never used here; the awning is `points` (orange) like the frame.
+ * pass page opens with. The awning takes the shop's trade colour from `[data-trade]`.
  */
 import { ArrowLeft, Globe } from "lucide-react";
 import Link from "next/link";
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { LOCALE_LIST } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
+import { Awning } from "@/components/ui/Awning";
 import { cn } from "@/lib/utils";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
-/** The scalloped top edge of a pass card: orange blocks along the top, clipped by the card's rounded corners. One per page. */
+/** The top edge of a pass card: the shared awning stripe in the shop's trade colour (`[data-trade]` on the card), clipped by the card's rounded corners. One per page. */
 export function AwningStripe({ className }: { className?: string }) {
-  const id = `awning-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  return (
-    <svg aria-hidden focusable="false" width="100%" height="10" className={cn("block text-points", className)}>
-      <defs>
-        <pattern id={id} width="24" height="10" patternUnits="userSpaceOnUse">
-          <rect width="12" height="10" fill="currentColor" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="10" fill={`url(#${id})`} />
-    </svg>
-  );
+  return <Awning tone="trade" size="md" className={cn("rounded-none", className)} />;
 }
 
 /**

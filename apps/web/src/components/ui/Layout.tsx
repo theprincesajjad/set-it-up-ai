@@ -13,7 +13,7 @@ export function PageHeader({ title, description, actions, eyebrow, className }: 
     <header className={cn("mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow ? <p className="mb-1 text-meta text-muted-foreground">{eyebrow}</p> : null}
-        <h1 className="text-title text-foreground">{title}</h1>
+        <h1 className="text-[clamp(26px,3vw,32px)] font-bold leading-[1.15] text-foreground [[data-trade]_&]:text-trade-deep">{title}</h1>
         {description ? <p className="mt-1 text-body text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}

@@ -43,18 +43,18 @@ beforeAll(() => {
 });
 
 describe("Today", () => {
-  it("renders the four cards in the phone order and has exactly one black primary in the header", async () => {
+  it("renders the four cards in the phone order and has exactly one primary in the header", async () => {
     role = "owner";
     render(<TodayPage />);
     await waitFor(() => expect(screen.getByText("2 members have a reward waiting")).toBeTruthy());
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(headings.slice(0, 3)).toEqual(["Needs you", "Up next", "Quick actions"]);
+    expect(headings.slice(0, 4)).toEqual(["Needs you", "Visits by hour", "Up next", "Quick actions"]);
     // DOM order: Needs you, numbers, Up next, Quick actions
     const all = [...document.querySelectorAll("#needs-you, [aria-label=\"Today's numbers\"], #up-next, #quick-actions")].map((n) => n.id || n.getAttribute("aria-label"));
     expect(all).toEqual(["needs-you", "Today's numbers", "up-next", "quick-actions"]);
     const header = document.querySelector("header")!;
     expect(header.querySelectorAll("[data-primary-action]").length).toBe(1);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Today");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Good morning, Sam");
   });
 
   it("shows real numbers and rows that open what they name", async () => {

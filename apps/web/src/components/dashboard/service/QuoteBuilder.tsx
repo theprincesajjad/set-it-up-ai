@@ -82,7 +82,7 @@ export function QuoteBuilder({ ticketId, initialLines, initialDiagnosis, onSent,
         <div className="relative mt-4">
           <TextField label="Add from your price list" type="search" placeholder="Search your price list" value={search} onChange={(e) => setSearch(e.target.value)} />
           {matches.length ? (
-            <ul className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-card border border-line bg-bg shadow-sm" role="listbox" aria-label="Price list matches">
+            <ul className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-card border border-line bg-card shadow-sm" role="listbox" aria-label="Price list matches">
               {matches.map((s) => (
                 <li key={s.id}>
                   <button

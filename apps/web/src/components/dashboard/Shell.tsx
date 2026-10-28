@@ -41,10 +41,12 @@ export interface ShellProps {
   env?: "rep" | "admin";
   /** Chrome-free route (the counter): the page alone, edge to edge. See `isBareRoute` in lib/dashboard/nav.ts. */
   bare?: boolean;
+  /** The shop's vertical: sets `data-trade` (the accent family) on the shell. */
+  trade?: string;
   children: ReactNode;
 }
 
-export function Shell({ sections, header, footer, notice, mobileTitle, location, alerts, account, search, searchPlaceholder, bottomNav, bottomLabel, env, bare, children }: ShellProps) {
+export function Shell({ sections, header, footer, notice, mobileTitle, location, alerts, account, search, searchPlaceholder, bottomNav, bottomLabel, env, bare, trade, children }: ShellProps) {
   const { t } = useLocaleOrEnglish();
   const [cmd, setCmd] = useState(false);
   const placeholder = searchPlaceholder ?? t("shell.search.placeholder");
@@ -82,6 +84,7 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
         }
         notice={notice}
         bare={bare}
+        trade={trade}
         env={env}
         bottomNav={bottomNav}
         bottomLabel={bottomLabel}

@@ -27,12 +27,12 @@ test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.setTimeout(120_000);
 
-  test("a café: five sidebar sections, four Today cards, one black primary", async ({ page }) => {
+  test("a café: five sidebar sections, four Today cards, one primary", async ({ page }) => {
     const email = "owner+pinecone-coffee@example.com";
     const id = await merchantId(email);
     await signIn(page, email);
     await page.goto(`/m/${id}`);
-    await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
     const nav = page.getByRole("navigation", { name: "Main" }).first();
     // sections are lowercase labels; Settings holds Staff, POS & integrations and Billing
     for (const label of ["today", "customers", "grow", "shop"]) await expect(nav.getByText(label, { exact: true })).toBeVisible();

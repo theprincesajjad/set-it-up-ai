@@ -284,7 +284,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
   const sub = [t.customerName ? iso(lang, t.customerName) : null, t.pickupAt ? tr("kitchen.pickup", { time: iso(lang, hm(t.pickupAt)) }) : null].filter(Boolean).join(" · ");
   const tags = tagsIn(tr, t.kind, t.channel);
   return (
-    <article aria-label={`Ticket ${t.number}`} className={cn("overflow-hidden rounded-card bg-bg", t.allergyNote ? "border-2 border-negative" : t.pinned ? "border-2 border-fg" : "border border-line")}>
+    <article aria-label={`Ticket ${t.number}`} className={cn("overflow-hidden rounded-card bg-card", t.allergyNote ? "border-2 border-negative" : t.pinned ? "border-2 border-fg" : "border border-line")}>
       <header className="flex items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">

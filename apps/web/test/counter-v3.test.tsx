@@ -58,13 +58,13 @@ describe("counter chrome (v3, Figma 15:2)", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
   });
 
-  it("offers one decision: a 72 px black award button", async () => {
+  it("offers one decision: a 72 px terracotta award button", async () => {
     const api = mockApi();
     render(<CounterApp api={api} program={confirmStamps} shopName="Shop" locations={[]} />);
     for (const d of "0123") await userEvent.click(screen.getByRole("button", { name: d }));
     const award = await screen.findByRole("button", { name: "Add 1 stamp" });
     expect(award.className).toContain("min-h-18");
-    expect(award.className).toContain("bg-fg");
+    expect(award.className).toContain("bg-primary");
   });
 });
 

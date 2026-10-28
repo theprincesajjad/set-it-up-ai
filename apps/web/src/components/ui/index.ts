@@ -3,7 +3,9 @@
  * apps/mobile/src/components/ui. Import from "@/components/ui" or from the
  * individual file (prefer the file on bundle-sensitive public pages).
  */
+export * from "./ActionPill";
 export * from "./AppShell";
+export * from "./Awning";
 export * from "./Avatar";
 export * from "./Badge";
 export * from "./Banner";
@@ -44,3 +46,8 @@ export * from "./CategoryIcon";
 export * from "./SegmentedControl";
 export * from "./DensityGauge";
 export * from "./Keypad";
+export * from "./IconTile";
+export * from "./QuickActionTile";
+export * from "./Sparkline";
+export * from "./TrendBars";
+export * from "./tones";

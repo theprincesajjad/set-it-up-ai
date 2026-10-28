@@ -27,6 +27,10 @@ const colors = [
     "chart-seq-3", "chart-seq-4", "chart-seq-5", "chart-seq-6", "chart-seq-7", "chart-seq-8", "chart-line",
     "chart-highlight", "chart-you", "chart-network", "chart-grid", "chart-axis", "chart-status-low",
     "chart-status-building", "chart-status-healthy",
+    "primary-text", "forest", "forest-foreground", "tile-peach", "tile-peach-foreground", "tile-mint",
+    "tile-mint-foreground", "tile-butter", "tile-butter-foreground", "tile-lilac", "tile-lilac-foreground",
+    "tile-sky", "tile-sky-foreground", "tile-rose", "tile-rose-foreground", "trade", "trade-foreground",
+    "trade-alt", "trade-soft", "trade-deep",
 ] as const;
 
 const textSizes = [
@@ -41,8 +45,8 @@ export const cn = createCn({
       // Palette colours (`bg-ll-gray-950`) and the deprecated vertical tints are matched by prefix.
       color: [...colors, (v: string) => v.startsWith("ll-") || v.startsWith("vertical-")],
       text: [...textSizes],
-      radius: ["input", "card", "sheet"],
-      shadow: ["float", "sheet"],
+      radius: ["input", "card", "sheet", "tile"],
+      shadow: ["float", "sheet", "card", "glow"],
     },
   },
 });

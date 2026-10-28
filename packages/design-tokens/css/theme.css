@@ -26,7 +26,9 @@
 @theme inline {
   /* Hindi, Urdu and Punjabi come after the Latin face: a glyph Inter or Bricolage lacks falls to the script's Noto face (declared with next/font in apps/web layout.tsx, which loads one only when a glyph needs it). Latin runs stay sans; no [lang] rule is needed, and a dialog that portals out of the page still gets them. */
   --font-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Fraunces for page titles, card titles and big numbers. It has no Devanagari, Gurmukhi or Arabic glyphs, so hi/ur/pa headings fall to the Noto faces at the same weight. */
+  --font-display: var(--font-fraunces, "Fraunces"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-wordmark: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--ll-font-mono);
 
   /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,
@@ -77,6 +79,26 @@
   --color-paper: var(--paper);
   --color-qr-fg: var(--qr-fg);
   --color-qr-bg: var(--qr-bg);
+  --color-primary-text: var(--primary-text);
+  --color-forest: var(--forest);
+  --color-forest-foreground: var(--forest-foreground);
+  --color-tile-peach: var(--tile-peach);
+  --color-tile-peach-foreground: var(--tile-peach-foreground);
+  --color-tile-mint: var(--tile-mint);
+  --color-tile-mint-foreground: var(--tile-mint-foreground);
+  --color-tile-butter: var(--tile-butter);
+  --color-tile-butter-foreground: var(--tile-butter-foreground);
+  --color-tile-lilac: var(--tile-lilac);
+  --color-tile-lilac-foreground: var(--tile-lilac-foreground);
+  --color-tile-sky: var(--tile-sky);
+  --color-tile-sky-foreground: var(--tile-sky-foreground);
+  --color-tile-rose: var(--tile-rose);
+  --color-tile-rose-foreground: var(--tile-rose-foreground);
+  --color-trade: var(--trade);
+  --color-trade-foreground: var(--trade-foreground);
+  --color-trade-alt: var(--trade-alt);
+  --color-trade-soft: var(--trade-soft);
+  --color-trade-deep: var(--trade-deep);
   --color-hover: var(--accent);
   --color-hover-foreground: var(--accent-foreground);
 
@@ -129,6 +151,8 @@
   /* Elevation: shadow-float is the only v2 shadow (switches in dark mode). sm = none; md/lg/xl = float (deprecated). */
   --shadow-none: var(--ll-shadow-none);
   --shadow-float: var(--ll-shadow-float);
+  --shadow-card: var(--ll-shadow-card);
+  --shadow-glow: var(--ll-shadow-glow);
   --shadow-sm: var(--ll-shadow-sm);
   --shadow-md: var(--ll-shadow-md);
   --shadow-lg: var(--ll-shadow-lg);
@@ -143,9 +167,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --radius-input: 10px;
-  --radius-card: 16px;
-  --radius-sheet: 24px;
+  --radius-input: 12px;
+  --radius-card: 22px;
+  --radius-sheet: 28px;
+  --radius-tile: 20px;
 }
 
 @theme {

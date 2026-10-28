@@ -6,7 +6,7 @@ import type { LucideIcon } from "./icons";
 import { Text } from "./Text";
 
 /**
- * primary = black capsule (the one strongest action on a screen);
+ * primary = terracotta capsule (the one strongest action on a screen);
  * secondary = grey fill; outline = hairline; ghost = text only;
  * danger = grey fill + red label (iOS destructive). `accent` and `tonal`
  * are v1 names: accent is reserved for points, so both render as
@@ -63,7 +63,7 @@ export function Button({
   const s = SIZES[size];
   const v = variant === "accent" ? "primary" : variant === "tonal" ? "secondary" : variant;
   const palette: Record<Exclude<ButtonVariant, "accent" | "tonal">, { bg: string; fg: string; border?: string; pressed: string }> = {
-    primary: { bg: c.fg, fg: c.bg, pressed: c.brandPressed },
+    primary: { bg: c.brand, fg: c.onBrand, pressed: c.brandPressed },
     secondary: { bg: c.bgSubtle, fg: c.fg, pressed: c.bgMuted },
     outline: { bg: c.bg, fg: c.fg, border: c.lineStrong, pressed: c.bgSubtle },
     ghost: { bg: "transparent", fg: c.fg, pressed: c.bgSubtle },

@@ -44,11 +44,13 @@ function Switcher({ me }: { me: authApi.MeResponse }) {
   const router = useRouter();
   const m = detail.merchant;
   const many = me.merchants.length > 1;
+  const street = placeLabel(detail.locations[0]?.address);
   const inner = (
     <>
-      <ShopMark name={m.name} brandColor={m.brandColor} logoUrl={m.logoUrl} size={32} className="rounded-full" />
+      <ShopMark name={m.name} brandColor={m.brandColor} logoUrl={m.logoUrl} size={36} className="rounded-xl" />
       <span className="min-w-0 flex-1 text-start group-data-[collapsible=icon]:hidden">
-        <bdi className="block truncate text-headline text-foreground">{m.name}</bdi>
+        <bdi className="block truncate text-body-strong text-foreground">{m.name}</bdi>
+        {street ? <bdi className="block truncate text-caption font-normal text-muted-foreground">{street}</bdi> : null}
       </span>
       {many ? <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" /> : null}
     </>
@@ -215,6 +217,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
       account={<AccountMenu name={me.user.name} email={me.user.email} links={links} />}
       footer={<SetupProgress />}
       bare={allowed && isBareRoute(pathname, base)}
+      trade={detail.merchant.vertical}
       mobileTitle={<Switcher me={me} />}
       notice={
         viewingAs ? <SupportBanner viewingAs={viewingAs} /> : null

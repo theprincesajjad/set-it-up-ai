@@ -60,7 +60,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
     model.kind === "stamps" ? (
       <StampCard stamps={model.stamps} goal={model.goal} rewardName={model.rewardName} vertical={shop.vertical} terminology={model.terminology} header={header} />
     ) : (
-      <div className="flex flex-col items-center gap-2 rounded-card border border-line bg-bg p-4">
+      <div className="flex flex-col items-center gap-2 rounded-card border border-line bg-card p-4">
         <div className="self-start">{header}</div>
         <PointsRing balance={model.balance} goal={model.goal} terminology={model.terminology} rewardName={model.rewardName} size={120} />
       </div>

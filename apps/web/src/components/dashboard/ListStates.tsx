@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 /** Skeleton rows the height of real rows (h-14 plus the 1 px rule = 57 px, a two-line row with a 40 px avatar). */
 export function ListLoading({ rows = 5, label = "Loading", avatar = true, className }: { rows?: number; label?: string; avatar?: boolean; className?: string }) {
   return (
-    <div role="status" aria-busy="true" aria-label={label} data-state="loading" className={cn("overflow-hidden rounded-card border border-line bg-bg", className)}>
+    <div role="status" aria-busy="true" aria-label={label} data-state="loading" className={cn("overflow-hidden rounded-card border border-line bg-card", className)}>
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-14 items-center gap-3 border-b border-line px-4 last:border-b-0">
@@ -35,7 +35,7 @@ export function ListLoading({ rows = 5, label = "Loading", avatar = true, classN
 /** A list that could not load: what happened, that the data is safe, and one way forward. */
 export function ListError({ title = "We could not load this.", description = "Check your connection and try again. Your data is safe.", onRetry, detail, className }: { title?: string; description?: ReactNode; onRetry?: () => void; /** The server's message, shown small under the description. */ detail?: string | null; className?: string }) {
   return (
-    <div role="alert" data-state="error" className={cn("rounded-card border border-line bg-bg p-5", className)}>
+    <div role="alert" data-state="error" className={cn("rounded-card border border-line bg-card p-5", className)}>
       <p className="text-body-strong text-fg">{title}</p>
       {description ? <p className="mt-1 text-meta text-fg-muted">{description}</p> : null}
       {detail ? <p className="mt-1 text-caption text-fg-muted">{detail}</p> : null}

@@ -32,8 +32,9 @@ export function Card({ tone = "raised", padding = "md", href, as = "div", classN
   const As = as as "div";
   const cls = cn(
     "rounded-card text-fg",
-    tone === "subtle" ? "bg-bg-subtle" : "bg-bg",
-    (tone === "raised" || tone === "flat") && "border border-line",
+    tone === "subtle" ? "bg-bg-subtle" : "bg-card",
+    tone === "raised" && "border border-line shadow-card",
+    tone === "flat" && "border border-line",
     tone === "dashed" && "border border-dashed border-line-strong/60",
     pad[padding],
     href && "block transition-colors duration-150 ease-out hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring",
@@ -107,7 +108,7 @@ export function ListGroup({ title, action, footer, children, className, inset = 
           {action}
         </div>
       ) : null}
-      <As className={cn("flex flex-col divide-y divide-line overflow-hidden", inset && "rounded-card border border-line bg-bg px-4")}>{children}</As>
+      <As className={cn("flex flex-col divide-y divide-line overflow-hidden", inset && "rounded-card border border-line bg-card px-4")}>{children}</As>
       {footer ? <div className="text-meta text-fg-muted">{footer}</div> : null}
     </section>
   );

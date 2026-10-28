@@ -47,9 +47,19 @@ describe("native v3 roles equal the web CSS values", () => {
     });
   }
   it("the orange is `points` and the hover surface is `accent` (not the orange)", () => {
-    expect(rolesFor("light").points).toBe("#FF5A1F");
+    expect(rolesFor("light").points).toBe("#E5530A");
     expect(rolesFor("light").accent).not.toBe(rolesFor("light").points);
-    expect(rolesFor("light").paper).toBe("#FBF9F6");
-    expect(rolesFor("dark").paper).toBe("#0E0D0C");
+    expect(rolesFor("light").paper).toBe("#FBF6EE");
+    expect(rolesFor("dark").paper).toBe("#1A1410");
+  });
+  it("carries the warm palette, the pastel tiles and the trade defaults", () => {
+    for (const scheme of ["light", "dark"] as const) {
+      const r = rolesFor(scheme);
+      for (const k of ["primaryText", "forest", "tilePeach", "tilePeachForeground", "tileMint", "tileButter", "tileLilac", "tileSky", "tileRose", "trade", "tradeForeground", "tradeAlt", "tradeSoft", "tradeDeep"] as const) {
+        expect(r[k], `${scheme} ${k}`).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      }
+    }
+    expect(rolesFor("light").primary).toBe("#C8452C");
+    expect(colors.light.brand).toBe(rolesFor("light").primary);
   });
 });

@@ -138,7 +138,7 @@ function Menu() {
           </div>
 
           {chosen.length ? (
-            <div role="region" aria-label="Bulk actions" className="sticky top-2 z-raised flex flex-wrap items-center gap-2 rounded-card border border-line bg-bg px-4 py-2.5 shadow-float">
+            <div role="region" aria-label="Bulk actions" className="sticky top-2 z-raised flex flex-wrap items-center gap-2 rounded-card border border-line bg-card px-4 py-2.5 shadow-float">
               <p className="me-auto text-meta-strong text-fg tabular" aria-live="polite">
                 {chosen.length} selected
               </p>

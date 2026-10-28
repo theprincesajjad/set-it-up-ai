@@ -277,7 +277,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             const n = timesOn(av, d).length;
             const on = d === day;
             return (
-              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
+              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
                 <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                 <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
               </button>

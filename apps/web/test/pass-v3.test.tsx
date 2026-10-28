@@ -43,11 +43,11 @@ describe("shop initials on any brand colour (v3 section 5.1: text pairs need 4.5
 });
 
 describe("pass chrome", () => {
-  it("the awning stripe is decorative and renders one pattern", () => {
+  it("the awning stripe is decorative and renders once", () => {
     const { container } = render(<AwningStripe />);
-    const svg = container.querySelector("svg")!;
-    expect(svg.getAttribute("aria-hidden")).toBe("true");
-    expect(svg.querySelectorAll("pattern")).toHaveLength(1);
+    const stripe = container.querySelector("[data-awning]")!;
+    expect(stripe.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelectorAll("[data-awning]")).toHaveLength(1);
   });
 
   it("the tab bar has four tabs, the card tab keeps its name, and the active one is marked", () => {

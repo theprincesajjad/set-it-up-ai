@@ -40,7 +40,7 @@ export function Checkbox({ checked, onChange, label, caption, disabled, name, id
           className={cn(
             "flex items-center justify-center rounded-[6px] border-[1.5px] transition-colors duration-150 ease-out peer-focus-visible:focus-ring",
             size === "sm" ? "size-5 rounded-[5px]" : "size-[22px]",
-            checked ? "border-fg bg-fg text-bg" : "border-line-strong/70 bg-bg",
+            checked ? "border-primary bg-primary text-primary-foreground" : "border-line-strong/70 bg-card",
             disabled && "opacity-60",
           )}
         >

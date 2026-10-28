@@ -3,9 +3,12 @@
  * Today (v3-strategy.md 4.1). One page for every trade: a header (title, date and place, one secondary action, ONE black primary)
  * over four cards. DOM order is Needs you, numbers, Up next, Quick actions (urgent first, as a phone reads it); from lg the grid
  * places the numbers strip first, then Needs you beside Up next, then Quick actions. Rows come from API calls the old Home and the
- * trade pages already made; nothing new is called. What a trade shows is in lib/dashboard/today.ts.
+ * trade pages already made, plus one daily series for the sparklines on the loyalty layout. What a trade shows is in lib/dashboard/today.ts.
+ *
+ * Main Street Warm: a greeting title, a sentence that compares today with a usual day, pastel stat tiles (the first in the shop's trade colour)
+ * with sparklines, Needs you with icon tiles and action pills, visits by hour with Up next beside it, and pastel quick-action tiles.
  */
-import { Calculator } from "lucide-react";
+import { Calculator, Moon, Sun, Sunset } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { PLANS } from "@ll/shared";
@@ -20,13 +23,13 @@ import { enabledSet, hasGroceryFeature, navVisible } from "@/lib/dashboard/nav";
 import { publishNeedsYou } from "@/lib/dashboard/needsYou";
 import { startOfTorontoDay } from "@/lib/dashboard/time";
 import {
-  SHOP_TZ, placeLabel, appointmentNeeds, appointmentNumbers, appointmentUp, headerSecondary, loyaltyNeeds, loyaltyNumbers, pickupRows, promoRow, quickActions, restaurantNeeds, restaurantNumbers, restaurantUp,
+  SHOP_TZ, compareSentence, greetingKey, placeLabel, shopHour, appointmentNeeds, appointmentNumbers, appointmentUp, headerSecondary, loyaltyNeeds, loyaltyNumbers, pickupRows, promoRow, quickActions, restaurantNeeds, restaurantNumbers, restaurantUp,
   serviceNeeds, serviceNumbers, studioNeeds, studioNumbers, studioUp, todayFamily, type Fmt, type NeedsRow, type UpRow,
 } from "@/lib/dashboard/today";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 import { formatNumber } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
-import { NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
+import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
 import { StreetCard } from "./StreetCard";
 
 /** What Café & Retail switches on for a trade, in the owner's words (the Today line that sells the plan). */
@@ -42,7 +45,7 @@ const TRADE_TOOLS: Record<string, string> = {
 };
 
 export function TodayPage() {
-  const { api, base, detail, role, enabled, features } = useMerchant();
+  const { api, base, detail, role, enabled, features, me, viewingAs: viewingAsOther } = useMerchant();
   const loc = useLocaleOrEnglish();
   const { t } = loc;
   const nowMs = useNow();
@@ -59,6 +62,10 @@ export function TodayPage() {
 
   const needsReports = manager && (family === "loyalty" || family === "appointments" || family === "studio");
   const today = useApi(needsReports ? () => api.reports.today() : null, [api, needsReports], { pollMs: 60_000 });
+  // Seven full days before today, for the sparklines (the loyalty layout only; today itself is partial, so it is left out).
+  const trendFrom = useMemo(() => new Date(startOfTorontoDay(now).getTime() - 7 * 86_400_000).toISOString(), [now]);
+  const trendTo = useMemo(() => new Date(startOfTorontoDay(now).getTime() - 60_000).toISOString(), [now]);
+  const daily = useApi(manager && family === "loyalty" ? () => api.reports.daily({ from: trendFrom, to: trendTo }) : null, [api, manager, family, trendFrom, trendTo], { pollMs: 300_000 });
   const counter = useApi(!manager ? () => api.counter.today() : null, [api, manager], { pollMs: 30_000 });
   const onboarding = useApi(manager ? () => api.onboarding() : null, [api, manager]);
   const ordersOn = manager && family === "loyalty" && navVisible("orders", set, shop);
@@ -154,12 +161,24 @@ export function TodayPage() {
 
   const loc0 = detail.locations[0];
   const place = placeLabel(loc0?.address);
+  const compare = family === "loyalty" ? compareSentence(today.data?.today, f.weekday(now), f) : null;
   const description = (
     <>
       {loc.date(now, { weekday: "long", month: "short", day: "numeric" }, SHOP_TZ)}
-      {place ? <> · <bdi>{place}</bdi></> : null}
+      {compare ? <> · {compare}</> : place ? <> · <bdi>{place}</bdi></> : null}
     </>
   );
+  // "Good morning, Sana": the first name of whoever is signed in; a support session (admin or rep) says no name.
+  const first = me.user.name?.trim().split(/\s+/)[0] ?? "";
+  const hour = shopHour(now);
+  const named = first.length > 0 && !viewingAsOther;
+  const greeting = t(greetingKey(hour, named), { name: first });
+  const GreetIcon = hour < 12 ? Sun : hour < 17 ? Sunset : Moon;
+  // The sparklines: the loyalty numbers are visits, stamps, rewards redeemed, new members, in that order.
+  const series = daily.data?.series ?? [];
+  const sparkOf = (pick: (p: (typeof series)[number]) => number) => (series.length >= 3 ? series.map(pick) : undefined);
+  const sparks = family === "loyalty" ? [sparkOf((p) => p.visits), sparkOf((p) => p.pointsIssued), sparkOf((p) => p.pointsRedeemed), sparkOf((p) => p.newMembers)] : [];
+  const numberItems = numbers.map((n, i) => ({ ...n, spark: sparks[i] }));
   const ob = onboarding.data;
   const showActivation = !!ob && !ob.activatedAt && ob.activation.day <= ob.activation.windowDays;
   const upsellKeys = (["promos.basic", "marketing.email", "integrations.pos_auto_award"] as const).filter((k) => !enabled(k));
@@ -168,7 +187,12 @@ export function TodayPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         flush
-        title={t("shell.today.title")}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-x-2.5">
+            <span>{greeting}</span>
+            <GreetIcon aria-hidden className="size-7 text-trade" strokeWidth={1.9} />
+          </span>
+        }
         description={description}
         actions={
           <>
@@ -191,8 +215,11 @@ export function TodayPage() {
       {manager ? (
         <div className="grid gap-6 lg:grid-cols-12">
           <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-8 lg:row-start-2" />
-          <NumbersCard items={numbers} loading={loading} className="lg:col-span-12 lg:row-start-1" />
-          <UpNextCard rows={up} loading={loading} base={base} label={upLabel} className="lg:col-span-4 lg:row-start-2" />
+          <NumbersCard items={numberItems} loading={loading} className="lg:col-span-12 lg:row-start-1" />
+          <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:row-start-2">
+            {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} /> : null}
+            <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+          </div>
           <QuickActionsCard actions={actions} base={base} className="lg:col-span-12 lg:row-start-3" />
         </div>
       ) : (

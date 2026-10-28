@@ -112,7 +112,7 @@ function Preorders() {
                 aria-pressed={sel}
                 aria-label={`${dayLabel(d)}: ${pots} ${pots === 1 ? "pot" : "pots"}${dayCap != null ? ` of ${dayCap}` : ""}`}
                 onClick={() => setDay(d)}
-                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[88px] sm:p-3", sel ? "border-fg bg-fg text-bg" : "border-line bg-bg hover:bg-bg-subtle")}
+                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[88px] sm:p-3", sel ? "border-fg bg-fg text-bg" : "border-line bg-card hover:bg-bg-subtle")}
               >
                 <span className={cn("block text-caption", sel ? "text-bg/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
                 <span className="block text-headline tabular">{Number(d.slice(8))}</span>

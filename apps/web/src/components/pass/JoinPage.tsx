@@ -67,7 +67,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
   const alsoHere = others.length ? { verticals: others.map((o) => o.merchant.vertical), total } : null;
   const me = await getMe();
   return (
-    <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+    <LocaleScope locale={locale} trade={info.merchant.vertical} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
       <JoinFlow
         topSlot={<PassTopBar />}
         street={street}

@@ -18,14 +18,18 @@
 
 export const fontFamilies = {
   sans: '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  display: '"Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  /** Main Street Warm: Fraunces (serif) for page titles, card titles and big numbers. hi/ur/pa fall back to the Noto script faces (web theme.css). */
+  display: '"Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif',
+  /** The Local Loyalty wordmark only. */
+  wordmark: '"Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
 } as const;
 
 /** Google Fonts used on web. */
 export const googleFonts = {
   sans: { family: "Inter", weights: [400, 500, 600], cssVariable: "--font-inter" },
-  display: { family: "Bricolage Grotesque", weights: [700, 800], cssVariable: "--font-bricolage" },
+  display: { family: "Fraunces", weights: [600, 800], cssVariable: "--font-fraunces" },
+  wordmark: { family: "Bricolage Grotesque", weights: [700, 800], cssVariable: "--font-bricolage" },
 } as const;
 
 /**

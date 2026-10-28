@@ -69,7 +69,7 @@ async function pilot(merchantId: string, keys: string[], on: boolean) {
 test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await signIn(page, OWNER);
   await expect(page).toHaveURL(/\/m\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
   // The four standard cards, from the same data the old Home used.
   for (const card of ["Needs you", "Up next", "Quick actions"]) await expect(page.getByRole("heading", { level: 2, name: card })).toBeVisible();
   await expect(page.getByRole("group", { name: "Today's numbers" }).or(page.getByLabel("Today's numbers"))).toBeVisible();

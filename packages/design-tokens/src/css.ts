@@ -18,6 +18,7 @@ import {
   radii,
   radiusBase,
   shadowFloatDark,
+  shadowsDarkCss,
   shadowSheet,
   shadowSheetDark,
   shadows,
@@ -27,6 +28,7 @@ import {
 } from "./scales.js";
 import { fontFamilies, textStyles } from "./typography.js";
 import { verticalVisuals } from "./verticals.js";
+import { TRADE_FAMILIES, tradeColors, tradeFamilies, verticalsByFamily, type TradeFamily } from "./warm.js";
 
 const kebab = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/_/g, "-").toLowerCase();
 const rem = (px: number) => `${+(px / 16).toFixed(4)}rem`;
@@ -70,7 +72,7 @@ function themeScopedVars(theme: "light" | "dark", indent = "  "): string[] {
   for (const k of ["line", "highlight", "you", "network", "grid", "axis"] as const) out.push(`${indent}--ll-chart-${k}: ${ch[k]};`);
   for (const [k, v] of Object.entries(ch.status)) out.push(`${indent}--ll-chart-status-${k}: ${v};`);
   for (const [k, v] of Object.entries(shadows)) {
-    const css = theme === "dark" && v.css !== "none" ? shadowFloatDark : v.css;
+    const css = theme === "dark" && v.css !== "none" ? shadowsDarkCss[k] ?? shadowFloatDark : v.css;
     out.push(`${indent}--ll-shadow-${k}: ${css};`);
   }
   out.push(`${indent}--ll-shadow-sheet: ${theme === "dark" ? shadowSheetDark : shadowSheet};`);
@@ -108,6 +110,37 @@ function staticVars(indent = "  "): string[] {
   return out;
 }
 
+
+/** `[data-trade="cafe"], [data-trade="bakery"] ...` for a family: every vertical of the family, so an app sets `data-trade={vertical}`. */
+const tradeSelector = (f: TradeFamily, prefix = "") =>
+  // With a prefix (a theme scope) the family also matches on the scope element itself (data-trade set on <html> for portalled sheets).
+  verticalsByFamily(f).flatMap((v) => (prefix ? [`${prefix}[data-trade="${v}"]`, `${prefix.trim()}[data-trade="${v}"]`] : [`[data-trade="${v}"]`])).join(",\n");
+/** Families that no vertical uses (never happens, but keeps the list honest) are skipped. */
+const usedFamilies = () => TRADE_FAMILIES.filter((f) => verticalsByFamily(f).length > 0);
+
+function tradeVars(f: TradeFamily, theme: "light" | "dark", indent: string): string[] {
+  const c = tradeColors(f, theme);
+  return [
+    `${indent}--trade: ${c.accent};`,
+    `${indent}--trade-foreground: ${c.foreground};`,
+    `${indent}--trade-alt: ${c.alt};`,
+    `${indent}--trade-soft: ${c.soft};`,
+    `${indent}--trade-deep: ${c.deep};`,
+  ];
+}
+
+/** Per-trade accent families (Main Street Warm). Light by default; dark follows the same switch as the roles. */
+function tradeCss(): string[] {
+  const out: string[] = [`/* Per-trade accent families: set data-trade="<vertical>" on the shell, pass or shop page (${usedFamilies().map((f) => `${f}: ${tradeFamilies[f].label}`).join("; ")}) */`];
+  for (const f of usedFamilies()) out.push(`${tradeSelector(f)} {`, ...tradeVars(f, "light", "  "), `}`);
+  out.push(``, `@media (prefers-color-scheme: dark) {`);
+  for (const f of usedFamilies()) out.push(`  ${tradeSelector(f, ":root:not([data-theme=\"light\"]) ").replace(/,\n/g, ",\n  ")} {`, ...tradeVars(f, "dark", "    "), `  }`);
+  out.push(`}`, ``);
+  for (const f of usedFamilies()) out.push(`${tradeSelector(f, '[data-theme="dark"] ')} {`, ...tradeVars(f, "dark", "  "), `}`);
+  out.push(``);
+  return out;
+}
+
 export function buildTokensCss(): string {
   return [
     HEADER,
@@ -137,6 +170,7 @@ export function buildTokensCss(): string {
     ...themeScopedVars("dark"),
     `}`,
     ``,
+    ...tradeCss(),
   ].join("\n");
 }
 
@@ -185,7 +219,9 @@ export function buildThemeCss(): string {
     `@theme inline {`,
     `  /* Hindi, Urdu and Punjabi come after the Latin face: a glyph Inter or Bricolage lacks falls to the script's Noto face (declared with next/font in apps/web layout.tsx, which loads one only when a glyph needs it). Latin runs stay sans; no [lang] rule is needed, and a dialog that portals out of the page still gets them. */`,
     `  --font-sans: var(--font-inter, "Inter"), ${SCRIPT_FONTS}, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;`,
-    `  --font-display: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ${SCRIPT_FONTS}, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;`,
+    `  /* Fraunces for page titles, card titles and big numbers. It has no Devanagari, Gurmukhi or Arabic glyphs, so hi/ur/pa headings fall to the Noto faces at the same weight. */`,
+    `  --font-display: var(--font-fraunces, "Fraunces"), ${SCRIPT_FONTS}, "Iowan Old Style", "Palatino Linotype", Georgia, serif;`,
+    `  --font-wordmark: var(--font-bricolage, "Bricolage Grotesque"), var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;`,
     `  --font-mono: var(--ll-font-mono);`,
     ``,
     `  /* Semantic colours (v3): bg-background, text-foreground, bg-card, bg-muted, text-muted-foreground, border-border,`,
@@ -220,7 +256,7 @@ export function buildThemeCss(): string {
   out.push(``, `  /* Radii (v3): rounded-sm 6, md 8, lg 10 (= rounded-input), xl 14, 2xl 18 (shadcn calc from --radius); rounded-card 16, rounded-sheet 24 */`);
   out.push(`  --radius-sm: calc(var(--radius) - 4px);`, `  --radius-md: calc(var(--radius) - 2px);`, `  --radius-lg: var(--radius);`);
   out.push(`  --radius-xl: calc(var(--radius) + 4px);`, `  --radius-2xl: calc(var(--radius) + 8px);`, `  --radius-3xl: calc(var(--radius) + 12px);`, `  --radius-4xl: calc(var(--radius) + 16px);`);
-  out.push(`  --radius-input: ${px(radii.input)};`, `  --radius-card: ${px(radii.card)};`, `  --radius-sheet: ${px(radii.sheet)};`);
+  out.push(`  --radius-input: ${px(radii.input)};`, `  --radius-card: ${px(radii.card)};`, `  --radius-sheet: ${px(radii.sheet)};`, `  --radius-tile: ${px(radii.tile)};`);
   out.push(`}`, ``);
 
   out.push(`@theme {`);

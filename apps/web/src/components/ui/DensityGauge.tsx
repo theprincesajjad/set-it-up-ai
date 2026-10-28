@@ -23,7 +23,7 @@ export function DensityGauge({ label, value, target, unit = "shops", format = fo
   const len = Math.PI * r;
   const togo = Math.max(0, target - value);
   return (
-    <div className={cn("flex flex-col items-center rounded-card border border-line bg-bg p-4 text-center", className)}>
+    <div className={cn("flex flex-col items-center rounded-card border border-line bg-card p-4 text-center", className)}>
       <p className="text-meta-strong text-fg-muted">{label}</p>
       <div role="img" aria-label={`${label}: ${format(value)} of ${format(target)} ${unit}. ${STATUS_TEXT[s]}.`} className="relative mt-2" style={{ width: compact ? 128 : 160, height: compact ? 72 : 90 }}>
         <svg viewBox="0 0 160 90" width="100%" height="100%" aria-hidden>

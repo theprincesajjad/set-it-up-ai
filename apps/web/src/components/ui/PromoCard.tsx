@@ -101,7 +101,7 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href, term
     </>
   );
   return (
-    <article aria-label={sponsored ? `${t("ui.sponsored")}. ${promo.title}` : promo.title} className="overflow-hidden rounded-card border border-line bg-bg">
+    <article aria-label={sponsored ? `${t("ui.sponsored")}. ${promo.title}` : promo.title} className="overflow-hidden rounded-card border border-line bg-card">
       {sponsored ? (
         <div className="px-4 pt-3">
           <button type="button" onClick={() => setWhy(true)} className="rounded-full focus-visible:focus-ring" aria-haspopup="dialog">

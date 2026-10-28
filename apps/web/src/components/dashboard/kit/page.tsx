@@ -20,7 +20,7 @@ export function PageHeader({ title, description, actions, back, className, flush
             {back.label}
           </Link>
         ) : null}
-        <h1 className="text-title text-fg [text-wrap:balance]">{title}</h1>
+        <h1 className="text-[clamp(26px,3vw,32px)] font-bold leading-[1.15] text-fg [text-wrap:balance] [[data-trade]_&]:text-trade-deep">{title}</h1>
         {description ? <p className="mt-0.5 text-meta text-fg-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 max-sm:[&>*:not(:only-child)]:grow max-sm:[&>a:only-child]:w-full max-sm:[&>button:only-child]:w-full">{actions}</div> : null}
@@ -62,7 +62,7 @@ export function Panel({ title, description, action, children, className, footer,
   const inner = parts.filter(isLayout).join(" ");
   const outer = parts.filter((c) => !isLayout(c)).join(" ");
   return (
-    <As aria-labelledby={title && As === "section" ? id : undefined} className={cn("min-w-0 overflow-hidden rounded-card border border-line bg-bg", outer)}>
+    <As aria-labelledby={title && As === "section" ? id : undefined} className={cn("min-w-0 overflow-hidden rounded-card border border-line bg-card shadow-card", outer)}>
       {title || action ? (
         <div className={cn("flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-5 pt-4", !padded && "border-b border-line pb-3")}>
           <div className="min-w-0">

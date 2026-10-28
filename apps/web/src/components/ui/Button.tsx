@@ -30,25 +30,25 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
  * button with role="button", so link semantics are unchanged.
  * Later: map variants onto shadcn's (default, outline, ghost, destructive), drop `accent`.
  *
- * v2 (foundations.md): primary is black (inverts in dark mode) and there is one per screen.
- * Secondary is a white hairline button, tonal a quiet grey fill, ghost text-only.
+ * Main Street Warm: primary is terracotta with white text and a soft glow (one per screen); secondary is a white button with a hairline;
+ * tonal a quiet sand fill, ghost text-only. Buttons are pills (counter and kiosk keep their card radius).
  * Accent is reserved for points/rewards and is a soft fill, never a loud orange slab.
  */
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-fg text-bg hover:bg-brand-hover active:bg-brand-pressed",
-  secondary: "bg-bg text-fg border border-line hover:bg-bg-subtle active:bg-bg-muted",
-  tonal: "bg-bg-subtle text-fg hover:bg-bg-muted active:bg-bg-muted",
+  primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed",
+  secondary: "bg-card text-foreground border border-border hover:bg-muted active:bg-hover",
+  tonal: "bg-hover text-foreground hover:bg-sidebar active:bg-sidebar",
   ghost: "bg-transparent text-fg hover:bg-bg-subtle active:bg-bg-muted",
   danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 dark:text-bg",
   accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97]",
   /** On a black band (marketing CTA): white fill, black text. */
-  inverse: "bg-bg text-fg hover:bg-bg-subtle",
+  inverse: "bg-card text-foreground hover:bg-muted",
 };
 
 /** 10 px radius for small buttons, a capsule for the big one, 16 for the counter key. */
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-3.5 text-meta-strong rounded-input gap-1.5 [--icon:16px]",
-  md: "h-11 px-4 text-body-strong rounded-input gap-2 [--icon:18px]",
+  sm: "h-9 px-4 text-meta-strong rounded-full gap-1.5 [--icon:16px]",
+  md: "h-11 px-5 text-body-strong rounded-full gap-2 [--icon:18px]",
   lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px]",
   counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px]",
   kiosk: "min-h-22 px-8 text-title rounded-xl gap-3 w-full [--icon:28px]",
@@ -62,7 +62,7 @@ export function buttonClasses({ variant = "primary", size = "md", fullWidth, dis
     "inline-flex select-none items-center justify-center whitespace-nowrap font-semibold transition-[background-color,transform,filter,opacity] duration-150 ease-out",
     "motion-safe:active:scale-[0.98] focus-visible:focus-ring",
     size === "sm" && "relative after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
-    disabled ? "bg-bg-muted text-fg-subtle border-transparent cursor-not-allowed active:scale-100" : variants[variant],
+    disabled ? "bg-bg-muted text-fg-subtle border-transparent shadow-none cursor-not-allowed active:scale-100" : variants[variant],
     sizes[size],
     fullWidth && "w-full",
   );
@@ -130,7 +130,7 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function IconButton({ icon: Icon, label, variant = "ghost", size = 48, className, type = "button", ...rest }: IconButtonProps) {
-  const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-bg border border-line text-fg hover:bg-bg-subtle", primary: "bg-fg text-bg hover:bg-brand-hover" }[variant];
+  const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-card border border-border text-foreground hover:bg-muted", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover" }[variant];
   const s = { 40: "size-10", 48: "size-11", 64: "size-16" }[size];
   return (
     <button type={type} aria-label={label} title={label} className={cn("inline-flex items-center justify-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring", v, s, className)} {...rest}>

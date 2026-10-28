@@ -164,7 +164,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
             {days.map((d) => {
               const n = timesOn(av, d).length;
               return (
-                <button key={d} type="button" aria-pressed={d === day} disabled={!av || n === 0} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", d === day ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg", av && n === 0 && "text-fg-subtle")}>
+                <button key={d} type="button" aria-pressed={d === day} disabled={!av || n === 0} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", d === day ? "border-fg bg-fg text-bg" : "border-line bg-card text-fg", av && n === 0 && "text-fg-subtle")}>
                   <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                   <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
                 </button>

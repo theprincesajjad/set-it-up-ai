@@ -259,7 +259,7 @@ function Calendar() {
           onResize={onResize}
         />
         {desktop ? (
-          <aside aria-label="Appointment" className="sticky top-4 hidden min-h-[480px] rounded-card border border-line bg-bg p-5 lg:block">
+          <aside aria-label="Appointment" className="sticky top-4 hidden min-h-[480px] rounded-card border border-line bg-card p-5 lg:block">
             {panel ?? <p className="text-meta text-fg-muted">Pick an appointment to see the client, what is due and the next step. Click an empty cell to book one.</p>}
           </aside>
         ) : null}

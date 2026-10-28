@@ -158,7 +158,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
   ) : null;
 
   return (
-    <LocaleScope locale={locale} className="flex flex-col gap-6 pt-2">
+    <LocaleScope locale={locale} trade={shop.merchant.vertical} className="flex flex-col gap-6 pt-2">
       <PassTopBar className="self-stretch" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ShopTile

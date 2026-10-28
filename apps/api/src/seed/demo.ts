@@ -48,6 +48,7 @@ import { backfillMilestones } from "../services/onboarding.js";
 import { seedAppointmentSalons } from "./appointments.js";
 import { seedClassStudios } from "./classes.js";
 import { seedPharmacyDemo } from "./pharmacy.js";
+import { seedLiveToday } from "./liveToday.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { GROCER_SHOPS, seedGrocers } from "./grocers.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
@@ -142,6 +143,9 @@ function pilotList(): SeedResult["pilotOverrides"] {
   return DEMO_PILOT_SHOPS.map((slug) => ({ slug, merchant: MERCHANTS.find((m) => m.slug === slug)!.name, features: DEMO_PILOT_FEATURES }));
 }
 
+/** The full demo (120 customers) adds a full day; a small test seed adds proportionally less. */
+const liveTodayScale = (opts: SeedOptions) => Math.min(1, (opts.customers ?? 120) / 120);
+
 export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResult> {
   const log = opts.log ?? (() => {});
   const [existing] = await db.select({ id: neighbourhoods.id }).from(neighbourhoods).where(eq(neighbourhoods.slug, "roncesvalles")).limit(1);
@@ -161,6 +165,7 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     await seedAuto(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, { ownerPassword: DEMO_CREDENTIALS.ownerPassword, log });
     await seedServiceOps(db, { log });
     await seedBiaDemo(db, { log });
+    await seedLiveToday(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { seed: opts.seed, scale: liveTodayScale(opts), log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
@@ -464,6 +469,9 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   await seedBiaDemo(db, { log });
   await seedRepAdmin(db, { repId: rep.id, log });
   const [{ n: allLeads } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads);
+  // A live-looking today for every shop (visits up to now, stamps, rewards redeemed, new members, slipping regulars).
+  clock.now = new Date();
+  await seedLiveToday(db, ctx, clock, { seed: opts.seed, scale: liveTodayScale(opts), log });
   await backfillMilestones(db);
   clock.now = new Date();
 

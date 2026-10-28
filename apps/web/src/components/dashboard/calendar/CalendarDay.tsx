@@ -142,7 +142,7 @@ export function CalendarDay({
 
   const cols = columns.length || 1;
   return (
-    <div className="overflow-hidden rounded-card border border-line bg-bg" data-calendar>
+    <div className="overflow-hidden rounded-card border border-line bg-card" data-calendar>
       {/* Column headers */}
       <div className="grid grid-cols-[48px_minmax(0,1fr)] md:[grid-template-columns:48px_repeat(var(--n),minmax(0,1fr))] border-b border-line" style={{ "--n": cols } as React.CSSProperties}>
         <div aria-hidden className="border-e border-line" />

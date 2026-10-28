@@ -77,7 +77,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
         <span lang={info.bcp47}>{info.name}</span>
         <ChevronDown aria-hidden className="size-3.5 transition-transform group-open:rotate-180" strokeWidth={2} />
       </summary>
-      <ul className="absolute end-0 top-10 z-sticky w-40 rounded-card border border-line bg-bg p-1 shadow-float">
+      <ul className="absolute end-0 top-10 z-sticky w-40 rounded-card border border-line bg-card p-1 shadow-float">
         {LOCALE_LIST.map((l) => (
           <li key={l.code}>
             <Link
@@ -128,7 +128,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
           <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
             <Menu aria-hidden className="size-5" strokeWidth={1.75} />
           </summary>
-          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-card border border-line bg-bg p-2 shadow-float">
+          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-card border border-line bg-card p-2 shadow-float">
             <nav aria-label="Main" className="flex flex-col">
               {nav.map((n) => (
                 <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="rounded-input px-3 py-3 text-body text-fg hover:bg-bg-subtle">

@@ -1,37 +1,33 @@
+import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Skeleton } from "./Skeleton";
+import { Sparkline } from "./Sparkline";
+import { TONE_HOVER, TONE_SURFACE, type Tone } from "./tones";
 
 export interface StatTileProps {
   label: string;
-  value: string | number | null;
-  /** e.g. { pct: 12, good: true, text: "+12% vs last 30 days" }. `good` decides the colour. */
+  value: ReactNode;
+  /** e.g. { pct: 12, good: true, text: "+12% vs last 30 days" }. `good` decides the colour on a plain tile; on a toned tile it decides the arrow. */
   delta?: { pct: number; good?: boolean | null; text?: string } | null;
-  /** Optional sparkline values. */
+  /** Optional sparkline values (a plain tile draws it under the numbers; a toned tile draws it at the end of the number). */
   spark?: number[];
   href?: string;
   loading?: boolean;
-  caption?: string;
-  /** "card" (hairline block, default) or "plain" (inside a bordered stats row with vertical hairlines). */
+  caption?: ReactNode;
+  /** "card" (hairline block, default) or "plain" (inside a bordered stats row with vertical hairlines). Ignored when `tone` is set. */
   frame?: "card" | "plain";
+  /** A pastel tile: peach, mint, butter, lilac, sky, rose, or `trade` (the shop's accent family). The number is big Fraunces in the tone's deep colour. */
+  tone?: Tone;
 }
 
-function Sparkline({ values }: { values: number[] }) {
-  if (values.length < 2) return null;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const w = 100;
-  const h = 28;
-  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / (max - min || 1)) * h}`).join(" ");
-  return (
-    <svg aria-hidden viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="mt-3 h-7 w-full">
-      <polyline points={pts} fill="none" strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="stroke-fg" />
-    </svg>
-  );
-}
-
-/** KPI (foundations.md "Stats"): label above, plain number, a small delta below. No coloured cards, no trend icons. */
-export function StatTile({ label, value, delta, spark, href, loading, caption, frame = "card" }: StatTileProps) {
+/**
+ * KPI. Plain (no `tone`): label above, plain number, a small delta below, a hairline card. Toned (Main Street Warm): a pastel rounded tile with
+ * the label, a big Fraunces number, a delta line (arrow + words) and an optional sparkline from `spark`.
+ */
+export function StatTile({ label, value, delta, spark, href, loading, caption, frame = "card", tone }: StatTileProps) {
+  if (tone) return <ToneTile {...{ label, value, delta, spark, href, loading, caption, tone }} />;
   const body = (
     <>
       <p className="text-meta text-fg-muted">{label}</p>
@@ -40,12 +36,49 @@ export function StatTile({ label, value, delta, spark, href, loading, caption, f
         <p className={cn("mt-1 text-meta tabular-nums", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`}</p>
       ) : null}
       {caption ? <p className="mt-1 text-meta text-fg-muted">{caption}</p> : null}
-      {spark && !loading ? <Sparkline values={spark} /> : null}
+      {spark && !loading ? <Sparkline values={spark} area={false} className="mt-3 h-7 w-full text-fg" strokeWidth={1.5} /> : null}
     </>
   );
-  const cls = cn("block p-4 md:p-5", frame === "card" && "rounded-card border border-line bg-bg");
+  const cls = cn("block p-4 md:p-5", frame === "card" && "rounded-card border border-line bg-card shadow-card");
   return href ? (
     <Link href={href} className={cn(cls, "transition-colors hover:bg-bg-subtle focus-visible:focus-ring")}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
+function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: Required<Pick<StatTileProps, "tone">> & Omit<StatTileProps, "tone" | "frame">) {
+  const text = delta ? (delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`) : null;
+  const Arrow = delta && delta.pct < 0 ? ArrowDown : ArrowUp;
+  const showArrow = !!delta && delta.pct !== 0 && delta.good !== null && delta.good !== undefined;
+  const body = (
+    <>
+      <p className="text-meta-strong opacity-90">{label}</p>
+      <div className="mt-2 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(34px,5.4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value ?? "–"}</p>}
+          <p className="mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums">
+            {!loading && text ? (
+              <>
+                {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
+                <span>{text}</span>
+              </>
+            ) : !loading && caption ? (
+              <span>{caption}</span>
+            ) : (
+              <span aria-hidden>&nbsp;</span>
+            )}
+          </p>
+        </div>
+        {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-[38%] max-w-24 shrink-0 opacity-90" /> : null}
+      </div>
+    </>
+  );
+  const cls = cn("relative block min-w-0 rounded-tile p-4 md:p-5", TONE_SURFACE[tone]);
+  return href ? (
+    <Link href={href} className={cn(cls, TONE_HOVER, "focus-visible:focus-ring")}>
       {body}
     </Link>
   ) : (

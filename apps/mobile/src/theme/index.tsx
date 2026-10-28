@@ -3,7 +3,7 @@
  * counter mode and kiosk default to light (bright shops) with a manual toggle
  * (brand.md § 4), via a nested <ThemeScope scheme="light">.
  */
-import { colors, nativeFonts, textStyles, verticalVisual, type ColorRoles, type TextStyleName, type VerticalColors } from "@ll/design-tokens";
+import { colors, nativeFonts, textStyles, tradeColors, verticalTrade, verticalVisual, type ColorRoles, type TextStyleName, type TradeColors, type VerticalColors } from "@ll/design-tokens";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { rolesFor, type RolesV3 } from "./roles";
 import { useColorScheme, type TextStyle } from "react-native";
@@ -20,6 +20,8 @@ export interface Theme {
   r: RolesV3;
   /** Vertical identity colours (placeholder tiles, map pins). */
   vertical: (v: string | null | undefined) => VerticalColors & { icon: string; label: string };
+  /** The trade accent family for a vertical (accent, foreground, alt, soft, deep): the same values as the web `[data-trade]` variables. */
+  trade: (v: string | null | undefined) => TradeColors;
 }
 
 const ThemeContext = createContext<Theme | null>(null);
@@ -34,6 +36,7 @@ function buildTheme(scheme: SchemeName): Theme {
       const vis = verticalVisual(v);
       return { ...vis[scheme], icon: vis.iconComponent, label: vis.label };
     },
+    trade: (v) => tradeColors(verticalTrade(v), scheme),
   };
 }
 

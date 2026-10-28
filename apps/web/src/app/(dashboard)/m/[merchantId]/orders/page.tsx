@@ -163,7 +163,7 @@ function OrderCard({ o, view, restaurant, grocer, canSplitIt, selected, onMove, 
   const event = isEventOrder(o);
   const pickup = event ? `${o.kind === "banquet" ? "hall booking" : "catering"} · placed ${relativeTime(o.createdAt)}` : o.pickupAt ? `pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `placed ${relativeTime(o.createdAt)}`;
   return (
-    <article aria-label={`Order ${o.number}`} className={cn("flex h-full flex-col gap-2.5 rounded-card border bg-bg p-5", selected ? "border-2 border-fg" : "border-line")}>
+    <article aria-label={`Order ${o.number}`} className={cn("flex h-full flex-col gap-2.5 rounded-card border bg-card p-5", selected ? "border-2 border-fg" : "border-line")}>
       <header className="flex items-start justify-between gap-3">
         <p className="flex min-w-0 flex-wrap items-center gap-2 text-[18px] font-semibold leading-6 text-fg tabular">
           #{o.number}

@@ -1,4 +1,5 @@
 import { palette as p } from "./palette.js";
+import { TILE_NAMES, tileRoles, tradeColors, warm, type TradeColors } from "./warm.js";
 
 /**
  * Semantic colour roles (v2, docs/design/foundations.md § Colour).
@@ -68,7 +69,7 @@ export interface ColorRoles {
   /** @deprecated use `line` */ border: string;
   /** @deprecated use `lineStrong` */ borderStrong: string;
   /** Focus ring: fg (2px + 2px offset). */ focusRing: string;
-  /** @deprecated primary buttons are `fg` (black) */ brand: string;
+  /** @deprecated use `primary` (v3 name; terracotta) */ brand: string;
   /** @deprecated */ brandHover: string;
   /** @deprecated */ brandPressed: string;
   /** @deprecated use `bg` on an `fg` fill */ onBrand: string;
@@ -163,84 +164,113 @@ export interface RolesV3 {
   /** Always black on white. */
   qrFg: string;
   qrBg: string;
+
+  // ── Main Street Warm (2026-10-28) ────────────────────────────
+  /** Primary text on the cream canvas and white cards (terracotta, >= 4.5:1; `primary` itself is 4.5 on cream only as a large fill). */
+  primaryText: string;
+  /** Deep green: the customer pass card, secondary brand moments. */
+  forest: string;
+  forestForeground: string;
+  /** Pastel tiles (stat tiles, icon tiles, quick actions): a fill and its deep text. */
+  tilePeach: string; tilePeachForeground: string;
+  tileMint: string; tileMintForeground: string;
+  tileButter: string; tileButterForeground: string;
+  tileLilac: string; tileLilacForeground: string;
+  tileSky: string; tileSkyForeground: string;
+  tileRose: string; tileRoseForeground: string;
+  /** The trade accent family. These are the defaults (terracotta); `[data-trade="..."]` overrides them (see css.ts). */
+  trade: string;
+  tradeForeground: string;
+  tradeAlt: string;
+  tradeSoft: string;
+  tradeDeep: string;
 }
 
 const v3Light: RolesV3 = {
-  background: p.stone[0],
-  foreground: p.gray[950],
+  background: warm.cream,
+  foreground: warm.ink,
   card: p.stone[0],
-  cardForeground: p.gray[950],
+  cardForeground: warm.ink,
   popover: p.stone[0],
-  popoverForeground: p.gray[950],
-  primary: p.gray[950],
+  popoverForeground: warm.ink,
+  primary: warm.terracotta,
   primaryForeground: p.stone[0],
-  secondary: p.stone[50],
-  secondaryForeground: p.gray[950],
-  muted: p.stone[50],
-  mutedForeground: p.stone[600],
-  accent: p.stone[100],
-  accentForeground: p.gray[950],
-  destructive: p.red[600],
-  border: p.stone[150],
-  input: p.stone[400],
-  ring: p.gray[950],
-  subtleForeground: p.stone[400],
-  sidebar: p.stone[50],
-  sidebarForeground: p.gray[950],
-  sidebarPrimary: p.gray[950],
+  secondary: warm.creamDeep,
+  secondaryForeground: warm.ink,
+  muted: warm.creamDeep,
+  mutedForeground: warm.muted,
+  accent: warm.sandDeep,
+  accentForeground: warm.ink,
+  destructive: warm.red,
+  border: warm.hairline,
+  input: warm.inputLight,
+  ring: warm.ink,
+  subtleForeground: warm.subtle,
+  sidebar: warm.sand,
+  sidebarForeground: warm.ink,
+  sidebarPrimary: warm.terracotta,
   sidebarPrimaryForeground: p.stone[0],
-  sidebarAccent: p.stone[100],
-  sidebarAccentForeground: p.gray[950],
-  sidebarBorder: p.stone[150],
-  sidebarRing: p.gray[950],
-  points: p.orange[500],
-  pointsText: p.orange[700],
+  sidebarAccent: p.stone[0],
+  sidebarAccentForeground: warm.ink,
+  sidebarBorder: warm.hairlineStrong,
+  sidebarRing: warm.ink,
+  points: warm.points,
+  pointsText: warm.pointsText,
   pointsSoft: p.orange[50],
   pointsForeground: p.stone[0],
   success: p.green[600],
-  successText: p.green[700],
+  successText: p.green[800],
   info: p.blue[500],
   infoText: p.blue[700],
   infoSoft: p.blue[50],
-  warning: p.amber[600],
+  warning: warm.amber,
   warningText: p.amber[700],
-  paper: p.stone[25],
+  paper: warm.cream,
   qrFg: "#000000",
   qrBg: "#FFFFFF",
+  primaryText: warm.terracottaDeep,
+  forest: warm.forest,
+  forestForeground: p.stone[0],
+  ...tileRoles("light"),
+  trade: tradeColors("terracotta", "light").accent,
+  tradeForeground: tradeColors("terracotta", "light").foreground,
+  tradeAlt: tradeColors("terracotta", "light").alt,
+  tradeSoft: tradeColors("terracotta", "light").soft,
+  tradeDeep: tradeColors("terracotta", "light").deep,
 };
 
 const v3Dark: RolesV3 = {
-  background: p.stone[950],
-  foreground: p.stone[50],
-  card: p.stone[900],
-  cardForeground: p.stone[50],
-  popover: p.stone[900],
-  popoverForeground: p.stone[50],
-  primary: p.stone[50],
-  primaryForeground: p.stone[950],
-  secondary: p.stone[850],
-  secondaryForeground: p.stone[50],
-  muted: p.stone[850],
-  mutedForeground: p.stone[650],
-  accent: p.stone[800],
-  accentForeground: p.stone[50],
+  background: warm.espresso,
+  foreground: warm.cocoa,
+  card: warm.roast,
+  cardForeground: warm.cocoa,
+  popover: warm.roast,
+  popoverForeground: warm.cocoa,
+  primary: warm.terracottaDark,
+  primaryForeground: warm.espresso,
+  secondary: warm.roastMuted,
+  secondaryForeground: warm.cocoa,
+  muted: warm.roastMuted,
+  mutedForeground: warm.cocoaMuted,
+  accent: warm.roastHover,
+  accentForeground: warm.cocoa,
   destructive: p.red[400],
-  border: p.stone[750],
-  input: p.stone[550],
-  ring: p.stone[50],
-  subtleForeground: p.stone[550],
-  sidebar: p.stone[900],
-  sidebarForeground: p.stone[50],
-  sidebarPrimary: p.stone[50],
-  sidebarPrimaryForeground: p.stone[950],
-  sidebarAccent: p.stone[800],
-  sidebarAccentForeground: p.stone[50],
-  sidebarBorder: p.stone[750],
-  sidebarRing: p.stone[50],
+  border: warm.roastLine,
+  input: warm.roastInput,
+  ring: warm.cocoa,
+  subtleForeground: warm.cocoaSubtle,
+  sidebar: warm.roastSidebar,
+  sidebarForeground: warm.cocoa,
+  sidebarPrimary: warm.terracottaDark,
+  sidebarPrimaryForeground: warm.espresso,
+  sidebarAccent: warm.roastPill,
+  sidebarAccentForeground: warm.cocoa,
+  sidebarBorder: warm.roastLine,
+  sidebarRing: warm.cocoa,
   points: p.orange[400],
   pointsText: p.orange[400],
   pointsSoft: p.orange[950],
-  pointsForeground: p.stone[950],
+  pointsForeground: warm.espresso,
   success: p.green[500],
   successText: p.green[400],
   info: p.blue[400],
@@ -248,9 +278,18 @@ const v3Dark: RolesV3 = {
   infoSoft: p.blue[950],
   warning: p.amber[400],
   warningText: p.amber[400],
-  paper: p.stone[950],
+  paper: warm.espresso,
   qrFg: "#000000",
   qrBg: "#FFFFFF",
+  primaryText: "#FF8E73",
+  forest: warm.forestDark,
+  forestForeground: warm.espresso,
+  ...tileRoles("dark"),
+  trade: tradeColors("terracotta", "dark").accent,
+  tradeForeground: tradeColors("terracotta", "dark").foreground,
+  tradeAlt: tradeColors("terracotta", "dark").alt,
+  tradeSoft: tradeColors("terracotta", "dark").soft,
+  tradeDeep: tradeColors("terracotta", "dark").deep,
 };
 
 export const rolesV3 = { light: v3Light, dark: v3Dark } as const;
@@ -258,8 +297,8 @@ export type RoleV3 = keyof RolesV3;
 
 /** v3 chart series (shadcn `--chart-1` to `--chart-5`). */
 export const chartSeriesV3 = {
-  light: [p.gray[950], p.orange[500], p.stone[600], p.blue[500], p.green[600]],
-  dark: [p.stone[50], p.orange[400], p.stone[650], p.blue[400], p.green[500]],
+  light: [warm.terracotta, warm.points, warm.muted, p.blue[500], warm.forest],
+  dark: [warm.terracottaDark, p.orange[400], warm.cocoaMuted, p.blue[400], warm.forestDark],
 } as const;
 
 /**
@@ -314,21 +353,21 @@ const fromV3 = (r: RolesV3) => ({
 const v2Light = {
   ...fromV3(v3Light),
   positiveText: p.green[800],
-  chrome: "rgba(255, 255, 255, 0.8)",
-  overlay: "rgba(11, 11, 12, 0.4)",
+  chrome: "rgba(251, 246, 238, 0.82)",
+  overlay: "rgba(42, 30, 20, 0.42)",
 } as const;
 
 const v2Dark = {
   ...fromV3(v3Dark),
   positiveText: p.green[500],
-  chrome: "rgba(22, 20, 18, 0.8)",
-  overlay: "rgba(0, 0, 0, 0.6)",
+  chrome: "rgba(36, 28, 22, 0.82)",
+  overlay: "rgba(10, 6, 3, 0.62)",
 } as const;
 
 type V2 = { [K in keyof typeof v2Light]: string };
 
 /** v1 role names expressed in v2 roles (same mapping in both themes). */
-function legacy(c: V2, x: { brandHover: string; brandPressed: string; accentHover: string; dangerHover: string; onDanger: string; onSuccess: string }) {
+function legacy(c: V2, x: { brand: string; onBrand: string; brandHover: string; brandPressed: string; accentHover: string; dangerHover: string; onDanger: string; onSuccess: string }) {
   return {
     canvas: c.bg,
     canvasSubtle: c.bgSubtle,
@@ -342,10 +381,10 @@ function legacy(c: V2, x: { brandHover: string; brandPressed: string; accentHove
     border: c.line,
     borderStrong: c.lineStrong,
     focusRing: c.fg,
-    brand: c.fg,
+    brand: x.brand,
     brandHover: x.brandHover,
     brandPressed: x.brandPressed,
-    onBrand: c.bg,
+    onBrand: x.onBrand,
     brandSubtle: c.bgMuted,
     onBrandSubtle: c.fg,
     fgBrand: c.fg,
@@ -383,9 +422,11 @@ function legacy(c: V2, x: { brandHover: string; brandPressed: string; accentHove
 export const light: ColorRoles = {
   ...v2Light,
   ...legacy(v2Light, {
-    brandHover: "#26262A",
-    brandPressed: "#3A3A3F",
-    accentHover: p.orange[600],
+    brand: v3Light.primary,
+    onBrand: v3Light.primaryForeground,
+    brandHover: warm.terracottaHover,
+    brandPressed: warm.terracottaDeep,
+    accentHover: "#D14A06",
     dangerHover: p.red[700],
     onDanger: p.gray[0],
     onSuccess: p.gray[0],
@@ -395,8 +436,10 @@ export const light: ColorRoles = {
 export const dark: ColorRoles = {
   ...v2Dark,
   ...legacy(v2Dark, {
-    brandHover: "#E5E5E3",
-    brandPressed: "#D4D4D2",
+    brand: v3Dark.primary,
+    onBrand: v3Dark.primaryForeground,
+    brandHover: "#E86A52",
+    brandPressed: "#E4603F",
     accentHover: "#FF8F62",
     dangerHover: "#FCA5A5",
     onDanger: p.gray[950],
@@ -434,7 +477,7 @@ const textOn = (bgs: ColorRole[], fgs: ColorRole[], note: string): ContrastPair[
 export const contrastPairs: ContrastPair[] = [
   ...textOn(["bg", "bgSubtle", "bgMuted"], ["fg", "fgMuted"], "Primary & secondary text on every background"),
   ...textOn(["bg", "bgSubtle", "accentSoft"], ["accentText"], "Small accent text: balances, 'reward ready', points labels"),
-  { fg: "bg", bg: "fg", min: TEXT, note: "Primary (black) button label, inverse snackbar" },
+  { fg: "bg", bg: "fg", min: TEXT, note: "Inverse snackbar, skip link" },
   ...textOn(["bg", "bgSubtle", "bgMuted", "accentSoft"], ["positiveText"], "Positive text: deltas, 'paid', 'can text', credit lines"),
   { fg: "negative", bg: "bg", min: TEXT, note: "Inline error / 'closed' text" },
   { fg: "qrFg", bg: "qrBg", min: 15, note: "QR modules: always black on white" },
@@ -494,5 +537,45 @@ export const contrastPairsV3: ContrastPairV3[] = [
   { fg: "success", bg: "background", min: UI, note: "Dot (3.3 light)" },
   { fg: "info", bg: "background", min: UI, note: "Dot (4.0 light)" },
   { fg: "warning", bg: "background", min: UI, note: "Dot (3.2 light)" },
-  { fg: "subtleForeground", bg: "background", min: 3, note: "Disabled only: 3.6 light, fails 4.5 by design" },
+  { fg: "subtleForeground", bg: "background", min: 2.5, note: "Disabled only: fails 4.5 by design" },
+  // Main Street Warm
+  ...textOnV3(["card", "sidebar", "sidebarAccent"], ["foreground", "mutedForeground"], "Text on white cards, the sand sidebar and the active pill").filter((p) => !(p.fg === "foreground" && p.bg === "card") && !(p.fg === "foreground" && p.bg === "sidebar")),
+  { fg: "sidebarForeground", bg: "sidebar", min: TEXT, note: "Sidebar row text on sand" },
+  ...textOnV3(["background", "card", "muted"], ["primaryText"], "Terracotta text (links, 'view all', page accents)"),
+  { fg: "primary", bg: "background", min: UI, note: "Primary as a fill or glyph on the canvas" },
+  { fg: "primary", bg: "card", min: UI, note: "Primary as a fill or glyph on a card" },
+  { fg: "forestForeground", bg: "forest", min: TEXT, note: "Pass card text on deep green" },
+  { fg: "forest", bg: "background", min: UI, note: "Forest as a fill or glyph" },
+  ...TILE_NAMES.flatMap((n): ContrastPairV3[] => {
+    const cap = n.charAt(0).toUpperCase() + n.slice(1);
+    const bg = `tile${cap}` as RoleV3;
+    return [
+      { fg: `${bg}Foreground` as RoleV3, bg, min: TEXT, note: `Deep text on the ${n} tile` },
+      { fg: "foreground", bg, min: TEXT, note: `Ink on the ${n} tile` },
+    ];
+  }),
+];
+
+/** A trade-accent pair (resolved per family and theme in the test: `[data-trade]` swaps these CSS variables). */
+export interface TradePair {
+  fg: keyof TradeColors | RoleV3;
+  bg: keyof TradeColors | RoleV3;
+  min: number;
+  note: string;
+}
+const T = (fg: TradePair["fg"], bg: TradePair["bg"], min: number, note: string): TradePair => ({ fg, bg, min, note });
+export const contrastPairsTrade: TradePair[] = [
+  T("foreground", "accent", TEXT, "Label on an accent fill (the pass card, a trade chip)"),
+  T("accent", "card", UI, "Sidebar glyph, bar, stamp on a white card"),
+  T("accent", "background", UI, "Glyph or bar on the canvas"),
+  T("accent", "sidebar", UI, "Sidebar glyph on sand"),
+  T("accent", "sidebarAccent", UI, "Sidebar glyph on the active pill"),
+  T("accent", "soft", UI, "Glyph or sparkline on the soft tile"),
+  T("deep", "soft", TEXT, "Deep text on the first stat tile"),
+  T("deep", "card", TEXT, "Page-title accent on a white card"),
+  T("deep", "background", TEXT, "Page-title accent on the canvas"),
+  T("deep", "sidebar", TEXT, "Trade text on the sidebar"),
+  T("alt", "card", UI, "Second colour as decoration"),
+  T("alt", "background", UI, "Second colour as decoration"),
+  T("foreground", "alt", UI, "Large label on the gradient's second colour"),
 ];

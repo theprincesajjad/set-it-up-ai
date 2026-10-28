@@ -20,7 +20,7 @@ export function SkeletonGroup({ children, className, label = "Loading..." }: { c
 
 export function SkeletonCard({ lines = 2 }: { lines?: number }) {
   return (
-    <div className="rounded-card border border-line bg-bg p-4">
+    <div className="rounded-card border border-line bg-card p-4">
       <div className="flex items-center gap-3">
         <Skeleton circle className="size-11" />
         <div className="flex-1 space-y-2">

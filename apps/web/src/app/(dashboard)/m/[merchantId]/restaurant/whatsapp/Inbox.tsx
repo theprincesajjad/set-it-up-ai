@@ -196,7 +196,7 @@ function SummaryCard({ body }: { body: string }) {
   }
   if (!s) return null;
   return (
-    <div className="w-full max-w-[360px] rounded-card border border-line bg-bg p-4">
+    <div className="w-full max-w-[360px] rounded-card border border-line bg-card p-4">
       <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">Order summary · #{s.orderNumber}</p>
       <ul className="mt-2 space-y-1 text-meta text-fg">
         {s.lines.map((l, i) => (

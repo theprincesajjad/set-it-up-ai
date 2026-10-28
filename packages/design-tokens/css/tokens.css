@@ -6,7 +6,8 @@
 /* Static tokens (theme-independent) */
 :root {
   --ll-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --ll-font-display: "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ll-font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --ll-font-wordmark: "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ll-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --ll-space-0: 0rem;
   --ll-space-1: 0.25rem;
@@ -39,14 +40,15 @@
   --ll-layout-grabber-width: 36px;
   --ll-layout-grabber-height: 5px;
   --ll-radius-none: 0px;
-  --ll-radius-input: 10px;
-  --ll-radius-card: 16px;
-  --ll-radius-sheet: 24px;
-  --ll-radius-xs: 10px;
-  --ll-radius-sm: 10px;
-  --ll-radius-md: 10px;
-  --ll-radius-lg: 16px;
-  --ll-radius-xl: 24px;
+  --ll-radius-input: 12px;
+  --ll-radius-tile: 20px;
+  --ll-radius-card: 22px;
+  --ll-radius-sheet: 28px;
+  --ll-radius-xs: 12px;
+  --ll-radius-sm: 12px;
+  --ll-radius-md: 12px;
+  --ll-radius-lg: 22px;
+  --ll-radius-xl: 28px;
   --ll-radius-full: 9999px;
   --radius: 0.625rem;
   --sidebar-width: 15.5rem;
@@ -231,52 +233,72 @@
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --background: #FFFFFF;
-  --foreground: #0B0B0C;
+  --background: #FBF6EE;
+  --foreground: #2A1E14;
   --card: #FFFFFF;
-  --card-foreground: #0B0B0C;
+  --card-foreground: #2A1E14;
   --popover: #FFFFFF;
-  --popover-foreground: #0B0B0C;
-  --primary: #0B0B0C;
+  --popover-foreground: #2A1E14;
+  --primary: #C8452C;
   --primary-foreground: #FFFFFF;
-  --secondary: #F6F4F1;
-  --secondary-foreground: #0B0B0C;
-  --muted: #F6F4F1;
-  --muted-foreground: #6B6762;
-  --accent: #EEEBE6;
-  --accent-foreground: #0B0B0C;
-  --destructive: #DC2626;
-  --border: #E7E3DD;
-  --input: #8A8680;
-  --ring: #0B0B0C;
-  --subtle-foreground: #8A8680;
-  --sidebar: #F6F4F1;
-  --sidebar-foreground: #0B0B0C;
-  --sidebar-primary: #0B0B0C;
+  --secondary: #F6EEE2;
+  --secondary-foreground: #2A1E14;
+  --muted: #F6EEE2;
+  --muted-foreground: #725F4E;
+  --accent: #F0E4D2;
+  --accent-foreground: #2A1E14;
+  --destructive: #CC2222;
+  --border: #EADCC8;
+  --input: #8A7866;
+  --ring: #2A1E14;
+  --subtle-foreground: #A8967F;
+  --sidebar: #F3E9DA;
+  --sidebar-foreground: #2A1E14;
+  --sidebar-primary: #C8452C;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEEBE6;
-  --sidebar-accent-foreground: #0B0B0C;
-  --sidebar-border: #E7E3DD;
-  --sidebar-ring: #0B0B0C;
-  --points: #FF5A1F;
-  --points-text: #C2410C;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-accent-foreground: #2A1E14;
+  --sidebar-border: #E2D0B6;
+  --sidebar-ring: #2A1E14;
+  --points: #E5530A;
+  --points-text: #B33A09;
   --points-soft: #FFF1EA;
   --points-foreground: #FFFFFF;
   --success: #16A34A;
-  --success-text: #15803D;
+  --success-text: #166534;
   --info: #2F7BF6;
   --info-text: #1D4ED8;
   --info-soft: #EFF4FF;
-  --warning: #D97706;
+  --warning: #CC6C00;
   --warning-text: #B45309;
-  --paper: #FBF9F6;
+  --paper: #FBF6EE;
   --qr-fg: #000000;
   --qr-bg: #FFFFFF;
-  --chart-1: #0B0B0C;
-  --chart-2: #FF5A1F;
-  --chart-3: #6B6762;
+  --primary-text: #B23A23;
+  --forest: #1F5C4A;
+  --forest-foreground: #FFFFFF;
+  --tile-peach: #FCE4D8;
+  --tile-peach-foreground: #A63A22;
+  --tile-mint: #E1EEE6;
+  --tile-mint-foreground: #1F5C4A;
+  --tile-butter: #FDF0C8;
+  --tile-butter-foreground: #7A5A05;
+  --tile-lilac: #EBE2F3;
+  --tile-lilac-foreground: #6B3FA0;
+  --tile-sky: #DCEBF7;
+  --tile-sky-foreground: #1F5A8C;
+  --tile-rose: #F9DEE5;
+  --tile-rose-foreground: #A02B52;
+  --trade: #C8452C;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #B8691F;
+  --trade-soft: #FCE4D8;
+  --trade-deep: #9B2F1A;
+  --chart-1: #C8452C;
+  --chart-2: #E5530A;
+  --chart-3: #725F4E;
   --chart-4: #2F7BF6;
-  --chart-5: #16A34A;
+  --chart-5: #1F5C4A;
   --ll-color-bg: var(--background);
   --ll-color-bg-subtle: var(--muted);
   --ll-color-bg-muted: var(--accent);
@@ -295,159 +317,159 @@
   --ll-color-qr-fg: var(--qr-fg);
   --ll-color-qr-bg: var(--qr-bg);
   --ll-color-positive-text: #166534;
-  --ll-color-chrome: rgba(255, 255, 255, 0.8);
-  --ll-color-overlay: rgba(11, 11, 12, 0.4);
-  --ll-color-canvas: #FFFFFF;
-  --ll-color-canvas-subtle: #F6F4F1;
-  --ll-color-surface: #FFFFFF;
-  --ll-color-surface-raised: #FFFFFF;
-  --ll-color-surface-sunken: #F6F4F1;
-  --ll-color-surface-inverse: #0B0B0C;
-  --ll-color-fg-inverse: #FFFFFF;
-  --ll-color-fg-link: #0B0B0C;
-  --ll-color-fg-disabled: #8A8680;
-  --ll-color-border: #E7E3DD;
-  --ll-color-border-strong: #8A8680;
+  --ll-color-chrome: rgba(251, 246, 238, 0.82);
+  --ll-color-overlay: rgba(42, 30, 20, 0.42);
+  --ll-color-canvas: #FBF6EE;
+  --ll-color-canvas-subtle: #F6EEE2;
+  --ll-color-surface: #FBF6EE;
+  --ll-color-surface-raised: #FBF6EE;
+  --ll-color-surface-sunken: #F6EEE2;
+  --ll-color-surface-inverse: #2A1E14;
+  --ll-color-fg-inverse: #FBF6EE;
+  --ll-color-fg-link: #2A1E14;
+  --ll-color-fg-disabled: #A8967F;
+  --ll-color-border: #EADCC8;
+  --ll-color-border-strong: #8A7866;
   --ll-color-focus-ring: var(--ring);
-  --ll-color-brand: #0B0B0C;
-  --ll-color-brand-hover: #26262A;
-  --ll-color-brand-pressed: #3A3A3F;
+  --ll-color-brand: #C8452C;
+  --ll-color-brand-hover: #B33D26;
+  --ll-color-brand-pressed: #B23A23;
   --ll-color-on-brand: #FFFFFF;
-  --ll-color-brand-subtle: #EEEBE6;
-  --ll-color-on-brand-subtle: #0B0B0C;
-  --ll-color-fg-brand: #0B0B0C;
-  --ll-color-accent-hover: #E84E14;
+  --ll-color-brand-subtle: #F0E4D2;
+  --ll-color-on-brand-subtle: #2A1E14;
+  --ll-color-fg-brand: #2A1E14;
+  --ll-color-accent-hover: #D14A06;
   --ll-color-accent-subtle: #FFF1EA;
-  --ll-color-on-accent-subtle: #C2410C;
-  --ll-color-neutral-subtle: #EEEBE6;
-  --ll-color-on-neutral-subtle: #6B6762;
+  --ll-color-on-accent-subtle: #B33A09;
+  --ll-color-neutral-subtle: #F0E4D2;
+  --ll-color-on-neutral-subtle: #725F4E;
   --ll-color-success: #16A34A;
   --ll-color-on-success: #FFFFFF;
-  --ll-color-success-subtle: #F6F4F1;
-  --ll-color-on-success-subtle: #0B0B0C;
-  --ll-color-warning: #0B0B0C;
-  --ll-color-on-warning: #FFFFFF;
-  --ll-color-warning-subtle: #F6F4F1;
-  --ll-color-on-warning-subtle: #0B0B0C;
-  --ll-color-danger: #DC2626;
+  --ll-color-success-subtle: #F6EEE2;
+  --ll-color-on-success-subtle: #2A1E14;
+  --ll-color-warning: #2A1E14;
+  --ll-color-on-warning: #FBF6EE;
+  --ll-color-warning-subtle: #F6EEE2;
+  --ll-color-on-warning-subtle: #2A1E14;
+  --ll-color-danger: #CC2222;
   --ll-color-danger-hover: #B91C1C;
   --ll-color-on-danger: #FFFFFF;
-  --ll-color-danger-subtle: #F6F4F1;
-  --ll-color-on-danger-subtle: #0B0B0C;
-  --ll-color-info: #0B0B0C;
-  --ll-color-on-info: #FFFFFF;
-  --ll-color-info-subtle: #F6F4F1;
-  --ll-color-on-info-subtle: #0B0B0C;
-  --ll-color-disabled-bg: #EEEBE6;
-  --ll-color-on-disabled: #6B6762;
-  --ll-color-skeleton: #EEEBE6;
-  --ll-color-skeleton-highlight: #F6F4F1;
-  --ll-color-stamp-empty: #8A8680;
-  --ll-color-ring-track: #EEEBE6;
-  --ll-vertical-cafe-accent: #0B0B0C;
-  --ll-vertical-cafe-on-accent: #FFFFFF;
-  --ll-vertical-cafe-tint: #F6F4F1;
-  --ll-vertical-cafe-ink: #0B0B0C;
-  --ll-vertical-restaurant-accent: #0B0B0C;
-  --ll-vertical-restaurant-on-accent: #FFFFFF;
-  --ll-vertical-restaurant-tint: #F6F4F1;
-  --ll-vertical-restaurant-ink: #0B0B0C;
-  --ll-vertical-restaurant-south-asian-accent: #0B0B0C;
-  --ll-vertical-restaurant-south-asian-on-accent: #FFFFFF;
-  --ll-vertical-restaurant-south-asian-tint: #F6F4F1;
-  --ll-vertical-restaurant-south-asian-ink: #0B0B0C;
-  --ll-vertical-tiffin-accent: #0B0B0C;
-  --ll-vertical-tiffin-on-accent: #FFFFFF;
-  --ll-vertical-tiffin-tint: #F6F4F1;
-  --ll-vertical-tiffin-ink: #0B0B0C;
-  --ll-vertical-caterer-accent: #0B0B0C;
-  --ll-vertical-caterer-on-accent: #FFFFFF;
-  --ll-vertical-caterer-tint: #F6F4F1;
-  --ll-vertical-caterer-ink: #0B0B0C;
-  --ll-vertical-banquet-hall-accent: #0B0B0C;
-  --ll-vertical-banquet-hall-on-accent: #FFFFFF;
-  --ll-vertical-banquet-hall-tint: #F6F4F1;
-  --ll-vertical-banquet-hall-ink: #0B0B0C;
-  --ll-vertical-bakery-accent: #0B0B0C;
-  --ll-vertical-bakery-on-accent: #FFFFFF;
-  --ll-vertical-bakery-tint: #F6F4F1;
-  --ll-vertical-bakery-ink: #0B0B0C;
-  --ll-vertical-bar-accent: #0B0B0C;
-  --ll-vertical-bar-on-accent: #FFFFFF;
-  --ll-vertical-bar-tint: #F6F4F1;
-  --ll-vertical-bar-ink: #0B0B0C;
-  --ll-vertical-grocery-accent: #0B0B0C;
-  --ll-vertical-grocery-on-accent: #FFFFFF;
-  --ll-vertical-grocery-tint: #F6F4F1;
-  --ll-vertical-grocery-ink: #0B0B0C;
-  --ll-vertical-pharmacy-accent: #0B0B0C;
-  --ll-vertical-pharmacy-on-accent: #FFFFFF;
-  --ll-vertical-pharmacy-tint: #F6F4F1;
-  --ll-vertical-pharmacy-ink: #0B0B0C;
-  --ll-vertical-retail-accent: #0B0B0C;
-  --ll-vertical-retail-on-accent: #FFFFFF;
-  --ll-vertical-retail-tint: #F6F4F1;
-  --ll-vertical-retail-ink: #0B0B0C;
-  --ll-vertical-bookstore-accent: #0B0B0C;
-  --ll-vertical-bookstore-on-accent: #FFFFFF;
-  --ll-vertical-bookstore-tint: #F6F4F1;
-  --ll-vertical-bookstore-ink: #0B0B0C;
-  --ll-vertical-florist-accent: #0B0B0C;
-  --ll-vertical-florist-on-accent: #FFFFFF;
-  --ll-vertical-florist-tint: #F6F4F1;
-  --ll-vertical-florist-ink: #0B0B0C;
-  --ll-vertical-pet-accent: #0B0B0C;
-  --ll-vertical-pet-on-accent: #FFFFFF;
-  --ll-vertical-pet-tint: #F6F4F1;
-  --ll-vertical-pet-ink: #0B0B0C;
-  --ll-vertical-salon-accent: #0B0B0C;
-  --ll-vertical-salon-on-accent: #FFFFFF;
-  --ll-vertical-salon-tint: #F6F4F1;
-  --ll-vertical-salon-ink: #0B0B0C;
-  --ll-vertical-barber-accent: #0B0B0C;
-  --ll-vertical-barber-on-accent: #FFFFFF;
-  --ll-vertical-barber-tint: #F6F4F1;
-  --ll-vertical-barber-ink: #0B0B0C;
-  --ll-vertical-spa-accent: #0B0B0C;
-  --ll-vertical-spa-on-accent: #FFFFFF;
-  --ll-vertical-spa-tint: #F6F4F1;
-  --ll-vertical-spa-ink: #0B0B0C;
-  --ll-vertical-beauty-supply-accent: #0B0B0C;
-  --ll-vertical-beauty-supply-on-accent: #FFFFFF;
-  --ll-vertical-beauty-supply-tint: #F6F4F1;
-  --ll-vertical-beauty-supply-ink: #0B0B0C;
-  --ll-vertical-fitness-accent: #0B0B0C;
-  --ll-vertical-fitness-on-accent: #FFFFFF;
-  --ll-vertical-fitness-tint: #F6F4F1;
-  --ll-vertical-fitness-ink: #0B0B0C;
-  --ll-vertical-repair-electronics-accent: #0B0B0C;
-  --ll-vertical-repair-electronics-on-accent: #FFFFFF;
-  --ll-vertical-repair-electronics-tint: #F6F4F1;
-  --ll-vertical-repair-electronics-ink: #0B0B0C;
-  --ll-vertical-repair-auto-accent: #0B0B0C;
-  --ll-vertical-repair-auto-on-accent: #FFFFFF;
-  --ll-vertical-repair-auto-tint: #F6F4F1;
-  --ll-vertical-repair-auto-ink: #0B0B0C;
-  --ll-vertical-car-wash-accent: #0B0B0C;
-  --ll-vertical-car-wash-on-accent: #FFFFFF;
-  --ll-vertical-car-wash-tint: #F6F4F1;
-  --ll-vertical-car-wash-ink: #0B0B0C;
-  --ll-vertical-alterations-accent: #0B0B0C;
-  --ll-vertical-alterations-on-accent: #FFFFFF;
-  --ll-vertical-alterations-tint: #F6F4F1;
-  --ll-vertical-alterations-ink: #0B0B0C;
-  --ll-vertical-dry-cleaning-accent: #0B0B0C;
-  --ll-vertical-dry-cleaning-on-accent: #FFFFFF;
-  --ll-vertical-dry-cleaning-tint: #F6F4F1;
-  --ll-vertical-dry-cleaning-ink: #0B0B0C;
-  --ll-vertical-print-shop-accent: #0B0B0C;
-  --ll-vertical-print-shop-on-accent: #FFFFFF;
-  --ll-vertical-print-shop-tint: #F6F4F1;
-  --ll-vertical-print-shop-ink: #0B0B0C;
-  --ll-vertical-other-accent: #0B0B0C;
-  --ll-vertical-other-on-accent: #FFFFFF;
-  --ll-vertical-other-tint: #F6F4F1;
-  --ll-vertical-other-ink: #0B0B0C;
+  --ll-color-danger-subtle: #F6EEE2;
+  --ll-color-on-danger-subtle: #2A1E14;
+  --ll-color-info: #2A1E14;
+  --ll-color-on-info: #FBF6EE;
+  --ll-color-info-subtle: #F6EEE2;
+  --ll-color-on-info-subtle: #2A1E14;
+  --ll-color-disabled-bg: #F0E4D2;
+  --ll-color-on-disabled: #725F4E;
+  --ll-color-skeleton: #F0E4D2;
+  --ll-color-skeleton-highlight: #F6EEE2;
+  --ll-color-stamp-empty: #8A7866;
+  --ll-color-ring-track: #F0E4D2;
+  --ll-vertical-cafe-accent: #2A1E14;
+  --ll-vertical-cafe-on-accent: #FBF6EE;
+  --ll-vertical-cafe-tint: #F6EEE2;
+  --ll-vertical-cafe-ink: #2A1E14;
+  --ll-vertical-restaurant-accent: #2A1E14;
+  --ll-vertical-restaurant-on-accent: #FBF6EE;
+  --ll-vertical-restaurant-tint: #F6EEE2;
+  --ll-vertical-restaurant-ink: #2A1E14;
+  --ll-vertical-restaurant-south-asian-accent: #2A1E14;
+  --ll-vertical-restaurant-south-asian-on-accent: #FBF6EE;
+  --ll-vertical-restaurant-south-asian-tint: #F6EEE2;
+  --ll-vertical-restaurant-south-asian-ink: #2A1E14;
+  --ll-vertical-tiffin-accent: #2A1E14;
+  --ll-vertical-tiffin-on-accent: #FBF6EE;
+  --ll-vertical-tiffin-tint: #F6EEE2;
+  --ll-vertical-tiffin-ink: #2A1E14;
+  --ll-vertical-caterer-accent: #2A1E14;
+  --ll-vertical-caterer-on-accent: #FBF6EE;
+  --ll-vertical-caterer-tint: #F6EEE2;
+  --ll-vertical-caterer-ink: #2A1E14;
+  --ll-vertical-banquet-hall-accent: #2A1E14;
+  --ll-vertical-banquet-hall-on-accent: #FBF6EE;
+  --ll-vertical-banquet-hall-tint: #F6EEE2;
+  --ll-vertical-banquet-hall-ink: #2A1E14;
+  --ll-vertical-bakery-accent: #2A1E14;
+  --ll-vertical-bakery-on-accent: #FBF6EE;
+  --ll-vertical-bakery-tint: #F6EEE2;
+  --ll-vertical-bakery-ink: #2A1E14;
+  --ll-vertical-bar-accent: #2A1E14;
+  --ll-vertical-bar-on-accent: #FBF6EE;
+  --ll-vertical-bar-tint: #F6EEE2;
+  --ll-vertical-bar-ink: #2A1E14;
+  --ll-vertical-grocery-accent: #2A1E14;
+  --ll-vertical-grocery-on-accent: #FBF6EE;
+  --ll-vertical-grocery-tint: #F6EEE2;
+  --ll-vertical-grocery-ink: #2A1E14;
+  --ll-vertical-pharmacy-accent: #2A1E14;
+  --ll-vertical-pharmacy-on-accent: #FBF6EE;
+  --ll-vertical-pharmacy-tint: #F6EEE2;
+  --ll-vertical-pharmacy-ink: #2A1E14;
+  --ll-vertical-retail-accent: #2A1E14;
+  --ll-vertical-retail-on-accent: #FBF6EE;
+  --ll-vertical-retail-tint: #F6EEE2;
+  --ll-vertical-retail-ink: #2A1E14;
+  --ll-vertical-bookstore-accent: #2A1E14;
+  --ll-vertical-bookstore-on-accent: #FBF6EE;
+  --ll-vertical-bookstore-tint: #F6EEE2;
+  --ll-vertical-bookstore-ink: #2A1E14;
+  --ll-vertical-florist-accent: #2A1E14;
+  --ll-vertical-florist-on-accent: #FBF6EE;
+  --ll-vertical-florist-tint: #F6EEE2;
+  --ll-vertical-florist-ink: #2A1E14;
+  --ll-vertical-pet-accent: #2A1E14;
+  --ll-vertical-pet-on-accent: #FBF6EE;
+  --ll-vertical-pet-tint: #F6EEE2;
+  --ll-vertical-pet-ink: #2A1E14;
+  --ll-vertical-salon-accent: #2A1E14;
+  --ll-vertical-salon-on-accent: #FBF6EE;
+  --ll-vertical-salon-tint: #F6EEE2;
+  --ll-vertical-salon-ink: #2A1E14;
+  --ll-vertical-barber-accent: #2A1E14;
+  --ll-vertical-barber-on-accent: #FBF6EE;
+  --ll-vertical-barber-tint: #F6EEE2;
+  --ll-vertical-barber-ink: #2A1E14;
+  --ll-vertical-spa-accent: #2A1E14;
+  --ll-vertical-spa-on-accent: #FBF6EE;
+  --ll-vertical-spa-tint: #F6EEE2;
+  --ll-vertical-spa-ink: #2A1E14;
+  --ll-vertical-beauty-supply-accent: #2A1E14;
+  --ll-vertical-beauty-supply-on-accent: #FBF6EE;
+  --ll-vertical-beauty-supply-tint: #F6EEE2;
+  --ll-vertical-beauty-supply-ink: #2A1E14;
+  --ll-vertical-fitness-accent: #2A1E14;
+  --ll-vertical-fitness-on-accent: #FBF6EE;
+  --ll-vertical-fitness-tint: #F6EEE2;
+  --ll-vertical-fitness-ink: #2A1E14;
+  --ll-vertical-repair-electronics-accent: #2A1E14;
+  --ll-vertical-repair-electronics-on-accent: #FBF6EE;
+  --ll-vertical-repair-electronics-tint: #F6EEE2;
+  --ll-vertical-repair-electronics-ink: #2A1E14;
+  --ll-vertical-repair-auto-accent: #2A1E14;
+  --ll-vertical-repair-auto-on-accent: #FBF6EE;
+  --ll-vertical-repair-auto-tint: #F6EEE2;
+  --ll-vertical-repair-auto-ink: #2A1E14;
+  --ll-vertical-car-wash-accent: #2A1E14;
+  --ll-vertical-car-wash-on-accent: #FBF6EE;
+  --ll-vertical-car-wash-tint: #F6EEE2;
+  --ll-vertical-car-wash-ink: #2A1E14;
+  --ll-vertical-alterations-accent: #2A1E14;
+  --ll-vertical-alterations-on-accent: #FBF6EE;
+  --ll-vertical-alterations-tint: #F6EEE2;
+  --ll-vertical-alterations-ink: #2A1E14;
+  --ll-vertical-dry-cleaning-accent: #2A1E14;
+  --ll-vertical-dry-cleaning-on-accent: #FBF6EE;
+  --ll-vertical-dry-cleaning-tint: #F6EEE2;
+  --ll-vertical-dry-cleaning-ink: #2A1E14;
+  --ll-vertical-print-shop-accent: #2A1E14;
+  --ll-vertical-print-shop-on-accent: #FBF6EE;
+  --ll-vertical-print-shop-tint: #F6EEE2;
+  --ll-vertical-print-shop-ink: #2A1E14;
+  --ll-vertical-other-accent: #2A1E14;
+  --ll-vertical-other-on-accent: #FBF6EE;
+  --ll-vertical-other-tint: #F6EEE2;
+  --ll-vertical-other-ink: #2A1E14;
   --ll-chart-1: var(--chart-1);
   --ll-chart-2: var(--chart-2);
   --ll-chart-3: var(--chart-3);
@@ -459,17 +481,19 @@
   --ll-chart-seq-6: #6B6B70;
   --ll-chart-seq-7: #3A3A3F;
   --ll-chart-seq-8: #0B0B0C;
-  --ll-chart-line: #0B0B0C;
-  --ll-chart-highlight: #FF5A1F;
-  --ll-chart-you: #0B0B0C;
+  --ll-chart-line: #2A1E14;
+  --ll-chart-highlight: #E5530A;
+  --ll-chart-you: #2A1E14;
   --ll-chart-network: #8A8A90;
-  --ll-chart-grid: #E7E3DD;
-  --ll-chart-axis: #6B6762;
-  --ll-chart-status-low: #DC2626;
-  --ll-chart-status-building: #6B6762;
+  --ll-chart-grid: #EADCC8;
+  --ll-chart-axis: #725F4E;
+  --ll-chart-status-low: #CC2222;
+  --ll-chart-status-building: #725F4E;
   --ll-chart-status-healthy: #16A34A;
   --ll-shadow-none: none;
   --ll-shadow-float: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --ll-shadow-card: 0 1px 0 #EADCC8, 0 8px 24px rgba(42, 30, 20, 0.04);
+  --ll-shadow-glow: 0 8px 20px -6px rgba(200, 69, 44, 0.45);
   --ll-shadow-sm: none;
   --ll-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.08);
   --ll-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -481,37 +505,37 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --background: #0E0D0C;
-    --foreground: #F6F4F1;
-    --card: #161412;
-    --card-foreground: #F6F4F1;
-    --popover: #161412;
-    --popover-foreground: #F6F4F1;
-    --primary: #F6F4F1;
-    --primary-foreground: #0E0D0C;
-    --secondary: #1C1A18;
-    --secondary-foreground: #F6F4F1;
-    --muted: #1C1A18;
-    --muted-foreground: #A8A39C;
-    --accent: #262320;
-    --accent-foreground: #F6F4F1;
+    --background: #1A1410;
+    --foreground: #F7EEE3;
+    --card: #241C16;
+    --card-foreground: #F7EEE3;
+    --popover: #241C16;
+    --popover-foreground: #F7EEE3;
+    --primary: #E0583F;
+    --primary-foreground: #1A1410;
+    --secondary: #2B221B;
+    --secondary-foreground: #F7EEE3;
+    --muted: #2B221B;
+    --muted-foreground: #BBAA98;
+    --accent: #34291F;
+    --accent-foreground: #F7EEE3;
     --destructive: #F87171;
-    --border: #2C2926;
-    --input: #7C7770;
-    --ring: #F6F4F1;
-    --subtle-foreground: #7C7770;
-    --sidebar: #161412;
-    --sidebar-foreground: #F6F4F1;
-    --sidebar-primary: #F6F4F1;
-    --sidebar-primary-foreground: #0E0D0C;
-    --sidebar-accent: #262320;
-    --sidebar-accent-foreground: #F6F4F1;
-    --sidebar-border: #2C2926;
-    --sidebar-ring: #F6F4F1;
+    --border: #3B2F25;
+    --input: #8C7B6B;
+    --ring: #F7EEE3;
+    --subtle-foreground: #86766A;
+    --sidebar: #201811;
+    --sidebar-foreground: #F7EEE3;
+    --sidebar-primary: #E0583F;
+    --sidebar-primary-foreground: #1A1410;
+    --sidebar-accent: #33281F;
+    --sidebar-accent-foreground: #F7EEE3;
+    --sidebar-border: #3B2F25;
+    --sidebar-ring: #F7EEE3;
     --points: #FF7A45;
     --points-text: #FF7A45;
     --points-soft: #2A1710;
-    --points-foreground: #0E0D0C;
+    --points-foreground: #1A1410;
     --success: #22C55E;
     --success-text: #4ADE80;
     --info: #4C8DF8;
@@ -519,14 +543,34 @@
     --info-soft: #111C33;
     --warning: #FBBF24;
     --warning-text: #FBBF24;
-    --paper: #0E0D0C;
+    --paper: #1A1410;
     --qr-fg: #000000;
     --qr-bg: #FFFFFF;
-    --chart-1: #F6F4F1;
+    --primary-text: #FF8E73;
+    --forest: #7CC2A5;
+    --forest-foreground: #1A1410;
+    --tile-peach: #472B20;
+    --tile-peach-foreground: #FFB9A3;
+    --tile-mint: #2C372C;
+    --tile-mint-foreground: #9DE0C3;
+    --tile-butter: #47381A;
+    --tile-butter-foreground: #F7D878;
+    --tile-lilac: #392B39;
+    --tile-lilac-foreground: #CDB2F2;
+    --tile-sky: #2B3339;
+    --tile-sky-foreground: #A5D0F5;
+    --tile-rose: #462729;
+    --tile-rose-foreground: #FFB3C9;
+    --trade: #DC7460;
+    --trade-foreground: #1A1410;
+    --trade-alt: #E29750;
+    --trade-soft: #492E25;
+    --trade-deep: #EDB6AB;
+    --chart-1: #E0583F;
     --chart-2: #FF7A45;
-    --chart-3: #A8A39C;
+    --chart-3: #BBAA98;
     --chart-4: #4C8DF8;
-    --chart-5: #22C55E;
+    --chart-5: #7CC2A5;
     --ll-color-bg: var(--background);
     --ll-color-bg-subtle: var(--muted);
     --ll-color-bg-muted: var(--accent);
@@ -545,159 +589,159 @@
     --ll-color-qr-fg: var(--qr-fg);
     --ll-color-qr-bg: var(--qr-bg);
     --ll-color-positive-text: #22C55E;
-    --ll-color-chrome: rgba(22, 20, 18, 0.8);
-    --ll-color-overlay: rgba(0, 0, 0, 0.6);
-    --ll-color-canvas: #0E0D0C;
-    --ll-color-canvas-subtle: #1C1A18;
-    --ll-color-surface: #0E0D0C;
-    --ll-color-surface-raised: #0E0D0C;
-    --ll-color-surface-sunken: #1C1A18;
-    --ll-color-surface-inverse: #F6F4F1;
-    --ll-color-fg-inverse: #0E0D0C;
-    --ll-color-fg-link: #F6F4F1;
-    --ll-color-fg-disabled: #7C7770;
-    --ll-color-border: #2C2926;
-    --ll-color-border-strong: #7C7770;
+    --ll-color-chrome: rgba(36, 28, 22, 0.82);
+    --ll-color-overlay: rgba(10, 6, 3, 0.62);
+    --ll-color-canvas: #1A1410;
+    --ll-color-canvas-subtle: #2B221B;
+    --ll-color-surface: #1A1410;
+    --ll-color-surface-raised: #1A1410;
+    --ll-color-surface-sunken: #2B221B;
+    --ll-color-surface-inverse: #F7EEE3;
+    --ll-color-fg-inverse: #1A1410;
+    --ll-color-fg-link: #F7EEE3;
+    --ll-color-fg-disabled: #86766A;
+    --ll-color-border: #3B2F25;
+    --ll-color-border-strong: #8C7B6B;
     --ll-color-focus-ring: var(--ring);
-    --ll-color-brand: #F6F4F1;
-    --ll-color-brand-hover: #E5E5E3;
-    --ll-color-brand-pressed: #D4D4D2;
-    --ll-color-on-brand: #0E0D0C;
-    --ll-color-brand-subtle: #262320;
-    --ll-color-on-brand-subtle: #F6F4F1;
-    --ll-color-fg-brand: #F6F4F1;
+    --ll-color-brand: #E0583F;
+    --ll-color-brand-hover: #E86A52;
+    --ll-color-brand-pressed: #E4603F;
+    --ll-color-on-brand: #1A1410;
+    --ll-color-brand-subtle: #34291F;
+    --ll-color-on-brand-subtle: #F7EEE3;
+    --ll-color-fg-brand: #F7EEE3;
     --ll-color-accent-hover: #FF8F62;
     --ll-color-accent-subtle: #2A1710;
     --ll-color-on-accent-subtle: #FF7A45;
-    --ll-color-neutral-subtle: #262320;
-    --ll-color-on-neutral-subtle: #A8A39C;
+    --ll-color-neutral-subtle: #34291F;
+    --ll-color-on-neutral-subtle: #BBAA98;
     --ll-color-success: #22C55E;
     --ll-color-on-success: #0B0B0C;
-    --ll-color-success-subtle: #1C1A18;
-    --ll-color-on-success-subtle: #F6F4F1;
-    --ll-color-warning: #F6F4F1;
-    --ll-color-on-warning: #0E0D0C;
-    --ll-color-warning-subtle: #1C1A18;
-    --ll-color-on-warning-subtle: #F6F4F1;
+    --ll-color-success-subtle: #2B221B;
+    --ll-color-on-success-subtle: #F7EEE3;
+    --ll-color-warning: #F7EEE3;
+    --ll-color-on-warning: #1A1410;
+    --ll-color-warning-subtle: #2B221B;
+    --ll-color-on-warning-subtle: #F7EEE3;
     --ll-color-danger: #F87171;
     --ll-color-danger-hover: #FCA5A5;
     --ll-color-on-danger: #0B0B0C;
-    --ll-color-danger-subtle: #1C1A18;
-    --ll-color-on-danger-subtle: #F6F4F1;
-    --ll-color-info: #F6F4F1;
-    --ll-color-on-info: #0E0D0C;
-    --ll-color-info-subtle: #1C1A18;
-    --ll-color-on-info-subtle: #F6F4F1;
-    --ll-color-disabled-bg: #262320;
-    --ll-color-on-disabled: #A8A39C;
-    --ll-color-skeleton: #262320;
-    --ll-color-skeleton-highlight: #1C1A18;
-    --ll-color-stamp-empty: #7C7770;
-    --ll-color-ring-track: #262320;
-    --ll-vertical-cafe-accent: #F6F4F1;
-    --ll-vertical-cafe-on-accent: #0E0D0C;
-    --ll-vertical-cafe-tint: #1C1A18;
-    --ll-vertical-cafe-ink: #F6F4F1;
-    --ll-vertical-restaurant-accent: #F6F4F1;
-    --ll-vertical-restaurant-on-accent: #0E0D0C;
-    --ll-vertical-restaurant-tint: #1C1A18;
-    --ll-vertical-restaurant-ink: #F6F4F1;
-    --ll-vertical-restaurant-south-asian-accent: #F6F4F1;
-    --ll-vertical-restaurant-south-asian-on-accent: #0E0D0C;
-    --ll-vertical-restaurant-south-asian-tint: #1C1A18;
-    --ll-vertical-restaurant-south-asian-ink: #F6F4F1;
-    --ll-vertical-tiffin-accent: #F6F4F1;
-    --ll-vertical-tiffin-on-accent: #0E0D0C;
-    --ll-vertical-tiffin-tint: #1C1A18;
-    --ll-vertical-tiffin-ink: #F6F4F1;
-    --ll-vertical-caterer-accent: #F6F4F1;
-    --ll-vertical-caterer-on-accent: #0E0D0C;
-    --ll-vertical-caterer-tint: #1C1A18;
-    --ll-vertical-caterer-ink: #F6F4F1;
-    --ll-vertical-banquet-hall-accent: #F6F4F1;
-    --ll-vertical-banquet-hall-on-accent: #0E0D0C;
-    --ll-vertical-banquet-hall-tint: #1C1A18;
-    --ll-vertical-banquet-hall-ink: #F6F4F1;
-    --ll-vertical-bakery-accent: #F6F4F1;
-    --ll-vertical-bakery-on-accent: #0E0D0C;
-    --ll-vertical-bakery-tint: #1C1A18;
-    --ll-vertical-bakery-ink: #F6F4F1;
-    --ll-vertical-bar-accent: #F6F4F1;
-    --ll-vertical-bar-on-accent: #0E0D0C;
-    --ll-vertical-bar-tint: #1C1A18;
-    --ll-vertical-bar-ink: #F6F4F1;
-    --ll-vertical-grocery-accent: #F6F4F1;
-    --ll-vertical-grocery-on-accent: #0E0D0C;
-    --ll-vertical-grocery-tint: #1C1A18;
-    --ll-vertical-grocery-ink: #F6F4F1;
-    --ll-vertical-pharmacy-accent: #F6F4F1;
-    --ll-vertical-pharmacy-on-accent: #0E0D0C;
-    --ll-vertical-pharmacy-tint: #1C1A18;
-    --ll-vertical-pharmacy-ink: #F6F4F1;
-    --ll-vertical-retail-accent: #F6F4F1;
-    --ll-vertical-retail-on-accent: #0E0D0C;
-    --ll-vertical-retail-tint: #1C1A18;
-    --ll-vertical-retail-ink: #F6F4F1;
-    --ll-vertical-bookstore-accent: #F6F4F1;
-    --ll-vertical-bookstore-on-accent: #0E0D0C;
-    --ll-vertical-bookstore-tint: #1C1A18;
-    --ll-vertical-bookstore-ink: #F6F4F1;
-    --ll-vertical-florist-accent: #F6F4F1;
-    --ll-vertical-florist-on-accent: #0E0D0C;
-    --ll-vertical-florist-tint: #1C1A18;
-    --ll-vertical-florist-ink: #F6F4F1;
-    --ll-vertical-pet-accent: #F6F4F1;
-    --ll-vertical-pet-on-accent: #0E0D0C;
-    --ll-vertical-pet-tint: #1C1A18;
-    --ll-vertical-pet-ink: #F6F4F1;
-    --ll-vertical-salon-accent: #F6F4F1;
-    --ll-vertical-salon-on-accent: #0E0D0C;
-    --ll-vertical-salon-tint: #1C1A18;
-    --ll-vertical-salon-ink: #F6F4F1;
-    --ll-vertical-barber-accent: #F6F4F1;
-    --ll-vertical-barber-on-accent: #0E0D0C;
-    --ll-vertical-barber-tint: #1C1A18;
-    --ll-vertical-barber-ink: #F6F4F1;
-    --ll-vertical-spa-accent: #F6F4F1;
-    --ll-vertical-spa-on-accent: #0E0D0C;
-    --ll-vertical-spa-tint: #1C1A18;
-    --ll-vertical-spa-ink: #F6F4F1;
-    --ll-vertical-beauty-supply-accent: #F6F4F1;
-    --ll-vertical-beauty-supply-on-accent: #0E0D0C;
-    --ll-vertical-beauty-supply-tint: #1C1A18;
-    --ll-vertical-beauty-supply-ink: #F6F4F1;
-    --ll-vertical-fitness-accent: #F6F4F1;
-    --ll-vertical-fitness-on-accent: #0E0D0C;
-    --ll-vertical-fitness-tint: #1C1A18;
-    --ll-vertical-fitness-ink: #F6F4F1;
-    --ll-vertical-repair-electronics-accent: #F6F4F1;
-    --ll-vertical-repair-electronics-on-accent: #0E0D0C;
-    --ll-vertical-repair-electronics-tint: #1C1A18;
-    --ll-vertical-repair-electronics-ink: #F6F4F1;
-    --ll-vertical-repair-auto-accent: #F6F4F1;
-    --ll-vertical-repair-auto-on-accent: #0E0D0C;
-    --ll-vertical-repair-auto-tint: #1C1A18;
-    --ll-vertical-repair-auto-ink: #F6F4F1;
-    --ll-vertical-car-wash-accent: #F6F4F1;
-    --ll-vertical-car-wash-on-accent: #0E0D0C;
-    --ll-vertical-car-wash-tint: #1C1A18;
-    --ll-vertical-car-wash-ink: #F6F4F1;
-    --ll-vertical-alterations-accent: #F6F4F1;
-    --ll-vertical-alterations-on-accent: #0E0D0C;
-    --ll-vertical-alterations-tint: #1C1A18;
-    --ll-vertical-alterations-ink: #F6F4F1;
-    --ll-vertical-dry-cleaning-accent: #F6F4F1;
-    --ll-vertical-dry-cleaning-on-accent: #0E0D0C;
-    --ll-vertical-dry-cleaning-tint: #1C1A18;
-    --ll-vertical-dry-cleaning-ink: #F6F4F1;
-    --ll-vertical-print-shop-accent: #F6F4F1;
-    --ll-vertical-print-shop-on-accent: #0E0D0C;
-    --ll-vertical-print-shop-tint: #1C1A18;
-    --ll-vertical-print-shop-ink: #F6F4F1;
-    --ll-vertical-other-accent: #F6F4F1;
-    --ll-vertical-other-on-accent: #0E0D0C;
-    --ll-vertical-other-tint: #1C1A18;
-    --ll-vertical-other-ink: #F6F4F1;
+    --ll-color-danger-subtle: #2B221B;
+    --ll-color-on-danger-subtle: #F7EEE3;
+    --ll-color-info: #F7EEE3;
+    --ll-color-on-info: #1A1410;
+    --ll-color-info-subtle: #2B221B;
+    --ll-color-on-info-subtle: #F7EEE3;
+    --ll-color-disabled-bg: #34291F;
+    --ll-color-on-disabled: #BBAA98;
+    --ll-color-skeleton: #34291F;
+    --ll-color-skeleton-highlight: #2B221B;
+    --ll-color-stamp-empty: #8C7B6B;
+    --ll-color-ring-track: #34291F;
+    --ll-vertical-cafe-accent: #F7EEE3;
+    --ll-vertical-cafe-on-accent: #1A1410;
+    --ll-vertical-cafe-tint: #2B221B;
+    --ll-vertical-cafe-ink: #F7EEE3;
+    --ll-vertical-restaurant-accent: #F7EEE3;
+    --ll-vertical-restaurant-on-accent: #1A1410;
+    --ll-vertical-restaurant-tint: #2B221B;
+    --ll-vertical-restaurant-ink: #F7EEE3;
+    --ll-vertical-restaurant-south-asian-accent: #F7EEE3;
+    --ll-vertical-restaurant-south-asian-on-accent: #1A1410;
+    --ll-vertical-restaurant-south-asian-tint: #2B221B;
+    --ll-vertical-restaurant-south-asian-ink: #F7EEE3;
+    --ll-vertical-tiffin-accent: #F7EEE3;
+    --ll-vertical-tiffin-on-accent: #1A1410;
+    --ll-vertical-tiffin-tint: #2B221B;
+    --ll-vertical-tiffin-ink: #F7EEE3;
+    --ll-vertical-caterer-accent: #F7EEE3;
+    --ll-vertical-caterer-on-accent: #1A1410;
+    --ll-vertical-caterer-tint: #2B221B;
+    --ll-vertical-caterer-ink: #F7EEE3;
+    --ll-vertical-banquet-hall-accent: #F7EEE3;
+    --ll-vertical-banquet-hall-on-accent: #1A1410;
+    --ll-vertical-banquet-hall-tint: #2B221B;
+    --ll-vertical-banquet-hall-ink: #F7EEE3;
+    --ll-vertical-bakery-accent: #F7EEE3;
+    --ll-vertical-bakery-on-accent: #1A1410;
+    --ll-vertical-bakery-tint: #2B221B;
+    --ll-vertical-bakery-ink: #F7EEE3;
+    --ll-vertical-bar-accent: #F7EEE3;
+    --ll-vertical-bar-on-accent: #1A1410;
+    --ll-vertical-bar-tint: #2B221B;
+    --ll-vertical-bar-ink: #F7EEE3;
+    --ll-vertical-grocery-accent: #F7EEE3;
+    --ll-vertical-grocery-on-accent: #1A1410;
+    --ll-vertical-grocery-tint: #2B221B;
+    --ll-vertical-grocery-ink: #F7EEE3;
+    --ll-vertical-pharmacy-accent: #F7EEE3;
+    --ll-vertical-pharmacy-on-accent: #1A1410;
+    --ll-vertical-pharmacy-tint: #2B221B;
+    --ll-vertical-pharmacy-ink: #F7EEE3;
+    --ll-vertical-retail-accent: #F7EEE3;
+    --ll-vertical-retail-on-accent: #1A1410;
+    --ll-vertical-retail-tint: #2B221B;
+    --ll-vertical-retail-ink: #F7EEE3;
+    --ll-vertical-bookstore-accent: #F7EEE3;
+    --ll-vertical-bookstore-on-accent: #1A1410;
+    --ll-vertical-bookstore-tint: #2B221B;
+    --ll-vertical-bookstore-ink: #F7EEE3;
+    --ll-vertical-florist-accent: #F7EEE3;
+    --ll-vertical-florist-on-accent: #1A1410;
+    --ll-vertical-florist-tint: #2B221B;
+    --ll-vertical-florist-ink: #F7EEE3;
+    --ll-vertical-pet-accent: #F7EEE3;
+    --ll-vertical-pet-on-accent: #1A1410;
+    --ll-vertical-pet-tint: #2B221B;
+    --ll-vertical-pet-ink: #F7EEE3;
+    --ll-vertical-salon-accent: #F7EEE3;
+    --ll-vertical-salon-on-accent: #1A1410;
+    --ll-vertical-salon-tint: #2B221B;
+    --ll-vertical-salon-ink: #F7EEE3;
+    --ll-vertical-barber-accent: #F7EEE3;
+    --ll-vertical-barber-on-accent: #1A1410;
+    --ll-vertical-barber-tint: #2B221B;
+    --ll-vertical-barber-ink: #F7EEE3;
+    --ll-vertical-spa-accent: #F7EEE3;
+    --ll-vertical-spa-on-accent: #1A1410;
+    --ll-vertical-spa-tint: #2B221B;
+    --ll-vertical-spa-ink: #F7EEE3;
+    --ll-vertical-beauty-supply-accent: #F7EEE3;
+    --ll-vertical-beauty-supply-on-accent: #1A1410;
+    --ll-vertical-beauty-supply-tint: #2B221B;
+    --ll-vertical-beauty-supply-ink: #F7EEE3;
+    --ll-vertical-fitness-accent: #F7EEE3;
+    --ll-vertical-fitness-on-accent: #1A1410;
+    --ll-vertical-fitness-tint: #2B221B;
+    --ll-vertical-fitness-ink: #F7EEE3;
+    --ll-vertical-repair-electronics-accent: #F7EEE3;
+    --ll-vertical-repair-electronics-on-accent: #1A1410;
+    --ll-vertical-repair-electronics-tint: #2B221B;
+    --ll-vertical-repair-electronics-ink: #F7EEE3;
+    --ll-vertical-repair-auto-accent: #F7EEE3;
+    --ll-vertical-repair-auto-on-accent: #1A1410;
+    --ll-vertical-repair-auto-tint: #2B221B;
+    --ll-vertical-repair-auto-ink: #F7EEE3;
+    --ll-vertical-car-wash-accent: #F7EEE3;
+    --ll-vertical-car-wash-on-accent: #1A1410;
+    --ll-vertical-car-wash-tint: #2B221B;
+    --ll-vertical-car-wash-ink: #F7EEE3;
+    --ll-vertical-alterations-accent: #F7EEE3;
+    --ll-vertical-alterations-on-accent: #1A1410;
+    --ll-vertical-alterations-tint: #2B221B;
+    --ll-vertical-alterations-ink: #F7EEE3;
+    --ll-vertical-dry-cleaning-accent: #F7EEE3;
+    --ll-vertical-dry-cleaning-on-accent: #1A1410;
+    --ll-vertical-dry-cleaning-tint: #2B221B;
+    --ll-vertical-dry-cleaning-ink: #F7EEE3;
+    --ll-vertical-print-shop-accent: #F7EEE3;
+    --ll-vertical-print-shop-on-accent: #1A1410;
+    --ll-vertical-print-shop-tint: #2B221B;
+    --ll-vertical-print-shop-ink: #F7EEE3;
+    --ll-vertical-other-accent: #F7EEE3;
+    --ll-vertical-other-on-accent: #1A1410;
+    --ll-vertical-other-tint: #2B221B;
+    --ll-vertical-other-ink: #F7EEE3;
     --ll-chart-1: var(--chart-1);
     --ll-chart-2: var(--chart-2);
     --ll-chart-3: var(--chart-3);
@@ -709,17 +753,19 @@
     --ll-chart-seq-6: #A1A1A8;
     --ll-chart-seq-7: #D4D4D6;
     --ll-chart-seq-8: #F5F5F4;
-    --ll-chart-line: #F6F4F1;
+    --ll-chart-line: #F7EEE3;
     --ll-chart-highlight: #FF7A45;
-    --ll-chart-you: #F6F4F1;
+    --ll-chart-you: #F7EEE3;
     --ll-chart-network: #7A7A82;
-    --ll-chart-grid: #2C2926;
-    --ll-chart-axis: #A8A39C;
+    --ll-chart-grid: #3B2F25;
+    --ll-chart-axis: #BBAA98;
     --ll-chart-status-low: #F87171;
-    --ll-chart-status-building: #A8A39C;
+    --ll-chart-status-building: #BBAA98;
     --ll-chart-status-healthy: #22C55E;
     --ll-shadow-none: none;
     --ll-shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
+    --ll-shadow-card: 0 1px 0 #3B2F25, 0 8px 24px rgba(0, 0, 0, 0.35);
+    --ll-shadow-glow: 0 8px 22px -6px rgba(224, 88, 63, 0.5);
     --ll-shadow-sm: none;
     --ll-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
     --ll-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
@@ -731,37 +777,37 @@
 /* Dark theme: forced */
 [data-theme="dark"] {
   color-scheme: dark;
-  --background: #0E0D0C;
-  --foreground: #F6F4F1;
-  --card: #161412;
-  --card-foreground: #F6F4F1;
-  --popover: #161412;
-  --popover-foreground: #F6F4F1;
-  --primary: #F6F4F1;
-  --primary-foreground: #0E0D0C;
-  --secondary: #1C1A18;
-  --secondary-foreground: #F6F4F1;
-  --muted: #1C1A18;
-  --muted-foreground: #A8A39C;
-  --accent: #262320;
-  --accent-foreground: #F6F4F1;
+  --background: #1A1410;
+  --foreground: #F7EEE3;
+  --card: #241C16;
+  --card-foreground: #F7EEE3;
+  --popover: #241C16;
+  --popover-foreground: #F7EEE3;
+  --primary: #E0583F;
+  --primary-foreground: #1A1410;
+  --secondary: #2B221B;
+  --secondary-foreground: #F7EEE3;
+  --muted: #2B221B;
+  --muted-foreground: #BBAA98;
+  --accent: #34291F;
+  --accent-foreground: #F7EEE3;
   --destructive: #F87171;
-  --border: #2C2926;
-  --input: #7C7770;
-  --ring: #F6F4F1;
-  --subtle-foreground: #7C7770;
-  --sidebar: #161412;
-  --sidebar-foreground: #F6F4F1;
-  --sidebar-primary: #F6F4F1;
-  --sidebar-primary-foreground: #0E0D0C;
-  --sidebar-accent: #262320;
-  --sidebar-accent-foreground: #F6F4F1;
-  --sidebar-border: #2C2926;
-  --sidebar-ring: #F6F4F1;
+  --border: #3B2F25;
+  --input: #8C7B6B;
+  --ring: #F7EEE3;
+  --subtle-foreground: #86766A;
+  --sidebar: #201811;
+  --sidebar-foreground: #F7EEE3;
+  --sidebar-primary: #E0583F;
+  --sidebar-primary-foreground: #1A1410;
+  --sidebar-accent: #33281F;
+  --sidebar-accent-foreground: #F7EEE3;
+  --sidebar-border: #3B2F25;
+  --sidebar-ring: #F7EEE3;
   --points: #FF7A45;
   --points-text: #FF7A45;
   --points-soft: #2A1710;
-  --points-foreground: #0E0D0C;
+  --points-foreground: #1A1410;
   --success: #22C55E;
   --success-text: #4ADE80;
   --info: #4C8DF8;
@@ -769,14 +815,34 @@
   --info-soft: #111C33;
   --warning: #FBBF24;
   --warning-text: #FBBF24;
-  --paper: #0E0D0C;
+  --paper: #1A1410;
   --qr-fg: #000000;
   --qr-bg: #FFFFFF;
-  --chart-1: #F6F4F1;
+  --primary-text: #FF8E73;
+  --forest: #7CC2A5;
+  --forest-foreground: #1A1410;
+  --tile-peach: #472B20;
+  --tile-peach-foreground: #FFB9A3;
+  --tile-mint: #2C372C;
+  --tile-mint-foreground: #9DE0C3;
+  --tile-butter: #47381A;
+  --tile-butter-foreground: #F7D878;
+  --tile-lilac: #392B39;
+  --tile-lilac-foreground: #CDB2F2;
+  --tile-sky: #2B3339;
+  --tile-sky-foreground: #A5D0F5;
+  --tile-rose: #462729;
+  --tile-rose-foreground: #FFB3C9;
+  --trade: #DC7460;
+  --trade-foreground: #1A1410;
+  --trade-alt: #E29750;
+  --trade-soft: #492E25;
+  --trade-deep: #EDB6AB;
+  --chart-1: #E0583F;
   --chart-2: #FF7A45;
-  --chart-3: #A8A39C;
+  --chart-3: #BBAA98;
   --chart-4: #4C8DF8;
-  --chart-5: #22C55E;
+  --chart-5: #7CC2A5;
   --ll-color-bg: var(--background);
   --ll-color-bg-subtle: var(--muted);
   --ll-color-bg-muted: var(--accent);
@@ -795,159 +861,159 @@
   --ll-color-qr-fg: var(--qr-fg);
   --ll-color-qr-bg: var(--qr-bg);
   --ll-color-positive-text: #22C55E;
-  --ll-color-chrome: rgba(22, 20, 18, 0.8);
-  --ll-color-overlay: rgba(0, 0, 0, 0.6);
-  --ll-color-canvas: #0E0D0C;
-  --ll-color-canvas-subtle: #1C1A18;
-  --ll-color-surface: #0E0D0C;
-  --ll-color-surface-raised: #0E0D0C;
-  --ll-color-surface-sunken: #1C1A18;
-  --ll-color-surface-inverse: #F6F4F1;
-  --ll-color-fg-inverse: #0E0D0C;
-  --ll-color-fg-link: #F6F4F1;
-  --ll-color-fg-disabled: #7C7770;
-  --ll-color-border: #2C2926;
-  --ll-color-border-strong: #7C7770;
+  --ll-color-chrome: rgba(36, 28, 22, 0.82);
+  --ll-color-overlay: rgba(10, 6, 3, 0.62);
+  --ll-color-canvas: #1A1410;
+  --ll-color-canvas-subtle: #2B221B;
+  --ll-color-surface: #1A1410;
+  --ll-color-surface-raised: #1A1410;
+  --ll-color-surface-sunken: #2B221B;
+  --ll-color-surface-inverse: #F7EEE3;
+  --ll-color-fg-inverse: #1A1410;
+  --ll-color-fg-link: #F7EEE3;
+  --ll-color-fg-disabled: #86766A;
+  --ll-color-border: #3B2F25;
+  --ll-color-border-strong: #8C7B6B;
   --ll-color-focus-ring: var(--ring);
-  --ll-color-brand: #F6F4F1;
-  --ll-color-brand-hover: #E5E5E3;
-  --ll-color-brand-pressed: #D4D4D2;
-  --ll-color-on-brand: #0E0D0C;
-  --ll-color-brand-subtle: #262320;
-  --ll-color-on-brand-subtle: #F6F4F1;
-  --ll-color-fg-brand: #F6F4F1;
+  --ll-color-brand: #E0583F;
+  --ll-color-brand-hover: #E86A52;
+  --ll-color-brand-pressed: #E4603F;
+  --ll-color-on-brand: #1A1410;
+  --ll-color-brand-subtle: #34291F;
+  --ll-color-on-brand-subtle: #F7EEE3;
+  --ll-color-fg-brand: #F7EEE3;
   --ll-color-accent-hover: #FF8F62;
   --ll-color-accent-subtle: #2A1710;
   --ll-color-on-accent-subtle: #FF7A45;
-  --ll-color-neutral-subtle: #262320;
-  --ll-color-on-neutral-subtle: #A8A39C;
+  --ll-color-neutral-subtle: #34291F;
+  --ll-color-on-neutral-subtle: #BBAA98;
   --ll-color-success: #22C55E;
   --ll-color-on-success: #0B0B0C;
-  --ll-color-success-subtle: #1C1A18;
-  --ll-color-on-success-subtle: #F6F4F1;
-  --ll-color-warning: #F6F4F1;
-  --ll-color-on-warning: #0E0D0C;
-  --ll-color-warning-subtle: #1C1A18;
-  --ll-color-on-warning-subtle: #F6F4F1;
+  --ll-color-success-subtle: #2B221B;
+  --ll-color-on-success-subtle: #F7EEE3;
+  --ll-color-warning: #F7EEE3;
+  --ll-color-on-warning: #1A1410;
+  --ll-color-warning-subtle: #2B221B;
+  --ll-color-on-warning-subtle: #F7EEE3;
   --ll-color-danger: #F87171;
   --ll-color-danger-hover: #FCA5A5;
   --ll-color-on-danger: #0B0B0C;
-  --ll-color-danger-subtle: #1C1A18;
-  --ll-color-on-danger-subtle: #F6F4F1;
-  --ll-color-info: #F6F4F1;
-  --ll-color-on-info: #0E0D0C;
-  --ll-color-info-subtle: #1C1A18;
-  --ll-color-on-info-subtle: #F6F4F1;
-  --ll-color-disabled-bg: #262320;
-  --ll-color-on-disabled: #A8A39C;
-  --ll-color-skeleton: #262320;
-  --ll-color-skeleton-highlight: #1C1A18;
-  --ll-color-stamp-empty: #7C7770;
-  --ll-color-ring-track: #262320;
-  --ll-vertical-cafe-accent: #F6F4F1;
-  --ll-vertical-cafe-on-accent: #0E0D0C;
-  --ll-vertical-cafe-tint: #1C1A18;
-  --ll-vertical-cafe-ink: #F6F4F1;
-  --ll-vertical-restaurant-accent: #F6F4F1;
-  --ll-vertical-restaurant-on-accent: #0E0D0C;
-  --ll-vertical-restaurant-tint: #1C1A18;
-  --ll-vertical-restaurant-ink: #F6F4F1;
-  --ll-vertical-restaurant-south-asian-accent: #F6F4F1;
-  --ll-vertical-restaurant-south-asian-on-accent: #0E0D0C;
-  --ll-vertical-restaurant-south-asian-tint: #1C1A18;
-  --ll-vertical-restaurant-south-asian-ink: #F6F4F1;
-  --ll-vertical-tiffin-accent: #F6F4F1;
-  --ll-vertical-tiffin-on-accent: #0E0D0C;
-  --ll-vertical-tiffin-tint: #1C1A18;
-  --ll-vertical-tiffin-ink: #F6F4F1;
-  --ll-vertical-caterer-accent: #F6F4F1;
-  --ll-vertical-caterer-on-accent: #0E0D0C;
-  --ll-vertical-caterer-tint: #1C1A18;
-  --ll-vertical-caterer-ink: #F6F4F1;
-  --ll-vertical-banquet-hall-accent: #F6F4F1;
-  --ll-vertical-banquet-hall-on-accent: #0E0D0C;
-  --ll-vertical-banquet-hall-tint: #1C1A18;
-  --ll-vertical-banquet-hall-ink: #F6F4F1;
-  --ll-vertical-bakery-accent: #F6F4F1;
-  --ll-vertical-bakery-on-accent: #0E0D0C;
-  --ll-vertical-bakery-tint: #1C1A18;
-  --ll-vertical-bakery-ink: #F6F4F1;
-  --ll-vertical-bar-accent: #F6F4F1;
-  --ll-vertical-bar-on-accent: #0E0D0C;
-  --ll-vertical-bar-tint: #1C1A18;
-  --ll-vertical-bar-ink: #F6F4F1;
-  --ll-vertical-grocery-accent: #F6F4F1;
-  --ll-vertical-grocery-on-accent: #0E0D0C;
-  --ll-vertical-grocery-tint: #1C1A18;
-  --ll-vertical-grocery-ink: #F6F4F1;
-  --ll-vertical-pharmacy-accent: #F6F4F1;
-  --ll-vertical-pharmacy-on-accent: #0E0D0C;
-  --ll-vertical-pharmacy-tint: #1C1A18;
-  --ll-vertical-pharmacy-ink: #F6F4F1;
-  --ll-vertical-retail-accent: #F6F4F1;
-  --ll-vertical-retail-on-accent: #0E0D0C;
-  --ll-vertical-retail-tint: #1C1A18;
-  --ll-vertical-retail-ink: #F6F4F1;
-  --ll-vertical-bookstore-accent: #F6F4F1;
-  --ll-vertical-bookstore-on-accent: #0E0D0C;
-  --ll-vertical-bookstore-tint: #1C1A18;
-  --ll-vertical-bookstore-ink: #F6F4F1;
-  --ll-vertical-florist-accent: #F6F4F1;
-  --ll-vertical-florist-on-accent: #0E0D0C;
-  --ll-vertical-florist-tint: #1C1A18;
-  --ll-vertical-florist-ink: #F6F4F1;
-  --ll-vertical-pet-accent: #F6F4F1;
-  --ll-vertical-pet-on-accent: #0E0D0C;
-  --ll-vertical-pet-tint: #1C1A18;
-  --ll-vertical-pet-ink: #F6F4F1;
-  --ll-vertical-salon-accent: #F6F4F1;
-  --ll-vertical-salon-on-accent: #0E0D0C;
-  --ll-vertical-salon-tint: #1C1A18;
-  --ll-vertical-salon-ink: #F6F4F1;
-  --ll-vertical-barber-accent: #F6F4F1;
-  --ll-vertical-barber-on-accent: #0E0D0C;
-  --ll-vertical-barber-tint: #1C1A18;
-  --ll-vertical-barber-ink: #F6F4F1;
-  --ll-vertical-spa-accent: #F6F4F1;
-  --ll-vertical-spa-on-accent: #0E0D0C;
-  --ll-vertical-spa-tint: #1C1A18;
-  --ll-vertical-spa-ink: #F6F4F1;
-  --ll-vertical-beauty-supply-accent: #F6F4F1;
-  --ll-vertical-beauty-supply-on-accent: #0E0D0C;
-  --ll-vertical-beauty-supply-tint: #1C1A18;
-  --ll-vertical-beauty-supply-ink: #F6F4F1;
-  --ll-vertical-fitness-accent: #F6F4F1;
-  --ll-vertical-fitness-on-accent: #0E0D0C;
-  --ll-vertical-fitness-tint: #1C1A18;
-  --ll-vertical-fitness-ink: #F6F4F1;
-  --ll-vertical-repair-electronics-accent: #F6F4F1;
-  --ll-vertical-repair-electronics-on-accent: #0E0D0C;
-  --ll-vertical-repair-electronics-tint: #1C1A18;
-  --ll-vertical-repair-electronics-ink: #F6F4F1;
-  --ll-vertical-repair-auto-accent: #F6F4F1;
-  --ll-vertical-repair-auto-on-accent: #0E0D0C;
-  --ll-vertical-repair-auto-tint: #1C1A18;
-  --ll-vertical-repair-auto-ink: #F6F4F1;
-  --ll-vertical-car-wash-accent: #F6F4F1;
-  --ll-vertical-car-wash-on-accent: #0E0D0C;
-  --ll-vertical-car-wash-tint: #1C1A18;
-  --ll-vertical-car-wash-ink: #F6F4F1;
-  --ll-vertical-alterations-accent: #F6F4F1;
-  --ll-vertical-alterations-on-accent: #0E0D0C;
-  --ll-vertical-alterations-tint: #1C1A18;
-  --ll-vertical-alterations-ink: #F6F4F1;
-  --ll-vertical-dry-cleaning-accent: #F6F4F1;
-  --ll-vertical-dry-cleaning-on-accent: #0E0D0C;
-  --ll-vertical-dry-cleaning-tint: #1C1A18;
-  --ll-vertical-dry-cleaning-ink: #F6F4F1;
-  --ll-vertical-print-shop-accent: #F6F4F1;
-  --ll-vertical-print-shop-on-accent: #0E0D0C;
-  --ll-vertical-print-shop-tint: #1C1A18;
-  --ll-vertical-print-shop-ink: #F6F4F1;
-  --ll-vertical-other-accent: #F6F4F1;
-  --ll-vertical-other-on-accent: #0E0D0C;
-  --ll-vertical-other-tint: #1C1A18;
-  --ll-vertical-other-ink: #F6F4F1;
+  --ll-color-danger-subtle: #2B221B;
+  --ll-color-on-danger-subtle: #F7EEE3;
+  --ll-color-info: #F7EEE3;
+  --ll-color-on-info: #1A1410;
+  --ll-color-info-subtle: #2B221B;
+  --ll-color-on-info-subtle: #F7EEE3;
+  --ll-color-disabled-bg: #34291F;
+  --ll-color-on-disabled: #BBAA98;
+  --ll-color-skeleton: #34291F;
+  --ll-color-skeleton-highlight: #2B221B;
+  --ll-color-stamp-empty: #8C7B6B;
+  --ll-color-ring-track: #34291F;
+  --ll-vertical-cafe-accent: #F7EEE3;
+  --ll-vertical-cafe-on-accent: #1A1410;
+  --ll-vertical-cafe-tint: #2B221B;
+  --ll-vertical-cafe-ink: #F7EEE3;
+  --ll-vertical-restaurant-accent: #F7EEE3;
+  --ll-vertical-restaurant-on-accent: #1A1410;
+  --ll-vertical-restaurant-tint: #2B221B;
+  --ll-vertical-restaurant-ink: #F7EEE3;
+  --ll-vertical-restaurant-south-asian-accent: #F7EEE3;
+  --ll-vertical-restaurant-south-asian-on-accent: #1A1410;
+  --ll-vertical-restaurant-south-asian-tint: #2B221B;
+  --ll-vertical-restaurant-south-asian-ink: #F7EEE3;
+  --ll-vertical-tiffin-accent: #F7EEE3;
+  --ll-vertical-tiffin-on-accent: #1A1410;
+  --ll-vertical-tiffin-tint: #2B221B;
+  --ll-vertical-tiffin-ink: #F7EEE3;
+  --ll-vertical-caterer-accent: #F7EEE3;
+  --ll-vertical-caterer-on-accent: #1A1410;
+  --ll-vertical-caterer-tint: #2B221B;
+  --ll-vertical-caterer-ink: #F7EEE3;
+  --ll-vertical-banquet-hall-accent: #F7EEE3;
+  --ll-vertical-banquet-hall-on-accent: #1A1410;
+  --ll-vertical-banquet-hall-tint: #2B221B;
+  --ll-vertical-banquet-hall-ink: #F7EEE3;
+  --ll-vertical-bakery-accent: #F7EEE3;
+  --ll-vertical-bakery-on-accent: #1A1410;
+  --ll-vertical-bakery-tint: #2B221B;
+  --ll-vertical-bakery-ink: #F7EEE3;
+  --ll-vertical-bar-accent: #F7EEE3;
+  --ll-vertical-bar-on-accent: #1A1410;
+  --ll-vertical-bar-tint: #2B221B;
+  --ll-vertical-bar-ink: #F7EEE3;
+  --ll-vertical-grocery-accent: #F7EEE3;
+  --ll-vertical-grocery-on-accent: #1A1410;
+  --ll-vertical-grocery-tint: #2B221B;
+  --ll-vertical-grocery-ink: #F7EEE3;
+  --ll-vertical-pharmacy-accent: #F7EEE3;
+  --ll-vertical-pharmacy-on-accent: #1A1410;
+  --ll-vertical-pharmacy-tint: #2B221B;
+  --ll-vertical-pharmacy-ink: #F7EEE3;
+  --ll-vertical-retail-accent: #F7EEE3;
+  --ll-vertical-retail-on-accent: #1A1410;
+  --ll-vertical-retail-tint: #2B221B;
+  --ll-vertical-retail-ink: #F7EEE3;
+  --ll-vertical-bookstore-accent: #F7EEE3;
+  --ll-vertical-bookstore-on-accent: #1A1410;
+  --ll-vertical-bookstore-tint: #2B221B;
+  --ll-vertical-bookstore-ink: #F7EEE3;
+  --ll-vertical-florist-accent: #F7EEE3;
+  --ll-vertical-florist-on-accent: #1A1410;
+  --ll-vertical-florist-tint: #2B221B;
+  --ll-vertical-florist-ink: #F7EEE3;
+  --ll-vertical-pet-accent: #F7EEE3;
+  --ll-vertical-pet-on-accent: #1A1410;
+  --ll-vertical-pet-tint: #2B221B;
+  --ll-vertical-pet-ink: #F7EEE3;
+  --ll-vertical-salon-accent: #F7EEE3;
+  --ll-vertical-salon-on-accent: #1A1410;
+  --ll-vertical-salon-tint: #2B221B;
+  --ll-vertical-salon-ink: #F7EEE3;
+  --ll-vertical-barber-accent: #F7EEE3;
+  --ll-vertical-barber-on-accent: #1A1410;
+  --ll-vertical-barber-tint: #2B221B;
+  --ll-vertical-barber-ink: #F7EEE3;
+  --ll-vertical-spa-accent: #F7EEE3;
+  --ll-vertical-spa-on-accent: #1A1410;
+  --ll-vertical-spa-tint: #2B221B;
+  --ll-vertical-spa-ink: #F7EEE3;
+  --ll-vertical-beauty-supply-accent: #F7EEE3;
+  --ll-vertical-beauty-supply-on-accent: #1A1410;
+  --ll-vertical-beauty-supply-tint: #2B221B;
+  --ll-vertical-beauty-supply-ink: #F7EEE3;
+  --ll-vertical-fitness-accent: #F7EEE3;
+  --ll-vertical-fitness-on-accent: #1A1410;
+  --ll-vertical-fitness-tint: #2B221B;
+  --ll-vertical-fitness-ink: #F7EEE3;
+  --ll-vertical-repair-electronics-accent: #F7EEE3;
+  --ll-vertical-repair-electronics-on-accent: #1A1410;
+  --ll-vertical-repair-electronics-tint: #2B221B;
+  --ll-vertical-repair-electronics-ink: #F7EEE3;
+  --ll-vertical-repair-auto-accent: #F7EEE3;
+  --ll-vertical-repair-auto-on-accent: #1A1410;
+  --ll-vertical-repair-auto-tint: #2B221B;
+  --ll-vertical-repair-auto-ink: #F7EEE3;
+  --ll-vertical-car-wash-accent: #F7EEE3;
+  --ll-vertical-car-wash-on-accent: #1A1410;
+  --ll-vertical-car-wash-tint: #2B221B;
+  --ll-vertical-car-wash-ink: #F7EEE3;
+  --ll-vertical-alterations-accent: #F7EEE3;
+  --ll-vertical-alterations-on-accent: #1A1410;
+  --ll-vertical-alterations-tint: #2B221B;
+  --ll-vertical-alterations-ink: #F7EEE3;
+  --ll-vertical-dry-cleaning-accent: #F7EEE3;
+  --ll-vertical-dry-cleaning-on-accent: #1A1410;
+  --ll-vertical-dry-cleaning-tint: #2B221B;
+  --ll-vertical-dry-cleaning-ink: #F7EEE3;
+  --ll-vertical-print-shop-accent: #F7EEE3;
+  --ll-vertical-print-shop-on-accent: #1A1410;
+  --ll-vertical-print-shop-tint: #2B221B;
+  --ll-vertical-print-shop-ink: #F7EEE3;
+  --ll-vertical-other-accent: #F7EEE3;
+  --ll-vertical-other-on-accent: #1A1410;
+  --ll-vertical-other-tint: #2B221B;
+  --ll-vertical-other-ink: #F7EEE3;
   --ll-chart-1: var(--chart-1);
   --ll-chart-2: var(--chart-2);
   --ll-chart-3: var(--chart-3);
@@ -959,20 +1025,410 @@
   --ll-chart-seq-6: #A1A1A8;
   --ll-chart-seq-7: #D4D4D6;
   --ll-chart-seq-8: #F5F5F4;
-  --ll-chart-line: #F6F4F1;
+  --ll-chart-line: #F7EEE3;
   --ll-chart-highlight: #FF7A45;
-  --ll-chart-you: #F6F4F1;
+  --ll-chart-you: #F7EEE3;
   --ll-chart-network: #7A7A82;
-  --ll-chart-grid: #2C2926;
-  --ll-chart-axis: #A8A39C;
+  --ll-chart-grid: #3B2F25;
+  --ll-chart-axis: #BBAA98;
   --ll-chart-status-low: #F87171;
-  --ll-chart-status-building: #A8A39C;
+  --ll-chart-status-building: #BBAA98;
   --ll-chart-status-healthy: #22C55E;
   --ll-shadow-none: none;
   --ll-shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
+  --ll-shadow-card: 0 1px 0 #3B2F25, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ll-shadow-glow: 0 8px 22px -6px rgba(224, 88, 63, 0.5);
   --ll-shadow-sm: none;
   --ll-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
   --ll-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
   --ll-shadow-xl: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5);
   --ll-shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Per-trade accent families: set data-trade="<vertical>" on the shell, pass or shop page (cafe: Coffee brown and caramel; bakery: Wheat and amber; rose: Rose; barber: Oxblood and navy; saffron: Saffron and chilli; leaf: Leaf green; teal: Clinical teal; studio: Teal and lime; sky: Sky blue; slate: Slate and electric blue; steel: Steel and orange; fuchsia: Fuchsia; plum: Plum; terracotta: Terracotta) */
+[data-trade="cafe"] {
+  --trade: #8A5A3C;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #B3702A;
+  --trade-soft: #F3E3D3;
+  --trade-deep: #5E3A22;
+}
+[data-trade="bakery"] {
+  --trade: #9A5B07;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #B07209;
+  --trade-soft: #FBEBC5;
+  --trade-deep: #6B4004;
+}
+[data-trade="salon"],
+[data-trade="spa"],
+[data-trade="beauty_supply"] {
+  --trade: #B83A64;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #D9547F;
+  --trade-soft: #F9DEE5;
+  --trade-deep: #8A2348;
+}
+[data-trade="barber"] {
+  --trade: #8C2231;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #1F3A5F;
+  --trade-soft: #F3DDDF;
+  --trade-deep: #6B1722;
+}
+[data-trade="restaurant"],
+[data-trade="restaurant_south_asian"],
+[data-trade="tiffin"],
+[data-trade="caterer"],
+[data-trade="banquet_hall"],
+[data-trade="bar"] {
+  --trade: #B5321B;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #C27C06;
+  --trade-soft: #FDE9C9;
+  --trade-deep: #7A2410;
+}
+[data-trade="grocery"] {
+  --trade: #2F7D3A;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #6E9B1E;
+  --trade-soft: #E1F0DC;
+  --trade-deep: #1E5226;
+}
+[data-trade="pharmacy"] {
+  --trade: #0E7387;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #3B9BAA;
+  --trade-soft: #D9EEF2;
+  --trade-deep: #0A5160;
+}
+[data-trade="fitness"] {
+  --trade: #0D7A63;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #5E9C0F;
+  --trade-soft: #DDF3E8;
+  --trade-deep: #0B4F43;
+}
+[data-trade="pet"] {
+  --trade: #2873B0;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #2A84C6;
+  --trade-soft: #DCEBF7;
+  --trade-deep: #174E7A;
+}
+[data-trade="repair_auto"],
+[data-trade="car_wash"],
+[data-trade="dry_cleaning"] {
+  --trade: #2F55D4;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #475569;
+  --trade-soft: #E0E7FB;
+  --trade-deep: #1E3A8A;
+}
+[data-trade="repair_electronics"],
+[data-trade="alterations"],
+[data-trade="print_shop"] {
+  --trade: #4A6378;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #C2570C;
+  --trade-soft: #E3EAF0;
+  --trade-deep: #2D3F4F;
+}
+[data-trade="florist"] {
+  --trade: #A8168F;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #D246B3;
+  --trade-soft: #F9DDF3;
+  --trade-deep: #74106A;
+}
+[data-trade="bookstore"] {
+  --trade: #7A2E6E;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #A85C9C;
+  --trade-soft: #EBDDF0;
+  --trade-deep: #52204F;
+}
+[data-trade="retail"],
+[data-trade="other"] {
+  --trade: #C8452C;
+  --trade-foreground: #FFFFFF;
+  --trade-alt: #B8691F;
+  --trade-soft: #FCE4D8;
+  --trade-deep: #9B2F1A;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-trade="cafe"],
+  :root:not([data-theme="light"])[data-trade="cafe"] {
+    --trade: #D39269;
+    --trade-foreground: #1A1410;
+    --trade-alt: #D89A5A;
+    --trade-soft: #473427;
+    --trade-deep: #EBC5AD;
+  }
+  :root:not([data-theme="light"]) [data-trade="bakery"],
+  :root:not([data-theme="light"])[data-trade="bakery"] {
+    --trade: #F7AB46;
+    --trade-foreground: #1A1410;
+    --trade-alt: #F5B13D;
+    --trade-soft: #4E3920;
+    --trade-deep: #FBD39D;
+  }
+  :root:not([data-theme="light"]) [data-trade="salon"],
+  :root:not([data-theme="light"])[data-trade="salon"],
+  :root:not([data-theme="light"]) [data-trade="spa"],
+  :root:not([data-theme="light"])[data-trade="spa"],
+  :root:not([data-theme="light"]) [data-trade="beauty_supply"],
+  :root:not([data-theme="light"])[data-trade="beauty_supply"] {
+    --trade: #D3698C;
+    --trade-foreground: #1A1410;
+    --trade-alt: #DA5882;
+    --trade-soft: #472B2E;
+    --trade-deep: #EBADC2;
+  }
+  :root:not([data-theme="light"]) [data-trade="barber"],
+  :root:not([data-theme="light"])[data-trade="barber"] {
+    --trade: #D96374;
+    --trade-foreground: #1A1410;
+    --trade-alt: #6190D1;
+    --trade-soft: #482A29;
+    --trade-deep: #EBADB6;
+  }
+  :root:not([data-theme="light"]) [data-trade="restaurant"],
+  :root:not([data-theme="light"])[data-trade="restaurant"],
+  :root:not([data-theme="light"]) [data-trade="restaurant_south_asian"],
+  :root:not([data-theme="light"])[data-trade="restaurant_south_asian"],
+  :root:not([data-theme="light"]) [data-trade="tiffin"],
+  :root:not([data-theme="light"])[data-trade="tiffin"],
+  :root:not([data-theme="light"]) [data-trade="caterer"],
+  :root:not([data-theme="light"])[data-trade="caterer"],
+  :root:not([data-theme="light"]) [data-trade="banquet_hall"],
+  :root:not([data-theme="light"])[data-trade="banquet_hall"],
+  :root:not([data-theme="light"]) [data-trade="bar"],
+  :root:not([data-theme="light"])[data-trade="bar"] {
+    --trade: #E66C56;
+    --trade-foreground: #1A1410;
+    --trade-alt: #F9B139;
+    --trade-soft: #4B2C23;
+    --trade-deep: #F2B2A6;
+  }
+  :root:not([data-theme="light"]) [data-trade="grocery"],
+  :root:not([data-theme="light"])[data-trade="grocery"] {
+    --trade: #69D378;
+    --trade-foreground: #1A1410;
+    --trade-alt: #ACDE54;
+    --trade-soft: #32412A;
+    --trade-deep: #ADEBB6;
+  }
+  :root:not([data-theme="light"]) [data-trade="pharmacy"],
+  :root:not([data-theme="light"])[data-trade="pharmacy"] {
+    --trade: #4FD3ED;
+    --trade-foreground: #1A1410;
+    --trade-alt: #61C2D1;
+    --trade-soft: #2D4141;
+    --trade-deep: #A3E8F5;
+  }
+  :root:not([data-theme="light"]) [data-trade="fitness"],
+  :root:not([data-theme="light"])[data-trade="fitness"] {
+    --trade: #50ECCB;
+    --trade-foreground: #1A1410;
+    --trade-alt: #A3ED45;
+    --trade-soft: #2D463A;
+    --trade-deep: #A3F5E4;
+  }
+  :root:not([data-theme="light"]) [data-trade="pet"],
+  :root:not([data-theme="light"])[data-trade="pet"] {
+    --trade: #61A4DB;
+    --trade-foreground: #1A1410;
+    --trade-alt: #57A3DB;
+    --trade-soft: #30373D;
+    --trade-deep: #ACCFEC;
+  }
+  :root:not([data-theme="light"]) [data-trade="repair_auto"],
+  :root:not([data-theme="light"])[data-trade="repair_auto"],
+  :root:not([data-theme="light"]) [data-trade="car_wash"],
+  :root:not([data-theme="light"])[data-trade="car_wash"],
+  :root:not([data-theme="light"]) [data-trade="dry_cleaning"],
+  :root:not([data-theme="light"])[data-trade="dry_cleaning"] {
+    --trade: #5E7CDE;
+    --trade-foreground: #1A1410;
+    --trade-alt: #618FD1;
+    --trade-soft: #302F3E;
+    --trade-deep: #AABAEE;
+  }
+  :root:not([data-theme="light"]) [data-trade="repair_electronics"],
+  :root:not([data-theme="light"])[data-trade="repair_electronics"],
+  :root:not([data-theme="light"]) [data-trade="alterations"],
+  :root:not([data-theme="light"])[data-trade="alterations"],
+  :root:not([data-theme="light"]) [data-trade="print_shop"],
+  :root:not([data-theme="light"])[data-trade="print_shop"] {
+    --trade: #69A3D3;
+    --trade-foreground: #1A1410;
+    --trade-alt: #F3893F;
+    --trade-soft: #32373C;
+    --trade-deep: #ADCFEB;
+  }
+  :root:not([data-theme="light"]) [data-trade="florist"],
+  :root:not([data-theme="light"])[data-trade="florist"] {
+    --trade: #E954CF;
+    --trade-foreground: #1A1410;
+    --trade-alt: #D75BBC;
+    --trade-soft: #4B273B;
+    --trade-deep: #F3A5E6;
+  }
+  :root:not([data-theme="light"]) [data-trade="bookstore"],
+  :root:not([data-theme="light"])[data-trade="bookstore"] {
+    --trade: #D369C3;
+    --trade-foreground: #1A1410;
+    --trade-alt: #D161BF;
+    --trade-soft: #472B39;
+    --trade-deep: #EBADE1;
+  }
+  :root:not([data-theme="light"]) [data-trade="retail"],
+  :root:not([data-theme="light"])[data-trade="retail"],
+  :root:not([data-theme="light"]) [data-trade="other"],
+  :root:not([data-theme="light"])[data-trade="other"] {
+    --trade: #DC7460;
+    --trade-foreground: #1A1410;
+    --trade-alt: #E29750;
+    --trade-soft: #492E25;
+    --trade-deep: #EDB6AB;
+  }
+}
+
+[data-theme="dark"] [data-trade="cafe"],
+[data-theme="dark"][data-trade="cafe"] {
+  --trade: #D39269;
+  --trade-foreground: #1A1410;
+  --trade-alt: #D89A5A;
+  --trade-soft: #473427;
+  --trade-deep: #EBC5AD;
+}
+[data-theme="dark"] [data-trade="bakery"],
+[data-theme="dark"][data-trade="bakery"] {
+  --trade: #F7AB46;
+  --trade-foreground: #1A1410;
+  --trade-alt: #F5B13D;
+  --trade-soft: #4E3920;
+  --trade-deep: #FBD39D;
+}
+[data-theme="dark"] [data-trade="salon"],
+[data-theme="dark"][data-trade="salon"],
+[data-theme="dark"] [data-trade="spa"],
+[data-theme="dark"][data-trade="spa"],
+[data-theme="dark"] [data-trade="beauty_supply"],
+[data-theme="dark"][data-trade="beauty_supply"] {
+  --trade: #D3698C;
+  --trade-foreground: #1A1410;
+  --trade-alt: #DA5882;
+  --trade-soft: #472B2E;
+  --trade-deep: #EBADC2;
+}
+[data-theme="dark"] [data-trade="barber"],
+[data-theme="dark"][data-trade="barber"] {
+  --trade: #D96374;
+  --trade-foreground: #1A1410;
+  --trade-alt: #6190D1;
+  --trade-soft: #482A29;
+  --trade-deep: #EBADB6;
+}
+[data-theme="dark"] [data-trade="restaurant"],
+[data-theme="dark"][data-trade="restaurant"],
+[data-theme="dark"] [data-trade="restaurant_south_asian"],
+[data-theme="dark"][data-trade="restaurant_south_asian"],
+[data-theme="dark"] [data-trade="tiffin"],
+[data-theme="dark"][data-trade="tiffin"],
+[data-theme="dark"] [data-trade="caterer"],
+[data-theme="dark"][data-trade="caterer"],
+[data-theme="dark"] [data-trade="banquet_hall"],
+[data-theme="dark"][data-trade="banquet_hall"],
+[data-theme="dark"] [data-trade="bar"],
+[data-theme="dark"][data-trade="bar"] {
+  --trade: #E66C56;
+  --trade-foreground: #1A1410;
+  --trade-alt: #F9B139;
+  --trade-soft: #4B2C23;
+  --trade-deep: #F2B2A6;
+}
+[data-theme="dark"] [data-trade="grocery"],
+[data-theme="dark"][data-trade="grocery"] {
+  --trade: #69D378;
+  --trade-foreground: #1A1410;
+  --trade-alt: #ACDE54;
+  --trade-soft: #32412A;
+  --trade-deep: #ADEBB6;
+}
+[data-theme="dark"] [data-trade="pharmacy"],
+[data-theme="dark"][data-trade="pharmacy"] {
+  --trade: #4FD3ED;
+  --trade-foreground: #1A1410;
+  --trade-alt: #61C2D1;
+  --trade-soft: #2D4141;
+  --trade-deep: #A3E8F5;
+}
+[data-theme="dark"] [data-trade="fitness"],
+[data-theme="dark"][data-trade="fitness"] {
+  --trade: #50ECCB;
+  --trade-foreground: #1A1410;
+  --trade-alt: #A3ED45;
+  --trade-soft: #2D463A;
+  --trade-deep: #A3F5E4;
+}
+[data-theme="dark"] [data-trade="pet"],
+[data-theme="dark"][data-trade="pet"] {
+  --trade: #61A4DB;
+  --trade-foreground: #1A1410;
+  --trade-alt: #57A3DB;
+  --trade-soft: #30373D;
+  --trade-deep: #ACCFEC;
+}
+[data-theme="dark"] [data-trade="repair_auto"],
+[data-theme="dark"][data-trade="repair_auto"],
+[data-theme="dark"] [data-trade="car_wash"],
+[data-theme="dark"][data-trade="car_wash"],
+[data-theme="dark"] [data-trade="dry_cleaning"],
+[data-theme="dark"][data-trade="dry_cleaning"] {
+  --trade: #5E7CDE;
+  --trade-foreground: #1A1410;
+  --trade-alt: #618FD1;
+  --trade-soft: #302F3E;
+  --trade-deep: #AABAEE;
+}
+[data-theme="dark"] [data-trade="repair_electronics"],
+[data-theme="dark"][data-trade="repair_electronics"],
+[data-theme="dark"] [data-trade="alterations"],
+[data-theme="dark"][data-trade="alterations"],
+[data-theme="dark"] [data-trade="print_shop"],
+[data-theme="dark"][data-trade="print_shop"] {
+  --trade: #69A3D3;
+  --trade-foreground: #1A1410;
+  --trade-alt: #F3893F;
+  --trade-soft: #32373C;
+  --trade-deep: #ADCFEB;
+}
+[data-theme="dark"] [data-trade="florist"],
+[data-theme="dark"][data-trade="florist"] {
+  --trade: #E954CF;
+  --trade-foreground: #1A1410;
+  --trade-alt: #D75BBC;
+  --trade-soft: #4B273B;
+  --trade-deep: #F3A5E6;
+}
+[data-theme="dark"] [data-trade="bookstore"],
+[data-theme="dark"][data-trade="bookstore"] {
+  --trade: #D369C3;
+  --trade-foreground: #1A1410;
+  --trade-alt: #D161BF;
+  --trade-soft: #472B39;
+  --trade-deep: #EBADE1;
+}
+[data-theme="dark"] [data-trade="retail"],
+[data-theme="dark"][data-trade="retail"],
+[data-theme="dark"] [data-trade="other"],
+[data-theme="dark"][data-trade="other"] {
+  --trade: #DC7460;
+  --trade-foreground: #1A1410;
+  --trade-alt: #E29750;
+  --trade-soft: #492E25;
+  --trade-deep: #EDB6AB;
 }

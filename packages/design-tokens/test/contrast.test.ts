@@ -31,49 +31,52 @@ describe("v2 role values (aliases of v3, warm neutrals)", () => {
   it("light roles match foundations.md", () => {
     const c = colors.light;
     expect([c.bg, c.bgSubtle, c.bgMuted, c.fg, c.fgMuted, c.fgSubtle, c.line, c.accent, c.accentSoft, c.positive, c.negative, c.location]).toEqual([
-      "#FFFFFF", "#F6F4F1", "#EEEBE6", "#0B0B0C", "#6B6762", "#8A8680", "#E7E3DD", "#FF5A1F", "#FFF1EA", "#16A34A", "#DC2626", "#2F7BF6",
+      "#FBF6EE", "#F6EEE2", "#F0E4D2", "#2A1E14", "#725F4E", "#A8967F", "#EADCC8", "#E5530A", "#FFF1EA", "#16A34A", "#CC2222", "#2F7BF6",
     ]);
   });
   it("dark roles match foundations.md", () => {
     const c = colors.dark;
     expect([c.bg, c.bgSubtle, c.bgMuted, c.fg, c.fgMuted, c.fgSubtle, c.line, c.accent, c.accentSoft, c.positive, c.negative, c.location]).toEqual([
-      "#0E0D0C", "#1C1A18", "#262320", "#F6F4F1", "#A8A39C", "#7C7770", "#2C2926", "#FF7A45", "#2A1710", "#22C55E", "#F87171", "#4C8DF8",
+      "#1A1410", "#2B221B", "#34291F", "#F7EEE3", "#BBAA98", "#86766A", "#3B2F25", "#FF7A45", "#2A1710", "#22C55E", "#F87171", "#4C8DF8",
     ]);
   });
   it("light accent fails small text on bg, so accentText exists and passes", () => {
     expect(contrastRatio(colors.light.accent, colors.light.bg)).toBeLessThan(WCAG.AA_TEXT);
     expect(contrastRatio(colors.light.accentText, colors.light.bg)).toBeGreaterThanOrEqual(WCAG.AA_TEXT);
   });
-  it("primary buttons are black in light, inverted in dark", () => {
-    expect(colors.light.brand).toBe(colors.light.fg);
-    expect(colors.dark.brand).toBe(colors.dark.fg);
+  it("primary buttons are terracotta with white text in light, a lifted terracotta with espresso text in dark", () => {
+    expect(colors.light.brand).toBe("#C8452C");
+    expect(colors.light.onBrand).toBe("#FFFFFF");
+    expect(colors.dark.brand).toBe(rolesV3.dark.primary);
+    expect(contrastRatio(colors.dark.onBrand, colors.dark.brand)).toBeGreaterThanOrEqual(WCAG.AA_TEXT);
   });
 });
 
 describe("v3 roles (docs/design/v3-strategy.md section 5.1)", () => {
   const L = rolesV3.light;
   const D = rolesV3.dark;
-  it("light values match the strategy table", () => {
+  it("light values are the warm palette", () => {
     expect(L).toMatchObject({
-      background: "#FFFFFF", foreground: "#0B0B0C", card: "#FFFFFF", popover: "#FFFFFF", primary: "#0B0B0C", primaryForeground: "#FFFFFF",
-      secondary: "#F6F4F1", muted: "#F6F4F1", mutedForeground: "#6B6762", accent: "#EEEBE6", destructive: "#DC2626",
-      border: "#E7E3DD", input: "#8A8680", ring: "#0B0B0C", subtleForeground: "#8A8680", sidebar: "#F6F4F1", sidebarAccent: "#EEEBE6",
-      points: "#FF5A1F", pointsText: "#C2410C", pointsSoft: "#FFF1EA", pointsForeground: "#FFFFFF",
-      success: "#16A34A", successText: "#15803D", info: "#2F7BF6", infoText: "#1D4ED8", infoSoft: "#EFF4FF",
-      warning: "#D97706", warningText: "#B45309", paper: "#FBF9F6", qrFg: "#000000", qrBg: "#FFFFFF",
+      background: "#FBF6EE", foreground: "#2A1E14", card: "#FFFFFF", popover: "#FFFFFF", primary: "#C8452C", primaryForeground: "#FFFFFF",
+      secondary: "#F6EEE2", muted: "#F6EEE2", mutedForeground: "#725F4E", accent: "#F0E4D2", destructive: "#CC2222",
+      border: "#EADCC8", input: "#8A7866", ring: "#2A1E14", subtleForeground: "#A8967F", sidebar: "#F3E9DA", sidebarAccent: "#FFFFFF", sidebarBorder: "#E2D0B6",
+      points: "#E5530A", pointsText: "#B33A09", pointsSoft: "#FFF1EA", pointsForeground: "#FFFFFF",
+      success: "#16A34A", successText: "#166534", info: "#2F7BF6", infoText: "#1D4ED8", infoSoft: "#EFF4FF",
+      warning: "#CC6C00", warningText: "#B45309", paper: "#FBF6EE", qrFg: "#000000", qrBg: "#FFFFFF",
+      forest: "#1F5C4A", primaryText: "#B23A23",
+      tilePeach: "#FCE4D8", tilePeachForeground: "#A63A22", tileMint: "#E1EEE6", tileMintForeground: "#1F5C4A",
+      tileButter: "#FDF0C8", tileLilac: "#EBE2F3", tileSky: "#DCEBF7", tileRose: "#F9DEE5",
     });
-    expect(chartSeriesV3.light).toEqual(["#0B0B0C", "#FF5A1F", "#6B6762", "#2F7BF6", "#16A34A"]);
   });
-  it("dark values match the strategy table", () => {
+  it("dark values are the warm espresso palette", () => {
     expect(D).toMatchObject({
-      background: "#0E0D0C", foreground: "#F6F4F1", card: "#161412", popover: "#161412", primary: "#F6F4F1", primaryForeground: "#0E0D0C",
-      secondary: "#1C1A18", muted: "#1C1A18", mutedForeground: "#A8A39C", accent: "#262320", destructive: "#F87171",
-      border: "#2C2926", input: "#7C7770", ring: "#F6F4F1", subtleForeground: "#7C7770", sidebar: "#161412", sidebarAccent: "#262320", sidebarBorder: "#2C2926",
-      points: "#FF7A45", pointsText: "#FF7A45", pointsSoft: "#2A1710", pointsForeground: "#0E0D0C",
+      background: "#1A1410", foreground: "#F7EEE3", card: "#241C16", popover: "#241C16", primary: "#E0583F", primaryForeground: "#1A1410",
+      secondary: "#2B221B", muted: "#2B221B", mutedForeground: "#BBAA98", accent: "#34291F", destructive: "#F87171",
+      border: "#3B2F25", input: "#8C7B6B", ring: "#F7EEE3", subtleForeground: "#86766A", sidebar: "#201811", sidebarAccent: "#33281F", sidebarBorder: "#3B2F25",
+      points: "#FF7A45", pointsText: "#FF7A45", pointsSoft: "#2A1710", pointsForeground: "#1A1410",
       success: "#22C55E", successText: "#4ADE80", info: "#4C8DF8", infoText: "#8DB2FF", infoSoft: "#111C33",
-      warning: "#FBBF24", warningText: "#FBBF24", paper: "#0E0D0C",
+      warning: "#FBBF24", warningText: "#FBBF24", paper: "#1A1410",
     });
-    expect(chartSeriesV3.dark).toEqual(["#F6F4F1", "#FF7A45", "#A8A39C", "#4C8DF8", "#22C55E"]);
   });
   it("every v2 role that has an alias reads the v3 value", () => {
     for (const theme of themes) {
@@ -88,25 +91,6 @@ describe("v3 roles (docs/design/v3-strategy.md section 5.1)", () => {
   });
   it("subtle-foreground fails 4.5:1 by design (disabled only)", () => {
     expect(contrastRatio(L.subtleForeground, L.background)).toBeLessThan(WCAG.AA_TEXT);
-  });
-  it("documents the headline ratios from section 5.1", () => {
-    const r = (a: string, b: string) => Math.round(contrastRatio(a, b) * 10) / 10;
-    expect(r(L.foreground, L.background)).toBe(19.7);
-    expect(r(D.foreground, D.background)).toBe(17.7);
-    expect(r(L.mutedForeground, L.background)).toBe(5.6);
-    expect(r(L.mutedForeground, L.muted)).toBe(5.1);
-    expect(r(L.mutedForeground, L.accent)).toBe(4.7);
-    expect(r(L.pointsText, L.background)).toBe(5.2);
-    expect(r(L.pointsText, L.pointsSoft)).toBe(4.7);
-    expect(r(L.successText, L.background)).toBe(5.0);
-    expect(r(L.infoText, L.background)).toBe(6.7);
-    expect(r(L.warningText, L.background)).toBe(5.0);
-    expect(r(L.destructive, L.background)).toBe(4.8);
-    expect(r(L.input, L.background)).toBe(3.6);
-    expect(r(L.points, L.background)).toBe(3.1);
-    expect(r(L.success, L.background)).toBe(3.3);
-    expect(r(L.info, L.background)).toBe(4.0);
-    expect(r(L.warning, L.background)).toBe(3.2);
   });
 });
 

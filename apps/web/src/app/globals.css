@@ -13,7 +13,7 @@
  * App-level additions on top of the tokens (docs/design/foundations.md).
  */
 @theme {
-  /* Marketing headline sizes (Bricolage, display only). */
+  /* Marketing headline sizes (Fraunces, display only). */
   --text-mkt-xl: 4.5rem;
   --text-mkt-xl--line-height: 1;
   --text-mkt-xl--letter-spacing: -0.02em;
@@ -48,6 +48,16 @@
   h1, h2, h3 {
     text-wrap: balance;
   }
+  /* Main Street Warm: page and card titles are Fraunces. Latin only: Fraunces has no Devanagari, Gurmukhi or Arabic glyphs, so hi, ur and pa
+     headings resolve to the Noto face in the same stack (--font-display lists them) at the same weight. */
+  h1, h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    font-optical-sizing: auto;
+  }
+  [lang^="hi"] :is(h1, h2), [lang^="ur"] :is(h1, h2), [lang^="pa"] :is(h1, h2) {
+    letter-spacing: 0;
+  }
   p {
     text-wrap: pretty;
   }
@@ -57,12 +67,12 @@
   }
 }
 
-/* Bricolage display face; −0.01em like the spec (marketing sizes carry their own, max −0.02em). */
+/* Fraunces display face (page titles, big numbers); −0.01em (marketing sizes carry their own, max −0.02em). */
 @utility display {
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.01em;
-  font-variation-settings: "wdth" 100;
+  font-optical-sizing: auto;
 }
 
 /* Horizontal scroller without a visible scrollbar (chips, rails). */

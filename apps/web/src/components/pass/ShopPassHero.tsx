@@ -26,7 +26,7 @@ export function ShopPassHero({ m, line, footer }: { m: customerApi.MembershipDto
   const next = m.nextReward;
   const ready = m.rewardsAvailableCount > 0;
   return (
-    <section aria-label={m.merchant.name} className="overflow-hidden rounded-card border border-border bg-card">
+    <section aria-label={m.merchant.name} data-trade={m.merchant.vertical} className="overflow-hidden rounded-card border border-border bg-card shadow-card">
       <AwningStripe />
       <div className="flex flex-col gap-5 p-5">
         <div className="flex items-center gap-3">

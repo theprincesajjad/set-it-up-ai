@@ -6,6 +6,9 @@
  *   md          72 px icon rail (names move to tooltips)
  *   under md    top bar + bottom nav (Today, Counter, Customers, the trade's main module, More); More opens the full sidebar as a sheet
  * In a right-to-left language the sidebar sits on the right and every logical utility mirrors with it.
+ *
+ * Main Street Warm: a warm sand sidebar, trade-coloured Lucide glyphs and a white active pill, an awning stripe over each page. `trade` is the
+ * shop's vertical; it sets `data-trade` (the accent family) on the shell and on <html>, so the phone sheet, which portals out of the shell, wears it too.
  */
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +35,7 @@ import {
 import { TooltipProvider } from "@/components/primitives/tooltip";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
+import { Awning } from "./Awning";
 import { EnvironmentStrip } from "./Layout";
 
 export interface NavItem {
@@ -79,6 +83,8 @@ export interface AppShellProps {
   notice?: ReactNode;
   /** Chrome-free: no sidebar, top bar or bottom bar, just the page edge to edge (the counter, Figma 15:2). The page supplies its own way back. */
   bare?: boolean;
+  /** The shop's vertical (`cafe`, `salon` ...): switches the trade accent family through `[data-trade]`. Omit for the consoles (terracotta). */
+  trade?: string;
   children: ReactNode;
 }
 
@@ -106,7 +112,7 @@ function useWide() {
 }
 
 // 32 px rows with a mouse (the spec), 44 px under a finger: on a phone sheet and on a touch tablet in rail mode.
-const ROW = "h-8 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! focus-visible:focus-ring data-active:font-semibold";
+const ROW = "h-10 gap-3 rounded-xl px-3 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! hover:bg-sidebar-accent/60 data-active:bg-sidebar-accent data-active:shadow-card focus-visible:focus-ring data-active:font-semibold [&_svg]:size-5";
 
 function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
@@ -125,7 +131,7 @@ function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname
           className={ROW}
           render={<Link href={i.href} onClick={close} aria-current={active ? "page" : undefined} />}
         >
-          <i.icon aria-hidden strokeWidth={1.75} className={cn(active ? "text-sidebar-foreground" : "text-muted-foreground")} />
+          <i.icon aria-hidden strokeWidth={1.9} className="text-trade" />
           <span>{i.label}</span>
         </SidebarMenuButton>
         {i.badge && i.badge.count > 0 ? (
@@ -180,7 +186,7 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
             .map((s) => (
               <SidebarGroup key={s.key} className="py-1.5">
                 {s.label ? (
-                  <SidebarGroupLabel className="h-6 text-meta-strong font-normal text-muted-foreground group-data-[collapsible=icon]:hidden">{s.label}</SidebarGroupLabel>
+                  <SidebarGroupLabel className="h-7 px-3 text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground group-data-[collapsible=icon]:hidden">{s.label}</SidebarGroupLabel>
                 ) : null}
                 <Rows nav={s.items} all={all} pathname={pathname} />
               </SidebarGroup>
@@ -196,12 +202,12 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
   const { setOpenMobile } = useSidebar();
   const cell = "flex min-h-11 flex-col items-center justify-center gap-0.5 text-caption focus-visible:focus-ring";
   return (
-    <nav aria-label={label} className="fixed inset-x-0 bottom-0 z-raised flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
+    <nav aria-label={label} className="fixed inset-x-0 bottom-0 z-raised flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
       {items.map((i) => {
         const active = isNavActive(pathname, i, items);
         return (
-          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn(cell, "h-14 min-w-0 flex-1 px-1", active ? "font-semibold text-foreground" : "text-muted-foreground")}>
-            <i.icon aria-hidden className="size-6" strokeWidth={1.75} />
+          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn(cell, "h-14 min-w-0 flex-1 px-1", active ? "font-semibold text-trade-deep" : "text-muted-foreground")}>
+            <i.icon aria-hidden className={cn("size-6", active && "text-trade")} strokeWidth={1.75} />
             <span className="max-w-full truncate">{i.label}</span>
           </Link>
         );
@@ -216,7 +222,7 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
   );
 }
 
-export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, bare = false, children }: AppShellProps) {
+export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, bare = false, trade, children }: AppShellProps) {
   const pathname = usePathname() ?? "";
   const { dir } = useLocaleOrEnglish();
   const wide = useWide();
@@ -225,12 +231,23 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
   const bottomItems = bottomNav ?? all.filter((n) => n.bottom).slice(0, 4);
   const fits = !bottomNav && all.length <= 5;
   const bar = fits ? all : (bottomItems.length ? bottomItems : all.filter((i) => !i.child)).slice(0, 4);
+  // The phone menu is a sheet that portals out of the shell: put the trade on <html> too so it wears the accent.
+  useEffect(() => {
+    if (!trade) return;
+    const root = document.documentElement;
+    const before = root.getAttribute("data-trade");
+    root.setAttribute("data-trade", trade);
+    return () => {
+      if (before === null) root.removeAttribute("data-trade");
+      else root.setAttribute("data-trade", before);
+    };
+  }, [trade]);
 
   if (bare)
     return (
       <DirectionProvider direction={dir}>
         <TooltipProvider>
-          <div data-shell="bare" className="min-h-dvh bg-background text-foreground">
+          <div data-shell="bare" data-trade={trade} className="min-h-dvh bg-background text-foreground">
             {env ? <div className="fixed inset-x-0 top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
             {notice ? <div className="px-4 pt-4">{notice}</div> : null}
             <main id="main" className="min-h-dvh w-full">
@@ -247,6 +264,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
         <SidebarProvider
           open={wide}
           onOpenChange={() => undefined}
+          data-trade={trade}
           style={{ "--sidebar-width": "248px", "--sidebar-width-icon": "72px" } as React.CSSProperties}
           className="min-h-dvh bg-background text-foreground print:block print:min-h-0 print:[&_[data-slot=sidebar]]:hidden"
         >
@@ -262,6 +280,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
               <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">{topBar}</div>
             </header>
             <main id="main" className={cn("mx-auto w-full max-w-300 flex-1 px-4 pt-6 md:px-8 md:pt-8 print:max-w-none print:p-0", bar.length ? "pb-24 md:pb-16" : "pb-16")}>
+              <Awning tone={trade ? "trade" : "primary"} className="mb-5" />
               {notice}
               {children}
             </main>

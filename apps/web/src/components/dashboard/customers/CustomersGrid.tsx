@@ -184,7 +184,7 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
   }, [openId]);
 
   return (
-    <div ref={wrap} className={cn("overflow-hidden rounded-card border border-line bg-bg transition-opacity", busy && "opacity-60")}>
+    <div ref={wrap} className={cn("overflow-hidden rounded-card border border-line bg-card transition-opacity", busy && "opacity-60")}>
       <DataGrid
         table={table}
         recordCount={total ?? rows.length}

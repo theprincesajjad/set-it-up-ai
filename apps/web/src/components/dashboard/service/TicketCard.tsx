@@ -8,7 +8,7 @@ const TEXT: Record<Tone, string> = { accent: "text-fg", info: "text-location", p
 /** One ticket on the board: number and status top row, device, issue, who and when, one money or state line. */
 export function TicketCard({ model: m, href }: { model: CardModel; href: string }) {
   return (
-    <Link href={href} className="block rounded-card border border-line bg-bg px-4 py-3.5 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
+    <Link href={href} className="block rounded-card border border-line bg-card px-4 py-3.5 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
       <div className="flex items-center justify-between gap-2">
         <span className="text-meta-strong text-fg tabular">#{m.number}</span>
         <Dot tone={m.tone === "neutral" ? "neutral" : m.tone}>{m.statusLabel}</Dot>
