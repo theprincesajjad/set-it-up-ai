@@ -93,6 +93,14 @@ describe("generated css", () => {
       expect(trade, v).toContain(`[data-theme="dark"] [data-trade="${v}"]`);
     }
     expect(darkMedia).toContain("--trade-deep:");
+    // A forced-light area inside a dark page takes the light trade values, with enough specificity to beat the dark media block, and after it.
+    const forcedLight = trade.indexOf("/* Forced light inside a dark page */");
+    expect(forcedLight).toBeGreaterThan(trade.indexOf("@media (prefers-color-scheme: dark)"));
+    for (const v of VERTICALS) {
+      expect(trade, v).toContain(`:root [data-theme="light"] [data-trade="${v}"]`);
+      expect(trade, v).toContain(`:root [data-theme="light"][data-trade="${v}"]`);
+    }
+    expect(trade.slice(forcedLight)).toMatch(/:root \[data-theme="light"\]\[data-trade="cafe"\][^{]*\{\n  --trade: #8A5A3C;/);
     expect(trade).toMatch(/\[data-trade="cafe"\] \{\n  --trade: #8A5A3C;/);
     expect(css).toContain("--ll-shadow-glow: 0 8px 20px -6px rgba(200, 69, 44, 0.45);");
   });

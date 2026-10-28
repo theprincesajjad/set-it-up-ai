@@ -139,6 +139,11 @@ function tradeCss(): string[] {
   out.push(``, `@media (prefers-color-scheme: dark) {`);
   for (const f of usedFamilies()) out.push(`  ${tradeSelector(f, ":root:not([data-theme=\"light\"]) ").replace(/,\n/g, ",\n  ")} {`, ...tradeVars(f, "dark", "    "), `  }`);
   out.push(`}`, ``);
+  // A forced-light area inside a dark page (a picture of the app in light mode): its trade variables are the light ones. The :root prefix lifts the
+  // specificity above the dark media block's ":root:not([data-theme=light]) [data-trade]", and it comes after it.
+  out.push(`/* Forced light inside a dark page */`);
+  for (const f of usedFamilies()) out.push(`${tradeSelector(f, ':root [data-theme="light"] ')} {`, ...tradeVars(f, "light", "  "), `}`);
+  out.push(``);
   for (const f of usedFamilies()) out.push(`${tradeSelector(f, '[data-theme="dark"] ')} {`, ...tradeVars(f, "dark", "  "), `}`);
   out.push(``);
   return out;
