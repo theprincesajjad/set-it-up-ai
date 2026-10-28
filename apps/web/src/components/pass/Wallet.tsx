@@ -148,6 +148,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
             t("sh.wallet.title")
           )}
         </h1>
+        {tab === "card" && firstName ? <h2 className="sr-only">{t("sh.wallet.title")}</h2> : null}
         <div className="flex shrink-0 items-center gap-1">
         <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
           <Search aria-hidden className="size-5" strokeWidth={1.75} />

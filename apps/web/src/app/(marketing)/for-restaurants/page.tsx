@@ -7,6 +7,7 @@ import { FestivalList } from "@/components/marketing/FestivalList";
 import { FoundingStrip } from "@/components/marketing/FoundingStrip";
 import { JobCards } from "@/components/marketing/JobCards";
 import { KitchenTicket, RestaurantPhone } from "@/components/marketing/RestaurantMocks";
+import { PhoneStage } from "@/components/marketing/HeroArt";
 import { MHeading, MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -52,7 +53,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
         <section className="overflow-hidden">
           <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-14 md:grid-cols-[1.1fr_1fr] md:gap-14 md:px-8 md:pt-24 md:pb-20">
             <div>
-              <p className="text-meta-strong text-muted-foreground">{t("mkt.rest.eyebrow")}</p>
+              <p className="mkt-rise inline-flex rounded-full bg-tile-butter px-4 py-2 text-meta-strong text-tile-butter-foreground">{t("mkt.rest.eyebrow")}</p>
               <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("mkt.rest.title")}</h1>
               <p className="mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{t("mkt.rest.sub")}</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -68,9 +69,9 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
               </div>
               {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-muted-foreground">0% commission on your own orders · add your menu yourself or we do the typing · founding offer: 50% off the first year</p> : null}
             </div>
-            <div className="flex justify-center md:justify-end">
+            <PhoneStage arts={["eat", "bakery"]}>
               <RestaurantPhone />
-            </div>
+            </PhoneStage>
           </div>
         </section>
       </LocaleScope>
@@ -82,7 +83,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       <JobCards />
 
       {/* 4. Festival calendar: the next 120 days, from the in-app calendar. */}
-      <MSection tone="subtle" id="festivals">
+      <MSection tone="butter" id="festivals">
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
           <MHeading eyebrow={R.festivalsEyebrow} title={R.festivalsTitle} sub={R.festivalsSub} className="mb-0!" />
           <FestivalList today={torontoToday()} />
@@ -133,7 +134,8 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
         <MHeading eyebrow={R.weekEyebrow} title={R.weekTitle} />
         <ol className="grid items-stretch gap-4 md:grid-cols-3">
           {R.week.map((w) => (
-            <li key={w.t} className="rounded-sheet border border-border bg-background p-6">
+            <li key={w.t} className="mkt-lift rounded-sheet bg-card p-6 shadow-card">
+              <span className={`display mb-4 flex size-10 items-center justify-center rounded-[14px] text-title ${["bg-tile-peach text-tile-peach-foreground", "bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground"][R.week.indexOf(w) % 3]}`}>{R.week.indexOf(w) + 1}</span>
               <h3 className="display text-title">{w.t}</h3>
               <p className="mt-2 text-body text-muted-foreground">{w.b}</p>
             </li>
@@ -142,7 +144,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       </MSection>
 
       {/* 8. FAQ: the five objections we expect. */}
-      <MSection tone="subtle">
+      <MSection>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <MHeading eyebrow={R.faqEyebrow} title={R.faqTitle} className="mb-0!" />
           <Faq items={R.faq.map((f) => ({ q: f.q, a: fill(f.a, { billing: pct(FEES.tiffinBps) }) }))} />
@@ -151,7 +153,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
 
       {/* 9. Book a visit: phone first, WhatsApp button, language field. No email-first form. */}
       <LocaleScope locale={locale}>
-        <MSection id="book">
+        <MSection id="book" tone="peach">
           <div className="grid gap-12 md:grid-cols-2">
             <div>
               <MHeading eyebrow={t("mkt.rest.form.eyebrow")} title={t("mkt.rest.form.title")} sub={t("mkt.rest.form.sub")} className="mb-8!" />
@@ -161,7 +163,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
                 </Button>
               ) : null}
             </div>
-            <div className="rounded-sheet bg-muted p-6 md:p-8">
+            <div className="rounded-sheet bg-card p-6 shadow-card md:p-8">
               <ContactForm kind="restaurant" />
             </div>
           </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND } from "@ll/shared";
 import { LoginTabs } from "@/components/auth/LoginTabs";
 import { PageFrame } from "@/components/restaurant/PageFrame";
-import { Container } from "@/components/ui/Layout";
+import { AuthLayout } from "@/components/marketing/AuthLayout";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { safeNext } from "@/lib/routes";
 
@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: Props) {
   const initial = sp.as === "customer" || customerPath ? "customer" : "shop";
   const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
   return (
-    <Container size="public" className="py-12 md:py-20">
+    <AuthLayout>
       <PageFrame locale={locale} className="flex flex-col gap-6">
         <h1 className="display mt-2 text-mkt-sm text-balance md:text-mkt-md">{t("auth.login.title", { brand: BRAND.name.toLowerCase() })}</h1>
         <LoginTabs next={next} initial={initial} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
@@ -31,6 +31,6 @@ export default async function LoginPage({ searchParams }: Props) {
           </Link>
         </p>
       </PageFrame>
-    </Container>
+    </AuthLayout>
   );
 }

@@ -36,7 +36,7 @@ export async function FoundingStrip() {
   if (!open) return null;
   const [first, ...rest] = open;
   return (
-    <section aria-label="Founding offer" className="bg-muted">
+    <section aria-label="Founding offer" className="mkt-band-butter">
       <div className="mx-auto grid max-w-[1200px] gap-6 px-4 py-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-14 md:px-8 md:py-12">
         <div>
           <h2 data-testid="founding-headline" className="display text-mkt-sm text-balance md:text-mkt-md">

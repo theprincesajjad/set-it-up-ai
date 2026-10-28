@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BRAND, formatDate, normalizeLocale, translator, type Locale, type MessageKey } from "@ll/shared";
 import { Faq } from "@/components/marketing/Faq";
 import { ShopperCardPhone } from "@/components/marketing/ShopperCard";
+import { PhoneStage } from "@/components/marketing/HeroArt";
 import { MHeading, MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { publicServerApi } from "@/lib/api/server";
@@ -68,7 +69,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
       <section className="overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:grid-cols-[1.05fr_1fr] md:px-8 md:pt-24 md:pb-28">
           <div>
-            <p className="text-meta-strong text-muted-foreground">{t("sh.fs.meta.title")}</p>
+            <p className="mkt-rise inline-flex rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">{t("sh.fs.meta.title")}</p>
             <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("sh.fs.h1")}</h1>
             <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.55] text-muted-foreground">{t("sh.fs.lead")}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -90,18 +91,18 @@ export default async function ShoppersPage({ searchParams }: Props) {
               </a>
             </p>
           </div>
-          <div className="flex justify-center">
+          <PhoneStage arts={["coffee", "beauty"]}>
             <ShopperCardPhone title={t("sh.card.title")} headline={t("sh.wallet.rewardsReadyN", { n: 2 })} caption={t("sh.card.show")} walletLabel="Add to Apple Wallet" />
-          </div>
+          </PhoneStage>
         </div>
       </section>
 
-      <MSection tone="subtle">
+      <MSection tone="peach">
         <MHeading eyebrow={t("sh.fs.how")} title={t("sh.fs.stepsTitle")} />
-        <ol className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
+        <ol className="grid gap-4 md:grid-cols-3">
           {STEPS.map(([title, body], i) => (
-            <li key={title} className="bg-background p-6 md:p-8">
-              <span className="display text-mkt-sm tabular-nums text-muted-foreground">{i + 1}</span>
+            <li key={title} className="mkt-lift rounded-sheet bg-card p-6 shadow-card md:p-8">
+              <span className={`display flex size-12 items-center justify-center rounded-2xl text-title tabular-nums ${["bg-tile-peach text-tile-peach-foreground", "bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground"][i % 3]}`}>{i + 1}</span>
               <h3 className="mt-6 text-headline text-foreground">{t(title)}</h3>
               <p className="mt-2 text-body text-muted-foreground">{t(body)}</p>
             </li>
@@ -116,7 +117,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
             <ul className="flex flex-wrap gap-2">
               {hoods.map((h) => (
                 <li key={h.slug}>
-                  <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full border border-border px-4 text-meta-strong text-foreground transition-colors hover:bg-muted focus-visible:focus-ring">
+                  <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full bg-card px-4 text-meta-strong text-foreground shadow-card transition-colors hover:bg-muted focus-visible:focus-ring">
                     <span className="display lowercase">{h.name}</span>
                     <span className="font-normal tabular-nums text-muted-foreground">{t("sh.fs.shopsN", { n: h.shopCount })}</span>
                   </Link>
@@ -142,11 +143,11 @@ export default async function ShoppersPage({ searchParams }: Props) {
         </MSection>
       ) : null}
 
-      <MSection tone="subtle">
+      <MSection tone="mint">
         <MHeading eyebrow={t("sh.fs.dataEyebrow")} title={t("sh.fs.dataTitle")} />
-        <div className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {DATA.map(([title, body]) => (
-            <div key={title} className="bg-background p-6 md:p-8">
+            <div key={title} className="rounded-sheet bg-card p-6 shadow-card md:p-8">
               <h3 className="text-headline text-foreground">{t(title)}</h3>
               <p className="mt-2 text-body text-muted-foreground">{t(body)}</p>
             </div>

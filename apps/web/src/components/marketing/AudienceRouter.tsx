@@ -18,10 +18,12 @@ export function AudienceRouter() {
     <section aria-label={r.label} className="pb-12 md:pb-20">
       <div className="mx-auto max-w-[1200px] px-4 md:px-8">
         <ul className="grid gap-4 md:grid-cols-3">
-          {r.items.map((i, n) => (
+          {r.items.map((i, n) => {
+            const d = DOORS[n] ?? DOORS[0]!;
+            return (
             <li key={i.href}>
-              <Link href={i.href} className={`mkt-lift group flex h-full flex-col gap-3 rounded-tile p-6 focus-visible:focus-ring md:p-7 ${DOORS[n].tile} ${DOORS[n].pill}`}>
-                <CategoryIcon category={DOORS[n].art} size={64} />
+              <Link href={i.href} className={`mkt-lift group flex h-full flex-col gap-3 rounded-tile p-6 focus-visible:focus-ring md:p-7 ${d.tile} ${d.pill}`}>
+                <CategoryIcon category={d.art} size={64} />
                 <span className="text-meta-strong">{i.eyebrow}</span>
                 <span className="display text-title text-balance md:text-[24px] md:leading-7">{i.title}</span>
                 <span className="mt-auto inline-flex items-center gap-2 pt-2 text-meta-strong">
@@ -30,7 +32,8 @@ export function AudienceRouter() {
                 </span>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
     </section>

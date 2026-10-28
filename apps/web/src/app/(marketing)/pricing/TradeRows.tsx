@@ -4,6 +4,8 @@ import { cn } from "@/lib/cn";
 
 const T = copy.pricing.trades;
 
+const DOTS = ["bg-tile-rose-foreground", "bg-tile-mint-foreground", "bg-tile-butter-foreground", "bg-tile-peach-foreground", "bg-tile-sky-foreground", "bg-tile-lilac-foreground"];
+
 const TONES = [
   "bg-tile-rose text-tile-rose-foreground",
   "bg-tile-mint text-tile-mint-foreground",
@@ -24,7 +26,7 @@ export function TradeRows() {
         {T.rows.map((r, i) => (
           <li key={r.who} className="grid gap-2 rounded-card bg-card p-5 shadow-card md:grid-cols-[1fr_1.6fr_auto] md:items-center md:gap-8">
             <p className="flex items-center gap-3 text-body-strong text-foreground">
-              <span aria-hidden className={cn("size-3 shrink-0 rounded-full", TONES[i % TONES.length].split(" ")[0])} />
+              <span aria-hidden className={cn("size-3 shrink-0 rounded-full", DOTS[i % DOTS.length])} />
               {r.who}
             </p>
             <p className="text-meta text-muted-foreground">{r.what}</p>

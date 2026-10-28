@@ -3,7 +3,6 @@ import { ADD_ONS, ADD_ON_IDS, FEATURES, FEES, FOUNDING_OFFER, RESTAURANT_FEATURE
 import { FoundingLine } from "@/components/marketing/FoundingStrip";
 import { SavingsCalculator } from "@/components/marketing/SavingsCalculator";
 import { MSection } from "@/components/marketing/Section";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
@@ -21,13 +20,14 @@ const shortName = (tier: RestaurantTier) => RESTAURANT_PLANS[tier].name.replace(
 function TierCard({ tier, featured }: { tier: RestaurantTier; featured?: boolean }) {
   const p = RESTAURANT_PLANS[tier];
   return (
-    <div className={cn("flex flex-col rounded-sheet bg-background p-6 md:p-8", featured ? "border-[1.5px] border-foreground" : "border border-border")}>
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-headline text-foreground">{shortName(tier)}</h3>
-        {featured ? <Badge tone="accent">Tiffin and catering</Badge> : null}
+    <div data-trade="restaurant" className={cn("mkt-lift flex flex-col overflow-hidden rounded-sheet bg-card shadow-card", featured && "ring-2 ring-trade")}>
+      <div className={cn("flex items-center justify-between gap-2 px-6 py-4 md:px-8", featured ? "bg-trade text-trade-foreground" : "bg-trade-soft text-trade-deep")}>
+        <h3 className="display text-title">{shortName(tier)}</h3>
+        {featured ? <span className="inline-flex rounded-full bg-card px-3 py-1 text-meta-strong text-trade-deep">Tiffin and catering</span> : null}
       </div>
+      <div className="flex flex-1 flex-col p-6 pt-5 md:p-8 md:pt-6">
       <p className="mt-5 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums">{moneyShort(p.priceCents)}</span>
+        <span className="display text-mkt-lg tabular-nums text-trade-deep">{moneyShort(p.priceCents)}</span>
         <span className="text-body text-muted-foreground">/month</span>
       </p>
       <p className="text-meta text-muted-foreground">
@@ -42,11 +42,12 @@ function TierCard({ tier, featured }: { tier: RestaurantTier; featured?: boolean
         <ul className="mt-1">
           {added(tier).map((f) => (
             <li key={f} className="flex gap-2.5 py-1.5 text-meta">
-              <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground" strokeWidth={2} />
+              <span aria-hidden className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-trade-soft text-trade-deep"><Check className="size-3" strokeWidth={3} /></span>
               <span className="text-foreground">{f}</span>
             </li>
           ))}
         </ul>
+      </div>
       </div>
     </div>
   );
@@ -63,8 +64,8 @@ export function RestaurantPricing() {
   ];
   return (
     <>
-      <MSection id="restaurants" tone="subtle" className="scroll-mt-20 md:py-24!">
-        <p className="text-meta-strong text-muted-foreground">For restaurants</p>
+      <MSection id="restaurants" tone="peach" className="scroll-mt-20 md:py-24!">
+        <p className="text-meta-strong text-primary-text">For restaurants</p>
         <h2 className="display mt-4 max-w-3xl text-mkt-md text-balance md:text-mkt-lg">{P.restaurantTitle}</h2>
         <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.restaurantSub}</p>
         <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-3">
@@ -73,8 +74,8 @@ export function RestaurantPricing() {
           ))}
         </div>
 
-        <div className="mt-8 rounded-sheet border border-border bg-background p-6 md:p-8">
-          <Badge tone="accent">Founding restaurants</Badge>
+        <div className="mt-8 rounded-sheet bg-card p-6 shadow-card md:p-8">
+          <span className="inline-flex rounded-full bg-tile-butter px-3 py-1 text-meta-strong text-tile-butter-foreground">Founding restaurants</span>
           <h3 className="display mt-4 text-mkt-sm text-balance">
             {FOUNDING_OFFER.firstYearPct}% off for a year, then {FOUNDING_OFFER.lifetimePct}% off for life.
           </h3>
@@ -86,13 +87,13 @@ export function RestaurantPricing() {
       </MSection>
 
       <MSection id="math" className="md:py-24!">
-        <p className="text-meta-strong text-muted-foreground">{P.math.eyebrow}</p>
+        <p className="text-meta-strong text-primary-text">{P.math.eyebrow}</p>
         <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{P.math.title}</h2>
         <p className="mt-4 max-w-2xl text-body text-muted-foreground">{P.math.sub}</p>
         <div className="mt-8">
           <SavingsCalculator planName={growth.name} planPriceCents={growth.priceCents} />
         </div>
-        <dl className="mt-10 divide-y divide-border overflow-hidden rounded-sheet border border-border bg-background">
+        <dl className="mt-10 divide-y divide-border overflow-hidden rounded-sheet bg-card shadow-card">
           {fees.map(([k, v]) => (
             <div key={k} className="grid gap-1 px-5 py-4 text-meta sm:grid-cols-2 md:px-6">
               <dt className="text-muted-foreground">{k}</dt>
@@ -102,7 +103,7 @@ export function RestaurantPricing() {
         </dl>
       </MSection>
 
-      <MSection tone="subtle">
+      <MSection tone="mint">
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <div>
             <h2 className="display text-mkt-md md:text-mkt-lg">{P.addOnsTitle}</h2>

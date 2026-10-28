@@ -44,23 +44,23 @@ export default function Home() {
   // The last words of the headline are set in terracotta ("this street.").
   const m = /^(.*?)(\s*this street\.?)$/.exec(L.heroTitle);
   const heroHead = m ? `${m[1]} ` : L.heroTitle;
-  const heroTail = m ? m[2].trim() : "";
+  const heroTail = m ? (m[2] ?? "").trim() : "";
   return (
     <>
       {/* 1. Hero: outcome headline, one verb, a friction line, and a picture that is the product (Mobbin: Beside, Faire, Airtasker). */}
       <section className="overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-10 pb-12 md:grid-cols-[1fr_1fr] md:gap-12 md:px-8 md:pt-16 md:pb-16">
           <div>
-            <p style={{ ["--i" as string]: 0 }} className="mkt-rise inline-flex items-center gap-2 rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">
+            <p className="[--i:0] mkt-rise inline-flex items-center gap-2 rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">
               <MapPin aria-hidden className="size-4" strokeWidth={2} />
               {L.heroEyebrow}
             </p>
-            <h1 style={{ ["--i" as string]: 1 }} className="display mkt-rise mt-6 text-mkt-lg text-balance md:text-mkt-xl">
+            <h1 className="[--i:1] display mkt-rise mt-6 text-mkt-lg text-balance md:text-mkt-xl">
               {heroHead}
               {heroTail ? <span className="text-primary-text">{heroTail}</span> : null}
             </h1>
-            <p style={{ ["--i" as string]: 2 }} className="mkt-rise mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{L.heroSub}</p>
-            <div style={{ ["--i" as string]: 3 }} className="mkt-rise mt-9 flex flex-col gap-3 sm:flex-row">
+            <p className="[--i:2] mkt-rise mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{L.heroSub}</p>
+            <div className="[--i:3] mkt-rise mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/signup" iconStart={ArrowRight}>
                 Get started free
               </Button>
@@ -68,7 +68,7 @@ export default function Home() {
                 Prefer a hand? Book a visit
               </Button>
             </div>
-            <ul style={{ ["--i" as string]: 4 }} className="mkt-rise mt-6 flex flex-wrap gap-x-5 gap-y-2 text-meta text-muted-foreground">
+            <ul className="[--i:4] mkt-rise mt-6 flex flex-wrap gap-x-5 gap-y-2 text-meta text-muted-foreground">
               {L.heroTrust.split(" · ").map((t) => (
                 <li key={t} className="inline-flex items-center gap-1.5">
                   <Check aria-hidden className="size-4 text-forest" strokeWidth={2.5} />

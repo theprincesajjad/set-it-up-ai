@@ -43,11 +43,11 @@ function fake(id: string, name: string, vertical: string, o: Partial<networkApi.
 export function PhoneFrame({ children, className, tone = "bg", height = 620 }: { children: ReactNode; className?: string; tone?: "bg" | "map"; /** Screen height in px: shorter on pages where the default leaves empty space. */ height?: number }) {
   return (
     // A picture of the app in light mode: tokens forced light so dark pages don't half-invert it (polish-audit W21).
-    <div aria-hidden inert data-theme="light" className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-primary p-[9px] ring-1 ring-border text-foreground", className)}>
+    <div aria-hidden inert data-theme="light" className={cn("pointer-events-none relative h-fit w-[300px] shrink-0 self-start select-none rounded-[52px] bg-foreground p-[9px] ring-1 ring-border text-foreground", className)}>
       <div style={{ height }} className={cn("relative overflow-hidden rounded-[43px]", tone === "map" ? "bg-ll-map-land" : "bg-background")}>
         <div className="absolute inset-x-0 top-0 z-[5] flex h-11 items-center justify-between px-7 text-[13px] font-semibold text-foreground">
           <span>9:41</span>
-          <span className="absolute start-1/2 top-2.5 h-[26px] w-[88px] -translate-x-1/2 rounded-full bg-primary" />
+          <span className="absolute start-1/2 top-2.5 h-[26px] w-[88px] -translate-x-1/2 rounded-full bg-foreground" />
           <span className="flex items-center gap-1">
             <span className="h-2.5 w-4 rounded-[3px] border border-foreground/80 p-px">
               <span className="block h-full w-3/4 rounded-[1px] bg-foreground" />

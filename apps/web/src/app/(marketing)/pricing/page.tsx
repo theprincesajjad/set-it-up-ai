@@ -53,7 +53,7 @@ export default async function PricingPage({ searchParams }: Props) {
         <div>
           <p className="text-meta-strong text-primary-text">{P.eyebrow}</p>
           <h1 className="display mkt-rise mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
-          <p style={{ ["--i" as string]: 1 }} className="mkt-rise mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
+          <p className="[--i:1] mkt-rise mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
           <nav aria-label="Pricing for" className="mt-8 flex flex-wrap gap-2">
             {P.chips.map((c) => (
               <ChipLink key={c.id} href={c.href} current={audience === c.id}>
@@ -63,7 +63,7 @@ export default async function PricingPage({ searchParams }: Props) {
           </nav>
           {audience !== "shop" ? <ScrollTo id={audience === "restaurant" ? "restaurants" : "bias"} /> : null}
         </div>
-        <ArtTiles className="hidden md:grid" />
+        <ArtTiles className="max-md:hidden" />
       </section>
 
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
@@ -81,7 +81,7 @@ export default async function PricingPage({ searchParams }: Props) {
 
       <RestaurantPricing />
 
-      <MSection id="bias" className="scroll-mt-20 md:py-20!">
+      <MSection id="bias" tone="sky" className="scroll-mt-20 md:py-20!">
         <div className="grid gap-10 md:grid-cols-[1fr_1.6fr]">
           <div>
             <h2 className="display text-mkt-md md:text-mkt-lg">{P.biaTitle}</h2>
@@ -107,7 +107,7 @@ export default async function PricingPage({ searchParams }: Props) {
       </MSection>
 
       <section id="compare" className="mx-auto max-w-[1200px] scroll-mt-20 px-4 pb-16 md:px-8 md:pb-24">
-        <details open={compareOpen} className="group rounded-card border border-border bg-background" data-testid="compare">
+        <details open={compareOpen} className="group rounded-card bg-card shadow-card" data-testid="compare">
           <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
             {P.compareSummary}
             <Plus aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
@@ -118,10 +118,10 @@ export default async function PricingPage({ searchParams }: Props) {
         </details>
       </section>
 
-      <MSection tone="subtle">
+      <MSection>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <div>
-            <p className="text-meta-strong text-muted-foreground">{P.faqEyebrow}</p>
+            <p className="text-meta-strong text-primary-text">{P.faqEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md md:text-mkt-lg">{P.faqTitle}</h2>
           </div>
           <Faq
