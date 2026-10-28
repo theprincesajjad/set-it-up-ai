@@ -24,6 +24,7 @@ import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { disp, ui, useTheme } from "../../theme";
 import {
+  ActionPill,
   Banner,
   BellOff,
   Button,
@@ -33,8 +34,11 @@ import {
   Dumbbell,
   DiscountCard,
   GiftGlyph,
+  CardTitle,
+  glow,
   hairline,
   ListRow,
+  PassCard,
   PromoCard,
   Section,
   Scissors,
@@ -45,8 +49,12 @@ import {
   Ticket,
   UserPlus,
   useToast,
+  WarmCard,
   WebsiteGlyph,
+  useTileColors,
+  type TileTone,
 } from "../../ui";
+import { capFirst } from "../../lib/sentenceCase";
 import { ShopDietary, ShopRestaurantRows, ShopWhatsapp } from "../restaurant/ShopRestaurant";
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
@@ -70,29 +78,30 @@ export type ShopModel = ReturnType<typeof useShopModel>;
 
 const lowerFirst = (x: string) => `${x.charAt(0).toLowerCase()}${x.slice(1)}`;
 
-/** Quick action tile (canvas): grey 56 pt tile, 20 pt glyph over a lowercase 12 pt label; four always fit. */
-function Action({ icon: Icon, label, onPress, disabled }: { icon: (p: { size?: number; color: string }) => React.ReactElement; label: string; onPress: () => void; disabled?: boolean }) {
-  const { c } = useTheme();
+/** Quick action tile: a pastel fill with its deep text and a Lucide-style glyph, label in sentence case; four always fit. */
+function Action({ icon: Icon, label, onPress, disabled, tone }: { icon: (p: { size?: number; color: string }) => React.ReactElement; label: string; onPress: () => void; disabled?: boolean; tone: TileTone }) {
+  const { bg, fg } = useTileColors(tone);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label.charAt(0).toUpperCase() + label.slice(1)}
+      accessibilityLabel={capFirst(label)}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.action, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, opacity: disabled ? 0.45 : 1 }]}
+      style={({ pressed }) => [styles.action, { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.8 : 1 }]}
     >
-      <Icon size={20} color={c.fg} />
-      <Text style={ui(12, 500, 15)} numberOfLines={1}>
-        {label}
+      <Icon size={20} color={fg} />
+      <Text style={ui(12, 600, 15)} rawColor={fg} numberOfLines={1}>
+        {capFirst(label)}
       </Text>
     </Pressable>
   );
 }
 
 /** Stamp grid (canvas): up to 10 columns of 26 pt dots, accent when earned, the last slot the black gift. */
-export function StampGrid({ count, goal }: { count: number; goal: number }) {
-  const { c } = useTheme();
+export function StampGrid({ count, goal, vertical }: { count: number; goal: number; vertical?: string }) {
+  const { c, trade } = useTheme();
+  const tc = trade(vertical);
   const { t } = useLocale();
   const { width } = useWindowDimensions();
   const cols = Math.min(goal, 10);
@@ -109,10 +118,10 @@ export function StampGrid({ count, goal }: { count: number; goal: number }) {
             <View
               style={[
                 { width: slot, height: slot, borderRadius: slot / 2, alignItems: "center", justifyContent: "center" },
-                last ? { backgroundColor: c.fg } : on ? { backgroundColor: c.accent } : { borderWidth: 1.5, borderColor: c.lineStrong },
+                last ? { backgroundColor: tc.deep } : on ? { backgroundColor: tc.accent } : { borderWidth: 1.5, borderStyle: "dashed", borderColor: tc.accent },
               ]}
             >
-              {last ? <GiftGlyph size={13} color={c.bg} /> : null}
+              {last ? <GiftGlyph size={13} color={tc.soft} /> : null}
             </View>
           </View>
         );
@@ -196,38 +205,34 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
   // Stamp card (canvas ShopSheet): "10 / 10 stamps" in accent, the reward state right, a 10-column stamp grid
   // whose last slot is the black gift. Points programs: the balance in accent and a thin bar to the next reward.
+  const passSentence = readyName
+    ? tr("sh.hero.readyAt", { reward: rewardInSentenceL(L, readyName) })
+    : m?.nextReward
+      ? tr("sh.hero.toReward", { unit: m.nextReward.pointsNeeded, reward: rewardInSentenceL(L, m.nextReward.name) })
+      : null;
   const balance = m ? (
-    <View style={[styles.stampCard, { borderColor: c.line }]}>
-      <View style={styles.stampHead}>
-        <Text style={disp(28, 800, 32, -0.01)} rawColor={c.accent} tabular>
-          {isStamps ? String(filled) : formatNumber(m.balance)}
-          <Text style={disp(15, 700, 18)} rawColor={c.fgMuted}>
-            {isStamps ? ` / ${goal} ${termWordL(L, term, 2)}` : ` ${unitLabelL(L, term, m.balance)}`}
-          </Text>
-        </Text>
-        <Text style={[ui(13, 600, 17), { flexShrink: 1, textAlign: L.isRtl ? "left" : "right" }]} rawColor={readyName ? c.accentText : c.fgMuted} numberOfLines={1}>
-          {readyName ? tr("sh.hero.readyAt", { reward: rewardInSentenceL(L, readyName) }) : m.nextReward ? tr("sh.hero.toReward", { unit: m.nextReward.pointsNeeded, reward: rewardInSentenceL(L, m.nextReward.name) }) : ""}
-        </Text>
-      </View>
-      {isStamps ? (
-        <StampGrid count={filled} goal={goal} />
-      ) : m.nextReward ? (
-        <View style={{ height: 4, borderRadius: 999, backgroundColor: c.bgMuted, marginTop: 14, overflow: "hidden" }}>
-          <View style={{ height: 4, borderRadius: 999, backgroundColor: c.accent, width: `${Math.round((100 * (m.nextReward.pointsCost - m.nextReward.pointsNeeded)) / Math.max(1, m.nextReward.pointsCost))}%` }} />
-        </View>
-      ) : null}
-      {carry > 0 ? (
-        <Text style={[ui(12, 400, 16), { marginTop: 10 }]} rawColor={c.fgMuted}>{tr("ui.stampCarry", { n: carry })}</Text>
-      ) : null}
+    <View style={{ gap: 8 }}>
+      <PassCard
+        shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl }}
+        subtitle={kind}
+        mode={isStamps ? "stamps" : "points"}
+        count={isStamps ? filled : m.balance}
+        goal={isStamps ? goal : Math.max(1, m.nextReward?.pointsCost ?? m.balance)}
+        unit={isStamps ? null : unitLabelL(L, term, m.balance).replace(/^[\d,.\s]+/, "")}
+        sentence={passSentence}
+        ready={ready.length > 0}
+        accessibilityLabel={`${s.merchant.name}. ${passSentence ?? ""}`}
+      />
+      {carry > 0 ? <Text style={ui(12, 400, 16)} rawColor={c.fgMuted}>{tr("ui.stampCarry", { n: carry })}</Text> : null}
     </View>
   ) : (
-    <View style={[styles.stampCard, { borderColor: c.line, gap: 6 }]}>
+    <WarmCard style={{ gap: 6 }}>
       <Text style={ui(15, 600, 20)}>{earnLine ? tr("ms.shop.earn", { line: earnLine }) : tr("ms.shop.showToEarn")}</Text>
       {program?.welcomeBonus ? <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("ms.join.getBonus", { amount: formatPtsL(L, program.welcomeBonus, term) })}</Text> : null}
       <Button size="md" fullWidth onPress={() => setJoining(true)} style={{ marginTop: 8 }}>
         {tr("ms.shop.joinFree")}
       </Button>
-    </View>
+    </WarmCard>
   );
 
   const statusWord = status ? status.word : null;
@@ -239,20 +244,20 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
 
   return (
     <View>
-      <View style={styles.head}>
+      {m ? null : <View style={styles.head}>
         <ShopLogo shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} size={56} />
         <View style={{ flex: 1, minWidth: 0, paddingEnd: variant === "sheet" ? 50 : 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={[disp(22, 700, 26, -0.01), { flexShrink: 1 }]} accessibilityRole="header" numberOfLines={2}>
               {s.merchant.name}
             </Text>
-            {m?.muted ? <BellOff size={16} color={c.fgMuted} accessibilityLabel={tr("ui.muted")} /> : null}
           </View>
           <Text style={[ui(13, 400, 17), { fontStyle: "italic", marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={2}>
             {kind}
           </Text>
         </View>
-      </View>
+      </View>}
+      {m ? <View>{balance}</View> : null}
       <View style={styles.statusRow}>
         {status ? <View style={[styles.dot, { backgroundColor: status.open ? c.positive : c.fgSubtle }]} /> : null}
         {statusWord ? <Text style={ui(13, 500, 17)}>{statusWord}</Text> : null}
@@ -264,7 +269,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
       <ShopDietary slug={s.merchant.slug} features={features} />
 
       {paused ? <View style={{ marginTop: 16 }}><Banner variant="neutral">{tr("ms.shop.paused", { amount: formatPtsL(L, m!.balance, term) })}</Banner></View> : null}
-      <View style={{ marginTop: 20 }}>{balance}</View>
+      {m ? null : <View style={{ marginTop: 20 }}>{balance}</View>}
 
       {(model.detail.data?.openRedemptions ?? []).map((r) => (
         <View key={r.id} style={{ marginTop: 12 }}>
@@ -284,15 +289,14 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
       ))}
 
       <View style={styles.actions}>
-        <Action icon={DirectionsGlyph} label={tr("shop.directions").toLowerCase()} onPress={directions} disabled={!loc} />
-        <Action icon={CallGlyph} label={tr("shop.call").toLowerCase()} onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
-        <Action icon={WebsiteGlyph} label={tr("shop.website").toLowerCase()} onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
-        <Action icon={ShareGlyph} label={tr("ms.share").toLowerCase()} onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
+        <Action tone="peach" icon={DirectionsGlyph} label={tr("shop.directions").toLowerCase()} onPress={directions} disabled={!loc} />
+        <Action tone="mint" icon={CallGlyph} label={tr("shop.call").toLowerCase()} onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
+        <Action tone="butter" icon={WebsiteGlyph} label={tr("shop.website").toLowerCase()} onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
+        <Action tone="lilac" icon={ShareGlyph} label={tr("ms.share").toLowerCase()} onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
       </View>
 
-      <Text style={[disp(17, 800, 21), { marginTop: 24 }]} accessibilityRole="header">
-        {tr("shop.rewards").toLowerCase()}
-      </Text>
+      <WarmCard style={{ marginTop: 24 }}>
+      <CardTitle title={tr("shop.rewards")} />
       {rewardsList.length === 0 ? (
         <Text style={[ui(15, 400, 20), { paddingVertical: 14 }]} rawColor={c.fgMuted}>
           {tr("ms.noRewardsYet")}
@@ -320,9 +324,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
               </View>
               {m ? (
                 canRedeem ? (
-                  <Text style={ui(13, 600, 17)} rawColor={c.accentText}>
-                    {tr("sh.rc.ready").toLowerCase()}
-                  </Text>
+                  <ActionPill tone="butter" label={capFirst(tr("sh.rc.ready"))} />
                 ) : (
                   <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("ui.stampToGo", { n: toGo })}</Text>
                 )
@@ -330,6 +332,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
             </Pressable>
           );
         })}
+      </WarmCard>
       {!online && ready.length > 0 ? (
         <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
           {tr("cp.err.offlineRedeem")}
@@ -492,9 +495,9 @@ const styles = StyleSheet.create({
   rewardRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, gap: 12 },
 });
 
-/** The pinned black capsule under the shop (canvas): members open My card to redeem at the counter. */
+/** The pinned terracotta capsule under the shop: members open My card to redeem at the counter. */
 export function ShopCardCta({ model }: { model: ShopModel }) {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const { t } = useLocale();
   if (!model.shop.data || !model.membership) return null;
   return (
@@ -502,11 +505,11 @@ export function ShopCardCta({ model }: { model: ShopModel }) {
       accessibilityRole="button"
       accessibilityLabel={t("ms.shop.showCardRedeem")}
       onPress={() => router.push("/card")}
-      style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.fg, opacity: pressed ? 0.88 : 1 }]}
+      style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.brand, opacity: pressed ? 0.88 : 1 }, glow(isDark)]}
     >
-      <CardQrIcon size={20} color={c.bg} />
-      <Text style={ui(16, 600, 20)} rawColor={c.bg}>
-        {t("ms.shop.showCardRedeem").toLowerCase()}
+      <CardQrIcon size={20} color={c.onBrand} />
+      <Text style={ui(16, 600, 20)} rawColor={c.onBrand}>
+        {capFirst(t("ms.shop.showCardRedeem"))}
       </Text>
     </Pressable>
   );

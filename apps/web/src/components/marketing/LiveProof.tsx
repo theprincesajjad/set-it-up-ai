@@ -33,17 +33,17 @@ export async function LiveProof() {
   return (
     <section
       aria-label="The network today"
-      className="bg-muted py-10 md:py-14"
+      className="py-10 md:py-14"
       data-shops={network.activeMerchants}
       data-streets={network.liveStreets}
       data-multi-pct={network.multiShopMemberPct}
     >
       <div className="mx-auto max-w-[1200px] px-4 md:px-8">
-        <dl className="grid gap-8 md:grid-cols-3">
-          {stats.map((s) => (
-            <div key={s.label}>
+        <dl className="grid gap-4 md:grid-cols-3">
+          {stats.map((s, i) => (
+            <div key={s.label} className={["bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground", "bg-tile-lilac text-tile-lilac-foreground"][i % 3] + " rounded-tile p-6"}>
               <dd className="display text-mkt-md tabular-nums md:text-mkt-lg">{s.value}</dd>
-              <dt className="mt-1 text-body text-muted-foreground">{s.label}</dt>
+              <dt className="mt-1 text-body-strong">{s.label}</dt>
             </div>
           ))}
         </dl>

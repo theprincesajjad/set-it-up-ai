@@ -124,12 +124,12 @@ export default async function DiscoverPage({ searchParams }: Props) {
       </section>
 
       <nav aria-label={t("wp.cat.label")} className="no-scrollbar mt-4 flex gap-2 overflow-x-auto px-4">
-        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold tracking-normal", !only ? "bg-fg text-bg" : "bg-bg-subtle text-fg")}>
+        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold tracking-normal", !only ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg")}>
           {t("sh.disc.forYou")}
           <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
         </Link>
         {chips.map((c) => (
-          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-[14px] font-bold tracking-normal", only === c.id ? "bg-fg text-bg" : "bg-bg-subtle text-fg")}>
+          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("display inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-[14px] font-bold tracking-normal", only === c.id ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg")}>
             {t(CHIP_KEY[c.id])}
           </Link>
         ))}

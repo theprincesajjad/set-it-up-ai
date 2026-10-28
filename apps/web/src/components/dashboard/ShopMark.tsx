@@ -18,7 +18,7 @@ export function ShopMark({ name, brandColor, logoUrl, size = 28, className }: { 
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={logoUrl} alt="" style={style} className={cn("shrink-0 object-cover", !className?.includes("rounded") && "rounded-[8px]", className)} />;
   return (
-    <span aria-hidden style={{ ...style, background: brand ?? "var(--ll-color-fg)", color: brand ? onColor(brand) : undefined }} className={cn("inline-flex shrink-0 items-center justify-center font-semibold", !className?.includes("rounded") && "rounded-[8px]", !brand && "text-bg", className)}>
+    <span aria-hidden style={{ ...style, background: brand ?? "var(--trade)", color: brand ? onColor(brand) : undefined }} className={cn("inline-flex shrink-0 items-center justify-center font-semibold", !className?.includes("rounded") && "rounded-[8px]", !brand && "text-trade-foreground", className)}>
       {initials}
     </span>
   );

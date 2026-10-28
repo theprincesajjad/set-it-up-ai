@@ -135,7 +135,7 @@ export function ServiceEditor({
         {pharmacy ? (
           <div role="group" aria-label="Appointment type presets" className="flex flex-wrap gap-2" data-testid="pharmacy-presets">
             {PHARMACY_SERVICE_PRESETS.map((p) => (
-              <button key={p} type="button" aria-pressed={name === p} onClick={() => setName(p)} className="h-9 rounded-full border border-line px-4 text-[13px] font-medium text-fg hover:bg-bg-subtle aria-pressed:border-fg aria-pressed:bg-fg aria-pressed:text-bg">
+              <button key={p} type="button" aria-pressed={name === p} onClick={() => setName(p)} className="h-9 rounded-full border border-line px-4 text-[13px] font-medium text-fg hover:bg-bg-subtle aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground">
                 {p}
               </button>
             ))}

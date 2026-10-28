@@ -11,18 +11,18 @@ import { initials } from "../../lib/award";
 import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { CardQrIcon, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
+import { CardQrIcon, glow, haptic, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
 
 type TabName = "map" | "discover" | "wallet" | "activity";
 const LABEL_KEYS = { map: "sh.nav.map", discover: "sh.nav.discover", wallet: "sh.nav.wallet", activity: "sh.nav.activity" } as const satisfies Record<TabName, MessageKey>;
 const ORDER: TabName[] = ["map", "discover", "wallet", "activity"];
 
 /**
- * The round black "my card" button, separate from the capsule and to its right (Corner's "+" button):
+ * The round terracotta "my card" button, separate from the capsule and to its right (Corner's "+" button):
  * 60 pt, QR glyph, opens My card as a sheet over the current tab.
  */
 function CardButton() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const { t } = useLocale();
   return (
     <Pressable
@@ -33,9 +33,9 @@ function CardButton() {
         haptic.tap();
         router.push("/card");
       }}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.fg, transform: pressed ? [{ scale: 0.94 }] : undefined }, shadow("0 4px 16px rgba(0,0,0,.24)", { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.24, shadowRadius: 16, elevation: 6 })]}
+      style={({ pressed }) => [styles.card, { backgroundColor: c.brand, transform: pressed ? [{ scale: 0.94 }] : undefined }, glow(isDark)]}
     >
-      <CardQrIcon size={24} color={c.bg} />
+      <CardQrIcon size={24} color={c.onBrand} />
     </Pressable>
   );
 }
@@ -46,7 +46,7 @@ function CardButton() {
  * BlurView + the 86% chrome fill; it slides away when a screen hides it (Explore's shop sheet).
  */
 function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
-  const { c, isDark } = useTheme();
+  const { c, r, isDark } = useTheme();
   const { t } = useLocale();
   const { user } = useSession();
   const profile = useProfile();
@@ -61,7 +61,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
     const route = state.routes[index];
     if (!route) return null;
     const focused = state.index === index;
-    const color = focused ? c.fg : c.fgSubtle;
+    const color = focused ? c.brand : c.fgMuted;
     const sw = focused ? 2 : 1.8;
     const who = profile.data?.name ?? user?.name;
     return (
@@ -75,15 +75,15 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
           haptic.select();
           navigateToTab(route.key);
         }}
-        style={styles.item}
+        style={[styles.item, focused ? { backgroundColor: r.card, borderRadius: 999, width: 56 } : null, focused ? shadow(shadows.card.css, shadows.card.native) : null]}
       >
         {name === "map" ? <TabMapIcon color={color} strokeWidth={sw} /> : null}
         {name === "discover" ? <TabDiscoverIcon color={color} filled={focused} /> : null}
         {name === "wallet" ? <TabWalletIcon color={color} strokeWidth={sw} /> : null}
         {name === "activity" ? (
-          <View style={[styles.avatar, { backgroundColor: c.bgMuted }]}>
-            <Text allowFontScaling={false} style={styles.avatarText} rawColor={c.fg}>
-              {initials(who).toLowerCase()}
+          <View style={[styles.avatar, { backgroundColor: focused ? r.tilePeach : c.bgMuted }]}>
+            <Text allowFontScaling={false} style={styles.avatarText} rawColor={focused ? r.tilePeachForeground : c.fg}>
+              {initials(who)}
             </Text>
           </View>
         ) : null}
@@ -100,7 +100,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
           <View
             style={[
               StyleSheet.absoluteFill,
-              { backgroundColor: Platform.OS === "android" ? c.bg : isDark ? "rgba(22,22,24,.86)" : "rgba(255,255,255,.86)", opacity: Platform.OS === "android" ? 0.96 : 1 },
+              { backgroundColor: r.sidebar, opacity: Platform.OS === "ios" ? 0.9 : 1 },
               Platform.OS === "web" ? ({ backdropFilter: `blur(${blur.chrome}px)` } as object) : null,
             ]}
           />

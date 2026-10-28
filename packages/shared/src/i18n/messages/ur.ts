@@ -3340,4 +3340,11 @@ export const ur: Messages = {
   "counter.cd.exit": "دروازے کے چیک اِن سے باہر نکلیں",
   "pet.food.noConsentLink": "میری ٹیکسٹ سیٹنگز کھولیں",
   "pet.food.needGrams": "اسے چالو کرنے کے لیے نیچے لکھیں کہ آپ روزانہ کتنے گرام کھلاتے ہیں۔",
+  "pass.hi": "سلام",
+  "pass.showCode": "میرا کوڈ دکھائیں",
+  "pass.addWallet": "والٹ میں شامل کریں",
+  "pass.nearby.title": "آپ کی گلی میں قریب",
+  "pass.nearby.deal": "آفر",
+  "pass.nearby.perk": "فائدہ",
+  "pass.nearby.new": "نیا",
 };

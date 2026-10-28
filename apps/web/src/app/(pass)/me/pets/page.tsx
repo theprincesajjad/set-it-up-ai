@@ -20,7 +20,7 @@ export default async function MyPetsPage({ searchParams }: Props) {
   const t = translator(locale);
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade="pet">
       {me ? <MyPets /> : <PhoneSignIn heading="h2" next="/me/pets" title={t("pet.my.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
     </PageFrame>
   );

@@ -45,7 +45,7 @@ export function CategoriesEditor({ categories, onChange }: { categories: merchan
               <p className="flex min-w-[12rem] flex-1 flex-wrap items-center gap-2 text-meta-strong text-fg">
                 {c.protected ? <Lock aria-hidden className="size-3.5 text-fg-muted" strokeWidth={1.75} /> : null}
                 {c.name}
-                {c.protected && pharmacy ? <span className="whitespace-nowrap rounded-full bg-fg px-2 py-0.5 text-[11px] font-medium text-bg" data-testid="locked-tag" title="Locked by Ontario pharmacy rules">Locked</span> : null}
+                {c.protected && pharmacy ? <span className="whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground" data-testid="locked-tag" title="Locked by Ontario pharmacy rules">Locked</span> : null}
                 {c.protected ? (
                   <button type="button" onClick={() => setWhy(why === c.id ? null : c.id)} aria-expanded={why === c.id} className="text-meta font-normal text-fg-muted underline underline-offset-4">
                     Why?

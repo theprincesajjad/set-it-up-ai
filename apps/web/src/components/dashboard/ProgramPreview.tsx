@@ -19,9 +19,9 @@ export function PhoneFrame({ children, label }: { children: ReactNode; label: st
       <div className="flex h-[620px] flex-col overflow-hidden rounded-[38px] border border-line bg-bg">
         <div aria-hidden className="flex h-9 shrink-0 items-center justify-between px-6 text-[11px] font-semibold text-fg">
           <span className="tabular">9:41</span>
-          <span className="h-[18px] w-[72px] rounded-full bg-fg" />
+          <span className="h-[18px] w-[72px] rounded-full bg-trade" />
           <span className="flex items-center gap-1">
-            <span className="h-2 w-3 rounded-[2px] bg-fg" />
+            <span className="h-2 w-3 rounded-[2px] bg-trade" />
             <span className="h-2 w-4 rounded-[3px] border border-fg" />
           </span>
         </div>
@@ -119,7 +119,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
         ) : null}
         {view === "counter" ? (
           <div className="flex h-full flex-col gap-4 pt-6">
-            <span aria-hidden className="inline-flex size-10 items-center justify-center rounded-full bg-fg text-bg">
+            <span aria-hidden className="inline-flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Check className="size-5" strokeWidth={2.25} />
             </span>
             <div>

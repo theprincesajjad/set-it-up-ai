@@ -190,7 +190,7 @@ export function CheckoutSheet({
                   <legend className="mb-1.5 text-meta-strong text-fg">Tip</legend>
                   <div className="flex flex-wrap gap-1.5">
                     {[{ label: "No tip", cents: 0, key: "none" }, ...choices.map((c) => ({ label: `${c.percent}% · ${money(c.cents)}`, cents: c.cents, key: `p${c.percent}` }))].map((c) => (
-                      <button key={c.key} type="button" aria-pressed={tip === c.cents && !customTip} onClick={() => { setTip(c.cents); setCustomTip(""); }} className={cn("inline-flex h-8 items-center rounded-full border px-3 text-meta focus-visible:focus-ring", tip === c.cents && !customTip ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                      <button key={c.key} type="button" aria-pressed={tip === c.cents && !customTip} onClick={() => { setTip(c.cents); setCustomTip(""); }} className={cn("inline-flex h-8 items-center rounded-full border px-3 text-meta focus-visible:focus-ring", tip === c.cents && !customTip ? "border-primary bg-primary font-medium text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                         {c.label}
                       </button>
                     ))}

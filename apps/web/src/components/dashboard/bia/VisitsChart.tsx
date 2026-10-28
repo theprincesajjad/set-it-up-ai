@@ -63,7 +63,7 @@ export function VisitsChart({ weekly, hoodId }: { weekly: campaignsApi.Neighbour
           <div role="img" aria-label={`Visits per week, ${weekly.length} weeks, from ${first ? weekLabel(first.weekStart) : ""} to ${last ? weekLabel(last.weekStart) : ""}. Weeks with a campaign are marked in orange.`} className="flex h-40 items-end gap-1.5 md:gap-2" data-testid="visits-chart">
             {weekly.map((w) => (
               <div key={w.weekStart} className="flex h-full flex-1 items-end" title={`${weekLabel(w.weekStart)}: ${formatNumber(w.visits)} visits`}>
-                <span data-campaign-week={w.campaignIds.length ? "true" : "false"} className={cn("block w-full rounded-[3px]", w.campaignIds.length ? "bg-points" : "bg-fg")} style={{ height: `${Math.max(2, (w.visits / max) * 100)}%` }} />
+                <span data-campaign-week={w.campaignIds.length ? "true" : "false"} className={cn("block w-full rounded-[3px]", w.campaignIds.length ? "bg-points" : "bg-trade")} style={{ height: `${Math.max(2, (w.visits / max) * 100)}%` }} />
               </div>
             ))}
           </div>

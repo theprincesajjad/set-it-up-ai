@@ -1,13 +1,14 @@
 import { radii, touchTargets, type TextStyleName } from "@ll/design-tokens";
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useTheme } from "../theme";
+import { glow } from "./Warm";
 import { haptic } from "./haptics";
 import type { LucideIcon } from "./icons";
 import { Text } from "./Text";
 
 /**
  * primary = terracotta capsule (the one strongest action on a screen);
- * secondary = grey fill; outline = hairline; ghost = text only;
+ * secondary = white with a hairline; outline = hairline; ghost = text only;
  * danger = grey fill + red label (iOS destructive). `accent` and `tonal`
  * are v1 names: accent is reserved for points, so both render as
  * primary / secondary.
@@ -59,12 +60,12 @@ export function Button({
   testID,
   haptics,
 }: ButtonProps) {
-  const { c } = useTheme();
+  const { c, r, isDark } = useTheme();
   const s = SIZES[size];
   const v = variant === "accent" ? "primary" : variant === "tonal" ? "secondary" : variant;
   const palette: Record<Exclude<ButtonVariant, "accent" | "tonal">, { bg: string; fg: string; border?: string; pressed: string }> = {
     primary: { bg: c.brand, fg: c.onBrand, pressed: c.brandPressed },
-    secondary: { bg: c.bgSubtle, fg: c.fg, pressed: c.bgMuted },
+    secondary: { bg: r.card, fg: c.fg, border: r.border, pressed: c.bgSubtle },
     outline: { bg: c.bg, fg: c.fg, border: c.lineStrong, pressed: c.bgSubtle },
     ghost: { bg: "transparent", fg: c.fg, pressed: c.bgSubtle },
     danger: { bg: c.bgSubtle, fg: c.negative, pressed: c.bgMuted },
@@ -103,6 +104,7 @@ export function Button({
           borderColor: p.border,
           transform: pressed ? [{ scale: 0.98 }] : undefined,
         },
+        v === "primary" && !disabled && size !== "sm" ? glow(isDark) : null,
         fullWidth || size === "counter" || size === "kiosk" ? styles.full : null,
         style,
       ]}
@@ -119,7 +121,7 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  base: { alignItems: "center", justifyContent: "center" },
   full: { alignSelf: "stretch" },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 6 },
 });

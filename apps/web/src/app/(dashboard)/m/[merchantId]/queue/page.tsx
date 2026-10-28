@@ -97,7 +97,7 @@ function Board() {
         ]}
       />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section aria-label="Waiting" className="overflow-hidden rounded-card border border-line">
+        <section aria-label="Waiting" className="overflow-hidden rounded-card bg-card shadow-card">
           <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
             <h2 className="text-body-strong text-fg">Waiting</h2>
             <p className="text-meta text-fg-muted">Barber&apos;s pick, not first come only</p>
@@ -142,7 +142,7 @@ function Board() {
             const a = chairAction(c, (b?.waiting.length ?? 0) > 0);
             const next = b ? nextFor(c.staffId, b.waiting) : null;
             return (
-              <div key={c.staffId} className="flex flex-col gap-1.5 rounded-card border border-line px-4 py-3.5">
+              <div key={c.staffId} className="flex flex-col gap-1.5 rounded-card bg-card shadow-card px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-meta-strong text-fg">{c.name}{c.staffId === myId ? <span className="font-normal text-fg-muted"> (you)</span> : null}</p>
                   {a.kind === "none" ? (

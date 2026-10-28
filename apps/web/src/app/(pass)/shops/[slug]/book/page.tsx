@@ -51,19 +51,19 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
-        <PageFrame locale={locale}>
+        <PageFrame locale={locale} trade={shop.vertical}>
           <EmptyState title={t("bk.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
   }
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff), pet: one(sp.pet) }} meName={me?.user.name ?? null} />
     </PageFrame>
   );

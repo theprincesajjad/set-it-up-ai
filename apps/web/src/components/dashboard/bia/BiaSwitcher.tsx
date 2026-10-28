@@ -24,7 +24,7 @@ export function BiaSwitcher({ compact }: { compact?: boolean }) {
   const name = sel?.biaName ?? sel?.name ?? "BIA";
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", compact ? "" : "h-10 px-2")}>
-      <span aria-hidden className="inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-fg text-[11px] font-bold text-bg">
+      <span aria-hidden className="inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-primary text-[11px] font-bold text-primary-foreground">
         {sel ? initials(name) : "BIA"}
       </span>
       {items.length > 1 && bia ? (

@@ -2,10 +2,10 @@
   <title id="t">Local Loyalty</title>
   <!-- Horizontal lockup: mark + lowercase wordmark. Clear space = one dot (15 units) on all sides.
        Text is live: Bricolage Grotesque 800, lowercase, -0.01em. Outline the text before sending to a printer. -->
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="#0B0B0C"/>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#C8452C"/>
   <circle cx="21.5" cy="21.5" r="6.5" fill="#FFFFFF"/>
   <circle cx="42.5" cy="21.5" r="6.5" fill="#FFFFFF"/>
   <circle cx="21.5" cy="42.5" r="6.5" fill="#FFFFFF"/>
-  <circle cx="42.5" cy="42.5" r="6.5" fill="#FF5A1F"/>
-  <text x="76" y="45" font-family="'Bricolage Grotesque', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="36" font-weight="800" letter-spacing="-0.36" fill="#0B0B0C">local loyalty</text>
+  <circle cx="42.5" cy="42.5" r="6.5" fill="#FDF0C8"/>
+  <text x="76" y="45" font-family="'Bricolage Grotesque', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="36" font-weight="800" letter-spacing="-0.36" fill="#2A1E14">local loyalty</text>
 </svg>

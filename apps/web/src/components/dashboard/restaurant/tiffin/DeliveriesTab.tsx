@@ -167,7 +167,7 @@ function DriverRail({ routes, date }: { routes: NonNullable<tiffinApi.ManifestRo
   };
   return (
     <aside className="flex min-w-0 flex-col gap-4 print:hidden" aria-label="Driver link and late run">
-      <section className="rounded-card border border-line p-5">
+      <section className="rounded-card bg-card shadow-card p-5">
         <h3 className="text-headline text-fg">Driver link</h3>
         <p className="mt-1 text-meta text-fg-muted">{route.driverName ?? "The driver"} opens this on a phone. No login, no app install, expires at midnight.</p>
         {routes.length > 1 ? <Select label="Route" hideLabel className="mt-3" value={route.id} onChange={(e) => setRouteId(e.target.value)} options={routes.map((r) => ({ value: r.id, label: r.name }))} /> : <p className="mt-3 text-meta-strong text-fg">{route.name}</p>}
@@ -184,7 +184,7 @@ function DriverRail({ routes, date }: { routes: NonNullable<tiffinApi.ManifestRo
         </div>
         {act.error ? <p className="mt-2 text-meta text-negative">{act.error}</p> : null}
       </section>
-      <section className="rounded-card border border-line p-5">
+      <section className="rounded-card bg-card shadow-card p-5">
         <h3 className="text-headline text-fg">Late run</h3>
         <p className="mt-1 text-meta text-fg-muted">Texts &quot;running {minutes} minutes late&quot; to every stop still to go.</p>
         <div className="mt-3 flex items-end gap-2">

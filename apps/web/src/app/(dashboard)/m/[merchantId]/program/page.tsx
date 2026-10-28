@@ -62,8 +62,8 @@ function intOr(v: string, fallback = 0) {
 function Step({ n, title, children, last }: { n: number; title: string; children: ReactNode; last?: boolean }) {
   return (
     <section aria-labelledby={`step-${n}`} className={cn("flex flex-col gap-4 py-6", !last && "border-b border-line", n === 1 && "pt-0")}>
-      <h2 id={`step-${n}`} className="flex items-center gap-3 text-[16px] font-semibold text-fg">
-        <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-fg text-[12px] font-semibold text-bg">
+      <h2 id={`step-${n}`} className="flex items-center gap-3 text-headline text-fg">
+        <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-primary-foreground">
           {n}
         </span>
         {title}
@@ -211,7 +211,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
       {saveError ? <div className="mb-4"><ErrorLine message={saveError} /></div> : null}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <section className="rounded-card border border-line p-6" aria-label="Set up your card">
+          <section className="rounded-card bg-card shadow-card p-6" aria-label="Set up your card">
             <Step n={1} title={stampCard ? "What earns a stamp" : "What earns points"}>
               <div id="earn" className="flex flex-col gap-4">
                 <Segmented label="Earn type" value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} options={modeOptions} className="self-start flex-wrap" />
@@ -258,7 +258,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                           setRewardDraft({ name: p.name, rewardType: p.rewardType, value: p.value });
                         }
                       }}
-                      className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                      className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
                     >
                       {p.label}
                     </button>
@@ -277,7 +277,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
             </Step>
           </section>
 
-          <section className="rounded-card border border-line px-6 pb-2 pt-5" aria-labelledby="counter-h">
+          <section className="rounded-card bg-card shadow-card px-6 pb-2 pt-5" aria-labelledby="counter-h">
             <h2 id="counter-h" className="pb-3 text-[15px] font-semibold text-fg">At the counter</h2>
             {stampsMode ? (
               <SettingRow title="Stamp on scan" hint={stampsMode ? "A scan, or four digits that match one person, stamps straight away. Undo stays for 10 seconds." : "Not available with points per dollar: the amount has to be typed."}>

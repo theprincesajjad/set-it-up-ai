@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { appointmentsApi, campaignsApi, groceryApi, tiffinApi } from "@ll/shared";
+import type { appointmentsApi, campaignsApi, groceryApi, networkApi, tiffinApi } from "@ll/shared";
 import { PantryReminders } from "@/components/pass/PantryReminders";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PetLinks } from "@/components/pass/PetLinks";
@@ -11,7 +11,7 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
-import { getServerApi } from "@/lib/api/server";
+import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { serverRestaurantApi } from "@/lib/restaurant/server";
 import { getMe } from "@/lib/auth/session";
 import { formatDate } from "@ll/shared";
@@ -53,6 +53,12 @@ export default async function MePage({ searchParams }: Props) {
   // Your next visit.
   const nextVisit = soonest(visits);
   const petShop = wallet.items.find((m) => m.merchant.vertical === "pet")?.merchant.name ?? null;
+  // "Nearby on your street": shops on the member's street they haven't joined, a live promo first.
+  const hoods = await publicServerApi().network.neighbourhoods().then((r) => r.items).catch(() => [] as networkApi.NeighbourhoodDto[]);
+  const hood = hoods.find((h) => h.id === profile.homeNeighbourhood?.id) ?? hoods.find((h) => h.id === wallet.items[0]?.merchant.neighbourhoodId) ?? null;
+  const nearby = hood
+    ? await api.network.shops({ neighbourhood: hood.slug, limit: 100 }).then((r) => r.items.filter((s) => !s.isMember && !wallet.items.some((m) => m.merchant.id === s.merchant.id)).sort((a, b) => Number(b.hasPromo || !!b.promoLine) - Number(a.hasPromo || !!a.promoLine) || (a.distanceMetres ?? 0) - (b.distanceMetres ?? 0)).slice(0, 3)).catch(() => [] as networkApi.ShopListItemDto[])
+    : [];
   // The shopper's own language: ?lang= / the saved choice, else the language on their profile.
   const locale = await getLocaleForProfile(sp, profile.locale);
   return (
@@ -63,6 +69,7 @@ export default async function MePage({ searchParams }: Props) {
         card={card}
         campaigns={campaigns}
         endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))}
+        nearby={nearby}
         nextVisit={nextVisit ? <NextVisitCard appt={nextVisit} /> : null}
         extras={
           <>

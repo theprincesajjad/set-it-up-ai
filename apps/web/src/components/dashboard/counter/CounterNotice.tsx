@@ -8,7 +8,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 export function CounterNotice({ tone = "info", icon: Icon = Info, children, action, onDismiss }: { tone?: "info" | "danger"; icon?: LucideIcon; children: ReactNode; action?: ReactNode; onDismiss?: () => void }) {
   const { t } = useLocaleOrEnglish();
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className="flex min-h-12 items-center gap-3 rounded-xl bg-muted px-4 py-2 text-meta text-foreground">
+    <div role={tone === "danger" ? "alert" : "status"} className="flex min-h-12 items-center gap-3 rounded-tile bg-muted px-4 py-2 text-meta text-foreground">
       <Icon aria-hidden className={cn("size-4.5 shrink-0", tone === "danger" ? "text-destructive" : "text-muted-foreground")} strokeWidth={1.75} />
       <div className="min-w-0 flex-1">{children}</div>
       {action}

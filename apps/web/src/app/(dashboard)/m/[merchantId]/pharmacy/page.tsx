@@ -85,13 +85,13 @@ function Rules({ r, canConfirm, onConfirmed }: { r: pharmacyApi.PharmacyRulesRes
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="overflow-hidden rounded-card border border-line" aria-labelledby="rules-h">
+        <section className="overflow-hidden rounded-card bg-card shadow-card" aria-labelledby="rules-h">
           <h2 id="rules-h" className="bg-bg-subtle px-5 py-2.5 text-meta font-medium text-fg-muted">Rules we enforce for you</h2>
           <ul>
             {r.rules.map((x) => (
               <li key={x.id} className="flex items-center justify-between gap-4 border-t border-line px-5 py-3 text-[14px] text-fg" data-testid="pharmacy-rule">
                 <span>{x.text}</span>
-                <span className="shrink-0 rounded-full bg-fg px-2 py-0.5 text-[11px] font-medium text-bg">Always on</span>
+                <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">Always on</span>
               </li>
             ))}
           </ul>

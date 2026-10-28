@@ -36,16 +36,18 @@ export function VerticalTemplates() {
     <div className="flex flex-col gap-6">
       <ChipGroup label="Type of shop" className="-mx-4 px-4">
         {SHOWN.map((s) => (
-          <Chip key={s.id} selected={id === s.id} onClick={() => setId(s.id)} icon={<CategoryIcon vertical={s.v} size={18} />}>
-            {s.label}
-          </Chip>
+          <span key={s.id} data-trade={s.v} className="contents">
+            <Chip selected={id === s.id} onClick={() => setId(s.id)} icon={<CategoryIcon vertical={s.v} size={22} />} className="h-10 aria-pressed:bg-trade! aria-pressed:text-trade-foreground!">
+              {s.label}
+            </Chip>
+          </span>
         ))}
         {/* Restaurants have their own kit and plans: this chip leaves the page instead of previewing a shop template. */}
         <ChipLink href="/for-restaurants">restaurants</ChipLink>
       </ChipGroup>
-      <div className="grid items-center gap-10 rounded-sheet border border-border p-6 md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
+      <div data-trade={v} className="grid items-center gap-10 rounded-sheet bg-trade-soft p-6 text-foreground md:grid-cols-[1.1fr_1fr] md:p-10" aria-live="polite">
         <div>
-          <p className="text-meta text-muted-foreground">Default program · {id === "hardware" ? "Hardware store" : t.label}</p>
+          <p className="text-meta-strong text-trade-deep">Default program · {id === "hardware" ? "Hardware store" : t.label}</p>
           <p className="display mt-3 text-mkt-sm md:text-mkt-md">
             {t.earnType === "stamps" ? `${t.stampGoal} stamps = ${rewardInSentence(reward?.name ?? "a reward")}` : `${howYouEarn({ ...t, minSpendCents: 0 }).replace(/\.$/, "")}. ${reward?.pointsCost} ${t.terminology} = ${rewardInSentence(reward?.name ?? "a reward")}`}
           </p>

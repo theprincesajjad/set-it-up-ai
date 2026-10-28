@@ -153,7 +153,7 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
                 {program?.earnType === "stamps" && program.stampGoal ? `${Math.min(m.balance, program.stampGoal)} of ${program.stampGoal}` : formatPts(m.balance, m.terminology)} · {cameInText(m.lastVisitAt, now)}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${auto ? "Stamp" : "Open"} ${m.name ?? "member"}`} onPress={() => onPick(m)} style={({ pressed }) => [styles.pill, { backgroundColor: c.fg, opacity: pressed ? 0.85 : 1 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${auto ? "Stamp" : "Open"} ${m.name ?? "member"}`} onPress={() => onPick(m)} style={({ pressed }) => [styles.pill, { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 }]}>
               <Text style={ui(14, 600, 18)} rawColor={c.bg}>
                 {auto ? "Stamp" : "Open"}
               </Text>

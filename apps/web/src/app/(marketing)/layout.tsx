@@ -1,3 +1,4 @@
+import "./marketing.css";
 import { Awning } from "@/components/marketing/Awning";
 import { SalesChat } from "@/components/marketing/SalesChat";
 import { SiteFooter } from "@/components/site/SiteFooter";

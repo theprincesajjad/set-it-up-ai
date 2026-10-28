@@ -66,8 +66,18 @@ export function useTheme(): Theme {
  */
 export const familyForWeight = (w: number, display: boolean): string | undefined => {
   if (!display) return undefined;
-  return w >= 800 ? nativeFonts.displayHeavy : nativeFonts.displayBold;
+  return w >= 800 ? DISPLAY_HEAVY : DISPLAY_BOLD;
 };
+
+/**
+ * Main Street Warm display faces: Fraunces 800 for big numbers and titles, 600 for card titles. Fraunces has no Devanagari,
+ * Gurmukhi or Nastaliq, so `Text` drops these names in hi/ur/pa and the system script face (Noto) takes the heading at the same weight.
+ */
+export const DISPLAY_HEAVY = "Fraunces_800ExtraBold";
+export const DISPLAY_BOLD = "Fraunces_600SemiBold";
+/** The Local Loyalty wordmark only (Bricolage stays for it). */
+export const WORDMARK = nativeFonts.displayHeavy;
+export const isDisplayFamily = (f: unknown): boolean => f === DISPLAY_HEAVY || f === DISPLAY_BOLD;
 
 type RNWeight = NonNullable<TextStyle["fontWeight"]>;
 const toWeight = (w: number): RNWeight => String(w) as RNWeight;
@@ -86,7 +96,7 @@ export function typo(name: TextStyleName): TextStyle {
     ...(family ? { fontFamily: family } : { fontWeight: toWeight(s.fontWeight) }),
     ...(s.tabular ? { fontVariant: ["tabular-nums"] } : {}),
     ...(s.italic ? { fontStyle: "italic" } : {}),
-    ...(s.lowercase ? { textTransform: "lowercase" } : {}),
+    // Warm voice is sentence case ("Needs you", "Good morning"): the tokens' lowercase flag is dropped, and `Text` capitalises the first letter of display strings.
   };
 }
 

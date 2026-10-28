@@ -294,7 +294,7 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn, 
                     onClick={() => pick(d)}
                     className={cn(
                       "flex h-11 items-center justify-center rounded-input text-meta-strong tabular-nums transition-colors focus-visible:focus-ring",
-                      selected === d ? "bg-fg text-bg" : past ? "text-fg-subtle" : st === "booked" ? "bg-bg-muted text-fg-muted line-through" : st === "hold" ? "border border-dashed border-line-strong text-fg" : "border border-line text-fg hover:bg-bg-subtle",
+                      selected === d ? "bg-trade text-trade-foreground" : past ? "text-fg-subtle" : st === "booked" ? "bg-bg-muted text-fg-muted line-through" : st === "hold" ? "border border-dashed border-line-strong text-fg" : "border border-line text-fg hover:bg-bg-subtle",
                     )}
                   >
                     {number(Number(d.slice(8)))}

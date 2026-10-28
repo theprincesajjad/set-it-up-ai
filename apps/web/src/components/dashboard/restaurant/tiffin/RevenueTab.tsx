@@ -43,7 +43,7 @@ export function RevenueTab({ gate, openAwaiting }: { gate: Gate; openAwaiting?: 
               ]}
             />
             <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-              <section aria-label="Collected by method" className="rounded-card border border-line p-5">
+              <section aria-label="Collected by method" className="rounded-card bg-card shadow-card p-5">
                 <h3 className="text-headline text-fg">Collected this month by how they paid</h3>
                 {r.collectedByMethod.length ? (
                   <ul className="mt-3 flex flex-col gap-3">
@@ -64,7 +64,7 @@ export function RevenueTab({ gate, openAwaiting }: { gate: Gate; openAwaiting?: 
                   Platform fee {formatMoney(r.platformFeeCents)} (1% of payments made in the app). Payments you record by hand carry no fee.
                 </p>
               </section>
-              <section aria-label="Still to come in" className="rounded-card border border-line p-5">
+              <section aria-label="Still to come in" className="rounded-card bg-card shadow-card p-5">
                 <h3 className="text-headline text-fg">Still to come in</h3>
                 <ul className="mt-3 divide-y divide-line border-t border-line">
                   <li className="flex items-center justify-between gap-3 py-3 text-body"><span className="flex items-center gap-2"><span aria-hidden className="size-1.5 rounded-full bg-location" />Awaiting e-transfer or cash</span><span className="tabular text-meta text-fg-muted">{r.awaitingCount} · {formatMoney(r.awaitingCents)}</span></li>

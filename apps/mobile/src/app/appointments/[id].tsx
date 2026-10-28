@@ -18,7 +18,7 @@ const errorMessage = (e: unknown, t: (key: "auth.err.network" | "auth.err.server
 
 export default function Appointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const { t, date, time } = useLocale();
   const money = useMoney();
   const online = useOnline();
@@ -114,9 +114,9 @@ export default function Appointment() {
               const n = bookingLogic.timesOn(avail.data ?? null, d).length;
               const on = d === day;
               return (
-                <Pressable key={d} disabled={!avail.data || n === 0} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.fg : c.line, backgroundColor: on ? c.fg : c.bg, opacity: avail.data && n === 0 ? 0.4 : 1 }]}>
-                  <Text variant="caption" rawColor={on ? c.bg : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
-                  <Text style={disp(22, 800, 26)} rawColor={on ? c.bg : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
+                <Pressable key={d} disabled={!avail.data || n === 0} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: avail.data && n === 0 ? 0.4 : 1 }]}>
+                  <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
+                  <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
                 </Pressable>
               );
             })}

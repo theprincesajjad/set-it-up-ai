@@ -69,7 +69,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
               <li key={s.key} className={cn(n === core.length && "lg:mt-4 lg:border-t lg:border-line lg:pt-3")}>
                 {n === core.length ? <span className="mb-1 hidden px-2 text-caption font-semibold uppercase tracking-wide text-fg-muted lg:block">Later, optional</span> : null}
                 <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-9 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle")}>
-                  <span aria-hidden className={cn("inline-flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] tabular", s.done ? "bg-fg text-bg" : "border border-line-strong text-fg-muted")}>
+                  <span aria-hidden className={cn("inline-flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] tabular", s.done ? "bg-primary text-primary-foreground" : "border border-line-strong text-fg-muted")}>
                     {s.done ? <Check className="size-3" strokeWidth={2.5} /> : n + 1}
                   </span>
                   <span className="sr-only">{s.done ? "Done: " : ""}</span>

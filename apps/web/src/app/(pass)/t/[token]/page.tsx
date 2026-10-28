@@ -60,7 +60,7 @@ export default async function TicketStatusPage({ params, searchParams }: Props) 
       </PageFrame>
     );
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={data.merchant.vertical}>
       <TicketStatusView token={token} initial={data} />
     </PageFrame>
   );

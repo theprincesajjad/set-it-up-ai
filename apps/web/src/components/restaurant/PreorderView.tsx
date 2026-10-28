@@ -271,10 +271,10 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
                   setDayKey(d.date);
                   setWin("");
                 }}
-                className={cn("flex h-16 w-[82px] shrink-0 flex-col items-center justify-center rounded-card border text-center transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : off ? "border-line bg-card text-fg-subtle" : "border-line bg-card text-fg hover:bg-bg-subtle")}
+                className={cn("flex h-16 w-[82px] shrink-0 flex-col items-center justify-center rounded-card border text-center transition-colors focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : off ? "border-line bg-card text-fg-subtle" : "border-line bg-card text-fg hover:bg-bg-subtle")}
               >
                 <span className="text-body-strong">{dayLabel(d.date, { weekday: "short", day: "numeric" })}</span>
-                <span className={cn("text-caption", on ? "text-bg/80" : d.full ? "text-fg-subtle" : accentLeft(d.potsLeft) ? "text-points-text" : "text-fg-muted")}>{sub}</span>
+                <span className={cn("text-caption", on ? "text-trade-foreground/90" : d.full ? "text-fg-subtle" : accentLeft(d.potsLeft) ? "text-points-text" : "text-fg-muted")}>{sub}</span>
               </button>
             );
           })}
@@ -294,7 +294,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
                   aria-checked={w.start === win}
                   disabled={w.full}
                   onClick={() => setWin(w.start)}
-                  className={cn("flex h-11 flex-col items-center justify-center rounded-full border px-2 text-body-strong transition-colors focus-visible:focus-ring", w.start === win ? "border-fg bg-fg text-bg" : w.full ? "border-line bg-bg text-fg-subtle" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                  className={cn("flex h-11 flex-col items-center justify-center rounded-full border px-2 text-body-strong transition-colors focus-visible:focus-ring", w.start === win ? "border-trade bg-trade text-trade-foreground" : w.full ? "border-line bg-bg text-fg-subtle" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
                 >
                   <span className="leading-none">{t("rs.pre.windowLabel", { from: hourLabel(day.date, w.start), to: hourLabel(day.date, w.end) })}</span>
                   {w.full ? <span className="text-caption font-normal leading-none text-fg-subtle">{t("rs.pre.busy")}</span> : null}

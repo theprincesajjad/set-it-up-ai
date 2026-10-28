@@ -104,7 +104,7 @@ function Reviews() {
             ) : unread.data.items.length === 0 ? (
               <EmptyState title="Nothing to read right now" description="When a guest rates 1 to 3 stars, you will see it here first." />
             ) : (
-              <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
+              <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
                 {unread.data.items.map((r) => (
                   <li key={r.id} className="flex flex-col gap-2 px-4 py-4">
                     <div className="flex items-center gap-2 text-meta text-fg-muted">

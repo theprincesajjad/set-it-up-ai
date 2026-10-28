@@ -11,7 +11,7 @@ export function DropoffGrid({ slots, tz, now, loading, title = "Next 7 days" }: 
       title={title}
       action={
         <span className="hidden items-center gap-3 text-caption text-fg-muted sm:flex" aria-hidden>
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-fg" />Booked</span>
+          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-trade" />Booked</span>
           <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-bg-muted" />Free</span>
           <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-fg-subtle" />Full</span>
         </span>
@@ -42,7 +42,7 @@ export function DropoffGrid({ slots, tz, now, loading, title = "Next 7 days" }: 
                       <td key={d.date} className={cn("relative h-9 rounded-input px-1", c.state === "full" ? "bg-bg-muted text-fg-muted" : "bg-bg-subtle text-fg")}>
                         <span className="tabular">{c.state === "full" ? "Full" : `${c.booked} of ${c.capacity}`}</span>
                         <span aria-hidden className="absolute inset-x-1.5 bottom-1 h-0.5 rounded-full bg-line">
-                          <span className={cn("block h-full rounded-full", c.state === "full" ? "bg-fg-subtle" : "bg-fg")} style={{ width: `${pct}%` }} />
+                          <span className={cn("block h-full rounded-full", c.state === "full" ? "bg-fg-subtle" : "bg-trade")} style={{ width: `${pct}%` }} />
                         </span>
                       </td>
                     );

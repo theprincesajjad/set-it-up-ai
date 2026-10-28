@@ -20,10 +20,10 @@ export interface ChipProps {
   accessibilityLabel?: string;
 }
 
-/** Capsule (foundations § Shape): grey fill, black when on. Over the map it floats on white. */
+/** Capsule: white with a hairline, terracotta when on. Over the map it floats on white. */
 export function Chip({ label, selected, onPress, icon: Icon, trailingIcon: Trailing, large, float, accessibilityLabel }: ChipProps) {
-  const { c } = useTheme();
-  const fg = selected ? c.bg : c.fg;
+  const { c, r } = useTheme();
+  const fg = selected ? c.onBrand : c.fg;
   return (
     <Pressable
       accessibilityRole="button"
@@ -39,7 +39,9 @@ export function Chip({ label, selected, onPress, icon: Icon, trailingIcon: Trail
         {
           minHeight: large ? 48 : 36,
           paddingHorizontal: large ? 18 : 14,
-          backgroundColor: selected ? c.fg : float ? c.bg : c.bgSubtle,
+          backgroundColor: selected ? c.brand : float ? c.bg : r.card,
+          borderWidth: selected ? 0 : StyleSheet.hairlineWidth * 2,
+          borderColor: r.border,
           opacity: pressed ? 0.85 : 1,
           transform: pressed ? [{ scale: 0.98 }] : undefined,
         },

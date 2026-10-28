@@ -1,5 +1,5 @@
 /**
- * "Add to Apple Wallet" (iOS) / "Add to Google Wallet" (Android): one black button with the platform's
+ * "Add to Apple Wallet" (iOS) / "Add to Google Wallet" (Android): one deep-green button with the platform's
  * official wording (polish-audit M25), on My card, join success and the member shop page.
  *
  * Logic lives in the wallet team's `useAddToWallet()` (features/customer/walletPass.ts): platform, wording,
@@ -15,8 +15,8 @@ import { Check, Text, WalletPassGlyph, haptic, useToast } from "../../ui";
 import { useAddToWallet } from "./walletPass";
 import { useEffect } from "react";
 
-export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
-  const { c } = useTheme();
+export function WalletPassButton({ size = "lg", flex }: { size?: "md" | "lg"; /** In a row beside another button: share the width. */ flex?: boolean }) {
+  const { c, r } = useTheme();
   const toast = useToast();
   const { t } = useLocale();
   const { prefs, updatePrefs } = useSession();
@@ -39,7 +39,7 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
     );
   }
 
-  // Canvas Card artboard: a 54 pt black capsule, the wallet glyph, the platform's official wording.
+  // Canvas Card artboard: a 52 pt forest capsule, the wallet glyph, the platform's official wording.
   return (
     <Pressable
       accessibilityRole="button"
@@ -54,10 +54,10 @@ export function WalletPassButton({ size = "lg" }: { size?: "md" | "lg" }) {
           updatePrefs({ inWallet: { ...prefs.inWallet, [platform]: true } });
         }
       }}
-      style={({ pressed }) => [styles.btn, { height: size === "md" ? 48 : 54, backgroundColor: c.fg, opacity: pressed || busy ? 0.85 : 1 }]}
+      style={({ pressed }) => [styles.btn, { height: size === "md" ? 48 : 52, paddingHorizontal: 18, flex: flex ? 1 : undefined, backgroundColor: r.forest, opacity: pressed || busy ? 0.85 : 1 }]}
     >
-      {busy ? <ActivityIndicator color={c.bg} /> : <WalletPassGlyph size={22} color={c.bg} />}
-      <Text style={ui(16, 600, 20)} rawColor={c.bg}>
+      {busy ? <ActivityIndicator color={r.forestForeground} /> : <WalletPassGlyph size={22} color={r.forestForeground} />}
+      <Text style={ui(16, 600, 20)} rawColor={r.forestForeground} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>

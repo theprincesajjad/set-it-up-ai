@@ -48,19 +48,19 @@ export default async function ShopQueuePage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
-        <PageFrame locale={locale}>
+        <PageFrame locale={locale} trade={shop.vertical}>
           <EmptyState title={t("q.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}/queue`}>{t("rc.tryAgain")}</Button>} />
       </PageFrame>
     );
   }
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <QueueJoin shop={shop} data={data} signedIn={!!me} meName={me?.user.name ?? null} />
     </PageFrame>
   );

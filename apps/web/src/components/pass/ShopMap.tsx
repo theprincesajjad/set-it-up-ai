@@ -101,7 +101,7 @@ export function ShopMap({ items, state, notice, onDismissNotice, onFail }: { ite
           aria-label={state.coords ? t("wp.map.sorted") : t("ms.map.useLoc")}
           title={t("ms.map.useLoc")}
           onClick={state.locate}
-          className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-fg text-bg shadow-float focus-visible:focus-ring"
+          className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float focus-visible:focus-ring"
         >
           {state.locating ? <Spinner className="size-5" /> : <LocateFixed aria-hidden className="size-5" strokeWidth={1.75} />}
         </button>

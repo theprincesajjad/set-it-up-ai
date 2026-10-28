@@ -24,9 +24,9 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
             hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.seg, selected ? [{ backgroundColor: c.bg }, shadows.float.native, { shadowOpacity: 0.06, elevation: 1 }] : null]}
+            style={[styles.seg, selected ? [{ backgroundColor: c.brand }, shadows.float.native, { shadowOpacity: 0.06, elevation: 1 }] : null]}
           >
-            <Text variant="metaStrong" color={selected ? "fg" : "fgMuted"}>
+            <Text variant="metaStrong" color={selected ? "onBrand" : "fgMuted"}>
               {o.label}
             </Text>
           </Pressable>
@@ -37,6 +37,6 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: "row", borderRadius: 10, padding: 2, gap: 2 },
-  seg: { flex: 1, minHeight: 36, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  track: { flexDirection: "row", borderRadius: 999, padding: 3, gap: 2 },
+  seg: { flex: 1, minHeight: 36, borderRadius: 999, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
 });

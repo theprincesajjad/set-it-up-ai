@@ -23,7 +23,7 @@ export function ServicePicker({ services, value, onChange, label = "Services" }:
               return (
                 <li key={s.id}>
                   <button type="button" role="checkbox" aria-checked={on} onClick={() => toggle(s.id)} className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-start hover:bg-bg-subtle focus-visible:focus-ring">
-                    <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border", on ? "border-fg bg-fg text-bg" : "border-line-strong")}>
+                    <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border", on ? "border-primary bg-primary text-primary-foreground" : "border-line-strong")}>
                       {on ? <Check className="size-3.5" strokeWidth={2.5} /> : null}
                     </span>
                     <span className="min-w-0 flex-1">

@@ -145,7 +145,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
         <>
           <div role="radiogroup" aria-label={t("sv.d.day")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
             {[...days.keys()].map((d) => (
-              <button key={d} type="button" role="radio" aria-checked={d === day} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-14 min-w-[64px] shrink-0 flex-col items-center justify-center rounded-card border text-meta-strong focus-visible:focus-ring", d === day ? "border-fg bg-fg text-bg" : "border-line bg-card text-fg hover:bg-bg-subtle")}>
+              <button key={d} type="button" role="radio" aria-checked={d === day} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-14 min-w-[64px] shrink-0 flex-col items-center justify-center rounded-card border text-meta-strong focus-visible:focus-ring", d === day ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle")}>
                 {dayLabel(d)}
               </button>
             ))}
@@ -154,9 +154,9 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
             {times.map((s) => {
               const on = slot?.id === s.id;
               return (
-                <button key={s.id} type="button" role="radio" aria-checked={on} onClick={() => setSlot(s)} className={cn("flex h-14 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-card text-fg hover:bg-bg-subtle")}>
+                <button key={s.id} type="button" role="radio" aria-checked={on} onClick={() => setSlot(s)} className={cn("flex h-14 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle")}>
                   <span className="text-body-strong tabular-nums">{time(s.startsAt, tz)}</span>
-                  {s.remaining <= 2 ? <span className={cn("text-caption", on ? "text-bg/70" : "text-fg-muted")}>{t("sv.d.left", { n: number(s.remaining) })}</span> : null}
+                  {s.remaining <= 2 ? <span className={cn("text-caption", on ? "text-trade-foreground/90" : "text-fg-muted")}>{t("sv.d.left", { n: number(s.remaining) })}</span> : null}
                 </button>
               );
             })}

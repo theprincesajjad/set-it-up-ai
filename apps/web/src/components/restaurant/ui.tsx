@@ -92,7 +92,7 @@ export function ChiliDots({ level }: { level: number }) {
   return (
     <span role="img" aria-label={`${t("spice.label")}: ${t(spiceKey(level))}`} title={t(spiceKey(level))} className="inline-flex items-center gap-[3px]">
       {[1, 2, 3].map((i) => (
-        <span key={i} aria-hidden className={cn("size-[7px] rounded-full", i <= level ? "bg-fg" : "bg-bg-muted")} />
+        <span key={i} aria-hidden className={cn("size-[7px] rounded-full", i <= level ? "bg-primary" : "bg-bg-muted")} />
       ))}
     </span>
   );
@@ -100,7 +100,7 @@ export function ChiliDots({ level }: { level: number }) {
 
 export function Pill({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "accent" | "ink"; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-points-soft text-points-text" : tone === "ink" ? "bg-fg text-bg" : "bg-bg-subtle text-fg-muted", className)}>
+    <span className={cn("inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-caption font-semibold", tone === "accent" ? "bg-points-soft text-points-text" : tone === "ink" ? "bg-trade text-trade-foreground" : "bg-bg-subtle text-fg-muted", className)}>
       {children}
     </span>
   );
@@ -136,7 +136,7 @@ export function ChoiceRow<T extends string>({ label, value, onChange, options }:
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={cn("h-11 rounded-full px-5 text-body-strong transition-colors focus-visible:focus-ring", o.value === value ? "bg-fg text-bg" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
+          className={cn("h-11 rounded-full px-5 text-body-strong transition-colors focus-visible:focus-ring", o.value === value ? "bg-trade text-trade-foreground" : "border border-line bg-bg text-fg hover:bg-bg-subtle")}
         >
           {o.label}
         </button>

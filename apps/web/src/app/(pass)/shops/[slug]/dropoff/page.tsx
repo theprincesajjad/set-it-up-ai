@@ -44,14 +44,14 @@ export default async function ShopDropoffPage({ params, searchParams }: Props) {
   const m = shop.merchant;
   if (!shop.features?.dropoffScheduling)
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.merchant.vertical}>
         <EmptyState title={t("sv.d.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: m.name })}</Button>} />
       </PageFrame>
     );
   const me = await getMe();
   const loc = shop.locations[0];
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.merchant.vertical}>
       <DropoffFlow shop={{ name: m.name, slug: m.slug, logoUrl: m.logoUrl ?? null, brandColor: m.brandColor ?? null, phone: m.phone ?? loc?.phone ?? null }} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} tz={m.timezone} address={loc ? `${loc.address}, ${loc.city}` : null} />
     </PageFrame>
   );

@@ -51,7 +51,7 @@ export function MemberPicker({ label = "Customer", value, onPick, autoFocus }: {
     <div className="flex flex-col gap-2">
       <TextField label={label} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, phone or member code" autoComplete="off" autoFocus={autoFocus} />
       {q.trim().length >= 2 ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line" aria-label="Matching customers">
+        <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card" aria-label="Matching customers">
           {found.map((c) => (
             <li key={c.memberId}>
               <button type="button" className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-start hover:bg-bg-subtle" onClick={() => onPick({ memberId: c.memberId, userId: c.userId, name: c.name })}>

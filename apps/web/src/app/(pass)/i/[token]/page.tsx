@@ -37,7 +37,7 @@ export default async function InvoicePage({ params, searchParams }: Props) {
       </PageFrame>
     );
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={data.merchant.vertical}>
       <InvoiceView token={token} initial={data} />
     </PageFrame>
   );

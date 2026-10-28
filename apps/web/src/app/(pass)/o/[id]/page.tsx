@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { OrderStatus } from "@/components/pass/OrderStatus";
 import { ReservedView } from "@/components/restaurant/ReservedView";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
+import { Awning } from "@/components/ui/Awning";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { PageFrame, URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
@@ -42,13 +43,14 @@ export default async function OrderPage({ params, searchParams }: Props) {
   // A degh pre-order gets the reservation page: pickup code, share with the family, calendar, cancel rule.
   if (order.kind === "preorder") {
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={order.merchantVertical}>
         <ReservedView initial={order} />
       </PageFrame>
     );
   }
   return (
-    <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+    <LocaleScope locale={locale} trade={order.merchantVertical} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
+      <Awning size="sm" className="-mt-2 mb-2 rounded-b-md rounded-t-none" />
       <PassTopBar className="mb-2" />
       <OrderStatus initial={order} />
     </LocaleScope>

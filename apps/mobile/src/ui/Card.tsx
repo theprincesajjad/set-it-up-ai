@@ -1,7 +1,8 @@
-import { radii } from "@ll/design-tokens";
+import { radii, shadows, shadowsDarkCss } from "@ll/design-tokens";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { useTheme } from "../theme";
+import { DISPLAY_HEAVY, useTheme } from "../theme";
+import { shadow } from "./shadow";
 import { Text } from "./Text";
 
 export interface CardProps {
@@ -20,15 +21,15 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Cards on a white page get a hairline, not a shadow (foundations § Shape). Radius 16. */
+/** Main Street Warm card: white on the cream canvas, radius 22, a hairline under it and a soft lift. */
 export function Card({ children, title, action, onPress, accessibilityLabel, tone = "surface", padded = true, style }: CardProps) {
-  const { c } = useTheme();
+  const { c, r, isDark } = useTheme();
   const body = (
     <>
       {title || action ? (
         <View style={styles.header}>
           {title ? (
-            <Text variant="headline" style={{ flex: 1 }} accessibilityRole="header">
+            <Text style={{ flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 20, lineHeight: 26 }} accessibilityRole="header">
               {title}
             </Text>
           ) : (
@@ -42,13 +43,13 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ton
   );
   const base: StyleProp<ViewStyle> = [
     styles.card,
-    tone === "sunken" ? { backgroundColor: c.bgSubtle } : { backgroundColor: c.bg, borderColor: c.line, borderWidth: StyleSheet.hairlineWidth * 2 },
+    tone === "sunken" ? { backgroundColor: c.bgSubtle } : [{ backgroundColor: r.card }, shadow(isDark ? shadowsDarkCss.card! : shadows.card.css, shadows.card.native)],
     { padding: padded ? 16 : 0 },
     style,
   ];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [base, pressed ? { backgroundColor: c.bgSubtle } : null]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [base, pressed ? { opacity: 0.85 } : null]}>
         {body}
       </Pressable>
     );
@@ -57,6 +58,6 @@ export function Card({ children, title, action, onPress, accessibilityLabel, ton
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radii.card, overflow: "hidden" },
+  card: { borderRadius: radii.card },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 },
 });

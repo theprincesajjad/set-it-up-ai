@@ -382,7 +382,7 @@ function NextSteps({ event, onChange }: { event: Ev; onChange: (e: Ev) => void }
       {event.dateClashes ? <Banner tone="warning" title="Another booking that day">{event.dateClashes === 1 ? "A confirmed event or hall booking" : `${event.dateClashes} confirmed events or hall bookings`} is on {dayLabel(event.eventDate)}. You can still go ahead.</Banner> : null}
       <PaymentsCard event={event} payee={payee.data ?? null} onRecord={setRecording} onVoid={role === "owner" ? setVoiding : undefined} />
       {event.reminder?.kind ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-card shadow-card px-4 py-3">
           <div className="min-w-0">
             <p className="text-body-strong text-fg">{event.reminder.kind === "deposit" ? "Waiting on the deposit" : "Balance still to pay"}: {formatMoney(event.reminder.amountCents)}</p>
             <p className="text-meta text-fg-muted">{event.reminder.lastRemindedAt ? `Last reminder ${formatDateTime(event.reminder.lastRemindedAt)}. ` : "No reminder sent yet. "}We also remind them on our own.</p>
@@ -542,7 +542,7 @@ function PaymentsCard({ event, payee, onRecord, onVoid }: { event: Ev; payee: { 
   const balanceDue = (st === "confirmed" || st === "completed") && event.balanceCents > 0;
   const told = payee?.etransferEnabled && payee.etransferEmail && event.referenceCode && depositDue;
   return (
-    <section aria-label="Payments" className="rounded-card border border-line p-5">
+    <section aria-label="Payments" className="rounded-card bg-card shadow-card p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-headline text-fg">Payments</h2>
         {depositDue || balanceDue ? <Button size="sm" variant="secondary" onClick={() => onRecord(depositDue ? "deposit" : "balance")}>Record payment</Button> : null}

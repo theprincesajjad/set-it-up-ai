@@ -3340,4 +3340,11 @@ export const hi: Messages = {
   "counter.cd.exit": "दरवाज़े के चेक-इन से बाहर निकलें",
   "pet.food.noConsentLink": "मेरी टेक्स्ट सेटिंग खोलें",
   "pet.food.needGrams": "इसे चालू करने के लिए नीचे लिखें कि आप रोज़ कितने ग्राम खिलाते हैं।",
+  "pass.hi": "नमस्ते",
+  "pass.showCode": "मेरा कोड दिखाएँ",
+  "pass.addWallet": "वॉलेट में जोड़ें",
+  "pass.nearby.title": "आपकी गली में पास में",
+  "pass.nearby.deal": "ऑफ़र",
+  "pass.nearby.perk": "फ़ायदा",
+  "pass.nearby.new": "नया",
 };

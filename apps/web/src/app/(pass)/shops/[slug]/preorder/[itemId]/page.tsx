@@ -52,7 +52,7 @@ export default async function PreorderPage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404)) notFound();
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
@@ -74,20 +74,20 @@ export default async function PreorderPage({ params, searchParams }: Props) {
     if (isApiError(e) && (e.status === 402 || e.status === 404)) unavailable = true;
     else
       return (
-        <PageFrame locale={locale}>
+        <PageFrame locale={locale} trade={shop.vertical}>
           <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
         </PageFrame>
       );
   }
   if (unavailable || !availability)
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <EmptyState title={t("rs.pre.unavailable")} description={t(shop.vertical === "grocery" ? "gr.pre.unavailableBody" : "rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const [restaurant, me] = await Promise.all([api.restaurant(slug).catch(() => null), getMe()]);
   return (
-    <PageFrame locale={locale} className="flex flex-col gap-6 pb-10">
+    <PageFrame locale={locale} trade={shop.vertical} className="flex flex-col gap-6 pb-10">
       <PreorderView shop={shop} menu={menu} item={item} availability={availability} restaurant={restaurant} signedIn={!!me} userName={me?.user.name ?? ""} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

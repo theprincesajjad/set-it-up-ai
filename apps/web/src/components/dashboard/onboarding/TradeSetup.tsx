@@ -20,7 +20,7 @@ function Row({ done, title, children }: { done?: boolean; title: string; childre
   return (
     <li className="flex flex-col gap-2 border-t border-line py-4 first:border-t-0 first:pt-0">
       <p className="flex items-center gap-2 text-body-strong text-fg">
-        <span aria-hidden className={done ? "inline-flex size-[18px] items-center justify-center rounded-full bg-fg text-bg" : "inline-flex size-[18px] rounded-full border border-line-strong"}>
+        <span aria-hidden className={done ? "inline-flex size-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground" : "inline-flex size-[18px] rounded-full border border-line-strong"}>
           {done ? <Check className="size-3" strokeWidth={2.5} /> : null}
         </span>
         {title}

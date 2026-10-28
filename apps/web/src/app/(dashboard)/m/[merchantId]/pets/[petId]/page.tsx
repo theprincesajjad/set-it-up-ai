@@ -67,14 +67,14 @@ function Pet() {
       {p.siblings.length > 1 ? (
         <nav aria-label="This owner's pets" className="flex flex-wrap gap-2">
           {p.siblings.map((s) => (
-            <Link key={s.id} href={`${base}/pets/${s.id}`} aria-current={s.id === p.id ? "page" : undefined} className={s.id === p.id ? "inline-flex h-9 items-center rounded-full border border-fg bg-fg px-3.5 text-meta-strong text-bg" : "inline-flex h-9 items-center rounded-full border border-line px-3.5 text-meta-strong text-fg hover:bg-bg-subtle"}>
+            <Link key={s.id} href={`${base}/pets/${s.id}`} aria-current={s.id === p.id ? "page" : undefined} className={s.id === p.id ? "inline-flex h-9 items-center rounded-full border border-primary bg-primary px-3.5 text-meta-strong text-primary-foreground" : "inline-flex h-9 items-center rounded-full border border-line px-3.5 text-meta-strong text-fg hover:bg-bg-subtle"}>
               {s.name}{s.species === "cat" ? " (cat)" : ""}
             </Link>
           ))}
         </nav>
       ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
-        <section aria-label="Grooming" className="flex flex-col gap-5 rounded-card border border-line px-5 py-5">
+        <section aria-label="Grooming" className="flex flex-col gap-5 rounded-card bg-card shadow-card px-5 py-5">
           <h2 className="text-body-strong text-fg">Grooming</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
@@ -115,7 +115,7 @@ function Pet() {
           </div>
         </section>
         <div className="flex flex-col gap-5">
-          <section aria-label="Vaccine proof" className="overflow-hidden rounded-card border border-line">
+          <section aria-label="Vaccine proof" className="overflow-hidden rounded-card bg-card shadow-card">
             <div className="border-b border-line px-5 py-4">
               <h2 className="text-body-strong text-fg">Vaccine proof</h2>
               <p className="text-meta text-fg-muted">Rabies is the law (Ontario Reg. 567). The rest is your policy.</p>
@@ -144,7 +144,7 @@ function Pet() {
             <p className="text-meta-strong text-fg">What we do not keep</p>
             <p className="mt-1 text-meta text-fg-muted">No vet records, diagnoses, medication lists, microchip numbers, door codes or house keys. A photo of the certificate and its date are enough.</p>
           </div>
-          <section aria-label="Temperament check" className="flex items-center justify-between gap-4 rounded-card border border-line px-5 py-4">
+          <section aria-label="Temperament check" className="flex items-center justify-between gap-4 rounded-card bg-card shadow-card px-5 py-4">
             <div>
               <p className="text-body-strong text-fg">Daycare temperament check</p>
               <p className="text-meta text-fg-muted">{shop.assessment === "passed" ? `Passed ${shop.assessedAt ? shortDate(shop.assessedAt.slice(0, 10)) : ""}` : shop.assessment === "declined" ? "Not suitable for group play" : "Not tested yet"}</p>

@@ -103,7 +103,7 @@ export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSave
           <p className="text-meta text-fg-muted">A special date replaces the weekday cap for those days only. The notice is the last time guests can order, in hours before pickup. Dates follow moon sighting: confirm Eid locally before you announce it.</p>
           {overrides.length === 0 ? <p className="text-meta text-fg-muted">No special dates yet.</p> : null}
           {overrides.map((o, i) => (
-            <div key={i} className="grid gap-3 rounded-card border border-line p-4 sm:grid-cols-2">
+            <div key={i} className="grid gap-3 rounded-card bg-card shadow-card p-4 sm:grid-cols-2">
               <TextField label="Name" value={o.label} onChange={(e) => set(i, { label: e.target.value })} disabled={!canEdit} placeholder="Eid al-Fitr" maxLength={60} />
               <TextField label="Pots per day" inputMode="numeric" value={o.cap} onChange={(e) => set(i, { cap: digits(e.target.value) })} disabled={!canEdit} />
               <TextField label="From" type="date" value={o.from} onChange={(e) => set(i, { from: e.target.value, to: o.to && o.to >= e.target.value ? o.to : e.target.value })} disabled={!canEdit} />

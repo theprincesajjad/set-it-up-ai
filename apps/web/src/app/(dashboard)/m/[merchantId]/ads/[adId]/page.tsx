@@ -1,5 +1,5 @@
 "use client";
-import { BackLink, PageHeader, Panel, StatTile } from "@/components/dashboard/kit";
+import { BackLink, PageHeader, Panel, StatGrid, StatTile } from "@/components/dashboard/kit";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BarChart } from "@/components/dashboard/Charts";
@@ -55,12 +55,12 @@ export default function AdPage() {
               ) : (
                 <Badge tone={a.paymentStatus === "paid" ? "success" : "neutral"}>Payment: {a.paymentStatus}</Badge>
               )}
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
+              <StatGrid>
                 <StatTile label="Views" value={report.data ? formatNumber(report.data.impressions) : null} loading={report.loading} />
                 <StatTile label="Taps" value={report.data ? formatNumber(report.data.clicks) : null} loading={report.loading} caption={report.data ? `${(report.data.ctr * 100).toFixed(1)}% of views` : undefined} />
                 <StatTile label="Visits" value={report.data ? formatNumber(report.data.attributedVisits) : null} loading={report.loading} caption="Within 7 days of seeing it" />
                 <StatTile label="Cost per visit" value={report.data?.costPerVisitCents != null ? formatMoney(report.data.costPerVisitCents) : "–"} loading={report.loading} />
-              </div>
+              </StatGrid>
               {report.data ? <BarChart title="Daily views" valueLabel="Views" data={report.data.daily.map((x) => ({ label: x.date.slice(5), value: x.impressions }))} /> : null}
             </>
           )}

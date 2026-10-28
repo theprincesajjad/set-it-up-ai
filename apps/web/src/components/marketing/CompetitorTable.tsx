@@ -21,7 +21,7 @@ export function CompetitorTable() {
       {/* Phones: one block per row, nothing wraps mid-price. Wider: the table. */}
       <div className="flex flex-col gap-3 sm:hidden">
         {c.rows.map((label, i) => (
-          <dl key={label} className="rounded-card border border-border bg-background px-5 py-4">
+          <dl key={label} className="rounded-card bg-card px-5 py-4 shadow-card">
             <dt className="text-meta text-muted-foreground">{label}</dt>
             <dd className="display mt-1 text-title text-foreground">
               {BRAND.name}: {c.us[i]}
@@ -34,12 +34,12 @@ export function CompetitorTable() {
           </dl>
         ))}
       </div>
-      <div className="hidden overflow-hidden rounded-sheet border border-border bg-background sm:block">
+      <div className="hidden overflow-hidden rounded-sheet bg-card shadow-card sm:block">
         <table className="w-full text-body">
           <caption className="sr-only">
             {BRAND.name} compared with {COMPETITORS.map((x) => x.name).join(" and ")}, as of {formatAsOf(oldest)}
           </caption>
-          <thead className="bg-muted text-meta-strong text-muted-foreground">
+          <thead className="bg-tile-mint text-meta-strong text-tile-mint-foreground">
             <tr>
               <th scope="col" className="px-5 py-4 text-start md:px-6">
                 <span className="sr-only">Item</span>
@@ -60,7 +60,7 @@ export function CompetitorTable() {
                 <th scope="row" className="px-5 py-4 text-start font-normal text-muted-foreground md:px-6">
                   {label}
                 </th>
-                <td className="px-5 py-4 text-body-strong text-foreground md:px-6">{c.us[i]}</td>
+                <td className="bg-tile-mint/50 px-5 py-4 text-body-strong text-tile-mint-foreground md:px-6">{c.us[i]}</td>
                 {COMPETITORS.map((x) => (
                   <td key={x.id} className="px-5 py-4 text-muted-foreground md:px-6">
                     {get(x, i)}

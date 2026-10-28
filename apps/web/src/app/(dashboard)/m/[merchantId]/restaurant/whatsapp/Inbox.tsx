@@ -27,7 +27,7 @@ export function Inbox({ sessions, connected, onSetup, onTemplates }: { sessions:
   const [mobile, setMobile] = useState<"list" | "thread">("list");
   const current = items.find((s) => s.id === sel) ?? items[0] ?? null;
   return (
-    <div className="overflow-hidden rounded-card border border-line lg:grid lg:h-[calc(100dvh-300px)] lg:min-h-[560px] lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="overflow-hidden rounded-card bg-card shadow-card lg:grid lg:h-[calc(100dvh-300px)] lg:min-h-[560px] lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className={cn("min-h-0 flex-col overflow-y-auto border-line lg:flex lg:border-e", mobile === "thread" ? "hidden lg:flex" : "flex")}>
         {sessions.error && !sessions.data ? <div className="p-4"><ErrorLine message={sessions.error} onRetry={() => void sessions.reload()} /></div> : null}
         {sessions.loading && !sessions.data ? <div className="p-4"><SkeletonRows rows={5} /></div> : null}
@@ -116,13 +116,13 @@ function Thread({ session, onBack, onChanged, onTemplates }: { session: whatsapp
             <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[16px] font-semibold text-fg">{name}{guest.data?.name ? ` · ${formatPhone(session.phone)}` : ""}</h2>
+            <h2 className="truncate text-headline text-fg">{name}{guest.data?.name ? ` · ${formatPhone(session.phone)}` : ""}</h2>
             <p className="truncate text-meta text-fg-muted">
               {languageLabel(session.language)}
               {session.optedIn ? " · opted in to WhatsApp" : " · not opted in"}
             </p>
           </div>
-          <span className={cn("hidden shrink-0 rounded-full px-2.5 py-1 text-caption sm:inline", d?.takenOver ? "bg-fg text-bg" : "bg-bg-muted text-fg-muted")}>{d?.takenOver ? "You have this chat" : "Assistant on"}</span>
+          <span className={cn("hidden shrink-0 rounded-full px-2.5 py-1 text-caption sm:inline", d?.takenOver ? "bg-primary text-primary-foreground" : "bg-bg-muted text-fg-muted")}>{d?.takenOver ? "You have this chat" : "Assistant on"}</span>
           <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void toggleTakeover()}>{d?.takenOver ? "Hand back" : "Take over"}</Button>
           <Button size="sm" variant="ghost" className="xl:hidden" onClick={() => setShowGuest((v) => !v)} aria-expanded={showGuest}>Guest</Button>
         </header>
@@ -180,7 +180,7 @@ function Bubble({ m }: { m: restaurantApi.ChatMessageDto }) {
   if (m.kind === "order_summary") return <SummaryCard body={m.body} />;
   const out = m.direction === "out";
   return (
-    <p dir="auto" className={cn("max-w-[78%] whitespace-pre-wrap rounded-[18px] px-4 py-2.5 text-body", out ? "bg-fg text-bg" : "bg-bg-muted text-fg")}>
+    <p dir="auto" className={cn("max-w-[78%] whitespace-pre-wrap rounded-[18px] px-4 py-2.5 text-body", out ? "bg-primary text-primary-foreground" : "bg-bg-muted text-fg")}>
       {m.kind === "template" ? <span className="mb-0.5 block text-caption uppercase tracking-wide opacity-70">Template</span> : null}
       {m.body}
     </p>
@@ -208,7 +208,7 @@ function SummaryCard({ body }: { body: string }) {
       </ul>
       {s.payUrl ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <a href={s.payUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 flex-1 items-center justify-center rounded-input bg-fg px-4 text-meta-strong text-bg hover:bg-brand-hover focus-visible:focus-ring">Open pay link</a>
+          <a href={s.payUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 flex-1 items-center justify-center rounded-input bg-primary px-4 text-meta-strong text-primary-foreground hover:bg-brand-hover focus-visible:focus-ring">Open pay link</a>
           <CopyButton text={s.payUrl} label="Copy link" />
         </div>
       ) : (

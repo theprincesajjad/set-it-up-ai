@@ -91,7 +91,7 @@ function StatusChip({ status }: { status: Item["status"] }) {
   const on = status === "cooking";
   return (
     <View style={[styles.chip, { backgroundColor: on ? c.fg : c.bg, borderColor: status === "queued" ? c.lineStrong : on ? c.fg : c.line }]}>
-      <Text variant="metaStrong" rawColor={on ? c.bg : c.fg}>
+      <Text variant="metaStrong" rawColor={on ? c.onBrand : c.fg}>
         {label}
       </Text>
     </View>

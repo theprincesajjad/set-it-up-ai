@@ -87,7 +87,7 @@ export function GroceryExtras({ grocery, cents, notCounted, setNotCounted, bulk,
                     type="button"
                     aria-pressed={on}
                     onClick={() => setBulk(on ? bulk.filter((x) => x !== i.id) : [...bulk, i.id])}
-                    className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                    className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary font-medium text-primary-foreground" : "border-line bg-card text-fg hover:bg-hover")}
                   >
                     {i.name}
                   </button>

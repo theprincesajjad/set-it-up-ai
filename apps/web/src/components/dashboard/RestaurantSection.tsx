@@ -60,7 +60,7 @@ export function RestaurantSection({ children }: { children: ReactNode }) {
           {(["catering", "banquet"] as const).map((slug) => {
             const on = pathname.startsWith(`${base}/restaurant/${slug}`);
             return (
-              <Link key={slug} href={`${base}/restaurant/${slug}`} aria-current={on ? "page" : undefined} className={cn("inline-flex h-8 items-center rounded-full border px-3.5 text-meta-strong focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+              <Link key={slug} href={`${base}/restaurant/${slug}`} aria-current={on ? "page" : undefined} className={cn("inline-flex h-8 items-center rounded-full border px-3.5 text-meta-strong focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
                 {slug === "catering" ? "Catering" : "Banquet halls"}
               </Link>
             );

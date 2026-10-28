@@ -65,7 +65,7 @@ export default async function RestockPage({ params, searchParams }: Props) {
     );
   const me = await getMe();
   return (
-    <PageFrame locale={locale} className="flex flex-col gap-6 pb-10">
+    <PageFrame locale={locale} trade={shop.vertical} className="flex flex-col gap-6 pb-10">
       <RestockView shop={shop} menu={menu} item={item} pantry={pantry.item} windows={restockWindows(menu.locations[0]?.hours, new Date())} signedIn={!!me} userName={me?.user.name ?? ""} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

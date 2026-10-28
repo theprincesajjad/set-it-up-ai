@@ -261,7 +261,7 @@ function StreetDay() {
               {/* Read aloud at a shop counter, often outdoors: the same size as the canvas pitch frame. */}
               <p className="mt-1 text-[17px] leading-snug text-fg">{s.say}</p>
               {s.key === "proof" && proof ? (
-                <dl className="mt-2 grid grid-cols-3 divide-x divide-line rounded-card border border-line">
+                <dl className="mt-2 grid grid-cols-3 divide-x divide-line rounded-card bg-card shadow-card">
                   {proofHighlights(proof).map((h) => (
                     <div key={h.label} className="px-3 py-2">
                       <dd className="text-[20px] font-semibold text-fg tabular">{h.value}</dd>

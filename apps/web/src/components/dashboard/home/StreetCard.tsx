@@ -20,7 +20,7 @@ export function StreetCard() {
   if (!s || (s.onMap && s.open)) return null;
   const owner = role === "owner";
   return (
-    <section aria-label="Your place on the map" className="flex flex-col gap-3 rounded-card border border-line p-5">
+    <section aria-label="Your place on the map" className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
       <div className="flex items-start gap-3">
         <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" strokeWidth={1.75} />
         <div className="min-w-0">

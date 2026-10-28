@@ -39,7 +39,7 @@ export default async function QuotePage({ params, searchParams }: Props) {
       </PageFrame>
     );
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={data.merchant.vertical}>
       <QuoteView token={token} initial={data} preview={preview} />
     </PageFrame>
   );

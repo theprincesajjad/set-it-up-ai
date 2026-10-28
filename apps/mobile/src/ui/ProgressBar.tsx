@@ -43,7 +43,7 @@ export function ProgressBar({ value, max, label, valueLabel, tone = "brand", val
         </View>
       ) : null}
       <View style={[styles.track, { height, borderRadius: height / 2, backgroundColor: c.bgMuted }]}>
-        <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: tone === "accent" ? c.accent : c.fg }} />
+        <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: tone === "accent" ? c.accent : c.brand }} />
       </View>
     </View>
   );

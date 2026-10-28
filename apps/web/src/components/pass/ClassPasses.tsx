@@ -154,7 +154,7 @@ export function ClassPasses() {
       <Modal open={ask?.kind === "freeze"} onClose={() => setAsk(null)} title={t("cl.ui.m.freezeDays")} actions={<><Button variant="secondary" onClick={() => setAsk(null)}>{t("cl.ui.m.back")}</Button><Button loading={busy} onClick={() => ask && run(() => browserApi.me.freezeMembership(ask.m.id, Number(days)), t("cl.ui.m.freezeDone"))}>{t("cl.ui.m.freezeGo")}</Button></>}>
         <div className="flex gap-2" role="group" aria-label={t("cl.ui.m.freezeDays")}>
           {["7", "14", "30"].map((d) => (
-            <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={`min-h-11 flex-1 rounded-input border px-3 text-body ${days === d ? "border-fg bg-fg text-bg" : "border-line text-fg"}`}>{t("cl.ui.m.nDays", { n: d })}</button>
+            <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={`min-h-11 flex-1 rounded-input border px-3 text-body ${days === d ? "border-trade bg-trade text-trade-foreground" : "border-line text-fg"}`}>{t("cl.ui.m.nDays", { n: d })}</button>
           ))}
         </div>
       </Modal>

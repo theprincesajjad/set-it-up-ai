@@ -43,7 +43,7 @@ export function TemplateCard({ festival, year, startDate, template }: { festival
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-card border border-line p-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-card bg-card shadow-card p-4">
       <div className="min-w-0">
         <p className="text-body-strong text-fg">{template.label}</p>
         {channel === "email" ? <p className="mt-0.5 text-meta text-fg-muted">Subject: {previewText(template.subject, shop, startDate)}</p> : null}

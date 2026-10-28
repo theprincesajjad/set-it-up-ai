@@ -106,7 +106,7 @@ function TireSeason() {
                   {r.swaps.length === 0 ? (
                     <Empty>No swaps booked in the next 14 days.</Empty>
                   ) : (
-                    <ul className="divide-y divide-line rounded-card border border-line">
+                    <ul className="divide-y divide-line rounded-card bg-card shadow-card">
                       {r.swaps.map((s) => (
                         <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                           <div className="min-w-0">

@@ -1,5 +1,5 @@
 "use client";
-import { BackLink, PageHeader, StatTile, StatusDot } from "@/components/dashboard/kit";
+import { BackLink, PageHeader, StatGrid, StatTile, StatusDot } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { useParams } from "next/navigation";
 import { merchantApi } from "@ll/shared";
@@ -50,12 +50,12 @@ function PromoPage() {
                 ))}
               />
               {p.status !== "draft" ? (
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
+                <StatGrid>
                   <StatTile label="Views" value={formatNumber(p.viewCount)} />
                   <StatTile label="Redemptions" value={formatNumber(p.claimCount)} />
                   <StatTile label="Visits during promo" value={r ? formatNumber(r.attributedVisits) : null} loading={results.loading} />
                   <StatTile label="Lift vs before" value={r?.liftPct != null ? `${r.liftPct > 0 ? "+" : ""}${Math.round(r.liftPct)}%` : "–"} caption={r?.liftPct == null ? "Needs 14 days of history" : "Avg daily visits vs the 14 days before"} loading={results.loading} />
-                </div>
+                </StatGrid>
               ) : null}
               <PromoEditor key={p.id + p.status} initial={draftFromPromo(p)} promo={p} />
               <ConfirmDialog

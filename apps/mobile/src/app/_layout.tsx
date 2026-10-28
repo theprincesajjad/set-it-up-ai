@@ -1,5 +1,7 @@
 // Deep imports: only the two display weights get bundled (the package index pulls in every weight).
-// Body text is the system font (SF Pro / Roboto); Bricolage is for titles, numbers and map labels.
+// Body text is the system font (SF Pro / Roboto); Fraunces (600, 800) is for titles, card titles and big numbers, Bricolage for the wordmark.
+import { Fraunces_600SemiBold } from "@expo-google-fonts/fraunces/600SemiBold";
+import { Fraunces_800ExtraBold } from "@expo-google-fonts/fraunces/800ExtraBold";
 import { BricolageGrotesque_700Bold } from "@expo-google-fonts/bricolage-grotesque/700Bold";
 import { BricolageGrotesque_800ExtraBold } from "@expo-google-fonts/bricolage-grotesque/800ExtraBold";
 import { useFonts } from "expo-font";
@@ -35,7 +37,7 @@ function NotificationTaps() {
 
 export default function RootLayout() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  const [fontsLoaded, fontError] = useFonts({ BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
+  const [fontsLoaded, fontError] = useFonts({ Fraunces_600SemiBold, Fraunces_800ExtraBold, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
   // Never block first paint on fonts for long (system font fallback).
   const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {

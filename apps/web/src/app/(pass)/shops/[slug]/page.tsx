@@ -29,6 +29,7 @@ import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRo
 import { PetShopBlock } from "@/components/pass/PetShopBlock";
 import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { howYouEarn } from "@/lib/program";
+import { Awning } from "@/components/ui/Awning";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -159,6 +160,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
 
   return (
     <LocaleScope locale={locale} trade={shop.merchant.vertical} className="flex flex-col gap-6 pt-2">
+      <Awning size="sm" className="-mt-2 rounded-b-md rounded-t-none" />
       <PassTopBar className="self-stretch" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ShopTile

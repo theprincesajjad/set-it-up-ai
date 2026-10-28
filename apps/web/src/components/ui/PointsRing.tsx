@@ -35,7 +35,7 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
     <div className={cn("flex flex-col items-center gap-2", className)}>
       <div role="img" aria-label={a11y} className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-hover" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-trade-soft" />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -45,7 +45,7 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - (ready ? 1 : pct))}
-            className={cn("transition-[stroke-dashoffset] duration-[600ms] ease-out motion-reduce:transition-none", ready ? "stroke-points" : "stroke-foreground")}
+            className={cn("transition-[stroke-dashoffset] duration-[600ms] ease-out motion-reduce:transition-none", ready ? "stroke-points" : "stroke-trade")}
           />
         </svg>
         <div aria-hidden className="absolute inset-0 flex flex-col items-center justify-center">

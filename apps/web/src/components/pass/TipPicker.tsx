@@ -18,7 +18,7 @@ export function TipPicker({ presets, baseCents, staffName, value, onChange }: { 
   const customCents = Math.round((Number.parseFloat(custom) || 0) * 100);
   const over = customCents > baseCents;
   const base = "flex h-14 flex-col items-center justify-center rounded-card border text-center transition-colors focus-visible:focus-ring";
-  const on = "border-fg bg-fg text-bg";
+  const on = "border-trade bg-trade text-trade-foreground";
   const off = "border-line bg-bg text-fg hover:bg-bg-subtle";
   return (
     <section aria-label={staffName ? t("sv.i.tipTitle", { name: staffName }) : t("sv.i.tipTitleShop")} className="flex flex-col gap-3">
@@ -32,7 +32,7 @@ export function TipPicker({ presets, baseCents, staffName, value, onChange }: { 
           return (
             <button key={c.percent} type="button" role="radio" aria-checked={sel} onClick={() => onChange({ kind: "preset", percent: c.percent, cents: c.cents })} className={cn(base, sel ? on : off)}>
               <span className="text-body-strong tabular-nums" dir="ltr">{c.percent}%</span>
-              <span className={cn("text-caption tabular-nums", sel ? "text-bg/70" : "text-fg-muted")}>{money(c.cents)}</span>
+              <span className={cn("text-caption tabular-nums", sel ? "text-trade-foreground/90" : "text-fg-muted")}>{money(c.cents)}</span>
             </button>
           );
         })}

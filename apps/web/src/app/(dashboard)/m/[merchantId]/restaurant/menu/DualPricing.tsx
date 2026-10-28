@@ -97,7 +97,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-line rounded-card border border-line rtl:divide-x-reverse" aria-label="Price preview">
+        <div className="grid grid-cols-2 divide-x divide-line rounded-card bg-card shadow-card rtl:divide-x-reverse" aria-label="Price preview">
           <div className="px-4 py-3">
             <p className="text-meta text-fg-muted">Card</p>
             <p className="mt-1 text-title tabular text-fg">{formatMoney(card)}</p>

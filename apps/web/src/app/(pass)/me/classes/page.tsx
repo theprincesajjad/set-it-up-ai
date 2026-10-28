@@ -21,7 +21,7 @@ export default async function MyClassesPage({ searchParams }: Props) {
   const t = translator(locale);
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade="fitness">
       <Heading>{t("cl.ui.passes.title")}</Heading>
       {me ? <ClassPasses /> : <PhoneSignIn heading="h2" title={t("cl.ui.passes.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
     </PageFrame>

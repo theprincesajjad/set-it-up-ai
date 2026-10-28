@@ -55,7 +55,7 @@ export default function SalesAgentPage() {
       {view === "quality" ? (
         <Quality />
       ) : (
-        <div className="overflow-hidden rounded-card border border-line lg:grid lg:h-[calc(100dvh-260px)] lg:min-h-[560px] lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-card bg-card shadow-card lg:grid lg:h-[calc(100dvh-260px)] lg:min-h-[560px] lg:grid-cols-[340px_minmax(0,1fr)]">
           <div className={cn("min-h-0 flex-col overflow-y-auto border-line bg-bg lg:flex lg:border-e", mobile === "thread" ? "hidden lg:flex" : "flex")}>
             {list.error && !list.data ? <div className="p-4"><ErrorLine message={list.error} onRetry={() => void list.reload()} /></div> : null}
             {list.loading && !list.data ? <div className="p-4"><SkeletonRows rows={5} /></div> : null}
@@ -140,7 +140,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
             <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[16px] font-semibold text-fg">{c.contactName ?? c.contact ?? "Website visitor"}</h2>
+            <h2 className="truncate text-headline text-fg">{c.contactName ?? c.contact ?? "Website visitor"}</h2>
             <p className="truncate text-meta text-fg-muted">
               {c.channel === "whatsapp" ? "WhatsApp" : `Web${c.page ? ` · ${c.page}` : ""}`} · {languageName(c.language)}
               {c.channel === "whatsapp" ? (c.windowOpen ? ` · window open until ${timeOf(c.windowClosesAt!)}` : " · 24-hour window closed") : ""}
@@ -162,7 +162,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
                   <p className="mx-auto w-fit max-w-full rounded-full border border-line bg-bg px-3 py-1 text-center text-caption text-fg-muted">{m.text.startsWith("Blocked draft") ? "Blocked draft (never sent): " + m.text.slice(15, 200) : m.text} · {timeOf(m.at)}</p>
                 ) : (
                   <div className={cn("flex flex-col gap-1", m.role === "user" ? "items-end" : "items-start")}>
-                    <p dir="auto" className={cn("max-w-[78%] whitespace-pre-wrap rounded-[18px] px-4 py-2.5 text-body", m.role === "user" ? "bg-fg text-bg" : m.role === "human" ? "bg-location/10 text-fg" : "border border-line bg-bg text-fg")}>{m.text}</p>
+                    <p dir="auto" className={cn("max-w-[78%] whitespace-pre-wrap rounded-[18px] px-4 py-2.5 text-body", m.role === "user" ? "bg-primary text-primary-foreground" : m.role === "human" ? "bg-location/10 text-fg" : "border border-line bg-bg text-fg")}>{m.text}</p>
                     {m.toolCalls.length ? (
                       <ul className="flex max-w-[78%] flex-wrap gap-1.5" aria-label="Tools the assistant used">
                         {m.toolCalls.map((t, i) => (

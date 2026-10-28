@@ -10,7 +10,7 @@ interface DetectorLike {
 type DetectorCtor = new (opts?: { formats?: string[] }) => DetectorLike;
 
 /**
- * The black viewfinder: "Hold the card up". Opens the camera with BarcodeDetector when the browser supports it and
+ * The viewfinder: "Hold the card up". Opens the camera with BarcodeDetector when the browser supports it and
  * camera permission is already granted (or the owner taps "Use the camera"); a USB or Bluetooth scanner works with no
  * camera at all because CounterApp listens for scanner keystrokes ending in Enter.
  */
@@ -99,17 +99,17 @@ export function ScanPanel({ onScan, hint, ready, cameraRequest = 0 }: { onScan: 
       aria-label={t("counter.scan.panel")}
       data-scan-ready={ready ? "true" : "false"}
       aria-busy={!ready}
-      className={cn("relative flex items-center gap-4 overflow-hidden rounded-xl bg-primary px-5 py-4 text-primary-foreground", state === "on" ? "min-h-48 items-end" : "min-h-24")}
+      className={cn("relative flex items-center gap-4 overflow-hidden rounded-tile px-5 py-4", state === "on" ? "min-h-48 items-end bg-fg text-bg" : "min-h-24 bg-trade-soft text-trade-deep")}
     >
       {state === "on" ? <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-70" aria-hidden /> : <video ref={video} className="hidden" aria-hidden />}
-      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-primary-foreground/80">
+      <span aria-hidden className="relative flex size-14 shrink-0 items-center justify-center rounded-[14px] border-2 border-current">
         <ScanLine className="size-6" strokeWidth={1.75} />
       </span>
       <div className="relative min-w-0">
         <p className="font-display text-h3 font-bold">{t("counter.scan.hold")}</p>
-        <p className="text-meta text-primary-foreground/70">{hint}</p>
+        <p className="text-meta opacity-80">{hint}</p>
         {state === "off" || state === "denied" ? (
-          <button type="button" onClick={() => void start()} className="min-h-11 text-meta-strong text-primary-foreground/80 underline underline-offset-4 hover:text-primary-foreground focus-visible:focus-ring">
+          <button type="button" onClick={() => void start()} className="min-h-11 text-meta-strong underline underline-offset-4 hover:opacity-80 focus-visible:focus-ring">
             {state === "denied" ? t("counter.scan.blocked") : t("counter.scan.useCamera")}
           </button>
         ) : null}

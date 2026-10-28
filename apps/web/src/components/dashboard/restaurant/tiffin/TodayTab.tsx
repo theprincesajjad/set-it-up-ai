@@ -167,7 +167,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
         </div>
       </div>
       <aside className="order-first flex min-w-0 flex-col gap-4 print:hidden lg:order-none" aria-label="Needs you and driver run">
-        <section className="rounded-card border border-line p-5">
+        <section className="rounded-card bg-card shadow-card p-5">
           <h3 className="text-headline text-fg">Needs you</h3>
           {needs.length ? (
             <ul className="mt-3 divide-y divide-line border-t border-line">
@@ -188,7 +188,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
             <p className="mt-2 text-meta text-fg-muted">Nothing needs you right now.</p>
           )}
         </section>
-        <section className="rounded-card border border-line p-5">
+        <section className="rounded-card bg-card shadow-card p-5">
           <div className="flex items-baseline justify-between">
             <h3 className="text-headline text-fg">Driver run</h3>
             <button type="button" onClick={() => go("deliveries")} className="text-meta text-fg-muted underline-offset-4 hover:text-fg hover:underline focus-visible:focus-ring">Open</button>
@@ -211,7 +211,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
           )}
         </section>
         {revenue ? (
-          <section className="rounded-card border border-line p-5">
+          <section className="rounded-card bg-card shadow-card p-5">
             <div className="flex items-baseline justify-between">
               <p className="text-meta text-fg-muted">{new Date(`${revenue.month}-01T12:00:00Z`).toLocaleDateString("en-CA", { month: "long", timeZone: "UTC" })}</p>
               <button type="button" onClick={() => go("revenue")} className="text-meta text-fg-muted underline-offset-4 hover:text-fg hover:underline focus-visible:focus-ring">Revenue</button>

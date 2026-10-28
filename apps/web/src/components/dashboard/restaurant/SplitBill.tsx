@@ -23,7 +23,7 @@ export const splitLink = (token: string) => `${typeof window === "undefined" ? "
 
 const TENDER_LABEL: Record<Tender, string> = { link: "Pay link", card: "Card at table", cash: "Cash" };
 const TENDERS: Tender[] = ["link", "card", "cash"];
-const CHIP_COLORS = "bg-fg text-bg border-fg";
+const CHIP_COLORS = "bg-primary text-primary-foreground border-primary";
 
 /** Can this order still be split? Open pay-at-pickup bills only (the API enforces the same). */
 export const canSplit = (o: Pick<commerceApi.OrderDto, "status" | "paymentMethod" | "paymentStatus" | "kind">) =>
@@ -274,7 +274,7 @@ function Body({ order, onClose, onChanged }: { order: commerceApi.OrderDto; onCl
               </ul>
             ) : null}
 
-            <div aria-label="Each share" className="rounded-card border border-line">
+            <div aria-label="Each share" className="rounded-card bg-card shadow-card">
               <ul className="divide-y divide-line">
                 {Array.from({ length: count }, (_, g) => (
                   <li key={g} className="flex items-center gap-3 px-4 py-2.5">

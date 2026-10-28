@@ -41,7 +41,7 @@ export function PayOptions({ shop, methods, value, onChange, etransfer, amountCe
           >
             <span className="flex items-center gap-3 text-body-strong text-fg">
               <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border-[1.5px]", on ? "border-fg" : "border-line-strong")}>
-                {on ? <span className="size-2.5 rounded-full bg-fg" /> : null}
+                {on ? <span className="size-2.5 rounded-full bg-trade" /> : null}
               </span>
               {copy[m][0]}
             </span>

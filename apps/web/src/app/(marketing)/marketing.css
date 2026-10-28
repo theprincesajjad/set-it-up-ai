@@ -1,0 +1,65 @@
+/*
+ * Main Street Warm, marketing motion and surfaces. Colours come from the design tokens only (var(--...)).
+ * Every animation sits inside a no-preference media query, so reduced motion shows the finished frame with nothing moving.
+ */
+
+/* Awning: one stripe across the top of the page. */
+.mkt-awning {
+  background: repeating-linear-gradient(90deg, var(--primary) 0 36px, var(--card) 36px 72px);
+}
+
+/* Pastel bands: the tile hue, softened toward the canvas so body text keeps its contrast. */
+.mkt-band-peach { background: color-mix(in srgb, var(--tile-peach) 55%, var(--background)); }
+.mkt-band-mint { background: color-mix(in srgb, var(--tile-mint) 55%, var(--background)); }
+.mkt-band-butter { background: color-mix(in srgb, var(--tile-butter) 55%, var(--background)); }
+.mkt-band-lilac { background: color-mix(in srgb, var(--tile-lilac) 55%, var(--background)); }
+.mkt-band-sky { background: color-mix(in srgb, var(--tile-sky) 55%, var(--background)); }
+.mkt-band-rose { background: color-mix(in srgb, var(--tile-rose) 55%, var(--background)); }
+
+/* Hero stage: a sand plane with a soft warm glow in the corner. */
+.mkt-stage {
+  background:
+    radial-gradient(60% 50% at 85% 10%, color-mix(in srgb, var(--tile-butter) 70%, transparent), transparent 70%),
+    radial-gradient(50% 45% at 10% 95%, color-mix(in srgb, var(--tile-peach) 80%, transparent), transparent 70%),
+    var(--sidebar);
+}
+
+/* The browser-style frame around a real product screenshot. */
+.mkt-shot {
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--border), 0 24px 60px color-mix(in srgb, var(--foreground) 12%, transparent);
+  border: 1px solid var(--border);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Awning: unrolls left to right once. */
+  .mkt-awning { animation: mkt-unroll 700ms cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: left center; }
+  [dir="rtl"] .mkt-awning { transform-origin: right center; }
+  @keyframes mkt-unroll { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  [dir="rtl"] .mkt-awning { animation-name: mkt-unroll-rtl; }
+  @keyframes mkt-unroll-rtl { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+
+  /* Hero: one orchestrated entrance, headline then support then buttons then the picture. */
+  .mkt-rise { animation: mkt-rise 640ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+  @keyframes mkt-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  /* Hero tiles settle in, then the pass card and the toast each get one gentle pop. */
+  .mkt-pop { animation: mkt-pop 560ms cubic-bezier(0.34, 1.4, 0.64, 1) both; animation-delay: calc(240ms + var(--i, 0) * 70ms); }
+  @keyframes mkt-pop { from { opacity: 0; transform: translateY(10px) scale(0.94); } to { opacity: 1; transform: none; } }
+
+  /* The newest stamp on the hero pass fills in. */
+  .mkt-stamp { animation: mkt-stamp 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 1100ms both; }
+  @keyframes mkt-stamp { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Scroll reveal for sections, where the browser supports scroll-driven animation; elsewhere the content simply shows. It only slides: content is never hidden. */
+  @supports (animation-timeline: view()) {
+    .mkt-reveal { animation: mkt-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+    @keyframes mkt-reveal { from { transform: translateY(28px); } to { transform: none; } }
+  }
+
+  /* Cards lift a little under the pointer. */
+  .mkt-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
+  .mkt-lift:hover { transform: translateY(-3px); }
+}

@@ -116,7 +116,7 @@ function Services() {
 
 function PharmacyKeep({ title, items, tone }: { title: string; items: string[]; tone: "keep" | "never" }) {
   return (
-    <section className="rounded-card border border-line p-5">
+    <section className="rounded-card bg-card shadow-card p-5">
       <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
       <ul className="mt-3 flex flex-col gap-2">
         {items.map((t) => (

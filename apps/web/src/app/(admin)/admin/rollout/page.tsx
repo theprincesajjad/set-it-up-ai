@@ -66,7 +66,7 @@ export default function RolloutPage() {
                             {f.unlockAtMerchants ? (
                               <div className="flex items-center gap-3">
                                 <div className="h-1 w-20 overflow-hidden rounded-full bg-bg-muted" aria-hidden>
-                                  <div className={f.readyToUnlock ? "h-full bg-positive" : "h-full bg-fg"} style={{ width: `${Math.max(2, Math.min(100, (f.activeMerchants / f.unlockAtMerchants) * 100))}%` }} />
+                                  <div className={f.readyToUnlock ? "h-full bg-positive" : "h-full bg-trade"} style={{ width: `${Math.max(2, Math.min(100, (f.activeMerchants / f.unlockAtMerchants) * 100))}%` }} />
                                 </div>
                                 <span className="tabular text-fg-muted">
                                   <span className="text-fg">{formatNumber(f.activeMerchants)}</span> / {formatNumber(f.unlockAtMerchants)}

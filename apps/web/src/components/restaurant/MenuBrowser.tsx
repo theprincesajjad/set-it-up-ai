@@ -124,7 +124,7 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
                   key={s.id}
                   href={`#cat-${s.id}`}
                   aria-current={(active || filtered[0]!.id) === s.id ? "true" : undefined}
-                  className={cn("relative shrink-0 whitespace-nowrap py-3 text-body-strong transition-colors focus-visible:focus-ring", (active || filtered[0]!.id) === s.id ? "text-fg after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:bg-fg" : "text-fg-muted hover:text-fg")}
+                  className={cn("relative shrink-0 whitespace-nowrap py-3 text-body-strong transition-colors focus-visible:focus-ring", (active || filtered[0]!.id) === s.id ? "text-fg after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:bg-trade" : "text-fg-muted hover:text-fg")}
                 >
                   {s.name}
                 </a>

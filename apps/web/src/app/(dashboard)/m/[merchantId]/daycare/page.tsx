@@ -74,7 +74,7 @@ function Day() {
           r.items.length === 0 ? (
             <Empty action={<Button size="sm" onClick={() => setAddDog(true)}>Add a dog</Button>}>No dogs expected today.</Empty>
           ) : (
-            <section aria-label="Dogs today" className="overflow-hidden rounded-card border border-line">
+            <section aria-label="Dogs today" className="overflow-hidden rounded-card bg-card shadow-card">
               <div className="flex items-center justify-between bg-bg-subtle px-5 py-2.5 text-caption text-fg-muted">
                 <span>Dog and owner</span>
                 <span>Status</span>
@@ -142,7 +142,7 @@ function AddDog({ open, onClose, onAdded }: { open: boolean; onClose: () => void
       <div className="flex flex-col gap-4">
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <TextField label="Search pets" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Dog or owner" autoComplete="off" />
-        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line" aria-label="Pets">
+        <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card" aria-label="Pets">
           {(list.data?.items ?? []).filter((p) => p.species === "dog").map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
               <span className="text-body text-fg">{p.name} <span className="text-meta text-fg-muted">· {p.ownerName ?? "No name"}</span></span>

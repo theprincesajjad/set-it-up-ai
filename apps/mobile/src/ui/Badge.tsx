@@ -15,27 +15,27 @@ export interface BadgeProps {
 }
 
 /**
- * Status is a small dot + word, never a filled coloured card (foundations § Colour).
- * accent = points / reward ready (soft fill); success / danger = coloured dot + plain word;
- * everything else is a grey capsule.
+ * Status is a small pastel pill (Main Street Warm): butter = points / reward ready, mint = good, rose = problem,
+ * peach = brand, sky = info; neutral is a sand capsule.
  */
 export function useToneColors(tone: BadgeTone) {
-  const { c } = useTheme();
+  const { c, r } = useTheme();
+  // Warm: pastel pills with their deep text (peach brand, butter points, mint success, rose danger, sky info).
   const map: Record<BadgeTone, { bg: string; fg: string; solid: string }> = {
     neutral: { bg: c.bgSubtle, fg: c.fgMuted, solid: c.fgMuted },
-    brand: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
-    accent: { bg: c.accentSoft, fg: c.accentText, solid: c.accent },
-    success: { bg: "transparent", fg: c.fg, solid: c.positive },
-    warning: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
-    danger: { bg: "transparent", fg: c.negative, solid: c.negative },
-    info: { bg: c.bgSubtle, fg: c.fg, solid: c.fg },
+    brand: { bg: r.tilePeach, fg: r.tilePeachForeground, solid: r.tilePeachForeground },
+    accent: { bg: r.tileButter, fg: r.tileButterForeground, solid: c.accent },
+    success: { bg: r.tileMint, fg: r.tileMintForeground, solid: r.tileMintForeground },
+    warning: { bg: r.tileButter, fg: r.tileButterForeground, solid: r.tileButterForeground },
+    danger: { bg: r.tileRose, fg: r.tileRoseForeground, solid: r.tileRoseForeground },
+    info: { bg: r.tileSky, fg: r.tileSkyForeground, solid: r.tileSkyForeground },
   };
   return map[tone];
 }
 
 export function Badge({ children, tone = "neutral", icon: Icon, trailingIcon: Trailing, dot }: BadgeProps) {
   const t = useToneColors(tone);
-  const dotted = dot || tone === "success" || tone === "danger";
+  const dotted = !!dot;
   const bare = t.bg === "transparent";
   return (
     <View style={[styles.badge, { backgroundColor: t.bg, paddingHorizontal: bare ? 0 : 8 }]}>

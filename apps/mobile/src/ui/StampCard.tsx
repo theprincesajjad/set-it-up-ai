@@ -21,6 +21,7 @@ export function stampColumns(goal: number): number {
 export function StampCard({
   count,
   goal,
+  vertical,
   rewardName,
   justEarned,
   compact,
@@ -34,7 +35,8 @@ export function StampCard({
   justEarned?: boolean;
   compact?: boolean;
 }) {
-  const { c } = useTheme();
+  const { c, trade } = useTheme();
+  const tc = trade(vertical);
   const { t } = useLocale();
   const { width } = useWindowDimensions();
   const g = Math.max(1, goal);
@@ -72,7 +74,7 @@ export function StampCard({
         ) : (
           <View style={{ flex: 1 }} />
         )}
-        <Text variant="metaStrong" color="accentText" tabular>{`${filled} / ${g}`}</Text>
+        <Text variant="metaStrong" rawColor={tc.deep} tabular>{`${filled} / ${g}`}</Text>
       </View>
       )}
       <View style={[styles.grid, { gap }]}>
@@ -89,14 +91,15 @@ export function StampCard({
                   width: slot,
                   height: slot,
                   borderRadius: slot / 2,
-                  backgroundColor: isFilled ? c.accent : "transparent",
-                  borderColor: c.lineStrong,
+                  backgroundColor: isFilled ? tc.accent : "transparent",
+                  borderColor: tc.accent,
+                  borderStyle: "dashed",
                   borderWidth: isFilled ? 0 : 1.5,
                   transform: [{ scale: isNew ? pop : 1 }],
                 },
               ]}
             >
-              {isLast ? <Gift size={slot * 0.46} color={isFilled ? c.onAccent : c.fgMuted} strokeWidth={2} /> : isFilled ? <Check size={slot * 0.5} color={c.onAccent} strokeWidth={2.5} /> : null}
+              {isLast ? <Gift size={slot * 0.46} color={isFilled ? tc.foreground : tc.accent} strokeWidth={2} /> : isFilled ? <Check size={slot * 0.5} color={tc.foreground} strokeWidth={2.5} /> : null}
             </Animated.View>
           );
         })}

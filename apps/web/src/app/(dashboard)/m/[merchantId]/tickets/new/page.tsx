@@ -218,7 +218,7 @@ function Intake() {
               {checklist.map((c) => {
                 const on = checks.includes(c);
                 return (
-                  <button key={c} type="button" role="checkbox" aria-checked={on} onClick={() => setChecks(on ? checks.filter((x) => x !== c) : [...checks, c])} className={cn("rounded-full border px-3 py-1.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+                  <button key={c} type="button" role="checkbox" aria-checked={on} onClick={() => setChecks(on ? checks.filter((x) => x !== c) : [...checks, c])} className={cn("rounded-full border px-3 py-1.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
                     {c}
                   </button>
                 );
@@ -230,7 +230,7 @@ function Intake() {
           <TextField type="textarea" label="Internal notes" optionalLabel hint="Only staff see these." value={notes} onChange={(e) => setNotes(e.target.value)} />
           <TextField type="datetime-local" label="Promised by" optionalLabel value={promised} onChange={(e) => setPromised(e.target.value)} />
           {terms ? (
-            <div className="rounded-card border border-line p-4">
+            <div className="rounded-card bg-card shadow-card p-4">
               <p className="text-meta-strong text-fg">Drop-off terms</p>
               <p className="mt-1 whitespace-pre-line text-meta text-fg-muted">{terms}</p>
               <div className="mt-3"><Checkbox label="The customer has read these terms and accepts them" checked={accepted} onChange={setAccepted} /></div>

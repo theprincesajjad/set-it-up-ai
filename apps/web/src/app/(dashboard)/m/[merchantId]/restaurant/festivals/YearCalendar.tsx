@@ -63,7 +63,7 @@ export function YearCalendar({ today }: { today: string }) {
                       key={i}
                       role="gridcell"
                       aria-label={starts.length ? `${name} ${day}: ${starts.map((s) => s.festival.name).join(", ")}${lunar ? " (approximate)" : ""}` : undefined}
-                      className={cn("mx-auto flex size-8 items-center justify-center rounded-full tabular", running && !starts.length && "bg-bg-muted text-fg", starts.length ? (lunar ? "border-[1.5px] border-fg font-semibold text-fg" : "bg-fg font-semibold text-bg") : "text-fg-muted", k === today && !starts.length && "underline decoration-fg underline-offset-4")}
+                      className={cn("mx-auto flex size-8 items-center justify-center rounded-full tabular", running && !starts.length && "bg-bg-muted text-fg", starts.length ? (lunar ? "border-[1.5px] border-fg font-semibold text-fg" : "bg-primary font-semibold text-primary-foreground") : "text-fg-muted", k === today && !starts.length && "underline decoration-fg underline-offset-4")}
                     >
                       {day}
                     </span>

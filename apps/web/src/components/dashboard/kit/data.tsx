@@ -6,10 +6,12 @@
  */
 import { type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTMLAttributes } from "react";
+import { Children, cloneElement, isValidElement, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTMLAttributes } from "react";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/primitives/item";
 import { Badge as BadgePrimitive } from "@/components/primitives/badge";
 import { TableCell, TableHead, TableRow } from "@/components/primitives/table";
+import { useShopVertical } from "@/components/dashboard/useShopVertical";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { StatTile as ToneStatTile } from "@/components/ui/StatTile";
 import { TONES, type Tone } from "@/components/ui/tones";
 import { cn } from "@/lib/utils";
@@ -31,7 +33,7 @@ export interface StatItem {
 }
 
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
-export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: draw each number as a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`) instead of the hairline grid. */ tiles?: boolean }) {
+export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles = !bare }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: each number is a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`). On unless `bare`; `tiles={false}` draws the hairline grid. */ tiles?: boolean }) {
   const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
   const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   if (tiles) {
@@ -208,7 +210,7 @@ export function Meter({ value, max, label, className, tone = "fg" }: { value: nu
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 100;
   return (
     <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} className={cn("h-1 w-full overflow-hidden rounded-full bg-bg-muted", className)}>
-      <div className={cn("h-full rounded-full", tone === "accent" ? "bg-points" : tone === "muted" ? "bg-fg-subtle" : "bg-fg")} style={{ width: `${pct}%` }} />
+      <div className={cn("h-full rounded-full", tone === "accent" ? "bg-points" : tone === "muted" ? "bg-fg-subtle" : "bg-trade")} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -316,48 +318,53 @@ export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () 
 }
 
 /**
- * Dashboard empty state (same props as ui/EmptyState), Figma 12:349: a hairline card, one bold sentence, one muted line and one
- * action under them. Left-aligned; no icon, no illustration of people, no centred hero (foundations.md anti-slop checklist).
+ * Dashboard empty state (same props as ui/EmptyState). Main Street Warm: a white card with the shop's category illustration on a soft
+ * trade tile, a Fraunces sentence, one muted line and one action. Never a dead end.
  */
-export function EmptyState({ title, description, action, secondaryAction, className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
+export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", className }: { icon?: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; secondaryAction?: ReactNode; tone?: "brand" | "danger"; className?: string }) {
+  const vertical = useShopVertical();
   return (
-    <div data-state="empty" className={cn("rounded-card border border-line bg-card p-5", className)}>
-      <p className="text-body-strong text-fg">{title}</p>
-      {description ? <p className="mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
-      {action || secondaryAction ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {action}
-          {secondaryAction}
-        </div>
-      ) : null}
+    <div data-state="empty" className={cn("flex flex-col gap-4 rounded-card bg-card p-5 shadow-card sm:flex-row sm:items-center sm:gap-5 sm:p-6", className)}>
+      <span aria-hidden className={cn("inline-flex size-16 shrink-0 items-center justify-center rounded-tile", tone === "danger" ? "bg-tile-rose" : "bg-trade-soft")}>
+        {tone === "danger" && Icon ? <Icon className="size-7 text-tile-rose-foreground" strokeWidth={1.7} /> : <CategoryIcon vertical={vertical} size={44} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-headline font-bold text-fg">{title}</p>
+        {description ? <p className="mt-1 max-w-prose text-meta text-fg-muted">{description}</p> : null}
+        {action || secondaryAction ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {action}
+            {secondaryAction}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-/** One cell of a StatGrid (same props as ui/StatTile): label above, number, small delta/caption below. */
-export function StatTile({ label, value, delta, href, loading, caption }: { label: string; value: ReactNode; delta?: { pct?: number; good?: boolean | null; text?: string } | null; spark?: number[]; href?: string; loading?: boolean; caption?: ReactNode }) {
-  const body = (
-    <>
-      <p className="text-meta text-fg-muted">{label}</p>
-      <p className="mt-1.5 text-[28px] font-semibold leading-8 tracking-[-0.01em] text-fg tabular">{loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : (value ?? "–")}</p>
-      {delta && !loading ? (
-        <p className={cn("mt-1 text-caption font-normal tabular", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${(delta.pct ?? 0) >= 0 ? "+" : ""}${delta.pct}%`}</p>
-      ) : null}
-      {caption ? <p className="mt-1 text-caption font-normal text-fg-muted">{caption}</p> : null}
-    </>
-  );
-  return href ? (
-    <Link href={href} className="block bg-bg px-5 py-4 transition-colors hover:bg-bg-subtle focus-visible:focus-ring">
-      {body}
-    </Link>
-  ) : (
-    <div className="bg-bg px-5 py-4">{body}</div>
+/** One cell of a StatGrid (same props as ui/StatTile): label above, number, small delta/caption below. A StatGrid hands each cell a pastel tone. */
+export function StatTile({ label, value, delta, spark, href, loading, caption, tone }: { label: string; value: ReactNode; delta?: { pct?: number; good?: boolean | null; text?: string } | null; spark?: number[]; href?: string; loading?: boolean; caption?: ReactNode; tone?: Tone }) {
+  return (
+    <ToneStatTile
+      tone={tone ?? "trade"}
+      label={label}
+      value={value}
+      delta={delta ? { pct: delta.good === true ? 1 : delta.good === false ? -1 : 0, good: delta.good, text: delta.text ?? `${(delta.pct ?? 0) >= 0 ? "+" : ""}${delta.pct}%` } : null}
+      caption={caption}
+      spark={spark}
+      href={href}
+      loading={loading}
+    />
   );
 }
 
-/** Bordered block of StatTiles separated by hairlines. */
+/** A grid of pastel StatTiles: the first in the shop's trade colour, then mint, butter, lilac, sky, rose. */
 export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4", className)}>{children}</div>;
+  return (
+    <div className={cn("grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4", className)}>
+      {Children.toArray(children).map((c, i) => (isValidElement<{ tone?: Tone }>(c) ? cloneElement(c, { tone: c.props.tone ?? TONES[i % TONES.length] }) : c))}
+    </div>
+  );
 }
 
 const PILL: Record<DotTone, string> = {

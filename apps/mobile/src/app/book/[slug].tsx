@@ -12,7 +12,7 @@ import { dayToDate, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
-import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, Text, TextField, useToast } from "../../ui";
+import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, Text, TextField, useToast, WarmCard } from "../../ui";
 
 type Slot = { startsAt: string; staffId: string };
 const DAYS = 14;
@@ -25,7 +25,7 @@ const errorMessage = (e: unknown, t: (key: "auth.err.network" | "auth.err.server
 
 export default function Book() {
   const { slug, service, staff } = useLocalSearchParams<{ slug: string; service?: string; staff?: string }>();
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const { t } = useLocale();
   const money = useMoney();
   const { date, time, pick } = useLocale();
@@ -156,7 +156,7 @@ export default function Book() {
         <Text color="fgMuted">{when(a.startsAt)}{a.staffName ? ` · ${a.staffName}` : ""}</Text>
         {a.holdExpiresAt ? <Text variant="meta" color="fgMuted">{t("bk.holding", { time: time(a.holdExpiresAt) })}</Text> : null}
         {booked.deposit ? <Text style={disp(32, 800, 36)} rawColor={c.accentText}>{money(booked.deposit.amountCents)}</Text> : null}
-        <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}><Text>{policy}</Text></View>
+        <View style={[styles.policy, { backgroundColor: r.tileButter }]}><Text>{policy}</Text></View>
         {error ? <Banner variant="danger">{error}</Banner> : null}
         {booked.deposit ? (
           <Button size="lg" fullWidth onPress={async () => { if (!(await pay(booked.deposit!))) toast(t("rc.error.body")); }}>{t("bk.cta.deposit", { amount: money(booked.deposit.amountCents) })}</Button>
@@ -188,9 +188,9 @@ export default function Book() {
             const n = bookingLogic.timesOn(av, d).length;
             const on = d === day;
             return (
-              <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !!av && n === 0 }} disabled={loadingTimes || (!!av && n === 0)} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.fg : c.line, backgroundColor: on ? c.fg : c.bg, opacity: av && n === 0 ? 0.4 : 1 }]}>
-                <Text variant="caption" rawColor={on ? c.bg : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
-                <Text style={disp(22, 800, 26)} rawColor={on ? c.bg : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
+              <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !!av && n === 0 }} disabled={loadingTimes || (!!av && n === 0)} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: av && n === 0 ? 0.4 : 1 }]}>
+                <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
+                <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
               </Pressable>
             );
           })}
@@ -206,7 +206,7 @@ export default function Book() {
             ) : null}
           </View>
         )}
-        <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}><Text>{policy}</Text></View>
+        <View style={[styles.policy, { backgroundColor: r.tileButter }]}><Text>{policy}</Text></View>
         {needsCard ? (
           <View style={[styles.cardRow, { borderColor: c.line }]}>
             <CreditCard size={20} color={c.fg} />
@@ -217,7 +217,7 @@ export default function Book() {
           </View>
         ) : null}
         {data.shop.pharmacy ? (
-          <View style={[styles.policy, { backgroundColor: c.bgSubtle }]}>
+          <View style={[styles.policy, { backgroundColor: r.tileButter }]}>
             <Text variant="bodyStrong">{t("rx.book.privacyTitle")}</Text>
             <Text variant="meta" color="fgMuted">{t("rx.book.privacyBody")}</Text>
           </View>
@@ -254,13 +254,13 @@ export default function Book() {
       {categories.length > 1 ? (
         <ChipGroup value={category} onChange={setCategory} options={[{ value: "all", label: t("bk.all") }, ...categories.map((x) => ({ value: x, label: x }))]} />
       ) : null}
-      <View>
+      <WarmCard>
         {visible.map((s, i) => {
           const on = ids.includes(s.id);
           const v = bookingLogic.serviceFor(s, staffId);
           return (
             <Pressable key={s.id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} style={[styles.row, { borderBottomColor: c.line, borderBottomWidth: hairline }]}>
-              <View style={[styles.check, { borderColor: on ? c.fg : c.lineStrong, backgroundColor: on ? c.fg : "transparent" }]}>{on ? <Check size={16} color={c.bg} strokeWidth={3} /> : null}</View>
+              <View style={[styles.check, { borderColor: on ? c.brand : c.lineStrong, backgroundColor: on ? c.brand : "transparent" }]}>{on ? <Check size={16} color={c.onBrand} strokeWidth={3} /> : null}</View>
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">{pick(s).name}</Text>
                 <Text variant="meta" color="fgMuted">{staffName ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}</Text>
@@ -276,7 +276,7 @@ export default function Book() {
             <Text variant="meta" color="fgMuted">{t("bk.bridal.body")}</Text>
           </View>
         </View>
-      </View>
+      </WarmCard>
     </Screen>
   );
 }

@@ -26,7 +26,7 @@ type Product = classesApi.ProductDto;
  */
 export default function Classes() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const { t, date, time } = useLocale();
   const money = useMoney();
   const toast = useToast();
@@ -163,7 +163,7 @@ export default function Classes() {
           const on = d === selected;
           const n = byDay.get(d)?.length ?? 0;
           return (
-            <Pressable key={d} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setDay(d)} style={[styles.chip, { borderColor: on ? c.fg : c.line, backgroundColor: on ? c.fg : c.bg }]} testID={`classes-day-${d}`}>
+            <Pressable key={d} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setDay(d)} style={[styles.chip, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }]} testID={`classes-day-${d}`}>
               <Text variant="metaStrong" rawColor={on ? c.bg : n ? c.fg : c.fgSubtle}>
                 {`${date(dayToDate(d), { weekday: "short" })} ${date(dayToDate(d), { day: "numeric" })}`}
               </Text>

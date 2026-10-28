@@ -172,13 +172,13 @@ export function KitchenBoard() {
               type="button"
               aria-pressed={station === s}
               onClick={() => setStation(s)}
-              className={cn("inline-flex h-[38px] shrink-0 items-center rounded-full border px-4 text-meta-strong transition-colors focus-visible:focus-ring", station === s ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+              className={cn("inline-flex h-[38px] shrink-0 items-center rounded-full border px-4 text-meta-strong transition-colors focus-visible:focus-ring", station === s ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
             >
               {s === "all" ? tr("kitchen.all") : stationIn(tr, s)}
             </button>
           ))}
           {station !== "all" && !stations.includes(station) ? (
-            <span className="inline-flex h-[38px] shrink-0 items-center rounded-full border border-fg bg-fg px-4 text-meta-strong text-bg">{stationLabel(station)}</span>
+            <span className="inline-flex h-[38px] shrink-0 items-center rounded-full border border-primary bg-primary px-4 text-meta-strong text-primary-foreground">{stationLabel(station)}</span>
           ) : null}
         </nav>
 
@@ -201,7 +201,7 @@ export function KitchenBoard() {
                 aria-label={LOCALES[l].englishName}
                 onClick={() => setLang(l)}
                 style={{ fontFamily: scriptStyle(l) }}
-                className={cn("inline-flex h-[38px] min-w-12 items-center justify-center rounded-full px-3 text-meta-strong leading-none focus-visible:focus-ring", scriptClass(l), shownLang === l ? "bg-fg text-bg" : "text-fg hover:bg-bg-subtle")}
+                className={cn("inline-flex h-[38px] min-w-12 items-center justify-center rounded-full px-3 text-meta-strong leading-none focus-visible:focus-ring", scriptClass(l), shownLang === l ? "bg-primary text-primary-foreground" : "text-fg hover:bg-bg-subtle")}
               >
                 {LOCALES[l].short}
               </button>
@@ -300,7 +300,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
           {sub ? <p className="mt-1.5 text-meta text-fg-muted tabular">{sub}</p> : null}
         </div>
         {t.pinned && fireTime ? (
-          <p className="shrink-0 rounded-full bg-fg px-3 py-1 text-title font-semibold text-bg tabular">{tr("kitchen.fire", { time: iso(lang, fireTime.replace(/ ?[ap]m$/, "")) })}</p>
+          <p className="shrink-0 rounded-full bg-primary px-3 py-1 text-title font-semibold text-primary-foreground tabular">{tr("kitchen.fire", { time: iso(lang, fireTime.replace(/ ?[ap]m$/, "")) })}</p>
         ) : (
           <p
             className={cn("shrink-0 rounded-full px-3 py-1 text-title tabular", late ? "bg-points-soft font-bold text-points-text" : "bg-bg-subtle font-semibold text-fg")}
@@ -311,7 +311,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
         )}
       </header>
       {t.pinned && fireTime && t.pickupAt ? (
-        <p className={cn("bg-fg px-4 py-1.5 text-meta-strong text-bg tabular", lang === "en" && "uppercase tracking-wide")}>{tr("kitchen.fireBand", { time: iso(lang, fireTime), min: iso(lang, t.cookMinutes), pickup: iso(lang, hm(t.pickupAt)) })}</p>
+        <p className={cn("bg-primary px-4 py-1.5 text-meta-strong text-primary-foreground tabular", lang === "en" && "uppercase tracking-wide")}>{tr("kitchen.fireBand", { time: iso(lang, fireTime), min: iso(lang, t.cookMinutes), pickup: iso(lang, hm(t.pickupAt)) })}</p>
       ) : null}
       {t.allergyNote ? (
         <p role="alert" lang={LOCALES[lang].bcp47} dir={dir} className={cn("bg-negative px-4 py-1.5 text-meta-strong font-bold text-[#FFFFFF]", lang === "en" && "uppercase tracking-wide", scriptClass(lang))} style={{ fontFamily: scriptStyle(lang) }}>
@@ -350,7 +350,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
       <footer className="flex items-center gap-3 border-t border-line p-3">
         <p className="shrink-0 ps-1 text-meta text-fg-muted tabular">{tr("kitchen.readyCount", { done, total: t.items.length })}</p>
         {t.pinned ? (
-          <button type="button" disabled={busy.has(t.orderId)} onClick={() => onFire(t)} className="ms-auto inline-flex h-12 min-w-28 items-center justify-center rounded-full bg-fg px-5 text-title font-semibold text-bg transition-colors hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
+          <button type="button" disabled={busy.has(t.orderId)} onClick={() => onFire(t)} className="ms-auto inline-flex h-12 min-w-28 items-center justify-center rounded-full bg-primary px-5 text-title font-semibold text-primary-foreground transition-colors hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
             {tr("kitchen.startDum")}
           </button>
         ) : (
@@ -358,7 +358,7 @@ function TicketCard({ ticket: t, age, lang, dir, tr, busy, onAdvance, onBump, on
             type="button"
             disabled={busy.has(t.orderId)}
             onClick={() => onBump(t)}
-            className={cn("ms-auto inline-flex h-12 min-w-28 items-center justify-center gap-2 rounded-full px-5 text-title font-semibold transition-colors focus-visible:focus-ring disabled:opacity-60", allReady ? "bg-fg text-bg hover:bg-brand-hover" : "bg-fg text-bg hover:bg-brand-hover")}
+            className={cn("ms-auto inline-flex h-12 min-w-28 items-center justify-center gap-2 rounded-full px-5 text-title font-semibold transition-colors focus-visible:focus-ring disabled:opacity-60", allReady ? "bg-primary text-primary-foreground hover:bg-brand-hover" : "bg-primary text-primary-foreground hover:bg-brand-hover")}
           >
             <Check aria-hidden className="size-5" strokeWidth={2.5} />
             {tr("kitchen.bump")}
@@ -376,7 +376,7 @@ function StatusChip({ status, tr }: { status: Item["status"]; tr: Tr }) {
       className={cn(
         "inline-flex h-9 min-w-[84px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-meta-strong",
         status === "queued" && "border border-line text-fg",
-        status === "cooking" && "bg-fg text-bg",
+        status === "cooking" && "bg-primary text-primary-foreground",
         status === "ready" && "border border-line bg-bg text-fg",
       )}
     >
@@ -441,7 +441,7 @@ function SoldOutSheet({ lang, tr, onClose, onChanged }: { lang: Lang; tr: Tr; on
               </div>
               <div className="flex flex-wrap gap-2">
                 {i.soldOutUntil ? (
-                  <button type="button" disabled={working === i.id} onClick={() => void set(i.id, "restore")} className="inline-flex h-11 items-center rounded-full bg-fg px-5 text-meta-strong text-bg hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
+                  <button type="button" disabled={working === i.id} onClick={() => void set(i.id, "restore")} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-meta-strong text-primary-foreground hover:bg-brand-hover focus-visible:focus-ring disabled:opacity-60">
                     {tr("kitchen.restore")}
                   </button>
                 ) : (

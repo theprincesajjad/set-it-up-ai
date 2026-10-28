@@ -175,9 +175,9 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
             const on = selDay === day;
             return (
               <button key={day} type="button" aria-pressed={on} aria-label={`${dayLabel(day)}, ${w.length ? `${w.length} booked` : "free"}`} onClick={() => setSel(day)} className={cn("flex min-h-16 flex-col items-stretch gap-1 border-e border-b border-line p-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring sm:min-h-[92px] sm:p-2", !inMonth && "bg-bg-subtle/60", on && "bg-bg-muted")}>
-                <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-fg font-medium text-bg" : inMonth ? "text-fg-muted" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
+                <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground" : inMonth ? "text-fg-muted" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
                 {w.map((x) => (
-                  <span key={x.bookingId} className={cn("hidden rounded-[6px] px-1.5 py-1 text-caption leading-tight sm:block", x.status === "confirmed" ? "bg-fg text-bg" : "border border-location bg-location/10 text-location")}>
+                  <span key={x.bookingId} className={cn("hidden rounded-[6px] px-1.5 py-1 text-caption leading-tight sm:block", x.status === "confirmed" ? "bg-primary text-primary-foreground" : "border border-location bg-location/10 text-location")}>
                     <span className="block truncate font-medium">{chip(x)}</span>
                     <span className="block truncate opacity-80">{x.status === "confirmed" ? "Confirmed" : holdWord(x.holdExpiresAt, now)}</span>
                   </span>
@@ -189,7 +189,7 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
         </div>
       </div>
       {selDay ? (
-        <aside aria-label={dayLabel(selDay)} className="min-w-0 rounded-card border border-line p-5">
+        <aside aria-label={dayLabel(selDay)} className="min-w-0 rounded-card bg-card shadow-card p-5">
           {selected.length ? (
             selected.map((x) => {
               const b = bookings.find((y) => y.id === x.bookingId);
@@ -227,7 +227,7 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
                       ) : null}
                     </>
                   ) : null}
-                  <div><Link href={`${base}/restaurant/banquet?tab=bookings&booking=${x.bookingId}`} className="inline-flex h-9 items-center rounded-full bg-fg px-4 text-meta font-medium text-bg focus-visible:focus-ring">Open booking</Link></div>
+                  <div><Link href={`${base}/restaurant/banquet?tab=bookings&booking=${x.bookingId}`} className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-meta font-medium text-primary-foreground focus-visible:focus-ring">Open booking</Link></div>
                 </div>
               );
             })

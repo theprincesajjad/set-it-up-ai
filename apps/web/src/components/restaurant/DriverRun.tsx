@@ -151,7 +151,7 @@ export function DriverRun({ token }: { token: string }) {
           <span className="text-fg-muted">{date(new Date(`${run.date}T12:00:00Z`), { weekday: "short", month: "short", day: "numeric" }, "UTC")}</span>
         </div>
         <div role="progressbar" aria-valuemin={0} aria-valuemax={run.progress.total} aria-valuenow={run.progress.done} className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-bg-muted">
-          <div className="h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-trade" style={{ width: `${pct}%` }} />
         </div>
       </div>
 

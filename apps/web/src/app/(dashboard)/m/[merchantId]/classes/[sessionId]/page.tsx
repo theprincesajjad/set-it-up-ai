@@ -86,9 +86,9 @@ function Roster() {
               <section aria-label="Roster" className="flex flex-col gap-2">
                 <h2 className="text-body-strong text-fg">Booked {s.booked} of {s.capacity}</h2>
                 {booked.length === 0 ? (
-                  <p className="rounded-card border border-line px-4 py-6 text-meta text-fg-muted">Nobody is booked yet.</p>
+                  <p className="rounded-card bg-card shadow-card px-4 py-6 text-meta text-fg-muted">Nobody is booked yet.</p>
                 ) : (
-                  <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
+                  <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
                     {booked.map((r) => {
                       const st = rosterState(r);
                       return (
@@ -118,9 +118,9 @@ function Roster() {
               <section aria-label="Waitlist" className="flex flex-col gap-2">
                 <h2 className="text-body-strong text-fg">Waitlist, {waiting.length} {waiting.length === 1 ? "person" : "people"}</h2>
                 {waiting.length === 0 ? (
-                  <p className="rounded-card border border-line px-4 py-4 text-meta text-fg-muted">Nobody is waiting.</p>
+                  <p className="rounded-card bg-card shadow-card px-4 py-4 text-meta text-fg-muted">Nobody is waiting.</p>
                 ) : (
-                  <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
+                  <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
                     {waiting.map((r) => (
                       <li key={r.bookingId} className="flex items-center gap-3 px-4 py-3">
                         <span className="w-5 text-body-strong tabular text-points-text">{r.waitlistPosition}</span>

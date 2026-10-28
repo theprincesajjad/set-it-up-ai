@@ -50,19 +50,19 @@ export default async function ShopOrderPage({ params, searchParams }: Props) {
   }
   if (menu === "error")
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
   if (menu === "none")
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <EmptyState title={t("rs.order.noOnline")} description={t("rs.order.noOnlineBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const [restaurant, me] = await Promise.all([publicRestaurantApi().restaurant(slug).catch(() => null), getMe()]);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <OrderView shop={shop} menu={menu} restaurant={restaurant} signedIn={!!me} userName={me?.user.name ?? ""} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

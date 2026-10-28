@@ -1,10 +1,10 @@
 "use client";
 /**
- * Dashboard charts (foundations.md: thin black line or black bars, light grid, no legends
- * unless two series). Every chart can flip to a table.
+ * Dashboard charts (Main Street Warm: the shop's trade colour for the series, the busiest bar highlighted and the rest a soft tint of
+ * it, light grid, no legends unless two series). Every chart can flip to a table.
  */
 import { useId, useState, type ReactNode } from "react";
-import { Bar, BarChart as RBarChart, CartesianGrid, Line, LineChart as RLineChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart as RBarChart, CartesianGrid, Cell, Line, LineChart as RLineChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/primitives/chart";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
@@ -48,7 +48,7 @@ export function ChartFrame({ title, subtitle, children, table, action, className
     <section className={cn("min-w-0", className)} aria-label={title}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div className={cn(hideTitle && "sr-only")}>
-          <h3 className="text-body-strong text-fg">{title}</h3>
+          <h3 className="font-display text-headline font-bold text-fg">{title}</h3>
           {subtitle ? <p className="text-meta text-fg-muted">{subtitle}</p> : null}
         </div>
         <div className="flex w-full items-center justify-between gap-3 whitespace-nowrap sm:ms-auto sm:w-auto sm:justify-end">
@@ -102,8 +102,9 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
   const max = niceMax(raw);
   const total = data.reduce((s, d) => s + d.value, 0);
   const hasCompare = data.some((d) => d.compare != null);
+  const peakAt = data.findIndex((d) => d.value === Math.max(...data.map((x) => x.value)));
   const config = {
-    value: { label: valueLabel, color: "var(--chart-1)" },
+    value: { label: valueLabel, color: "var(--trade)" },
     compare: { label: compareLabel ?? "Compared", color: "var(--chart-3)" },
   } satisfies ChartConfig;
   const common = { data, margin: { top: 4, right: 4, bottom: 0, left: 0 } };
@@ -112,7 +113,7 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
       <CartesianGrid vertical={false} strokeDasharray="2 3" />
       <XAxis dataKey="label" tickFormatter={shortDate} tickLine={false} axisLine={false} tickMargin={6} interval="preserveStartEnd" minTickGap={40} />
       <YAxis width={32} domain={[0, max]} ticks={[0, max / 2, max]} tickFormatter={(v: number) => format(v)} tickLine={false} axisLine={false} />
-      <ChartTooltip cursor={kind === "bar" ? { fill: "var(--muted)" } : { stroke: "var(--border)" }} content={<ChartTooltipContent labelFormatter={(l) => shortDate(String(l))} formatter={(v, name) => <span className="flex w-full justify-between gap-3 tabular-nums"><span className="text-muted-foreground">{config[name as "value" | "compare"]?.label ?? name}</span><span className="font-semibold text-foreground">{format(Number(v))}</span></span>} hideIndicator />} />
+      <ChartTooltip cursor={kind === "bar" ? { fill: "var(--accent)" } : { stroke: "var(--border)" }} content={<ChartTooltipContent labelFormatter={(l) => shortDate(String(l))} formatter={(v, name) => <span className="flex w-full justify-between gap-3 tabular-nums"><span className="text-muted-foreground">{config[name as "value" | "compare"]?.label ?? name}</span><span className="font-semibold text-foreground">{format(Number(v))}</span></span>} hideIndicator />} />
     </>
   );
   return (
@@ -125,13 +126,17 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
           <RBarChart {...common} accessibilityLayer={false}>
             {axes}
             {hasCompare ? <Bar dataKey="compare" fill="var(--color-compare)" fillOpacity={0.35} radius={[2, 2, 0, 0]} isAnimationActive={false} /> : null}
-            <Bar dataKey="value" fill="var(--color-value)" radius={[2, 2, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+            <Bar dataKey="value" fill="var(--color-value)" radius={[6, 6, 2, 2]} maxBarSize={28} isAnimationActive={false}>
+              {data.map((d, i) => (
+                <Cell key={d.label + i} fill={i === peakAt ? "var(--color-value)" : "color-mix(in srgb, var(--trade) 38%, var(--card))"} />
+              ))}
+            </Bar>
           </RBarChart>
         ) : (
           <RLineChart {...common} accessibilityLayer={false}>
             {axes}
             {hasCompare ? <Line dataKey="compare" type="monotone" stroke="var(--color-compare)" strokeWidth={1.25} strokeDasharray="3 3" dot={false} isAnimationActive={false} /> : null}
-            <Line dataKey="value" type="monotone" stroke="var(--color-value)" strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
+            <Line dataKey="value" type="monotone" stroke="var(--color-value)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
           </RLineChart>
         )}
       </ChartContainer>
@@ -149,7 +154,7 @@ function EmptyChart({ height }: { height: number }) {
 
 type ChartProps = { title: string; subtitle?: ReactNode; data: SeriesPoint[]; valueLabel?: string; compareLabel?: string; format?: (n: number) => string; height?: number; action?: ReactNode; className?: string; hideTitle?: boolean };
 
-/** Vertical black bars, optional light-grey comparison bars behind. */
+/** Vertical trade-colour bars (the busiest one solid), optional light-grey comparison bars behind. */
 export function BarChart({ title, subtitle, data, valueLabel = "Value", compareLabel, format = formatNumber, height = 180, action, className, hideTitle }: ChartProps) {
   const empty = data.every((d) => d.value === 0 && !d.compare);
   return (
@@ -159,7 +164,7 @@ export function BarChart({ title, subtitle, data, valueLabel = "Value", compareL
   );
 }
 
-/** Thin black line, optional dashed grey comparison line. */
+/** Trade-colour line, optional dashed grey comparison line. */
 export function LineChart({ title, subtitle, data, valueLabel = "Value", compareLabel, format = formatNumber, height = 180, action, className, hideTitle }: ChartProps) {
   const empty = data.every((d) => d.value === 0 && !d.compare);
   return (
@@ -169,7 +174,7 @@ export function LineChart({ title, subtitle, data, valueLabel = "Value", compare
   );
 }
 
-/** Horizontal bars with direct labels (join sources, overlap by shop, per-merchant visits). Thin chart-1 bars on a light track. */
+/** Horizontal bars with direct labels (join sources, overlap by shop, per-merchant visits). Trade-colour bars on a soft track. */
 export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: { label: ReactNode; value: number; key: string; hint?: string }[]; format?: (n: number) => string; max?: number; tone?: string }) {
   const max = maxProp ?? Math.max(1, ...rows.map((r) => r.value));
   return (
@@ -183,8 +188,8 @@ export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: 
               {r.hint ? <span className="text-fg-muted"> · {r.hint}</span> : null}
             </span>
           </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-bg-muted" aria-hidden>
-            <div className="h-full rounded-full bg-chart-1" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-trade-soft" aria-hidden>
+            <div className="h-full rounded-full bg-trade" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
           </div>
         </li>
       ))}
@@ -192,7 +197,7 @@ export function HBarList({ rows, format = formatNumber, max: maxProp }: { rows: 
   );
 }
 
-/** Visits by weekday: seven small bars (chart-1) with the count above. */
+/** Visits by weekday: seven small trade-colour bars with the count above. */
 export function WeekdayBars({ counts, format = formatNumber }: { counts: number[]; format?: (n: number) => string }) {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const max = Math.max(1, ...counts);
@@ -204,7 +209,7 @@ export function WeekdayBars({ counts, format = formatNumber }: { counts: number[
           <div key={d} role="listitem" className="flex flex-col items-center gap-1.5">
             <span className="text-caption font-normal text-fg tabular">{format(v)}</span>
             <div className="flex h-16 w-full items-end justify-center border-b border-line">
-              <div className="w-3/5 max-w-6 rounded-t-xs bg-chart-1" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
+              <div className="w-3/5 max-w-6 rounded-t-md bg-trade" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
             </div>
             <span className="text-caption font-normal text-fg-muted">{d}</span>
           </div>

@@ -53,7 +53,7 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
         {stamps ? <p className="mt-4 text-[14px] font-medium text-fg">{stampsLeft(goal - filled, model.rewardName)}</p> : null}
         <div className="mt-4 flex h-[100px] items-center justify-center rounded-[14px] bg-bg-subtle text-[13px] text-fg-muted">QR code · {memberCode}</div>
       </div>
-      <button type="button" tabIndex={-1} aria-disabled className="inline-flex h-[46px] cursor-default items-center justify-center rounded-full bg-fg px-5 text-[14px] font-medium text-bg">
+      <button type="button" tabIndex={-1} aria-disabled className="inline-flex h-[46px] cursor-default items-center justify-center rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground">
         Add to Apple Wallet
       </button>
       <p className="text-[12px] text-fg-muted">Same pass for Google Wallet. {stamps ? "Stamps" : "Your balance"} update on the lock screen.</p>

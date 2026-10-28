@@ -15,7 +15,7 @@ import { useAction } from "@/lib/dashboard/useApi";
 const SKIPPED: Record<string, string> = { no_phone: "There is no phone number for this owner, so nothing was texted.", quiet: "It is night, so no text was sent. The visit is logged.", opted_out: "This number asked us to stop texting.", no_credits: "Out of texts this month. The visit is logged." };
 
 const Chip = ({ on, children, onClick }: { on: boolean; children: React.ReactNode; onClick: () => void }) => (
-  <button type="button" aria-pressed={on} onClick={onClick} className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta-strong transition-colors", on ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+  <button type="button" aria-pressed={on} onClick={onClick} className={cn("inline-flex h-9 items-center rounded-full border px-3.5 text-meta-strong transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
     {children}
   </button>
 );

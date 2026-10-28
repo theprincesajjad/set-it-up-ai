@@ -123,7 +123,7 @@ export function ToggleChips<T extends string | number>({ options, value, onChang
             type="button"
             aria-pressed={on}
             onClick={() => onChange(on ? value.filter((v) => v !== o.value) : [...value, o.value])}
-            className={cn("inline-flex h-9 min-w-11 items-center justify-center rounded-full border px-3 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+            className={cn("inline-flex h-9 min-w-11 items-center justify-center rounded-full border px-3 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary font-medium text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
           >
             {o.label}
           </button>
@@ -217,7 +217,7 @@ export function TierTeaser({ featureKey, title, what }: { featureKey: FeatureKey
       <p className="mt-3 text-meta text-fg">{line}</p>
       <div className="mt-5 flex flex-wrap items-center gap-4">
         {role === "owner" ? (
-          <a href={`${base}/billing`} className="inline-flex h-9 items-center rounded-input bg-fg px-3.5 text-meta-strong text-bg hover:bg-brand-hover focus-visible:focus-ring">
+          <a href={`${base}/billing`} className="inline-flex h-9 items-center rounded-input bg-primary px-3.5 text-meta-strong text-primary-foreground hover:bg-brand-hover focus-visible:focus-ring">
             See restaurant plans
           </a>
         ) : (

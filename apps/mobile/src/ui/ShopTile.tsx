@@ -28,7 +28,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
  * and nowhere else (foundations § Colour, "Shop identity").
  */
 export function ShopLogo({ shop, size = 44, round = true }: { shop: Pick<ShopTileShop, "logoUrl" | "vertical" | "name" | "brandColor">; size?: number; round?: boolean }) {
-  const { c } = useTheme();
+  const { c, trade } = useTheme();
   const { t } = useLocale();
   const radius = round ? size / 2 : Math.round(size * 0.28);
   if (shop.logoUrl) {
@@ -37,7 +37,7 @@ export function ShopLogo({ shop, size = 44, round = true }: { shop: Pick<ShopTil
   const brand = shop.brandColor && HEX.test(shop.brandColor) ? shop.brandColor : null;
   if (!brand) {
     return (
-      <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: c.bgSubtle }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={[styles.logo, { width: size, height: size, borderRadius: radius, backgroundColor: trade(shop.vertical).soft }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <CategoryIcon vertical={shop.vertical} size={Math.round(size * 0.62)} />
       </View>
     );
@@ -50,7 +50,7 @@ export function ShopLogo({ shop, size = 44, round = true }: { shop: Pick<ShopTil
         allowFontScaling={false}
         style={[typo("displayNumber"), { fontSize: Math.round(size * (letters.length > 1 ? 0.36 : 0.44)), lineHeight: Math.round(size * 0.5), letterSpacing: 0 }]}
       >
-        {letters.toLowerCase()}
+        {letters}
       </Text>
     </View>
   );

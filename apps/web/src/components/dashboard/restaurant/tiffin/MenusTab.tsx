@@ -48,7 +48,7 @@ export function MenusTab({ goPlans, gate }: { goPlans: () => void; gate: Gate })
             <>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Plans">
                 {p.items.filter((x) => x.active).map((pl) => (
-                  <button key={pl.id} type="button" onClick={goPlans} className="rounded-card border border-line p-4 text-start hover:bg-bg-subtle focus-visible:focus-ring">
+                  <button key={pl.id} type="button" onClick={goPlans} className="rounded-card bg-hover p-4 text-start hover:bg-bg-subtle focus-visible:focus-ring">
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="text-body-strong text-fg">{pl.name}</span>
                       <span className="tabular text-body-strong text-fg">{formatMoney(pl.priceCents)}{pl.cadence === "trial" ? " trial day" : ` / ${pl.cadence === "monthly" ? "mo" : "wk"}`}</span>
@@ -151,7 +151,7 @@ function Grid({ week, setWeek, to, plans, existing, canEdit, onSaved }: { week: 
         </div>
       </div>
       <p className="text-meta text-fg-muted">One dish per line. Add words after &quot; - &quot; for a description, like &quot;Dal tadka - made with toor dal&quot;. Put the pieces per serving in brackets, like &quot;Rotli (4)&quot;, so the kitchen sheet counts them.</p>
-      <div role="table" aria-label="Menus by plan and day" className="overflow-hidden rounded-card border border-line">
+      <div role="table" aria-label="Menus by plan and day" className="overflow-hidden rounded-card bg-card shadow-card">
         <div role="row" className="hidden grid-cols-[9rem_repeat(7,minmax(0,1fr))] border-b border-line bg-bg-subtle md:grid">
           <div role="columnheader" className="px-3 py-2.5 text-meta text-fg-muted">Plan</div>
           {dates.map((d) => (

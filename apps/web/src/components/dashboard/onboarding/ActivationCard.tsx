@@ -17,7 +17,7 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
   const mark = leadingMarkPct(a);
   const left = stepsLeft(c);
   return (
-    <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card border border-line p-5 md:p-6">
+    <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card bg-card shadow-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">{t(L, "ob.card.title", { days: a.windowDays })}</p>
@@ -30,7 +30,7 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
 
       <div>
         <div role="progressbar" aria-label={t(L, "ob.card.activeMembers")} aria-valuemin={0} aria-valuemax={a.target} aria-valuenow={a.members} className="relative h-2 w-full rounded-full bg-bg-muted">
-          <div className="h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-trade" style={{ width: `${pct}%` }} />
           <span aria-hidden className="absolute -top-1 h-4 w-px bg-points" style={{ insetInlineStart: `${mark}%` }} />
         </div>
         <div className="relative mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-caption text-fg-muted">
@@ -47,7 +47,7 @@ export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
         {a.milestones.map((m) => (
           <li key={m.key} className="min-w-0">
             <span className="flex items-center gap-2 text-body text-fg">
-              <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full border-[1.5px]", m.at ? "border-fg bg-fg" : "border-line-strong")} />
+              <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full border-[1.5px]", m.at ? "border-trade bg-trade" : "border-line-strong")} />
               {m.label}
               <span className="sr-only">{" "}{m.at ? t(L, "ob.card.reached") : t(L, "ob.card.notYet")}</span>
             </span>

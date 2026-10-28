@@ -93,7 +93,7 @@ function Planner({ data, onReload, onYear }: { data: FestivalsUpcoming; onReload
           {data.cuisineOptions.map((c) => {
             const on = data.cuisines.includes(c.id);
             return (
-              <button key={c.id} type="button" aria-pressed={on} disabled={act.busy} onClick={() => void toggleCuisine(c.id)} className={cn("inline-flex h-8 items-center rounded-full border px-3 text-meta font-medium focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line text-fg-muted hover:bg-bg-subtle")}>
+              <button key={c.id} type="button" aria-pressed={on} disabled={act.busy} onClick={() => void toggleCuisine(c.id)} className={cn("inline-flex h-8 items-center rounded-full border px-3 text-meta font-medium focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg-muted hover:bg-bg-subtle")}>
                 {c.label}
               </button>
             );
@@ -120,7 +120,7 @@ function Planner({ data, onReload, onYear }: { data: FestivalsUpcoming; onReload
         <EmptyState title="Nothing on the calendar for your kitchen" description="Check the full year to plan ahead." action={<Button size="sm" variant="secondary" onClick={onYear}>See the full year</Button>} />
       ) : (
         <>
-          <ol aria-label="Next dates" className="grid grid-cols-2 overflow-hidden rounded-card border border-line sm:grid-cols-4 lg:grid-cols-7">
+          <ol aria-label="Next dates" className="grid grid-cols-2 overflow-hidden rounded-card bg-card shadow-card sm:grid-cols-4 lg:grid-cols-7">
             {strip.map((o) => {
               const on = selected && `${o.festivalId}-${o.year}` === `${selected.festivalId}-${selected.year}`;
               const tag = dateTag(o);
@@ -177,7 +177,7 @@ function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void;
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <div className="flex min-w-0 flex-col gap-8">
         <section aria-labelledby="plan-h">
-          <h2 id="plan-h" className="text-[17px] font-semibold text-fg">
+          <h2 id="plan-h" className="text-headline text-fg">
             {o.name}, {o.approximate ? "about " : ""}
             {longDay(o.startDate)}
           </h2>
@@ -196,7 +196,7 @@ function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void;
             </div>
           ) : null}
           {act.error ? <Banner tone="danger" className="mt-3">{act.error}</Banner> : null}
-          <ul className="mt-4 overflow-hidden rounded-card border border-line">
+          <ul className="mt-4 overflow-hidden rounded-card bg-card shadow-card">
             {o.sends.map((s, i) => {
               const st = statusFor(s);
               const active = s.templateId === templateId;
@@ -221,7 +221,7 @@ function Plan({ o, onChanged, toast }: { o: FestivalItem; onChanged: () => void;
         <section aria-labelledby="ready-h">
           <h2 id="ready-h" className="text-[15px] font-semibold text-fg">Get the kitchen ready</h2>
           <p className="mt-0.5 text-[13px] text-fg-muted">Three things owners forget</p>
-          <ul className="mt-3 overflow-hidden rounded-card border border-line">
+          <ul className="mt-3 overflow-hidden rounded-card bg-card shadow-card">
             {tasks.map((t, i) => (
               <KitchenTask key={t.key} task={t} festival={`${o.festivalId}-${o.year}`} first={i === 0} />
             ))}
@@ -340,13 +340,13 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
 
   return (
     <section aria-labelledby="msg-h" className="min-w-0">
-      <h2 id="msg-h" className="text-[17px] font-semibold text-fg">Message: {template.label}</h2>
+      <h2 id="msg-h" className="text-headline text-fg">Message: {template.label}</h2>
       <p className="mt-1 text-meta text-fg-muted">Written for you in each language. Edit anything before it goes out.</p>
-      <div className="mt-4 overflow-hidden rounded-card border border-line">
+      <div className="mt-4 overflow-hidden rounded-card bg-card shadow-card">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
           <div role="group" aria-label="Message language" className="flex flex-wrap gap-2">
             {MSG_LANGS.map((l) => (
-              <button key={l.code} type="button" aria-pressed={lang === l.code} lang={l.code} onClick={() => setLang(l.code)} className={cn("inline-flex h-9 items-center rounded-full border px-4 text-meta-strong focus-visible:focus-ring", lang === l.code ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+              <button key={l.code} type="button" aria-pressed={lang === l.code} lang={l.code} onClick={() => setLang(l.code)} className={cn("inline-flex h-9 items-center rounded-full border px-4 text-meta-strong focus-visible:focus-ring", lang === l.code ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
                 {l.label}
               </button>
             ))}
@@ -363,7 +363,7 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
           </div>
         ) : null}
         <div className="bg-bg-subtle px-5 py-5">
-          <p lang={lang} dir={lang === "ur" ? "rtl" : "ltr"} className={cn("max-w-[460px] whitespace-pre-line rounded-[18px] bg-fg px-5 py-4 text-body text-bg", lang === "ur" ? "ms-auto leading-[1.9]" : "ms-auto")}>
+          <p lang={lang} dir={lang === "ur" ? "rtl" : "ltr"} className={cn("max-w-[460px] whitespace-pre-line rounded-[18px] bg-primary px-5 py-4 text-body text-primary-foreground", lang === "ur" ? "ms-auto leading-[1.9]" : "ms-auto")}>
             {previewText}
           </p>
           {lang !== "en" ? <p className="mt-2 text-caption text-fg-muted">This {MSG_LANGS.find((l) => l.code === lang)?.label} draft is a short greeting. Have someone who reads it check the wording before you send.</p> : null}

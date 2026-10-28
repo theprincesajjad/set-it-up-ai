@@ -236,7 +236,7 @@ function Calendar() {
       {view === "day" && columns.length > 1 ? (
         <div role="tablist" aria-label="Stylist" className="flex gap-1.5 overflow-x-auto md:hidden">
           {columns.map((c, i) => (
-            <button key={c.key} type="button" role="tab" aria-selected={i === mobileCol} onClick={() => setMobileIdx(i)} className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-meta focus-visible:focus-ring", i === mobileCol ? "border-fg bg-fg font-medium text-bg" : "border-line bg-bg text-fg")}>
+            <button key={c.key} type="button" role="tab" aria-selected={i === mobileCol} onClick={() => setMobileIdx(i)} className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-meta focus-visible:focus-ring", i === mobileCol ? "border-primary bg-primary font-medium text-primary-foreground" : "border-line bg-bg text-fg")}>
               {c.title}
             </button>
           ))}

@@ -212,8 +212,8 @@ export function QuantityChips({ values, value, onChange, unit }: { values: numbe
       {values.map((q) => {
         const on = q === value;
         return (
-          <Pressable key={q} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`+${q}`} accessibilityHint={`${q} ${unit} for this visit`} onPress={() => onChange(q)} style={({ pressed }) => [styles.qty, { backgroundColor: on ? c.fg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}>
-            <Text style={disp(16, 700, 20)} rawColor={on ? c.bg : c.fg}>{`+${q}`}</Text>
+          <Pressable key={q} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`+${q}`} accessibilityHint={`${q} ${unit} for this visit`} onPress={() => onChange(q)} style={({ pressed }) => [styles.qty, { backgroundColor: on ? c.brand : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}>
+            <Text style={disp(16, 700, 20)} rawColor={on ? c.onBrand : c.fg}>{`+${q}`}</Text>
           </Pressable>
         );
       })}
@@ -225,8 +225,8 @@ export function QuantityChips({ values, value, onChange, unit }: { values: numbe
 export function AwardButton({ label, onPress, loading, disabled }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean }) {
   const { c } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, busy: !!loading }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.award, { backgroundColor: disabled ? c.bgMuted : c.fg, opacity: pressed ? 0.9 : 1 }]}>
-      {loading ? <ActivityIndicator color={c.bg} /> : <Text style={disp(22, 800, 26)} rawColor={disabled ? c.fgSubtle : c.bg}>{label}</Text>}
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, busy: !!loading }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.award, { backgroundColor: disabled ? c.bgMuted : c.brand, opacity: pressed ? 0.9 : 1 }]}>
+      {loading ? <ActivityIndicator color={c.onBrand} /> : <Text style={disp(22, 800, 26)} rawColor={disabled ? c.fgSubtle : c.onBrand}>{label}</Text>}
     </Pressable>
   );
 }

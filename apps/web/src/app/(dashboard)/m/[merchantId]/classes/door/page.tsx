@@ -7,6 +7,7 @@ import { SalePanel } from "@/components/dashboard/classes/SalePanel";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { Awning } from "@/components/ui/Awning";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { money } from "@/lib/dashboard/calendar";
@@ -67,7 +68,8 @@ function Door() {
   }
   const s = door.data?.session;
   return (
-    <div className="mx-auto flex min-h-dvh max-w-300 flex-col gap-6 px-4 py-6 md:px-8">
+    <div className="mx-auto flex min-h-dvh max-w-300 flex-col gap-6 px-4 pb-6 md:px-8">
+      <Awning size="sm" className="rounded-none rounded-b-lg" />
       <PageHeader
         flush
         title={t("counter.cd.title")}
@@ -81,7 +83,7 @@ function Door() {
       />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
-          <form onSubmit={submit} className="flex min-w-0 items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 focus-within:border-foreground">
+          <form onSubmit={submit} className="flex min-w-0 items-center gap-3 rounded-full bg-card px-5 py-2 shadow-card ring-1 ring-border focus-within:ring-2 focus-within:ring-trade">
             <ScanLine aria-hidden className="size-5 shrink-0 text-fg-muted" />
             <input
               ref={input}
@@ -92,11 +94,11 @@ function Door() {
               autoComplete="off"
               className="min-h-12 min-w-0 flex-1 bg-transparent text-headline text-foreground outline-none placeholder:text-muted-foreground"
             />
-            <Button type="submit" size="lg" loading={act.busy} className="rounded-xl">{t("counter.cd.lookUp")}</Button>
+            <Button type="submit" size="lg" loading={act.busy}>{t("counter.cd.lookUp")}</Button>
           </form>
           {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
           {last ? (
-            <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border border-border bg-card p-5", CARD[doorTone(last.outcome)])}>
+            <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border border-border bg-card p-5 shadow-card", CARD[doorTone(last.outcome)])}>
               <Dot tone={doorTone(last.outcome) === "positive" ? "positive" : doorTone(last.outcome) === "negative" ? "negative" : "neutral"}>{last.message}</Dot>
               {last.member ? <h2 className="font-display text-h1 text-foreground">{last.member.name ?? last.member.maskedPhone ?? t("counter.member")}</h2> : null}
               <dl className="grid grid-cols-1 gap-3 text-meta sm:grid-cols-3">
@@ -106,11 +108,11 @@ function Door() {
                 {last.amountDueCents ? <div><dt className="text-fg-muted">{t("counter.cd.owed")}</dt><dd className="text-body text-fg">{money(last.amountDueCents)}</dd></div> : null}
               </dl>
               {last.outcome === "no_pass" && last.member?.memberCode && sellable.length ? (
-                <div><Button size="lg" className="rounded-xl" onClick={() => setSelling(true)}>{t("counter.cd.sell")}</Button></div>
+                <div><Button size="lg" onClick={() => setSelling(true)}>{t("counter.cd.sell")}</Button></div>
               ) : null}
             </section>
           ) : null}
-          <details className="rounded-card border border-line px-5 py-3">
+          <details className="rounded-card bg-card px-5 py-3 shadow-card">
             <summary className="cursor-pointer text-body-strong text-fg">{t("counter.cd.means")}</summary>
             <ul className="mt-2 flex flex-col gap-1.5 text-meta text-fg-muted">
               <li>{t("counter.cd.m1")}</li>
@@ -121,9 +123,9 @@ function Door() {
           </details>
         </div>
         <section aria-label={t("counter.cd.arrived")} className="flex flex-col gap-2">
-          <h2 className="text-body-strong text-fg">{s?.booked !== undefined ? t("counter.cd.arrivedOf", { n: number(door.data?.arrivals.length ?? 0), total: number(s.booked) }) : t("counter.cd.arrivedN", { n: number(door.data?.arrivals.length ?? 0) })}</h2>
+          <h2 className="font-display text-title font-bold text-fg">{s?.booked !== undefined ? t("counter.cd.arrivedOf", { n: number(door.data?.arrivals.length ?? 0), total: number(s.booked) }) : t("counter.cd.arrivedN", { n: number(door.data?.arrivals.length ?? 0) })}</h2>
           {door.data && door.data.arrivals.length ? (
-            <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
+            <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
               {door.data.arrivals.map((a) => (
                 <li key={a.bookingId} className="flex items-center gap-3 px-4 py-3">
                   <span className="w-16 text-meta text-fg-muted tabular">{timeLabel(a.at)}</span>
@@ -133,7 +135,7 @@ function Door() {
               ))}
             </ul>
           ) : (
-            <p className="rounded-card border border-line px-4 py-4 text-meta text-fg-muted">{t("counter.cd.nobody")}</p>
+            <p className="rounded-card bg-card px-4 py-4 text-meta text-fg-muted shadow-card">{t("counter.cd.nobody")}</p>
           )}
         </section>
       </div>

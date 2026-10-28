@@ -1,16 +1,7 @@
 /**
- * The awning stripe (v3 mood board 01): 10 px, points and paper, scalloped by the gaps. Marketing header and the customer pass
- * only, and exactly one per page: the marketing layout renders it, so pages and sections must not.
+ * The awning stripe: terracotta and white, one per marketing page, rendered by the marketing layout (pages and sections must not).
+ * It unrolls once on load; with reduced motion it is simply there (see marketing.css).
  */
 export function Awning() {
-  return (
-    <svg aria-hidden focusable="false" data-testid="awning" width="100%" height="10" className="block">
-      <defs>
-        <pattern id="awning-stripe" width="40" height="10" patternUnits="userSpaceOnUse">
-          <rect width="20" height="10" className="fill-points" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="10" fill="url(#awning-stripe)" />
-    </svg>
-  );
+  return <div aria-hidden data-testid="awning" className="mkt-awning h-3.5 w-full rounded-b-lg" />;
 }

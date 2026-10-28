@@ -50,13 +50,13 @@ export default async function ShopTiffinPage({ params, searchParams }: Props) {
   }
   if (data === "error")
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
   if (data === "none")
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <EmptyState title={t("rc.tf.noPlans")} description={t("rc.tf.noPlansBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
@@ -64,7 +64,7 @@ export default async function ShopTiffinPage({ params, searchParams }: Props) {
   const plan = typeof sp.plan === "string" ? sp.plan : undefined;
   const servings = typeof sp.servings === "string" ? Number.parseInt(sp.servings, 10) : undefined;
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <TiffinPlans shop={shop} data={data} signedIn={!!me} initialPlanId={plan} initialServings={Number.isFinite(servings) ? servings : undefined} defaultName={me?.user.name ?? undefined} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

@@ -99,7 +99,7 @@ function Payouts() {
           <p className="text-meta-strong text-fg">What a renter sees when they sign in</p>
           <p className="mt-1 text-meta text-fg-muted">Only their own chair: their appointments, queue calls, tips and this row. Not other barbers&apos; names, phone numbers or prices, and not the customer list. Set per person in Staff.</p>
         </div>
-        <div className="rounded-card border border-line px-5 py-4">
+        <div className="rounded-card bg-card shadow-card px-5 py-4">
           <p className="text-meta-strong text-fg">How each number is made</p>
           <p className="mt-1 text-meta text-fg-muted">Services are paid visits before tax and tip. Tips go to the barber they were left for, cash tips as recorded at the counter. Shop keeps is the commission share. Rent is the weekly amount, shown and not collected. Takes home is services minus what the shop keeps and rent, plus tips. Rent is spread over the days shown, so early in the week it can show below zero until the cuts catch up. A free cut earned on the shop card is a discount on that visit, so it comes off the barber&apos;s services unless the shop covers it: tell chair renters before you put a shop-wide card on the stand. An employee&apos;s wage is outside the app, so they take home their tips.</p>
         </div>

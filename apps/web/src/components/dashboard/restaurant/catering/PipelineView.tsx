@@ -73,7 +73,7 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                           <ul className="mt-3 flex flex-col gap-3">
                             {col.map((e) => (
                               <li key={e.id}>
-                                <Link href={`${base}/restaurant/catering/${e.id}`} className="block rounded-card border border-line p-3 hover:bg-bg-subtle focus-visible:focus-ring">
+                                <Link href={`${base}/restaurant/catering/${e.id}`} className="block rounded-card bg-hover p-3 hover:bg-bg-subtle focus-visible:focus-ring">
                                   <div className="flex items-baseline justify-between gap-2">
                                     <span className="truncate text-body-strong text-fg">{EVENT_TYPE_LABEL[e.eventType]}</span>
                                     {e.totalCents ? <span className="shrink-0 text-meta tabular text-fg">{formatMoney(e.totalCents)}</span> : null}
@@ -170,18 +170,18 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
           { label: "Booked, next 8 weeks", value: formatMoney(sum.bookedNext8wCents), caption: `${sum.bookedNext8wEvents} ${sum.bookedNext8wEvents === 1 ? "event" : "events"} · ${formatNumber(guests)} guests` },
         ]}
       />
-      <section aria-label="Next 8 weeks" className="rounded-card border border-line p-5">
+      <section aria-label="Next 8 weeks" className="rounded-card bg-card shadow-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-body-strong text-fg">Next 8 weeks</h3>
           <p className="flex items-center gap-4 text-meta text-fg">
-            <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-fg" />Confirmed</span>
+            <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-trade" />Confirmed</span>
             <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-location" />Quoted or held</span>
           </p>
         </div>
         <ol className="mt-3 grid grid-cols-4 gap-x-3 gap-y-3 sm:grid-cols-8">
           {sum.weeks.map((w) => (
             <li key={w.start} aria-label={`Week of ${dayShort(w.start)}: ${w.confirmed} confirmed, ${w.pending} quoted or held`}>
-              <div className={`h-2.5 rounded-full ${w.confirmed ? "bg-fg" : w.pending ? "bg-location" : "bg-bg-muted"}`} />
+              <div className={`h-2.5 rounded-full ${w.confirmed ? "bg-trade" : w.pending ? "bg-location" : "bg-bg-muted"}`} />
               <p className="mt-1.5 text-meta tabular text-fg-muted">{dayShort(w.start)}</p>
             </li>
           ))}

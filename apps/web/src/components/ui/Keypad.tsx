@@ -8,14 +8,14 @@ export type KeypadValue = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | 
 export type KeypadSize = "counter" | "kiosk" | "compact";
 
 /**
- * v3 key (Figma 15:2, 15:130): a white key with a hairline, heavy display numerals, 14 radius. Counter keys are 72 px, kiosk keys 88 px,
+ * v3 key (Figma 15:2, 15:130): a white key on the warm pane with a soft shadow, heavy display numerals, 18 radius. Counter keys are 72 px, kiosk keys 88 px,
  * both on an 8 px grid gap. `compact` (the amount pad and Not counted pad, stacked under other content) is 56 px on a phone and 72 px from
  * the tablet breakpoint up.
  */
 export function keypadKeyClass(size: KeypadSize = "counter") {
   const h = size === "kiosk" ? "h-22" : size === "compact" ? "h-14 lg:h-18" : "h-18";
   return cn(
-    "flex items-center justify-center rounded-xl border border-border bg-background font-display text-h1 tabular-nums text-foreground",
+    "flex items-center justify-center rounded-[18px] bg-card font-sans text-h1 font-semibold tabular-nums text-foreground shadow-card",
     "transition-colors duration-150 ease-out hover:bg-hover active:bg-hover focus-visible:focus-ring disabled:opacity-60",
     h,
   );

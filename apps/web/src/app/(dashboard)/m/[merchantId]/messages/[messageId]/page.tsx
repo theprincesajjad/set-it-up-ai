@@ -1,5 +1,5 @@
 "use client";
-import { BackLink, PageHeader, Panel, StatTile, StatusDot } from "@/components/dashboard/kit";
+import { BackLink, PageHeader, Panel, StatGrid, StatTile, StatusDot } from "@/components/dashboard/kit";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Send } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -41,12 +41,12 @@ function MessagePage() {
             } />
             {testNote ? <p role="status" className="text-meta text-positive-text">{testNote}</p> : null}
             {test.error ? <p className="text-negative">{test.error}</p> : null}
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-4">
+            <StatGrid>
               <StatTile label="Recipients" value={formatNumber(m.recipientCount)} />
               <StatTile label="Sent" value={formatNumber(m.stats.sent)} />
               <StatTile label="Delivered" value={formatNumber(m.stats.delivered)} />
               <StatTile label="Failed" value={formatNumber(m.stats.failed)} />
-            </div>
+            </StatGrid>
             <Panel>
               <h2 className="text-body-strong text-fg">What recipients get</h2>
               <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-body text-fg [overflow-wrap:anywhere]">{m.preview}</pre>

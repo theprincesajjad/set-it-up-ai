@@ -1,8 +1,8 @@
 "use client";
 /**
- * Pass tab bar (v3 frame 15:184): four labelled tabs on a flat bar with a hairline top edge, fixed to the bottom of the pass column.
- * Card opens "my card" (the QR sheet), Rewards, Shops and Activity open those parts of the wallet. Icons are Lucide at 1.75
- * stroke; the active tab is black with a heavier label, the rest are muted (never colour alone: the label weight changes too).
+ * Pass tab bar (Main Street Warm, Figma 32): four labelled tabs on a sand bar floating at the bottom of the pass column; the active tab is
+ * a white pill with its glyph in the shop's trade colour. Card opens "my card", Rewards, Shops and Activity open those parts of the
+ * wallet. Icons are Lucide; the rest are muted (never colour alone: the label weight changes too).
  */
 import { Activity, Gift, Map, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -15,8 +15,8 @@ export type PassTab = "card" | "rewards" | "shops" | "activity";
 
 const itemCls = (on: boolean) =>
   cn(
-    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-caption transition-colors duration-150 ease-out focus-visible:focus-ring",
-    on ? "font-semibold text-foreground" : "font-medium text-muted-foreground hover:text-foreground",
+    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-caption transition-colors duration-150 ease-out focus-visible:focus-ring",
+    on ? "bg-card font-bold text-foreground shadow-card" : "font-medium text-muted-foreground hover:text-foreground",
   );
 
 /**
@@ -40,12 +40,12 @@ export function PassTabBar({ active, onSelect }: { active?: PassTab | null; onSe
         }
       }}
     >
-      <Icon aria-hidden className="size-6" strokeWidth={active === key ? 2 : 1.75} />
+      <Icon aria-hidden className={cn("size-6", active === key && "text-trade-deep")} strokeWidth={active === key ? 2 : 1.75} />
       <span aria-hidden={aria ? true : undefined}>{label}</span>
     </Link>
   );
   return (
-    <nav aria-label={t("sh.nav.main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[480px] items-stretch gap-1 border-t border-border bg-card px-2 pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))]">
+    <nav aria-label={t("sh.nav.main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[480px] items-stretch gap-1 rounded-t-[26px] border border-b-0 border-line bg-sidebar px-2.5 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] shadow-card">
       {link("card", t("sh.card.tabCard"), Wallet, t("sh.nav.myCard"))}
       {link("rewards", t("sh.tab.rewards"), Gift)}
       {link("shops", t("sh.tab.shops"), Map)}

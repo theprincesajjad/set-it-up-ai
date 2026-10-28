@@ -183,7 +183,7 @@ function Intervals({ open, onClose, settings, onSaved }: { open: boolean; onClos
       <div className="flex flex-col gap-5">
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         {rows.map((s, i) => (
-          <fieldset key={s.key} className="flex flex-col gap-3 rounded-card border border-line p-4">
+          <fieldset key={s.key} className="flex flex-col gap-3 rounded-card bg-card shadow-card p-4">
             <legend className="px-1 text-meta-strong text-fg">{s.label}</legend>
             <Checkbox label="Remind for this service" checked={s.active} onChange={(v) => set(i, { active: v })} />
             <div className="grid grid-cols-2 gap-3">

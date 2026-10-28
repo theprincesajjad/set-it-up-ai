@@ -12,9 +12,9 @@ import { Awning } from "@/components/ui/Awning";
 import { cn } from "@/lib/utils";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
-/** The top edge of a pass card: the shared awning stripe in the shop's trade colour (`[data-trade]` on the card), clipped by the card's rounded corners. One per page. */
-export function AwningStripe({ className }: { className?: string }) {
-  return <Awning tone="trade" size="md" className={cn("rounded-none", className)} />;
+/** The top edge of a pass card: the shared awning stripe (terracotta and white, or `tone="trade"` in the shop's accent from `[data-trade]`), clipped by the card's rounded corners. One per page. */
+export function AwningStripe({ className, tone = "primary" }: { className?: string; tone?: "primary" | "trade" }) {
+  return <Awning tone={tone} size="md" className={cn("rounded-none", className)} />;
 }
 
 /**
@@ -65,7 +65,7 @@ export function PassTopBar({ title, backHref, backLabel, className, children }: 
       ) : (
         title ? <span aria-hidden className="size-11 shrink-0" /> : null
       )}
-      <div className="min-w-0 flex-1 text-center text-headline font-semibold text-foreground">{title}</div>
+      <div className="min-w-0 flex-1 text-center font-display text-headline font-bold text-foreground">{title}</div>
       <div className="flex shrink-0 items-center gap-2">
         {children}
         <LanguageChip />
@@ -75,18 +75,18 @@ export function PassTopBar({ title, backHref, backLabel, className, children }: 
 }
 
 /**
- * A pass section card (frame 15:184: "Rewards", "Recent visits"): a hairline card on the paper canvas with its title in a header row
+ * A pass section card ("Nearby on your street", "Rewards", "Recent visits"): a white card with a soft shadow on the cream canvas, its Fraunces title with its title in a header row
  * and hairline-divided rows below. `children` are usually `<li>`s; rows bring their own vertical padding.
  */
 export function PassPanel({ title, action, children, className, as = "ul", id }: { title: ReactNode; action?: ReactNode; children: ReactNode; className?: string; as?: "ul" | "div"; id?: string }) {
   const As = as;
   return (
-    <section aria-label={typeof title === "string" ? title : undefined} id={id} className={cn("overflow-hidden rounded-card border border-border bg-card", className)}>
-      <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h2 className="text-headline font-semibold text-foreground">{title}</h2>
+    <section aria-label={typeof title === "string" ? title : undefined} id={id} className={cn("overflow-hidden rounded-card border border-line bg-card shadow-card", className)}>
+      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-3.5">
+        <h2 className="font-display text-[20px] font-bold leading-7 text-foreground">{title}</h2>
         {action}
       </div>
-      <As className="flex flex-col divide-y divide-border px-4">{children}</As>
+      <As className="flex flex-col divide-y divide-line px-4">{children}</As>
     </section>
   );
 }

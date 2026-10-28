@@ -23,7 +23,7 @@ const dayOf = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }
  */
 export default function Dropoff() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const { t, date, time, number } = useLocale();
   const online = useOnline();
   const [day, setDay] = useState<string | null>(null);
@@ -115,9 +115,9 @@ export default function Dropoff() {
         {[...byDay.keys()].map((d) => {
           const on = d === current;
           return (
-            <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.fg : c.line, backgroundColor: on ? c.fg : c.bg }]}>
-              <Text variant="caption" rawColor={on ? c.bg : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
-              <Text style={disp(22, 800, 26)} rawColor={on ? c.bg : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
+            <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }]}>
+              <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
+              <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
             </Pressable>
           );
         })}

@@ -132,7 +132,7 @@ export default function ReportsPage() {
             {heat.data ? <Heatmap data={heat.data} note={heatNote} /> : <div className="skeleton h-[360px] w-full rounded-card" />}
             <div className="flex flex-col gap-4">
               {cost ? (
-                <section aria-label="Rewards owed" className="rounded-card border border-line p-6">
+                <section aria-label="Rewards owed" className="rounded-card bg-card shadow-card p-6">
                   <p className="text-[13px] text-fg-muted">Rewards owed right now</p>
                   <p className="mt-1 font-display text-[32px] font-bold leading-10 tracking-[-0.01em] text-fg">{owedHeadline(cost, noun)}</p>
                   <p className="mt-2 text-[13px] leading-5 text-fg-muted">{owedDetail(cost, term, noun)}</p>
@@ -140,7 +140,7 @@ export default function ReportsPage() {
                 </section>
               ) : null}
               {joiners && joiners.joined > 0 ? (
-                <section aria-label="Joiners who came back" className="rounded-card border border-line p-6">
+                <section aria-label="Joiners who came back" className="rounded-card bg-card shadow-card p-6">
                   <p className="text-[13px] text-fg-muted">{joinersTitle(joiners)}</p>
                   <ul className="mt-3">
                     {joiners.windows.map((w) => (
@@ -153,7 +153,7 @@ export default function ReportsPage() {
                 </section>
               ) : null}
               {advanced && overlap.data && overlap.data.shops.length ? (
-                <section aria-label="Your members also visit" className="rounded-card border border-line p-6">
+                <section aria-label="Your members also visit" className="rounded-card bg-card shadow-card p-6">
                   <p className="text-[13px] text-fg-muted">Your members also visit (opt-in network)</p>
                   <p className="mt-2 text-[14px] font-medium leading-6 text-fg">
                     {overlap.data.shops.slice(0, 3).map((x) => `${x.name} ${overlap.data!.myMembers ? Math.round((x.sharedMembers / overlap.data!.myMembers) * 100) : 0}%`).join(" · ")}

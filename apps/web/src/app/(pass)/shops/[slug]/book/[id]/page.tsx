@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { translator } from "@ll/shared";
 import { ManageAppointment } from "@/components/pass/ManageAppointment";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
+import { loadShopBrief } from "@/lib/restaurant/server";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -46,8 +47,9 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
       );
     throw e;
   }
+  const shop = await loadShopBrief(slug).catch(() => null);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop?.vertical}>
       <ManageAppointment initial={appointment} slug={slug} pay={pay} />
     </PageFrame>
   );

@@ -39,7 +39,7 @@ export default function CounterPage() {
           </CounterNotice>
         </div>
       ) : null}
-      <CounterApp undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
+      <CounterApp vertical={detail.merchant.vertical} undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
       {pharmacy ? (
         <div className="mx-auto max-w-3xl px-4 pb-10 pt-10">
           <PickupReady />

@@ -48,19 +48,19 @@ export default async function ShopClassesPage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
-        <PageFrame locale={locale}>
+        <PageFrame locale={locale} trade={shop.vertical}>
           <EmptyState title={t("cl.ui.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
-      <PageFrame locale={locale}>
+      <PageFrame locale={locale} trade={shop.vertical}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}/classes`}>{t("rc.tryAgain")}</Button>} />
       </PageFrame>
     );
   }
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <ClassSchedule shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

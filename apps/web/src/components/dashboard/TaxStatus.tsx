@@ -63,7 +63,7 @@ function TaxForm({ d, owner, compact, reload, api }: { d: paymentsManualApi.TaxS
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <div role="radiogroup" aria-label="Registered for GST/HST" className="flex flex-wrap gap-2">
         {([["yes", "Yes, I'm registered"], ["no", "No, I'm a small supplier"]] as const).map(([v, label]) => (
-          <button key={v} type="button" role="radio" aria-checked={reg === v} disabled={!owner} onClick={() => setReg(v)} className={`inline-flex h-9 items-center rounded-full border px-4 text-meta focus-visible:focus-ring ${reg === v ? "border-fg bg-fg font-medium text-bg" : "border-line text-fg hover:bg-bg-subtle"}`}>
+          <button key={v} type="button" role="radio" aria-checked={reg === v} disabled={!owner} onClick={() => setReg(v)} className={`inline-flex h-9 items-center rounded-full border px-4 text-meta focus-visible:focus-ring ${reg === v ? "border-primary bg-primary font-medium text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle"}`}>
             {label}
           </button>
         ))}

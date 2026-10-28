@@ -44,7 +44,7 @@ export default async function CateringInquiryPage({ params, searchParams }: Prop
   const menu = await publicRestaurantApi().menu(slug).catch(() => null);
   const perGuest = menu ? [...menu.categories.flatMap((c) => c.items), ...menu.uncategorized].filter((i) => (i.serves ?? 0) > 1 && i.priceCents > 0).map((i) => Math.round(i.priceCents / i.serves!)) : [];
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       <CateringInquiryForm shop={shop} fromPerGuestCents={perGuest.length ? Math.min(...perGuest) : null} />
     </PageFrame>
   );

@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
-/** Filter capsules row (Stripe / Square). Active = muted fill, never colour. */
+/** Filter capsules row (Stripe / Square). Active = terracotta fill. */
 export function Capsules<T extends string>({ options, value, onChange, label, className }: { options: { value: T; label: string; count?: number | null; /** Colour of the word while not selected: waiting on a customer (info) or a problem (negative). */ tone?: "info" | "negative" }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
   return (
     <div role="radiogroup" aria-label={label} className={cn("flex flex-wrap gap-1.5", className)}>
@@ -25,11 +25,11 @@ export function Capsules<T extends string>({ options, value, onChange, label, cl
             onClick={() => onChange(o.value)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-meta transition-colors focus-visible:focus-ring",
-              on ? "border-fg bg-fg font-medium text-bg" : cn("border-line bg-bg hover:bg-bg-subtle", o.tone === "info" ? "text-location" : o.tone === "negative" ? "text-negative" : "text-fg"),
+              on ? "border-primary bg-primary font-semibold text-primary-foreground" : cn("border-line bg-bg hover:bg-bg-subtle", o.tone === "info" ? "text-location" : o.tone === "negative" ? "text-negative" : "text-fg"),
             )}
           >
             {o.label}
-            {o.count != null ? <span className={cn("tabular", on ? "text-bg/70" : "text-fg-muted")}>{o.count}</span> : null}
+            {o.count != null ? <span className={cn("tabular", on ? "text-primary-foreground/80" : "text-fg-muted")}>{o.count}</span> : null}
           </button>
         );
       })}
@@ -48,7 +48,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={cn("min-h-7 rounded-[8px] whitespace-nowrap px-2.5 py-1 text-meta leading-tight transition-colors focus-visible:focus-ring", o.value === value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
+          className={cn("min-h-7 rounded-[8px] whitespace-nowrap px-2.5 py-1 text-meta leading-tight transition-colors focus-visible:focus-ring", o.value === value ? "bg-card font-semibold text-primary-text shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
         >
           {o.label}
         </button>
@@ -70,7 +70,7 @@ export function PageTabs<T extends string>({ items, value, onChange, label, clas
             type="button"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className={cn("-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring", on ? "border-fg font-medium text-fg" : "border-transparent text-fg-muted hover:text-fg")}
+            className={cn("-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary font-semibold text-primary-text" : "border-transparent text-fg-muted hover:text-fg")}
           >
             {t.label}
             {t.count != null ? <span className="tabular text-fg-muted">{t.count}</span> : null}
@@ -125,7 +125,7 @@ export function Tabs({ items, value, onChange, label, className }: { items: { id
             type="button"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className={cn("-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring [&_span]:text-caption", on ? "border-fg font-medium text-fg" : "border-transparent text-fg-muted hover:text-fg")}
+            className={cn("-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring [&_span]:text-caption", on ? "border-primary font-semibold text-primary-text" : "border-transparent text-fg-muted hover:text-fg")}
           >
             {t.label}
             {t.meta != null ? <span className="font-normal text-fg-muted tabular">{t.meta}</span> : null}

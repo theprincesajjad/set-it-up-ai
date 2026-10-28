@@ -44,7 +44,7 @@ export default async function VisitPage({ params, searchParams }: Props) {
   }
   const shop = await loadShopBrief(v.shop.slug).catch(() => null);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop?.vertical}>
       <ReportCardPage v={v} t={t} brand={{ logoUrl: shop?.logoUrl ?? null, brandColor: shop?.brandColor ?? null }} when={formatDate(locale, v.at, { weekday: "long", month: "short", day: "numeric" })} />
     </PageFrame>
   );

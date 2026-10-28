@@ -14,7 +14,7 @@ import { shopInitials, readableOn } from "../../ui/ShopTile";
 import { useLocale } from "../../lib/i18n";
 import { useOnline } from "../../state/network";
 import { disp, ui, useTheme } from "../../theme";
-import { Button, categorySource, ChevronLeftGlyph, EmptyState, ErrorState, hairline, SkeletonRows, SlidersGlyph, Text, User, useTabBarSpace } from "../../ui";
+import { Awning, Bell, Button, CardTitle, ChevronLeftGlyph, EmptyState, ErrorState, Gift, hairline, IconTile, SkeletonRows, SlidersGlyph, Store, Text, Trophy, User, useTabBarSpace, WarmCard, type TileTone } from "../../ui";
 import { inboxSections, openNotification, useInbox, useMarkRead } from "./inbox";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,16 +40,16 @@ function Lead({ n }: { n: customerApi.NotificationDto }) {
     return (
       <View style={[styles.av, { backgroundColor: m.brandColor }]}>
         <Text style={disp(14, 800, 17)} rawColor={readableOn(m.brandColor)} allowFontScaling={false}>
-          {shopInitials(m.name).toLowerCase()}
+          {shopInitials(m.name)}
         </Text>
       </View>
     );
   }
-  return (
-    <View style={[styles.av, { backgroundColor: c.bgSubtle }]}>
-      <Image source={categorySource(n.type === "passport_progress" ? "all" : "services")} style={{ width: 24, height: 24 }} resizeMode="contain" accessibilityIgnoresInvertColors />
-    </View>
-  );
+  // No logo or brand colour: a pastel IconTile by kind (passport = trophy, rewards = gift, a shop = its category glyph).
+  const tone: TileTone = n.type === "passport_progress" ? "rose" : /reward|redeem/i.test(n.type) ? "butter" : /order|ticket/i.test(n.type) ? "sky" : "peach";
+  const Icon = n.type === "passport_progress" ? Trophy : /reward|redeem/i.test(n.type) ? Gift : m ? Store : Bell;
+  void c;
+  return <IconTile icon={Icon} tone={tone} size={40} />;
 }
 
 function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boolean; onPress: () => void }) {
@@ -78,13 +78,13 @@ function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boole
           {n.body}
         </Text>
       </View>
-      {n.read ? null : <View style={[styles.dot, { backgroundColor: c.accent }]} />}
+      {n.read ? null : <View style={[styles.dot, { backgroundColor: c.brand }]} />}
     </Pressable>
   );
 }
 
 export function InboxScreen({ inTab }: { inTab: boolean }) {
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
   const online = useOnline();
@@ -101,20 +101,23 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
     <ScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={{ paddingTop: topPad, paddingHorizontal: 20, paddingBottom: (inTab ? tabSpace : insets.bottom) + 24 }}
+      contentContainerStyle={{ paddingBottom: (inTab ? tabSpace : insets.bottom) + 24 }}
       refreshControl={<RefreshControl refreshing={inbox.isRefetching} onRefresh={() => void inbox.refetch()} />}
     >
+      <View style={{ height: insets.top > 0 ? insets.top : 0 }} />
+      <Awning height={10} />
+      <View style={{ paddingHorizontal: 20, paddingTop: insets.top > 0 ? 8 : 16 }}>
       <View style={styles.bar}>
         {inTab ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.you.title")} onPress={() => router.push("/you")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.you.title")} onPress={() => router.push("/you")} style={[styles.circle, { backgroundColor: r.card }]}>
             <User size={18} color={c.fg} strokeWidth={1.9} />
           </Pressable>
         ) : (
-          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={[styles.circle, { backgroundColor: r.card }]}>
             <ChevronLeftGlyph size={18} color={c.fg} />
           </Pressable>
         )}
-        <Pressable accessibilityRole="button" accessibilityLabel={t("sh.inbox.settings")} onPress={() => router.push("/settings/notifications")} style={[styles.circle, { backgroundColor: c.bgSubtle }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("sh.inbox.settings")} onPress={() => router.push("/settings/notifications")} style={[styles.circle, { backgroundColor: r.card }]}>
           <SlidersGlyph size={18} color={c.fg} />
         </Pressable>
       </View>
@@ -127,7 +130,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
         </Text>
         {unread > 0 ? (
           <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={8}>
-            <Text style={ui(14, 600, 18)}>{t("sh.set.markAllRead")}</Text>
+            <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.set.markAllRead")}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -142,10 +145,8 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
         <EmptyState body={t("sh.set.inboxEmpty")} actionLabel={t("sh.inbox.settings")} onAction={() => router.push("/settings/notifications")} />
       ) : (
         sections.map((s) => (
-          <View key={s.title}>
-            <Text style={[disp(13, 700, 16), styles.sec, { borderBottomColor: c.line }]} rawColor={c.fgMuted} accessibilityRole="header">
-              {s.title}
-            </Text>
+          <WarmCard key={s.title} style={{ marginTop: 16 }}>
+            <CardTitle title={s.title} />
             {s.data.map((n, i) => (
               <Row
                 key={n.id}
@@ -157,7 +158,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
                 }}
               />
             ))}
-          </View>
+          </WarmCard>
         ))
       )}
       {inbox.hasNextPage ? (
@@ -167,7 +168,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
       ) : null}
       {inTab ? (
         <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={{ marginTop: 24, alignSelf: "flex-start" }} hitSlop={8}>
-          <Text style={ui(14, 600, 18)}>{t("sh.inbox.history")}</Text>
+          <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.inbox.history")}</Text>
         </Pressable>
       ) : null}
       {/* The budget, said out loud: a quiet phone never feels broken. */}
@@ -176,6 +177,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
           {t("sh.inbox.budget", { n: customerApi.ROUTINE_PUSHES_PER_DAY })}
         </Text>
       ) : null}
+      </View>
     </ScrollView>
       {inTab ? (
         // Soft white fade behind the tab bar (as on Discover).

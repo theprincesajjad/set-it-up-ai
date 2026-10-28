@@ -4,10 +4,13 @@ import { useRef, type ReactNode } from "react";
 import { Animated, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
 import { useLocale } from "../lib/i18n";
-import { useTheme } from "../theme";
+import { DISPLAY_HEAVY, useTheme } from "../theme";
 import { IconButton } from "./IconButton";
 import { ChevronLeft } from "./icons";
 import { Text } from "./Text";
+import { Awning } from "./Warm";
+import { capFirst } from "../lib/sentenceCase";
+
 
 /** Distance from the screen bottom to the tab bar (canvas: 26 pt; never into the home indicator). */
 export function useTabBarBottom(): number {
@@ -45,6 +48,8 @@ export interface ScreenProps {
   tabBar?: boolean;
   /** The content shows the title itself (shop header): the bar title fades in once it scrolls away. */
   collapseTitle?: boolean;
+  /** The awning stripe at the top (default on for tab screens and large titles; one per page). */
+  awning?: boolean;
 }
 
 /**
@@ -72,6 +77,7 @@ export function Screen({
   floatingBack,
   tabBar,
   collapseTitle,
+  awning,
 }: ScreenProps) {
   const { c } = useTheme();
   const { t } = useLocale();
@@ -80,7 +86,8 @@ export function Screen({
   const y = useRef(new Animated.Value(0)).current;
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace("/")));
   const bg = background === "subtle" ? c.bgSubtle : c.bg;
-  const shownTitle = title ? (titleCase === "lower" ? title.toLowerCase() : title) : "";
+  const shownTitle = title ? (titleCase === "lower" ? capFirst(title) : title) : "";
+  const showAwning = awning ?? (!!largeTitle || !!tabBar);
   const barShown = !floatingBack && (back || !!title || !!trailing);
   const smallTitleOpacity = largeTitle
     ? y.interpolate({ inputRange: [24, 44], outputRange: [0, 1], extrapolate: "clamp" })
@@ -108,6 +115,7 @@ export function Screen({
 
   return (
     <SafeAreaView edges={floatingBack ? edges.filter((e) => e !== "top") : edges} style={[styles.root, { backgroundColor: bg }]}>
+      {showAwning && !floatingBack ? <Awning height={10} /> : null}
       {barShown ? (
         <View style={[styles.bar, { backgroundColor: bg }]}>
           <View style={styles.side}>{back ? <IconButton icon={ChevronLeft} label={t("rc.back")} variant="secondary" size={36} onPress={goBack} /> : null}</View>
@@ -145,7 +153,7 @@ export function Screen({
 }
 
 /**
- * A group with a lowercase grey header over a hairline ("rewards ready").
+ * A group with a Fraunces header over a hairline ("Rewards ready").
  * `rule={false}` drops the hairline (when the children draw their own box).
  */
 export function Section({ title, action, children, style, rule = true, spaced }: { title?: string; action?: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle>; rule?: boolean; /** Prose / buttons under the rule: 12 above and between (rows bring their own padding). */ spaced?: boolean }) {
@@ -154,8 +162,8 @@ export function Section({ title, action, children, style, rule = true, spaced }:
     <View style={[{ gap: rule ? 0 : 10 }, style]}>
       {title ? (
         <View style={[styles.sectionHeader, rule ? { borderBottomColor: c.line, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 8 } : null]}>
-          <Text variant="metaStrong" color="fgMuted" accessibilityRole="header" style={{ flex: 1 }}>
-            {title.toLowerCase()}
+          <Text accessibilityRole="header" style={{ flex: 1, fontFamily: DISPLAY_HEAVY, fontSize: 17, lineHeight: 22 }}>
+            {capFirst(title)}
           </Text>
           {action}
         </View>

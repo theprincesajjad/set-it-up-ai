@@ -37,7 +37,7 @@ export default async function LinePage({ params, searchParams }: Props) {
   }
   const shop = await loadShopBrief(status.shop.slug).catch(() => null);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop?.vertical}>
       <LineStatus initial={status} shop={{ logoUrl: shop?.logoUrl ?? null, brandColor: shop?.brandColor ?? null }} />
     </PageFrame>
   );

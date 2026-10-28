@@ -51,14 +51,14 @@ function PromosPage() {
       />
 
       <section aria-labelledby="tpl-h" className="flex flex-col gap-4">
-        <h2 id="tpl-h" className="border-b border-line pb-2.5 text-[16px] font-semibold text-fg">Start from a template</h2>
+        <h2 id="tpl-h" className="pb-1 text-headline text-fg">Start from a template</h2>
         <ul className="grid gap-4 pt-1 sm:grid-cols-2 xl:grid-cols-4">
-          {templates.map((t) => (
-            <li key={t.key} className="flex flex-col gap-2 rounded-[16px] border border-line p-5">
+          {templates.map((t, i) => (
+            <li key={t.key} className={`flex flex-col gap-2 rounded-tile p-5 ${["bg-tile-peach","bg-tile-mint","bg-tile-butter","bg-tile-lilac"][i % 4]}`}>
               <p className="text-[16px] font-semibold text-fg">{t.title}</p>
               <p className="text-[14px] leading-5 text-fg-muted">{t.blurb}</p>
-              <span className="self-start rounded-[6px] bg-bg-muted px-2 py-0.5 text-[12px] text-fg">{t.job}</span>
-              <Link href={`${base}/promos/new?template=${t.key}`} className="mt-1 text-[14px] font-medium text-fg hover:underline focus-visible:focus-ring">
+              <span className="self-start rounded-full bg-card/70 px-2.5 py-0.5 text-[12px] text-fg">{t.job}</span>
+              <Link href={`${base}/promos/new?template=${t.key}`} className="mt-1 text-[14px] font-semibold text-fg underline-offset-2 hover:underline focus-visible:focus-ring">
                 Use this
               </Link>
             </li>

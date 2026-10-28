@@ -58,7 +58,7 @@ export function RebookPreview({ shop, name, service, weeks, slug }: { shop: stri
     <Panel title={`What ${first} receives`}>
       <div role="radiogroup" aria-label="Language" className="flex flex-wrap gap-1.5">
         {LOCALE_LIST.map((l) => (
-          <button key={l.code} type="button" role="radio" aria-checked={l.code === lang} onClick={() => setLang(l.code)} className={cn("h-8 rounded-full border px-3 text-meta focus-visible:focus-ring", l.code === lang ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>
+          <button key={l.code} type="button" role="radio" aria-checked={l.code === lang} onClick={() => setLang(l.code)} className={cn("h-8 rounded-full border px-3 text-meta focus-visible:focus-ring", l.code === lang ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
             {l.name}
           </button>
         ))}

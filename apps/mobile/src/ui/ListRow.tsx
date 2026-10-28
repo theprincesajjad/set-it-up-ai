@@ -3,6 +3,11 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
 import { ChevronRight, type LucideIcon } from "./icons";
 import { Text } from "./Text";
+import { IconTile, type TileTone } from "./Warm";
+
+const TONES: TileTone[] = ["peach", "mint", "butter", "lilac", "sky", "rose"];
+/** A stable pastel per title, so a list of settings reads colourful without any one row meaning anything. */
+const toneFor = (s: string): TileTone => TONES[[...s].reduce((a, ch) => a + ch.charCodeAt(0), 0) % TONES.length]!;
 
 export interface ListRowProps {
   title: string;
@@ -20,18 +25,18 @@ export interface ListRowProps {
   selected?: boolean;
   /** Semibold title (place names, shop rows). Settings rows stay regular. */
   strong?: boolean;
+  /** Pastel for the icon tile (default: stable per title). */
+  tone?: TileTone;
 }
 
-/** iOS-style row: >= 52 tall, bare 22 pt icon (no coloured circle), hairline inset to the text. */
-export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing, chevron, onPress, divider = true, danger, minHeight, accessibilityLabel, selected, strong }: ListRowProps) {
+/** Row: >= 52 tall, a pastel IconTile (Lucide glyph, never emoji), hairline inset to the text. */
+export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing, chevron, onPress, divider = true, danger, minHeight, accessibilityLabel, selected, strong, tone }: ListRowProps) {
   const { c } = useTheme();
   const hasLeading = !!(leading || Icon);
   const content = (pressed: boolean) => (
     <View style={[styles.row, { minHeight: minHeight ?? (subtitle ? 60 : 52) }, pressed || selected ? { backgroundColor: c.bgSubtle } : null]}>
       {leading ?? (Icon ? (
-        <View style={styles.icon}>
-          <Icon size={22} color={danger ? c.negative : c.fg} strokeWidth={1.75} />
-        </View>
+        <IconTile icon={Icon} tone={danger ? "rose" : (tone ?? toneFor(title))} size={38} />
       ) : null)}
       <View style={styles.text}>
         <Text variant={strong ? "bodyStrong" : "body"} color={danger ? "negative" : "fg"}>
@@ -45,7 +50,7 @@ export function ListRow({ title, subtitle, leading, leadingIcon: Icon, trailing,
       </View>
       {trailing}
       {chevron ? <ChevronRight size={18} color={c.fgSubtle} strokeWidth={2} /> : null}
-      {divider ? <View style={[styles.divider, { start: hasLeading ? (leading ? 56 : 40) : 0, backgroundColor: c.line }]} /> : null}
+      {divider ? <View style={[styles.divider, { start: hasLeading ? (leading ? 56 : 50) : 0, backgroundColor: c.line }]} /> : null}
     </View>
   );
   if (!onPress) return content(false);

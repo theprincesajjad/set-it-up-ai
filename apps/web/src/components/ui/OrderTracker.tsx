@@ -52,13 +52,13 @@ export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, 
         <p className="text-meta text-fg-muted">
           {ready ? <StatusDot tone="positive">{t("ui.order.showAtCounter")}</StatusDot> : <>{shopName}{pickupAt ? ` · ${t("wp.os.pickupShort", { time: locale === "en" ? formatTime(pickupAt) : time(pickupAt) })}` : ""}</>}
         </p>
-        <h2 className="display text-large-title text-fg">{ready ? t("ui.order.ready") : statusLabel}</h2>
-        <p className="display mt-2 text-[56px] leading-none tabular-nums text-fg">#{number}</p>
+        <h2 className="display text-large-title text-trade-deep">{ready ? t("ui.order.ready") : statusLabel}</h2>
+        <p className="display mt-2 text-[56px] leading-none tabular-nums text-trade">#{number}</p>
       </div>
       <ol aria-label={t("wp.os.progress")} className="grid grid-cols-4 gap-1.5">
         {STEPS.map((s, i) => (
           <li key={s.id} aria-current={i === idx ? "step" : undefined} className="flex flex-col gap-2">
-            <span aria-hidden className={cn("h-1 rounded-full", i <= idx ? "bg-fg" : "bg-bg-muted")} />
+            <span aria-hidden className={cn("h-1 rounded-full", i <= idx ? "bg-trade" : "bg-bg-muted")} />
             <span className={cn("text-meta", i === idx ? "font-semibold text-fg" : "text-fg-muted")}>
               <span className="sr-only">{`${t(i < idx ? "wp.step.done" : i === idx ? "wp.step.current" : "wp.step.next")} `}</span>
               {t(cutting && s.id === "preparing" ? "gr.order.stepCutting" : s.label)}

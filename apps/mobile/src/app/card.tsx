@@ -13,8 +13,9 @@ import { api } from "../state/api";
 import { useOnline } from "../state/network";
 import { qk } from "../state/query";
 import { useSession } from "../state/session";
+import { shadows } from "@ll/design-tokens";
 import { disp, ui, useTheme } from "../theme";
-import { Banner, Button, Chip, CloseGlyph, DiscountCard, hairline, QrCode, SegmentedControl, Sheet, Skeleton, Text, TextField, haptic, monoFamily, useToast } from "../ui";
+import { Banner, Button, Awning, Chip, CloseGlyph, DiscountCard, hairline, QrCode, SegmentedControl, Sheet, Skeleton, Text, TextField, haptic, shadow, monoFamily, useToast } from "../ui";
 
 /**
  * My card (foundations § My card): a white sheet opened from the black card
@@ -23,7 +24,7 @@ import { Banner, Button, Chip, CloseGlyph, DiscountCard, hairline, QrCode, Segme
  * Rewards ready (never a points-plus-stamps total). Renders from cache instantly and works offline.
  */
 export default function CardSheet() {
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   const L = useLocale();
   const { t: lt } = L;
   const { width } = useWindowDimensions();
@@ -84,10 +85,10 @@ export default function CardSheet() {
       {/* Native formSheet draws its own grabber; the web preview draws the canvas one. */}
       {web ? <View style={[styles.grabber, { backgroundColor: "#E0E0DE" }]} /> : null}
       <View style={styles.head}>
-        <Text style={disp(17, 800, 21)} accessibilityRole="header">
+        <Text style={disp(20, 800, 26)} accessibilityRole="header">
           {lt("sh.card.title")}
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={lt("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={[styles.close, { backgroundColor: c.bgSubtle }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={lt("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={[styles.close, { backgroundColor: r.card }]}>
           <CloseGlyph size={16} color={c.fg} />
         </Pressable>
       </View>
@@ -115,7 +116,7 @@ export default function CardSheet() {
             accessibilityHint={lt("ms.card.qrHint")}
             disabled={!card}
             onPress={() => card && router.push({ pathname: "/qr", params: { payload: card.qrPayload, code: card.memberCode } })}
-            style={[styles.qrTile, { backgroundColor: c.qrBg, borderColor: c.line }]}
+            style={[styles.qrTile, { backgroundColor: c.qrBg, borderColor: r.border }, shadow(shadows.card.css, shadows.card.native)]}
           >
             {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={lt("ui.memberQr", { code: card.memberCode.split("").join(" ") })} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
           </Pressable>
@@ -134,7 +135,7 @@ export default function CardSheet() {
                   {lt("sh.card.forgot")}
                 </Text>
                 <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={10}>
-                  <Text style={ui(13, 600, 17)}>{lt("sh.card.claim")}</Text>
+                  <Text style={ui(13, 600, 17)} rawColor={c.brand}>{lt("sh.card.claim")}</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -162,7 +163,10 @@ export default function CardSheet() {
     <View style={{ flex: 1, backgroundColor: web ? "#6B6B70" : c.bg }}>
       {/* Web preview: the canvas sheet over a dimmed backdrop (native presents it as a real formSheet). */}
       {web ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF", opacity: 0.35 }]} /> : null}
-      <View style={web ? [styles.webSheet, { backgroundColor: c.bg }] : { flex: 1 }}>{body}</View>
+      <View style={web ? [styles.webSheet, { backgroundColor: c.bg }] : { flex: 1 }}>
+        <Awning height={10} />
+        {body}
+      </View>
       <Sheet
         visible={claimOpen}
         onClose={() => setClaimOpen(false)}
@@ -188,11 +192,11 @@ export default function CardSheet() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingBottom: 30, flexGrow: 1, alignItems: "center" },
-  webSheet: { position: "absolute", left: 0, right: 0, top: 64, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
+  webSheet: { position: "absolute", left: 0, right: 0, top: 64, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
   grabber: { width: 36, height: 5, borderRadius: 999, marginBottom: 14 },
   head: { alignSelf: "stretch", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   close: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  qrTile: { marginTop: 32, padding: 18, borderRadius: 20, borderWidth: hairline },
+  qrTile: { marginTop: 32, padding: 18, borderRadius: 22, borderWidth: hairline },
   code: { marginTop: 22, fontFamily: monoFamily, fontSize: 24, lineHeight: 30, letterSpacing: 24 * 0.14, fontWeight: "600", fontVariant: ["tabular-nums"] },
   bottom: { marginTop: "auto", paddingTop: 24, alignSelf: "stretch", gap: 10 },
   claim: { flexDirection: "row", justifyContent: "center", gap: 6 },

@@ -7,7 +7,7 @@ import { RedeemConfirmSheet } from "../features/customer/sheets";
 import { promoEndsL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
 import { useOnline } from "../state/network";
-import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Text, Trophy } from "../ui";
+import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Text, Trophy, WarmCard } from "../ui";
 
 /** 6.1 Rewards: Ready / All shops / Passport. */
 export default function Rewards() {
@@ -44,7 +44,7 @@ export default function Rewards() {
           ready.map((d) => {
             const rs = d.rewards.filter((r) => r.affordable);
             return (
-              <View key={d.membership.id}>
+              <WarmCard key={d.membership.id}>
                 <ShopTile variant="compact" shop={d.membership.merchant} divider={false} onPress={() => router.push(`/shop/${d.membership.merchant.slug}`)} />
                 {rs.map((r, i) => (
                   <RewardCard
@@ -58,7 +58,7 @@ export default function Rewards() {
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
                 ))}
-              </View>
+              </WarmCard>
             );
           })
         )
@@ -68,7 +68,7 @@ export default function Rewards() {
         ? loaded.map((d) => {
             const rs = [...d.rewards].sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost);
             return (
-              <View key={d.membership.id}>
+              <WarmCard key={d.membership.id}>
                 <ShopTile
                   variant="compact"
                   shop={d.membership.merchant}
@@ -90,7 +90,7 @@ export default function Rewards() {
                     onRedeem={() => setRedeeming({ m: d.membership, r })}
                   />
                 ))}
-              </View>
+              </WarmCard>
             );
           })
         : null}
@@ -108,7 +108,7 @@ export default function Rewards() {
                 <Badge tone={cmp.status === "live" ? "success" : "neutral"}>{cmp.status === "live" ? t("ms.camp.badgeLive") : cmp.status === "scheduled" ? t("ms.camp.badgeSoon") : t("ms.camp.badgeEnded")}</Badge>
               </View>
               <Text variant="meta" color="fgMuted">
-                {[cmp.neighbourhood.name.toLowerCase(), promoEndsL(L, cmp.endsAt)].filter(Boolean).join(" · ")}
+                {[cmp.neighbourhood.name, promoEndsL(L, cmp.endsAt)].filter(Boolean).join(" · ")}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <ProgressBar value={cmp.progress.visited} max={cmp.progress.goal} height={4} valueLabel={`${cmp.progress.visited} / ${cmp.progress.goal}`} />

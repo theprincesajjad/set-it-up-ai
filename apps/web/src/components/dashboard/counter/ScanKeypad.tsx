@@ -11,7 +11,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 export function DigitBoxes({ value, className }: { value: string; className?: string }) {
   const { t } = useLocaleOrEnglish();
   return (
-    <div role="group" aria-label={t("counter.digits.group")} dir="ltr" className={cn("flex h-16 items-center justify-center gap-1 rounded-xl border border-border bg-background px-5 font-display text-display tabular-nums text-foreground", className)}>
+    <div role="group" aria-label={t("counter.digits.group")} dir="ltr" className={cn("flex h-16 items-center justify-center gap-1 whitespace-nowrap rounded-tile bg-card px-5 font-sans text-h1 font-semibold tabular-nums text-foreground shadow-card sm:text-display", className)}>
       <span aria-hidden className="font-sans font-normal text-muted-foreground">(•••) •••-</span>
       {[0, 1, 2, 3].map((i) => (
         <span

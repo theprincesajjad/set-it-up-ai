@@ -45,3 +45,5 @@ export * from "./haptics";
 export * from "./motion";
 export * from "./CanvasIcons";
 export * from "./shadow";
+export * from "./Warm";
+export * from "./PassCard";

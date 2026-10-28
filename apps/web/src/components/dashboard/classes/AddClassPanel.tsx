@@ -103,7 +103,7 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
       <div className="flex flex-col gap-4">
         <Select label="Class" value={making ? NEW : typeId} onChange={(e) => setTypeId(e.target.value)} options={[...types.filter((t) => t.active).map((t) => ({ value: t.id, label: `${t.name}${t.womenOnly ? " (women only)" : ""}` })), { value: NEW, label: "A new class type" }]} />
         {making ? (
-          <div className="flex flex-col gap-4 rounded-card border border-line p-4">
+          <div className="flex flex-col gap-4 rounded-card bg-card shadow-card p-4">
             <TextField label="Class name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Bhangra Cardio" />
             <div className="grid grid-cols-2 gap-3">
               <TextField label="Minutes" type="number" min={10} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
@@ -128,7 +128,7 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
           <p className="text-meta-strong text-fg">Also on these days <span className="font-normal text-fg-muted">(optional)</span></p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Also on these days">
             {WEEKDAYS.map((w, i) => (
-              <button key={w} type="button" aria-pressed={dows.includes(i)} onClick={() => setDows((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))} className={cn("min-h-10 min-w-12 rounded-input border px-3 text-meta-strong focus-visible:focus-ring", dows.includes(i) ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle")}>{w}</button>
+              <button key={w} type="button" aria-pressed={dows.includes(i)} onClick={() => setDows((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))} className={cn("min-h-10 min-w-12 rounded-input border px-3 text-meta-strong focus-visible:focus-ring", dows.includes(i) ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>{w}</button>
             ))}
           </div>
           <p className="text-meta text-fg-muted">{dows.length ? "Each chosen day is added at this time and repeats weekly." : "Leave empty to add only the day above."}</p>

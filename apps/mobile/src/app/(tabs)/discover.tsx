@@ -19,7 +19,11 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { disp, ui, useTheme } from "../../theme";
-import { BellGlyph, categorySource, ChevronDownGlyph, floatShadow, haptic, ListRow, shadow, Sheet, Skeleton, Text, useTabBarSpace } from "../../ui";
+import { Awning, BellGlyph, categorySource, ChevronDownGlyph, floatShadow, haptic, ListRow, shadow, Sheet, Skeleton, Text, useTabBarSpace } from "../../ui";
+import { mix, type TileName } from "@ll/design-tokens";
+import { capFirst } from "../../lib/sentenceCase";
+
+const TONES: TileName[] = ["peach", "mint", "butter", "lilac", "sky", "rose"];
 
 type Shop = networkApi.ShopListItemDto;
 
@@ -49,7 +53,7 @@ function useCanvasTop() {
 }
 
 function Pill({ label, selected, chevron, onPress }: { label: string; selected: boolean; chevron?: boolean; onPress: () => void }) {
-  const { c } = useTheme();
+  const { c, r } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -59,12 +63,12 @@ function Pill({ label, selected, chevron, onPress }: { label: string; selected: 
         haptic.select();
         onPress();
       }}
-      style={({ pressed }) => [styles.pill, { backgroundColor: selected ? c.fg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [styles.pill, { backgroundColor: selected ? c.brand : r.card, borderColor: r.border, borderWidth: selected ? 0 : StyleSheet.hairlineWidth * 2, opacity: pressed ? 0.85 : 1 }]}
     >
-      <Text style={disp(14, 700, 18)} rawColor={selected ? c.bg : c.fg}>
+      <Text style={disp(14, 700, 18)} rawColor={selected ? c.onBrand : c.fg}>
         {label}
       </Text>
-      {chevron ? <ChevronDownGlyph size={12} strokeWidth={2.4} color={selected ? c.bg : c.fg} /> : null}
+      {chevron ? <ChevronDownGlyph size={12} strokeWidth={2.4} color={selected ? c.onBrand : c.fg} /> : null}
     </Pressable>
   );
 }
@@ -75,7 +79,9 @@ function Pill({ label, selected, chevron, onPress }: { label: string; selected: 
  * by category. Data from campaigns, network shops and the wallet. No upgrade prompts.
  */
 export default function Discover() {
-  const { c } = useTheme();
+  const { c, r, trade } = useTheme();
+  const hc = trade("other");
+  const heroInk = hc.foreground;
   const top = useCanvasTop();
   const { width } = useWindowDimensions();
   const tabSpace = useTabBarSpace();
@@ -122,24 +128,26 @@ export default function Discover() {
   const dotX = Math.round(cardW / 2 - 29);
   const pins = centre ? miniMapPoints(centre, near.map((s) => ({ id: s.merchant.id, lat: s.location!.lat!, lng: s.location!.lng! })), { w: dotX * 2, h: 132, margin: 30, marginX: 32, minR: 36 }) : [];
 
-  const card = (s: Shop) => {
+  const card = (s: Shop, i: number) => {
+    const tone = TONES[i % TONES.length]!;
+    const tileBg = (r as unknown as Record<string, string>)[`tile${tone.charAt(0).toUpperCase()}${tone.slice(1)}`]!;
     const loc0 = s.location;
     const status = openStatus((loc0?.hours ?? null) as never, s.openNow);
     const isReady = ready.has(s.merchant.id);
     return (
       <Pressable key={s.merchant.id} accessibilityRole="button" accessibilityLabel={`${s.merchant.name}${isReady ? `. ${tr("sh.nt.reward_ready")}` : ""}`} onPress={() => router.push(`/shop/${s.merchant.slug}`)} style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}>
-        <View style={[styles.tile, { backgroundColor: c.bgSubtle }]}>
+        <View style={[styles.tile, { backgroundColor: tileBg }]}>
           <Image source={categorySource(verticalCategory(s.merchant.vertical))} style={{ width: 76, height: 76 }} resizeMode="contain" accessibilityIgnoresInvertColors />
           {isReady ? (
-            <View style={[styles.ready, { backgroundColor: c.accentSoft }]}>
-              <Text style={ui(12, 600, 16)} rawColor={c.accentText}>
-                {tr("sh.wallet.rewardReady")}
+            <View style={[styles.ready, { backgroundColor: r.tileButter }]}>
+              <Text style={ui(12, 600, 16)} rawColor={r.tileButterForeground}>
+                {capFirst(tr("sh.wallet.rewardReady"))}
               </Text>
             </View>
           ) : null}
         </View>
         <Text style={[disp(15, 700, 19), { marginTop: 10 }]} numberOfLines={1}>
-          {s.merchant.name.toLowerCase()}
+          {s.merchant.name}
         </Text>
         <Text style={[ui(12, 400, 16), { marginTop: 2 }]} rawColor={c.fgMuted} numberOfLines={1}>
           {L.locale === "en" ? shopSubtitle(s, status, { progress: s.isMember && s.myBalance != null ? (goalOf.get(s.merchant.id) ? { n: s.myBalance, goal: goalOf.get(s.merchant.id)! } : null) : null }) : shopSubtitleL(L, s, loc0?.hours ?? null, s.openNow, { progress: s.isMember && s.myBalance != null ? (goalOf.get(s.merchant.id) ? { n: s.myBalance, goal: goalOf.get(s.merchant.id)! } : null) : null })}
@@ -151,7 +159,8 @@ export default function Discover() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: tabSpace + 24 }} showsVerticalScrollIndicator={false}>
-        {/* Hero: black, the live campaign. The three objects are from the canvas; in hi, ur and pa the headline runs wider and crosses them, so they step back. */}
+        <View style={{ position: "absolute", left: 0, right: 0, top: 0, zIndex: 2 }}><Awning height={10} /></View>
+        {/* Hero: terracotta gradient, the live campaign. The three objects are from the canvas; in hi, ur and pa the headline runs wider and crosses them, so they step back. */}
         <Pressable
           accessibilityRole={live ? "button" : undefined}
           accessibilityLabel={hero ? `${hero.eyebrow}. ${hero.headline}${hero.progress ? `. ${tr("ui.progressOf", { value: hero.progress.value, max: hero.progress.max })}` : ""}` : undefined}
@@ -161,39 +170,47 @@ export default function Discover() {
           style={[styles.hero, { height: top(340) + (L.locale === "ur" ? 112 : 0) }]}
         >
           <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} viewBox="0 0 390 340" preserveAspectRatio="xMidYMid slice">
-            <Path d="M150 -20 L 230 360" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />
-            <Path d="M-20 90 L 410 60" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />
-            <Path d="M-20 190 L 410 166" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />
-            <Path d="M-20 290 L 410 266" stroke="#1D1D20" strokeWidth={10} strokeLinecap="round" fill="none" />
+            <Defs>
+              <LinearGradient id="heroGrad" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={hc.accent} />
+                <Stop offset="0.65" stopColor={mix(hc.accent, hc.alt, 0.3)} />
+                <Stop offset="1" stopColor={hc.alt} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="390" height="340" fill="url(#heroGrad)" />
+            <Path d="M150 -20 L 230 360" stroke={heroInk} strokeOpacity={0.12} strokeWidth={10} strokeLinecap="round" fill="none" />
+            <Path d="M-20 90 L 410 60" stroke={heroInk} strokeOpacity={0.12} strokeWidth={10} strokeLinecap="round" fill="none" />
+            <Path d="M-20 190 L 410 166" stroke={heroInk} strokeOpacity={0.12} strokeWidth={10} strokeLinecap="round" fill="none" />
+            <Path d="M-20 290 L 410 266" stroke={heroInk} strokeOpacity={0.12} strokeWidth={10} strokeLinecap="round" fill="none" />
           </Svg>
           {HERO_OBJECTS.map((o) => (
             <Image key={o.cat} source={categorySource(o.cat)} style={{ position: "absolute", start: o.left + (width - 390), top: top(o.top), width: o.size, height: o.size, transform: [{ rotate: o.rotate }], opacity: L.locale === "en" ? 1 : 0.35 }} resizeMode="contain" accessibilityIgnoresInvertColors />
           ))}
           <View style={[styles.heroTop, { top: top(58) }]}>
-            <Text style={disp(15, 800, 18)} rawColor="#FFFFFF">
-              {BRAND.name.toLowerCase()}
+            <Text style={disp(17, 800, 20)} rawColor={heroInk}>
+              {BRAND.name}
             </Text>
             <Pressable accessibilityRole="button" accessibilityLabel={unread > 0 ? tr("ms.map.notifUnread", { n: unread }) : tr("sh.activity.title")} onPress={() => router.navigate("/activity")} style={styles.heroBell}>
-              <BellGlyph size={18} color="#FFFFFF" />
+              <BellGlyph size={18} color={heroInk} />
               {unread > 0 ? <View style={[styles.heroDot, { backgroundColor: c.accent }]} /> : null}
             </Pressable>
           </View>
           <View style={styles.heroCopy}>
             {hero ? (
               <>
-                <Text style={ui(12, 600, 16)} rawColor="#FF7A45" numberOfLines={2}>
+                <Text style={ui(13, 600, 16)} rawColor={heroInk} numberOfLines={2}>
                   {hero.eyebrow}
                 </Text>
-                <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor="#FFFFFF" accessibilityRole="header">
+                <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor={heroInk} accessibilityRole="header">
                   {hero.headline}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={ui(12, 600, 16)} rawColor="#FF7A45">
+                <Text style={ui(13, 600, 16)} rawColor={heroInk}>
                   {hoodName ? tr("sh.disc.streetLine", { street: hoodName, n: all.length }) : tr("sh.disc.near")}
                 </Text>
-                <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor="#FFFFFF" accessibilityRole="header">
+                <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor={heroInk} accessibilityRole="header">
                   {tr("sh.disc.heroDefault")}
                 </Text>
               </>
@@ -202,9 +219,9 @@ export default function Discover() {
           {hero?.progress ? (
             <View style={styles.heroBar}>
               <View style={styles.track}>
-                <View style={[styles.fill, { width: `${(hero.progress.value / hero.progress.max) * 100}%`, backgroundColor: "#FF5A1F" }]} />
+                <View style={[styles.fill, { width: `${(hero.progress.value / hero.progress.max) * 100}%`, backgroundColor: heroInk }]} />
               </View>
-              <Text style={[ui(12, 600, 16), { fontVariant: ["tabular-nums"] }]} rawColor="#FFFFFF">{`${hero.progress.value} / ${hero.progress.max}`}</Text>
+              <Text style={[ui(12, 600, 16), { fontVariant: ["tabular-nums"] }]} rawColor={heroInk}>{`${hero.progress.value} / ${hero.progress.max}`}</Text>
             </View>
           ) : null}
         </Pressable>
@@ -212,7 +229,7 @@ export default function Discover() {
         {/* Chips: black "for you ▾", grey categories. */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={styles.chips}>
           <Pill label={modeLabel(mode)} selected={!category} chevron onPress={() => (category ? setCategory(null) : setModeOpen(true))} />
-          <Pill label={halal === "all" ? tr("rest.filter.allHalal") : tr("diet.halal").toLowerCase()} selected={!!halal} chevron onPress={() => setDietOpen(true)} />
+          <Pill label={halal === "all" ? tr("rest.filter.allHalal") : capFirst(tr("diet.halal"))} selected={!!halal} chevron onPress={() => setDietOpen(true)} />
           {chips.map((r) => (
             <Pill key={r.id} label={L.locale === "en" ? r.chip : tr(ROW_KEY[r.id])} selected={category === r.id} onPress={() => setCategory(category === r.id ? null : r.id)} />
           ))}
@@ -226,11 +243,11 @@ export default function Discover() {
             </Text>
             <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("sh.disc.shopsN", { n: all.length })}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.disc.openMap")} onPress={() => router.navigate("/map")} style={[styles.mapCard, { backgroundColor: "#F1F1EF" }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.disc.openMap")} onPress={() => router.navigate("/map")} style={[styles.mapCard, { backgroundColor: r.muted }]}>
             <Svg width={cardW} height={120} style={StyleSheet.absoluteFill}>
-              <Path d={`M${cardW * 0.335} -10 L ${cardW * 0.475} 130`} stroke="#FFFFFF" strokeWidth={9} strokeLinecap="round" fill="none" />
-              <Path d={`M-10 40 L ${cardW + 12} 26`} stroke="#FFFFFF" strokeWidth={9} strokeLinecap="round" fill="none" />
-              <Path d={`M-10 92 L ${cardW + 12} 80`} stroke="#FFFFFF" strokeWidth={9} strokeLinecap="round" fill="none" />
+              <Path d={`M${cardW * 0.335} -10 L ${cardW * 0.475} 130`} stroke={r.card} strokeWidth={9} strokeLinecap="round" fill="none" />
+              <Path d={`M-10 40 L ${cardW + 12} 26`} stroke={r.card} strokeWidth={9} strokeLinecap="round" fill="none" />
+              <Path d={`M-10 92 L ${cardW + 12} 80`} stroke={r.card} strokeWidth={9} strokeLinecap="round" fill="none" />
             </Svg>
             {pins.map((p) => {
               const s = near.find((x) => x.merchant.id === p.id)!;
@@ -264,7 +281,7 @@ export default function Discover() {
               {r.title}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowCards}>
-              {r.shops.slice(0, 12).map(card)}
+              {r.shops.slice(0, 12).map((x, i) => card(x, i))}
             </ScrollView>
           </View>
         ))}
@@ -321,14 +338,14 @@ export default function Discover() {
 }
 
 const styles = StyleSheet.create({
-  hero: { backgroundColor: "#0B0B0C", overflow: "hidden" },
+  hero: { overflow: "hidden" },
   heroTop: { position: "absolute", left: 20, right: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  heroBell: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
+  heroBell: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   heroDot: { position: "absolute", top: 7, end: 8, width: 7, height: 7, borderRadius: 4 },
   heroCopy: { position: "absolute", start: 20, bottom: 56, maxWidth: 240 },
   heroBar: { position: "absolute", left: 20, right: 20, bottom: 24, flexDirection: "row", alignItems: "center", gap: 10 },
-  track: { flex: 1, height: 4, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.18)", overflow: "hidden" },
-  fill: { height: 4, borderRadius: 999 },
+  track: { flex: 1, height: 6, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.28)", overflow: "hidden" },
+  fill: { height: 6, borderRadius: 999 },
   chips: { gap: 8, paddingHorizontal: 16 },
   pill: { height: 36, paddingHorizontal: 14, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 6 },
   headRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },

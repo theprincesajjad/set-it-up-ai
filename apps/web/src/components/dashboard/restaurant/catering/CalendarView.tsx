@@ -49,7 +49,7 @@ export function CalendarView({ gate }: { gate: Gate }) {
                       onClick={() => setSel(day)}
                       className={cn("flex min-h-14 flex-col items-start gap-0.5 border-e border-b border-line p-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring sm:min-h-[84px] sm:p-2", !inMonth && "bg-bg-subtle/60 text-fg-subtle", on && "bg-bg-muted")}
                     >
-                      <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-fg font-medium text-bg" : inMonth ? "text-fg" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
+                      <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground" : inMonth ? "text-fg" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
                       {info ? (
                         <>
                           <span className="text-caption font-medium tabular text-fg sm:text-meta">{formatNumber(info.headcount)}<span className="hidden text-fg-muted sm:inline"> guests</span></span>

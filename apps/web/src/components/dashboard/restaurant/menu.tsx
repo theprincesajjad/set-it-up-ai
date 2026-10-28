@@ -16,7 +16,7 @@ export function SpiceDots({ level, className }: { level: number; className?: str
   return (
     <span role="img" aria-label={`Spice level: ${SPICE_LABELS[level] ?? level}`} className={cn("inline-flex items-center gap-0.5", className)}>
       {[1, 2, 3].map((n) => (
-        <span key={n} aria-hidden className={cn("size-1.5 rounded-full", n <= level ? "bg-fg" : "bg-bg-muted ring-1 ring-inset ring-line-strong/60")} />
+        <span key={n} aria-hidden className={cn("size-1.5 rounded-full", n <= level ? "bg-trade" : "bg-bg-muted ring-1 ring-inset ring-line-strong/60")} />
       ))}
     </span>
   );

@@ -180,7 +180,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
         type="button"
         aria-pressed={on}
         onClick={() => chosen(a.key)}
-        className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+        className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
       >
         {chipLabel(a, counts[a.key] ?? null, on, channel)}
       </button>
@@ -192,7 +192,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <section aria-labelledby="new-message-h" className="flex min-w-0 flex-col gap-4 rounded-card border border-line p-6">
+      <section aria-labelledby="new-message-h" className="flex min-w-0 flex-col gap-4 rounded-card bg-card shadow-card p-6">
         <h2 id="new-message-h" className="text-[18px] font-semibold text-fg">New message</h2>
         <div className="flex flex-col gap-2.5">
           <p id="who-l" className="text-[14px] font-medium text-fg">Who gets it</p>
@@ -286,7 +286,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
                 role="radio"
                 aria-checked={when === o.v}
                 onClick={() => setWhen(o.v)}
-                className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", when === o.v ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", when === o.v ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
               >
                 {o.label}
               </button>

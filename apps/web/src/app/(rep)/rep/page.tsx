@@ -34,7 +34,7 @@ export default function RepToday() {
         {(t) => (
           <>
             {t.streetDay ? (
-              <section aria-label="Street day" className="rounded-card border border-line p-4">
+              <section aria-label="Street day" className="rounded-card bg-card shadow-card p-4">
                 <p className="text-label text-fg-muted">{t.streetDay.isToday ? "STREET DAY · TODAY" : `STREET DAY · ${t.streetDay.streetDayOn ? formatDate(`${t.streetDay.streetDayOn}T12:00:00`, true).toUpperCase() : "NEXT"}`}</p>
                 <h2 className="mt-1 font-display text-[24px] font-semibold leading-8 text-fg">{t.streetDay.areaName}</h2>
                 <div className="mt-3 flex items-center gap-3">

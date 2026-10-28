@@ -91,7 +91,7 @@ function PhoneOrders() {
             />
           ) : null}
           {calls.length ? (
-            <div className="overflow-hidden rounded-card border border-line lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
+            <div className="overflow-hidden rounded-card bg-card shadow-card lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
               <ul aria-label="Calls" className={cn("max-h-[640px] divide-y divide-line overflow-y-auto border-line lg:border-e", mobile === "detail" ? "hidden lg:block" : "block")}>
                 {shown.length ? (
                   shown.map((c) => {

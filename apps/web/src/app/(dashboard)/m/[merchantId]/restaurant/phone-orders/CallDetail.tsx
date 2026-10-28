@@ -107,7 +107,7 @@ export function CallDetail({ call, catalog, onChanged }: { call: whatsappApi.Pho
     <div className="flex min-h-0 flex-col">
       <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
         <div className="min-w-0">
-          <h2 className="truncate text-[17px] font-semibold text-fg">
+          <h2 className="truncate text-headline text-fg">
             {call.callerName ? `${call.callerName} · ` : ""}
             {formatPhone(call.fromPhone)}
           </h2>

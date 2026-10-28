@@ -119,7 +119,7 @@ function Flyer() {
       {d && d.seasons.length ? (
         <section aria-label="Coming up" className="grid gap-3 md:grid-cols-3">
           {d.seasons.slice(0, 3).map((s) => (
-            <div key={s.id} className="flex flex-col gap-2 rounded-card border border-line px-4 py-3">
+            <div key={s.id} className="flex flex-col gap-2 rounded-card bg-card shadow-card px-4 py-3">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[15px] font-semibold text-fg">{s.name}</p>
                 <Tag tone={s.flyerDue ? "accent" : "neutral"}>{daysWords(s.daysUntil)}</Tag>
@@ -178,7 +178,7 @@ function Flyer() {
 function ShopPreview({ deals, whatsappText }: { deals: groceryApi.DealDto[]; whatsappText?: string | null }) {
   const shown = deals.slice(0, 4);
   return (
-    <aside aria-label="What customers see" className="hidden rounded-card border border-line p-5 xl:block">
+    <aside aria-label="What customers see" className="hidden rounded-card bg-card shadow-card p-5 xl:block">
       <p className="text-caption text-fg-muted">What customers see</p>
       <h2 className="mt-1 text-[20px] font-semibold leading-[26px] text-fg">This week</h2>
       {shown.length ? (

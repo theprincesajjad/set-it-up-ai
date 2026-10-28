@@ -496,7 +496,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       {info.merchant.vertical === "pet" ? (
         <section aria-label={t("pet.add.cta")} data-testid="join-add-dog" className="flex flex-col gap-2 rounded-card border border-line p-4">
           <p className="text-body text-fg">{t("pet.add.body", { shop: info.merchant.name })}</p>
-          <a className="self-start rounded-pill bg-fg px-4 py-2 text-meta-strong text-bg focus-visible:focus-ring" href="/me/pets">{t("pet.add.cta")}</a>
+          <a className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring" href="/me/pets">{t("pet.add.cta")}</a>
         </section>
       ) : null}
 

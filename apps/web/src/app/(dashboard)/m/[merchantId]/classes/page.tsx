@@ -85,7 +85,7 @@ function Schedule() {
               {days.map((d) => (
                 <section key={d.date} aria-label={dayHeading(d.date, today)} className="flex flex-col gap-2">
                   <h2 className="text-body-strong text-fg">{dayHeading(d.date, today)}</h2>
-                  <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
+                  <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
                     {d.items.map((s) => {
                       const cap = capacityText(s);
                       const st = sessionState(s, now);
@@ -99,7 +99,7 @@ function Schedule() {
                             </span>
                             <span className="hidden sm:block">{s.womenOnly ? <Tag>Women only</Tag> : null}</span>
                             <span className="flex items-center gap-2 text-meta">
-                              <span aria-hidden className="h-1.5 w-[72px] overflow-hidden rounded-full bg-bg-muted"><span className={cn("block h-full rounded-full", cap.full ? "bg-fg" : "bg-points")} style={{ width: `${Math.max(fillPct(s.booked, s.capacity), 6)}%` }} /></span>
+                              <span aria-hidden className="h-1.5 w-[72px] overflow-hidden rounded-full bg-bg-muted"><span className={cn("block h-full rounded-full", cap.full ? "bg-primary" : "bg-trade")} style={{ width: `${Math.max(fillPct(s.booked, s.capacity), 6)}%` }} /></span>
                               <span className="tabular text-fg">{cap.count}</span>
                               <span className="sr-only">booked</span>
                             </span>

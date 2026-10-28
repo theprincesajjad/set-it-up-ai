@@ -171,7 +171,7 @@ function Trailing({ row, href }: { row: restaurantApi.ComingUpRow; href?: string
       <Link href={href ?? "#"} className="hidden w-[150px] shrink-0 sm:block focus-visible:focus-ring" aria-label={`${row.pots} of ${row.cap} pots booked`}>
         <p className="text-end text-[13px] font-medium text-fg tabular">{row.pots} of {row.cap} pots</p>
         <span aria-hidden className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-bg-muted">
-          <span className="block h-full rounded-full bg-fg" style={{ width: `${pct}%` }} />
+          <span className="block h-full rounded-full bg-trade" style={{ width: `${pct}%` }} />
         </span>
       </Link>
     );
@@ -204,7 +204,7 @@ function Channels({ rows, loading }: { rows: Home["channels"] | null; loading: b
             <li key={r.channel} className="flex items-center gap-4 px-5 py-3 text-[14px]">
               <span className="w-[110px] shrink-0 text-fg sm:w-[150px]">{CHANNEL_LABEL[r.channel] ?? r.channel}</span>
               <span aria-hidden className="h-[3px] flex-1 overflow-hidden rounded-full bg-bg-muted">
-                <span className="block h-full rounded-full bg-fg" style={{ width: `${Math.round((r.count / max) * 100)}%` }} />
+                <span className="block h-full rounded-full bg-trade" style={{ width: `${Math.round((r.count / max) * 100)}%` }} />
               </span>
               <span className="w-8 shrink-0 text-end font-medium text-fg tabular">{r.count}</span>
             </li>

@@ -112,11 +112,11 @@ function Preorders() {
                 aria-pressed={sel}
                 aria-label={`${dayLabel(d)}: ${pots} ${pots === 1 ? "pot" : "pots"}${dayCap != null ? ` of ${dayCap}` : ""}`}
                 onClick={() => setDay(d)}
-                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[88px] sm:p-3", sel ? "border-fg bg-fg text-bg" : "border-line bg-card hover:bg-bg-subtle")}
+                className={cn("flex min-h-[84px] flex-col items-stretch justify-between rounded-card border p-2 text-start transition-colors focus-visible:focus-ring sm:min-h-[88px] sm:p-3", sel ? "border-primary bg-primary text-primary-foreground" : "border-line bg-card hover:bg-bg-subtle")}
               >
-                <span className={cn("block text-caption", sel ? "text-bg/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
+                <span className={cn("block text-caption", sel ? "text-primary-foreground/70" : "text-fg-muted")}>{DOW_SHORT[dowOf(d)]}</span>
                 <span className="block text-headline tabular">{Number(d.slice(8))}</span>
-                <span className={cn("block text-caption tabular", sel ? "text-bg/80" : hot ? "font-medium text-points-text" : "text-fg-muted")}>
+                <span className={cn("block text-caption tabular", sel ? "text-primary-foreground/80" : hot ? "font-medium text-points-text" : "text-fg-muted")}>
                   {pots}
                   {dayCap != null ? ` of ${dayCap}` : ""}
                   <span className="hidden sm:inline"> {pots === 1 && dayCap == null ? "pot" : "pots"}</span>
@@ -149,7 +149,7 @@ function Preorders() {
           <RulesCard rules={state.data?.rules ?? null} cancelHours={cancelRule.data ? cancelRule.data.cancelCutoffHours : undefined} items={potItems} onEdit={() => setRulesOpen(true)} />
           <section aria-labelledby="wl-h">
             <h2 id="wl-h" className="mb-3 text-[15px] font-semibold text-fg">Wait list</h2>
-            <div className="flex flex-col gap-3 rounded-card border border-line p-5">
+            <div className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
               <p className="text-meta text-fg-muted">When a day is full, guests join a wait list. A cancel frees a pot and we message the first in line on WhatsApp or text, once.</p>
               <button type="button" onClick={() => setWaitlist(true)} className="h-10 rounded-full border border-line px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring">
                 {waitingThisWeek ? `${waitingThisWeek} ${waitingThisWeek === 1 ? "person" : "people"} waiting${waitingDay ? ` for ${dayLabel(waitingDay.date).split(",")[0]}` : ""}` : "No one is waiting this week"}
@@ -200,7 +200,7 @@ function CookAndBuy({ day, plan, shopping, loading, onRecipes }: { day: string; 
         </Banner>
       ) : null}
       {shopping ? (
-        <div className="flex flex-col gap-3 rounded-card border border-line bg-bg-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-card bg-hover bg-bg-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-body text-fg">
             <span className="font-semibold">Shopping list for {dayLabel(day).split(",")[0]} (estimate):</span> {shopping.items.map((i) => `${i.name} ${i.qty} ${i.unit}`).join(" · ")}
           </p>
@@ -306,7 +306,7 @@ function RulesCard({ rules, cancelHours, items, onEdit }: { rules: restaurantApi
         <h2 id="rules-h" className="text-[15px] font-semibold text-fg">Rules for guests</h2>
         <button type="button" onClick={onEdit} className="text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Edit</button>
       </div>
-      <dl className="rounded-card border border-line">
+      <dl className="rounded-card bg-card shadow-card">
         {rows.length ? (
           rows.map((r, i) => (
             <div key={`${r.label}-${i}`} className={cn("px-5 py-3", i > 0 && "border-t border-line")}>

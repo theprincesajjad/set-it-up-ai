@@ -20,8 +20,8 @@ export interface IconButtonProps {
 
 export function IconButton({ icon: Icon, label, onPress, variant = "ghost", size = 44, showLabel, badgeDot, disabled }: IconButtonProps) {
   const { c } = useTheme();
-  const bg = variant === "primary" ? c.fg : variant === "secondary" ? c.bgSubtle : variant === "float" ? c.bg : "transparent";
-  const fg = disabled ? c.fgSubtle : variant === "primary" ? c.bg : c.fg;
+  const bg = variant === "primary" ? c.brand : variant === "secondary" ? c.bgSubtle : variant === "float" ? c.bg : "transparent";
+  const fg = disabled ? c.fgSubtle : variant === "primary" ? c.onBrand : c.fg;
   const hit = Math.max(0, (44 - size) / 2);
   return (
     <Pressable

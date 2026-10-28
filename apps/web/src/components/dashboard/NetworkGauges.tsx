@@ -25,7 +25,7 @@ export function DensityBar({ label, value, target, unit = "shops", format = form
         </span>
       </p>
       <div role="progressbar" aria-label={`${label}: ${format(value)} of ${format(target)} ${unit}. ${STATUS_TEXT[s]}.`} aria-valuemin={0} aria-valuemax={target} aria-valuenow={value} className="mt-2 h-1 overflow-hidden rounded-full bg-bg-muted">
-        <div className={cn("h-full rounded-full", s === "ready" ? "bg-positive" : "bg-fg")} style={{ width: `${Math.max(1.5, pct)}%` }} />
+        <div className={cn("h-full rounded-full", s === "ready" ? "bg-positive" : "bg-trade")} style={{ width: `${Math.max(1.5, pct)}%` }} />
       </div>
     </div>
   );

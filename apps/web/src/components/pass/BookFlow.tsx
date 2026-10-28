@@ -277,7 +277,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             const n = timesOn(av, d).length;
             const on = d === day;
             return (
-              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
+              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
                 <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                 <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
               </button>
@@ -294,7 +294,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             <p className="text-meta-strong text-fg">{times.length ? t("bk.time.count", { day: date(dayDate(day), { weekday: "long" }, "UTC"), n: times.length, staff: staffName || t("bk.anyone") }) : t("bk.time.none", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
             <div className="flex flex-wrap gap-2">
               {times.map((x) => (
-                <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 min-w-[88px] rounded-input border px-4 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 min-w-[88px] rounded-input border px-4 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                   {time(x.startsAt)}
                 </button>
               ))}
@@ -354,7 +354,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         {[{ id: null as string | null, name: t("bk.anyone"), initials: "Any" }, ...data.staff].map((s) => {
           const on = s.id === staffId;
           return (
-            <button key={s.id ?? "any"} type="button" role="radio" aria-checked={on} onClick={() => setStaffId(s.id)} className={cn("flex h-11 shrink-0 items-center gap-2 rounded-full border ps-1.5 pe-4 text-body focus-visible:focus-ring", on ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+            <button key={s.id ?? "any"} type="button" role="radio" aria-checked={on} onClick={() => setStaffId(s.id)} className={cn("flex h-11 shrink-0 items-center gap-2 rounded-full border ps-1.5 pe-4 text-body focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
               <span aria-hidden className={cn("flex size-8 items-center justify-center rounded-full text-[11px] font-semibold", on ? "bg-bg text-fg" : "bg-bg-muted text-fg")}>{s.initials}</span>
               <bdi>{s.name}</bdi>
             </button>
@@ -366,7 +366,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           <p className="text-meta-strong text-fg">{t("bk.pet.title")}</p>
           <div role="radiogroup" aria-label={t("bk.pet.title")} className="flex flex-wrap gap-2">
             {myPets.map((p) => (
-              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-10 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-10 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                 <bdi>{p.name}</bdi>
               </button>
             ))}
@@ -378,7 +378,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       {categories.length > 1 ? (
         <div role="radiogroup" aria-label={t("bk.all")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {["all", ...categories].map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-9 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", category === c ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-9 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", category === c ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
               {c === "all" ? t("bk.all") : c}
             </button>
           ))}
@@ -392,7 +392,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           return (
             <li key={s.id}>
               <button type="button" role="checkbox" aria-checked={on} onClick={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} className="flex min-h-[64px] w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
-                <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full border", on ? "border-fg bg-fg text-bg" : "border-line-strong")}>{on ? <CircleCheck className="size-5" strokeWidth={2} /> : null}</span>
+                <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full border", on ? "border-trade bg-trade text-trade-foreground" : "border-line-strong")}>{on ? <CircleCheck className="size-5" strokeWidth={2} /> : null}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-body-strong text-fg">{p.name}</span>
                   <span className="block text-meta text-fg-muted">{staffName ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}{s.depositCents > 0 && takesCards ? ` · ${t("bk.depositHold", { amount: money(s.depositCents) })}` : ""}</span>

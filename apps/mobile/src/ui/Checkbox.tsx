@@ -28,10 +28,10 @@ export function Checkbox({ checked, onChange, label, caption, disabled, large }:
         style={[
           styles.box,
           large ? styles.boxLarge : null,
-          { borderColor: checked ? c.fg : c.lineStrong, backgroundColor: checked ? c.fg : c.bg },
+          { borderColor: checked ? c.brand : c.lineStrong, backgroundColor: checked ? c.brand : c.bg },
         ]}
       >
-        {checked ? <Check size={large ? 24 : 18} color={c.bg} strokeWidth={3} /> : null}
+        {checked ? <Check size={large ? 24 : 18} color={c.onBrand} strokeWidth={3} /> : null}
       </View>
       <View style={styles.text}>
         <Text variant={large ? "bodyLg" : "body"}>{label}</Text>

@@ -50,7 +50,7 @@ export default async function ShopMenuPage({ params, searchParams }: Props) {
   // Wait, whether the shop is taking orders, which entry points are on (non-restaurant shops have none: ordering stays open).
   const restaurant = menu === "none" || menu === "error" ? null : await publicRestaurantApi().restaurant(slug).catch(() => null);
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade={shop.vertical}>
       {menu === "error" ? (
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}/menu`}>{t("rc.tryAgain")}</Button>} />
       ) : menu === "none" ? (

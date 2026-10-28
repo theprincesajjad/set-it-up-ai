@@ -71,7 +71,7 @@ function Wash() {
         found.length === 0 ? (
           <Empty>Nobody found. The plate must be on the member&apos;s car, or look them up by phone.</Empty>
         ) : (
-          <ul className="divide-y divide-line rounded-card border border-line" aria-label="Members found">
+          <ul className="divide-y divide-line rounded-card bg-card shadow-card" aria-label="Members found">
             {found.map((m) => (
               <li key={m.memberId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">

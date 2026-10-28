@@ -21,7 +21,7 @@ export default async function MyTiffinPage({ searchParams }: Props) {
   const t = translator(locale);
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade="tiffin">
       <Heading>{t("rc.tm.title")}</Heading>
       {me ? (
         <TiffinManage />

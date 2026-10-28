@@ -3340,4 +3340,11 @@ export const pa: Messages = {
   "counter.cd.exit": "ਦਰਵਾਜ਼ੇ ਦੇ ਚੈੱਕ-ਇਨ ਤੋਂ ਬਾਹਰ ਨਿਕਲੋ",
   "pet.food.noConsentLink": "ਮੇਰੀਆਂ ਟੈਕਸਟ ਸੈਟਿੰਗਾਂ ਖੋਲ੍ਹੋ",
   "pet.food.needGrams": "ਇਸਨੂੰ ਚਾਲੂ ਕਰਨ ਲਈ ਹੇਠਾਂ ਲਿਖੋ ਕਿ ਤੁਸੀਂ ਰੋਜ਼ ਕਿੰਨੇ ਗ੍ਰਾਮ ਖੁਆਉਂਦੇ ਹੋ।",
+  "pass.hi": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ",
+  "pass.showCode": "ਮੇਰਾ ਕੋਡ ਦਿਖਾਓ",
+  "pass.addWallet": "ਵਾਲਿਟ ਵਿੱਚ ਜੋੜੋ",
+  "pass.nearby.title": "ਤੁਹਾਡੀ ਗਲੀ ਵਿੱਚ ਨੇੜੇ",
+  "pass.nearby.deal": "ਆਫ਼ਰ",
+  "pass.nearby.perk": "ਫ਼ਾਇਦਾ",
+  "pass.nearby.new": "ਨਵਾਂ",
 };

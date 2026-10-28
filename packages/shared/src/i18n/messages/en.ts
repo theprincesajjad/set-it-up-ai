@@ -3344,6 +3344,13 @@ export const en = {
   "counter.cd.exit": "Exit door check-in",
   "pet.food.noConsentLink": "Open my text settings",
   "pet.food.needGrams": "Add how many grams you feed a day, below, to switch this on.",
+  "pass.hi": "Hi",
+  "pass.showCode": "Show my code",
+  "pass.addWallet": "Add to Wallet",
+  "pass.nearby.title": "Nearby on your street",
+  "pass.nearby.deal": "Deal",
+  "pass.nearby.perk": "Perk",
+  "pass.nearby.new": "New",
 } as const;
 
 export type MessageKey = keyof typeof en;

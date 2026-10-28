@@ -9,6 +9,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { distanceL } from "@/lib/i18n/formatL";
 import { unitCaption } from "@/lib/units";
 import { SponsoredBadge } from "./Badge";
+import { CategoryIcon } from "./CategoryIcon";
 
 export interface ShopTileShop {
   name: string;
@@ -87,14 +88,14 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
             <img src={shop.coverUrl!} alt="" className="size-full object-cover" onError={() => setCoverFailed(true)} />
           </div>
         ) : null}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 rounded-sheet bg-trade-soft p-4">
           <ShopLogo shop={shop} size={64} />
           <div className="min-w-0 flex-1">
             {sponsored ? <SponsoredBadge /> : null}
-            {/* Shop title: 22/600 like the app's shop sheet, never heavy (polish-audit M13). */}
-            <h1 className="text-title font-semibold text-fg"><bdi>{shop.name}</bdi></h1>
-            {subtitle ? <p className="mt-0.5 text-meta italic text-fg-muted">{subtitle}</p> : null}
+            <h1 className="font-display text-[26px] font-bold leading-[1.15] tracking-[-0.02em] text-trade-deep"><bdi>{shop.name}</bdi></h1>
+            {subtitle ? <p className="mt-0.5 text-meta text-fg-muted">{subtitle}</p> : null}
           </div>
+          <CategoryIcon vertical={shop.vertical} size={56} className="max-[420px]:hidden" />
         </div>
       </div>
     );

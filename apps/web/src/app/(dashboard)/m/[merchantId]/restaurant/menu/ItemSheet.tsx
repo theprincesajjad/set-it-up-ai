@@ -148,7 +148,7 @@ function Form({ item, onClose, onSaved, stations, shopCertifier }: { item: Item;
                   role="radio"
                   aria-checked={spice === n}
                   onClick={() => setSpice(n)}
-                  className={cn("flex h-14 flex-col items-center justify-center gap-1.5 rounded-input border text-caption transition-colors focus-visible:focus-ring", spice === n ? "border-fg bg-fg text-bg" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                  className={cn("flex h-14 flex-col items-center justify-center gap-1.5 rounded-input border text-caption transition-colors focus-visible:focus-ring", spice === n ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
                 >
                   <span className="inline-flex gap-0.5">
                     {n === 0 ? <span aria-hidden className="h-px w-3 bg-current" /> : <InvertibleDots level={n} on={spice === n} />}
@@ -191,7 +191,7 @@ function Form({ item, onClose, onSaved, stations, shopCertifier }: { item: Item;
             const info = LOCALES[l];
             const field = "text-start";
             return (
-              <fieldset key={l} className="flex flex-col gap-2 rounded-card border border-line p-3">
+              <fieldset key={l} className="flex flex-col gap-2 rounded-card bg-card shadow-card p-3">
                 <legend className="px-1 text-meta-strong text-fg">
                   {info.englishName} <span lang={info.bcp47} className="text-fg-muted">({info.name})</span>
                 </legend>

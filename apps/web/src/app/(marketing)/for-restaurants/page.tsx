@@ -101,12 +101,12 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       <MSection tone="ink" id="plans">
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-16">
           <div>
-            <p className="text-meta-strong text-primary-foreground/60">{R.plansEyebrow}</p>
+            <p className="text-meta-strong opacity-90">{R.plansEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{R.plansTitle}</h2>
-            <p className="mt-5 text-[17px] leading-[1.55] text-primary-foreground/65">
+            <p className="mt-5 text-[17px] leading-[1.55]">
               {prices.map((p) => `${p.name} ${p.price}`).join(" · ")} a month. Annual plans pay 10 months. On $5,000 of orders moved off the apps you keep {dollarRange(c.pickupLowCents, c.deliveryMaxCents)} a month before our fee. Delivery needs your own drivers.
             </p>
-            <p className="mt-3 text-caption text-primary-foreground/70">
+            <p className="mt-3 text-caption">
               Delivery-app rates from DoorDash Canada, read {formatAsOf(DOORDASH_CANADA.asOf)}:{" "}
               <a href={DOORDASH_CANADA.sourceUrl} className="underline underline-offset-2">
                 merchants.doordash.com/en-ca

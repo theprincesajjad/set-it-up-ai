@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="t">
   <title id="t">Local Loyalty</title>
   <!-- v2 mark "four corners": a black tile, four places; one is filled with the accent = the point you earned.
-       Reads as a stamp card and as a map of corner shops. Black #0B0B0C, white, accent #FF5A1F. Nothing else. -->
-  <rect width="64" height="64" rx="16" fill="#0B0B0C"/>
+       Reads as a stamp card and as a map of corner shops. Terracotta #C8452C, white, butter #FDF0C8. Nothing else. -->
+  <rect width="64" height="64" rx="16" fill="#C8452C"/>
   <circle cx="22" cy="22" r="7.5" fill="#FFFFFF"/>
   <circle cx="42" cy="22" r="7.5" fill="#FFFFFF"/>
   <circle cx="22" cy="42" r="7.5" fill="#FFFFFF"/>
-  <circle cx="42" cy="42" r="7.5" fill="#FF5A1F"/>
+  <circle cx="42" cy="42" r="7.5" fill="#FDF0C8"/>
 </svg>

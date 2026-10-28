@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useId, type ReactNode, type HTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
-/** Page header: title (22 semibold), one-line description, actions right. One black primary per page. */
+/** Page header: title (22 semibold), one-line description, actions right. One terracotta primary per page. */
 export function PageHeader({ title, description, actions, back, className, flush }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; back?: { href: string; label: string }; className?: string; /** No bottom margin (inside a gap layout). */ flush?: boolean }) {
   return (
     <header className={cn(!flush && "mb-6", "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
@@ -38,7 +38,7 @@ export function Section({ title, description, action, children, className, id }:
         <div className="mb-2 flex min-h-8 items-end justify-between gap-3">
           <div className="min-w-0">
             {title ? (
-              <h2 id={hid} className="text-body-strong text-fg">
+              <h2 id={hid} className="text-headline text-fg">
                 {title}
               </h2>
             ) : null}
@@ -67,7 +67,7 @@ export function Panel({ title, description, action, children, className, footer,
         <div className={cn("flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-5 pt-4", !padded && "border-b border-line pb-3")}>
           <div className="min-w-0">
             {title ? (
-              <h2 id={id} className="text-body-strong text-fg">
+              <h2 id={id} className="text-headline text-fg">
                 {title}
               </h2>
             ) : null}

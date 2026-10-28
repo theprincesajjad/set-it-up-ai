@@ -20,7 +20,7 @@ export default async function MyFoodPage({ searchParams }: Props) {
   const t = translator(locale);
   const me = await getMe();
   return (
-    <PageFrame locale={locale}>
+    <PageFrame locale={locale} trade="pet">
       {me ? <MyFoodCards /> : <PhoneSignIn heading="h2" next="/me/food" title={t("pet.food.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
     </PageFrame>
   );

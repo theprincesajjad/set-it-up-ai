@@ -68,7 +68,7 @@ export function WeighSheet({ order, onClose, onDone }: { order: commerceApi.Orde
           const g = grams(l);
           const p = g != null ? weighPreview(l.perUnitCents!, l.weightUnit!, g, estimate(l)) : null;
           return (
-            <div key={l.id} className="flex flex-col gap-2 rounded-card border border-line p-4">
+            <div key={l.id} className="flex flex-col gap-2 rounded-card bg-card shadow-card p-4">
               <div>
                 <p className="text-body-strong text-fg">{l.quantity > 1 ? `${l.quantity} × ` : ""}{l.name}</p>
                 <p className="text-meta text-fg-muted">

@@ -46,7 +46,7 @@ function Food() {
               r.programs.length === 0 ? (
                 <Empty action={manager ? <Button size="sm" onClick={() => setBrand(true)}>Add a brand</Button> : undefined}>No brands on a card yet. Add Fromm, Open Farm or any brand you run a buy 12 get 1 on.</Empty>
               ) : (
-                <section aria-label="Brands on a card" className="overflow-hidden rounded-card border border-line">
+                <section aria-label="Brands on a card" className="overflow-hidden rounded-card bg-card shadow-card">
                   <div className="border-b border-line px-5 py-3.5">
                     <h2 className="text-body-strong text-fg">Brands on a card</h2>
                   </div>
@@ -69,7 +69,7 @@ function Food() {
               )
             }
           </Async>
-          <section aria-label="Running out soon" className="overflow-hidden rounded-card border border-line">
+          <section aria-label="Running out soon" className="overflow-hidden rounded-card bg-card shadow-card">
             <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
               <div>
                 <h2 className="text-body-strong text-fg">Running out soon</h2>
@@ -150,7 +150,7 @@ function Counter({ programs, onChanged }: { programs: petApi.FoodProgramDto[]; o
     }
   }
   return (
-    <section aria-label="At the counter" className="flex flex-col gap-4 rounded-card border border-line px-5 py-5">
+    <section aria-label="At the counter" className="flex flex-col gap-4 rounded-card bg-card shadow-card px-5 py-5">
       <h2 className="text-body-strong text-fg">At the counter{member?.name ? `: ${member.name}` : ""}</h2>
       <MemberPicker value={member} onPick={(m) => { setMember(m); setNote(null); }} />
       {member ? (
@@ -162,7 +162,7 @@ function Counter({ programs, onChanged }: { programs: petApi.FoodProgramDto[]; o
             <>
               <div className="flex flex-wrap gap-2" role="img" aria-label={`${filled} of ${total} bags`}>
                 {punchCircles(filled, total).map((on, i) => (
-                  <span key={i} className={cn("flex size-10 items-center justify-center rounded-full border text-meta-strong tabular-nums", on ? "border-fg bg-fg text-bg" : "border-line text-fg-subtle")}>{i + 1}</span>
+                  <span key={i} className={cn("flex size-10 items-center justify-center rounded-full border text-meta-strong tabular-nums", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg-subtle")}>{i + 1}</span>
                 ))}
               </div>
               <p className="text-meta text-fg-muted" aria-live="polite">

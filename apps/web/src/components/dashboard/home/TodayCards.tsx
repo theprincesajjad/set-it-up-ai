@@ -10,7 +10,9 @@ import {
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { StatBlock, type StatItem } from "@/components/dashboard/kit";
+import { useShopVertical } from "@/components/dashboard/useShopVertical";
 import { ActionPill } from "@/components/ui/ActionPill";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { IconTile } from "@/components/ui/IconTile";
 import { QuickActionTile } from "@/components/ui/QuickActionTile";
 import { TrendBars } from "@/components/ui/TrendBars";
@@ -83,6 +85,7 @@ const Empty = ({ children }: { children: ReactNode }) => <p className="border-t 
 export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRow[]; loading?: boolean; base: string; className?: string }) {
   const { t } = useLocaleOrEnglish();
   const [all, setAll] = useState(false);
+  const vertical = useShopVertical();
   const shown = all ? rows : rows.slice(0, MAX_ROWS);
   return (
     <Card
@@ -105,12 +108,12 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
       ) : rows.length === 0 ? (
         <Empty>{t("shell.today.nothingNeedsYou")}</Empty>
       ) : (
-        <ul>
+        <ul className="flex flex-1 flex-col">
           {shown.map((r) => {
             const v = needsVisual(r);
             return (
-              <li key={r.key} className="border-t border-border">
-                <Link href={`${base}${r.href}`} className="flex min-h-17 items-center gap-3 px-5 py-3 transition-colors hover:bg-muted focus-visible:focus-ring">
+              <li key={r.key} className="flex max-h-28 flex-1 border-t border-border">
+                <Link href={`${base}${r.href}`} className="flex min-h-17 w-full items-center gap-3 px-5 py-3 transition-colors hover:bg-muted focus-visible:focus-ring">
                   <IconTile icon={v.icon} tone={v.tone} />
                   <span className="min-w-0 flex-1">
                     <span className="sr-only">{t(TONE_WORD[r.tone])}: </span>
@@ -123,6 +126,13 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
               </li>
             );
           })}
+          {shown.length < 3 ? (
+            <li aria-hidden className="mt-auto flex items-end justify-end px-5 pb-4 pt-2">
+              <span className="inline-flex size-16 items-center justify-center rounded-tile bg-trade-soft">
+                <CategoryIcon vertical={vertical} size={44} />
+              </span>
+            </li>
+          ) : null}
         </ul>
       )}
     </Card>

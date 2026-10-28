@@ -49,7 +49,7 @@ export function IntakePanel({ ticket, checkedInAt }: { ticket: serviceApi.Ticket
           </dl>
         </div>
         {items.length ? (
-          <ul aria-label="Items" className="divide-y divide-line rounded-card border border-line px-3 text-meta">
+          <ul aria-label="Items" className="divide-y divide-line rounded-card bg-card shadow-card px-3 text-meta">
             {items.map((it, i) => (
               <li key={i} className="flex justify-between gap-3 py-2"><span className="text-fg">{it.description}</span>{it.tag ? <span className="text-fg-muted">{it.tag}</span> : null}</li>
             ))}

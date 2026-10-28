@@ -1,8 +1,11 @@
 import type { ColorRoles, TextStyleName } from "@ll/design-tokens";
-import { StyleSheet, Text as RNText, type TextProps as RNTextProps } from "react-native";
+import { StyleSheet, Text as RNText, type TextProps as RNTextProps, type TextStyle } from "react-native";
+import { sentenceCase } from "../lib/sentenceCase";
 import { useIsRtl, useLocaleCode } from "../lib/i18n";
-import { typo, useTheme } from "../theme";
+import { isDisplayFamily, typo, useTheme } from "../theme";
 import { scriptStyle } from "./scriptStyle";
+
+const SCRIPT_LOCALES = new Set(["hi", "ur", "pa"]);
 
 export interface TextProps extends RNTextProps {
   variant?: TextStyleName;
@@ -25,10 +28,17 @@ export function Text({ variant = "body", color = "fg", rawColor, center, tabular
   const rtl = useIsRtl();
   const locale = useLocaleCode();
   const base = typo(variant);
-  const script = scriptStyle(locale, StyleSheet.flatten([base, style]) ?? {}, rest.children);
+  const flat = StyleSheet.flatten([base, style]) ?? {};
+  const script = scriptStyle(locale, flat, rest.children);
+  const display = isDisplayFamily(flat.fontFamily);
+  // Fraunces has no Devanagari, Gurmukhi or Nastaliq: those headings fall back to the system script face at the same (bold) weight.
+  const scriptFallback: TextStyle | null = display && locale !== "en" && SCRIPT_LOCALES.has(locale) ? { fontFamily: undefined, fontWeight: "700" } : null;
+  // Display strings read in sentence case ("Wallet", not "wallet"): the shared messages are lowercase, the face is not.
+  const children = display && locale === "en" ? sentenceCase(rest.children) : rest.children;
   return (
     <RNText
       {...rest}
+      children={children}
       style={[
         base,
         { color: rawColor ?? c[color] },
@@ -36,6 +46,7 @@ export function Text({ variant = "body", color = "fg", rawColor, center, tabular
         center ? { textAlign: "center" } : null,
         tabular ? { fontVariant: ["tabular-nums"] } : null,
         style,
+        scriptFallback,
         script,
       ]}
     />

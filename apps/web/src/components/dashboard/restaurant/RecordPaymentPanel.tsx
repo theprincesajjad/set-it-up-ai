@@ -76,7 +76,7 @@ export function RecordPaymentPanel({ title = "Record payment", subtitle, rows, a
                 type="button"
                 aria-pressed={method === m.value}
                 onClick={() => setMethod(m.value)}
-                className={`inline-flex h-8 items-center rounded-full border px-3 text-meta font-medium focus-visible:focus-ring ${method === m.value ? "border-fg bg-fg text-bg" : "border-line text-fg hover:bg-bg-subtle"}`}
+                className={`inline-flex h-8 items-center rounded-full border px-3 text-meta font-medium focus-visible:focus-ring ${method === m.value ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle"}`}
               >
                 {m.label}
               </button>

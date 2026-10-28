@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { t } from "@ll/shared";
+import { Awning } from "@/components/ui/Awning";
 import { DoorTablet } from "@/components/dashboard/queue/DoorTablet";
 import { LocaleScope } from "@/lib/i18n/LocaleScope";
 import { getLocale } from "@/lib/i18n/server";
@@ -13,6 +14,7 @@ export default async function DoorPage({ searchParams }: { searchParams: Promise
   const locale = await getLocale(await searchParams);
   return (
     <LocaleScope locale={locale} className="min-h-screen bg-paper">
+      <Awning size="md" className="rounded-none rounded-b-lg" />
       <main id="main" className="mx-auto w-full max-w-[1100px] px-4 py-6">
         <DoorTablet />
       </main>

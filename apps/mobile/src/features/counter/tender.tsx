@@ -32,14 +32,14 @@ export function TenderChoice({ subtotalCents, cashDiscountBps, value, onChange }
           >
             <View style={styles.top}>
               {x.id === "card" ? <CreditCard size={18} color={on ? c.bg : c.fgMuted} /> : null}
-              <Text variant="bodyStrong" rawColor={on ? c.bg : c.fg}>
+              <Text variant="bodyStrong" rawColor={on ? c.onBrand : c.fg}>
                 {x.label}
               </Text>
             </View>
-            <Text style={[disp(28, 800, 32), { fontVariant: ["tabular-nums"] }]} rawColor={on ? c.bg : c.fg}>
+            <Text style={[disp(28, 800, 32), { fontVariant: ["tabular-nums"] }]} rawColor={on ? c.onBrand : c.fg}>
               {money(x.price)}
             </Text>
-            <Text variant="meta" rawColor={on ? c.bg : c.fgMuted} numberOfLines={1}>
+            <Text variant="meta" rawColor={on ? c.onBrand : c.fgMuted} numberOfLines={1}>
               {x.note ?? " "}
             </Text>
           </Pressable>

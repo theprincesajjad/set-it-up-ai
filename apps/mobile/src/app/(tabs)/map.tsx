@@ -129,7 +129,7 @@ function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityL
         haptic.select();
         onPress();
       }}
-      style={({ pressed }) => [styles.mapChip, { backgroundColor: selected ? c.fg : float ? c.bg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }, float ? floatShadow : null]}
+      style={({ pressed }) => [styles.mapChip, { backgroundColor: selected ? c.brand : float ? c.bg : c.bgSubtle, opacity: pressed ? 0.85 : 1 }, float ? floatShadow : null]}
     >
       {dot ? <View style={[styles.openDot, { backgroundColor: c.positive }]} /> : null}
       <Text style={disp(14, 700, 18)} rawColor={fg}>
@@ -594,9 +594,9 @@ export default function Explore() {
                 if (mapCenter) setSearchCenter(mapCenter);
                 setMapCenter(null);
               }}
-              style={[styles.searchHere, { backgroundColor: c.fg }, floatShadow]}
+              style={[styles.searchHere, { backgroundColor: c.brand }, floatShadow]}
             >
-              <Text variant="mapLabel" rawColor={c.bg}>
+              <Text variant="mapLabel" rawColor={c.onBrand}>
                 {tr("ms.map.searchHere")}
               </Text>
             </Pressable>
@@ -635,9 +635,9 @@ export default function Explore() {
               accessibilityRole="button"
               accessibilityLabel={tr("ms.map.recenter")}
               onPress={recenter}
-              style={({ pressed }) => [styles.recenter, { backgroundColor: c.fg, opacity: pressed ? 0.85 : 1 }, shadow("0 2px 10px rgba(0,0,0,.22)", { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 5 })]}
+              style={({ pressed }) => [styles.recenter, { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 }, shadow("0 2px 10px rgba(0,0,0,.22)", { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 5 })]}
             >
-              <RecenterGlyph size={18} color={c.bg} />
+              <RecenterGlyph size={18} color={c.onBrand} />
             </Pressable>
           </View>
           <CategoryRail value={category} onChange={setCategory} onMap />

@@ -7,7 +7,9 @@ import { placeKindLabel } from "@ll/shared";
 import { InboxList, NotificationSettings } from "./NotificationSettings";
 import { InviteSheet } from "./InviteSheet";
 import { MemberCardBlock } from "./MemberCardBlock";
-import { PassPanel, PassTopBar } from "./PassChrome";
+import { LanguageChip, PassPanel } from "./PassChrome";
+import { NearbyOnStreet } from "./NearbyOnStreet";
+import { PassActions } from "./PassActions";
 import { heroMembership, ShopPassHero } from "./ShopPassHero";
 import { Activity, ChevronRight, Download, Gift, LogOut, Search, Settings, Store, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { PassTabBar } from "./PassTabBar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type campaignsApi, type customerApi, type MessageKey } from "@ll/shared";
+import { type campaignsApi, type customerApi, type MessageKey, type networkApi } from "@ll/shared";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitCaption, unitsText } from "@/lib/units";
 import { copy } from "@/copy/en-CA"; // l10n-ok: only the recorded consent sentence (stored with the opt-in) comes from here
@@ -58,13 +60,15 @@ export interface WalletProps {
   /** Server-rendered blocks the page adds around the wallet: the next booking above the card, shortcuts (tiffin, pantry, pets, cars) below it. */
   nextVisit?: React.ReactNode;
   extras?: React.ReactNode;
+  /** Shops on the member's street they haven't joined (promo first, nearest first): the "Nearby on your street" card. */
+  nearby?: networkApi.ShopListItemDto[];
 }
 
 type Details = Record<string, customerApi.MembershipDetailResponse>;
 
 const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
-export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras }: WalletProps) {
+export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras, nearby = [] }: WalletProps) {
   const { t, locale } = useLocaleOrEnglish();
   const [tab, setTab] = useState<Tab>("card");
   const [wallet, setWallet] = useState(initialWallet);
@@ -109,6 +113,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   }, [wallet.items, toast]);
 
   const hero = useMemo(() => heroMembership(wallet.items), [wallet.items]);
+  const firstName = profile.name?.trim().split(/\s+/)[0] ?? "";
 
   useEffect(() => {
     // Lazy-load per-shop details the first time a tab needs them: every shop for Rewards and Activity, the featured shop for the card.
@@ -132,14 +137,18 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
   return (
-    <div className="flex flex-col gap-4 pb-28">
-      <PassTopBar
-        title={
-          <h1 id="total" className="text-headline font-semibold text-foreground">
-            {t("sh.wallet.title")}
-          </h1>
-        }
-      >
+    <div data-trade={hero?.merchant.vertical} className="flex flex-col gap-4 pb-32">
+      <header className="flex min-h-11 items-center gap-2">
+        <h1 id="total" className="min-w-0 flex-1 font-display text-[clamp(28px,8.5vw,34px)] font-bold leading-[1.15] tracking-[-0.03em] text-foreground">
+          {tab === "card" && firstName ? (
+            <>
+              {t("pass.hi")} <span className="text-trade-deep">{firstName}</span>
+            </>
+          ) : (
+            t("sh.wallet.title")
+          )}
+        </h1>
+        <div className="flex shrink-0 items-center gap-1">
         <Link href="/map" aria-label={t("sh.wallet.search")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
           <Search aria-hidden className="size-5" strokeWidth={1.75} />
         </Link>
@@ -152,7 +161,9 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
         >
           <Settings aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
-      </PassTopBar>
+        <LanguageChip className="ms-1" />
+        </div>
+      </header>
 
       {tab === "card" ? (
         <CardTab
@@ -164,6 +175,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
           profile={profile}
           nextVisit={nextVisit}
           extras={extras}
+          nearby={nearby}
           footer={headline.kind === "ready" && wallet.items.length > 1 ? `${headline.value} ${locale === "en" ? headline.label : t("sh.wallet.heroReady", { n: headline.value })} · ${locale === "en" ? headline.context : t("sh.wallet.heroAcross", { n: wallet.items.length })}` : null}
           onChanged={async () => { await refreshWallet(); if (hero) await loadDetails([hero.id]); }}
         />
@@ -180,7 +192,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
 }
 
 /** The pass itself (frame 15:184): the featured shop with its ring, my QR and wallet buttons, that shop's rewards and recent visits. */
-function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, footer, onChanged }: { hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
+function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, nearby, footer, onChanged }: { nearby: networkApi.ShopListItemDto[]; hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
   const { t, locale, date } = useLocaleOrEnglish();
   const d = hero ? details[hero.id] : undefined;
   const visits = useMemo(() => (hero && d ? hideQuickUndos(d.history.items.map((tx) => ({ tx, m: hero }))).slice(0, 3) : []), [hero, d]);
@@ -188,7 +200,8 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
     <>
       {nextVisit}
       {hero ? <ShopPassHero m={hero} line={progressLine(hero, t, locale)} footer={footer} /> : null}
-      <MemberCardBlock card={card} profile={profile} />
+      {hero ? <PassActions card={card} profile={profile} /> : null}
+      <NearbyOnStreet shops={nearby} />
       {!hero ? (
         <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
       ) : !d ? (
@@ -214,6 +227,7 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
           ) : null}
         </>
       )}
+      <MemberCardBlock card={card} profile={profile} />
       {extras}
     </>
   );
