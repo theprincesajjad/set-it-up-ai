@@ -2958,7 +2958,7 @@ export const ur: Messages = {
   "shell.nav.memberships": "رکنیت اور پاس",
   "shell.nav.services": "خدمات اور قیمتیں",
   "shell.nav.priceList": "قیمتوں کی فہرست",
-  "shell.nav.catalog": "مینو اور کیٹلاگ",
+  "shell.nav.catalog": "مینو اور قیمتیں",
   "shell.nav.rebooking": "دوبارہ بکنگ",
   "shell.nav.dropoffSlots": "ڈراپ آف سلاٹس",
   "shell.nav.pickupSlots": "پک اپ اور ڈراپ آف",

@@ -313,7 +313,7 @@ function buildNavEntries(base: string, role: StaffRole, enabled: Set<FeatureKey>
     { key: "class-offers", href: `${base}/classes/offers`, label: "Memberships & passes", group: "run" },
     door,
     { key: "services", href: `${base}/services`, label: enabled.has("service.tickets") && !enabled.has("booking.appointments") ? "Price list" : "Services & prices", group: "run" },
-    { key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "run" },
+    { key: "catalog", href: `${base}/catalog`, label: "Menu and prices", group: "run" },
     { key: "rebooking", href: `${base}/rebooking`, label: "Rebooking", group: "run" },
     { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "run" },
     { key: "ads", href: `${base}/ads`, label: "Ads", group: "grow" },
@@ -386,7 +386,7 @@ function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>
   if (enabled.has("grocery.counter_preorders")) out.push(g("butcher", "Butcher counter", "run"));
   if (enabled.has("grocery.flyer")) out.push(g("flyer", "Weekly flyer", "run"));
   if (navVisible("orders", enabled, shop)) out.push({ key: "orders", href: `${base}/orders`, label: "Orders", group: "run" });
-  if (navVisible("catalog", enabled, shop) && !enabled.has("grocery.counter_preorders")) out.push({ key: "catalog", href: `${base}/catalog`, label: "Menu & catalog", group: "run" });
+  if (navVisible("catalog", enabled, shop) && !enabled.has("grocery.counter_preorders")) out.push({ key: "catalog", href: `${base}/catalog`, label: "Menu and prices", group: "run" });
   if (enabled.has("grocery.whatsapp_orders")) out.push(g("whatsapp", "WhatsApp", "run"));
   if (enabled.has("grocery.pantry_reminders")) out.push(g("pantry", "Pantry reminders", "run"));
   const rest: NavEntry[] = [

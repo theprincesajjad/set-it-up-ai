@@ -2958,7 +2958,7 @@ export const hi: Messages = {
   "shell.nav.memberships": "मेंबरशिप और पास",
   "shell.nav.services": "सेवाएँ और दाम",
   "shell.nav.priceList": "दाम सूची",
-  "shell.nav.catalog": "मेन्यू और कैटलॉग",
+  "shell.nav.catalog": "मेन्यू और क़ीमतें",
   "shell.nav.rebooking": "दोबारा बुकिंग",
   "shell.nav.dropoffSlots": "ड्रॉप-ऑफ़ स्लॉट",
   "shell.nav.pickupSlots": "पिकअप और ड्रॉप-ऑफ़",

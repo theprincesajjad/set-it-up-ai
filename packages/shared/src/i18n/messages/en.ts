@@ -4,7 +4,7 @@ export const en = {
 
   // Public shop page
   "shop.rewards": "Rewards",
-  "shop.promos": "Promos",
+  "shop.promos": "Offers",
   "shop.howEarn": "How you earn here",
   "shop.welcomeBonus": "Join and get {points} right away.",
   "shop.about": "About",
@@ -2962,7 +2962,7 @@ export const en = {
   "shell.nav.memberships": "Memberships & passes",
   "shell.nav.services": "Services & prices",
   "shell.nav.priceList": "Price list",
-  "shell.nav.catalog": "Menu & catalog",
+  "shell.nav.catalog": "Menu and prices",
   "shell.nav.rebooking": "Rebooking",
   "shell.nav.dropoffSlots": "Drop-off slots",
   "shell.nav.pickupSlots": "Pickup & drop-off",

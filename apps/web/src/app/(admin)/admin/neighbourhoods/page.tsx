@@ -35,7 +35,7 @@ export default function NeighbourhoodsPage() {
   const num = (v: string) => (v.trim() ? Number(v) : null);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Areas & perks" description="The launch calendar (opens, street day, who walks it), BIA details and network-funded perks." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
+      <PageHeader title="Neighbourhoods and bonuses" description="The launch calendar (opening dates, street day, who walks it), BIA details and the bonuses the network pays for." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
       <ListAsync state={hoods} errorTitle="We could not load the neighbourhoods.">
         {(d) => (
           <ul className="grid gap-px overflow-hidden rounded-card bg-card shadow-card md:grid-cols-2 xl:grid-cols-3 [&>li]:bg-bg md:[&>li]:shadow-[0_0_0_1px_var(--ll-color-line)]">
@@ -67,21 +67,21 @@ export default function NeighbourhoodsPage() {
           </ul>
         )}
       </ListAsync>
-      <Section title="Network perks" action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setP({ name: "", neighbourhoodId: "", threshold: "3", windowDays: "30", bonusPoints: "50", description: "" })}>Add perk</Button>}>
+      <Section title="Neighbourhood bonuses" action={<Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setP({ name: "", neighbourhoodId: "", threshold: "3", windowDays: "30", bonusPoints: "50", description: "" })}>Add bonus</Button>}>
         <div>
           <ul className="divide-y divide-line border-y border-line">
             {(perks.data?.items ?? []).map((x) => (
               <li key={x.id} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-meta-strong text-fg">{x.name}</p>
-                  <p className="text-meta text-fg-muted">Visit {x.threshold} shops in {x.windowDays} days → +{x.bonusPoints} pts · {hoods.data?.items.find((h) => h.id === x.neighbourhoodId)?.name ?? "Network-wide"} · {formatNumber(x.awards)} awarded</p>
+                  <p className="text-meta text-fg-muted">Visit {x.threshold} shops in {x.windowDays} days → +{x.bonusPoints} pts · {hoods.data?.items.find((h) => h.id === x.neighbourhoodId)?.name ?? "All neighbourhoods"} · {formatNumber(x.awards)} awarded</p>
                 </div>
                 <div className="w-32"><Switch label="Active" checked={x.active} onChange={async (v) => { await act.run(() => browserApi.admin.updatePerk(x.id, { active: v })); await perks.reload(); }} /></div>
                 <IconButton icon={Pencil} size={40} label={`Edit ${x.name}`} onClick={() => setP({ id: x.id, name: x.name, neighbourhoodId: x.neighbourhoodId ?? "", threshold: String(x.threshold), windowDays: String(x.windowDays), bonusPoints: String(x.bonusPoints), description: x.description ?? "" })} />
                 <IconButton icon={Trash2} size={40} label={`Delete ${x.name}`} onClick={async () => { await act.run(() => browserApi.admin.deletePerk(x.id)); await perks.reload(); }} />
               </li>
             ))}
-            {perks.data && !perks.data.items.length ? <li className="p-3 text-meta text-fg-muted">No perks yet.</li> : null}
+            {perks.data && !perks.data.items.length ? <li className="p-3 text-meta text-fg-muted">No bonuses yet. Add one to reward shoppers for visiting more shops.</li> : null}
           </ul>
         </div>
       </Section>
@@ -118,7 +118,7 @@ export default function NeighbourhoodsPage() {
           </div>
         ) : null}
       </Modal>
-      <Modal open={!!p} onClose={() => setP(null)} title={p?.id ? "Edit perk" : "Add perk"} actions={
+      <Modal open={!!p} onClose={() => setP(null)} title={p?.id ? "Edit bonus" : "Add bonus"} actions={
         <>
           <Button variant="secondary" onClick={() => setP(null)}>Cancel</Button>
           <Button loading={act.busy} onClick={async () => {
@@ -126,13 +126,13 @@ export default function NeighbourhoodsPage() {
             const body = { name: p.name.trim(), neighbourhoodId: p.neighbourhoodId || null, threshold: Number(p.threshold), windowDays: Number(p.windowDays), bonusPoints: Number(p.bonusPoints), description: p.description.trim() || null };
             const r = await act.run(() => (p.id ? browserApi.admin.updatePerk(p.id, body) : browserApi.admin.createPerk(body)));
             if (r) { setP(null); await perks.reload(); }
-          }}>Save perk</Button>
+          }}>Save bonus</Button>
         </>
       }>
         {p ? (
           <div className="flex flex-col gap-4">
             <TextField label="Name" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} placeholder="Strip explorer" />
-            <Select label="Where" value={p.neighbourhoodId} onChange={(e) => setP({ ...p, neighbourhoodId: e.target.value })} options={[{ value: "", label: "Network-wide" }, ...(hoods.data?.items ?? []).map((h) => ({ value: h.id, label: h.name }))]} />
+            <Select label="Where" value={p.neighbourhoodId} onChange={(e) => setP({ ...p, neighbourhoodId: e.target.value })} options={[{ value: "", label: "All neighbourhoods" }, ...(hoods.data?.items ?? []).map((h) => ({ value: h.id, label: h.name }))]} />
             <div className="grid grid-cols-3 gap-3">
               <TextField label="Shops" inputMode="numeric" value={p.threshold} onChange={(e) => setP({ ...p, threshold: e.target.value.replace(/\D/g, "") })} />
               <TextField label="Within" inputMode="numeric" suffix="days" value={p.windowDays} onChange={(e) => setP({ ...p, windowDays: e.target.value.replace(/\D/g, "") })} />

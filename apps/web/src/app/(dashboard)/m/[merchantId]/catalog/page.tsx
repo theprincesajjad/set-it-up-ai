@@ -54,7 +54,7 @@ function Catalog() {
   const priceError = tried && edit && !(priceCents >= 0) ? "Add a price, like 4.50." : null;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Menu & catalog" description="What customers can order ahead. Prices are always set here, never by the app." actions={<Button size="sm" iconStart={Plus} onClick={() => openEdit(blank)}>Add item</Button>} />
+      <PageHeader flush title="Menu and prices" description="What customers can order ahead, and what it costs. Prices are always set here." actions={<Button size="sm" iconStart={Plus} onClick={() => openEdit(blank)}>Add item</Button>} />
       {act.error && !edit ? <Banner tone="danger">{act.error}</Banner> : null}
       <Async state={state} skeleton={<SkeletonRows rows={6} />}>
         {(c) => (

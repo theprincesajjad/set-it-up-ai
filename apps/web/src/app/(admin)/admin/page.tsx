@@ -25,7 +25,7 @@ export default function AdminToday() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Today" description={longDate()} actions={<Button size="sm" variant="secondary" href="/admin/neighbourhoods">Plan areas</Button>} />
-      <ListAsync state={o} errorTitle="We could not load the network overview.">
+      <ListAsync state={o} errorTitle="We could not load the overview. Reload the page to try again.">
         {(d) => {
           const behind = d.pace.delta < 0;
           const risk = all ?? d.atRisk.items.slice(0, AT_RISK_PREVIEW);
@@ -42,7 +42,7 @@ export default function AdminToday() {
               <StatBlock
                 label="Money and activation"
                 items={[
-                  { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Plus ${d.money.byPlan.plus}, Pro ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
+                  { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Café & Retail ${d.money.byPlan.plus}, Service ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
                   { label: "Fee revenue, 30 days", value: formatMoney(d.money.feeRevenue30dCents), caption: `On ${formatMoney(d.money.volume30dCents)} paid through the app` },
                   { label: "Activated", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops · goal ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
                   { label: "Cost per shop", value: formatMoney(d.costs.perShopCents), caption: `${formatMoney(d.costs.monthCents)} this month for ${formatNumber(d.costs.shops)} shops`, href: "/admin/costs" },
@@ -52,7 +52,7 @@ export default function AdminToday() {
                 <Panel title="What MRR is made of" description="Plan subscriptions, restaurant tiers and add-ons on paying shops">
                   <dl data-testid="mrr-split" className="grid grid-cols-2 gap-x-6 gap-y-2 text-meta sm:grid-cols-5">
                     {([
-                      ["Plus and Pro", d.money.mrrSplit.plansCents],
+                      ["Café & Retail and Service", d.money.mrrSplit.plansCents],
                       ["Restaurant tiers", d.money.mrrSplit.restaurantCents],
                       ["WhatsApp packs", d.money.mrrSplit.whatsappCents],
                       ["Extra locations", d.money.mrrSplit.extraLocationsCents],
@@ -123,7 +123,7 @@ export default function AdminToday() {
           );
         }}
       </ListAsync>
-      <ListAsync state={net} errorTitle="We could not load the network overview.">
+      <ListAsync state={net} errorTitle="We could not load the overview. Reload the page to try again.">
         {(n) => (
           <>
             <NetworkGauges activeMerchants={n.merchants.byStatus.active} multiShopPct={n.multiShopPct} />

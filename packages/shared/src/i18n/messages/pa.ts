@@ -2958,7 +2958,7 @@ export const pa: Messages = {
   "shell.nav.memberships": "ਮੈਂਬਰਸ਼ਿਪ ਅਤੇ ਪਾਸ",
   "shell.nav.services": "ਸੇਵਾਵਾਂ ਅਤੇ ਕੀਮਤਾਂ",
   "shell.nav.priceList": "ਕੀਮਤ ਸੂਚੀ",
-  "shell.nav.catalog": "ਮੀਨੂ ਅਤੇ ਕੈਟਾਲਾਗ",
+  "shell.nav.catalog": "ਮੀਨੂ ਅਤੇ ਕੀਮਤਾਂ",
   "shell.nav.rebooking": "ਦੁਬਾਰਾ ਬੁਕਿੰਗ",
   "shell.nav.dropoffSlots": "ਡ੍ਰੌਪ-ਆਫ਼ ਸਲਾਟ",
   "shell.nav.pickupSlots": "ਪਿਕਅੱਪ ਅਤੇ ਡ੍ਰੌਪ-ਆਫ਼",

@@ -167,7 +167,7 @@ export const copy = {
       eyebrow: "The network",
       title: "one card for the whole street.",
       sub: "When someone joins at your café they find the bakery and the repair shop too. Every shop that joins makes the card more useful for every customer.",
-      points: ["Shoppers see every nearby shop on one map.", "Neighbourhood perks such as “visit 3 shops, get 50 points”, paid for by the network, not by you.", "You see only your own customers. Never each other’s."],
+      points: ["Shoppers see every nearby shop on one map.", "Neighbourhood bonuses such as “visit 3 shops, get 50 points”, paid for by Local Loyalty, not by you.", "You see only your own customers. Never each other’s."],
     },
     verticals: {
       eyebrow: "Built for your kind of shop",

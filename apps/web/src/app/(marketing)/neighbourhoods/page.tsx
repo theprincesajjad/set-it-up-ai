@@ -44,7 +44,7 @@ export default async function NeighbourhoodsPage() {
                     <span>
                       {n.city}, {n.province}
                     </span>
-                    <StatusDot tone={n.status === "live" ? "positive" : "neutral"}>{n.status === "live" ? "Live" : "Pilot"}</StatusDot>
+                    <StatusDot tone={n.status === "live" ? "positive" : "neutral"}>{n.status === "live" ? "Live" : "Just starting"}</StatusDot>
                   </div>
                   <h2 className="display mt-auto text-mkt-sm lowercase text-foreground">{n.name}</h2>
                   <p className="text-meta text-muted-foreground">

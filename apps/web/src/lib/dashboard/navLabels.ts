@@ -42,7 +42,7 @@ export const NAV_LABEL_KEYS: Record<string, MessageKey> = {
   "Memberships & passes": "shell.nav.memberships",
   "Services & prices": "shell.nav.services",
   "Price list": "shell.nav.priceList",
-  "Menu & catalog": "shell.nav.catalog",
+  "Menu and prices": "shell.nav.catalog",
   Rebooking: "shell.nav.rebooking",
   "Drop-off slots": "shell.nav.dropoffSlots",
   "Pickup & drop-off": "shell.nav.pickupSlots",
