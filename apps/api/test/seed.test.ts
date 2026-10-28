@@ -207,7 +207,8 @@ describe("core modules on the pilot shops", () => {
       const id = await slugToId(slug);
       const slots = await env.db.select().from(bookingSlots).where(and(eq(bookingSlots.merchantId, id), eq(bookingSlots.kind, kind)));
       expect(slots.length).toBeGreaterThan(50);
-      expect(Math.max(...slots.map((s) => s.startsAt.getTime()))).toBeGreaterThan(Date.now() + 5 * 86400000);
+      // Seven days from today; a shop closed one day a week (Hearth & Crumb on Mondays) can end 4.9 days out on a Tuesday evening.
+      expect(Math.max(...slots.map((s) => s.startsAt.getTime()))).toBeGreaterThan(Date.now() + 4 * 86400000);
       expect(await count(bookings, and(eq(bookings.merchantId, id), eq(bookings.status, "booked")))).toBeGreaterThanOrEqual(3);
     }
   });

@@ -57,6 +57,19 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
     });
   }
 
+  // Baseline response headers on every reply (the API serves JSON and a few tiny pages, none of which belong in a frame).
+  // A route that sets one of these itself keeps its value. HSTS only in production, where TLS is terminated in front of us.
+  app.addHook("onSend", async (_req, reply, payload) => {
+    const set = (name: string, value: string) => {
+      if (!reply.hasHeader(name)) reply.header(name, value);
+    };
+    set("x-content-type-options", "nosniff");
+    set("x-frame-options", "DENY");
+    set("referrer-policy", "no-referrer");
+    if (ctx.config.env === "production") set("strict-transport-security", "max-age=15552000");
+    return payload;
+  });
+
   app.addHook("onRequest", async (req) => {
     const h = req.headers.authorization;
     if (h?.startsWith("Bearer ")) req.authUser = await verifyAccessToken(ctx, h.slice(7));

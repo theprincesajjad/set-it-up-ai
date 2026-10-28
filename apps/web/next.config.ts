@@ -48,6 +48,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Baseline hardening on every page and asset. Listed first so the narrower rules below can override a value.
+        // HSTS is ignored over plain http (local dev) and honoured behind TLS. No CSP yet: it needs a nonce pass over the inline scripts.
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          ...(process.env.NODE_ENV === "production" ? [{ key: "Strict-Transport-Security", value: "max-age=15552000" }] : []),
+        ],
+      },
+      {
         // Token links (quotes, invoices) and signed-in pages must never be indexed or cached by proxies.
         source: "/:prefix(q|i|e|o|me|m|rep|admin|bia|dev)/:path*",
         headers: [

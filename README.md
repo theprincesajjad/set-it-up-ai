@@ -103,6 +103,8 @@ The landing page's "network today" strip is statically rendered and refreshed ev
 
 ## Going live checklist
 
+Docker Compose deploy (Postgres, migrations, API, web): `docs/engineering/deploy.md`, config in `.env.example`.
+
 1. Postgres (Canadian region), `JWT_SECRET`, `ENCRYPTION_KEY`.
 2. Twilio (SMS + inbound STOP webhook), Resend (email), Expo (push, `EAS_PROJECT_ID`).
 3. Stripe: platform account, Connect Express, Plus/Pro prices, webhook secret.

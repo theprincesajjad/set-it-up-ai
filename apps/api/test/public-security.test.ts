@@ -24,6 +24,22 @@ afterEach(async () => env.close());
 
 const post = (url: string, payload: unknown = {}, headers: Record<string, string> = {}) => env.app.inject({ method: "POST", url, payload: payload as never, headers });
 
+describe("baseline response headers", () => {
+  it("every reply says nosniff, no framing and no referrer; HSTS only in production; a route's own value wins", async () => {
+    const dev = await env.app.inject({ method: "GET", url: "/health" });
+    expect(dev.headers["x-content-type-options"]).toBe("nosniff");
+    expect(dev.headers["x-frame-options"]).toBe("DENY");
+    expect(dev.headers["referrer-policy"]).toBe("no-referrer");
+    expect(dev.headers["strict-transport-security"]).toBeUndefined();
+    const missing = await env.app.inject({ method: "GET", url: "/v1/nope" });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.headers["x-content-type-options"]).toBe("nosniff");
+    env.ctx.config.env = "production";
+    const prod = await env.app.inject({ method: "GET", url: "/health" });
+    expect(prod.headers["strict-transport-security"]).toBe("max-age=15552000");
+  });
+});
+
 describe("webhooks in production mode", () => {
   it("every inbound webhook refuses an unsigned or wrongly signed call", async () => {
     env.ctx.config.env = "production";

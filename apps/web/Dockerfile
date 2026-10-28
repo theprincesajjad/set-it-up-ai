@@ -24,6 +24,8 @@ COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
 COPY packages/design-tokens ./packages/design-tokens
 COPY tsconfig.base.json ./
+# The legal pages are rendered at build time from docs/legal (lib/legal.ts).
+COPY docs/legal ./docs/legal
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=

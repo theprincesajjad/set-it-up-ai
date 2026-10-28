@@ -59,7 +59,8 @@ describe("restaurant subscriptions", () => {
     expect(m.plan).toBe("free"); // Plus comes from effectivePlan, not from merchants.plan
     const features = await getMerchantFeatures(env.db, m);
     expect(features["restaurant.dietary_tags"].enabled).toBe(true);
-    expect(features["orders.order_ahead"].stage).toBe("hidden"); // plan features keep their rollout stage
+    // Trade tools are self-serve (docs/business/pricing.md, Rollout): a restaurant tier turns ordering on straight away.
+    expect(features["orders.order_ahead"]).toMatchObject({ stage: "ga", enabled: true });
     expect(features["restaurant.tiffin"].enabled).toBe(false);
     // Plan billing is untouched.
     const overview = await call(env, s.ownerToken, "GET", `/v1/merchants/${s.merchant.id}/billing`);

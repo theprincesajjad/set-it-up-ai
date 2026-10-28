@@ -275,6 +275,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   for (const c of created.filter((x) => x.data.vertical === "pharmacy")) {
     const cats = await db.select().from(merchantCategories).where(eq(merchantCategories.merchantId, c.id));
     pharmacyCats.set(c.id, { front: cats.find((x) => x.name === "Front store")!.id, rx: cats.find((x) => x.name === "Prescriptions")!.id });
+    // The pharmacist-owner confirmed the Ontario rules before the history starts; points cannot move until they do (seed/pharmacy.ts sets the name).
+    await db.update(merchants).set({ pharmacyConfirmedAt: historyStart, pharmacyConfirmedByName: "Amira Rahman, B.Sc.Phm", pharmacyOcpNumber: "1234567" }).where(eq(merchants.id, c.id));
   }
 
   interface Event {

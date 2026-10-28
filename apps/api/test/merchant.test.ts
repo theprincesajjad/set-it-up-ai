@@ -363,6 +363,9 @@ describe("loyalty program configuration", () => {
     });
     expect(promo.statusCode).toBe(422);
     // And prescriptions still earn nothing: a sale that is only a prescription is not recorded at all (apps/api/test/pharmacy.test.ts).
+    // (Points only move once the pharmacist-owner has confirmed the Ontario rules.)
+    await expect(awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 1000, categoryId: front.id }] })).rejects.toMatchObject({ code: "pharmacy_not_confirmed" });
+    await env.db.update(merchants).set({ pharmacyConfirmedAt: new Date(), pharmacyConfirmedByName: "Test Pharmacist", pharmacyOcpNumber: "1234567" }).where(eq(merchants.id, merchant.id));
     await expect(awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 5000, categoryId: rx.id }] })).rejects.toMatchObject({ code: "pharmacy_no_front_store" });
     const mixed = await awardPurchase(env.ctx, { merchantId: merchant.id, phone: nextPhone(), source: "staff_app", lines: [{ amountCents: 5000, categoryId: rx.id }, { amountCents: 1000, categoryId: front.id }] });
     expect(mixed.earn.basePoints).toBe(10);
