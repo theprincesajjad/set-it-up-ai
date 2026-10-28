@@ -787,7 +787,7 @@ export function CounterApp({
               </button>
             ) : null}
             {exitHref ? (
-              <Button href={exitHref} variant="secondary" size="md" iconStart={LogOut}>
+              <Button href={exitHref} variant="secondary" size="md" iconStart={LogOut} className={s.exit}>
                 {t("counter.exit")}
               </Button>
             ) : null}
@@ -916,7 +916,7 @@ export function CounterApp({
 
           {mode === "verify" ? (
             <section
-              className={cn(s.card, s.pad, "rounded-card bg-card warm:p-6 shadow-card")}
+              className={cn(s.card, s.pad, "rounded-card bg-card p-6 shadow-card")}
               aria-labelledby="verify-title"
             >
               <h2 id="verify-title" className="text-body-strong text-fg">
@@ -1082,7 +1082,7 @@ export function CounterApp({
 
           {mode === "scan" && phase.kind === "new" ? (
             <form
-              className={cn(s.card, s.pad, "flex flex-col gap-3 rounded-card bg-card warm:p-5 shadow-card")}
+              className={cn(s.card, s.pad, "flex flex-col gap-3 rounded-card bg-card p-5 shadow-card")}
               onSubmit={(e) => {
                 e.preventDefault();
                 const phone = phase.phone || newPhone.replace(/\D/g, "");
@@ -1272,7 +1272,7 @@ export function CounterApp({
 
         <aside
           aria-labelledby="recent-title"
-          className={cn(s.card, s.recent, "min-w-0 rounded-card bg-card warm:p-5 shadow-card")}
+          className={cn(s.card, s.recent, "min-w-0 rounded-card bg-card p-5 shadow-card")}
         >
           <h2 id="recent-title" className={cn(s.recentHead, "font-display text-title font-bold text-fg")}>
             {t("counter.recent.title")}
@@ -1426,7 +1426,7 @@ function CustomerHeader({ name, detail, titleId, size = "lg", children }: { name
 function StampsPanel({ title, have, goal, ready, popFrom, size = "lg", icon }: { title: string; have: number; goal: number; ready: boolean; popFrom?: number; size?: "sm" | "md" | "lg"; icon?: LucideIcon }) {
   const { t } = useCounterText();
   return (
-    <div className={cn(s.card, s.stampCard, "rounded-card bg-card warm:p-5 shadow-card")}>
+    <div className={cn(s.card, s.stampCard, "rounded-card bg-card p-5 shadow-card")}>
       {/* Clear only: the 80px numeral ("7 / 10", always left to right); the "7 of 10" line below is what a screen reader reads. */}
       <p aria-hidden dir="ltr" className={s.numeral}>
         {Math.min(have, goal)}
@@ -1662,7 +1662,7 @@ function MemberPanel({
           icon={icon}
         />
       ) : (
-        <div className={cn(s.card, s.pad, "rounded-card bg-card warm:p-5 text-center shadow-card")}>
+        <div className={cn(s.card, s.pad, "rounded-card bg-card p-5 text-center shadow-card")}>
           <p className="font-display text-display tabular-nums text-foreground">
             {member.balance.toLocaleString("en-CA")}
             <span className="text-title text-muted-foreground"> {pointsText(member.balance, member.terminology, ct).replace(/^[\d,]+ /, "")}</span>

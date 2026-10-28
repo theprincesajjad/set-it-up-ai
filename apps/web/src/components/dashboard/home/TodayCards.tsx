@@ -301,7 +301,8 @@ export function HoursCard({ hourly, loading, currentHour, className }: { hourly:
           <figure role="img" aria-label={t("shell.today.byHourSummary", { time: peak ?? "" })} className="m-0">
             <div className="relative flex h-26 items-end gap-1.5 px-4 pt-2 before:absolute before:inset-x-4 before:bottom-0 before:border-t before:border-border">
               {values.map((v, i) => (
-                <span key={i} className={cn("block min-h-0.5 flex-1 rounded-t-[3px]", i === hi ? "bg-chart-hi" : "bg-chart-muted")} style={{ height: `${(v / max) * 100}%` }} />
+                // The current hour keeps an 8px stub even at 0, so "now" is always marked in the trade colour (the other bars stay 2px at 0).
+                <span key={i} className={cn("block flex-1 rounded-t-[3px]", i === hi ? "min-h-2 bg-chart-hi" : "min-h-0.5 bg-chart-muted")} style={{ height: `${(v / max) * 100}%` }} />
               ))}
             </div>
             <figcaption aria-hidden className="flex justify-between px-4 pb-3 pt-2 text-xs leading-4 text-muted-foreground">

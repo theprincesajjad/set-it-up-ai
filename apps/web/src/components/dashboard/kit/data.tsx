@@ -38,7 +38,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
   const cols = n === 5 ? "grid-cols-2 lg:grid-cols-5" : n === 4 ? "grid-cols-2 lg:grid-cols-4" : n === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2";
   if (tiles) {
     return (
-      <div role="group" aria-label={label} className={cn("grid gap-3 md:gap-4", cols, className)}>
+      <div role="group" aria-label={label} className={cn("grid gap-3 md:gap-4 clear:gap-4", cols, className)}>
         {items.map((s, idx) => (
           <ToneStatTile
             key={s.label}
@@ -365,7 +365,7 @@ export function StatTile({ label, value, delta, spark, href, loading, caption, t
 /** A grid of pastel StatTiles: the first in the shop's trade colour, then mint, butter, lilac, sky, rose. */
 export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4", className)}>
+    <div className={cn("grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4 clear:gap-4", className)}>
       {Children.toArray(children).map((c, i) => (isValidElement<{ tone?: Tone }>(c) ? cloneElement(c, { tone: c.props.tone ?? TONES[i % TONES.length] }) : c))}
     </div>
   );

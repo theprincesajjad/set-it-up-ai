@@ -89,6 +89,48 @@
   background: var(--lg-seg-track);
 }
 
+/* Phones: the bar stays one 64px row (it wrapped to 112 at 390): the identity block takes the free width, the status line clips instead of
+ * wrapping, and "Exit counter" becomes a 44 glass circle with its label kept for assistive tech. */
+@media (max-width: 39.99rem) {
+  :global([data-theme-style="clear"]) .top {
+    flex-wrap: nowrap;
+  }
+  :global([data-theme-style="clear"]) .top > div:first-child {
+    flex: 1 1 auto;
+  }
+  :global([data-theme-style="clear"]) .who {
+    flex: 1 1 auto;
+  }
+  :global([data-theme-style="clear"]) .status {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  :global([data-theme-style="clear"]) .status > span[aria-hidden] {
+    display: inline-block;
+    margin-inline-end: 6px;
+    vertical-align: 1px;
+  }
+  :global([data-theme-style="clear"]) .exit {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  :global([data-theme-style="clear"]) .exit > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* Notices strip under the bar: flat, same side inset as the bar. */
 :global([data-theme-style="clear"]) .notices {
   border-bottom: 0;

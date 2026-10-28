@@ -61,7 +61,8 @@ describe("Today", () => {
     role = "owner";
     render(<TodayPage />);
     await waitFor(() => expect(screen.getByText("86")).toBeTruthy());
-    expect(screen.getByText("+12% vs last Wednesday")).toBeTruthy();
+    // Clear (the default) uses the short weekday on the stat chip ("vs last Wed", the v6 mock), so it fits a 171px phone card.
+    expect(screen.getByText("+12% vs last Wed")).toBeTruthy();
     const slip = screen.getByRole("link", { name: /4 regulars are slipping away/ });
     expect(slip.getAttribute("href")).toBe("/m/1/messages/new?segment=slipping");
   });

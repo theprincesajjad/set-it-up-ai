@@ -80,22 +80,24 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
 
   if (variant === "hero") {
     const hasCover = !!shop.coverUrl && !coverFailed;
+    // Warm: a trade-soft band with a Fraunces name in the deep trade colour and the trade illustration. Clear (v3.2-clear.md: trade colour only on
+    // the nav, icon tiles and the chart): flat on the canvas, a 56 logo (the shop's own colour stays inside it), the 28/36 phone title in ink.
     return (
       <div className={cn("flex flex-col gap-4", className)}>
         {hasCover ? (
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-card bg-bg-subtle">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-card bg-bg-subtle clear:rounded-r6 clear:bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={shop.coverUrl!} alt="" className="size-full object-cover" onError={() => setCoverFailed(true)} />
           </div>
         ) : null}
-        <div className="flex items-center gap-3.5 rounded-sheet bg-trade-soft p-4">
-          <ShopLogo shop={shop} size={64} />
+        <div className="flex items-center gap-3.5 rounded-sheet bg-trade-soft p-4 clear:gap-3 clear:rounded-none clear:bg-transparent clear:p-0">
+          <ShopLogo shop={shop} size={64} className="clear:size-14 clear:text-headline" />
           <div className="min-w-0 flex-1">
             {sponsored ? <SponsoredBadge /> : null}
-            <h1 className="font-display text-[26px] font-bold leading-[1.15] tracking-[-0.02em] text-trade-deep"><bdi>{shop.name}</bdi></h1>
-            {subtitle ? <p className="mt-0.5 text-meta text-fg-muted">{subtitle}</p> : null}
+            <h1 className="font-display text-[26px] font-bold leading-[1.15] tracking-[-0.02em] text-trade-deep clear:font-sans clear:text-[28px] clear:leading-9 clear:tracking-[-0.022em] clear:text-foreground"><bdi>{shop.name}</bdi></h1>
+            {subtitle ? <p className="mt-0.5 text-meta text-fg-muted clear:mt-0 clear:text-body clear:text-muted-foreground">{subtitle}</p> : null}
           </div>
-          <CategoryIcon vertical={shop.vertical} size={56} className="max-[420px]:hidden" />
+          <CategoryIcon vertical={shop.vertical} size={56} className="max-[420px]:hidden clear:hidden" />
         </div>
       </div>
     );

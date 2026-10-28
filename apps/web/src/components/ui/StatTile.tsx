@@ -55,12 +55,26 @@ function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: 
   const showArrow = !!delta && delta.pct !== 0 && delta.good !== null && delta.good !== undefined;
   const body = (
     <>
-      <p className="text-meta-strong opacity-90">{label}</p>
+      <p className="text-meta-strong opacity-90 clear:text-body clear:font-[550] clear:text-muted-foreground clear:opacity-100">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-2">
-        {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value ?? "–"}</p>}
-        {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-14 shrink-0 opacity-90 sm:w-20 md:w-24" /> : null}
+        {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums clear:text-[32px] clear:font-[650] clear:leading-9 clear:tracking-[-0.032em] clear:text-foreground lg:clear:text-4xl lg:clear:leading-10">{value ?? "–"}</p>}
+        {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-14 shrink-0 opacity-90 sm:w-20 md:w-24 clear:hidden" /> : null}
       </div>
-      <p className="mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums">
+      <p
+        className={cn(
+          "mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums",
+          // Clear: the same 24px comparison chip as the Today stat cards (success / destructive / neutral), 8 under the number.
+          "clear:mt-2 clear:h-6 clear:w-fit clear:max-w-full clear:rounded-r4 clear:px-2 clear:text-xs clear:font-semibold clear:leading-4",
+          // A comparison is a chip; a caption (an explanation, sometimes two lines) stays plain muted 12/16 text.
+          !loading && text
+            ? delta?.good === true
+              ? "clear:bg-success-soft clear:text-success-text"
+              : delta?.good === false
+                ? "clear:bg-destructive-soft clear:text-destructive-text"
+                : "clear:bg-muted clear:text-foreground"
+            : "clear:h-auto clear:min-h-6 clear:w-auto clear:rounded-none clear:bg-transparent clear:px-0 clear:font-normal clear:text-muted-foreground",
+        )}
+      >
         {!loading && text ? (
           <>
             {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
@@ -74,7 +88,8 @@ function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: 
       </p>
     </>
   );
-  const cls = cn("relative block min-w-0 overflow-hidden rounded-tile p-4 md:p-5", TONE_SURFACE[tone]);
+  // Clear: a flat page card (white, r20, inset hairline) like the Today stat cards; the pastel and trade fills are Main Street Warm only.
+  const cls = cn("relative block min-w-0 overflow-hidden rounded-tile p-4 md:p-5", TONE_SURFACE[tone], "clear:rounded-r6 clear:bg-card clear:p-4 clear:text-foreground clear:shadow-[inset_0_0_0_1px_var(--border),var(--ll-shadow-card)] md:clear:p-4");
   return href ? (
     <Link href={href} className={cn(cls, TONE_HOVER, "focus-visible:focus-ring")}>
       {body}

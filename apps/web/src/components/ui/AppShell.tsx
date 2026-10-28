@@ -342,7 +342,8 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
               variant="floating"
               collapsible="icon"
               dir={dir}
-              className="p-3 print:hidden"
+              // Above the content layer (sticky table headers are z-10 too): cards and tables run under the glass, never over it.
+              className="z-sticky! p-3 print:hidden"
               innerClassName="rounded-r8 bg-transparent shadow-none ring-0"
               mobileClassName="bg-background"
             >

@@ -78,7 +78,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <ToastBaseProvider toastManager={manager} limit={1}>
         {children}
         <ToastPortal>
-          <ToastViewport className="z-toast inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] mx-auto max-w-105 sm:inset-x-4 sm:end-auto sm:mx-auto lg:start-6 lg:mx-0 clear:max-md:bottom-[calc(96px+env(safe-area-inset-bottom))] clear:md:bottom-6">
+          {/* In the Clear dashboard shell (lg) the toast is centred on the content column (268 to 1428), not over the glass sidebar. */}
+          <ToastViewport className="z-toast inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] mx-auto max-w-105 sm:inset-x-4 sm:end-auto sm:mx-auto lg:start-6 lg:mx-0 clear:max-md:bottom-[calc(96px+env(safe-area-inset-bottom))] clear:md:bottom-6 [:root:has([data-shell=clear])_&]:lg:start-[268px] [:root:has([data-shell=clear])_&]:lg:end-3 [:root:has([data-shell=clear])_&]:lg:mx-auto [:root:has([data-shell=clear])_&]:lg:w-fit">
             <ToastList />
           </ToastViewport>
         </ToastPortal>

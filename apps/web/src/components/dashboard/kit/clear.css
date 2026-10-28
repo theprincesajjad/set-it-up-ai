@@ -213,8 +213,19 @@
 
 /* ---------- key-value rows: 36 (8 0), 13/20 (audit #36) ---------- */
 [data-theme-style="clear"] .kit-kv-r {
+  position: relative;
   min-height: 36px;
   padding-block: 8px;
+  /* The divider is an overlay (mock `.kv+.kv::after`), so every row is 36, not 37. */
+  border-width: 0;
+}
+[data-theme-style="clear"] .kit-kv-r + .kit-kv-r::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  border-top: 1px solid var(--border);
+  pointer-events: none;
 }
 [data-theme-style="clear"] .kit-kv-r > dt,
 [data-theme-style="clear"] .kit-kv-r > dd {
@@ -719,20 +730,41 @@
   color: var(--foreground);
 }
 
-/* ---------- hand-built page cards (`rounded-card bg-card`): the Clear hairline as an inset shadow; radius 20 comes from the token ---------- */
-[data-theme-style="clear"] main .rounded-card.bg-card:not(.kit-panel, .kit-empty, .cust-card) {
+/* ---------- hand-built page cards (`rounded-card bg-card`): the Clear hairline as an inset shadow; radius 20 comes from the token ----------
+ * Scoped to the Clear dashboard shell's content column (`[data-shell="clear"] main`, AppShell), so full-screen tools on the bare shell
+ * (the counter, which styles its own cards in CounterClear.module.css) keep their own padding. */
+[data-shell="clear"] main .rounded-card.bg-card:not(.kit-panel, .kit-empty, .cust-card) {
   box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card);
 }
-[data-theme-style="clear"] main .rounded-card.bg-card.border:not(.kit-panel) {
+[data-shell="clear"] main .rounded-card.bg-card.border:not(.kit-panel) {
   border-color: transparent;
 }
-[data-theme-style="clear"] main .rounded-card.bg-card.p-5:not(.kit-panel),
-[data-theme-style="clear"] main .rounded-card.bg-card.p-6:not(.kit-panel) {
+[data-shell="clear"] main .rounded-card.bg-card.p-5:not(.kit-panel),
+[data-shell="clear"] main .rounded-card.bg-card.p-6:not(.kit-panel) {
   padding: 16px;
 }
 @media (min-width: 768px) {
-  [data-theme-style="clear"] main .rounded-card.bg-card.md\:p-6 {
+  [data-shell="clear"] main .rounded-card.bg-card.md\:p-6 {
     padding: 16px;
+  }
+}
+
+/* ---------- full-width tables run under the glass sidebar (mock `.page>.card` + --bl, audit 2.1; lg+, where the sidebar is open):
+ * page-level tables only (a direct child of the page root, so full width); the card starts at x 120 and its first column is padded by 148 more, so the visible content column is still 268. ---------- */
+@media (min-width: 1024px) {
+  [data-shell="clear"] main .cust-tools:has(+ .cust-grid),
+  [data-shell="clear"] main .cust-grid,
+  [data-shell="clear"] main > div > .kit-tw {
+    margin-inline-start: -148px;
+  }
+  [data-shell="clear"] main .cust-tools:has(+ .cust-grid) {
+    padding-inline-start: 164px;
+  }
+  [data-shell="clear"] main .cust-grid thead th:first-child,
+  [data-shell="clear"] main .cust-grid tbody td:first-child,
+  [data-shell="clear"] main > div > .kit-tw .kit-th:first-child,
+  [data-shell="clear"] main > div > .kit-tw .kit-td:first-child {
+    padding-inline-start: 164px;
   }
 }
 

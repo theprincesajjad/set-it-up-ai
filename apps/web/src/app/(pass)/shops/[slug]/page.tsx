@@ -31,8 +31,6 @@ import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
 import { howYouEarn } from "@/lib/program";
 import { Awning } from "@/components/ui/Awning";
 import { ThemeStyle } from "@/components/ui/ThemeStyle";
-import { ClearShopHeader } from "@/components/pass/ClearShopHeader";
-import { ThemeFork } from "@/components/pass/ThemeFork";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -169,10 +167,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       <Awning size="sm" className="-mt-2 rounded-b-md rounded-t-none clear:hidden" />
       <PassTopBar className="self-stretch" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <ThemeFork
-        warm={<ShopTile variant="hero" shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />}
-        clear={<ClearShopHeader shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />}
-      />
+      <ShopTile variant="hero" shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}

@@ -41,6 +41,9 @@ import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } fr
 import { StreetCard } from "./StreetCard";
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 
+/** Clear: the page header's glass secondary (ClearKit GlassButton, default size). */
+const GLASS_HEADER_BTN = "glass-lite inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-body font-[550] text-foreground transition-colors hover:bg-lg-lift focus-visible:focus-ring";
+
 /** Clear stat-card icons, in the order each trade lists its numbers (lib/dashboard/today.ts). */
 const STAT_ICONS: Record<string, LucideIcon[]> = {
   loyalty: [Users, Ticket, Gift, User],
@@ -105,14 +108,15 @@ export function TodayPage() {
       money: loc.money,
       time: (d) => loc.time(d, SHOP_TZ),
       isolate: (s) => (loc.dir === "rtl" ? `\u2066${s}\u2069` : s),
-      weekday: (d) => loc.date(d, { weekday: "long" }, SHOP_TZ),
+      // Clear's stat chips are 24px pills in a 139px phone card: "+18 vs last Wed" (the mock's short weekday) fits where "Wednesday" is cut off.
+      weekday: (d) => loc.date(d, { weekday: clear ? "short" : "long" }, SHOP_TZ),
       dayShort: (d) => loc.date(d, { weekday: "short", day: "numeric" }, "UTC"),
       clock: (hhmm) => {
         const [h = "0", mi = "0"] = hhmm.split(":");
         return loc.date(new Date(Date.UTC(2000, 0, 1, Number(h), Number(mi))), { hour: "numeric", minute: "2-digit" }, "UTC");
       },
     }),
-    [loc],
+    [loc, clear],
   );
 
   const canMessage = enabled("marketing.sms") || enabled("marketing.email");
@@ -209,7 +213,8 @@ export function TodayPage() {
       data-primary-action
       className={cn(
         buttonClasses({ variant: "primary", size: "md" }),
-        clear && "max-sm:h-14 max-sm:w-full max-sm:justify-start max-sm:gap-3 max-sm:rounded-[22px] max-sm:px-6 max-sm:text-[17px] max-sm:font-[650] max-sm:tracking-[-0.01em] max-sm:shadow-lg",
+                // `clear:max-sm:` so these beat the Button's own `clear:` size classes (same variant depth, later in the sheet).
+        clear && "clear:max-sm:h-14 clear:max-sm:w-full clear:max-sm:justify-start clear:max-sm:gap-3 clear:max-sm:rounded-[22px] clear:max-sm:px-6 clear:max-sm:text-[17px] clear:max-sm:font-[650] clear:max-sm:leading-6 clear:max-sm:tracking-[-0.01em] clear:max-sm:shadow-lg",
       )}
     >
       <Calculator aria-hidden className={cn("size-4.5 shrink-0", clear && "max-sm:size-5.5 sm:hidden")} strokeWidth={clear ? 1.8 : 1.75} />
@@ -238,7 +243,9 @@ export function TodayPage() {
           <>
             {manager && family === "restaurant" ? <BusyMode state={restaurant.data?.busy ?? null} onChanged={() => void restaurant.reload()} /> : null}
             {manager ? (
-              <Link href={`${base}${second.href}`} className={`${buttonClasses({ variant: "secondary", size: "md" })} max-sm:hidden`}>
+              // Clear: the page header's secondary is the 32 glass-lite pill (mock `.btn.glass.lg.lite`), the same as the list pages' header buttons
+              // (kit `QuietButton` / Export) and ClearKit's GlassButton; the grey glass-tint `secondary` is for buttons inside cards.
+              <Link href={`${base}${second.href}`} className={cn(clear ? GLASS_HEADER_BTN : buttonClasses({ variant: "secondary", size: "md" }), "max-sm:hidden")}>
                 {t(second.label)}
               </Link>
             ) : null}
@@ -257,13 +264,14 @@ export function TodayPage() {
       {manager ? (
         clear ? (
           <div className="grid gap-4 lg:grid-cols-8">
-            <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-5 lg:row-start-2" />
+            {/* Needs you and Quick actions run under the glass sidebar as in the mock (`bleed-under-sidebar`: x 120, content still at 268). */}
+            <NeedsYouCard rows={needs} loading={loading} base={base} className="bleed-under-sidebar lg:col-span-5 lg:row-start-2" />
             <NumbersCard items={numberItems} icons={STAT_ICONS[family]} loading={loading} className="max-lg:order-first lg:col-span-8 lg:row-start-1" />
             <div className="flex min-w-0 flex-col gap-4 lg:col-span-3 lg:row-start-2">
               {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} currentHour={hour} /> : null}
               <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
             </div>
-            <QuickActionsCard actions={actions} base={base} className="lg:col-span-8 lg:row-start-3" />
+            <QuickActionsCard actions={actions} base={base} className="bleed-under-sidebar lg:col-span-8 lg:row-start-3" />
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-12">
