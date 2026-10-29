@@ -1,21 +1,24 @@
 # Solo-pro landing pages
 
-Pages: `/for-nail-techs` (with `?trade=brows|lashes|makeup`), `/for-barbers`, `/for-groomers`. Code: `apps/web/src/app/(marketing)/for-*/`, blocks in `apps/web/src/components/marketing/` (`SoloLanding` composes them). Strategy and metrics: `docs/business/solo-pro-launch.md` §5.3 and §5.4. Ads: `docs/marketing/ads/`.
+Pages: `/for-nail-techs` (with `?trade=brows|lashes|makeup`), `/for-barbers`, `/for-groomers`. Code: `apps/web/src/app/(landing)/for-*/`, blocks in `apps/web/src/components/marketing/solo/` (`SoloLanding` composes them). Strategy and metrics: `docs/business/solo-pro-launch.md` §5.3 and §5.4. Ads: `docs/marketing/ads/`.
 
-## The eight blocks
+## The seven blocks (landing v2, direction B, product-led; Oct 29, 2026)
+
+Code: `apps/web/src/app/(landing)/` (its own layout: the glass nav, no client header or sales chat), the composer `components/marketing/SoloLanding.tsx`, the blocks in `components/marketing/solo/`, the styles in `components/marketing/solo/solo.css` (Clear tokens only), the view model in `lib/marketing/solo-view.ts`. Copy: `copy.solo` in `apps/web/src/copy/en-CA.ts` (English only).
 
 | # | Block | Component | Notes |
 | --- | --- | --- | --- |
-| 1 | Hero | `SoloHero` | The hook, one phone mock in the Clear theme in the trade colour on a flat sand stage, two 3D objects, "Start free" scrolling to the inline form. `?trade=` swaps the hero copy and the sample services (nail page). |
-| 2 | Three jobs | `JobsRow` | Book, deposit, remind (nail); line, family, payouts (barber); vaccines, rebook, prices by size (groomer). |
-| 3 | Your regulars | `RegularsBand` | Stamps, promos to regulars, the shared pass, and the "Powered by" line as a client sees it. |
-| 4 | Privacy | `PrivacyBand` | Nail page only. Area pin, address after booking. No licensing or inspection content. |
-| 5 | Plans | `PlanStrip` | Free, monthly and annual with the site, all prices from `PLANS`. "Prices in CAD. No per-chair charge. No cut of your clients." |
-| 6 | Comparison | `CompetitorTableSolo` | Fresha, Booksy, Square Appointments; data in `lib/marketing/competitors-solo.ts`. Every cell shows the date read and a currency or source note. Barber page adds a four-chair row. |
-| 7 | The site | `PresetsBand` | Three presets with a sample pro's data. Preset names are placeholders until the site builder (G) lands. |
-| 8 | FAQ and sign-up | `Faq`, `SoloSignup` | The inline wizard starts with the page's `vertical` picked; `src` is kept in the `ll_src` cookie for 30 days. |
+| 1 | Hero | `solo/Hero.tsx` | The hook, the subhead, one black button and the price as a plain link to the price block. A big phone runs the client's booking flow in CSS (pick, time, details, booked); deposits are optional and the default story has none. Beside it: the work photo (where the mock had a decorative disc), the DM, the new booking and the reminder, none ever over the phone's screen. |
+| 2 | Facts | `Facts` | $0 to start, 0% cut, 2 reminders, 3 minutes (barbers: one price for the shop). |
+| 3 | Three jobs | `Jobs` | Clients book themselves (a week filling), reminders send themselves (lock-screen notifications), regulars come back (who came back this month). Order per variant. |
+| 4 | The DM moment | `DmToBooking` | The inbox next to the prefilled new booking ("Create booking from message"). |
+| 5 | Regulars | `Regulars` | The stamp card over a photo of the work, and the promo composer. |
+| 6 | Price | `PriceBlock` | Free, Pro monthly, Pro yearly, from `PLANS`. Deposits are "optional, if you want them". The footnote links to the full comparison on `/pricing#booking-apps` (`CompetitorTableSolo` moved there). |
+| 7 | Start | `solo/Start.tsx` | Name, trade (native radios) and email or mobile: a GET form to `/signup`, which `signupPrefill` turns into the wizard's starting values (`?shop`, `?trade`, `?contact`). The twelve-field wizard lives on `/signup` only. |
 
-Hero, section headings and the plan and comparison labels are `mkt.solo.*` keys (four languages). Job, regulars, privacy and FAQ bodies live in `copy.solo` in `apps/web/src/copy/en-CA.ts` (English), like the restaurant page.
+**A/B variants.** `LANDING_VARIANTS` in `copy/en-CA.ts` holds, per look (nails, brows, lashes, makeup, barber, groom) and variant id, the eyebrow, the headline, the subhead, the button label and the order of the three job cards; "control" is the default. Types and the resolver: `lib/marketing/landing-variants.ts`. `<SoloLanding variant="…">` renders a variant; the page root carries `data-variant`. Assignment and tracking are not built yet: the spec is `scratchpad/landing-v2/ab-spec.md` (assignment by middleware rewrite to a prerendered variant path, `?v=` and the `ll_v` cookie, five first-party events by `sendBeacon`, the variant carried into the `signed_up` milestone beside `src`, and `/admin/experiments`). Which variants exist, the copy per trade and the test order: `docs/marketing/value-props.md`.
+
+**Rendering.** All six looks are prerendered: `/for-nail-techs?trade=brows|lashes|makeup` is rewritten (next.config.ts, `beforeFiles`) to the static `/for-nail-techs/[trade]`. The only script of the page's own is the start form's source field (`?src=`, else the page's source, into the form and the `ll_src` cookie). Motion is CSS only and stops under reduced motion. Photos: `public/marketing/`, AVIF with WebP fallback, licences in `docs/marketing/photo-credits.md`.
 
 ## The client loop
 
@@ -31,10 +34,10 @@ Hero, section headings and the plan and comparison labels are `mkt.solo.*` keys 
 | Share of signups from the client loop and organic | 50% or more by week 8 | Under 30%: the loop line is not visible enough |
 | Free to paid within 90 days | 6% or more | Under 3%: test the founding annual price at signup |
 
-How to read them: `src` on a signup says which page it came from (`nail-techs`, `barbers`, `groomers`, `client` for the loop). The loop share is signups with `src=client` over all signups.
+How to read them: `src` on a signup says which page it came from (`nail-techs`, `barbers`, `groomers`, `client` for the loop). The loop share is signups with `src=client` over all signups. `variant` on the same milestone says which copy the signup saw.
 
 ## Checks before a campaign
 
 - Re-read the three competitor pages and update `competitors-solo.ts` (dates older than 90 days fail the unit test).
 - Run `e2e/marketing-solo.spec.ts`.
-- Lighthouse performance 90 or more at 390 px on a production build.
+- Lighthouse performance 90 or more at 390 px on a production build (targets: LCP under 1.8 s, TBT under 200 ms, CLS under 0.05).

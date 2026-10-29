@@ -1,8 +1,12 @@
 # Solo pro launch: nail, brow and lash techs, barbers, and the storefront trades behind them
 
+> **Oct 29, 2026, founder decisions:** (1) the $39 plan formerly shown as "Café & Retail" is shown as **Pro** (plan id unchanged, `plus`); (2) deposits are an optional feature, not the lead message: the landing pages lead with one link for bookings, clients booking themselves, reminders sending themselves and regulars coming back, and the booking flow shows a deposit only as an option; (3) the landing hero copy and job order are swappable variants for A/B tests (`LANDING_VARIANTS` in `apps/web/src/copy/en-CA.ts`, resolver in `apps/web/src/lib/marketing/landing-variants.ts`).
+
 Oct 28, 2026 · Strategy for @Sajjad Pirani · CAD unless marked US$ · Builds on `pricing.md` (Pricing v2), `strategy-audit-2.md`, `combined-strategy.md`, `docs/research/barbers-beauty.md`, `docs/research/service-businesses.md` and `docs/research/merchant-onboarding.md`. Where this document overturns an earlier decision it says so in a box. The founder's decisions of Oct 28 (app-first reminders, read-only Instagram, the built-in website builder, promos inside paid plans, area-only map pins, no licensing content) are folded in throughout.
 
 **Tags.** (W) verified on the web on Oct 28, 2026, source at the end · (W?) found on the web but third-party, undated, or currency not stated · (C) read from our code · (A) assumption · (H) hand math · (U) could not verify.
+
+> **Updated Oct 29, 2026 (founder).** Three changes run through this document. (1) The $39 plan is called **Pro** everywhere a person reads it (plan id stays `plus`). (2) **Deposits are optional and no longer the lead message**: many techs do not take deposits and many clients refuse them. They stay on Free at 1%, off by default, switched on per service. (3) **The lead message is "Your clients stay yours"**: a booking link that is not a marketplace, no cut of a booking, no "new client" fee, no per-chair charge, prices in CAD. "Stop booking in your DMs" is the first challenger and the two are A/B tested. Evidence, copy per trade and the test plan: `docs/marketing/value-props.md`; build spec: `scratchpad/landing-v2/ab-spec.md`. Lines below that still read deposit-first are historical and are marked where it matters.
 
 ---
 
@@ -10,8 +14,8 @@ Oct 28, 2026 · Strategy for @Sajjad Pirani · CAD unless marked US$ · Builds o
 
 **What is sound**
 
-1. **The segment is real.** Home-based nail, brow and lash techs run on Instagram DMs, e-transfer and a calendar link. The incumbents price per seat in US dollars and lead with a marketplace that charges 20% of a new client's first visit (Fresha, W). Nobody serves "the brow tech in a Scarborough basement" in Canadian dollars with a free plan that includes deposits.
-2. **Appointment-led first, loyalty second.** The founder is right that not everyone needs the map. For a solo pro the product is: booking link, deposit, reminders, client list, a page that looks professional. Loyalty is what keeps the regulars, and regulars are the whole business; it is the second sentence of the pitch, not the first.
+1. **The segment is real.** Home-based nail, brow and lash techs run on Instagram DMs, e-transfer and a calendar link. The incumbents price per seat in US dollars and lead with a marketplace that charges 20% of a new client's first visit (Fresha, W). Nobody serves "the brow tech in a Scarborough basement" in Canadian dollars, with a free plan, without taking a cut of her clients.
+2. **Appointment-led first, loyalty second.** The founder is right that not everyone needs the map. For a solo pro the product is: booking link, reminders, client list, a page that looks professional, and a deposit only if she wants one. Loyalty is what keeps the regulars, and regulars are the whole business; it is the second sentence of the pitch, not the first.
 3. **Reminders through the app, not through texts, is the right default.** Push is free (Expo and web push cost nothing per message, W?). The catch is real and sized in §4.1: not every client of one tech will install an app. The answer is the fallback ladder (app push → web push on the pass → email → a capped text) and the network reason to install ("one app for every local spot you go to"), which only works once a client has two or three shops on the pass.
 4. **A built-in website on the annual plan is cheap for us and strong against Squarespace.** The shop page already exists (`/shops/[slug]`, C). A `.ca` domain is about CA$13 a year (W?), hosting is marginal, and AI copy generation costs cents per site (§4.1). "Your site, already connected to your bookings, prices, loyalty and reviews" is something no booking tool and no site builder offers together.
 5. **"Reiterate the people side."** Correct priority. The audit in `people-side.md` found the client profile is still a loyalty ledger with a notes box: no appointment history, no 1:1 thread, no way to see a client's last set. That gap is closed in the build plan before ads run.
@@ -25,7 +29,7 @@ Oct 28, 2026 · Strategy for @Sajjad Pirani · CAD unless marked US$ · Builds o
 5. **Pricing v2's 35% free-to-paid assumption does not transfer to self-serve solo pros.** That number was for storefront loyalty shops with a founder phone call. For solo pros who sign up from an ad with nobody calling, the honest base case is 8% (bear 4%, bull 15%). This document overturns that assumption for this segment only.
 6. **"Payments through Whoop" is an open question.** WHOOP is a fitness wearable and does not process payments. We assume Stripe, which is integrated (Connect, deposits, checkout, billing, C). If the founder meant a Canadian processor, the options are Helcim (interchange-plus, Canadian), Moneris, Square, Interac e-Transfer (already supported as a recorded manual payment, C) and Wave (invoicing with payments). Each is a different integration; none changes the pricing in §3. Listed in §8 for the founder to clarify.
 
-**What this launches** (full detail in §3): **Free** (loyalty as today, plus one bookable calendar, online booking in the app and on the web pass, deposits and no-show protection at 1%, app push, web push and email reminders, 30 texts, client list with notes and history) · **Café & Retail, $39 a month** as today, now the upgrade for unlimited calendars, 500 texts, rebooking nudges and **four promos a month to your regulars with seasonal templates per trade** · **Annual, $390** adds the built-in website on the pro's own `.ca` domain. A founding price of $290 a year for the first 200 beauty pros is proposed as a founder decision.
+**What this launches** (full detail in §3): **Free** (loyalty as today, plus one bookable calendar, online booking in the app and on the web pass, optional deposits and no-show protection at 1%, app push, web push and email reminders, 30 texts, client list with notes and history) · **Pro, $39 a month** as today, now the upgrade for unlimited calendars, 500 texts, rebooking nudges and **four promos a month to your regulars with seasonal templates per trade** · **Annual, $390** adds the built-in website on the pro's own `.ca` domain. A founding price of $290 a year for the first 200 beauty pros is proposed as a founder decision.
 
 ---
 
@@ -33,7 +37,7 @@ Oct 28, 2026 · Strategy for @Sajjad Pirani · CAD unless marked US$ · Builds o
 
 | Segment | How they run today (A unless cited) | What they pay for | The one thing we must do |
 | --- | --- | --- | --- |
-| **Home-based nail, brow, lash and makeup techs** (the wedge) | Instagram DMs to book, a Linktree or Fresha link, e-transfer deposits by hand, reminders typed by hand, address sent by DM the day before | Nothing, or US$19.95–29.99 a month to Fresha or Booksy, or 20% of a new client to a marketplace | A booking link with a deposit, live in minutes, that never shows their home address |
+| **Home-based nail, brow, lash and makeup techs** (the wedge) | Instagram DMs to book, a Linktree or Fresha link, e-transfer deposits by hand, reminders typed by hand, address sent by DM the day before | Nothing, or US$19.95–29.99 a month to Fresha or Booksy, or 20% of a new client to a marketplace | A booking link live in minutes that never shows their home address and takes no cut of their clients; a deposit if they want one |
 | **Barbershops and threading bars** (2–8 chairs) | Walk-ins plus Booksy or Fresha per chair; chair renters keep their own books | US$29.99 plus US$20 per staff (Booksy, W) | The calendar with no per-chair charge, the walk-in line and payouts (built) |
 | **Pet groomers** | Phone and Instagram, the same no-show problem | Per-seat booking software | Already built (`pets.*`); same calendar, same launch kit, second wave |
 | **Cafés, bakeries, butchers, pet shops (retail)** | A POS, Instagram, a counter stamp card | Square or Clover, DoorDash on pickup | Free loyalty and pre-orders, sold on the street. Not this ad campaign (§2.4) |
@@ -64,9 +68,9 @@ All prices as shown on the vendor page or a third-party guide on Oct 28, 2026. W
 **What this says.**
 
 - **A free booking plan is table stakes only against Square.** Fresha, GlossGenius, Booksy, Vagaro and Acuity are all paid. Square's free plan is the one we are measured against in Canada, and it has no deposits or no-show fees on Free (W).
-- **Nobody offers deposits and a no-show fee on a free plan.** That is the single most valuable thing a home-based tech wants (a $20 deposit stops the Saturday no-show) and it earns us 1% without a subscription. It is our differentiator on Free.
-- **The marketplaces tax new clients at 20–30%.** We do the opposite: discovery through the shared customer map is free and we never take a cut of a client. Say that on the landing page.
-- **Per-seat pricing punishes barbershops.** Booksy at four chairs is US$89.99 a month. Our Café & Retail at $39 with no per-chair charge (pricing.md) is the barbershop pitch.
+- **Nobody offers deposits and a no-show fee on a free plan.** We do, as an option per service, off by default; it earns us 1% without a subscription. It is a differentiator in the plan table, not the lead message: many techs do not take deposits and many clients refuse them (founder, Oct 29; the review evidence in `docs/marketing/value-props.md` §1 agrees).
+- **The marketplaces tax new clients at 20–30%.** We do the opposite: discovery through the shared customer map is free and we never take a cut of a client. **This is the lead message** (Oct 29): "Your clients stay yours. No cut, no 'new client' fee, no per-chair charge, prices in CAD." It is the most specific complaint in the Fresha and Booksy review sets (`value-props.md` §1.1).
+- **Per-seat pricing punishes barbershops.** Booksy at four chairs is US$89.99 a month. Our Pro at $39 with no per-chair charge (pricing.md) is the barbershop pitch.
 - **Nobody bundles a connected website.** GlossGenius has a booking site, Vagaro sells one as an add-on, Squarespace is US$19–29 on its own and knows nothing about your bookings. A site that already shows your services, prices, booking, loyalty, promos, reviews and map pin, built in, is unique in this list and costs us about $1.10 a month to run.
 - **Nobody sends promos to regulars inside the plan.** Fresha charges $0.08 a marketing text; Booksy's Boost sells new clients at 30%. Four promos a month to the people who already come, by app push and email, at no per-message cost, is a different proposition: keep your regulars rather than buy strangers.
 - **Everything is priced in US dollars.** $19.95 is about CA$28. We price in CAD and say so.
@@ -77,7 +81,7 @@ All prices as shown on the vendor page or a third-party guide on Oct 28, 2026. W
 | --- | --- | --- |
 | "If you're a barber shop, manage all your stuff in one place" works for every vertical | **Partly wrong** | True for appointment trades (beauty, barbers, groomers). Not true for cafés and butchers: their "stuff" is a till. Use "all your bookings, clients and promos in one place" for appointment trades and keep the existing loyalty and pre-order pitch for retail |
 | Paid ads per vertical will bring the users | **Risky; test, don't bet** | §4.3: base-case CAC per paying customer from ads is about $750 against a $680 lifetime contribution. Judge the ads on cost per free signup with a hard kill line, and assume most signups come from the client loop and organic |
-| Free plan "with real value" | **Right, with caps** | Deposits on Free is the real value and it earns. The caps that keep a free user from costing money: 30 texts a month, one calendar, no promos or automations, no site. Everything else on Free costs cents |
+| Free plan "with real value" | **Right, with caps** | The booking link with no cut of the clients is the real value; deposits on Free earn, as an option. The caps that keep a free user from costing money: 30 texts a month, one calendar, no promos or automations, no site. Everything else on Free costs cents |
 | Reminders and messages through the app | **Right as the default; the fallback is most of the volume at first** | §4.1: at launch, expect 15–25% of a tech's clients to have the app, 30–50% to have the web pass with push, and the rest to be email-only. Design for the ladder, not for the app alone |
 | Annual plan includes a built-in website | **Right** | §4.1: about $1.10 a month in domain and routing, plus cents of AI per site. Needs the builder, presets and custom-domain routing, which are build items (plan.md, workstream G) |
 | Connect Instagram DMs, read-only, turn into bookings | **Right scope, still gated by Meta** | §6: review and verification are needed to read other people's inboxes. Build the inbox and the booking-from-message flow now, ship the connector after approval |
@@ -116,7 +120,7 @@ Nothing about licensing, inspections or city rules appears in the product or the
 
 ### 3.1 What changes against Pricing v2
 
-> **Overturns pricing.md (Oct 22) in two places.** (1) `booking.appointments` moves from Café & Retail to **Free for one bookable calendar** (paid → free is allowed by the invariant). (2) **Promos come back into the paid plan as a counted allowance**: Café & Retail includes four promos a month to the shop's regulars by app push and email, with seasonal templates per trade (founder decision, Oct 28). Pricing v2 had promos on Café & Retail already; what changes is the framing (a number per month, templates, app and email, no texts) and that it is the headline paid feature for this wedge.
+> **Overturns pricing.md (Oct 22) in two places.** (1) `booking.appointments` moves from Pro to **Free for one bookable calendar** (paid → free is allowed by the invariant). (2) **Promos come back into the paid plan as a counted allowance**: Pro includes four promos a month to the shop's regulars by app push and email, with seasonal templates per trade (founder decision, Oct 28). Pricing v2 had promos on Pro already; what changes is the framing (a number per month, templates, app and email, no texts) and that it is the headline paid feature for this wedge.
 
 > **Overturns `docs/research/service-businesses.md` §4.4** ("simplest: add appointments to Plus"). For a solo pro the calendar is the reason to sign up; gating it behind $39 against Square's free calendar loses the signup.
 
@@ -124,13 +128,13 @@ Nothing about licensing, inspections or city rules appears in the product or the
 
 ### 3.2 The three plans
 
-| | **Free** | **Café & Retail · $39/mo** | **Annual · $390/yr** (everything in monthly, plus the site) |
+| | **Free** | **Pro · $39/mo** | **Annual · $390/yr** (everything in monthly, plus the site) |
 | --- | --- | --- | --- |
 | Loyalty program, wallet pass, network listing, customer directory, basic reports | Yes (unchanged) | Yes | Yes |
 | **Bookable calendars** | **1** | Unlimited, no per-chair charge | Unlimited |
 | Services, prices, duration, buffer, rebook cadence | Unlimited | Unlimited | Unlimited |
 | Online booking: the client books in the Local Loyalty app or on the web pass; the booking page doubles as the link-in-bio | Yes | Yes | Yes |
-| **Deposits and no-show fee** (card on file, cancel window) | **Yes**, 1% on online deposits and charged fees, Stripe at cost; 0% on checkout | Same | Same |
+| **Deposits and no-show fee, optional** (off by default, on per service; card on file, cancel window) | **Yes**, 1% on online deposits and charged fees, Stripe at cost; 0% on checkout | Same | Same |
 | Checkout through the calendar, tips, pay link | Yes | Yes | Yes |
 | Confirmations and reminders by **app push, web push on the pass, in-app message, email** | Unlimited | Unlimited | Unlimited |
 | **Reminder texts** (only to clients with none of the above) | **30 a month**, then email | 500 a month, overage $0.04 | 500 |
@@ -335,13 +339,14 @@ Activation for this segment is **the first online booking from someone other tha
 
 Format: 9:16 Reels and Stories first (cheaper, W?), 1:1 feed second. Every creative shows the real product on a real phone in the Clear theme; no stock photography, no gradient backdrops. The hook is on screen in the first second.
 
-**Nail, brow and lash techs** (`/for-nail-techs`; `?trade=brows` or `lashes` swaps the hero)
+**Nail, brow and lash techs** (`/for-nail-techs`; `?trade=brows` or `lashes` swaps the hero; `?v=` names the landing variant, `value-props.md` §2.2)
 
 | # | Hook | Visual | CTA |
 | --- | --- | --- | --- |
-| 1 | "Still booking in DMs?" | Split phone: a messy DM thread "what times u have sat?" against the booking page with Saturday slots and a $20 deposit line | "Get your booking link, free" |
-| 2 | "A $20 deposit ends the Saturday no-show." | The policy card "Free change until 24 h before · $20 holds your spot", then the calendar filling | "Deposits on the free plan" |
-| 3 | "Your address stays private." | The map with an area pin "Bloor West area · by appointment", then the confirmation "Address: sent after you book" | "Made for home studios" |
+| 1 | "Booksy and Fresha take a cut of your clients. We don't." (`?v=yours`) | "20% of a new client" and "30% Boost" struck through; the pro's client list with "Yours."; the booking page in her trade colour | "Get your booking link, free" |
+| 2 | "Still booking in DMs?" (`?v=control`, today's default) | Split phone: a messy DM thread "what times u have sat?" against the booking page with Saturday slots | "Get your booking link, free" |
+| 2b | "No-shows, without the deposit fight." (`?v=noshows`, runs in T3) | The reminder going out by app and email, the "Deposit: off" switch per service, the calendar filling | "Get your booking link, free" |
+| 3 | "Your address stays private." (`?v=private`, runs in T2) | The map with an area pin "Bloor West area · by appointment", then the confirmation "Address: sent after you book" | "Made for home studios" |
 | 4 | "Your bio link should take bookings." | An Instagram profile, the link tapped, the booking page opens in the pro's trade colour | "Replace your Linktree" |
 | 5 | "A real website, built in." | The builder: pick a preset, the site appears already showing her services, prices, reviews and the Book button, on `<name>.ca` | "Included with the annual plan" |
 | 6 | "Valentine's nails, sent to your regulars in one tap." | The promo template picker, "Sent to 112 regulars", three bookings landing | "4 promos a month on the paid plan" |
@@ -350,7 +355,8 @@ Format: 9:16 Reels and Stories first (cheaper, W?), 1:1 feed second. Every creat
 
 | # | Hook | Visual | CTA |
 | --- | --- | --- | --- |
-| 1 | "No per-chair charge. Ever." | "$29.99 + $20 per barber" struck through; "$39 for the whole shop" | "See the plan" |
+| 1 | "No per-chair charge. Ever." (`?v=price`) | "$29.99 + $20 per barber" struck through; "$39 for the whole shop"; "and nobody takes a cut of your clients" | "Get your shop's link, free" |
+| 1b | "Still booking in DMs?" (`?v=dms`) | The shop's DM thread against the booking page with the walk-in line beside it | "Get your shop's link, free" |
 | 2 | "How long's the wait?" | The door tablet and a client's phone: "You're 3rd · about 40 min · we'll let you know" | "Walk-in line, built in" |
 | 3 | "Dad books, kids' cuts on the same card." | The family card screen (built, `barbers/m3-family-390.png`) | "Family under one card" |
 | 4 | "Chair renters keep their own clients." | Payouts page with a renter's private view | "Payouts and chair rent, no spreadsheet" |
@@ -371,7 +377,7 @@ Format: 9:16 Reels and Stories first (cheaper, W?), 1:1 feed second. Every creat
 One page per vertical under `apps/web/src/app/(marketing)/for-<trade>/`, same structure as `for-restaurants` (C):
 
 1. Hero: the hook, one phone mock in the Clear theme with the trade colour, "Start free" and a 20-second autoplay of the booking flow.
-2. Three jobs as cards (book, deposit, remind; or line, family, payouts).
+2. Three jobs as cards, in the order the variant sets (`value-props.md` §2.1; shipped v2 ids are `book`, `remind`, `regulars`; `noshow` and `yours` are to add): for techs, pick a time · no-shows handled your way · your clients stay yours (or reminders); for barbers, book or join the line · yours · the line. Deposits are one optional sentence inside the no-show card, never a card of their own.
 3. "Your regulars" block: stamps, promos to regulars, the shared pass.
 4. The privacy block for home studios (nail page only).
 5. Pricing strip: Free, $39, $390 with the site. "Prices in CAD. No per-chair charge. No cut of your clients."
@@ -394,6 +400,7 @@ One page per vertical under `apps/web/src/app/(marketing)/for-<trade>/`, same st
 | Annual share of paid | ≥ 35% | < 20%: show the site preview earlier |
 | Reminder texts per active free account | ≤ 15 a month | > 30 on average: the push ladder is broken or reminders are two segments |
 | No-show rate with a deposit versus without | lower by ≥ 30% | Not lower: verify the deposit story with ten pros |
+| Landing test T1 (control "yours" vs "dms"), per page | decide at 880 exposures (about 5–6 weeks of ad traffic) | Decide only at the pre-registered looks (`value-props.md` §3.8); a variant above $90 per free signup for two weeks is paused |
 
 Budget for the test: $2,000 a month for eight weeks on the nail-tech and barber campaigns, $500 of it on creative. Decide at week 8.
 
@@ -449,13 +456,14 @@ The owner presses **Connect** in the dashboard and sees their Instagram DMs ther
 ## 8. Decisions needed from the founder
 
 1. Confirm `booking.appointments` free for one calendar (overturns Pricing v2 for this feature).
-2. Confirm the promo allowance: 4 a month on Café & Retail, 48 a year on annual, push and email only (no texts inside the allowance).
+2. Confirm the promo allowance: 4 a month on Pro, 48 a year on annual, push and email only (no texts inside the allowance).
 3. Confirm the founding annual price ($290, 200 spots) or strike it.
 4. Confirm the vertical sequence (beauty and barbers with ads; groomers month 3; cafés and butchers on the street).
 5. Approve the $2,000 a month ad test for eight weeks with the kill criteria in §5.4.
 6. Approve the Stripe direct-charges switch as a launch prerequisite (`STRIPE_DIRECT_CHARGES`), and get Stripe Canada's platform pricing in writing (open since Oct 22).
 7. Decide whether we register domains for annual customers in our Cloudflare account (recommended, at cost, transferable on cancellation) or hand them a credit.
 8. **"Payments through Whoop": say what you meant.** WHOOP does not process payments. Today's rail is Stripe (Connect, Checkout, Billing, Terminal available). Canadian alternatives if the aim is lower in-person rates or a Canadian processor: **Helcim** (interchange-plus, Canadian, no monthly fee), **Moneris** (bank-owned, terminals), **Square** (already the POS of many shops; we integrate for auto-award), **Interac e-Transfer** (free to the shop; already recorded by hand in the app, no API for us to automate without a bank partner), **Wave** (invoicing with payments, 2.9% + 60¢ class of pricing, U). None of these changes the plan prices; a switch away from Stripe would reopen deposits, no-show fees, subscriptions and payouts, so it is a year-two question unless the founder means something else.
+9. Confirm the lead message ("Your clients stay yours") as the control and "Stop booking in your DMs" as the first challenger, and whether CSV export of the client list moves to Free so the page can say "export it any time" (`value-props.md` §2.1).
 
 ---
 
