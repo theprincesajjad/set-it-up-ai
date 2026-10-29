@@ -15,6 +15,9 @@ const shot = (name: string) => (SHOTS ? { path: `${SHOTS}/${name}.png`, fullPage
 
 const axeSource = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 async function axe(page: Page, selector: string): Promise<string[]> {
+  // Sections below the fold use content-visibility: auto (solo.css); a skipped subtree is not painted, so axe would read the page
+  // canvas as the background of text on the black plan card and report a false contrast failure. Render everything for the audit.
+  await page.addStyleTag({ content: ".sl-sec { content-visibility: visible !important; }" });
   await page.addScriptTag({ content: axeSource });
   return page.evaluate(async (sel) => {
     const r = await (window as unknown as { axe: { run: (c?: unknown, o?: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe.run(sel, { runOnly: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] });
